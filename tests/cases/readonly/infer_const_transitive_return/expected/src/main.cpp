@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper()
+//     print(w.get_mutable().x)   # 1
+//     c = Container()
+//     print(c.first_x())         # 1
 void main() {
-    // w = Wrapper()
     Wrapper w = Wrapper();
-    // print(w.get_mutable().x)   # 1
     std::cout << w.get_mutable().x << "\n";
-    // c = Container()
     Container c = Container();
-    // print(c.first_x())         # 1
     std::cout << c.first_x() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

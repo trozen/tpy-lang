@@ -51,29 +51,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d: Direction = Direction.North
+//     print(d)
+//     print(d.value)
+//     d = Direction.West
+//     print(d)
+//     print(d.value)
 void main() {
-    // d: Direction = Direction.North
     Direction d = Direction::North;
-    // print(d)
     std::cout << d << "\n";
-    // print(d.value)
     std::cout << static_cast<int32_t>(d) << "\n";
-    // d = Direction.West
     d = Direction::West;
-    // print(d)
     std::cout << d << "\n";
-    // print(d.value)
     std::cout << static_cast<int32_t>(d) << "\n";
 }
 
+// # enum.auto() via bare 'import enum' (qualified access)
+// import enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # enum.auto() via bare 'import enum' (qualified access)
-    // import enum
-    // main()
     main();
 }
 

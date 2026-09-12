@@ -5,47 +5,50 @@ namespace tpyapp::main {
 
 
 // def do_mutate(p: Sink, s: str) -> None:
+//     p.push(s)
 void do_mutate(Sink& p, std::string_view s) {
-    // p.push(s)
     p.push(s);
 }
 
 // def main() -> None:
+//     r = Renderer()
+//
+//     s1 = Sink()
+//     r.via_call(s1)
+//     print(s1.buf)            # call;  -- transitive mutation crossed the boundary
+//
+//     s2 = Sink()
+//     r.via_method(s2)
+//     print(s2.buf)            # method;
+//
+//     src = Sink()
+//     src.push("src=")
+//     dst = Sink()
+//     r.only_second(src, dst)
+//     print(dst.buf)           # src=second;
+//     print(src.buf)           # src=  -- `a` was read, not mutated
 void main() {
-    // r = Renderer()
     Renderer r = Renderer();
-    // s1 = Sink()
     Sink s1 = Sink();
-    // r.via_call(s1)
     r.via_call(s1);
-    // print(s1.buf)            # call;  -- transitive mutation crossed the boundary
     std::cout << s1.buf << "\n";
-    // s2 = Sink()
     Sink s2 = Sink();
-    // r.via_method(s2)
     r.via_method(s2);
-    // print(s2.buf)            # method;
     std::cout << s2.buf << "\n";
-    // src = Sink()
     Sink src = Sink();
-    // src.push("src=")
     src.push("src=");
-    // dst = Sink()
     Sink dst = Sink();
-    // r.only_second(src, dst)
     r.only_second(src, dst);
-    // print(dst.buf)           # src=second;
     std::cout << dst.buf << "\n";
-    // print(src.buf)           # src=  -- `a` was read, not mutated
     std::cout << src.buf << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

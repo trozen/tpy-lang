@@ -9,67 +9,67 @@ namespace tpyapp::main {
 // # std::get. Distinct from the tuple-UNPACK loop (for k, v in ...), which
 // # desugars to a per-target decl list.
 // def dump_pairs(xs: list[tuple[int, int]]) -> None:
+//     for t in xs:
+//         print(t[0], t[1])
 void dump_pairs(const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>& xs) {
-    // for t in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& t = *__beg_0;
-        // print(t[0], t[1])
         std::cout << std::get<0>(t) << " " << std::get<1>(t) << "\n";
     }
 }
 
 // def dump_items(d: dict[int, int]) -> None:
+//     for kv in d.items():
+//         print(kv[0], kv[1])
 void dump_items(const ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>& d) {
-    // for kv in d.items():
     auto __obj_0 = ::tpy::dict_items(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        // print(kv[0], kv[1])
         std::cout << std::get<0>(kv) << " " << std::get<1>(kv) << "\n";
     }
 }
 
 // def sum_first(xs: list[tuple[int, int]]) -> int:
+//     acc = 0
+//     for t in xs:
+//         acc = acc + t[0]
+//     return acc
 ::tpy::BigInt sum_first(const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>& xs) {
-    // acc = 0
     ::tpy::BigInt acc = ::tpy::BigInt(0);
-    // for t in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& t = *__beg_0;
-        // acc = acc + t[0]
         acc = ((::tpy::BigInt(acc)) + (std::get<0>(t)));
     }
-    // return acc
     return acc;
 }
 
 // def main() -> None:
+//     pairs = [(1, 2), (3, 4)]
+//     dump_pairs(pairs)
+//     dump_items({5: 6, 7: 8})
+//     print(sum_first(pairs))
 void main() {
-    // pairs = [(1, 2), (3, 4)]
     std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>> pairs = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}};
-    // dump_pairs(pairs)
     dump_pairs(pairs);
-    // dump_items({5: 6, 7: 8})
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __tmp_1 = ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>({{::tpy::BigInt(5), ::tpy::BigInt(6)}, {::tpy::BigInt(7), ::tpy::BigInt(8)}});
     dump_items(__tmp_1);
-    // print(sum_first(pairs))
     std::cout << sum_first(pairs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

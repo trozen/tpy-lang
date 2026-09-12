@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Combined({"key": "value"})
+//     print(c.key)
+//     print(c.helper())
 void main() {
-    // c = Combined({"key": "value"})
     Combined c = Combined(::tpy::ordered_map<std::string, std::string>({{"key", "value"}}));
-    // print(c.key)
     std::cout << c.__getattr__("key") << "\n";
-    // print(c.helper())
     std::cout << c.helper() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

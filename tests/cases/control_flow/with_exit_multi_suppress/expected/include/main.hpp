@@ -12,7 +12,9 @@ struct Inner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run() -> None:
 void run();
+// def main() -> None:
 void main();
 
 // # Regression: nested context managers where the inner __exit__ suppresses.
@@ -62,46 +64,46 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 
 // def __enter__(self) -> int:
+//     print("outer enter")
+//     return 10
 inline ::tpy::BigInt Outer::__enter__() const {
-    // print("outer enter")
     std::cout << "outer enter" << "\n";
-    // return 10
     return ::tpy::BigInt(10);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     if exc_val is None:
+//         print("outer exit (normal)")
+//     else:
+//         print(f"outer exit (exc: {str(exc_val)})")
 inline void Outer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is None:
     if ((exc_val == nullptr)) {
-        // print("outer exit (normal)")
         std::cout << "outer exit (normal)" << "\n";
-    // else:
     } else {
-        // print(f"outer exit (exc: {str(exc_val)})")
         std::cout << std::format("outer exit (exc: {})", std::string(::tpy::__str__((*exc_val)))) << "\n";
     }
 }
 
 // def __enter__(self) -> int:
+//     print("inner enter")
+//     return 20
 inline ::tpy::BigInt Inner::__enter__() const {
-    // print("inner enter")
     std::cout << "inner enter" << "\n";
-    // return 20
     return ::tpy::BigInt(20);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is not None:
+//         print(f"inner suppressing: {str(exc_val)}")
+//         return True
+//     print("inner exit (normal)")
+//     return False
 inline bool Inner::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is not None:
     if ((exc_val != nullptr)) {
-        // print(f"inner suppressing: {str(exc_val)}")
         std::cout << std::format("inner suppressing: {}", std::string(::tpy::__str__((*exc_val)))) << "\n";
-        // return True
         return true;
     }
-    // print("inner exit (normal)")
     std::cout << "inner exit (normal)" << "\n";
-    // return False
     return false;
 }
 void __tpy_init();

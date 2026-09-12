@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def show(l: readonly[list[int32]]) -> None:
+//     print(l)
 void show(const std::vector<int32_t>& l) {
-    // print(l)
     std::cout << ::tpy::ListPrinter(l) << "\n";
 }
 
 // def main() -> None:
+//     nums: list[int32] = [1, 2, 3]
+//     show(nums)
 void main() {
-    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // show(nums)
     show(nums);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

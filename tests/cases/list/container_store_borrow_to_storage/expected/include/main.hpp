@@ -12,11 +12,17 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def store_opt(xs: list[A | None], p: A | None) -> None:
 void store_opt(std::vector<std::optional<A>>& xs, const A* p);
+// def store_union(xs: list[A | B], p: A | B) -> None:
 void store_union(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p);
+// def append_union(xs: list[A | B], p: A | B) -> None:
 void append_union(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p);
+// def store_dict(d: dict[str, A | None], p: A | None) -> None:
 void store_dict(::tpy::ordered_map<std::string, std::optional<A>>& d, const A* p);
+// def store_narrowed(xs: list[A | B], p: A | B) -> None:
 void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p);
+// def main() -> None:
 void main();
 
 // # Storing a borrow-form value (pointer-repr Optional / pointer-variant
@@ -63,9 +69,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,7 +11,9 @@ struct Failed;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(ok: bool) -> int32:
 std::expected<int32_t, Failed> run(bool ok);
+// def main() -> None:
 void main();
 
 // class Failed(Exception, ReturnException):
@@ -36,6 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
 
 
 // def __init__(self, code: int32 | None) -> None:
+//     super().__init__("failed")
+//     self.code = code
 inline Failed::Failed(std::optional<int32_t> code) : ::tpy::Exception("failed"), code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

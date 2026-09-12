@@ -11,19 +11,31 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_pairs() -> Own[list[tuple[str, Node]]]:
 std::vector<std::tuple<std::string, Node>> make_pairs();
+// def test_dict_ctor_ref_value_warns() -> None:
 void test_dict_ctor_ref_value_warns();
+// def test_dict_ctor_value_types_no_warn() -> None:
 void test_dict_ctor_value_types_no_warn();
+// def test_dict_ctor_copy_no_warn() -> None:
 void test_dict_ctor_copy_no_warn();
+// def test_dict_ctor_last_use_no_warn() -> None:
 void test_dict_ctor_last_use_no_warn();
+// def test_dict_ctor_rvalue_no_warn() -> None:
 void test_dict_ctor_rvalue_no_warn();
+// def test_dict_ctor_generic_warns[K, V](pairs: list[tuple[K, V]]) -> None:
 template<typename K, typename V>
 void test_dict_ctor_generic_warns(const std::vector<std::tuple<K, V>>& pairs);
+// def test_dict_ctor_nested_tuple_warns() -> None:
 void test_dict_ctor_nested_tuple_warns();
+// def test_dict_ctor_list_value_warns() -> None:
 void test_dict_ctor_list_value_warns();
+// def test_dict_ctor_nested_value_no_warn() -> None:
 void test_dict_ctor_nested_value_no_warn();
+// def test_dict_ctor_partial_generic_warns[V](pairs: list[tuple[str, V]]) -> None:
 template<typename V>
 void test_dict_ctor_partial_generic_warns(const std::vector<std::tuple<std::string, V>>& pairs);
+// def test_dict_ctor_nested_generic_warns[K, V](pairs: list[tuple[K, tuple[str, V]]]) -> None:
 template<typename K, typename V>
 void test_dict_ctor_nested_generic_warns(const std::vector<std::tuple<K, std::tuple<std::string, V>>>& pairs);
 
@@ -45,29 +57,33 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Node::Node(int32_t val) : val(val) {}
 // def test_dict_ctor_generic_warns[K, V](pairs: list[tuple[K, V]]) -> None:
+//     """Generic K, V: warn 'may copy' since types may not be value types."""
+//     d = dict(pairs)  # tpyc: warning(/may copy tuple\[K, V\] elements/)
+//     print(len(pairs))
 template<typename K, typename V>
 void test_dict_ctor_generic_warns(const std::vector<std::tuple<K, V>>& pairs) {
-    // d = dict(pairs)  # tpyc: warning(/may copy tuple\[K, V\] elements/)
     ::tpy::ordered_map<K, V> d = ::tpy::dict_construct<K, V>(pairs);
-    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
 }
 // def test_dict_ctor_partial_generic_warns[V](pairs: list[tuple[str, V]]) -> None:
+//     """str is concrete value type, V unknown -- should 'may copy'."""
+//     d = dict(pairs)  # tpyc: warning(/may copy tuple\[str, V\] elements/)
+//     print(len(pairs))
 template<typename V>
 void test_dict_ctor_partial_generic_warns(const std::vector<std::tuple<std::string, V>>& pairs) {
-    // d = dict(pairs)  # tpyc: warning(/may copy tuple\[str, V\] elements/)
     ::tpy::ordered_map<std::string, V> d = ::tpy::dict_construct<std::string, V>(pairs);
-    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
 }
 // def test_dict_ctor_nested_generic_warns[K, V](pairs: list[tuple[K, tuple[str, V]]]) -> None:
+//     """V nested inside inner tuple -- recursive check still fires."""
+//     d = dict(pairs)  # tpyc: warning(/may copy tuple\[K, tuple\[str, V\]\] elements/)
+//     print(len(pairs))
 template<typename K, typename V>
 void test_dict_ctor_nested_generic_warns(const std::vector<std::tuple<K, std::tuple<std::string, V>>>& pairs) {
-    // d = dict(pairs)  # tpyc: warning(/may copy tuple\[K, tuple\[str, V\]\] elements/)
     ::tpy::ordered_map<K, std::tuple<std::string, V>> d = ::tpy::dict_construct<K, std::tuple<std::string, V>>(pairs);
-    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
 }
 

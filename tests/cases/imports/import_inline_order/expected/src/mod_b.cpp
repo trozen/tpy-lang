@@ -5,19 +5,20 @@ namespace tpyapp::mod_b {
 
 
 // def func_b() -> None:
+//     print("func_b called")
 void func_b() {
-    // print("func_b called")
     std::cout << "func_b called" << "\n";
 }
 
+// from mod_c import shared_value
+//
+// print("mod_b init")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mod_c import shared_value
     ::tpyapp::mod_c::__tpy_init();
-    // print("mod_b init")
     std::cout << "mod_b init" << "\n";
 }
 

@@ -12,7 +12,9 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(v: A | B | None, flag: bool) -> None:
 void f(::tpy::Union<std::monostate, const A*, const B*> v, bool flag);
+// def main() -> None:
 void main();
 
 // class A:
@@ -47,9 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self) -> None:
+//     self.a = 1
 inline A::A() : a(1) {}
 
 // def __init__(self) -> None:
+//     self.b = 2
 inline B::B() : b(2) {}
 void __tpy_init();
 } // namespace tpyapp::main

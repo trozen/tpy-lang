@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def value_downcast(a: Animal) -> bool:
+//     return isinstance(a, Dog)  # tpyc: warning(/descendant type 'Dog'/)
 bool value_downcast(const Animal& a) {
-    // return isinstance(a, Dog)  # tpyc: warning(/descendant type 'Dog'/)
     return false;
 }
 
 // def ptr_downcast(a: Ptr[Animal]) -> bool:
+//     return isinstance(a, Dog)  # tpyc: warning(/descendant type 'Dog'/)
 bool ptr_downcast(Animal* a) {
-    // return isinstance(a, Dog)  # tpyc: warning(/descendant type 'Dog'/)
     return false;
 }
 
 // def multi_downcast_tuple(a: Animal) -> bool:
+//     # Tuple form warns once per offending descendant.
+//     return isinstance(a, (Dog, Cat))  # tpyc: warning(/descendant type 'Dog'/) warning(/descendant type 'Cat'/)
 bool multi_downcast_tuple(const Animal& a) {
-    // # Tuple form warns once per offending descendant.
-    // return isinstance(a, (Dog, Cat))  # tpyc: warning(/descendant type 'Dog'/) warning(/descendant type 'Cat'/)
     return false;
 }
 
 // def main() -> None:
+//     # ptr_downcast is compiled for snapshot+warning verification but not
+//     # called here: passing a real Dog to `Ptr[Animal]` would return True
+//     # under CPython's runtime dispatch and False under tpyc's static fold.
+//     print(value_downcast(Animal("Mystery")))
+//     print(multi_downcast_tuple(Animal("Generic")))
 void main() {
-    // # ptr_downcast is compiled for snapshot+warning verification but not
-    // # called here: passing a real Dog to `Ptr[Animal]` would return True
-    // # under CPython's runtime dispatch and False under tpyc's static fold.
-    // print(value_downcast(Animal("Mystery")))
     Animal __tmp_1 = Animal("Mystery");
     std::cout << ::tpy::print_bool(value_downcast(__tmp_1)) << "\n";
-    // print(multi_downcast_tuple(Animal("Generic")))
     Animal __tmp_2 = Animal("Generic");
     std::cout << ::tpy::print_bool(multi_downcast_tuple(__tmp_2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

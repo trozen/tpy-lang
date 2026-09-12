@@ -10,15 +10,19 @@ namespace tpyapp::main {
 extern ::tpy::BigInt seen;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
+// def counter() -> Iterator[int]:
+//     global seen
+//     for i in range(3):
+//         seen = i
+//         yield i
 inline auto counter() {
-    // global seen
     return ::tpy::make_generator<::tpy::BigInt>(
         [__i = int32_t(0), __stop = static_cast<int32_t>(3)]() mutable -> std::optional<::tpy::BigInt> {
             while (__i < __stop) {
                 int32_t i = __i++;
-                // seen = i
                 seen = ::tpy::BigInt(i);
                 auto __val = ::tpy::BigInt(i);
                 return std::optional<::tpy::BigInt>(__val);

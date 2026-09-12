@@ -14,9 +14,13 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(x: int32 | str | Cat | Dog) -> str:
 std::string describe(::tpy::Union<const Cat*, const Dog*, const int32_t*, const std::string*> x);
+// def depth(t: Tree) -> int32:
 int32_t depth(const Tree& t);
+// def unbox(x: int32 | Box[str]) -> str:
 std::string unbox(::tpy::Union<const Box<std::string>*, const int32_t*> x);
+// def main() -> None:
 void main();
 
 // class Cat:
@@ -58,6 +62,7 @@ struct Box {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
+    //     self.value = value
     Box() = default;
     explicit Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -71,9 +76,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 struct Tree {
     using variant_type = ::tpy::Union<int32_t, std::vector<Tree>>;

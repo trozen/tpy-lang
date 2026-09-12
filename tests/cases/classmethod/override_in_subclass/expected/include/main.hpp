@@ -12,6 +12,7 @@ struct Square;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Shape:
@@ -52,19 +53,20 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
 
 
 // def __init__(self, sides: int32):
+//     self.sides = sides
 inline Shape::Shape(int32_t sides) : sides(sides) {}
 
 // @classmethod
 // def make(cls) -> Own[Self]:
+//     return cls(0)
 inline Shape Shape::make() {
-    // return cls(0)
     return Shape(0);
 }
 
 // @classmethod
 // def make(cls) -> Own[Self]:
+//     return cls(4)
 inline Square Square::make() {
-    // return cls(4)
     return Square(4);
 }
 void __tpy_init();

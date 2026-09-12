@@ -5,32 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # All fields provided
+//     full = Info(name="Alice", age=int32(30))
+//     print(full["name"])
+//     print(full["age"])
+//
+//     # Partial construction -- omitted field is None
+//     partial = Info(name="Bob")
+//     print(partial["name"])
+//
+//     # Zero-arg construction
+//     empty = Info()
+//     print("ok")
 void main() {
-    // # All fields provided
-    // full = Info(name="Alice", age=int32(30))
     Info full = Info("Alice", 30);
-    // print(full["name"])
     std::cout << ::tpy::typed_dict_field_check(full.name) << "\n";
-    // print(full["age"])
     std::cout << ::tpy::typed_dict_field_check(full.age) << "\n";
-    // # Partial construction -- omitted field is None
-    // partial = Info(name="Bob")
     Info partial = Info("Bob");
-    // print(partial["name"])
     std::cout << ::tpy::typed_dict_field_check(partial.name) << "\n";
-    // # Zero-arg construction
-    // empty = Info()
     Info empty = Info();
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

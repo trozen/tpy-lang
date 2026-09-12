@@ -15,8 +15,11 @@ struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fresh() -> Own[Array[int32, 3]]:
 std::array<int32_t, 3> fresh();
+// def first_or_none(g: Grid, want: bool) -> Array[int32, 3] | None:
 std::array<int32_t, 3>* first_or_none(Grid& g, bool want);
+// def main() -> None:
 void main();
 
 // class Grid:
@@ -44,31 +47,33 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self) -> None:
+//     self.cells = [1, 2, 3]
+//     self.spare = [4, 5, 6]
 inline Grid::Grid() : cells(std::array<int32_t, 3>{1, 2, 3}), spare(std::array<int32_t, 3>{4, 5, 6}) {}
 
 // def same_cells(self, other: Grid) -> bool:
+//     return self.cells == other.cells      # the Array FIELD read as an operand
 inline bool Grid::same_cells(const Grid& other) const {
-    // return self.cells == other.cells      # the Array FIELD read as an operand
     return (this->cells == other.cells);
 }
 
 // def spare_total(self) -> int32:
+//     n = 0
+//     if self.spare is not None:
+//         for x in self.spare:              # for-each over a narrowed Array field
+//             n += x
+//     return n
 inline int32_t Grid::spare_total() const {
-    // n = 0
     int32_t n = 0;
-    // if self.spare is not None:
     if ((this->spare.has_value())) {
-        // for x in self.spare:              # for-each over a narrowed Array field
         auto& __obj_0 = (*this->spare);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // n += x
             n = ::tpy::add_check<int32_t>(n, x);
         }
     }
-    // return n
     return n;
 }
 void __tpy_init();

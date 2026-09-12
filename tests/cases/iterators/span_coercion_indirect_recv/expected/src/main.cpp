@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def total(sp: Span[readonly[int32]]) -> int32:
+//     t = 0
+//     for x in sp:
+//         t += x
+//     return t
 int32_t total(std::span<const int32_t> sp) {
-    // t = 0
     int32_t t = 0;
-    // for x in sp:
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // t += x
         t = ::tpy::add_check<int32_t>(t, x);
     }
-    // return t
     return t;
 }
 
 // def opt_total(b: Buf | None) -> int32:
+//     if b is not None:
+//         return total(b)         # tpyc: ok -- a narrowed pointer name derefs
+//     return -1
 int32_t opt_total(const Buf* b) {
-    // if b is not None:
     if ((b != nullptr)) {
-        // return total(b)         # tpyc: ok -- a narrowed pointer name derefs
         return total((*b).__span__());
     }
-    // return -1
     return -1;
 }
 
 // def plain_total(b: Buf) -> int32:
+//     return total(b)             # tpyc: ok -- a record name calls directly
 int32_t plain_total(const Buf& b) {
-    // return total(b)             # tpyc: ok -- a record name calls directly
     return total(b.__span__());
 }
 
 // def main() -> None:
+//     b = Buf()
+//     print(b.own_total(), opt_total(b), plain_total(b), opt_total(None))
 void main() {
-    // b = Buf()
     Buf b = Buf();
-    // print(b.own_total(), opt_total(b), plain_total(b), opt_total(None))
     std::cout << b.own_total() << " " << opt_total(&(b)) << " " << plain_total(b) << " " << opt_total(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

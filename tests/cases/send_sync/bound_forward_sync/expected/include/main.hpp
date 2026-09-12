@@ -9,22 +9,25 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sink[T: Sync](x: Own[T]) -> None:
 template<typename T>
 void sink(::tpy::own_param_t<T> x);
+// def forward[T: Sync](x: Own[T]) -> None:
 template<typename T>
 void forward(::tpy::own_param_t<T> x);
+// def main() -> None:
 void main();
 
 // def sink[T: Sync](x: Own[T]) -> None:
+//     print("sync sink")
 template<typename T>
 void sink(::tpy::own_param_t<T> x) {
-    // print("sync sink")
     std::cout << "sync sink" << "\n";
 }
 // def forward[T: Sync](x: Own[T]) -> None:
+//     sink(x)
 template<typename T>
 void forward(::tpy::own_param_t<T> x) {
-    // sink(x)
     sink<T>(std::move(x));
 }
 

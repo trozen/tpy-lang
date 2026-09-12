@@ -6,306 +6,345 @@ namespace tpyapp::main {
 
 // # --- Helper functions that take specific types ---
 // def take_int32(n: int32) -> int32:
+//     return n
 int32_t take_int32(int32_t n) {
-    // return n
     return n;
 }
 
 // def take_ptr(p: Ptr[Point]) -> None:
+//     p.x = p.x + 1
 void take_ptr(Point* p) {
-    // p.x = p.x + 1
     ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, 1));
 }
 
 // def take_const_ptr(p: Ptr[readonly[Point]]) -> int32:
+//     return p.x + p.y
 int32_t take_const_ptr(const Point* p) {
-    // return p.x + p.y
     return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
 }
 
 // def take_point(p: Point) -> int32:
+//     return p.x + p.y
 int32_t take_point(const Point& p) {
-    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def take_span(s: Span[int32]) -> int32:
+//     result: int32 = 0
+//     i: int32 = 0
+//     while i < len(s):
+//         result = result + s[i]
+//         i = i + 1
+//     return result
 int32_t take_span(std::span<int32_t> s) {
-    // result: int32 = 0
     int32_t result = 0;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < len(s):
     while ((i < ::tpy::__len__(s))) {
-        // result = result + s[i]
         result = (::tpy::add_check<int32_t>(result, s[static_cast<std::size_t>(i)]));
-        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    // return result
     return result;
 }
 
 // # --- BigInt -> int32 coercion ---
 // def return_bigint_as_int32() -> int32:
+//     big: int = 42
+//     return big  # BigInt -> int32 in return
 int32_t return_bigint_as_int32() {
-    // big: int = 42
     ::tpy::BigInt big = ::tpy::BigInt(42);
-    // return big  # BigInt -> int32 in return
     return (big).to_fixed_check<int32_t>();
 }
 
 // def test_bigint_to_int32() -> None:
+//     print("BigInt -> int32 coercions:")
+//
+//     # Variable declaration
+//     big: int = 100
+//     small: int32 = big
+//     print(small)  # 100
+//
+//     # Assignment
+//     big = 200
+//     small = big
+//     print(small)  # 200
+//
+//     # Return
+//     result: int32 = return_bigint_as_int32()
+//     print(result)  # 42
+//
+//     # Function argument
+//     big = 300
+//     print(take_int32(big))  # 300
 void test_bigint_to_int32() {
-    // print("BigInt -> int32 coercions:")
     std::cout << "BigInt -> int32 coercions:" << "\n";
-    // # Variable declaration
-    // big: int = 100
     ::tpy::BigInt big = ::tpy::BigInt(100);
-    // small: int32 = big
     int32_t small = (big).to_fixed_check<int32_t>();
-    // print(small)  # 100
     std::cout << small << "\n";
-    // # Assignment
-    // big = 200
     big = ::tpy::BigInt(200);
-    // small = big
     small = (big).to_fixed_check<int32_t>();
-    // print(small)  # 200
     std::cout << small << "\n";
-    // # Return
-    // result: int32 = return_bigint_as_int32()
     int32_t result = return_bigint_as_int32();
-    // print(result)  # 42
     std::cout << result << "\n";
-    // # Function argument
-    // big = 300
     big = ::tpy::BigInt(300);
-    // print(take_int32(big))  # 300
     std::cout << take_int32((big).to_fixed_check<int32_t>()) << "\n";
 }
 
 // # --- Record -> Ptr coercion ---
 // def test_record_to_ptr() -> None:
+//     print("Record -> Ptr coercions:")
+//
+//     pt: Point = Point(10, 20)
+//
+//     # Variable declaration
+//     ptr: Ptr[Point] = pt
+//     print(ptr.x)  # 10
+//
+//     # Assignment
+//     pt2: Point = Point(30, 40)
+//     ptr = pt2
+//     print(ptr.x)  # 30
+//
+//     # Function argument (modifies through pointer)
+//     pt3: Point = Point(50, 60)
+//     take_ptr(pt3)
+//     print(pt3.x)  # 51 (modified by take_ptr)
 void test_record_to_ptr() {
-    // print("Record -> Ptr coercions:")
     std::cout << "Record -> Ptr coercions:" << "\n";
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // # Variable declaration
-    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // print(ptr.x)  # 10
     std::cout << ptr->x << "\n";
-    // # Assignment
-    // pt2: Point = Point(30, 40)
     Point pt2 = Point(30, 40);
-    // ptr = pt2
     ptr = &pt2;
-    // print(ptr.x)  # 30
     std::cout << ptr->x << "\n";
-    // # Function argument (modifies through pointer)
-    // pt3: Point = Point(50, 60)
     Point pt3 = Point(50, 60);
-    // take_ptr(pt3)
     take_ptr(&pt3);
-    // print(pt3.x)  # 51 (modified by take_ptr)
     std::cout << pt3.x << "\n";
 }
 
 // # --- Record -> Ptr[readonly[...]] coercion ---
 // def test_record_to_const_ptr() -> None:
+//     print("Record -> Ptr[readonly[...]] coercions:")
+//
+//     pt: Point = Point(5, 15)
+//
+//     # Variable declaration
+//     cptr: Ptr[readonly[Point]] = pt
+//     print(cptr.x)  # 5
+//
+//     # Assignment
+//     pt2: Point = Point(25, 35)
+//     cptr = pt2
+//     print(cptr.x)  # 25
+//
+//     # Function argument
+//     pt3: Point = Point(100, 200)
+//     print(take_const_ptr(pt3))  # 300
 void test_record_to_const_ptr() {
-    // print("Record -> Ptr[readonly[...]] coercions:")
     std::cout << "Record -> Ptr[readonly[...]] coercions:" << "\n";
-    // pt: Point = Point(5, 15)
     Point pt = Point(5, 15);
-    // # Variable declaration
-    // cptr: Ptr[readonly[Point]] = pt
     const Point* cptr = &pt;
-    // print(cptr.x)  # 5
     std::cout << cptr->x << "\n";
-    // # Assignment
-    // pt2: Point = Point(25, 35)
     Point pt2 = Point(25, 35);
-    // cptr = pt2
     cptr = &pt2;
-    // print(cptr.x)  # 25
     std::cout << cptr->x << "\n";
-    // # Function argument
-    // pt3: Point = Point(100, 200)
     Point pt3 = Point(100, 200);
-    // print(take_const_ptr(pt3))  # 300
     std::cout << take_const_ptr(&pt3) << "\n";
 }
 
 // # --- Ptr -> Record coercion (dereference) ---
 // def return_record_from_ptr(p: Ptr[Point]) -> Point:
+//     return p  # Ptr -> Record in return
 Point& return_record_from_ptr(Point* p) {
-    // return p  # Ptr -> Record in return
     return ::tpy::deref_check(p);
 }
 
 // def test_ptr_to_record() -> None:
+//     print("Ptr -> Record coercions:")
+//
+//     pt: Point = Point(7, 8)
+//     ptr: Ptr[Point] = pt
+//
+//     # Variable declaration
+//     copy: Point = ptr
+//     print(copy.x)  # 7
+//
+//     # Assignment
+//     pt2: Point = Point(9, 10)
+//     ptr2: Ptr[Point] = pt2
+//     copy = ptr2
+//     print(copy.x)  # 9
+//
+//     # Return
+//     pt3: Point = Point(11, 12)
+//     returned: Point = return_record_from_ptr(pt3)
+//     print(returned.x)  # 11
+//
+//     # Function argument
+//     pt4: Point = Point(13, 14)
+//     ptr4: Ptr[Point] = pt4
+//     print(take_point(ptr4))  # 27
 void test_ptr_to_record() {
-    // print("Ptr -> Record coercions:")
     std::cout << "Ptr -> Record coercions:" << "\n";
-    // pt: Point = Point(7, 8)
     Point pt = Point(7, 8);
-    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // # Variable declaration
-    // copy: Point = ptr
     Point* copy = &(::tpy::deref_check(ptr));
-    // print(copy.x)  # 7
     std::cout << copy->x << "\n";
-    // # Assignment
-    // pt2: Point = Point(9, 10)
     Point pt2 = Point(9, 10);
-    // ptr2: Ptr[Point] = pt2
     Point* ptr2 = &pt2;
-    // copy = ptr2
     copy = &(::tpy::deref_check(ptr2));
-    // print(copy.x)  # 9
     std::cout << copy->x << "\n";
-    // # Return
-    // pt3: Point = Point(11, 12)
     Point pt3 = Point(11, 12);
-    // returned: Point = return_record_from_ptr(pt3)
     Point& returned = return_record_from_ptr(&pt3);
-    // print(returned.x)  # 11
     std::cout << returned.x << "\n";
-    // # Function argument
-    // pt4: Point = Point(13, 14)
     Point pt4 = Point(13, 14);
-    // ptr4: Ptr[Point] = pt4
     Point* ptr4 = &pt4;
-    // print(take_point(ptr4))  # 27
     std::cout << take_point(::tpy::deref_check(ptr4)) << "\n";
 }
 
 // # --- Ptr -> Ptr[readonly[...]] coercion ---
 // def take_const_ptr_val(p: Ptr[readonly[Point]]) -> int32:
+//     return p.x
 int32_t take_const_ptr_val(const Point* p) {
-    // return p.x
     return ::tpy::deref_check(p).x;
 }
 
 // def test_ptr_to_const_ptr() -> None:
+//     print("Ptr -> Ptr[readonly[...]] coercions:")
+//
+//     pt: Point = Point(3, 4)
+//     ptr: Ptr[Point] = pt
+//
+//     # Variable declaration
+//     cptr: Ptr[readonly[Point]] = ptr
+//     print(cptr.x)  # 3
+//
+//     # Assignment
+//     pt2: Point = Point(5, 6)
+//     ptr2: Ptr[Point] = pt2
+//     cptr = ptr2
+//     print(cptr.x)  # 5
+//
+//     # Function argument
+//     pt3: Point = Point(7, 8)
+//     ptr3: Ptr[Point] = pt3
+//     print(take_const_ptr_val(ptr3))  # 7
 void test_ptr_to_const_ptr() {
-    // print("Ptr -> Ptr[readonly[...]] coercions:")
     std::cout << "Ptr -> Ptr[readonly[...]] coercions:" << "\n";
-    // pt: Point = Point(3, 4)
     Point pt = Point(3, 4);
-    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // # Variable declaration
-    // cptr: Ptr[readonly[Point]] = ptr
     const Point* cptr = ptr;
-    // print(cptr.x)  # 3
     std::cout << cptr->x << "\n";
-    // # Assignment
-    // pt2: Point = Point(5, 6)
     Point pt2 = Point(5, 6);
-    // ptr2: Ptr[Point] = pt2
     Point* ptr2 = &pt2;
-    // cptr = ptr2
     cptr = ptr2;
-    // print(cptr.x)  # 5
     std::cout << cptr->x << "\n";
-    // # Function argument
-    // pt3: Point = Point(7, 8)
     Point pt3 = Point(7, 8);
-    // ptr3: Ptr[Point] = pt3
     Point* ptr3 = &pt3;
-    // print(take_const_ptr_val(ptr3))  # 7
     std::cout << take_const_ptr_val(ptr3) << "\n";
 }
 
 // # --- ArrayList -> Span coercion ---
 // def test_arraylist_to_span() -> None:
+//     print("ArrayList -> Span coercions:")
+//
+//     al = ArrayList[int32, 8]()
+//     al.append(1)
+//     al.append(2)
+//     al.append(3)
+//
+//     # Function argument
+//     print(take_span(al))  # 6
 void test_arraylist_to_span() {
-    // print("ArrayList -> Span coercions:")
     std::cout << "ArrayList -> Span coercions:" << "\n";
-    // al = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    // al.append(1)
     al.append(1);
-    // al.append(2)
     al.append(2);
-    // al.append(3)
     al.append(3);
-    // # Function argument
-    // print(take_span(al))  # 6
     std::cout << take_span(al.__span__()) << "\n";
 }
 
 // # --- Array -> Span coercion ---
 // def test_array_to_span() -> None:
+//     print("Array -> Span coercions:")
+//
+//     arr: Array[int32, 3] = [10, 20, 30]
+//
+//     # Function argument
+//     print(take_span(arr))  # 60
 void test_array_to_span() {
-    // print("Array -> Span coercions:")
     std::cout << "Array -> Span coercions:" << "\n";
-    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // # Function argument
-    // print(take_span(arr))  # 60
     std::cout << take_span(::tpy::as_mut_span(arr)) << "\n";
 }
 
 // # --- List -> Span coercion ---
 // def test_list_to_span() -> None:
+//     print("List -> Span coercions:")
+//
+//     lst: list[int32] = [100, 200, 300]
+//
+//     # Function argument
+//     print(take_span(lst))  # 600
 void test_list_to_span() {
-    // print("List -> Span coercions:")
     std::cout << "List -> Span coercions:" << "\n";
-    // lst: list[int32] = [100, 200, 300]
     std::vector<int32_t> lst = {100, 200, 300};
-    // # Function argument
-    // print(take_span(lst))  # 600
     std::cout << take_span(::tpy::as_mut_span(lst)) << "\n";
 }
 
 // # --- Chained coercions: subscript -> Ptr ---
 // def test_subscript_to_ptr() -> None:
+//     print("Subscript -> Ptr coercions:")
+//
+//     arr: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
+//
+//     # arr[0] is a Point, passed to function taking Ptr[Point]
+//     take_ptr(arr[0])
+//     print(arr[0].x)  # 2 (was 1, incremented by take_ptr)
+//
+//     # arr[1] passed to Ptr[readonly[...]] param
+//     print(take_const_ptr(arr[1]))  # 7
 void test_subscript_to_ptr() {
-    // print("Subscript -> Ptr coercions:")
     std::cout << "Subscript -> Ptr coercions:" << "\n";
-    // arr: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
     std::array<Point, 2> arr = {Point(1, 2), Point(3, 4)};
-    // # arr[0] is a Point, passed to function taking Ptr[Point]
-    // take_ptr(arr[0])
     take_ptr(&::tpy::__getitem__(arr, 0));
-    // print(arr[0].x)  # 2 (was 1, incremented by take_ptr)
     std::cout << ::tpy::__getitem__(arr, 0).x << "\n";
-    // # arr[1] passed to Ptr[readonly[...]] param
-    // print(take_const_ptr(arr[1]))  # 7
     std::cout << take_const_ptr(&::tpy::__getitem__(arr, 1)) << "\n";
 }
 
+// """Tests all type coercions through the unified _apply_coercion path.
+//
+// Each coercion is tested in multiple contexts:
+// - Variable declaration
+// - Assignment
+// - Return statement
+// - Function argument
+// """
+//
+// from tplib import ArrayList
+//
+// test_bigint_to_int32()
+// test_record_to_ptr()
+// test_record_to_const_ptr()
+// test_ptr_to_record()
+// test_ptr_to_const_ptr()
+// test_arraylist_to_span()
+// test_array_to_span()
+// test_list_to_span()
+// test_subscript_to_ptr()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // # --- Run all tests ---
-    // test_bigint_to_int32()
     test_bigint_to_int32();
-    // test_record_to_ptr()
     test_record_to_ptr();
-    // test_record_to_const_ptr()
     test_record_to_const_ptr();
-    // test_ptr_to_record()
     test_ptr_to_record();
-    // test_ptr_to_const_ptr()
     test_ptr_to_const_ptr();
-    // test_arraylist_to_span()
     test_arraylist_to_span();
-    // test_array_to_span()
     test_array_to_span();
-    // test_list_to_span()
     test_list_to_span();
-    // test_subscript_to_ptr()
     test_subscript_to_ptr();
 }
 

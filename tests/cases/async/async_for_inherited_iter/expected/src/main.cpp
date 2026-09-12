@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     total: int32 = 0
+//     async for x in DerivedAIter():
+//         total += x
+//     print(total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total: int32 = 0
         total = 0;
         __for_itr_0.emplace((DerivedAIter()).__aiter__());
         __state = S_JOIN_0;
@@ -32,19 +35,16 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_0: {
-        // async for x in DerivedAIter():
         __sub_0.emplace(*__for_itr_0);
         __state = S_RESUME_0;
         continue;
     }
     case S_JOIN_1: {
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
-        // print(total)
         std::cout << total << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -61,16 +61,20 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def __anext__(self) -> int32:
+//     await asyncio.sleep(0)
+//     if self.i >= 3:
+//         raise StopAsyncIteration()
+//     self.i += 1
+//     return self.i
 ::tpystd::tpy::Poll<int32_t> __coro_BaseAIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -80,14 +84,10 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if self.i >= 3:
         if ((__self.i >= 3)) {
-            // raise StopAsyncIteration()
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.i += 1
         __self.i = ::tpy::add_check<int32_t>(__self.i, 1);
-        // return self.i
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.i;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -98,17 +98,18 @@ void main() {
 }
 
 
+// # Regression: `async for` over a subclass inheriting __aiter__/__anext__ must
+// # find them (MRO lookup) and name the __anext__ coro struct after the defining
+// # base.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `async for` over a subclass inheriting __aiter__/__anext__ must
-    // # find them (MRO lookup) and name the __anext__ coro struct after the defining
-    // # base.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

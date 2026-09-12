@@ -3,310 +3,289 @@
 
 namespace tpystd::hashlib {
 
-// # ---------- SHA-256 ----------
-// _SHA256_H0: list[uint32] = [
-// uint32(0x6a09e667), uint32(0xbb67ae85), uint32(0x3c6ef372), uint32(0xa54ff53a),
-// uint32(0x510e527f), uint32(0x9b05688c), uint32(0x1f83d9ab), uint32(0x5be0cd19),
-// ]
 std::vector<uint32_t>* _SHA256_H0{};
-// _SHA256_K: list[uint32] = [
-// uint32(0x428a2f98), uint32(0x71374491), uint32(0xb5c0fbcf), uint32(0xe9b5dba5),
-// uint32(0x3956c25b), uint32(0x59f111f1), uint32(0x923f82a4), uint32(0xab1c5ed5),
-// uint32(0xd807aa98), uint32(0x12835b01), uint32(0x243185be), uint32(0x550c7dc3),
-// uint32(0x72be5d74), uint32(0x80deb1fe), uint32(0x9bdc06a7), uint32(0xc19bf174),
-// uint32(0xe49b69c1), uint32(0xefbe4786), uint32(0x0fc19dc6), uint32(0x240ca1cc),
-// uint32(0x2de92c6f), uint32(0x4a7484aa), uint32(0x5cb0a9dc), uint32(0x76f988da),
-// uint32(0x983e5152), uint32(0xa831c66d), uint32(0xb00327c8), uint32(0xbf597fc7),
-// uint32(0xc6e00bf3), uint32(0xd5a79147), uint32(0x06ca6351), uint32(0x14292967),
-// uint32(0x27b70a85), uint32(0x2e1b2138), uint32(0x4d2c6dfc), uint32(0x53380d13),
-// uint32(0x650a7354), uint32(0x766a0abb), uint32(0x81c2c92e), uint32(0x92722c85),
-// uint32(0xa2bfe8a1), uint32(0xa81a664b), uint32(0xc24b8b70), uint32(0xc76c51a3),
-// uint32(0xd192e819), uint32(0xd6990624), uint32(0xf40e3585), uint32(0x106aa070),
-// uint32(0x19a4c116), uint32(0x1e376c08), uint32(0x2748774c), uint32(0x34b0bcb5),
-// uint32(0x391c0cb3), uint32(0x4ed8aa4a), uint32(0x5b9cca4f), uint32(0x682e6ff3),
-// uint32(0x748f82ee), uint32(0x78a5636f), uint32(0x84c87814), uint32(0x8cc70208),
-// uint32(0x90befffa), uint32(0xa4506ceb), uint32(0xbef9a3f7), uint32(0xc67178f2),
-// ]
 std::vector<uint32_t>* _SHA256_K{};
 
 // def _load_be32(data: bytes, off: int32) -> uint32:
+//     return (uint32(data[off]) << 24) | (uint32(data[off + 1]) << 16) | (uint32(data[off + 2]) << 8) | uint32(data[off + 3])
 uint32_t _load_be32(::tpy::BytesView data, int32_t off) {
-    // return (uint32(data[off]) << 24) | (uint32(data[off + 1]) << 16) | (uint32(data[off + 2]) << 8) | uint32(data[off + 3])
     return (static_cast<uint32_t>((static_cast<uint32_t>((static_cast<uint32_t>((::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, off)), 24)) | (::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 1)))), 16)))) | (::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 2)))), 8)))) | ::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 3))))));
 }
 
 // def _pack_be32(out: bytearray, v: uint32) -> None:
+//     out.append(uint8((v >> 24) & uint32(0xFF)))
+//     out.append(uint8((v >> 16) & uint32(0xFF)))
+//     out.append(uint8((v >> 8) & uint32(0xFF)))
+//     out.append(uint8(v & uint32(0xFF)))
 void _pack_be32(::tpy::ByteArray& out, uint32_t v) {
-    // out.append(uint8((v >> 24) & uint32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 24)) & 255))));
-    // out.append(uint8((v >> 16) & uint32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 16)) & 255))));
-    // out.append(uint8((v >> 8) & uint32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 8)) & 255))));
-    // out.append(uint8(v & uint32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>(v & 255))));
 }
 
 // def sha256(data: bytes = b"") -> Own[SHA256]:
+//     h: SHA256 = SHA256()
+//     h.update(data)
+//     return h
 SHA256 sha256(::tpy::BytesView data) {
-    // h: SHA256 = SHA256()
     SHA256 h = SHA256();
-    // h.update(data)
     h.update(data);
-    // return h
     return h;
 }
 
 
 // def __init__(self) -> None:
+//     self.h = []
+//     i: int32 = 0
+//     while i < 8:
+//         self.h.append(_SHA256_H0[i])
+//         i += 1
+//     self.buffer = bytearray()
+//     self.length = 0
+//     self.digest_size = 32
+//     self.block_size = 64
+//     self.name = "sha256"
 SHA256::SHA256() : h(std::vector<uint32_t>{}) {
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 8:
     while ((i < 8)) {
-        // self.h.append(_SHA256_H0[i])
         this->h.push_back(::tpy::__getitem__((*_SHA256_H0), i));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // self.buffer = bytearray()
     this->buffer = ::tpy::ByteArray();
-    // self.length = 0
     this->length = 0;
-    // self.digest_size = 32
     this->digest_size = 32;
-    // self.block_size = 64
     this->block_size = 64;
-    // self.name = "sha256"
     this->name = "sha256";
 }
 
 // def _drain_blocks(self) -> None:
+//     while int32(len(self.buffer)) >= 64:
+//         self._process_block(bytes(self.buffer), 0)
+//         new_buf: bytearray = bytearray()
+//         j: int32 = 64
+//         total: int32 = int32(len(self.buffer))
+//         while j < total:
+//             new_buf.append(self.buffer[j])
+//             j += 1
+//         self.buffer = new_buf
 void SHA256::_drain_blocks() {
-    // while int32(len(self.buffer)) >= 64:
     while ((::tpy::__len__(this->buffer) >= 64)) {
-        // self._process_block(bytes(self.buffer), 0)
         this->_process_block(::tpy::Bytes(this->buffer), 0);
-        // new_buf: bytearray = bytearray()
         ::tpy::ByteArray new_buf = ::tpy::ByteArray();
-        // j: int32 = 64
         int32_t j = 64;
-        // total: int32 = int32(len(self.buffer))
         int32_t total = ::tpy::__len__(this->buffer);
-        // while j < total:
         while ((j < total)) {
-            // new_buf.append(self.buffer[j])
             new_buf.push_back(::tpy::bytes_getitem(this->buffer, j));
-            // j += 1
             j = ::tpy::add_check<int32_t>(j, 1);
         }
-        // self.buffer = new_buf
         this->buffer = std::move(new_buf);
     }
 }
 
 // def _process_block(self, data: bytes, off: int32) -> None:
+//     w: list[uint32] = []
+//     i: int32 = 0
+//     while i < 16:
+//         w.append(_load_be32(data, off + 4 * i))
+//         i += 1
+//     while i < 64:
+//         w15: uint32 = w[i - 15]
+//         w2: uint32 = w[i - 2]
+//         s0: uint32 = rotr32(w15, 7) ^ rotr32(w15, 18) ^ (w15 >> 3)
+//         s1: uint32 = rotr32(w2, 17) ^ rotr32(w2, 19) ^ (w2 >> 10)
+//         w.append(uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(w[i - 16], s0), w[i - 7]), s1))
+//         i += 1
+//     a: uint32 = self.h[0]
+//     b: uint32 = self.h[1]
+//     c: uint32 = self.h[2]
+//     d: uint32 = self.h[3]
+//     e: uint32 = self.h[4]
+//     f: uint32 = self.h[5]
+//     g: uint32 = self.h[6]
+//     hh: uint32 = self.h[7]
+//     t: int32 = 0
+//     while t < 64:
+//         bsig1: uint32 = rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)
+//         ch: uint32 = (e & f) ^ ((~e) & g)
+//         t1: uint32 = uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(hh, bsig1), ch), _SHA256_K[t]), w[t])
+//         bsig0: uint32 = rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)
+//         maj: uint32 = (a & b) ^ (a & c) ^ (b & c)
+//         t2: uint32 = uint32.add_wrap(bsig0, maj)
+//         hh = g
+//         g = f
+//         f = e
+//         e = uint32.add_wrap(d, t1)
+//         d = c
+//         c = b
+//         b = a
+//         a = uint32.add_wrap(t1, t2)
+//         t += 1
+//     self.h[0] = uint32.add_wrap(self.h[0], a)
+//     self.h[1] = uint32.add_wrap(self.h[1], b)
+//     self.h[2] = uint32.add_wrap(self.h[2], c)
+//     self.h[3] = uint32.add_wrap(self.h[3], d)
+//     self.h[4] = uint32.add_wrap(self.h[4], e)
+//     self.h[5] = uint32.add_wrap(self.h[5], f)
+//     self.h[6] = uint32.add_wrap(self.h[6], g)
+//     self.h[7] = uint32.add_wrap(self.h[7], hh)
 void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
-    // w: list[uint32] = []
     std::vector<uint32_t> w = std::vector<uint32_t>{};
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 16:
     while ((i < 16)) {
-        // w.append(_load_be32(data, off + 4 * i))
         w.push_back(_load_be32(data, (::tpy::add_check<int32_t>(off, (::tpy::mul_check<int32_t>(4, i))))));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // while i < 64:
     while ((i < 64)) {
-        // w15: uint32 = w[i - 15]
         uint32_t w15 = ::tpy::__getitem__(w, (::tpy::sub_check<int32_t>(i, 15)));
-        // w2: uint32 = w[i - 2]
         uint32_t w2 = ::tpy::__getitem__(w, (::tpy::sub_check<int32_t>(i, 2)));
-        // s0: uint32 = rotr32(w15, 7) ^ rotr32(w15, 18) ^ (w15 >> 3)
         uint32_t s0 = (static_cast<uint32_t>((static_cast<uint32_t>(std::rotr<uint32_t>(w15, 7) ^ std::rotr<uint32_t>(w15, 18))) ^ (::tpy::rshift_check<uint32_t>(w15, 3))));
-        // s1: uint32 = rotr32(w2, 17) ^ rotr32(w2, 19) ^ (w2 >> 10)
         uint32_t s1 = (static_cast<uint32_t>((static_cast<uint32_t>(std::rotr<uint32_t>(w2, 17) ^ std::rotr<uint32_t>(w2, 19))) ^ (::tpy::rshift_check<uint32_t>(w2, 10))));
-        // w.append(uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(w[i - 16], s0), w[i - 7]), s1))
         w.push_back(static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(::tpy::__getitem__(w, (::tpy::sub_check<int32_t>(i, 16))) + s0) + ::tpy::__getitem__(w, (::tpy::sub_check<int32_t>(i, 7)))) + s1));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // a: uint32 = self.h[0]
     uint32_t a = ::tpy::__getitem__(this->h, 0);
-    // b: uint32 = self.h[1]
     uint32_t b = ::tpy::__getitem__(this->h, 1);
-    // c: uint32 = self.h[2]
     uint32_t c = ::tpy::__getitem__(this->h, 2);
-    // d: uint32 = self.h[3]
     uint32_t d = ::tpy::__getitem__(this->h, 3);
-    // e: uint32 = self.h[4]
     uint32_t e = ::tpy::__getitem__(this->h, 4);
-    // f: uint32 = self.h[5]
     uint32_t f = ::tpy::__getitem__(this->h, 5);
-    // g: uint32 = self.h[6]
     uint32_t g = ::tpy::__getitem__(this->h, 6);
-    // hh: uint32 = self.h[7]
     uint32_t hh = ::tpy::__getitem__(this->h, 7);
-    // t: int32 = 0
     int32_t t = 0;
-    // while t < 64:
     while ((t < 64)) {
-        // bsig1: uint32 = rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)
         uint32_t bsig1 = (static_cast<uint32_t>((static_cast<uint32_t>(std::rotr<uint32_t>(e, 6) ^ std::rotr<uint32_t>(e, 11))) ^ std::rotr<uint32_t>(e, 25)));
-        // ch: uint32 = (e & f) ^ ((~e) & g)
         uint32_t ch = (static_cast<uint32_t>((static_cast<uint32_t>(e & f)) ^ (static_cast<uint32_t>(static_cast<uint32_t>(~(e)) & g))));
-        // t1: uint32 = uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(hh, bsig1), ch), _SHA256_K[t]), w[t])
         uint32_t t1 = static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(hh + bsig1) + ch) + ::tpy::__getitem__((*_SHA256_K), t)) + ::tpy::__getitem__(w, t));
-        // bsig0: uint32 = rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)
         uint32_t bsig0 = (static_cast<uint32_t>((static_cast<uint32_t>(std::rotr<uint32_t>(a, 2) ^ std::rotr<uint32_t>(a, 13))) ^ std::rotr<uint32_t>(a, 22)));
-        // maj: uint32 = (a & b) ^ (a & c) ^ (b & c)
         uint32_t maj = (static_cast<uint32_t>((static_cast<uint32_t>((static_cast<uint32_t>(a & b)) ^ (static_cast<uint32_t>(a & c)))) ^ (static_cast<uint32_t>(b & c))));
-        // t2: uint32 = uint32.add_wrap(bsig0, maj)
         uint32_t t2 = static_cast<uint32_t>(bsig0 + maj);
-        // hh = g
         hh = g;
-        // g = f
         g = f;
-        // f = e
         f = e;
-        // e = uint32.add_wrap(d, t1)
         e = static_cast<uint32_t>(d + t1);
-        // d = c
         d = c;
-        // c = b
         c = b;
-        // b = a
         b = a;
-        // a = uint32.add_wrap(t1, t2)
         a = static_cast<uint32_t>(t1 + t2);
-        // t += 1
         t = ::tpy::add_check<int32_t>(t, 1);
     }
-    // self.h[0] = uint32.add_wrap(self.h[0], a)
     ::tpy::__setitem__(this->h, 0, static_cast<uint32_t>(::tpy::__getitem__(this->h, 0) + a));
-    // self.h[1] = uint32.add_wrap(self.h[1], b)
     ::tpy::__setitem__(this->h, 1, static_cast<uint32_t>(::tpy::__getitem__(this->h, 1) + b));
-    // self.h[2] = uint32.add_wrap(self.h[2], c)
     ::tpy::__setitem__(this->h, 2, static_cast<uint32_t>(::tpy::__getitem__(this->h, 2) + c));
-    // self.h[3] = uint32.add_wrap(self.h[3], d)
     ::tpy::__setitem__(this->h, 3, static_cast<uint32_t>(::tpy::__getitem__(this->h, 3) + d));
-    // self.h[4] = uint32.add_wrap(self.h[4], e)
     ::tpy::__setitem__(this->h, 4, static_cast<uint32_t>(::tpy::__getitem__(this->h, 4) + e));
-    // self.h[5] = uint32.add_wrap(self.h[5], f)
     ::tpy::__setitem__(this->h, 5, static_cast<uint32_t>(::tpy::__getitem__(this->h, 5) + f));
-    // self.h[6] = uint32.add_wrap(self.h[6], g)
     ::tpy::__setitem__(this->h, 6, static_cast<uint32_t>(::tpy::__getitem__(this->h, 6) + g));
-    // self.h[7] = uint32.add_wrap(self.h[7], hh)
     ::tpy::__setitem__(this->h, 7, static_cast<uint32_t>(::tpy::__getitem__(this->h, 7) + hh));
 }
 
 // def digest(self) -> bytes:
+//     clone: SHA256 = self.copy()
+//     bit_len: uint64 = uint64.add_wrap(clone.length, clone.length)
+//     bit_len = uint64.add_wrap(bit_len, bit_len)
+//     bit_len = uint64.add_wrap(bit_len, bit_len)  # x8 for bits
+//     clone.buffer.append(0x80)
+//     while int32(len(clone.buffer)) % 64 != 56:
+//         clone.buffer.append(0)
+//     i: int32 = 7
+//     while i >= 0:
+//         shift: uint64 = uint64(i * 8)
+//         clone.buffer.append(uint8((bit_len >> shift) & 0xFF))
+//         i -= 1
+//     clone._drain_blocks()
+//     out: bytearray = bytearray()
+//     i = 0
+//     while i < 8:
+//         _pack_be32(out, clone.h[i])
+//         i += 1
+//     return bytes(out)
 ::tpy::Bytes SHA256::digest() const {
-    // clone: SHA256 = self.copy()
     SHA256 clone = this->copy();
-    // bit_len: uint64 = uint64.add_wrap(clone.length, clone.length)
     uint64_t bit_len = static_cast<uint64_t>(clone.length + clone.length);
-    // bit_len = uint64.add_wrap(bit_len, bit_len)
     bit_len = static_cast<uint64_t>(bit_len + bit_len);
-    // bit_len = uint64.add_wrap(bit_len, bit_len)  # x8 for bits
     bit_len = static_cast<uint64_t>(bit_len + bit_len);
-    // clone.buffer.append(0x80)
     clone.buffer.push_back(128);
-    // while int32(len(clone.buffer)) % 64 != 56:
     while (((::tpy::mod_floor<int32_t>(::tpy::__len__(clone.buffer), 64)) != 56)) {
-        // clone.buffer.append(0)
         clone.buffer.push_back(0);
     }
-    // i: int32 = 7
     int32_t i = 7;
-    // while i >= 0:
     while ((i >= 0)) {
-        // shift: uint64 = uint64(i * 8)
         uint64_t shift = ::tpy::int_cast_check<uint64_t>((::tpy::mul_check<int32_t>(i, 8)));
-        // clone.buffer.append(uint8((bit_len >> shift) & 0xFF))
         clone.buffer.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint64_t>((::tpy::rshift_check<uint64_t>(bit_len, shift)) & 255))));
-        // i -= 1
         i = ::tpy::sub_check<int32_t>(i, 1);
     }
-    // clone._drain_blocks()
     clone._drain_blocks();
-    // out: bytearray = bytearray()
     ::tpy::ByteArray out = ::tpy::ByteArray();
-    // i = 0
     i = 0;
-    // while i < 8:
     while ((i < 8)) {
-        // _pack_be32(out, clone.h[i])
         _pack_be32(out, ::tpy::__getitem__(clone.h, i));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return bytes(out)
     return ::tpy::Bytes(out);
 }
 
 // def copy(self) -> Own[SHA256]:
+//     c: SHA256 = SHA256()
+//     i: int32 = 0
+//     while i < 8:
+//         c.h[i] = self.h[i]
+//         i += 1
+//     c.length = self.length
+//     j: int32 = 0
+//     n: int32 = int32(len(self.buffer))
+//     while j < n:
+//         c.buffer.append(self.buffer[j])
+//         j += 1
+//     return c
 SHA256 SHA256::copy() const {
-    // c: SHA256 = SHA256()
     SHA256 c = SHA256();
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 8:
     while ((i < 8)) {
-        // c.h[i] = self.h[i]
         ::tpy::__setitem__(c.h, i, ::tpy::__getitem__(this->h, i));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // c.length = self.length
     c.length = this->length;
-    // j: int32 = 0
     int32_t j = 0;
-    // n: int32 = int32(len(self.buffer))
     int32_t n = ::tpy::__len__(this->buffer);
-    // while j < n:
     while ((j < n)) {
-        // c.buffer.append(self.buffer[j])
         c.buffer.push_back(::tpy::bytes_getitem(this->buffer, j));
-        // j += 1
         j = ::tpy::add_check<int32_t>(j, 1);
     }
-    // return c
     return c;
 }
+// from tpy.bits import rotr32
+//
+// _SHA256_H0: list[uint32] = [
+//     uint32(0x6a09e667), uint32(0xbb67ae85), uint32(0x3c6ef372), uint32(0xa54ff53a),
+//     uint32(0x510e527f), uint32(0x9b05688c), uint32(0x1f83d9ab), uint32(0x5be0cd19),
+// ]
+//
+// _SHA256_K: list[uint32] = [
+//     uint32(0x428a2f98), uint32(0x71374491), uint32(0xb5c0fbcf), uint32(0xe9b5dba5),
+//     uint32(0x3956c25b), uint32(0x59f111f1), uint32(0x923f82a4), uint32(0xab1c5ed5),
+//     uint32(0xd807aa98), uint32(0x12835b01), uint32(0x243185be), uint32(0x550c7dc3),
+//     uint32(0x72be5d74), uint32(0x80deb1fe), uint32(0x9bdc06a7), uint32(0xc19bf174),
+//     uint32(0xe49b69c1), uint32(0xefbe4786), uint32(0x0fc19dc6), uint32(0x240ca1cc),
+//     uint32(0x2de92c6f), uint32(0x4a7484aa), uint32(0x5cb0a9dc), uint32(0x76f988da),
+//     uint32(0x983e5152), uint32(0xa831c66d), uint32(0xb00327c8), uint32(0xbf597fc7),
+//     uint32(0xc6e00bf3), uint32(0xd5a79147), uint32(0x06ca6351), uint32(0x14292967),
+//     uint32(0x27b70a85), uint32(0x2e1b2138), uint32(0x4d2c6dfc), uint32(0x53380d13),
+//     uint32(0x650a7354), uint32(0x766a0abb), uint32(0x81c2c92e), uint32(0x92722c85),
+//     uint32(0xa2bfe8a1), uint32(0xa81a664b), uint32(0xc24b8b70), uint32(0xc76c51a3),
+//     uint32(0xd192e819), uint32(0xd6990624), uint32(0xf40e3585), uint32(0x106aa070),
+//     uint32(0x19a4c116), uint32(0x1e376c08), uint32(0x2748774c), uint32(0x34b0bcb5),
+//     uint32(0x391c0cb3), uint32(0x4ed8aa4a), uint32(0x5b9cca4f), uint32(0x682e6ff3),
+//     uint32(0x748f82ee), uint32(0x78a5636f), uint32(0x84c87814), uint32(0x8cc70208),
+//     uint32(0x90befffa), uint32(0xa4506ceb), uint32(0xbef9a3f7), uint32(0xc67178f2),
+// ]
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.bits import rotr32
-    // # ---------- SHA-256 ----------
-    // _SHA256_H0: list[uint32] = [
-    // uint32(0x6a09e667), uint32(0xbb67ae85), uint32(0x3c6ef372), uint32(0xa54ff53a),
-    // uint32(0x510e527f), uint32(0x9b05688c), uint32(0x1f83d9ab), uint32(0x5be0cd19),
-    // ]
     static std::vector<uint32_t> __global_slot_1 = {1779033703, static_cast<uint32_t>(3144134277), 1013904242, static_cast<uint32_t>(2773480762), 1359893119, static_cast<uint32_t>(2600822924), 528734635, 1541459225};
     _SHA256_H0 = &__global_slot_1;
-    // _SHA256_K: list[uint32] = [
-    // uint32(0x428a2f98), uint32(0x71374491), uint32(0xb5c0fbcf), uint32(0xe9b5dba5),
-    // uint32(0x3956c25b), uint32(0x59f111f1), uint32(0x923f82a4), uint32(0xab1c5ed5),
-    // uint32(0xd807aa98), uint32(0x12835b01), uint32(0x243185be), uint32(0x550c7dc3),
-    // uint32(0x72be5d74), uint32(0x80deb1fe), uint32(0x9bdc06a7), uint32(0xc19bf174),
-    // uint32(0xe49b69c1), uint32(0xefbe4786), uint32(0x0fc19dc6), uint32(0x240ca1cc),
-    // uint32(0x2de92c6f), uint32(0x4a7484aa), uint32(0x5cb0a9dc), uint32(0x76f988da),
-    // uint32(0x983e5152), uint32(0xa831c66d), uint32(0xb00327c8), uint32(0xbf597fc7),
-    // uint32(0xc6e00bf3), uint32(0xd5a79147), uint32(0x06ca6351), uint32(0x14292967),
-    // uint32(0x27b70a85), uint32(0x2e1b2138), uint32(0x4d2c6dfc), uint32(0x53380d13),
-    // uint32(0x650a7354), uint32(0x766a0abb), uint32(0x81c2c92e), uint32(0x92722c85),
-    // uint32(0xa2bfe8a1), uint32(0xa81a664b), uint32(0xc24b8b70), uint32(0xc76c51a3),
-    // uint32(0xd192e819), uint32(0xd6990624), uint32(0xf40e3585), uint32(0x106aa070),
-    // uint32(0x19a4c116), uint32(0x1e376c08), uint32(0x2748774c), uint32(0x34b0bcb5),
-    // uint32(0x391c0cb3), uint32(0x4ed8aa4a), uint32(0x5b9cca4f), uint32(0x682e6ff3),
-    // uint32(0x748f82ee), uint32(0x78a5636f), uint32(0x84c87814), uint32(0x8cc70208),
-    // uint32(0x90befffa), uint32(0xa4506ceb), uint32(0xbef9a3f7), uint32(0xc67178f2),
-    // ]
     static std::vector<uint32_t> __global_slot_2 = {1116352408, 1899447441, static_cast<uint32_t>(3049323471), static_cast<uint32_t>(3921009573), 961987163, 1508970993, static_cast<uint32_t>(2453635748), static_cast<uint32_t>(2870763221), static_cast<uint32_t>(3624381080), 310598401, 607225278, 1426881987, 1925078388, static_cast<uint32_t>(2162078206), static_cast<uint32_t>(2614888103), static_cast<uint32_t>(3248222580), static_cast<uint32_t>(3835390401), static_cast<uint32_t>(4022224774), 264347078, 604807628, 770255983, 1249150122, 1555081692, 1996064986, static_cast<uint32_t>(2554220882), static_cast<uint32_t>(2821834349), static_cast<uint32_t>(2952996808), static_cast<uint32_t>(3210313671), static_cast<uint32_t>(3336571891), static_cast<uint32_t>(3584528711), 113926993, 338241895, 666307205, 773529912, 1294757372, 1396182291, 1695183700, 1986661051, static_cast<uint32_t>(2177026350), static_cast<uint32_t>(2456956037), static_cast<uint32_t>(2730485921), static_cast<uint32_t>(2820302411), static_cast<uint32_t>(3259730800), static_cast<uint32_t>(3345764771), static_cast<uint32_t>(3516065817), static_cast<uint32_t>(3600352804), static_cast<uint32_t>(4094571909), 275423344, 430227734, 506948616, 659060556, 883997877, 958139571, 1322822218, 1537002063, 1747873779, 1955562222, 2024104815, static_cast<uint32_t>(2227730452), static_cast<uint32_t>(2361852424), static_cast<uint32_t>(2428436474), static_cast<uint32_t>(2756734187), static_cast<uint32_t>(3204031479), static_cast<uint32_t>(3329325298)};
     _SHA256_K = &__global_slot_2;
 }

@@ -10,8 +10,11 @@ namespace tpyapp::main {
 extern std::string label;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def plain() -> int:
 ::tpy::BigInt plain();
+// def via_walrus() -> int:
 ::tpy::BigInt via_walrus();
+// def main() -> None:
 void main();
 
 void __tpy_init();

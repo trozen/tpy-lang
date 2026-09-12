@@ -9,21 +9,21 @@ namespace tpyapp::main {
 // # snapshot is array<array<array<int,2>,2>,2>). The fix must not over-trigger and
 // # demote a uniform structure to list.
 // def main() -> None:
+//     # type() pins all-Array explicitly: a snapshot alone is parity-blind to
+//     # Array-vs-vector (both print identically), which once hid an over-demotion.
+//     xs = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # tpyc: type(/Array\[Array\[Array\[int32, 2\], 2\], 2\]/)
+//     print(xs)
 void main() {
-    // # type() pins all-Array explicitly: a snapshot alone is parity-blind to
-    // # Array-vs-vector (both print identically), which once hid an over-demotion.
-    // xs = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # tpyc: type(/Array\[Array\[Array\[int32, 2\], 2\], 2\]/)
     std::array<std::array<std::array<int32_t, 2>, 2>, 2> xs = {{{{{1, 2}, {3, 4}}}, {{{5, 6}, {7, 8}}}}};
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

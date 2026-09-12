@@ -29,9 +29,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
+// def points() -> Iterator[Own[Point]]:
+//     src: list[Point] = [Point(3), Point(1), Point(2)]
+//     for p in src:
+//         yield copy(p)
 inline auto points() {
-    // src: list[Point] = [Point(3), Point(1), Point(2)]
     std::vector<Point> src = {Point(3), Point(1), Point(2)};
     return ::tpy::make_generator<Point>(
         [src, __beg = decltype((src).begin())(), __end = decltype((src).begin())(), __init = false]() mutable -> std::optional<Point> {

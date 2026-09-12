@@ -14,7 +14,9 @@ using ::tpystd::datetime::ZoneInfoNotFoundError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def probe(key: str) -> str:
 std::string probe(std::string_view key);
+// def main() -> None:
 void main();
 
 void __tpy_init();

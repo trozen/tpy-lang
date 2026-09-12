@@ -5,28 +5,35 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     a, b = socketpair()
+//     b.setblocking(False)
+//     try:
+//         b.recv(-1)
+//         print("sync: no error")
+//     except ValueError:
+//         print("sync: ValueError")
+//
+//     loop = asyncio.get_running_loop()
+//     try:
+//         await loop.sock_recv(b, -1)
+//         print("async: no error")
+//     except ValueError:
+//         print("async: ValueError")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = socketpair()
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
-        // b.setblocking(False)
         (*b).setblocking(false);
-        // try:
         {
             try {
-                // b.recv(-1)
                 (*b).recv(-1);
-                // print("sync: no error")
                 std::cout << "sync: no error" << "\n";
             } catch (const ::tpy::ValueError&) {
-                // print("sync: ValueError")
                 std::cout << "sync: ValueError" << "\n";
             }
         }
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __state = S_JOIN_1;
         continue;
@@ -37,13 +44,11 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("async: no error")
             std::cout << "async: no error" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            // print("async: ValueError")
             std::cout << "async: ValueError" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -58,12 +63,10 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // await loop.sock_recv(b, -1)
             __sub_0.emplace(std::move((*loop).sock_recv((*b), -1)));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // print("async: ValueError")
             std::cout << "async: ValueError" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -83,25 +86,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Regression guard: a negative recv size is a ValueError (CPython parity),
+// # not a zero-length read. Covers both entry points -- the sync
+// # socket.recv(-1) and the async loop.sock_recv(sock, -1) path, which polls
+// # through the same socket.recv check before it ever parks on the reactor.
+// import asyncio
+// from socket import socketpair
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression guard: a negative recv size is a ValueError (CPython parity),
-    // # not a zero-length read. Covers both entry points -- the sync
-    // # socket.recv(-1) and the async loop.sock_recv(sock, -1) path, which polls
-    // # through the same socket.recv check before it ever parks on the reactor.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socketpair
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

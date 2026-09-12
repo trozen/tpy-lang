@@ -18,6 +18,7 @@ concept Greeter = requires(T& t) {
 
 inline constexpr std::string_view __name__ = "b";
 
+// def counter_zero() -> int:
 ::tpy::BigInt counter_zero();
 
 void __tpy_init();

@@ -13,6 +13,7 @@ struct Outer;
 extern std::vector<::tpy::BigInt>* log;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class P:
@@ -45,12 +46,13 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self):
+//     log.append(1)
 inline P::P() {
-    // log.append(1)
     log->push_back(1);
 }
 
 // def __init__(self):
+//     self.inner = P()
 inline Outer::Outer() : inner(P()) {}
 void __tpy_init();
 } // namespace tpyapp::main

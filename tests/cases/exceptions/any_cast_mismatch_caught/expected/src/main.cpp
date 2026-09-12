@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: Any = "not an int"
+//     try:
+//         n = cast(int, x)
+//         print(n)
+//     except TypeError as e:
+//         print("caught TypeError")
 void main() {
-    // x: Any = "not an int"
     ::tpy::Any x = ::tpy::make_any(std::string("not an int"));
-    // try:
     {
         try {
-            // n = cast(int, x)
             ::tpy::BigInt n = ::tpy::any_cast_or_panic<::tpy::BigInt>(x);
-            // print(n)
             std::cout << n << "\n";
         } catch (const ::tpy::TypeError& e) {
-            // print("caught TypeError")
             std::cout << "caught TypeError" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

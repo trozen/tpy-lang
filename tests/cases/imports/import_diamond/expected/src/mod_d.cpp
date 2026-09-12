@@ -5,18 +5,18 @@ namespace tpyapp::mod_d {
 
 
 // def d_value() -> int32:
+//     return int32(5)
 int32_t d_value() {
-    // return int32(5)
     return 5;
 }
 
+// # This print verifies D is only initialized once
+// print("D init")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # This print verifies D is only initialized once
-    // print("D init")
     std::cout << "D init" << "\n";
 }
 

@@ -5,124 +5,129 @@ namespace tpyapp::main {
 
 
 // def pick_list(c: bool, a: list[int32], b: list[int32]) -> None:
+//     v = a if c else b  # tpyc: ok
+//     v.append(9)
 void pick_list(bool c, std::vector<int32_t>& a, std::vector<int32_t>& b) {
-    // v = a if c else b  # tpyc: ok
     std::vector<int32_t>& v = ((c) ? (a) : (b));
-    // v.append(9)
     v.push_back(9);
 }
 
 // def pick_dict(c: bool, a: dict[str, int32], b: dict[str, int32]) -> None:
+//     v = a if c else b  # tpyc: ok
+//     v["k"] = 9
 void pick_dict(bool c, ::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b) {
-    // v = a if c else b  # tpyc: ok
     ::tpy::ordered_map<std::string, int32_t>& v = ((c) ? (a) : (b));
-    // v["k"] = 9
     ::tpy::__setitem__(v, "k", 9);
 }
 
 // def pick_set(c: bool, a: set[int32], b: set[int32]) -> None:
+//     v = a if c else b  # tpyc: ok
+//     v.add(9)
 void pick_set(bool c, ::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
-    // v = a if c else b  # tpyc: ok
     ::tpy::ordered_set<int32_t>& v = ((c) ? (a) : (b));
-    // v.add(9)
     v.insert(9);
 }
 
 // def pick_bytearray(c: bool, a: bytearray, b: bytearray) -> None:
+//     # bytearray is a reference type, so its ternary aliases like list's.
+//     v = a if c else b  # tpyc: ok
+//     v.append(9)
 void pick_bytearray(bool c, ::tpy::ByteArray& a, ::tpy::ByteArray& b) {
-    // # bytearray is a reference type, so its ternary aliases like list's.
-    // v = a if c else b  # tpyc: ok
     ::tpy::ByteArray& v = ((c) ? (a) : (b));
-    // v.append(9)
     v.push_back(9);
 }
 
 // def pick_array(c: bool, a: Array[int32, 2], b: Array[int32, 2]) -> None:
+//     v = a if c else b  # tpyc: ok
+//     v[0] = 9
 void pick_array(bool c, std::array<int32_t, 2>& a, std::array<int32_t, 2>& b) {
-    // v = a if c else b  # tpyc: ok
     std::array<int32_t, 2>& v = ((c) ? (a) : (b));
-    // v[0] = 9
     ::tpy::__setitem__(v, 0, 9);
 }
 
 // def pick_record(c: bool, a: Tag, b: Tag) -> None:
+//     # The record arm the container arm sits above -- it must keep its own
+//     # route rather than being swallowed by the widened one.
+//     v = a if c else b  # tpyc: ok
+//     v.n = 9
 void pick_record(bool c, Tag& a, Tag& b) {
-    // # The record arm the container arm sits above -- it must keep its own
-    // # route rather than being swallowed by the widened one.
-    // v = a if c else b  # tpyc: ok
     Tag& v = ((c) ? (a) : (b));
-    // v.n = 9
     v.n = 9;
 }
 
 // def read_through(c: bool, a: bytearray, b: bytearray) -> int32:
+//     # The same lvalue ternary as a SUBSCRIPT RECEIVER: the element read
+//     # aliases the chosen buffer.
+//     return (a if c else b)[0]  # tpyc: ok
 int32_t read_through(bool c, const ::tpy::ByteArray& a, const ::tpy::ByteArray& b) {
-    // # The same lvalue ternary as a SUBSCRIPT RECEIVER: the element read
-    // # aliases the chosen buffer.
-    // return (a if c else b)[0]  # tpyc: ok
     return static_cast<int32_t>(::tpy::bytes_getitem(((c) ? (a) : (b)), 0));
 }
 
 // def main() -> None:
+//     xs: list[int32] = [1]
+//     ys: list[int32] = [2]
+//     pick_list(True, xs, ys)
+//     print(len(xs), len(ys))
+//
+//     d1: dict[str, int32] = {"a": 1}
+//     d2: dict[str, int32] = {"b": 2}
+//     pick_dict(False, d1, d2)
+//     print(len(d1), len(d2))
+//
+//     s1 = {1}
+//     s2 = {2}
+//     pick_set(True, s1, s2)
+//     print(len(s1), len(s2))
+//
+//     b1 = bytearray(b"a")
+//     b2 = bytearray(b"bb")
+//     pick_bytearray(False, b1, b2)
+//     print(len(b1), len(b2))
+//     print(read_through(True, b1, b2))
+//
+//     a1 = Array[int32, 2]([1, 1])
+//     a2 = Array[int32, 2]([2, 2])
+//     pick_array(True, a1, a2)
+//     print(a1[0], a2[0])
+//
+//     t1 = Tag(1)
+//     t2 = Tag(2)
+//     pick_record(False, t1, t2)
+//     print(t1.n, t2.n)
 void main() {
-    // xs: list[int32] = [1]
     std::vector<int32_t> xs = {1};
-    // ys: list[int32] = [2]
     std::vector<int32_t> ys = {2};
-    // pick_list(True, xs, ys)
     pick_list(true, xs, ys);
-    // print(len(xs), len(ys))
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
-    // d1: dict[str, int32] = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> d1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // d2: dict[str, int32] = {"b": 2}
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
-    // pick_dict(False, d1, d2)
     pick_dict(false, d1, d2);
-    // print(len(d1), len(d2))
     std::cout << ::tpy::__len__(d1) << " " << ::tpy::__len__(d2) << "\n";
-    // s1 = {1}
     ::tpy::ordered_set<int32_t> s1 = ::tpy::ordered_set<int32_t>({1});
-    // s2 = {2}
     ::tpy::ordered_set<int32_t> s2 = ::tpy::ordered_set<int32_t>({2});
-    // pick_set(True, s1, s2)
     pick_set(true, s1, s2);
-    // print(len(s1), len(s2))
     std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(s2) << "\n";
-    // b1 = bytearray(b"a")
     ::tpy::ByteArray b1 = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
-    // b2 = bytearray(b"bb")
     ::tpy::ByteArray b2 = ::tpy::ByteArray(::tpy::bytes_literal("bb", 2));
-    // pick_bytearray(False, b1, b2)
     pick_bytearray(false, b1, b2);
-    // print(len(b1), len(b2))
     std::cout << ::tpy::__len__(b1) << " " << ::tpy::__len__(b2) << "\n";
-    // print(read_through(True, b1, b2))
     std::cout << read_through(true, b1, b2) << "\n";
-    // a1 = Array[int32, 2]([1, 1])
     std::array<int32_t, 2> a1 = std::array<int32_t, 2>({1, 1});
-    // a2 = Array[int32, 2]([2, 2])
     std::array<int32_t, 2> a2 = std::array<int32_t, 2>({2, 2});
-    // pick_array(True, a1, a2)
     pick_array(true, a1, a2);
-    // print(a1[0], a2[0])
     std::cout << ::tpy::__getitem__(a1, 0) << " " << ::tpy::__getitem__(a2, 0) << "\n";
-    // t1 = Tag(1)
     Tag t1 = Tag(1);
-    // t2 = Tag(2)
     Tag t2 = Tag(2);
-    // pick_record(False, t1, t2)
     pick_record(false, t1, t2);
-    // print(t1.n, t2.n)
     std::cout << t1.n << " " << t2.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

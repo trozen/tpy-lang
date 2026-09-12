@@ -5,11 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Optional[Foo]] = [Foo(1), None, Foo(3)]
+//
+//     # Field access on narrowed Optional in comprehension ternary
+//     xs = [item.x if item is not None else -1 for item in items]
+//     print(xs)
+//
+//     # Method call on narrowed Optional in comprehension ternary
+//     reprs = [repr(item) if item is not None else "none" for item in items]
+//     print(reprs)
 void main() {
-    // items: list[Optional[Foo]] = [Foo(1), None, Foo(3)]
     std::vector<std::optional<Foo>> items = {Foo(1), std::nullopt, Foo(3)};
-    // # Field access on narrowed Optional in comprehension ternary
-    // xs = [item.x if item is not None else -1 for item in items]
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
@@ -22,10 +28,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // # Method call on narrowed Optional in comprehension ternary
-    // reprs = [repr(item) if item is not None else "none" for item in items]
     std::vector<std::string> reprs = ({
         std::vector<std::string> __result;
         auto& __obj_1 = items;
@@ -38,16 +41,15 @@ void main() {
         }
         std::move(__result);
     });
-    // print(reprs)
     std::cout << ::tpy::ListPrinter(reprs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

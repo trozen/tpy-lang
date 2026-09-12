@@ -18,11 +18,17 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_afind;
 struct __coro_main_coro;
 
+// def find(n: int32) -> int32 | None:
 std::optional<int32_t> find(int32_t n);
+// def pick(n: int32) -> Own[Point | None]:
 std::optional<Point> pick(int32_t n);
+// def choose(p: Point, t: Tag, flag: int32) -> Point | Tag | None:
 ::tpy::Union<std::monostate, Point*, Tag*> choose(Point& p, Tag& t, int32_t flag);
+// async def afind(n: int32) -> int32 | None:
 __coro_afind afind(int32_t n);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -57,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
     return os;
 }
 
-// Async coroutine: afind
+// async def afind(n: int32) -> int32 | None:
 struct __coro_afind {
     int32_t __state;
     bool __cancel_pending;
@@ -81,7 +87,7 @@ struct __coro_afind {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -110,9 +116,11 @@ struct __coro_main_coro {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tag::Tag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

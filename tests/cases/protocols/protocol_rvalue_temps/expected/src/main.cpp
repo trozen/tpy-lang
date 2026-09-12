@@ -5,35 +5,51 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Test 1: Constructor call (rvalue)
+//     show(IntBox(42))
+//
+//     # Test 2: Function returning value (rvalue)
+//     # Note: Can't easily test this without Own[] which has its own restrictions
+//     # Tested via constructor which is similar
+//
+//     # Test 3: Builtin function result
+//     # len() returns int32, not a HasValue, so can't test directly
+//     # But we test builtin in method args via protocol_method_coercion
+//
+//     # Test 4: Record subscript (rvalue - __getitem__ returns by value)
+//     container = BoxContainer()
+//     show(container[1])  # Should create temp for subscript result
+//
+//     # Test 5: Multiple temps in one call sequence
+//     show(IntBox(100))
+//     show(container[0])
+//     show(container[2])
 void main() {
-    // # Test 1: Constructor call (rvalue)
-    // show(IntBox(42))
     auto __tmp_1 = IntBox(42);
     show(__tmp_1);
-    // # Test 4: Record subscript (rvalue - __getitem__ returns by value)
-    // container = BoxContainer()
     BoxContainer container = BoxContainer();
-    // show(container[1])  # Should create temp for subscript result
     auto __tmp_2 = container[1];
     show(__tmp_2);
-    // # Test 5: Multiple temps in one call sequence
-    // show(IntBox(100))
     auto __tmp_3 = IntBox(100);
     show(__tmp_3);
-    // show(container[0])
     auto __tmp_4 = container[0];
     show(__tmp_4);
-    // show(container[2])
     auto __tmp_5 = container[2];
     show(__tmp_5);
 }
 
+// """Test rvalue expressions passed to protocol-typed parameters.
+//
+// Protocol params use T& in generated C++, which can't bind rvalues directly.
+// The compiler generates temp variables for these cases.
+// """
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

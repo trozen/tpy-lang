@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Rect(3, 4)
+//     print(r.describe())
+//     r.scale(2)
+//     print(r.describe())
 void main() {
-    // r = Rect(3, 4)
     Rect r = Rect(3, 4);
-    // print(r.describe())
     std::cout << r.describe() << "\n";
-    // r.scale(2)
     r.scale(2);
-    // print(r.describe())
     std::cout << r.describe() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

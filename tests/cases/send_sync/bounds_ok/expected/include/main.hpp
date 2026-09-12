@@ -11,8 +11,10 @@ template<typename T> struct Channel;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use[T: Send](x: T) -> int32:
 template<typename T>
 int32_t use(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // class Channel[T: Send]:
@@ -22,6 +24,7 @@ struct Channel {
     T item;
 
     // def __init__(self, item: T) -> None:
+    //     self.item = item
     Channel() = default;
     explicit Channel(::tpy::readonly_form_t<T> item) : item(item) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Channel";
@@ -34,9 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Channel<T>& obj) {
 }
 
 // def use[T: Send](x: T) -> int32:
+//     return 1
 template<typename T>
 int32_t use(::tpy::param_val_or_ref_t<T> x) {
-    // return 1
     return 1;
 }
 

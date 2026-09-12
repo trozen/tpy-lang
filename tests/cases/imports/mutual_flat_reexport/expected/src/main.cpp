@@ -3,24 +3,24 @@
 
 namespace tpyapp::main {
 
-// x = Cls(42)
 ::tpyapp::c::Cls* x{};
 
+// # Universal re-export through a flat (non-facade) intermediate.
+// # Phase 4 of the per-module attribute table refactor enables this:
+// # `from b import Cls` works even though `b` is a regular module that
+// # itself does `from c import Cls`.
+// from b import Cls
+//
+// x = Cls(42)
+// print(x.val)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Universal re-export through a flat (non-facade) intermediate.
-    // # Phase 4 of the per-module attribute table refactor enables this:
-    // # `from b import Cls` works even though `b` is a regular module that
-    // # itself does `from c import Cls`.
-    // from b import Cls
     ::tpyapp::b::__tpy_init();
-    // x = Cls(42)
     static ::tpyapp::c::Cls __global_slot_1 = ::tpyapp::c::Cls(42);
     x = &__global_slot_1;
-    // print(x.val)
     std::cout << x->val << "\n";
 }
 

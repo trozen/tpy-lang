@@ -5,6 +5,12 @@ namespace tpyapp::main {
 
 
 // async def f(n: int32) -> int32 | None:
+//     try:
+//         if n > 0:
+//             return n
+//         return None
+//     finally:
+//         await asyncio.sleep(0)
 ::tpystd::tpy::Poll<std::optional<int32_t>> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -35,15 +41,12 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // if n > 0:
             if ((n > 0)) {
-                // return n
                 this->__finally_ret_0 = n;
                 this->__finally_pending_0 = true;
                 __state = S_JOIN_2;
                 continue;
             }
-            // return None
             this->__finally_ret_0 = std::nullopt;
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -55,7 +58,6 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_2: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -72,10 +74,11 @@ __coro_f f(int32_t n) {
 }
 
 // async def main_coro() -> None:
+//     print(await f(5))
+//     print(await f(0))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await f(5))
         __sub_0.emplace(5);
         __state = S_RESUME_0;
         continue;
@@ -85,9 +88,7 @@ __coro_f f(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await f(5))
         std::cout << ::tpy::print_optional_val(__await_lift_0) << "\n";
-        // print(await f(0))
         __sub_1.emplace(0);
         __state = S_RESUME_1;
         continue;
@@ -97,7 +98,6 @@ __coro_f f(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await f(0))
         std::cout << ::tpy::print_optional_val(__await_lift_1) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -113,16 +113,17 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
+// # Explicit `return None` routed through the CFG-finally pending slot
+// # (await inside finally) must emit the storage-form None.
+// import asyncio
+//
+// asyncio.run(main_coro())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Explicit `return None` routed through the CFG-finally pending slot
-    // # (await inside finally) must emit the storage-form None.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 

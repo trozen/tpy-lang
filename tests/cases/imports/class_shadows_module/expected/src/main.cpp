@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main():
+//     t = time(99)
+//     print(t.value)
 void main() {
-    // t = time(99)
     time t = time(::tpy::BigInt(99));
-    // print(t.value)
     std::cout << t.value << "\n";
 }
 
+// import time
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import time
 }
 
 } // namespace tpyapp::main

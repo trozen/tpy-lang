@@ -5,71 +5,140 @@ namespace tpystd::os {
 
 
 // def _wrap_stat(t: tuple[int64, int64, int64, int64, int64, int64, int64,
-// float, float, float, int64, int64, int64]
-// ) -> Own[stat_result]:
+//                         float, float, float, int64, int64, int64]
+//                ) -> Own[stat_result]:
+//     return stat_result(t[0], t[1], t[2], t[3], t[4], t[5], t[6],
+//                        t[7], t[8], t[9], t[10], t[11], t[12])
 ::tpystd::os::_types::stat_result _wrap_stat(const std::tuple<int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, double, double, double, int64_t, int64_t, int64_t>& t) {
-    // return stat_result(t[0], t[1], t[2], t[3], t[4], t[5], t[6],
-    // t[7], t[8], t[9], t[10], t[11], t[12])
     return ::tpystd::os::_types::stat_result(std::get<0>(t), std::get<1>(t), std::get<2>(t), std::get<3>(t), std::get<4>(t), std::get<5>(t), std::get<6>(t), std::get<7>(t), std::get<8>(t), std::get<9>(t), std::get<10>(t), std::get<11>(t), std::get<12>(t));
 }
 
 // def stat(path: str) -> Own[stat_result]:
+//     return _wrap_stat(_stat_raw(path))
 ::tpystd::os::_types::stat_result stat(std::string_view path) {
-    // return _wrap_stat(_stat_raw(path))
     return _wrap_stat(::tpy::stdlib::os::stat_raw(path));
 }
 
 // def lstat(path: str) -> Own[stat_result]:
+//     return _wrap_stat(_lstat_raw(path))
 ::tpystd::os::_types::stat_result lstat(std::string_view path) {
-    // return _wrap_stat(_lstat_raw(path))
     return _wrap_stat(::tpy::stdlib::os::lstat_raw(path));
 }
 
 // def scandir(path: str = ".") -> Own[list[DirEntry]]:
+//     out: list[DirEntry] = []
+//     for entry in _scandir_raw(path):
+//         out.append(DirEntry(entry[0], _join(path, entry[0]), entry[1]))
+//     return out
 std::vector<DirEntry> scandir(std::string_view path) {
-    // out: list[DirEntry] = []
     std::vector<DirEntry> out = std::vector<DirEntry>{};
-    // for entry in _scandir_raw(path):
     auto __obj_0 = ::tpy::stdlib::os::scandir_raw(path);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& entry = *__beg_0;
-        // out.append(DirEntry(entry[0], _join(path, entry[0]), entry[1]))
         std::array<const std::string, 1> __tmp_1{std::get<0>(entry)};
         out.push_back(DirEntry(std::get<0>(entry), ::tpystd::os::path::join(path, ::tpy::varargs<const std::string>(__tmp_1)), std::get<1>(entry)));
     }
-    // return out
     return out;
 }
 
 // def listdir(path: str = ".") -> Own[list[str]]:
+//     return _listdir(path)
 std::vector<std::string> listdir(std::string_view path) {
-    // return _listdir(path)
     return ::tpy::stdlib::os::listdir(path);
 }
 
 // def walk(top: str, topdown: bool = True,
-// onerror: Callable[[readonly[OSError]], None] | None = None,
-// followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
+//          onerror: Callable[[readonly[OSError]], None] | None = None,
+//          followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
+//     if not topdown:
+//         # Post-order: pop a marker; if it's ready to emit, yield it (its subtree
+//         # already came out). Otherwise scan it, push its emit-marker UNDER its
+//         # children (so it pops last, after the whole subtree), then push the
+//         # children (reversed -> they pop in scandir order).
+//         bstack: list[_WalkExpand | _WalkEmit] = []
+//         bstack.append(_WalkExpand(top))
+//         while bstack:
+//             item = bstack.pop()
+//             if isinstance(item, _WalkEmit):
+//                 bdirs = list(item.dirnames)
+//                 bfiles = list(item.filenames)
+//                 yield (item.path, bdirs, bfiles)
+//                 continue
+//             bcur = item.path
+//             bdirnames: list[str] = []
+//             bfilenames: list[str] = []
+//             try:
+//                 bentries = scandir(bcur)
+//             except OSError as berr:
+//                 if onerror is not None:
+//                     onerror(berr)
+//                 continue
+//             for be in bentries:
+//                 bis_dir = False
+//                 try:
+//                     bis_dir = be.is_dir()
+//                 except OSError:
+//                     bis_dir = False
+//                 if bis_dir:
+//                     bdirnames.append(be.name)
+//                 else:
+//                     bfilenames.append(be.name)
+//             # `bdirnames` is reused below to push children, so copy it into the
+//             # emit-marker; `bfilenames` is last-used here and moves.
+//             bstack.append(_WalkEmit(bcur, list(bdirnames), bfilenames))
+//             bi = len(bdirnames) - 1
+//             while bi >= 0:
+//                 bchild = _join(bcur, bdirnames[bi])
+//                 if followlinks or not path.islink(bchild):
+//                     bstack.append(_WalkExpand(bchild))
+//                 bi -= 1
+//         return
+//     stack: list[str] = []
+//     stack.append(top)
+//     while stack:
+//         cur = stack.pop()
+//         dirnames: list[str] = []
+//         filenames: list[str] = []
+//         try:
+//             entries = scandir(cur)
+//         except OSError as err:
+//             if onerror is not None:
+//                 onerror(err)
+//             continue
+//         for e in entries:
+//             # A broken symlink (or otherwise unstattable entry) makes is_dir()
+//             # raise; CPython treats that as a non-directory, not an error.
+//             is_dir = False
+//             try:
+//                 is_dir = e.is_dir()
+//             except OSError:
+//                 is_dir = False
+//             if is_dir:
+//                 dirnames.append(e.name)
+//             else:
+//                 filenames.append(e.name)
+//         yield (cur, dirnames, filenames)
+//         # The caller may have pruned `dirnames` during the yield. Push the
+//         # survivors in reverse so they pop in `dirnames` order (CPython visits
+//         # subdirectories pre-order in scandir order).
+//         i = len(dirnames) - 1
+//         while i >= 0:
+//             child = _join(cur, dirnames[i])
+//             if followlinks or not path.islink(child):
+//                 stack.append(child)
+//             i -= 1
 std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((!(topdown))) {
-            // # Post-order: pop a marker; if it's ready to emit, yield it (its subtree
-            // # already came out). Otherwise scan it, push its emit-marker UNDER its
-            // # children (so it pops last, after the whole subtree), then push the
-            // # children (reversed -> they pop in scandir order).
-            // bstack: list[_WalkExpand | _WalkEmit] = []
             bstack.emplace(std::vector<::tpy::Union<_WalkEmit, _WalkExpand>>{});
-            // bstack.append(_WalkExpand(top))
             (*bstack).push_back(_WalkExpand(top));
             __state = S_JOIN_0;
             continue;
         } else {
-            // stack: list[str] = []
             stack.emplace(std::vector<std::string>{});
-            // stack.append(top)
             (*stack).push_back(std::string(top));
             __state = S_JOIN_1;
             continue;
@@ -81,22 +150,13 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
         continue;
     }
     case S_RESUME_1: {
-        // # The caller may have pruned `dirnames` during the yield. Push the
-        // # survivors in reverse so they pop in `dirnames` order (CPython visits
-        // # subdirectories pre-order in scandir order).
-        // i = len(dirnames) - 1
         i = (::tpy::sub_check<int32_t>(::tpy::__len__((*dirnames)), 1));
-        // while i >= 0:
         while ((i >= 0)) {
-            // child = _join(cur, dirnames[i])
             std::array<const std::string, 1> __tmp_2{::tpy::__getitem__((*dirnames), i)};
             child = ::tpystd::os::path::join(cur, ::tpy::varargs<const std::string>(__tmp_2));
-            // if followlinks or not path.islink(child):
             if ((followlinks || (!(::tpy::stdlib::os::path_islink(child))))) {
-                // stack.append(child)
                 (*stack).push_back(std::move(child));
             }
-            // i -= 1
             i = ::tpy::sub_check<int32_t>(i, 1);
         }
         __state = S_JOIN_1;
@@ -104,41 +164,30 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
     }
     case S_JOIN_0: {
         if ((::tpy::__len__((*bstack)) != 0)) {
-            // item = bstack.pop()
             item.emplace(::tpy::pop_back((*bstack)));
             if (std::holds_alternative<_WalkEmit>((*item))) {
                 auto& __item = std::get<_WalkEmit>((*item));
-                // bdirs = list(item.dirnames)
                 bdirs.emplace(::tpy::construct<std::vector<std::string>>(__item.dirnames));
-                // bfiles = list(item.filenames)
                 bfiles.emplace(::tpy::construct<std::vector<std::string>>(__item.filenames));
-                // yield (item.path, bdirs, bfiles)
                 __state = S_RESUME_0;
                 return std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>{__item.path, &((*bdirs)), &((*bfiles))};
             } else {
                 auto& __item = std::get<_WalkExpand>((*item));
-                // bcur = item.path
                 bcur = __item.path;
-                // bdirnames: list[str] = []
                 bdirnames.emplace(std::vector<std::string>{});
-                // bfilenames: list[str] = []
                 bfilenames.emplace(std::vector<std::string>{});
                 __state = S_JOIN_3;
                 continue;
             }
         } else {
-            // return
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
     }
     case S_JOIN_1: {
         if ((::tpy::__len__((*stack)) != 0)) {
-            // cur = stack.pop()
             cur = ::tpy::pop_back((*stack));
-            // dirnames: list[str] = []
             dirnames.emplace(std::vector<std::string>{});
-            // filenames: list[str] = []
             filenames.emplace(std::vector<std::string>{});
             __state = S_JOIN_5;
             continue;
@@ -148,53 +197,35 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
         }
     }
     case S_JOIN_2: {
-        // for be in bentries:
         auto& __obj_0 = (*bentries);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& be = *__beg_0;
-            // bis_dir = False
             bis_dir = false;
-            // try:
             {
                 try {
-                    // bis_dir = be.is_dir()
                     bis_dir = be.is_dir();
                 } catch (const ::tpy::OSError&) {
-                    // bis_dir = False
                     bis_dir = false;
                 }
             }
-            // if bis_dir:
             if (bis_dir) {
-                // bdirnames.append(be.name)
                 std::string __tmp_3{be.name};
                 (*bdirnames).push_back(std::move(__tmp_3));
-            // else:
             } else {
-                // bfilenames.append(be.name)
                 std::string __tmp_4{be.name};
                 (*bfilenames).push_back(std::move(__tmp_4));
             }
         }
-        // # `bdirnames` is reused below to push children, so copy it into the
-        // # emit-marker; `bfilenames` is last-used here and moves.
-        // bstack.append(_WalkEmit(bcur, list(bdirnames), bfilenames))
         (*bstack).push_back(_WalkEmit(bcur, ::tpy::construct<std::vector<std::string>>((*bdirnames)), std::move((*bfilenames))));
-        // bi = len(bdirnames) - 1
         bi = (::tpy::sub_check<int32_t>(::tpy::__len__((*bdirnames)), 1));
-        // while bi >= 0:
         while ((bi >= 0)) {
-            // bchild = _join(bcur, bdirnames[bi])
             std::array<const std::string, 1> __tmp_5{::tpy::__getitem__((*bdirnames), bi)};
             bchild = ::tpystd::os::path::join(bcur, ::tpy::varargs<const std::string>(__tmp_5));
-            // if followlinks or not path.islink(bchild):
             if ((followlinks || (!(::tpy::stdlib::os::path_islink(bchild))))) {
-                // bstack.append(_WalkExpand(bchild))
                 (*bstack).push_back(_WalkExpand(bchild));
             }
-            // bi -= 1
             bi = ::tpy::sub_check<int32_t>(bi, 1);
         }
         __state = S_JOIN_0;
@@ -202,14 +233,11 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
     }
     case S_JOIN_3: {
         try {
-            // bentries = scandir(bcur)
             bentries.emplace(scandir(bcur));
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::OSError& berr) {
-            // if onerror is not None:
             if ((onerror.has_value())) {
-                // onerror(berr)
                 onerror.value()(berr);
             }
             __state = S_JOIN_0;
@@ -219,52 +247,37 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
         }
     }
     case S_JOIN_4: {
-        // for e in entries:
         auto& __obj_1 = (*entries);
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& e = *__beg_1;
-            // # A broken symlink (or otherwise unstattable entry) makes is_dir()
-            // # raise; CPython treats that as a non-directory, not an error.
-            // is_dir = False
             is_dir = false;
-            // try:
             {
                 try {
-                    // is_dir = e.is_dir()
                     is_dir = e.is_dir();
                 } catch (const ::tpy::OSError&) {
-                    // is_dir = False
                     is_dir = false;
                 }
             }
-            // if is_dir:
             if (is_dir) {
-                // dirnames.append(e.name)
                 std::string __tmp_6{e.name};
                 (*dirnames).push_back(std::move(__tmp_6));
-            // else:
             } else {
-                // filenames.append(e.name)
                 std::string __tmp_7{e.name};
                 (*filenames).push_back(std::move(__tmp_7));
             }
         }
-        // yield (cur, dirnames, filenames)
         __state = S_RESUME_1;
         return std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>{cur, &((*dirnames)), &((*filenames))};
     }
     case S_JOIN_5: {
         try {
-            // entries = scandir(cur)
             entries.emplace(scandir(cur));
             __state = S_JOIN_4;
             continue;
         } catch (const ::tpy::OSError& err) {
-            // if onerror is not None:
             if ((onerror.has_value())) {
-                // onerror(err)
                 onerror.value()(err);
             }
             __state = S_JOIN_1;
@@ -280,15 +293,15 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
 
 
 // def walk(top: str, topdown: bool = True,
-// onerror: Callable[[readonly[OSError]], None] | None = None,
-// followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
+//          onerror: Callable[[readonly[OSError]], None] | None = None,
+//          followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
 __gen_walk walk(std::string_view top, bool topdown, std::optional<std::function<void(const ::tpy::OSError&)>> onerror, bool followlinks) {
     return __gen_walk(top, topdown, onerror, followlinks);
 }
 
 // def mkdir(path: str, mode: int64 = 0o777) -> None:
+//     _mkdir(path, mode)
 void mkdir(std::string_view path, int64_t mode) {
-    // _mkdir(path, mode)
     ::tpy::stdlib::os::mkdir(path, mode);
 }
 
@@ -298,25 +311,25 @@ void mkdir(std::string_view path, int64_t mode) {
 // # is not observable here, matching CPython.
 // @dispatch
 // def getenv(key: str) -> str | None:
+//     if key in environ:
+//         return environ[key]
+//     return None
 std::optional<std::string> getenv(std::string_view key) {
-    // if key in environ:
     if (((*::tpystd::os::_environ::environ).__contains__(key))) {
-        // return environ[key]
         return (*::tpystd::os::_environ::environ)[key];
     }
-    // return None
     return std::nullopt;
 }
 
 // @dispatch
 // def getenv(key: str, default: str) -> str:
+//     if key in environ:
+//         return environ[key]
+//     return default
 std::string getenv(std::string_view key, std::string_view default_) {
-    // if key in environ:
     if (((*::tpystd::os::_environ::environ).__contains__(key))) {
-        // return environ[key]
         return (*::tpystd::os::_environ::environ)[key];
     }
-    // return default
     return std::string(default_);
 }
 
@@ -325,40 +338,40 @@ std::string getenv(std::string_view key, std::string_view default_) {
 // # subsequent os.getenv/os.environ lookup will not see the change. Assign through
 // # os.environ[key] = value (or `del`) to keep the snapshot in sync.
 // def putenv(key: str, value: str) -> None:
+//     _setenv(key, value)
 void putenv(std::string_view key, std::string_view value) {
-    // _setenv(key, value)
     ::tpy::stdlib::os::setenv(key, value);
 }
 
 // def unsetenv(key: str) -> None:
+//     _unsetenv(key)
 void unsetenv(std::string_view key) {
-    // _unsetenv(key)
     ::tpy::stdlib::os::unsetenv(key);
 }
 
 // # On POSIX os.replace is the same atomic rename(2) as os.rename (both overwrite
 // # an existing destination); the cross-platform guarantee is the only difference.
 // def replace(src: str, dst: str) -> None:
+//     rename(src, dst)
 void replace(std::string_view src, std::string_view dst) {
-    // rename(src, dst)
     ::tpy::stdlib::os::rename(src, dst);
 }
 
 // def makedirs(name: str, mode: int64 = 0o777, exist_ok: bool = False) -> None:
+//     head = path.dirname(name)
+//     if len(head) > 0 and not path.exists(head):
+//         makedirs(head, mode, exist_ok)
+//     if exist_ok and path.isdir(name):
+//         return
+//     mkdir(name, mode)
 void makedirs(std::string_view name, int64_t mode, bool exist_ok) {
-    // head = path.dirname(name)
     std::string head = ::tpystd::os::path::dirname(name);
-    // if len(head) > 0 and not path.exists(head):
     if (((::tpy::__len__(head) > 0) && (!(::tpy::stdlib::os::path_exists(head))))) {
-        // makedirs(head, mode, exist_ok)
         makedirs(head, mode, exist_ok);
     }
-    // if exist_ok and path.isdir(name):
     if ((exist_ok && ::tpy::stdlib::os::path_isdir(name))) {
-        // return
         return;
     }
-    // mkdir(name, mode)
     mkdir(name, mode);
 }
 
@@ -366,214 +379,246 @@ void makedirs(std::string_view name, int64_t mode, bool exist_ok) {
 // # first non-empty one (CPython removedirs). Walks via dirname -- each parent is
 // # a view narrowing into the live `head`, so the walk needs no owned copy.
 // def removedirs(name: str) -> None:
+//     rmdir(name)
+//     head = path.dirname(name)
+//     while len(head) > 0:
+//         try:
+//             rmdir(head)
+//         except OSError:
+//             break
+//         head = path.dirname(head)
 void removedirs(std::string_view name) {
-    // rmdir(name)
     ::tpy::stdlib::os::rmdir(name);
-    // head = path.dirname(name)
     std::string head = ::tpystd::os::path::dirname(name);
-    // while len(head) > 0:
     while ((::tpy::__len__(head) > 0)) {
-        // try:
         {
             try {
-                // rmdir(head)
                 ::tpy::stdlib::os::rmdir(head);
             } catch (const ::tpy::OSError&) {
-                // break
                 break;
             }
         }
-        // head = path.dirname(head)
         head = ::tpystd::os::path::dirname(head);
     }
 }
 
 // def open(path: str, flags: int64, mode: int64 = 0o777) -> int64:
+//     return _open_fd(path, flags, mode)
 int64_t open(std::string_view path, int64_t flags, int64_t mode) {
-    // return _open_fd(path, flags, mode)
     return ::tpy::stdlib::os::open_fd(path, flags, mode);
 }
 
 // def close(fd: int64) -> None:
+//     _close_fd(fd)
 void close(int64_t fd) {
-    // _close_fd(fd)
     ::tpy::stdlib::os::close_fd(fd);
 }
 
 // def read(fd: int64, n: int64) -> Own[bytes]:
+//     return _read_fd(fd, n)
 ::tpy::Bytes read(int64_t fd, int64_t n) {
-    // return _read_fd(fd, n)
     return ::tpy::stdlib::os::read_fd(fd, n);
 }
 
 // def write(fd: int64, data: bytes) -> int64:
+//     return _write_fd(fd, data)
 int64_t write(int64_t fd, ::tpy::BytesView data) {
-    // return _write_fd(fd, data)
     return ::tpy::stdlib::os::write_fd(fd, data);
 }
 
 // def lseek(fd: int64, pos: int64, how: int64) -> int64:
+//     return _lseek_fd(fd, pos, how)
 int64_t lseek(int64_t fd, int64_t pos, int64_t how) {
-    // return _lseek_fd(fd, pos, how)
     return ::tpy::stdlib::os::lseek_fd(fd, pos, how);
 }
 
 // def pipe() -> tuple[int64, int64]:
+//     return _pipe_fd()
 std::tuple<int64_t, int64_t> pipe() {
-    // return _pipe_fd()
     return ::tpy::stdlib::os::pipe_fd();
 }
 
 // def dup(fd: int64) -> int64:
+//     return _dup_fd(fd)
 int64_t dup(int64_t fd) {
-    // return _dup_fd(fd)
     return ::tpy::stdlib::os::dup_fd(fd);
 }
 
 // def dup2(fd: int64, fd2: int64) -> int64:
+//     return _dup2_fd(fd, fd2)
 int64_t dup2(int64_t fd, int64_t fd2) {
-    // return _dup2_fd(fd, fd2)
     return ::tpy::stdlib::os::dup2_fd(fd, fd2);
 }
 
 // def fstat(fd: int64) -> Own[stat_result]:
+//     return _wrap_stat(_fstat_fd(fd))
 ::tpystd::os::_types::stat_result fstat(int64_t fd) {
-    // return _wrap_stat(_fstat_fd(fd))
     return _wrap_stat(::tpy::stdlib::os::fstat_fd(fd));
 }
 
 // def chmod(path: str, mode: int64) -> None:
+//     _chmod_path(path, mode)
 void chmod(std::string_view path, int64_t mode) {
-    // _chmod_path(path, mode)
     ::tpy::stdlib::os::chmod_path(path, mode);
 }
 
 // def chown(path: str, uid: int64, gid: int64) -> None:
+//     _chown_path(path, uid, gid)
 void chown(std::string_view path, int64_t uid, int64_t gid) {
-    // _chown_path(path, uid, gid)
     ::tpy::stdlib::os::chown_path(path, uid, gid);
 }
 
 // # CPython's os.utime(path, times=(atime, mtime)). The no-arg (current time) and
 // # ns= forms take a required tuple here instead.
 // def utime(path: str, times: tuple[float, float]) -> None:
+//     _utime_path(path, times[0], times[1])
 void utime(std::string_view path, const std::tuple<double, double>& times) {
-    // _utime_path(path, times[0], times[1])
     ::tpy::stdlib::os::utime_path(path, std::get<0>(times), std::get<1>(times));
 }
 
 // def access(path: str, mode: int64) -> bool:
+//     return _access_path(path, mode)
 bool access(std::string_view path, int64_t mode) {
-    // return _access_path(path, mode)
     return ::tpy::stdlib::os::access_path(path, mode);
 }
 
 // def urandom(n: int64) -> Own[bytes]:
+//     return _urandom(n)
 ::tpy::Bytes urandom(int64_t n) {
-    // return _urandom(n)
     return ::tpy::stdlib::os::urandom(n);
 }
 
 // def link(src: str, dst: str) -> None:
+//     _link_path(src, dst)
 void link(std::string_view src, std::string_view dst) {
-    // _link_path(src, dst)
     ::tpy::stdlib::os::link_path(src, dst);
 }
 
 // def truncate(path: str, length: int64) -> None:
+//     _truncate_path(path, length)
 void truncate(std::string_view path, int64_t length) {
-    // _truncate_path(path, length)
     ::tpy::stdlib::os::truncate_path(path, length);
 }
 
 // def ftruncate(fd: int64, length: int64) -> None:
+//     _ftruncate_fd(fd, length)
 void ftruncate(int64_t fd, int64_t length) {
-    // _ftruncate_fd(fd, length)
     ::tpy::stdlib::os::ftruncate_fd(fd, length);
 }
 
 // def fsync(fd: int64) -> None:
+//     _fsync_fd(fd)
 void fsync(int64_t fd) {
-    // _fsync_fd(fd)
     ::tpy::stdlib::os::fsync_fd(fd);
 }
 
 // def get_terminal_size(fd: int64 = 1) -> Own[terminal_size]:
+//     t = _terminal_size_raw(fd)
+//     return terminal_size(t[0], t[1])
 terminal_size get_terminal_size(int64_t fd) {
-    // t = _terminal_size_raw(fd)
     std::tuple<int64_t, int64_t> t = ::tpy::stdlib::os::terminal_size_raw(fd);
-    // return terminal_size(t[0], t[1])
     return terminal_size(std::get<0>(t), std::get<1>(t));
 }
 
 // # os.fspath on str is the identity; the PathLike form arrives with pathlib.
 // def fspath(path: str) -> str:
+//     return path
 std::string fspath(std::string_view path) {
-    // return path
     return std::string(path);
 }
 
 // # CPython os.cpu_count() returns None when the count is indeterminate.
 // def cpu_count() -> int64 | None:
+//     n = _cpu_count_raw()
+//     if n == 0:
+//         return None
+//     return n
 std::optional<int64_t> cpu_count() {
-    // n = _cpu_count_raw()
     int64_t n = ::tpy::stdlib::os::cpu_count();
-    // if n == 0:
     if ((n == 0)) {
-        // return None
         return std::nullopt;
     }
-    // return n
     return n;
 }
 
 // def unlink(path: str) -> None:
+//     remove(path)
 void unlink(std::string_view path) {
-    // remove(path)
     ::tpy::stdlib::os::remove(path);
 }
 
+// from tpy.extern import native_global
+//
+// from .path import join as _join
+// from ._native import (
+//     getcwd, chdir, rmdir, remove, rename, symlink, readlink,
+//     listdir as _listdir, scandir_raw as _scandir_raw,
+//     mkdir as _mkdir, stat_raw as _stat_raw, lstat_raw as _lstat_raw,
+//     setenv as _setenv, unsetenv as _unsetenv,
+//     open_fd as _open_fd, close_fd as _close_fd, read_fd as _read_fd,
+//     write_fd as _write_fd, lseek_fd as _lseek_fd, pipe_fd as _pipe_fd,
+//     dup_fd as _dup_fd, dup2_fd as _dup2_fd, fstat_fd as _fstat_fd,
+//     getpid, getppid, getuid, geteuid, getgid, getegid, getlogin, umask,
+//     strerror, isatty, cpu_count_raw as _cpu_count_raw,
+//     link_path as _link_path, truncate_path as _truncate_path,
+//     ftruncate_fd as _ftruncate_fd, fsync_fd as _fsync_fd,
+//     terminal_size_raw as _terminal_size_raw,
+//     chmod_path as _chmod_path, chown_path as _chown_path,
+//     utime_path as _utime_path, access_path as _access_path,
+//     urandom as _urandom,
+// )
+// from ._environ import environ
+//
+// # stat_result lives in the type-only `_types` leaf so os.path can import it
+// # without a cyclic import of this (executable-bearing) module. Re-exported here
+// # as os.stat_result.
+// from ._types import stat_result
+//
+// # st_mode S_IF* type bits, for DirEntry's stat fallback when readdir's d_type is
+// # unknown or a symlink (which is_dir/is_file must follow).
+// _S_IFMT: Final[int64] = 0o170000
+// _S_IFDIR: Final[int64] = 0o040000
+// _S_IFREG: Final[int64] = 0o100000
+// _S_IFLNK: Final[int64] = 0o120000
+//
+// # open()/lseek()/access() constants. These names (O_*, SEEK_*, *_OK) are libc
+// # macros present in the generated TU, so they cannot be emitted as C++ symbols;
+// # native_global binds each to a safe-named C++ global holding the real macro
+// # value (correct on every platform -- the O_CREAT family differs Linux/macOS).
+// O_RDONLY: Final[int64] = native_global("tpy::stdlib::os::kc_o_rdonly")
+// O_WRONLY: Final[int64] = native_global("tpy::stdlib::os::kc_o_wronly")
+// O_RDWR: Final[int64] = native_global("tpy::stdlib::os::kc_o_rdwr")
+// O_CREAT: Final[int64] = native_global("tpy::stdlib::os::kc_o_creat")
+// O_EXCL: Final[int64] = native_global("tpy::stdlib::os::kc_o_excl")
+// O_TRUNC: Final[int64] = native_global("tpy::stdlib::os::kc_o_trunc")
+// O_APPEND: Final[int64] = native_global("tpy::stdlib::os::kc_o_append")
+// SEEK_SET: Final[int64] = native_global("tpy::stdlib::os::kc_seek_set")
+// SEEK_CUR: Final[int64] = native_global("tpy::stdlib::os::kc_seek_cur")
+// SEEK_END: Final[int64] = native_global("tpy::stdlib::os::kc_seek_end")
+// F_OK: Final[int64] = native_global("tpy::stdlib::os::kc_f_ok")
+// R_OK: Final[int64] = native_global("tpy::stdlib::os::kc_r_ok")
+// W_OK: Final[int64] = native_global("tpy::stdlib::os::kc_w_ok")
+// X_OK: Final[int64] = native_global("tpy::stdlib::os::kc_x_ok")
+//
+// # POSIX path/line separators and special names (os.name is "posix"). altsep is
+// # None on POSIX (omitted; matches the os.path decision). These mirror the
+// # os.path constants for the values shared between the two modules.
+// name: Final[str] = "posix"
+// sep: Final[str] = "/"
+// extsep: Final[str] = "."
+// pathsep: Final[str] = ":"
+// linesep: Final[str] = "\n"
+// curdir: Final[str] = "."
+// pardir: Final[str] = ".."
+// devnull: Final[str] = "/dev/null"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native_global
     ::tpystd::os::path::__tpy_init();
-    // from .path import join as _join
-    // from ._native import (
-    // getcwd, chdir, rmdir, remove, rename, symlink, readlink,
-    // listdir as _listdir, scandir_raw as _scandir_raw,
-    // mkdir as _mkdir, stat_raw as _stat_raw, lstat_raw as _lstat_raw,
-    // setenv as _setenv, unsetenv as _unsetenv,
-    // open_fd as _open_fd, close_fd as _close_fd, read_fd as _read_fd,
-    // write_fd as _write_fd, lseek_fd as _lseek_fd, pipe_fd as _pipe_fd,
-    // dup_fd as _dup_fd, dup2_fd as _dup2_fd, fstat_fd as _fstat_fd,
-    // getpid, getppid, getuid, geteuid, getgid, getegid, getlogin, umask,
-    // strerror, isatty, cpu_count_raw as _cpu_count_raw,
-    // link_path as _link_path, truncate_path as _truncate_path,
-    // ftruncate_fd as _ftruncate_fd, fsync_fd as _fsync_fd,
-    // terminal_size_raw as _terminal_size_raw,
-    // chmod_path as _chmod_path, chown_path as _chown_path,
-    // utime_path as _utime_path, access_path as _access_path,
-    // urandom as _urandom,
-    // )
-    // from ._environ import environ
     ::tpystd::os::_environ::__tpy_init();
-    // # stat_result lives in the type-only `_types` leaf so os.path can import it
-    // # without a cyclic import of this (executable-bearing) module. Re-exported here
-    // # as os.stat_result.
-    // from ._types import stat_result
     ::tpystd::os::_types::__tpy_init();
-    // # st_mode S_IF* type bits, for DirEntry's stat fallback when readdir's d_type is
-    // # unknown or a symlink (which is_dir/is_file must follow).
-    // # open()/lseek()/access() constants. These names (O_*, SEEK_*, *_OK) are libc
-    // # macros present in the generated TU, so they cannot be emitted as C++ symbols;
-    // # native_global binds each to a safe-named C++ global holding the real macro
-    // # value (correct on every platform -- the O_CREAT family differs Linux/macOS).
-    // # POSIX path/line separators and special names (os.name is "posix"). altsep is
-    // # None on POSIX (omitted; matches the os.path decision). These mirror the
-    // # os.path constants for the values shared between the two modules.
 }
 
 } // namespace tpystd::os

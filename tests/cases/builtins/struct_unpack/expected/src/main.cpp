@@ -5,82 +5,88 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     ba = bytearray(16)
+//     ba[0] = 1
+//     ba[2] = 2
+//     ba[4] = 255
+//     ba[5] = 255
+//     ba[6] = 3
+//     data: bytes = bytes(ba)
+//
+//     # unpack_from with uint16
+//     a, b = unpack_from('<HH', data, 0)
+//     print(a)  # 1
+//     print(b)  # 2
+//
+//     # unpack_from with int16 at offset
+//     c, d = unpack_from('<hh', data, int32(4))
+//     print(c)  # -1
+//     print(d)  # 3
+//
+//     # unpack (no offset)
+//     e, f = unpack('<HH', data)
+//     print(e)  # 1
+//     print(f)  # 2
+//
+//     # calcsize
+//     print(calcsize('<HH'))     # 4
+//     print(calcsize('<II8s'))   # 16
+//     print(calcsize('<BBB'))    # 3
+//     print(calcsize('<hh2xI'))  # 10
+//
+//     # bool format
+//     ba2 = bytearray(2)
+//     ba2[0] = 1
+//     ba2[1] = 0
+//     t, f2 = unpack_from('<??', bytes(ba2), 0)
+//     print(t)   # True
+//     print(f2)  # False
 void main() {
-    // ba = bytearray(16)
     ::tpy::ByteArray ba = ::tpy::bytearray_from_size(16);
-    // ba[0] = 1
     ::tpy::bytearray_setitem(ba, 0, 1);
-    // ba[2] = 2
     ::tpy::bytearray_setitem(ba, 2, 2);
-    // ba[4] = 255
     ::tpy::bytearray_setitem(ba, 4, 255);
-    // ba[5] = 255
     ::tpy::bytearray_setitem(ba, 5, 255);
-    // ba[6] = 3
     ::tpy::bytearray_setitem(ba, 6, 3);
-    // data: bytes = bytes(ba)
     ::tpy::Bytes data = ::tpy::Bytes(ba);
-    // # unpack_from with uint16
-    // a, b = unpack_from('<HH', data, 0)
     auto __tup_1 = std::tuple<uint16_t, uint16_t>{*reinterpret_cast<const uint16_t*>(data.data() + 0), *reinterpret_cast<const uint16_t*>(data.data() + 2)};
     uint16_t a = std::get<0>(__tup_1);
     uint16_t b = std::get<1>(__tup_1);
-    // print(a)  # 1
     std::cout << a << "\n";
-    // print(b)  # 2
     std::cout << b << "\n";
-    // # unpack_from with int16 at offset
-    // c, d = unpack_from('<hh', data, int32(4))
     auto __tup_2 = std::tuple<int16_t, int16_t>{*reinterpret_cast<const int16_t*>(data.data() + 4), *reinterpret_cast<const int16_t*>(data.data() + (::tpy::add_check<int32_t>(4, 2)))};
     int16_t c = std::get<0>(__tup_2);
     int16_t d = std::get<1>(__tup_2);
-    // print(c)  # -1
     std::cout << c << "\n";
-    // print(d)  # 3
     std::cout << d << "\n";
-    // # unpack (no offset)
-    // e, f = unpack('<HH', data)
     auto __tup_3 = std::tuple<uint16_t, uint16_t>{*reinterpret_cast<const uint16_t*>(data.data() + 0), *reinterpret_cast<const uint16_t*>(data.data() + 2)};
     uint16_t e = std::get<0>(__tup_3);
     uint16_t f = std::get<1>(__tup_3);
-    // print(e)  # 1
     std::cout << e << "\n";
-    // print(f)  # 2
     std::cout << f << "\n";
-    // # calcsize
-    // print(calcsize('<HH'))     # 4
     std::cout << 4 << "\n";
-    // print(calcsize('<II8s'))   # 16
     std::cout << 16 << "\n";
-    // print(calcsize('<BBB'))    # 3
     std::cout << 3 << "\n";
-    // print(calcsize('<hh2xI'))  # 10
     std::cout << 10 << "\n";
-    // # bool format
-    // ba2 = bytearray(2)
     ::tpy::ByteArray ba2 = ::tpy::bytearray_from_size(2);
-    // ba2[0] = 1
     ::tpy::bytearray_setitem(ba2, 0, 1);
-    // ba2[1] = 0
     ::tpy::bytearray_setitem(ba2, 1, 0);
-    // t, f2 = unpack_from('<??', bytes(ba2), 0)
     auto __tup_4 = std::tuple<bool, bool>{((::tpy::Bytes(ba2))[0] != 0), ((::tpy::Bytes(ba2))[1] != 0)};
     bool t = std::get<0>(__tup_4);
     bool f2 = std::get<1>(__tup_4);
-    // print(t)   # True
     std::cout << ::tpy::print_bool(t) << "\n";
-    // print(f2)  # False
     std::cout << ::tpy::print_bool(f2) << "\n";
 }
 
+// # struct.unpack_from, struct.unpack, struct.calcsize
+// from struct import unpack_from, unpack, calcsize
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # struct.unpack_from, struct.unpack, struct.calcsize
-    // from struct import unpack_from, unpack, calcsize
-    // main()
     main();
 }
 

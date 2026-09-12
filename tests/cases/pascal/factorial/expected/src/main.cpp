@@ -3,33 +3,36 @@
 
 namespace tpyapp::main {
 
-// i: integer;
 int32_t i{};
 
+// function factorial(n: integer): integer;
+// begin
+//   if n <= 1 then
+//     factorial := 1
+//   else
+//     factorial := n * factorial(n - 1);
+// end;
 int32_t factorial(int32_t n) {
-    // function factorial(n: integer): integer;
     int32_t __pascal_result = 0;
-    // if n <= 1 then
     if ((n <= 1)) {
-        // factorial := 1
         __pascal_result = 1;
     } else {
-        // factorial := n * factorial(n - 1);
         __pascal_result = (::tpy::mul_check<int32_t>(n, factorial((::tpy::sub_check<int32_t>(n, 1)))));
     }
-    // function factorial(n: integer): integer;
     return __pascal_result;
 }
 
+// i: integer;
+//
+// for i := 1 to 6 do
+//   writeln(factorial(i));
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // for i := 1 to 6 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        // writeln(factorial(i));
         std::cout << factorial(i) << "\n";
     }
 }

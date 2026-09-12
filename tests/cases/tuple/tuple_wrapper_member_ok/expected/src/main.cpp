@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def keep_param(t: Tree[int32]) -> tuple[Tree[int32], int32]:
+//     return (t, 0)
 std::tuple<Tree<int32_t>&, int32_t> keep_param(Tree<int32_t>& t) {
-    // return (t, 0)
     return std::tuple<Tree<int32_t>&, int32_t>{t, 0};
 }
 
 // def own_escape() -> tuple[Own[Tree[int32]], int32]:
+//     leaf: Tree[int32] = 5
+//     pair = (leaf, 0)
+//     return pair
 std::tuple<Tree<int32_t>, int32_t> own_escape() {
-    // leaf: Tree[int32] = 5
     Tree<int32_t> leaf = 5;
-    // pair = (leaf, 0)
     auto pair = std::tuple<Tree<int32_t>, int32_t>{std::move(leaf), 0};
-    // return pair
     return pair;
 }
 
 // def count(t: Tree[int32]) -> int32:
+//     match t:
+//         case list() as b:
+//             return len(b)
+//         case _:
+//             return 1
 int32_t count(const Tree<int32_t>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as b:
     case 1: {
         auto& b = std::get<1>(__match_subject_1.value);
-        // return len(b)
         return ::tpy::__len__(b);
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }
@@ -43,27 +43,27 @@ int32_t count(const Tree<int32_t>& t) {
 }
 
 // def main() -> None:
+//     tree: Tree[int32] = [1, 2]
+//     p = keep_param(tree)
+//     print(count(p[0]))
+//     q, n = own_escape()
+//     print(count(q))
 void main() {
-    // tree: Tree[int32] = [1, 2]
     Tree<int32_t> tree = std::vector<Tree<int32_t>>{1, 2};
-    // p = keep_param(tree)
     auto p = keep_param(tree);
-    // print(count(p[0]))
     std::cout << count(std::get<0>(p)) << "\n";
-    // q, n = own_escape()
     auto __tup_1 = own_escape();
     Tree<int32_t> q = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // print(count(q))
     std::cout << count(q) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

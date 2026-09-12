@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Holder(Res(9)).value())
 void main() {
-    // print(Holder(Res(9)).value())
     std::cout << Holder(Res(::tpy::BigInt(9))).value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

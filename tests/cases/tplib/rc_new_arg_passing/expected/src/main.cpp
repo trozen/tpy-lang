@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def read_rc(c: Rc[Counter]) -> int32:
+//     return c.get().value()
 int32_t read_rc(::tpystd::tplib::rc::Rc<Counter>& c) {
-    // return c.get().value()
     return c.get().value();
 }
 
 // def read_box(c: Box[Counter]) -> int32:
+//     return c.get().value()
 int32_t read_box(::tpystd::tplib::box::Box<Counter>& c) {
-    // return c.get().value()
     return c.get().value();
 }
 
 // def main() -> None:
+//     print(read_rc(Rc.new(Counter(3))))    # tpyc: ok
+//     print(read_box(Box(Counter(4))))       # tpyc: ok
 void main() {
-    // print(read_rc(Rc.new(Counter(3))))    # tpyc: ok
     ::tpystd::tplib::rc::Rc<Counter> __tmp_1 = Rc<Counter>::new_<Counter>(Counter(3));
     std::cout << read_rc(__tmp_1) << "\n";
-    // print(read_box(Box(Counter(4))))       # tpyc: ok
     ::tpystd::tplib::box::Box<Counter> __tmp_2 = ::tpystd::tplib::box::Box<Counter>(Counter(4));
     std::cout << read_box(__tmp_2) << "\n";
 }
 
+// from tplib import Rc, Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc, Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

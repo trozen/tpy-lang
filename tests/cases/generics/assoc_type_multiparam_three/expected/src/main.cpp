@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Rec(9, "mid", True)
+//     print(get_a(r) + 1)     # A = int
+//     print(get_b(r))         # B = str
+//     print(get_c(r))         # C = bool
 void main() {
-    // r = Rec(9, "mid", True)
     Rec r = Rec(::tpy::BigInt(9), "mid", true);
-    // print(get_a(r) + 1)     # A = int
     std::cout << ((get_a<::tpy::BigInt, std::string, bool, Rec>(r)) + (::tpy::BigInt(1))) << "\n";
-    // print(get_b(r))         # B = str
     std::cout << get_b<::tpy::BigInt, std::string, bool, Rec>(r) << "\n";
-    // print(get_c(r))         # C = bool
     std::cout << ::tpy::print_bool(get_c<::tpy::BigInt, std::string, bool, Rec>(r)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

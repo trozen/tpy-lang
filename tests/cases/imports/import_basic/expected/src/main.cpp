@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     p = Point(int32(1), int32(2))
+//     result = add(p.x, p.y)
+//     print(result)
+//     return int32(0)
 int32_t main() {
-    // p = Point(int32(1), int32(2))
     ::tpyapp::utils::Point p = ::tpyapp::utils::Point(1, 2);
-    // result = add(p.x, p.y)
     int32_t result = ::tpyapp::utils::add(p.x, p.y);
-    // print(result)
     std::cout << result << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from utils import add, Point
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from utils import add, Point
     ::tpyapp::utils::__tpy_init();
-    // main()
     main();
 }
 

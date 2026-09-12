@@ -5,65 +5,65 @@ namespace tpyapp::main {
 
 
 // def empty_list() -> Own[list[int32]]:
+//     out = []  # tpyc: type(/list\[int32\]/)
+//     return out
 std::vector<int32_t> empty_list() {
-    // out = []  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // return out
     return out;
 }
 
 // def empty_dict() -> Own[dict[int32, int32]]:
+//     d = {}  # tpyc: type(/dict\[int32, int32\]/)
+//     return d
 ::tpy::ordered_map<int32_t, int32_t> empty_dict() {
-    // d = {}  # tpyc: type(/dict\[int32, int32\]/)
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>();
-    // return d
     return d;
 }
 
 // def empty_set() -> Own[set[int32]]:
+//     s = set()  # tpyc: type(/set\[int32\]/)
+//     return s
 ::tpy::ordered_set<int32_t> empty_set() {
-    // s = set()  # tpyc: type(/set\[int32\]/)
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // return s
     return s;
 }
 
 // def empty_str_set() -> Own[set[str]]:
+//     s = set()  # tpyc: type(/set\[str\]/)
+//     return s
 ::tpy::ordered_set<std::string> empty_str_set() {
-    // s = set()  # tpyc: type(/set\[str\]/)
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
-    // return s
     return s;
 }
 
 // def empty_record_dict() -> Own[dict[int32, Point]]:
+//     d = {}  # tpyc: type(/dict\[int32, Point\]/)
+//     return d
 ::tpy::ordered_map<int32_t, Point> empty_record_dict() {
-    // d = {}  # tpyc: type(/dict\[int32, Point\]/)
     ::tpy::ordered_map<int32_t, Point> d = ::tpy::ordered_map<int32_t, Point>();
-    // return d
     return d;
 }
 
 // def main() -> None:
+//     print(len(empty_list()))
+//     print(len(empty_dict()))
+//     print(len(empty_set()))
+//     print(len(empty_str_set()))
+//     print(len(empty_record_dict()))
 void main() {
-    // print(len(empty_list()))
     std::cout << ::tpy::__len__(empty_list()) << "\n";
-    // print(len(empty_dict()))
     std::cout << ::tpy::__len__(empty_dict()) << "\n";
-    // print(len(empty_set()))
     std::cout << ::tpy::__len__(empty_set()) << "\n";
-    // print(len(empty_str_set()))
     std::cout << ::tpy::__len__(empty_str_set()) << "\n";
-    // print(len(empty_record_dict()))
     std::cout << ::tpy::__len__(empty_record_dict()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

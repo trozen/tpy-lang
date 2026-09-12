@@ -13,15 +13,22 @@ struct __gen_counter;
 struct __gen_walk;
 struct __gen_no_later_read;
 
+// def counter() -> Iterator[list[int]]:
 __gen_counter counter();
+// def mutate_observe() -> None:
 void mutate_observe();
+// def walk() -> Iterator[tuple[str, list[str], list[str]]]:
 __gen_walk walk();
+// def walk_prune() -> None:
 void walk_prune();
+// def no_later_read() -> Iterator[list[int]]:
 __gen_no_later_read no_later_read();
+// def read_once() -> None:
 void read_once();
+// def main() -> None:
 void main();
 
-// Generator: counter
+// def counter() -> Iterator[list[int]]:
 struct __gen_counter : public ::tpy::next_iter_mixin<__gen_counter, ::tpy::val_or_ref<std::vector<::tpy::BigInt>>> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<::tpy::BigInt>> buf;
@@ -44,7 +51,7 @@ struct __gen_counter : public ::tpy::next_iter_mixin<__gen_counter, ::tpy::val_o
     }
 };
 
-// Generator: walk
+// def walk() -> Iterator[tuple[str, list[str], list[str]]]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<std::string>> dirs;
@@ -67,7 +74,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
     }
 };
 
-// Generator: no_later_read
+// def no_later_read() -> Iterator[list[int]]:
 struct __gen_no_later_read : public ::tpy::next_iter_mixin<__gen_no_later_read, ::tpy::val_or_ref<std::vector<::tpy::BigInt>>> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<::tpy::BigInt>> buf;

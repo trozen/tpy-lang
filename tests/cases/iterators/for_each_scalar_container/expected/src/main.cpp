@@ -5,78 +5,78 @@ namespace tpyapp::main {
 
 
 // def total(items: list[int32]) -> int32:
+//     s = 0
+//     for x in items:
+//         s = s + x
+//     return s
 int32_t total(const std::vector<int32_t>& items) {
-    // s = 0
     int32_t s = 0;
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s = s + x
         s = (::tpy::add_check<int32_t>(s, x));
     }
-    // return s
     return s;
 }
 
 // def count_pos(xs: list[int32]) -> int32:
+//     n = 0
+//     for i in range(len(xs)):
+//         if xs[i] > 0:
+//             n = n + 1
+//     return n
 int32_t count_pos(const std::vector<int32_t>& xs) {
-    // n = 0
     int32_t n = 0;
-    // for i in range(len(xs)):
     int32_t __stop_0 = ::tpy::__len__(xs);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if xs[i] > 0:
         if ((xs[static_cast<std::size_t>(i)] > 0)) {
-            // n = n + 1
             n = (::tpy::add_check<int32_t>(n, 1));
         }
     }
-    // return n
     return n;
 }
 
 // def keysum(d: dict[int32, int32]) -> int32:
+//     s = 0
+//     for k in d:
+//         s = s + k
+//     return s
 int32_t keysum(const ::tpy::ordered_map<int32_t, int32_t>& d) {
-    // s = 0
     int32_t s = 0;
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t k = *__beg_0;
-        // s = s + k
         s = (::tpy::add_check<int32_t>(s, k));
     }
-    // return s
     return s;
 }
 
 // def main() -> None:
+//     xs = [1, -2, 3, -4, 5]
+//     print(total(xs))
+//     print(count_pos(xs))
+//     print(len(xs))
+//     scores = {10: 100, 20: 200}
+//     print(keysum(scores))
 void main() {
-    // xs = [1, -2, 3, -4, 5]
     std::vector<int32_t> xs = {1, -2, 3, -4, 5};
-    // print(total(xs))
     std::cout << total(xs) << "\n";
-    // print(count_pos(xs))
     std::cout << count_pos(xs) << "\n";
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
-    // scores = {10: 100, 20: 200}
     ::tpy::ordered_map<int32_t, int32_t> scores = ::tpy::ordered_map<int32_t, int32_t>({{10, 100}, {20, 200}});
-    // print(keysum(scores))
     std::cout << keysum(scores) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

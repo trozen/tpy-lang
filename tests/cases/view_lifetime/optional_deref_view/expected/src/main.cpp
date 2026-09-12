@@ -9,55 +9,55 @@ namespace tpyapp::main {
 // # bound to it stays a zero-copy view; a bytes local converts the span to owned
 // # bytes (span->vector is not implicit the way string_view->string is).
 // def str_single(a: str | None) -> None:
+//     if a is not None:
+//         x = a  # tpyc: type(StrView)
+//         print(x)
 void str_single(std::optional<std::string_view> a) {
-    // if a is not None:
     if ((a.has_value())) {
-        // x = a  # tpyc: type(StrView)
         std::string_view x = (*a);
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def str_compound(a: str | None, b: str) -> None:
+//     if a is not None:
+//         x = a if len(b) > 0 else b  # tpyc: type(StrView)
+//         print(x)
 void str_compound(std::optional<std::string_view> a, std::string_view b) {
-    // if a is not None:
     if ((a.has_value())) {
-        // x = a if len(b) > 0 else b  # tpyc: type(StrView)
         std::string_view x = (((::tpy::__len__(b) > 0)) ? ((*a)) : (b));
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def bytes_compound(a: bytes | None, b: bytes) -> None:
+//     # bytes Optional param is borrow-form (span); the local converts to owned.
+//     if a is not None:
+//         y = a if len(b) > 0 else b  # tpyc: type(bytes)
+//         print(len(y))
 void bytes_compound(std::optional<::tpy::BytesView> a, ::tpy::BytesView b) {
-    // # bytes Optional param is borrow-form (span); the local converts to owned.
-    // if a is not None:
     if ((a.has_value())) {
-        // y = a if len(b) > 0 else b  # tpyc: type(bytes)
         ::tpy::Bytes y = ::tpy::Bytes((((::tpy::__len__(b) > 0)) ? ((*a)) : (b)));
-        // print(len(y))
         std::cout << ::tpy::__len__(y) << "\n";
     }
 }
 
 // def main() -> None:
+//     str_single("solo")
+//     str_compound("then", "x")
+//     bytes_compound(b"abcd", b"ef")
 void main() {
-    // str_single("solo")
     str_single("solo");
-    // str_compound("then", "x")
     str_compound("then", "x");
-    // bytes_compound(b"abcd", b"ef")
     bytes_compound(::tpy::bytes_literal_owned("abcd", 4), ::tpy::bytes_literal("ef", 2));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

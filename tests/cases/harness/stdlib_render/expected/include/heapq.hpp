@@ -15,248 +15,260 @@ namespace tpystd::heapq {
 
 inline constexpr std::string_view __name__ = "heapq";
 
+// def _siftdown[T: Comparable](heap: list[T], startpos: int32, pos: int32) -> None:
 template<::tpystd::tpy::Comparable T>
 void _siftdown(std::vector<T>& heap, int32_t startpos, int32_t pos);
+// def _siftup[T: Comparable](heap: list[T], pos: int32) -> None:
 template<::tpystd::tpy::Comparable T>
 void _siftup(std::vector<T>& heap, int32_t pos);
+// def heappush[T: Comparable](heap: list[T], item: Own[T]) -> None:
 template<::tpystd::tpy::Comparable T>
 void heappush(std::vector<T>& heap, ::tpy::own_param_t<T> item);
+// def heappop[T: Comparable](heap: list[T]) -> Own[T]:
 template<::tpystd::tpy::Comparable T>
 ::tpy::own_return_t<T> heappop(std::vector<T>& heap);
+// def heapify[T: Comparable](x: list[T]) -> None:
 template<::tpystd::tpy::Comparable T>
 void heapify(std::vector<T>& x);
+// def heapreplace[T: Comparable](heap: list[T], item: Own[T]) -> Own[T]:
 template<::tpystd::tpy::Comparable T>
 ::tpy::own_return_t<T> heapreplace(std::vector<T>& heap, ::tpy::own_param_t<T> item);
+// def heappushpop[T: Comparable](heap: list[T], item: Own[T]) -> Own[T]:
 template<::tpystd::tpy::Comparable T>
 ::tpy::own_return_t<T> heappushpop(std::vector<T>& heap, ::tpy::own_param_t<T> item);
+// def nsmallest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
 template<::tpystd::tpy::Comparable T>
 std::vector<T> nsmallest(int32_t n, const std::vector<T>& a);
+// def nlargest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
 template<::tpystd::tpy::Comparable T>
 std::vector<T> nlargest(int32_t n, const std::vector<T>& a);
 
 // def _siftdown[T: Comparable](heap: list[T], startpos: int32, pos: int32) -> None:
+//     newitem: T = copy(heap[pos])
+//     while pos > startpos:
+//         parentpos: int32 = (pos - 1) >> 1
+//         if newitem < heap[parentpos]:
+//             heap[pos] = copy(heap[parentpos])
+//             pos = parentpos
+//             continue
+//         break
+//     heap[pos] = newitem
 template<::tpystd::tpy::Comparable T>
 void _siftdown(std::vector<T>& heap, int32_t startpos, int32_t pos) {
-    // newitem: T = copy(heap[pos])
     T newitem = T(::tpy::__getitem__(heap, pos));
-    // while pos > startpos:
     while ((pos > startpos)) {
-        // parentpos: int32 = (pos - 1) >> 1
         int32_t parentpos = (::tpy::rshift_check<int32_t>((::tpy::sub_check<int32_t>(pos, 1)), 1));
-        // if newitem < heap[parentpos]:
         if ((newitem < ::tpy::__getitem__(heap, parentpos))) {
-            // heap[pos] = copy(heap[parentpos])
             ::tpy::__setitem__(heap, pos, T(::tpy::__getitem__(heap, parentpos)));
-            // pos = parentpos
             pos = parentpos;
-            // continue
             continue;
         }
-        // break
         break;
     }
-    // heap[pos] = newitem
     ::tpy::__setitem__(heap, pos, std::move(newitem));
 }
 // def _siftup[T: Comparable](heap: list[T], pos: int32) -> None:
+//     endpos: int32 = int32(len(heap))
+//     startpos: int32 = pos
+//     newitem: T = copy(heap[pos])
+//     childpos: int32 = 2 * pos + 1
+//     while childpos < endpos:
+//         rightpos: int32 = childpos + 1
+//         if rightpos < endpos and not heap[childpos] < heap[rightpos]:
+//             childpos = rightpos
+//         heap[pos] = copy(heap[childpos])
+//         pos = childpos
+//         childpos = 2 * pos + 1
+//     heap[pos] = newitem
+//     _siftdown(heap, startpos, pos)
 template<::tpystd::tpy::Comparable T>
 void _siftup(std::vector<T>& heap, int32_t pos) {
-    // endpos: int32 = int32(len(heap))
     int32_t endpos = ::tpy::__len__(heap);
-    // startpos: int32 = pos
     int32_t startpos = pos;
-    // newitem: T = copy(heap[pos])
     T newitem = T(::tpy::__getitem__(heap, pos));
-    // childpos: int32 = 2 * pos + 1
     int32_t childpos = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(2, pos)), 1));
-    // while childpos < endpos:
     while ((childpos < endpos)) {
-        // rightpos: int32 = childpos + 1
         int32_t rightpos = (::tpy::add_check<int32_t>(childpos, 1));
-        // if rightpos < endpos and not heap[childpos] < heap[rightpos]:
         if (((rightpos < endpos) && (!((::tpy::__getitem__(heap, childpos) < ::tpy::__getitem__(heap, rightpos)))))) {
-            // childpos = rightpos
             childpos = rightpos;
         }
-        // heap[pos] = copy(heap[childpos])
         ::tpy::__setitem__(heap, pos, T(::tpy::__getitem__(heap, childpos)));
-        // pos = childpos
         pos = childpos;
-        // childpos = 2 * pos + 1
         childpos = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(2, pos)), 1));
     }
-    // heap[pos] = newitem
     ::tpy::__setitem__(heap, pos, std::move(newitem));
-    // _siftdown(heap, startpos, pos)
     _siftdown<T>(heap, startpos, pos);
 }
 // def heappush[T: Comparable](heap: list[T], item: Own[T]) -> None:
+//     heap.append(item)
+//     _siftdown(heap, 0, int32(len(heap)) - 1)
 template<::tpystd::tpy::Comparable T>
 void heappush(std::vector<T>& heap, ::tpy::own_param_t<T> item) {
-    // heap.append(item)
     heap.push_back(std::move(item));
-    // _siftdown(heap, 0, int32(len(heap)) - 1)
     _siftdown<T>(heap, 0, (::tpy::sub_check<int32_t>(::tpy::__len__(heap), 1)));
 }
 // def heappop[T: Comparable](heap: list[T]) -> Own[T]:
+//     lastelt = heap.pop()
+//     if len(heap) == 0:
+//         return lastelt
+//     returnitem = copy(heap[0])
+//     heap[0] = copy(lastelt)
+//     _siftup(heap, 0)
+//     return returnitem
 template<::tpystd::tpy::Comparable T>
 ::tpy::own_return_t<T> heappop(std::vector<T>& heap) {
-    // lastelt = heap.pop()
     T lastelt = ::tpy::pop_back(heap);
-    // if len(heap) == 0:
     if ((::tpy::__len__(heap) == 0)) {
-        // return lastelt
         return lastelt;
     }
-    // returnitem = copy(heap[0])
     T returnitem = T(::tpy::__getitem__(heap, 0));
-    // heap[0] = copy(lastelt)
     ::tpy::__setitem__(heap, 0, T(lastelt));
-    // _siftup(heap, 0)
     _siftup<T>(heap, 0);
-    // return returnitem
     return returnitem;
 }
 // def heapify[T: Comparable](x: list[T]) -> None:
+//     n: int32 = int32(len(x))
+//     i: int32 = n // 2 - 1
+//     while i >= 0:
+//         _siftup(x, i)
+//         i -= 1
 template<::tpystd::tpy::Comparable T>
 void heapify(std::vector<T>& x) {
-    // n: int32 = int32(len(x))
     int32_t n = ::tpy::__len__(x);
-    // i: int32 = n // 2 - 1
     int32_t i = (::tpy::sub_check<int32_t>((::tpy::div_floor<int32_t>(n, 2)), 1));
-    // while i >= 0:
     while ((i >= 0)) {
-        // _siftup(x, i)
         _siftup<T>(x, i);
-        // i -= 1
         i = ::tpy::sub_check<int32_t>(i, 1);
     }
 }
 // def heapreplace[T: Comparable](heap: list[T], item: Own[T]) -> Own[T]:
+//     returnitem: T = copy(heap[0])
+//     heap[0] = item
+//     _siftup(heap, 0)
+//     return returnitem
 template<::tpystd::tpy::Comparable T>
 ::tpy::own_return_t<T> heapreplace(std::vector<T>& heap, ::tpy::own_param_t<T> item) {
-    // returnitem: T = copy(heap[0])
     T returnitem = T(::tpy::__getitem__(heap, 0));
-    // heap[0] = item
     ::tpy::__setitem__(heap, 0, std::move(item));
-    // _siftup(heap, 0)
     _siftup<T>(heap, 0);
-    // return returnitem
     return returnitem;
 }
 // def heappushpop[T: Comparable](heap: list[T], item: Own[T]) -> Own[T]:
+//     if len(heap) > 0 and heap[0] < item:
+//         result: T = copy(heap[0])
+//         heap[0] = item
+//         _siftup(heap, 0)
+//         return result
+//     return item
 template<::tpystd::tpy::Comparable T>
 ::tpy::own_return_t<T> heappushpop(std::vector<T>& heap, ::tpy::own_param_t<T> item) {
-    // if len(heap) > 0 and heap[0] < item:
     if (((::tpy::__len__(heap) > 0) && (::tpy::__getitem__(heap, 0) < item))) {
-        // result: T = copy(heap[0])
         T result = T(::tpy::__getitem__(heap, 0));
-        // heap[0] = item
         ::tpy::__setitem__(heap, 0, std::move(item));
-        // _siftup(heap, 0)
         _siftup<T>(heap, 0);
-        // return result
         return result;
     }
-    // return item
     return item;
 }
 // def nsmallest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
+//     h: list[T] = a.copy()
+//     heapify(h)
+//     result: list[T] = []
+//     total: int32 = int32(len(h))
+//     k: int32 = n if n < total else total
+//     i: int32 = 0
+//     while i < k:
+//         result.append(heappop(h))
+//         i += 1
+//     return result
 template<::tpystd::tpy::Comparable T>
 std::vector<T> nsmallest(int32_t n, const std::vector<T>& a) {
-    // h: list[T] = a.copy()
     std::vector<T> h = ::tpy::list_copy(a);
-    // heapify(h)
     heapify<T>(h);
-    // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
-    // total: int32 = int32(len(h))
     int32_t total = ::tpy::__len__(h);
-    // k: int32 = n if n < total else total
     int32_t k = (((n < total)) ? (n) : (total));
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < k:
     while ((i < k)) {
-        // result.append(heappop(h))
         result.push_back(heappop<T>(h));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return result
     return result;
 }
 // def nlargest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
+//     # Sort-based; a size-k heap variant (O(n log k)) is a perf follow-up.
+//     h: list[T] = a.copy()
+//     h.sort()
+//     h.reverse()
+//     result: list[T] = []
+//     total: int32 = int32(len(h))
+//     k: int32 = n if n < total else total
+//     i: int32 = 0
+//     while i < k:
+//         result.append(copy(h[i]))
+//         i += 1
+//     return result
 template<::tpystd::tpy::Comparable T>
 std::vector<T> nlargest(int32_t n, const std::vector<T>& a) {
-    // # Sort-based; a size-k heap variant (O(n log k)) is a perf follow-up.
-    // h: list[T] = a.copy()
     std::vector<T> h = ::tpy::list_copy(a);
-    // h.sort()
     ::tpy::sort_in_place(h);
-    // h.reverse()
     ::tpy::list_reverse(h);
-    // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
-    // total: int32 = int32(len(h))
     int32_t total = ::tpy::__len__(h);
-    // k: int32 = n if n < total else total
     int32_t k = (((n < total)) ? (n) : (total));
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < k:
     while ((i < k)) {
-        // result.append(copy(h[i]))
         result.push_back(T(::tpy::__getitem__(h, i)));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return result
     return result;
 }
+// def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
+//     cursors: list[int32] = []
+//     for src in iterables:
+//         cursors.append(0)
+//     while True:
+//         best: int32 = -1
+//         i: int32 = 0
+//         for src in iterables:
+//             c: int32 = cursors[i]
+//             if c < len(src) and (best < 0 or src[c] < iterables[best][cursors[best]]):
+//                 best = i
+//             i += 1
+//         if best < 0:
+//             break
+//         yield copy(iterables[best][cursors[best]])
+//         cursors[best] = cursors[best] + 1
 template<::tpystd::tpy::Comparable T>
 inline auto merge(::tpy::varargs<const std::vector<T>> iterables) {
-    // cursors: list[int32] = []
     std::vector<int32_t> cursors = std::vector<int32_t>{};
-    // for src in iterables:
     auto& __obj_0 = iterables;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& src = *__beg_0;
-        // cursors.append(0)
         cursors.push_back(0);
     }
     return ::tpy::make_generator<T>(
         [iterables, cursors]() mutable -> std::optional<T> {
             while (true) {
-                // best: int32 = -1
                 int32_t best = -1;
-                // i: int32 = 0
                 int32_t i = 0;
-                // for src in iterables:
                 auto& __obj_1 = iterables;
                 auto __beg_1 = __obj_1.begin();
                 auto __end_1 = __obj_1.end();
                 for (; __beg_1 != __end_1; ++__beg_1) {
                     const auto& src = *__beg_1;
-                    // c: int32 = cursors[i]
                     int32_t c = ::tpy::__getitem__(cursors, i);
-                    // if c < len(src) and (best < 0 or src[c] < iterables[best][cursors[best]]):
                     if (((c < ::tpy::__len__(src)) && ((best < 0) || (::tpy::__getitem__(src, c) < ::tpy::__getitem__(::tpy::__getitem__(iterables, best), ::tpy::__getitem__(cursors, best)))))) {
-                        // best = i
                         best = i;
                     }
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
                 }
-                // if best < 0:
                 if ((best < 0)) {
-                    // break
                     break;
                 }
                 auto __val = T(::tpy::__getitem__(::tpy::__getitem__(iterables, best), ::tpy::__getitem__(cursors, best)));
-                // cursors[best] = cursors[best] + 1
                 ::tpy::__setitem__(cursors, best, (::tpy::add_check<int32_t>(::tpy::__getitem__(cursors, best), 1)));
                 return std::optional<T>(std::move(__val));
             }

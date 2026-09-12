@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(2)
+//     q = Point(5)
+//     r = Point.sum_of(p, q)
+//     print(r.x)
 void main() {
-    // p = Point(2)
     Point p = Point(2);
-    // q = Point(5)
     Point q = Point(5);
-    // r = Point.sum_of(p, q)
     Point r = Point::sum_of(p, q);
-    // print(r.x)
     std::cout << r.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

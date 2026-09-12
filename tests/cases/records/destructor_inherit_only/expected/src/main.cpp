@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def consume(c: Own[Child]) -> None:
+//     print("consumed", c.name, c.tag)
 void consume(Child&& c) {
-    // print("consumed", c.name, c.tag)
     std::cout << "consumed" << " " << c.name << " " << c.tag << "\n";
 }
 
 // def main():
+//     c = Child("x", "t1")
+//     consume(c)
+//     print("---")
+//
+//     consume(Child("y", "t2"))
+//     print("done")
 void main() {
-    // c = Child("x", "t1")
     Child c = Child("x", "t1");
-    // consume(c)
     consume(std::move(c));
-    // print("---")
     std::cout << "---" << "\n";
-    // consume(Child("y", "t2"))
     consume(Child("y", "t2"));
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

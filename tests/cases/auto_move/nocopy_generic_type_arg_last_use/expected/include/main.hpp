@@ -12,7 +12,9 @@ template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(h: Own[Holder[Handle]]) -> int32:
 int32_t consume(Holder<Handle>&& h);
+// def main():
 void main();
 
 // @nocopy
@@ -44,6 +46,7 @@ struct Holder {
     T item;
 
     // def __init__(self, item: Own[T]):
+    //     self.item = item
     Holder() = default;
     explicit Holder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -57,6 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 
 
 // def __init__(self, fd: int32):
+//     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 void __tpy_init();
 } // namespace tpyapp::main

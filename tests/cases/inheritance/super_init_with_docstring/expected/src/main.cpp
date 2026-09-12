@@ -3,20 +3,19 @@
 
 namespace tpyapp::main {
 
-// c = Child(10, 20)
 Child* c{};
 
+// c = Child(10, 20)
+// print(c.value)
+// print(c.extra)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // c = Child(10, 20)
     static Child __global_slot_1 = Child(::tpy::BigInt(10), ::tpy::BigInt(20));
     c = &__global_slot_1;
-    // print(c.value)
     std::cout << c->value << "\n";
-    // print(c.extra)
     std::cout << c->extra << "\n";
 }
 

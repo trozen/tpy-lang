@@ -3,86 +3,86 @@
 
 namespace tpyapp::main {
 
-// g: Point = Point(1, 2)
 Point* g{};
 
 // def addr_global() -> Ptr[Point]:
+//     return g
 Point* addr_global() {
-    // return g
     return &(*g);
 }
 
 // def via_local() -> Ptr[Point]:
+//     p: Ptr[Point] = addr_global()  # tpyc: ok
+//     return p  # tpyc: ok
 Point* via_local() {
-    // p: Ptr[Point] = addr_global()  # tpyc: ok
     Point* p = addr_global();
-    // return p  # tpyc: ok
     return p;
 }
 
 // def via_alias() -> Ptr[Point]:
+//     p: Ptr[Point] = addr_global()
+//     q: Ptr[Point] = p  # tpyc: ok
+//     return q  # tpyc: ok
 Point* via_alias() {
-    // p: Ptr[Point] = addr_global()
     Point* p = addr_global();
-    // q: Ptr[Point] = p  # tpyc: ok
     Point* q = p;
-    // return q  # tpyc: ok
     return q;
 }
 
 // def via_both_branches(cond: bool) -> Ptr[Point]:
+//     if cond:
+//         p: Ptr[Point] = addr_global()
+//     else:
+//         p = addr_global()
+//     return p  # tpyc: ok
 Point* via_both_branches(bool cond) {
-    // if cond:
     Point* p;
     if (cond) {
-        // p: Ptr[Point] = addr_global()
         p = addr_global();
-    // else:
     } else {
-        // p = addr_global()
         p = addr_global();
     }
-    // return p  # tpyc: ok
     return p;
 }
 
 // def via_ternary(cond: bool) -> Ptr[Point]:
+//     p: Ptr[Point] = addr_global() if cond else addr_global()  # tpyc: ok
+//     return p  # tpyc: ok
 Point* via_ternary(bool cond) {
-    // p: Ptr[Point] = addr_global() if cond else addr_global()  # tpyc: ok
     Point* p = ((cond) ? (addr_global()) : (addr_global()));
-    // return p  # tpyc: ok
     return p;
 }
 
 // def main() -> None:
+//     a: Ptr[Point] = via_local()
+//     b: Ptr[Point] = via_alias()
+//     c: Ptr[Point] = via_both_branches(True)
+//     d: Ptr[Point] = via_ternary(False)
+//     print(a.x)  # tpyc: nullable(a)
+//     print(b.y)  # tpyc: nullable(b)
+//     print(c.x)  # tpyc: nullable(c)
+//     print(d.y)  # tpyc: nullable(d)
 void main() {
-    // a: Ptr[Point] = via_local()
     Point* a = via_local();
-    // b: Ptr[Point] = via_alias()
     Point* b = via_alias();
-    // c: Ptr[Point] = via_both_branches(True)
     Point* c = via_both_branches(true);
-    // d: Ptr[Point] = via_ternary(False)
     Point* d = via_ternary(false);
-    // print(a.x)  # tpyc: nullable(a)
     std::cout << ::tpy::deref_check(a).x << "\n";
-    // print(b.y)  # tpyc: nullable(b)
     std::cout << ::tpy::deref_check(b).y << "\n";
-    // print(c.x)  # tpyc: nullable(c)
     std::cout << ::tpy::deref_check(c).x << "\n";
-    // print(d.y)  # tpyc: nullable(d)
     std::cout << ::tpy::deref_check(d).y << "\n";
 }
 
+// g: Point = Point(1, 2)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g: Point = Point(1, 2)
     static Point __global_slot_1 = Point(1, 2);
     g = &__global_slot_1;
-    // main()
     main();
 }
 

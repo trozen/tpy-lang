@@ -12,7 +12,9 @@ struct Slots;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fill(s: Slots) -> None:
 void fill(Slots& s);
+// def main() -> None:
 void main();
 
 // class Data:
@@ -67,43 +69,46 @@ inline std::ostream& operator<<(std::ostream& os, const Slots& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Data::Data(int32_t v) : value(v) {}
 
 // def __init__(self) -> None:
+//     self.a = Data(0)
+//     self.b = Data(0)
 inline Slots::Slots() : a(Data(0)), b(Data(0)) {}
 
 // def __setitem__(self, index: int32, value: Data) -> None:
+//     if index == 0:
+//         self.a = value
+//     else:
+//         self.b = value
 inline void Slots::__setitem__(int32_t index, const Data& value) {
-    // if index == 0:
     if ((index == 0)) {
-        // self.a = value
         this->a = value;
-    // else:
     } else {
-        // self.b = value
         this->b = value;
     }
 }
 
 // def __getitem__(self, index: int32) -> Data:
+//     if index == 0:
+//         return self.a
+//     return self.b
 inline Data& Slots::__getitem__(int32_t index) {
-    // if index == 0:
     if ((index == 0)) {
-        // return self.a
         return this->a;
     }
-    // return self.b
     return this->b;
 }
 
 // def __getitem__(self, index: int32) -> Data:
+//     if index == 0:
+//         return self.a
+//     return self.b
 inline const Data& Slots::__getitem__(int32_t index) const {
-    // if index == 0:
     if ((index == 0)) {
-        // return self.a
         return this->a;
     }
-    // return self.b
     return this->b;
 }
 void __tpy_init();

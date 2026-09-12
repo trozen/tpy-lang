@@ -5,91 +5,93 @@ namespace tpyapp::main {
 
 
 // def test_mut() -> None:
+//     buf = MutBuffer()
+//     for x in buf:
+//         print(x)
 void test_mut() {
-    // buf = MutBuffer()
     MutBuffer buf = MutBuffer();
-    // for x in buf:
     auto& __src_0 = buf;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_ro() -> None:
+//     buf = ROBuffer()
+//     for x in buf:
+//         print(x)
 void test_ro() {
-    // buf = ROBuffer()
     ROBuffer buf = ROBuffer();
-    // for x in buf:
     auto& __src_0 = buf;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_iterate_twice() -> None:
+//     buf = MutBuffer()
+//     total: int32 = 0
+//     for x in buf:
+//         total += x
+//     for x in buf:
+//         total += x
+//     print(total)
 void test_iterate_twice() {
-    // buf = MutBuffer()
     MutBuffer buf = MutBuffer();
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in buf:
     auto& __src_0 = buf;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // for x in buf:
     auto& __src_2 = buf;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def test_readonly_param(buf: readonly[MutBuffer]) -> None:
+//     total: int32 = 0
+//     for x in buf:
+//         total += x
+//     print(total)
 void test_readonly_param(const MutBuffer& buf) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in buf:
     auto& __src_0 = buf;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def test_rvalue_span() -> None:
+//     # Iterate over a temporary -- the container must stay alive for the span
+//     total: int32 = 0
+//     for x in MutBuffer():
+//         total += x
+//     print(total)
 void test_rvalue_span() {
-    // # Iterate over a temporary -- the container must stay alive for the span
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in MutBuffer():
     {
         auto __src_0 = MutBuffer();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -97,30 +99,28 @@ void test_rvalue_span() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
         }
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// test_mut()
+// test_ro()
+// test_iterate_twice()
+// test_readonly_param(MutBuffer())
+// test_rvalue_span()
+// print("done")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_mut()
     test_mut();
-    // test_ro()
     test_ro();
-    // test_iterate_twice()
     test_iterate_twice();
-    // test_readonly_param(MutBuffer())
     test_readonly_param(MutBuffer());
-    // test_rvalue_span()
     test_rvalue_span();
-    // print("done")
     std::cout << "done" << "\n";
 }
 

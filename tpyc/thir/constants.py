@@ -138,7 +138,7 @@ def lower_constant(expr, target_type: 'TpyType | None', analyzer, *,
     lc.prescan.global_readonly = frozenset(const_scope)
     try:
         node = _lower_constant_expr(expr, target_type, lc, declared)
-        state = _EmitState(comments=None,
+        state = _EmitState(
                            temps=_ConstPositionSink(),
                            with_counter=_ConstPositionSink(),
                            try_counter=_ConstPositionSink(),

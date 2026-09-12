@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test() -> None:
 void test();
 
 // class Inner:
@@ -56,26 +57,28 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, val: int) -> None:
+//     self.val = val
 inline Inner::Inner(const ::tpy::BigInt& val) : val(val) {}
 
 // def mutate(self) -> None:
+//     self.val += 10
 inline void Inner::mutate() {
-    // self.val += 10
     this->val = (this->val) + (::tpy::BigInt(10));
 }
 
 // def __init__(self) -> None:
+//     self.inner = Inner(1)
 inline Holder::Holder() : inner(Inner(::tpy::BigInt(1))) {}
 
 // def get(self) -> Inner:
+//     return self.inner
 inline Inner& Holder::get() {
-    // return self.inner
     return this->inner;
 }
 
 // def get_ro(self) -> readonly[Inner]:
+//     return self.inner
 inline const Inner& Holder::get_ro() {
-    // return self.inner
     return this->inner;
 }
 void __tpy_init();

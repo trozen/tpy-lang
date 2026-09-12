@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def test_str_ptr() -> None:
+//     s: str = "hello"
+//     cp: Ptr[readonly[char]] = unsafe_ptr(s)
+//     print(unsafe_load(cp, uint32(0)))
+//     print(unsafe_load(cp, uint32(4)))
 void test_str_ptr() {
-    // s: str = "hello"
     std::string_view s = "hello";
-    // cp: Ptr[readonly[char]] = unsafe_ptr(s)
     const char* cp = s.data();
-    // print(unsafe_load(cp, uint32(0)))
     std::cout << cp[0] << "\n";
-    // print(unsafe_load(cp, uint32(4)))
     std::cout << cp[4] << "\n";
 }
 
+// from tpy.unsafe import unsafe_ptr, unsafe_load
+//
+// test_str_ptr()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_ptr, unsafe_load
-    // test_str_ptr()
     test_str_ptr();
 }
 

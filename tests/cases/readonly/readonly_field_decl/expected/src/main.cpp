@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Config("hello", 42)
+//     print(c.name, c.value)
+//     c.inc()
+//     print(c.value)
+//     c.value = 99
+//     print(c.value)
 void main() {
-    // c = Config("hello", 42)
     Config c = Config("hello", ::tpy::BigInt(42));
-    // print(c.name, c.value)
     std::cout << c.name << " " << c.value << "\n";
-    // c.inc()
     c.inc();
-    // print(c.value)
     std::cout << c.value << "\n";
-    // c.value = 99
     c.value = ::tpy::BigInt(99);
-    // print(c.value)
     std::cout << c.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

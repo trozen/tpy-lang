@@ -5,119 +5,127 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[ArrayList[Item, 4]]:
+//     xs = ArrayList[Item, 4]()
+//     xs.append(Item("alpha", 1))
+//     xs.append(Item("beta", 2))
+//     return xs
 ::tpystd::tplib::array_list::ArrayList<Item, 4> make() {
-    // xs = ArrayList[Item, 4]()
     ::tpystd::tplib::array_list::ArrayList<Item, 4> xs = ::tpystd::tplib::array_list::ArrayList<Item, 4>();
-    // xs.append(Item("alpha", 1))
     xs.append(Item("alpha", ::tpy::BigInt(1)));
-    // xs.append(Item("beta", 2))
     xs.append(Item("beta", ::tpy::BigInt(2)));
-    // return xs
     return xs;
 }
 
 // def make_full() -> Own[ArrayList[Item, 4]]:
+//     xs = ArrayList[Item, 4]()
+//     xs.append(Item("a", 0))
+//     xs.append(Item("b", 1))
+//     xs.append(Item("c", 2))
+//     xs.append(Item("d", 3))
+//     return xs
 ::tpystd::tplib::array_list::ArrayList<Item, 4> make_full() {
-    // xs = ArrayList[Item, 4]()
     ::tpystd::tplib::array_list::ArrayList<Item, 4> xs = ::tpystd::tplib::array_list::ArrayList<Item, 4>();
-    // xs.append(Item("a", 0))
     xs.append(Item("a", ::tpy::BigInt(0)));
-    // xs.append(Item("b", 1))
     xs.append(Item("b", ::tpy::BigInt(1)));
-    // xs.append(Item("c", 2))
     xs.append(Item("c", ::tpy::BigInt(2)));
-    // xs.append(Item("d", 3))
     xs.append(Item("d", ::tpy::BigInt(3)));
-    // return xs
     return xs;
 }
 
 // def make_empty() -> Own[ArrayList[Item, 4]]:
+//     return ArrayList[Item, 4]()
 ::tpystd::tplib::array_list::ArrayList<Item, 4> make_empty() {
-    // return ArrayList[Item, 4]()
     return ::tpystd::tplib::array_list::ArrayList<Item, 4>();
 }
 
 // def main() -> None:
+//     xs = make()                 # returned by value -> move of live prefix
+//     print(len(xs))              # 2
+//     print(xs[0].name, xs[1].name)  # alpha beta
+//
+//     xs[0].n = 99                # mutate through element ref after the move
+//     print(xs[0].n)              # 99
+//
+//     xs.append(Item("gamma", 3))
+//     last = xs.pop()
+//     print(last.name)            # gamma
+//
+//     xs.insert(0, Item("zero", 0))
+//     print(xs[0].name, len(xs))  # zero 3
+//     xs.reverse()
+//     print(xs[0].name)           # beta
+//
+//     ys = make_full()
+//     print(len(ys))              # 4
+//     print(ys[3].name)           # d
+//
+//     zs = make_empty()
+//     print(len(zs))              # 0
+//     zs.append(Item("late", 7))
+//     print(zs[0].name)           # late
+//
+//     # Forced, non-elided move: `std::move` of a named lvalue runs the
+//     # relocating move ctor for real (NRVO/elision cannot apply here).
+//     ws = make()
+//     moved = ws                  # last-use of ws -> move-constructs `moved`
+//     print(len(moved), moved[0].name, moved[1].name)  # 2 alpha beta
+//     moved[0].name = "shifted"   # mutate a relocated element
+//     print(moved[0].name)        # shifted
+//
+//     # Move-assignment: reassigning a live list runs operator= (destroy the
+//     # old elements, then relocate the new ones via the move ctor).
+//     acc = make()                # [alpha, beta]
+//     acc = make_full()           # reassign -> drop old, relocate [a, b, c, d]
+//     print(len(acc), acc[0].name, acc[3].name)  # 4 a d
 void main() {
     std::optional<::tpystd::tplib::array_list::ArrayList<Item, 4>> __slot_2;
-    // xs = make()                 # returned by value -> move of live prefix
     ::tpystd::tplib::array_list::ArrayList<Item, 4> xs = make();
-    // print(len(xs))              # 2
     std::cout << ::tpy::__len__(xs) << "\n";
-    // print(xs[0].name, xs[1].name)  # alpha beta
     std::cout << xs[0].name << " " << xs[1].name << "\n";
-    // xs[0].n = 99                # mutate through element ref after the move
     xs[0].n = ::tpy::BigInt(99);
-    // print(xs[0].n)              # 99
     std::cout << xs[0].n << "\n";
-    // xs.append(Item("gamma", 3))
     xs.append(Item("gamma", ::tpy::BigInt(3)));
-    // last = xs.pop()
     Item last = xs.pop();
-    // print(last.name)            # gamma
     std::cout << last.name << "\n";
-    // xs.insert(0, Item("zero", 0))
     xs.insert(0, Item("zero", ::tpy::BigInt(0)));
-    // print(xs[0].name, len(xs))  # zero 3
     std::cout << xs[0].name << " " << ::tpy::__len__(xs) << "\n";
-    // xs.reverse()
     xs.reverse();
-    // print(xs[0].name)           # beta
     std::cout << xs[0].name << "\n";
-    // ys = make_full()
     ::tpystd::tplib::array_list::ArrayList<Item, 4> ys = make_full();
-    // print(len(ys))              # 4
     std::cout << ::tpy::__len__(ys) << "\n";
-    // print(ys[3].name)           # d
     std::cout << ys[3].name << "\n";
-    // zs = make_empty()
     ::tpystd::tplib::array_list::ArrayList<Item, 4> zs = make_empty();
-    // print(len(zs))              # 0
     std::cout << ::tpy::__len__(zs) << "\n";
-    // zs.append(Item("late", 7))
     zs.append(Item("late", ::tpy::BigInt(7)));
-    // print(zs[0].name)           # late
     std::cout << zs[0].name << "\n";
-    // # Forced, non-elided move: `std::move` of a named lvalue runs the
-    // # relocating move ctor for real (NRVO/elision cannot apply here).
-    // ws = make()
     ::tpystd::tplib::array_list::ArrayList<Item, 4> ws = make();
-    // moved = ws                  # last-use of ws -> move-constructs `moved`
     ::tpystd::tplib::array_list::ArrayList<Item, 4> moved = std::move(ws);
-    // print(len(moved), moved[0].name, moved[1].name)  # 2 alpha beta
     std::cout << ::tpy::__len__(moved) << " " << moved[0].name << " " << moved[1].name << "\n";
-    // moved[0].name = "shifted"   # mutate a relocated element
     moved[0].name = "shifted";
-    // print(moved[0].name)        # shifted
     std::cout << moved[0].name << "\n";
-    // # Move-assignment: reassigning a live list runs operator= (destroy the
-    // # old elements, then relocate the new ones via the move ctor).
-    // acc = make()                # [alpha, beta]
     ::tpystd::tplib::array_list::ArrayList<Item, 4> __slot_1 = make();
     ::tpystd::tplib::array_list::ArrayList<Item, 4>* acc = &__slot_1;
-    // acc = make_full()           # reassign -> drop old, relocate [a, b, c, d]
     acc = &*(__slot_2 = make_full());
-    // print(len(acc), acc[0].name, acc[3].name)  # 4 a d
     std::cout << ::tpy::__len__((*acc)) << " " << (*acc)[0].name << " " << (*acc)[3].name << "\n";
 }
 
+// # ArrayList[T, N] movability for a non-trivially-relocatable element type
+// # (Item has a str field -> SSO, not byte-relocatable). The factory returns are
+// # NRVO/copy-elided (no move ctor runs there), so the load-bearing check is the
+// # `moved = ws` line below: `std::move` of a named lvalue is NOT elidable, so it
+// # actually runs ArrayList.__move__, relocating the live prefix element-wise. If
+// # __move__ were wrong (e.g. a byte memcpy), the SSO strings would corrupt here.
+// # Mutating an element after a boundary also forces reference semantics (a
+// # silent copy would not be observed), per the reference-type-distinction rule.
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # ArrayList[T, N] movability for a non-trivially-relocatable element type
-    // # (Item has a str field -> SSO, not byte-relocatable). The factory returns are
-    // # NRVO/copy-elided (no move ctor runs there), so the load-bearing check is the
-    // # `moved = ws` line below: `std::move` of a named lvalue is NOT elidable, so it
-    // # actually runs ArrayList.__move__, relocating the live prefix element-wise. If
-    // # __move__ were wrong (e.g. a byte memcpy), the SSO strings would corrupt here.
-    // # Mutating an element after a boundary also forces reference semantics (a
-    // # silent copy would not be observed), per the reference-type-distinction rule.
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,11 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Unpack from dict.items()
+//     prices: dict[str, int32] = {"apple": 3, "banana": 1, "cherry": 5}
+//     doubled: dict[str, int32] = {k: v * 2 for k, v in prices.items()}
+//     for k in doubled:
+//         print(k, doubled[k])
+//
+//     # Unpack from list of tuples
+//     pairs: list[tuple[str, int32]] = [("x", 10), ("y", 20), ("z", 30)]
+//     result: dict[str, int32] = {k: v for k, v in pairs}
+//     print(result["x"])
+//     print(result["y"])
+//     print(result["z"])
+//
+//     # Swap keys and values (int32 -> str)
+//     swapped: dict[int32, str] = {v: k for k, v in prices.items()}
+//     print(swapped[3])
+//     print(swapped[1])
+//     print(swapped[5])
 void main() {
-    // # Unpack from dict.items()
-    // prices: dict[str, int32] = {"apple": 3, "banana": 1, "cherry": 5}
     ::tpy::ordered_map<std::string, int32_t> prices = ::tpy::ordered_map<std::string, int32_t>({{"apple", 3}, {"banana", 1}, {"cherry", 5}});
-    // doubled: dict[str, int32] = {k: v * 2 for k, v in prices.items()}
     ::tpy::ordered_map<std::string, int32_t> doubled = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto __obj_0 = ::tpy::dict_items(prices);
@@ -23,19 +38,14 @@ void main() {
         }
         std::move(__result);
     });
-    // for k in doubled:
     auto& __obj_1 = doubled;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // print(k, doubled[k])
         std::cout << k << " " << ::tpy::__getitem__(doubled, k) << "\n";
     }
-    // # Unpack from list of tuples
-    // pairs: list[tuple[str, int32]] = [("x", 10), ("y", 20), ("z", 30)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}, std::tuple<std::string, int32_t>{"z", 30}};
-    // result: dict[str, int32] = {k: v for k, v in pairs}
     ::tpy::ordered_map<std::string, int32_t> result = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto& __obj_2 = pairs;
@@ -49,14 +59,9 @@ void main() {
         }
         std::move(__result);
     });
-    // print(result["x"])
     std::cout << ::tpy::__getitem__(result, "x") << "\n";
-    // print(result["y"])
     std::cout << ::tpy::__getitem__(result, "y") << "\n";
-    // print(result["z"])
     std::cout << ::tpy::__getitem__(result, "z") << "\n";
-    // # Swap keys and values (int32 -> str)
-    // swapped: dict[int32, str] = {v: k for k, v in prices.items()}
     ::tpy::ordered_map<int32_t, std::string> swapped = ({
         ::tpy::ordered_map<int32_t, std::string> __result;
         auto __obj_3 = ::tpy::dict_items(prices);
@@ -70,20 +75,17 @@ void main() {
         }
         std::move(__result);
     });
-    // print(swapped[3])
     std::cout << ::tpy::__getitem__(swapped, 3) << "\n";
-    // print(swapped[1])
     std::cout << ::tpy::__getitem__(swapped, 1) << "\n";
-    // print(swapped[5])
     std::cout << ::tpy::__getitem__(swapped, 5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

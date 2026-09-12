@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def test_set() -> None:
+//     s: set[StrView] = set()
+//     s.add("hello")
+//     s.add("world")
+//     s.add("hello")
+//     print(len(s))
+//     print("hello" in s)
+//     print("missing" in s)
 void test_set() {
-    // s: set[StrView] = set()
     ::tpy::ordered_set<std::string_view> s = ::tpy::ordered_set<std::string_view>();
-    // s.add("hello")
     s.insert("hello");
-    // s.add("world")
     s.insert("world");
-    // s.add("hello")
     s.insert("hello");
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // print("hello" in s)
     std::cout << ::tpy::print_bool((s.contains("hello"))) << "\n";
-    // print("missing" in s)
     std::cout << ::tpy::print_bool((s.contains("missing"))) << "\n";
 }
 
 // def test_dict() -> None:
+//     d: dict[StrView, int] = {}
+//     d["alice"] = 1
+//     d["bob"] = 2
+//     d["alice"] = 10
+//     print(d["alice"])
+//     print(d["bob"])
+//     print(len(d))
+//     print("alice" in d)
+//     print("missing" in d)
 void test_dict() {
-    // d: dict[StrView, int] = {}
     ::tpy::ordered_map<std::string_view, ::tpy::BigInt> d = ::tpy::ordered_map<std::string_view, ::tpy::BigInt>();
-    // d["alice"] = 1
     ::tpy::__setitem__(d, "alice", ::tpy::BigInt(1));
-    // d["bob"] = 2
     ::tpy::__setitem__(d, "bob", ::tpy::BigInt(2));
-    // d["alice"] = 10
     ::tpy::__setitem__(d, "alice", ::tpy::BigInt(10));
-    // print(d["alice"])
     std::cout << ::tpy::__getitem__(d, "alice") << "\n";
-    // print(d["bob"])
     std::cout << ::tpy::__getitem__(d, "bob") << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // print("alice" in d)
     std::cout << ::tpy::print_bool((d.contains("alice"))) << "\n";
-    // print("missing" in d)
     std::cout << ::tpy::print_bool((d.contains("missing"))) << "\n";
 }
 
+// test_set()
+// test_dict()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_set()
     test_set();
-    // test_dict()
     test_dict();
 }
 

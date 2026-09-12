@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def consume(p: Own[Point]) -> int32:
+//     return p.x
 int32_t consume(Point&& p) {
-    // return p.x
     return p.x;
 }
 
 // def test(a: Point, cond: bool) -> int32:
+//     p = Point()
+//     p.x = 10
+//     if cond:
+//         p = Point()  # rvalue reassignment
+//         p.x = 20
+//     else:
+//         p = a  # lvalue reassignment -> borrowed
+//     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
 int32_t test(Point& a, bool cond) {
     std::optional<Point> __slot_2;
-    // p = Point()
     Point __slot_1 = Point();
     Point* p = &__slot_1;
-    // p.x = 10
     p->x = 10;
-    // if cond:
     if (cond) {
-        // p = Point()  # rvalue reassignment
         p = &*(__slot_2 = Point());
-        // p.x = 20
         p->x = 20;
-    // else:
     } else {
-        // p = a  # lvalue reassignment -> borrowed
         p = &(a);
     }
-    // return consume(p)  # tpyc: warning(/copies.*into owned storage/)
     Point __tmp_1 = (*p);
     return consume(std::move(__tmp_1));
 }

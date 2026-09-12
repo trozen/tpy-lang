@@ -12,8 +12,10 @@ struct Message;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(p: P) -> None:
 template<::tpyapp::traits::Printable T_p>
 void show(T_p& p);
+// def main() -> int32:
 int32_t main();
 
 // class Message:
@@ -37,17 +39,18 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 
 
 // def __init__(self, text: str):
+//     self.text = text
 inline Message::Message(std::string_view text) : text(text) {}
 
 // def to_string(self) -> str:
+//     return self.text
 inline std::string Message::to_string() const {
-    // return self.text
     return this->text;
 }
 // def show(p: P) -> None:
+//     print(p.to_string())
 template<::tpyapp::traits::Printable T_p>
 void show(T_p& p) {
-    // print(p.to_string())
     std::cout << p.to_string() << "\n";
 }
 

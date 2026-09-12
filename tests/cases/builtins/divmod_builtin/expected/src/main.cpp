@@ -5,59 +5,63 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # int32 divmod
+//     q1, r1 = divmod(int32(17), int32(5))
+//     print(q1)
+//     print(r1)
+//
+//     # int32 divmod with negative (Python floor semantics)
+//     q2, r2 = divmod(int32(-17), int32(5))
+//     print(q2)
+//     print(r2)
+//
+//     # BigInt divmod
+//     q3, r3 = divmod(int(100), int(7))
+//     print(q3)
+//     print(r3)
+//
+//     # float divmod
+//     q4, r4 = divmod(7.5, 2.5)
+//     print(q4)
+//     print(r4)
+//
+//     q5, r5 = divmod(10.0, 3.0)
+//     print(q5)
+//     print(r5)
 void main() {
-    // # int32 divmod
-    // q1, r1 = divmod(int32(17), int32(5))
     auto __tup_1 = ::tpy::divmod_fixed<int32_t>(17, 5);
     int32_t q1 = std::get<0>(__tup_1);
     int32_t r1 = std::get<1>(__tup_1);
-    // print(q1)
     std::cout << q1 << "\n";
-    // print(r1)
     std::cout << r1 << "\n";
-    // # int32 divmod with negative (Python floor semantics)
-    // q2, r2 = divmod(int32(-17), int32(5))
     auto __tup_2 = ::tpy::divmod_fixed<int32_t>(-17, 5);
     int32_t q2 = std::get<0>(__tup_2);
     int32_t r2 = std::get<1>(__tup_2);
-    // print(q2)
     std::cout << q2 << "\n";
-    // print(r2)
     std::cout << r2 << "\n";
-    // # BigInt divmod
-    // q3, r3 = divmod(int(100), int(7))
     auto __tup_3 = ::tpy::divmod_bigint(::tpy::BigInt(100), ::tpy::BigInt(7));
     const ::tpy::BigInt& q3 = std::get<0>(__tup_3);
     const ::tpy::BigInt& r3 = std::get<1>(__tup_3);
-    // print(q3)
     std::cout << q3 << "\n";
-    // print(r3)
     std::cout << r3 << "\n";
-    // # float divmod
-    // q4, r4 = divmod(7.5, 2.5)
     auto __tup_4 = ::tpy::divmod_float(7.5, 2.5);
     double q4 = std::get<0>(__tup_4);
     double r4 = std::get<1>(__tup_4);
-    // print(q4)
     std::cout << ::tpy::print_float(q4) << "\n";
-    // print(r4)
     std::cout << ::tpy::print_float(r4) << "\n";
-    // q5, r5 = divmod(10.0, 3.0)
     auto __tup_5 = ::tpy::divmod_float(10.0, 3.0);
     double q5 = std::get<0>(__tup_5);
     double r5 = std::get<1>(__tup_5);
-    // print(q5)
     std::cout << ::tpy::print_float(q5) << "\n";
-    // print(r5)
     std::cout << ::tpy::print_float(r5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

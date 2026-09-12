@@ -30,29 +30,51 @@ extern double _NV_MAGICCONST;
 extern Random* _inst;
 inline constexpr std::string_view __name__ = "random";
 
+// def random() -> float:
 double random();
+// def seed() -> None:
 void seed();
+// def seed(n: int32) -> None:
 void seed(int32_t n);
+// def getrandbits(k: int32) -> int:
 ::tpy::BigInt getrandbits(int32_t k);
+// def randint(a: int32, b: int32) -> int32:
 int32_t randint(int32_t a, int32_t b);
+// def choice[T](seq: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> choice(const std::vector<T>& seq);
+// def shuffle[T](seq: list[T]) -> None:
 template<typename T>
 void shuffle(std::vector<T>& seq);
+// def randrange(stop: int32) -> int32:
 int32_t randrange(int32_t stop);
+// def randrange(start: int32, stop: int32) -> int32:
 int32_t randrange(int32_t start, int32_t stop);
+// def randrange(start: int32, stop: int32, step: int32) -> int32:
 int32_t randrange(int32_t start, int32_t stop, int32_t step);
+// def randbytes(n: int32) -> bytes:
 ::tpy::Bytes randbytes(int32_t n);
+// def uniform(a: float, b: float) -> float:
 double uniform(double a, double b);
+// def triangular(low: float = 0.0, high: float = 1.0, mode: float | None = None) -> float:
 double triangular(double low = 0.0, double high = 1.0, std::optional<double> mode = std::nullopt);
+// def gauss(mu: float, sigma: float) -> float:
 double gauss(double mu, double sigma);
+// def normalvariate(mu: float, sigma: float) -> float:
 double normalvariate(double mu, double sigma);
+// def lognormvariate(mu: float, sigma: float) -> float:
 double lognormvariate(double mu, double sigma);
+// def expovariate(lambd: float) -> float:
 double expovariate(double lambd);
+// def paretovariate(alpha: float) -> float:
 double paretovariate(double alpha);
+// def weibullvariate(alpha: float, beta: float) -> float:
 double weibullvariate(double alpha, double beta);
+// def gammavariate(alpha: float, beta: float) -> float:
 double gammavariate(double alpha, double beta);
+// def betavariate(alpha: float, beta: float) -> float:
 double betavariate(double alpha, double beta);
+// def vonmisesvariate(mu: float, kappa: float) -> float:
 double vonmisesvariate(double mu, double kappa);
 
 // class Random:
@@ -120,38 +142,38 @@ struct Random {
 
     // # ---------- Sequence helpers ----------
     // def choice[T](self, seq: list[T]) -> T:
+    //     n: int32 = int32(len(seq))
+    //     if n == 0:
+    //         raise IndexError("Cannot choose from an empty sequence")
+    //     return copy(seq[int32(self._randbelow(uint32(n)))])
     template<typename T>
     ::tpy::val_or_ref_t<T> choice(const std::vector<T>& seq) {
-        // n: int32 = int32(len(seq))
         int32_t n = ::tpy::__len__(seq);
-        // if n == 0:
         if ((n == 0)) {
-            // raise IndexError("Cannot choose from an empty sequence")
             throw ::tpy::IndexError("Cannot choose from an empty sequence");
         }
-        // return copy(seq[int32(self._randbelow(uint32(n)))])
         return T(::tpy::__getitem__(seq, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(n)))));
     }
 
     // def shuffle[T](self, seq: list[T]) -> None:
+    //     # Fisher-Yates / Durstenfeld in place. Matches CPython's
+    //     # random.shuffle MT call sequence (one _randbelow(i+1) per step,
+    //     # i from len-1 down to 1).
+    //     i: int32 = int32(len(seq)) - 1
+    //     while i > 0:
+    //         j: int32 = int32(self._randbelow(uint32(i + 1)))
+    //         tmp: T = copy(seq[i])
+    //         seq[i] = copy(seq[j])
+    //         seq[j] = tmp
+    //         i -= 1
     template<typename T>
     void shuffle(std::vector<T>& seq) {
-        // # Fisher-Yates / Durstenfeld in place. Matches CPython's
-        // # random.shuffle MT call sequence (one _randbelow(i+1) per step,
-        // # i from len-1 down to 1).
-        // i: int32 = int32(len(seq)) - 1
         int32_t i = (::tpy::sub_check<int32_t>(::tpy::__len__(seq), 1));
-        // while i > 0:
         while ((i > 0)) {
-            // j: int32 = int32(self._randbelow(uint32(i + 1)))
             int32_t j = ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>((::tpy::add_check<int32_t>(i, 1)))));
-            // tmp: T = copy(seq[i])
             T tmp = T(::tpy::__getitem__(seq, i));
-            // seq[i] = copy(seq[j])
             ::tpy::__setitem__(seq, i, T(::tpy::__getitem__(seq, j)));
-            // seq[j] = tmp
             ::tpy::__setitem__(seq, j, std::move(tmp));
-            // i -= 1
             i = ::tpy::sub_check<int32_t>(i, 1);
         }
     }
@@ -202,101 +224,103 @@ inline std::ostream& operator<<(std::ostream& os, const Random& obj) {
 
 
 // def __init__(self, seed_value: uint32 | None = None) -> None:
+//     # std::array<uint32_t, 624>{} zero-inits every slot.
+//     self._state = Array[uint32, 624]()
+//     self._index = _N
+//     self._gauss_next = 0.0
+//     self._has_gauss_next = False
+//     if seed_value is None:
+//         self._seed(_os_entropy_uint32())
+//     else:
+//         self._seed(seed_value)
 inline Random::Random(std::optional<uint32_t> seed_value) : _state(std::array<uint32_t, 624>()) {
-    // self._index = _N
     this->_index = _N;
-    // self._gauss_next = 0.0
     this->_gauss_next = 0.0;
-    // self._has_gauss_next = False
     this->_has_gauss_next = false;
-    // if seed_value is None:
     if ((!seed_value.has_value())) {
-        // self._seed(_os_entropy_uint32())
         this->_seed(::tpy::stdlib::random::os_entropy_uint32());
-    // else:
     } else {
-        // self._seed(seed_value)
         this->_seed((*seed_value));
     }
 }
 
 // def _init_genrand(self, s: uint32) -> None:
+//     self._state[0] = s
+//     mti: int32 = 1
+//     while mti < _N:
+//         prev: uint32 = self._state[mti - 1]
+//         self._state[mti] = uint32.add_wrap(
+//             uint32.mul_wrap(1812433253, prev ^ (prev >> 30)),
+//             uint32(mti),
+//         )
+//         mti += 1
+//     self._index = _N
 inline void Random::_init_genrand(uint32_t s) {
-    // self._state[0] = s
     ::tpy::__setitem__(this->_state, 0, s);
-    // mti: int32 = 1
     int32_t mti = 1;
-    // while mti < _N:
     while ((mti < _N)) {
-        // prev: uint32 = self._state[mti - 1]
         uint32_t prev = ::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(mti, 1)));
-        // self._state[mti] = uint32.add_wrap(
-        // uint32.mul_wrap(1812433253, prev ^ (prev >> 30)),
-        // uint32(mti),
-        // )
         ::tpy::__setitem__(this->_state, mti, static_cast<uint32_t>(static_cast<uint32_t>(1812433253 * (static_cast<uint32_t>(prev ^ (::tpy::rshift_check<uint32_t>(prev, 30))))) + ::tpy::int_cast_check<uint32_t>(mti)));
-        // mti += 1
         mti = ::tpy::add_check<int32_t>(mti, 1);
     }
-    // self._index = _N
     this->_index = _N;
 }
 
 // def random(self) -> float:
+//     # genrand_res53 -- 53-bit uniform in [0, 1), matches CPython.
+//     a: uint32 = self._genrand_uint32() >> 5   # top 27 bits
+//     b: uint32 = self._genrand_uint32() >> 6   # top 26 bits
+//     return (float(a) * 67108864.0 + float(b)) * (1.0 / 9007199254740992.0)
 inline double Random::random() {
-    // # genrand_res53 -- 53-bit uniform in [0, 1), matches CPython.
-    // a: uint32 = self._genrand_uint32() >> 5   # top 27 bits
     uint32_t a = (::tpy::rshift_check<uint32_t>(this->_genrand_uint32(), 5));
-    // b: uint32 = self._genrand_uint32() >> 6   # top 26 bits
     uint32_t b = (::tpy::rshift_check<uint32_t>(this->_genrand_uint32(), 6));
-    // return (float(a) * 67108864.0 + float(b)) * (1.0 / 9007199254740992.0)
     return ((((((static_cast<double>(a)) * (67108864.0))) + (static_cast<double>(b)))) * ((::tpy::truediv(1.0, 9007199254740992.0))));
 }
 
 // def _genrand_top_bits(self, k: int32) -> uint32:
+//     # k in [1, 32]. Avoids the BigInt promotion that public
+//     # getrandbits does, so _randbelow's rejection loop stays uint32.
+//     return self._genrand_uint32() >> uint32(32 - k)
 inline uint32_t Random::_genrand_top_bits(int32_t k) {
-    // # k in [1, 32]. Avoids the BigInt promotion that public
-    // # getrandbits does, so _randbelow's rejection loop stays uint32.
-    // return self._genrand_uint32() >> uint32(32 - k)
     return (::tpy::rshift_check<uint32_t>(this->_genrand_uint32(), ::tpy::int_cast_check<uint32_t>((::tpy::sub_check<int32_t>(32, k)))));
 }
 
 // def randint(self, a: int32, b: int32) -> int32:
+//     # Inclusive [a, b]. v1 constraint: b - a + 1 must fit in int32
+//     # (i.e. b - a <= INT32_MAX - 1). CPython handles arbitrary ints.
+//     if b < a:
+//         raise ValueError("empty range for randint()")
+//     width: int32 = b - a + 1
+//     return a + int32(self._randbelow(uint32(width)))
 inline int32_t Random::randint(int32_t a, int32_t b) {
-    // # Inclusive [a, b]. v1 constraint: b - a + 1 must fit in int32
-    // # (i.e. b - a <= INT32_MAX - 1). CPython handles arbitrary ints.
-    // if b < a:
     if ((b < a)) {
-        // raise ValueError("empty range for randint()")
         throw ::tpy::ValueError("empty range for randint()");
     }
-    // width: int32 = b - a + 1
     int32_t width = (::tpy::add_check<int32_t>((::tpy::sub_check<int32_t>(b, a)), 1));
-    // return a + int32(self._randbelow(uint32(width)))
     return (::tpy::add_check<int32_t>(a, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(width)))));
 }
 
 // @dispatch
 // def randrange(self, stop: int32) -> int32:
+//     if stop <= 0:
+//         raise ValueError("empty range for randrange()")
+//     return int32(self._randbelow(uint32(stop)))
 inline int32_t Random::randrange(int32_t stop) {
-    // if stop <= 0:
     if ((stop <= 0)) {
-        // raise ValueError("empty range for randrange()")
         throw ::tpy::ValueError("empty range for randrange()");
     }
-    // return int32(self._randbelow(uint32(stop)))
     return ::tpy::int_cast_check<int32_t>(this->_randbelow(static_cast<uint32_t>(stop)));
 }
 
 // @dispatch
 // def randrange(self, start: int32, stop: int32) -> int32:
+//     if stop <= start:
+//         raise ValueError("empty range for randrange()")
+//     return start + int32(self._randbelow(uint32(stop - start)))
 inline int32_t Random::randrange(int32_t start, int32_t stop) {
-    // if stop <= start:
     if ((stop <= start)) {
-        // raise ValueError("empty range for randrange()")
         throw ::tpy::ValueError("empty range for randrange()");
     }
-    // return start + int32(self._randbelow(uint32(stop - start)))
     return (::tpy::add_check<int32_t>(start, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>((::tpy::sub_check<int32_t>(stop, start)))))));
 }
 
@@ -305,86 +329,86 @@ inline int32_t Random::randrange(int32_t start, int32_t stop) {
 // # output on the same seed because libm (cos/sin/log/exp/sqrt) is the
 // # same underlying implementation under CPython and TPy on Linux.
 // def uniform(self, a: float, b: float) -> float:
+//     return a + (b - a) * self.random()
 inline double Random::uniform(double a, double b) {
-    // return a + (b - a) * self.random()
     return ((a) + (((((b) - (a))) * (this->random()))));
 }
 
 // def normalvariate(self, mu: float, sigma: float) -> float:
+//     # Kinderman-Monahan method, distinct from gauss(). Matches CPython.
+//     # Does NOT populate _gauss_next: each call consumes fresh MT words.
+//     # gauss() and normalvariate() produce uncorrelated streams even when
+//     # interleaved; _gauss_next is gauss-only state.
+//     while True:
+//         u1: float = self.random()
+//         u2: float = 1.0 - self.random()
+//         z: float = _NV_MAGICCONST * (u1 - 0.5) / u2
+//         zz: float = z * z / 4.0
+//         if zz <= -math.log(u2):
+//             return mu + z * sigma
 inline double Random::normalvariate(double mu, double sigma) {
-    // # Kinderman-Monahan method, distinct from gauss(). Matches CPython.
-    // # Does NOT populate _gauss_next: each call consumes fresh MT words.
-    // # gauss() and normalvariate() produce uncorrelated streams even when
-    // # interleaved; _gauss_next is gauss-only state.
-    // while True:
     while (true) {
-        // u1: float = self.random()
         double u1 = this->random();
-        // u2: float = 1.0 - self.random()
         double u2 = ((1.0) - (this->random()));
-        // z: float = _NV_MAGICCONST * (u1 - 0.5) / u2
         double z = (::tpy::truediv(((_NV_MAGICCONST) * (((u1) - (0.5)))), u2));
-        // zz: float = z * z / 4.0
         double zz = (::tpy::truediv(((z) * (z)), 4.0));
-        // if zz <= -math.log(u2):
         if ((zz <= -(::tpy::stdlib::math::checked_log(u2)))) {
-            // return mu + z * sigma
             return ((mu) + (((z) * (sigma))));
         }
     }
 }
 
 // def lognormvariate(self, mu: float, sigma: float) -> float:
+//     return math.exp(self.normalvariate(mu, sigma))
 inline double Random::lognormvariate(double mu, double sigma) {
-    // return math.exp(self.normalvariate(mu, sigma))
     return ::tpy::stdlib::math::checked_exp(this->normalvariate(mu, sigma));
 }
 
 // def expovariate(self, lambd: float) -> float:
+//     # 1.0 - random() is in (0, 1], so log is in (-inf, 0], result >= 0.
+//     return -math.log(1.0 - self.random()) / lambd
 inline double Random::expovariate(double lambd) {
-    // # 1.0 - random() is in (0, 1], so log is in (-inf, 0], result >= 0.
-    // return -math.log(1.0 - self.random()) / lambd
     return (::tpy::truediv(-(::tpy::stdlib::math::checked_log(((1.0) - (this->random())))), lambd));
 }
 
 // def paretovariate(self, alpha: float) -> float:
+//     u: float = 1.0 - self.random()
+//     return u ** (-1.0 / alpha)
 inline double Random::paretovariate(double alpha) {
-    // u: float = 1.0 - self.random()
     double u = ((1.0) - (this->random()));
-    // return u ** (-1.0 / alpha)
     return (std::pow(u, (::tpy::truediv(-(1.0), alpha))));
 }
 
 // def weibullvariate(self, alpha: float, beta: float) -> float:
+//     u: float = 1.0 - self.random()
+//     return alpha * (-math.log(u)) ** (1.0 / beta)
 inline double Random::weibullvariate(double alpha, double beta) {
-    // u: float = 1.0 - self.random()
     double u = ((1.0) - (this->random()));
-    // return alpha * (-math.log(u)) ** (1.0 / beta)
     return ((alpha) * ((std::pow(-(::tpy::stdlib::math::checked_log(u)), (::tpy::truediv(1.0, beta))))));
 }
 
 // def betavariate(self, alpha: float, beta: float) -> float:
+//     y: float = self.gammavariate(alpha, 1.0)
+//     if y <= 0.0:
+//         return 0.0
+//     return y / (y + self.gammavariate(beta, 1.0))
 inline double Random::betavariate(double alpha, double beta) {
-    // y: float = self.gammavariate(alpha, 1.0)
     double y = this->gammavariate(alpha, 1.0);
-    // if y <= 0.0:
     if ((y <= 0.0)) {
-        // return 0.0
         return 0.0;
     }
-    // return y / (y + self.gammavariate(beta, 1.0))
     return (::tpy::truediv(y, ((y) + (this->gammavariate(beta, 1.0)))));
 }
 // def choice[T](seq: list[T]) -> T:
+//     return _inst.choice(seq)
 template<typename T>
 ::tpy::val_or_ref_t<T> choice(const std::vector<T>& seq) {
-    // return _inst.choice(seq)
     return _inst->choice<T>(seq);
 }
 // def shuffle[T](seq: list[T]) -> None:
+//     _inst.shuffle(seq)
 template<typename T>
 void shuffle(std::vector<T>& seq) {
-    // _inst.shuffle(seq)
     _inst->shuffle<T>(seq);
 }
 

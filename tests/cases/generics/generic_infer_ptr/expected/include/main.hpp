@@ -26,6 +26,7 @@ struct PtrHolder {
     T* ptr;
 
     // def __init__(self, ptr: Ptr[T]) -> None:
+    //     self.ptr = ptr
     PtrHolder() = default;
     explicit PtrHolder(T* ptr) : ptr(ptr) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.PtrHolder";
@@ -44,6 +45,7 @@ struct ReadOnlyPtrHolder {
     const T* ptr;
 
     // def __init__(self, ptr: Ptr[readonly[T]]) -> None:
+    //     self.ptr = ptr
     ReadOnlyPtrHolder() = default;
     explicit ReadOnlyPtrHolder(const T* ptr) : ptr(ptr) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.ReadOnlyPtrHolder";

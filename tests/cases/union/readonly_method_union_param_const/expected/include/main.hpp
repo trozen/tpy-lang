@@ -13,6 +13,7 @@ struct Classifier;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Sync inferred-readonly method, union param used discriminant-only (no member
@@ -63,30 +64,30 @@ inline std::ostream& operator<<(std::ostream& os, const Classifier& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Dog::Dog() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Cat::Cat() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Classifier::Classifier() {
-    // pass
 }
 
 // def which(self, a: Dog | Cat) -> int:
+//     if isinstance(a, Dog):
+//         return 1
+//     return 2
 inline ::tpy::BigInt Classifier::which(::tpy::Union<const Cat*, const Dog*> a) const {
-    // if isinstance(a, Dog):
     if (std::holds_alternative<const Dog*>(a)) {
         auto& __a = *std::get<const Dog*>(a);
-        // return 1
         return ::tpy::BigInt(1);
     }
     auto& __a = *std::get<const Cat*>(a);
-    // return 2
     return ::tpy::BigInt(2);
 }
 void __tpy_init();

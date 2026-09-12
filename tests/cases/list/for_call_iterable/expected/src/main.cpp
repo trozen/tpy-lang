@@ -5,106 +5,106 @@ namespace tpyapp::main {
 
 
 // def make_list(n: int32) -> Own[list[int32]]:
+//     return [n, n + 1, n + 2]
 std::vector<int32_t> make_list(int32_t n) {
-    // return [n, n + 1, n + 2]
     return {n, (::tpy::add_check<int32_t>(n, 1)), (::tpy::add_check<int32_t>(n, 2))};
 }
 
 // def make_dict() -> Own[dict[int32, int32]]:
+//     return {1: 10, 2: 20}
 ::tpy::ordered_map<int32_t, int32_t> make_dict() {
-    // return {1: 10, 2: 20}
     return ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
 }
 
 // def get_cells(cells: list[Cell]) -> list[Cell]:
+//     return cells
 std::vector<Cell>& get_cells(std::vector<Cell>& cells) {
-    // return cells
     return cells;
 }
 
 // def view(items: list[int32]) -> readonly[list[int32]]:
+//     return items
 const std::vector<int32_t>& view(std::vector<int32_t>& items) {
-    // return items
     return items;
 }
 
 // def own_returns() -> None:
+//     total = int32(0)
+//     for x in make_list(4):
+//         total += x
+//     for k in make_dict():
+//         total += k
+//     print(total)
 void own_returns() {
-    // total = int32(0)
     int32_t total = 0;
-    // for x in make_list(4):
     auto __obj_0 = make_list(4);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // for k in make_dict():
     auto __obj_1 = make_dict();
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t k = *__beg_1;
-        // total += k
         total = ::tpy::add_check<int32_t>(total, k);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def bump(cells: list[Cell]) -> None:
+//     for c in get_cells(cells):
+//         c.v += 10
 void bump(std::vector<Cell>& cells) {
-    // for c in get_cells(cells):
     auto& __obj_0 = get_cells(cells);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& c = *__beg_0;
-        // c.v += 10
         c.v = ::tpy::add_check<int32_t>(c.v, 10);
     }
 }
 
 // def readonly_sum(items: list[int32]) -> int32:
+//     s = int32(0)
+//     for y in view(items):
+//         s += y
+//     return s
 int32_t readonly_sum(std::vector<int32_t>& items) {
-    // s = int32(0)
     int32_t s = 0;
-    // for y in view(items):
     auto& __obj_0 = view(items);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t y = *__beg_0;
-        // s += y
         s = ::tpy::add_check<int32_t>(s, y);
     }
-    // return s
     return s;
 }
 
 // def main() -> None:
+//     own_returns()
+//     cells = [Cell(1), Cell(2)]
+//     bump(cells)
+//     print(cells[0].v, cells[1].v)
+//     print(readonly_sum([7, 8]))
 void main() {
-    // own_returns()
     own_returns();
-    // cells = [Cell(1), Cell(2)]
     std::vector<Cell> cells = {Cell(1), Cell(2)};
-    // bump(cells)
     bump(cells);
-    // print(cells[0].v, cells[1].v)
     std::cout << ::tpy::__getitem__(cells, 0).v << " " << ::tpy::__getitem__(cells, 1).v << "\n";
-    // print(readonly_sum([7, 8]))
     std::vector<int32_t> __tmp_1 = {7, 8};
     std::cout << readonly_sum(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def get_radius(c: Circle) -> int32:
+//     return c.radius
 int32_t get_radius(const ::tpyapp::shapes::Circle& c) {
-    // return c.radius
     return c.radius;
 }
 
 // def main() -> None:
+//     c = Circle(int32(10))
+//     print(get_radius(c))
 void main() {
-    // c = Circle(int32(10))
     ::tpyapp::shapes::Circle c = ::tpyapp::shapes::Circle(10);
-    // print(get_radius(c))
     std::cout << get_radius(c) << "\n";
 }
 
+// from shapes import Circle
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from shapes import Circle
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

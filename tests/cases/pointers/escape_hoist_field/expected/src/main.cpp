@@ -7,28 +7,28 @@ namespace tpyapp::main {
 // # Field access on loop-local: _get_expr_scope_depth follows the root
 // # object, so o.inner has the same depth as o (loop-scoped).
 // def field_access_escape() -> None:
+//     saved: Inner = Inner(0)
+//     for i in range(3):
+//         o: Outer = Outer(Inner(i))
+//         saved = o.inner  # tpyc: warning(/will not keep the object it was given/)
+//     print(saved.value)
 void field_access_escape() {
     std::optional<Outer> __slot_2;
-    // saved: Inner = Inner(0)
     Inner __slot_1 = Inner(0);
     Inner* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // o: Outer = Outer(Inner(i))
         Outer* o = &*(__slot_2 = Outer(Inner(i)));
-        // saved = o.inner  # tpyc: warning(/will not keep the object it was given/)
         saved = &(o->inner);
     }
-    // print(saved.value)
     std::cout << saved->value << "\n";
 }
 
+// field_access_escape()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // field_access_escape()
     field_access_escape();
 }
 

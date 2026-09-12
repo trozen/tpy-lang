@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Holder_bump;
 
+// def main() -> None:
 void main();
 
 // class Node:
@@ -49,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: Holder.bump
+// def bump(self) -> Iterator[int32]:
 struct __gen_Holder_bump : public ::tpy::next_iter_mixin<__gen_Holder_bump, int32_t> {
     int32_t __state;
     Holder& __self;
@@ -82,9 +83,11 @@ inline __gen_Holder_bump Holder::bump() {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Node::Node(int32_t val) : val(val) {}
 
 // def __init__(self) -> None:
+//     self.nodes = [Node(1), Node(2)]
 inline Holder::Holder() : nodes(std::vector<Node>{Node(1), Node(2)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

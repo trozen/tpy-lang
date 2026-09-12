@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def label() -> str:
+//     return "a"
 std::string label() {
-    // return "a"
     return "a";
 }
 
 // def chain_call_subject() -> str:
+//     # The subject is a call, so it materializes into an owned dispatch local
+//     # instead of aliasing storage.
+//     match label():
+//         case "a":
+//             return "a"
+//         case _:
+//             return "other"
 std::string chain_call_subject() {
-    // # The subject is a call, so it materializes into an owned dispatch local
-    // # instead of aliasing storage.
-    // match label():
     auto __match_subject_1 = label();
-    // case "a":
     if (__match_subject_1 == "a") {
-        // return "a"
         return "a";
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
 }
 
 // def guarded_call_subject(flag: bool) -> str:
+//     match label():
+//         case "a" if flag:
+//             return "a-flag"
+//         case "a":
+//             return "a-plain"
+//         case _:
+//             return "other"
 std::string guarded_call_subject(bool flag) {
-    // match label():
     auto __match_subject_1 = label();
-    // case "a" if flag:
     if (__match_subject_1 == "a") {
         if (flag) {
-            // return "a-flag"
             return "a-flag";
             goto __match_end_2;
         }
     }
-    // case "a":
     if (__match_subject_1 == "a") {
-        // return "a-plain"
         return "a-plain";
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -57,21 +57,21 @@ std::string guarded_call_subject(bool flag) {
 }
 
 // def switch_call_subject(c: Counter) -> int32:
+//     # A method-call subject on the primitive switch; the receiver mutates, so
+//     # a stale copy of the subject would show up in the caller's next read.
+//     match c.bump():
+//         case 1:
+//             return 10
+//         case _:
+//             return 20
 int32_t switch_call_subject(Counter& c) {
-    // # A method-call subject on the primitive switch; the receiver mutates, so
-    // # a stale copy of the subject would show up in the caller's next read.
-    // match c.bump():
     auto __match_subject_1 = c.bump();
     switch (__match_subject_1) {
-    // case 1:
     case 1: {
-        // return 10
         return 10;
         break;
     }
-    // case _:
     default: {
-        // return 20
         return 20;
         break;
     }
@@ -80,56 +80,59 @@ int32_t switch_call_subject(Counter& c) {
 }
 
 // def str_switch_call_subject() -> int32:
+//     # Five unguarded literals route to the discriminator switch, and the
+//     # trailing or-group is its catch-all rather than an "f" bucket. The
+//     # warning is WRONG: the or-group IS a catch-all, but exhaustiveness does
+//     # not credit a wildcard OR-ALTERNATIVE, so every or-group arm below
+//     # warns (BUGS.md#match-exhaustiveness-or-wildcard).
+//     match label():  # tpyc: warning(/non-exhaustive match on 'str'/)
+//         case "a":
+//             return 1
+//         case "b":
+//             return 2
+//         case "c":
+//             return 3
+//         case "d":
+//             return 4
+//         case "e":
+//             return 5
+//         case "f" | _:
+//             return 0
+//     return -1
 int32_t str_switch_call_subject() {
-    // # Five unguarded literals route to the discriminator switch, and the
-    // # trailing or-group is its catch-all rather than an "f" bucket. The
-    // # warning is WRONG: the or-group IS a catch-all, but exhaustiveness does
-    // # not credit a wildcard OR-ALTERNATIVE, so every or-group arm below
-    // # warns (BUGS.md#match-exhaustiveness-or-wildcard).
-    // match label():  # tpyc: warning(/non-exhaustive match on 'str'/)
     auto __match_subject_1 = label();
     if (__match_subject_1.size() >= 1) {
         switch (static_cast<unsigned char>(__match_subject_1[0])) {
         case 'a': {
-            // case "a":
             if (__match_subject_1 == "a") {
-                // return 1
                 return 1;
                 goto __match_end_2;
             }
             break;
         }
         case 'b': {
-            // case "b":
             if (__match_subject_1 == "b") {
-                // return 2
                 return 2;
                 goto __match_end_2;
             }
             break;
         }
         case 'c': {
-            // case "c":
             if (__match_subject_1 == "c") {
-                // return 3
                 return 3;
                 goto __match_end_2;
             }
             break;
         }
         case 'd': {
-            // case "d":
             if (__match_subject_1 == "d") {
-                // return 4
                 return 4;
                 goto __match_end_2;
             }
             break;
         }
         case 'e': {
-            // case "e":
             if (__match_subject_1 == "e") {
-                // return 5
                 return 5;
                 goto __match_end_2;
             }
@@ -137,92 +140,89 @@ int32_t str_switch_call_subject() {
         }
         }
     }
-    // case "f" | _:
     {
-        // return 0
         return 0;
         goto __match_end_2;
     }
     __match_end_2:;
-    // return -1
     return -1;
 }
 
 // def or_wildcard_switch(n: int32) -> str:
+//     # The wildcard alternative subsumes the literal beside it, so the group
+//     # dispatches as the switch default.
+//     match n:  # tpyc: warning(/non-exhaustive match on 'int32'/)
+//         case 1 | _:
+//             return "any"
+//     return "unreached"
 std::string or_wildcard_switch(int32_t n) {
-    // # The wildcard alternative subsumes the literal beside it, so the group
-    // # dispatches as the switch default.
-    // match n:  # tpyc: warning(/non-exhaustive match on 'int32'/)
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case 1 | _:
     default: {
-        // return "any"
         return "any";
         break;
     }
     }
-    // return "unreached"
     return "unreached";
 }
 
 // def or_wildcard_chain(s: str) -> str:
+//     match s:  # tpyc: warning(/non-exhaustive match on 'str'/)
+//         case "a":
+//             return "a"
+//         case "b" | _:
+//             return "rest"
+//     return "unreached"
 std::string or_wildcard_chain(std::string_view s) {
-    // match s:  # tpyc: warning(/non-exhaustive match on 'str'/)
     auto& __match_subject_1 = s;
-    // case "a":
     if (__match_subject_1 == "a") {
-        // return "a"
         return "a";
-    // case "b" | _:
     } else {
-        // return "rest"
         return "rest";
     }
-    // return "unreached"
     return "unreached";
 }
 
 // def as_capture(n: int32) -> int32:
+//     # Both names bind the whole subject.
+//     match n:
+//         case x as y:
+//             return x + y
+//     return -1
 int32_t as_capture(int32_t n) {
-    // # Both names bind the whole subject.
-    // match n:
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case x as y:
     default: {
         auto x = __match_subject_1;
         auto y = __match_subject_1;
-        // return x + y
         return (::tpy::add_check<int32_t>(x, y));
         break;
     }
     }
     ::std::unreachable();
-    // return -1
     return -1;
 }
 
 // def optional_inner_as_capture(n: Optional[int32]) -> int32:
+//     # The Optional tier partitions None off and hands the SCALAR payload to
+//     # the inner switch, so the double bind renders there rather than on the
+//     # Optional arm emit (which binds once and still rejects it,
+//     # BUGS.md#match-as-capture-composite-tiers).
+//     match n:
+//         case None:
+//             return 0
+//         case a as b:
+//             return a + b
 int32_t optional_inner_as_capture(std::optional<int32_t> n) {
-    // # The Optional tier partitions None off and hands the SCALAR payload to
-    // # the inner switch, so the double bind renders there rather than on the
-    // # Optional arm emit (which binds once and still rejects it,
-    // # BUGS.md#match-as-capture-composite-tiers).
-    // match n:
     auto& __match_subject_1 = n;
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // return 0
         return 0;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         switch (__match_inner_1) {
-        // case a as b:
         default: {
             auto a = __match_inner_1;
             auto b = __match_inner_1;
-            // return a + b
             return (::tpy::add_check<int32_t>(a, b));
             break;
         }
@@ -232,56 +232,60 @@ int32_t optional_inner_as_capture(std::optional<int32_t> n) {
 }
 
 // def str_switch_as_capture(s: str) -> int32:
+//     # `case x as y` on the discriminator switch's TRAILING arm: five
+//     # unguarded literals take the switch tier, and both names of the arm
+//     # after it bind the whole subject. `str` is a value type, so a copy is
+//     # unobservable here by construction -- the leg reads through both names
+//     # rather than mutating.
+//     match s:
+//         case "a":
+//             return 1
+//         case "b":
+//             return 2
+//         case "c":
+//             return 3
+//         case "d":
+//             return 4
+//         case "e":
+//             return 5
+//         case rest as also:
+//             print(rest)
+//             print(also)
+//             return len(rest) + len(also)
 int32_t str_switch_as_capture(std::string_view s) {
-    // # `case x as y` on the discriminator switch's TRAILING arm: five
-    // # unguarded literals take the switch tier, and both names of the arm
-    // # after it bind the whole subject. `str` is a value type, so a copy is
-    // # unobservable here by construction -- the leg reads through both names
-    // # rather than mutating.
-    // match s:
     auto& __match_subject_1 = s;
     if (__match_subject_1.size() >= 1) {
         switch (static_cast<unsigned char>(__match_subject_1[0])) {
         case 'a': {
-            // case "a":
             if (__match_subject_1 == "a") {
-                // return 1
                 return 1;
                 goto __match_end_2;
             }
             break;
         }
         case 'b': {
-            // case "b":
             if (__match_subject_1 == "b") {
-                // return 2
                 return 2;
                 goto __match_end_2;
             }
             break;
         }
         case 'c': {
-            // case "c":
             if (__match_subject_1 == "c") {
-                // return 3
                 return 3;
                 goto __match_end_2;
             }
             break;
         }
         case 'd': {
-            // case "d":
             if (__match_subject_1 == "d") {
-                // return 4
                 return 4;
                 goto __match_end_2;
             }
             break;
         }
         case 'e': {
-            // case "e":
             if (__match_subject_1 == "e") {
-                // return 5
                 return 5;
                 goto __match_end_2;
             }
@@ -289,15 +293,11 @@ int32_t str_switch_as_capture(std::string_view s) {
         }
         }
     }
-    // case rest as also:
     {
         auto& rest = __match_subject_1;
         auto& also = __match_subject_1;
-        // print(rest)
         std::cout << rest << "\n";
-        // print(also)
         std::cout << also << "\n";
-        // return len(rest) + len(also)
         return (::tpy::add_check<int32_t>(::tpy::__len__(rest), ::tpy::__len__(also)));
         goto __match_end_2;
     }
@@ -306,86 +306,86 @@ int32_t str_switch_as_capture(std::string_view s) {
 }
 
 // def poly_as_capture(p: Pet) -> int32:
+//     # `case x as y` on the polymorphic chain: both names alias the SAME
+//     # object, so every mutation through either is visible to the caller --
+//     # and the arm's writes are the parameter's only mutation, so they are
+//     # also what keeps it emitting as a mutable `Pet&`.
+//     match p:
+//         case Dog():
+//             return -1
+//         case seen as also:
+//             seen.bump()
+//             return also.bump()
 int32_t poly_as_capture(Pet& p) {
-    // # `case x as y` on the polymorphic chain: both names alias the SAME
-    // # object, so every mutation through either is visible to the caller --
-    // # and the arm's writes are the parameter's only mutation, so they are
-    // # also what keeps it emitting as a mutable `Pet&`.
-    // match p:
     auto& __match_subject_1 = p;
-    // case Dog():
     if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&__match_subject_1)) {
         Dog& __case_0 = *__mpoly_0;
-        // return -1
         return -1;
-    // case seen as also:
     } else {
         auto& seen = __match_subject_1;
         auto& also = __match_subject_1;
-        // seen.bump()
         seen.bump();
-        // return also.bump()
         return also.bump();
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(chain_call_subject())
+//     print(guarded_call_subject(True))
+//     print(guarded_call_subject(False))
+//     c = Counter()
+//     print(switch_call_subject(c))
+//     print(switch_call_subject(c))
+//     print(c.hits)
+//     print(str_switch_call_subject())
+//     print(or_wildcard_switch(1))
+//     print(or_wildcard_switch(7))
+//     print(or_wildcard_chain("a"))
+//     print(or_wildcard_chain("b"))
+//     print(or_wildcard_chain("z"))
+//     print(as_capture(3))
+//     print(optional_inner_as_capture(3))
+//     print(optional_inner_as_capture(None))
+//     print(str_switch_as_capture("c"))
+//     print(str_switch_as_capture("zz"))
+//     print(poly_as_capture(Dog()))
+//     cat = Cat()
+//     print(poly_as_capture(cat))
+//     # 4: both captures aliased `cat` rather than copying it.
+//     print(cat.hits)
 void main() {
-    // print(chain_call_subject())
     std::cout << chain_call_subject() << "\n";
-    // print(guarded_call_subject(True))
     std::cout << guarded_call_subject(true) << "\n";
-    // print(guarded_call_subject(False))
     std::cout << guarded_call_subject(false) << "\n";
-    // c = Counter()
     Counter c = Counter();
-    // print(switch_call_subject(c))
     std::cout << switch_call_subject(c) << "\n";
-    // print(switch_call_subject(c))
     std::cout << switch_call_subject(c) << "\n";
-    // print(c.hits)
     std::cout << c.hits << "\n";
-    // print(str_switch_call_subject())
     std::cout << str_switch_call_subject() << "\n";
-    // print(or_wildcard_switch(1))
     std::cout << or_wildcard_switch(1) << "\n";
-    // print(or_wildcard_switch(7))
     std::cout << or_wildcard_switch(7) << "\n";
-    // print(or_wildcard_chain("a"))
     std::cout << or_wildcard_chain("a") << "\n";
-    // print(or_wildcard_chain("b"))
     std::cout << or_wildcard_chain("b") << "\n";
-    // print(or_wildcard_chain("z"))
     std::cout << or_wildcard_chain("z") << "\n";
-    // print(as_capture(3))
     std::cout << as_capture(3) << "\n";
-    // print(optional_inner_as_capture(3))
     std::cout << optional_inner_as_capture(3) << "\n";
-    // print(optional_inner_as_capture(None))
     std::cout << optional_inner_as_capture(std::nullopt) << "\n";
-    // print(str_switch_as_capture("c"))
     std::cout << str_switch_as_capture("c") << "\n";
-    // print(str_switch_as_capture("zz"))
     std::cout << str_switch_as_capture("zz") << "\n";
-    // print(poly_as_capture(Dog()))
     Dog __tmp_1{Dog()};
     std::cout << poly_as_capture(__tmp_1) << "\n";
-    // cat = Cat()
     Cat cat = Cat();
-    // print(poly_as_capture(cat))
     std::cout << poly_as_capture(cat) << "\n";
-    // # 4: both captures aliased `cat` rather than copying it.
-    // print(cat.hits)
     std::cout << cat.hits << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

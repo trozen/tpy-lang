@@ -11,8 +11,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def relabel(b: Box) -> str:
 std::string relabel(const Box& b);
+// def repair(b: Box) -> int:
 ::tpy::BigInt repair(const Box& b);
+// def main() -> None:
 void main();
 
 // # Sibling coverage for the rebound-capture hoist across the value-type family:
@@ -39,6 +42,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, label: str, pair: tuple[int, int]) -> None:
+//     self.label = label
+//     self.pair = pair
 inline Box::Box(std::string_view label, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair) : label(label), pair(pair) {}
 void __tpy_init();
 } // namespace tpyapp::main

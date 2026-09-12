@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(7)
+//     print(asyncio.run(b.take()))
+//     s = Box("hi")
+//     print(asyncio.run(s.take()))
 void main() {
-    // b = Box(7)
     Box<int32_t> b = Box<int32_t>(7);
-    // print(asyncio.run(b.take()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(b.take())) << "\n";
-    // s = Box("hi")
     Box<std::string> s = Box<std::string>("hi");
-    // print(asyncio.run(s.take()))
     std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(s.take())) << "\n";
 }
 
+// # Async method on a generic class. Two instantiations exercise template
+// # monomorphization.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async method on a generic class. Two instantiations exercise template
-    // # monomorphization.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

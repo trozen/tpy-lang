@@ -12,7 +12,9 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def copied_val(a: A) -> int32:
 int32_t copied_val(const A& a);
+// def main() -> None:
 void main();
 
 // class A:
@@ -72,6 +74,8 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
+//     self.bs = []
 inline A::A(int32_t val) : val(val), bs(std::vector<B>{}) {}
 
 inline A::A(const A& other) : A(other.__copy__()) {}
@@ -81,12 +85,14 @@ inline A& A::operator=(const A& other) {
 }
 
 // def __copy__(self) -> Own[A]:
+//     return A(self.val + 100)
 inline A A::__copy__() const {
-    // return A(self.val + 100)
     return A((::tpy::add_check<int32_t>(this->val, 100)));
 }
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
+//     self.as_ = []
 inline B::B(int32_t val) : val(val), as_(std::vector<A>{}) {}
 
 inline B::B(const B& other) : B(other.__copy__()) {}
@@ -96,8 +102,8 @@ inline B& B::operator=(const B& other) {
 }
 
 // def __copy__(self) -> Own[B]:
+//     return B(self.val + 100)
 inline B B::__copy__() const {
-    // return B(self.val + 100)
     return B((::tpy::add_check<int32_t>(this->val, 100)));
 }
 void __tpy_init();

@@ -9,17 +9,29 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mk_list() -> Own[list[int32]]:
 std::vector<int32_t> mk_list();
+// def mk_dict() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> mk_dict();
+// def mk_set() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> mk_set();
+// def mk_bytes() -> Own[bytearray]:
 ::tpy::ByteArray mk_bytes();
+// def mk_array() -> Own[Array[int32, 2]]:
 std::array<int32_t, 2> mk_array();
+// def rebound_list(other: list[int32]) -> None:
 void rebound_list(std::vector<int32_t>& other);
+// def rebound_dict(other: dict[str, int32]) -> None:
 void rebound_dict(::tpy::ordered_map<std::string, int32_t>& other);
+// def rebound_set(other: set[int32]) -> None:
 void rebound_set(::tpy::ordered_set<int32_t>& other);
+// def rebound_bytes(other: bytearray) -> None:
 void rebound_bytes(::tpy::ByteArray& other);
+// def rebound_array(other: Array[int32, 2]) -> None:
 void rebound_array(std::array<int32_t, 2>& other);
+// def hoisted() -> int32:
 int32_t hoisted();
+// def main() -> None:
 void main();
 
 void __tpy_init();

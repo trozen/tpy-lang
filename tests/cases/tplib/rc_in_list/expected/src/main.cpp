@@ -5,37 +5,42 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Rc.new(Node(int32(1)))
+//     b = Rc.new(Node(int32(2)))
+//     c = Rc.new(Node(int32(3)))
+//
+//     a_alias = a.clone()
+//
+//     items: list[Rc[Node]] = [a.clone(), b.clone(), c.clone()]
+//
+//     # Mutate via a_alias, then read through the list element.
+//     a_alias.get().value = int32(99)
+//     print(items[0].get().value)  # 99 -- shared
+//
+//     # Mutate via list, read via b.
+//     items[1].get().value = int32(42)
+//     print(b.get().value)  # 42 -- shared
 void main() {
-    // a = Rc.new(Node(int32(1)))
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(1));
-    // b = Rc.new(Node(int32(2)))
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(2));
-    // c = Rc.new(Node(int32(3)))
     ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_<Node>(Node(3));
-    // a_alias = a.clone()
     ::tpystd::tplib::rc::Rc<Node> a_alias = a.clone();
-    // items: list[Rc[Node]] = [a.clone(), b.clone(), c.clone()]
     std::vector<::tpystd::tplib::rc::Rc<Node>> items = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Node>>(a.clone(), b.clone(), c.clone());
-    // # Mutate via a_alias, then read through the list element.
-    // a_alias.get().value = int32(99)
     a_alias.get().value = 99;
-    // print(items[0].get().value)  # 99 -- shared
     std::cout << ::tpy::__getitem__(items, 0).get().value << "\n";
-    // # Mutate via list, read via b.
-    // items[1].get().value = int32(42)
     ::tpy::__getitem__(items, 1).get().value = 42;
-    // print(b.get().value)  # 42 -- shared
     std::cout << b.get().value << "\n";
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def total(p: tuple[int32 | None, int32]) -> int32:
+//     a, b = p
+//     if a is not None:
+//         return a + b  # the narrowed value-opt deref
+//     return b
 int32_t total(const std::tuple<std::optional<int32_t>, int32_t>& p) {
-    // a, b = p
     const auto& __tup_1 = p;
     std::optional<int32_t> a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a.has_value())) {
-        // return a + b  # the narrowed value-opt deref
         return (::tpy::add_check<int32_t>((*a), b));
     }
-    // return b
     return b;
 }
 
 // def main() -> None:
+//     print(total((3, 4)))
+//     print(total((None, 9)))
 void main() {
-    // print(total((3, 4)))
     std::cout << total(std::tuple<std::optional<int32_t>, int32_t>{3, 4}) << "\n";
-    // print(total((None, 9)))
     std::cout << total(std::tuple<std::optional<int32_t>, int32_t>{std::nullopt, 9}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

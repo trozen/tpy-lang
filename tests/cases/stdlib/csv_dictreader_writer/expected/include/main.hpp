@@ -14,16 +14,27 @@ using ::tpystd::csv::DictWriter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_header_derived() -> None:
 void read_header_derived();
+// def read_explicit_fieldnames() -> None:
 void read_explicit_fieldnames();
+// def read_quoted() -> None:
 void read_quoted();
+// def read_short_row() -> None:
 void read_short_row();
+// def read_long_row() -> None:
 void read_long_row();
+// def write_basic() -> None:
 void write_basic();
+// def write_quoting() -> None:
 void write_quoting();
+// def write_missing_key() -> None:
 void write_missing_key();
+// def write_extra_key_raises() -> None:
 void write_extra_key_raises();
+// def roundtrip() -> None:
 void roundtrip();
+// def main() -> None:
 void main();
 
 void __tpy_init();

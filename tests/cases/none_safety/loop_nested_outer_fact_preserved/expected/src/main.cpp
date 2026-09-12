@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def nested_ok(x: int32 | None, y: int32 | None) -> int32:
+//     while x is not None:
+//         while y is not None:
+//             break
+//         return x + 1  # tpyc: ok
+//     return 0
 int32_t nested_ok(std::optional<int32_t> x, std::optional<int32_t> y) {
-    // while x is not None:
     while ((x.has_value())) {
-        // while y is not None:
         while ((y.has_value())) {
-            // break
             break;
         }
-        // return x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    // return 0
     return 0;
 }
 
+// print(nested_ok(4, 1))
+// print(nested_ok(None, 1))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(nested_ok(4, 1))
     std::cout << nested_ok(4, 1) << "\n";
-    // print(nested_ok(None, 1))
     std::cout << nested_ok(std::nullopt, 1) << "\n";
 }
 

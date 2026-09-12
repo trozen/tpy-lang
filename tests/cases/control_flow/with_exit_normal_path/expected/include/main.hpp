@@ -11,8 +11,11 @@ struct Tracker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fall_through() -> None:
 void fall_through();
+// def early_return() -> int:
 ::tpy::BigInt early_return();
+// def main() -> None:
 void main();
 
 // # Normal (non-exception) path through `with`: __exit__ sees exc_val=None.
@@ -37,22 +40,22 @@ inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
 
 
 // def __enter__(self) -> int:
+//     print("enter")
+//     return 7
 inline ::tpy::BigInt Tracker::__enter__() const {
-    // print("enter")
     std::cout << "enter" << "\n";
-    // return 7
     return ::tpy::BigInt(7);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     if exc_val is None:
+//         print("clean exit")
+//     else:
+//         print(f"exception exit: {str(exc_val)}")
 inline void Tracker::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is None:
     if ((exc_val == nullptr)) {
-        // print("clean exit")
         std::cout << "clean exit" << "\n";
-    // else:
     } else {
-        // print(f"exception exit: {str(exc_val)}")
         std::cout << std::format("exception exit: {}", std::string(::tpy::__str__((*exc_val)))) << "\n";
     }
 }

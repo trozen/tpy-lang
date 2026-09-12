@@ -5,57 +5,60 @@ namespace tpyapp::main {
 
 
 // def double(x: int32) -> int32:
+//     return x * 2
 int32_t double_(int32_t x) {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def greet(name: str) -> str:
+//     return "Hello, " + name
 std::string greet(std::string_view name) {
-    // return "Hello, " + name
     return (::tpy::str_concat("Hello, ", name));
 }
 
 // def apply(f: Callable[[int32], int32], x: int32) -> int32:
+//     return f(x)
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 
 // def printer(x: int32) -> None:
+//     print("got:", x)
 void printer(int32_t x) {
-    // print("got:", x)
     std::cout << "got:" << " " << x << "\n";
 }
 
 // def main() -> None:
+//     # Callable param
+//     print(apply(double, 21))  # 42
+//
+//     # Callable local
+//     f: Callable[[int32], int32] = double
+//     print(f(10))  # 20
+//
+//     # Callable field via constructor
+//     h = Handler(printer)
+//     h.run(7)  # got: 7
+//
+//     # Callable with string types
+//     g: Callable[[str], str] = greet
+//     print(g("World"))  # Hello, World
 void main() {
-    // # Callable param
-    // print(apply(double, 21))  # 42
     std::cout << apply(double_, 21) << "\n";
-    // # Callable local
-    // f: Callable[[int32], int32] = double
     std::function<int32_t(int32_t)> f = double_;
-    // print(f(10))  # 20
     std::cout << f(10) << "\n";
-    // # Callable field via constructor
-    // h = Handler(printer)
     Handler h = Handler(printer);
-    // h.run(7)  # got: 7
     h.run(7);
-    // # Callable with string types
-    // g: Callable[[str], str] = greet
     std::function<std::string(std::string_view)> g = greet;
-    // print(g("World"))  # Hello, World
     std::cout << g("World") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

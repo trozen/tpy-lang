@@ -11,7 +11,9 @@ struct Guard;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(g: Guard) -> None:
 void run(Guard& g);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -43,17 +45,18 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Guard::Guard() : n(::tpy::BigInt(0)) {}
 
 // def __enter__(self) -> None:
+//     self.n += 1
 inline void Guard::__enter__() {
-    // self.n += 1
     this->n = (this->n) + (::tpy::BigInt(1));
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
+//     self.n += 100
 inline void Guard::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) {
-    // self.n += 100
     this->n = (this->n) + (::tpy::BigInt(100));
 }
 void __tpy_init();

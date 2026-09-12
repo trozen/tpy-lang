@@ -36,6 +36,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dog(Speakable):
@@ -113,30 +114,31 @@ namespace tpyapp::main {
 
 // @readonly
 // def speak(self) -> str:
+//     return "woof"
 inline std::string Dog::speak() const {
-    // return "woof"
     return "woof";
 }
 
 // @readonly
 // def speak(self) -> str:
+//     return "meow"
 inline std::string Cat::speak() const {
-    // return "meow"
     return "meow";
 }
 
 // def __init__(self) -> None:
+//     self.val = None
 inline Holder::Holder() : val(std::nullopt) {}
 
 // def emit(self) -> None:
+//     if self.val is not None:
+//         print(self.val.speak())
+//     else:
+//         print("(empty)")
 inline void Holder::emit() const {
-    // if self.val is not None:
     if ((this->val.has_value())) {
-        // print(self.val.speak())
         std::cout << (*this->val).__deref__().speak() << "\n";
-    // else:
     } else {
-        // print("(empty)")
         std::cout << "(empty)" << "\n";
     }
 }

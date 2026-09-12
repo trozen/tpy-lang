@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def first_kind(v: V) -> str:
+//     match v:
+//         case list():
+//             return "list"
+//         case _:
+//             return "scalar"
 std::string first_kind(const V& v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.value.index()) {
-    // case list():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
-        // return "list"
         return "list";
         break;
     }
-    // case _:
     default: {
-        // return "scalar"
         return "scalar";
         break;
     }
@@ -27,20 +27,20 @@ std::string first_kind(const V& v) {
 }
 
 // def main() -> None:
+//     xs: list[V] = [1, 2, 3]
+//     print(first_kind(xs))
 void main() {
-    // xs: list[V] = [1, 2, 3]
     std::vector<V> xs = {1, 2, 3};
-    // print(first_kind(xs))
     V __tmp_1 = std::move(xs);
     std::cout << first_kind(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     factory = DefaultFooMaker()
+//     bar = Bar(factory)
+//     foo = bar.create_foo()
+//     print(foo.value)
 void main() {
-    // factory = DefaultFooMaker()
     DefaultFooMaker factory = DefaultFooMaker();
-    // bar = Bar(factory)
     Bar<DefaultFooMaker> bar = Bar<DefaultFooMaker>(factory);
-    // foo = bar.create_foo()
     Foo foo = bar.create_foo();
-    // print(foo.value)
     std::cout << foo.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

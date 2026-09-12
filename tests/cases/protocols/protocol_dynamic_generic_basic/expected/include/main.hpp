@@ -35,8 +35,11 @@ struct Ratio;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(c: Container[int32]) -> None:
 void show(Container<int32_t>& c);
+// def bump(c: Container[int32]) -> None:
 void bump(Container<int32_t>& c);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -106,32 +109,34 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Box::Box(int32_t v) : v(v) {}
 
 // def get(self) -> int32:
+//     return self.v
 inline int32_t Box::get() const {
-    // return self.v
     return this->v;
 }
 
 // def set(self, val: int32) -> None:
+//     self.v = val
 inline void Box::set(int32_t val) {
-    // self.v = val
     this->v = val;
 }
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Ratio::Ratio(int32_t n) : n(n) {}
 
 // def get(self) -> int32:
+//     return self.n
 inline int32_t Ratio::get() const {
-    // return self.n
     return this->n;
 }
 
 // def set(self, val: int32) -> None:
+//     self.n = val
 inline void Ratio::set(int32_t val) {
-    // self.n = val
     this->n = val;
 }
 void __tpy_init();

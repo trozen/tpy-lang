@@ -20,6 +20,7 @@ struct __coro_Runner_go;
 struct __coro_Gate___aenter__;
 struct __coro_Gate___aexit__;
 
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Runner:
@@ -59,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
     return os;
 }
 
-// Async coroutine: Gate.__aenter__
+// async def __aenter__(self) -> int32:
 struct __coro_Gate___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -87,7 +88,7 @@ inline __coro_Gate___aenter__ Gate::__aenter__() const {
     return __coro_Gate___aenter__(*this);
 }
 
-// Async coroutine: Gate.__aexit__
+// async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_Gate___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -118,7 +119,7 @@ inline __coro_Gate___aexit__ Gate::__aexit__(std::monostate et, std::monostate e
     return __coro_Gate___aexit__(*this, et, ev, tb);
 }
 
-// Async coroutine: Runner.go
+// async def go(self) -> int32:
 struct __coro_Runner_go {
     int32_t __state;
     bool __cancel_pending;
@@ -154,7 +155,7 @@ inline __coro_Runner_go Runner::go() {
     return __coro_Runner_go(*this);
 }
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -181,9 +182,11 @@ struct __coro_amain {
 
 
 // def __init__(self) -> None:
+//     self.total = 0
 inline Runner::Runner() : total(0) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Gate::Gate(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

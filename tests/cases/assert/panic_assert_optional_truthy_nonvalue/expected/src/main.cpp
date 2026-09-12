@@ -3,17 +3,16 @@
 
 namespace tpyapp::main {
 
-// x: C | None = None
 C* x{};
 
+// x: C | None = None
+// assert x
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: C | None = None
     x = nullptr;
-    // assert x
     if (!(x)) ::tpy::raise_assertion_error();
 }
 

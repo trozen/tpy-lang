@@ -17,6 +17,7 @@ struct Body;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # @nocopy: the reads are reference-bound, so a silent copy is an error.
@@ -91,24 +92,27 @@ inline std::ostream& operator<<(std::ostream& os, const Body& obj) {
 
 
 // def __init__(self, x_: float) -> None:
+//     self.x = x_
 inline V3::V3(double x_) : x(x_) {}
 
 // def mul(self, v: "V3") -> Own["V3"]:
+//     return V3(self.x * v.x)
 inline V3 V3::mul(const V3& v) const {
-    // return V3(self.x * v.x)
     return V3(((this->x) * (v.x)));
 }
 
 // def __init__(self, color: Own[V3]) -> None:
+//     self.color = color
 inline Material::Material(V3&& color) : color(std::move(color)) {}
 
 // def bounce(self, k: float) -> float:
+//     return self.color.x * k
 inline double Material::bounce(double k) const {
-    // return self.color.x * k
     return ((this->color.x) * (k));
 }
 
 // def __init__(self, material: Own[Box[Material]]) -> None:
+//     self.material = material
 inline Body::Body(::tpystd::tplib::box::Box<Material>&& material) : material(std::move(material)) {}
 void __tpy_init();
 } // namespace tpyapp::main

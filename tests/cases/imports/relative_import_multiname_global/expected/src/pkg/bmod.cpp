@@ -3,21 +3,20 @@
 
 namespace tpyapp::pkg::bmod {
 
-// _B: bytes = b"BBBB"
 ::tpy::Bytes _B;
 
 // def b_first() -> int32:
+//     return int32(_B[0])
 int32_t b_first() {
-    // return int32(_B[0])
     return ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(_B, 0));
 }
 
+// _B: bytes = b"BBBB"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // _B: bytes = b"BBBB"
     _B = ::tpy::bytes_literal_owned("BBBB", 4);
 }
 

@@ -13,8 +13,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def make(b: Box) -> tuple[int32, Box]:
 std::tuple<int32_t, Box*> make(Box& b);
+// def gen(b: Box) -> Iterator[tuple[int32, Box]]:
 __gen_gen gen(Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -33,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen(b: Box) -> Iterator[tuple[int32, Box]]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, Box*>> {
     int32_t __state;
     Box& b;
@@ -58,6 +61,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,22 +5,24 @@ namespace tpyapp::main {
 
 
 // def tls_ver(v: str) -> str:
+//     # Version-robust: bundled mbedTLS 3.6 negotiates TLSv1.3, system 2.28 (the
+//     # mainstream-LTS branch) negotiates TLSv1.2. Both are a good modern
+//     # handshake, and the minor version is an mbedTLS property, not TPy's --
+//     # collapse it so output.txt matches under either --mbedtls mode.
+//     return "TLSv1.2+" if v in ("TLSv1.2", "TLSv1.3") else v
 std::string tls_ver(std::string_view v) {
-    // # Version-robust: bundled mbedTLS 3.6 negotiates TLSv1.3, system 2.28 (the
-    // # mainstream-LTS branch) negotiates TLSv1.2. Both are a good modern
-    // # handshake, and the minor version is an mbedTLS property, not TPy's --
-    // # collapse it so output.txt matches under either --mbedtls mode.
-    // return "TLSv1.2+" if v in ("TLSv1.2", "TLSv1.3") else v
     return std::string(((((v == "TLSv1.2") || (v == "TLSv1.3"))) ? ("TLSv1.2+") : (v)));
 }
 
 // def write_fixtures() -> None:
+//     with open(CERT_PATH, "w") as f:
+//         f.write(CERT_PEM)
+//     with open(KEY_PATH, "w") as f:
+//         f.write(KEY_PEM)
 void write_fixtures() {
-    // with open(CERT_PATH, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(CERT_PATH, "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // f.write(CERT_PEM)
         f->write(CERT_PEM);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -32,11 +34,9 @@ void write_fixtures() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(KEY_PATH, "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode(KEY_PATH, "w");
     f = &(__ctx_2.__enter__());
     try {
-        // f.write(KEY_PEM)
         f->write(KEY_PEM);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -51,211 +51,242 @@ void write_fixtures() {
 }
 
 // def drive(cli: SSLSocket, srv: SSLSocket) -> bool:
+//     """Alternate handshake steps until both sides complete (non-blocking)."""
+//     cdone = False
+//     sdone = False
+//     i = 0
+//     while i < 500 and not (cdone and sdone):
+//         if not sdone and srv.do_handshake():
+//             sdone = True
+//         if not cdone and cli.do_handshake():
+//             cdone = True
+//         i += 1
+//     return cdone and sdone
 bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv) {
-    // cdone = False
     bool cdone = false;
-    // sdone = False
     bool sdone = false;
-    // i = 0
     int32_t i = 0;
-    // while i < 500 and not (cdone and sdone):
     while (((i < 500) && (!((cdone && sdone))))) {
-        // if not sdone and srv.do_handshake():
         if (((!(sdone)) && srv.do_handshake())) {
-            // sdone = True
             sdone = true;
         }
-        // if not cdone and cli.do_handshake():
         if (((!(cdone)) && cli.do_handshake())) {
-            // cdone = True
             cdone = true;
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return cdone and sdone
     return (cdone && sdone);
 }
 
 // def handshake_ok() -> None:
+//     a, b = socket.socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     ctx = ssl.create_default_context()
+//     ctx.load_verify_locations(CERT_PATH)
+//     cli = ctx.wrap_socket(a, "localhost", False)
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+//     if not drive(cli, srv):
+//         print("FAIL: handshake did not converge")
+//         return
+//     print("handshake:", tls_ver(cli.version()))
+//
+//     cli.setblocking(True)
+//     srv.setblocking(True)
+//     cli.sendall(b"hello tls")
+//     print("server got:", srv.recv(32).decode())
+//     print("sent:", cli.send(b"AB"))
+//     print("server got2:", srv.recv(32).decode())
+//
+//     # close() sends close_notify -> the peer's next recv is a clean EOF (b"").
+//     cli.close()
+//     print("server eof:", len(srv.recv(32)) == 0)
+//     srv.close()
 void handshake_ok() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.setblocking(False)
     a.setblocking(false);
-    // b.setblocking(False)
     b.setblocking(false);
-    // ctx = ssl.create_default_context()
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
-    // ctx.load_verify_locations(CERT_PATH)
     ctx.load_verify_locations(CERT_PATH);
-    // cli = ctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    // if not drive(cli, srv):
     if ((!(drive(cli, srv)))) {
-        // print("FAIL: handshake did not converge")
         std::cout << "FAIL: handshake did not converge" << "\n";
-        // return
         return;
     }
-    // print("handshake:", tls_ver(cli.version()))
     std::cout << "handshake:" << " " << tls_ver(cli.version()) << "\n";
-    // cli.setblocking(True)
     cli.setblocking(true);
-    // srv.setblocking(True)
     srv.setblocking(true);
-    // cli.sendall(b"hello tls")
     cli.sendall(::tpy::bytes_literal("hello tls", 9));
-    // print("server got:", srv.recv(32).decode())
     std::cout << "server got:" << " " << ::tpy::bytes_decode(srv.recv(32)) << "\n";
-    // print("sent:", cli.send(b"AB"))
     std::cout << "sent:" << " " << cli.send(::tpy::bytes_literal("AB", 2)) << "\n";
-    // print("server got2:", srv.recv(32).decode())
     std::cout << "server got2:" << " " << ::tpy::bytes_decode(srv.recv(32)) << "\n";
-    // # close() sends close_notify -> the peer's next recv is a clean EOF (b"").
-    // cli.close()
     cli.close();
-    // print("server eof:", len(srv.recv(32)) == 0)
     std::cout << "server eof:" << " " << ::tpy::print_bool((::tpy::__len__(srv.recv(32)) == 0)) << "\n";
-    // srv.close()
     srv.close();
 }
 
 // def hostname_mismatch() -> None:
+//     a, b = socket.socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     ctx = ssl.create_default_context()
+//     ctx.load_verify_locations(CERT_PATH)
+//     cli = ctx.wrap_socket(a, "wronghost.example", False)
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+//
+//     sdone = False
+//     i = 0
+//     while i < 500:
+//         if not sdone:
+//             try:
+//                 if srv.do_handshake():
+//                     sdone = True
+//             except ssl.SSLError:
+//                 break  # server aborts after the client rejects the cert
+//         try:
+//             if cli.do_handshake():
+//                 print("FAIL: expected certificate verify error")
+//                 return
+//         except ssl.SSLCertVerificationError:
+//             print("verify rejected mismatched hostname")
+//             return
+//         i += 1
+//     print("FAIL: no verify decision")
 void hostname_mismatch() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.setblocking(False)
     a.setblocking(false);
-    // b.setblocking(False)
     b.setblocking(false);
-    // ctx = ssl.create_default_context()
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
-    // ctx.load_verify_locations(CERT_PATH)
     ctx.load_verify_locations(CERT_PATH);
-    // cli = ctx.wrap_socket(a, "wronghost.example", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "wronghost.example", false);
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    // sdone = False
     bool sdone = false;
-    // i = 0
     int32_t i = 0;
-    // while i < 500:
     while ((i < 500)) {
-        // if not sdone:
         if ((!(sdone))) {
-            // try:
             {
                 try {
-                    // if srv.do_handshake():
                     if (srv.do_handshake()) {
-                        // sdone = True
                         sdone = true;
                     }
                 } catch (const ::tpystd::ssl::SSLError&) {
-                    // break  # server aborts after the client rejects the cert
                     break;
                 }
             }
         }
-        // try:
         {
             try {
-                // if cli.do_handshake():
                 if (cli.do_handshake()) {
-                    // print("FAIL: expected certificate verify error")
                     std::cout << "FAIL: expected certificate verify error" << "\n";
-                    // return
                     return;
                 }
             } catch (const ::tpystd::ssl::SSLCertVerificationError&) {
-                // print("verify rejected mismatched hostname")
                 std::cout << "verify rejected mismatched hostname" << "\n";
-                // return
                 return;
             }
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // print("FAIL: no verify decision")
     std::cout << "FAIL: no verify decision" << "\n";
 }
 
 // def cert_none() -> None:
+//     # CERT_NONE: no chain/hostname verification -- the handshake completes
+//     # even with no trusted CA and no server_hostname.
+//     a, b = socket.socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     ctx = ssl.create_default_context()
+//     ctx.verify_mode = ssl.CERT_NONE
+//     ctx.check_hostname = False
+//     cli = ctx.wrap_socket(a, "", False)
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+//     if drive(cli, srv):
+//         print("no-verify handshake:", tls_ver(cli.version()))
+//     else:
+//         print("FAIL: no-verify handshake did not converge")
 void cert_none() {
-    // # CERT_NONE: no chain/hostname verification -- the handshake completes
-    // # even with no trusted CA and no server_hostname.
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.setblocking(False)
     a.setblocking(false);
-    // b.setblocking(False)
     b.setblocking(false);
-    // ctx = ssl.create_default_context()
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
-    // ctx.verify_mode = ssl.CERT_NONE
     ctx.verify_mode = ::tpystd::ssl::CERT_NONE;
-    // ctx.check_hostname = False
     ctx.check_hostname = false;
-    // cli = ctx.wrap_socket(a, "", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "", false);
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    // if drive(cli, srv):
     if (drive(cli, srv)) {
-        // print("no-verify handshake:", tls_ver(cli.version()))
         std::cout << "no-verify handshake:" << " " << tls_ver(cli.version()) << "\n";
-    // else:
     } else {
-        // print("FAIL: no-verify handshake did not converge")
         std::cout << "FAIL: no-verify handshake did not converge" << "\n";
     }
 }
 
 // def main() -> None:
+//     write_fixtures()
+//     handshake_ok()
+//     hostname_mismatch()
+//     cert_none()
 void main() {
-    // write_fixtures()
     write_fixtures();
-    // handshake_ok()
     handshake_ok();
-    // hostname_mismatch()
     hostname_mismatch();
-    // cert_none()
     cert_none();
 }
 
+// import ssl
+//
+// import socket
+//
+// CERT_PEM: Final[str] = """-----BEGIN CERTIFICATE-----
+// MIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw
+// FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1
+// MTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO
+// PQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE
+// tP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN
+// WGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD
+// VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID
+// SAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW
+// Ddslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==
+// -----END CERTIFICATE-----
+// """
+//
+// KEY_PEM: Final[str] = """-----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg2kn/USvpv4Ilspd2
+// xfLz4BM0UjqqhFJndB7QYY+ijAihRANCAATi4r8fZOEM8tz66TgRALGG7z33xtTC
+// AHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq
+// -----END PRIVATE KEY-----
+// """
+//
+// CERT_PATH: Final[str] = "tpy_test_ssl_cert.pem"
+// KEY_PATH: Final[str] = "tpy_test_ssl_key.pem"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import ssl
     ::tpystd::ssl::__tpy_init();
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p: Point | None = Point(9)
+//     if p is None:
+//         return
+//     try:
+//         p = None
+//         raise ValueError("boom")
+//     except ValueError:
+//         print(p.x)  # tpyc: warning(/Potential None access/)
 void main() {
-    // p: Point | None = Point(9)
     Point __slot_1 = Point(9);
     Point* p = &__slot_1;
-    // if p is None:
     if ((p == nullptr)) {
-        // return
         return;
     }
-    // try:
     {
         try {
-            // p = None
             p = nullptr;
-            // raise ValueError("boom")
             throw ::tpy::ValueError("boom");
         } catch (const ::tpy::ValueError&) {
-            // print(p.x)  # tpyc: warning(/Potential None access/)
             std::cout << ::tpy::deref_check(p).x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

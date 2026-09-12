@@ -444,7 +444,10 @@ class RecordGenerator:
             ctor_out_of_line = self._ctor_can_be_out_of_line(record)
 
             self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
-            self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
+            if ctor_out_of_line:
+                self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
+            else:
+                self.ctx.emit_definition_source_block(out, record.init_method.loc, INDENT)
             if has_params:
                 init_defaults = record.init_method.defaults if record.init_method.defaults else None
                 has_required_params = not init_defaults or any(d is None for d in init_defaults)
@@ -927,12 +930,11 @@ class RecordGenerator:
                 f"internal error: no lowered constructor for '{record.name}'",
                 record.init_method.loc)
         from ..thir.emit import (
-            CommentSink, ModuleCounter, TempSink,
+            ModuleCounter, TempSink,
             emit_thir_constructor_tail,
         )
         emit_thir_constructor_tail(
             out, thir_ctor,
-            comments=CommentSink(self.ctx),
             temps=TempSink(self.ctx),
             with_counter=ModuleCounter(self.ctx, "with_counter"),
             try_counter=ModuleCounter(self.ctx, "try_except_counter"),
@@ -965,7 +967,7 @@ class RecordGenerator:
             return
         out.write("\n")
         self.ctx.emit_preceding_comments(out, init.loc)
-        self.ctx.emit_source_comment(out, init.loc)
+        self.ctx.emit_definition_source_block(out, init.loc)
         if init.params:
             _, cpp_params = self._ctor_cpp_params(record, emit_defaults=False)
             out.write(f"{inline_prefix}{q}::{n}({cpp_params})")
@@ -1267,7 +1269,7 @@ class RecordGenerator:
                     out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
                 else:
                     out.write(f"{INDENT}{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
-                self.functions.gen_body(out, move_method.body, move_method,
+                self.functions.gen_body(out, move_method,
                                         indent_level=body_lvl)
                 out.write(f"{bind}{cpp_src}.__tpy_owned_ = false;\n")
                 out.write(f"{ind}}}\n")
@@ -1323,7 +1325,10 @@ class RecordGenerator:
         # --- Destructor with drop-flag guard ---
         out.write("\n")
         self.ctx.emit_preceding_comments(out, del_method.loc, indent=ind)
-        self.ctx.emit_source_comment(out, del_method.loc, indent=ind)
+        if mode == "decl":
+            self.ctx.emit_source_comment(out, del_method.loc, indent=ind)
+        else:
+            self.ctx.emit_definition_source_block(out, del_method.loc, ind)
         if mode == "decl":
             out.write(f"{INDENT}~{cpp_name}();\n")
             return
@@ -1346,7 +1351,7 @@ class RecordGenerator:
             if wrap:
                 out.write(f"{bind}try {{\n")
             self.functions.gen_body(
-                out, body_stmts, del_method,
+                out, del_method,
                 indent_level=body_lvl + 1 if wrap else body_lvl)
             if wrap:
                 out.write(f"{bind}}} catch (const std::exception& __del_exc) {{\n")

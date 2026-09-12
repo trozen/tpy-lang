@@ -12,8 +12,11 @@ struct Ref;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_ref(r: readonly[Ref]) -> int32:
 int32_t read_ref(const Ref& r);
+// def mutate_ref(r: Ref) -> None:
 void mutate_ref(Ref& r);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -75,35 +78,38 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // @readonly
 // def sum(self) -> int32:
+//     return self.x + self.y
 inline int32_t Point::sum() const {
-    // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
 
 // def set_x(self, v: int32) -> None:
+//     self.x = v
 inline void Point::set_x(int32_t v) {
-    // self.x = v
     this->x = v;
 }
 
 // def __init__(self, target: Point) -> None:
+//     self._target = copy(target)
 inline Ref::Ref(const Point& target) : _target(target) {}
 
 // @auto_readonly
 // def __deref__(self) -> auto_readonly[Point]:
+//     return self._target
 inline Point& Ref::__deref__() {
-    // return self._target
     return this->_target;
 }
 
 // @auto_readonly
 // def __deref__(self) -> auto_readonly[Point]:
+//     return self._target
 inline const Point& Ref::__deref__() const {
-    // return self._target
     return this->_target;
 }
 void __tpy_init();

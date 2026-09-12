@@ -24,10 +24,14 @@ struct __gen_Bag_readings;
 template <typename T>
 struct __gen_Box_two;
 
+// def walk() -> Iterator[int32]:
 __gen_walk walk();
+// def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def chatty() -> Iterator[int32]:
 __gen_chatty chatty();
+// def guarded() -> Iterator[int32]:
 __gen_guarded guarded();
 
 // class Src:
@@ -75,6 +79,7 @@ struct Box {
     std::vector<T> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
+    //     self.items = items
     Box() = default;
     explicit Box(std::vector<T>&& items) : items(std::move(items)) {}
 
@@ -88,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// Generator: walk
+// def walk() -> Iterator[int32]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     int32_t __state;
 
@@ -110,7 +115,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     }
 };
 
-// Generator: pair
+// def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
     int32_t __state;
@@ -135,16 +140,16 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
     }
 };
 // def pair[T](a: T, b: T) -> Iterator[T]:
+//     yield a
+//     yield b
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_pair<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield a
         __state = S_RESUME_0;
         return a;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return b;
     }
@@ -164,7 +169,7 @@ __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> 
     return __gen_pair<T>(a, b);
 }
 
-// Generator: chatty
+// def chatty() -> Iterator[int32]:
 struct __gen_chatty : public ::tpy::next_iter_mixin<__gen_chatty, int32_t> {
     int32_t __state;
 
@@ -186,7 +191,7 @@ struct __gen_chatty : public ::tpy::next_iter_mixin<__gen_chatty, int32_t> {
     }
 };
 
-// Generator: guarded
+// def guarded() -> Iterator[int32]:
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
     ::tpy::frame_state __state;
 
@@ -226,7 +231,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
     }
 };
 
-// Generator: Src.steps
+// def steps(self) -> Iterator[int32]:
 struct __gen_Src_steps : public ::tpy::next_iter_mixin<__gen_Src_steps, int32_t> {
     int32_t __state;
     const Src& __self;
@@ -253,7 +258,7 @@ inline __gen_Src_steps Src::steps() const {
     return __gen_Src_steps(*this);
 }
 
-// Generator: Bag.readings
+// def readings(self) -> Iterator[int32]:
 struct __gen_Bag_readings : public ::tpy::next_iter_mixin<__gen_Bag_readings, int32_t> {
     int32_t __state;
     const Bag& __self;
@@ -280,7 +285,7 @@ inline __gen_Bag_readings Bag::readings() const {
     return __gen_Bag_readings(*this);
 }
 
-// Generator: Box.two
+// def two(self) -> Iterator[T]:
 template <typename T>
 struct __gen_Box_two : public ::tpy::next_iter_mixin<__gen_Box_two<T>, T> {
     int32_t __state;
@@ -305,16 +310,16 @@ struct __gen_Box_two : public ::tpy::next_iter_mixin<__gen_Box_two<T>, T> {
 };
 
 // def two(self) -> Iterator[T]:
+//     yield self.items[0]
+//     yield self.items[1]
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Box_two<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.items[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(__self.items, 0);
     }
     case S_RESUME_0: {
-        // yield self.items[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(__self.items, 1);
     }
@@ -335,14 +340,16 @@ inline __gen_Box_two<T> Box<T>::two() {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Src::Src(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Bag::Bag() : n(0) {}
 
 // def bump(self) -> None:
+//     self.n += 5
 inline void Bag::bump() {
-    // self.n += 5
     this->n = ::tpy::add_check<int32_t>(this->n, 5);
 }
 void __tpy_init();

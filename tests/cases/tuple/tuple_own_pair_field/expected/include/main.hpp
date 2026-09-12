@@ -12,6 +12,7 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -52,21 +53,23 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
+//     return "P(" + str(self.x) + "," + str(self.y) + ")"
 inline std::string Point::__repr__() const {
-    // return "P(" + str(self.x) + "," + str(self.y) + ")"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("P(", ::tpy::fixed_to_str<int32_t>(this->x))), ",")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
 }
 
 // def __init__(self) -> None:
+//     a = Point(int32(1), int32(2))
+//     b = Point(int32(3), int32(4))
+//     self.points = (a, b)
 inline Pair::Pair() {
-    // a = Point(int32(1), int32(2))
     Point a = Point(1, 2);
-    // b = Point(int32(3), int32(4))
     Point b = Point(3, 4);
-    // self.points = (a, b)
     this->points = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{std::move(a), std::move(b)});
 }
 void __tpy_init();

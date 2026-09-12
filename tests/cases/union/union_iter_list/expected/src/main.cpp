@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pets: list[Dog | Cat] = [Dog("Rex"), Cat("Whiskers"), Dog("Buddy")]
+//     for p in pets:
+//         if isinstance(p, Dog):
+//             print(p.name)
+//         if isinstance(p, Cat):
+//             print(p.name)
 void main() {
-    // pets: list[Dog | Cat] = [Dog("Rex"), Cat("Whiskers"), Dog("Buddy")]
     std::vector<::tpy::Union<Cat, Dog>> pets = {Dog("Rex"), Cat("Whiskers"), Dog("Buddy")};
-    // for p in pets:
     auto& __obj_0 = pets;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // if isinstance(p, Dog):
         if (std::holds_alternative<Dog>(p)) {
             auto& __p = std::get<Dog>(p);
-            // print(p.name)
             std::cout << __p.name << "\n";
         }
-        // if isinstance(p, Cat):
         if (std::holds_alternative<Cat>(p)) {
             auto& __p = std::get<Cat>(p);
-            // print(p.name)
             std::cout << __p.name << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

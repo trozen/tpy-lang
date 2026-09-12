@@ -13,6 +13,7 @@ struct Pick;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # A ctor field initializer reading a union param `A | B` via member access
@@ -67,12 +68,15 @@ inline std::ostream& operator<<(std::ostream& os, const Pick& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 
 // def __init__(self, p: A | B) -> None:
+//     self.val = p.x if isinstance(p, A) else p.y
 inline Pick::Pick(::tpy::Union<const A*, const B*> p) : val(((std::holds_alternative<const A*>(p)) ? ((*std::get<const A*>(p)).x) : ((*std::get<const B*>(p)).y))) {}
 void __tpy_init();
 } // namespace tpyapp::main

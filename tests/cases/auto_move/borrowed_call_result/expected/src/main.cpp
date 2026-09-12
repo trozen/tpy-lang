@@ -5,61 +5,62 @@ namespace tpyapp::main {
 
 
 // def first(xs: list[P]) -> P:
+//     return xs[0]
 P& first(std::vector<P>& xs) {
-    // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
 // def drop(xs: Own[list[P]]) -> int32:
+//     store: list[list[P]] = []
+//     store.append(xs)
+//     return len(store)
 int32_t drop(std::vector<P>&& xs) {
-    // store: list[list[P]] = []
     std::vector<std::vector<P>> store = std::vector<std::vector<P>>{};
-    // store.append(xs)
     store.push_back(std::move(xs));
-    // return len(store)
     return ::tpy::__len__(store);
 }
 
 // def hold(p: Own[P]) -> int32:
+//     store: list[P] = []
+//     store.append(p)
+//     return len(store)
 int32_t hold(P&& p) {
-    // store: list[P] = []
     std::vector<P> store = std::vector<P>{};
-    // store.append(p)
     store.push_back(std::move(p));
-    // return len(store)
     return ::tpy::__len__(store);
 }
 
 // def main():
+//     xs = [P()]
+//     n = first(xs)
+//     print(drop(xs))  # tpyc: warning(/copies/)
+//     print(n.vals[0])
+//
+//     # The take_ptr source: the Ptr is read after the consume, so the same
+//     # retraction applies to a record local at its own last use.
+//     q = P()
+//     ptr = take_ptr(q)
+//     print(hold(q))  # tpyc: warning(/copies/)
+//     print(ptr.vals[0])
 void main() {
-    // xs = [P()]
     std::vector<P> xs = {P()};
-    // n = first(xs)
     P& n = first(xs);
-    // print(drop(xs))  # tpyc: warning(/copies/)
     std::vector<P> __tmp_1 = xs;
     std::cout << drop(std::move(__tmp_1)) << "\n";
-    // print(n.vals[0])
     std::cout << ::tpy::__getitem__(n.vals, 0) << "\n";
-    // # The take_ptr source: the Ptr is read after the consume, so the same
-    // # retraction applies to a record local at its own last use.
-    // q = P()
     P q = P();
-    // ptr = take_ptr(q)
     P* ptr = &q;
-    // print(hold(q))  # tpyc: warning(/copies/)
     P __tmp_2 = q;
     std::cout << hold(std::move(__tmp_2)) << "\n";
-    // print(ptr.vals[0])
     std::cout << ::tpy::__getitem__(ptr->vals, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

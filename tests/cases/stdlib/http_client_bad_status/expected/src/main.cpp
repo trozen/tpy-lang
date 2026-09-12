@@ -5,70 +5,73 @@ namespace tpyapp::main {
 
 
 // def attempt(response: bytes) -> None:
+//     a, b = socket.socketpair()
+//     conn = http.client.HTTPConnection("h", 80)
+//     conn.sock = a
+//     conn.request("GET", "/")
+//     b.recv(65536)
+//     b.sendall(response)
+//     b.close()
+//     try:
+//         conn.getresponse()
+//         print("no-raise")
+//     except http.client.UnknownProtocol:
+//         print("UnknownProtocol")
+//     except http.client.BadStatusLine:
+//         print("BadStatusLine")
+//     conn.close()
 void attempt(::tpy::BytesView response) {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // conn = http.client.HTTPConnection("h", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("h", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // conn.request("GET", "/")
     conn.request("GET", "/");
-    // b.recv(65536)
     b.recv(65536);
-    // b.sendall(response)
     b.sendall(response);
-    // b.close()
     b.close();
-    // try:
     {
         try {
-            // conn.getresponse()
             conn.getresponse();
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpystd::http::client::UnknownProtocol&) {
-            // print("UnknownProtocol")
             std::cout << "UnknownProtocol" << "\n";
         } catch (const ::tpystd::http::client::BadStatusLine&) {
-            // print("BadStatusLine")
             std::cout << "BadStatusLine" << "\n";
         }
     }
-    // conn.close()
     conn.close();
 }
 
 // def main() -> None:
+//     attempt(b"GARBAGE LINE HERE\r\n\r\n")     # not an HTTP status line
+//     attempt(b"HTTP/1.1 spam OK\r\n\r\n")      # non-numeric status code
+//     attempt(b"")                              # peer closed, nothing sent
+//     attempt(b"HTTP/2.0 200 OK\r\n\r\n")       # unsupported protocol version
 void main() {
-    // attempt(b"GARBAGE LINE HERE\r\n\r\n")     # not an HTTP status line
     attempt(::tpy::bytes_literal("GARBAGE LINE HERE\r\n\r\n", 21));
-    // attempt(b"HTTP/1.1 spam OK\r\n\r\n")      # non-numeric status code
     attempt(::tpy::bytes_literal("HTTP/1.1 spam OK\r\n\r\n", 20));
-    // attempt(b"")                              # peer closed, nothing sent
     attempt(::tpy::BytesView{});
-    // attempt(b"HTTP/2.0 200 OK\r\n\r\n")       # unsupported protocol version
     attempt(::tpy::bytes_literal("HTTP/2.0 200 OK\r\n\r\n", 19));
 }
 
+// # A malformed status line, a non-numeric status code, and an empty response
+// # (peer closed before sending) all surface as a catchable BadStatusLine --
+// # matching CPython, whose RemoteDisconnected is a BadStatusLine subclass. A
+// # non-HTTP/1.x protocol version raises UnknownProtocol (a separate
+// # HTTPException subclass), also matching CPython.
+// import socket
+// import http.client
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A malformed status line, a non-numeric status code, and an empty response
-    // # (peer closed before sending) all surface as a catchable BadStatusLine --
-    // # matching CPython, whose RemoteDisconnected is a BadStatusLine subclass. A
-    // # non-HTTP/1.x protocol version raises UnknownProtocol (a separate
-    // # HTTPException subclass), also matching CPython.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // import http.client
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // main()
     main();
 }
 

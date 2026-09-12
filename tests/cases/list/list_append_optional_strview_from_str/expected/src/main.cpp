@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def maybe() -> Optional[str]:
+//     return "hello"
 std::optional<std::string> maybe() {
-    // return "hello"
     return "hello";
 }
 
 // def main() -> None:
+//     src1: Optional[str] = "one"
+//     src2: Optional[str] = None
+//     src3 = maybe()
+//     items: list[Optional[StrView]] = []
+//     items.append(src1)
+//     items.append(src2)
+//     items.append(src3)
+//     print(items)
 void main() {
-    // src1: Optional[str] = "one"
     std::optional<std::string> src1 = "one";
-    // src2: Optional[str] = None
     std::optional<std::string> src2 = std::nullopt;
-    // src3 = maybe()
     std::optional<std::string> src3 = maybe();
-    // items: list[Optional[StrView]] = []
     std::vector<std::optional<std::string_view>> items = std::vector<std::optional<std::string_view>>{};
-    // items.append(src1)
     items.push_back(src1);
-    // items.append(src2)
     items.push_back(({ auto __ov = (src2); __ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }));
-    // items.append(src3)
     items.push_back(({ auto __ov = (src3); __ov ? std::make_optional(std::string_view(*__ov)) : std::nullopt; }));
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

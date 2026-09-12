@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Material(V3(1.0))
+//     print(a.color.x, a.emission.x)
+//     b = Material(V3(2.0), V3(7.0))
+//     print(b.color.x, b.emission.x)
+//     c = Layer(V3(3.0), True)
+//     d = Layer(V3(4.0), False)
+//     print(c.base.x, d.base.x)
 void main() {
-    // a = Material(V3(1.0))
     Material a = Material(V3(1.0));
-    // print(a.color.x, a.emission.x)
     std::cout << ::tpy::print_float(a.color.x) << " " << ::tpy::print_float(a.emission.x) << "\n";
-    // b = Material(V3(2.0), V3(7.0))
     V3 __tmp_1 = V3(7.0);
     Material b = Material(V3(2.0), &(__tmp_1));
-    // print(b.color.x, b.emission.x)
     std::cout << ::tpy::print_float(b.color.x) << " " << ::tpy::print_float(b.emission.x) << "\n";
-    // c = Layer(V3(3.0), True)
     Layer c = Layer(V3(3.0), true);
-    // d = Layer(V3(4.0), False)
     Layer d = Layer(V3(4.0), false);
-    // print(c.base.x, d.base.x)
     std::cout << ::tpy::print_float(c.base.x) << " " << ::tpy::print_float(d.base.x) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

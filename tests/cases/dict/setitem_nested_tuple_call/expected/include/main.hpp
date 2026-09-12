@@ -11,7 +11,9 @@ struct Src;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> tuple[int32, tuple[int32, int32]]:
 std::tuple<int32_t, std::tuple<int32_t, int32_t>> make();
+// def main() -> None:
 void main();
 
 // class Src:
@@ -35,11 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
 
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Src::Src(int32_t base) : base(base) {}
 
 // def pair(self) -> tuple[int32, tuple[int32, int32]]:
+//     return (self.base, (self.base + 1, self.base + 2))
 inline std::tuple<int32_t, std::tuple<int32_t, int32_t>> Src::pair() const {
-    // return (self.base, (self.base + 1, self.base + 2))
     return std::tuple<int32_t, std::tuple<int32_t, int32_t>>{this->base, std::tuple<int32_t, int32_t>{(::tpy::add_check<int32_t>(this->base, 1)), (::tpy::add_check<int32_t>(this->base, 2))}};
 }
 void __tpy_init();

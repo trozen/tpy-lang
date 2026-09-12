@@ -12,7 +12,9 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(c: Own[Container]) -> int32:
 int32_t consume(Container&& c);
+// def main():
 void main();
 
 // @nocopy
@@ -60,9 +62,11 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, fd: int32):
+//     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 
 // def __init__(self, handle: Own[Handle]):
+//     self.handle = handle
 inline Container::Container(Handle&& handle) : handle(std::move(handle)) {}
 void __tpy_init();
 } // namespace tpyapp::main

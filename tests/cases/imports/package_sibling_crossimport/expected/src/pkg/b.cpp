@@ -43,17 +43,19 @@ namespace tpyapp::pkg::b {
 
 
 // def g(n: int32) -> int32:
+//     return n + int32(1)
 int32_t g(int32_t n) {
-    // return n + int32(1)
     return (::tpy::add_check<int32_t>(n, 1));
 }
 
+// from enum import Enum
+//
+// V: Final[int32] = 3
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
 }
 
 } // namespace tpyapp::pkg::b

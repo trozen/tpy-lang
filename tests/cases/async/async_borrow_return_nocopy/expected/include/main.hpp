@@ -17,6 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main;
 struct __coro_Res_me;
 
+// async def main() -> None:
 __coro_main main();
 
 // @nocopy
@@ -42,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
     return os;
 }
 
-// Async coroutine: Res.me
+// async def me(self) -> "Res":
 struct __coro_Res_me {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +71,7 @@ inline __coro_Res_me Res::me() {
     return __coro_Res_me(*this);
 }
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -97,6 +98,7 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     self.n = 3
 inline Res::Res() : n(::tpy::BigInt(3)) {}
 void __tpy_init();
 } // namespace tpyapp::main

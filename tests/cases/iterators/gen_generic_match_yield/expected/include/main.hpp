@@ -12,11 +12,13 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename T>
 struct __gen_gen;
 
+// def gen[T](a: T, b: T, tag: int) -> Iterator[T]:
 template <typename T>
 __gen_gen<T> gen(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, ::tpy::BigInt tag);
+// def main() -> None:
 void main();
 
-// Generator: gen
+// def gen[T](a: T, b: T, tag: int) -> Iterator[T]:
 template <typename T>
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
     int32_t __state;
@@ -44,19 +46,21 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
     }
 };
 // def gen[T](a: T, b: T, tag: int) -> Iterator[T]:
+//     match tag:  # tpyc: ok
+//         case 0:
+//             yield a
+//             yield b
+//         case _:
+//             yield a
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = tag;
-        // case 0:
         if (__match_subject_1 == 0) {
-            // yield a
             __state = S_RESUME_0;
             return a;
-        // case _:
         } else {
-            // yield a
             __state = S_RESUME_2;
             return a;
         }
@@ -64,7 +68,6 @@ std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return b;
     }

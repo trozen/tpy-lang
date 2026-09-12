@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [10, 20, 30]
+//     print(maybe_sum(nums))
 void main() {
-    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // print(maybe_sum(nums))
     std::cout << maybe_sum(nums) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

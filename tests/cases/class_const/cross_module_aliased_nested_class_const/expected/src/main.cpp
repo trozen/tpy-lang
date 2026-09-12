@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(L.Inner.MAX)
+//     print(L.Inner.TAG)
 void main() {
-    // print(L.Inner.MAX)
     std::cout << ::tpyapp::limits::Limits::Inner::MAX << "\n";
-    // print(L.Inner.TAG)
     std::cout << ::tpyapp::limits::Limits::Inner::TAG << "\n";
 }
 
+// # Aliased cross-module nested-class const access. `L.Inner.MAX` resolves
+// # through the alias to `Limits.Inner.MAX` and emits the canonical
+// # `::tpyapp::limits::Limits::Inner::MAX`. Verifies the import handler
+// # registers nested types under both the canonical and alias-prefixed
+// # keys when an alias is used.
+// from limits import Limits as L
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Aliased cross-module nested-class const access. `L.Inner.MAX` resolves
-    // # through the alias to `Limits.Inner.MAX` and emits the canonical
-    // # `::tpyapp::limits::Limits::Inner::MAX`. Verifies the import handler
-    // # registers nested types under both the canonical and alias-prefixed
-    // # keys when an alias is used.
-    // from limits import Limits as L
     ::tpyapp::limits::__tpy_init();
-    // main()
     main();
 }
 

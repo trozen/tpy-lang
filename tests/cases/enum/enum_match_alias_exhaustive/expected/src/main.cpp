@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def label(c: C) -> str:
+//     match c:
+//         case C.RED:
+//             return "r"
+//         case C.GREEN:
+//             return "g"
+//         case C.BLUE:
+//             return "b"
 std::string label(::tpyapp::palette::Color c) {
-    // match c:
     auto& __match_subject_1 = c;
     switch (__match_subject_1) {
-    // case C.RED:
     case ::tpyapp::palette::Color::RED: {
-        // return "r"
         return "r";
         break;
     }
-    // case C.GREEN:
     case ::tpyapp::palette::Color::GREEN: {
-        // return "g"
         return "g";
         break;
     }
-    // case C.BLUE:
     case ::tpyapp::palette::Color::BLUE: {
-        // return "b"
         return "b";
         break;
     }
@@ -32,25 +32,26 @@ std::string label(::tpyapp::palette::Color c) {
 }
 
 // def main() -> None:
+//     print(label(C.RED))
+//     print(label(C.GREEN))
+//     print(label(C.BLUE))
 void main() {
-    // print(label(C.RED))
     std::cout << label(::tpyapp::palette::Color::RED) << "\n";
-    // print(label(C.GREEN))
     std::cout << label(::tpyapp::palette::Color::GREEN) << "\n";
-    // print(label(C.BLUE))
     std::cout << label(::tpyapp::palette::Color::BLUE) << "\n";
 }
 
+// # Regression: an exhaustive match over an alias-imported enum must be
+// # accepted (coverage is keyed by the canonical name, not the alias).
+// from palette import Color as C
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: an exhaustive match over an alias-imported enum must be
-    // # accepted (coverage is keyed by the canonical name, not the alias).
-    // from palette import Color as C
     ::tpyapp::palette::__tpy_init();
-    // main()
     main();
 }
 

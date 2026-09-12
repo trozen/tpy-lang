@@ -16,6 +16,7 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Node:
@@ -49,8 +50,11 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
+//     self.parent = None
+//     self.children = []
+//     print("init", name)
 inline Node::Node(std::string_view name) : name(name), parent(std::nullopt), children(std::vector<::tpystd::tplib::rc::Rc<Node>>{}) {
-    // print("init", name)
     std::cout << "init" << " " << name << "\n";
 }
 
@@ -66,9 +70,9 @@ inline Node& Node::operator=(Node&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("del", self.name)
 inline Node::~Node() {
     if (!this->__tpy_owned_) return;
-    // print("del", self.name)
     std::cout << "del" << " " << this->name << "\n";
 }
 void __tpy_init();

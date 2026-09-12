@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Any(213)
+//     b = Any("hello")
+//     c = Any(3.14)
+//     d = Any(None)
+//     print(a)
+//     print(b)
+//     print(c)
+//     print(d)
+//     # Inline in a container literal
+//     items: list[Any] = [Any(1), Any("two"), Any(True)]
+//     print(len(items))
 void main() {
-    // a = Any(213)
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(213));
-    // b = Any("hello")
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
-    // c = Any(3.14)
     ::tpy::Any c = ::tpy::make_any(static_cast<double>(3.14));
-    // d = Any(None)
     ::tpy::Any d = ::tpy::make_any(std::monostate{});
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
-    // print(c)
     std::cout << c << "\n";
-    // print(d)
     std::cout << d << "\n";
-    // # Inline in a container literal
-    // items: list[Any] = [Any(1), Any("two"), Any(True)]
     std::vector<::tpy::Any> items = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("two")), ::tpy::make_any(true)};
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c_int = Container[int32](int32(7), "int")
+//     c_str = Container[str](" s", "str")
+//     print(c_int.tagged())
+//     print(c_str.tagged())
 void main() {
-    // c_int = Container[int32](int32(7), "int")
     Container<int32_t> c_int = Container<int32_t>(7, "int");
-    // c_str = Container[str](" s", "str")
     Container<std::string> c_str = Container<std::string>(" s", "str");
-    // print(c_int.tagged())
     std::cout << c_int.tagged() << "\n";
-    // print(c_str.tagged())
     std::cout << c_str.tagged() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

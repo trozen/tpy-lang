@@ -44,32 +44,32 @@ namespace tpyapp::b {
 
 
 // def describe(c: Color) -> str:
+//     if c == Color.RED:
+//         return "red"
+//     return "blue"
 std::string describe(Color c) {
-    // if c == Color.RED:
     if ((c == Color::RED)) {
-        // return "red"
         return "red";
     }
-    // return "blue"
     return "blue";
 }
 
 // # Real cycle edge: describe_default calls into a, which returns
 // # Color (defined here) -- both directions are exercised.
 // def describe_default() -> str:
+//     return describe(lookup())
 std::string describe_default() {
-    // return describe(lookup())
     return describe(::tpyapp::a::lookup());
 }
 
+// from a import lookup
+// from enum import Enum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import lookup
     ::tpyapp::a::__tpy_init();
-    // from enum import Enum
 }
 
 } // namespace tpyapp::b

@@ -10,7 +10,9 @@ namespace tpyapp::a {
 
 inline constexpr std::string_view __name__ = "a";
 
+// def K() -> int32:
 int32_t K();
+// def K_then_H() -> int32:
 int32_t K_then_H();
 
 void __tpy_init();

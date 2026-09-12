@@ -15,7 +15,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pointer_arm(pet: Dog | Cat | None = None) -> str:
 std::string pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*> pet = {});
+// def main() -> None:
 void main();
 
 // @dataclass(frozen=True)
@@ -187,59 +189,61 @@ inline uint64_t Zone::__hash__() const {
 }
 
 // def __init__(self, barks: int) -> None:
+//     self.barks = barks
 inline Dog::Dog(const ::tpy::BigInt& barks) : barks(barks) {}
 
 // def __init__(self, meows: int) -> None:
+//     self.meows = meows
 inline Cat::Cat(const ::tpy::BigInt& meows) : meows(meows) {}
 
 // def __init__(self, tz: Fixed | Zone | None = None) -> None:
+//     k = 0
+//     if tz is not None:
+//         if isinstance(tz, Fixed):
+//             k = 1
+//         else:
+//             k = 2
+//     self.kind = k
 inline Holder::Holder(const ::tpy::Union<std::monostate, Fixed, Zone>& tz) {
-    // k = 0
     int32_t k = 0;
-    // if tz is not None:
     if ((!std::holds_alternative<std::monostate>(tz))) {
-        // if isinstance(tz, Fixed):
         if (std::holds_alternative<Fixed>(tz)) {
             const auto& __tz = std::get<Fixed>(tz);
-            // k = 1
             k = 1;
-        // else:
         } else {
             const auto& __tz = std::get<Zone>(tz);
-            // k = 2
             k = 2;
         }
     }
-    // self.kind = k
     this->kind = k;
 }
 
 // def describe(self, tz: Fixed | Zone | None = None) -> str:
+//     if tz is None:
+//         return "none"
+//     if isinstance(tz, Fixed):
+//         return "fixed:" + str(tz.off)
+//     return "zone:" + str(tz.zid)
 inline std::string Holder::describe(const ::tpy::Union<std::monostate, Fixed, Zone>& tz) const {
-    // if tz is None:
     if ((std::holds_alternative<std::monostate>(tz))) {
-        // return "none"
         return "none";
     }
-    // if isinstance(tz, Fixed):
     if (std::holds_alternative<Fixed>(tz)) {
         const auto& __tz = std::get<Fixed>(tz);
-        // return "fixed:" + str(tz.off)
         return (::tpy::str_concat("fixed:", ::tpy::fixed_to_str<int32_t>(__tz.off)));
     }
     const auto& __tz = std::get<Zone>(tz);
-    // return "zone:" + str(tz.zid)
     return (::tpy::str_concat("zone:", ::tpy::fixed_to_str<int32_t>(__tz.zid)));
 }
 
 // def opt(self, tz: Fixed | None = None) -> str:
+//     if tz is None:
+//         return "none"
+//     return "fixed:" + str(tz.off)
 inline std::string Holder::opt(std::optional<Fixed> tz) const {
-    // if tz is None:
     if ((!tz.has_value())) {
-        // return "none"
         return "none";
     }
-    // return "fixed:" + str(tz.off)
     return (::tpy::str_concat("fixed:", ::tpy::fixed_to_str<int32_t>((*tz).off)));
 }
 void __tpy_init();

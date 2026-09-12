@@ -5,47 +5,50 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Container[int32]()
+//     c.add(int32(10))
+//     c.add(int32(20))
+//     c.add(int32(30))
+//
+//     # Index
+//     print(c[int32(1)])
+//
+//     # Slice
+//     sp = c[int32(0):int32(2)]
+//     for x in sp:
+//         print(x)
+//
+//     # String container
+//     s = Container[str]()
+//     s.add("hello")
+//     s.add("world")
+//     print(s[int32(0)])
 void main() {
-    // c = Container[int32]()
     Container<int32_t> c = Container<int32_t>();
-    // c.add(int32(10))
     c.add(10);
-    // c.add(int32(20))
     c.add(20);
-    // c.add(int32(30))
     c.add(30);
-    // # Index
-    // print(c[int32(1)])
     std::cout << c[1] << "\n";
-    // # Slice
-    // sp = c[int32(0):int32(2)]
     std::span<const int32_t> sp = c.__getitem__(::tpy::BasicSlice{0, 2});
-    // for x in sp:
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # String container
-    // s = Container[str]()
     Container<std::string> s = Container<std::string>();
-    // s.add("hello")
     s.add("hello");
-    // s.add("world")
     s.add("world");
-    // print(s[int32(0)])
     std::cout << s[0] << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,18 +9,31 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_opt(x: int32) -> int32 | None:
 std::optional<int32_t> get_opt(int32_t x);
+// def test_if_condition() -> None:
 void test_if_condition();
+// def test_optional_narrowing() -> None:
 void test_optional_narrowing();
+// def test_and_chain() -> None:
 void test_and_chain();
+// def test_while_loop() -> None:
 void test_while_loop();
+// def test_expression_position() -> None:
 void test_expression_position();
+// def test_multiple_walrus() -> None:
 void test_multiple_walrus();
+// def test_reuse_walrus_target() -> None:
 void test_reuse_walrus_target();
+// def test_walrus_in_branch() -> None:
 void test_walrus_in_branch();
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x);
+// def test_walrus_elif() -> None:
 void test_walrus_elif();
+// def test_comprehension_walrus() -> None:
 void test_comprehension_walrus();
+// def main() -> None:
 void main();
 
 void __tpy_init();

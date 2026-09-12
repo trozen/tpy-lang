@@ -5,84 +5,83 @@ namespace tpyapp::main {
 
 
 // def bump_items(d: dict[str, Point]):
+//     for k, v in d.items():
+//         v.x = v.x + 100
 void bump_items(::tpy::ordered_map<std::string, Point>& d) {
-    // for k, v in d.items():
     auto __obj_0 = ::tpy::dict_items(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        // for k, v in d.items():
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, Point*>>(__for_tup_0);
         std::string_view k = std::get<0>(__tup_1);
         auto&& v = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        // v.x = v.x + 100
         v.x = (::tpy::add_check<int32_t>(v.x, 100));
     }
 }
 
 // def bump_values(d: dict[str, list[int32]]):
+//     for v in d.values():
+//         v.append(9)
 void bump_values(::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
-    // for v in d.values():
     auto __obj_0 = ::tpy::dict_values(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& v = *__beg_0;
-        // v.append(9)
         v.push_back(9);
     }
 }
 
 // def total(d: dict[str, list[int32]]) -> int32:
+//     n = 0
+//     for k, v in d.items():
+//         n = n + len(v)
+//     return n
 int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
-    // n = 0
     int32_t n = 0;
-    // for k, v in d.items():
     auto __obj_0 = ::tpy::dict_items(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_1 = *__beg_0;
-        // for k, v in d.items():
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, const std::vector<int32_t>*>>(__for_tup_1);
         std::string_view k = std::get<0>(__tup_1);
         auto&& v = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        // n = n + len(v)
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(v)));
     }
-    // return n
     return n;
 }
 
 // def main():
+//     pts = {"a": Point(1), "b": Point(2)}
+//     bump_items(pts)
+//     print(pts["a"].x, pts["b"].x)
+//
+//     lists: dict[str, list[int32]] = {}
+//     lists["a"] = [1]
+//     lists["b"] = [2, 3]
+//     bump_values(lists)
+//     print(lists["a"], lists["b"])
+//     print(total(lists))
 void main() {
-    // pts = {"a": Point(1), "b": Point(2)}
     ::tpy::ordered_map<std::string, Point> pts = ::tpy::ordered_map<std::string, Point>({{"a", Point(1)}, {"b", Point(2)}});
-    // bump_items(pts)
     bump_items(pts);
-    // print(pts["a"].x, pts["b"].x)
     std::cout << ::tpy::__getitem__(pts, "a").x << " " << ::tpy::__getitem__(pts, "b").x << "\n";
-    // lists: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> lists = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // lists["a"] = [1]
     ::tpy::__setitem__(lists, "a", std::vector<int32_t>{1});
-    // lists["b"] = [2, 3]
     ::tpy::__setitem__(lists, "b", std::vector<int32_t>{2, 3});
-    // bump_values(lists)
     bump_values(lists);
-    // print(lists["a"], lists["b"])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(lists, "a")) << " " << ::tpy::ListPrinter(::tpy::__getitem__(lists, "b")) << "\n";
-    // print(total(lists))
     std::cout << total(lists) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,29 +9,34 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void consume(T_items& items);
+// def test_lazy_variable_count() -> None:
 void test_lazy_variable_count();
+// def test_lazy_for_loop() -> None:
 void test_lazy_for_loop();
+// def test_direct_iterable_arg() -> None:
 void test_direct_iterable_arg();
+// def test_print_lazy_repeat() -> None:
 void test_print_lazy_repeat();
 
 // def consume(items: Iterable[int32]) -> None:
+//     total: int32 = 0
+//     for v in items:
+//         total += v
+//     print(total)
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void consume(T_items& items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for v in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 

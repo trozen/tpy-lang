@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Processor[int32](int32(1))
+//     print(p.process())
+//     print(p.wrap("hello"))
 void main() {
-    // p = Processor[int32](int32(1))
     Processor<int32_t> p = Processor<int32_t>(1);
-    // print(p.process())
     std::cout << p.process() << "\n";
-    // print(p.wrap("hello"))
     std::cout << p.wrap<std::string>("hello") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

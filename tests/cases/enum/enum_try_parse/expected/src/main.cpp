@@ -47,42 +47,43 @@ namespace tpyapp::main {
 
 
 // def try_it(name: str) -> None:
+//     c = try_parse(Color, name)
+//     if c is not None:
+//         print(c)
+//     else:
+//         print("not found")
 void try_it(std::string_view name) {
-    // c = try_parse(Color, name)
     std::optional<Color> c = ::tpy::EnumUtil<Color>::try_parse(name);
-    // if c is not None:
     if ((c.has_value())) {
-        // print(c)
         std::cout << ::tpy::print_optional_val(c) << "\n";
-    // else:
     } else {
-        // print("not found")
         std::cout << "not found" << "\n";
     }
 }
 
 // def main() -> None:
+//     try_it("Red")
+//     try_it("Green")
+//     try_it("Blue")
+//     try_it("Purple")
+//     try_it("")
 void main() {
-    // try_it("Red")
     try_it("Red");
-    // try_it("Green")
     try_it("Green");
-    // try_it("Blue")
     try_it("Blue");
-    // try_it("Purple")
     try_it("Purple");
-    // try_it("")
     try_it("");
 }
 
+// # Test try_parse() free function for safe name-to-enum conversion
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test try_parse() free function for safe name-to-enum conversion
-    // from enum import Enum
-    // main()
     main();
 }
 

@@ -11,7 +11,9 @@ struct Tracker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def del_it(t: Tracker, name: str) -> None:
 void del_it(Tracker& t, std::string_view name);
+// def main() -> None:
 void main();
 
 // # D16 phase 9: delattr(obj, name_var) with a runtime name -- routes to
@@ -36,11 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
 
 
 // def __init__(self) -> None:
+//     self._last_deleted = ""
 inline Tracker::Tracker() : _last_deleted("") {}
 
 // def __delattr__(self, name: str) -> None:
+//     self._last_deleted = name
 inline void Tracker::__delattr__(std::string_view name) {
-    // self._last_deleted = name
     this->_last_deleted = name;
 }
 void __tpy_init();

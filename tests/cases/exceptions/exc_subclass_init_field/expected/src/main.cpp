@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         raise AppError(7)
+//     except AppError as e:
+//         print(e.code)
 void main() {
-    // try:
     {
         try {
-            // raise AppError(7)
             throw AppError(::tpy::BigInt(7));
         } catch (const AppError& e) {
-            // print(e.code)
             std::cout << e.code << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

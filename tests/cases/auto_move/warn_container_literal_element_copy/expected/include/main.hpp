@@ -12,6 +12,7 @@ struct K;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class P:
@@ -68,6 +69,7 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline P::P(const ::tpy::BigInt& v) : v(v) {}
 
 inline K::K(const ::tpy::BigInt& v) : v(v) {}

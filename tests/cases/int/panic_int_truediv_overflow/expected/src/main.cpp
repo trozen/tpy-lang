@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 // # An int/int quotient beyond double range panics with OverflowError (CPython parity).
 // def main() -> None:
+//     a: int = 10**400
+//     b: int = 3
+//     print(a / b)
 void main() {
-    // a: int = 10**400
     ::tpy::BigInt a = ((::tpy::BigInt(10)).pow(::tpy::BigInt(400)));
-    // b: int = 3
     ::tpy::BigInt b = ::tpy::BigInt(3);
-    // print(a / b)
     std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // async def takes_optional(p: P | None) -> int32:
+//     if p is not None:
+//         return p.n
+//     return -1
 ::tpystd::tpy::Poll<int32_t> __coro_takes_optional::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if p is not None:
         if ((p != nullptr)) {
-            // return p.n
             __state = S_DONE;
             int32_t __tpy_async_ret = p->n;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
-        // return -1
         __state = S_DONE;
         int32_t __tpy_async_ret = -1;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -33,16 +33,18 @@ __coro_takes_optional takes_optional(P* p) {
 }
 
 // async def driver() -> None:
+//     items: list[P] = []
+//     items.append(P(42))
+//     items.append(P(7))
+//     print(await takes_optional(items[0]))
+//     print(await takes_optional(items[1]))
+//     print(await takes_optional(None))
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items: list[P] = []
         items.emplace(std::vector<P>{});
-        // items.append(P(42))
         (*items).push_back(P(42));
-        // items.append(P(7))
         (*items).push_back(P(7));
-        // print(await takes_optional(items[0]))
         __sub_0.emplace(&(::tpy::__getitem__((*items), 0)));
         __state = S_RESUME_0;
         continue;
@@ -52,9 +54,7 @@ __coro_takes_optional takes_optional(P* p) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await takes_optional(items[0]))
         std::cout << __await_lift_0 << "\n";
-        // print(await takes_optional(items[1]))
         __sub_1.emplace(&(::tpy::__getitem__((*items), 1)));
         __state = S_RESUME_1;
         continue;
@@ -64,9 +64,7 @@ __coro_takes_optional takes_optional(P* p) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await takes_optional(items[1]))
         std::cout << __await_lift_1 << "\n";
-        // print(await takes_optional(None))
         __sub_2.emplace(nullptr);
         __state = S_RESUME_2;
         continue;
@@ -76,7 +74,6 @@ __coro_takes_optional takes_optional(P* p) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await takes_optional(None))
         std::cout << __await_lift_2 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -92,18 +89,19 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
+// # Regression: async function with pointer-form Optional[NonValue] param.
+// # Frame slot + factory signature must use `T*` (matching sync), not
+// # `std::optional<T>&`; the call site must apply `&` lift on the arg to
+// # match the new factory shape.
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: async function with pointer-form Optional[NonValue] param.
-    // # Frame slot + factory signature must use `T*` (matching sync), not
-    // # `std::optional<T>&`; the call site must apply `&` lift on the arg to
-    // # match the new factory shape.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

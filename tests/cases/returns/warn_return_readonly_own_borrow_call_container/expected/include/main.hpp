@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -36,17 +37,18 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2]
 inline Holder::Holder() : items(std::vector<int32_t>{1, 2}) {}
 
 // def grab(self) -> readonly[Own[list[int32]]]:
+//     return self.items  # tpyc: warning(/copies list\[int32\] into owned storage/)
 inline std::vector<int32_t> Holder::grab() const {
-    // return self.items  # tpyc: warning(/copies list\[int32\] into owned storage/)
     return std::vector<int32_t>(this->items);
 }
 
 // def grab_copy(self) -> readonly[Own[list[int32]]]:
+//     return copy(self.items)  # tpyc: ok
 inline std::vector<int32_t> Holder::grab_copy() const {
-    // return copy(self.items)  # tpyc: ok
     return std::vector<int32_t>(this->items);
 }
 void __tpy_init();

@@ -15,6 +15,7 @@ struct Notifier;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -73,37 +74,39 @@ inline std::ostream& operator<<(std::ostream& os, const Notifier& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Tally::Tally() : n(0) {}
 
 // def bump(self, by: int32) -> None:
+//     self.n += by
 inline void Tally::bump(int32_t by) {
-    // self.n += by
     this->n = ::tpy::add_check<int32_t>(this->n, by);
 }
 
 // def value(self) -> int32:
+//     return self.n
 inline int32_t Tally::value() {
-    // return self.n
     return this->n;
 }
 
 // def __init__(self) -> None:
+//     self.target = None
 inline Notifier::Notifier() : target(nullptr) {}
 
 // def aim(self, p: Ptr[Counter]) -> None:
+//     self.target = p
 inline void Notifier::aim(::tpyapp::pet::Counter* p) {
-    // self.target = p
     this->target = p;
 }
 
 // def trigger(self, by: int32) -> None:
+//     if self.target is None:
+//         return
+//     self.target.bump(by)
 inline void Notifier::trigger(int32_t by) {
-    // if self.target is None:
     if ((this->target == nullptr)) {
-        // return
         return;
     }
-    // self.target.bump(by)
     this->target->bump(by);
 }
 void __tpy_init();

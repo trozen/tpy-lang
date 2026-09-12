@@ -12,6 +12,7 @@ extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* items;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_span(values: Span[int32]) -> int32:
 int32_t sum_span(std::span<int32_t> values);
 
 void __tpy_init();

@@ -5,138 +5,148 @@ namespace tpyapp::main {
 
 
 // def main():
+//     # forward-referenced generator: the frame views the caller's arg array,
+//     # so the pack elements stay borrowed while the generator is alive.
+//     # Annotated: a bare list literal infers Array[int32, N], not list.
+//     a: list[int32] = [1, 2, 3]
+//     b: list[int32] = [4]
+//     g = gen(a, b)
+//     print("gen:", drop(a))  # tpyc: warning(/copies/)
+//     for v in g:
+//         print("gen:", v)
+//
+//     # plain function (no frame): the returned borrow of a pack element keeps
+//     # the whole pack borrowed just the same.
+//     c: list[int32] = [5, 6]
+//     d: list[int32] = [7]
+//     r = first(c, d)
+//     print("plain:", drop(c))  # tpyc: warning(/copies/)
+//     # mutate through the returned borrow and read the SOURCE: a copy at the
+//     # return would leave `c` at 2 while `r` grew.
+//     r.append(99)
+//     print("plain:", len(c), len(r))
+//
+//     # method generator, forward-referenced from a class declared above it
+//     print("method:", Caller().run())
+//
+//     # keyword-only borrow behind the pack: its borrow index is the one the
+//     # pack would shift, so the sink on it must still demote
+//     e: list[int32] = [1, 2]
+//     f: list[int32] = [3]
+//     h: list[int32] = [4, 5, 6, 7]
+//     gk = kwgen(e, f, extra=h)
+//     print("kwonly:", drop(h))  # tpyc: warning(/copies/)
+//     for v in gk:
+//         print("kwonly:", v)
+//
+//     # ... and the pack elements in front of it keep their own indices
+//     p: list[int32] = [1, 2]
+//     q: list[int32] = [3]
+//     s: list[int32] = [9]
+//     gp = kwgen(p, q, extra=s)
+//     print("kwpack:", drop(p))  # tpyc: warning(/copies/)
+//     for v in gp:
+//         print("kwpack:", v)
+//
+//     # transitive return: forward's result borrows a pack element of first(),
+//     # which reaches the caller's argument through the forwarded pack
+//     t: list[int32] = [8, 9, 10]
+//     u: list[int32] = [11]
+//     fr = forward(t, u)
+//     print("fwd:", drop(t))  # tpyc: warning(/copies/)
+//     # same aliasing check as the plain section, one hop further out
+//     fr.append(99)
+//     print("fwd:", len(t), len(fr))
+//
+//     # two hops of forwarding: the pack is re-spelled at every hop, so the
+//     # borrow must still land on the caller's own argument.
+//     w: list[int32] = [1, 2]
+//     y: list[int32] = [3]
+//     f2 = forward2(w, y)
+//     print("fwd2:", drop(w))  # tpyc: warning(/copies/)
+//     f2.append(99)
+//     print("fwd2:", len(w), len(f2))
 void main() {
-    // # forward-referenced generator: the frame views the caller's arg array,
-    // # so the pack elements stay borrowed while the generator is alive.
-    // # Annotated: a bare list literal infers Array[int32, N], not list.
-    // a: list[int32] = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // b: list[int32] = [4]
     std::vector<int32_t> b = {4};
-    // g = gen(a, b)
     std::array<const std::vector<int32_t>*, 2> __tmp_1{&a, &b};
     auto g = gen(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
-    // print("gen:", drop(a))  # tpyc: warning(/copies/)
     std::vector<int32_t> __tmp_2 = a;
     std::cout << "gen:" << " " << drop(std::move(__tmp_2)) << "\n";
-    // for v in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print("gen:", v)
         std::cout << "gen:" << " " << v << "\n";
     }
-    // # plain function (no frame): the returned borrow of a pack element keeps
-    // # the whole pack borrowed just the same.
-    // c: list[int32] = [5, 6]
     std::vector<int32_t> c = {5, 6};
-    // d: list[int32] = [7]
     std::vector<int32_t> d = {7};
-    // r = first(c, d)
     std::array<std::vector<int32_t>*, 2> __tmp_3{&c, &d};
     std::vector<int32_t>& r = first(::tpy::varargs<std::vector<int32_t>>(__tmp_3));
-    // print("plain:", drop(c))  # tpyc: warning(/copies/)
     std::vector<int32_t> __tmp_4 = c;
     std::cout << "plain:" << " " << drop(std::move(__tmp_4)) << "\n";
-    // # mutate through the returned borrow and read the SOURCE: a copy at the
-    // # return would leave `c` at 2 while `r` grew.
-    // r.append(99)
     r.push_back(99);
-    // print("plain:", len(c), len(r))
     std::cout << "plain:" << " " << ::tpy::__len__(c) << " " << ::tpy::__len__(r) << "\n";
-    // # method generator, forward-referenced from a class declared above it
-    // print("method:", Caller().run())
     std::cout << "method:" << " " << Caller().run() << "\n";
-    // # keyword-only borrow behind the pack: its borrow index is the one the
-    // # pack would shift, so the sink on it must still demote
-    // e: list[int32] = [1, 2]
     std::vector<int32_t> e = {1, 2};
-    // f: list[int32] = [3]
     std::vector<int32_t> f = {3};
-    // h: list[int32] = [4, 5, 6, 7]
     std::vector<int32_t> h = {4, 5, 6, 7};
-    // gk = kwgen(e, f, extra=h)
     std::array<const std::vector<int32_t>*, 2> __tmp_5{&e, &f};
     auto gk = kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_5), h);
-    // print("kwonly:", drop(h))  # tpyc: warning(/copies/)
     std::vector<int32_t> __tmp_6 = h;
     std::cout << "kwonly:" << " " << drop(std::move(__tmp_6)) << "\n";
-    // for v in gk:
     auto& __src_2 = gk;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print("kwonly:", v)
         std::cout << "kwonly:" << " " << v << "\n";
     }
-    // # ... and the pack elements in front of it keep their own indices
-    // p: list[int32] = [1, 2]
     std::vector<int32_t> p = {1, 2};
-    // q: list[int32] = [3]
     std::vector<int32_t> q = {3};
-    // s: list[int32] = [9]
     std::vector<int32_t> s = {9};
-    // gp = kwgen(p, q, extra=s)
     std::array<const std::vector<int32_t>*, 2> __tmp_7{&p, &q};
     auto gp = kwgen(::tpy::varargs<const std::vector<int32_t>>(__tmp_7), s);
-    // print("kwpack:", drop(p))  # tpyc: warning(/copies/)
     std::vector<int32_t> __tmp_8 = p;
     std::cout << "kwpack:" << " " << drop(std::move(__tmp_8)) << "\n";
-    // for v in gp:
     auto& __src_4 = gp;
     auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
         auto __r_5 = __itr_4.__next__();
         if (!__r_5.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print("kwpack:", v)
         std::cout << "kwpack:" << " " << v << "\n";
     }
-    // # transitive return: forward's result borrows a pack element of first(),
-    // # which reaches the caller's argument through the forwarded pack
-    // t: list[int32] = [8, 9, 10]
     std::vector<int32_t> t = {8, 9, 10};
-    // u: list[int32] = [11]
     std::vector<int32_t> u = {11};
-    // fr = forward(t, u)
     std::array<std::vector<int32_t>*, 2> __tmp_9{&t, &u};
     std::vector<int32_t>& fr = forward(::tpy::varargs<std::vector<int32_t>>(__tmp_9));
-    // print("fwd:", drop(t))  # tpyc: warning(/copies/)
     std::vector<int32_t> __tmp_10 = t;
     std::cout << "fwd:" << " " << drop(std::move(__tmp_10)) << "\n";
-    // # same aliasing check as the plain section, one hop further out
-    // fr.append(99)
     fr.push_back(99);
-    // print("fwd:", len(t), len(fr))
     std::cout << "fwd:" << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(fr) << "\n";
-    // # two hops of forwarding: the pack is re-spelled at every hop, so the
-    // # borrow must still land on the caller's own argument.
-    // w: list[int32] = [1, 2]
     std::vector<int32_t> w = {1, 2};
-    // y: list[int32] = [3]
     std::vector<int32_t> y = {3};
-    // f2 = forward2(w, y)
     std::array<std::vector<int32_t>*, 2> __tmp_11{&w, &y};
     std::vector<int32_t>& f2 = forward2(::tpy::varargs<std::vector<int32_t>>(__tmp_11));
-    // print("fwd2:", drop(w))  # tpyc: warning(/copies/)
     std::vector<int32_t> __tmp_12 = w;
     std::cout << "fwd2:" << " " << drop(std::move(__tmp_12)) << "\n";
-    // f2.append(99)
     f2.push_back(99);
-    // print("fwd2:", len(w), len(f2))
     std::cout << "fwd2:" << " " << ::tpy::__len__(w) << " " << ::tpy::__len__(f2) << "\n";
 }
 
 // def gen(*xs: list[int32]) -> Iterator[int32]:
+//     n = 0
+//     for s in xs:
+//         n += len(s)
+//         yield n
+//     yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = 0
         n = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
@@ -153,14 +163,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
         s = &(*((*__for_it_0))++);
-        // n += len(s)
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__((*s)));
-        // yield n
         __state = S_RESUME_0;
         return n;
     }
@@ -176,10 +183,14 @@ __gen_gen gen(::tpy::varargs<const std::vector<int32_t>> xs) {
 }
 
 // def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
+//     n = 0
+//     for s in xs:
+//         n += len(s)
+//         yield n
+//     yield len(extra)
 std::expected<int32_t, ::tpy::StopIteration> __gen_kwgen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = 0
         n = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
@@ -196,14 +207,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_kwgen::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield len(extra)
             __state = S_RESUME_1;
             return ::tpy::__len__(extra);
         }
         s = &(*((*__for_it_0))++);
-        // n += len(s)
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__((*s)));
-        // yield n
         __state = S_RESUME_0;
         return n;
     }
@@ -219,38 +227,42 @@ __gen_kwgen kwgen(::tpy::varargs<const std::vector<int32_t>> xs, std::vector<int
 }
 
 // def first(*xs: list[int32]) -> list[int32]:
+//     return xs[0]
 std::vector<int32_t>& first(::tpy::varargs<std::vector<int32_t>> xs) {
-    // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
 // def forward(*xs: list[int32]) -> list[int32]:
+//     return first(*xs)
 std::vector<int32_t>& forward(::tpy::varargs<std::vector<int32_t>> xs) {
-    // return first(*xs)
     return first(::tpy::varargs<std::vector<int32_t>>(xs));
 }
 
 // def forward2(*zs: list[int32]) -> list[int32]:
+//     return forward(*zs)
 std::vector<int32_t>& forward2(::tpy::varargs<std::vector<int32_t>> zs) {
-    // return forward(*zs)
     return forward(::tpy::varargs<std::vector<int32_t>>(zs));
 }
 
 // def drop(xs: Own[list[int32]]) -> int32:
+//     store: list[list[int32]] = []
+//     store.append(xs)
+//     return len(store[0])
 int32_t drop(std::vector<int32_t>&& xs) {
-    // store: list[list[int32]] = []
     std::vector<std::vector<int32_t>> store = std::vector<std::vector<int32_t>>{};
-    // store.append(xs)
     store.push_back(std::move(xs));
-    // return len(store[0])
     return ::tpy::__len__(::tpy::__getitem__(store, 0));
 }
 
 // def sizes(self, *xs: list[int32]) -> Iterator[int32]:
+//     n = 0
+//     for s in xs:
+//         n += len(s)
+//         yield n
+//     yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = 0
         n = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
@@ -267,14 +279,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
         s = &(*((*__for_it_0))++);
-        // n += len(s)
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__((*s)));
-        // yield n
         __state = S_RESUME_0;
         return n;
     }
@@ -288,42 +297,42 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
 // # Defined BEFORE Collector, so the method generator is forward-referenced
 // # and only the registration-time borrow stamp can see the pack.
 // def run(self) -> int32:
+//     a: list[int32] = [1, 2, 3]
+//     b: list[int32] = [4]
+//     c = Collector()
+//     g = c.sizes(a, b)
+//     # the method frame views the caller's arg array just as a free
+//     # generator's does, so consuming a packed element demotes to a copy
+//     n = drop(a)  # tpyc: warning(/copies/)
+//     total = 0
+//     for v in g:
+//         total += v
+//     return total + n
 int32_t Caller::run() const {
-    // a: list[int32] = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // b: list[int32] = [4]
     std::vector<int32_t> b = {4};
-    // c = Collector()
     Collector c = Collector();
-    // g = c.sizes(a, b)
     std::array<const std::vector<int32_t>*, 2> __tmp_13{&a, &b};
     auto g = c.sizes(::tpy::varargs<const std::vector<int32_t>>(__tmp_13));
-    // # the method frame views the caller's arg array just as a free
-    // # generator's does, so consuming a packed element demotes to a copy
-    // n = drop(a)  # tpyc: warning(/copies/)
     std::vector<int32_t> __tmp_14 = a;
     int32_t n = drop(std::move(__tmp_14));
-    // total = 0
     int32_t total = 0;
-    // for v in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    // return total + n
     return (::tpy::add_check<int32_t>(total, n));
 }
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

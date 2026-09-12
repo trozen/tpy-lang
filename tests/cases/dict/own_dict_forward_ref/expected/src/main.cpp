@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     h.counts[Point(1)] = 10
+//     h.counts[Point(2)] = 20
+//     h.counts[Point(1)] = 30
+//     print(len(h.counts))
+//     print(h.counts[Point(1)])
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // h.counts[Point(1)] = 10
     ::tpy::__setitem__(h.counts, Point(1), 10);
-    // h.counts[Point(2)] = 20
     ::tpy::__setitem__(h.counts, Point(2), 20);
-    // h.counts[Point(1)] = 30
     ::tpy::__setitem__(h.counts, Point(1), 30);
-    // print(len(h.counts))
     std::cout << ::tpy::__len__(h.counts) << "\n";
-    // print(h.counts[Point(1)])
     std::cout << ::tpy::__getitem__(h.counts, Point(1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

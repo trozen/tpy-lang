@@ -3,122 +3,110 @@
 
 namespace tpyapp::main {
 
-// Red = 4;
 int32_t red{};
-// Green = 2;
 int32_t green{};
-// Yellow = 14;
 int32_t yellow{};
-// White = 15;
 int32_t white{};
-// gd, gm: integer;
 int32_t gd{};
-// gd, gm: integer;
 int32_t gm{};
 
+// Red = 4;
+// Green = 2;
+// Yellow = 14;
+// White = 15;
+//
+// gd, gm: integer;
+//
+// gd := 0;
+//
+// gm := 40020;  { 40 x 20 canvas }
+// initgraph(gd, gm, '');
+// writeln('canvas=', getmaxx() + 1, 'x', getmaxy() + 1);
+//
+// setcolor(Red);
+// putpixel(5, 5, Red);
+// writeln('px@5,5=', getpixel(5, 5));
+//
+// setcolor(Green);
+// line(0, 0, 10, 10);
+// writeln('line@5,5=', getpixel(5, 5));
+// writeln('line@10,10=', getpixel(10, 10));
+// writeln('line@11,11=', getpixel(11, 11));
+//
+// setcolor(Yellow);
+// rectangle(15, 0, 20, 5);
+// writeln('rect_corner@15,0=', getpixel(15, 0));
+// writeln('rect_corner@20,5=', getpixel(20, 5));
+// writeln('rect_inside@17,2=', getpixel(17, 2));
+//
+// setcolor(White);
+// bar(25, 10, 30, 15);
+// writeln('bar_corner@25,10=', getpixel(25, 10));
+// writeln('bar_inside@27,12=', getpixel(27, 12));
+// writeln('bar_outside@31,16=', getpixel(31, 16));
+//
+// setcolor(Red);
+// circle(20, 10, 3);
+// writeln('circle_right@23,10=', getpixel(23, 10));
+// writeln('circle_top@20,7=', getpixel(20, 7));
+// writeln('circle_center@20,10=', getpixel(20, 10));
+//
+// closegraph;
+// writeln('done');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::graph::__tpy_init();
-    // Red = 4;
     red = 4;
-    // Green = 2;
     green = 2;
-    // Yellow = 14;
     yellow = 14;
-    // White = 15;
     white = 15;
-    // gd := 0;
     gd = 0;
-    // gm := 40020;  { 40 x 20 canvas }
     gm = 40020;
-    // initgraph(gd, gm, '');
     ::tpyapp::graph::initgraph(gd, gm, "");
-    // writeln('canvas=', getmaxx() + 1, 'x', getmaxy() + 1);
     std::cout << "canvas=";
-    // writeln('canvas=', getmaxx() + 1, 'x', getmaxy() + 1);
     std::cout << (::tpy::add_check<int32_t>(::tpyapp::graph::getmaxx(), 1));
-    // writeln('canvas=', getmaxx() + 1, 'x', getmaxy() + 1);
     std::cout << "x";
-    // writeln('canvas=', getmaxx() + 1, 'x', getmaxy() + 1);
     std::cout << (::tpy::add_check<int32_t>(::tpyapp::graph::getmaxy(), 1)) << "\n";
-    // setcolor(Red);
     ::tpyapp::graph::setcolor(red);
-    // putpixel(5, 5, Red);
     ::tpyapp::graph::putpixel(5, 5, red);
-    // writeln('px@5,5=', getpixel(5, 5));
     std::cout << "px@5,5=";
-    // writeln('px@5,5=', getpixel(5, 5));
     std::cout << ::tpyapp::graph::getpixel(5, 5) << "\n";
-    // setcolor(Green);
     ::tpyapp::graph::setcolor(green);
-    // line(0, 0, 10, 10);
     ::tpyapp::graph::line(0, 0, 10, 10);
-    // writeln('line@5,5=', getpixel(5, 5));
     std::cout << "line@5,5=";
-    // writeln('line@5,5=', getpixel(5, 5));
     std::cout << ::tpyapp::graph::getpixel(5, 5) << "\n";
-    // writeln('line@10,10=', getpixel(10, 10));
     std::cout << "line@10,10=";
-    // writeln('line@10,10=', getpixel(10, 10));
     std::cout << ::tpyapp::graph::getpixel(10, 10) << "\n";
-    // writeln('line@11,11=', getpixel(11, 11));
     std::cout << "line@11,11=";
-    // writeln('line@11,11=', getpixel(11, 11));
     std::cout << ::tpyapp::graph::getpixel(11, 11) << "\n";
-    // setcolor(Yellow);
     ::tpyapp::graph::setcolor(yellow);
-    // rectangle(15, 0, 20, 5);
     ::tpyapp::graph::rectangle(15, 0, 20, 5);
-    // writeln('rect_corner@15,0=', getpixel(15, 0));
     std::cout << "rect_corner@15,0=";
-    // writeln('rect_corner@15,0=', getpixel(15, 0));
     std::cout << ::tpyapp::graph::getpixel(15, 0) << "\n";
-    // writeln('rect_corner@20,5=', getpixel(20, 5));
     std::cout << "rect_corner@20,5=";
-    // writeln('rect_corner@20,5=', getpixel(20, 5));
     std::cout << ::tpyapp::graph::getpixel(20, 5) << "\n";
-    // writeln('rect_inside@17,2=', getpixel(17, 2));
     std::cout << "rect_inside@17,2=";
-    // writeln('rect_inside@17,2=', getpixel(17, 2));
     std::cout << ::tpyapp::graph::getpixel(17, 2) << "\n";
-    // setcolor(White);
     ::tpyapp::graph::setcolor(white);
-    // bar(25, 10, 30, 15);
     ::tpyapp::graph::bar(25, 10, 30, 15);
-    // writeln('bar_corner@25,10=', getpixel(25, 10));
     std::cout << "bar_corner@25,10=";
-    // writeln('bar_corner@25,10=', getpixel(25, 10));
     std::cout << ::tpyapp::graph::getpixel(25, 10) << "\n";
-    // writeln('bar_inside@27,12=', getpixel(27, 12));
     std::cout << "bar_inside@27,12=";
-    // writeln('bar_inside@27,12=', getpixel(27, 12));
     std::cout << ::tpyapp::graph::getpixel(27, 12) << "\n";
-    // writeln('bar_outside@31,16=', getpixel(31, 16));
     std::cout << "bar_outside@31,16=";
-    // writeln('bar_outside@31,16=', getpixel(31, 16));
     std::cout << ::tpyapp::graph::getpixel(31, 16) << "\n";
-    // setcolor(Red);
     ::tpyapp::graph::setcolor(red);
-    // circle(20, 10, 3);
     ::tpyapp::graph::circle(20, 10, 3);
-    // writeln('circle_right@23,10=', getpixel(23, 10));
     std::cout << "circle_right@23,10=";
-    // writeln('circle_right@23,10=', getpixel(23, 10));
     std::cout << ::tpyapp::graph::getpixel(23, 10) << "\n";
-    // writeln('circle_top@20,7=', getpixel(20, 7));
     std::cout << "circle_top@20,7=";
-    // writeln('circle_top@20,7=', getpixel(20, 7));
     std::cout << ::tpyapp::graph::getpixel(20, 7) << "\n";
-    // writeln('circle_center@20,10=', getpixel(20, 10));
     std::cout << "circle_center@20,10=";
-    // writeln('circle_center@20,10=', getpixel(20, 10));
     std::cout << ::tpyapp::graph::getpixel(20, 10) << "\n";
-    // closegraph;
     ::tpyapp::graph::closegraph();
-    // writeln('done');
     std::cout << "done" << "\n";
 }
 

@@ -31,6 +31,7 @@ struct Shelter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Parrot(Pet):
@@ -91,20 +92,22 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Parrot::Parrot(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Parrot::name() {
-    // return self.label
     return this->label;
 }
 
 // def __init__(self) -> None:
+//     self.count = 0
 inline Shelter::Shelter() : count(::tpy::BigInt(0)) {}
 
 // def admit(self, pet: Own[Pet]) -> None:
+//     self.count += 1
 inline void Shelter::admit(std::unique_ptr<Pet> pet) {
-    // self.count += 1
     this->count = (this->count) + (::tpy::BigInt(1));
 }
 void __tpy_init();

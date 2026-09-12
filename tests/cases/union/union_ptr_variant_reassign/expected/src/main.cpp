@@ -5,57 +5,60 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Init from concrete rvalue, then reassign to different type
+//     pet: Dog | Cat = Dog("Rex")
+//     if isinstance(pet, Dog):
+//         print(pet.name)
+//
+//     pet = Cat("Whiskers")
+//     if isinstance(pet, Cat):
+//         print(pet.name)
+//
+//     # Reassign back to Dog
+//     pet = Dog("Buddy")
+//     if isinstance(pet, Dog):
+//         print(pet.name)
+//
+//     # Reassign from another ptr-variant local
+//     other: Dog | Cat = Cat("Luna")
+//     pet = other
+//     if isinstance(pet, Cat):
+//         print(pet.name)
 void main() {
     std::optional<::tpy::Union<Cat, Dog>> __slot_2;
-    // # Init from concrete rvalue, then reassign to different type
-    // pet: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
-    // if isinstance(pet, Dog):
     if (true) {
         auto& __pet = *std::get<Dog*>(pet);
-        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
-    // pet = Cat("Whiskers")
     __slot_2.emplace(Cat("Whiskers"));
     pet = ::tpy::to_ptr_variant(*__slot_2);
-    // if isinstance(pet, Cat):
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
-    // # Reassign back to Dog
-    // pet = Dog("Buddy")
     __slot_2.emplace(Dog("Buddy"));
     pet = ::tpy::to_ptr_variant(*__slot_2);
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
-    // # Reassign from another ptr-variant local
-    // other: Dog | Cat = Cat("Luna")
     ::tpy::Union<Cat, Dog> __slot_3 = Cat("Luna");
     ::tpy::Union<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_3);
-    // pet = other
     pet = other;
-    // if isinstance(pet, Cat):
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

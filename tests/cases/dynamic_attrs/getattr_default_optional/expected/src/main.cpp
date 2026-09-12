@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     found = getattr(b, "host", None)
+//     if found is not None:
+//         print("host:", found)
+//     missing = getattr(b, "missing", None)
+//     if missing is None:
+//         print("missing is None")
+//     else:
+//         print("never")
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // found = getattr(b, "host", None)
     std::optional<std::string> found = ({ std::optional<std::optional<std::string>> __r; try { __r.emplace(b.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace(std::nullopt); } std::move(*__r); });
-    // if found is not None:
     if ((found.has_value())) {
-        // print("host:", found)
         std::cout << "host:" << " " << ::tpy::print_optional_val(found) << "\n";
     }
-    // missing = getattr(b, "missing", None)
     std::optional<std::string> missing = ({ std::optional<std::optional<std::string>> __r; try { __r.emplace(b.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __r.emplace(std::nullopt); } std::move(*__r); });
-    // if missing is None:
     if ((!missing.has_value())) {
-        // print("missing is None")
         std::cout << "missing is None" << "\n";
-    // else:
     } else {
-        // print("never")
         std::cout << "never" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

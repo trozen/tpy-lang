@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def drain_sum(src: Source) -> int32:
+//     acc: int32 = 0
+//     for v in src:
+//         acc += v
+//     return acc
 int32_t drain_sum(Source& src) {
-    // acc: int32 = 0
     int32_t acc = 0;
-    // for v in src:
     auto& __src_0 = src;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // acc += v
         acc = ::tpy::add_check<int32_t>(acc, v);
     }
-    // return acc
     return acc;
 }
 
 // def main():
+//     print(drain_sum(Source(4, 9)))   # 3 + 2 + 1 + 0
 void main() {
-    // print(drain_sum(Source(4, 9)))   # 3 + 2 + 1 + 0
     Source __tmp_1 = Source(4, 9);
     std::cout << drain_sum(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

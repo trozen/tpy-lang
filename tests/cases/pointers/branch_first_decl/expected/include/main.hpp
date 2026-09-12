@@ -12,13 +12,21 @@ struct Point;
 extern std::vector<Point>* pts;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def value_type_branches(cond: bool) -> int32:
 int32_t value_type_branches(bool cond);
+// def else_returns(cond: bool) -> int32:
 int32_t else_returns(bool cond);
+// def multi_var(cond: bool) -> int32:
 int32_t multi_var(bool cond);
+// def rvalue_branch(cond: bool) -> None:
 void rvalue_branch(bool cond);
+// def reassign_after(cond: bool) -> None:
 void reassign_after(bool cond);
+// def nested_if(a: bool, b: bool) -> int32:
 int32_t nested_if(bool a, bool b);
+// def param_branch(points: list[Point], cond: bool) -> None:
 void param_branch(std::vector<Point>& points, bool cond);
+// def mixed_init(points: list[Point], cond: bool) -> None:
 void mixed_init(std::vector<Point>& points, bool cond);
 
 // class Point:
@@ -41,6 +49,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

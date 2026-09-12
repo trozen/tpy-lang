@@ -12,6 +12,7 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Node:
@@ -59,29 +60,31 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Node::Node(int32_t v) : val(v) {}
 
 // def __init__(self) -> None:
+//     self._node = None
 inline Wrapper::Wrapper() : _node(std::nullopt) {}
 
 // @property
 // def node(self) -> Optional[Node]:
+//     return self._node
 inline std::optional<Node>& Wrapper::node() {
-    // return self._node
     return this->_node;
 }
 
 // @property
 // def node(self) -> Optional[Node]:
+//     return self._node
 inline const std::optional<Node>& Wrapper::node() const {
-    // return self._node
     return this->_node;
 }
 
 // @node.setter
 // def node(self, n: Optional[Node]) -> None:
+//     self._node = n
 inline void Wrapper::set_node(std::optional<Node>&& n) {
-    // self._node = n
     this->_node = std::move(n);
 }
 void __tpy_init();

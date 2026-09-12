@@ -5,73 +5,73 @@ namespace tpyapp::main {
 
 
 // def up_one(d: Dog) -> bool:
+//     return isinstance(d, Animal)
 bool up_one(const Dog& d) {
-    // return isinstance(d, Animal)
     return true;
 }
 
 // def up_two(p: Puppy) -> bool:
+//     return isinstance(p, Animal)
 bool up_two(const Puppy& p) {
-    // return isinstance(p, Animal)
     return true;
 }
 
 // def up_one_from_grandchild(p: Puppy) -> bool:
+//     return isinstance(p, Dog)
 bool up_one_from_grandchild(const Puppy& p) {
-    // return isinstance(p, Dog)
     return true;
 }
 
 // def same(d: Dog) -> bool:
+//     return isinstance(d, Dog)
 bool same(const Dog& d) {
-    // return isinstance(d, Dog)
     return true;
 }
 
 // def unrelated(d: Dog) -> bool:
+//     return isinstance(d, Cat)
 bool unrelated(const Dog& d) {
-    // return isinstance(d, Cat)
     return false;
 }
 
 // def tuple_any_ancestor(p: Puppy) -> bool:
+//     return isinstance(p, (Cat, Animal))
 bool tuple_any_ancestor(const Puppy& p) {
-    // return isinstance(p, (Cat, Animal))
     return true;
 }
 
 // def tuple_no_match(d: Dog) -> bool:
+//     return isinstance(d, (Cat, Puppy))  # Puppy trigger downcast warning -- tested separately
 bool tuple_no_match(const Dog& d) {
-    // return isinstance(d, (Cat, Puppy))  # Puppy trigger downcast warning -- tested separately
     return false;
 }
 
 // def main() -> None:
+//     d = Dog("Rex", "lab")
+//     p = Puppy("Spot", "pug", 1)
+//     print(up_one(d))
+//     print(up_two(p))
+//     print(up_one_from_grandchild(p))
+//     print(same(d))
+//     print(unrelated(d))
+//     print(tuple_any_ancestor(p))
 void main() {
-    // d = Dog("Rex", "lab")
     Dog d = Dog("Rex", "lab");
-    // p = Puppy("Spot", "pug", 1)
     Puppy p = Puppy("Spot", "pug", ::tpy::BigInt(1));
-    // print(up_one(d))
     std::cout << ::tpy::print_bool(up_one(d)) << "\n";
-    // print(up_two(p))
     std::cout << ::tpy::print_bool(up_two(p)) << "\n";
-    // print(up_one_from_grandchild(p))
     std::cout << ::tpy::print_bool(up_one_from_grandchild(p)) << "\n";
-    // print(same(d))
     std::cout << ::tpy::print_bool(same(d)) << "\n";
-    // print(unrelated(d))
     std::cout << ::tpy::print_bool(unrelated(d)) << "\n";
-    // print(tuple_any_ancestor(p))
     std::cout << ::tpy::print_bool(tuple_any_ancestor(p)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

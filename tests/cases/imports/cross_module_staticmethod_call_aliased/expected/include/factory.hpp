@@ -33,12 +33,13 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Counter::Counter(int32_t v) : value(v) {}
 
 // @staticmethod
 // def make(v: int32) -> Own["Counter"]:
+//     return Counter(v)
 inline Counter Counter::make(int32_t v) {
-    // return Counter(v)
     return Counter(v);
 }
 void __tpy_init();

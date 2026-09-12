@@ -43,24 +43,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     msg = Msg.from_json('{"color": "RED", "value": 42}')
+//     print(msg.color)
+//     print(msg.value)
+//
+//     r = Registry()
+//     r.update(1, Color.RED)
+//     r.update(2, Color.BLUE)
+//     r.update(1, Color.BLUE)
+//     print(r.items[1].color.name)
+//     print(r.items[2].color.name)
 void main() {
-    // msg = Msg.from_json('{"color": "RED", "value": 42}')
     Msg msg = Msg::from_json("{\"color\": \"RED\", \"value\": 42}");
-    // print(msg.color)
     std::cout << msg.color << "\n";
-    // print(msg.value)
     std::cout << msg.value << "\n";
-    // r = Registry()
     Registry r = Registry();
-    // r.update(1, Color.RED)
     r.update(1, Color::RED);
-    // r.update(2, Color.BLUE)
     r.update(2, Color::BLUE);
-    // r.update(1, Color.BLUE)
     r.update(1, Color::BLUE);
-    // print(r.items[1].color.name)
     std::cout << ::tpy::EnumUtil<Color>::name(::tpy::__getitem__(r.items, 1).color) << "\n";
-    // print(r.items[2].color.name)
     std::cout << ::tpy::EnumUtil<Color>::name(::tpy::__getitem__(r.items, 2).color) << "\n";
 }
 
@@ -110,6 +111,11 @@ std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> Msg::__json_decode_
     }
     return Msg(color, value);
 }
+// from tplib.json.model import model
+// from dataclasses import dataclass
+// from enum import Enum, auto
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -119,10 +125,6 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // from tplib.json.model import model
-    // from dataclasses import dataclass
-    // from enum import Enum, auto
-    // main()
     main();
 }
 

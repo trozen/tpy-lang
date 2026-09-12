@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def step(n: int32) -> int32:
+//     return n + 1
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 1
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(n, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,12 +26,17 @@ __coro_step step(int32_t n) {
 }
 
 // async def f(n: int32) -> int32:
+//     d = {n: Box(n)}
+//     total = 0
+//     for kv in d.items():
+//         total = await step(kv[0])
+//         # The element is borrowed, so this write lands in the dict.
+//         kv[1].v = 99
+//     return total + d[n].v
 ::tpystd::tpy::Poll<int32_t> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // d = {n: Box(n)}
         d.emplace(::tpy::ordered_map<int32_t, Box>({{n, Box(n)}}));
-        // total = 0
         total = 0;
         __for_src_0.emplace(::tpy::dict_items((*d)));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -44,21 +49,17 @@ __coro_step step(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         total = std::move(__r0).value();
         __sub_0.reset();
-        // # The element is borrowed, so this write lands in the dict.
-        // kv[1].v = 99
         std::get<1>(kv)->v = 99;
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // return total + d[n].v
             __state = S_DONE;
             int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(total, ::tpy::__getitem__((*d), n).v));
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         kv = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(*((*__for_it_0))++);
-        // total = await step(kv[0])
         __sub_0.emplace(std::get<0>(kv));
         __state = S_RESUME_0;
         continue;
@@ -75,21 +76,22 @@ __coro_f f(int32_t n) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(f(1)))
 void main() {
-    // print(asyncio.run(f(1)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(f(1))) << "\n";
 }
 
+// # A whole-variable loop over `dict.items()` whose value is a record, across
+// # a suspension: the loop variable binds the borrow-form tuple.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A whole-variable loop over `dict.items()` whose value is a record, across
-    // # a suspension: the loop variable binds the borrow-form tuple.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

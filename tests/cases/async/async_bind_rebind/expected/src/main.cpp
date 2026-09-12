@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,14 +26,14 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def main_coro() -> None:
+//     c = value(1)
+//     c = value(2)  # tpyc: warning(/drops the previous coroutine/)
+//     print(await c)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = value(1)
         c.emplace(value(::tpy::BigInt(1)));
-        // c = value(2)  # tpyc: warning(/drops the previous coroutine/)
         c.emplace(value(::tpy::BigInt(2)));
-        // print(await c)
         __state = S_RESUME_0;
         continue;
     }
@@ -42,7 +42,6 @@ __coro_value value(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         c.reset();
-        // print(await c)
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -59,28 +58,29 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     d = value(3)
+//     d = value(4)  # tpyc: warning(/drops the previous coroutine/)
+//     asyncio.run(main_coro())
+//     print(asyncio.run(d))
 void main() {
-    // d = value(3)
     std::optional<__coro_value> d = value(::tpy::BigInt(3));
-    // d = value(4)  # tpyc: warning(/drops the previous coroutine/)
     d.emplace(value(::tpy::BigInt(4)));
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
-    // print(asyncio.run(d))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(d)))) << "\n";
 }
 
+// # Rebinding a coroutine handle drops the previous coroutine unrun (warns;
+// # CPython emits a stderr RuntimeWarning at GC); the unique_ptr reassignment
+// # works in both async (frame field) and sync (plain local) contexts.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Rebinding a coroutine handle drops the previous coroutine unrun (warns;
-    // # CPython emits a stderr RuntimeWarning at GC); the unique_ptr reassignment
-    // # works in both async (frame field) and sync (plain local) contexts.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

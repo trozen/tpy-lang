@@ -5,39 +5,85 @@ namespace tpyapp::main {
 
 
 // def teardown(base: str) -> None:
+//     if exists(base + "/f.txt"):
+//         os.remove(base + "/f.txt")
+//     if exists(base + "/sub"):
+//         os.rmdir(base + "/sub")
+//     if exists(base):
+//         os.rmdir(base)
 void teardown(std::string_view base) {
-    // if exists(base + "/f.txt"):
     if (::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/f.txt")))) {
-        // os.remove(base + "/f.txt")
         ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/f.txt")));
     }
-    // if exists(base + "/sub"):
     if (::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/sub")))) {
-        // os.rmdir(base + "/sub")
         ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/sub")));
     }
-    // if exists(base):
     if (::tpy::stdlib::os::path_exists(base)) {
-        // os.rmdir(base)
         ::tpy::stdlib::os::rmdir(base);
     }
 }
 
 // def main():
+//     base = "tpy_os_mutate_err"
+//     teardown(base)
+//     os.mkdir(base)
+//     os.mkdir(base + "/sub")
+//     with open(base + "/f.txt", "w") as fh:
+//         fh.write("x")
+//
+//     try:
+//         os.mkdir(base)                 # EEXIST
+//     except FileExistsError:
+//         print("mkdir-existing: FileExistsError")
+//     try:
+//         os.makedirs(base + "/sub")     # exist_ok defaults False
+//     except FileExistsError:
+//         print("makedirs-existing: FileExistsError")
+//     try:
+//         os.rmdir(base + "/f.txt")      # ENOTDIR (rmdir on a file)
+//     except NotADirectoryError:
+//         print("rmdir-file: NotADirectoryError")
+//     try:
+//         os.remove(base + "/sub")       # unlink on a dir: EISDIR (Linux) / EPERM (macOS)
+//     # Per-host errno -> different class; normalize to one token.
+//     except (IsADirectoryError, PermissionError):
+//         print("remove-dir: rejected")
+//     try:
+//         os.rmdir(base)                 # ENOTEMPTY -> plain OSError (no subclass)
+//     except OSError:
+//         print("rmdir-nonempty: OSError")
+//     try:
+//         os.rmdir(base + "/missing")    # ENOENT
+//     except FileNotFoundError:
+//         print("rmdir-missing: FileNotFoundError")
+//     try:
+//         os.rename(base + "/missing", base + "/dst")   # ENOENT on source
+//     except FileNotFoundError:
+//         print("rename-missing: FileNotFoundError")
+//     try:
+//         os.replace(base + "/missing", base + "/dst")  # ENOENT on source
+//     except FileNotFoundError:
+//         print("replace-missing: FileNotFoundError")
+//
+//     # removedirs stops at the first non-empty parent (rmdir raises -> break)
+//     os.makedirs(base + "/d1/d2")
+//     with open(base + "/d1/keep.txt", "w") as fh:
+//         fh.write("k")
+//     os.removedirs(base + "/d1/d2")   # removes d2, then rmdir(d1) fails -> break
+//     print("removedirs-stopped:", exists(base + "/d1"))   # True: d1 kept
+//     os.remove(base + "/d1/keep.txt")
+//     os.rmdir(base + "/d1")
+//
+//     teardown(base)
+//     print("cleaned:", exists(base))
 void main() {
-    // base = "tpy_os_mutate_err"
     std::string_view base = "tpy_os_mutate_err";
-    // teardown(base)
     teardown(base);
-    // os.mkdir(base)
     ::tpystd::os::mkdir(base);
-    // os.mkdir(base + "/sub")
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/sub")));
-    // with open(base + "/f.txt", "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/f.txt")), "w");
     ::tpy::TextFile* fh = &(__ctx_1.__enter__());
     try {
-        // fh.write("x")
         fh->write("x");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -49,97 +95,68 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // try:
     {
         try {
-            // os.mkdir(base)                 # EEXIST
             ::tpystd::os::mkdir(base);
         } catch (const ::tpy::FileExistsError&) {
-            // print("mkdir-existing: FileExistsError")
             std::cout << "mkdir-existing: FileExistsError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.makedirs(base + "/sub")     # exist_ok defaults False
             ::tpystd::os::makedirs((::tpy::str_concat(base, "/sub")));
         } catch (const ::tpy::FileExistsError&) {
-            // print("makedirs-existing: FileExistsError")
             std::cout << "makedirs-existing: FileExistsError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.rmdir(base + "/f.txt")      # ENOTDIR (rmdir on a file)
             ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/f.txt")));
         } catch (const ::tpy::NotADirectoryError&) {
-            // print("rmdir-file: NotADirectoryError")
             std::cout << "rmdir-file: NotADirectoryError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.remove(base + "/sub")       # unlink on a dir: EISDIR (Linux) / EPERM (macOS)
             ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/sub")));
         } catch (const ::tpy::IsADirectoryError&) {
-            // print("remove-dir: rejected")
             std::cout << "remove-dir: rejected" << "\n";
         } catch (const ::tpy::PermissionError&) {
-            // print("remove-dir: rejected")
             std::cout << "remove-dir: rejected" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.rmdir(base)                 # ENOTEMPTY -> plain OSError (no subclass)
             ::tpy::stdlib::os::rmdir(base);
         } catch (const ::tpy::OSError&) {
-            // print("rmdir-nonempty: OSError")
             std::cout << "rmdir-nonempty: OSError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.rmdir(base + "/missing")    # ENOENT
             ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/missing")));
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("rmdir-missing: FileNotFoundError")
             std::cout << "rmdir-missing: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.rename(base + "/missing", base + "/dst")   # ENOENT on source
             ::tpy::stdlib::os::rename((::tpy::str_concat(base, "/missing")), (::tpy::str_concat(base, "/dst")));
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("rename-missing: FileNotFoundError")
             std::cout << "rename-missing: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.replace(base + "/missing", base + "/dst")  # ENOENT on source
             ::tpystd::os::replace((::tpy::str_concat(base, "/missing")), (::tpy::str_concat(base, "/dst")));
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("replace-missing: FileNotFoundError")
             std::cout << "replace-missing: FileNotFoundError" << "\n";
         }
     }
-    // # removedirs stops at the first non-empty parent (rmdir raises -> break)
-    // os.makedirs(base + "/d1/d2")
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/d1/d2")));
-    // with open(base + "/d1/keep.txt", "w") as fh:
     auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/d1/keep.txt")), "w");
     fh = &(__ctx_2.__enter__());
     try {
-        // fh.write("k")
         fh->write("k");
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -151,33 +168,28 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // os.removedirs(base + "/d1/d2")   # removes d2, then rmdir(d1) fails -> break
     ::tpystd::os::removedirs((::tpy::str_concat(base, "/d1/d2")));
-    // print("removedirs-stopped:", exists(base + "/d1"))   # True: d1 kept
     std::cout << "removedirs-stopped:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/d1")))) << "\n";
-    // os.remove(base + "/d1/keep.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/d1/keep.txt")));
-    // os.rmdir(base + "/d1")
     ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/d1")));
-    // teardown(base)
     teardown(base);
-    // print("cleaned:", exists(base))
     std::cout << "cleaned:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n";
 }
 
+// # os mutating-op error mapping: each errno maps to its CPython OSError subclass
+// # (FileExists/NotADirectory/FileNotFound/non-empty, plus the host-divergent
+// # unlink-on-a-dir). Only the exception TYPE is observed; messages differ.
+// import os
+// from os.path import exists, lexists
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os mutating-op error mapping: each errno maps to its CPython OSError subclass
-    // # (FileExists/NotADirectory/FileNotFound/non-empty, plus the host-divergent
-    // # unlink-on-a-dir). Only the exception TYPE is observed; messages differ.
-    // import os
     ::tpystd::os::__tpy_init();
-    // from os.path import exists, lexists
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

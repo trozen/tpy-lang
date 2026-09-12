@@ -14,7 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_describe;
 
+// def describe(a: Dog | Cat) -> Iterator[str]:
 __gen_describe describe(::tpy::Union<Cat*, Dog*> a);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -55,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Generator: describe
+// def describe(a: Dog | Cat) -> Iterator[str]:
 struct __gen_describe : public ::tpy::next_iter_mixin<__gen_describe, std::string> {
     int32_t __state;
     ::tpy::Union<Cat*, Dog*> a;
@@ -82,20 +84,22 @@ struct __gen_describe : public ::tpy::next_iter_mixin<__gen_describe, std::strin
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def sound(self) -> str:
+//     return "woof"
 inline std::string Dog::sound() const {
-    // return "woof"
     return "woof";
 }
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def sound(self) -> str:
+//     return "meow"
 inline std::string Cat::sound() const {
-    // return "meow"
     return "meow";
 }
 void __tpy_init();

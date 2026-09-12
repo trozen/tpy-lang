@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Constructor with temporary list literal
+//     n1: Numbers = Numbers([1, 2, 3, 4, 5])
+//     print(n1.sum())  # 15
+//
+//     # Constructor with variable
+//     items: list[int32] = [10, 20, 30]
+//     n2: Numbers = Numbers(items)
+//     print(n2.sum())  # 60
 void main() {
-    // # Constructor with temporary list literal
-    // n1: Numbers = Numbers([1, 2, 3, 4, 5])
     Numbers n1 = Numbers({1, 2, 3, 4, 5});
-    // print(n1.sum())  # 15
     std::cout << n1.sum() << "\n";
-    // # Constructor with variable
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // n2: Numbers = Numbers(items)
     Numbers n2 = Numbers(items);
-    // print(n2.sum())  # 60
     std::cout << n2.sum() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

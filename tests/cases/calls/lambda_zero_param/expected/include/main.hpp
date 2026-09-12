@@ -9,20 +9,22 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename __F0>
-  requires requires(__F0& __fn) {
-      { __fn() } -> std::convertible_to<int32_t>;
-  }
-int32_t invoke(__F0&& f);
-void main();
-
 // def invoke(f: Fn[[], int32]) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn) {
       { __fn() } -> std::convertible_to<int32_t>;
   }
+int32_t invoke(__F0&& f);
+// def main() -> None:
+void main();
+
+// def invoke(f: Fn[[], int32]) -> int32:
+//     return f()
+template<typename __F0>
+  requires requires(__F0& __fn) {
+      { __fn() } -> std::convertible_to<int32_t>;
+  }
 int32_t invoke(__F0&& f) {
-    // return f()
     return f();
 }
 

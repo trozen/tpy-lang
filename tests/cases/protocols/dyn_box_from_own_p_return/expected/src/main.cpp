@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Adopter(Parrot(label="Polly"))
+//     print(a.pet.get().name())
 void main() {
-    // a = Adopter(Parrot(label="Polly"))
     Adopter a = Adopter(std::make_unique<Parrot>(Parrot("Polly")));
-    // print(a.pet.get().name())
     std::cout << a.pet.get().name() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

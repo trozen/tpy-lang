@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Runner()
+//     print(r.pick[int32, IntBox](IntBox(42)))   # tpyc: ok
 void main() {
-    // r = Runner()
     Runner r = Runner();
-    // print(r.pick[int32, IntBox](IntBox(42)))   # tpyc: ok
     IntBox __tmp_1 = IntBox(42);
     std::cout << r.pick<int32_t, IntBox>(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

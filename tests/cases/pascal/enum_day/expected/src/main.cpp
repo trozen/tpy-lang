@@ -80,30 +80,33 @@ std::optional<::tpyapp::main::day> EnumUtil<::tpyapp::main::day>::try_parse(std:
 
 namespace tpyapp::main {
 
-// d: Day;
 day d;
 
+// d: Day;
+//
+// d := Fri;
+// if d = Fri then
+//   writeln('TGIF')
+// else
+//   writeln('not yet');
+// if (d <> Sat) and (d <> Sun) then
+//   writeln('weekday')
+// else
+//   writeln('weekend');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // d := Fri;
     d = day::fri;
-    // if d = Fri then
     if ((d == day::fri)) {
-        // writeln('TGIF')
         std::cout << "TGIF" << "\n";
     } else {
-        // writeln('not yet');
         std::cout << "not yet" << "\n";
     }
-    // if (d <> Sat) and (d <> Sun) then
     if (((d != day::sat) && (d != day::sun))) {
-        // writeln('weekday')
         std::cout << "weekday" << "\n";
     } else {
-        // writeln('weekend');
         std::cout << "weekend" << "\n";
     }
 }

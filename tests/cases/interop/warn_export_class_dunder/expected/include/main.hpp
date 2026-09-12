@@ -37,11 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, a: int64):
+//     self.a = a
 inline C::C(int64_t a) : a(a) {}
 
 // def __call__(self) -> int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
+//     return self.a
 inline int64_t C::__call__() const {
-    // return self.a
     return this->a;
 }
 void __tpy_init();

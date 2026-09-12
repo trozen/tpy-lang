@@ -4,18 +4,19 @@
 namespace tpyapp::main {
 
 
+// # 3-module variable re-export chain: c defines LIMIT, b imports it,
+// # main imports it from b. Phase 4's _flatten_var_reexport ensures
+// # the consumer's `using` emission lands at c::LIMIT directly, not
+// # through b's namespace.
+// from b import LIMIT
+//
+// print(LIMIT)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # 3-module variable re-export chain: c defines LIMIT, b imports it,
-    // # main imports it from b. Phase 4's _flatten_var_reexport ensures
-    // # the consumer's `using` emission lands at c::LIMIT directly, not
-    // # through b's namespace.
-    // from b import LIMIT
     ::tpyapp::b::__tpy_init();
-    // print(LIMIT)
     std::cout << ::tpyapp::c::LIMIT << "\n";
 }
 

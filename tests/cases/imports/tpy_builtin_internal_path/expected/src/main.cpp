@@ -43,74 +43,76 @@ namespace tpyapp::main {
 
 
 // def sum_copied(xs: list[int32]) -> int32:
+//     total = int32(0)
+//     for x in copy_iter(xs):  # tpyc: ok
+//         total += x
+//     return total
 int32_t sum_copied(const std::vector<int32_t>& xs) {
-    // total = int32(0)
     int32_t total = 0;
-    // for x in copy_iter(xs):  # tpyc: ok
     auto __obj_0 = ::tpy::copy_iter<int32_t>(xs);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 
 // def consume() -> int32:
+//     xs: list[int32] = [int32(10), int32(20)]
+//     total = int32(0)
+//     for x in own_iter(xs):  # tpyc: ok
+//         total += x
+//     return total
 int32_t consume() {
-    // xs: list[int32] = [int32(10), int32(20)]
     std::vector<int32_t> xs = {10, 20};
-    // total = int32(0)
     int32_t total = 0;
-    // for x in own_iter(xs):  # tpyc: ok
     auto __obj_0 = ::tpy::own_iter(std::move(xs));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     h: Holder[int32] = Holder(int32(7))
+//     print(h.dup())
+//     print(h.dup_via_module())
+//     print(sum_copied([int32(1), int32(2), int32(3)]))
+//     print(consume())
+//     c = try_parse(Color, "RED")  # tpyc: ok
+//     print(c is not None)
+//     miss = try_parse(Color, "PURPLE")
+//     print(miss is None)
 void main() {
-    // h: Holder[int32] = Holder(int32(7))
     Holder<int32_t> h = Holder<int32_t>(7);
-    // print(h.dup())
     std::cout << h.dup() << "\n";
-    // print(h.dup_via_module())
     std::cout << h.dup_via_module() << "\n";
-    // print(sum_copied([int32(1), int32(2), int32(3)]))
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::cout << sum_copied(__tmp_1) << "\n";
-    // print(consume())
     std::cout << consume() << "\n";
-    // c = try_parse(Color, "RED")  # tpyc: ok
     std::optional<Color> c = ::tpy::EnumUtil<Color>::try_parse("RED");
-    // print(c is not None)
     std::cout << ::tpy::print_bool((c.has_value())) << "\n";
-    // miss = try_parse(Color, "PURPLE")
     std::optional<Color> miss = ::tpy::EnumUtil<Color>::try_parse("PURPLE");
-    // print(miss is None)
     std::cout << ::tpy::print_bool((!miss.has_value())) << "\n";
 }
 
+// # Verifies tpy.copy / copy_iter / own_iter / try_parse compile identically
+// # when imported via tpy._core (internal path) and via `import tpy as t`.
+// from tpy._core import copy, copy_iter, own_iter, try_parse
+//
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Verifies tpy.copy / copy_iter / own_iter / try_parse compile identically
-    // # when imported via tpy._core (internal path) and via `import tpy as t`.
-    // from tpy._core import copy, copy_iter, own_iter, try_parse
-    // from enum import Enum
-    // main()
     main();
 }
 

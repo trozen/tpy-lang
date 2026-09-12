@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def bump(p: A | B, h: Holder, c: bool) -> None:
+//     t = p if c else h.pet
+//     if isinstance(t, A):
+//         t.x += 100
+//     elif isinstance(t, B):
+//         t.y += 100
 void bump(::tpy::Union<A*, B*> p, Holder& h, bool c) {
-    // t = p if c else h.pet
     ::tpy::Union<A*, B*> t = ((c) ? (p) : (::tpy::to_ptr_variant(h.pet)));
-    // if isinstance(t, A):
     if (std::holds_alternative<A*>(t)) {
         auto& __t = *std::get<A*>(t);
-        // t.x += 100
         __t.x = (__t.x) + (::tpy::BigInt(100));
     } else {
-        // elif isinstance(t, B):
         if (true) {
             auto& __t = *std::get<B*>(t);
-            // t.y += 100
             __t.y = (__t.y) + (::tpy::BigInt(100));
         }
     }
 }
 
 // def main() -> None:
+//     h = Holder(B(7))
+//     param = A(3)
+//     bump(param, h, True)         # param (ptr-variant) arm
+//     print(param.x)               # 103 -- visible on caller's object
+//     bump(param, h, False)        # field (value-variant) arm
+//     pet = h.pet
+//     if isinstance(pet, B):
+//         print(pet.y)             # 107 -- visible on the field
 void main() {
-    // h = Holder(B(7))
     B __tmp_1 = B(::tpy::BigInt(7));
     Holder h = Holder(::tpy::Union<const A*, const B*>{&__tmp_1});
-    // param = A(3)
     A param = A(::tpy::BigInt(3));
-    // bump(param, h, True)         # param (ptr-variant) arm
     bump(::tpy::Union<A*, B*>{&(param)}, h, true);
-    // print(param.x)               # 103 -- visible on caller's object
     std::cout << param.x << "\n";
-    // bump(param, h, False)        # field (value-variant) arm
     bump(::tpy::Union<A*, B*>{&(param)}, h, false);
-    // pet = h.pet
     ::tpy::Union<A*, B*> pet = ::tpy::to_ptr_variant(h.pet);
-    // if isinstance(pet, B):
     if (std::holds_alternative<B*>(pet)) {
         auto& __pet = *std::get<B*>(pet);
-        // print(pet.y)             # 107 -- visible on the field
         std::cout << __pet.y << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

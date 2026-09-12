@@ -14,13 +14,21 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def up_one(d: Dog) -> bool:
 bool up_one(const Dog& d);
+// def up_two(p: Puppy) -> bool:
 bool up_two(const Puppy& p);
+// def up_one_from_grandchild(p: Puppy) -> bool:
 bool up_one_from_grandchild(const Puppy& p);
+// def same(d: Dog) -> bool:
 bool same(const Dog& d);
+// def unrelated(d: Dog) -> bool:
 bool unrelated(const Dog& d);
+// def tuple_any_ancestor(p: Puppy) -> bool:
 bool tuple_any_ancestor(const Puppy& p);
+// def tuple_no_match(d: Dog) -> bool:
 bool tuple_no_match(const Dog& d);
+// def main() -> None:
 void main();
 
 // # isinstance() walks the user-record inheritance chain at compile time.
@@ -92,15 +100,21 @@ inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str, breed: str) -> None:
+//     super().__init__(name)
+//     self.breed = breed
 inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
 // def __init__(self, name: str, breed: str, age: int) -> None:
+//     super().__init__(name, breed)
+//     self.age = age
 inline Puppy::Puppy(std::string_view name, std::string_view breed, const ::tpy::BigInt& age) : Dog(name, breed), age(age) {}
 void __tpy_init();
 } // namespace tpyapp::main

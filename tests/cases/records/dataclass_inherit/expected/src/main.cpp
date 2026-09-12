@@ -5,46 +5,47 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(1, 2, 3)
+//     print(c.x)
+//     print(c.y)
+//     print(c.z)
+//     print(c)
+//     # Equality compares all fields (parent + child)
+//     print(c == Child(1, 2, 3))
+//     print(c == Child(1, 2, 4))
+//     print(c == Child(9, 9, 3))
+//     # Keyword args
+//     c2 = Child(x=1, y=2, z=3)
+//     print(c == c2)
+//     # Parent works independently
+//     b = Base(1, 2)
+//     print(b)
+//     print(b == Base(1, 2))
 void main() {
-    // c = Child(1, 2, 3)
     Child c = Child(1, 2, 3);
-    // print(c.x)
     std::cout << c.x << "\n";
-    // print(c.y)
     std::cout << c.y << "\n";
-    // print(c.z)
     std::cout << c.z << "\n";
-    // print(c)
     std::cout << c << "\n";
-    // # Equality compares all fields (parent + child)
-    // print(c == Child(1, 2, 3))
     std::cout << ::tpy::print_bool(((c) == (Child(1, 2, 3)))) << "\n";
-    // print(c == Child(1, 2, 4))
     std::cout << ::tpy::print_bool(((c) == (Child(1, 2, 4)))) << "\n";
-    // print(c == Child(9, 9, 3))
     std::cout << ::tpy::print_bool(((c) == (Child(9, 9, 3)))) << "\n";
-    // # Keyword args
-    // c2 = Child(x=1, y=2, z=3)
     Child c2 = Child(1, 2, 3);
-    // print(c == c2)
     std::cout << ::tpy::print_bool(((c) == (c2))) << "\n";
-    // # Parent works independently
-    // b = Base(1, 2)
     Base b = Base(1, 2);
-    // print(b)
     std::cout << b << "\n";
-    // print(b == Base(1, 2))
     std::cout << ::tpy::print_bool(((b) == (Base(1, 2)))) << "\n";
 }
 
+// # @dataclass inheritance: child includes parent fields in __init__ and __eq__
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass inheritance: child includes parent fields in __init__ and __eq__
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

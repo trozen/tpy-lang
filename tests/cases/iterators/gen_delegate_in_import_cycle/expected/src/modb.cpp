@@ -6,22 +6,22 @@ namespace tpyapp::modb {
 
 
 // def pong(n: int32) -> int32:
+//     if n <= 0:
+//         return 1
+//     return moda.ping(n - 1) + 10
 int32_t pong(int32_t n) {
-    // if n <= 0:
     if ((n <= 0)) {
-        // return 1
         return 1;
     }
-    // return moda.ping(n - 1) + 10
     return (::tpy::add_check<int32_t>(::tpyapp::moda::ping((::tpy::sub_check<int32_t>(n, 1))), 10));
 }
 
+// import moda
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import moda
     ::tpyapp::moda::__tpy_init();
 }
 

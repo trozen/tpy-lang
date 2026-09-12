@@ -5,48 +5,49 @@ namespace tpyapp::main {
 
 
 // def test_copy_mutable() -> None:
+//     src: Array[int32, 3] = [int32(10), int32(20), int32(30)]
+//     dst: Array[int32, 3] = [int32(0), int32(0), int32(0)]
+//     unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), uint32(3))
+//     print(unsafe_load(unsafe_ptr(dst), uint32(0)))
+//     print(unsafe_load(unsafe_ptr(dst), uint32(1)))
+//     print(unsafe_load(unsafe_ptr(dst), uint32(2)))
 void test_copy_mutable() {
-    // src: Array[int32, 3] = [int32(10), int32(20), int32(30)]
     std::array<int32_t, 3> src = {10, 20, 30};
-    // dst: Array[int32, 3] = [int32(0), int32(0), int32(0)]
     std::array<int32_t, 3> dst = {0, 0, 0};
-    // unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), uint32(3))
     std::copy_n(src.data(), 3, dst.data());
-    // print(unsafe_load(unsafe_ptr(dst), uint32(0)))
     std::cout << dst.data()[0] << "\n";
-    // print(unsafe_load(unsafe_ptr(dst), uint32(1)))
     std::cout << dst.data()[1] << "\n";
-    // print(unsafe_load(unsafe_ptr(dst), uint32(2)))
     std::cout << dst.data()[2] << "\n";
 }
 
 // def test_copy_from_constptr() -> None:
+//     src: Array[int32, 3] = [int32(40), int32(50), int32(60)]
+//     dst: Array[int32, 3] = [int32(0), int32(0), int32(0)]
+//     sp: Ptr[int32] = unsafe_ptr(src)
+//     cp: Ptr[readonly[int32]] = sp
+//     unsafe_copy_n(unsafe_ptr(dst), cp, uint32(2))
+//     print(unsafe_load(unsafe_ptr(dst), uint32(0)))
+//     print(unsafe_load(unsafe_ptr(dst), uint32(1)))
 void test_copy_from_constptr() {
-    // src: Array[int32, 3] = [int32(40), int32(50), int32(60)]
     std::array<int32_t, 3> src = {40, 50, 60};
-    // dst: Array[int32, 3] = [int32(0), int32(0), int32(0)]
     std::array<int32_t, 3> dst = {0, 0, 0};
-    // sp: Ptr[int32] = unsafe_ptr(src)
     int32_t* sp = src.data();
-    // cp: Ptr[readonly[int32]] = sp
     const int32_t* cp = sp;
-    // unsafe_copy_n(unsafe_ptr(dst), cp, uint32(2))
     std::copy_n(cp, 2, dst.data());
-    // print(unsafe_load(unsafe_ptr(dst), uint32(0)))
     std::cout << dst.data()[0] << "\n";
-    // print(unsafe_load(unsafe_ptr(dst), uint32(1)))
     std::cout << dst.data()[1] << "\n";
 }
 
+// from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_copy_n
+//
+// test_copy_mutable()
+// test_copy_from_constptr()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_copy_n
-    // test_copy_mutable()
     test_copy_mutable();
-    // test_copy_from_constptr()
     test_copy_from_constptr();
 }
 

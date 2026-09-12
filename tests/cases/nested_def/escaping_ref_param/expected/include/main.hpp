@@ -11,7 +11,9 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_getter(cfg: Config) -> Callable[[], int32]:
 std::function<int32_t()> make_getter(const Config& cfg);
+// def main() -> None:
 void main();
 
 // class Config:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Config::Config(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

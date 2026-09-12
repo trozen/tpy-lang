@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def accept(x: int32 | str | None) -> None:
 void accept(const ::tpy::Union<std::monostate, int32_t, std::string>& x);
+// def test() -> None:
 void test();
 
 void __tpy_init();

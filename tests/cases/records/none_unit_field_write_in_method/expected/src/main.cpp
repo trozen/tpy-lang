@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f = Field()
+//     f.reset()
+//     f.reset()
+//     print(f.n)
 void main() {
-    // f = Field()
     Field f = Field();
-    // f.reset()
     f.reset();
-    // f.reset()
     f.reset();
-    // print(f.n)
     std::cout << f.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

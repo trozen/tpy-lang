@@ -5,19 +5,23 @@ namespace tpyapp::main {
 
 
 // def take(row: list[float]) -> int:
+//     return len(row)
 ::tpy::BigInt take(const std::vector<double>& row) {
-    // return len(row)
     return ::tpy::BigInt(::tpy::__len__(row));
 }
 
 // def main() -> None:
+//     s = Sink()
+//     a = [1.0, 2.0, 3.0]
+//     # The subject: list / set / dict comprehensions at a method's const slot.
+//     print(s.saverow([2.0 * a[i] for i in range(3)]))  # tpyc: ok
+//     print(s.count({i * 2 for i in range(4)}))  # tpyc: ok
+//     print(s.index({i: a[i] for i in range(3)}))  # tpyc: ok
+//     # The free-call sibling, which hoists its own temp instead.
+//     print(take([2.0 * a[i] for i in range(3)]))  # tpyc: ok
 void main() {
-    // s = Sink()
     Sink s = Sink();
-    // a = [1.0, 2.0, 3.0]
     std::array<double, 3> a = {1.0, 2.0, 3.0};
-    // # The subject: list / set / dict comprehensions at a method's const slot.
-    // print(s.saverow([2.0 * a[i] for i in range(3)]))  # tpyc: ok
     std::cout << s.saverow(({
         std::vector<double> __result;
         const int32_t __stop_0 = 3;
@@ -27,7 +31,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print(s.count({i * 2 for i in range(4)}))  # tpyc: ok
     std::cout << s.count(({
         ::tpy::ordered_set<::tpy::BigInt> __result;
         const int32_t __stop_1 = 4;
@@ -36,7 +39,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print(s.index({i: a[i] for i in range(3)}))  # tpyc: ok
     std::cout << s.index(({
         ::tpy::ordered_map<::tpy::BigInt, double> __result;
         const int32_t __stop_2 = 3;
@@ -45,8 +47,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # The free-call sibling, which hoists its own temp instead.
-    // print(take([2.0 * a[i] for i in range(3)]))  # tpyc: ok
     std::vector<double> __tmp_1 = ({
         std::vector<double> __result;
         const int32_t __stop_3 = 3;
@@ -59,12 +59,12 @@ void main() {
     std::cout << take(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

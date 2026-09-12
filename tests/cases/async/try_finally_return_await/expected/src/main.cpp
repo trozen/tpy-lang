@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub() -> int32:
+//     return int32(42)
 ::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return int32(42)
         __state = S_DONE;
         int32_t __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,6 +26,10 @@ __coro_sub sub() {
 }
 
 // async def main_coro() -> int32:
+//     try:
+//         return await sub()
+//     finally:
+//         print("finally-ran")
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -53,7 +57,6 @@ __coro_sub sub() {
         }
     }
     case S_JOIN_0: {
-        // return await sub()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -68,7 +71,6 @@ __coro_sub sub() {
 }
 
 void __coro_main_coro::__finally_0() {
-    // print("finally-ran")
     std::cout << "finally-ran" << "\n";
 }
 
@@ -78,19 +80,20 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(main_coro()));
 }
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

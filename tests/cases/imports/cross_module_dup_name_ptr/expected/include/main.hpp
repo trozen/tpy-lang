@@ -14,7 +14,9 @@ using ::tpyapp::red::Tag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(p: Ptr[Tag]) -> None:
 void bump(::tpyapp::red::Tag* p);
+// def main() -> None:
 void main();
 
 void __tpy_init();

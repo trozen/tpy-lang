@@ -5,188 +5,202 @@ namespace tpyapp::main {
 
 
 // def test_iterable_params() -> None:
+//     # list
+//     nums: list[int32] = [10, 20, 30]
+//     print(sum_items(nums))
+//
+//     # range
+//     print(sum_items(range(5)))
+//
+//     # str
+//     print(count_chars("hello"))
+//
+//     # Array
+//     arr: Array[int32, 3] = [1, 2, 3]
+//     print(sum_items(arr))
+//
+//     # Span (mutable, via Ptr)
+//     sp: Span[int32] = Span(take_ptr(arr[0]), 3)
+//     print(sum_items(sp))
+//
+//     # Span[readonly[T]] (via Array.__span__())
+//     rosp: Span[readonly[int32]] = arr.__span__()
+//     print(sum_items(rosp))
+//
+//     # list (another)
+//     sl: list[int32] = [100, 200]
+//     print(sum_items(sl))
+//
+//     # String
+//     s: String = String("ab")
+//     print(count_chars(s))
+//
+//     # StrView
+//     sv: StrView = StrView("xyz")
+//     print(count_chars(sv))
+//
+//     # dict (iterates over keys)
+//     d: dict[str, int32] = {"a": 1, "b": 2}
+//     print(sum_strs(d))
 void test_iterable_params() {
-    // # list
-    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // print(sum_items(nums))
     std::cout << sum_items(nums) << "\n";
-    // # range
-    // print(sum_items(range(5)))
     auto __tmp_1 = ::tpy::Range<int32_t>(5);
     std::cout << sum_items(__tmp_1) << "\n";
-    // # str
-    // print(count_chars("hello"))
     auto __tmp_2 = "hello";
     std::cout << count_chars(__tmp_2) << "\n";
-    // # Array
-    // arr: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    // print(sum_items(arr))
     std::cout << sum_items(arr) << "\n";
-    // # Span (mutable, via Ptr)
-    // sp: Span[int32] = Span(take_ptr(arr[0]), 3)
     std::span<int32_t> sp = std::span<int32_t>(&::tpy::__getitem__(arr, 0), static_cast<size_t>(3));
-    // print(sum_items(sp))
     std::cout << sum_items(sp) << "\n";
-    // # Span[readonly[T]] (via Array.__span__())
-    // rosp: Span[readonly[int32]] = arr.__span__()
     std::span<const int32_t> rosp = ::tpy::as_span(arr);
-    // print(sum_items(rosp))
     std::cout << sum_items(rosp) << "\n";
-    // # list (another)
-    // sl: list[int32] = [100, 200]
     std::vector<int32_t> sl = {100, 200};
-    // print(sum_items(sl))
     std::cout << sum_items(sl) << "\n";
-    // # String
-    // s: String = String("ab")
     ::tpy::String s = ::tpy::String("ab");
-    // print(count_chars(s))
     std::cout << count_chars(s) << "\n";
-    // # StrView
-    // sv: StrView = StrView("xyz")
     std::string_view sv = "xyz";
-    // print(count_chars(sv))
     std::cout << count_chars(sv) << "\n";
-    // # dict (iterates over keys)
-    // d: dict[str, int32] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // print(sum_strs(d))
     std::cout << sum_strs(d) << "\n";
 }
 
 // def test_manual_iter() -> None:
+//     # Call __iter__() explicitly on concrete types
+//     nums: list[int32] = [1, 2, 3]
+//     it = nums.__iter__()
+//     total: int32 = 0
+//     for x in it:
+//         total += x
+//     print(total)
+//
+//     # str.__iter__()
+//     chars: str = "hi"
+//     char_it = chars.__iter__()
+//     for c in char_it:
+//         print(c)
+//
+//     # Array.__iter__()
+//     arr: Array[int32, 2] = [7, 8]
+//     arr_it = arr.__iter__()
+//     for v in arr_it:
+//         print(v)
+//
+//     # dict.__iter__()
+//     d: dict[str, int32] = {"x": 10, "y": 20}
+//     d_it = d.__iter__()
+//     for k in d_it:
+//         print(k)
 void test_manual_iter() {
-    // # Call __iter__() explicitly on concrete types
-    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // it = nums.__iter__()
     auto it = ::tpy::__iter__(nums);
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
-    // # str.__iter__()
-    // chars: str = "hi"
     std::string_view chars = "hi";
-    // char_it = chars.__iter__()
     auto char_it = ::tpy::__iter__(chars);
-    // for c in char_it:
     auto& __src_2 = char_it;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         char c = ::tpy::unwrap_ref(*__r_3);
-        // print(c)
         std::cout << c << "\n";
     }
-    // # Array.__iter__()
-    // arr: Array[int32, 2] = [7, 8]
     std::array<int32_t, 2> arr = {7, 8};
-    // arr_it = arr.__iter__()
     auto arr_it = ::tpy::__iter__(arr);
-    // for v in arr_it:
     auto& __src_4 = arr_it;
     auto&& __itr_4 = ::tpy::__iter__(__src_4);
     for (;;) {
         auto __r_5 = __itr_4.__next__();
         if (!__r_5.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print(v)
         std::cout << v << "\n";
     }
-    // # dict.__iter__()
-    // d: dict[str, int32] = {"x": 10, "y": 20}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
-    // d_it = d.__iter__()
     auto d_it = ::tpy::__iter__(d);
-    // for k in d_it:
     auto& __src_6 = d_it;
     auto&& __itr_6 = ::tpy::__iter__(__src_6);
     for (;;) {
         auto __r_7 = __itr_6.__next__();
         if (!__r_7.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_7);
-        // print(k)
         std::cout << k << "\n";
     }
 }
 
 // def test_iter_builtin() -> None:
+//     # iter() builtin with builtin container types
+//     nums: list[int32] = [4, 5, 6]
+//     it = iter(nums)
+//     total: int32 = 0
+//     for x in it:
+//         total += x
+//     print(total)
+//
+//     # iter() on dict
+//     d: dict[str, int32] = {"p": 1, "q": 2}
+//     d_it = iter(d)
+//     for k in d_it:
+//         print(k)
 void test_iter_builtin() {
-    // # iter() builtin with builtin container types
-    // nums: list[int32] = [4, 5, 6]
     std::vector<int32_t> nums = {4, 5, 6};
-    // it = iter(nums)
     auto it = ::tpy::__iter__(nums);
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
-    // # iter() on dict
-    // d: dict[str, int32] = {"p": 1, "q": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"p", 1}, {"q", 2}});
-    // d_it = iter(d)
     auto d_it = ::tpy::__iter__(d);
-    // for k in d_it:
     auto& __src_2 = d_it;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_3);
-        // print(k)
         std::cout << k << "\n";
     }
 }
 
 // def main() -> None:
+//     test_iterable_params()
+//     test_manual_iter()
+//     proto_input: list[int32] = [10, 20]
+//     test_iter_on_protocol(proto_input)
+//     test_iter_builtin()
+//
+//     # Test Iterable[int] with list[int] (range path) and direct BigInt
+//     bigints: list[int] = [100, 200, 300]
+//     print(sum_bigints(bigints))
 void main() {
-    // test_iterable_params()
     test_iterable_params();
-    // test_manual_iter()
     test_manual_iter();
-    // proto_input: list[int32] = [10, 20]
     std::vector<int32_t> proto_input = {10, 20};
-    // test_iter_on_protocol(proto_input)
     test_iter_on_protocol(proto_input);
-    // test_iter_builtin()
     test_iter_builtin();
-    // # Test Iterable[int] with list[int] (range path) and direct BigInt
-    // bigints: list[int] = [100, 200, 300]
     std::vector<::tpy::BigInt> bigints = {100, 200, 300};
-    // print(sum_bigints(bigints))
     std::cout << sum_bigints(bigints) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

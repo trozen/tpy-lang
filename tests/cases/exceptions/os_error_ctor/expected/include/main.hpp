@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def refuse() -> None:
 void refuse();
+// def direct_mapped() -> None:
 void direct_mapped();
+// def direct_mapped_enoent() -> None:
 void direct_mapped_enoent();
+// def bound_mapped() -> None:
 void bound_mapped();
+// def posthoc_plain() -> None:
 void posthoc_plain();
+// def main() -> None:
 void main();
 
 void __tpy_init();

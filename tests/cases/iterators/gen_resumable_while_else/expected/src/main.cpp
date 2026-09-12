@@ -5,16 +5,23 @@ namespace tpyapp::main {
 
 
 // def gen(n: int32, brk: int32) -> Iterator[int32]:
+//     i = 0
+//     while i < n:
+//         if i == brk:
+//             break
+//         yield i
+//         i += 1
+//     else:
+//         yield -1
+//     yield -2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -33,18 +40,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
                 __state = S_JOIN_1;
                 continue;
             } else {
-                // yield i
                 __state = S_RESUME_0;
                 return i;
             }
         } else {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
     }
     case S_JOIN_1: {
-        // yield -2
         __state = S_RESUME_2;
         return -2;
     }
@@ -60,10 +64,14 @@ __gen_gen gen(int32_t n, int32_t brk) {
 }
 
 // def main() -> None:
+//     print("no break:")
+//     for v in gen(3, 99):
+//         print(v)
+//     print("break:")
+//     for v in gen(3, 1):
+//         print(v)
 void main() {
-    // print("no break:")
     std::cout << "no break:" << "\n";
-    // for v in gen(3, 99):
     {
         auto __src_0 = gen(3, 99);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -71,13 +79,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("break:")
     std::cout << "break:" << "\n";
-    // for v in gen(3, 1):
     {
         auto __src_2 = gen(3, 1);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -85,18 +90,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

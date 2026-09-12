@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def make_c() -> Own[C]:
+//     print("side_effect")
+//     return C()
 C make_c() {
-    // print("side_effect")
     std::cout << "side_effect" << "\n";
-    // return C()
     return C();
 }
 
 // def main() -> None:
+//     print(make_c().LIMIT)
+//     cs: list[C] = [C(), C()]
+//     # Subscript also has side effects (range check), so it must be evaluated.
+//     print(cs[0].LIMIT)
 void main() {
-    // print(make_c().LIMIT)
     std::cout << ({ static_cast<void>(make_c()); C::LIMIT; }) << "\n";
-    // cs: list[C] = [C(), C()]
     std::vector<C> cs = {C(), C()};
-    // # Subscript also has side effects (range check), so it must be evaluated.
-    // print(cs[0].LIMIT)
     std::cout << ({ static_cast<void>(::tpy::__getitem__(cs, 0)); C::LIMIT; }) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

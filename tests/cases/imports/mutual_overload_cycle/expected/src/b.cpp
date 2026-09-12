@@ -7,35 +7,37 @@ namespace tpyapp::b {
 
 
 
+// def g(x: int32 | str) -> int32:
+//     if isinstance(x, int32):
+//         return x * 2
+//     return int32(len(x))
 // @overload
 // def g(x: int32) -> int32: ...
 int32_t g(int32_t x) {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // @overload
 // def g(x: str) -> int32: ...
 int32_t g(std::string_view x) {
-    // return int32(len(x))
     return ::tpy::__len__(x);
 }
 
 
 // def relay(n: int32) -> int32:
+//     return use_g_int(n)
 int32_t relay(int32_t n) {
-    // return use_g_int(n)
     return ::tpyapp::a::use_g_int(n);
 }
 
+// # Defines an @overload-grouped function `g` and imports back from `a`
+// # to close the cycle.
+// from a import use_g_int
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Defines an @overload-grouped function `g` and imports back from `a`
-    // # to close the cycle.
-    // from a import use_g_int
     ::tpyapp::a::__tpy_init();
 }
 

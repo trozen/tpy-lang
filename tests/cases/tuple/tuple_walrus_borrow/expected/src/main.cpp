@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def literal_capture() -> None:
+//     b = Box(5)
+//     print((t := (1, b))[0])
+//     t[1].val = 99
+//     print(b.val)
 void literal_capture() {
-    // b = Box(5)
     Box b = Box(5);
-    // print((t := (1, b))[0])
     std::tuple<int32_t, Box*> t;
     std::cout << std::get<0>((t = std::tuple<int32_t, Box*>{1, &(b)})) << "\n";
-    // t[1].val = 99
     std::get<1>(t)->val = 99;
-    // print(b.val)
     std::cout << b.val << "\n";
 }
 
 // def storage_source() -> None:
+//     items: list[tuple[int32, Box]] = [(2, Box(7))]
+//     print((t := items[0])[0])
+//     t[1].val = 42
+//     print(items[0][1].val)
 void storage_source() {
-    // items: list[tuple[int32, Box]] = [(2, Box(7))]
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)})};
-    // print((t := items[0])[0])
     std::tuple<int32_t, Box*> t;
     std::cout << std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 0)))) << "\n";
-    // t[1].val = 42
     std::get<1>(t)->val = 42;
-    // print(items[0][1].val)
     std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n";
 }
 
 // def main() -> None:
+//     literal_capture()
+//     storage_source()
 void main() {
-    // literal_capture()
     literal_capture();
-    // storage_source()
     storage_source();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

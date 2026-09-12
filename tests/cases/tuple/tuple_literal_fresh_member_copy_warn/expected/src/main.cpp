@@ -5,49 +5,49 @@ namespace tpyapp::main {
 
 
 // def list_member() -> None:
+//     c = P(5)
+//     xs: list[tuple[int32, P]] = [(1, c)]  # tpyc: warning(/copies P into owned storage/)
+//     print(c.x, len(xs))
 void list_member() {
-    // c = P(5)
     P c = P(5);
-    // xs: list[tuple[int32, P]] = [(1, c)]  # tpyc: warning(/copies P into owned storage/)
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{1, &(c)})};
-    // print(c.x, len(xs))
     std::cout << c.x << " " << ::tpy::__len__(xs) << "\n";
 }
 
 // def exempt_fresh(n: int32) -> None:
+//     xs: list[tuple[int32, P]] = [(1, P(9))]  # tpyc: ok
+//     print(len(xs))
 void exempt_fresh(int32_t n) {
-    // xs: list[tuple[int32, P]] = [(1, P(9))]  # tpyc: ok
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(9)})};
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def exempt_copy() -> None:
+//     c = P(2)
+//     xs: list[tuple[int32, P]] = [(1, copy(c))]  # tpyc: ok
+//     print(c.x, len(xs))
 void exempt_copy() {
-    // c = P(2)
     P c = P(2);
-    // xs: list[tuple[int32, P]] = [(1, copy(c))]  # tpyc: ok
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(c)})};
-    // print(c.x, len(xs))
     std::cout << c.x << " " << ::tpy::__len__(xs) << "\n";
 }
 
 // def main() -> None:
+//     list_member()
+//     exempt_fresh(0)
+//     exempt_copy()
 void main() {
-    // list_member()
     list_member();
-    // exempt_fresh(0)
     exempt_fresh(0);
-    // exempt_copy()
     exempt_copy();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

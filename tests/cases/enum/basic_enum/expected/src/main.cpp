@@ -47,25 +47,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Color = Color.Red
+//     print(c)
+//     c = Color.Blue
+//     print(c)
 void main() {
-    // c: Color = Color.Red
     Color c = Color::Red;
-    // print(c)
     std::cout << c << "\n";
-    // c = Color.Blue
     c = Color::Blue;
-    // print(c)
     std::cout << c << "\n";
 }
 
+// # Basic enum: define, assign, print
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Basic enum: define, assign, print
-    // from enum import Enum
-    // main()
     main();
 }
 

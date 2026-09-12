@@ -16,6 +16,7 @@ extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* nums;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def span_ops(sp: Span[int32]) -> None:
 void span_ops(std::span<int32_t> sp);
 
 void __tpy_init();

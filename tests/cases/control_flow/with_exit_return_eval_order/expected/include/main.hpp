@@ -11,7 +11,9 @@ struct Lock;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(lk: Lock) -> bool:
 bool f(Lock& lk);
+// def main() -> None:
 void main();
 
 // # The return expression must be evaluated before __exit__ runs: returning
@@ -39,17 +41,18 @@ inline std::ostream& operator<<(std::ostream& os, const Lock& obj) {
 
 
 // def __init__(self) -> None:
+//     self.held = False
 inline Lock::Lock() : held(false) {}
 
 // def __enter__(self) -> None:
+//     self.held = True
 inline void Lock::__enter__() {
-    // self.held = True
     this->held = true;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.held = False
 inline void Lock::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.held = False
     this->held = false;
 }
 void __tpy_init();

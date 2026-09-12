@@ -32,9 +32,14 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def widen() -> int:
 ::tpy::BigInt widen();
+// def subscript_positions(data: str, xs: list[int32],
+//                         d: dict[int32, int32]) -> None:
 void subscript_positions(std::string_view data, std::vector<int32_t>& xs, ::tpy::ordered_map<int32_t, int32_t>& d);
+// def value_positions(data: str) -> None:
 void value_positions(std::string_view data);
+// def main() -> None:
 void main();
 
 void __tpy_init();

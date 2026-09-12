@@ -5,11 +5,12 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     async with CM() as v:
+//         print(v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(CM());
-        // async with CM() as v:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -36,7 +37,6 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_0: {
-        // async with CM() as v:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
@@ -47,7 +47,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            // print(v)
             std::cout << v << "\n";
             __state = S_JOIN_0;
             continue;
@@ -69,13 +68,13 @@ __coro_main_coro main_coro() {
 }
 
 // async def __aenter__(self) -> int32:
+//     print("aenter")
+//     return 7
 ::tpystd::tpy::Poll<int32_t> __coro_CM___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("aenter")
         std::cout << "aenter" << "\n";
-        // return 7
         __state = S_DONE;
         int32_t __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -87,11 +86,11 @@ __coro_main_coro main_coro() {
 
 
 // async def __aexit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
+//     print("aexit")
 ::tpystd::tpy::Poll<::std::monostate> __coro_CM___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("aexit")
         std::cout << "aexit" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -102,15 +101,16 @@ __coro_main_coro main_coro() {
 }
 
 
+// # Basic async with: __aenter__/__aexit__ run, as-binding works.
+// import asyncio
+//
+// asyncio.run(main_coro())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Basic async with: __aenter__/__aexit__ run, as-binding works.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 

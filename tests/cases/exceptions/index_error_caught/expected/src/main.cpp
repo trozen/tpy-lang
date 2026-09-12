@@ -9,94 +9,107 @@ namespace tpyapp::main {
 // # and bytearray pop. CPython uses a distinct "list assignment index out of
 // # range" message for write-side bounds violations; matched here.
 // def main() -> None:
+//     xs: list[int] = [10, 20, 30]
+//     try:
+//         print(xs[5])
+//     except IndexError as e:
+//         print("caught:", str(e))
+//
+//     try:
+//         xs[5] = 99
+//     except IndexError as e:
+//         print("caught:", str(e))
+//
+//     try:
+//         del xs[5]
+//     except IndexError as e:
+//         print("caught:", str(e))
+//
+//     empty: list[int] = []
+//     try:
+//         empty.pop()
+//     except IndexError as e:
+//         print("caught:", str(e))
+//
+//     ba: bytearray = bytearray(b"")
+//     try:
+//         ba.pop()
+//     except IndexError as e:
+//         print("caught:", str(e))
+//
+//     ba2: bytearray = bytearray(b"abc")
+//     try:
+//         ba2.pop(99)
+//     except IndexError as e:
+//         print("caught:", str(e))
+//
+//     # Negative-out-of-range path also throws.
+//     try:
+//         print(xs[-99])
+//     except IndexError as e:
+//         print("caught:", str(e))
 void main() {
-    // xs: list[int] = [10, 20, 30]
     std::vector<::tpy::BigInt> xs = {10, 20, 30};
-    // try:
     {
         try {
-            // print(xs[5])
             std::cout << ::tpy::__getitem__(xs, 5) << "\n";
         } catch (const ::tpy::IndexError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // xs[5] = 99
             ::tpy::__setitem__(xs, 5, ::tpy::BigInt(99));
         } catch (const ::tpy::IndexError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // del xs[5]
             ::tpy::__delitem__(xs, 5);
         } catch (const ::tpy::IndexError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // empty: list[int] = []
     std::vector<::tpy::BigInt> empty = std::vector<::tpy::BigInt>{};
-    // try:
     {
         try {
-            // empty.pop()
             ::tpy::pop_back(empty);
         } catch (const ::tpy::IndexError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // ba: bytearray = bytearray(b"")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::BytesView{});
-    // try:
     {
         try {
-            // ba.pop()
             ::tpy::bytearray_pop(ba);
         } catch (const ::tpy::IndexError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // ba2: bytearray = bytearray(b"abc")
     ::tpy::ByteArray ba2 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    // try:
     {
         try {
-            // ba2.pop(99)
             ::tpy::bytearray_pop_at(ba2, 99);
         } catch (const ::tpy::IndexError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # Negative-out-of-range path also throws.
-    // try:
     {
         try {
-            // print(xs[-99])
             std::cout << ::tpy::__getitem__(xs, -99) << "\n";
         } catch (const ::tpy::IndexError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

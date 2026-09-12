@@ -3,21 +3,20 @@
 
 namespace tpyapp::geo::codec {
 
-// _HEX: bytes = b"0123456789ABCDEF"
 ::tpy::Bytes _HEX;
 
 // def hi_nibble(c: int32) -> int32:
+//     return int32(_HEX[c >> 4])
 int32_t hi_nibble(int32_t c) {
-    // return int32(_HEX[c >> 4])
     return ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(_HEX, (::tpy::rshift_check<int32_t>(c, 4))));
 }
 
+// _HEX: bytes = b"0123456789ABCDEF"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // _HEX: bytes = b"0123456789ABCDEF"
     _HEX = ::tpy::bytes_literal_owned("0123456789ABCDEF", 16);
 }
 

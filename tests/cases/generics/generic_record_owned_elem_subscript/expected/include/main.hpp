@@ -13,14 +13,19 @@ template<typename A, typename B> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_bare[T](src: list[T]) -> Own[Bare[T]]:
 template<typename T>
 Bare<T> use_bare(const std::vector<T>& src);
+// def use_owned[T](src: list[T]) -> Own[Owned[T]]:
 template<typename T>
 Owned<T> use_owned(const std::vector<T>& src);
+// def use_pair[T](src: list[tuple[T, int]]) -> Own[Pair[T, int]]:
 template<typename T>
 Pair<T, ::tpy::BigInt> use_pair(const std::vector<std::tuple<T, ::tpy::BigInt>>& src);
+// def use_dict[K, V](src: dict[K, V], k: K) -> Own[Owned[V]]:
 template<typename K, typename V>
 Owned<V> use_dict(const ::tpy::ordered_map<K, V>& src, ::tpy::param_val_or_ref_t<K> k);
+// def main() -> None:
 void main();
 
 // class Bare[U]:
@@ -30,6 +35,7 @@ struct Bare {
     U x;
 
     // def __init__(self, x: U) -> None:
+    //     self.x = x
     Bare() = default;
     explicit Bare(::tpy::readonly_form_t<U> x) : x(x) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bare";
@@ -48,6 +54,7 @@ struct Owned {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
+    //     self.v = v
     Owned() = default;
     explicit Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owned";
@@ -66,6 +73,7 @@ struct Pair {
     std::tuple<A, B> p;
 
     // def __init__(self, p: Own[tuple[A, B]]) -> None:
+    //     self.p = p
     Pair() = default;
     explicit Pair(std::tuple<A, B> p) : p(std::move(p)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -78,35 +86,35 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
 }
 
 // def use_bare[T](src: list[T]) -> Own[Bare[T]]:
+//     b = Bare(src[0])  # tpyc: type(/Bare\[T\]/)
+//     return b
 template<typename T>
 Bare<T> use_bare(const std::vector<T>& src) {
-    // b = Bare(src[0])  # tpyc: type(/Bare\[T\]/)
     Bare<T> b = Bare<T>(::tpy::__getitem__(src, 0));
-    // return b
     return b;
 }
 // def use_owned[T](src: list[T]) -> Own[Owned[T]]:
+//     o = Owned(copy(src[0]))  # tpyc: type(/Owned\[T\]/)
+//     return o
 template<typename T>
 Owned<T> use_owned(const std::vector<T>& src) {
-    // o = Owned(copy(src[0]))  # tpyc: type(/Owned\[T\]/)
     Owned<T> o = Owned<T>(T(::tpy::__getitem__(src, 0)));
-    // return o
     return o;
 }
 // def use_pair[T](src: list[tuple[T, int]]) -> Own[Pair[T, int]]:
+//     p = Pair(copy(src[0]))  # tpyc: type(/Pair\[T, int\]/)
+//     return p
 template<typename T>
 Pair<T, ::tpy::BigInt> use_pair(const std::vector<std::tuple<T, ::tpy::BigInt>>& src) {
-    // p = Pair(copy(src[0]))  # tpyc: type(/Pair\[T, int\]/)
     Pair<T, ::tpy::BigInt> p = Pair<T, ::tpy::BigInt>(std::tuple<T, ::tpy::BigInt>(::tpy::__getitem__(src, 0)));
-    // return p
     return p;
 }
 // def use_dict[K, V](src: dict[K, V], k: K) -> Own[Owned[V]]:
+//     o = Owned(copy(src[k]))  # tpyc: type(/Owned\[V\]/)
+//     return o
 template<typename K, typename V>
 Owned<V> use_dict(const ::tpy::ordered_map<K, V>& src, ::tpy::param_val_or_ref_t<K> k) {
-    // o = Owned(copy(src[k]))  # tpyc: type(/Owned\[V\]/)
     Owned<V> o = Owned<V>(V(::tpy::__getitem__(src, k)));
-    // return o
     return o;
 }
 

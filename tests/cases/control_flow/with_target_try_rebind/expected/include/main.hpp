@@ -11,7 +11,9 @@ struct Reg;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def probe(flag: bool) -> int32:
 int32_t probe(bool flag);
+// def main() -> None:
 void main();
 
 // class Reg:
@@ -45,6 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reg& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Reg::Reg(int32_t n) : n(n) {}
 
 inline Reg::Reg(Reg&& other) noexcept : n(std::move(other.n)) {
@@ -59,21 +62,21 @@ inline Reg& Reg::operator=(Reg&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     self.n = -999
 inline Reg::~Reg() {
     if (!this->__tpy_owned_) return;
-    // self.n = -999
     this->n = -999;
 }
 
 // def __enter__(self) -> "Reg":
+//     return self
 inline Reg& Reg::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Reg::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

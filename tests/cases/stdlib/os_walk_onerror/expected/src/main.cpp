@@ -5,23 +5,25 @@ namespace tpyapp::main {
 
 
 // def report(e: readonly[OSError]) -> None:
+//     # Avoid str(e): TPy's OSError.__str__ format differs from CPython (BUGS.md).
+//     print("onerror fired")
 void report(const ::tpy::OSError& e) {
-    // # Avoid str(e): TPy's OSError.__str__ format differs from CPython (BUGS.md).
-    // print("onerror fired")
     std::cout << "onerror fired" << "\n";
 }
 
 // def boom(e: readonly[OSError]) -> None:
+//     raise RuntimeError("stop")
 void boom(const ::tpy::OSError& e) {
-    // raise RuntimeError("stop")
     throw ::tpy::RuntimeError("stop");
 }
 
 // def yields(top: str, cb: Callable[[readonly[OSError]], None] | None) -> int32:
+//     n = 0
+//     for dirpath, dirnames, filenames in os.walk(top, onerror=cb):
+//         n += 1
+//     return n
 int32_t yields(std::string_view top, std::optional<std::function<void(const ::tpy::OSError&)>> cb) {
-    // n = 0
     int32_t n = 0;
-    // for dirpath, dirnames, filenames in os.walk(top, onerror=cb):
     {
         auto __src_0 = ::tpystd::os::walk(top, true, cb);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -29,24 +31,27 @@ int32_t yields(std::string_view top, std::optional<std::function<void(const ::tp
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for dirpath, dirnames, filenames in os.walk(top, onerror=cb):
         auto& __tup_1 = __for_tup_0;
         std::string_view dirpath = std::get<0>(__tup_1);
         auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    // return n
     return n;
 }
 
 // def walk_rows(root: str, cb: Callable[[readonly[OSError]], None] | None) -> Own[list[str]]:
+//     rows: list[str] = []
+//     for dirpath, dirnames, filenames in os.walk(root, onerror=cb):
+//         rel = dirpath[len(root):]
+//         if len(rel) == 0:
+//             rel = "."
+//         rows.append(rel + " files=" + str(len(filenames)))
+//     rows.sort()
+//     return rows
 std::vector<std::string> walk_rows(std::string_view root, std::optional<std::function<void(const ::tpy::OSError&)>> cb) {
-    // rows: list[str] = []
     std::vector<std::string> rows = std::vector<std::string>{};
-    // for dirpath, dirnames, filenames in os.walk(root, onerror=cb):
     {
         auto __src_0 = ::tpystd::os::walk(root, true, cb);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -54,39 +59,34 @@ std::vector<std::string> walk_rows(std::string_view root, std::optional<std::fun
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
-        // for dirpath, dirnames, filenames in os.walk(root, onerror=cb):
         auto& __tup_1 = __for_tup_1;
         std::string_view dirpath = std::get<0>(__tup_1);
         auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        // rel = dirpath[len(root):]
         std::string_view rel = ::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt});
-        // if len(rel) == 0:
         if ((::tpy::__len__(rel) == 0)) {
-            // rel = "."
             rel = ".";
         }
-        // rows.append(rel + " files=" + str(len(filenames)))
         rows.push_back((::tpy::str_concat((::tpy::str_concat(rel, " files=")), ::tpy::fixed_to_str<int32_t>(::tpy::__len__(filenames)))));
         }
     }
-    // rows.sort()
     ::tpy::sort_in_place(rows);
-    // return rows
     return rows;
 }
 
 // def build(root: str) -> None:
+//     os.mkdir(root)
+//     os.mkdir(root + "/sub")
+//     with open(root + "/top.txt", "w") as f:
+//         f.write("t")
+//     with open(root + "/sub/a.txt", "w") as f:
+//         f.write("a")
 void build(std::string_view root) {
-    // os.mkdir(root)
     ::tpystd::os::mkdir(root);
-    // os.mkdir(root + "/sub")
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/sub")));
-    // with open(root + "/top.txt", "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/top.txt")), "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // f.write("t")
         f->write("t");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -98,11 +98,9 @@ void build(std::string_view root) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(root + "/sub/a.txt", "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/sub/a.txt")), "w");
     f = &(__ctx_2.__enter__());
     try {
-        // f.write("a")
         f->write("a");
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -117,70 +115,80 @@ void build(std::string_view root) {
 }
 
 // def teardown(root: str) -> None:
+//     os.remove(root + "/sub/a.txt")
+//     os.remove(root + "/top.txt")
+//     os.rmdir(root + "/sub")
+//     os.rmdir(root)
 void teardown(std::string_view root) {
-    // os.remove(root + "/sub/a.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/sub/a.txt")));
-    // os.remove(root + "/top.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/top.txt")));
-    // os.rmdir(root + "/sub")
     ::tpy::stdlib::os::rmdir((::tpy::str_concat(root, "/sub")));
-    // os.rmdir(root)
     ::tpy::stdlib::os::rmdir(root);
 }
 
 // def main() -> None:
+//     tmp = os.getcwd()
+//     root = tmp + "/tpy_oswalk_onerror_tree"
+//     if os.path.exists(root):
+//         teardown(root)
+//     build(root)
+//
+//     for r in walk_rows(root, report):
+//         print("named:", r)
+//     for r in walk_rows(root, lambda e: print("never")):
+//         print("lambda:", r)
+//     teardown(root)
+//
+//     missing = "tpy_oswalk_onerror_missing"
+//
+//     # Count is computed before printing -- a side-effecting print arg would
+//     # interleave differently under TPy's cout-chain lowering vs CPython.
+//     n1 = yields(missing, report)
+//     print("named yields:", n1)
+//
+//     n2 = yields(missing, lambda e: print("lam fired"))
+//     print("lambda yields:", n2)
+//
+//     n3 = yields(missing, None)
+//     print("default yields:", n3)
+//
+//     try:
+//         for dp, dn, fn in os.walk(missing, onerror=boom):
+//             print("yielded")
+//         print("no raise")
+//     except RuntimeError:
+//         print("aborted by onerror")
 void main() {
-    // tmp = os.getcwd()
     std::string tmp = ::tpy::stdlib::os::getcwd();
-    // root = tmp + "/tpy_oswalk_onerror_tree"
     ::tpy::String root = (::tpy::str_concat(tmp, "/tpy_oswalk_onerror_tree"));
-    // if os.path.exists(root):
     if (::tpy::stdlib::os::path_exists(root)) {
-        // teardown(root)
         teardown(root);
     }
-    // build(root)
     build(root);
-    // for r in walk_rows(root, report):
     auto __obj_0 = walk_rows(root, report);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view r = *__beg_0;
-        // print("named:", r)
         std::cout << "named:" << " " << r << "\n";
     }
-    // for r in walk_rows(root, lambda e: print("never")):
     auto __obj_1 = walk_rows(root, [](const ::tpy::OSError& e) { std::cout << "never" << "\n"; });
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view r = *__beg_1;
-        // print("lambda:", r)
         std::cout << "lambda:" << " " << r << "\n";
     }
-    // teardown(root)
     teardown(root);
-    // missing = "tpy_oswalk_onerror_missing"
     std::string_view missing = "tpy_oswalk_onerror_missing";
-    // # Count is computed before printing -- a side-effecting print arg would
-    // # interleave differently under TPy's cout-chain lowering vs CPython.
-    // n1 = yields(missing, report)
     int32_t n1 = yields(missing, report);
-    // print("named yields:", n1)
     std::cout << "named yields:" << " " << n1 << "\n";
-    // n2 = yields(missing, lambda e: print("lam fired"))
     int32_t n2 = yields(missing, [](const ::tpy::OSError& e) { std::cout << "lam fired" << "\n"; });
-    // print("lambda yields:", n2)
     std::cout << "lambda yields:" << " " << n2 << "\n";
-    // n3 = yields(missing, None)
     int32_t n3 = yields(missing, std::nullopt);
-    // print("default yields:", n3)
     std::cout << "default yields:" << " " << n3 << "\n";
-    // try:
     {
         try {
-            // for dp, dn, fn in os.walk(missing, onerror=boom):
             {
                 auto __src_2 = ::tpystd::os::walk(missing, true, boom);
                 auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -188,34 +196,31 @@ void main() {
                     auto __r_3 = __itr_2.__next__();
                     if (!__r_3.has_value()) break;
                     auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_3);
-                // for dp, dn, fn in os.walk(missing, onerror=boom):
                 auto& __tup_1 = __for_tup_2;
                 std::string_view dp = std::get<0>(__tup_1);
                 auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
                 auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-                // print("yielded")
                 std::cout << "yielded" << "\n";
                 }
             }
-            // print("no raise")
             std::cout << "no raise" << "\n";
         } catch (const ::tpy::RuntimeError&) {
-            // print("aborted by onerror")
             std::cout << "aborted by onerror" << "\n";
         }
     }
 }
 
+// # os.walk onerror: provided-but-never-fires on a real tree, fires on a scandir
+// # failure (missing top), aborts the walk when it raises; named + lambda forms.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.walk onerror: provided-but-never-fires on a real tree, fires on a scandir
-    // # failure (missing top), aborts the walk when it raises; named + lambda forms.
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

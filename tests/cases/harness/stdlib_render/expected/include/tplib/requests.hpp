@@ -57,8 +57,13 @@ struct Session;
 
 extern std::string _MULTIPART_BOUNDARY;
 inline constexpr std::string_view __name__ = "tplib.requests";
+// DEFAULT_HTTP_PORT: Final[int32] = 80
 inline constexpr int32_t DEFAULT_HTTP_PORT = 80;
+// DEFAULT_HTTPS_PORT: Final[int32] = 443
 inline constexpr int32_t DEFAULT_HTTPS_PORT = 443;
+// # Chunk size iter_lines pulls from the raw stream between newline scans. requests
+// # uses 512 for iter_lines; iter_content has no default (see Response.iter_content).
+// _ITER_LINES_CHUNK: Final[int32] = 512
 inline constexpr int32_t _ITER_LINES_CHUNK = 512;
 
 using ::tpystd::json::JsonValue;
@@ -67,31 +72,137 @@ struct __gen_CookieJar___iter__;
 struct __gen_Response_iter_content;
 struct __gen_Response_iter_lines;
 
+// def _parse_maxage(raw: str) -> tuple[bool, int]:
 std::tuple<bool, ::tpy::BigInt> _parse_maxage(std::string_view raw);
+// def _parse_http_date(raw: str) -> tuple[bool, float]:
 std::tuple<bool, double> _parse_http_date(std::string_view raw);
+// def _path_match(req_path: str, cookie_path: str) -> bool:
 bool _path_match(std::string_view req_path, std::string_view cookie_path);
+// def _basic_auth_header(user: str, password: str) -> str:
 std::string _basic_auth_header(std::string_view user, std::string_view password);
+// def _merge_query(path: str, query: str, params: dict[str, str] | None) -> str:
 std::string _merge_query(std::string_view path, std::string_view query, const ::tpy::ordered_map<std::string, std::string>* params);
+// def _escape_header_param(value: str) -> str:
 std::string _escape_header_param(std::string_view value);
+// def _multipart_body(data: dict[str, str] | None,
+//                     files: dict[str, FileField]) -> Own[bytes]:
 ::tpy::Bytes _multipart_body(const ::tpy::ordered_map<std::string, std::string>* data, const ::tpy::ordered_map<std::string, FileField>& files);
+// def _encode_body(data: bytes | dict[str, str] | None,
+//                  files: dict[str, FileField] | None,
+//                  json: JsonValue | None) -> Own[tuple[bytes | None, str | None]]:
 std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>> _encode_body(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json);
+// def _prepare_headers(headers: dict[str, str] | None,
+//                      auth: tuple[str, str] | None,
+//                      content_type: str | None) -> Own[dict[str, str]]:
 ::tpy::ordered_map<std::string, std::string> _prepare_headers(const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<std::string_view> content_type);
+// def _is_redirect(status: int32) -> bool:
 bool _is_redirect(int32_t status);
+// def _host_of(url: str) -> str:
 std::string _host_of(std::string_view url);
+// def _should_strip_auth(old_url: str, new_url: str) -> bool:
 bool _should_strip_auth(std::string_view old_url, std::string_view new_url);
+// def _drop_body_headers(headers: dict[str, str]) -> None:
 void _drop_body_headers(::tpy::ordered_map<std::string, std::string>& headers);
+// def _rebuild_method(method: str, status: int32) -> str:
 std::string _rebuild_method(std::string_view method, int32_t status);
+// def _send_recv(conn: Box[_Connection], method: str, target: str,
+//                body: bytes | None, hdrs: dict[str, str],
+//                url: str) -> Own[HTTPResponse]:
 ::tpystd::http::client::HTTPResponse _send_recv(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view target, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>& hdrs, std::string_view url);
+// def _request_on(conn: Box[_Connection], method: str, url: str,
+//                 params: dict[str, str] | None,
+//                 data: bytes | dict[str, str] | None,
+//                 files: dict[str, FileField] | None,
+//                 json: JsonValue | None, headers: dict[str, str] | None,
+//                 auth: tuple[str, str] | None,
+//                 send_cookies: CookieJar,
+//                 stream: bool = False, follow: bool = False) -> Own[Response]:
 Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, CookieJar& send_cookies, bool stream = false, bool follow = false);
+// def _ssl_context_for(verify: bool | str) -> Own[ssl.SSLContext]:
 ::tpystd::ssl::SSLContext _ssl_context_for(const ::tpy::Union<bool, std::string>& verify);
+// def _connect(url: str, timeout: float | None = None,
+//              verify: bool | str = True) -> Own[Box[_Connection]]:
 ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> _connect(std::string_view url, std::optional<double> timeout = std::nullopt, const ::tpy::Union<bool, std::string>& verify = true);
+// def _pool_key(url: str, verify: bool | str) -> str:
 std::string _pool_key(std::string_view url, const ::tpy::Union<bool, std::string>& verify);
+// def request(method: str, url: str, params: dict[str, str] | None = None,
+//             data: bytes | dict[str, str] | None = None,
+//             json: JsonValue | None = None,
+//             headers: dict[str, str] | None = None,
+//             auth: tuple[str, str] | None = None,
+//             timeout: float | None = None,
+//             allow_redirects: bool = True,
+//             verify: bool | str = True,
+//             cookies: dict[str, str] | None = None,
+//             files: dict[str, FileField] | None = None,
+//             stream: bool = False
+//             ) -> Own[Response]:
 Response request(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data = {}, const ::tpystd::json::JsonValue* json = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, const ::tpy::ordered_map<std::string, FileField>* files = nullptr, bool stream = false);
+// def get(url: str, params: dict[str, str] | None = None,
+//         headers: dict[str, str] | None = None,
+//         auth: tuple[str, str] | None = None,
+//         timeout: float | None = None,
+//         allow_redirects: bool = True,
+//         verify: bool | str = True,
+//         cookies: dict[str, str] | None = None,
+//         stream: bool = False) -> Own[Response]:
 Response get(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, bool stream = false);
+// def head(url: str, params: dict[str, str] | None = None,
+//          headers: dict[str, str] | None = None,
+//          auth: tuple[str, str] | None = None,
+//          timeout: float | None = None,
+//          allow_redirects: bool = False,
+//          verify: bool | str = True,
+//          cookies: dict[str, str] | None = None,
+//          stream: bool = False) -> Own[Response]:
 Response head(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt, bool allow_redirects = false, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, bool stream = false);
+// def post(url: str, data: bytes | dict[str, str] | None = None,
+//          json: JsonValue | None = None,
+//          params: dict[str, str] | None = None,
+//          headers: dict[str, str] | None = None,
+//          auth: tuple[str, str] | None = None,
+//          timeout: float | None = None,
+//          allow_redirects: bool = True,
+//          verify: bool | str = True,
+//          cookies: dict[str, str] | None = None,
+//          files: dict[str, FileField] | None = None,
+//          stream: bool = False
+//          ) -> Own[Response]:
 Response post(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data = {}, const ::tpystd::json::JsonValue* json = nullptr, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, const ::tpy::ordered_map<std::string, FileField>* files = nullptr, bool stream = false);
+// def put(url: str, data: bytes | dict[str, str] | None = None,
+//         json: JsonValue | None = None,
+//         params: dict[str, str] | None = None,
+//         headers: dict[str, str] | None = None,
+//         auth: tuple[str, str] | None = None,
+//         timeout: float | None = None,
+//         allow_redirects: bool = True,
+//         verify: bool | str = True,
+//         cookies: dict[str, str] | None = None,
+//         files: dict[str, FileField] | None = None,
+//         stream: bool = False
+//         ) -> Own[Response]:
 Response put(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data = {}, const ::tpystd::json::JsonValue* json = nullptr, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, const ::tpy::ordered_map<std::string, FileField>* files = nullptr, bool stream = false);
+// def patch(url: str, data: bytes | dict[str, str] | None = None,
+//           json: JsonValue | None = None,
+//           params: dict[str, str] | None = None,
+//           headers: dict[str, str] | None = None,
+//           auth: tuple[str, str] | None = None,
+//           timeout: float | None = None,
+//           allow_redirects: bool = True,
+//           verify: bool | str = True,
+//           cookies: dict[str, str] | None = None,
+//           files: dict[str, FileField] | None = None,
+//           stream: bool = False
+//           ) -> Own[Response]:
 Response patch(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data = {}, const ::tpystd::json::JsonValue* json = nullptr, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, const ::tpy::ordered_map<std::string, FileField>* files = nullptr, bool stream = false);
+// def delete(url: str, params: dict[str, str] | None = None,
+//            headers: dict[str, str] | None = None,
+//            auth: tuple[str, str] | None = None,
+//            timeout: float | None = None,
+//            allow_redirects: bool = True,
+//            verify: bool | str = True,
+//            cookies: dict[str, str] | None = None,
+//            stream: bool = False) -> Own[Response]:
 Response delete_(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, bool stream = false);
 
 // class FileField:
@@ -104,7 +215,7 @@ struct FileField {
     std::string content_type;
 
     // def __init__(self, filename: str, content: Own[bytes],
-    // content_type: str = "application/octet-stream") -> None:
+    //              content_type: str = "application/octet-stream") -> None:
     explicit FileField(std::string_view filename, ::tpy::Bytes content, std::string_view content_type = "application/octet-stream");
     static constexpr std::string_view __tpy_class_name__ = "tplib.requests.FileField";
 };
@@ -169,6 +280,10 @@ struct CaseInsensitiveDict {
     std::vector<std::tuple<std::string, std::string>> items() const;
 
     // def __iter__(self) -> Iterator[str]:
+    //     # Yields the original-cased header names (last-set casing wins). A
+    //     # generator method, so `for k in headers` needs no separate iterator.
+    //     for lk in self._store:
+    //         yield self._store[lk][0]
     auto __iter__() const {
         return ::tpy::make_generator<std::string>(
             [this, __beg = decltype(((*this)._store).begin())(), __end = decltype(((*this)._store).begin())(), __init = false]() mutable -> std::optional<std::string> {
@@ -244,7 +359,7 @@ struct Cookie {
     double expires_at;
 
     // def __init__(self, name: str, value: str, domain: str, path: str,
-    // secure: bool, deleted: bool, expires_at: float) -> None:
+    //              secure: bool, deleted: bool, expires_at: float) -> None:
     Cookie() = default;
     explicit Cookie(std::string_view name, std::string_view value, std::string_view domain, std::string_view path, bool secure, bool deleted, double expires_at);
 
@@ -281,7 +396,7 @@ struct CookieJar {
     CookieJar();
 
     // def set(self, name: str, value: str, domain: str = "", path: str = "/",
-    // secure: bool = False) -> None:
+    //         secure: bool = False) -> None:
     void set(std::string_view name, std::string_view value, std::string_view domain = "", std::string_view path = "/", bool secure = false);
 
     // def __getitem__(self, name: str) -> str:
@@ -311,11 +426,11 @@ struct CookieJar {
     void clear();
 
     // def header_for(self, host: str, path: str, is_https: bool,
-    // now: float) -> str:
+    //                now: float) -> str:
     std::string header_for(std::string_view host, std::string_view path, bool is_https, double now);
 
     // def _ingest(self, raw: str, req_host: str, req_path: str,
-    // now: float) -> None:
+    //             now: float) -> None:
     void _ingest(std::string_view raw, std::string_view req_host, std::string_view req_path, double now);
 
     std::string operator[](std::string_view name) const {
@@ -365,9 +480,9 @@ struct Response {
     std::optional<::tpystd::http::client::HTTPResponse> _raw;
 
     // def __init__(self, status_code: int32, reason: str, url: str,
-    // headers: Own[CaseInsensitiveDict], content: bytes,
-    // cookies: Own[CookieJar],
-    // raw: Own[HTTPResponse] | None = None) -> None:
+    //              headers: Own[CaseInsensitiveDict], content: bytes,
+    //              cookies: Own[CookieJar],
+    //              raw: Own[HTTPResponse] | None = None) -> None:
     explicit Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, ::tpy::BytesView content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw = std::nullopt);
     // non-copyable (field 'history')
     Response(const Response&) = delete;
@@ -462,64 +577,64 @@ struct Session {
     ::tpy::ordered_map<std::string, std::string> _merge_params(const ::tpy::ordered_map<std::string, std::string>* params) const;
 
     // def _send_for_hop(self, method: str, url: str,
-    // params: dict[str, str] | None,
-    // data: bytes | dict[str, str] | None,
-    // files: dict[str, FileField] | None,
-    // json: JsonValue | None, headers: dict[str, str],
-    // auth: tuple[str, str] | None,
-    // timeout: float | None, hop: int32,
-    // send_cookies: CookieJar,
-    // verify: bool | str = True,
-    // stream: bool = False,
-    // follow: bool = False) -> Own[Response]:
+    //                   params: dict[str, str] | None,
+    //                   data: bytes | dict[str, str] | None,
+    //                   files: dict[str, FileField] | None,
+    //                   json: JsonValue | None, headers: dict[str, str],
+    //                   auth: tuple[str, str] | None,
+    //                   timeout: float | None, hop: int32,
+    //                   send_cookies: CookieJar,
+    //                   verify: bool | str = True,
+    //                   stream: bool = False,
+    //                   follow: bool = False) -> Own[Response]:
     Response _send_for_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, int32_t hop, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify = true, bool stream = false, bool follow = false);
 
     // def _hop(self, method: str, url: str, params: dict[str, str] | None,
-    // data: bytes | dict[str, str] | None,
-    // files: dict[str, FileField] | None,
-    // json: JsonValue | None,
-    // headers: dict[str, str], auth: tuple[str, str] | None,
-    // timeout: float | None, history: Own[list[Response]],
-    // hop: int32, follow: bool, send_cookies: CookieJar,
-    // verify: bool | str = True,
-    // stream: bool = False) -> Own[Response]:
+    //          data: bytes | dict[str, str] | None,
+    //          files: dict[str, FileField] | None,
+    //          json: JsonValue | None,
+    //          headers: dict[str, str], auth: tuple[str, str] | None,
+    //          timeout: float | None, history: Own[list[Response]],
+    //          hop: int32, follow: bool, send_cookies: CookieJar,
+    //          verify: bool | str = True,
+    //          stream: bool = False) -> Own[Response]:
     Response _hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, std::vector<Response>&& history, int32_t hop, bool follow, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify = true, bool stream = false);
 
     // def request(self, method: str, url: str,
-    // params: dict[str, str] | None = None,
-    // data: bytes | dict[str, str] | None = None,
-    // json: JsonValue | None = None,
-    // headers: dict[str, str] | None = None,
-    // auth: tuple[str, str] | None = None,
-    // timeout: float | None = None,
-    // allow_redirects: bool = True,
-    // verify: bool | str = True,
-    // cookies: dict[str, str] | None = None,
-    // files: dict[str, FileField] | None = None,
-    // stream: bool = False
-    // ) -> Own[Response]:
+    //             params: dict[str, str] | None = None,
+    //             data: bytes | dict[str, str] | None = None,
+    //             json: JsonValue | None = None,
+    //             headers: dict[str, str] | None = None,
+    //             auth: tuple[str, str] | None = None,
+    //             timeout: float | None = None,
+    //             allow_redirects: bool = True,
+    //             verify: bool | str = True,
+    //             cookies: dict[str, str] | None = None,
+    //             files: dict[str, FileField] | None = None,
+    //             stream: bool = False
+    //             ) -> Own[Response]:
     Response request(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data = {}, const ::tpystd::json::JsonValue* json = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, const ::tpy::ordered_map<std::string, FileField>* files = nullptr, bool stream = false);
 
     // def get(self, url: str, params: dict[str, str] | None = None,
-    // headers: dict[str, str] | None = None,
-    // timeout: float | None = None,
-    // allow_redirects: bool = True,
-    // verify: bool | str = True,
-    // cookies: dict[str, str] | None = None,
-    // stream: bool = False) -> Own[Response]:
+    //         headers: dict[str, str] | None = None,
+    //         timeout: float | None = None,
+    //         allow_redirects: bool = True,
+    //         verify: bool | str = True,
+    //         cookies: dict[str, str] | None = None,
+    //         stream: bool = False) -> Own[Response]:
     Response get(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, bool stream = false);
 
     // def post(self, url: str, data: bytes | dict[str, str] | None = None,
-    // json: JsonValue | None = None,
-    // params: dict[str, str] | None = None,
-    // headers: dict[str, str] | None = None,
-    // timeout: float | None = None,
-    // allow_redirects: bool = True,
-    // verify: bool | str = True,
-    // cookies: dict[str, str] | None = None,
-    // files: dict[str, FileField] | None = None,
-    // stream: bool = False
-    // ) -> Own[Response]:
+    //          json: JsonValue | None = None,
+    //          params: dict[str, str] | None = None,
+    //          headers: dict[str, str] | None = None,
+    //          timeout: float | None = None,
+    //          allow_redirects: bool = True,
+    //          verify: bool | str = True,
+    //          cookies: dict[str, str] | None = None,
+    //          files: dict[str, FileField] | None = None,
+    //          stream: bool = False
+    //          ) -> Own[Response]:
     Response post(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data = {}, const ::tpystd::json::JsonValue* json = nullptr, const ::tpy::ordered_map<std::string, std::string>* params = nullptr, const ::tpy::ordered_map<std::string, std::string>* headers = nullptr, std::optional<double> timeout = std::nullopt, bool allow_redirects = true, const ::tpy::Union<bool, std::string>& verify = true, const ::tpy::ordered_map<std::string, std::string>* cookies = nullptr, const ::tpy::ordered_map<std::string, FileField>* files = nullptr, bool stream = false);
 
     // def __enter__(self) -> "Session":
@@ -620,7 +735,7 @@ inline std::ostream& operator<<(std::ostream& os, const SSLError& obj) {
     return os;
 }
 
-// Generator: CookieJar.__iter__
+// def __iter__(self) -> Iterator[str]:
 struct __gen_CookieJar___iter__ : public ::tpy::next_iter_mixin<__gen_CookieJar___iter__, std::string> {
     int32_t __state;
     const CookieJar& __self;
@@ -651,7 +766,7 @@ inline __gen_CookieJar___iter__ CookieJar::__iter__() const {
     return __gen_CookieJar___iter__(*this);
 }
 
-// Generator: Response.iter_content
+// def iter_content(self, chunk_size: int32) -> Iterator[bytes]:
 struct __gen_Response_iter_content : public ::tpy::next_iter_mixin<__gen_Response_iter_content, ::tpy::Bytes> {
     int32_t __state;
     Response& __self;
@@ -689,7 +804,7 @@ inline __gen_Response_iter_content Response::iter_content(int32_t chunk_size) {
     return __gen_Response_iter_content(*this, chunk_size);
 }
 
-// Generator: Response.iter_lines
+// def iter_lines(self) -> Iterator[bytes]:
 struct __gen_Response_iter_lines : public ::tpy::next_iter_mixin<__gen_Response_iter_lines, ::tpy::Bytes> {
     int32_t __state;
     Response& __self;
@@ -729,552 +844,570 @@ inline __gen_Response_iter_lines Response::iter_lines() {
 
 
 // def __init__(self, filename: str, content: Own[bytes],
-// content_type: str = "application/octet-stream") -> None:
+//              content_type: str = "application/octet-stream") -> None:
+//     self.filename = filename
+//     self.content = content
+//     self.content_type = content_type
 inline FileField::FileField(std::string_view filename, ::tpy::Bytes content, std::string_view content_type) : filename(filename), content(std::move(content)), content_type(content_type) {}
 
 // def __init__(self, message: String = "") -> None:
+//     super().__init__(message)
 inline RequestException::RequestException(const ::tpy::String& message) : ::tpy::OSError(message) {}
 
 // def __init__(self) -> None:
+//     self._store = {}
 inline CaseInsensitiveDict::CaseInsensitiveDict() : _store(::tpy::ordered_map<std::string, std::tuple<std::string, std::string>>()) {}
 
 // def __setitem__(self, key: str, value: str) -> None:
+//     self._store[key.lower()] = (key, value)
 inline void CaseInsensitiveDict::__setitem__(std::string_view key, std::string_view value) {
-    // self._store[key.lower()] = (key, value)
     ::tpy::__setitem__(this->_store, ::tpy::str_lower(key), std::tuple<std::string, std::string>{std::string(key), std::string(value)});
 }
 
 // def __getitem__(self, key: str) -> str:
+//     return self._store[key.lower()][1]
 inline std::string CaseInsensitiveDict::__getitem__(std::string_view key) const {
-    // return self._store[key.lower()][1]
     return std::get<1>(::tpy::__getitem__(this->_store, ::tpy::str_lower(key)));
 }
 
 // def __delitem__(self, key: str) -> None:
+//     del self._store[key.lower()]
 inline void CaseInsensitiveDict::__delitem__(std::string_view key) {
-    // del self._store[key.lower()]
     ::tpy::__delitem__(this->_store, ::tpy::str_lower(key));
 }
 
 // def __contains__(self, key: str) -> bool:
+//     return key.lower() in self._store
 inline bool CaseInsensitiveDict::__contains__(std::string_view key) const {
-    // return key.lower() in self._store
     return std::ranges::contains(this->_store, ::tpy::str_lower(key));
 }
 
 // def __len__(self) -> int32:
+//     return len(self._store)
 inline int32_t CaseInsensitiveDict::__len__() const {
-    // return len(self._store)
     return ::tpy::__len__(this->_store);
 }
 
 // def get(self, key: str, default: str | None = None) -> str | None:
+//     lk = key.lower()
+//     if lk in self._store:
+//         return self._store[lk][1]
+//     return default
 inline std::optional<std::string> CaseInsensitiveDict::get(std::string_view key, std::optional<std::string_view> default_) const {
-    // lk = key.lower()
     std::string lk = ::tpy::str_lower(key);
-    // if lk in self._store:
     if ((this->_store.contains(lk))) {
-        // return self._store[lk][1]
         return std::get<1>(::tpy::__getitem__(this->_store, lk));
     }
-    // return default
     return default_ ? std::make_optional(std::string(*default_)) : std::nullopt;
 }
 
 // def keys(self) -> Own[list[str]]:
+//     out: list[str] = []
+//     for lk in self._store:
+//         out.append(self._store[lk][0])
+//     return out
 inline std::vector<std::string> CaseInsensitiveDict::keys() const {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // for lk in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view lk = *__beg_0;
-        // out.append(self._store[lk][0])
         out.push_back(std::get<0>(::tpy::__getitem__(this->_store, lk)));
     }
-    // return out
     return out;
 }
 
 // def values(self) -> Own[list[str]]:
+//     out: list[str] = []
+//     for lk in self._store:
+//         out.append(self._store[lk][1])
+//     return out
 inline std::vector<std::string> CaseInsensitiveDict::values() const {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // for lk in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view lk = *__beg_0;
-        // out.append(self._store[lk][1])
         out.push_back(std::get<1>(::tpy::__getitem__(this->_store, lk)));
     }
-    // return out
     return out;
 }
 
 // def items(self) -> Own[list[tuple[str, str]]]:
+//     out: list[tuple[str, str]] = []
+//     for lk in self._store:
+//         pair = self._store[lk]
+//         out.append((pair[0], pair[1]))
+//     return out
 inline std::vector<std::tuple<std::string, std::string>> CaseInsensitiveDict::items() const {
-    // out: list[tuple[str, str]] = []
     std::vector<std::tuple<std::string, std::string>> out = std::vector<std::tuple<std::string, std::string>>{};
-    // for lk in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view lk = *__beg_0;
-        // pair = self._store[lk]
         std::tuple<std::string, std::string> pair = ::tpy::__getitem__(this->_store, lk);
-        // out.append((pair[0], pair[1]))
         out.push_back(std::tuple<std::string, std::string>{std::get<0>(pair), std::get<1>(pair)});
     }
-    // return out
     return out;
 }
 
 // def update(self, other: CaseInsensitiveDict) -> None:
+//     for lk in other._store:
+//         pair = other._store[lk]
+//         self[pair[0]] = pair[1]
 inline void CaseInsensitiveDict::update(const CaseInsensitiveDict& other) {
-    // for lk in other._store:
     auto& __obj_0 = other._store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view lk = *__beg_0;
-        // pair = other._store[lk]
         std::tuple<std::string, std::string> pair = ::tpy::__getitem__(other._store, lk);
-        // self[pair[0]] = pair[1]
         ::tpy::__setitem__((*this), std::get<0>(pair), std::get<1>(pair));
     }
 }
 
 // def copy(self) -> Own[CaseInsensitiveDict]:
+//     out = CaseInsensitiveDict()
+//     for lk in self._store:
+//         pair = self._store[lk]
+//         out[pair[0]] = pair[1]
+//     return out
 inline CaseInsensitiveDict CaseInsensitiveDict::copy() const {
-    // out = CaseInsensitiveDict()
     CaseInsensitiveDict out = CaseInsensitiveDict();
-    // for lk in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view lk = *__beg_0;
-        // pair = self._store[lk]
         std::tuple<std::string, std::string> pair = ::tpy::__getitem__(this->_store, lk);
-        // out[pair[0]] = pair[1]
         ::tpy::__setitem__(out, std::get<0>(pair), std::get<1>(pair));
     }
-    // return out
     return out;
 }
 
 // def pop(self, key: str, default: str | None = None) -> str | None:
+//     lk = key.lower()
+//     if lk in self._store:
+//         # Own the value before deleting -- a view into _store would dangle
+//         # once the entry is removed.
+//         v = String(self._store[lk][1])
+//         del self._store[lk]
+//         return v
+//     return default
 inline std::optional<std::string> CaseInsensitiveDict::pop(std::string_view key, std::optional<std::string_view> default_) {
-    // lk = key.lower()
     std::string lk = ::tpy::str_lower(key);
-    // if lk in self._store:
     if ((this->_store.contains(lk))) {
-        // # Own the value before deleting -- a view into _store would dangle
-        // # once the entry is removed.
-        // v = String(self._store[lk][1])
         ::tpy::String v = ::tpy::String(std::get<1>(::tpy::__getitem__(this->_store, lk)));
-        // del self._store[lk]
         ::tpy::__delitem__(this->_store, lk);
-        // return v
         return v;
     }
-    // return default
     return default_ ? std::make_optional(std::string(*default_)) : std::nullopt;
 }
 
 // def setdefault(self, key: str, default: str) -> str:
+//     lk = key.lower()
+//     if lk in self._store:
+//         return self._store[lk][1]
+//     self._store[lk] = (key, default)
+//     return default
 inline std::string CaseInsensitiveDict::setdefault(std::string_view key, std::string_view default_) {
-    // lk = key.lower()
     std::string lk = ::tpy::str_lower(key);
-    // if lk in self._store:
     if ((this->_store.contains(lk))) {
-        // return self._store[lk][1]
         return std::get<1>(::tpy::__getitem__(this->_store, lk));
     }
-    // self._store[lk] = (key, default)
     ::tpy::__setitem__(this->_store, lk, std::tuple<std::string, std::string>{std::string(key), std::string(default_)});
-    // return default
     return std::string(default_);
 }
 
 // def clear(self) -> None:
+//     self._store.clear()
 inline void CaseInsensitiveDict::clear() {
-    // self._store.clear()
     this->_store.clear();
 }
 
 // def __init__(self, name: str, value: str, domain: str, path: str,
-// secure: bool, deleted: bool, expires_at: float) -> None:
+//              secure: bool, deleted: bool, expires_at: float) -> None:
+//     self.name = name
+//     self.value = value
+//     self.domain = domain
+//     self.path = path
+//     self.secure = secure
+//     self.deleted = deleted
+//     self.expires_at = expires_at
 inline Cookie::Cookie(std::string_view name, std::string_view value, std::string_view domain, std::string_view path, bool secure, bool deleted, double expires_at) : name(name), value(value), domain(domain), path(path), secure(secure), deleted(deleted), expires_at(expires_at) {}
 
 // def copy(self) -> Own[Cookie]:
+//     return Cookie(self.name, self.value, self.domain, self.path,
+//                   self.secure, self.deleted, self.expires_at)
 inline Cookie Cookie::copy() const {
-    // return Cookie(self.name, self.value, self.domain, self.path,
-    // self.secure, self.deleted, self.expires_at)
     return Cookie(this->name, this->value, this->domain, this->path, this->secure, this->deleted, this->expires_at);
 }
 
 // def pair(self) -> str:
+//     return self.name + "=" + self.value
 inline std::string Cookie::pair() const {
-    // return self.name + "=" + self.value
     return (::tpy::str_concat((::tpy::str_concat(this->name, "=")), this->value));
 }
 
 // def __eq__(self, other: Cookie) -> bool:
+//     # Cookie must be Equatable so a `name in jar._store` membership test on a
+//     # const/readonly jar compiles -- an `in` over a const dict whose value
+//     # type is not Equatable is rejected (BUGS.md, the const-dict `in` entry).
+//     return (self.name == other.name and self.value == other.value
+//             and self.domain == other.domain and self.path == other.path
+//             and self.secure == other.secure and self.deleted == other.deleted
+//             and self.expires_at == other.expires_at)
 inline bool Cookie::__eq__(const Cookie& other) const {
-    // # Cookie must be Equatable so a `name in jar._store` membership test on a
-    // # const/readonly jar compiles -- an `in` over a const dict whose value
-    // # type is not Equatable is rejected (BUGS.md, the const-dict `in` entry).
-    // return (self.name == other.name and self.value == other.value
-    // and self.domain == other.domain and self.path == other.path
-    // and self.secure == other.secure and self.deleted == other.deleted
-    // and self.expires_at == other.expires_at)
     return (((((((this->name == other.name) && (this->value == other.value)) && (this->domain == other.domain)) && (this->path == other.path)) && (this->secure == other.secure)) && (this->deleted == other.deleted)) && (this->expires_at == other.expires_at));
 }
 
 // def __init__(self) -> None:
+//     self._store = {}
 inline CookieJar::CookieJar() : _store(::tpy::ordered_map<std::string, Cookie>()) {}
 
 // def set(self, name: str, value: str, domain: str = "", path: str = "/",
-// secure: bool = False) -> None:
+//         secure: bool = False) -> None:
+//     self._store[name] = Cookie(name, value, domain, path, secure, False, 0.0)
 inline void CookieJar::set(std::string_view name, std::string_view value, std::string_view domain, std::string_view path, bool secure) {
-    // self._store[name] = Cookie(name, value, domain, path, secure, False, 0.0)
     ::tpy::__setitem__(this->_store, name, Cookie(name, value, domain, path, secure, false, 0.0));
 }
 
 // def __getitem__(self, name: str) -> str:
+//     # A deleted marker is invisible to the accessors, so treat it as absent.
+//     if name in self._store and not self._store[name].deleted:
+//         return self._store[name].value
+//     raise KeyError(name)
 inline std::string CookieJar::__getitem__(std::string_view name) const {
-    // # A deleted marker is invisible to the accessors, so treat it as absent.
-    // if name in self._store and not self._store[name].deleted:
     if ((std::ranges::contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)))) {
-        // return self._store[name].value
         return ::tpy::__getitem__(this->_store, name).value;
     }
-    // raise KeyError(name)
     throw ::tpy::KeyError(name);
 }
 
 // def __contains__(self, name: str) -> bool:
+//     return name in self._store and not self._store[name].deleted
 inline bool CookieJar::__contains__(std::string_view name) const {
-    // return name in self._store and not self._store[name].deleted
     return (std::ranges::contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)));
 }
 
 // def __len__(self) -> int32:
+//     n: int32 = 0
+//     for name in self._store:
+//         if not self._store[name].deleted:
+//             n += 1
+//     return n
 inline int32_t CookieJar::__len__() const {
-    // n: int32 = 0
     int32_t n = 0;
-    // for name in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view name = *__beg_0;
-        // if not self._store[name].deleted:
         if ((!(::tpy::__getitem__(this->_store, name).deleted))) {
-            // n += 1
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    // return n
     return n;
 }
 
 // def get(self, name: str, default: str | None = None) -> str | None:
+//     if name in self._store and not self._store[name].deleted:
+//         return self._store[name].value
+//     return default
 inline std::optional<std::string> CookieJar::get(std::string_view name, std::optional<std::string_view> default_) const {
-    // if name in self._store and not self._store[name].deleted:
     if (((this->_store.contains(name)) && (!(::tpy::__getitem__(this->_store, name).deleted)))) {
-        // return self._store[name].value
         return ::tpy::__getitem__(this->_store, name).value;
     }
-    // return default
     return default_ ? std::make_optional(std::string(*default_)) : std::nullopt;
 }
 
 // def keys(self) -> Own[list[str]]:
+//     out: list[str] = []
+//     for name in self._store:
+//         if not self._store[name].deleted:
+//             out.append(name)
+//     return out
 inline std::vector<std::string> CookieJar::keys() const {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // for name in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view name = *__beg_0;
-        // if not self._store[name].deleted:
         if ((!(::tpy::__getitem__(this->_store, name).deleted))) {
-            // out.append(name)
             out.push_back(std::string(name));
         }
     }
-    // return out
     return out;
 }
 
 // def items(self) -> Own[list[tuple[str, str]]]:
+//     out: list[tuple[str, str]] = []
+//     for name in self._store:
+//         if not self._store[name].deleted:
+//             out.append((name, self._store[name].value))
+//     return out
 inline std::vector<std::tuple<std::string, std::string>> CookieJar::items() const {
-    // out: list[tuple[str, str]] = []
     std::vector<std::tuple<std::string, std::string>> out = std::vector<std::tuple<std::string, std::string>>{};
-    // for name in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view name = *__beg_0;
-        // if not self._store[name].deleted:
         if ((!(::tpy::__getitem__(this->_store, name).deleted))) {
-            // out.append((name, self._store[name].value))
             out.push_back(std::tuple<std::string, std::string>{std::string(name), ::tpy::__getitem__(this->_store, name).value});
         }
     }
-    // return out
     return out;
 }
 
 // def update(self, other: CookieJar) -> None:
+//     # Merge another jar in. A deleted marker drops the entry here (a server
+//     # deleting a cookie); otherwise the cookie is copied (rebuilt, so no
+//     # move out of `other` is needed). Field/method access is on the subscript
+//     # directly -- binding a named `Cookie` local off a const jar drops const
+//     # (BUGS.md, the reference-type container-borrow entry).
+//     for name in other._store:
+//         if other._store[name].deleted:
+//             if name in self._store:
+//                 del self._store[name]
+//         else:
+//             self._store[name] = other._store[name].copy()
 inline void CookieJar::update(CookieJar& other) {
-    // # Merge another jar in. A deleted marker drops the entry here (a server
-    // # deleting a cookie); otherwise the cookie is copied (rebuilt, so no
-    // # move out of `other` is needed). Field/method access is on the subscript
-    // # directly -- binding a named `Cookie` local off a const jar drops const
-    // # (BUGS.md, the reference-type container-borrow entry).
-    // for name in other._store:
     auto& __obj_0 = other._store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view name = *__beg_0;
-        // if other._store[name].deleted:
         if (::tpy::__getitem__(other._store, name).deleted) {
-            // if name in self._store:
             if ((this->_store.contains(name))) {
-                // del self._store[name]
                 ::tpy::__delitem__(this->_store, name);
             }
-        // else:
         } else {
-            // self._store[name] = other._store[name].copy()
             ::tpy::__setitem__(this->_store, name, ::tpy::__getitem__(other._store, name).copy());
         }
     }
 }
 
 // def clear(self) -> None:
+//     self._store.clear()
 inline void CookieJar::clear() {
-    // self._store.clear()
     this->_store.clear();
 }
 
 // def header_for(self, host: str, path: str, is_https: bool,
-// now: float) -> str:
+//                now: float) -> str:
+//     # The `Cookie:` request-header value for a target: every matching,
+//     # unexpired cookie's `name=value`, joined with "; ". `now` is the
+//     # current Unix time (threaded in so the request path reads the clock
+//     # once, and tests can pin it).
+//     parts: list[str] = []
+//     for name in self._store:
+//         if self._store[name].matches(host, path, is_https, now):
+//             parts.append(self._store[name].pair())
+//     return "; ".join(parts)
 inline std::string CookieJar::header_for(std::string_view host, std::string_view path, bool is_https, double now) {
-    // # The `Cookie:` request-header value for a target: every matching,
-    // # unexpired cookie's `name=value`, joined with "; ". `now` is the
-    // # current Unix time (threaded in so the request path reads the clock
-    // # once, and tests can pin it).
-    // parts: list[str] = []
     std::vector<std::string> parts = std::vector<std::string>{};
-    // for name in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view name = *__beg_0;
-        // if self._store[name].matches(host, path, is_https, now):
         if (::tpy::__getitem__(this->_store, name).matches(host, path, is_https, now)) {
-            // parts.append(self._store[name].pair())
             parts.push_back(::tpy::__getitem__(this->_store, name).pair());
         }
     }
-    // return "; ".join(parts)
     return ::tpy::str_join("; ", parts);
 }
 
 // @property
 // def ok(self) -> bool:
+//     return self.status_code < 400
 inline bool Response::ok() const {
-    // return self.status_code < 400
     return (this->status_code < 400);
 }
 
 // @property
 // def text(self) -> str:
+//     return self.content.decode()
 inline std::string Response::text() const {
-    // return self.content.decode()
     return ::tpy::bytes_decode(this->content);
 }
 
 // def json(self) -> Own[JsonValue]:
+//     # `from json import JsonValue` (not qualified json.JsonValue): the
+//     # qualified alias in a return annotation fails to match loads's own
+//     # return form across the module boundary.
+//     return loads(self.content.decode())
 inline ::tpystd::json::JsonValue Response::json() const {
-    // # `from json import JsonValue` (not qualified json.JsonValue): the
-    // # qualified alias in a return annotation fails to match loads's own
-    // # return form across the module boundary.
-    // return loads(self.content.decode())
     return ::tpystd::json::loads(::tpy::bytes_decode(this->content));
 }
 
 // def raise_for_status(self) -> None:
+//     if self.status_code >= 400:
+//         raise HTTPError(str(self.status_code) + " " + self.reason
+//                         + " for url: " + self.url)
 inline void Response::raise_for_status() const {
-    // if self.status_code >= 400:
     if ((this->status_code >= 400)) {
-        // raise HTTPError(str(self.status_code) + " " + self.reason
-        // + " for url: " + self.url)
         throw HTTPError((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->status_code), " ")), this->reason)), " for url: ")), this->url)));
     }
 }
 
 // @property
 // def raw(self) -> HTTPResponse | None:
+//     # The underlying HTTPResponse for a stream=True response (None otherwise);
+//     # its `.read(amt)` is the file-like access requests exposes as `.raw`.
+//     return self._raw
 inline std::optional<::tpystd::http::client::HTTPResponse>& Response::raw() {
-    // # The underlying HTTPResponse for a stream=True response (None otherwise);
-    // # its `.read(amt)` is the file-like access requests exposes as `.raw`.
-    // return self._raw
     return this->_raw;
 }
 
 // @property
 // def raw(self) -> HTTPResponse | None:
+//     # The underlying HTTPResponse for a stream=True response (None otherwise);
+//     # its `.read(amt)` is the file-like access requests exposes as `.raw`.
+//     return self._raw
 inline const std::optional<::tpystd::http::client::HTTPResponse>& Response::raw() const {
-    // # The underlying HTTPResponse for a stream=True response (None otherwise);
-    // # its `.read(amt)` is the file-like access requests exposes as `.raw`.
-    // return self._raw
     return this->_raw;
 }
 
 // def close(self) -> None:
+//     # Release the live reader (closing its dup'd fd). Idempotent; a no-op on
+//     # a non-streamed response.
+//     self._raw = None
 inline void Response::close() {
-    // # Release the live reader (closing its dup'd fd). Idempotent; a no-op on
-    // # a non-streamed response.
-    // self._raw = None
     this->_raw = std::nullopt;
 }
 
 // def __enter__(self) -> "Response":
+//     return self
 inline Response& Response::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.close()
 inline void Response::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.close()
     this->close();
 }
 
 // def _merge_headers(self, headers: dict[str, str] | None) -> Own[dict[str, str]]:
+//     out: dict[str, str] = {}
+//     for kv in self.headers.items():
+//         out[kv[0]] = kv[1]
+//     if headers is not None:
+//         for kv in headers.items():
+//             out[kv[0]] = kv[1]
+//     return out
 inline ::tpy::ordered_map<std::string, std::string> Session::_merge_headers(const ::tpy::ordered_map<std::string, std::string>* headers) const {
-    // out: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> out = ::tpy::ordered_map<std::string, std::string>();
-    // for kv in self.headers.items():
     auto __obj_0 = ::tpy::dict_items(this->headers);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        // out[kv[0]] = kv[1]
         ::tpy::__setitem__(out, std::get<0>(kv), std::get<1>(kv));
     }
-    // if headers is not None:
     if ((headers != nullptr)) {
-        // for kv in headers.items():
         auto __obj_1 = ::tpy::dict_items((*headers));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& kv = *__beg_1;
-            // out[kv[0]] = kv[1]
             ::tpy::__setitem__(out, std::get<0>(kv), std::get<1>(kv));
         }
     }
-    // return out
     return out;
 }
 
 // def _merge_params(self, params: dict[str, str] | None) -> Own[dict[str, str]]:
+//     out: dict[str, str] = {}
+//     for kv in self.params.items():
+//         out[kv[0]] = kv[1]
+//     if params is not None:
+//         for kv in params.items():
+//             out[kv[0]] = kv[1]
+//     return out
 inline ::tpy::ordered_map<std::string, std::string> Session::_merge_params(const ::tpy::ordered_map<std::string, std::string>* params) const {
-    // out: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> out = ::tpy::ordered_map<std::string, std::string>();
-    // for kv in self.params.items():
     auto __obj_0 = ::tpy::dict_items(this->params);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        // out[kv[0]] = kv[1]
         ::tpy::__setitem__(out, std::get<0>(kv), std::get<1>(kv));
     }
-    // if params is not None:
     if ((params != nullptr)) {
-        // for kv in params.items():
         auto __obj_1 = ::tpy::dict_items((*params));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& kv = *__beg_1;
-            // out[kv[0]] = kv[1]
             ::tpy::__setitem__(out, std::get<0>(kv), std::get<1>(kv));
         }
     }
-    // return out
     return out;
 }
 
 // def get(self, url: str, params: dict[str, str] | None = None,
-// headers: dict[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// stream: bool = False) -> Own[Response]:
+//         headers: dict[str, str] | None = None,
+//         timeout: float | None = None,
+//         allow_redirects: bool = True,
+//         verify: bool | str = True,
+//         cookies: dict[str, str] | None = None,
+//         stream: bool = False) -> Own[Response]:
+//     return self.request("GET", url, params, None, None, headers, None,
+//                         timeout, allow_redirects, verify, cookies, None,
+//                         stream)
 inline Response Session::get(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
-    // return self.request("GET", url, params, None, None, headers, None,
-    // timeout, allow_redirects, verify, cookies, None,
-    // stream)
     return this->request("GET", url, params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, headers, std::nullopt, timeout, allow_redirects, verify, cookies, nullptr, stream);
 }
 
 // def post(self, url: str, data: bytes | dict[str, str] | None = None,
-// json: JsonValue | None = None,
-// params: dict[str, str] | None = None,
-// headers: dict[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// files: dict[str, FileField] | None = None,
-// stream: bool = False
-// ) -> Own[Response]:
+//          json: JsonValue | None = None,
+//          params: dict[str, str] | None = None,
+//          headers: dict[str, str] | None = None,
+//          timeout: float | None = None,
+//          allow_redirects: bool = True,
+//          verify: bool | str = True,
+//          cookies: dict[str, str] | None = None,
+//          files: dict[str, FileField] | None = None,
+//          stream: bool = False
+//          ) -> Own[Response]:
+//     return self.request("POST", url, params, data, json, headers, None,
+//                         timeout, allow_redirects, verify, cookies, files,
+//                         stream)
 inline Response Session::post(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
-    // return self.request("POST", url, params, data, json, headers, None,
-    // timeout, allow_redirects, verify, cookies, files,
-    // stream)
     return this->request("POST", url, params, data, json, headers, std::nullopt, timeout, allow_redirects, verify, cookies, files, stream);
 }
 
 // def __enter__(self) -> "Session":
+//     return self
 inline Session& Session::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __init__(self, message: String = "") -> None:
+//     super().__init__(message)
 inline HTTPError::HTTPError(const ::tpy::String& message) : RequestException(message) {}
 
 // def __init__(self, message: String = "") -> None:
+//     super().__init__(message)
 inline ConnectionError::ConnectionError(const ::tpy::String& message) : RequestException(message) {}
 
 // def __init__(self, message: String = "") -> None:
+//     super().__init__(message)
 inline Timeout::Timeout(const ::tpy::String& message) : RequestException(message) {}
 
 // def __init__(self, message: String = "") -> None:
+//     super().__init__(message)
 inline TooManyRedirects::TooManyRedirects(const ::tpy::String& message) : RequestException(message) {}
 
 // def __init__(self, message: String = "") -> None:
+//     super().__init__(message)
 inline SSLError::SSLError(const ::tpy::String& message) : ConnectionError(message) {}
 void __tpy_init();
 } // namespace tpystd::tplib::requests

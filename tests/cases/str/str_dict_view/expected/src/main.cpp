@@ -5,59 +5,63 @@ namespace tpyapp::main {
 
 
 // def test_dict_value_view() -> None:
+//     """No mutation: string_view for dict value."""
+//     d: dict[str, str] = {"hello": "world"}
+//     v = d["hello"]  # tpyc: type(StrView)
+//     print(v)
 void test_dict_value_view() {
-    // d: dict[str, str] = {"hello": "world"}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"hello", "world"}});
-    // v = d["hello"]  # tpyc: type(StrView)
     std::string_view v = ::tpy::__getitem__(d, "hello");
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def test_dict_mutation_fallback() -> None:
+//     """Dict mutated after borrow (new key): falls back to std::string."""
+//     d: dict[str, str] = {"hello": "world"}
+//     v = d["hello"]  # tpyc: type(str)
+//     d["new"] = "entry"
+//     print(v)
 void test_dict_mutation_fallback() {
-    // d: dict[str, str] = {"hello": "world"}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"hello", "world"}});
-    // v = d["hello"]  # tpyc: type(str)
     std::string v = ::tpy::__getitem__(d, "hello");
-    // d["new"] = "entry"
     ::tpy::__setitem__(d, "new", "entry");
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def test_dict_value_update_fallback() -> None:
+//     """In-place value update invalidates the view: falls back to std::string."""
+//     d: dict[str, str] = {"hello": "world"}
+//     v = d["hello"]  # tpyc: type(str)
+//     d["hello"] = "updated"
+//     print(v)
 void test_dict_value_update_fallback() {
-    // d: dict[str, str] = {"hello": "world"}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"hello", "world"}});
-    // v = d["hello"]  # tpyc: type(str)
     std::string v = ::tpy::__getitem__(d, "hello");
-    // d["hello"] = "updated"
     ::tpy::__setitem__(d, "hello", "updated");
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def test_dict_int_key_view() -> None:
+//     """Int key: string_view for dict value."""
+//     d: dict[int32, str] = {int32(1): "one", int32(2): "two"}
+//     v = d[int32(1)]  # tpyc: type(StrView)
+//     print(v)
 void test_dict_int_key_view() {
-    // d: dict[int32, str] = {int32(1): "one", int32(2): "two"}
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "one"}, {2, "two"}});
-    // v = d[int32(1)]  # tpyc: type(StrView)
     std::string_view v = ::tpy::__getitem__(d, 1);
-    // print(v)
     std::cout << v << "\n";
 }
 
+// test_dict_value_view()
+// test_dict_mutation_fallback()
+// test_dict_int_key_view()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_dict_value_view()
     test_dict_value_view();
-    // test_dict_mutation_fallback()
     test_dict_mutation_fallback();
-    // test_dict_int_key_view()
     test_dict_int_key_view();
 }
 

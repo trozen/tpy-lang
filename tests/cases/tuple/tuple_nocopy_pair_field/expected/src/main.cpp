@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Container()
+//     print(c.pair[0].fd)
+//     print(c.pair[1].fd)
 void main() {
-    // c = Container()
     Container c = Container();
-    // print(c.pair[0].fd)
     std::cout << std::get<0>(c.pair).fd << "\n";
-    // print(c.pair[1].fd)
     std::cout << std::get<1>(c.pair).fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

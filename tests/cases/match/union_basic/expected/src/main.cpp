@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat | Bird) -> str:
+//     match a:
+//         case Dog():
+//             return "dog"
+//         case Cat():
+//             return "cat"
+//         case _:
+//             return "other"
 std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog():
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject_1);
-        // return "dog"
         return "dog";
         break;
     }
-    // case Cat():
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // return "cat"
         return "cat";
         break;
     }
-    // case _:
     default: {
-        // return "other"
         return "other";
         break;
     }
@@ -34,30 +34,30 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
 }
 
 // def main() -> None:
+//     d: Dog | Cat | Bird = Dog("Rex")
+//     c: Dog | Cat | Bird = Cat("Whiskers")
+//     b: Dog | Cat | Bird = Bird("Tweety")
+//     print(describe(d))
+//     print(describe(c))
+//     print(describe(b))
 void main() {
-    // d: Dog | Cat | Bird = Dog("Rex")
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat | Bird = Cat("Whiskers")
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat("Whiskers");
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // b: Dog | Cat | Bird = Bird("Tweety")
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    // print(describe(d))
     std::cout << describe(d.as_const()) << "\n";
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
-    // print(describe(b))
     std::cout << describe(b.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

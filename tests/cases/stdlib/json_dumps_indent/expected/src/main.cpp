@@ -5,61 +5,66 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         flat = json.loads('{"name": "Alice", "age": 30}')
+//         print(json.dumps(flat, indent=2))
+//         print("---")
+//         print(json.dumps(flat, indent=4))
+//
+//         # Nested
+//         nested = json.loads('{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], "count": 2}')
+//         print("---")
+//         print(json.dumps(nested, indent=2))
+//
+//         # Empty containers
+//         empty_obj = json.loads("{}")
+//         print("---")
+//         print(json.dumps(empty_obj, indent=2))
+//         empty_arr = json.loads("[]")
+//         print("---")
+//         print(json.dumps(empty_arr, indent=2))
+//
+//         # Combined indent + sort_keys
+//         print("---")
+//         sk = json.loads('{"b": 1, "a": 2, "c": 3}')
+//         print(json.dumps(sk, indent=2, sort_keys=True))
+//     except JSONDecodeError as e:
+//         print("ERR:", e.msg)
 void main() {
-    // try:
     {
         try {
-            // flat = json.loads('{"name": "Alice", "age": 30}')
             ::tpystd::json::JsonValue flat = ::tpystd::json::loads("{\"name\": \"Alice\", \"age\": 30}");
-            // print(json.dumps(flat, indent=2))
             std::cout << ::tpystd::json::dumps(flat, 2) << "\n";
-            // print("---")
             std::cout << "---" << "\n";
-            // print(json.dumps(flat, indent=4))
             std::cout << ::tpystd::json::dumps(flat, 4) << "\n";
-            // # Nested
-            // nested = json.loads('{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], "count": 2}')
             ::tpystd::json::JsonValue nested = ::tpystd::json::loads("{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"count\": 2}");
-            // print("---")
             std::cout << "---" << "\n";
-            // print(json.dumps(nested, indent=2))
             std::cout << ::tpystd::json::dumps(nested, 2) << "\n";
-            // # Empty containers
-            // empty_obj = json.loads("{}")
             ::tpystd::json::JsonValue empty_obj = ::tpystd::json::loads("{}");
-            // print("---")
             std::cout << "---" << "\n";
-            // print(json.dumps(empty_obj, indent=2))
             std::cout << ::tpystd::json::dumps(empty_obj, 2) << "\n";
-            // empty_arr = json.loads("[]")
             ::tpystd::json::JsonValue empty_arr = ::tpystd::json::loads("[]");
-            // print("---")
             std::cout << "---" << "\n";
-            // print(json.dumps(empty_arr, indent=2))
             std::cout << ::tpystd::json::dumps(empty_arr, 2) << "\n";
-            // # Combined indent + sort_keys
-            // print("---")
             std::cout << "---" << "\n";
-            // sk = json.loads('{"b": 1, "a": 2, "c": 3}')
             ::tpystd::json::JsonValue sk = ::tpystd::json::loads("{\"b\": 1, \"a\": 2, \"c\": 3}");
-            // print(json.dumps(sk, indent=2, sort_keys=True))
             std::cout << ::tpystd::json::dumps(sk, 2, true) << "\n";
         } catch (const ::tpystd::json::JSONDecodeError& e) {
-            // print("ERR:", e.msg)
             std::cout << "ERR:" << " " << e.msg << "\n";
         }
     }
 }
 
+// # json.dumps pretty-print with indent. CPython byte-compatible.
+// import json
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # json.dumps pretty-print with indent. CPython byte-compatible.
-    // import json
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

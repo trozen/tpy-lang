@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_bytes(s: str) -> Own[bytes]:
 ::tpy::Bytes make_bytes(std::string_view s);
+// def make_str(s: str) -> Own[str]:
 std::string make_str(std::string_view s);
+// def show(v: bytes | dict[str, str] | None) -> str:
 std::string show(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*> v);
+// def main():
 void main();
 
 void __tpy_init();

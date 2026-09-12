@@ -33,6 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
 
 
 // def __init__(self, msg: str):
+//     self.msg = msg
 inline Err::Err(std::string_view msg) : msg(msg) {}
 void __tpy_init();
 } // namespace tpyapp::eb

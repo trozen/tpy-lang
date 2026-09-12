@@ -11,8 +11,11 @@ struct Noisy;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_if(flag: bool) -> None:
 void in_if(bool flag);
+// def in_loop() -> None:
 void in_loop();
+// def main() -> None:
 void main();
 
 // class Noisy:
@@ -40,6 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Noisy::Noisy(std::string_view name) : name(name) {}
 
 inline Noisy::Noisy(Noisy&& other) noexcept : name(std::move(other.name)) {
@@ -54,9 +58,9 @@ inline Noisy& Noisy::operator=(Noisy&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("drop", self.name)
 inline Noisy::~Noisy() {
     if (!this->__tpy_owned_) return;
-    // print("drop", self.name)
     std::cout << "drop" << " " << this->name << "\n";
 }
 void __tpy_init();

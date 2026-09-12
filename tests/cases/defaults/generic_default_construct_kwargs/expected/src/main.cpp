@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     three_params[int32](10, c=5)
+//     three_params[int32](1, 2, 3)
+//     # T inferred from first arg
+//     three_params(42)
 void main() {
-    // three_params[int32](10, c=5)
     three_params<int32_t>(10, int32_t{}, 5);
-    // three_params[int32](1, 2, 3)
     three_params<int32_t>(1, 2, 3);
-    // # T inferred from first arg
-    // three_params(42)
     three_params<int32_t>(42);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

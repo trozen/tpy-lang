@@ -18,10 +18,15 @@ extern std::vector<Thing>* top;
 extern Bump* tb;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ctor_slots() -> None:
 void ctor_slots();
+// def method_slots() -> None:
 void method_slots();
+// def stub_slots() -> None:
 void stub_slots();
+// def dict_elem() -> None:
 void dict_elem();
+// def main() -> None:
 void main();
 
 // class Thing:
@@ -149,82 +154,90 @@ inline std::ostream& operator<<(std::ostream& os, const Map& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = float(x)
 inline Thing::Thing(int32_t x) : x(static_cast<double>(x)) {}
 
 // def __eq__(self, o: Thing) -> bool:
+//     return self.x == o.x
 inline bool Thing::__eq__(const Thing& o) const {
-    // return self.x == o.x
     return (this->x == o.x);
 }
 
 // def __init__(self, thing: Thing) -> None:
+//     self.x = thing.x
 inline Player::Player(const Thing& thing) : x(thing.x) {}
 
 // def __init__(self, thing: Thing) -> None:
+//     thing.x += 10.0
+//     self.x = thing.x
 inline Bump::Bump(Thing& thing) {
-    // thing.x += 10.0
     thing.x = (thing.x) + (10.0);
-    // self.x = thing.x
     this->x = thing.x;
 }
 
 // def __init__(self, b: Own[Bump]) -> None:
+//     self.b = b
 inline Wrap::Wrap(Bump&& b) : b(std::move(b)) {}
 
 // def __init__(self) -> None:
+//     self.total = 0.0
 inline Bag::Bag() : total(0.0) {}
 
 // def take(self, t: Thing) -> None:
+//     t.x += 1.0
+//     self.total += t.x
 inline void Bag::take(Thing& t) {
-    // t.x += 1.0
     t.x = (t.x) + (1.0);
-    // self.total += t.x
     this->total = (this->total) + (t.x);
 }
 
 // @staticmethod
 // def peek(t: Thing) -> float:
+//     t.x += 100.0
+//     return t.x
 inline double Bag::peek(Thing& t) {
-    // t.x += 100.0
     t.x = (t.x) + (100.0);
-    // return t.x
     return t.x;
 }
 
 // # The doom shape: a field write in the constructor body, off a field
 // # container a method filled; the second write mutates the element.
 // def __init__(self, n: int32) -> None:
+//     self.things = []
+//     self.fill(n)
+//     self.player = Player(self.things[0])  # tpyc: ok
+//     self.bumped = Bump(self.things[0])  # tpyc: ok
 inline Map::Map(int32_t n) : things(std::vector<Thing>{}) {
-    // self.fill(n)
     this->fill(n);
-    // self.player = Player(self.things[0])  # tpyc: ok
     this->player = Player(::tpy::__getitem__(this->things, 0));
-    // self.bumped = Bump(self.things[0])  # tpyc: ok
     this->bumped = Bump(::tpy::__getitem__(this->things, 0));
 }
 
 // def fill(self, n: int32) -> None:
+//     for i in range(n):
+//         self.things.append(Thing(i + 4))
 inline void Map::fill(int32_t n) {
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // self.things.append(Thing(i + 4))
         this->things.push_back(Thing((::tpy::add_check<int32_t>(i, 4))));
     }
 }
 
 // # Method body, field write, mutating the element.
 // def reseat(self) -> None:
+//     self.bumped = Bump(self.things[1])  # tpyc: ok
 inline void Map::reseat() {
-    // self.bumped = Bump(self.things[1])  # tpyc: ok
     this->bumped = Bump(::tpy::__getitem__(this->things, 1));
 }
+// def gen(things: list[Thing]) -> Iterator[float]:
+//     for i in range(len(things)):
+//         b = Bump(things[i])  # tpyc: ok
+//         yield b.x
 inline auto gen(std::vector<Thing>& things) {
     return ::tpy::make_generator<double>(
         [&things, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(things))]() mutable -> std::optional<double> {
             while (__i < __stop) {
                 int32_t i = __i++;
-                // b = Bump(things[i])  # tpyc: ok
                 Bump b = Bump(things[static_cast<std::size_t>(i)]);
                 auto __val = b.x;
                 return std::optional<double>(__val);

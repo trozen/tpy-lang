@@ -20,8 +20,11 @@ struct Factory;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_static() -> None:
 void test_static();
+// def test_protocol() -> None:
 void test_protocol();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -70,15 +73,15 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
 
 
 // def store(self, p: Own[Point]) -> None:
+//     print(p.x)
 inline void MyHolder::store(Point&& p) const {
-    // print(p.x)
     std::cout << p.x << "\n";
 }
 
 // @staticmethod
 // def consume(p: Own[Point]) -> int32:
+//     return p.x
 inline int32_t Factory::consume(Point&& p) {
-    // return p.x
     return p.x;
 }
 void __tpy_init();

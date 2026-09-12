@@ -5,92 +5,92 @@ namespace tpyapp::main {
 
 
 // def take_opt(o: A | None) -> int32:
+//     if o is None:
+//         return 0
+//     return o.x
 int32_t take_opt(const A* o) {
-    // if o is None:
     if ((o == nullptr)) {
-        // return 0
         return 0;
     }
-    // return o.x
     return o->x;
 }
 
 // def bump_opt(o: A | None) -> None:
+//     if o is not None:
+//         o.x += 10
 void bump_opt(A* o) {
-    // if o is not None:
     if ((o != nullptr)) {
-        // o.x += 10
         o->x = ::tpy::add_check<int32_t>(o->x, 10);
     }
 }
 
 // def read_narrowed(u: A | B) -> int32:
+//     if isinstance(u, A):
+//         return take_opt(u)
+//     return -1
 int32_t read_narrowed(::tpy::Union<A*, B*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
-        // return take_opt(u)
         return take_opt(&(__u));
     }
     auto& __u = *std::get<B*>(u);
-    // return -1
     return -1;
 }
 
 // def mutate_narrowed(u: A | B) -> int32:
+//     if isinstance(u, A):
+//         bump_opt(u)
+//         return u.x
+//     return -1
 int32_t mutate_narrowed(::tpy::Union<A*, B*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
-        // bump_opt(u)
         bump_opt(&(__u));
-        // return u.x
         return __u.x;
     }
     auto& __u = *std::get<B*>(u);
-    // return -1
     return -1;
 }
 
 // def inline_narrowed(u: A | B) -> int32:
+//     if isinstance(u, A) and take_opt(u) > 2:
+//         return 1
+//     return 0
 int32_t inline_narrowed(::tpy::Union<A*, B*> u) {
-    // if isinstance(u, A) and take_opt(u) > 2:
     if ((std::holds_alternative<A*>(u) && (take_opt(&((*std::get<A*>(u)))) > 2))) {
         auto& __u = *std::get<A*>(u);
-        // return 1
         return 1;
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     a = A(3)
+//     print(read_narrowed(a))
+//     print(mutate_narrowed(a))
+//     print(a.x)
+//     print(read_narrowed(B(9)))
+//     print(inline_narrowed(A(5)))
+//     print(inline_narrowed(A(1)))
 void main() {
-    // a = A(3)
     A a = A(3);
-    // print(read_narrowed(a))
     std::cout << read_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n";
-    // print(mutate_narrowed(a))
     std::cout << mutate_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n";
-    // print(a.x)
     std::cout << a.x << "\n";
-    // print(read_narrowed(B(9)))
     B __tmp_1 = B(9);
     std::cout << read_narrowed(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
-    // print(inline_narrowed(A(5)))
     A __tmp_2 = A(5);
     std::cout << inline_narrowed(::tpy::Union<A*, B*>{&__tmp_2}) << "\n";
-    // print(inline_narrowed(A(1)))
     A __tmp_3 = A(1);
     std::cout << inline_narrowed(::tpy::Union<A*, B*>{&__tmp_3}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

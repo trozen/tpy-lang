@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b1 = Box(42)
+//     b2 = Box(0)
+//     print(check(b1))  # True
+//     print(check(b2))  # False
 void main() {
-    // b1 = Box(42)
     Box b1 = Box(::tpy::BigInt(42));
-    // b2 = Box(0)
     Box b2 = Box(::tpy::BigInt(0));
-    // print(check(b1))  # True
     std::cout << ::tpy::print_bool(check<Box>(b1)) << "\n";
-    // print(check(b2))  # False
     std::cout << ::tpy::print_bool(check<Box>(b2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

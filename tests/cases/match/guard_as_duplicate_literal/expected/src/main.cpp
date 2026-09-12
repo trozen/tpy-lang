@@ -7,27 +7,27 @@ namespace tpyapp::main {
 // # A guarded as-pattern arm whose guard (reading its own as-binding) fails
 // # must fall through to the later duplicate-literal arm.
 // def classify(s: str) -> None:
+//     match s:
+//         case "a" as v if len(v) > 5:
+//             print("never", v)
+//         case "a":
+//             print("plain a")
+//         case _:
+//             print("other")
 void classify(std::string_view s) {
-    // match s:
     auto& __match_subject_1 = s;
-    // case "a" as v if len(v) > 5:
     if (__match_subject_1 == "a") {
         auto& v = __match_subject_1;
         if ((::tpy::__len__(v) > 5)) {
-            // print("never", v)
             std::cout << "never" << " " << v << "\n";
             goto __match_end_2;
         }
     }
-    // case "a":
     if (__match_subject_1 == "a") {
-        // print("plain a")
         std::cout << "plain a" << "\n";
         goto __match_end_2;
     }
-    // case _:
     {
-        // print("other")
         std::cout << "other" << "\n";
         goto __match_end_2;
     }
@@ -35,19 +35,19 @@ void classify(std::string_view s) {
 }
 
 // def main() -> None:
+//     classify("a")
+//     classify("b")
 void main() {
-    // classify("a")
     classify("a");
-    // classify("b")
     classify("b");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

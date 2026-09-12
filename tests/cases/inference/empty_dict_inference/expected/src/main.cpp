@@ -5,114 +5,114 @@ namespace tpyapp::main {
 
 
 // def test_literal() -> None:
+//     d = {}  # tpyc: type(dict[str, int32])
+//     d["hello"] = 42
+//     print(d)
 void test_literal() {
-    // d = {}  # tpyc: type(dict[str, int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // d["hello"] = 42
     ::tpy::__setitem__(d, "hello", 42);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_dict_ctor() -> None:
+//     d = dict()  # tpyc: type(dict[int32, str])
+//     d[1] = "a"
+//     d[2] = "b"
+//     print(d)
 void test_dict_ctor() {
-    // d = dict()  # tpyc: type(dict[int32, str])
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>();
-    // d[1] = "a"
     ::tpy::__setitem__(d, 1, "a");
-    // d[2] = "b"
     ::tpy::__setitem__(d, 2, "b");
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_multiple() -> None:
+//     d = {}  # tpyc: type(dict[str, int32])
+//     d["x"] = 10
+//     d["y"] = 20
+//     d["z"] = 30
+//     print(d)
 void test_multiple() {
-    // d = {}  # tpyc: type(dict[str, int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // d["x"] = 10
     ::tpy::__setitem__(d, "x", 10);
-    // d["y"] = 20
     ::tpy::__setitem__(d, "y", 20);
-    // d["z"] = 30
     ::tpy::__setitem__(d, "z", 30);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_numeric_widen() -> None:
+//     d = {}  # tpyc: type(dict[str, int64])
+//     d["a"] = int32(1)
+//     d["b"] = int64(2)
+//     print(d)
 void test_numeric_widen() {
-    // d = {}  # tpyc: type(dict[str, int64])
     ::tpy::ordered_map<std::string, int64_t> d = ::tpy::ordered_map<std::string, int64_t>();
-    // d["a"] = int32(1)
     ::tpy::__setitem__(d, "a", 1);
-    // d["b"] = int64(2)
     ::tpy::__setitem__(d, "b", 2);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_getitem_after_infer() -> None:
+//     d = {}  # tpyc: type(dict[str, int32])
+//     d["x"] = 10
+//     v: int32 = d["x"]
+//     print(v)
 void test_getitem_after_infer() {
-    // d = {}  # tpyc: type(dict[str, int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // d["x"] = 10
     ::tpy::__setitem__(d, "x", 10);
-    // v: int32 = d["x"]
     int32_t v = ::tpy::__getitem__(d, "x");
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def takes_dict(d: dict[str, int32]) -> None:
+//     for k in d:
+//         print(k, d[k])
 void takes_dict(const ::tpy::ordered_map<std::string, int32_t>& d) {
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // print(k, d[k])
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
     }
 }
 
 // def test_param_context() -> None:
+//     d = {}  # tpyc: type(dict[str, int32])
+//     d["a"] = 1
+//     takes_dict(d)
 void test_param_context() {
-    // d = {}  # tpyc: type(dict[str, int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // d["a"] = 1
     ::tpy::__setitem__(d, "a", 1);
-    // takes_dict(d)
     takes_dict(d);
 }
 
 // def test_param_only() -> None:
+//     d = dict()  # tpyc: type(dict[str, int32])
+//     takes_dict(d)
 void test_param_only() {
-    // d = dict()  # tpyc: type(dict[str, int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // takes_dict(d)
     takes_dict(d);
 }
 
+// test_literal()
+// test_dict_ctor()
+// test_multiple()
+// test_numeric_widen()
+// test_getitem_after_infer()
+// test_param_context()
+// test_param_only()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_literal()
     test_literal();
-    // test_dict_ctor()
     test_dict_ctor();
-    // test_multiple()
     test_multiple();
-    // test_numeric_widen()
     test_numeric_widen();
-    // test_getitem_after_infer()
     test_getitem_after_infer();
-    // test_param_context()
     test_param_context();
-    // test_param_only()
     test_param_only();
 }
 

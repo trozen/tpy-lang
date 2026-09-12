@@ -12,11 +12,13 @@ inline constexpr std::string_view __name__ = "__main__";
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
 struct __gen_echo;
 
+// def echo(it: Iterable[int]) -> Iterator[int]:
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
 __gen_echo<T_it> echo(T_it&& it);
+// def main() -> None:
 void main();
 
-// Generator: echo
+// def echo(it: Iterable[int]) -> Iterator[int]:
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
 struct __gen_echo : public ::tpy::next_iter_mixin<__gen_echo<T_it>, ::tpy::BigInt> {
     int32_t __state;
@@ -44,6 +46,9 @@ struct __gen_echo : public ::tpy::next_iter_mixin<__gen_echo<T_it>, ::tpy::BigIn
     }
 };
 // def echo(it: Iterable[int]) -> Iterator[int]:
+//     for x in it:
+//         yield x
+//         yield x
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_echo<T_it>::__next__() {
     while (true) switch (__state) {
@@ -53,7 +58,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_echo<T_it>::__next__() 
         continue;
     }
     case S_RESUME_0: {
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -68,7 +72,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_echo<T_it>::__next__() 
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_0;
         return x;
     }

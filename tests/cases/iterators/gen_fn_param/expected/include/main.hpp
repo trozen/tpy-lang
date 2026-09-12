@@ -20,14 +20,20 @@ struct __gen_tag;
 template <typename F_pred>
 struct __gen_Capped_keep;
 
+// def is_small(n: int32) -> bool:
 bool is_small(int32_t n);
+// def double(n: int32) -> int32:
 int32_t double_(int32_t n);
+// def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 __gen_filterfalse<F_pred> filterfalse(F_pred&& pred, std::vector<int32_t>& it);
+// def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 __gen_takewhile<F_pred> takewhile(F_pred&& pred, std::vector<int32_t>& it);
+// def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 __gen_tag<F_pred> tag(F_pred&& pred, std::vector<int32_t>& it);
+// def main() -> None:
 void main();
 
 // class Capped:
@@ -49,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Capped& obj) {
     return os;
 }
 
-// Generator: filterfalse
+// def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<F_pred>, int32_t> {
     int32_t __state;
@@ -78,7 +84,7 @@ struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<F_pre
     }
 };
 
-// Generator: takewhile
+// def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<F_pred>, int32_t> {
     int32_t __state;
@@ -107,7 +113,7 @@ struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<F_pred>, 
     }
 };
 
-// Generator: tag
+// def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag<F_pred>, int32_t> {
     int32_t __state;
@@ -137,7 +143,7 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag<F_pred>, int32_t> {
     }
 };
 
-// Generator: Capped.keep
+// def keep(self, pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 struct __gen_Capped_keep : public ::tpy::next_iter_mixin<__gen_Capped_keep<F_pred>, int32_t> {
     int32_t __state;
@@ -176,7 +182,11 @@ inline __gen_Capped_keep<F_pred> Capped::keep(F_pred&& pred, std::vector<int32_t
 
 
 // def __init__(self, cap: int32) -> None:
+//     self.cap = cap
 inline Capped::Capped(int32_t cap) : cap(cap) {}
+// def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
+//     for x in it:
+//         yield fn(x)
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

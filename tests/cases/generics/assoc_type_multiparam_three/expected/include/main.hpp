@@ -19,12 +19,16 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_a[A, B, C, T: Triple[A, B, C]](t: T) -> A:      # tpyc: ok
 template<typename A, typename B, typename C, Triple<A, B, C> T>
 ::tpy::val_or_ref_t<A> get_a(::tpy::param_val_or_ref_t<T> t);
+// def get_b[A, B, C, T: Triple[A, B, C]](t: T) -> B:      # tpyc: ok
 template<typename A, typename B, typename C, Triple<A, B, C> T>
 ::tpy::val_or_ref_t<B> get_b(::tpy::param_val_or_ref_t<T> t);
+// def get_c[A, B, C, T: Triple[A, B, C]](t: T) -> C:      # tpyc: ok
 template<typename A, typename B, typename C, Triple<A, B, C> T>
 ::tpy::val_or_ref_t<C> get_c(::tpy::param_val_or_ref_t<T> t);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -58,41 +62,44 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, x: int, y: str, z: bool):
+//     self.x = x
+//     self.y = y
+//     self.z = z
 inline Rec::Rec(const ::tpy::BigInt& x, std::string_view y, bool z) : x(x), y(y), z(z) {}
 
 // def a(self) -> int:
+//     return self.x
 inline ::tpy::BigInt Rec::a() const {
-    // return self.x
     return this->x;
 }
 
 // def b(self) -> str:
+//     return self.y
 inline std::string Rec::b() const {
-    // return self.y
     return this->y;
 }
 
 // def c(self) -> bool:
+//     return self.z
 inline bool Rec::c() const {
-    // return self.z
     return this->z;
 }
 // def get_a[A, B, C, T: Triple[A, B, C]](t: T) -> A:      # tpyc: ok
+//     return t.a()
 template<typename A, typename B, typename C, Triple<A, B, C> T>
 ::tpy::val_or_ref_t<A> get_a(::tpy::param_val_or_ref_t<T> t) {
-    // return t.a()
     return t.a();
 }
 // def get_b[A, B, C, T: Triple[A, B, C]](t: T) -> B:      # tpyc: ok
+//     return t.b()
 template<typename A, typename B, typename C, Triple<A, B, C> T>
 ::tpy::val_or_ref_t<B> get_b(::tpy::param_val_or_ref_t<T> t) {
-    // return t.b()
     return t.b();
 }
 // def get_c[A, B, C, T: Triple[A, B, C]](t: T) -> C:      # tpyc: ok
+//     return t.c()
 template<typename A, typename B, typename C, Triple<A, B, C> T>
 ::tpy::val_or_ref_t<C> get_c(::tpy::param_val_or_ref_t<T> t) {
-    // return t.c()
     return t.c();
 }
 

@@ -18,13 +18,18 @@ struct __coro_str_while;
 struct __coro_and_branch;
 struct __coro_main_async;
 
+// async def opt_branch(v: int32 | None) -> int32:
 __coro_opt_branch opt_branch(std::optional<int32_t> v);
+// async def list_branch(xs: list[int32]) -> int32:
 __coro_list_branch list_branch(std::vector<int32_t>& xs);
+// async def str_while(t: str) -> int32:
 __coro_str_while str_while(std::string_view t);
+// async def and_branch(xs: list[int32], v: int32 | None) -> int32:
 __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v);
+// async def main_async() -> None:
 __coro_main_async main_async();
 
-// Async coroutine: opt_branch
+// async def opt_branch(v: int32 | None) -> int32:
 struct __coro_opt_branch {
     int32_t __state;
     bool __cancel_pending;
@@ -48,7 +53,7 @@ struct __coro_opt_branch {
     }
 };
 
-// Async coroutine: list_branch
+// async def list_branch(xs: list[int32]) -> int32:
 struct __coro_list_branch {
     int32_t __state;
     bool __cancel_pending;
@@ -72,7 +77,7 @@ struct __coro_list_branch {
     }
 };
 
-// Async coroutine: str_while
+// async def str_while(t: str) -> int32:
 struct __coro_str_while {
     int32_t __state;
     bool __cancel_pending;
@@ -98,7 +103,7 @@ struct __coro_str_while {
     }
 };
 
-// Async coroutine: and_branch
+// async def and_branch(xs: list[int32], v: int32 | None) -> int32:
 struct __coro_and_branch {
     int32_t __state;
     bool __cancel_pending;
@@ -123,7 +128,7 @@ struct __coro_and_branch {
     }
 };
 
-// Async coroutine: main_async
+// async def main_async() -> None:
 struct __coro_main_async {
     int32_t __state;
     bool __cancel_pending;

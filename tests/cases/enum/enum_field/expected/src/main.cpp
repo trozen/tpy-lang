@@ -47,25 +47,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p: Pixel = Pixel(0, 0, Color.Red)
+//     print(p.color)
+//     p.color = Color.Blue
+//     print(p.color)
 void main() {
-    // p: Pixel = Pixel(0, 0, Color.Red)
     Pixel p = Pixel(::tpy::BigInt(0), ::tpy::BigInt(0), Color::Red);
-    // print(p.color)
     std::cout << p.color << "\n";
-    // p.color = Color.Blue
     p.color = Color::Blue;
-    // print(p.color)
     std::cout << p.color << "\n";
 }
 
+// # Enum as record field type
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum as record field type
-    // from enum import Enum
-    // main()
     main();
 }
 

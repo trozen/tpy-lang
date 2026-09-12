@@ -12,7 +12,9 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(s: Circle | Rect) -> None:
 void describe(::tpy::Union<const Circle*, const Rect*> s);
+// def main() -> None:
 void main();
 
 // @dataclass

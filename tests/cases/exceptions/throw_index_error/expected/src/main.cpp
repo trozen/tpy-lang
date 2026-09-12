@@ -7,40 +7,41 @@ namespace tpyapp::main {
 // # Explicit `raise IndexError(...)` works the same as runtime-thrown
 // # IndexError; user code can also subclass it (basic catch shape only).
 // def at(xs: list[int], i: int) -> int:
+//     if i < 0 or i >= len(xs):
+//         raise IndexError("custom: index out of bounds")
+//     return xs[i]
 ::tpy::BigInt at(const std::vector<::tpy::BigInt>& xs, const ::tpy::BigInt& i) {
-    // if i < 0 or i >= len(xs):
     if (((i < 0) || (i >= ::tpy::__len__(xs)))) {
-        // raise IndexError("custom: index out of bounds")
         throw ::tpy::IndexError("custom: index out of bounds");
     }
-    // return xs[i]
     return ::tpy::__getitem__(xs, i.to_fixed_check<int32_t>());
 }
 
 // def main() -> None:
+//     print(at([10, 20, 30], 1))
+//     try:
+//         print(at([10, 20, 30], 99))
+//     except IndexError as e:
+//         print("caught:", str(e))
 void main() {
-    // print(at([10, 20, 30], 1))
     std::vector<::tpy::BigInt> __tmp_1 = {10, 20, 30};
     std::cout << at(__tmp_1, ::tpy::BigInt(1)) << "\n";
-    // try:
     {
         try {
-            // print(at([10, 20, 30], 99))
             std::vector<::tpy::BigInt> __tmp_2 = {10, 20, 30};
             std::cout << at(__tmp_2, ::tpy::BigInt(99)) << "\n";
         } catch (const ::tpy::IndexError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

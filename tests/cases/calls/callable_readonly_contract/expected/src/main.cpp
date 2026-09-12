@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def total(xs: readonly[list[int32]]) -> None:
+//     print(len(xs))
 void total(const std::vector<int32_t>& xs) {
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def use_callable(f: Callable[[readonly[list[int32]]], None]) -> None:
+//     xs: list[int32] = [3, 4]
+//     p = xs[0]
+//     print(p)
+//     f(xs)  # tpyc: ok
 void use_callable(const std::function<void(const std::vector<int32_t>&)>& f) {
-    // xs: list[int32] = [3, 4]
     std::vector<int32_t> xs = {3, 4};
-    // p = xs[0]
     int32_t p = ::tpy::__getitem__(xs, 0);
-    // print(p)
     std::cout << p << "\n";
-    // f(xs)  # tpyc: ok
     f(xs);
 }
 
 // def main() -> None:
+//     use_fn(total)
+//     use_callable(total)
 void main() {
-    // use_fn(total)
     use_fn(total);
-    // use_callable(total)
     use_callable(total);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

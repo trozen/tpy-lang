@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def gen_if(n: int) -> Iterator[int]:
+//     if n == 0:
+//         r = 100
+//     else:
+//         r = n + 1
+//     yield r
+//     yield r + 1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_if::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if n == 0:
         if ((n == 0)) {
-            // r = 100
             r = 100;
-        // else:
         } else {
-            // r = n + 1
             r = ((n) + (::tpy::BigInt(1)));
         }
-        // yield r
         __state = S_RESUME_0;
         return r;
     }
     case S_RESUME_0: {
-        // yield r + 1
         __state = S_RESUME_1;
         return ((r) + (::tpy::BigInt(1)));
     }
@@ -42,28 +42,28 @@ __gen_gen_if gen_if(::tpy::BigInt n) {
 }
 
 // def gen_elif(n: int) -> Iterator[int]:
+//     if n == 0:
+//         r = 1
+//     elif n == 1:
+//         r = 2
+//     else:
+//         r = n + 10
+//     yield r
+//     yield r + 1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_elif::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if n == 0:
         if ((n == 0)) {
-            // r = 1
             r = 1;
-        // elif n == 1:
         } else if ((n == 1)) {
-            // r = 2
             r = 2;
-        // else:
         } else {
-            // r = n + 10
             r = ((n) + (::tpy::BigInt(10)));
         }
-        // yield r
         __state = S_RESUME_0;
         return r;
     }
     case S_RESUME_0: {
-        // yield r + 1
         __state = S_RESUME_1;
         return ((r) + (::tpy::BigInt(1)));
     }
@@ -83,26 +83,26 @@ __gen_gen_elif gen_elif(::tpy::BigInt n) {
 }
 
 // def gen_match(n: int) -> Iterator[int]:
+//     match n:  # tpyc: ok
+//         case 0:
+//             r = 100
+//         case _:
+//             r = n + 1
+//     yield r
+//     yield r + 1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // match n:  # tpyc: ok
         auto& __match_subject_1 = n;
-        // case 0:
         if (__match_subject_1 == 0) {
-            // r = 100
             r = 100;
-        // case _:
         } else {
-            // r = n + 1
             r = ((n) + (::tpy::BigInt(1)));
         }
-        // yield r
         __state = S_RESUME_0;
         return r;
     }
     case S_RESUME_0: {
-        // yield r + 1
         __state = S_RESUME_1;
         return ((r) + (::tpy::BigInt(1)));
     }
@@ -122,23 +122,23 @@ __gen_gen_match gen_match(::tpy::BigInt n) {
 }
 
 // def main() -> None:
+//     print(list(gen_if(5)))
+//     print(list(gen_if(0)))
+//     print(list(gen_elif(7)))
+//     print(list(gen_match(5)))
 void main() {
-    // print(list(gen_if(5)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_if(::tpy::BigInt(5)))) << "\n";
-    // print(list(gen_if(0)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_if(::tpy::BigInt(0)))) << "\n";
-    // print(list(gen_elif(7)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_elif(::tpy::BigInt(7)))) << "\n";
-    // print(list(gen_match(5)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_match(::tpy::BigInt(5)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

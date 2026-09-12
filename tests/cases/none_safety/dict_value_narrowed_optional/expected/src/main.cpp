@@ -8,86 +8,86 @@ namespace tpyapp::main {
 // # deref to the inner value (the value slot is the inner type), like list.append
 // # does -- it used to pass the whole std::optional and fail the C++ build.
 // def store_str(a: str | None) -> None:
+//     out: dict[str, str] = {}
+//     if a is not None:
+//         out["k"] = a
+//         print(len(out), out["k"])
+//     else:
+//         print(len(out))
 void store_str(std::optional<std::string_view> a) {
-    // out: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> out = ::tpy::ordered_map<std::string, std::string>();
-    // if a is not None:
     if ((a.has_value())) {
-        // out["k"] = a
         ::tpy::__setitem__(out, "k", std::string((*a)));
-        // print(len(out), out["k"])
         std::cout << ::tpy::__len__(out) << " " << ::tpy::__getitem__(out, "k") << "\n";
-    // else:
     } else {
-        // print(len(out))
         std::cout << ::tpy::__len__(out) << "\n";
     }
 }
 
 // def store_bytes(a: bytes | None) -> None:
+//     out: dict[str, bytes] = {}
+//     if a is not None:
+//         out["k"] = a
+//     print(len(out), len(out["k"]) if a is not None else 0)
 void store_bytes(std::optional<::tpy::BytesView> a) {
-    // out: dict[str, bytes] = {}
     ::tpy::ordered_map<std::string, ::tpy::Bytes> out = ::tpy::ordered_map<std::string, ::tpy::Bytes>();
-    // if a is not None:
     if ((a.has_value())) {
-        // out["k"] = a
         ::tpy::__setitem__(out, "k", ::tpy::Bytes((*a)));
     }
-    // print(len(out), len(out["k"]) if a is not None else 0)
     std::cout << ::tpy::__len__(out) << " " << (((a.has_value())) ? (::tpy::__len__(::tpy::__getitem__(out, "k"))) : (0)) << "\n";
 }
 
 // def store_list(a: str | None) -> None:
+//     # Same fixed path: a list subscript-assign value also unwraps the narrowed
+//     # optional.
+//     out: list[str] = ["x"]
+//     if a is not None:
+//         out[0] = a
+//     print(out[0])
 void store_list(std::optional<std::string_view> a) {
-    // # Same fixed path: a list subscript-assign value also unwraps the narrowed
-    // # optional.
-    // out: list[str] = ["x"]
     std::vector<std::string> out = {"x"};
-    // if a is not None:
     if ((a.has_value())) {
-        // out[0] = a
         ::tpy::__setitem__(out, 0, std::string((*a)));
     }
-    // print(out[0])
     std::cout << ::tpy::__getitem__(out, 0) << "\n";
 }
 
 // def store_optional_value(a: str | None) -> None:
+//     # Inverse: the value slot is itself Optional -- the whole optional is
+//     # stored, NOT dereferenced.
+//     out: dict[str, str | None] = {}
+//     out["present"] = a
+//     out["absent"] = None
+//     print(len(out))
 void store_optional_value(std::optional<std::string_view> a) {
-    // # Inverse: the value slot is itself Optional -- the whole optional is
-    // # stored, NOT dereferenced.
-    // out: dict[str, str | None] = {}
     ::tpy::ordered_map<std::string, std::optional<std::string>> out = ::tpy::ordered_map<std::string, std::optional<std::string>>();
-    // out["present"] = a
     ::tpy::__setitem__(out, "present", std::move(a ? std::make_optional(std::string(*a)) : std::nullopt));
-    // out["absent"] = None
     ::tpy::__setitem__(out, "absent", std::nullopt);
-    // print(len(out))
     std::cout << ::tpy::__len__(out) << "\n";
 }
 
 // def main() -> None:
+//     store_str("hello")
+//     store_str(None)
+//     store_bytes(b"hi")
+//     store_list("bound")
+//     store_optional_value("x")
+//     store_optional_value(None)
 void main() {
-    // store_str("hello")
     store_str("hello");
-    // store_str(None)
     store_str(std::nullopt);
-    // store_bytes(b"hi")
     store_bytes(::tpy::bytes_literal_owned("hi", 2));
-    // store_list("bound")
     store_list("bound");
-    // store_optional_value("x")
     store_optional_value("x");
-    // store_optional_value(None)
     store_optional_value(std::nullopt);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

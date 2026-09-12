@@ -5,31 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p1: Point = Point(10, 20)
+//     p2: Point = Point(30, 40)
+//     pts: list[Point] = [p1, p2]
+//
+//     plist: PointList = PointList(pts)
+//
+//     # Access via __getitem__ (returns const Point& in C++)
+//     print(plist[0].x)   # 10
+//     print(plist[1].y)   # 40
+//
+//     # Access via operator[] (also returns const Point&)
+//     print(plist[-1].x)  # 30
 void main() {
-    // p1: Point = Point(10, 20)
     Point p1 = Point(10, 20);
-    // p2: Point = Point(30, 40)
     Point p2 = Point(30, 40);
-    // pts: list[Point] = [p1, p2]
     std::vector<Point> pts = ::tpy::make_vector<Point>(std::move(p1), std::move(p2));
-    // plist: PointList = PointList(pts)
     PointList plist = PointList(pts);
-    // # Access via __getitem__ (returns const Point& in C++)
-    // print(plist[0].x)   # 10
     std::cout << plist[0].x << "\n";
-    // print(plist[1].y)   # 40
     std::cout << plist[1].y << "\n";
-    // # Access via operator[] (also returns const Point&)
-    // print(plist[-1].x)  # 30
     std::cout << plist[-1].x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

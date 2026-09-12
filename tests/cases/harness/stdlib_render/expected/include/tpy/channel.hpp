@@ -23,6 +23,7 @@ template<typename T> struct Receiver;
 
 inline constexpr std::string_view __name__ = "tpy.channel";
 
+// def channel[T: Send](capacity: int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
 template<typename T>
 std::tuple<Sender<T>, Receiver<T>> channel(int32_t capacity);
 
@@ -68,6 +69,15 @@ struct _ChanState {
     bool __tpy_owned_ = true;
 
     // def __init__(self, capacity: uint32) -> None:
+    //     self._buf = UninitHeapStorage[T](capacity)
+    //     self._cap = capacity
+    //     self._head = 0
+    //     self._count = 0
+    //     self._closed = False
+    //     self._send_waker = Waker()
+    //     self._has_send_waiter = False
+    //     self._recv_waker = Waker()
+    //     self._has_recv_waiter = False
     explicit _ChanState(uint32_t capacity) : _buf(::tpy::UninitHeapStorage<T>(capacity)), _cap(capacity), _head(0), _count(0), _closed(false), _send_waker(::tpystd::coro::Waker()), _has_send_waiter(false), _recv_waker(::tpystd::coro::Waker()), _has_recv_waiter(false) {}
     // non-copyable (@nocopy)
     _ChanState(const _ChanState&) = delete;
@@ -84,85 +94,85 @@ struct _ChanState {
     }
 
     // def __del__(self) -> None:
+    //     # UninitHeapStorage is uninitialized storage and won't drop live
+    //     # slots itself -- drain the buffered elements or they leak.
+    //     i: uint32 = 0
+    //     while i < self._count:
+    //         self._buf.take((self._head + i) % self._cap)
+    //         i += 1
     ~_ChanState() {
         if (!this->__tpy_owned_) return;
-        // # UninitHeapStorage is uninitialized storage and won't drop live
-        // # slots itself -- drain the buffered elements or they leak.
-        // i: uint32 = 0
         uint32_t i = 0;
-        // while i < self._count:
         while ((i < this->_count)) {
-            // self._buf.take((self._head + i) % self._cap)
             this->_buf.take((::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, i)), this->_cap)));
-            // i += 1
             i = ::tpy::add_check<uint32_t>(i, 1);
         }
     }
 
     // def _is_full(self) -> bool:
+    //     return self._count >= self._cap
     bool _is_full() const {
-        // return self._count >= self._cap
         return (this->_count >= this->_cap);
     }
 
     // def _is_empty(self) -> bool:
+    //     return self._count == 0
     bool _is_empty() const {
-        // return self._count == 0
         return (this->_count == 0);
     }
 
     // def _push(self, value: Own[T]) -> None:
+    //     # Precondition: not full (the sole producer checked under SPSC).
+    //     self._buf.init((self._head + self._count) % self._cap, value)
+    //     self._count += 1
+    //     if self._has_recv_waiter:
+    //         self._has_recv_waiter = False
+    //         self._recv_waker.wake()
     void _push(::tpy::own_param_t<T> value) {
-        // # Precondition: not full (the sole producer checked under SPSC).
-        // self._buf.init((self._head + self._count) % self._cap, value)
         this->_buf.init((::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, this->_count)), this->_cap)), std::move(value));
-        // self._count += 1
         this->_count = ::tpy::add_check<uint32_t>(this->_count, 1);
-        // if self._has_recv_waiter:
         if (this->_has_recv_waiter) {
-            // self._has_recv_waiter = False
             this->_has_recv_waiter = false;
-            // self._recv_waker.wake()
             this->_recv_waker.wake();
         }
     }
 
     // def _pop(self) -> Own[T]:
+    //     # Precondition: not empty.
+    //     value = self._buf.take(self._head)
+    //     self._head = (self._head + 1) % self._cap
+    //     self._count -= 1
+    //     if self._has_send_waiter:
+    //         self._has_send_waiter = False
+    //         self._send_waker.wake()
+    //     return value
     ::tpy::own_return_t<T> _pop() {
-        // # Precondition: not empty.
-        // value = self._buf.take(self._head)
         T value = this->_buf.take(this->_head);
-        // self._head = (self._head + 1) % self._cap
         this->_head = (::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, 1)), this->_cap));
-        // self._count -= 1
         this->_count = ::tpy::sub_check<uint32_t>(this->_count, 1);
-        // if self._has_send_waiter:
         if (this->_has_send_waiter) {
-            // self._has_send_waiter = False
             this->_has_send_waiter = false;
-            // self._send_waker.wake()
             this->_send_waker.wake();
         }
-        // return value
         return value;
     }
 
     // def _close(self) -> None:
+    //     self._closed = True
+    //     if self._has_recv_waiter:
+    //         self._has_recv_waiter = False
+    //         self._recv_waker.wake()
+    //     if self._has_send_waiter:
+    //         self._has_send_waiter = False
+    //         self._send_waker.wake()
     void _close() {
-        // self._closed = True
         this->_closed = true;
-        // if self._has_recv_waiter:
         if (this->_has_recv_waiter) {
-            // self._has_recv_waiter = False
             this->_has_recv_waiter = false;
-            // self._recv_waker.wake()
             this->_recv_waker.wake();
         }
-        // if self._has_send_waiter:
         if (this->_has_send_waiter) {
-            // self._has_send_waiter = False
             this->_has_send_waiter = false;
-            // self._send_waker.wake()
             this->_send_waker.wake();
         }
     }
@@ -183,6 +193,7 @@ struct _Recv {
     ::tpystd::tplib::rc::Rc<_ChanState<T>> _state;
 
     // def __init__(self, state: Own[Rc[_ChanState[T]]]) -> None:
+    //     self._state = state
     _Recv() = default;
     explicit _Recv(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state) : _state(std::move(state)) {}
     // non-copyable (@nocopy)
@@ -194,27 +205,27 @@ struct _Recv {
     // # Cancellation is task-level (the awaiting Task throws CancelledError
     // # before re-polling); the channel has no per-await state to flip.
     // def cancel(self) -> None:
+    //     pass
     void cancel() const {
-        // pass
     }
 
     // def __poll__(self, waker: Waker) -> Own[Poll[T]]:
+    //     if not self._state._is_empty():
+    //         return poll_ready(self._state._pop())
+    //     if self._state._closed:
+    //         raise ChannelClosed("recv on closed channel")
+    //     self._state._recv_waker = waker
+    //     self._state._has_recv_waiter = True
+    //     return poll_pending()
     ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) {
-        // if not self._state._is_empty():
         if ((!(this->_state.__deref__()._is_empty()))) {
-            // return poll_ready(self._state._pop())
             return ::tpystd::coro::poll_ready<T>(this->_state.__deref__()._pop());
         }
-        // if self._state._closed:
         if (this->_state.__deref__()._closed) {
-            // raise ChannelClosed("recv on closed channel")
             throw ChannelClosed("recv on closed channel");
         }
-        // self._state._recv_waker = waker
         this->_state.__deref__()._recv_waker = waker;
-        // self._state._has_recv_waiter = True
         this->_state.__deref__()._has_recv_waiter = true;
-        // return poll_pending()
         return ::tpystd::coro::poll_pending<T>();
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.channel._Recv";
@@ -237,8 +248,10 @@ struct _Send {
     bool __tpy_owned_ = true;
 
     // def __init__(self, state: Own[Rc[_ChanState[T]]], value: Own[T]) -> None:
+    //     self._state = state
+    //     self._value = UninitStorage[T]()
+    //     self._value.construct(value)
     explicit _Send(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state, ::tpy::own_param_t<T> value) : _state(std::move(state)), _value(::tpy::UninitStorage<T>()) {
-        // self._value.construct(value)
         this->_value.construct(std::move(value));
     }
     // non-copyable (@nocopy)
@@ -256,40 +269,40 @@ struct _Send {
     }
 
     // def __del__(self) -> None:
+    //     # Drop the value if it was never pushed (closed channel / cancel).
+    //     if self._value.has():
+    //         self._value.reset()
     ~_Send() {
         if (!this->__tpy_owned_) return;
-        // # Drop the value if it was never pushed (closed channel / cancel).
-        // if self._value.has():
         if (this->_value.has()) {
-            // self._value.reset()
             this->_value.reset();
         }
     }
 
     // def cancel(self) -> None:
+    //     pass
     void cancel() const {
-        // pass
     }
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+    //     if self._state._closed:
+    //         raise ChannelClosed("send on closed channel")
+    //     if not self._state._is_full():
+    //         self._state._push(self._value.take())
+    //         return poll_ready_none()
+    //     self._state._send_waker = waker
+    //     self._state._has_send_waiter = True
+    //     return poll_pending()
     ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) {
-        // if self._state._closed:
         if (this->_state.__deref__()._closed) {
-            // raise ChannelClosed("send on closed channel")
             throw ChannelClosed("send on closed channel");
         }
-        // if not self._state._is_full():
         if ((!(this->_state.__deref__()._is_full()))) {
-            // self._state._push(self._value.take())
             this->_state.__deref__()._push(this->_value.take());
-            // return poll_ready_none()
             return ::tpystd::coro::poll_ready_none();
         }
-        // self._state._send_waker = waker
         this->_state.__deref__()._send_waker = waker;
-        // self._state._has_send_waiter = True
         this->_state.__deref__()._has_send_waiter = true;
-        // return poll_pending()
         return ::tpystd::coro::poll_pending<std::monostate>();
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.channel._Send";
@@ -310,6 +323,7 @@ struct Sender {
     bool __tpy_owned_ = true;
 
     // def __init__(self, state: Own[Rc[_ChanState[T]]]) -> None:
+    //     self._state = state
     explicit Sender(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state) : _state(std::move(state)) {}
     // non-copyable (@nocopy)
     Sender(const Sender&) = delete;
@@ -326,24 +340,24 @@ struct Sender {
     }
 
     // def __del__(self) -> None:
+    //     # Backstop only: a forgotten close() still unblocks the receiver.
+    //     # close() is the contract -- destructor timing is executor-driven
+    //     # (see docs/CHANNEL_DESIGN.md "Destructor backstop").
+    //     self._state._close()
     ~Sender() {
         if (!this->__tpy_owned_) return;
-        // # Backstop only: a forgotten close() still unblocks the receiver.
-        // # close() is the contract -- destructor timing is executor-driven
-        // # (see docs/CHANNEL_DESIGN.md "Destructor backstop").
-        // self._state._close()
         this->_state.__deref__()._close();
     }
 
     // def send(self, value: Own[T]) -> Own[_Send[T]]:
+    //     return _Send[T](self._state.clone(), value)
     _Send<T> send(::tpy::own_param_t<T> value) {
-        // return _Send[T](self._state.clone(), value)
         return _Send<T>(this->_state.clone(), std::move(value));
     }
 
     // def close(self) -> None:
+    //     self._state._close()
     void close() {
-        // self._state._close()
         this->_state.__deref__()._close();
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.channel.Sender";
@@ -364,6 +378,7 @@ struct Receiver {
     bool __tpy_owned_ = true;
 
     // def __init__(self, state: Own[Rc[_ChanState[T]]]) -> None:
+    //     self._state = state
     explicit Receiver(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state) : _state(std::move(state)) {}
     // non-copyable (@nocopy)
     Receiver(const Receiver&) = delete;
@@ -380,16 +395,16 @@ struct Receiver {
     }
 
     // def __del__(self) -> None:
+    //     # Receiver gone -> the sender's next send sees a closed channel.
+    //     self._state._close()
     ~Receiver() {
         if (!this->__tpy_owned_) return;
-        // # Receiver gone -> the sender's next send sees a closed channel.
-        // self._state._close()
         this->_state.__deref__()._close();
     }
 
     // def recv(self) -> Own[_Recv[T]]:
+    //     return _Recv[T](self._state.clone())
     _Recv<T> recv() {
-        // return _Recv[T](self._state.clone())
         return _Recv<T>(this->_state.clone());
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.channel.Receiver";
@@ -402,18 +417,18 @@ inline std::ostream& operator<<(std::ostream& os, const Receiver<T>& obj) {
 }
 
 // def channel[T: Send](capacity: int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
+//     if capacity < 1:
+//         raise ValueError("channel capacity must be >= 1")
+//     state = Rc.new(_ChanState[T](uint32(capacity)))
+//     state_for_sender = state.clone()
+//     return (Sender[T](state_for_sender), Receiver[T](state))
 template<typename T>
 std::tuple<Sender<T>, Receiver<T>> channel(int32_t capacity) {
-    // if capacity < 1:
     if ((capacity < 1)) {
-        // raise ValueError("channel capacity must be >= 1")
         throw ::tpy::ValueError("channel capacity must be >= 1");
     }
-    // state = Rc.new(_ChanState[T](uint32(capacity)))
     ::tpystd::tplib::rc::Rc<_ChanState<T>> state = Rc<_ChanState<T>>::template new_<_ChanState<T>>(_ChanState<T>(static_cast<uint32_t>(capacity)));
-    // state_for_sender = state.clone()
     ::tpystd::tplib::rc::Rc<_ChanState<T>> state_for_sender = state.clone();
-    // return (Sender[T](state_for_sender), Receiver[T](state))
     return std::tuple<Sender<T>, Receiver<T>>{Sender<T>(std::move(state_for_sender)), Receiver<T>(std::move(state))};
 }
 

@@ -3,27 +3,25 @@
 
 namespace tpyapp::main {
 
-// nums = [1, 2, 3]
 std::vector<int32_t>* nums{};
-// nested = [[1, 2], [3, 4]]
 std::vector<std::vector<int32_t>>* nested{};
 
+// nums = [1, 2, 3]
+// print(nums)
+// print([10, 20, 30])
+// nested = [[1, 2], [3, 4]]
+// print(nested)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // nums = [1, 2, 3]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     nums = &__global_slot_1;
-    // print(nums)
     std::cout << ::tpy::ListPrinter((*nums)) << "\n";
-    // print([10, 20, 30])
     std::cout << ::tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n";
-    // nested = [[1, 2], [3, 4]]
     static std::vector<std::vector<int32_t>> __global_slot_2 = {{1, 2}, {3, 4}};
     nested = &__global_slot_2;
-    // print(nested)
     std::cout << ::tpy::ListPrinter((*nested)) << "\n";
 }
 

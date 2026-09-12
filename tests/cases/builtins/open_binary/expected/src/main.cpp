@@ -6,33 +6,65 @@ namespace tpyapp::main {
 
 // # Test open() binary mode: write/read round-trip, readline/readlines, context manager
 // def main() -> None:
+//     path = "tpy_test_open_binary.bin"
+//
+//     # Write binary data
+//     w = open(path, "wb")
+//     w.write(b"\x00\x01\x02\x03")
+//     w.close()
+//
+//     # Read back
+//     r = open(path, "rb")
+//     data = r.read()
+//     r.close()
+//     print(len(data))
+//     print(data[0], data[1], data[2], data[3])
+//
+//     # Context manager write
+//     with open(path, "wb") as f1:
+//         f1.write(b"\xaa\xbb")
+//
+//     # Context manager read
+//     with open(path, "rb") as f2:
+//         data2 = f2.read()
+//     print(len(data2))
+//
+//     # Append mode
+//     with open(path, "ab") as f3:
+//         f3.write(b"\xcc")
+//
+//     with open(path, "rb") as f4:
+//         data3 = f4.read()
+//     print(len(data3))
+//
+//     # readline / readlines with newline-delimited binary data
+//     with open(path, "wb") as f5:
+//         f5.write(b"alpha\nbeta\ngamma")
+//
+//     r2 = open(path, "rb")
+//     first = r2.readline()
+//     second = r2.readline()
+//     third = r2.readline()
+//     r2.close()
+//     print(len(first), len(second), len(third))
+//
+//     r3 = open(path, "rb")
+//     lines = r3.readlines()
+//     r3.close()
+//     print(len(lines))
 void main() {
-    // path = "tpy_test_open_binary.bin"
     std::string_view path = "tpy_test_open_binary.bin";
-    // # Write binary data
-    // w = open(path, "wb")
     ::tpy::BinaryFile w = ::tpy::builtin_open_binary(path, "wb");
-    // w.write(b"\x00\x01\x02\x03")
     w.write(::tpy::bytes_literal("\000\x01\x02\x03", 4));
-    // w.close()
     w.close();
-    // # Read back
-    // r = open(path, "rb")
     ::tpy::BinaryFile r = ::tpy::builtin_open_binary(path, "rb");
-    // data = r.read()
     ::tpy::Bytes data = r.read();
-    // r.close()
     r.close();
-    // print(len(data))
     std::cout << ::tpy::__len__(data) << "\n";
-    // print(data[0], data[1], data[2], data[3])
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 2)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 3)) << "\n";
-    // # Context manager write
-    // with open(path, "wb") as f1:
     auto __ctx_1 = ::tpy::builtin_open_binary(path, "wb");
     auto& f1 = __ctx_1.__enter__();
     try {
-        // f1.write(b"\xaa\xbb")
         f1.write(::tpy::bytes_literal("\xaa\xbb", 2));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -44,13 +76,10 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # Context manager read
-    // with open(path, "rb") as f2:
     ::tpy::Bytes data2;
     auto __ctx_2 = ::tpy::builtin_open_binary(path, "rb");
     auto& f2 = __ctx_2.__enter__();
     try {
-        // data2 = f2.read()
         data2 = f2.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -62,14 +91,10 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // print(len(data2))
     std::cout << ::tpy::__len__(data2) << "\n";
-    // # Append mode
-    // with open(path, "ab") as f3:
     auto __ctx_3 = ::tpy::builtin_open_binary(path, "ab");
     auto& f3 = __ctx_3.__enter__();
     try {
-        // f3.write(b"\xcc")
         f3.write(::tpy::bytes_literal("\xcc", 1));
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -81,12 +106,10 @@ void main() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // with open(path, "rb") as f4:
     ::tpy::Bytes data3;
     auto __ctx_4 = ::tpy::builtin_open_binary(path, "rb");
     auto& f4 = __ctx_4.__enter__();
     try {
-        // data3 = f4.read()
         data3 = f4.read();
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -98,14 +121,10 @@ void main() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    // print(len(data3))
     std::cout << ::tpy::__len__(data3) << "\n";
-    // # readline / readlines with newline-delimited binary data
-    // with open(path, "wb") as f5:
     auto __ctx_5 = ::tpy::builtin_open_binary(path, "wb");
     auto& f5 = __ctx_5.__enter__();
     try {
-        // f5.write(b"alpha\nbeta\ngamma")
         f5.write(::tpy::bytes_literal("alpha\nbeta\ngamma", 16));
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
@@ -117,34 +136,24 @@ void main() {
     }
     __with_exit_5:
     __ctx_5.__exit__({}, nullptr, {});
-    // r2 = open(path, "rb")
     ::tpy::BinaryFile r2 = ::tpy::builtin_open_binary(path, "rb");
-    // first = r2.readline()
     ::tpy::Bytes first = r2.readline();
-    // second = r2.readline()
     ::tpy::Bytes second = r2.readline();
-    // third = r2.readline()
     ::tpy::Bytes third = r2.readline();
-    // r2.close()
     r2.close();
-    // print(len(first), len(second), len(third))
     std::cout << ::tpy::__len__(first) << " " << ::tpy::__len__(second) << " " << ::tpy::__len__(third) << "\n";
-    // r3 = open(path, "rb")
     ::tpy::BinaryFile r3 = ::tpy::builtin_open_binary(path, "rb");
-    // lines = r3.readlines()
     std::vector<::tpy::Bytes> lines = r3.readlines();
-    // r3.close()
     r3.close();
-    // print(len(lines))
     std::cout << ::tpy::__len__(lines) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

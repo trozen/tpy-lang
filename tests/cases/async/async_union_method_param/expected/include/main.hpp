@@ -19,6 +19,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main;
 struct __coro_Shelter_describe;
 
+// async def main() -> None:
 __coro_main main();
 
 // class Dog:
@@ -64,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
     return os;
 }
 
-// Async coroutine: Shelter.describe
+// async def describe(self, a: Dog | Cat) -> str:
 struct __coro_Shelter_describe {
     int32_t __state;
     bool __cancel_pending;
@@ -93,7 +94,7 @@ inline __coro_Shelter_describe Shelter::describe(::tpy::Union<const Cat*, const 
     return __coro_Shelter_describe(*this, a);
 }
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -125,16 +126,17 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Dog::Dog() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Cat::Cat() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     self.seen = 0
 inline Shelter::Shelter() : seen(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

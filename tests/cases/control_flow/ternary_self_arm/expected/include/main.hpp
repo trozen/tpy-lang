@@ -11,10 +11,15 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_then_arm_aliases_self():
 void test_then_arm_aliases_self();
+// def test_then_arm_aliases_other():
 void test_then_arm_aliases_other();
+// def test_else_arm_aliases_self():
 void test_else_arm_aliases_self();
+// def test_readonly_arm():
 void test_readonly_arm();
+// def main():
 void main();
 
 // class Acc:
@@ -45,30 +50,31 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Acc::Acc(int32_t n) : n(n) {}
 
 // def bump_larger(self, o: "Acc") -> None:
+//     c = self if self.n >= o.n else o  # tpyc: ok -- self in the THEN arm
+//     c.n += 100
 inline void Acc::bump_larger(Acc& o) {
-    // c = self if self.n >= o.n else o  # tpyc: ok -- self in the THEN arm
     Acc& c = (((this->n >= o.n)) ? ((*this)) : (o));
-    // c.n += 100
     c.n = ::tpy::add_check<int32_t>(c.n, 100);
 }
 
 // def bump_smaller(self, o: "Acc") -> None:
+//     c = o if o.n >= self.n else self  # tpyc: ok -- self in the ELSE arm
+//     c.n += 100
 inline void Acc::bump_smaller(Acc& o) {
-    // c = o if o.n >= self.n else self  # tpyc: ok -- self in the ELSE arm
     Acc& c = (((o.n >= this->n)) ? (o) : ((*this)));
-    // c.n += 100
     c.n = ::tpy::add_check<int32_t>(c.n, 100);
 }
 
 // @readonly
 // def larger_n(self, o: readonly["Acc"]) -> int32:
+//     c = self if self.n >= o.n else o  # tpyc: ok -- const receiver arm
+//     return c.n
 inline int32_t Acc::larger_n(const Acc& o) const {
-    // c = self if self.n >= o.n else o  # tpyc: ok -- const receiver arm
     const Acc& c = (((this->n >= o.n)) ? ((*this)) : (o));
-    // return c.n
     return c.n;
 }
 void __tpy_init();

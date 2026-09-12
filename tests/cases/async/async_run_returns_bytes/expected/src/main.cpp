@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def payload() -> bytes:
+//     await asyncio.sleep(0)
+//     return b"hi"
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_payload::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return b"hi"
         __state = S_DONE;
         ::tpy::Bytes __tpy_async_ret = ::tpy::bytes_literal_owned("hi", 2);
         return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__tpy_async_ret));
@@ -35,23 +35,24 @@ __coro_payload payload() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(payload()))
 void main() {
-    // print(asyncio.run(payload()))
     std::cout << ::tpy::BytesPrinter(::tpystd::asyncio::run<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(payload()))) << "\n";
 }
 
+// # asyncio.run over an async def returning bytes: bytes is a TPy value type
+// # whose C++ backing (an owning vector) is not a C++ is_value_type, so run's
+// # `-> Own[T]` return (own_return_t<T>, by value) is what lets the owned
+// # payload move out of the task slot.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.run over an async def returning bytes: bytes is a TPy value type
-    // # whose C++ backing (an owning vector) is not a C++ is_value_type, so run's
-    // # `-> Own[T]` return (own_return_t<T>, by value) is what lets the owned
-    // # payload move out of the task slot.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

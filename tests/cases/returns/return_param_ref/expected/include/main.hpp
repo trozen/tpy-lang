@@ -11,12 +11,19 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find_max(points: list[Point]) -> Point:
 Point& find_max(std::vector<Point>& points);
+// def get_first(points: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& points);
+// def get_x(p: Point) -> Point:
 Point& get_x(Point& p);
+// def get_field_ref(p: Point) -> Point:
 Point& get_field_ref(Point& p);
+// def chained(points: list[Point]) -> Point:
 Point& chained(std::vector<Point>& points);
+// def both_branches(points: list[Point], flag: bool) -> Point:
 Point& both_branches(std::vector<Point>& points, bool flag);
+// def main():
 void main();
 
 // class Point:

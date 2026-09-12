@@ -11,8 +11,11 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_reassign_to_none() -> str:
 std::string test_reassign_to_none();
+// def test_init_none_then_assign() -> str:
 std::string test_init_none_then_assign();
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 extern "C" void tpy_log(const uint8_t* msg);

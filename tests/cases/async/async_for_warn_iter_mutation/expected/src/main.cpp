@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // async def runner() -> None:
+//     src = Source(3)
+//     async for x in src:
+//         src.push(x)  # tpyc: warning(/Mutation of 'src'/)
 ::tpystd::tpy::Poll<::std::monostate> __coro_runner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // src = Source(3)
         src.emplace(Source(::tpy::BigInt(3)));
         __for_itr_0.emplace(((*src)).__aiter__());
         __state = S_JOIN_0;
@@ -33,7 +35,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         try {
-            // async for x in src:
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -45,7 +46,6 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_1: {
-        // src.push(x)  # tpyc: warning(/Mutation of 'src'/)
         (*src).push(x);
         __state = S_JOIN_0;
         continue;
@@ -66,10 +66,14 @@ __coro_runner runner() {
 }
 
 // async def post_loop() -> None:
+//     src = Source(2)
+//     async for x in src:
+//         pass
+//     src.push(9)  # tpyc: ok
+//     print("post_loop:", src.seen)
 ::tpystd::tpy::Poll<::std::monostate> __coro_post_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // src = Source(2)
         src.emplace(Source(::tpy::BigInt(2)));
         __for_itr_0.emplace(((*src)).__aiter__());
         __state = S_JOIN_0;
@@ -94,7 +98,6 @@ __coro_runner runner() {
     }
     case S_JOIN_0: {
         try {
-            // async for x in src:
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -106,14 +109,11 @@ __coro_runner runner() {
         }
     }
     case S_JOIN_1: {
-        // pass
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
-        // src.push(9)  # tpyc: ok
         (*src).push(9);
-        // print("post_loop:", src.seen)
         std::cout << "post_loop:" << " " << ::tpy::ListPrinter((*src).seen) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -130,12 +130,17 @@ __coro_post_loop post_loop() {
 }
 
 // async def nested() -> None:
+//     outer = Source(2)
+//     inner = Source(1)
+//     async for x in outer:
+//         async for y in inner:
+//             inner.push(y)  # tpyc: warning(/Mutation of 'inner'/)
+//         outer.push(x)  # tpyc: warning(/Mutation of 'outer'/)
+//     print("nested:", outer.seen, inner.seen)
 ::tpystd::tpy::Poll<::std::monostate> __coro_nested::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // outer = Source(2)
         outer.emplace(Source(::tpy::BigInt(2)));
-        // inner = Source(1)
         inner.emplace(Source(::tpy::BigInt(1)));
         __for_itr_0.emplace(((*outer)).__aiter__());
         __state = S_JOIN_0;
@@ -177,7 +182,6 @@ __coro_post_loop post_loop() {
     }
     case S_JOIN_0: {
         try {
-            // async for x in outer:
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -190,7 +194,6 @@ __coro_post_loop post_loop() {
     }
     case S_JOIN_1: {
         try {
-            // async for y in inner:
             __sub_1.emplace(*__for_itr_1);
             __state = S_RESUME_1;
             continue;
@@ -207,19 +210,16 @@ __coro_post_loop post_loop() {
         continue;
     }
     case S_JOIN_3: {
-        // print("nested:", outer.seen, inner.seen)
         std::cout << "nested:" << " " << ::tpy::ListPrinter((*outer).seen) << " " << ::tpy::ListPrinter((*inner).seen) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_4: {
-        // inner.push(y)  # tpyc: warning(/Mutation of 'inner'/)
         (*inner).push(y);
         __state = S_JOIN_1;
         continue;
     }
     case S_JOIN_5: {
-        // outer.push(x)  # tpyc: warning(/Mutation of 'outer'/)
         (*outer).push(x);
         __state = S_JOIN_0;
         continue;
@@ -236,30 +236,30 @@ __coro_nested nested() {
 }
 
 // def main() -> None:
+//     asyncio.run(runner())
+//     asyncio.run(post_loop())
+//     asyncio.run(nested())
 void main() {
-    // asyncio.run(runner())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(runner()));
-    // asyncio.run(post_loop())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(post_loop()));
-    // asyncio.run(nested())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(nested()));
 }
 
 // async def __anext__(self) -> int:
+//     if self.cursor >= self.limit:
+//         raise StopAsyncIteration
+//     val = self.cursor
+//     self.cursor += 1
+//     return val
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_SrcIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if self.cursor >= self.limit:
         if ((__self.cursor >= __self.limit)) {
-            // raise StopAsyncIteration
             throw ::tpy::StopAsyncIteration{};
         }
-        // val = self.cursor
         val = __self.cursor;
-        // self.cursor += 1
         __self.cursor = (__self.cursor) + (::tpy::BigInt(1));
-        // return val
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = val;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -270,18 +270,19 @@ void main() {
 }
 
 
+// # Borrow-conflict warning when a mutating method on the async-iterable
+// # is called during iteration. Same machinery as the sync-for
+// # warn_iter_mutation tests: an ITER borrow on the named iterable
+// # rejects mutating-method calls inside the loop body.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Borrow-conflict warning when a mutating method on the async-iterable
-    // # is called during iteration. Same machinery as the sync-for
-    // # warn_iter_mutation tests: an ITER borrow on the named iterable
-    // # rejects mutating-method calls inside the loop body.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

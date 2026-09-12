@@ -12,7 +12,9 @@ struct Gate;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check(gate: Gate) -> bool:
 bool check(const Gate& gate);
+// def main() -> None:
 void main();
 
 // class GateBase:
@@ -51,14 +53,17 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
 
 
 // def __init__(self) -> None:
+//     self.tag = 7
 inline GateBase::GateBase() : tag(7) {}
 
 // def __init__(self, flag: bool) -> None:
+//     super().__init__()
+//     self.flag = flag
 inline Gate::Gate(bool flag) : GateBase(), flag(flag) {}
 
 // def describe(self) -> str:
+//     return "on" if self.flag else "off"
 inline std::string Gate::describe() const {
-    // return "on" if self.flag else "off"
     return std::string(((this->flag) ? ("on") : ("off")));
 }
 void __tpy_init();

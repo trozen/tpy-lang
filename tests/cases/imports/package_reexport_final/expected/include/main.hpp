@@ -13,8 +13,11 @@ inline auto& VERSION = ::tpyapp::pkg::constants::VERSION;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def banner(prefix: str = VERSION) -> str:
 std::string banner(std::string_view prefix = ::tpyapp::pkg::constants::VERSION);
+// def cap(n: int32 = LIMIT) -> int32:
 int32_t cap(int32_t n = ::tpyapp::pkg::constants::LIMIT);
+// def main() -> None:
 void main();
 
 void __tpy_init();

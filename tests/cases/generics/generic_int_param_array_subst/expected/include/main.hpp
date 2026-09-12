@@ -12,8 +12,11 @@ template<typename T, std::size_t N> struct Buffer;
 extern std::array<int32_t, 3>* arr_global;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_array(arr: Array[int32, 3]) -> None:
 void use_array(const std::array<int32_t, 3>& arr);
+// def get_global_array() -> Array[int32, 3]:
 std::array<int32_t, 3>& get_global_array();
+// def main() -> None:
 void main();
 
 // class Buffer[T, N: int]:
@@ -23,19 +26,19 @@ struct Buffer {
     std::array<T, N> data;
 
     // def __init__(self) -> None:
+    //     pass
     Buffer() {
-        // pass
     }
 
     // def get_data(self) -> Array[T, N]:
+    //     return self.data
     std::array<T, N>& get_data() {
-        // return self.data
         return this->data;
     }
 
     // def set_data(self, arr: Array[T, N]) -> None:
+    //     self.data = arr
     void set_data(const std::array<T, N>& arr) {
-        // self.data = arr
         this->data = arr;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";

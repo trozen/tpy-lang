@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child[int32](int32(5))
+//     print(c.transform(42))
+//     print(c.transform("inherited"))
 void main() {
-    // c = Child[int32](int32(5))
     Child<int32_t> c = Child<int32_t>(5);
-    // print(c.transform(42))
     std::cout << c.transform<int32_t>(42) << "\n";
-    // print(c.transform("inherited"))
     std::cout << c.transform<std::string>("inherited") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -18,8 +18,10 @@ struct StrBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick[R, T: Container[R]](x: T) -> R:   # tpyc: ok
 template<typename R, Container<R> T>
 ::tpy::val_or_ref_t<R> pick(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // class IntBox:
@@ -62,26 +64,28 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline IntBox::IntBox(int32_t v) : v(v) {}
 
 // def get(self) -> int32:
+//     return self.v
 inline int32_t IntBox::get() const {
-    // return self.v
     return this->v;
 }
 
 // def __init__(self, s: StrView) -> None:
+//     self.s = s
 inline StrBox::StrBox(std::string_view s) : s(s) {}
 
 // def get(self) -> StrView:
+//     return self.s
 inline std::string_view StrBox::get() const {
-    // return self.s
     return this->s;
 }
 // def pick[R, T: Container[R]](x: T) -> R:   # tpyc: ok
+//     return x.get()
 template<typename R, Container<R> T>
 ::tpy::val_or_ref_t<R> pick(::tpy::param_val_or_ref_t<T> x) {
-    // return x.get()
     return x.get();
 }
 

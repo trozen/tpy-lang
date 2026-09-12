@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_Adder_add;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
 
 // class Adder:
@@ -36,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
     return os;
 }
 
-// Async coroutine: Adder.add
+// async def add(self, x: int32) -> int32:
 struct __coro_Adder_add {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +64,7 @@ inline __coro_Adder_add Adder::add(int32_t x) const {
     return __coro_Adder_add(*this, x);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -90,6 +91,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self, b: int32) -> None:
+//     self.base = b
 inline Adder::Adder(int32_t b) : base(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

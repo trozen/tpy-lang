@@ -5,11 +5,22 @@ namespace tpyapp::main {
 
 
 // async def def_in_finally() -> int32:
+//     total = 0
+//     try:
+//         await asyncio.sleep(0)
+//     finally:
+//
+//         def bump() -> None:
+//             nonlocal total
+//             total += 5
+//
+//         bump()
+//         bump()
+//     return total
 ::tpystd::tpy::Poll<int32_t> __coro_def_in_finally::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __state = S_JOIN_1;
         continue;
@@ -34,14 +45,12 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_0: {
-        // return total
         __state = S_DONE;
         int32_t __tpy_async_ret = total;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -60,16 +69,11 @@ namespace tpyapp::main {
 }
 
 void __coro_def_in_finally::__finally_0() {
-    // def bump() -> None:
     // def bump: frame member
-    // bump()
     bump();
-    // bump()
     bump();
 }
 void __coro_def_in_finally::bump() {
-    // nonlocal total
-    // total += 5
     total = ::tpy::add_check<int32_t>(total, 5);
 }
 
@@ -79,11 +83,21 @@ __coro_def_in_finally def_in_finally() {
 }
 
 // def gen_def_in_finally() -> Iterator[int32]:
+//     total = 0
+//     try:
+//         yield 1
+//     finally:
+//
+//         def bump() -> None:
+//             nonlocal total
+//             total += 3
+//
+//         bump()
+//     yield total
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_def_in_finally::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __state = S_JOIN_1;
         continue;
@@ -107,12 +121,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_def_in_finally::__next__(
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield total
         __state = S_RESUME_1;
         return total;
     }
     case S_JOIN_1: {
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
@@ -126,14 +138,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_def_in_finally::__next__(
 }
 
 void __gen_gen_def_in_finally::__finally_0() {
-    // def bump() -> None:
     // def bump: frame member
-    // bump()
     bump();
 }
 void __gen_gen_def_in_finally::bump() {
-    // nonlocal total
-    // total += 3
     total = ::tpy::add_check<int32_t>(total, 3);
 }
 
@@ -143,13 +151,23 @@ __gen_gen_def_in_finally gen_def_in_finally() {
 }
 
 // async def called_from_finally() -> int32:
+//     count = 0
+//
+//     def tick() -> None:
+//         nonlocal count
+//         count += 1
+//
+//     try:
+//         tick()
+//         await asyncio.sleep(0)
+//     finally:
+//         tick()
+//     return count
 ::tpystd::tpy::Poll<int32_t> __coro_called_from_finally::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // count = 0
         count = 0;
-        // def tick() -> None:
         // def tick: frame member
         __state = S_JOIN_1;
         continue;
@@ -174,16 +192,13 @@ __gen_gen_def_in_finally gen_def_in_finally() {
         }
     }
     case S_JOIN_0: {
-        // return count
         __state = S_DONE;
         int32_t __tpy_async_ret = count;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {
         try {
-            // tick()
             tick();
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -202,12 +217,9 @@ __gen_gen_def_in_finally gen_def_in_finally() {
 }
 
 void __coro_called_from_finally::__finally_0() {
-    // tick()
     tick();
 }
 void __coro_called_from_finally::tick() {
-    // nonlocal count
-    // count += 1
     count = ::tpy::add_check<int32_t>(count, 1);
 }
 
@@ -217,10 +229,13 @@ __coro_called_from_finally called_from_finally() {
 }
 
 // async def main() -> None:
+//     print(await def_in_finally())
+//     for v in gen_def_in_finally():
+//         print(v)
+//     print(await called_from_finally())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await def_in_finally())
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -230,9 +245,7 @@ __coro_called_from_finally called_from_finally() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await def_in_finally())
         std::cout << __await_lift_0 << "\n";
-        // for v in gen_def_in_finally():
         {
             auto __src_0 = gen_def_in_finally();
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -240,11 +253,9 @@ __coro_called_from_finally called_from_finally() {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_1);
-            // print(v)
             std::cout << v << "\n";
             }
         }
-        // print(await called_from_finally())
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -254,7 +265,6 @@ __coro_called_from_finally called_from_finally() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await called_from_finally())
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -270,16 +280,17 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # Nested defs and finally blocks in resumable bodies: a def DEFINED inside a
+// # finally, and a def defined in the body but CALLED from a finally.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Nested defs and finally blocks in resumable bodies: a def DEFINED inside a
-    // # finally, and a def defined in the body but CALLED from a finally.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

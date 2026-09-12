@@ -11,10 +11,15 @@ struct Emitter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(n: int32, hook: Callable[[int32], None] | None = None) -> None:
 void run(int32_t n, std::optional<std::function<void(int32_t)>> hook = std::nullopt);
+// def apply(n: int32, f: Callable[[int32], int32] | None = None) -> int32:
 int32_t apply(int32_t n, std::optional<std::function<int32_t(int32_t)>> f = std::nullopt);
+// def report(code: int32) -> None:
 void report(int32_t code);
+// def triple(x: int32) -> int32:
 int32_t triple(int32_t x);
+// def main() -> None:
 void main();
 
 // class Emitter:
@@ -43,41 +48,45 @@ inline std::ostream& operator<<(std::ostream& os, const Emitter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.on_event = None
 inline Emitter::Emitter() : on_event(std::nullopt) {}
 
 // def set_handler(self, cb: Callable[[str], None]) -> None:
+//     self.on_event = cb
 inline void Emitter::set_handler(const std::function<void(std::string_view)>& cb) {
-    // self.on_event = cb
     this->on_event = cb;
 }
 
 // def emit(self, msg: str) -> None:
+//     if self.on_event is not None:
+//         self.on_event(msg)
 inline void Emitter::emit(std::string_view msg) const {
-    // if self.on_event is not None:
     if ((this->on_event.has_value())) {
-        // self.on_event(msg)
         (*this).on_event.value()(msg);
     }
 }
 
 // def __str__(self) -> str:
+//     return "Emitter(...)"
 inline std::string Emitter::__str__() const {
-    // return "Emitter(...)"
     return "Emitter(...)";
 }
+// def scan(n: int32, onerror: Callable[[int32], None] | None = None) -> Iterator[int32]:
+//     i = 0
+//     while i < n:
+//         if i == 1 and onerror is not None:
+//             onerror(i)
+//         yield i
+//         i += 1
 inline auto scan(int32_t n, std::optional<std::function<void(int32_t)>> onerror = std::nullopt) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, onerror, i]() mutable -> std::optional<int32_t> {
             while ((i < n)) {
-                // if i == 1 and onerror is not None:
                 if (((i == 1) && (onerror.has_value()))) {
-                    // onerror(i)
                     onerror.value()(i);
                 }
                 auto __val = i;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }

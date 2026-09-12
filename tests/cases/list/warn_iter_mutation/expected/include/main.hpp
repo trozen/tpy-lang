@@ -9,22 +9,39 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_append() -> None:
 void test_append();
+// def test_pop() -> None:
 void test_pop();
+// def test_insert() -> None:
 void test_insert();
+// def test_remove() -> None:
 void test_remove();
+// def test_clear() -> None:
 void test_clear();
+// def test_extend() -> None:
 void test_extend();
+// def test_reverse() -> None:
 void test_reverse();
+// def test_sort() -> None:
 void test_sort();
+// def test_del() -> None:
 void test_del();
+// def test_nested_loops() -> None:
 void test_nested_loops();
+// def test_conditional_mutation() -> None:
 void test_conditional_mutation();
+// def test_subscript_assign_ok() -> None:
 void test_subscript_assign_ok();
+// def test_no_warn_after_loop() -> None:
 void test_no_warn_after_loop();
+// def test_read_only_ok() -> None:
 void test_read_only_ok();
+// def test_outer_loan_survives_inner_while() -> None:
 void test_outer_loan_survives_inner_while();
+// def test_else_clause_ok() -> None:
 void test_else_clause_ok();
+// def main() -> None:
 void main();
 
 void __tpy_init();

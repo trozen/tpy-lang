@@ -5,39 +5,40 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: set[int32] = {10, 20, 30}
+//     for x in s:
+//         print(x)
+//
+//     # Truthiness
+//     empty: set[int32] = set()
+//     if s:
+//         print("non-empty")
+//     if not empty:
+//         print("empty is falsy")
 void main() {
-    // s: set[int32] = {10, 20, 30}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Truthiness
-    // empty: set[int32] = set()
     ::tpy::ordered_set<int32_t> empty = ::tpy::ordered_set<int32_t>();
-    // if s:
     if ((::tpy::__len__(s) != 0)) {
-        // print("non-empty")
         std::cout << "non-empty" << "\n";
     }
-    // if not empty:
     if ((!((::tpy::__len__(empty) != 0)))) {
-        // print("empty is falsy")
         std::cout << "empty is falsy" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_dict_value_view() -> None:
 void test_dict_value_view();
+// def test_dict_mutation_fallback() -> None:
 void test_dict_mutation_fallback();
+// def test_dict_value_update_fallback() -> None:
 void test_dict_value_update_fallback();
+// def test_dict_int_key_view() -> None:
 void test_dict_int_key_view();
 
 void __tpy_init();

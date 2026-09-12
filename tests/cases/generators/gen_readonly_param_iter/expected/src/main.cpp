@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def tail(xs: readonly[list[int32]]) -> Iterator[int32]:
+//     yield -1
+//     for x in xs:
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_tail::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
@@ -28,7 +30,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tail::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -44,16 +45,16 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
 }
 
 // async def amain() -> None:
+//     data: list[int32] = [10, 20]
+//     print(sum(tail(data)))
+//     h = Holder()
+//     print(await h.total())
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // data: list[int32] = [10, 20]
         data.emplace(std::vector<int32_t>{10, 20});
-        // print(sum(tail(data)))
         std::cout << ::tpy::builtin_sum<int32_t>(tail((*data))) << "\n";
-        // h = Holder()
         h.emplace(Holder());
-        // print(await h.total())
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
@@ -63,7 +64,6 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await h.total())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -80,39 +80,44 @@ __coro_amain amain() {
 }
 
 // def main() -> None:
+//     # Rvalue arg: materialized as a named scope-local so the frame's const
+//     # borrow outlives the statement -- including a generator held across
+//     # statements.
+//     print(sum(tail([1, 2])))
+//     g = tail([3, 4])
+//     total = 0
+//     for x in g:
+//         total += x
+//     print(total)
+//     asyncio.run(amain())
 void main() {
-    // # Rvalue arg: materialized as a named scope-local so the frame's const
-    // # borrow outlives the statement -- including a generator held across
-    // # statements.
-    // print(sum(tail([1, 2])))
     std::vector<int32_t> __tmp_1 = {1, 2};
     std::cout << ::tpy::builtin_sum<int32_t>(tail(__tmp_1)) << "\n";
-    // g = tail([3, 4])
     std::vector<int32_t> __tmp_2 = {3, 4};
     auto g = tail(__tmp_2);
-    // total = 0
     int32_t total = 0;
-    // for x in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 
 // async def total(self) -> int32:
+//     n = 0
+//     if self.lst is not None:
+//         for x in self.lst:
+//             await asyncio.sleep(0)
+//             n += x
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = 0
         n = 0;
         if ((__self.lst.has_value())) {
             __for_it_0.emplace(((*__self.lst)).begin());
@@ -129,13 +134,11 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // n += x
         n = ::tpy::add_check<int32_t>(n, x);
         __state = S_JOIN_1;
         continue;
     }
     case S_JOIN_0: {
-        // return n
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -146,7 +149,6 @@ void main() {
             continue;
         }
         x = *((*__for_it_0))++;
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -157,18 +159,15 @@ void main() {
 }
 
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An explicit readonly[T] container param captured const in a resumable
-    // # generator frame (the iterator slot must be a const_iterator), and the
-    // # async-def route through the same const seeding: a narrowed-Optional self
-    // # field iterated with awaits in the loop.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

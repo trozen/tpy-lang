@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main():
+//     s = Sized(int32(42))
+//     print(s.val)
 void main() {
-    // s = Sized(int32(42))
     Sized s = Sized(42);
-    // print(s.val)
     std::cout << s.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

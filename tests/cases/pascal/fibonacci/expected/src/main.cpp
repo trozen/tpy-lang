@@ -3,33 +3,36 @@
 
 namespace tpyapp::main {
 
-// i: integer;
 int32_t i{};
 
+// function fib(n: integer): integer;
+// begin
+//   if n < 2 then
+//     fib := n
+//   else
+//     fib := fib(n - 1) + fib(n - 2);
+// end;
 int32_t fib(int32_t n) {
-    // function fib(n: integer): integer;
     int32_t __pascal_result = 0;
-    // if n < 2 then
     if ((n < 2)) {
-        // fib := n
         __pascal_result = n;
     } else {
-        // fib := fib(n - 1) + fib(n - 2);
         __pascal_result = (::tpy::add_check<int32_t>(fib((::tpy::sub_check<int32_t>(n, 1))), fib((::tpy::sub_check<int32_t>(n, 2)))));
     }
-    // function fib(n: integer): integer;
     return __pascal_result;
 }
 
+// i: integer;
+//
+// for i := 0 to 10 do
+//   writeln(fib(i));
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // for i := 0 to 10 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(10, 1);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // writeln(fib(i));
         std::cout << fib(i) << "\n";
     }
 }

@@ -5,117 +5,123 @@ namespace tpyapp::main {
 
 
 // def take_container(h: Holder) -> Own[list[int32]]:
+//     # A borrow-returning METHOD call, copied in one step.
+//     return copy(h.bctr())  # tpyc: ok
 std::vector<int32_t> take_container(Holder& h) {
-    // # A borrow-returning METHOD call, copied in one step.
-    // return copy(h.bctr())  # tpyc: ok
     return std::vector<int32_t>(h.bctr());
 }
 
 // def first(rows: list[list[int32]]) -> list[int32]:
+//     return rows[0]
 std::vector<int32_t>& first(std::vector<std::vector<int32_t>>& rows) {
-    // return rows[0]
     return ::tpy::__getitem__(rows, 0);
 }
 
 // def frec(h: Holder) -> Payload:
+//     return h.p
 Payload& frec(Holder& h) {
-    // return h.p
     return h.p;
 }
 
 // def take_free(rows: list[list[int32]]) -> Own[list[int32]]:
+//     # A FREE borrow-returning call is the same borrowed source a method call
+//     # is, for either family.
+//     return copy(first(rows))  # tpyc: ok
 std::vector<int32_t> take_free(std::vector<std::vector<int32_t>>& rows) {
-    // # A FREE borrow-returning call is the same borrowed source a method call
-    // # is, for either family.
-    // return copy(first(rows))  # tpyc: ok
     return std::vector<int32_t>(first(rows));
 }
 
 // def take_record(h: Holder) -> Own[Payload]:
+//     # The record hatch is one step over the same method-call source.
+//     return copy(h.brec())  # tpyc: ok
 Payload take_record(Holder& h) {
-    // # The record hatch is one step over the same method-call source.
-    // return copy(h.brec())  # tpyc: ok
     return Payload(h.brec());
 }
 
 // def take_record_free(h: Holder) -> Own[Payload]:
+//     return copy(frec(h))  # tpyc: ok
 Payload take_record_free(Holder& h) {
-    // return copy(frec(h))  # tpyc: ok
     return Payload(frec(h));
 }
 
 // def take_record_field(h: Holder) -> Own[Payload]:
+//     # A FIELD read is an lvalue source, admitted by the same value-form rule.
+//     return copy(h.p)  # tpyc: ok
 Payload take_record_field(const Holder& h) {
-    // # A FIELD read is an lvalue source, admitted by the same value-form rule.
-    // return copy(h.p)  # tpyc: ok
     return Payload(h.p);
 }
 
 // def take_record_ifexpr(h: Holder, pick: bool) -> Own[Payload]:
+//     # A ternary of two borrow-returning calls: both arms are lvalues, and the
+//     # copy-construct tail wraps whichever one runs.
+//     return copy(h.brec() if pick else frec(h))  # tpyc: ok
 Payload take_record_ifexpr(Holder& h, bool pick) {
-    // # A ternary of two borrow-returning calls: both arms are lvalues, and the
-    // # copy-construct tail wraps whichever one runs.
-    // return copy(h.brec() if pick else frec(h))  # tpyc: ok
     return Payload(((pick) ? (h.brec()) : (frec(h))));
 }
 
 // def main() -> None:
+//     h = Holder()
+//     got = take_container(h)
+//     got.append(3)
+//     print(len(h.items), len(got))
+//
+//     rec = take_record(h)
+//     rec.n = 42
+//     print(h.p.n, rec.n)
+//
+//     rec_free = take_record_free(h)
+//     rec_free.n = 43
+//     print(h.p.n, rec_free.n)
+//
+//     rec_field = take_record_field(h)
+//     rec_field.n = 44
+//     print(h.p.n, rec_field.n)
+//
+//     rec_if = take_record_ifexpr(h, False)
+//     rec_if.n = 45
+//     print(h.p.n, rec_if.n)
+//
+//     rows = [[5]]
+//     free = take_free(rows)
+//     free.append(6)
+//     print(len(rows[0]), len(free))
+//
+//     # The source side of the boundary is independent too.
+//     h.items.append(9)
+//     h.p.n = 7
+//     print(len(h.items), len(got), h.p.n, rec.n)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // got = take_container(h)
     std::vector<int32_t> got = take_container(h);
-    // got.append(3)
     got.push_back(3);
-    // print(len(h.items), len(got))
     std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(got) << "\n";
-    // rec = take_record(h)
     Payload rec = take_record(h);
-    // rec.n = 42
     rec.n = 42;
-    // print(h.p.n, rec.n)
     std::cout << h.p.n << " " << rec.n << "\n";
-    // rec_free = take_record_free(h)
     Payload rec_free = take_record_free(h);
-    // rec_free.n = 43
     rec_free.n = 43;
-    // print(h.p.n, rec_free.n)
     std::cout << h.p.n << " " << rec_free.n << "\n";
-    // rec_field = take_record_field(h)
     Payload rec_field = take_record_field(h);
-    // rec_field.n = 44
     rec_field.n = 44;
-    // print(h.p.n, rec_field.n)
     std::cout << h.p.n << " " << rec_field.n << "\n";
-    // rec_if = take_record_ifexpr(h, False)
     Payload rec_if = take_record_ifexpr(h, false);
-    // rec_if.n = 45
     rec_if.n = 45;
-    // print(h.p.n, rec_if.n)
     std::cout << h.p.n << " " << rec_if.n << "\n";
-    // rows = [[5]]
     std::vector<std::vector<int32_t>> rows = {{5}};
-    // free = take_free(rows)
     std::vector<int32_t> free = take_free(rows);
-    // free.append(6)
     free.push_back(6);
-    // print(len(rows[0]), len(free))
     std::cout << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__len__(free) << "\n";
-    // # The source side of the boundary is independent too.
-    // h.items.append(9)
     h.items.push_back(9);
-    // h.p.n = 7
     h.p.n = 7;
-    // print(len(h.items), len(got), h.p.n, rec.n)
     std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(got) << " " << h.p.n << " " << rec.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

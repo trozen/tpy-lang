@@ -11,7 +11,9 @@ struct V3;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mk(s: float) -> Own[V3]:
 V3 mk(double s);
+// def main() -> None:
 void main();
 
 // # @nocopy: the const-ref binding is the subject, so a silent copy is an error.
@@ -45,17 +47,18 @@ inline std::ostream& operator<<(std::ostream& os, const V3& obj) {
 
 
 // def __init__(self, x_: float) -> None:
+//     self.x = x_
 inline V3::V3(double x_) : x(x_) {}
 
 // def add(self, v: "V3") -> Own["V3"]:
+//     return V3(self.x + v.x)
 inline V3 V3::add(const V3& v) const {
-    // return V3(self.x + v.x)
     return V3(((this->x) + (v.x)));
 }
 
 // def muls(self, s: float) -> Own["V3"]:
+//     return V3(self.x * s)
 inline V3 V3::muls(double s) const {
-    // return V3(self.x * s)
     return V3(((this->x) * (s)));
 }
 void __tpy_init();

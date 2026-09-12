@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(tag: bytes) -> tuple[bytes, bytes]:
 std::tuple<::tpy::Bytes, ::tpy::Bytes> make(::tpy::BytesView tag);
+// def main() -> None:
 void main();
 
 void __tpy_init();

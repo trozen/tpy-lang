@@ -53,8 +53,11 @@ inline std::ostream& operator<<(std::ostream& __os, Status __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_colors() -> None:
 void print_colors();
+// def count_members() -> None:
 void count_members();
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def make() -> tuple[Own[Counter], int32]:
+//     return (Counter(7), 99)
 std::tuple<Counter, int32_t> make() {
-    // return (Counter(7), 99)
     return std::tuple<Counter, int32_t>{Counter(7), 99};
 }
 
 // def consume(c: Own[Counter]) -> None:
+//     print(c.n)
 void consume(Counter&& c) {
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def main() -> None:
+//     a, n = make()
+//     consume(a)
+//     print(n)
 void main() {
-    // a, n = make()
     auto __tup_1 = make();
     Counter a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // consume(a)
     consume(std::move(a));
-    // print(n)
     std::cout << n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -13,6 +13,7 @@ struct Widget;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Named:
@@ -71,24 +72,29 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Named::Named(std::string_view name) : name(name) {}
 
 // def describe(self) -> str:
+//     return self.name
 inline std::string Named::describe() const {
-    // return self.name
     return this->name;
 }
 
 // def __init__(self, count: int32) -> None:
+//     self.count = count
 inline Counted::Counted(int32_t count) : count(count) {}
 
 // def inc(self) -> None:
+//     self.count = self.count + 1
 inline void Counted::inc() {
-    // self.count = self.count + 1
     this->count = (::tpy::add_check<int32_t>(this->count, 1));
 }
 
 // def __init__(self, name: str, count: int32, tag: str) -> None:
+//     Named.__init__(self, name)
+//     Counted.__init__(self, count)
+//     self.tag = tag
 inline Widget::Widget(std::string_view name, int32_t count, std::string_view tag) : Named(name), Counted(count), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

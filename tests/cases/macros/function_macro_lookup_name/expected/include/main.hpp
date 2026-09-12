@@ -37,7 +37,9 @@ struct Gate;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check(gate: Gate, lamp: Lamp) -> bool:
 bool check(const Gate& gate, const ::tpyapp::lampmod::Lamp& lamp);
+// def main() -> None:
 void main();
 
 // class Gate:
@@ -58,6 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
 
 
 // def __init__(self, flag: bool) -> None:
+//     self.flag = flag
 inline Gate::Gate(bool flag) : flag(flag) {}
 void __tpy_init();
 } // namespace tpyapp::main

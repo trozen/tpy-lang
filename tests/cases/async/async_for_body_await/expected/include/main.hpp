@@ -19,8 +19,11 @@ struct __coro_total;
 struct __coro_main;
 struct __coro_Counter___anext__;
 
+// async def doubled(n: int) -> int:
 __coro_doubled doubled(::tpy::BigInt n);
+// async def total(c: Counts) -> int:
 __coro_total total(Counts& c);
+// async def main() -> None:
 __coro_main main();
 
 // class Counter:
@@ -62,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
     return os;
 }
 
-// Async coroutine: Counter.__anext__
+// async def __anext__(self) -> int:
 struct __coro_Counter___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -88,7 +91,7 @@ inline __coro_Counter___anext__ Counter::__anext__() {
     return __coro_Counter___anext__(*this);
 }
 
-// Async coroutine: doubled
+// async def doubled(n: int) -> int:
 struct __coro_doubled {
     int32_t __state;
     bool __cancel_pending;
@@ -110,7 +113,7 @@ struct __coro_doubled {
     }
 };
 
-// Async coroutine: total
+// async def total(c: Counts) -> int:
 struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
@@ -143,7 +146,7 @@ struct __coro_total {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -170,14 +173,17 @@ struct __coro_main {
 
 
 // def __init__(self, limit: int) -> None:
+//     self.n = 0
+//     self.limit = limit
 inline Counter::Counter(const ::tpy::BigInt& limit) : n(::tpy::BigInt(0)), limit(limit) {}
 
 // def __init__(self, limit: int) -> None:
+//     self.limit = limit
 inline Counts::Counts(const ::tpy::BigInt& limit) : limit(limit) {}
 
 // def __aiter__(self) -> Own[Counter]:
+//     return Counter(self.limit)
 inline Counter Counts::__aiter__() const {
-    // return Counter(self.limit)
     return Counter(this->limit);
 }
 void __tpy_init();

@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def with_basic_slice(items: list[int32], index: int32 | basic_slice) -> int32:
+//     items.append(0)  # force mutable param
+//     items.pop()
+//     if isinstance(index, basic_slice):
+//         s: Span[int32] = items[index]  # tpyc: ok
+//         return s[0]
+//     else:
+//         return items[index]
 int32_t with_basic_slice(std::vector<int32_t>& items, const ::tpy::Union<::tpy::BasicSlice, int32_t>& index) {
-    // items.append(0)  # force mutable param
     items.push_back(0);
-    // items.pop()
     ::tpy::pop_back(items);
-    // if isinstance(index, basic_slice):
     if (std::holds_alternative<::tpy::BasicSlice>(index)) {
         const auto& __index = std::get<::tpy::BasicSlice>(index);
-        // s: Span[int32] = items[index]  # tpyc: ok
         std::span<int32_t> s = ::tpy::list_slice(items, __index);
-        // return s[0]
         return ::tpy::__getitem__(s, 0);
-    // else:
     } else {
         const auto& __index = std::get<int32_t>(index);
-        // return items[index]
         return ::tpy::__getitem__(items, __index);
     }
 }
 
 // def main() -> None:
+//     items: list[int32] = [10, 20, 30, 40, 50]
+//     print(with_basic_slice(items, 0))
+//     print(with_basic_slice(items, 3))
 void main() {
-    // items: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
-    // print(with_basic_slice(items, 0))
     std::cout << with_basic_slice(items, 0) << "\n";
-    // print(with_basic_slice(items, 3))
     std::cout << with_basic_slice(items, 3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

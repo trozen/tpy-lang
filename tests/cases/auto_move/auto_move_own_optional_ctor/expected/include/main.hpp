@@ -12,6 +12,7 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Point:
@@ -47,14 +48,14 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, p: Own[Point] | None, tag: int32):
+//     if p is not None:
+//         self.tag = tag
+//     else:
+//         self.tag = int32(-1)
 inline Wrapper::Wrapper(std::optional<Point> p, int32_t tag) {
-    // if p is not None:
     if ((p.has_value())) {
-        // self.tag = tag
         this->tag = tag;
-    // else:
     } else {
-        // self.tag = int32(-1)
         this->tag = -1;
     }
 }

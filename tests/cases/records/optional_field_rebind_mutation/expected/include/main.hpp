@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test(h: Holder) -> None:
 void test(Holder& h);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -48,9 +50,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.value = None
 inline Holder::Holder() : value(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

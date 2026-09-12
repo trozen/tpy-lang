@@ -3,42 +3,41 @@
 
 namespace tpyapp::main {
 
+int32_t calls{};
+
+// def main() -> None:
+//     global calls
+//     b = Bag(5)
+//
+//     calls = 0
+//     in_range = 1 < b.anything < 10
+//     print("in range:", in_range, "calls:", calls)
+//
+//     calls = 0
+//     member = b.anything in (5, 9)
+//     print("membership:", member, "calls:", calls)
+void main() {
+    Bag b = Bag(::tpy::BigInt(5));
+    calls = 0;
+    bool in_range = ({ auto&& _cmp1 = b.__getattr__("anything"); (1 < _cmp1) && (_cmp1 < 10); });
+    std::cout << "in range:" << " " << ::tpy::print_bool(in_range) << " " << "calls:" << " " << calls << "\n";
+    calls = 0;
+    bool member = ({ auto&& __in_lhs = b.__getattr__("anything"); (__in_lhs == 5) || (__in_lhs == 9); });
+    std::cout << "membership:" << " " << ::tpy::print_bool(member) << " " << "calls:" << " " << calls << "\n";
+}
+
 // # A `__getattr__` fallback is the other hidden call behind field-access syntax,
 // # so it must bind a chained-compare temp for the same reason a property does --
 // # inlining ran the fallback twice for one source-level attribute read.
 // calls = 0
-int32_t calls{};
-
-// def main() -> None:
-void main() {
-    // global calls
-    // b = Bag(5)
-    Bag b = Bag(::tpy::BigInt(5));
-    // calls = 0
-    calls = 0;
-    // in_range = 1 < b.anything < 10
-    bool in_range = ({ auto&& _cmp1 = b.__getattr__("anything"); (1 < _cmp1) && (_cmp1 < 10); });
-    // print("in range:", in_range, "calls:", calls)
-    std::cout << "in range:" << " " << ::tpy::print_bool(in_range) << " " << "calls:" << " " << calls << "\n";
-    // calls = 0
-    calls = 0;
-    // member = b.anything in (5, 9)
-    bool member = ({ auto&& __in_lhs = b.__getattr__("anything"); (__in_lhs == 5) || (__in_lhs == 9); });
-    // print("membership:", member, "calls:", calls)
-    std::cout << "membership:" << " " << ::tpy::print_bool(member) << " " << "calls:" << " " << calls << "\n";
-}
-
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A `__getattr__` fallback is the other hidden call behind field-access syntax,
-    // # so it must bind a chained-compare temp for the same reason a property does --
-    // # inlining ran the fallback twice for one source-level attribute read.
-    // calls = 0
     calls = 0;
-    // main()
     main();
 }
 

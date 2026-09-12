@@ -5,67 +5,70 @@ namespace tpyapp::main {
 
 
 // def main():
+//     a = Box(10)
+//     match a:
+//         case q if q.v > 5:
+//             q.v = 99       # guard passes -> mutate via capture
+//         case r:
+//             r.v = 1
+//     print(a.v)             # 99
+//
+//     c = Box(3)
+//     match c:
+//         case q if q.v > 5:
+//             q.v = 99
+//         case r:
+//             r.v = 1        # guard failed -> next arm aliases c
+//     print(c.v)             # 1
+//
+//     n = 7
+//     match n:
+//         case m if m > 5:
+//             print(m)       # 7 (scalar capture copies)
+//         case other:
+//             print(other)
 void main() {
-    // a = Box(10)
     Box a = Box(::tpy::BigInt(10));
-    // match a:
     auto& __match_subject_1 = a;
-    // case q if q.v > 5:
     {
         auto& q = __match_subject_1;
         if ((q.v > 5)) {
-            // q.v = 99       # guard passes -> mutate via capture
             q.v = ::tpy::BigInt(99);
             goto __match_end_2;
         }
     }
-    // case r:
     {
         auto& r = __match_subject_1;
-        // r.v = 1
         r.v = ::tpy::BigInt(1);
         goto __match_end_2;
     }
     __match_end_2:;
-    // print(a.v)             # 99
     std::cout << a.v << "\n";
-    // c = Box(3)
     Box c = Box(::tpy::BigInt(3));
-    // match c:
     auto& __match_subject_3 = c;
-    // case q if q.v > 5:
     {
         auto& q = __match_subject_3;
         if ((q.v > 5)) {
-            // q.v = 99
             q.v = ::tpy::BigInt(99);
             goto __match_end_4;
         }
     }
-    // case r:
     {
         auto& r = __match_subject_3;
-        // r.v = 1        # guard failed -> next arm aliases c
         r.v = ::tpy::BigInt(1);
         goto __match_end_4;
     }
     __match_end_4:;
-    // print(c.v)             # 1
     std::cout << c.v << "\n";
-    // n = 7
     int32_t n = 7;
-    // match n:
     auto& __match_subject_5 = n;
     switch (__match_subject_5) {
-    // case m if m > 5:
     default: {
         auto m = __match_subject_5;
         auto other = __match_subject_5;
         if ((m > 5)) {
-            // print(m)       # 7 (scalar capture copies)
             std::cout << m << "\n";
         } else {
-            // print(other)
             std::cout << other << "\n";
         }
         break;
@@ -73,12 +76,12 @@ void main() {
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

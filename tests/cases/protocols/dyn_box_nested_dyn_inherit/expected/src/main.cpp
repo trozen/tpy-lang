@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b: Box[Pet] = Box(Cat("Whiskers"))
+//     print(b.get().name())
 void main() {
-    // b: Box[Pet] = Box(Cat("Whiskers"))
     ::tpystd::tplib::box::Box<Pet> b = ::tpystd::tplib::box::Box<Cat>(Cat("Whiskers"));
-    // print(b.get().name())
     std::cout << b.get().name() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

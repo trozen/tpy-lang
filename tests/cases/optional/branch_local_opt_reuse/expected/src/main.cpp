@@ -10,79 +10,79 @@ namespace tpyapp::main {
 // # leaked binding classified `print(x)` as an optional deref, `(*x)` on a
 // # plain int -- the missed-restore regression this case guards).
 // def cond(n: int) -> bool:
+//     return n > 0
 bool cond(const ::tpy::BigInt& n) {
-    // return n > 0
     return (n > 0);
 }
 
 // def maybe(n: int) -> int | None:
+//     if n > 1:
+//         return n
+//     return None
 std::optional<::tpy::BigInt> maybe(const ::tpy::BigInt& n) {
-    // if n > 1:
     if ((n > 1)) {
-        // return n
         return n;
     }
-    // return None
     return std::nullopt;
 }
 
 // def maybe_s(n: int) -> str | None:
+//     if n > 1:
+//         return "yes"
+//     return None
 std::optional<std::string> maybe_s(const ::tpy::BigInt& n) {
-    // if n > 1:
     if ((n > 1)) {
-        // return "yes"
         return "yes";
     }
-    // return None
     return std::nullopt;
 }
 
 // def main() -> None:
+//     n = 3
+//     if cond(n):
+//         x: int | None = maybe(n)
+//         if x is not None:
+//             print(x)
+//     if cond(n):
+//         x = 5
+//         print(x)
+//     if cond(n):
+//         s: str | None = maybe_s(n)
+//         if s is not None:
+//             print(s)
+//     if cond(n):
+//         s = "plain"
+//         print(s)
 void main() {
-    // n = 3
     int32_t n = 3;
-    // if cond(n):
     if (cond(::tpy::BigInt(n))) {
-        // x: int | None = maybe(n)
         std::optional<::tpy::BigInt> x = maybe(::tpy::BigInt(n));
-        // if x is not None:
         if ((x.has_value())) {
-            // print(x)
             std::cout << ::tpy::print_optional_val(x) << "\n";
         }
     }
-    // if cond(n):
     if (cond(::tpy::BigInt(n))) {
-        // x = 5
         int32_t x = 5;
-        // print(x)
         std::cout << x << "\n";
     }
-    // if cond(n):
     if (cond(::tpy::BigInt(n))) {
-        // s: str | None = maybe_s(n)
         std::optional<std::string> s = maybe_s(::tpy::BigInt(n));
-        // if s is not None:
         if ((s.has_value())) {
-            // print(s)
             std::cout << ::tpy::print_optional_val(s) << "\n";
         }
     }
-    // if cond(n):
     if (cond(::tpy::BigInt(n))) {
-        // s = "plain"
         std::string s = "plain";
-        // print(s)
         std::cout << s << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

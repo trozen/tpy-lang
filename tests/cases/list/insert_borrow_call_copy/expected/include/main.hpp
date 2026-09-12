@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Payload:
@@ -55,20 +56,23 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.p = Payload(42)
+//     self.items = [1, 2]
 inline Holder::Holder() : p(Payload(42)), items(std::vector<int32_t>{1, 2}) {}
 
 // def brec(self) -> Payload:
+//     return self.p
 inline Payload& Holder::brec() {
-    // return self.p
     return this->p;
 }
 
 // def bctr(self) -> list[int32]:
+//     return self.items
 inline std::vector<int32_t>& Holder::bctr() {
-    // return self.items
     return this->items;
 }
 void __tpy_init();

@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def gen(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> gen(int32_t n);
+// def longest(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> longest(int32_t n);
+// def main():
 void main();
 
 void __tpy_init();

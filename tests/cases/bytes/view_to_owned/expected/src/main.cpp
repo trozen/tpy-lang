@@ -7,51 +7,51 @@ namespace tpyapp::main {
 // # Bytes view optimization: param assignment stays as span,
 // # concat/augassign promotes to owned vector
 // def process(data: bytes) -> None:
+//     b = data         # should be span (view)
+//     print(b)
+//     c = data + b"!"  # concat -> owned
+//     print(c)
 void process(::tpy::BytesView data) {
-    // b = data         # should be span (view)
     ::tpy::BytesView b = data;
-    // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
-    // c = data + b"!"  # concat -> owned
     ::tpy::Bytes c = (::tpy::bytes_concat(data, ::tpy::bytes_literal_owned("!", 1)));
-    // print(c)
     std::cout << ::tpy::BytesPrinter(c) << "\n";
 }
 
 // def augassign(data: bytes) -> None:
+//     b = data         # starts as view
+//     b += b"!"        # augassign promotes to owned
+//     print(b)
 void augassign(::tpy::BytesView data) {
-    // b = data         # starts as view
     ::tpy::Bytes b = ::tpy::Bytes(data);
-    // b += b"!"        # augassign promotes to owned
     b = ::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1));
-    // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
 }
 
 // def literal_view() -> None:
+//     b = b"hello"     # literal -> view (static storage)
+//     print(b)
 void literal_view() {
-    // b = b"hello"     # literal -> view (static storage)
     ::tpy::BytesView b = ::tpy::bytes_literal("hello", 5);
-    // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
 }
 
 // def main() -> None:
+//     process(b"hello")
+//     augassign(b"world")
+//     literal_view()
 void main() {
-    // process(b"hello")
     process(::tpy::bytes_literal("hello", 5));
-    // augassign(b"world")
     augassign(::tpy::bytes_literal("world", 5));
-    // literal_view()
     literal_view();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

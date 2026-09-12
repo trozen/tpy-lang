@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_maybe_count;
 
+// def maybe_count(n: int32) -> Iterator[int32]:
 __gen_maybe_count maybe_count(int32_t n);
+// def main():
 void main();
 
-// Generator: maybe_count
+// def maybe_count(n: int32) -> Iterator[int32]:
 struct __gen_maybe_count : public ::tpy::next_iter_mixin<__gen_maybe_count, int32_t> {
     int32_t __state;
     int32_t n;

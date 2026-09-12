@@ -11,13 +11,21 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_list() -> Own[list[int32]]:
 std::vector<int32_t> make_list();
+// def test_list_one_branch(flag: bool) -> None:
 void test_list_one_branch(bool flag);
+// def test_own_list_both_branches(flag: bool) -> None:
 void test_own_list_both_branches(bool flag);
+// def test_list_reassigned_mixed(flag: bool) -> None:
 void test_list_reassigned_mixed(bool flag);
+// def test_record_one_branch(flag: bool) -> None:
 void test_record_one_branch(bool flag);
+// def test_record_both_branches(flag: bool) -> None:
 void test_record_both_branches(bool flag);
+// def test_optional_record_one_branch(flag: bool) -> None:
 void test_optional_record_one_branch(bool flag);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -40,6 +48,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

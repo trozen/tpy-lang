@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // async def amain() -> None:
+//     pts = [Point(1), Point(2)]
+//     got = await bump(pts)
+//     print("total:", got)
+//     print("mutations reached the caller:", pts[0].x, pts[1].x)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // pts = [Point(1), Point(2)]
         pts.emplace(std::array<Point, 2>{Point(1), Point(2)});
-        // got = await bump(pts)
         __sub_0.emplace((*pts));
         __state = S_RESUME_0;
         continue;
@@ -20,9 +22,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         got = std::move(__r0).value();
         __sub_0.reset();
-        // print("total:", got)
         std::cout << "total:" << " " << got << "\n";
-        // print("mutations reached the caller:", pts[0].x, pts[1].x)
         std::cout << "mutations reached the caller:" << " " << ::tpy::__getitem__((*pts), 0).x << " " << ::tpy::__getitem__((*pts), 1).x << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -38,18 +38,19 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # The async sibling of iterators/gen_proto_param_ref_alias: a coroutine frame
+// # holds hoisted for-loop vars the same way a generator frame does, so a loop
+// # element over a protocol-typed iterable must alias rather than copy across the
+// # suspension -- the mutation has to reach the caller's container.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The async sibling of iterators/gen_proto_param_ref_alias: a coroutine frame
-    // # holds hoisted for-loop vars the same way a generator frame does, so a loop
-    // # element over a protocol-typed iterable must alias rather than copy across the
-    // # suspension -- the mutation has to reach the caller's container.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

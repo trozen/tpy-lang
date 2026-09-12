@@ -11,6 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass
@@ -44,8 +45,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __eq__(self, other: Self) -> bool:  # tpyc: ok
+//     return self.x == other.x
 inline bool Point::__eq__(const Point& other) const {
-    // return self.x == other.x
     return (this->x == other.x);
 }
 

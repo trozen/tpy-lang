@@ -5,14 +5,31 @@ namespace tpystd::tpy::thread {
 
 
 
+// # tpy: include("<tpy/threading.hpp>")
+// # tpy: link("pthread")
+// """OS-thread spawn/join -- V1 (Runnable-struct form).
+//
+// `spawn` moves a `Send` task onto a fresh OS thread, runs its `run()` there,
+// and returns a `JoinHandle` whose `join()` blocks for the result (re-raising
+// any exception the task threw). The model is Rust's Send + move in Python
+// syntax -- not CPython threading (see docs/THREADING_DESIGN.md).
+//
+// Both the task and the result `R` cross the thread boundary, so both must be
+// `Send`: the task via the `Send[Own[T]]` param wrapper (rejected at the call
+// site with a why-not chain), `R` via the `R: Send` bound.
+//
+// `spawn(task)` infers both type args: `T` through the `Send[]` wrapper and `R`
+// from the task's `run()` return type (associated-type inference through the
+// `ThreadTask[R]` bound). The explicit `spawn[R, T](task)` form still works but
+// is not valid CPython (a generic function is not subscriptable at runtime).
+// """
+//
+// from tpy.extern import native
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: include("<tpy/threading.hpp>")
-    // # tpy: link("pthread")
-    // from tpy.extern import native
 }
 
 } // namespace tpystd::tpy::thread

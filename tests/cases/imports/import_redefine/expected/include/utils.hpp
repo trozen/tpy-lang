@@ -10,6 +10,7 @@ namespace tpyapp::utils {
 extern int32_t MAX;
 inline constexpr std::string_view __name__ = "utils";
 
+// def get_max() -> int32:
 int32_t get_max();
 
 void __tpy_init();

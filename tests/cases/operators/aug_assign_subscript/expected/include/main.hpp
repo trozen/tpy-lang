@@ -13,9 +13,13 @@ using ::tpystd::tplib::array_list::ArrayList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_list_aug_assign() -> None:
 void test_list_aug_assign();
+// def test_arraylist_aug_assign() -> None:
 void test_arraylist_aug_assign();
+// def test_negative_index_aug_assign() -> None:
 void test_negative_index_aug_assign();
+// def test_array_aug_assign() -> None:
 void test_array_aug_assign();
 
 void __tpy_init();

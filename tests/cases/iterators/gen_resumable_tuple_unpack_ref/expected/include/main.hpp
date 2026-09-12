@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_process;
 
+// def process(rows: list[tuple[int32, Item]]) -> Iterator[int32]:  # tpyc: ok
 __gen_process process(std::vector<std::tuple<int32_t, Item>>& rows);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -32,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
-// Generator: process
+// def process(rows: list[tuple[int32, Item]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_process : public ::tpy::next_iter_mixin<__gen_process, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, Item>>& rows;
@@ -62,6 +64,7 @@ struct __gen_process : public ::tpy::next_iter_mixin<__gen_process, int32_t> {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

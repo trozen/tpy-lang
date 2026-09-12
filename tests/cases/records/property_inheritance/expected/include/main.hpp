@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -59,28 +60,31 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self._x = x
 inline Base::Base(int32_t x) : _x(x) {}
 
 // @property
 // def x(self) -> int32:
+//     return self._x
 inline int32_t Base::x() const {
-    // return self._x
     return this->_x;
 }
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     super().__init__(x)
+//     self._y = y
 inline Child::Child(int32_t x, int32_t y) : Base(x), _y(y) {}
 
 // @property
 // def y(self) -> int32:
+//     return self._y
 inline int32_t Child::y() const {
-    // return self._y
     return this->_y;
 }
 
 // def sum(self) -> int32:
+//     return self.x + self.y
 inline int32_t Child::sum() const {
-    // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x(), this->y()));
 }
 void __tpy_init();

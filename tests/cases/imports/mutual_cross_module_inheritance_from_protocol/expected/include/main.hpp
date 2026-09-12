@@ -13,14 +13,16 @@ using ::tpyapp::a::Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_proto(g: Greeter) -> str:
 template<::tpyapp::b::Greeter T_g>
 std::string use_proto(T_g& g);
+// def main() -> None:
 void main();
 
 // def use_proto(g: Greeter) -> str:
+//     return g.hello()
 template<::tpyapp::b::Greeter T_g>
 std::string use_proto(T_g& g) {
-    // return g.hello()
     return g.hello();
 }
 

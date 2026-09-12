@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def take(items: list[int32]) -> int32:
+//     items.append(1)
+//     return len(items)
 int32_t take(std::vector<int32_t>& items) {
-    // items.append(1)
     items.push_back(1);
-    // return len(items)
     return ::tpy::__len__(items);
 }
 
 // def test(x: int32) -> int32:
+//     if x < 0:
+//         return -1
+//     elif take([10]) == x:
+//         return 0
+//     elif take([20, 30]) == x:
+//         return 1
+//     else:
+//         return 2
 int32_t test(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // return -1
         return -1;
-    // elif take([10]) == x:
     } else {
         std::vector<int32_t> __tmp_1 = {10};
         if ((take(__tmp_1) == x)) {
-            // return 0
             return 0;
-        // elif take([20, 30]) == x:
         } else {
             std::vector<int32_t> __tmp_2 = {20, 30};
             if ((take(__tmp_2) == x)) {
-                // return 1
                 return 1;
-            // else:
             } else {
-                // return 2
                 return 2;
             }
         }
@@ -40,23 +40,23 @@ int32_t test(int32_t x) {
 }
 
 // def main() -> None:
+//     print(test(-5))
+//     print(test(2))
+//     print(test(3))
+//     print(test(7))
 void main() {
-    // print(test(-5))
     std::cout << test(-5) << "\n";
-    // print(test(2))
     std::cout << test(2) << "\n";
-    // print(test(3))
     std::cout << test(3) << "\n";
-    // print(test(7))
     std::cout << test(7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

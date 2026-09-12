@@ -5,18 +5,22 @@ namespace tpyapp::main {
 
 
 // def rvalue_manager(flag: bool) -> int32:
+//     if flag:
+//         with Reg(11) as view:
+//             pass
+//     else:
+//         with Reg(22) as view:
+//             pass
+//     return view.n
 int32_t rvalue_manager(bool flag) {
     std::optional<Reg> __slot_2;
     std::optional<Reg> __slot_3;
-    // if flag:
     Reg* view;
     if (flag) {
-        // with Reg(11) as view:
         __slot_2.emplace(Reg(11));
         auto& __ctx_1 = (*__slot_2);
         view = &(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -27,14 +31,11 @@ int32_t rvalue_manager(bool flag) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-    // else:
     } else {
-        // with Reg(22) as view:
         __slot_3.emplace(Reg(22));
         auto& __ctx_2 = (*__slot_3);
         view = &(__ctx_2.__enter__());
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -46,22 +47,25 @@ int32_t rvalue_manager(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // return view.n
     return view->n;
 }
 
 // def lvalue_manager(flag: bool) -> int32:
+//     keep = Reg(33)
+//     if flag:
+//         with keep as view:
+//             pass
+//     else:
+//         with keep as view:
+//             pass
+//     return view.n
 int32_t lvalue_manager(bool flag) {
-    // keep = Reg(33)
     Reg keep = Reg(33);
-    // if flag:
     Reg* view;
     if (flag) {
-        // with keep as view:
         auto& __ctx_3 = keep;
         view = &(__ctx_3.__enter__());
         try {
-            // pass
             goto __with_exit_3;
         } catch (::tpy::BaseException& __exc_3) {
             __ctx_3.__exit__({}, &__exc_3, {});
@@ -72,13 +76,10 @@ int32_t lvalue_manager(bool flag) {
         }
         __with_exit_3:
         __ctx_3.__exit__({}, nullptr, {});
-    // else:
     } else {
-        // with keep as view:
         auto& __ctx_4 = keep;
         view = &(__ctx_4.__enter__());
         try {
-            // pass
             goto __with_exit_4;
         } catch (::tpy::BaseException& __exc_4) {
             __ctx_4.__exit__({}, &__exc_4, {});
@@ -90,26 +91,25 @@ int32_t lvalue_manager(bool flag) {
         __with_exit_4:
         __ctx_4.__exit__({}, nullptr, {});
     }
-    // return view.n
     return view->n;
 }
 
 // def main() -> None:
+//     print(rvalue_manager(True))
+//     print(rvalue_manager(False))
+//     print(lvalue_manager(True))
 void main() {
-    // print(rvalue_manager(True))
     std::cout << rvalue_manager(true) << "\n";
-    // print(rvalue_manager(False))
     std::cout << rvalue_manager(false) << "\n";
-    // print(lvalue_manager(True))
     std::cout << lvalue_manager(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

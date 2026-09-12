@@ -5,128 +5,130 @@ namespace tpyapp::main {
 
 
 // def test_add() -> None:
+//     s: set[int32] = {int32(1), int32(2)}
+//     for x in s:
+//         s.add(x)  # tpyc: warning(/Mutation of 's'.*'add'/)
 void test_add() {
-    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s.add(x)  # tpyc: warning(/Mutation of 's'.*'add'/)
         s.insert(x);
     }
 }
 
 // def test_remove() -> None:
+//     s: set[int32] = {int32(1), int32(2)}
+//     for x in s:
+//         s.remove(x)  # tpyc: warning(/Mutation of 's'.*'remove'/)
 void test_remove() {
-    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s.remove(x)  # tpyc: warning(/Mutation of 's'.*'remove'/)
         ::tpy::set_remove(s, x);
     }
 }
 
 // def test_discard() -> None:
+//     s: set[int32] = {int32(1), int32(2)}
+//     for x in s:
+//         s.discard(x)  # tpyc: warning(/Mutation of 's'.*'discard'/)
 void test_discard() {
-    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s.discard(x)  # tpyc: warning(/Mutation of 's'.*'discard'/)
         s.erase(x);
     }
 }
 
 // def test_pop() -> None:
+//     s: set[int32] = {int32(1), int32(2)}
+//     for x in s:
+//         s.pop()  # tpyc: warning(/Mutation of 's'.*'pop'/)
 void test_pop() {
-    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s.pop()  # tpyc: warning(/Mutation of 's'.*'pop'/)
         ::tpy::set_pop(s);
     }
 }
 
 // def test_clear() -> None:
+//     s: set[int32] = {int32(1), int32(2)}
+//     for x in s:
+//         s.clear()  # tpyc: warning(/Mutation of 's'.*'clear'/)
 void test_clear() {
-    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s.clear()  # tpyc: warning(/Mutation of 's'.*'clear'/)
         s.clear();
     }
 }
 
 // def test_update() -> None:
+//     s: set[int32] = {int32(1), int32(2)}
+//     other: set[int32] = {int32(3)}
+//     for x in s:
+//         s.update(other)  # tpyc: warning(/Mutation of 's'.*'update'/)
 void test_update() {
-    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // other: set[int32] = {int32(3)}
     ::tpy::ordered_set<int32_t> other = ::tpy::ordered_set<int32_t>({3});
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s.update(other)  # tpyc: warning(/Mutation of 's'.*'update'/)
         ::tpy::set_update(s, other);
     }
 }
 
 // def test_no_warn_after_loop() -> None:
+//     """Mutation after loop exit is fine."""
+//     s: set[int32] = {int32(1), int32(2)}
+//     for x in s:
+//         pass
+//     s.add(int32(3))  # tpyc: ok
 void test_no_warn_after_loop() {
-    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // pass
     }
-    // s.add(int32(3))  # tpyc: ok
     s.insert(3);
 }
 
 // def test_read_only_ok() -> None:
+//     """No warnings for read-only operations during iteration."""
+//     s: set[int32] = {int32(1), int32(2)}
+//     total: int32 = int32(0)
+//     for x in s:
+//         total += x     # tpyc: ok
+//         _ = len(s)     # tpyc: ok
 void test_read_only_ok() {
-    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // total: int32 = int32(0)
     int32_t total = 0;
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x     # tpyc: ok
         total = ::tpy::add_check<int32_t>(total, x);
-        // _ = len(s)     # tpyc: ok
         int32_t _ = ::tpy::__len__(s);
     }
 }

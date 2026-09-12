@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def _pin_cycle_copy() -> int32:
+//     total = 0
+//     for c in itertools.islice(itertools.cycle([_Cell(1), _Cell(2)]), 3):
+//         total += c.n
+//     return total
 int32_t _pin_cycle_copy() {
-    // total = 0
     int32_t total = 0;
-    // for c in itertools.islice(itertools.cycle([_Cell(1), _Cell(2)]), 3):
     {
         auto __tmp_1 = std::array<_Cell, 2>{_Cell(1), _Cell(2)};
         auto __tmp_2 = ::tpystd::itertools::cycle<_Cell>(__tmp_1);
@@ -18,163 +20,164 @@ int32_t _pin_cycle_copy() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& c = ::tpy::unwrap_ref(*__r_1);
-        // total += c.n
         total = ::tpy::add_check<int32_t>(total, c.n);
         }
     }
-    // return total
     return total;
 }
 
+// # Compiles every non-macro module under lib/tpy so the whole library's
+// # generated C++ is committed next to this case -- the render oracle that
+// # outlives the AST body emitter. options.json snapshots "*", so this import
+// # list alone decides what is covered; tests/test_stdlib_render_coverage.py
+// # asserts it stays equal to the set of non-macro modules under lib/tpy.
+// import _bindings
+// import _bindings.hinnant_date
+// import _bindings.mbedtls
+// import _bindings.pcre2
+// import _bindings.posix_epoll
+// import _bindings.posix_signal
+// import _bindings.posix_socket
+// import _bindings.tz_intern
+// import _datetime_cal
+// import _datetime_fmt
+// import _datetime_parse
+// import asyncio
+// import asyncio._executor
+// import base64
+// import bisect
+//
+// import collections
+// import csv
+// import datetime
+// import errno
+// import functools
+// import hashlib
+// import heapq
+// import http
+// import http.client
+// import io
+// import itertools
+// import json
+// import math
+// import os
+// import os._environ
+// import os._native
+// import os._types
+// import os.path
+// import random
+// import re
+// import signal
+// import socket
+// import ssl
+// import sys
+// import time
+// import tplib
+// import tplib.arc
+// import tplib.array_list
+// import tplib.box
+// import tplib.channel
+// import tplib.fix_str
+// import tplib.json
+// import tplib.json.parser
+// import tplib.json.writer
+// import tplib.rc
+// import tplib.requests
+//
+// import tpy._bootstrap
+// import tpy._bootstrap._decorators
+// import tpy._bootstrap._extern
+// import tpy._builtins
+// import tpy._builtins._bytes
+// import tpy._builtins._dict
+// import tpy._builtins._exceptions
+// import tpy._builtins._funcs
+// import tpy._builtins._io
+// import tpy._builtins._list
+// import tpy._builtins._range
+// import tpy._builtins._set
+// import tpy._builtins._super
+// import tpy._builtins._types
+// import tpy._core
+// import tpy._core._bytes_view
+// import tpy._core._containers
+// import tpy._core._functions
+// import tpy._core._types
+// import tpy._typing
+// import tpy.atomic
+// import tpy.bits
+// import tpy.channel
+// import tpy.coro
+// import tpy.extern
+// import tpy.mem
+// import tpy.sync
+// import tpy.thread
+// import tpy.unsafe
+// import tpy.version
+//
+// import urllib
+// import urllib.parse
+// import urllib.request
+// import zoneinfo
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Compiles every non-macro module under lib/tpy so the whole library's
-    // # generated C++ is committed next to this case -- the render oracle that
-    // # outlives the AST body emitter. options.json snapshots "*", so this import
-    // # list alone decides what is covered; tests/test_stdlib_render_coverage.py
-    // # asserts it stays equal to the set of non-macro modules under lib/tpy.
-    // import _bindings
-    // import _bindings.hinnant_date
-    // import _bindings.mbedtls
     ::tpystd::_bindings::mbedtls::__tpy_init();
-    // import _bindings.pcre2
     ::tpystd::_bindings::pcre2::__tpy_init();
-    // import _bindings.posix_epoll
-    // import _bindings.posix_signal
-    // import _bindings.posix_socket
-    // import _bindings.tz_intern
-    // import _datetime_cal
     ::tpystd::_datetime_cal::__tpy_init();
-    // import _datetime_fmt
     ::tpystd::_datetime_fmt::__tpy_init();
-    // import _datetime_parse
     ::tpystd::_datetime_parse::__tpy_init();
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // import asyncio._executor
     ::tpystd::asyncio::_executor::__tpy_init();
-    // import base64
     ::tpystd::base64::__tpy_init();
-    // import bisect
     ::tpystd::bisect::__tpy_init();
-    // import collections
     ::tpystd::collections::__tpy_init();
-    // import csv
     ::tpystd::csv::__tpy_init();
-    // import datetime
     ::tpystd::datetime::__tpy_init();
-    // import errno
     ::tpystd::errno_mod::__tpy_init();
-    // import functools
     ::tpystd::functools::__tpy_init();
-    // import hashlib
     ::tpystd::hashlib::__tpy_init();
-    // import heapq
     ::tpystd::heapq::__tpy_init();
-    // import http
     ::tpystd::http::__tpy_init();
-    // import http.client
     ::tpystd::http::client::__tpy_init();
-    // import io
     ::tpystd::io::__tpy_init();
-    // import itertools
     ::tpystd::itertools::__tpy_init();
-    // import json
     ::tpystd::json::__tpy_init();
-    // import math
     ::tpystd::math::__tpy_init();
-    // import os
     ::tpystd::os::__tpy_init();
-    // import os._environ
     ::tpystd::os::_environ::__tpy_init();
-    // import os._native
-    // import os._types
     ::tpystd::os::_types::__tpy_init();
-    // import os.path
     ::tpystd::os::path::__tpy_init();
-    // import random
     ::tpystd::random::__tpy_init();
-    // import re
     ::tpystd::re::__tpy_init();
-    // import signal
     ::tpystd::signal::__tpy_init();
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // import ssl
     ::tpystd::ssl::__tpy_init();
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // import time
-    // import tplib
     ::tpystd::tplib::__tpy_init();
-    // import tplib.arc
     ::tpystd::tplib::arc::__tpy_init();
-    // import tplib.array_list
     ::tpystd::tplib::array_list::__tpy_init();
-    // import tplib.box
     ::tpystd::tplib::box::__tpy_init();
-    // import tplib.channel
     ::tpystd::tplib::channel::__tpy_init();
-    // import tplib.fix_str
     ::tpystd::tplib::fix_str::__tpy_init();
-    // import tplib.json
     ::tpystd::tplib::json::__tpy_init();
-    // import tplib.json.parser
     ::tpystd::tplib::json::parser::__tpy_init();
-    // import tplib.json.writer
     ::tpystd::tplib::json::writer::__tpy_init();
-    // import tplib.rc
     ::tpystd::tplib::rc::__tpy_init();
-    // import tplib.requests
     ::tpystd::tplib::requests::__tpy_init();
-    // import tpy._bootstrap
-    // import tpy._bootstrap._decorators
-    // import tpy._bootstrap._extern
-    // import tpy._builtins
-    // import tpy._builtins._bytes
-    // import tpy._builtins._dict
-    // import tpy._builtins._exceptions
-    // import tpy._builtins._funcs
-    // import tpy._builtins._io
-    // import tpy._builtins._list
-    // import tpy._builtins._range
-    // import tpy._builtins._set
-    // import tpy._builtins._super
-    // import tpy._builtins._types
-    // import tpy._core
-    // import tpy._core._bytes_view
-    // import tpy._core._containers
-    // import tpy._core._functions
-    // import tpy._core._types
     ::tpystd::tpy::__tpy_init();
-    // import tpy._typing
     ::tpystd::typing::__tpy_init();
-    // import tpy.atomic
     ::tpystd::tpy::atomic::__tpy_init();
-    // import tpy.bits
-    // import tpy.channel
     ::tpystd::tpy::channel::__tpy_init();
-    // import tpy.coro
     ::tpystd::coro::__tpy_init();
-    // import tpy.extern
-    // import tpy.mem
-    // import tpy.sync
     ::tpystd::tpy::sync::__tpy_init();
-    // import tpy.thread
     ::tpystd::tpy::thread::__tpy_init();
-    // import tpy.unsafe
-    // import tpy.version
     ::tpystd::tpy::version::__tpy_init();
-    // import urllib
     ::tpystd::urllib::__tpy_init();
-    // import urllib.parse
     ::tpystd::urllib::parse::__tpy_init();
-    // import urllib.request
     ::tpystd::urllib::request::__tpy_init();
-    // import zoneinfo
     ::tpystd::zoneinfo::__tpy_init();
 }
 

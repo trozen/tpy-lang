@@ -5,43 +5,46 @@ namespace tpyapp::main {
 
 
 // def read_only(r: Ref) -> int32:
+//     # Const path: Ref is a borrow; __deref__() const overload is used.
+//     return r.x + r.y
 int32_t read_only(const Ref& r) {
-    // # Const path: Ref is a borrow; __deref__() const overload is used.
-    // return r.x + r.y
     return (::tpy::add_check<int32_t>(r.__deref__().x, r.__deref__().y));
 }
 
 // def main() -> None:
+//     pt: Point = Point(10, 20)
+//     r: Ref = Ref(pt)
+//
+//     # Read through mutable __deref__.
+//     print(r.x)            # 10
+//     print(r.y)            # 20
+//
+//     # Mutate through mutable __deref__ -- requires the non-const overload.
+//     r.x = int32(99)
+//     r.y = int32(88)
+//     print(r.x)            # 99
+//     print(r.y)            # 88
+//
+//     # Borrow path goes through the const overload.
+//     print(read_only(r))   # 187
 void main() {
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // r: Ref = Ref(pt)
     Ref r = Ref(pt);
-    // # Read through mutable __deref__.
-    // print(r.x)            # 10
     std::cout << r.__deref__().x << "\n";
-    // print(r.y)            # 20
     std::cout << r.__deref__().y << "\n";
-    // # Mutate through mutable __deref__ -- requires the non-const overload.
-    // r.x = int32(99)
     r.__deref__().x = 99;
-    // r.y = int32(88)
     r.__deref__().y = 88;
-    // print(r.x)            # 99
     std::cout << r.__deref__().x << "\n";
-    // print(r.y)            # 88
     std::cout << r.__deref__().y << "\n";
-    // # Borrow path goes through the const overload.
-    // print(read_only(r))   # 187
     std::cout << read_only(r) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

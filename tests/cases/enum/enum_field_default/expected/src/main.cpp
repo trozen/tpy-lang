@@ -47,41 +47,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Shape()
+//     print(1 if s.tint == Color.RED else 0)
+//     s.tint = Color.GREEN
+//     print(1 if s.tint == Color.GREEN else 0)
+//     t = Tagged()
+//     print(1 if t.kind == Color.BLUE else 0)
+//     r = Remote()
+//     print(1 if r.state == RemoteState.IDLE else 0)
+//     p = Pinned()
+//     print(1 if p.state == RemoteState.BUSY else 0)
 void main() {
-    // s = Shape()
     Shape s = Shape();
-    // print(1 if s.tint == Color.RED else 0)
     std::cout << (((s.tint == Color::RED)) ? (1) : (0)) << "\n";
-    // s.tint = Color.GREEN
     s.tint = Color::GREEN;
-    // print(1 if s.tint == Color.GREEN else 0)
     std::cout << (((s.tint == Color::GREEN)) ? (1) : (0)) << "\n";
-    // t = Tagged()
     Tagged t = Tagged();
-    // print(1 if t.kind == Color.BLUE else 0)
     std::cout << (((t.kind == Color::BLUE)) ? (1) : (0)) << "\n";
-    // r = Remote()
     ::tpyapp::sidemod::Remote r = ::tpyapp::sidemod::Remote();
-    // print(1 if r.state == RemoteState.IDLE else 0)
     std::cout << (((r.state == ::tpyapp::sidemod::RemoteState::IDLE)) ? (1) : (0)) << "\n";
-    // p = Pinned()
     Pinned p = Pinned();
-    // print(1 if p.state == RemoteState.BUSY else 0)
     std::cout << (((p.state == ::tpyapp::sidemod::RemoteState::BUSY)) ? (1) : (0)) << "\n";
 }
 
+// # Enum members as record field defaults: zero-arg construction uses the
+// # in-class initializer (Color tint = Color::RED;), explicit defaults too,
+// # and a cross-module enum default qualifies correctly.
+// from enum import Enum
+//
+// from sidemod import Remote, RemoteState
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum members as record field defaults: zero-arg construction uses the
-    // # in-class initializer (Color tint = Color::RED;), explicit defaults too,
-    // # and a cross-module enum default qualifies correctly.
-    // from enum import Enum
-    // from sidemod import Remote, RemoteState
     ::tpyapp::sidemod::__tpy_init();
-    // main()
     main();
 }
 

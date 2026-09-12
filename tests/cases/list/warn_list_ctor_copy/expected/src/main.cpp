@@ -5,77 +5,82 @@ namespace tpyapp::main {
 
 
 // def make_nodes() -> Own[list[Node]]:
+//     return [Node(int32(1))]
 std::vector<Node> make_nodes() {
-    // return [Node(int32(1))]
     return {Node(1)};
 }
 
 // def test_list_ctor_ref_type_warns() -> None:
+//     """list[Node](list[Node]) should warn (b still live)."""
+//     b: list[Node] = [Node(int32(1))]
+//     a = list(b)  # tpyc: warning(/copies Node elements/)
+//     print(len(b))
 void test_list_ctor_ref_type_warns() {
-    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
-    // a = list(b)  # tpyc: warning(/copies Node elements/)
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(b);
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_list_ctor_value_type_no_warn() -> None:
+//     """list[int32](list[int32]) should not warn (value types)."""
+//     b: list[int32] = [int32(1), int32(2)]
+//     a = list(b)  # tpyc: ok
+//     print(len(a))
 void test_list_ctor_value_type_no_warn() {
-    // b: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> b = {1, 2};
-    // a = list(b)  # tpyc: ok
     std::vector<int32_t> a = ::tpy::construct<std::vector<int32_t>>(::tpy::own_iter(std::move(b)));
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_list_ctor_copy_no_warn() -> None:
+//     """Explicit copy() suppresses the warning."""
+//     b: list[Node] = [Node(int32(1))]
+//     a = list(copy(b))  # tpyc: ok
+//     print(len(b))
 void test_list_ctor_copy_no_warn() {
-    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
-    // a = list(copy(b))  # tpyc: ok
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(std::vector<Node>(b));
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_list_ctor_last_use_no_warn() -> None:
+//     """Auto-move at last use suppresses the warning."""
+//     b: list[Node] = [Node(int32(1))]
+//     a = list(b)  # tpyc: ok -- b's last use
+//     print(len(a))
 void test_list_ctor_last_use_no_warn() {
-    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
-    // a = list(b)  # tpyc: ok -- b's last use
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::own_iter(std::move(b)));
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_list_ctor_rvalue_no_warn() -> None:
+//     """Rvalue source does not warn."""
+//     a = list(make_nodes())  # tpyc: ok
+//     b = list([Node(int32(2))])  # tpyc: ok
+//     print(len(a))
 void test_list_ctor_rvalue_no_warn() {
-    // a = list(make_nodes())  # tpyc: ok
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(make_nodes());
-    // b = list([Node(int32(2))])  # tpyc: ok
     std::vector<Node> b = std::vector<Node>({Node(2)});
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 
+// test_list_ctor_ref_type_warns()
+// test_list_ctor_value_type_no_warn()
+// test_list_ctor_copy_no_warn()
+// test_list_ctor_last_use_no_warn()
+// test_list_ctor_rvalue_no_warn()
+// test_list_ctor_generic_warns([Node(int32(1))])
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_list_ctor_ref_type_warns()
     test_list_ctor_ref_type_warns();
-    // test_list_ctor_value_type_no_warn()
     test_list_ctor_value_type_no_warn();
-    // test_list_ctor_copy_no_warn()
     test_list_ctor_copy_no_warn();
-    // test_list_ctor_last_use_no_warn()
     test_list_ctor_last_use_no_warn();
-    // test_list_ctor_rvalue_no_warn()
     test_list_ctor_rvalue_no_warn();
-    // test_list_ctor_generic_warns([Node(int32(1))])
     std::vector<Node> __tmp_1 = {Node(1)};
     test_list_ctor_generic_warns<Node>(__tmp_1);
 }

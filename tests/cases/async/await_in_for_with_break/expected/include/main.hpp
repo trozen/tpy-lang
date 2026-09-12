@@ -14,11 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_value;
 struct __coro_first_match;
 
+// async def value(n: int) -> int:
 __coro_value value(::tpy::BigInt n);
+// async def first_match() -> int:
 __coro_first_match first_match();
+// def main() -> None:
 void main();
 
-// Async coroutine: value
+// async def value(n: int) -> int:
 struct __coro_value {
     int32_t __state;
     bool __cancel_pending;
@@ -40,7 +43,7 @@ struct __coro_value {
     }
 };
 
-// Async coroutine: first_match
+// async def first_match() -> int:
 struct __coro_first_match {
     int32_t __state;
     bool __cancel_pending;

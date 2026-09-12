@@ -5,79 +5,84 @@ namespace tpyapp::main {
 
 
 // def test_list_view() -> None:
+//     """No mutation: string_view."""
+//     names: list[str] = ["alice", "bob"]
+//     x = names[int32(0)]  # tpyc: type(StrView)
+//     print(x)
 void test_list_view() {
-    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // x = names[int32(0)]  # tpyc: type(StrView)
     std::string_view x = ::tpy::__getitem__(names, 0);
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_list_mutation_fallback() -> None:
+//     """Source mutated after borrow: falls back to std::string."""
+//     names: list[str] = ["alice", "bob"]
+//     x = names[int32(0)]  # tpyc: type(str)
+//     names.append("carol")
+//     print(x)
 void test_list_mutation_fallback() {
-    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // x = names[int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
-    // names.append("carol")
     names.push_back("carol");
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_list_reassign_fallback() -> None:
+//     """Source reassigned after borrow: falls back to std::string."""
+//     names: list[str] = ["alice", "bob"]
+//     x = names[int32(0)]  # tpyc: type(str)
+//     names = ["dave"]
+//     print(x)
 void test_list_reassign_fallback() {
     std::optional<std::vector<std::string>> __slot_2;
-    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> __slot_1 = {"alice", "bob"};
     std::vector<std::string>* names = &__slot_1;
-    // x = names[int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__((*names), 0);
-    // names = ["dave"]
     names = &*(__slot_2 = {"dave"});
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_list_subscript_write_fallback() -> None:
+//     """Subscript write on source: falls back to std::string."""
+//     names: list[str] = ["alice", "bob"]
+//     x = names[int32(0)]  # tpyc: type(str)
+//     names[int32(0)] = "eve"
+//     print(x)
 void test_list_subscript_write_fallback() {
-    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // x = names[int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
-    // names[int32(0)] = "eve"
     ::tpy::__setitem__(names, 0, "eve");
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_list_pop_fallback() -> None:
+//     """pop() on source: falls back to std::string."""
+//     names: list[str] = ["alice", "bob"]
+//     x = names[int32(0)]  # tpyc: type(str)
+//     names.pop(int32(1))
+//     print(x)
 void test_list_pop_fallback() {
-    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // x = names[int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
-    // names.pop(int32(1))
     ::tpy::list_pop_at(names, 1);
-    // print(x)
     std::cout << x << "\n";
 }
 
+// test_list_view()
+// test_list_mutation_fallback()
+// test_list_reassign_fallback()
+// test_list_subscript_write_fallback()
+// test_list_pop_fallback()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_list_view()
     test_list_view();
-    // test_list_mutation_fallback()
     test_list_mutation_fallback();
-    // test_list_reassign_fallback()
     test_list_reassign_fallback();
-    // test_list_subscript_write_fallback()
     test_list_subscript_write_fallback();
-    // test_list_pop_fallback()
     test_list_pop_fallback();
 }
 

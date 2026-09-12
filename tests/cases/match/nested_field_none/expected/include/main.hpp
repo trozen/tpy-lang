@@ -12,7 +12,9 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(o: Outer) -> str:
 std::string describe(const Outer& o);
+// def main() -> None:
 void main();
 
 // # A `None` field test nested inside a record sub-pattern -- exercises the
@@ -52,9 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, child: "str | None") -> None:
+//     self.child = child
 inline Inner::Inner(std::optional<std::string_view> child) : child(child ? std::make_optional(std::string(*child)) : std::nullopt) {}
 
 // def __init__(self, inner: Inner) -> None:
+//     self.inner = inner
 inline Outer::Outer(const Inner& inner) : inner(inner) {}
 void __tpy_init();
 } // namespace tpyapp::main

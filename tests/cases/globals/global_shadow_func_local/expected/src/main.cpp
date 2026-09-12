@@ -3,42 +3,40 @@
 
 namespace tpyapp::main {
 
-// # Global `p` — must get its own __global_slot, not reuse stale __slot from foo/pick
-// p = Point(10, 20)
 Point* p{};
 
 // # Function with pointer-local `p` (branch-declared, creates rebind_slots entry)
 // def foo(cond: bool) -> None:
+//     if cond:
+//         p = Point(1, 2)
+//     else:
+//         p = Point(3, 4)
+//     print(p.x, p.y)
 void foo(bool cond) {
     std::optional<Point> __slot_1;
-    // if cond:
     Point* p;
     if (cond) {
-        // p = Point(1, 2)
         p = &*(__slot_1 = Point(1, 2));
-    // else:
     } else {
-        // p = Point(3, 4)
         p = &*(__slot_1 = Point(3, 4));
     }
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
+// # Global `p` — must get its own __global_slot, not reuse stale __slot from foo/pick
+// p = Point(10, 20)
+// print(p.x, p.y)
+// foo(True)
+// Picker(99).pick(True)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Global `p` — must get its own __global_slot, not reuse stale __slot from foo/pick
-    // p = Point(10, 20)
     static Point __global_slot_1 = Point(10, 20);
     p = &__global_slot_1;
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
-    // foo(True)
     foo(true);
-    // Picker(99).pick(True)
     Picker(99).pick(true);
 }
 

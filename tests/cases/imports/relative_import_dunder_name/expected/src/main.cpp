@@ -4,15 +4,16 @@
 namespace tpyapp::main {
 
 
+// from pkg.consumer import compute
+//
+// print(compute())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pkg.consumer import compute
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::consumer::__tpy_init();
-    // print(compute())
     std::cout << ::tpyapp::pkg::consumer::compute() << "\n";
 }
 

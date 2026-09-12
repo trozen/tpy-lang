@@ -12,7 +12,9 @@ struct Leaf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(t: Tree) -> str:
 std::string describe(const Tree& t);
+// def main() -> None:
 void main();
 
 // # match/case on a recursive union type alias
@@ -34,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Leaf::Leaf(const ::tpy::BigInt& value) : value(value) {}
 struct Tree {
     using variant_type = ::tpy::Union<Leaf, std::vector<Tree>>;

@@ -5,33 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = spawn[int, Boom](Boom())
+//     try:
+//         print(h.join())
+//     except ValueError as e:
+//         print("caught:", e)
 void main() {
-    // h = spawn[int, Boom](Boom())
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> h = ::tpystd::tpy::thread::spawn<::tpy::BigInt, Boom>(Boom());
-    // try:
     {
         try {
-            // print(h.join())
             std::cout << h.join() << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", e)
             std::cout << "caught:" << " " << e << "\n";
         }
     }
 }
 
+// # An exception raised inside the task's run() is re-raised by join() in the
+// # joining thread, catchable by ordinary try/except (std::future cross-thread
+// # result-or-rethrow). Consuming via join() on the exception path also clears the
+// # abort-on-drop check, so the handle drops cleanly afterwards.
+// from tpy.thread import spawn
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An exception raised inside the task's run() is re-raised by join() in the
-    // # joining thread, catchable by ordinary try/except (std::future cross-thread
-    // # result-or-rethrow). Consuming via join() on the exception path also clears the
-    // # abort-on-drop check, so the handle drops cleanly afterwards.
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // main()
     main();
 }
 

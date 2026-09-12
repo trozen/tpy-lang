@@ -16,10 +16,15 @@ struct __gen_fresh_records;
 struct __gen_fresh_rows;
 struct __gen_Bag_drain;
 
+// def mk(v: int32) -> Own[Node]:
 Node mk(int32_t v);
+// def mk_row(v: int32) -> Own[list[int32]]:
 std::vector<int32_t> mk_row(int32_t v);
+// def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
 __gen_fresh_records fresh_records(std::vector<Node>& src);
+// def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
 __gen_fresh_rows fresh_rows(std::vector<std::vector<int32_t>>& src);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -55,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
-// Generator: fresh_records
+// def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
 struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, Node> {
     int32_t __state;
     std::vector<Node>& src;
@@ -82,7 +87,7 @@ struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, 
     }
 };
 
-// Generator: fresh_rows
+// def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
 struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::vector<int32_t>> {
     int32_t __state;
     std::vector<std::vector<int32_t>>& src;
@@ -109,7 +114,7 @@ struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::v
     }
 };
 
-// Generator: Bag.drain
+// def drain(self) -> Iterator[Own[Node]]:
 struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain, Node> {
     int32_t __state;
     const Bag& __self;
@@ -142,10 +147,15 @@ inline __gen_Bag_drain Bag::drain() const {
 
 
 // def __init__(self, v: int):
+//     self.val = v
 inline Node::Node(const ::tpy::BigInt& v) : val(v) {}
 
 // def __init__(self) -> None:
+//     self.items = [Node(7)]
 inline Bag::Bag() : items(std::vector<Node>{Node(::tpy::BigInt(7))}) {}
+// def boxes(n: int) -> Iterator[Own[Node]]:
+//     for i in range(n):
+//         yield Node(i)
 inline auto boxes(const ::tpy::BigInt& n) {
     return ::tpy::make_generator<Node>(
         [n, __i = ::tpy::BigInt(0), __stop = static_cast<::tpy::BigInt>(n)]() mutable -> std::optional<Node> {

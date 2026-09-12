@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -58,12 +59,12 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, value: int32):
+//     print("Base.init", value)
+//     self._ptr = unsafe_alloc()
+//     unsafe_init(self._ptr, value)
 inline Base::Base(int32_t value) {
-    // print("Base.init", value)
     std::cout << "Base.init" << " " << value << "\n";
-    // self._ptr = unsafe_alloc()
     this->_ptr = static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))));
-    // unsafe_init(self._ptr, value)
     ::new(static_cast<void*>(this->_ptr)) int32_t(value);
 }
 
@@ -79,38 +80,39 @@ inline Base& Base::operator=(Base&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("Base.del")
+//     unsafe_drop(self._ptr)
+//     unsafe_free(self._ptr)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    // print("Base.del")
     std::cout << "Base.del" << "\n";
-    // unsafe_drop(self._ptr)
     ::tpy::destroy_at(this->_ptr);
-    // unsafe_free(self._ptr)
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
 }
 
 // def get(self) -> int32:
+//     return self._ptr
 inline int32_t Base::get() const {
-    // return self._ptr
     return ::tpy::deref_check(this->_ptr);
 }
 
 // def __init__(self, value: int32):
+//     super().__init__(value)
+//     print("Child.init")
 inline Child::Child(int32_t value) : Base(value) {
-    // print("Child.init")
     std::cout << "Child.init" << "\n";
 }
 
 // def take(self: Own[Self]) -> int32:
+//     print("take")
+//     val: int32 = unsafe_move_out(self._ptr)
+//     unsafe_free(self._ptr)
+//     return val
 inline int32_t Child::take() && {
     this->__tpy_owned_ = false;
-    // print("take")
     std::cout << "take" << "\n";
-    // val: int32 = unsafe_move_out(self._ptr)
     int32_t val = std::move(*this->_ptr);
-    // unsafe_free(self._ptr)
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
-    // return val
     return val;
 }
 void __tpy_init();

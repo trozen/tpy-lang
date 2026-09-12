@@ -15,8 +15,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(pet: Pet) -> None:
 void greet(::tpyapp::pet::Pet& pet);
+// def echo(pet: Pet) -> Pet:
 ::tpyapp::pet::Pet& echo(::tpyapp::pet::Pet& pet);
+// def main() -> None:
 void main();
 
 // # Direct inheritance (C++ struct Dog : Pet)
@@ -51,14 +54,14 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def speak(self) -> str:
+//     return "Woof"
 inline std::string Dog::speak() {
-    // return "Woof"
     return "Woof";
 }
 
 // def speak(self) -> str:
+//     return "Meow"
 inline std::string Cat::speak() const {
-    // return "Meow"
     return "Meow";
 }
 void __tpy_init();

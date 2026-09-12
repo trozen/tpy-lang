@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def probe(v: Alpha | Beta | Gamma) -> int32:
+//     # A tuple isinstance extracts nothing: the holds-OR test emits bare and
+//     # the subject stays the variant.
+//     assert isinstance(v, (Alpha, Beta))
+//     return 0
 int32_t probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*> v) {
-    // # A tuple isinstance extracts nothing: the holds-OR test emits bare and
-    // # the subject stays the variant.
-    // assert isinstance(v, (Alpha, Beta))
     if (!((std::holds_alternative<const Alpha*>(v) || std::holds_alternative<const Beta*>(v)))) ::tpy::raise_assertion_error();
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     print(probe(Alpha(1)))
 void main() {
-    // print(probe(Alpha(1)))
     Alpha __tmp_1 = Alpha(1);
     std::cout << probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*>{&__tmp_1}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

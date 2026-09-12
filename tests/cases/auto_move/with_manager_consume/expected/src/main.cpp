@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def main():
+//     k = K()
+//     g = Guard()
+//     with g:
+//         k.take(g)  # tpyc: warning(/copies/)
 void main() {
-    // k = K()
     K k = K();
-    // g = Guard()
     Guard g = Guard();
-    // with g:
     auto& __ctx_1 = g;
     __ctx_1.__enter__();
     try {
-        // k.take(g)  # tpyc: warning(/copies/)
         Guard __tmp_1 = g;
         k.take(std::move(__tmp_1));
         goto __with_exit_1;
@@ -29,12 +29,12 @@ void main() {
     __ctx_1.__exit__({}, nullptr, {});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

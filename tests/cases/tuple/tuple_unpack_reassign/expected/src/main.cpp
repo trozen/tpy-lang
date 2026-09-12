@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def get_pair() -> tuple[int32, int32]:
+//     return (int32(10), int32(20))
 std::tuple<int32_t, int32_t> get_pair() {
-    // return (int32(10), int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
 // def main() -> None:
+//     a: int32 = 0
+//     b: int32 = 0
+//     print(a)
+//     print(b)
+//     a, b = get_pair()
+//     print(a)
+//     print(b)
 void main() {
-    // a: int32 = 0
     int32_t a = 0;
-    // b: int32 = 0
     int32_t b = 0;
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
-    // a, b = get_pair()
     auto __tup_1 = get_pair();
     a = std::get<0>(__tup_1);
     b = std::get<1>(__tup_1);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def borrow_through_method(w: Wrapper) -> StrView:
+//     return w.get_view()  # tpyc: ok
 std::string_view borrow_through_method(Wrapper& w) {
-    // return w.get_view()  # tpyc: ok
     return w.get_view();
 }
 
 // def main() -> None:
+//     w = Wrapper("hello")
+//     print(borrow_through_method(w))
 void main() {
-    // w = Wrapper("hello")
     Wrapper w = Wrapper("hello");
-    // print(borrow_through_method(w))
     std::cout << borrow_through_method(w) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

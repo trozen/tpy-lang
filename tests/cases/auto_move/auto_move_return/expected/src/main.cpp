@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def make_point(x: int32, y: int32) -> Own[Point]:
+//     p = Point()
+//     p.x = x
+//     p.y = y
+//     return p  # last use of p -> auto-move (no copy needed)
 Point make_point(int32_t x, int32_t y) {
-    // p = Point()
     Point p = Point();
-    // p.x = x
     p.x = x;
-    // p.y = y
     p.y = y;
-    // return p  # last use of p -> auto-move (no copy needed)
     return p;
 }
 
 // def main():
+//     pt = make_point(10, 20)
+//     print(pt.x)
+//     print(pt.y)
 void main() {
-    // pt = make_point(10, 20)
     Point pt = make_point(10, 20);
-    // print(pt.x)
     std::cout << pt.x << "\n";
-    // print(pt.y)
     std::cout << pt.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

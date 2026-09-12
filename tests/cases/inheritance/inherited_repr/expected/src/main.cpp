@@ -5,39 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog("rex")
+//     print(d)
+//     print(repr(d))
+//
+//     c = Cat("whiskers")
+//     print(c)
+//     print(repr(c))
+//
+//     e = Echo("hello")
+//     print(e)
+//
+//     p = Pet("rover")
+//     print(p)
+//
+//     lc = LoudCat("garfield")
+//     print(lc)
 void main() {
-    // d = Dog("rex")
     Dog d = Dog("rex");
-    // print(d)
     std::cout << d << "\n";
-    // print(repr(d))
     std::cout << ::tpy::repr_of(d) << "\n";
-    // c = Cat("whiskers")
     Cat c = Cat("whiskers");
-    // print(c)
     std::cout << c << "\n";
-    // print(repr(c))
     std::cout << ::tpy::repr_of(c) << "\n";
-    // e = Echo("hello")
     Echo e = Echo("hello");
-    // print(e)
     std::cout << e << "\n";
-    // p = Pet("rover")
     Pet p = Pet("rover");
-    // print(p)
     std::cout << p << "\n";
-    // lc = LoudCat("garfield")
     LoudCat lc = LoudCat("garfield");
-    // print(lc)
     std::cout << lc << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,6 +9,7 @@ namespace tpyapp::outer::inner::mod {
 
 inline constexpr std::string_view __name__ = "outer.inner.mod";
 
+// def func() -> None:
 void func();
 
 void __tpy_init();

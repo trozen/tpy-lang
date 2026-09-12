@@ -45,14 +45,19 @@ template<HasValue T> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_value[T: HasValue](item: T) -> int32:
 template<HasValue T>
 int32_t get_value(::tpy::param_val_or_ref_t<T> item);
+// def sum_xy[T: HasXY](item: T) -> int32:
 template<HasXY T>
 int32_t sum_xy(::tpy::param_val_or_ref_t<T> item);
+// def describe[T: Container](item: T) -> int32:
 template<Container T>
 int32_t describe(::tpy::param_val_or_ref_t<T> item);
+// def get_item[T: Holder[int32]](holder: T) -> int32:
 template<Holder<int32_t> T>
 int32_t get_item(::tpy::param_val_or_ref_t<T> holder);
+// def main() -> None:
 void main();
 
 // # Record conforming to HasValue
@@ -136,12 +141,13 @@ struct Wrapper {
     T inner;
 
     // def __init__(self, val: T):
+    //     self.inner = val
     Wrapper() = default;
     explicit Wrapper(::tpy::readonly_form_t<T> val) : inner(val) {}
 
     // def get_inner_value(self) -> int32:
+    //     return self.inner.value
     int32_t get_inner_value() const {
-        // return self.inner.value
         return this->inner.value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
@@ -155,53 +161,58 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.value = v
 inline Point::Point(int32_t v) : value(v) {}
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, c: int32):
+//     self.count = c
 inline Box::Box(int32_t c) : count(c) {}
 
 // def is_empty(self) -> bool:
+//     return self.count == 0
 inline bool Box::is_empty() const {
-    // return self.count == 0
     return (this->count == 0);
 }
 
 // def __init__(self, v: int32):
+//     self.item = v
 inline IntHolder::IntHolder(int32_t v) : item(v) {}
 // # Function using protocol field
 // def get_value[T: HasValue](item: T) -> int32:
+//     return item.value
 template<HasValue T>
 int32_t get_value(::tpy::param_val_or_ref_t<T> item) {
-    // return item.value
     return item.value;
 }
 // # Function using protocol with multiple fields
 // def sum_xy[T: HasXY](item: T) -> int32:
+//     return item.x + item.y
 template<HasXY T>
 int32_t sum_xy(::tpy::param_val_or_ref_t<T> item) {
-    // return item.x + item.y
     return (::tpy::add_check<int32_t>(item.x, item.y));
 }
 // # Function using protocol with field and method
 // def describe[T: Container](item: T) -> int32:
+//     if item.is_empty():
+//         return 0
+//     return item.count
 template<Container T>
 int32_t describe(::tpy::param_val_or_ref_t<T> item) {
-    // if item.is_empty():
     if (item.is_empty()) {
-        // return 0
         return 0;
     }
-    // return item.count
     return item.count;
 }
 // # Function using generic protocol with field
 // def get_item[T: Holder[int32]](holder: T) -> int32:
+//     return holder.item
 template<Holder<int32_t> T>
 int32_t get_item(::tpy::param_val_or_ref_t<T> holder) {
-    // return holder.item
     return holder.item;
 }
 

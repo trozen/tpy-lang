@@ -15,12 +15,16 @@ struct __coro_tick;
 struct __coro_drive;
 struct __coro_caller;
 
+// async def tick(label: str) -> None:
 __coro_tick tick(std::string_view label);
+// async def drive(brk: int32) -> None:
 __coro_drive drive(int32_t brk);
+// async def caller() -> None:
 __coro_caller caller();
+// def main() -> None:
 void main();
 
-// Async coroutine: tick
+// async def tick(label: str) -> None:
 struct __coro_tick {
     int32_t __state;
     bool __cancel_pending;
@@ -42,7 +46,7 @@ struct __coro_tick {
     }
 };
 
-// Async coroutine: drive
+// async def drive(brk: int32) -> None:
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;
@@ -75,7 +79,7 @@ struct __coro_drive {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> None:
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;

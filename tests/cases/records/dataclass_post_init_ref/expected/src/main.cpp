@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag(5)
+//     b.items.append(99)
+//     print(b.items)
 void main() {
-    // b = Bag(5)
     Bag b = Bag(::tpy::BigInt(5));
-    // b.items.append(99)
     b.items.push_back(99);
-    // print(b.items)
     std::cout << ::tpy::ListPrinter(b.items) << "\n";
 }
 
+// # __post_init__ can populate a reference-type (list) field. The list it builds is
+// # stored on self and then mutated after construction to prove it is aliased, not
+// # copied -- a read-only check would be parity-blind to a silent copy.
+// from dataclasses import dataclass, field
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # __post_init__ can populate a reference-type (list) field. The list it builds is
-    // # stored on self and then mutated after construction to prove it is aliased, not
-    // # copied -- a read-only check would be parity-blind to a silent copy.
-    // from dataclasses import dataclass, field
-    // main()
     main();
 }
 

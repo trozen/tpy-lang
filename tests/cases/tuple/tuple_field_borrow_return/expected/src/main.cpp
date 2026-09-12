@@ -5,45 +5,46 @@ namespace tpyapp::main {
 
 
 // def ret_field(h: Holder) -> tuple[int32, Box]:
+//     return h.pair
 std::tuple<int32_t, Box*> ret_field(Holder& h) {
-    // return h.pair
     return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
 }
 
 // def ret_alias(h: Holder) -> tuple[int32, Box]:
+//     t = h.pair
+//     return t
 std::tuple<int32_t, Box*> ret_alias(Holder& h) {
-    // t = h.pair
     auto&& t = h.pair;
-    // return t
     return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(t);
 }
 
 // def main() -> None:
+//     h = Holder(Box(5))
+//     t = ret_field(h)
+//     t[1].val = 99
+//     print(h.pair[1].val)
+//
+//     h2 = Holder(Box(7))
+//     u = ret_alias(h2)
+//     u[1].val = 42
+//     print(h2.pair[1].val)
 void main() {
-    // h = Holder(Box(5))
     Holder h = Holder(Box(5));
-    // t = ret_field(h)
     auto t = ret_field(h);
-    // t[1].val = 99
     std::get<1>(t)->val = 99;
-    // print(h.pair[1].val)
     std::cout << std::get<1>(h.pair).val << "\n";
-    // h2 = Holder(Box(7))
     Holder h2 = Holder(Box(7));
-    // u = ret_alias(h2)
     auto u = ret_alias(h2);
-    // u[1].val = 42
     std::get<1>(u)->val = 42;
-    // print(h2.pair[1].val)
     std::cout << std::get<1>(h2.pair).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

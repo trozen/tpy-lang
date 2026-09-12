@@ -13,6 +13,7 @@ struct Const;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class A:
@@ -71,21 +72,24 @@ inline std::ostream& operator<<(std::ostream& os, const Const& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline A::A(int32_t v) : v(v) {}
 
 // # Param escapes via mutable Ptr[A] field -> must emit `A& a`, not `const A& a`.
 // def __init__(self, a: A) -> None:
+//     self._a = a
 inline Mut::Mut(A& a) : _a(&a) {}
 
 // # Same escape through a non-__init__ method.
 // def set_a(self, a: A) -> None:
+//     self._a = a
 inline void Mut::set_a(A& a) {
-    // self._a = a
     this->_a = &a;
 }
 
 // # Ptr[readonly[A]] field is `const A*`; matching `const A& a` stays const.
 // def __init__(self, a: A) -> None:
+//     self._a = a
 inline Const::Const(const A& a) : _a(&a) {}
 void __tpy_init();
 } // namespace tpyapp::main

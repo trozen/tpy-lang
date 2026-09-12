@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: int32 = 10
+//     b: int32 = 20
+//     c: int32 = 30
+//     def sum_all(x: int32) -> int32:
+//         return x + a + b + c
+//     print(sum_all(0))
+//     print(sum_all(40))
 void main() {
-    // a: int32 = 10
     int32_t a = 10;
-    // b: int32 = 20
     int32_t b = 20;
-    // c: int32 = 30
     int32_t c = 30;
-    // def sum_all(x: int32) -> int32:
     auto sum_all = [&a, &b, &c](int32_t x) -> int32_t {
-        // return x + a + b + c
         return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, a)), b)), c));
     };
-    // print(sum_all(0))
     std::cout << sum_all(0) << "\n";
-    // print(sum_all(40))
     std::cout << sum_all(40) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

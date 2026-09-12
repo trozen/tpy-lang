@@ -5,68 +5,72 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     out: list[int32] = []
+//     out.extend(h.nums)  # tpyc: ok
+//     # The field is READ, not consumed: appending to it after the call must
+//     # show up in a second extend, and `out` must not alias it.
+//     h.nums.append(3)
+//     out.extend(h.nums)  # tpyc: ok
+//     print(out)
+//     print(h.nums)
+//
+//     # ... a SET field at the same slot.
+//     from_set: list[int32] = []
+//     from_set.extend(h.tags)  # tpyc: ok
+//     print(from_set)
+//
+//     # The view receiver's own field row, unchanged -- the leg that pins the
+//     # two families really do share the row.
+//     print(",".join(h.parts))  # tpyc: ok
+//
+//     # A bytearray receiver at the same slot.
+//     buf = bytearray(b"z")
+//     buf.extend(h.nums)  # tpyc: ok
+//     print(len(buf))
+//
+//     # ... and the CONCRETE container slot (`dict.update` / `set.update` take
+//     # a dict / set, not a structural Iterable): the field read binds it
+//     # exactly as the bare name does.
+//     d: dict[str, int32] = {}
+//     d.update(h.ages)  # tpyc: ok
+//     st: set[int32] = set()
+//     st.update(h.tags)  # tpyc: ok
+//     # update COPIES the entries, in TPy as in CPython: writing the field
+//     # afterwards leaves the updated containers alone.
+//     h.ages["b"] = 2
+//     h.tags.add(8)
+//     print(len(d), len(st), len(h.ages), len(h.tags))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // out.extend(h.nums)  # tpyc: ok
     ::tpy::list_extend(out, h.nums);
-    // # The field is READ, not consumed: appending to it after the call must
-    // # show up in a second extend, and `out` must not alias it.
-    // h.nums.append(3)
     h.nums.push_back(3);
-    // out.extend(h.nums)  # tpyc: ok
     ::tpy::list_extend(out, h.nums);
-    // print(out)
     std::cout << ::tpy::ListPrinter(out) << "\n";
-    // print(h.nums)
     std::cout << ::tpy::ListPrinter(h.nums) << "\n";
-    // # ... a SET field at the same slot.
-    // from_set: list[int32] = []
     std::vector<int32_t> from_set = std::vector<int32_t>{};
-    // from_set.extend(h.tags)  # tpyc: ok
     ::tpy::list_extend(from_set, h.tags);
-    // print(from_set)
     std::cout << ::tpy::ListPrinter(from_set) << "\n";
-    // # The view receiver's own field row, unchanged -- the leg that pins the
-    // # two families really do share the row.
-    // print(",".join(h.parts))  # tpyc: ok
     std::cout << ::tpy::str_join(",", h.parts) << "\n";
-    // # A bytearray receiver at the same slot.
-    // buf = bytearray(b"z")
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("z", 1));
-    // buf.extend(h.nums)  # tpyc: ok
     ::tpy::bytes_extend_int_iterable(buf, h.nums);
-    // print(len(buf))
     std::cout << ::tpy::__len__(buf) << "\n";
-    // # ... and the CONCRETE container slot (`dict.update` / `set.update` take
-    // # a dict / set, not a structural Iterable): the field read binds it
-    // # exactly as the bare name does.
-    // d: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // d.update(h.ages)  # tpyc: ok
     ::tpy::dict_update(d, h.ages);
-    // st: set[int32] = set()
     ::tpy::ordered_set<int32_t> st = ::tpy::ordered_set<int32_t>();
-    // st.update(h.tags)  # tpyc: ok
     ::tpy::set_update(st, h.tags);
-    // # update COPIES the entries, in TPy as in CPython: writing the field
-    // # afterwards leaves the updated containers alone.
-    // h.ages["b"] = 2
     ::tpy::__setitem__(h.ages, "b", 2);
-    // h.tags.add(8)
     h.tags.insert(8);
-    // print(len(d), len(st), len(h.ages), len(h.tags))
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(st) << " " << ::tpy::__len__(h.ages) << " " << ::tpy::__len__(h.tags) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

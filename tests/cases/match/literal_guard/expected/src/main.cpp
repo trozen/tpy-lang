@@ -6,105 +6,105 @@ namespace tpyapp::main {
 
 // # match/case guards on string and float literal patterns
 // def greet(s: str, formal: bool) -> str:
+//     match s:
+//         case "hello" if formal:
+//             return "Good day"
+//         case "hello":
+//             return "Hey"
+//         case "bye" if formal:
+//             return "Farewell"
+//         case "bye":
+//             return "Later"
+//         case _:
+//             return "?"
+//     return ""
 std::string greet(std::string_view s, bool formal) {
-    // match s:
     auto& __match_subject_1 = s;
-    // case "hello" if formal:
     if (__match_subject_1 == "hello") {
         if (formal) {
-            // return "Good day"
             return "Good day";
             goto __match_end_2;
         }
     }
-    // case "hello":
     if (__match_subject_1 == "hello") {
-        // return "Hey"
         return "Hey";
         goto __match_end_2;
     }
-    // case "bye" if formal:
     if (__match_subject_1 == "bye") {
         if (formal) {
-            // return "Farewell"
             return "Farewell";
             goto __match_end_2;
         }
     }
-    // case "bye":
     if (__match_subject_1 == "bye") {
-        // return "Later"
         return "Later";
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "?"
         return "?";
         goto __match_end_2;
     }
     __match_end_2:;
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def bucket(x: float) -> str:
+//     match x:
+//         case 0.0 if True:
+//             return "zero"
+//         case 1.0:
+//             return "one"
+//         case _:
+//             return "other"
+//     return ""
 std::string bucket(double x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case 0.0 if True:
     if (__match_subject_1 == 0.0) {
         if (true) {
-            // return "zero"
             return "zero";
             goto __match_end_2;
         }
     }
-    // case 1.0:
     if (__match_subject_1 == 1.0) {
-        // return "one"
         return "one";
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
     __match_end_2:;
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     print(greet("hello", True))
+//     print(greet("hello", False))
+//     print(greet("bye", True))
+//     print(greet("bye", False))
+//     print(greet("ok", False))
+//     print(bucket(0.0))
+//     print(bucket(1.0))
+//     print(bucket(2.0))
 void main() {
-    // print(greet("hello", True))
     std::cout << greet("hello", true) << "\n";
-    // print(greet("hello", False))
     std::cout << greet("hello", false) << "\n";
-    // print(greet("bye", True))
     std::cout << greet("bye", true) << "\n";
-    // print(greet("bye", False))
     std::cout << greet("bye", false) << "\n";
-    // print(greet("ok", False))
     std::cout << greet("ok", false) << "\n";
-    // print(bucket(0.0))
     std::cout << bucket(0.0) << "\n";
-    // print(bucket(1.0))
     std::cout << bucket(1.0) << "\n";
-    // print(bucket(2.0))
     std::cout << bucket(2.0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

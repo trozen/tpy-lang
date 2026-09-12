@@ -11,14 +11,23 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def joins(a: str, *parts: str) -> str:
 std::string joins(std::string_view a, ::tpy::varargs<const std::string> parts);
+// def total_len(a: bytes, *parts: bytes) -> int32:
 int32_t total_len(::tpy::BytesView a, ::tpy::varargs<const ::tpy::Bytes> parts);
+// def addall(*nums: int32) -> int32:
 int32_t addall(::tpy::varargs<const int32_t> nums);
+// def reassign_view_param(p: str) -> str:
 std::string reassign_view_param(std::string_view __param_p);
+// def from_str_view(sv: StrView) -> str:
 std::string from_str_view(std::string_view sv);
+// def from_bytes_view(bv: BytesView) -> int32:
 int32_t from_bytes_view(::tpy::BytesView bv);
+// def loop_var_into_join(names: list[str]) -> None:
 void loop_var_into_join(const std::vector<std::string>& names);
+// def method_view_vararg(sv: StrView) -> str:
 std::string method_view_vararg(std::string_view sv);
+// def main() -> None:
 void main();
 
 // class Sink:
@@ -37,19 +46,19 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def joins(self, a: str, *parts: str) -> str:
+//     out = a
+//     for p in parts:
+//         out = out + p
+//     return out
 inline std::string Sink::joins(std::string_view a, ::tpy::varargs<const std::string> parts) const {
-    // out = a
     std::string out = std::string(a);
-    // for p in parts:
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
-        // out = out + p
         out += p;
     }
-    // return out
     return out;
 }
 void __tpy_init();

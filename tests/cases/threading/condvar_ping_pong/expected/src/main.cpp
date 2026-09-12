@@ -5,33 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     cv = Condvar()                     # tpyc: is_send(yes) is_sync(yes)
+//     shared = Arc.new(Shared(Mutex.new(PingState()), cv))
+//     h = spawn(Worker(shared.clone()))
+//     i = 0
+//     while i < 5:
+//         s = shared.get()
+//         with s.m.lock() as g:
+//             while g.get().turn != 0:
+//                 s.cv.wait(g)
+//             g.get().log.append(1)
+//             g.get().turn = 1
+//             s.cv.notify_all()
+//         i += 1
+//     h.join()
+//     s2 = shared.get()
+//     with s2.m.lock() as gp:
+//         print(gp.get().log)
 void main() {
-    // cv = Condvar()                     # tpyc: is_send(yes) is_sync(yes)
     ::tpystd::tpy::sync::Condvar cv = ::tpystd::tpy::sync::Condvar();
-    // shared = Arc.new(Shared(Mutex.new(PingState()), cv))
     ::tpystd::tplib::arc::Arc<Shared> shared = Arc<Shared>::new_<Shared>(Shared(::tpystd::tpy::sync::Mutex<PingState>::new_(PingState()), std::move(cv)));
-    // h = spawn(Worker(shared.clone()))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h = ::tpystd::tpy::thread::spawn<std::monostate, Worker>(Worker(shared.clone()));
-    // i = 0
     int32_t i = 0;
-    // while i < 5:
     while ((i < 5)) {
-        // s = shared.get()
         Shared& s = shared.get();
-        // with s.m.lock() as g:
         auto __ctx_1 = s.m.lock();
         auto& g = __ctx_1.__enter__();
         try {
-            // while g.get().turn != 0:
             while ((g.get().turn != 0)) {
-                // s.cv.wait(g)
                 s.cv.wait(g);
             }
-            // g.get().log.append(1)
             g.get().log.push_back(1);
-            // g.get().turn = 1
             g.get().turn = 1;
-            // s.cv.notify_all()
             s.cv.notify_all();
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -43,18 +48,13 @@ void main() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // h.join()
     h.join();
-    // s2 = shared.get()
     Shared& s2 = shared.get();
-    // with s2.m.lock() as gp:
     auto __ctx_2 = s2.m.lock();
     auto& gp = __ctx_2.__enter__();
     try {
-        // print(gp.get().log)
         std::cout << ::tpy::ListPrinter(gp.get().log) << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -70,27 +70,28 @@ void main() {
 
 
 // def run(self) -> None:
+//     i = 0
+//     while i < 5:
+//         s = self.shared.get()
+//         with s.m.lock() as g:
+//             while g.get().turn != 1:
+//                 s.cv.wait(g)
+//             g.get().log.append(2)
+//             g.get().turn = 0
+//             s.cv.notify_one()      # single waiter here; covers notify_one
+//         i += 1
 void Worker::run() {
-    // i = 0
     int32_t i = 0;
-    // while i < 5:
     while ((i < 5)) {
-        // s = self.shared.get()
         Shared& s = this->shared.get();
-        // with s.m.lock() as g:
         auto __ctx_3 = s.m.lock();
         auto& g = __ctx_3.__enter__();
         try {
-            // while g.get().turn != 1:
             while ((g.get().turn != 1)) {
-                // s.cv.wait(g)
                 s.cv.wait(g);
             }
-            // g.get().log.append(2)
             g.get().log.push_back(2);
-            // g.get().turn = 0
             g.get().turn = 0;
-            // s.cv.notify_one()      # single waiter here; covers notify_one
             s.cv.notify_one();
             goto __with_exit_3;
         } catch (::tpy::BaseException& __exc_3) {
@@ -102,23 +103,23 @@ void Worker::run() {
         }
         __with_exit_3:
         __ctx_3.__exit__({}, nullptr, {});
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
+// from tplib.arc import Arc
+// from tpy.thread import spawn
+// from tpy.sync import Mutex, Condvar
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // from tpy.sync import Mutex, Condvar
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

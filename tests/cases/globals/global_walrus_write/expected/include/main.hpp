@@ -12,11 +12,17 @@ extern int32_t limit;
 extern int32_t seen;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def observe() -> int:
 ::tpy::BigInt observe();
+// def store() -> int:
 ::tpy::BigInt store();
+// def loop_until() -> int:
 ::tpy::BigInt loop_until();
+// def then_plain() -> None:
 void then_plain();
+// def in_comprehension() -> int:
 ::tpy::BigInt in_comprehension();
+// def main() -> None:
 void main();
 
 void __tpy_init();

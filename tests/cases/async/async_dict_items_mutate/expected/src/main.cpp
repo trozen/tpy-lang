@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // async def bump(d: dict[int32, C]) -> int32:
+//     n = 0
+//     for k, c in d.items():
+//         await asyncio.sleep(0)
+//         c.v = c.v + 1
+//         n = n + k
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = 0
         n = 0;
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -21,26 +26,21 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // c.v = c.v + 1
         c->v = (::tpy::add_check<int32_t>(c->v, 1));
-        // n = n + k
         n = (::tpy::add_check<int32_t>(n, k));
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // return n
             __state = S_DONE;
             int32_t __tpy_async_ret = n;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_0 = ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>(*((*__for_it_0))++);
-        // for k, c in d.items():
         auto& __tup_1 = __for_tup_0;
         k = std::get<0>(__tup_1);
         c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -57,23 +57,24 @@ __coro_bump bump(::tpy::ordered_map<int32_t, C>& d) {
 }
 
 // def main():
+//     d = {1: C(10), 2: C(20)}
+//     print(asyncio.run(bump(d)))
+//     print(d[1].v, d[2].v)
 void main() {
-    // d = {1: C(10), 2: C(20)}
     ::tpy::ordered_map<int32_t, C> d = ::tpy::ordered_map<int32_t, C>({{1, C(10)}, {2, C(20)}});
-    // print(asyncio.run(bump(d)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bump(d))) << "\n";
-    // print(d[1].v, d[2].v)
     std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n";
 }
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

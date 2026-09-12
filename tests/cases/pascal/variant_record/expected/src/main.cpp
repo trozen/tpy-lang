@@ -45,93 +45,94 @@ std::optional<::tpyapp::main::shapekind> EnumUtil<::tpyapp::main::shapekind>::tr
 
 namespace tpyapp::main {
 
-// s: Shape;
 shape* s{};
 
+// function area(var s: Shape): real;
+// begin
+//   case s.kind of
+//     ScCircle: area := 3.14159 * s.radius * s.radius;
+//     ScRect:   area := s.w * s.h;
+//     ScTri:    area := 0.5 * s.a * s.b;
+//   end;
+// end;
 double area(shape* s) {
-    // function area(var s: Shape): real;
     double __pascal_result = 0.0;
-    // case s.kind of
     auto __match_subject_1 = ::tpy::deref_check(s).kind;
     switch (__match_subject_1) {
-    // ScCircle: area := 3.14159 * s.radius * s.radius;
     case shapekind::sccircle: {
-        // ScCircle: area := 3.14159 * s.radius * s.radius;
         __pascal_result = ((((3.14159) * (::tpy::deref_check(s).radius))) * (::tpy::deref_check(s).radius));
         break;
     }
-    // ScRect:   area := s.w * s.h;
     case shapekind::screct: {
-        // ScRect:   area := s.w * s.h;
         __pascal_result = ((::tpy::deref_check(s).w) * (::tpy::deref_check(s).h));
         break;
     }
-    // ScTri:    area := 0.5 * s.a * s.b;
     case shapekind::sctri: {
-        // ScTri:    area := 0.5 * s.a * s.b;
         __pascal_result = ((((0.5) * (::tpy::deref_check(s).a))) * (::tpy::deref_check(s).b));
         break;
     }
     }
-    // function area(var s: Shape): real;
     return __pascal_result;
 }
 
+// s: Shape;
+//
+// s.id := 1;
+// s.kind := ScCircle;
+// s.radius := 2.0;
+// write('id=');
+// write(s.id);
+// write(' area=');
+// writeln(area(s));
+//
+// s.id := 2;
+// s.kind := ScRect;
+// s.w := 3.0;
+// s.h := 4.0;
+// write('id=');
+// write(s.id);
+// write(' area=');
+// writeln(area(s));
+//
+// s.id := 3;
+// s.kind := ScTri;
+// s.a := 5.0;
+// s.b := 6.0;
+// s.c := 7.0;
+// write('id=');
+// write(s.id);
+// write(' area=');
+// writeln(area(s));
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // s: Shape;
     static shape __global_slot_1 = shape();
     s = &__global_slot_1;
-    // s.id := 1;
     s->id = 1;
-    // s.kind := ScCircle;
     s->kind = shapekind::sccircle;
-    // s.radius := 2.0;
     s->radius = 2.0;
-    // write('id=');
     std::cout << "id=";
-    // write(s.id);
     std::cout << s->id;
-    // write(' area=');
     std::cout << " area=";
-    // writeln(area(s));
     std::cout << ::tpy::print_float(area(&(*s))) << "\n";
-    // s.id := 2;
     s->id = 2;
-    // s.kind := ScRect;
     s->kind = shapekind::screct;
-    // s.w := 3.0;
     s->w = 3.0;
-    // s.h := 4.0;
     s->h = 4.0;
-    // write('id=');
     std::cout << "id=";
-    // write(s.id);
     std::cout << s->id;
-    // write(' area=');
     std::cout << " area=";
-    // writeln(area(s));
     std::cout << ::tpy::print_float(area(&(*s))) << "\n";
-    // s.id := 3;
     s->id = 3;
-    // s.kind := ScTri;
     s->kind = shapekind::sctri;
-    // s.a := 5.0;
     s->a = 5.0;
-    // s.b := 6.0;
     s->b = 6.0;
-    // s.c := 7.0;
     s->c = 7.0;
-    // write('id=');
     std::cout << "id=";
-    // write(s.id);
     std::cout << s->id;
-    // write(' area=');
     std::cout << " area=";
-    // writeln(area(s));
     std::cout << ::tpy::print_float(area(&(*s))) << "\n";
 }
 

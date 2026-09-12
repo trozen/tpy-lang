@@ -5,55 +5,57 @@ namespace tpyapp::main {
 
 
 // def make_pair(a: T, b: T) -> tuple[T | None, T | None]:
+//     return (a, b)
 std::tuple<T*, T*> make_pair(T& a, T& b) {
-    // return (a, b)
     return std::tuple<T*, T*>{&(a), &(b)};
 }
 
 // def consume(p: tuple[T | None, T | None]) -> int32:
+//     a, b = p
+//     total = int32(0)
+//     if a is not None:
+//         total = total + a.x
+//     if b is not None:
+//         total = total + b.x
+//     return total
 int32_t consume(const std::tuple<const T*, const T*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
-    // total = int32(0)
     int32_t total = 0;
-    // if a is not None:
     if ((a != nullptr)) {
-        // total = total + a.x
         total = (::tpy::add_check<int32_t>(total, a->x));
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // total = total + b.x
         total = (::tpy::add_check<int32_t>(total, b->x));
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     a = T(3)
+//     b = T(4)
+//
+//     # Direct pass-through: return value of make_pair flows into consume.
+//     print(consume(make_pair(a, b)))
+//
+//     # Through a local binding.
+//     pair = make_pair(a, b)
+//     print(consume(pair))
 void main() {
-    // a = T(3)
     T a = T(3);
-    // b = T(4)
     T b = T(4);
-    // # Direct pass-through: return value of make_pair flows into consume.
-    // print(consume(make_pair(a, b)))
     std::cout << consume(make_pair(a, b)) << "\n";
-    // # Through a local binding.
-    // pair = make_pair(a, b)
     auto pair = make_pair(a, b);
-    // print(consume(pair))
     std::cout << consume(pair) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

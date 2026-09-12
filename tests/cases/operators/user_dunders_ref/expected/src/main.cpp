@@ -5,136 +5,136 @@ namespace tpyapp::main {
 
 
 // def add_params(a: Vec, b: Vec) -> Own[Vec]:
+//     # Ref[Vec] + Ref[Vec] via parameter references
+//     return a + b
 Vec add_params(const Vec& a, const Vec& b) {
-    // # Ref[Vec] + Ref[Vec] via parameter references
-    // return a + b
     return ((a) + (b));
 }
 
 // def scale_param(v: Vec, s: float) -> Own[Vec]:
+//     # Ref[Vec] * float via parameter reference
+//     return v * s
 Vec scale_param(const Vec& v, double s) {
-    // # Ref[Vec] * float via parameter reference
-    // return v * s
     return ((v) * (s));
 }
 
 // def negate_param(v: Vec) -> Own[Vec]:
+//     # -Ref[Vec] via parameter reference
+//     return -v
 Vec negate_param(const Vec& v) {
-    // # -Ref[Vec] via parameter reference
-    // return -v
     return -(v);
 }
 
 // def compare_params(a: Vec, b: Vec) -> bool:
+//     # Ref[Vec] == Ref[Vec]
+//     return a == b
 bool compare_params(const Vec& a, const Vec& b) {
-    // # Ref[Vec] == Ref[Vec]
-    // return a == b
     return ((a) == (b));
 }
 
 // def test_field_ops() -> None:
+//     seg: Segment = Segment(Vec(1.0, 2.0), Vec(4.0, 6.0))
+//     d: Vec = seg.diff()
+//     print(d.x, d.y)
+//     m: Vec = seg.midpoint()
+//     print(m.x, m.y)
 void test_field_ops() {
-    // seg: Segment = Segment(Vec(1.0, 2.0), Vec(4.0, 6.0))
     Segment seg = Segment(Vec(1.0, 2.0), Vec(4.0, 6.0));
-    // d: Vec = seg.diff()
     Vec d = seg.diff();
-    // print(d.x, d.y)
     std::cout << ::tpy::print_float(d.x) << " " << ::tpy::print_float(d.y) << "\n";
-    // m: Vec = seg.midpoint()
     Vec m = seg.midpoint();
-    // print(m.x, m.y)
     std::cout << ::tpy::print_float(m.x) << " " << ::tpy::print_float(m.y) << "\n";
 }
 
 // def test_param_ops() -> None:
+//     a: Vec = Vec(1.0, 2.0)
+//     b: Vec = Vec(3.0, 4.0)
+//     s: Vec = add_params(a, b)
+//     print(s.x, s.y)
+//     sc: Vec = scale_param(a, 3.0)
+//     print(sc.x, sc.y)
+//     n: Vec = negate_param(b)
+//     print(n.x, n.y)
+//     print(compare_params(a, a))
+//     print(compare_params(a, b))
 void test_param_ops() {
-    // a: Vec = Vec(1.0, 2.0)
     Vec a = Vec(1.0, 2.0);
-    // b: Vec = Vec(3.0, 4.0)
     Vec b = Vec(3.0, 4.0);
-    // s: Vec = add_params(a, b)
     Vec s = add_params(a, b);
-    // print(s.x, s.y)
     std::cout << ::tpy::print_float(s.x) << " " << ::tpy::print_float(s.y) << "\n";
-    // sc: Vec = scale_param(a, 3.0)
     Vec sc = scale_param(a, 3.0);
-    // print(sc.x, sc.y)
     std::cout << ::tpy::print_float(sc.x) << " " << ::tpy::print_float(sc.y) << "\n";
-    // n: Vec = negate_param(b)
     Vec n = negate_param(b);
-    // print(n.x, n.y)
     std::cout << ::tpy::print_float(n.x) << " " << ::tpy::print_float(n.y) << "\n";
-    // print(compare_params(a, a))
     std::cout << ::tpy::print_bool(compare_params(a, a)) << "\n";
-    // print(compare_params(a, b))
     std::cout << ::tpy::print_bool(compare_params(a, b)) << "\n";
 }
 
 // def test_chained() -> None:
+//     a: Vec = Vec(1.0, 0.0)
+//     b: Vec = Vec(0.0, 1.0)
+//     # Own[Vec] + Ref[Vec]
+//     c: Vec = a * 2.0 + b
+//     print(c.x, c.y)
+//     # Ref[Vec] + Own[Vec]
+//     d: Vec = a + b * 3.0
+//     print(d.x, d.y)
 void test_chained() {
-    // a: Vec = Vec(1.0, 0.0)
     Vec a = Vec(1.0, 0.0);
-    // b: Vec = Vec(0.0, 1.0)
     Vec b = Vec(0.0, 1.0);
-    // # Own[Vec] + Ref[Vec]
-    // c: Vec = a * 2.0 + b
     Vec c = ((((a) * (2.0))) + (b));
-    // print(c.x, c.y)
     std::cout << ::tpy::print_float(c.x) << " " << ::tpy::print_float(c.y) << "\n";
-    // # Ref[Vec] + Own[Vec]
-    // d: Vec = a + b * 3.0
     Vec d = ((a) + (((b) * (3.0))));
-    // print(d.x, d.y)
     std::cout << ::tpy::print_float(d.x) << " " << ::tpy::print_float(d.y) << "\n";
 }
 
 // def test_binop_assign() -> None:
+//     v: Vec = Vec(1.0, 2.0)
+//     inc: Vec = Vec(10.0, 20.0)
+//     # binary op with Ref[Vec] on rhs, result assigned back
+//     v = v + inc
+//     print(v.x, v.y)
 void test_binop_assign() {
     std::optional<Vec> __slot_2;
-    // v: Vec = Vec(1.0, 2.0)
     Vec __slot_1 = Vec(1.0, 2.0);
     Vec* v = &__slot_1;
-    // inc: Vec = Vec(10.0, 20.0)
     Vec inc = Vec(10.0, 20.0);
-    // # binary op with Ref[Vec] on rhs, result assigned back
-    // v = v + inc
     v = &*(__slot_2 = (((*v)) + (inc)));
-    // print(v.x, v.y)
     std::cout << ::tpy::print_float(v->x) << " " << ::tpy::print_float(v->y) << "\n";
 }
 
 // def test_iadd_ref(delta: Vec) -> None:
+//     # __iadd__ with Ref[Vec] rhs (param reference)
+//     v: Vec = Vec(0.0, 0.0)
+//     v += delta
+//     print(v.x, v.y)
 void test_iadd_ref(const Vec& delta) {
-    // # __iadd__ with Ref[Vec] rhs (param reference)
-    // v: Vec = Vec(0.0, 0.0)
     Vec v = Vec(0.0, 0.0);
-    // v += delta
     v.__iadd__(delta);
-    // print(v.x, v.y)
     std::cout << ::tpy::print_float(v.x) << " " << ::tpy::print_float(v.y) << "\n";
 }
 
 // def main() -> None:
+//     test_field_ops()
+//     test_param_ops()
+//     test_chained()
+//     test_binop_assign()
+//     test_iadd_ref(Vec(5.0, 7.0))
 void main() {
-    // test_field_ops()
     test_field_ops();
-    // test_param_ops()
     test_param_ops();
-    // test_chained()
     test_chained();
-    // test_binop_assign()
     test_binop_assign();
-    // test_iadd_ref(Vec(5.0, 7.0))
     Vec __tmp_1 = Vec(5.0, 7.0);
     test_iadd_ref(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

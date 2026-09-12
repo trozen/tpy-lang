@@ -18,8 +18,11 @@ struct __coro_driver;
 struct __coro_main_coro;
 struct __coro_Svc_fetch;
 
+// async def driver() -> None:
 __coro_driver driver();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Svc:
@@ -35,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Svc& obj) {
     return os;
 }
 
-// Async coroutine: Svc.fetch
+// async def fetch(self) -> int32:
 struct __coro_Svc_fetch {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +66,7 @@ inline __coro_Svc_fetch Svc::fetch() const {
     return __coro_Svc_fetch(*this);
 }
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -88,7 +91,7 @@ struct __coro_driver {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

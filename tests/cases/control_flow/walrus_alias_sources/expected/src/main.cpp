@@ -3,108 +3,108 @@
 
 namespace tpyapp::main {
 
-// G = Rec(3)
 Rec* G{};
 
 // def from_global() -> int:
+//     if (q := G).n > 0:              # tpyc: ok -- a pointer-slot global source
+//         q.n += 10                   # writes through to the global
+//         return q.n
+//     return 0
 ::tpy::BigInt from_global() {
-    // if (q := G).n > 0:              # tpyc: ok -- a pointer-slot global source
     Rec* q = nullptr;
     if (((q = G, *q).n > 0)) {
-        // q.n += 10                   # writes through to the global
         q->n = (q->n) + (::tpy::BigInt(10));
-        // return q.n
         return q->n;
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def from_field(h: Holder) -> int:
+//     if (q := h.inner).n > 0:        # tpyc: ok -- a record FIELD source
+//         q.n += 10
+//         return q.n
+//     return 0
 ::tpy::BigInt from_field(Holder& h) {
-    // if (q := h.inner).n > 0:        # tpyc: ok -- a record FIELD source
     Rec* q = nullptr;
     if (((q = &(h.inner), *q).n > 0)) {
-        // q.n += 10
         q->n = (q->n) + (::tpy::BigInt(10));
-        // return q.n
         return q->n;
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def from_container_field(h: Holder) -> int:
+//     if len(row := h.kid) > 0:       # tpyc: ok -- a container FIELD source
+//         h.kid.append(99)            # mutating the SOURCE shows through `row`
+//         return len(row)
+//     return 0
 ::tpy::BigInt from_container_field(Holder& h) {
-    // if len(row := h.kid) > 0:       # tpyc: ok -- a container FIELD source
     std::vector<::tpy::BigInt>* row = nullptr;
     if ((::tpy::__len__((row = &(h.kid), *row)) > 0)) {
-        // h.kid.append(99)            # mutating the SOURCE shows through `row`
         h.kid.push_back(99);
-        // return len(row)
         return ::tpy::BigInt(::tpy::__len__((*row)));
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def from_optional_elem(xs: list[Rec | None]) -> int:
+//     if (r := xs[0]) is not None:    # tpyc: ok -- an Optional ELEMENT source
+//         r.n += 5
+//         return r.n
+//     return 0
 ::tpy::BigInt from_optional_elem(std::vector<std::optional<Rec>>& xs) {
-    // if (r := xs[0]) is not None:    # tpyc: ok -- an Optional ELEMENT source
     Rec* r = nullptr;
     if (((r = ::tpy::optional_to_ptr(::tpy::__getitem__(xs, 0))) != nullptr)) {
-        // r.n += 5
         r->n = (r->n) + (::tpy::BigInt(5));
-        // return r.n
         return r->n;
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def readonly_recv(x: Rec) -> int:
+//     # `x` is only read, so it is inferred readonly -- the alias must be `const`.
+//     return (p := x).get()           # tpyc: ok
 ::tpy::BigInt readonly_recv(const Rec& x) {
-    // # `x` is only read, so it is inferred readonly -- the alias must be `const`.
-    // return (p := x).get()           # tpyc: ok
     const Rec* p = nullptr;
     return (p = &(x), *p).get();
 }
 
 // def main() -> None:
+//     print(from_global(), G.n)
+//     h = Holder()
+//     print(from_field(h), h.inner.n)
+//     print(from_container_field(h), len(h.kid))
+//     xs: list[Rec | None] = [Rec(3)]
+//     print(from_optional_elem(xs))
+//     first = xs[0]
+//     if first is not None:
+//         print(first.n)
+//     print(readonly_recv(Rec(7)))
 void main() {
-    // print(from_global(), G.n)
     std::cout << from_global() << " " << G->n << "\n";
-    // h = Holder()
     Holder h = Holder();
-    // print(from_field(h), h.inner.n)
     std::cout << from_field(h) << " " << h.inner.n << "\n";
-    // print(from_container_field(h), len(h.kid))
     std::cout << from_container_field(h) << " " << ::tpy::__len__(h.kid) << "\n";
-    // xs: list[Rec | None] = [Rec(3)]
     std::vector<std::optional<Rec>> xs = {Rec(::tpy::BigInt(3))};
-    // print(from_optional_elem(xs))
     std::cout << from_optional_elem(xs) << "\n";
-    // first = xs[0]
     Rec* first = ::tpy::optional_to_ptr(::tpy::__getitem__(xs, 0));
-    // if first is not None:
     if ((first != nullptr)) {
-        // print(first.n)
         std::cout << first->n << "\n";
     }
-    // print(readonly_recv(Rec(7)))
     Rec __tmp_1 = Rec(::tpy::BigInt(7));
     std::cout << readonly_recv(__tmp_1) << "\n";
 }
 
+// G = Rec(3)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // G = Rec(3)
     static Rec __global_slot_1 = Rec(::tpy::BigInt(3));
     G = &__global_slot_1;
-    // main()
     main();
 }
 

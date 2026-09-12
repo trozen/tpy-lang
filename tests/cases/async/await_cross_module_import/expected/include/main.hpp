@@ -19,10 +19,12 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_local_double;
 struct __coro_amain;
 
+// async def local_double(x: int32) -> int32:
 __coro_local_double local_double(int32_t x);
+// async def amain() -> None:
 __coro_amain amain();
 
-// Async coroutine: local_double
+// async def local_double(x: int32) -> int32:
 struct __coro_local_double {
     int32_t __state;
     bool __cancel_pending;
@@ -46,7 +48,7 @@ struct __coro_local_double {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;

@@ -36,6 +36,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -87,12 +88,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, shade: Color) -> None:
+//     self.shade = shade
 inline Dog::Dog(Color shade) : shade(shade) {}
 
 // def __init__(self, age: int32) -> None:
+//     self.age = age
 inline Cat::Cat(int32_t age) : age(age) {}
 
 // def __init__(self) -> None:
+//     self.pet = Dog(Color.RED)
 inline Holder::Holder() : pet(Dog(Color::RED)) {}
 void __tpy_init();
 } // namespace tpyapp::main

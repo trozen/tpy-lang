@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def double_rvalue_reseat() -> int32:
+//     p: Inner | None
+//     p = Inner(1)
+//     p = Inner(2)  # the second reseat reuses the first's slot
+//     if p is not None:
+//         return p.value
+//     return 0
 int32_t double_rvalue_reseat() {
-    // p: Inner | None
     Inner* p = nullptr;
-    // p = Inner(1)
     Inner __slot_1 = Inner(1);
     p = &__slot_1;
-    // p = Inner(2)  # the second reseat reuses the first's slot
     p = &(__slot_1 = Inner(2));
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.value
         return p->value;
     }
-    // return 0
     return 0;
 }
 
 // def lvalue_reseat(b: Box) -> int32:
+//     p: Inner | None = None
+//     p = b.inner  # an lvalue reseat -- an alias, not a copy
+//     if p is not None:
+//         p.value = 9
+//     return b.inner.value
 int32_t lvalue_reseat(Box& b) {
-    // p: Inner | None = None
     Inner* p = nullptr;
-    // p = b.inner  # an lvalue reseat -- an alias, not a copy
     p = &(b.inner);
-    // if p is not None:
     if ((p != nullptr)) {
-        // p.value = 9
         p->value = 9;
     }
-    // return b.inner.value
     return b.inner.value;
 }
 
 // def main() -> None:
+//     print(double_rvalue_reseat(), lvalue_reseat(Box(Inner(3))))
 void main() {
-    // print(double_rvalue_reseat(), lvalue_reseat(Box(Inner(3))))
     Box __tmp_1 = Box(Inner(3));
     std::cout << double_rvalue_reseat() << " " << lvalue_reseat(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

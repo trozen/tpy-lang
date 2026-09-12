@@ -9,6 +9,7 @@ namespace tpyapp::c {
 
 inline constexpr std::string_view __name__ = "c";
 
+// def cee() -> int32:
 int32_t cee();
 
 void __tpy_init();

@@ -5,40 +5,45 @@ namespace tpyapp::main {
 
 
 // def main():
+//     a = WithArray[int32, 3]()
+//     a.data[0] = int32(10)
+//     print("array:", a.data[0])
+//
+//     l = WithList[int32]()
+//     l.items.append(int32(42))
+//     print("list:", l.items)
+//
+//     d = WithDict[str, int32]()
+//     d.data["x"] = int32(99)
+//     print("dict:", d.data)
+//
+//     h = WithHeapStorage[int32](int32(7))
+//     print("heap:", h.get())
+//
+//     print("done")
 void main() {
-    // a = WithArray[int32, 3]()
     WithArray<int32_t, 3> a = WithArray<int32_t, 3>();
-    // a.data[0] = int32(10)
     ::tpy::__setitem__(a.data, 0, 10);
-    // print("array:", a.data[0])
     std::cout << "array:" << " " << ::tpy::__getitem__(a.data, 0) << "\n";
-    // l = WithList[int32]()
     WithList<int32_t> l = WithList<int32_t>();
-    // l.items.append(int32(42))
     l.items.push_back(42);
-    // print("list:", l.items)
     std::cout << "list:" << " " << ::tpy::ListPrinter(l.items) << "\n";
-    // d = WithDict[str, int32]()
     WithDict<std::string, int32_t> d = WithDict<std::string, int32_t>();
-    // d.data["x"] = int32(99)
     ::tpy::__setitem__(d.data, "x", 99);
-    // print("dict:", d.data)
     std::cout << "dict:" << " " << ::tpy::DictPrinter(d.data) << "\n";
-    // h = WithHeapStorage[int32](int32(7))
     WithHeapStorage<int32_t> h = WithHeapStorage<int32_t>(7);
-    // print("heap:", h.get())
     std::cout << "heap:" << " " << h.get() << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// from tpy.mem import UninitHeapStorage
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitHeapStorage
-    // main()
     main();
 }
 

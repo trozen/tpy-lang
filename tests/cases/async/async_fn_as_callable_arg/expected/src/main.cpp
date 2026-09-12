@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def double(n: int32) -> int32:
+//     await asyncio.sleep(0.0)
+//     return n + n
 ::tpystd::tpy::Poll<int32_t> __coro_double_::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return n + n
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(n, n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,15 +35,15 @@ __coro_double_ double_(int32_t n) {
 }
 
 // async def run_twice(factory: Callable[[int32], Own[Cancellable[int32]]],
-// a: int32, b: int32) -> int32:
+//                     a: int32, b: int32) -> int32:
+//     t1 = asyncio.create_task(factory(a))  # tpyc: ok
+//     t2 = asyncio.create_task(factory(b))
+//     return await t1 + await t2
 ::tpystd::tpy::Poll<int32_t> __coro_run_twice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t1 = asyncio.create_task(factory(a))  # tpyc: ok
         t1.emplace(::tpystd::asyncio::create_task<int32_t>(factory(a)));
-        // t2 = asyncio.create_task(factory(b))
         t2.emplace(::tpystd::asyncio::create_task<int32_t>(factory(b)));
-        // return await t1 + await t2
         __sub_0 = &((*t1));
         __state = S_RESUME_0;
         continue;
@@ -53,7 +53,6 @@ __coro_double_ double_(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0 = nullptr;
-        // return await t1 + await t2
         __sub_1 = &((*t2));
         __state = S_RESUME_1;
         continue;
@@ -63,7 +62,6 @@ __coro_double_ double_(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1 = nullptr;
-        // return await t1 + await t2
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(__await_lift_0, __await_lift_1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -75,16 +73,16 @@ __coro_double_ double_(int32_t n) {
 
 
 // async def run_twice(factory: Callable[[int32], Own[Cancellable[int32]]],
-// a: int32, b: int32) -> int32:
+//                     a: int32, b: int32) -> int32:
 __coro_run_twice run_twice(std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> factory, int32_t a, int32_t b) {
     return __coro_run_twice(factory, a, b);
 }
 
 // async def main_coro() -> int32:
+//     return await run_twice(double, 3, 5)
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await run_twice(double, 3, 5)
         __sub_0.emplace([](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(double_(__a0)); }, 3, 5);
         __state = S_RESUME_0;
         continue;
@@ -109,24 +107,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(main_coro()))
 void main() {
-    // print(asyncio.run(main_coro()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(main_coro())) << "\n";
 }
 
+// # An `async def` passed as a value to a `Callable[[...], Own[Cancellable[T]]]`
+// # param is a coroutine factory: calling it builds a coro that create_task drives.
+// # Codegen synthesizes a wrapper that adapts the frame into the owning handle.
+// import asyncio
+//
+// from tpy.coro import Cancellable
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An `async def` passed as a value to a `Callable[[...], Own[Cancellable[T]]]`
-    // # param is a coroutine factory: calling it builds a coro that create_task drives.
-    // # Codegen synthesizes a wrapper that adapts the frame into the owning handle.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Cancellable
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

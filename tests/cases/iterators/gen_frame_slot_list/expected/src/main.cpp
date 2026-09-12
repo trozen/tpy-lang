@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int32]:
+//     history: list[int32] = []
+//     history.append(1)
+//     history.append(2)
+//     history.append(3)
+//     yield len(history)
+//     history.append(4)
+//     yield len(history)
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // history: list[int32] = []
         history.emplace(std::vector<int32_t>{});
-        // history.append(1)
         (*history).push_back(1);
-        // history.append(2)
         (*history).push_back(2);
-        // history.append(3)
         (*history).push_back(3);
-        // yield len(history)
         __state = S_RESUME_0;
         return ::tpy::__len__((*history));
     }
     case S_RESUME_0: {
-        // history.append(4)
         (*history).push_back(4);
-        // yield len(history)
         __state = S_RESUME_1;
         return ::tpy::__len__((*history));
     }
@@ -43,8 +43,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for n in gen():
+//         print(n)
 void main() {
-    // for n in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -52,18 +53,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        // print(n)
         std::cout << n << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(HttpClient.USER_AGENT)
+//     print(HttpClient.SCHEME)
 void main() {
-    // print(HttpClient.USER_AGENT)
     std::cout << HttpClient::USER_AGENT << "\n";
-    // print(HttpClient.SCHEME)
     std::cout << HttpClient::SCHEME << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

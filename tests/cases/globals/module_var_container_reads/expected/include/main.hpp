@@ -11,7 +11,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add_name(xs: list[str], v: str) -> None:
 void add_name(std::vector<std::string>& xs, std::string_view v);
+// def main() -> None:
 void main();
 
 void __tpy_init();

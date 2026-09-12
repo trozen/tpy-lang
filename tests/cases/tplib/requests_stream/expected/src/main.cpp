@@ -5,37 +5,42 @@ namespace tpyapp::main {
 
 
 // def stream_content_length() -> None:
+//     a, b = socket.socketpair()
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     key = requests._pool_key("http://api.test/big", True)
+//     s._pool[key] = Box(conn)
+//
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 16\r\n\r\n0123456789ABCDEF")
+//     r = s.get("http://api.test/big", stream=True)
+//     print("status:", r.status_code)
+//     # A streamed connection is never pooled -- its socket is mid-response.
+//     print("not pooled:", key not in s._pool)
+//     got = bytearray()
+//     for chunk in r.iter_content(5):
+//         print("chunk:", chunk.decode())
+//         got += chunk
+//     print("full:", bytes(got).decode())
+//     b.close()
 void stream_content_length() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // key = requests._pool_key("http://api.test/big", True)
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/big", __tmp_1);
-    // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 16\r\n\r\n0123456789ABCDEF")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 16\r\n\r\n0123456789ABCDEF", 55));
-    // r = s.get("http://api.test/big", stream=True)
     ::tpy::Union<bool, std::string> __tmp_2 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/big", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
-    // print("status:", r.status_code)
     std::cout << "status:" << " " << r.status_code << "\n";
-    // # A streamed connection is never pooled -- its socket is mid-response.
-    // print("not pooled:", key not in s._pool)
     std::cout << "not pooled:" << " " << ::tpy::print_bool((!(s._pool.contains(key)))) << "\n";
-    // got = bytearray()
     ::tpy::ByteArray got = ::tpy::ByteArray();
-    // for chunk in r.iter_content(5):
     {
         auto __src_0 = r.iter_content(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -43,47 +48,47 @@ void stream_content_length() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        // print("chunk:", chunk.decode())
         std::cout << "chunk:" << " " << ::tpy::bytes_decode(chunk) << "\n";
-        // got += chunk
         got = ::tpy::bytearray_concat(got, chunk);
         }
     }
-    // print("full:", bytes(got).decode())
     std::cout << "full:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
-    // b.close()
     b.close();
 }
 
 // def stream_chunked() -> None:
+//     a, b = socket.socketpair()
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     key = requests._pool_key("http://api.test/chunked", True)
+//     s._pool[key] = Box(conn)
+//
+//     # Two chunks (5 + 6 bytes) then the terminating 0-length chunk.
+//     b.sendall(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+//               b"5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n")
+//     r = s.get("http://api.test/chunked", stream=True)
+//     got = bytearray()
+//     for chunk in r.iter_content(8):
+//         got += chunk
+//     print("chunked:", bytes(got).decode())
+//     b.close()
 void stream_chunked() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // key = requests._pool_key("http://api.test/chunked", True)
     ::tpy::Union<bool, std::string> __tmp_3 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/chunked", __tmp_3);
-    // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
-    // # Two chunks (5 + 6 bytes) then the terminating 0-length chunk.
-    // b.sendall(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
-    // b"5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n", 73));
-    // r = s.get("http://api.test/chunked", stream=True)
     ::tpy::Union<bool, std::string> __tmp_4 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/chunked", nullptr, nullptr, std::nullopt, true, __tmp_4, nullptr, true);
-    // got = bytearray()
     ::tpy::ByteArray got = ::tpy::ByteArray();
-    // for chunk in r.iter_content(8):
     {
         auto __src_0 = r.iter_content(8);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -91,91 +96,95 @@ void stream_chunked() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        // got += chunk
         got = ::tpy::bytearray_concat(got, chunk);
         }
     }
-    // print("chunked:", bytes(got).decode())
     std::cout << "chunked:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
-    // b.close()
     b.close();
 }
 
 // def stream_raw() -> None:
+//     a, b = socket.socketpair()
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     key = requests._pool_key("http://api.test/raw", True)
+//     s._pool[key] = Box(conn)
+//
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nraw payload")
+//     r = s.get("http://api.test/raw", stream=True)
+//     raw = r.raw
+//     if raw is not None:
+//         print("raw.read:", raw.read(-1).decode())
+//     else:
+//         print("raw missing")
+//     b.close()
 void stream_raw() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // key = requests._pool_key("http://api.test/raw", True)
     ::tpy::Union<bool, std::string> __tmp_5 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/raw", __tmp_5);
-    // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nraw payload")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nraw payload", 50));
-    // r = s.get("http://api.test/raw", stream=True)
     ::tpy::Union<bool, std::string> __tmp_6 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/raw", nullptr, nullptr, std::nullopt, true, __tmp_6, nullptr, true);
-    // raw = r.raw
     ::tpystd::http::client::HTTPResponse* raw = ::tpy::optional_to_ptr(r.raw());
-    // if raw is not None:
     if ((raw != nullptr)) {
-        // print("raw.read:", raw.read(-1).decode())
         std::cout << "raw.read:" << " " << ::tpy::bytes_decode(raw->read(-1)) << "\n";
-    // else:
     } else {
-        // print("raw missing")
         std::cout << "raw missing" << "\n";
     }
-    // b.close()
     b.close();
 }
 
 // def stream_context_manager() -> None:
+//     a, b = socket.socketpair()
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     key = requests._pool_key("http://api.test/ctx", True)
+//     s._pool[key] = Box(conn)
+//
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nabcd")
+//     # Bind r first, then use it as a context manager: `with s.get(...) as r:`
+//     # miscompiles when a union-typed default arg (verify) needs a temp in the
+//     # with-header (BUGS.md).
+//     r = s.get("http://api.test/ctx", stream=True)
+//     # got declared outside the with-block: a with-block-scoped bytearray is
+//     # stored optional-form and rejects +=, same shape as a try-scoped local.
+//     got = bytearray()
+//     with r:
+//         for chunk in r.iter_content(2):
+//             got += chunk
+//         print("ctx body:", bytes(got).decode())
+//     # After the with-block, close() released the reader.
+//     print("raw after close:", r.raw is None)
+//     b.close()
 void stream_context_manager() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // key = requests._pool_key("http://api.test/ctx", True)
     ::tpy::Union<bool, std::string> __tmp_7 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/ctx", __tmp_7);
-    // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nabcd")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nabcd", 42));
-    // # Bind r first, then use it as a context manager: `with s.get(...) as r:`
-    // # miscompiles when a union-typed default arg (verify) needs a temp in the
-    // # with-header (BUGS.md).
-    // r = s.get("http://api.test/ctx", stream=True)
     ::tpy::Union<bool, std::string> __tmp_8 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/ctx", nullptr, nullptr, std::nullopt, true, __tmp_8, nullptr, true);
-    // # got declared outside the with-block: a with-block-scoped bytearray is
-    // # stored optional-form and rejects +=, same shape as a try-scoped local.
-    // got = bytearray()
     ::tpy::ByteArray got = ::tpy::ByteArray();
-    // with r:
     auto& __ctx_1 = r;
     __ctx_1.__enter__();
     try {
-        // for chunk in r.iter_content(2):
         {
             auto __src_0 = r.iter_content(2);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -183,11 +192,9 @@ void stream_context_manager() {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-            // got += chunk
             got = ::tpy::bytearray_concat(got, chunk);
             }
         }
-        // print("ctx body:", bytes(got).decode())
         std::cout << "ctx body:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -199,42 +206,43 @@ void stream_context_manager() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # After the with-block, close() released the reader.
-    // print("raw after close:", r.raw is None)
     std::cout << "raw after close:" << " " << ::tpy::print_bool((!r.raw().has_value())) << "\n";
-    // b.close()
     b.close();
 }
 
 // def stream_empty_body() -> None:
+//     a, b = socket.socketpair()
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     key = requests._pool_key("http://api.test/empty", True)
+//     s._pool[key] = Box(conn)
+//
+//     # A Content-Length: 0 body: iter_content's first read hits EOF immediately,
+//     # so the loop yields nothing.
+//     b.sendall(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
+//     r = s.get("http://api.test/empty", stream=True)
+//     chunks = 0
+//     for chunk in r.iter_content(8):
+//         chunks += 1
+//     print("empty chunks:", chunks)
+//     b.close()
 void stream_empty_body() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // key = requests._pool_key("http://api.test/empty", True)
     ::tpy::Union<bool, std::string> __tmp_9 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/empty", __tmp_9);
-    // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
-    // # A Content-Length: 0 body: iter_content's first read hits EOF immediately,
-    // # so the loop yields nothing.
-    // b.sendall(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n", 46));
-    // r = s.get("http://api.test/empty", stream=True)
     ::tpy::Union<bool, std::string> __tmp_10 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/empty", nullptr, nullptr, std::nullopt, true, __tmp_10, nullptr, true);
-    // chunks = 0
     int32_t chunks = 0;
-    // for chunk in r.iter_content(8):
     {
         auto __src_0 = r.iter_content(8);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -242,44 +250,46 @@ void stream_empty_body() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        // chunks += 1
         chunks = ::tpy::add_check<int32_t>(chunks, 1);
         }
     }
-    // print("empty chunks:", chunks)
     std::cout << "empty chunks:" << " " << chunks << "\n";
-    // b.close()
     b.close();
 }
 
 // def non_streamed_iter_content() -> None:
+//     a, b = socket.socketpair()
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     key = requests._pool_key("http://api.test/full", True)
+//     s._pool[key] = Box(conn)
+//
+//     # Without stream=True the body is read into .content; iter_content still
+//     # works, chunking over the already-read content (matching requests).
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\n0123456789")
+//     r = s.get("http://api.test/full")
+//     got = bytearray()
+//     for chunk in r.iter_content(4):
+//         got += chunk
+//     print("non-stream iter_content:", bytes(got).decode())
+//     print("content intact:", r.content.decode())
+//     b.close()
 void non_streamed_iter_content() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // key = requests._pool_key("http://api.test/full", True)
     ::tpy::Union<bool, std::string> __tmp_11 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/full", __tmp_11);
-    // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
-    // # Without stream=True the body is read into .content; iter_content still
-    // # works, chunking over the already-read content (matching requests).
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\n0123456789")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\n0123456789", 49));
-    // r = s.get("http://api.test/full")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/full");
-    // got = bytearray()
     ::tpy::ByteArray got = ::tpy::ByteArray();
-    // for chunk in r.iter_content(4):
     {
         auto __src_0 = r.iter_content(4);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -287,59 +297,56 @@ void non_streamed_iter_content() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-        // got += chunk
         got = ::tpy::bytearray_concat(got, chunk);
         }
     }
-    // print("non-stream iter_content:", bytes(got).decode())
     std::cout << "non-stream iter_content:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
-    // print("content intact:", r.content.decode())
     std::cout << "content intact:" << " " << ::tpy::bytes_decode(r.content) << "\n";
-    // b.close()
     b.close();
 }
 
 // def main() -> None:
+//     stream_content_length()
+//     stream_chunked()
+//     stream_raw()
+//     stream_context_manager()
+//     stream_empty_body()
+//     non_streamed_iter_content()
 void main() {
-    // stream_content_length()
     stream_content_length();
-    // stream_chunked()
     stream_chunked();
-    // stream_raw()
     stream_raw();
-    // stream_context_manager()
     stream_context_manager();
-    // stream_empty_body()
     stream_empty_body();
-    // non_streamed_iter_content()
     non_streamed_iter_content();
 }
 
+// # tplib.requests streaming: stream=True leaves the body unread and hands back a
+// # Response whose iter_content(chunk_size) pulls bytes lazily from the live
+// # HTTPResponse (backed by makefile's own dup'd fd). A streamed connection is
+// # NOT returned to the pool (its socket is mid-body). Covers a Content-Length
+// # body, a chunked transfer-encoding body, `.raw.read()`, context-manager close,
+// # an empty (Content-Length: 0) body, and iter_content on a NON-streamed response
+// # (chunks over the already-read .content, matching requests). The reader is a
+// # non-copyable HTTPResponse, so if the move into the Response ever silently
+// # became a copy it would be a compile error, not a silent aliasing bug.
+// # no_cpython: tplib.requests has no CPython module.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests streaming: stream=True leaves the body unread and hands back a
-    // # Response whose iter_content(chunk_size) pulls bytes lazily from the live
-    // # HTTPResponse (backed by makefile's own dup'd fd). A streamed connection is
-    // # NOT returned to the pool (its socket is mid-body). Covers a Content-Length
-    // # body, a chunked transfer-encoding body, `.raw.read()`, context-manager close,
-    // # an empty (Content-Length: 0) body, and iter_content on a NON-streamed response
-    // # (chunks over the already-read .content, matching requests). The reader is a
-    // # non-copyable HTTPResponse, so if the move into the Response ever silently
-    // # became a copy it would be a compile error, not a silent aliasing bug.
-    // # no_cpython: tplib.requests has no CPython module.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: ok
+//     return p[0].n + p[1].n
 int32_t read_mixed(const std::tuple<A, const A*>& p) {
-    // return p[0].n + p[1].n
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)->n));
 }
 
 // def main() -> None:
+//     keep = A(2)
+//     print(read_mixed((A(1), keep)))
 void main() {
-    // keep = A(2)
     A keep = A(2);
-    // print(read_mixed((A(1), keep)))
     std::cout << read_mixed(std::tuple<A, A*>{A(1), &(keep)}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

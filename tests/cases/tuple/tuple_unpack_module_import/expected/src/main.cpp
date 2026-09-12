@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def show() -> None:
+//     print(lo)
+//     print(hi)
 void show() {
-    // print(lo)
     std::cout << ::tpyapp::config::lo << "\n";
-    // print(hi)
     std::cout << ::tpyapp::config::hi << "\n";
 }
 
+// from config import lo, hi
+//
+// print(lo)
+// print(hi)
+// show()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from config import lo, hi
     ::tpyapp::config::__tpy_init();
-    // print(lo)
     std::cout << ::tpyapp::config::lo << "\n";
-    // print(hi)
     std::cout << ::tpyapp::config::hi << "\n";
-    // show()
     show();
 }
 

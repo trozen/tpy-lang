@@ -5,40 +5,41 @@ namespace tpyapp::main {
 
 
 // def sum_all(*args: int32) -> int32:
+//     total: int32 = 0
+//     for x in args:
+//         total += x
+//     return total
 int32_t sum_all(::tpy::varargs<const int32_t> args) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in args:
     auto& __obj_0 = args;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     items: list[int32] = [1, 2, 3]
+//     print(sum_all(*items))
+//
+//     more: list[int32] = [10, 20]
+//     print(sum_all(*more))
 void main() {
-    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // print(sum_all(*items))
     std::cout << sum_all(::tpy::varargs<const int32_t>(::tpy::as_span(items))) << "\n";
-    // more: list[int32] = [10, 20]
     std::vector<int32_t> more = {10, 20};
-    // print(sum_all(*more))
     std::cout << sum_all(::tpy::varargs<const int32_t>(::tpy::as_span(more))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -74,15 +74,19 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, a: int32, b: int32) -> None:
+//     self.a = a
+//     self.b = b
 inline Point::Point(int32_t a, int32_t b) : a(a), b(b) {}
 
 // def __init__(self, val: int32) -> None:
+//     # 'val' param shadows global 'val' below - should NOT deref
+//     self.val = val
 inline Counter::Counter(int32_t val) : val(val) {}
 
 // def add(self, a: int32) -> int32:
+//     # 'a' param shadows global 'a' above - should NOT deref
+//     return self.val + a
 inline int32_t Counter::add(int32_t a) const {
-    // # 'a' param shadows global 'a' above - should NOT deref
-    // return self.val + a
     return (::tpy::add_check<int32_t>(this->val, a));
 }
 void __tpy_init();

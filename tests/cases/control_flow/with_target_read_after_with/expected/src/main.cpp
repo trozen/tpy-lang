@@ -5,16 +5,21 @@ namespace tpyapp::main {
 
 
 // def steps(limit: int32) -> Iterator[int32]:
+//     c = Counter(limit)
+//     with c as guard:
+//         pass
+//     yield 1
+//     # Mutating here too: the target still aliases `c` after the block.
+//     guard.n += 1
+//     yield guard.n
+//     yield c.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counter(limit)
         c.emplace(Counter(limit));
-        // with c as guard:
         auto& __ctx_1 = (*c);
         guard.emplace(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -25,20 +30,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // # Mutating here too: the target still aliases `c` after the block.
-        // guard.n += 1
         (*guard).n = ::tpy::add_check<int32_t>((*guard).n, 1);
-        // yield guard.n
         __state = S_RESUME_1;
         return (*guard).n;
     }
     case S_RESUME_1: {
-        // yield c.n
         __state = S_RESUME_2;
         return (*c).n;
     }
@@ -58,8 +58,9 @@ __gen_steps steps(int32_t limit) {
 }
 
 // def main() -> None:
+//     for v in steps(5):
+//         print(v)
 void main() {
-    // for v in steps(5):
     {
         auto __src_0 = steps(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -67,18 +68,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def apply_str(f: Callable[[str], str], s: str) -> str:
+//     return f(s)
 std::string apply_str(const std::function<std::string(std::string_view)>& f, std::string_view s) {
-    // return f(s)
     return f(s);
 }
 
 // def main() -> None:
+//     print(apply(triple, 14))         # 42
+//     print(apply_str(shout, "hello")) # HELLO
 void main() {
-    // print(apply(triple, 14))         # 42
     std::cout << apply(::tpyapp::helper::triple, 14) << "\n";
-    // print(apply_str(shout, "hello")) # HELLO
     std::cout << apply_str(::tpyapp::helper::shout, "hello") << "\n";
 }
 
+// from helper import triple, shout
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from helper import triple, shout
     ::tpyapp::helper::__tpy_init();
-    // main()
     main();
 }
 

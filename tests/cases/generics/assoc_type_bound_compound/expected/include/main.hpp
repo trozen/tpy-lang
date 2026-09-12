@@ -17,8 +17,10 @@ struct IntListBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first[R, T: Container[list[R]]](x: T) -> R:
 template<typename R, Container<std::vector<R>> T>
 ::tpy::val_or_ref_t<R> first(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // class IntListBox:
@@ -42,17 +44,18 @@ inline std::ostream& operator<<(std::ostream& os, const IntListBox& obj) {
 
 
 // def __init__(self, xs: list[int]):
+//     self.xs = xs
 inline IntListBox::IntListBox(const std::vector<::tpy::BigInt>& xs) : xs(xs) {}
 
 // def get(self) -> list[int]:
+//     return self.xs
 inline std::vector<::tpy::BigInt>& IntListBox::get() {
-    // return self.xs
     return this->xs;
 }
 // def first[R, T: Container[list[R]]](x: T) -> R:
+//     return x.get()[0]
 template<typename R, Container<std::vector<R>> T>
 ::tpy::val_or_ref_t<R> first(::tpy::param_val_or_ref_t<T> x) {
-    // return x.get()[0]
     return ::tpy::__getitem__(x.get(), 0);
 }
 

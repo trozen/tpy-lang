@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3]
+//     bias: int32 = 10
+//     # Lambda captures `bias` -- both candidate trials run body analysis
+//     # which registers `bias` as captured / typed. After Regime C picks
+//     # the 1-arg candidate, the post-Regime-C re-analysis sets up the
+//     # final capture state; trials must not have polluted it.
+//     print(m(lambda a: a + bias, xs))
 void main() {
-    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // bias: int32 = 10
     int32_t bias = 10;
-    // # Lambda captures `bias` -- both candidate trials run body analysis
-    // # which registers `bias` as captured / typed. After Regime C picks
-    // # the 1-arg candidate, the post-Regime-C re-analysis sets up the
-    // # final capture state; trials must not have polluted it.
-    // print(m(lambda a: a + bias, xs))
     std::cout << m<int32_t, int32_t>([&bias](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, bias)); }, xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

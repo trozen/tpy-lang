@@ -5,19 +5,50 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Iterable[int32] via list
+//     xs: list[int32] = [10, 20, 30]
+//     print(bytes(xs))
+//
+//     # Iterable[uint8] via list
+//     ys: list[uint8] = [1, 2, 3]
+//     print(bytes(ys))
+//
+//     # Generator expression of int32 (the original user case from the REPL)
+//     print(bytes(x * 2 for x in xs))
+//
+//     # bytearray from iterable
+//     print(bytearray(xs))
+//     print(bytearray(x + 1 for x in xs))
+//
+//     # bytearray.extend with int32 iterable
+//     ba = bytearray()
+//     ba.extend(xs)
+//     print(ba)
+//
+//     # bytearray.extend with uint8 iterable
+//     ba.extend(ys)
+//     print(ba)
+//
+//     # bytearray.extend with another bytearray (exercises range-path specialization)
+//     other = bytearray([50, 60])
+//     ba.extend(other)
+//     print(ba)
+//
+//     # bytearray.extend with a generator of uint8 (exercises the __next__ fallback
+//     # in tpy::extend since generators aren't std::ranges::input_range).
+//     ba.extend(v for v in ys)
+//     print(ba)
+//
+//     # Boundary values 0 and 255 round-trip intact.
+//     print(bytes([0, 255]))
+//
+//     # bytes from bytearray uses the bytes_copy fast path (verified via snapshot).
+//     print(bytes(ba))
 void main() {
-    // # Iterable[int32] via list
-    // xs: list[int32] = [10, 20, 30]
     std::vector<int32_t> xs = {10, 20, 30};
-    // print(bytes(xs))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n";
-    // # Iterable[uint8] via list
-    // ys: list[uint8] = [1, 2, 3]
     std::vector<uint8_t> ys = {1, 2, 3};
-    // print(bytes(ys))
     std::cout << ::tpy::BytesPrinter(::tpy::construct<::tpy::Bytes>(ys)) << "\n";
-    // # Generator expression of int32 (the original user case from the REPL)
-    // print(bytes(x * 2 for x in xs))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable([&xs]() {
         auto& __src = xs;
         return ::tpy::make_generator<int32_t>(
@@ -30,10 +61,7 @@ void main() {
             }
         );
     }())) << "\n";
-    // # bytearray from iterable
-    // print(bytearray(xs))
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable(xs)) << "\n";
-    // print(bytearray(x + 1 for x in xs))
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable([&xs]() {
         auto& __src = xs;
         return ::tpy::make_generator<int32_t>(
@@ -46,28 +74,14 @@ void main() {
             }
         );
     }())) << "\n";
-    // # bytearray.extend with int32 iterable
-    // ba = bytearray()
     ::tpy::ByteArray ba = ::tpy::ByteArray();
-    // ba.extend(xs)
     ::tpy::bytes_extend_int_iterable(ba, xs);
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // # bytearray.extend with uint8 iterable
-    // ba.extend(ys)
     ::tpy::extend(ba, ys);
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // # bytearray.extend with another bytearray (exercises range-path specialization)
-    // other = bytearray([50, 60])
     ::tpy::ByteArray other = ::tpy::bytearray_from_int_iterable(std::array<int32_t, 2>{50, 60});
-    // ba.extend(other)
     ::tpy::extend(ba, other);
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // # bytearray.extend with a generator of uint8 (exercises the __next__ fallback
-    // # in tpy::extend since generators aren't std::ranges::input_range).
-    // ba.extend(v for v in ys)
     ::tpy::extend(ba, [&ys]() {
         auto& __src = ys;
         return ::tpy::make_generator<uint8_t>(
@@ -80,22 +94,17 @@ void main() {
             }
         );
     }());
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // # Boundary values 0 and 255 round-trip intact.
-    // print(bytes([0, 255]))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{0, 255})) << "\n";
-    // # bytes from bytearray uses the bytes_copy fast path (verified via snapshot).
-    // print(bytes(ba))
     std::cout << ::tpy::BytesPrinter(::tpy::Bytes(ba)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

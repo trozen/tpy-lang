@@ -5,53 +5,58 @@ namespace tpyapp::main {
 
 
 // def fail() -> None:
+//     raise MyError(42)
 void fail() {
-    // raise MyError(42)
     throw MyError(42);
 }
 
 // def main() -> None:
+//     try:
+//         fail()
+//     except MyError:
+//         print("caught MyError")
+//
+//     # With binding and field access
+//     try:
+//         fail()
+//     except MyError as e:
+//         print(e.code)
+//
+//     # Raise with no args (default construction)
+//     try:
+//         raise ValueError
+//     except ValueError:
+//         print("caught bare ValueError")
 void main() {
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (const MyError&) {
-            // print("caught MyError")
             std::cout << "caught MyError" << "\n";
         }
     }
-    // # With binding and field access
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (const MyError& e) {
-            // print(e.code)
             std::cout << e.code << "\n";
         }
     }
-    // # Raise with no args (default construction)
-    // try:
     {
         try {
-            // raise ValueError
             throw ::tpy::ValueError{};
         } catch (const ::tpy::ValueError&) {
-            // print("caught bare ValueError")
             std::cout << "caught bare ValueError" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

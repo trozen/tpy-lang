@@ -13,6 +13,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: a union-typed field initialized in __init__ from a bare
@@ -68,12 +69,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, a: int) -> None:
+//     self.a = a
 inline A::A(const ::tpy::BigInt& a) : a(a) {}
 
 // def __init__(self, b: int) -> None:
+//     self.b = b
 inline B::B(const ::tpy::BigInt& b) : b(b) {}
 
 // def __init__(self) -> None:
+//     self.slot = A(1)
 inline Holder::Holder() : slot(A(::tpy::BigInt(1))) {}
 void __tpy_init();
 } // namespace tpyapp::main

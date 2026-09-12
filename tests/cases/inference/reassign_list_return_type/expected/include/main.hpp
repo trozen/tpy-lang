@@ -10,6 +10,7 @@ namespace tpyapp::main {
 extern std::vector<::tpy::BigInt>* items;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_items() -> Own[list[int]]:
 std::vector<::tpy::BigInt> get_items();
 
 void __tpy_init();

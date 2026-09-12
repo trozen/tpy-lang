@@ -23,9 +23,12 @@ template <typename T>
 struct __coro_increment;
 struct __coro_main_coro;
 
+// async def increment[T: Bumpable](x: T) -> int32:
 template <typename T>
 __coro_increment<T> increment(::tpy::param_val_or_ref_t<T> x);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -47,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: increment
+// async def increment[T: Bumpable](x: T) -> int32:
 template <typename T>
 struct __coro_increment {
     int32_t __state;
@@ -70,14 +73,14 @@ struct __coro_increment {
     }
 };
 // async def increment[T: Bumpable](x: T) -> int32:
+//     x.bump()
+//     return int32(0)
 template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_increment<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // x.bump()
         x.bump();
-        // return int32(0)
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -94,7 +97,7 @@ __coro_increment<T> increment(::tpy::param_val_or_ref_t<T> x) {
     return __coro_increment<T>(x);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -121,11 +124,12 @@ struct __coro_main_coro {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
+//     self.n = self.n + 1
 inline void Counter::bump() {
-    // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
 }
 void __tpy_init();

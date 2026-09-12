@@ -19,9 +19,13 @@ struct __coro_post_loop;
 struct __coro_nested;
 struct __coro_SrcIter___anext__;
 
+// async def runner() -> None:
 __coro_runner runner();
+// async def post_loop() -> None:
 __coro_post_loop post_loop();
+// async def nested() -> None:
 __coro_nested nested();
+// def main() -> None:
 void main();
 
 // class SrcIter:
@@ -68,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     return os;
 }
 
-// Async coroutine: SrcIter.__anext__
+// async def __anext__(self) -> int:
 struct __coro_SrcIter___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -95,7 +99,7 @@ inline __coro_SrcIter___anext__ SrcIter::__anext__() {
     return __coro_SrcIter___anext__(*this);
 }
 
-// Async coroutine: runner
+// async def runner() -> None:
 struct __coro_runner {
     int32_t __state;
     bool __cancel_pending;
@@ -124,7 +128,7 @@ struct __coro_runner {
     }
 };
 
-// Async coroutine: post_loop
+// async def post_loop() -> None:
 struct __coro_post_loop {
     int32_t __state;
     bool __cancel_pending;
@@ -153,7 +157,7 @@ struct __coro_post_loop {
     }
 };
 
-// Async coroutine: nested
+// async def nested() -> None:
 struct __coro_nested {
     int32_t __state;
     bool __cancel_pending;
@@ -192,20 +196,24 @@ struct __coro_nested {
 
 
 // def __init__(self, limit: int) -> None:
+//     self.cursor = 0
+//     self.limit = limit
 inline SrcIter::SrcIter(const ::tpy::BigInt& limit) : cursor(::tpy::BigInt(0)), limit(limit) {}
 
 // def __init__(self, limit: int) -> None:
+//     self.seen = []
+//     self.limit = limit
 inline Source::Source(const ::tpy::BigInt& limit) : seen(std::vector<::tpy::BigInt>{}), limit(limit) {}
 
 // def __aiter__(self) -> Own[SrcIter]:
+//     return SrcIter(self.limit)
 inline SrcIter Source::__aiter__() const {
-    // return SrcIter(self.limit)
     return SrcIter(this->limit);
 }
 
 // def push(self, x: int) -> None:
+//     self.seen.append(x)
 inline void Source::push(const ::tpy::BigInt& x) {
-    // self.seen.append(x)
     this->seen.push_back(x);
 }
 void __tpy_init();

@@ -12,9 +12,11 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_fast(it: Iterable[int32] | NativeIterable[int32]) -> int32:
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
 int32_t sum_fast(T_it& it);
+// def main() -> None:
 void main();
 
 // class CounterIter:
@@ -63,64 +65,68 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.current = start
+//     self.limit = limit
 inline CounterIter::CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
 // def __next__(self) -> int32:
+//     if self.current < self.limit:
+//         result = self.current
+//         self.current += 1
+//         return result
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // result = self.current
         int32_t result = this->current;
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return result
         return result;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.start = start
+//     self.limit = limit
 inline Counter::Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:
+//     return CounterIter(self.start, self.limit)
 inline CounterIter Counter::__iter__() const {
-    // return CounterIter(self.start, self.limit)
     return CounterIter(this->start, this->limit);
 }
 // def sum_fast(it: Iterable[int32] | NativeIterable[int32]) -> int32:
+//     total: int32 = 0
+//     if isinstance(it, NativeIterable):
+//         # NativeIterable branch -- range-for via begin/end.
+//         for x in it:
+//             total += x * 100
+//     else:
+//         # Iterable branch -- universal __iter__/__next__.
+//         for x in it:
+//             total += x
+//     return total
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
 int32_t sum_fast(T_it& it) {
-    // total: int32 = 0
     int32_t total = 0;
-    // if isinstance(it, NativeIterable):
     if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
-        // # NativeIterable branch -- range-for via begin/end.
-        // for x in it:
         auto& __obj_0 = it;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // total += x * 100
             total = ::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(x, 100)));
         }
-    // else:
     } else {
-        // # Iterable branch -- universal __iter__/__next__.
-        // for x in it:
         auto& __src_1 = it;
         auto&& __itr_1 = ::tpy::__iter__(__src_1);
         for (;;) {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_2);
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
     }
-    // return total
     return total;
 }
 

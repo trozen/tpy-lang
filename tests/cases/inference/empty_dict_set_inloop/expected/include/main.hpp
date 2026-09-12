@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def build_dict(xs: list[int32]) -> Own[dict[int32, int32]]:
 ::tpy::ordered_map<int32_t, int32_t> build_dict(const std::vector<int32_t>& xs);
+// def build_set(xs: list[int32]) -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> build_set(const std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,12 +5,16 @@ namespace tpyapp::main {
 
 
 // def write_fixtures() -> None:
+//     with open(CERT_PATH, "w") as f:
+//         f.write(CERT_PEM)
+//     with open(KEY_PATH, "w") as f:
+//         f.write(KEY_PEM)
+//     with open(GARBAGE_PATH, "w") as f:
+//         f.write("not a certificate\n")
 void write_fixtures() {
-    // with open(CERT_PATH, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(CERT_PATH, "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // f.write(CERT_PEM)
         f->write(CERT_PEM);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -22,11 +26,9 @@ void write_fixtures() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(KEY_PATH, "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode(KEY_PATH, "w");
     f = &(__ctx_2.__enter__());
     try {
-        // f.write(KEY_PEM)
         f->write(KEY_PEM);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -38,11 +40,9 @@ void write_fixtures() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // with open(GARBAGE_PATH, "w") as f:
     auto __ctx_3 = ::tpy::builtin_open_mode(GARBAGE_PATH, "w");
     f = &(__ctx_3.__enter__());
     try {
-        // f.write("not a certificate\n")
         f->write("not a certificate\n");
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -57,158 +57,195 @@ void write_fixtures() {
 }
 
 // def drive(cli: SSLSocket, srv: SSLSocket) -> bool:
+//     """Alternate handshake steps until both sides complete (non-blocking)."""
+//     cdone = False
+//     sdone = False
+//     i = 0
+//     while i < 500 and not (cdone and sdone):
+//         if not sdone and srv.do_handshake():
+//             sdone = True
+//         if not cdone and cli.do_handshake():
+//             cdone = True
+//         i += 1
+//     return cdone and sdone
 bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv) {
-    // cdone = False
     bool cdone = false;
-    // sdone = False
     bool sdone = false;
-    // i = 0
     int32_t i = 0;
-    // while i < 500 and not (cdone and sdone):
     while (((i < 500) && (!((cdone && sdone))))) {
-        // if not sdone and srv.do_handshake():
         if (((!(sdone)) && srv.do_handshake())) {
-            // sdone = True
             sdone = true;
         }
-        // if not cdone and cli.do_handshake():
         if (((!(cdone)) && cli.do_handshake())) {
-            // cdone = True
             cdone = true;
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return cdone and sdone
     return (cdone && sdone);
 }
 
 // def try_verify(cafile: str = "") -> bool:
+//     """One default-context handshake against the fixture peer; True if the
+//     client's verification accepted the peer cert. A non-empty `cafile` is
+//     loaded explicitly (load_verify_locations), on top of the defaults."""
+//     a, b = socket.socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     ctx = ssl.create_default_context()
+//     if len(cafile) > 0:
+//         ctx.load_verify_locations(cafile)
+//     cli = ctx.wrap_socket(a, "localhost", False)
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+//     sdone = False
+//     i = 0
+//     while i < 500:
+//         if not sdone:
+//             try:
+//                 if srv.do_handshake():
+//                     sdone = True
+//             except ssl.SSLError:
+//                 return False  # server aborts after the client rejects
+//         try:
+//             if cli.do_handshake():
+//                 return True
+//         except ssl.SSLCertVerificationError:
+//             return False
+//         i += 1
+//     return False
 bool try_verify(std::string_view cafile) {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.setblocking(False)
     a.setblocking(false);
-    // b.setblocking(False)
     b.setblocking(false);
-    // ctx = ssl.create_default_context()
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
-    // if len(cafile) > 0:
     if ((::tpy::__len__(cafile) > 0)) {
-        // ctx.load_verify_locations(cafile)
         ctx.load_verify_locations(cafile);
     }
-    // cli = ctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    // sdone = False
     bool sdone = false;
-    // i = 0
     int32_t i = 0;
-    // while i < 500:
     while ((i < 500)) {
-        // if not sdone:
         if ((!(sdone))) {
-            // try:
             {
                 try {
-                    // if srv.do_handshake():
                     if (srv.do_handshake()) {
-                        // sdone = True
                         sdone = true;
                     }
                 } catch (const ::tpystd::ssl::SSLError&) {
-                    // return False  # server aborts after the client rejects
                     return false;
                 }
             }
         }
-        // try:
         {
             try {
-                // if cli.do_handshake():
                 if (cli.do_handshake()) {
-                    // return True
                     return true;
                 }
             } catch (const ::tpystd::ssl::SSLCertVerificationError&) {
-                // return False
                 return false;
             }
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return False
     return false;
 }
 
 // def main() -> None:
+//     write_fixtures()
+//     # Hermeticity: a host's real SSL_CERT_FILE would override the probe seam
+//     # and flip the arms below.
+//     if "SSL_CERT_FILE" in os.environ:
+//         del os.environ["SSL_CERT_FILE"]
+//
+//     # Fixture bundle injected as the "system store": default context verifies.
+//     ssl._ca_probe_paths.insert(0, CERT_PATH)
+//     print("system-trusted:", try_verify())
+//
+//     # Probe list restored: the same peer is untrusted again -- the system
+//     # store is additive, it does not blanket-accept.
+//     ssl._ca_probe_paths.pop(0)
+//     print("untrusted rejected:", not try_verify())
+//
+//     # A garbage bundle at the probed location is skipped best-effort
+//     # (CPython/OpenSSL match: never raises) -- the explicitly loaded cafile
+//     # still verifies the peer.
+//     ssl._ca_probe_paths.insert(0, GARBAGE_PATH)
+//     print("garbage probe skipped:", try_verify(CERT_PATH))
+//     ssl._ca_probe_paths.pop(0)
+//
+//     # SSL_CERT_FILE wins over the probe list (the probe list is untouched
+//     # here and would not trust the peer).
+//     os.environ["SSL_CERT_FILE"] = CERT_PATH
+//     print("env wins:", try_verify())
+//
+//     # A garbage SSL_CERT_FILE is skipped best-effort too; the explicit
+//     # cafile still verifies.
+//     os.environ["SSL_CERT_FILE"] = GARBAGE_PATH
+//     print("garbage env skipped:", try_verify(CERT_PATH))
+//     del os.environ["SSL_CERT_FILE"]
 void main() {
-    // write_fixtures()
     write_fixtures();
-    // # Hermeticity: a host's real SSL_CERT_FILE would override the probe seam
-    // # and flip the arms below.
-    // if "SSL_CERT_FILE" in os.environ:
     if (((*::tpystd::os::_environ::environ).__contains__("SSL_CERT_FILE"))) {
-        // del os.environ["SSL_CERT_FILE"]
         ::tpy::__delitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE");
     }
-    // # Fixture bundle injected as the "system store": default context verifies.
-    // ssl._ca_probe_paths.insert(0, CERT_PATH)
     ::tpy::list_insert((*::tpystd::ssl::_ca_probe_paths), 0, std::string(CERT_PATH));
-    // print("system-trusted:", try_verify())
     std::cout << "system-trusted:" << " " << ::tpy::print_bool(try_verify()) << "\n";
-    // # Probe list restored: the same peer is untrusted again -- the system
-    // # store is additive, it does not blanket-accept.
-    // ssl._ca_probe_paths.pop(0)
     ::tpy::list_pop_at((*::tpystd::ssl::_ca_probe_paths), 0);
-    // print("untrusted rejected:", not try_verify())
     std::cout << "untrusted rejected:" << " " << ::tpy::print_bool((!(try_verify()))) << "\n";
-    // # A garbage bundle at the probed location is skipped best-effort
-    // # (CPython/OpenSSL match: never raises) -- the explicitly loaded cafile
-    // # still verifies the peer.
-    // ssl._ca_probe_paths.insert(0, GARBAGE_PATH)
     ::tpy::list_insert((*::tpystd::ssl::_ca_probe_paths), 0, std::string(GARBAGE_PATH));
-    // print("garbage probe skipped:", try_verify(CERT_PATH))
     std::cout << "garbage probe skipped:" << " " << ::tpy::print_bool(try_verify(CERT_PATH)) << "\n";
-    // ssl._ca_probe_paths.pop(0)
     ::tpy::list_pop_at((*::tpystd::ssl::_ca_probe_paths), 0);
-    // # SSL_CERT_FILE wins over the probe list (the probe list is untouched
-    // # here and would not trust the peer).
-    // os.environ["SSL_CERT_FILE"] = CERT_PATH
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE", std::string(CERT_PATH));
-    // print("env wins:", try_verify())
     std::cout << "env wins:" << " " << ::tpy::print_bool(try_verify()) << "\n";
-    // # A garbage SSL_CERT_FILE is skipped best-effort too; the explicit
-    // # cafile still verifies.
-    // os.environ["SSL_CERT_FILE"] = GARBAGE_PATH
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE", std::string(GARBAGE_PATH));
-    // print("garbage env skipped:", try_verify(CERT_PATH))
     std::cout << "garbage env skipped:" << " " << ::tpy::print_bool(try_verify(CERT_PATH)) << "\n";
-    // del os.environ["SSL_CERT_FILE"]
     ::tpy::__delitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE");
 }
 
+// import os
+// import ssl
+//
+// import socket
+//
+// CERT_PEM: Final[str] = """-----BEGIN CERTIFICATE-----
+// MIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw
+// FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1
+// MTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO
+// PQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE
+// tP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN
+// WGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD
+// VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID
+// SAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW
+// Ddslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==
+// -----END CERTIFICATE-----
+// """
+//
+// KEY_PEM: Final[str] = """-----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg2kn/USvpv4Ilspd2
+// xfLz4BM0UjqqhFJndB7QYY+ijAihRANCAATi4r8fZOEM8tz66TgRALGG7z33xtTC
+// AHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq
+// -----END PRIVATE KEY-----
+// """
+//
+// CERT_PATH: Final[str] = "tpy_test_ssl_sysca_cert.pem"
+// KEY_PATH: Final[str] = "tpy_test_ssl_sysca_key.pem"
+// GARBAGE_PATH: Final[str] = "tpy_test_ssl_sysca_garbage.pem"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import os
     ::tpystd::os::__tpy_init();
-    // import ssl
     ::tpystd::ssl::__tpy_init();
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

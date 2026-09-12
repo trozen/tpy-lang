@@ -51,8 +51,10 @@ inline std::ostream& operator<<(std::ostream& __os, K __e) {
 struct B;
 
 inline constexpr std::string_view __name__ = "pkg.b";
+// V: Final[int32] = 3
 inline constexpr int32_t V = 3;
 
+// def g(n: int32) -> int32:
 int32_t g(int32_t n);
 
 // class B:
@@ -97,18 +99,19 @@ namespace tpyapp::pkg::b {
 
 
 // def __init__(self) -> None:
+//     self.x = int32(7)
 inline B::B() : x(7) {}
 
 // def greet(self) -> int32:
+//     # Conforms to Greeter via structural matching.
+//     return self.x
 inline int32_t B::greet() const {
-    // # Conforms to Greeter via structural matching.
-    // return self.x
     return this->x;
 }
 
 // def value(self) -> int32:
+//     return self.x
 inline int32_t B::value() const {
-    // return self.x
     return this->x;
 }
 void __tpy_init();

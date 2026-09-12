@@ -193,160 +193,171 @@ inline std::ostream& operator<<(std::ostream& os, const JsonReader& obj) {
 
 
 // def __init__(self, message: str = "", pos: int32 = -1) -> None:
+//     self.message = message
+//     self.pos = pos
 inline JsonError::JsonError(std::string_view message, int32_t pos) : pos(pos) {
-    // self.message = message
     this->message = message;
 }
 
 // def __init__(self, data: str) -> None:
+//     self._data = data
+//     self._pos = 0
+//     self._len = len(data)
 inline JsonReader::JsonReader(std::string_view data) : _data(data), _pos(0), _len(::tpy::__len__(data)) {}
 
 // def position(self) -> int32:
+//     """Current byte offset into the input. Used for error reporting."""
+//     return self._pos
 inline int32_t JsonReader::position() const {
-    // return self._pos
     return this->_pos;
 }
 
 // def _skip_ws(self) -> None:
+//     while self._pos < self._len:
+//         c = self._data[self._pos]
+//         if c != " " and c != "\t" and c != "\n" and c != "\r":
+//             return
+//         self._pos += 1
 inline void JsonReader::_skip_ws() {
-    // while self._pos < self._len:
     while ((this->_pos < this->_len)) {
-        // c = self._data[self._pos]
         char c = ::tpy::__getitem__(this->_data, this->_pos);
-        // if c != " " and c != "\t" and c != "\n" and c != "\r":
         if (((((c != ' ') && (c != '\t')) && (c != '\n')) && (c != '\r'))) {
-            // return
             return;
         }
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     }
 }
 
 // @error_return(JsonError)
 // def read_object_start(self) -> None:
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == "{"):
+//         raise JsonError("expected '{'", self._pos)
+//     self._pos += 1
 inline std::expected<void, JsonError> JsonReader::read_object_start() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == "{"):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '{'))))) {
-        // raise JsonError("expected '{'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected '{'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     return {};
 }
 
 // @error_return(JsonError)
 // def read_object_end(self) -> None:
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == "}"):
+//         raise JsonError("expected '}'", self._pos)
+//     self._pos += 1
 inline std::expected<void, JsonError> JsonReader::read_object_end() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == "}"):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '}'))))) {
-        // raise JsonError("expected '}'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected '}'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     return {};
 }
 
 // @error_return(JsonError)
 // def read_array_start(self) -> None:
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == "["):
+//         raise JsonError("expected '['", self._pos)
+//     self._pos += 1
 inline std::expected<void, JsonError> JsonReader::read_array_start() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == "["):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '['))))) {
-        // raise JsonError("expected '['", self._pos)
         return ::tpy::make_unexpected(JsonError("expected '['", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     return {};
 }
 
 // @error_return(JsonError)
 // def read_array_end(self) -> None:
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == "]"):
+//         raise JsonError("expected ']'", self._pos)
+//     self._pos += 1
 inline std::expected<void, JsonError> JsonReader::read_array_end() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == "]"):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == ']'))))) {
-        // raise JsonError("expected ']'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected ']'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     return {};
 }
 
 // @error_return(JsonError)
 // def read_key(self) -> str:
+//     result = self._read_raw_str()
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == ":"):
+//         raise JsonError("expected ':'", self._pos)
+//     self._pos += 1
+//     return result
 inline std::expected<std::string, JsonError> JsonReader::read_key() {
-    // result = self._read_raw_str()
     std::string result;
     {
         auto __try_tmp_1 = this->_read_raw_str();
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         result = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == ":"):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == ':'))))) {
-        // raise JsonError("expected ':'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected ':'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // return result
     return result;
 }
 
 // @error_return(JsonError)
 // def read_str(self) -> str:
+//     return self._read_raw_str()
 inline std::expected<std::string, JsonError> JsonReader::read_str() {
-    // return self._read_raw_str()
     return this->_read_raw_str();
 }
 
 // @error_return(JsonError)
 // def read_float(self) -> float64:
+//     raw: StrView = self._read_number_raw()
+//     return float(raw)
 inline std::expected<double, JsonError> JsonReader::read_float() {
-    // raw: StrView = self._read_number_raw()
     std::string_view raw;
     {
         auto __try_tmp_2 = this->_read_number_raw();
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
         raw = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
-    // return float(raw)
     return ::tpy::float_from_str(raw);
 }
 
 // @error_return(JsonError)
 // def read_number_raw(self) -> StrView:
+//     """Read the raw text of a JSON number without parsing it.
+//
+//     Returns a view into the input. Caller decides int vs float (e.g. by
+//     scanning for '.', 'e', 'E') and parses accordingly. Used by the
+//     stdlib `json` wrapper to preserve BigInt precision.
+//     """
+//     return self._read_number_raw()
 inline std::expected<std::string_view, JsonError> JsonReader::read_number_raw() {
-    // return self._read_number_raw()
     return this->_read_number_raw();
 }
 
 // @error_return(JsonError)
 // def read_null(self) -> None:
+//     self._skip_ws()
+//     if self._pos + 4 <= self._len and self._data[self._pos:self._pos + 4] == "null":
+//         self._pos += 4
+//         return
+//     raise JsonError("expected 'null'", self._pos)
 inline std::expected<void, JsonError> JsonReader::read_null() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if self._pos + 4 <= self._len and self._data[self._pos:self._pos + 4] == "null":
     if ((((::tpy::add_check<int32_t>(this->_pos, 4)) <= this->_len) && (::tpy::str_slice(this->_data, ::tpy::BasicSlice{this->_pos, (::tpy::add_check<int32_t>(this->_pos, 4))}) == "null"))) {
-        // self._pos += 4
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 4);
-        // return
         return {};
     }
-    // raise JsonError("expected 'null'", self._pos)
     return ::tpy::make_unexpected(JsonError("expected 'null'", this->_pos));
     return {};
 }
@@ -354,27 +365,29 @@ inline std::expected<void, JsonError> JsonReader::read_null() {
 // # -- internal helpers --
 // @error_return(JsonError)
 // def _skip_str(self) -> None:
+//     """Advance past a JSON string without allocating. Handles escapes."""
+//     self._skip_ws()
+//     self._skip_str_no_ws()
 inline std::expected<void, JsonError> JsonReader::_skip_str() {
-    // self._skip_ws()
     this->_skip_ws();
-    // self._skip_str_no_ws()
     this->_skip_str_no_ws();
     return {};
 }
 
 // @error_return(JsonError)
 // def _skip_key(self) -> None:
+//     """Skip an object key and its trailing colon. No allocation."""
+//     self._skip_str_no_ws()
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == ":"):
+//         raise JsonError("expected ':'", self._pos)
+//     self._pos += 1
 inline std::expected<void, JsonError> JsonReader::_skip_key() {
-    // self._skip_str_no_ws()
     this->_skip_str_no_ws();
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == ":"):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == ':'))))) {
-        // raise JsonError("expected ':'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected ':'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     return {};
 }

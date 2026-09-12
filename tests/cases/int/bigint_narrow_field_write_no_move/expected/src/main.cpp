@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def main():
+//     s = Split(3725, 10)
+//     print(s.hi)
+//     print(s.lo)
 void main() {
-    // s = Split(3725, 10)
     Split s = Split(::tpy::BigInt(3725), ::tpy::BigInt(10));
-    // print(s.hi)
     std::cout << s.hi << "\n";
-    // print(s.lo)
     std::cout << s.lo << "\n";
 }
 
 
 // def __init__(self, total: int, extra: int) -> None:
+//     hi, lo = divmod(total, 60)
+//     lo = lo + extra
+//     carry, lo = divmod(lo, 60)
+//     hi = hi + carry
+//     if hi > 1000:
+//         raise OverflowError("too large")
+//     self.hi = hi
+//     self.lo = lo
 Split::Split(const ::tpy::BigInt& total, const ::tpy::BigInt& extra) {
-    // hi, lo = divmod(total, 60)
     auto __tup_1 = ::tpy::divmod_bigint(total, ::tpy::BigInt(60));
     ::tpy::BigInt hi = std::get<0>(__tup_1);
     ::tpy::BigInt lo = std::get<1>(__tup_1);
-    // lo = lo + extra
     lo = ((lo) + (extra));
-    // carry, lo = divmod(lo, 60)
     auto __tup_2 = ::tpy::divmod_bigint(lo, ::tpy::BigInt(60));
     const ::tpy::BigInt& carry = std::get<0>(__tup_2);
     lo = std::get<1>(__tup_2);
-    // hi = hi + carry
     hi = ((hi) + (carry));
-    // if hi > 1000:
     if ((hi > 1000)) {
-        // raise OverflowError("too large")
         throw ::tpy::OverflowError("too large");
     }
-    // self.hi = hi
     this->hi = (hi).to_fixed_check<int32_t>();
-    // self.lo = lo
     this->lo = (lo).to_fixed_check<int32_t>();
 }
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

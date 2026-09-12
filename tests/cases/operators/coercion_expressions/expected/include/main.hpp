@@ -14,13 +14,21 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def return_expr_as_int32(a: int, b: int) -> int32:
 int32_t return_expr_as_int32(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
+// def take_int32(n: int32) -> int32:
 int32_t take_int32(int32_t n);
+// def test_bigint_expr_to_int32() -> None:
 void test_bigint_expr_to_int32();
+// def modify_via_ptr(p: Ptr[Point]) -> None:
 void modify_via_ptr(Point* p);
+// def read_via_const_ptr(p: Ptr[readonly[Point]]) -> int32:
 int32_t read_via_const_ptr(const Point* p);
+// def test_field_access_to_ptr() -> None:
 void test_field_access_to_ptr();
+// def test_nested_field_to_ptr() -> None:
 void test_nested_field_to_ptr();
+// def test_literal_expr_to_int32() -> None:
 void test_literal_expr_to_int32();
 
 // class Counter:
@@ -97,27 +105,32 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.value = v
 inline Counter::Counter(const ::tpy::BigInt& v) : value(v) {}
 
 // def get(self) -> int:
+//     return self.value
 inline ::tpy::BigInt Counter::get() const {
-    // return self.value
     return this->value;
 }
 
 // def add(self, x: int) -> int:
+//     return self.value + x
 inline ::tpy::BigInt Counter::add(const ::tpy::BigInt& x) const {
-    // return self.value + x
     return ((this->value) + (x));
 }
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.pt = Point(x, y)
 inline Container::Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.inner = Container(x, y)
 inline Outer::Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def show_span(s: Span[int32]) -> None:
+//     print(str(s))
+//     print(f"span={s}")
 void show_span(std::span<int32_t> s) {
-    // print(str(s))
     std::cout << ::tpy::list_to_str(s) << "\n";
-    // print(f"span={s}")
     std::cout << std::format("span={}", ::tpy::list_to_str(s)) << "\n";
 }
 
 // def main() -> None:
+//     a: Array[int32, 3] = [10, 20, 30]
+//     print(str(a))
+//     print(repr(a))
+//     print(f"{a}")
+//     print(f"array={a!r}")
+//
+//     show_span(a)
 void main() {
-    // a: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
-    // print(str(a))
     std::cout << ::tpy::list_to_str(a) << "\n";
-    // print(repr(a))
     std::cout << ::tpy::list_to_str(a) << "\n";
-    // print(f"{a}")
     std::cout << std::format("{}", ::tpy::list_to_str(a)) << "\n";
-    // print(f"array={a!r}")
     std::cout << std::format("array={}", ::tpy::list_to_str(a)) << "\n";
-    // show_span(a)
     show_span(::tpy::as_mut_span(a));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

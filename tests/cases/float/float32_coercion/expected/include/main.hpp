@@ -9,16 +9,27 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def accepts_float(x: float) -> float:
 double accepts_float(double x);
+// def accepts_f32(x: float32) -> float32:
 float accepts_f32(float x);
+// def returns_f32() -> float32:
 float returns_f32();
+// def test_widening_assignment() -> None:
 void test_widening_assignment();
+// def test_narrowing_assignment() -> None:
 void test_narrowing_assignment();
+// def test_param_coercion() -> None:
 void test_param_coercion();
+// def test_return_coercion() -> None:
 void test_return_coercion();
+// def test_mixed_type_inference() -> None:
 void test_mixed_type_inference();
+// def test_int_to_float32_coercion() -> None:
 void test_int_to_float32_coercion();
+// def test_chained_coercion() -> None:
 void test_chained_coercion();
+// def main() -> None:
 void main();
 
 void __tpy_init();

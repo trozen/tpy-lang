@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main():
+//     c = Child()
+//     print("alive")
 void main() {
-    // c = Child()
     Child c = Child();
-    // print("alive")
     std::cout << "alive" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

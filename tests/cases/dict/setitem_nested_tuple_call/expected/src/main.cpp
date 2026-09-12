@@ -5,48 +5,48 @@ namespace tpyapp::main {
 
 
 // def make() -> tuple[int32, tuple[int32, int32]]:
+//     return (1, (2, 3))
 std::tuple<int32_t, std::tuple<int32_t, int32_t>> make() {
-    // return (1, (2, 3))
     return std::tuple<int32_t, std::tuple<int32_t, int32_t>>{1, std::tuple<int32_t, int32_t>{2, 3}};
 }
 
 // def main() -> None:
+//     d: dict[int32, tuple[int32, tuple[int32, int32]]] = {}
+//     # The call source, free function and method.
+//     d[1] = make()
+//     d[2] = Src(10).pair()
+//     # A same-typed local: the plain value copy, so the local still reads.
+//     t = make()
+//     d[3] = t
+//     # The literal source keeps working beside it.
+//     d[4] = (7, (8, 9))
+//     print(len(d))
+//     print(d[1][0], d[1][1][0], d[1][1][1])
+//     print(d[2][0], d[2][1][0], d[2][1][1])
+//     print(d[3][0], d[3][1][0], d[3][1][1])
+//     print(t[0], t[1][0], t[1][1])
+//     print(d[4][0], d[4][1][0], d[4][1][1])
 void main() {
-    // d: dict[int32, tuple[int32, tuple[int32, int32]]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>>();
-    // # The call source, free function and method.
-    // d[1] = make()
     ::tpy::__setitem__(d, 1, make());
-    // d[2] = Src(10).pair()
     ::tpy::__setitem__(d, 2, Src(10).pair());
-    // # A same-typed local: the plain value copy, so the local still reads.
-    // t = make()
     std::tuple<int32_t, std::tuple<int32_t, int32_t>> t = make();
-    // d[3] = t
     ::tpy::__setitem__(d, 3, t);
-    // # The literal source keeps working beside it.
-    // d[4] = (7, (8, 9))
     ::tpy::__setitem__(d, 4, std::tuple<int32_t, std::tuple<int32_t, int32_t>>{7, std::tuple<int32_t, int32_t>{8, 9}});
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // print(d[1][0], d[1][1][0], d[1][1][1])
     std::cout << std::get<0>(::tpy::__getitem__(d, 1)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 1))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 1))) << "\n";
-    // print(d[2][0], d[2][1][0], d[2][1][1])
     std::cout << std::get<0>(::tpy::__getitem__(d, 2)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 2))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 2))) << "\n";
-    // print(d[3][0], d[3][1][0], d[3][1][1])
     std::cout << std::get<0>(::tpy::__getitem__(d, 3)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 3))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 3))) << "\n";
-    // print(t[0], t[1][0], t[1][1])
     std::cout << std::get<0>(t) << " " << std::get<0>(std::get<1>(t)) << " " << std::get<1>(std::get<1>(t)) << "\n";
-    // print(d[4][0], d[4][1][0], d[4][1][1])
     std::cout << std::get<0>(::tpy::__getitem__(d, 4)) << " " << std::get<0>(std::get<1>(::tpy::__getitem__(d, 4))) << " " << std::get<1>(std::get<1>(::tpy::__getitem__(d, 4))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

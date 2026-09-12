@@ -5,14 +5,18 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int32]:
+//     nums = [1, 2, 3]
+//     d = {1: 10, 2: 20}
+//     s = {7, 8}
+//     for n in nums:
+//         yield n
+//     yield len(d)
+//     yield len(s)
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // nums = [1, 2, 3]
         nums.emplace(std::array<int32_t, 3>{1, 2, 3});
-        // d = {1: 10, 2: 20}
         d.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}}));
-        // s = {7, 8}
         s.emplace(::tpy::ordered_set<int32_t>({7, 8}));
         __for_it_0.emplace(((*nums)).begin());
         __for_end_0.emplace(((*nums)).end());
@@ -24,7 +28,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_1: {
-        // yield len(s)
         __state = S_RESUME_2;
         return ::tpy::__len__((*s));
     }
@@ -34,12 +37,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield len(d)
             __state = S_RESUME_1;
             return ::tpy::__len__((*d));
         }
         n = *((*__for_it_0))++;
-        // yield n
         __state = S_RESUME_0;
         return n;
     }
@@ -55,8 +56,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for v in gen():
+//         print(v)
 void main() {
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -64,18 +66,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

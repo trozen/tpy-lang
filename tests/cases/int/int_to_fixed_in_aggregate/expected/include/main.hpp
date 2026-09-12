@@ -13,8 +13,11 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def port() -> int:
 ::tpy::BigInt port();
+// def make_addr() -> tuple[str, int32]:
 std::tuple<std::string, int32_t> make_addr();
+// def main() -> None:
 void main();
 
 void __tpy_init();

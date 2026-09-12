@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3, 4, 5]
+//     w = Wrap(xs)
+//     for v in w.summary():
+//         print(v)
 void main() {
-    // xs: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
-    // w = Wrap(xs)
     Wrap<std::vector<int32_t>> w = Wrap<std::vector<int32_t>>(xs);
-    // for v in w.summary():
     {
         auto __src_0 = w.summary();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -18,18 +19,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = WithMixin(int32(7))
+//     print(a.x)
+//     print(a.hello())
+//
+//     b = WithMixinReversed(int32(13))
+//     print(b.x)
+//     print(b.hello())
 void main() {
-    // a = WithMixin(int32(7))
     WithMixin a = WithMixin(7);
-    // print(a.x)
     std::cout << a.x << "\n";
-    // print(a.hello())
     std::cout << a.hello() << "\n";
-    // b = WithMixinReversed(int32(13))
     WithMixinReversed b = WithMixinReversed(13);
-    // print(b.x)
     std::cout << b.x << "\n";
-    // print(b.hello())
     std::cout << b.hello() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

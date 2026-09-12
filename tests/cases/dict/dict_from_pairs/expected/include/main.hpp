@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def from_list_of_tuples() -> None:
 void from_list_of_tuples();
+// def from_items_view() -> None:
 void from_items_view();
+// def from_empty_list() -> None:
 void from_empty_list();
+// def with_int_keys() -> None:
 void with_int_keys();
+// def with_duplicate_keys() -> None:
 void with_duplicate_keys();
 
 void __tpy_init();

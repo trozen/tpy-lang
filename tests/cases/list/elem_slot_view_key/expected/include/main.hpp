@@ -9,20 +9,35 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def remove_literal(xs: list[str]) -> None:
 void remove_literal(std::vector<std::string>& xs);
+// def remove_param(xs: list[str], k: str) -> None:
 void remove_param(std::vector<std::string>& xs, std::string_view k);
+// def remove_view_local(xs: list[str], src: str) -> None:
 void remove_view_local(std::vector<std::string>& xs, std::string_view src);
+// def remove_slice(xs: list[str], src: str) -> None:
 void remove_slice(std::vector<std::string>& xs, std::string_view src);
+// def remove_stripped(xs: list[str], src: str) -> None:
 void remove_stripped(std::vector<std::string>& xs, std::string_view src);
+// def remove_view_elem(vs: list[StrView], k: StrView) -> None:
 void remove_view_elem(std::vector<std::string_view>& vs, std::string_view k);
+// def remove_owned_local(xs: list[str]) -> None:
 void remove_owned_local(std::vector<std::string>& xs);
+// def remove_element_read(xs: list[str]) -> None:
 void remove_element_read(std::vector<std::string>& xs);
+// def find(xs: list[str], k: str) -> int:
 ::tpy::BigInt find(const std::vector<std::string>& xs, std::string_view k);
+// def tally(xs: list[str], k: str) -> int:
 ::tpy::BigInt tally(const std::vector<std::string>& xs, std::string_view k);
+// def drop_bytes_literal(bs: list[bytes]) -> None:
 void drop_bytes_literal(std::vector<::tpy::Bytes>& bs);
+// def drop_bytes_param(bs: list[bytes], k: bytes) -> None:
 void drop_bytes_param(std::vector<::tpy::Bytes>& bs, ::tpy::BytesView k);
+// def empty_keys(xs: list[str], bs: list[bytes], k: str, bk: bytes) -> None:
 void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, ::tpy::BytesView bk);
+// def key_len(k: str) -> int:
 ::tpy::BigInt key_len(std::string_view k);
+// def main() -> None:
 void main();
 
 void __tpy_init();

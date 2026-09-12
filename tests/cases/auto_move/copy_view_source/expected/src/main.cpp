@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def owned(s: str) -> str:
+//     return copy(s)  # tpyc: ok
 std::string owned(std::string_view s) {
-    // return copy(s)  # tpyc: ok
     return std::string(s);
 }
 
 // def owned_bytes(b: bytes) -> bytes:
+//     # A `bytes` PARAM resolves OWNED but passes as a span, so the copy takes
+//     # the family's owning conversion -- the owned vector has no span ctor.
+//     return copy(b)  # tpyc: ok
 ::tpy::Bytes owned_bytes(::tpy::BytesView b) {
-    // # A `bytes` PARAM resolves OWNED but passes as a span, so the copy takes
-    // # the family's owning conversion -- the owned vector has no span ctor.
-    // return copy(b)  # tpyc: ok
     return ::tpy::Bytes(b);
 }
 
 // def main() -> None:
+//     for s in ["ab", "cd"]:
+//         # The loop variable resolves to a view; the copy spells that view.
+//         u = copy(s)  # tpyc: ok
+//         print(u)
+//     b = b"xy"
+//     v = copy(b)  # tpyc: ok
+//     print(len(v))
+//     print(owned("hi"))
+//     print(len(owned_bytes(b"abc")))
 void main() {
-    // for s in ["ab", "cd"]:
     auto __obj_0 = {"ab", "cd"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view s = *__beg_0;
-        // # The loop variable resolves to a view; the copy spells that view.
-        // u = copy(s)  # tpyc: ok
         std::string_view u = std::string_view(s);
-        // print(u)
         std::cout << u << "\n";
     }
-    // b = b"xy"
     ::tpy::BytesView b = ::tpy::bytes_literal("xy", 2);
-    // v = copy(b)  # tpyc: ok
     ::tpy::BytesView v = ::tpy::BytesView(b);
-    // print(len(v))
     std::cout << ::tpy::__len__(v) << "\n";
-    // print(owned("hi"))
     std::cout << owned("hi") << "\n";
-    // print(len(owned_bytes(b"abc")))
     std::cout << ::tpy::__len__(owned_bytes(::tpy::bytes_literal("abc", 3))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

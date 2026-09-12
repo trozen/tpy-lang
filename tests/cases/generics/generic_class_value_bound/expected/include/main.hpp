@@ -12,8 +12,10 @@ template<::tpy::ValueType T> struct Ring;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity[T: ValueType](v: T) -> T:
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> v);
+// def main() -> None:
 void main();
 
 // class Box[T: ValueType]:
@@ -23,18 +25,19 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value  # tpyc: ok
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get(self) -> T:
+    //     return self.value
     ::tpy::val_or_cref_t<T> get() const {
-        // return self.value
         return this->value;
     }
 
     // def set(self, value: T) -> None:
+    //     self.value = value  # tpyc: ok
     void set(::tpy::param_val_or_ref_t<T> value) {
-        // self.value = value  # tpyc: ok
         this->value = ::tpy::param_to_storage<T>(value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -55,20 +58,22 @@ struct Ring {
     int32_t size;
 
     // def __init__(self, fill: T) -> None:
+    //     self.data = [fill, fill, fill, fill]
+    //     self.size = 0
     Ring() = default;
     explicit Ring(::tpy::readonly_form_t<T> fill) : data(std::array<T, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}), size(0) {}
 
     // def put(self, v: T) -> None:
+    //     self.data[self.size] = v  # tpyc: ok
+    //     self.size += 1
     void put(::tpy::param_val_or_ref_t<T> v) {
-        // self.data[self.size] = v  # tpyc: ok
         ::tpy::__setitem__(this->data, this->size, v);
-        // self.size += 1
         this->size = ::tpy::add_check<int32_t>(this->size, 1);
     }
 
     // def get(self, i: int32) -> T:
+    //     return self.data[i]
     ::tpy::val_or_cref_t<T> get(int32_t i) const {
-        // return self.data[i]
         return ::tpy::__getitem__(this->data, i);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ring";
@@ -81,9 +86,9 @@ inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
 }
 
 // def identity[T: ValueType](v: T) -> T:
+//     return v
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> v) {
-    // return v
     return ::tpy::param_to_return<T>(v);
 }
 

@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen() -> Iterator[int]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class Suppressor:
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     std::string s;
@@ -81,24 +83,25 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Suppressor::Suppressor(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> str:
+//     return self.name
 inline std::string Suppressor::__enter__() const {
-    // return self.name
     return this->name;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is not None:
+//         print(self.name, "suppressing", str(exc_val))
+//         return True
+//     return False
 inline bool Suppressor::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is not None:
     if ((exc_val != nullptr)) {
-        // print(self.name, "suppressing", str(exc_val))
         std::cout << this->name << " " << "suppressing" << " " << std::string(::tpy::__str__((*exc_val))) << "\n";
-        // return True
         return true;
     }
-    // return False
     return false;
 }
 void __tpy_init();

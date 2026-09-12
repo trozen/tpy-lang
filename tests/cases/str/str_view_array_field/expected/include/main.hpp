@@ -11,16 +11,27 @@ struct Person;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_array_subscript_view() -> None:
 void test_array_subscript_view();
+// def test_array_subscript_mutated() -> None:
 void test_array_subscript_mutated();
+// def test_record_field_view() -> None:
 void test_record_field_view();
+// def test_record_field_mutated() -> None:
 void test_record_field_mutated();
+// def test_record_reassigned() -> None:
 void test_record_reassigned();
+// def test_record_method_mutates() -> None:
 void test_record_method_mutates();
+// def test_readonly_method_preserves_view() -> None:
 void test_readonly_method_preserves_view();
+// def test_field_aug_assign_mutates() -> None:
 void test_field_aug_assign_mutates();
+// def test_array_passed_to_func(arr: Array[str, 2]) -> None:
 void test_array_passed_to_func(std::array<std::string, 2>& arr);
+// def mutate_array(arr: Array[str, 2]) -> None:
 void mutate_array(std::array<std::string, 2>& arr);
+// def test_multiple_views_one_source() -> None:
 void test_multiple_views_one_source();
 
 // class Person:
@@ -50,18 +61,20 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 
 
 // def __init__(self, name: str, age: int32) -> None:
+//     self.name = name
+//     self.age = age
 inline Person::Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
 // def rename(self, new_name: str) -> None:
+//     self.name = new_name
 inline void Person::rename(std::string_view new_name) {
-    // self.name = new_name
     this->name = new_name;
 }
 
 // @readonly
 // def greeting(self) -> str:
+//     return "Hi, " + self.name
 inline std::string Person::greeting() const {
-    // return "Hi, " + self.name
     return (::tpy::str_concat("Hi, ", this->name));
 }
 void __tpy_init();

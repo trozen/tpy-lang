@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def collect() -> Iterator[int32]:
+//     boxes: list[Box[int32]] = []
+//     a = Box(7)
+//     yield 0
+//     boxes.append(a)  # tpyc: ok
+//     yield len(boxes)
 std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // boxes: list[Box[int32]] = []
         boxes.emplace(std::vector<::tpystd::tplib::box::Box<int32_t>>{});
-        // a = Box(7)
         a.emplace(::tpystd::tplib::box::Box<int32_t>(7));
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
-        // boxes.append(a)  # tpyc: ok
         (*boxes).push_back(std::move((*a)));
-        // yield len(boxes)
         __state = S_RESUME_1;
         return ::tpy::__len__((*boxes));
     }
@@ -39,8 +39,9 @@ __gen_collect collect() {
 }
 
 // def main() -> None:
+//     for v in collect():
+//         print(v)
 void main() {
-    // for v in collect():
     {
         auto __src_0 = collect();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -48,23 +49,23 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// # A @nocopy Box local live across a yield is frame-promoted; appending it to a
+// # list moves out of the frame slot at its last use rather than copying.
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @nocopy Box local live across a yield is frame-promoted; appending it to a
-    // # list moves out of the frame slot at its last use rather than copying.
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

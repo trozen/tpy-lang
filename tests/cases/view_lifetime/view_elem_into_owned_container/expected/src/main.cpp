@@ -8,25 +8,26 @@ namespace tpyapp::main {
 // # an owned-element container must be copied into owned storage, not stored as a
 // # dangling view (regression: these failed the C++ build or moved the view form).
 // def str_param_sinks(s: str) -> None:
+//     lit: list[str] = [s]
+//     app: list[str] = []
+//     app.append(s)
+//     st: set[str] = {s}
+//     d: dict[str, str] = {s: s}
+//     comp = [s for _ in range(2)]
+//     set_comp = {s}
+//     dict_comp = {s: 1 for _ in range(1)}
+//     print(lit, app, sorted(st), len(d), comp, sorted(set_comp), len(dict_comp))
 void str_param_sinks(std::string_view s) {
-    // lit: list[str] = [s]
     std::vector<std::string> lit = {std::string(s)};
-    // app: list[str] = []
     std::vector<std::string> app = std::vector<std::string>{};
-    // app.append(s)
     app.push_back(std::string(s));
-    // st: set[str] = {s}
     ::tpy::ordered_set<std::string> st = ::tpy::ordered_set<std::string>({std::string(s)});
-    // d: dict[str, str] = {s: s}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{std::string(s), std::string(s)}});
-    // comp = [s for _ in range(2)]
     std::array<std::string, 2> comp = ::tpy::array_from_index<std::string, 2>([&](std::size_t __i_0) -> std::string {
         int32_t _ = int32_t(__i_0);
         return std::string(s);
     });
-    // set_comp = {s}
     ::tpy::ordered_set<std::string> set_comp = ::tpy::ordered_set<std::string>({std::string(s)});
-    // dict_comp = {s: 1 for _ in range(1)}
     ::tpy::ordered_map<std::string, int32_t> dict_comp = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         const int32_t __stop_1 = 1;
@@ -35,104 +36,103 @@ void str_param_sinks(std::string_view s) {
         }
         std::move(__result);
     });
-    // print(lit, app, sorted(st), len(d), comp, sorted(set_comp), len(dict_comp))
     std::cout << ::tpy::ListPrinter(lit) << " " << ::tpy::ListPrinter(app) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(st)) << " " << ::tpy::__len__(d) << " " << ::tpy::ListPrinter(comp) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(set_comp)) << " " << ::tpy::__len__(dict_comp) << "\n";
 }
 
 // def str_optional_deref(a: str | None) -> None:
+//     out: list[str] = []
+//     if a is not None:
+//         out.append(a)
+//         out2: list[str] = [a]
+//         out.extend(out2)
+//     print(out)
 void str_optional_deref(std::optional<std::string_view> a) {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // if a is not None:
     if ((a.has_value())) {
-        // out.append(a)
         out.push_back(std::string((*a)));
-        // out2: list[str] = [a]
         std::vector<std::string> out2 = ::tpy::make_vector<std::string>(std::move(std::string((*a))));
-        // out.extend(out2)
         ::tpy::list_extend(out, ::tpy::own_iter(std::move(out2)));
     }
-    // print(out)
     std::cout << ::tpy::ListPrinter(out) << "\n";
 }
 
 // def str_slice(s: str) -> None:
+//     out: list[str] = []
+//     out.append(s[1:4])
+//     print(out)
 void str_slice(std::string_view s) {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // out.append(s[1:4])
     out.push_back(std::string(::tpy::str_slice(s, ::tpy::BasicSlice{1, 4})));
-    // print(out)
     std::cout << ::tpy::ListPrinter(out) << "\n";
 }
 
 // def bytes_sinks(b: bytes) -> None:
+//     # Print lengths/element bytes, not the bytes objects: TPy renders list[bytes]
+//     # as int lists, which would diverge from CPython's b'...' repr.
+//     lit: list[bytes] = [b]
+//     app: list[bytes] = []
+//     app.append(b)
+//     app.append(b[1:3])
+//     print(len(lit), len(app), len(lit[0]), app[0][0], app[1][0], len(app[1]))
 void bytes_sinks(::tpy::BytesView b) {
-    // # Print lengths/element bytes, not the bytes objects: TPy renders list[bytes]
-    // # as int lists, which would diverge from CPython's b'...' repr.
-    // lit: list[bytes] = [b]
     std::vector<::tpy::Bytes> lit = {::tpy::Bytes(b)};
-    // app: list[bytes] = []
     std::vector<::tpy::Bytes> app = std::vector<::tpy::Bytes>{};
-    // app.append(b)
     app.push_back(::tpy::Bytes(b));
-    // app.append(b[1:3])
     app.push_back(::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{1, 3})));
-    // print(len(lit), len(app), len(lit[0]), app[0][0], app[1][0], len(app[1]))
     std::cout << ::tpy::__len__(lit) << " " << ::tpy::__len__(app) << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 0), 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 1), 0)) << " " << ::tpy::__len__(::tpy::__getitem__(app, 1)) << "\n";
 }
 
 // def bytes_optional_deref(b: bytes | None) -> None:
+//     out: list[bytes] = []
+//     if b is not None:
+//         out.append(b)
+//     print(len(out), len(out[0]) if out else 0)
 void bytes_optional_deref(std::optional<::tpy::BytesView> b) {
-    // out: list[bytes] = []
     std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
-    // if b is not None:
     if ((b.has_value())) {
-        // out.append(b)
         out.push_back(::tpy::Bytes((*b)));
     }
-    // print(len(out), len(out[0]) if out else 0)
     std::cout << ::tpy::__len__(out) << " " << (((::tpy::__len__(out) != 0)) ? (::tpy::__len__(::tpy::__getitem__(out, 0))) : (0)) << "\n";
 }
 
 // def owned_source_inverse() -> None:
+//     # An owned str rvalue must keep working: the chokepoint only converts
+//     # view-form sources, never owned ones (no double-wrap, no perf regression).
+//     parts: list[str] = []
+//     parts.append("a" + "b")
+//     print(parts)
 void owned_source_inverse() {
-    // # An owned str rvalue must keep working: the chokepoint only converts
-    // # view-form sources, never owned ones (no double-wrap, no perf regression).
-    // parts: list[str] = []
     std::vector<std::string> parts = std::vector<std::string>{};
-    // parts.append("a" + "b")
     parts.push_back((::tpy::str_concat("a", "b")));
-    // print(parts)
     std::cout << ::tpy::ListPrinter(parts) << "\n";
 }
 
 // def main() -> None:
+//     str_param_sinks("hi")
+//     str_optional_deref("x")
+//     str_optional_deref(None)
+//     str_slice("abcdef")
+//     bytes_sinks(b"hello")
+//     bytes_optional_deref(b"world")
+//     bytes_optional_deref(None)
+//     owned_source_inverse()
 void main() {
-    // str_param_sinks("hi")
     str_param_sinks("hi");
-    // str_optional_deref("x")
     str_optional_deref("x");
-    // str_optional_deref(None)
     str_optional_deref(std::nullopt);
-    // str_slice("abcdef")
     str_slice("abcdef");
-    // bytes_sinks(b"hello")
     bytes_sinks(::tpy::bytes_literal("hello", 5));
-    // bytes_optional_deref(b"world")
     bytes_optional_deref(::tpy::bytes_literal_owned("world", 5));
-    // bytes_optional_deref(None)
     bytes_optional_deref(std::nullopt);
-    // owned_source_inverse()
     owned_source_inverse();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

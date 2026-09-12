@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(3, 4)
+//     print(c.x)
+//     print(c.y)
+//     c.y += 10               # mutate the inferred field
+//     print(c.y)
 void main() {
-    // c = Child(3, 4)
     Child c = Child(3, 4);
-    // print(c.x)
     std::cout << c.x << "\n";
-    // print(c.y)
     std::cout << c.y << "\n";
-    // c.y += 10               # mutate the inferred field
     c.y = ::tpy::add_check<int32_t>(c.y, 10);
-    // print(c.y)
     std::cout << c.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

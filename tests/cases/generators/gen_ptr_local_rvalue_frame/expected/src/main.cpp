@@ -5,22 +5,26 @@ namespace tpyapp::main {
 
 
 // def make_opt(n: int32) -> Own[Optional[Point]]:
+//     if n > 0:
+//         return Point(n)
+//     return None
 std::optional<Point> make_opt(int32_t n) {
-    // if n > 0:
     if ((n > 0)) {
-        // return Point(n)
         return Point(n);
     }
-    // return None
     return std::nullopt;
 }
 
 // def rvalue_init() -> Iterator[int32]:
+//     # The Point(42) slot must survive the loop's suspensions.
+//     saved: Optional[Point] = Point(42)
+//     for i in range(3):
+//         yield i
+//     if saved is not None:
+//         yield saved.x
 std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The Point(42) slot must survive the loop's suspensions.
-        // saved: Optional[Point] = Point(42)
         saved = &*(__ptr_slot_f0 = Point(42));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
@@ -38,7 +42,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             if ((saved != nullptr)) {
-                // yield saved.x
                 __state = S_RESUME_1;
                 return saved->x;
             } else {
@@ -47,7 +50,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
             }
         }
         i = ((*__for_i_0))++;
-        // yield i
         __state = S_RESUME_0;
         return i;
     }
@@ -67,35 +69,36 @@ __gen_rvalue_init rvalue_init() {
 }
 
 // def rebind_after_alias(items: list[Point]) -> Iterator[int32]:
+//     saved: Optional[Point] = None
+//     saved = items[0]
+//     # The alias write stays an alias: this mutation reaches items[0].
+//     if saved is not None:
+//         saved.x += 10
+//     yield 1
+//     # The rvalue rebind gets its own frame slot; the alias target above
+//     # is untouched by it.
+//     saved = Point(9)
+//     yield 2
+//     if saved is not None:
+//         yield saved.x
 std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // saved: Optional[Point] = None
         saved = nullptr;
-        // saved = items[0]
         saved = &(::tpy::__getitem__(items, 0));
-        // # The alias write stays an alias: this mutation reaches items[0].
-        // if saved is not None:
         if ((saved != nullptr)) {
-            // saved.x += 10
             saved->x = ::tpy::add_check<int32_t>(saved->x, 10);
         }
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // # The rvalue rebind gets its own frame slot; the alias target above
-        // # is untouched by it.
-        // saved = Point(9)
         saved = &*(__ptr_slot_f0 = Point(9));
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
     case S_RESUME_1: {
         if ((saved != nullptr)) {
-            // yield saved.x
             __state = S_RESUME_2;
             return saved->x;
         } else {
@@ -123,25 +126,26 @@ __gen_rebind_after_alias rebind_after_alias(std::vector<Point>& items) {
 }
 
 // def rebind_after_none() -> Iterator[int32]:
+//     saved: Optional[Point] = None
+//     yield 1
+//     saved = Point(5)
+//     yield 2
+//     if saved is not None:
+//         yield saved.x
 std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_none::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // saved: Optional[Point] = None
         saved = nullptr;
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // saved = Point(5)
         saved = &*(__ptr_slot_f0 = Point(5));
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
     case S_RESUME_1: {
         if ((saved != nullptr)) {
-            // yield saved.x
             __state = S_RESUME_2;
             return saved->x;
         } else {
@@ -169,26 +173,27 @@ __gen_rebind_after_none rebind_after_none() {
 }
 
 // def own_opt_call() -> Iterator[int32]:
+//     # The returned optional<Point> lives in a frame slot; the pointer
+//     # local is lifted from it and read after two suspensions.
+//     got = make_opt(3)
+//     yield 1
+//     yield 2
+//     if got is not None:
+//         yield got.x
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The returned optional<Point> lives in a frame slot; the pointer
-        // # local is lifted from it and read after two suspensions.
-        // got = make_opt(3)
         __ptr_slot_f0 = make_opt(3);
         got = ::tpy::optional_to_ptr(__ptr_slot_f0);
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
     case S_RESUME_1: {
         if ((got != nullptr)) {
-            // yield got.x
             __state = S_RESUME_2;
             return got->x;
         } else {
@@ -216,21 +221,26 @@ __gen_own_opt_call own_opt_call() {
 }
 
 // def loop_rebind(n: int32) -> Iterator[int32]:
+//     # The same rebind site re-executed each iteration reuses one frame
+//     # slot: the assignment destroys the prior payload at the rebind.
+//     saved: Optional[Point] = None
+//     i = 0
+//     while i < n:
+//         saved = Point(i * 100)
+//         yield i
+//         if saved is not None:
+//             yield saved.x
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The same rebind site re-executed each iteration reuses one frame
-        // # slot: the assignment destroys the prior payload at the rebind.
-        // saved: Optional[Point] = None
         saved = nullptr;
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
         if ((saved != nullptr)) {
-            // yield saved.x
             __state = S_RESUME_1;
             return saved->x;
         } else {
@@ -244,9 +254,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            // saved = Point(i * 100)
             saved = &*(__ptr_slot_f0 = Point((::tpy::mul_check<int32_t>(i, 100))));
-            // yield i
             __state = S_RESUME_0;
             return i;
         } else {
@@ -255,7 +263,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
         }
     }
     case S_JOIN_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -272,8 +279,19 @@ __gen_loop_rebind loop_rebind(int32_t n) {
 }
 
 // def main() -> None:
+//     for v in rvalue_init():
+//         print(v)
+//     pts = [Point(1)]
+//     for v in rebind_after_alias(pts):
+//         print(v)
+//     print(pts[0].x)
+//     for v in rebind_after_none():
+//         print(v)
+//     for v in own_opt_call():
+//         print(v)
+//     for v in loop_rebind(2):
+//         print(v)
 void main() {
-    // for v in rvalue_init():
     {
         auto __src_0 = rvalue_init();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -281,13 +299,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // pts = [Point(1)]
     std::vector<Point> pts = {Point(1)};
-    // for v in rebind_after_alias(pts):
     {
         auto __src_2 = rebind_after_alias(pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -295,13 +310,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(pts[0].x)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // for v in rebind_after_none():
     {
         auto __src_4 = rebind_after_none();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -309,11 +321,9 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in own_opt_call():
     {
         auto __src_6 = own_opt_call();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -321,11 +331,9 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in loop_rebind(2):
     {
         auto __src_8 = loop_rebind(2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -333,18 +341,17 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

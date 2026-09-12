@@ -6,22 +6,23 @@ namespace tpyapp::main {
 
 // # Test that subscript out-of-bounds access on list panics at runtime
 // def test_list_subscript_oob() -> None:
+//     nums: list[int32] = [1, 2, 3]
+//
+//     # Access index 10 via subscript - out of bounds (only 3 elements)
+//     x: int32 = nums[10]
+//     print(x)
 void test_list_subscript_oob() {
-    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // # Access index 10 via subscript - out of bounds (only 3 elements)
-    // x: int32 = nums[10]
     int32_t x = ::tpy::__getitem__(nums, 10);
-    // print(x)
     std::cout << x << "\n";
 }
 
+// test_list_subscript_oob()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_list_subscript_oob()
     test_list_subscript_oob();
 }
 

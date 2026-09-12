@@ -5,18 +5,19 @@ namespace tpyapp::main {
 
 
 // def maybe_neg_one(do_raise: bool) -> int:
+//     with Suppressor():
+//         if do_raise:
+//             raise ValueError("boom")
+//         return 100
+//     return -1
 ::tpy::BigInt maybe_neg_one(bool do_raise) {
-    // with Suppressor():
     auto __ctx_1 = Suppressor();
     __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        // if do_raise:
         if (do_raise) {
-            // raise ValueError("boom")
             throw ::tpy::ValueError("boom");
         }
-        // return 100
         ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(100);
         __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
@@ -29,24 +30,23 @@ namespace tpyapp::main {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     print(maybe_neg_one(False))   # 100 -- body returns 100 through finally chain
+//     print(maybe_neg_one(True))    # -1  -- CM suppresses, trailing return fires
 void main() {
-    // print(maybe_neg_one(False))   # 100 -- body returns 100 through finally chain
     std::cout << maybe_neg_one(false) << "\n";
-    // print(maybe_neg_one(True))    # -1  -- CM suppresses, trailing return fires
     std::cout << maybe_neg_one(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

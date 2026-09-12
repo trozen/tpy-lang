@@ -6,30 +6,31 @@ namespace tpyapp::main {
 
 // @field_typed_locals
 // def check(gate: Gate) -> bool:
+//     armed = "true"
+//     return armed and gate.flag
 bool check(const Gate& gate) {
-    // armed = "true"
     bool armed = true;
-    // return armed and gate.flag
     return (armed && gate.flag);
 }
 
 // def main() -> None:
+//     print(1 if check(Gate(True)) else 0)
+//     print(1 if check(Gate(False)) else 0)
 void main() {
-    // print(1 if check(Gate(True)) else 0)
     Gate __tmp_1 = Gate(true);
     std::cout << ((check(__tmp_1)) ? (1) : (0)) << "\n";
-    // print(1 if check(Gate(False)) else 0)
     Gate __tmp_2 = Gate(false);
     std::cout << ((check(__tmp_2)) ? (1) : (0)) << "\n";
 }
 
+// from fieldmod import field_typed_locals
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from fieldmod import field_typed_locals
-    // main()
     main();
 }
 

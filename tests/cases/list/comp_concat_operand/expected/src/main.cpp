@@ -5,8 +5,8 @@ namespace tpyapp::main {
 
 
 // def head_literal(xs: list[int]) -> Own[list[int]]:
+//     return [2] + [el for el in xs if el]  # tpyc: ok
 std::vector<::tpy::BigInt> head_literal(const std::vector<::tpy::BigInt>& xs) {
-    // return [2] + [el for el in xs if el]  # tpyc: ok
     return (::tpy::list_concat(std::vector<::tpy::BigInt>{2}, ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = xs;
@@ -24,8 +24,8 @@ std::vector<::tpy::BigInt> head_literal(const std::vector<::tpy::BigInt>& xs) {
 }
 
 // def tail_literal(xs: list[int]) -> Own[list[int]]:
+//     return [el for el in xs if el] + [2]  # tpyc: ok
 std::vector<::tpy::BigInt> tail_literal(const std::vector<::tpy::BigInt>& xs) {
-    // return [el for el in xs if el] + [2]  # tpyc: ok
     return (::tpy::list_concat(({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = xs;
@@ -43,8 +43,8 @@ std::vector<::tpy::BigInt> tail_literal(const std::vector<::tpy::BigInt>& xs) {
 }
 
 // def both_comps(xs: list[int]) -> Own[list[int]]:
+//     return [el for el in xs] + [el * 2 for el in xs]  # tpyc: ok
 std::vector<::tpy::BigInt> both_comps(const std::vector<::tpy::BigInt>& xs) {
-    // return [el for el in xs] + [el * 2 for el in xs]  # tpyc: ok
     return (::tpy::list_concat(({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = xs;
@@ -71,10 +71,12 @@ std::vector<::tpy::BigInt> both_comps(const std::vector<::tpy::BigInt>& xs) {
 }
 
 // def set_ops() -> int:
+//     base: set[int] = {1, 2, 3}
+//     grown = base | {int(x) for x in range(4) if x != 1}  # tpyc: ok
+//     shrunk = {int(x) for x in range(4)} - base  # tpyc: ok
+//     return len(grown) + len(shrunk)
 ::tpy::BigInt set_ops() {
-    // base: set[int] = {1, 2, 3}
     ::tpy::ordered_set<::tpy::BigInt> base = ::tpy::ordered_set<::tpy::BigInt>({::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)});
-    // grown = base | {int(x) for x in range(4) if x != 1}  # tpyc: ok
     ::tpy::ordered_set<::tpy::BigInt> grown = (::tpy::set_union(base, ({
         ::tpy::ordered_set<::tpy::BigInt> __result;
         const int32_t __stop_0 = 4;
@@ -85,7 +87,6 @@ std::vector<::tpy::BigInt> both_comps(const std::vector<::tpy::BigInt>& xs) {
         }
         std::move(__result);
     })));
-    // shrunk = {int(x) for x in range(4)} - base  # tpyc: ok
     ::tpy::ordered_set<::tpy::BigInt> shrunk = (::tpy::set_difference(({
         ::tpy::ordered_set<::tpy::BigInt> __result;
         const int32_t __stop_1 = 4;
@@ -94,24 +95,23 @@ std::vector<::tpy::BigInt> both_comps(const std::vector<::tpy::BigInt>& xs) {
         }
         std::move(__result);
     }), base));
-    // return len(grown) + len(shrunk)
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__len__(grown), ::tpy::__len__(shrunk))));
 }
 
 // def main():
+//     xs: list[int] = [0, 3, 5]
+//     print(head_literal(xs), tail_literal(xs), both_comps(xs), set_ops())
 void main() {
-    // xs: list[int] = [0, 3, 5]
     std::vector<::tpy::BigInt> xs = {0, 3, 5};
-    // print(head_literal(xs), tail_literal(xs), both_comps(xs), set_ops())
     std::cout << ::tpy::ListPrinter(head_literal(xs)) << " " << ::tpy::ListPrinter(tail_literal(xs)) << " " << ::tpy::ListPrinter(both_comps(xs)) << " " << set_ops() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

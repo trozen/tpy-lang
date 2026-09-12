@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_copy_mutable() -> None:
 void test_copy_mutable();
+// def test_copy_from_constptr() -> None:
 void test_copy_from_constptr();
 
 void __tpy_init();

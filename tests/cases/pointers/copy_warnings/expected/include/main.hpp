@@ -15,7 +15,9 @@ struct OptHolder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find_point(pts: list[Point], x: int32) -> Point | None:
 Point* find_point(std::vector<Point>& pts, int32_t x);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -78,10 +80,10 @@ struct Holder {
 
 
     // def set_value(self, v: T) -> None:
+    //     self.value = v            # tpyc: warning(/may copy T into field/)
+    //     self.value = copy(v)      # tpyc: ok
     void set_value(::tpy::param_val_or_ref_t<T> v) {
-        // self.value = v            # tpyc: warning(/may copy T into field/)
         this->value = ::tpy::param_to_storage<T>(v);
-        // self.value = copy(v)      # tpyc: ok
         this->value = ::tpy::param_to_storage<T>(T(v));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -113,39 +115,40 @@ inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
 
 
 // def set_corner(self, p: Point) -> None:
+//     self.corner = p           # tpyc: warning(/copies Point into field/)
+//     self.corner = copy(p)     # tpyc: ok
+//     self.corner = Point()     # tpyc: ok
 inline void Rect::set_corner(const Point& p) {
-    // self.corner = p           # tpyc: warning(/copies Point into field/)
     this->corner = p;
-    // self.corner = copy(p)     # tpyc: ok
     this->corner = Point(p);
-    // self.corner = Point()     # tpyc: ok
     this->corner = Point();
 }
 
 // def set_width(self, w: int32) -> None:
+//     self.width = w            # tpyc: ok
 inline void Rect::set_width(int32_t w) {
-    // self.width = w            # tpyc: ok
     this->width = w;
 }
 
 // def set_items(self, data: list[int32]) -> None:
+//     self.items = data         # tpyc: warning(/copies list\[int32\] into field/)
+//     self.items = copy(data)   # tpyc: ok
+//     self.items = [1, 2, 3]    # tpyc: ok
 inline void Container::set_items(const std::vector<int32_t>& data) {
-    // self.items = data         # tpyc: warning(/copies list\[int32\] into field/)
     this->items = data;
-    // self.items = copy(data)   # tpyc: ok
     this->items = std::vector<int32_t>(data);
-    // self.items = [1, 2, 3]    # tpyc: ok
     this->items = {1, 2, 3};
 }
 
 // def __init__(self) -> None:
+//     self.value = None
 inline OptHolder::OptHolder() : value(std::nullopt) {}
 
 // def set_value(self, p: Point | None) -> None:
+//     self.value = p            # tpyc: warning(/copies Point | None into field/)
+//     self.value = copy(p)      # tpyc: ok
 inline void OptHolder::set_value(const Point* p) {
-    // self.value = p            # tpyc: warning(/copies Point | None into field/)
     this->value = ::tpy::ptr_to_optional(p);
-    // self.value = copy(p)      # tpyc: ok
     this->value = ::tpy::ptr_to_optional(p);
 }
 void __tpy_init();

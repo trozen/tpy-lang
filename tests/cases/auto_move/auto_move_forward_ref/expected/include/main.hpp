@@ -11,11 +11,15 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(x: Own[Box]) -> int32:
 int32_t consume(Box&& x);
+// def sink[T](x: Own[T]) -> None:
 template<typename T>
 void sink(::tpy::own_param_t<T> x);
+// def wrapper[T](x: Own[T]) -> None:
 template<typename T>
 void wrapper(::tpy::own_param_t<T> x);
+// def main():
 void main();
 
 // class Box:
@@ -32,14 +36,14 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // def sink[T](x: Own[T]) -> None:
+//     pass
 template<typename T>
 void sink(::tpy::own_param_t<T> x) {
-    // pass
 }
 // def wrapper[T](x: Own[T]) -> None:
+//     sink[T](x)  # std::move(x) at last use
 template<typename T>
 void wrapper(::tpy::own_param_t<T> x) {
-    // sink[T](x)  # std::move(x) at last use
     sink<T>(std::move(x));
 }
 

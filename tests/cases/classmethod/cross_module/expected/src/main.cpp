@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Point.origin()
+//     b = P.at(3)
+//     c = shapes.Point.at(7)
+//     print(a.x, b.x, c.x)
 void main() {
-    // a = Point.origin()
     ::tpyapp::shapes::Point a = Point::origin();
-    // b = P.at(3)
     ::tpyapp::shapes::Point b = P::at(3);
-    // c = shapes.Point.at(7)
     ::tpyapp::shapes::Point c = ::tpyapp::shapes::Point::at(7);
-    // print(a.x, b.x, c.x)
     std::cout << a.x << " " << b.x << " " << c.x << "\n";
 }
 
+// # A classmethod called from another module, through every receiver spelling:
+// # a plain import, an aliased import, and a module-qualified name. `cls`
+// # resolves in the DEFINING module, so the constructor spells that module's
+// # record while the call site qualifies the receiver.
+// import shapes
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A classmethod called from another module, through every receiver spelling:
-    // # a plain import, an aliased import, and a module-qualified name. `cls`
-    // # resolves in the DEFINING module, so the constructor spells that module's
-    // # record while the call site qualifies the receiver.
-    // import shapes
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

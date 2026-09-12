@@ -36,6 +36,7 @@ struct Owner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Parrot(Pet):
@@ -119,24 +120,28 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Parrot::Parrot(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Parrot::name() {
-    // return self.label
     return this->label;
 }
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Dog::Dog(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Dog::name() const {
-    // return self.label
     return this->label;
 }
 
 // def __init__(self, name_: str, pet: Own[Box[Pet]]) -> None:
+//     self.name_ = name_
+//     self.pet = pet
 inline Owner::Owner(std::string_view name_, ::tpystd::tplib::box::Box<Pet>&& pet) : name_(name_), pet(std::move(pet)) {}
 void __tpy_init();
 } // namespace tpyapp::main

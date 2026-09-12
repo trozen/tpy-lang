@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // def push_to(ys: list[int32], v: int32) -> int32:
+//     ys.append(v)
+//     return len(ys)
 int32_t push_to(std::vector<int32_t>& ys, int32_t v) {
-    // ys.append(v)
     ys.push_back(v);
-    // return len(ys)
     return ::tpy::__len__(ys);
 }
 
@@ -17,83 +17,89 @@ int32_t push_to(std::vector<int32_t>& ys, int32_t v) {
 // # the sync twin of the frame position in nested_def/lambda_in_gen_method --
 // # both must print the same list.
 // def sync_ref_capture(xs: list[int32]) -> int32:
+//     a = apply_fn(lambda v: push_to(xs, v), 9)  # tpyc: ok
+//     return a + apply_fn(lambda i: xs[i], 2)  # tpyc: ok
 int32_t sync_ref_capture(std::vector<int32_t>& xs) {
-    // a = apply_fn(lambda v: push_to(xs, v), 9)  # tpyc: ok
     int32_t a = apply_fn([&xs](int32_t v) -> int32_t { return push_to(xs, v); }, 9);
-    // return a + apply_fn(lambda i: xs[i], 2)  # tpyc: ok
     return (::tpy::add_check<int32_t>(a, apply_fn([&xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); }, 2)));
 }
 
 // def main() -> None:
+//     def push(xs: list[int32]) -> None:
+//         xs.append(9)  # mutates the CALLER's list
+//
+//     def bump(d: dict[str, int32]) -> None:
+//         d["n"] = d["n"] + 1
+//
+//     def mark(s: set[int32]) -> None:
+//         s.add(7)
+//
+//     def stamp(b: bytearray) -> None:
+//         b.append(65)
+//
+//     def total(xs: list[int32]) -> int32:
+//         s = 0
+//         for x in xs:
+//             s += x
+//         return s
+//
+//     data = [1, 2]
+//     push(data)  # tpyc: ok
+//     counts = {"n": 1}
+//     bump(counts)  # tpyc: ok
+//     seen = {1}
+//     mark(seen)  # tpyc: ok
+//     buf = bytearray()
+//     stamp(buf)  # tpyc: ok
+//     print(len(data), data[2], total(data))
+//     print(counts["n"], len(seen), len(buf))
+//
+//     src = [1, 2]
+//     print("lambda_ref", sync_ref_capture(src), src)
 void main() {
-    // def push(xs: list[int32]) -> None:
     auto push = [](std::vector<int32_t>& xs) {
-        // xs.append(9)  # mutates the CALLER's list
         xs.push_back(9);
     };
-    // def bump(d: dict[str, int32]) -> None:
     auto bump = [](::tpy::ordered_map<std::string, int32_t>& d) {
-        // d["n"] = d["n"] + 1
         ::tpy::__setitem__(d, "n", (::tpy::add_check<int32_t>(::tpy::__getitem__(d, "n"), 1)));
     };
-    // def mark(s: set[int32]) -> None:
     auto mark = [](::tpy::ordered_set<int32_t>& s) {
-        // s.add(7)
         s.insert(7);
     };
-    // def stamp(b: bytearray) -> None:
     auto stamp = [](::tpy::ByteArray& b) {
-        // b.append(65)
         b.push_back(65);
     };
-    // def total(xs: list[int32]) -> int32:
     auto total = [](std::vector<int32_t>& xs) -> int32_t {
-        // s = 0
         int32_t s = 0;
-        // for x in xs:
         auto& __obj_0 = xs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // s += x
             s = ::tpy::add_check<int32_t>(s, x);
         }
-        // return s
         return s;
     };
-    // data = [1, 2]
     std::vector<int32_t> data = {1, 2};
-    // push(data)  # tpyc: ok
     push(data);
-    // counts = {"n": 1}
     ::tpy::ordered_map<std::string, int32_t> counts = ::tpy::ordered_map<std::string, int32_t>({{"n", 1}});
-    // bump(counts)  # tpyc: ok
     bump(counts);
-    // seen = {1}
     ::tpy::ordered_set<int32_t> seen = ::tpy::ordered_set<int32_t>({1});
-    // mark(seen)  # tpyc: ok
     mark(seen);
-    // buf = bytearray()
     ::tpy::ByteArray buf = ::tpy::ByteArray();
-    // stamp(buf)  # tpyc: ok
     stamp(buf);
-    // print(len(data), data[2], total(data))
     std::cout << ::tpy::__len__(data) << " " << ::tpy::__getitem__(data, 2) << " " << total(data) << "\n";
-    // print(counts["n"], len(seen), len(buf))
     std::cout << ::tpy::__getitem__(counts, "n") << " " << ::tpy::__len__(seen) << " " << ::tpy::__len__(buf) << "\n";
-    // src = [1, 2]
     std::vector<int32_t> src = {1, 2};
-    // print("lambda_ref", sync_ref_capture(src), src)
     std::cout << "lambda_ref" << " " << sync_ref_capture(src) << " " << ::tpy::ListPrinter(src) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

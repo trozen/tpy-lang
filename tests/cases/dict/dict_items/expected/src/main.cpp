@@ -6,32 +6,33 @@ namespace tpyapp::main {
 
 // # Iterate items via d.items() with tuple unpacking, check len()
 // def main() -> None:
+//     d = {"one": 1, "two": 2, "three": 3}
+//
+//     for k, v in d.items():
+//         print(k, v)
+//
+//     print(len(d.items()))
 void main() {
-    // d = {"one": 1, "two": 2, "three": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"one", 1}, {"two", 2}, {"three", 3}});
-    // for k, v in d.items():
     auto __obj_0 = ::tpy::dict_items(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        // for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         int32_t v = std::get<1>(__tup_1);
-        // print(k, v)
         std::cout << k << " " << v << "\n";
     }
-    // print(len(d.items()))
     std::cout << ::tpy::__len__(::tpy::dict_items(d)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

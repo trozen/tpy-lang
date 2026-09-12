@@ -970,6 +970,7 @@ class FunctionGenerator:
         cpp_name: str | None = None, return_type_override: TpyType | None = None,
     ) -> None:
         """Emit a single function forward declaration."""
+        self.ctx.emit_source_comment(out, func.loc)
         name = escape_cpp_name(cpp_name or func.name)
         proto_params = self.protocols.get_all_protocol_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
@@ -1125,6 +1126,10 @@ class FunctionGenerator:
         # @overload implementation: emit per-stub specialized functions
         overload_stubs = self.ctx.analyzer.overload_groups.get(func)
         if overload_stubs:
+            # The shared implementation's source echoes once above the
+            # group; each specialization below echoes only its stub line.
+            self.ctx.emit_preceding_comments(out, func.loc)
+            self.ctx.emit_definition_source_block(out, func.loc)
             if self._overload_stubs_are_literal_only(overload_stubs, func):
                 for stub in overload_stubs:
                     self._gen_literal_specialized_function(out, func, stub)
@@ -1137,7 +1142,7 @@ class FunctionGenerator:
                 return
 
         self.ctx.emit_preceding_comments(out, func.loc)
-        self.ctx.emit_source_comment(out, func.loc)
+        self.ctx.emit_definition_source_block(out, func.loc)
 
         if func.linkage == FunctionLinkage.EXPORT_C:
             c_name = func.native_name or func.name
@@ -1145,7 +1150,7 @@ class FunctionGenerator:
             params = self.gen_c_params(func.params)
             out.write(f'extern "C" {ret_type} {c_name}({params}) {{\n')
 
-            self.gen_body(out, func.body, func, return_cpp=ret_type)
+            self.gen_body(out, func, return_cpp=ret_type)
             out.write("}\n")
             return
 
@@ -1182,7 +1187,7 @@ class FunctionGenerator:
                                            addr_escapes_params=ae, func=func))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
 
-        self.gen_body(out, func.body, func, return_cpp=ret_type)
+        self.gen_body(out, func, return_cpp=ret_type)
 
         out.write("}\n")
 
@@ -1221,7 +1226,7 @@ class FunctionGenerator:
 
         self.ctx.thir_overload_key = (impl, stub)
         try:
-            self.gen_body(out, impl.body, impl, return_cpp=ret_type)
+            self.gen_body(out, impl, return_cpp=ret_type)
         finally:
             self.ctx.literal_overload_facts = {}
             self.ctx.thir_overload_key = None
@@ -1296,7 +1301,7 @@ class FunctionGenerator:
         self._inject_literal_overload_facts(overload_types)
         self.ctx.thir_overload_key = (impl, stub)
         try:
-            self.gen_body(out, impl.body, impl, return_cpp=ret_type)
+            self.gen_body(out, impl, return_cpp=ret_type)
         finally:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
@@ -1726,7 +1731,10 @@ class FunctionGenerator:
 
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent=sig_indent)
-        self.ctx.emit_source_comment(out, method.loc, indent=sig_indent)
+        if mode == "decl":
+            self.ctx.emit_source_comment(out, method.loc, indent=sig_indent)
+        else:
+            self.ctx.emit_definition_source_block(out, method.loc, sig_indent)
         fn_params = self._collect_fn_params(method.params)
         if proto_params or new_method_params or fn_params:
             # Bounds for new method type params only (class param bounds go on the requires clause)
@@ -1761,23 +1769,18 @@ class FunctionGenerator:
 
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = method.is_consuming
-        self.gen_body(out, method.body, method,
+        self.gen_body(out, method,
                       indent_level=body_indent_level, return_cpp=ret_type)
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{sig_indent}}}\n")
 
-    def gen_body(self, out: TextIO, body: list[TpyStmt], func: TpyFunction,
+    def gen_body(self, out: TextIO, func: TpyFunction,
                  indent_level: int = 1, return_cpp: str | None = None) -> None:
-        """Emit one function/method body from its lowered THIR.
-
-        `body` is only the source range the function-level trailing-comment
-        walk scans; the emitted statements come from the lowering, not from it.
-        """
+        """Emit one function/method body from its lowered THIR."""
         # Local import: `thir.emit` reaches back into `codegen_cpp`, so an
         # eager import here would close a codegen_cpp <-> thir cycle.
-        from ..thir.emit import (CommentSink, ModuleCounter, TempSink,
-                                 emit_thir_body)
+        from ..thir.emit import ModuleCounter, TempSink, emit_thir_body
         overload_key = self.ctx.thir_overload_key
         if overload_key is not None:
             # Per-stub specialization in flight: only the (impl, stub) entry
@@ -1794,19 +1797,12 @@ class FunctionGenerator:
             raise CodeGenError(
                 f"internal error: no lowered body for '{func.name}'", func.loc)
         emit_thir_body(out, thir_fn, indent_level,
-                       comments=CommentSink(self.ctx),
                        temps=TempSink(self.ctx),
                        with_counter=ModuleCounter(self.ctx, "with_counter"),
                        try_counter=ModuleCounter(self.ctx, "try_except_counter"),
                        finally_guard_counter=ModuleCounter(
                            self.ctx, "finally_guard_counter"),
                        return_cpp=return_cpp)
-        # A folded-terminating per-stub body suppresses the trailing-comment
-        # walk: the emitted stmts come from a then_body, so scanning forward
-        # from the TpyIf's line would pick up dead-branch comments.
-        if not thir_fn.suppress_trailing_comments:
-            self.ctx.emit_block_trailing_comments(
-                out, body, INDENT * indent_level)
 
     def seed_param_locals(self, *args, **kwargs) -> None:
         """Delegate to the shared emit primitive."""
@@ -1896,8 +1892,6 @@ class FunctionGenerator:
         """
         if stmt.linkage != VarLinkage.DEFAULT:
             return
-        self.ctx.emit_preceding_comments(out, stmt.loc)
-        self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
         cpp_type = self._global_cpp_type(var_type, stmt)
         # Global-slot storage is a value-vs-pointer-storage question: a
@@ -1956,6 +1950,8 @@ class FunctionGenerator:
         Special case: Final[str] uses std::string_view (string literals have
         static lifetime, constexpr requires literal type).
         """
+        self.ctx.emit_preceding_comments(out, stmt.loc)
+        self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
         cpp_type = var_type.to_cpp()
         # Final[str] -> constexpr std::string_view (string literals are static)
@@ -1977,6 +1973,7 @@ class FunctionGenerator:
         var_type = self._resolve_global_type(stmt)
         if is_constexpr_eligible(var_type):
             return  # Defined in header via inline constexpr
+        self.ctx.emit_source_comment(out, stmt.loc)
         cpp_type = var_type.to_cpp()
         init_expr = self._gen_final_init_expr(stmt, var_type)
         out.write(f"const {cpp_type} {stmt.name} = {init_expr};\n")
@@ -1996,6 +1993,7 @@ class FunctionGenerator:
             has_user_main: If True, call main() at end.
             module_name: Value for __name__ ("__main__" for entry point, module name otherwise).
         """
+        self.ctx.emit_module_source_block(out, stmts)
         out.write("void __tpy_init() {\n")
         # Guard against double initialization (handles diamond dependencies)
         out.write(f"{INDENT}static bool initialized = false;\n")
@@ -2026,13 +2024,11 @@ class FunctionGenerator:
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
 
-        from ..thir.emit import (CommentSink, ModuleCounter, TempSink,
-                                 emit_thir_body)
+        from ..thir.emit import ModuleCounter, TempSink, emit_thir_body
         # `global_scope`: slots spell `static __global_slot_N` at this scope.
         # The ctx seeding above still runs -- gen_main and the record/global
         # emitters read it after this call.
         emit_thir_body(out, self.ctx.thir_top_level, 1,
-                       comments=CommentSink(self.ctx),
                        temps=TempSink(self.ctx),
                        with_counter=ModuleCounter(self.ctx, "with_counter"),
                        try_counter=ModuleCounter(self.ctx, "try_except_counter"),

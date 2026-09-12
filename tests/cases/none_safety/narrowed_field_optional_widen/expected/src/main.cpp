@@ -5,54 +5,54 @@ namespace tpyapp::main {
 
 
 // def is_def(o: Pod | None) -> bool:
+//     return o is not None
 bool is_def(const Pod* o) {
-    // return o is not None
     return (o != nullptr);
 }
 
 // def take(t: T) -> Pod | None:
+//     if t.o is None:
+//         return None
+//     return t.o                   # tpyc: ok
 Pod* take(T& t) {
-    // if t.o is None:
     if ((!t.o.has_value())) {
-        // return None
         return nullptr;
     }
-    // return t.o                   # tpyc: ok
     return ::tpy::optional_to_ptr(t.o);
 }
 
 // def main() -> None:
+//     t = T()
+//     print(is_def(t.o))           # un-narrowed baseline: optional_to_ptr lift
+//     t.o = Pod()
+//     assert t.o is not None
+//     t.o.x = 1
+//     print(is_def(t.o))           # narrowed arg: same lift
+//     print(is_def_gen(t.o))       # narrowed arg into a GENERIC optional param
+//     p = take(t)
+//     assert p is not None
+//     p.x = 7                      # mutate through the returned borrow
+//     print(t.o.x)                 # tpyc: warning(/Potential None access/)
 void main() {
-    // t = T()
     T t = T();
-    // print(is_def(t.o))           # un-narrowed baseline: optional_to_ptr lift
     std::cout << ::tpy::print_bool(is_def(::tpy::optional_to_ptr(t.o))) << "\n";
-    // t.o = Pod()
     t.o = Pod();
-    // assert t.o is not None
     if (!((t.o.has_value()))) ::tpy::raise_assertion_error();
-    // t.o.x = 1
     (*t.o).x = ::tpy::BigInt(1);
-    // print(is_def(t.o))           # narrowed arg: same lift
     std::cout << ::tpy::print_bool(is_def(::tpy::optional_to_ptr(t.o))) << "\n";
-    // print(is_def_gen(t.o))       # narrowed arg into a GENERIC optional param
     std::cout << ::tpy::print_bool(is_def_gen<Pod>(::tpy::optional_to_ptr(t.o))) << "\n";
-    // p = take(t)
     Pod* p = take(t);
-    // assert p is not None
     if (!((p != nullptr))) ::tpy::raise_assertion_error();
-    // p.x = 7                      # mutate through the returned borrow
     p->x = ::tpy::BigInt(7);
-    // print(t.o.x)                 # tpyc: warning(/Potential None access/)
     std::cout << ::tpy::deref_optional_check(t.o).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

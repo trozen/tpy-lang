@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // async def first_above(c: Counts, threshold: int) -> int:
+//     result = -1
+//     async for x in c:
+//         if x > threshold:
+//             result = x
+//             break
+//     return result
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_first_above::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // result = -1
         result = -1;
         __for_itr_0.emplace((c).__aiter__());
         __state = S_JOIN_1;
@@ -32,14 +37,12 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_0: {
-        // return result
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = result;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {
         try {
-            // async for x in c:
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -52,7 +55,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         if ((x > threshold)) {
-            // result = x
             result = x;
             __state = S_JOIN_0;
             continue;
@@ -73,12 +75,12 @@ __coro_first_above first_above(Counts& c, ::tpy::BigInt threshold) {
 }
 
 // async def main() -> None:
+//     c = Counts()
+//     print(await first_above(c, 5))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counts()
         c.emplace(Counts());
-        // print(await first_above(c, 5))
         __sub_0.emplace((*c), ::tpy::BigInt(5));
         __state = S_RESUME_0;
         continue;
@@ -88,7 +90,6 @@ __coro_first_above first_above(Counts& c, ::tpy::BigInt threshold) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await first_above(c, 5))
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -105,13 +106,13 @@ __coro_main main() {
 }
 
 // async def __anext__(self) -> int:
+//     self.n += 1
+//     return self.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // self.n += 1
         __self.n = (__self.n) + (::tpy::BigInt(1));
-        // return self.n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -122,16 +123,17 @@ __coro_main main() {
 }
 
 
+// # `break` inside an `async for` body. The break should exit the loop
+// # directly without polling __anext__ again.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `break` inside an `async for` body. The break should exit the loop
-    // # directly without polling __anext__ again.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

@@ -4,6 +4,7 @@
 namespace tpyapp::pkg::consumer {
 
 
+// print("consumer done")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -12,7 +13,6 @@ void __tpy_init() {
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::amod::__tpy_init();
     ::tpyapp::pkg::bmod::__tpy_init();
-    // print("consumer done")
     std::cout << "consumer done" << "\n";
 }
 

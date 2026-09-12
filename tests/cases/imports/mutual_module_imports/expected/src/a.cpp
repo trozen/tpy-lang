@@ -6,17 +6,17 @@ namespace tpyapp::a {
 
 
 // def foo() -> int:
+//     return b.bar() + 1
 ::tpy::BigInt foo() {
-    // return b.bar() + 1
     return ((::tpyapp::b::bar()) + (::tpy::BigInt(1)));
 }
 
+// import b
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import b
     ::tpyapp::b::__tpy_init();
 }
 

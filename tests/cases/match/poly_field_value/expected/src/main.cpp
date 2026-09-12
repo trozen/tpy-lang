@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def describe(p: Pet) -> str:
+//     match p:
+//         case Dog(legs=4):  # tpyc: ok
+//             return "quadruped dog"
+//         case Dog():
+//             return "other dog"
+//         case _:
+//             return "not a dog"
 std::string describe(const Pet& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Dog(legs=4):  # tpyc: ok
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
         if (__case_0.legs == 4) {
-            // return "quadruped dog"
             return "quadruped dog";
             goto __match_end_2;
         }
     }
-    // case Dog():
     if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_1 = *__mpoly_1;
-        // return "other dog"
         return "other dog";
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "not a dog"
         return "not a dog";
     }
     __match_end_2:;
@@ -34,24 +34,24 @@ std::string describe(const Pet& p) {
 }
 
 // def main() -> None:
+//     print(describe(Dog(4)))
+//     print(describe(Dog(3)))
+//     print(describe(Cat()))
 void main() {
-    // print(describe(Dog(4)))
     Dog __tmp_1{Dog(::tpy::BigInt(4))};
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Dog(3)))
     Dog __tmp_2{Dog(::tpy::BigInt(3))};
     std::cout << describe(__tmp_2) << "\n";
-    // print(describe(Cat()))
     Cat __tmp_3{Cat()};
     std::cout << describe(__tmp_3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

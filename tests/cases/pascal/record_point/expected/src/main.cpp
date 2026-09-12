@@ -3,26 +3,26 @@
 
 namespace tpyapp::main {
 
-// p: Point;
 point* p{};
 
+// p: Point;
+//
+// p.x := 10;
+// p.y := 20;
+// writeln(p.x);
+// writeln(p.y);
+// writeln(p.x + p.y);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // p: Point;
     static point __global_slot_1 = point();
     p = &__global_slot_1;
-    // p.x := 10;
     p->x = 10;
-    // p.y := 20;
     p->y = 20;
-    // writeln(p.x);
     std::cout << p->x << "\n";
-    // writeln(p.y);
     std::cout << p->y << "\n";
-    // writeln(p.x + p.y);
     std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n";
 }
 

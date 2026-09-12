@@ -36,9 +36,12 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def double_wrap[T](inner: Own[Rc[T]]) -> Own[Box[Rc[T]]]:
 template<typename T>
 ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<T>> double_wrap(::tpystd::tplib::rc::Rc<T>&& inner);
+// def double_wrap(inner: str) -> Own[Box[Rc[str]]]:
 ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>> double_wrap(std::string_view inner);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -81,18 +84,19 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Dog::Dog(std::string_view label) : label(label) {}
 
 // def name(self) -> StrView:
+//     return self.label
 inline std::string_view Dog::name() const {
-    // return self.label
     return this->label;
 }
 // @dispatch
 // def double_wrap[T](inner: Own[Rc[T]]) -> Own[Box[Rc[T]]]:
+//     return Box(inner)
 template<typename T>
 ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<T>> double_wrap(::tpystd::tplib::rc::Rc<T>&& inner) {
-    // return Box(inner)
     return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<T>>(std::move(inner));
 }
 

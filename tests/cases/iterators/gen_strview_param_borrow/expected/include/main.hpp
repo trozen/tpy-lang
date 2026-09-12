@@ -11,11 +11,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_lengths;
 
+// def lengths(s: StrView) -> Iterator[int]:
 __gen_lengths lengths(std::string_view s);
+// def make_tmp() -> str:
 std::string make_tmp();
+// def main() -> None:
 void main();
 
-// Generator: lengths
+// def lengths(s: StrView) -> Iterator[int]:
 struct __gen_lengths : public ::tpy::next_iter_mixin<__gen_lengths, ::tpy::BigInt> {
     int32_t __state;
     std::string_view s;

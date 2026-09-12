@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(COUNTER)
+//     print(COUNTER + int32(1))
 void main() {
-    // print(COUNTER)
     std::cout << ::repro_init::pkg::state::COUNTER << "\n";
-    // print(COUNTER + int32(1))
     std::cout << (::tpy::add_check<int32_t>(::repro_init::pkg::state::COUNTER, 1)) << "\n";
 }
 
+// # Native package init re-exporting a non-Final module-level variable whose
+// # initializer is a function call (so it cannot fold at compile time and
+// # requires the source module's __tpy_init() to run). Pre-fix, the init was
+// # never chained through the native facade and the variable read as
+// # default-initialized (0); this test pins the chain.
+// from pkg import COUNTER
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Native package init re-exporting a non-Final module-level variable whose
-    // # initializer is a function call (so it cannot fold at compile time and
-    // # requires the source module's __tpy_init() to run). Pre-fix, the init was
-    // # never chained through the native facade and the variable read as
-    // # default-initialized (0); this test pins the chain.
-    // from pkg import COUNTER
     ::repro_init::pkg::state::__tpy_init();
-    // main()
     main();
 }
 

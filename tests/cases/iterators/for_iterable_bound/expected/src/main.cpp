@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = MyRange(1, 6)
+//     print(sum_all(r))
 void main() {
-    // r = MyRange(1, 6)
     MyRange r = MyRange(1, 6);
-    // print(sum_all(r))
     std::cout << sum_all<MyRange>(r) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

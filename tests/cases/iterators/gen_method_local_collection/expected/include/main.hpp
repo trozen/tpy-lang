@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Series_items;
 
+// def main() -> None:
 void main();
 
 // class Series:
@@ -35,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Series& obj) {
     return os;
 }
 
-// Generator: Series.items
+// def items(self) -> Iterator[int32]:
 struct __gen_Series_items : public ::tpy::next_iter_mixin<__gen_Series_items, int32_t> {
     int32_t __state;
     const Series& __self;
@@ -69,6 +70,8 @@ inline __gen_Series_items Series::items() const {
 
 
 // def __init__(self, a: int32, b: int32) -> None:
+//     self.a = a
+//     self.b = b
 inline Series::Series(int32_t a, int32_t b) : a(a), b(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

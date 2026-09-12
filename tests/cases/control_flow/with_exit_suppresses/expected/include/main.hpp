@@ -11,8 +11,11 @@ struct Suppressor;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def raises_inside() -> None:
 void raises_inside();
+// def normal_inside() -> None:
 void normal_inside();
+// def main() -> None:
 void main();
 
 // # __exit__ returning True suppresses an exception raised in the body
@@ -41,28 +44,29 @@ inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Suppressor::Suppressor(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> str:
+//     print(f"enter {self.name}")
+//     return self.name
 inline std::string Suppressor::__enter__() const {
-    // print(f"enter {self.name}")
     std::cout << std::format("enter {}", this->name) << "\n";
-    // return self.name
     return this->name;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is not None:
+//         print(f"{self.name} suppressing: {str(exc_val)}")
+//         return True
+//     print(f"{self.name} normal exit")
+//     return False
 inline bool Suppressor::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is not None:
     if ((exc_val != nullptr)) {
-        // print(f"{self.name} suppressing: {str(exc_val)}")
         std::cout << std::format("{} suppressing: {}", this->name, std::string(::tpy::__str__((*exc_val)))) << "\n";
-        // return True
         return true;
     }
-    // print(f"{self.name} normal exit")
     std::cout << std::format("{} normal exit", this->name) << "\n";
-    // return False
     return false;
 }
 void __tpy_init();

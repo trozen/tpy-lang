@@ -5,59 +5,60 @@ namespace tpyapp::main {
 
 
 // def test_roundtrip() -> None:
+//     item = Item("widget", 42, True)
+//     item.save_json("_tpy_test_json_io.json")
+//     loaded = Item.load_json("_tpy_test_json_io.json")
+//     print(loaded.name)
+//     print(loaded.count)
+//     print(loaded.active)
+//     print(item == loaded)
 void test_roundtrip() {
-    // item = Item("widget", 42, True)
     Item item = Item("widget", 42, true);
-    // item.save_json("_tpy_test_json_io.json")
     item.save_json("_tpy_test_json_io.json");
-    // loaded = Item.load_json("_tpy_test_json_io.json")
     Item loaded = Item::load_json("_tpy_test_json_io.json");
-    // print(loaded.name)
     std::cout << loaded.name << "\n";
-    // print(loaded.count)
     std::cout << loaded.count << "\n";
-    // print(loaded.active)
     std::cout << ::tpy::print_bool(loaded.active) << "\n";
-    // print(item == loaded)
     std::cout << ::tpy::print_bool(((item) == (loaded))) << "\n";
 }
 
 // def test_pretty() -> None:
+//     item = Item("gadget", 7, False)
+//     item.save_json("_tpy_test_json_io2.json", indent=2)
+//     loaded = Item.load_json("_tpy_test_json_io2.json")
+//     print(loaded.name)
+//     print(item == loaded)
 void test_pretty() {
-    // item = Item("gadget", 7, False)
     Item item = Item("gadget", 7, false);
-    // item.save_json("_tpy_test_json_io2.json", indent=2)
     item.save_json("_tpy_test_json_io2.json", 2);
-    // loaded = Item.load_json("_tpy_test_json_io2.json")
     Item loaded = Item::load_json("_tpy_test_json_io2.json");
-    // print(loaded.name)
     std::cout << loaded.name << "\n";
-    // print(item == loaded)
     std::cout << ::tpy::print_bool(((item) == (loaded))) << "\n";
 }
 
 // def test_try_load() -> None:
+//     Item("ok", 1, True).save_json("_tpy_test_json_io3.json")
+//     try:
+//         c = Item.try_load_json("_tpy_test_json_io3.json")
+//         print(c.name)
+//     except JsonError as e:
+//         print("error: " + e.message)
 void test_try_load() {
-    // Item("ok", 1, True).save_json("_tpy_test_json_io3.json")
     Item("ok", 1, true).save_json("_tpy_test_json_io3.json");
-    // try:
     std::optional<Item> c;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
-        // c = Item.try_load_json("_tpy_test_json_io3.json")
         {
             auto __try_tmp_4 = Item::try_load_json("_tpy_test_json_io3.json");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             c = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
-        // print(c.name)
         std::cout << c->name << "\n";
         goto __after_try_3;
         // except JsonError:
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            // print("error: " + e.message)
             std::cout << (::tpy::str_concat("error: ", e.message)) << "\n";
         }
         __after_try_3:;
@@ -65,12 +66,17 @@ void test_try_load() {
 }
 
 // def test_try_load_bad() -> None:
+//     with open("_tpy_test_json_io_bad.json", "w") as f:
+//         f.write("{bad json}")
+//     try:
+//         c = Item.try_load_json("_tpy_test_json_io_bad.json")
+//         print(c.name)
+//     except JsonError as e:
+//         print("caught: " + e.message)
 void test_try_load_bad() {
-    // with open("_tpy_test_json_io_bad.json", "w") as f:
     auto __ctx_4 = ::tpy::builtin_open_mode("_tpy_test_json_io_bad.json", "w");
     auto& f = __ctx_4.__enter__();
     try {
-        // f.write("{bad json}")
         f.write("{bad json}");
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -82,24 +88,20 @@ void test_try_load_bad() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    // try:
     std::optional<Item> c;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_5;
-        // c = Item.try_load_json("_tpy_test_json_io_bad.json")
         {
             auto __try_tmp_6 = Item::try_load_json("_tpy_test_json_io_bad.json");
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
             c = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
-        // print(c.name)
         std::cout << c->name << "\n";
         goto __after_try_5;
         // except JsonError:
         __except_5:;
         {
             auto& e = *__err_opt_5;
-            // print("caught: " + e.message)
             std::cout << (::tpy::str_concat("caught: ", e.message)) << "\n";
         }
         __after_try_5:;
@@ -172,6 +174,13 @@ void Item::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) 
     __writer.write_bool(this->active);
     __writer.object_end();
 }
+// from tplib.json.model import model
+// from tplib.json.parser import JsonError
+//
+// test_roundtrip()
+// test_pretty()
+// test_try_load()
+// test_try_load_bad()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -180,16 +189,10 @@ void __tpy_init() {
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
-    // from tplib.json.model import model
-    // from tplib.json.parser import JsonError
     ::tpystd::tplib::json::parser::__tpy_init();
-    // test_roundtrip()
     test_roundtrip();
-    // test_pretty()
     test_pretty();
-    // test_try_load()
     test_try_load();
-    // test_try_load_bad()
     test_try_load_bad();
 }
 

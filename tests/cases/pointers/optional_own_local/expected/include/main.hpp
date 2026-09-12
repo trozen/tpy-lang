@@ -11,7 +11,9 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_box(v: int) -> Own[Box]:
 Box make_box(const ::tpy::BigInt& v);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int):
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -3,115 +3,110 @@
 
 namespace tpyapp::main {
 
-// flag = True
 bool flag{};
-// g: Node | None = None
 Node* g{};
-// V = Node(3)
 Node* V{};
-// # Binding a second name to V makes V hoisted: its slot becomes an optional.
-// S: Node = V  # tpyc: warning(/will not keep the object it was given/)
 Node* S{};
-// pool = [Node(5), Node(6)]
 std::vector<Node>* pool{};
-// q: Node | None = None
 Node* q{};
 
 // def find(ns: list[Node], k: int32) -> Node | None:
+//     for n in ns:
+//         if n.x == k:
+//             return n
+//     return None
 Node* find(std::vector<Node>& ns, int32_t k) {
-    // for n in ns:
     auto& __obj_0 = ns;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& n = *__beg_0;
-        // if n.x == k:
         if ((n.x == k)) {
-            // return n
             return &(n);
         }
     }
-    // return None
     return nullptr;
 }
 
+// flag = True
+// g: Node | None = None
+// if flag:
+//     # The branch write allocates its own slot, scoped to this branch.
+//     g = Node(1)  # tpyc: ok
+//     # A second write in the SAME branch reuses that slot rather than adding one,
+//     # so it overwrites in place any alias taken between the two writes -- CPython
+//     # rebinds and keeps the old object alive (the rebind-in-place family in
+//     # BUGS.md). Nothing aliases `g` here, so the two agree.
+//     g = Node(2)  # tpyc: ok
+// else:
+//     # The sibling branch cannot see the other's slot -- the static is declared
+//     # inside that block, plain C++ scoping -- so it allocates its own. A slot
+//     # declared at function top could serve both arms, as the hoisted global's
+//     # does; one extra static is the price of not doing that yet.
+//     g = Node(3)  # tpyc: ok
+// if g is not None:
+//     print(g.x)
+//     g.x += 10
+//     print(g.x)
+//
+// V = Node(3)
+// # Binding a second name to V makes V hoisted: its slot becomes an optional.
+// S: Node = V  # tpyc: warning(/will not keep the object it was given/)
+// print(S.x)
+// # The rebind lifts through the SAME hoisted slot, not a second one.
+// V = Node(4)  # tpyc: ok
+// print(V.x)
+//
+// pool = [Node(5), Node(6)]
+// q: Node | None = None
+// if flag:
+//     # A slot-allocating write ...
+//     q = Node(7)  # tpyc: ok
+//     # ... then a borrow-returning Optional call: the `T*` passes through bare
+//     # and the slot allocated above stays untouched.
+//     q = find(pool, 5)  # tpyc: ok
+// if q is not None:
+//     # The mutation must reach the pool element, proving the pass-through
+//     # aliased it rather than reseating a copy into the slot.
+//     q.x += 100
+// print(pool[0].x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     static std::optional<Node> __global_slot_3;
-    // flag = True
     flag = true;
-    // g: Node | None = None
     g = nullptr;
-    // if flag:
     if (flag) {
-        // # The branch write allocates its own slot, scoped to this branch.
-        // g = Node(1)  # tpyc: ok
         static Node __global_slot_1 = Node(1);
         g = &__global_slot_1;
-        // # A second write in the SAME branch reuses that slot rather than adding one,
-        // # so it overwrites in place any alias taken between the two writes -- CPython
-        // # rebinds and keeps the old object alive (the rebind-in-place family in
-        // # BUGS.md). Nothing aliases `g` here, so the two agree.
-        // g = Node(2)  # tpyc: ok
         g = &(__global_slot_1 = Node(2));
-    // else:
     } else {
-        // # The sibling branch cannot see the other's slot -- the static is declared
-        // # inside that block, plain C++ scoping -- so it allocates its own. A slot
-        // # declared at function top could serve both arms, as the hoisted global's
-        // # does; one extra static is the price of not doing that yet.
-        // g = Node(3)  # tpyc: ok
         static Node __global_slot_2 = Node(3);
         g = &__global_slot_2;
     }
-    // if g is not None:
     if ((g != nullptr)) {
-        // print(g.x)
         std::cout << g->x << "\n";
-        // g.x += 10
         g->x = ::tpy::add_check<int32_t>(g->x, 10);
-        // print(g.x)
         std::cout << g->x << "\n";
     }
-    // V = Node(3)
     V = &*(__global_slot_3 = Node(3));
-    // # Binding a second name to V makes V hoisted: its slot becomes an optional.
-    // S: Node = V  # tpyc: warning(/will not keep the object it was given/)
     S = V;
-    // print(S.x)
     std::cout << S->x << "\n";
-    // # The rebind lifts through the SAME hoisted slot, not a second one.
-    // V = Node(4)  # tpyc: ok
     V = &*(__global_slot_3 = Node(4));
-    // print(V.x)
     std::cout << V->x << "\n";
-    // pool = [Node(5), Node(6)]
     static std::vector<Node> __global_slot_4 = {Node(5), Node(6)};
     pool = &__global_slot_4;
-    // q: Node | None = None
     q = nullptr;
-    // if flag:
     if (flag) {
-        // # A slot-allocating write ...
-        // q = Node(7)  # tpyc: ok
         static Node __global_slot_5 = Node(7);
         q = &__global_slot_5;
-        // # ... then a borrow-returning Optional call: the `T*` passes through bare
-        // # and the slot allocated above stays untouched.
-        // q = find(pool, 5)  # tpyc: ok
         q = find((*pool), 5);
     }
-    // if q is not None:
     if ((q != nullptr)) {
-        // # The mutation must reach the pool element, proving the pass-through
-        // # aliased it rather than reseating a copy into the slot.
-        // q.x += 100
         q->x = ::tpy::add_check<int32_t>(q->x, 100);
     }
-    // print(pool[0].x)
     std::cout << ::tpy::__getitem__((*pool), 0).x << "\n";
 }
 

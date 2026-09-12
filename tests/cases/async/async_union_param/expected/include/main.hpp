@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_describe;
 struct __coro_main;
 
+// async def describe(a: Dog | Cat) -> str:
 __coro_describe describe(::tpy::Union<const Cat*, const Dog*> a);
+// async def main() -> None:
 __coro_main main();
 
 // class Dog:
@@ -47,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Async coroutine: describe
+// async def describe(a: Dog | Cat) -> str:
 struct __coro_describe {
     int32_t __state;
     bool __cancel_pending;
@@ -71,7 +73,7 @@ struct __coro_describe {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -102,13 +104,13 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Dog::Dog() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Cat::Cat() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def str_param_sinks(s: str) -> None:
 void str_param_sinks(std::string_view s);
+// def str_optional_deref(a: str | None) -> None:
 void str_optional_deref(std::optional<std::string_view> a);
+// def str_slice(s: str) -> None:
 void str_slice(std::string_view s);
+// def bytes_sinks(b: bytes) -> None:
 void bytes_sinks(::tpy::BytesView b);
+// def bytes_optional_deref(b: bytes | None) -> None:
 void bytes_optional_deref(std::optional<::tpy::BytesView> b);
+// def owned_source_inverse() -> None:
 void owned_source_inverse();
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     name = "abcd"
+//     # A str NAME at a user record's Own[StrView] slot.
+//     b.keep(name)  # tpyc: ok
+//     print(b.n, name)
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // name = "abcd"
     std::string_view name = "abcd";
-    // # A str NAME at a user record's Own[StrView] slot.
-    // b.keep(name)  # tpyc: ok
     std::string_view __tmp_1{name};
     b.keep(std::move(__tmp_1));
-    // print(b.n, name)
     std::cout << b.n << " " << name << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

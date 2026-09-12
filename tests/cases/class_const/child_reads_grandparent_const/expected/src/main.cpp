@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Grandchild.LIMIT)
+//     print(Mid.LIMIT)
+//     print(Grand.LIMIT)
+//     g = Grandchild()
+//     print(g.LIMIT)
 void main() {
-    // print(Grandchild.LIMIT)
     std::cout << Grand::LIMIT << "\n";
-    // print(Mid.LIMIT)
     std::cout << Grand::LIMIT << "\n";
-    // print(Grand.LIMIT)
     std::cout << Grand::LIMIT << "\n";
-    // g = Grandchild()
     Grandchild g = Grandchild();
-    // print(g.LIMIT)
     std::cout << Grand::LIMIT << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

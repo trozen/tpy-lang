@@ -13,8 +13,11 @@ inline auto& DEFAULT_GREETING = ::tpyapp::consts::DEFAULT_GREETING;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_alias(flags: uint32 = DEFAULT_FLAGS) -> int32:
 int32_t use_alias(uint32_t flags = ::tpyapp::consts::CASELESS);
+// def greet(prefix: str = DEFAULT_GREETING) -> str:
 std::string greet(std::string_view prefix = ::tpyapp::consts::DEFAULT_GREETING);
+// def main() -> None:
 void main();
 
 void __tpy_init();

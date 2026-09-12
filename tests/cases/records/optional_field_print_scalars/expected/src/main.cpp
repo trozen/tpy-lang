@@ -5,36 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Settings()
+//     print(s)
+//
+//     s.count = 42
+//     s.flag = True
+//     s.ratio = 3.14
+//     s.label = "hello"
+//     print(s)
+//
+//     s.flag = False
+//     s.ratio = 0.0
+//     print(s)
 void main() {
-    // s = Settings()
     Settings s = Settings();
-    // print(s)
     std::cout << s << "\n";
-    // s.count = 42
     s.count = 42;
-    // s.flag = True
     s.flag = true;
-    // s.ratio = 3.14
     s.ratio = 3.14;
-    // s.label = "hello"
     s.label = "hello";
-    // print(s)
     std::cout << s << "\n";
-    // s.flag = False
     s.flag = false;
-    // s.ratio = 0.0
     s.ratio = 0.0;
-    // print(s)
     std::cout << s << "\n";
 }
 
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

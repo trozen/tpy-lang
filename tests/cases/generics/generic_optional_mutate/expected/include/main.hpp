@@ -12,6 +12,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -41,17 +42,19 @@ struct Container {
     bool _has;
 
     // def __init__(self, value: T) -> None:
+    //     self._value = value
+    //     self._has = True
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : _value(value), _has(true) {}
 
     // def get(self) -> T | None:
+    //     if self._has:
+    //         return self._value
+    //     return None
     T* get() {
-        // if self._has:
         if (this->_has) {
-            // return self._value
             return &(this->_value);
         }
-        // return None
         return nullptr;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -65,6 +68,8 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

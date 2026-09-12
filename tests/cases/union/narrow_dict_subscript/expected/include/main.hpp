@@ -11,7 +11,9 @@ struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_dict() -> Own[dict[str, Cell] | int]:
 ::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> get_dict();
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Cell::Cell(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

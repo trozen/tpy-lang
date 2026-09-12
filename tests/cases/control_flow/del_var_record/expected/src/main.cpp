@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1, 2)
+//     print(p.x)
+//     del p
+//     p = Point(3, 4)
+//     print(p.x)
 void main() {
     std::optional<Point> __slot_2;
-    // p = Point(1, 2)
     Point __slot_1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     Point* p = &__slot_1;
-    // print(p.x)
     std::cout << p->x << "\n";
-    // del p
     { auto __del_sink = std::move(*p); }
-    // p = Point(3, 4)
     p = &*(__slot_2 = Point(::tpy::BigInt(3), ::tpy::BigInt(4)));
-    // print(p.x)
     std::cout << p->x << "\n";
 }
 
+// # del on record type locals
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # del on record type locals
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

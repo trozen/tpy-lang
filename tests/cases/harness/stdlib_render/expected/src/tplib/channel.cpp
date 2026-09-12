@@ -4,15 +4,35 @@
 namespace tpystd::tplib::channel {
 
 
+// """Blocking multi-producer / single-consumer channel over OS threads.
+//
+// The Go-style channel: `channel[T: Send](cap)` returns a `(Sender[T],
+// Receiver[T])` pair backed by a fixed-capacity FIFO ring guarded by a
+// `Mutex`, with `send`/`recv` blocking the calling OS thread (via two
+// `Condvar`s). Unlike the async SPSC channel in `tpy.channel` (Rc-backed,
+// single-threaded, non-Send), the handles are `Arc`-backed and therefore
+// `Send` iff `T` is -- so they cross the `tpy.thread.spawn` boundary and a
+// real producer thread is the "goroutine".
+//
+// Lives in `tplib` (not `tpy.thread`) because it composes `tplib.arc.Arc`:
+// the low-level `tpy.*` layer must not depend on the higher `tplib.*` layer.
+//
+// v1 is multi-producer / single-consumer. Drop a `Sender` = "this producer
+// is done"; the last live sender's drop auto-closes the channel, and any
+// `close()` (on a sender, or the receiver going away) force-closes it
+// channel-wide. Select, unbuffered (rendezvous), and MPMC are out of scope.
+// See docs/CHANNEL_DESIGN.md.
+// """
+//
+// from tpy.mem import UninitHeapStorage
+// from tpy.sync import Mutex, Condvar
+// from tplib.arc import Arc
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitHeapStorage
-    // from tpy.sync import Mutex, Condvar
     ::tpystd::tpy::sync::__tpy_init();
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
 }

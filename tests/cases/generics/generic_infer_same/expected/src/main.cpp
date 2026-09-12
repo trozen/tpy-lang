@@ -3,22 +3,22 @@
 
 namespace tpyapp::main {
 
-// # Both args are int -> Same[int]
-// same = Same(1, 2)
 Same<int32_t>* same{};
 
+// """Test type inference with same type param used twice."""
+//
+// # Both args are int -> Same[int]
+// same = Same(1, 2)
+// print(same.a)
+// print(same.b)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Both args are int -> Same[int]
-    // same = Same(1, 2)
     static Same<int32_t> __global_slot_1 = Same<int32_t>(1, 2);
     same = &__global_slot_1;
-    // print(same.a)
     std::cout << same->a << "\n";
-    // print(same.b)
     std::cout << same->b << "\n";
 }
 

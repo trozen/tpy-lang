@@ -12,6 +12,7 @@ struct Track;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Coord(ValueType):
@@ -75,33 +76,38 @@ inline std::ostream& operator<<(std::ostream& os, const Track& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Coord::Coord(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x((x).to_fixed_check<int32_t>()), y((y).to_fixed_check<int32_t>()) {}
 
 // def __eq__(self, other: "Coord") -> bool:
+//     return self.x == other.x and self.y == other.y
 inline bool Coord::__eq__(Coord other) const {
-    // return self.x == other.x and self.y == other.y
     return ((this->x == other.x) && (this->y == other.y));
 }
 
 // def __init__(self, cx: int, cy: int) -> None:
+//     self._cx = cx
+//     self._cy = cy
+//     self._has_goal = False
 inline Track::Track(const ::tpy::BigInt& cx, const ::tpy::BigInt& cy) : _cx((cx).to_fixed_check<int32_t>()), _cy((cy).to_fixed_check<int32_t>()), _has_goal(false) {}
 
 // @property
 // def position(self) -> Coord:  # bare value-record return
+//     return Coord(int(self._cx), int(self._cy))
 inline Coord Track::position() const {
-    // return Coord(int(self._cx), int(self._cy))
     return Coord(::tpy::BigInt(static_cast<int64_t>(this->_cx)), ::tpy::BigInt(static_cast<int64_t>(this->_cy)));
 }
 
 // @property
 // def goal(self) -> Optional[Coord]:  # Optional value-record return
+//     if not self._has_goal:
+//         return None
+//     return Coord(0, 0)
 inline std::optional<Coord> Track::goal() const {
-    // if not self._has_goal:
     if ((!(this->_has_goal))) {
-        // return None
         return std::nullopt;
     }
-    // return Coord(0, 0)
     return Coord(::tpy::BigInt(0), ::tpy::BigInt(0));
 }
 void __tpy_init();

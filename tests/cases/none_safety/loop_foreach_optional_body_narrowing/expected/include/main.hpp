@@ -10,6 +10,7 @@ namespace tpyapp::main {
 extern std::vector<std::optional<int32_t>>* vals;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_non_none(items: list[int32 | None]) -> int32:
 int32_t sum_non_none(const std::vector<std::optional<int32_t>>& items);
 
 void __tpy_init();

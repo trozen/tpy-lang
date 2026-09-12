@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def chunks(n: int) -> Iterator[int]:
+//     out: list[list[int32]] = []
+//     seen: list[bytes] = []
+//     buf = [1, 2, 3]
+//     ba = bytearray(b"abc")
+//     yield n
+//     out.append(buf)  # the frame slot, moved at its last use
+//     seen.append(bytes(ba))  # the written copy into a `bytes` element slot
+//     print(len(out), len(out[0]), len(seen[0]))
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_chunks::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // out: list[list[int32]] = []
         out.emplace(std::vector<std::vector<int32_t>>{});
-        // seen: list[bytes] = []
         seen.emplace(std::vector<::tpy::Bytes>{});
-        // buf = [1, 2, 3]
         buf.emplace(std::vector<int32_t>{1, 2, 3});
-        // ba = bytearray(b"abc")
         ba.emplace(::tpy::ByteArray(::tpy::bytes_literal("abc", 3)));
-        // yield n
         __state = S_RESUME_0;
         return n;
     }
     case S_RESUME_0: {
-        // out.append(buf)  # the frame slot, moved at its last use
         (*out).push_back(std::move((*buf)));
-        // seen.append(bytes(ba))  # the written copy into a `bytes` element slot
         (*seen).push_back(::tpy::Bytes((*ba)));
-        // print(len(out), len(out[0]), len(seen[0]))
         std::cout << ::tpy::__len__((*out)) << " " << ::tpy::__len__(::tpy::__getitem__((*out), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*seen), 0)) << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -42,8 +42,9 @@ __gen_chunks chunks(::tpy::BigInt n) {
 }
 
 // def main():
+//     for v in chunks(7):
+//         print(v)
 void main() {
-    // for v in chunks(7):
     {
         auto __src_0 = chunks(::tpy::BigInt(7));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -51,18 +52,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

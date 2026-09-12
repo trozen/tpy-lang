@@ -5,6 +5,15 @@ namespace tpyapp::main {
 
 
 // async def a_assert(a: Dog | Cat) -> str:
+//     try:
+//         await asyncio.sleep(0)
+//     finally:
+//         assert isinstance(a, Dog)  # tpyc: ok
+//         # The alias is a reference into the caller's Dog, so both bumps of
+//         # `barks` are visible there -- a copy would hide the second one.
+//         print(a.bark())
+//         print(a.bark())
+//     return "done"
 ::tpystd::tpy::Poll<std::string> __coro_a_assert::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -32,14 +41,12 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_0: {
-        // return "done"
         __state = S_DONE;
         std::string __tpy_async_ret = "done";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -58,14 +65,9 @@ namespace tpyapp::main {
 }
 
 void __coro_a_assert::__finally_0() {
-    // assert isinstance(a, Dog)  # tpyc: ok
     if (!(std::holds_alternative<Dog*>(a))) ::tpy::raise_assertion_error();
     auto& __a = *std::get<Dog*>(a);
-    // # The alias is a reference into the caller's Dog, so both bumps of
-    // # `barks` are visible there -- a copy would hide the second one.
-    // print(a.bark())
     std::cout << __a.bark() << "\n";
-    // print(a.bark())
     std::cout << __a.bark() << "\n";
 }
 
@@ -75,6 +77,15 @@ __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
 }
 
 // async def a_post_if(a: Dog | Cat) -> str:
+//     try:
+//         await asyncio.sleep(0)
+//     finally:
+//         if isinstance(a, Dog):  # tpyc: ok
+//             raise ValueError("dog")
+//         # Narrowed to Cat past the raising branch, for the rest of the helper.
+//         print(a.meow())
+//         print(a.meow())
+//     return "done"
 ::tpystd::tpy::Poll<std::string> __coro_a_post_if::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -102,14 +113,12 @@ __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
         }
     }
     case S_JOIN_0: {
-        // return "done"
         __state = S_DONE;
         std::string __tpy_async_ret = "done";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -128,17 +137,12 @@ __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
 }
 
 void __coro_a_post_if::__finally_0() {
-    // if isinstance(a, Dog):  # tpyc: ok
     if (std::holds_alternative<Dog*>(a)) {
         auto& __a = *std::get<Dog*>(a);
-        // raise ValueError("dog")
         throw ::tpy::ValueError("dog");
     }
     auto& __a = *std::get<Cat*>(a);
-    // # Narrowed to Cat past the raising branch, for the rest of the helper.
-    // print(a.meow())
     std::cout << __a.meow() << "\n";
-    // print(a.meow())
     std::cout << __a.meow() << "\n";
 }
 
@@ -148,6 +152,17 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
 }
 
 // async def a_nested(a: Dog | Cat, b: Dog | Cat) -> str:
+//     try:
+//         try:
+//             await asyncio.sleep(0)
+//         finally:
+//             assert isinstance(a, Cat)  # tpyc: ok
+//             print(a.meow())
+//     finally:
+//         # A second helper: its alias must not be confused with the inner one.
+//         assert isinstance(b, Dog)  # tpyc: ok
+//         print(b.bark())
+//     return "done"
 ::tpystd::tpy::Poll<std::string> __coro_a_nested::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -181,7 +196,6 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
         }
     }
     case S_JOIN_0: {
-        // return "done"
         __state = S_DONE;
         std::string __tpy_async_ret = "done";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -212,7 +226,6 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
     case S_JOIN_3: {
         try {
             try {
-                // await asyncio.sleep(0)
                 __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
                 __state = S_RESUME_0;
                 continue;
@@ -235,18 +248,13 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
 }
 
 void __coro_a_nested::__finally_0() {
-    // # A second helper: its alias must not be confused with the inner one.
-    // assert isinstance(b, Dog)  # tpyc: ok
     if (!(std::holds_alternative<Dog*>(b))) ::tpy::raise_assertion_error();
     auto& __b = *std::get<Dog*>(b);
-    // print(b.bark())
     std::cout << __b.bark() << "\n";
 }
 void __coro_a_nested::__finally_1() {
-    // assert isinstance(a, Cat)  # tpyc: ok
     if (!(std::holds_alternative<Cat*>(a))) ::tpy::raise_assertion_error();
     auto& __a = *std::get<Cat*>(a);
-    // print(a.meow())
     std::cout << __a.meow() << "\n";
 }
 
@@ -256,6 +264,11 @@ __coro_a_nested a_nested(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b)
 }
 
 // def g_assert(a: Dog | Cat) -> Iterator[str]:
+//     try:
+//         yield "one"
+//     finally:
+//         assert isinstance(a, Cat)  # tpyc: ok
+//         print(a.meow())
 std::expected<std::string, ::tpy::StopIteration> __gen_g_assert::__next__() {
     try {
     while (true) switch (__state) {
@@ -282,7 +295,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_g_assert::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield "one"
         __state = S_RESUME_0;
         return "one";
     }
@@ -296,10 +308,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_g_assert::__next__() {
 }
 
 void __gen_g_assert::__finally_0() {
-    // assert isinstance(a, Cat)  # tpyc: ok
     if (!(std::holds_alternative<Cat*>(a))) ::tpy::raise_assertion_error();
     auto& __a = *std::get<Cat*>(a);
-    // print(a.meow())
     std::cout << __a.meow() << "\n";
 }
 
@@ -309,6 +319,12 @@ __gen_g_assert g_assert(::tpy::Union<Cat*, Dog*> a) {
 }
 
 // def g_post_if(a: Dog | Cat) -> Iterator[str]:
+//     try:
+//         yield "two"
+//     finally:
+//         if isinstance(a, Cat):  # tpyc: ok
+//             raise ValueError("cat")
+//         print(a.bark())
 std::expected<std::string, ::tpy::StopIteration> __gen_g_post_if::__next__() {
     try {
     while (true) switch (__state) {
@@ -335,7 +351,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_g_post_if::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield "two"
         __state = S_RESUME_0;
         return "two";
     }
@@ -349,14 +364,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_g_post_if::__next__() {
 }
 
 void __gen_g_post_if::__finally_0() {
-    // if isinstance(a, Cat):  # tpyc: ok
     if (std::holds_alternative<Cat*>(a)) {
         auto& __a = *std::get<Cat*>(a);
-        // raise ValueError("cat")
         throw ::tpy::ValueError("cat");
     }
     auto& __a = *std::get<Dog*>(a);
-    // print(a.bark())
     std::cout << __a.bark() << "\n";
 }
 
@@ -366,12 +378,22 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
 }
 
 // async def amain() -> None:
+//     d = Dog()
+//     print(await a_assert(d))
+//     print(d.barks)
+//
+//     c = Cat()
+//     print(await a_post_if(c))
+//     print(c.meows)
+//
+//     c2 = Cat()
+//     d2 = Dog()
+//     print(await a_nested(c2, d2))
+//     print(c2.meows, d2.barks)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // d = Dog()
         d.emplace(Dog());
-        // print(await a_assert(d))
         __sub_0.emplace(::tpy::Union<Cat*, Dog*>{&((*d))});
         __state = S_RESUME_0;
         continue;
@@ -381,13 +403,9 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await a_assert(d))
         std::cout << __await_lift_0 << "\n";
-        // print(d.barks)
         std::cout << (*d).barks << "\n";
-        // c = Cat()
         c.emplace(Cat());
-        // print(await a_post_if(c))
         __sub_1.emplace(::tpy::Union<Cat*, Dog*>{&((*c))});
         __state = S_RESUME_1;
         continue;
@@ -397,15 +415,10 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await a_post_if(c))
         std::cout << __await_lift_1 << "\n";
-        // print(c.meows)
         std::cout << (*c).meows << "\n";
-        // c2 = Cat()
         c2.emplace(Cat());
-        // d2 = Dog()
         d2.emplace(Dog());
-        // print(await a_nested(c2, d2))
         __sub_2.emplace(::tpy::Union<Cat*, Dog*>{&((*c2))}, ::tpy::Union<Cat*, Dog*>{&((*d2))});
         __state = S_RESUME_2;
         continue;
@@ -415,9 +428,7 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await a_nested(c2, d2))
         std::cout << __await_lift_2 << "\n";
-        // print(c2.meows, d2.barks)
         std::cout << (*c2).meows << " " << (*d2).barks << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -434,10 +445,19 @@ __coro_amain amain() {
 }
 
 // def main() -> None:
+//     c3 = Cat()
+//     for v in g_assert(c3):
+//         print(v)
+//     print(c3.meows)
+//
+//     d3 = Dog()
+//     for v in g_post_if(d3):
+//         print(v)
+//     print(d3.barks)
+//
+//     asyncio.run(amain())
 void main() {
-    // c3 = Cat()
     Cat c3 = Cat();
-    // for v in g_assert(c3):
     {
         auto __src_0 = g_assert(::tpy::Union<Cat*, Dog*>{&(c3)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -445,15 +465,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(c3.meows)
     std::cout << c3.meows << "\n";
-    // d3 = Dog()
     Dog d3 = Dog();
-    // for v in g_post_if(d3):
     {
         auto __src_2 = g_post_if(::tpy::Union<Cat*, Dog*>{&(d3)});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -461,27 +477,25 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(d3.barks)
     std::cout << d3.barks << "\n";
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 
+// # A union narrowing established INSIDE the `finally` of a resumable body:
+// # the extraction alias belongs to the finally HELPER's own member function,
+// # which is walked statement by statement outside the frame's CFG blocks.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A union narrowing established INSIDE the `finally` of a resumable body:
-    // # the extraction alias belongs to the finally HELPER's own member function,
-    // # which is walked statement by statement outside the frame's CFG blocks.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -47,36 +47,38 @@ namespace tpyapp::main {
 
 
 // def describe(c: Color = Color.GREEN) -> Color:
+//     return c
 Color describe(Color c) {
-    // return c
     return c;
 }
 
 // def main() -> None:
+//     print(int(describe().value))           # 1 -- default GREEN
+//     print(int(describe(Color.RED).value))  # 0 -- explicit override
+//
+//     p = Painter()
+//     print(int(p.paint().value))            # 2 -- default BLUE
+//     print(int(p.paint(Color.RED).value))   # 0 -- explicit override
 void main() {
-    // print(int(describe().value))           # 1 -- default GREEN
     std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(describe()))) << "\n";
-    // print(int(describe(Color.RED).value))  # 0 -- explicit override
     std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(describe(Color::RED)))) << "\n";
-    // p = Painter()
     Painter p = Painter();
-    // print(int(p.paint().value))            # 2 -- default BLUE
     std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(p.paint()))) << "\n";
-    // print(int(p.paint(Color.RED).value))   # 0 -- explicit override
     std::cout << ::tpy::BigInt(static_cast<int64_t>(static_cast<int32_t>(p.paint(Color::RED)))) << "\n";
 }
 
+// # Enum member as a default parameter value, on a free function and a method,
+// # called with the default and with an explicit override. The default lowers to
+// # the scoped C++ enumerator; behavior matches CPython (enum members are
+// # immutable singletons, so there is no copy/aliasing distinction to force).
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum member as a default parameter value, on a free function and a method,
-    // # called with the default and with an explicit override. The default lowers to
-    // # the scoped C++ enumerator; behavior matches CPython (enum members are
-    // # immutable singletons, so there is no copy/aliasing distinction to force).
-    // from enum import Enum
-    // main()
     main();
 }
 

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[tuple[str, Point]] = [("a", Point(1, 2)), ("b", Point(3, 4))]
+//     print(len(items))
+//     empty: list[tuple[int32, Point]] = []
+//     print(len(empty))
 void main() {
-    // items: list[tuple[str, Point]] = [("a", Point(1, 2)), ("b", Point(3, 4))]
     std::vector<std::tuple<std::string, Point>> items = {::tpy::tuple_to_storage<std::tuple<std::string, Point>>(std::tuple<std::string, Point>{"a", Point(1, 2)}), ::tpy::tuple_to_storage<std::tuple<std::string, Point>>(std::tuple<std::string, Point>{"b", Point(3, 4)})};
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    // empty: list[tuple[int32, Point]] = []
     std::vector<std::tuple<int32_t, Point>> empty = std::vector<std::tuple<int32_t, Point>>{};
-    // print(len(empty))
     std::cout << ::tpy::__len__(empty) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

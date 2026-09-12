@@ -12,8 +12,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(a: Dog | Cat) -> str:
 std::string describe(::tpy::Union<const Cat*, const Dog*> a);
+// def either(a: Dog | Cat) -> str:
 std::string either(::tpy::Union<const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // # Conditional (`Dog(legs=4)`) and bare-type (`Dog()`) arms on the same variant
@@ -53,9 +56,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, legs: int) -> None:
+//     self.legs = legs
 inline Dog::Dog(const ::tpy::BigInt& legs) : legs(legs) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

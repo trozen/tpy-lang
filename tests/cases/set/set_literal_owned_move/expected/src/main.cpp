@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = P(1)
+//     b = P(2)
+//     s = {a, b}  # last use of a, b -> moved into the set
+//     print(len(s))
 void main() {
-    // a = P(1)
     P a = P(1);
-    // b = P(2)
     P b = P(2);
-    // s = {a, b}  # last use of a, b -> moved into the set
     ::tpy::ordered_set<P> s = ::tpy::make_ordered_set<P>(std::move(a), std::move(b));
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
+// # A last-use copyable reference local in a set LITERAL routes through the
+// # move / make_ordered_set path. Set elements must be copy-constructible, so
+// # @nocopy can't force the move; a frozen @dataclass (hashable, copyable)
+// # exercises the path with a real reference-type element.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A last-use copyable reference local in a set LITERAL routes through the
-    // # move / make_ordered_set path. Set elements must be copy-constructible, so
-    // # @nocopy can't force the move; a frozen @dataclass (hashable, copyable)
-    // # exercises the path with a real reference-type element.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

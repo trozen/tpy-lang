@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def point_str(x: int, y: int, z: int) -> str:
 std::string point_str(const ::tpy::BigInt& x, const ::tpy::BigInt& y, const ::tpy::BigInt& z);
+// def main() -> None:
 void main();
 
 void __tpy_init();

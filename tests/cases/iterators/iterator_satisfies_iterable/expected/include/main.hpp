@@ -11,8 +11,10 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_iterable(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_iterable(T_items& items);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -41,44 +43,46 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.i = 0
+//     self.n = n
 inline Counter::Counter(int32_t n) : i(0), n(n) {}
 
 // def __next__(self) -> int32:
+//     if self.i >= self.n:
+//         raise StopIteration
+//     val = self.i
+//     self.i += 1
+//     return val
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
-    // if self.i >= self.n:
     if ((this->i >= this->n)) {
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // val = self.i
     int32_t val = this->i;
-    // self.i += 1
     this->i = ::tpy::add_check<int32_t>(this->i, 1);
-    // return val
     return val;
 }
 
 // def __iter__(self) -> Counter:
+//     return self
 inline Counter& Counter::__iter__() {
-    // return self
     return (*this);
 }
 // def sum_iterable(items: Iterable[int32]) -> int32:
+//     total: int32 = 0
+//     for x in items:
+//         total += x
+//     return total
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_iterable(T_items& items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 

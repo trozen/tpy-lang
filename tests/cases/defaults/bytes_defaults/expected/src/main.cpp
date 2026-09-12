@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def with_bytes(data: bytes = b"") -> int:
+//     return len(data)
 ::tpy::BigInt with_bytes(::tpy::BytesView data) {
-    // return len(data)
     return ::tpy::BigInt(::tpy::__len__(data));
 }
 
 // def with_bytes_default(data: bytes = b"hi") -> int:
+//     return len(data)
 ::tpy::BigInt with_bytes_default(::tpy::BytesView data) {
-    // return len(data)
     return ::tpy::BigInt(::tpy::__len__(data));
 }
 
 // def with_view_empty(data: BytesView = b"") -> int:
+//     return len(data)
 ::tpy::BigInt with_view_empty(::tpy::BytesView data) {
-    // return len(data)
     return ::tpy::BigInt(::tpy::__len__(data));
 }
 
 // def with_view_default(data: BytesView = b"hi") -> int:
+//     return len(data)
 ::tpy::BigInt with_view_default(::tpy::BytesView data) {
-    // return len(data)
     return ::tpy::BigInt(::tpy::__len__(data));
 }
 
 // def main() -> None:
+//     print(with_bytes())
+//     print(with_bytes(b"abc"))
+//     print(with_bytes_default())
+//     print(with_bytes_default(b"abcdef"))
+//     print(with_view_empty())
+//     print(with_view_default())
 void main() {
-    // print(with_bytes())
     std::cout << with_bytes() << "\n";
-    // print(with_bytes(b"abc"))
     std::cout << with_bytes(::tpy::bytes_literal("abc", 3)) << "\n";
-    // print(with_bytes_default())
     std::cout << with_bytes_default() << "\n";
-    // print(with_bytes_default(b"abcdef"))
     std::cout << with_bytes_default(::tpy::bytes_literal("abcdef", 6)) << "\n";
-    // print(with_view_empty())
     std::cout << with_view_empty() << "\n";
-    // print(with_view_default())
     std::cout << with_view_default() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

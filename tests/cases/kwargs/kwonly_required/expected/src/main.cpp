@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def format_value(value: int32, *, width: int32, fill: str = " ") -> str:
+//     s = str(value)
+//     while len(s) < width:
+//         s = fill + s
+//     return s
 std::string format_value(int32_t value, int32_t width, std::string_view fill) {
-    // s = str(value)
     std::string s = ::tpy::fixed_to_str<int32_t>(value);
-    // while len(s) < width:
     while ((::tpy::__len__(s) < width)) {
-        // s = fill + s
         s = (::tpy::str_concat(fill, s));
     }
-    // return s
     return s;
 }
 
 // def main() -> None:
+//     print(format_value(42, width=5))
+//     print(format_value(7, width=3, fill="0"))
 void main() {
-    // print(format_value(42, width=5))
     std::cout << format_value(42, 5) << "\n";
-    // print(format_value(7, width=3, fill="0"))
     std::cout << format_value(7, 3, "0") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

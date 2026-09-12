@@ -5,9 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Single condition
+//     evens: dict[int32, int32] = {x: x * x for x in range(10) if x % 2 == 0}
+//     for k in evens:
+//         print(k, evens[k])
+//
+//     # Filter from existing dict
+//     src: dict[str, int32] = {"a": 1, "b": 5, "c": 2, "d": 8}
+//     big: dict[str, int32] = {k: v for k, v in src.items() if v > 3}
+//     for k in big:
+//         print(k, big[k])
 void main() {
-    // # Single condition
-    // evens: dict[int32, int32] = {x: x * x for x in range(10) if x % 2 == 0}
     ::tpy::ordered_map<int32_t, int32_t> evens = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __stop_0 = 10;
@@ -18,19 +26,14 @@ void main() {
         }
         std::move(__result);
     });
-    // for k in evens:
     auto& __obj_1 = evens;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t k = *__beg_1;
-        // print(k, evens[k])
         std::cout << k << " " << ::tpy::__getitem__(evens, k) << "\n";
     }
-    // # Filter from existing dict
-    // src: dict[str, int32] = {"a": 1, "b": 5, "c": 2, "d": 8}
     ::tpy::ordered_map<std::string, int32_t> src = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 5}, {"c", 2}, {"d", 8}});
-    // big: dict[str, int32] = {k: v for k, v in src.items() if v > 3}
     ::tpy::ordered_map<std::string, int32_t> big = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto __obj_2 = ::tpy::dict_items(src);
@@ -46,23 +49,21 @@ void main() {
         }
         std::move(__result);
     });
-    // for k in big:
     auto& __obj_3 = big;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         std::string_view k = *__beg_3;
-        // print(k, big[k])
         std::cout << k << " " << ::tpy::__getitem__(big, k) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

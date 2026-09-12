@@ -5,6 +5,11 @@ namespace tpyapp::main {
 
 
 // def gen(tag: str) -> Iterator[int]:
+//     try:
+//         yield 1
+//         yield 2
+//     finally:
+//         print("cleanup", tag)
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
@@ -14,7 +19,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {
         try {
-            // yield 2
             __state = S_RESUME_1;
             return ::tpy::BigInt(2);
         } catch (...) {
@@ -41,7 +45,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -55,7 +58,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 void __gen_gen::__finally_0() {
-    // print("cleanup", tag)
     std::cout << "cleanup" << " " << tag << "\n";
 }
 
@@ -65,8 +67,11 @@ __gen_gen gen(std::string_view tag) {
 }
 
 // def temp_source() -> None:
+//     for x in gen("temp"):
+//         print(x)
+//         break
+//     print("after temp")
 void temp_source() {
-    // for x in gen("temp"):
     {
         std::string __tmp_1 = "temp";
         auto __src_0 = gen(__tmp_1);
@@ -75,40 +80,39 @@ void temp_source() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
-        // break
         break;
         }
     }
-    // print("after temp")
     std::cout << "after temp" << "\n";
 }
 
 // def named_source() -> None:
+//     g = gen("named")
+//     for x in g:
+//         print(x)
+//         break
+//     print("after named")
 void named_source() {
-    // g = gen("named")
     std::string __tmp_2 = "named";
     auto g = gen(__tmp_2);
-    // for x in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
-        // break
         break;
     }
-    // print("after named")
     std::cout << "after named" << "\n";
 }
 
 // def exhausted() -> None:
+//     for x in gen("full"):
+//         print(x)
+//     print("after full")
 void exhausted() {
-    // for x in gen("full"):
     {
         std::string __tmp_3 = "full";
         auto __src_0 = gen(__tmp_3);
@@ -117,30 +121,28 @@ void exhausted() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // print("after full")
     std::cout << "after full" << "\n";
 }
 
 // def main() -> None:
+//     temp_source()
+//     named_source()
+//     exhausted()
 void main() {
-    // temp_source()
     temp_source();
-    // named_source()
     named_source();
-    // exhausted()
     exhausted();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

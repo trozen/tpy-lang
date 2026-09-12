@@ -5,63 +5,68 @@ namespace tpyapp::main {
 
 
 // def trigger() -> None:
+//     a, b = socketpair()
+//     b.setblocking(False)
+//     b.recv(16)  # no data pending -> EAGAIN -> BlockingIOError
 void trigger() {
-    // a, b = socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.setblocking(False)
     b.setblocking(false);
-    // b.recv(16)  # no data pending -> EAGAIN -> BlockingIOError
     b.recv(16);
 }
 
 // def main() -> None:
+//     try:
+//         trigger()
+//         print("no error")
+//     except OSError:
+//         print("caught as OSError")
+//
+//     try:
+//         try:
+//             trigger()
+//         except ValueError:
+//             print("WRONG: caught as ValueError")
+//     except BlockingIOError:
+//         print("not ValueError; caught as BlockingIOError")
 void main() {
-    // try:
     {
         try {
-            // trigger()
             trigger();
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::OSError&) {
-            // print("caught as OSError")
             std::cout << "caught as OSError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // try:
             {
                 try {
-                    // trigger()
                     trigger();
                 } catch (const ::tpy::ValueError&) {
-                    // print("WRONG: caught as ValueError")
                     std::cout << "WRONG: caught as ValueError" << "\n";
                 }
             }
         } catch (const ::tpy::BlockingIOError&) {
-            // print("not ValueError; caught as BlockingIOError")
             std::cout << "not ValueError; caught as BlockingIOError" << "\n";
         }
     }
 }
 
+// # A non-blocking recv with no data pending raises BlockingIOError on EAGAIN.
+// # Assert it is catchable, that `except OSError` catches it (BlockingIOError
+// # subclasses OSError), and that `except ValueError` does NOT -- it propagates
+// # to the outer handler.
+// from socket import socketpair
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A non-blocking recv with no data pending raises BlockingIOError on EAGAIN.
-    // # Assert it is catchable, that `except OSError` catches it (BlockingIOError
-    // # subclasses OSError), and that `except ValueError` does NOT -- it propagates
-    // # to the outer handler.
-    // from socket import socketpair
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

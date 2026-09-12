@@ -11,6 +11,7 @@ struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Grid:
@@ -32,9 +33,9 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self) -> None:
+//     # The subject: the comprehension reads a default-only field.
+//     self.cells = [i for i in range(self.n)]  # tpyc: ok
 inline Grid::Grid() {
-    // # The subject: the comprehension reads a default-only field.
-    // self.cells = [i for i in range(self.n)]  # tpyc: ok
     this->cells = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = this->n;

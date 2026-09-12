@@ -12,8 +12,11 @@ struct Data;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_data(v: int32) -> Own[Data]:
 std::expected<Data, E> make_data(int32_t v);
+// def get_value(v: int32) -> int32:
 std::expected<int32_t, E> get_value(int32_t v);
+// def main() -> None:
 void main();
 
 // class E(Exception, ReturnException):
@@ -50,6 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Data& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Data::Data(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

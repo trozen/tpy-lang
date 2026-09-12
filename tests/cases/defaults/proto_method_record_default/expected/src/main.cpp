@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder(100)
+//     c = Circle(5)
+//     print(h.method(c))  # v omitted: relies on the declaration's default
+//     print(h.method(c, Vec(7)))
 void main() {
-    // h = Holder(100)
     Holder h = Holder(100);
-    // c = Circle(5)
     Circle c = Circle(5);
-    // print(h.method(c))  # v omitted: relies on the declaration's default
     std::cout << h.method(c) << "\n";
-    // print(h.method(c, Vec(7)))
     std::cout << h.method(c, Vec(7)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

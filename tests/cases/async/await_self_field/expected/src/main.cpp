@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def opener(g: Gate) -> None:
+//     g.open()
 ::tpystd::tpy::Poll<::std::monostate> __coro_opener::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // g.open()
         g.open();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,14 +26,15 @@ __coro_opener opener(Gate& g) {
 }
 
 // async def main_coro() -> None:
+//     g = Gate()
+//     asyncio.create_task(opener(g))
+//     r = await g.passed()
+//     print("passed", r)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // g = Gate()
         g.emplace(Gate());
-        // asyncio.create_task(opener(g))
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(opener((*g))));
-        // r = await g.passed()
         __sub_0.emplace((*g));
         __state = S_RESUME_0;
         continue;
@@ -43,7 +44,6 @@ __coro_opener opener(Gate& g) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        // print("passed", r)
         std::cout << "passed" << " " << ::tpy::print_bool(r) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -60,16 +60,17 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def passed(self) -> bool:
+//     await self.evt
+//     return True
 ::tpystd::tpy::Poll<bool> __coro_Gate_passed::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await self.evt
         __sub_0 = &(__self.evt);
         __state = S_RESUME_0;
         continue;
@@ -79,7 +80,6 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        // return True
         __state = S_DONE;
         bool __tpy_async_ret = true;
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -90,17 +90,18 @@ void main() {
 }
 
 
+// # Regression: `await self.field` (a stored awaitable field) must mark the
+// # enclosing async method's receiver mutable -- the field's __poll__ mutates
+// # through self, so a const receiver would fail to build.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `await self.field` (a stored awaitable field) must mark the
-    // # enclosing async method's receiver mutable -- the field's __poll__ mutates
-    // # through self, so a const receiver would fail to build.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

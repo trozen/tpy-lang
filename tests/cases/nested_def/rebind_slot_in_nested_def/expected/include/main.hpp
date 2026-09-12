@@ -11,7 +11,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def outer(flag: int32) -> int32:
 int32_t outer(int32_t flag);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -35,11 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def bump(self) -> None:
+//     self.x += 1
 inline void Point::bump() {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
 }
 void __tpy_init();

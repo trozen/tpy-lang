@@ -5,91 +5,91 @@ namespace tpyapp::main {
 
 
 // def take(b: Own[Bag]) -> Own[Bag]:
+//     return b
 Bag take(Bag&& b) {
-    // return b
     return b;
 }
 
 // def call_source() -> None:
+//     g = Bag()
+//     b = Bag()
+//     b = g.itself()
+//     take(b)  # tpyc: warning(/copies Bag into owned storage/)
+//     print(len(g.xs))
+//     g.xs.append(9)
+//     print(len(g.xs))
 void call_source() {
-    // g = Bag()
     Bag g = Bag();
-    // b = Bag()
     Bag __slot_1 = Bag();
     Bag* b = &__slot_1;
-    // b = g.itself()
     b = &(g.itself());
-    // take(b)  # tpyc: warning(/copies Bag into owned storage/)
     Bag __tmp_1 = (*b);
     take(std::move(__tmp_1));
-    // print(len(g.xs))
     std::cout << ::tpy::__len__(g.xs) << "\n";
-    // g.xs.append(9)
     g.xs.push_back(9);
-    // print(len(g.xs))
     std::cout << ::tpy::__len__(g.xs) << "\n";
 }
 
 // def ternary_source(flag: bool) -> None:
+//     g = Bag()
+//     h = Bag()
+//     b = Bag()
+//     b = g.itself() if flag else h.itself()
+//     take(b)  # tpyc: warning(/copies Bag into owned storage/)
+//     # Mutate the live source so a steal (empty source) would diverge.
+//     if flag:
+//         g.xs.append(9)
+//         print(len(g.xs))
+//     else:
+//         h.xs.append(9)
+//         print(len(h.xs))
 void ternary_source(bool flag) {
-    // g = Bag()
     Bag g = Bag();
-    // h = Bag()
     Bag h = Bag();
-    // b = Bag()
     Bag __slot_1 = Bag();
     Bag* b = &__slot_1;
-    // b = g.itself() if flag else h.itself()
     b = &(((flag) ? (g.itself()) : (h.itself())));
-    // take(b)  # tpyc: warning(/copies Bag into owned storage/)
     Bag __tmp_2 = (*b);
     take(std::move(__tmp_2));
-    // # Mutate the live source so a steal (empty source) would diverge.
-    // if flag:
     if (flag) {
-        // g.xs.append(9)
         g.xs.push_back(9);
-        // print(len(g.xs))
         std::cout << ::tpy::__len__(g.xs) << "\n";
-    // else:
     } else {
-        // h.xs.append(9)
         h.xs.push_back(9);
-        // print(len(h.xs))
         std::cout << ::tpy::__len__(h.xs) << "\n";
     }
 }
 
 // def sink(t: Own[Token]) -> Own[Token]:
+//     return t
 Token sink(Token&& t) {
-    // return t
     return t;
 }
 
 // def owned_still_moves() -> None:
+//     # Token is @nocopy: a spurious copy here would be a compile error, so this
+//     # compiling proves a genuinely-owned local still auto-moves.
+//     t = Token(7)
+//     out = sink(t)
+//     print(out.n)
 void owned_still_moves() {
-    // # Token is @nocopy: a spurious copy here would be a compile error, so this
-    // # compiling proves a genuinely-owned local still auto-moves.
-    // t = Token(7)
     Token t = Token(::tpy::BigInt(7));
-    // out = sink(t)
     Token out = sink(std::move(t));
-    // print(out.n)
     std::cout << out.n << "\n";
 }
 
+// call_source()
+// ternary_source(True)
+// ternary_source(False)
+// owned_still_moves()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // call_source()
     call_source();
-    // ternary_source(True)
     ternary_source(true);
-    // ternary_source(False)
     ternary_source(false);
-    // owned_still_moves()
     owned_still_moves();
 }
 

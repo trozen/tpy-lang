@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_span(arr: Array[int32, 4]) -> Span[int32]:
 std::span<int32_t> get_span(std::array<int32_t, 4>& arr);
+// def main():
 void main();
 
 void __tpy_init();

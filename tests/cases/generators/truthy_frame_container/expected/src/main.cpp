@@ -77,11 +77,13 @@ namespace tpyapp::main {
 
 
 // def str_branch(t: str) -> Iterator[int32]:
+//     if t:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((!t.empty())) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -98,7 +100,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -114,11 +115,13 @@ __gen_str_branch str_branch(std::string_view t) {
 }
 
 // def bytes_branch(b: bytes) -> Iterator[int32]:
+//     if b:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((!b.empty())) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -135,7 +138,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -151,11 +153,13 @@ __gen_bytes_branch bytes_branch(::tpy::BytesView b) {
 }
 
 // def record_len_branch(g: Bag) -> Iterator[int32]:
+//     if g:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((::tpy::__len__(g) != 0)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -172,7 +176,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__()
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -188,11 +191,13 @@ __gen_record_len_branch record_len_branch(Bag& g) {
 }
 
 // def record_bool_branch(f: Flag) -> Iterator[int32]:
+//     if f:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (::tpy::__bool__(f)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -209,7 +214,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__(
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -225,11 +229,13 @@ __gen_record_bool_branch record_bool_branch(Flag& f) {
 }
 
 // def enum_branch(c: Color) -> Iterator[int32]:
+//     if c:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((static_cast<void>(c), true)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -246,7 +252,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -262,11 +267,13 @@ __gen_enum_branch enum_branch(Color c) {
 }
 
 // def int_enum_branch(lv: Level) -> Iterator[int32]:
+//     if lv:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((static_cast<int32_t>(lv) != 0)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -283,7 +290,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -299,11 +305,13 @@ __gen_int_enum_branch int_enum_branch(Level lv) {
 }
 
 // def plain_record_branch(p: Plain) -> Iterator[int32]:
+//     if p:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((static_cast<void>(p), true)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -320,7 +328,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -336,11 +343,13 @@ __gen_plain_record_branch plain_record_branch(Plain& p) {
 }
 
 // def any_branch(v: Any) -> Iterator[int32]:
+//     if v:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (::tpy::to_bool(v)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -357,7 +366,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -373,11 +381,15 @@ __gen_any_branch any_branch(::tpy::Any v) {
 }
 
 // def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
+//     # A boolop recurses into both operands, so each side takes its own
+//     # truthiness render rather than the whole expression taking one.
+//     if xs and t:
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (((::tpy::__len__(xs) != 0) && (!t.empty()))) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -394,7 +406,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -410,68 +421,69 @@ __gen_and_branch and_branch(std::vector<int32_t>& xs, std::string_view t) {
 }
 
 // def main() -> None:
+//     xs = [1, 2, 3]
+//     print("list", list(drain_list(xs)))
+//     # The generator drained the caller's list -- it was borrowed, not copied.
+//     print("drained", xs)
+//     print("empty", list(drain_list([])))
+//     # Each drain is re-observed through the CALLER's binding: the generator
+//     # borrowed the container, so the caller must see it emptied. A silent
+//     # copy at the boundary would leave these printing the original contents.
+//     dd = {1: 10, 2: 20}
+//     print("dict", list(drain_dict(dd, [2, 1])), dd)
+//     print("dict0", list(drain_dict({}, [])))
+//     ss = {7, 9}
+//     print("set", sorted(list(drain_set(ss))), ss)
+//     print("set0", list(drain_set(set())))
+//     print("str", list(str_branch("x")), list(str_branch("")))
+//     print("bytes", list(bytes_branch(b"x")), list(bytes_branch(b"")))
+//     print("len", list(record_len_branch(Bag(3))),
+//           list(record_len_branch(Bag(0))))
+//     print("bool", list(record_bool_branch(Flag(True))),
+//           list(record_bool_branch(Flag(False))))
+//     # Enum members are always truthy; an IntEnum tests its value, so ZERO
+//     # is falsy. A dunder-less record is always truthy (Python default).
+//     print("enum", list(enum_branch(Color.RED)), list(enum_branch(Color.BLUE)))
+//     print("intenum", list(int_enum_branch(Level.HIGH)),
+//           list(int_enum_branch(Level.ZERO)))
+//     print("plain", list(plain_record_branch(Plain(0))))
+//     print("any", list(any_branch(1)), list(any_branch(0)))
+//     print("and", list(and_branch([1], "x")), list(and_branch([], "x")),
+//           list(and_branch([1], "")))
+//     print("or", list(peephole_or([1], "")), list(peephole_or([], "")))
 void main() {
-    // xs = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // print("list", list(drain_list(xs)))
     std::cout << "list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_list(xs))) << "\n";
-    // # The generator drained the caller's list -- it was borrowed, not copied.
-    // print("drained", xs)
     std::cout << "drained" << " " << ::tpy::ListPrinter(xs) << "\n";
-    // print("empty", list(drain_list([])))
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
     std::cout << "empty" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_list(__tmp_1))) << "\n";
-    // # Each drain is re-observed through the CALLER's binding: the generator
-    // # borrowed the container, so the caller must see it emptied. A silent
-    // # copy at the boundary would leave these printing the original contents.
-    // dd = {1: 10, 2: 20}
     ::tpy::ordered_map<int32_t, int32_t> dd = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
-    // print("dict", list(drain_dict(dd, [2, 1])), dd)
     std::vector<int32_t> __tmp_2 = {2, 1};
     std::cout << "dict" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_dict(dd, __tmp_2))) << " " << ::tpy::DictPrinter(dd) << "\n";
-    // print("dict0", list(drain_dict({}, [])))
     ::tpy::ordered_map<int32_t, int32_t> __tmp_3 = ::tpy::ordered_map<int32_t, int32_t>();
     std::vector<int32_t> __tmp_4 = std::vector<int32_t>{};
     std::cout << "dict0" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_dict(__tmp_3, __tmp_4))) << "\n";
-    // ss = {7, 9}
     ::tpy::ordered_set<int32_t> ss = ::tpy::ordered_set<int32_t>({7, 9});
-    // print("set", sorted(list(drain_set(ss))), ss)
     std::cout << "set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::construct<std::vector<int32_t>>(drain_set(ss)))) << " " << ::tpy::SetPrinter(ss) << "\n";
-    // print("set0", list(drain_set(set())))
     ::tpy::ordered_set<int32_t> __tmp_5 = ::tpy::ordered_set<int32_t>();
     std::cout << "set0" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(drain_set(__tmp_5))) << "\n";
-    // print("str", list(str_branch("x")), list(str_branch("")))
     std::string __tmp_6 = "x";
     std::string __tmp_7 = "";
     std::cout << "str" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(str_branch(__tmp_6))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(str_branch(__tmp_7))) << "\n";
-    // print("bytes", list(bytes_branch(b"x")), list(bytes_branch(b"")))
     ::tpy::Bytes __tmp_8 = ::tpy::bytes_literal_owned("x", 1);
     ::tpy::Bytes __tmp_9 = ::tpy::Bytes{};
     std::cout << "bytes" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(bytes_branch(__tmp_8))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(bytes_branch(__tmp_9))) << "\n";
-    // print("len", list(record_len_branch(Bag(3))),
-    // list(record_len_branch(Bag(0))))
     Bag __tmp_10 = Bag(3);
     Bag __tmp_11 = Bag(0);
     std::cout << "len" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(record_len_branch(__tmp_10))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(record_len_branch(__tmp_11))) << "\n";
-    // print("bool", list(record_bool_branch(Flag(True))),
-    // list(record_bool_branch(Flag(False))))
     Flag __tmp_12 = Flag(true);
     Flag __tmp_13 = Flag(false);
     std::cout << "bool" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(record_bool_branch(__tmp_12))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(record_bool_branch(__tmp_13))) << "\n";
-    // # Enum members are always truthy; an IntEnum tests its value, so ZERO
-    // # is falsy. A dunder-less record is always truthy (Python default).
-    // print("enum", list(enum_branch(Color.RED)), list(enum_branch(Color.BLUE)))
     std::cout << "enum" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(enum_branch(Color::RED))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(enum_branch(Color::BLUE))) << "\n";
-    // print("intenum", list(int_enum_branch(Level.HIGH)),
-    // list(int_enum_branch(Level.ZERO)))
     std::cout << "intenum" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(int_enum_branch(Level::HIGH))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(int_enum_branch(Level::ZERO))) << "\n";
-    // print("plain", list(plain_record_branch(Plain(0))))
     Plain __tmp_14 = Plain(0);
     std::cout << "plain" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(plain_record_branch(__tmp_14))) << "\n";
-    // print("any", list(any_branch(1)), list(any_branch(0)))
     std::cout << "any" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(any_branch(::tpy::make_any(::tpy::BigInt(1))))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(any_branch(::tpy::make_any(::tpy::BigInt(0))))) << "\n";
-    // print("and", list(and_branch([1], "x")), list(and_branch([], "x")),
-    // list(and_branch([1], "")))
     std::vector<int32_t> __tmp_15 = {1};
     std::string __tmp_16 = "x";
     std::vector<int32_t> __tmp_17 = std::vector<int32_t>{};
@@ -479,7 +491,6 @@ void main() {
     std::vector<int32_t> __tmp_19 = {1};
     std::string __tmp_20 = "";
     std::cout << "and" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(and_branch(__tmp_15, __tmp_16))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(and_branch(__tmp_17, __tmp_18))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(and_branch(__tmp_19, __tmp_20))) << "\n";
-    // print("or", list(peephole_or([1], "")), list(peephole_or([], "")))
     std::vector<int32_t> __tmp_21 = {1};
     std::string __tmp_22 = "";
     std::vector<int32_t> __tmp_23 = std::vector<int32_t>{};
@@ -487,18 +498,19 @@ void main() {
     std::cout << "or" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(peephole_or(__tmp_21, __tmp_22))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(peephole_or(__tmp_23, __tmp_24))) << "\n";
 }
 
+// # Container / str / record truthiness of a generator-frame local. These
+// # forms have no C++ `operator bool` at all, so before the fix the emitted
+// # code did not compile ("could not convert std::vector<...> to bool") --
+// # the `.empty()` / `__len__` / `__bool__` dispatch the sync path applies
+// # was skipped for a frame-resident read.
+// from enum import Enum, IntEnum, auto
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Container / str / record truthiness of a generator-frame local. These
-    // # forms have no C++ `operator bool` at all, so before the fix the emitted
-    // # code did not compile ("could not convert std::vector<...> to bool") --
-    // # the `.empty()` / `__len__` / `__bool__` dispatch the sync path applies
-    // # was skipped for a frame-resident read.
-    // from enum import Enum, IntEnum, auto
-    // main()
     main();
 }
 

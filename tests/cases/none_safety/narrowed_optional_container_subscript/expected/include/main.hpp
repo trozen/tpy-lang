@@ -11,13 +11,21 @@ struct Doubler;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_list(lst: list[int32] | None) -> None:
 void read_list(const std::vector<int32_t>* lst);
+// def aug_assign(lst: list[int32] | None) -> None:
 void aug_assign(std::vector<int32_t>* lst);
+// def read_dict(d: dict[int32, int32] | None) -> None:
 void read_dict(const ::tpy::ordered_map<int32_t, int32_t>* d);
+// def read_dict_readonly(d: readonly[dict[int32, int32]] | None) -> None:
 void read_dict_readonly(const ::tpy::ordered_map<int32_t, int32_t>* d);
+// def read_bytearray(b: bytearray | None) -> None:
 void read_bytearray(const ::tpy::ByteArray* b);
+// def read_nested(rows: list[list[int32]] | None) -> None:
 void read_nested(const std::vector<std::vector<int32_t>>* rows);
+// def read_user_record(g: Doubler | None) -> None:
 void read_user_record(const Doubler* g);
+// def main() -> None:
 void main();
 
 // class Doubler:
@@ -53,17 +61,18 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 3
 inline Doubler::Doubler() : n(3) {}
 
 // def __len__(self) -> int32:
+//     return self.n
 inline int32_t Doubler::__len__() const {
-    // return self.n
     return this->n;
 }
 
 // def __getitem__(self, i: int32) -> int32:
+//     return i * 2
 inline int32_t Doubler::__getitem__(int32_t i) const {
-    // return i * 2
     return (::tpy::mul_check<int32_t>(i, 2));
 }
 void __tpy_init();

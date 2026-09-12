@@ -10,6 +10,7 @@ namespace tpyapp::main {
 extern int32_t i;
 inline constexpr std::string_view __name__ = "__main__";
 
+// function factorial(n: integer): integer;
 int32_t factorial(int32_t n);
 
 void __tpy_init();

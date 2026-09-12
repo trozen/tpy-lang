@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main():
+//     xs = [P()]
+//     n = pick(xs)
+//     print(len(n.vals))
+//     xs.append(P())  # tpyc: ok
+//     print(len(xs))
 void main() {
-    // xs = [P()]
     std::vector<P> xs = {P()};
-    // n = pick(xs)
     P& n = pick(xs);
-    // print(len(n.vals))
     std::cout << ::tpy::__len__(n.vals) << "\n";
-    // xs.append(P())  # tpyc: ok
     xs.push_back(P());
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def pick(xs: list[P]) -> P:
+//     return xs[0]
 P& pick(std::vector<P>& xs) {
-    // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

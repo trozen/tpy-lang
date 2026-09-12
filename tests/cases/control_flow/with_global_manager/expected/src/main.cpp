@@ -3,16 +3,18 @@
 
 namespace tpyapp::main {
 
-// g = Counter()
 Counter* g{};
 
 // def main() -> None:
+//     with g as n1:
+//         print(n1)
+//     with g as n2:
+//         print(n2)
+//     print(g.opens)
 void main() {
-    // with g as n1:
     auto& __ctx_1 = *(g);
     auto n1 = __ctx_1.__enter__();
     try {
-        // print(n1)
         std::cout << n1 << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -24,11 +26,9 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with g as n2:
     auto& __ctx_2 = *(g);
     auto n2 = __ctx_2.__enter__();
     try {
-        // print(n2)
         std::cout << n2 << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -40,19 +40,19 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // print(g.opens)
     std::cout << g->opens << "\n";
 }
 
+// g = Counter()
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g = Counter()
     static Counter __global_slot_1 = Counter();
     g = &__global_slot_1;
-    // main()
     main();
 }
 

@@ -15,7 +15,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_relay_twice;
 struct __gen_Holder_relay;
 
+// def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 __gen_relay_twice relay_twice(std::vector<std::tuple<int32_t, C>>& items);
+// def main() -> None:
 void main();
 
 // class C:
@@ -52,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: relay_twice
+// def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std::tuple<int32_t, C*>> {
     int32_t __state;
     std::vector<std::tuple<int32_t, C>>& items;
@@ -79,7 +81,7 @@ struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std:
     }
 };
 
-// Generator: Holder.relay
+// def relay(self) -> Iterator[tuple[int32, C]]:
 struct __gen_Holder_relay : public ::tpy::next_iter_mixin<__gen_Holder_relay, std::tuple<int32_t, C*>> {
     int32_t __state;
     Holder& __self;
@@ -112,10 +114,15 @@ inline __gen_Holder_relay Holder::relay() {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline C::C(int32_t v) : v(v) {}
 
 // def __init__(self, items: Own[list[tuple[int32, C]]]) -> None:
+//     self.items = items
 inline Holder::Holder(std::vector<std::tuple<int32_t, C>>&& items) : items(std::move(items)) {}
+// def storage_relay(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
+//     for pair in items:
+//         yield pair  # tpyc: ok
 inline auto storage_relay(std::vector<std::tuple<int32_t, C>>& items) {
     return ::tpy::make_generator<std::tuple<int32_t, C*>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<int32_t, C*>> {

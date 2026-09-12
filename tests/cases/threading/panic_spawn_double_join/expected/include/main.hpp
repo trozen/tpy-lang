@@ -14,6 +14,7 @@ struct One;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class One:
@@ -32,8 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const One& obj) {
 
 
 // def run(self) -> int:
+//     return 1
 inline ::tpy::BigInt One::run() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 void __tpy_init();

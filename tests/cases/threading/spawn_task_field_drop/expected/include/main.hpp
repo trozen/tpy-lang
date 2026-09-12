@@ -23,6 +23,7 @@ struct Task;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class State:
@@ -114,12 +115,16 @@ inline std::ostream& operator<<(std::ostream& os, const Task& obj) {
 
 
 // def __init__(self) -> None:
+//     self.done = 0
 inline State::State() : done(0) {}
 
 // def __init__(self, m: Own[Mutex[State]], cv: Own[Condvar]) -> None:
+//     self.m = m
+//     self.cv = cv
 inline Shared::Shared(::tpystd::tpy::sync::Mutex<State>&& m, ::tpystd::tpy::sync::Condvar&& cv) : m(std::move(m)), cv(std::move(cv)) {}
 
 // def __init__(self, shared: Own[Arc[Shared]]) -> None:
+//     self.shared = shared
 inline Notifier::Notifier(::tpystd::tplib::arc::Arc<Shared>&& shared) : shared(std::move(shared)) {}
 
 inline Notifier::Notifier(Notifier&& other) noexcept : shared(std::move(other.shared)) {
@@ -134,16 +139,17 @@ inline Notifier& Notifier::operator=(Notifier&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     s = self.shared.get()
+//     with s.m.lock() as g:
+//         g.get().done = 1
+//     s.cv.notify_all()
 inline Notifier::~Notifier() {
     if (!this->__tpy_owned_) return;
     try {
-        // s = self.shared.get()
         Shared& s = this->shared.get();
-        // with s.m.lock() as g:
         auto __ctx_1 = s.m.lock();
         auto& g = __ctx_1.__enter__();
         try {
-            // g.get().done = 1
             g.get().done = 1;
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -155,7 +161,6 @@ inline Notifier::~Notifier() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // s.cv.notify_all()
         s.cv.notify_all();
     } catch (const std::exception& __del_exc) {
         ::tpy::report_del_exception(__del_exc);
@@ -165,11 +170,12 @@ inline Notifier::~Notifier() {
 }
 
 // def __init__(self, notifier: Own[Notifier]) -> None:
+//     self.notifier = notifier
 inline Task::Task(Notifier&& notifier) : notifier(std::move(notifier)) {}
 
 // def run(self) -> None:
+//     pass
 inline void Task::run() const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

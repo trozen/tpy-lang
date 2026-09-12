@@ -5,58 +5,58 @@ namespace tpyapp::main {
 
 
 // def make_box() -> Own[Box]:
+//     return Box(int32(42))
 Box make_box() {
-    // return Box(int32(42))
     return Box(42);
 }
 
 // def test_if_branch() -> None:
+//     b = None
+//     if True:
+//         b = make_box()
+//     if b is not None:
+//         print(b.v)
 void test_if_branch() {
     std::optional<Box> __slot_1;
-    // b = None
     Box* b = nullptr;
-    // if True:
     if (true) {
-        // b = make_box()
         b = &*(__slot_1 = make_box());
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.v)
         std::cout << b->v << "\n";
     }
 }
 
 // def test_elif_branch() -> None:
+//     b = None
+//     x = 1
+//     if x == 0:
+//         pass
+//     elif x == 1:
+//         b = make_box()
+//     if b is not None:
+//         print(b.v)
 void test_elif_branch() {
     std::optional<Box> __slot_1;
-    // b = None
     Box* b = nullptr;
-    // x = 1
     int32_t x = 1;
-    // if x == 0:
     if ((x == 0)) {
-        // pass
-    // elif x == 1:
     } else if ((x == 1)) {
-        // b = make_box()
         b = &*(__slot_1 = make_box());
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.v)
         std::cout << b->v << "\n";
     }
 }
 
+// test_if_branch()
+// test_elif_branch()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_if_branch()
     test_if_branch();
-    // test_elif_branch()
     test_elif_branch();
 }
 

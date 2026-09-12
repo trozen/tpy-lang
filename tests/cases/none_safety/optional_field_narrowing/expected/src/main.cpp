@@ -5,74 +5,74 @@ namespace tpyapp::main {
 
 
 // def test_field_narrowing() -> None:
+//     w = Wrapper()
+//     w._node = Node(42)
+//     if w._node is not None:
+//         print(w._node.val)
+//     else:
+//         print("none")
 void test_field_narrowing() {
-    // w = Wrapper()
     Wrapper w = Wrapper();
-    // w._node = Node(42)
     w._node = Node(42);
-    // if w._node is not None:
     if ((w._node.has_value())) {
-        // print(w._node.val)
         std::cout << (*w._node).val << "\n";
-    // else:
     } else {
-        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
 // def test_nested_field() -> None:
+//     w = Wrapper()
+//     w._node = Node(99)
+//     assert w._node is not None
+//     print(w._node.val)
 void test_nested_field() {
-    // w = Wrapper()
     Wrapper w = Wrapper();
-    // w._node = Node(99)
     w._node = Node(99);
-    // assert w._node is not None
     if (!((w._node.has_value()))) ::tpy::raise_assertion_error();
-    // print(w._node.val)
     std::cout << (*w._node).val << "\n";
 }
 
 // def test_alias() -> None:
+//     w = Wrapper()
+//     w._node = Node(7)
+//     if w._node is not None:
+//         n = w._node
+//         print(n.val)
 void test_alias() {
-    // w = Wrapper()
     Wrapper w = Wrapper();
-    // w._node = Node(7)
     w._node = Node(7);
-    // if w._node is not None:
     if ((w._node.has_value())) {
-        // n = w._node
         Node& n = (*w._node);
-        // print(n.val)
         std::cout << n.val << "\n";
     }
 }
 
 // def test_method_call() -> None:
+//     w = Wrapper()
+//     w._node = Node(6)
+//     if w._node is not None:
+//         print(w._node.doubled())
 void test_method_call() {
-    // w = Wrapper()
     Wrapper w = Wrapper();
-    // w._node = Node(6)
     w._node = Node(6);
-    // if w._node is not None:
     if ((w._node.has_value())) {
-        // print(w._node.doubled())
         std::cout << (*w._node).doubled() << "\n";
     }
 }
 
+// test_field_narrowing()
+// test_nested_field()
+// test_alias()
+// test_method_call()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_field_narrowing()
     test_field_narrowing();
-    // test_nested_field()
     test_nested_field();
-    // test_alias()
     test_alias();
-    // test_method_call()
     test_method_call();
 }
 

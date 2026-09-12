@@ -5,15 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     parser = ArgumentParser()
+//     parser.add_argument("input", type=Tag)
+//     parser.add_argument("--out", type=Tag)
+//     parser.add_argument("--label", type=Tag, default="ci:nightly")
+//     args = parser.parse_args(["core:strict", "--out", "release"])
+//     print(args.input)
+//     print(args.out)
+//     print(args.label)
 void main() {
-    // args = parser.parse_args(["core:strict", "--out", "release"])
     std::vector<std::string> __tmp_1 = {"core:strict", "--out", "release"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.input)
     std::cout << args.input << "\n";
-    // print(args.out)
     std::cout << ::tpy::print_optional_val(args.out) << "\n";
-    // print(args.label)
     std::cout << args.label << "\n";
 }
 
@@ -76,14 +80,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(std::move(input), out ? std::optional<Tag>(std::move(*out)) : std::nullopt, std::move((*label)));
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

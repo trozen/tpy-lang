@@ -5,54 +5,54 @@ namespace tpyapp::main {
 
 
 // def describe() -> str:
+//     p: Optional[Pet] = Dog()     # tpyc: ok
+//     if p is None:
+//         return "none"
+//     if isinstance(p, Dog):
+//         return "dog:" + p.bark()
+//     return p.name()
 std::string describe() {
-    // p: Optional[Pet] = Dog()     # tpyc: ok
     Dog __slot_1 = Dog();
     auto* p = &__slot_1;
-    // if p is None:
     if ((p == nullptr)) {
-        // return "none"
         return "none";
     }
-    // if isinstance(p, Dog):
     if (Dog* __p_ptr = dynamic_cast<Dog*>(p); (__p_ptr != nullptr)) {
-        // return "dog:" + p.bark()
         return (::tpy::str_concat("dog:", (*__p_ptr).bark()));
     }
-    // return p.name()
     return p->name();
 }
 
 // def describe_structural() -> str:
+//     # Structural conformer init materializes an Adapter<Pet, Cat> slot so &slot
+//     # upcasts to const Pet*.
+//     p: Optional[Pet] = Cat()     # tpyc: ok
+//     if p is None:
+//         return "none"
+//     return p.name()
 std::string describe_structural() {
-    // # Structural conformer init materializes an Adapter<Pet, Cat> slot so &slot
-    // # upcasts to const Pet*.
-    // p: Optional[Pet] = Cat()     # tpyc: ok
     auto __slot_1 = Cat();
     auto* p = &__slot_1;
-    // if p is None:
     if ((p == nullptr)) {
-        // return "none"
         return "none";
     }
-    // return p.name()
     return p->name();
 }
 
 // def main() -> None:
+//     print(describe())
+//     print(describe_structural())
 void main() {
-    // print(describe())
     std::cout << describe() << "\n";
-    // print(describe_structural())
     std::cout << describe_structural() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

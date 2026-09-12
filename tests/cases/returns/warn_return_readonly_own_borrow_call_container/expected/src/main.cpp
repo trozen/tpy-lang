@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     print(len(h.grab()), len(h.grab_copy()), len(h.items))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(len(h.grab()), len(h.grab_copy()), len(h.items))
     std::cout << ::tpy::__len__(h.grab()) << " " << ::tpy::__len__(h.grab_copy()) << " " << ::tpy::__len__(h.items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

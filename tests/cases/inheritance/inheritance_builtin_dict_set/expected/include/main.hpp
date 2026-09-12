@@ -12,8 +12,11 @@ struct Tags;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(c: Counter, key: StrView) -> None:
 void bump(Counter& c, std::string_view key);
+// def add_tag(t: Tags, tag: int32) -> None:
 void add_tag(Tags& t, int32_t tag);
+// def main() -> None:
 void main();
 
 // class Counter(dict[StrView, int32]):
@@ -47,11 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const Tags& obj) {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Counter::Counter(std::string_view label) : label(label) {}
 
 // def __init__(self) -> None:
+//     pass
 inline Tags::Tags() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

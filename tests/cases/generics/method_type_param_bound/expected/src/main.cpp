@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Pair[int32](3, 7)
+//     print(p.min_val())
+//     print(p.with_default())
 void main() {
-    // p = Pair[int32](3, 7)
     Pair<int32_t> p = Pair<int32_t>(3, 7);
-    // print(p.min_val())
     std::cout << p.min_val() << "\n";
-    // print(p.with_default())
     std::cout << p.with_default() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

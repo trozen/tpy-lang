@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n + 100
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 100
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(100)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,13 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def total_of(xs: list[int]) -> int:
+//     total = 0
+//     for x in xs:
+//         total = total + await value(x)
+//     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total_of::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
@@ -41,20 +44,17 @@ __coro_value value(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // total = total + await value(x)
         total = ((::tpy::BigInt(total)) + (__await_lift_0));
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // return total
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         x = *((*__for_it_0))++;
-        // total = total + await value(x)
         __sub_0.emplace(x);
         __state = S_RESUME_0;
         continue;
@@ -71,23 +71,24 @@ __coro_total_of total_of(std::vector<::tpy::BigInt>& xs) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(total_of([1, 2, 3])))
 void main() {
-    // print(asyncio.run(total_of([1, 2, 3])))
     std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(total_of(__tmp_1))) << "\n";
 }
 
+// # `await` inside a sync `for x in <list>:` body. Verifies the
+// # universal iter/next path works for built-in NativeIterable
+// # containers, not just `range`.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` inside a sync `for x in <list>:` body. Verifies the
-    // # universal iter/next path works for built-in NativeIterable
-    // # containers, not just `range`.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

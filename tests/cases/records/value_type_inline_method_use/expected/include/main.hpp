@@ -13,6 +13,7 @@ struct Owner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class TimerEntry(ValueType):
@@ -66,20 +67,23 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 
 
 // def __init__(self, deadline: float, tid: int32) -> None:
+//     self.deadline = deadline
+//     self.tid = tid
 inline TimerEntry::TimerEntry(double deadline, int32_t tid) : deadline(deadline), tid(tid) {}
 
 // def __lt__(self, o: 'TimerEntry') -> bool:
+//     return self.deadline < o.deadline
 inline bool TimerEntry::__lt__(TimerEntry o) const {
-    // return self.deadline < o.deadline
     return (this->deadline < o.deadline);
 }
 
 // def __init__(self) -> None:
+//     self.heap = []
 inline Owner::Owner() : heap(std::vector<TimerEntry>{}) {}
 
 // def add(self, d: float, t: int32) -> None:
+//     heapq.heappush(self.heap, TimerEntry(d, t))
 inline void Owner::add(double d, int32_t t) {
-    // heapq.heappush(self.heap, TimerEntry(d, t))
     ::tpystd::heapq::heappush<TimerEntry>(this->heap, TimerEntry(d, t));
 }
 void __tpy_init();

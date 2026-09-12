@@ -11,11 +11,17 @@ struct A;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_rec(r: A) -> int32:
 int32_t take_rec(const A& r);
+// def mutate_rec(r: A) -> None:
 void mutate_rec(A& r);
+// def use_ret() -> int32:
 int32_t use_ret();
+// def use_decl() -> int32:
 int32_t use_decl();
+// def use_stmt() -> None:
 void use_stmt();
+// def main() -> None:
 void main();
 
 // class A:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

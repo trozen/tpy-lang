@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def make_dict() -> Own[dict[str, int32]]:
+//     d = {"x": 1, "y": 2}
+//     return d
 ::tpy::ordered_map<std::string, int32_t> make_dict() {
-    // d = {"x": 1, "y": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}});
-    // return d
     return d;
 }
 
 // def sum_values(d: dict[str, int32]) -> int32:
+//     total = 0
+//     for k in d:
+//         total = total + d[k]
+//     return total
 int32_t sum_values(const ::tpy::ordered_map<std::string, int32_t>& d) {
-    // total = 0
     int32_t total = 0;
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // total = total + d[k]
         total = (::tpy::add_check<int32_t>(total, ::tpy::__getitem__(d, k)));
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     d = make_dict()
+//     print(d)
+//     print(sum_values(d))
 void main() {
-    // d = make_dict()
     ::tpy::ordered_map<std::string, int32_t> d = make_dict();
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(sum_values(d))
     std::cout << sum_values(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

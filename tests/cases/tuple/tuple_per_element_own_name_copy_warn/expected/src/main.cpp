@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def sink(p: tuple[Own[Box], int32]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+//     return p[0].val + p[1]
 int32_t sink(std::tuple<Box, int32_t>&& p) {
-    // return p[0].val + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p).val, std::get<1>(p)));
 }
 
 // def f(ob: Own[Box]) -> int32:  # tpyc: warning(/Own\[Box\] param 'ob' is never consumed/)
+//     pair = (ob, 0)
+//     r = sink(pair)  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
+//     return r + ob.val
 int32_t f(Box&& ob) {
-    // pair = (ob, 0)
     auto pair = std::tuple<Box*, int32_t>{&(ob), 0};
-    // r = sink(pair)  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
     int32_t r = sink(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(pair));
-    // return r + ob.val
     return (::tpy::add_check<int32_t>(r, ob.val));
 }
 
 // def main() -> None:
+//     print(f(Box(5)))
 void main() {
-    // print(f(Box(5)))
     std::cout << f(Box(5)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

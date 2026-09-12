@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub() -> int32:
+//     return int32(42)
 ::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return int32(42)
         __state = S_DONE;
         int32_t __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,12 +26,13 @@ __coro_sub sub() {
 }
 
 // async def main_coro() -> None:
+//     t: Task[int32] = asyncio.create_task(sub())
+//     val = await t
+//     print(val)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t: Task[int32] = asyncio.create_task(sub())
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(sub())));
-        // val = await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -41,7 +42,6 @@ __coro_sub sub() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         val = std::move(__r0).value();
         __sub_0 = nullptr;
-        // print(val)
         std::cout << val << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -58,19 +58,20 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

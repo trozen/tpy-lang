@@ -5,88 +5,88 @@ namespace tpyapp::main {
 
 
 // def read_rec(a: A) -> int32:
+//     return a.x
 int32_t read_rec(const A& a) {
-    // return a.x
     return a.x;
 }
 
 // def mutate_rec(a: A) -> None:
+//     a.x += 10
 void mutate_rec(A& a) {
-    // a.x += 10
     a.x = ::tpy::add_check<int32_t>(a.x, 10);
 }
 
 // def pass_both(a: A, b: A) -> int32:
+//     mutate_rec(b)
+//     return read_rec(a) + read_rec(b)
 int32_t pass_both(const A& a, A& b) {
-    // mutate_rec(b)
     mutate_rec(b);
-    // return read_rec(a) + read_rec(b)
     return (::tpy::add_check<int32_t>(read_rec(a), read_rec(b)));
 }
 
 // def through_pointer(h: Holder, flag: bool) -> int32:
+//     p = h.a
+//     if flag:
+//         p = h.b
+//     mutate_rec(p)
+//     return read_rec(p)
 int32_t through_pointer(Holder& h, bool flag) {
-    // p = h.a
     A* p = &(h.a);
-    // if flag:
     if (flag) {
-        // p = h.b
         p = &(h.b);
     }
-    // mutate_rec(p)
     mutate_rec((*p));
-    // return read_rec(p)
     return read_rec((*p));
 }
 
 // def through_narrowing(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         mutate_rec(v)
+//         return read_rec(v)
+//     return v.y
 int32_t through_narrowing(::tpy::Union<A*, B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // mutate_rec(v)
         mutate_rec(__v);
-        // return read_rec(v)
         return read_rec(__v);
     }
     auto& __v = *std::get<B*>(v);
-    // return v.y
     return __v.y;
 }
 
 // def main():
+//     h = Holder()
+//     print(pass_both(h.a, h.b))  # mutates h.b through the callee
+//     print(h.b.x)                # 12: the caller's object changed
+//     print(through_pointer(h, True))
+//     print(h.b.x)                # 22: mutated through the reseated borrow
+//     print(through_pointer(h, False))
+//     print(h.a.x)                # 11: the other pointee
+//     a = A(5)
+//     print(through_narrowing(a))
+//     print(a.x)                  # 15: mutated through the narrowed alias
+//     print(through_narrowing(B(7)))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(pass_both(h.a, h.b))  # mutates h.b through the callee
     std::cout << pass_both(h.a, h.b) << "\n";
-    // print(h.b.x)                # 12: the caller's object changed
     std::cout << h.b.x << "\n";
-    // print(through_pointer(h, True))
     std::cout << through_pointer(h, true) << "\n";
-    // print(h.b.x)                # 22: mutated through the reseated borrow
     std::cout << h.b.x << "\n";
-    // print(through_pointer(h, False))
     std::cout << through_pointer(h, false) << "\n";
-    // print(h.a.x)                # 11: the other pointee
     std::cout << h.a.x << "\n";
-    // a = A(5)
     A a = A(5);
-    // print(through_narrowing(a))
     std::cout << through_narrowing(::tpy::Union<A*, B*>{&(a)}) << "\n";
-    // print(a.x)                  # 15: mutated through the narrowed alias
     std::cout << a.x << "\n";
-    // print(through_narrowing(B(7)))
     B __tmp_1 = B(7);
     std::cout << through_narrowing(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

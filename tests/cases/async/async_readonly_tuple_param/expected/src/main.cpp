@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def asum(pair: readonly[tuple[Tag, Tag]]) -> int32:
+//     await asyncio.sleep(0.001)
+//     return pair[0].n + pair[1].n
 ::tpystd::tpy::Poll<int32_t> __coro_asum::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return pair[0].n + pair[1].n
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(std::get<0>(pair)->n, std::get<1>(pair)->n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,15 +35,15 @@ __coro_asum asum(std::tuple<const Tag*, const Tag*> pair) {
 }
 
 // def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[int32]:
+//     yield pair[0].n
+//     yield pair[1].n
 std::expected<int32_t, ::tpy::StopIteration> __gen_gsum::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield pair[0].n
         __state = S_RESUME_0;
         return std::get<0>(pair)->n;
     }
     case S_RESUME_0: {
-        // yield pair[1].n
         __state = S_RESUME_1;
         return std::get<1>(pair)->n;
     }
@@ -63,24 +63,33 @@ __gen_gsum gsum(std::tuple<const Tag*, const Tag*> pair) {
 }
 
 // def pick(p1: readonly[tuple[Tag, Tag]], p2: readonly[tuple[Tag, Tag]],
-// c: bool) -> int32:
+//          c: bool) -> int32:
+//     t = p1 if c else p2
+//     return t[1].n
 int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<const Tag*, const Tag*>& p2, bool c) {
-    // t = p1 if c else p2
     auto t = ((c) ? (p1) : (p2));
-    // return t[1].n
     return std::get<1>(t)->n;
 }
 
 // async def main_coro() -> None:
+//     a = Tag(3)
+//     b = Tag(4)
+//     print("asum:", await asum((a, b)))
+//     a.n = 100
+//     print("after:", await asum((a, b)))      # aliased: sees the mutation
+//
+//     total = 0
+//     for v in gsum((a, b)):
+//         total += v
+//     print("gsum:", total)
+//
+//     print("pick:", pick((a, b), (b, a), True))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = Tag(3)
         a.emplace(Tag(3));
-        // b = Tag(4)
         b.emplace(Tag(4));
         __coro_arg_0 = std::tuple<Tag*, Tag*>{&((*a)), &((*b))};
-        // print("asum:", await asum((a, b)))
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
@@ -90,12 +99,9 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print("asum:", await asum((a, b)))
         std::cout << "asum:" << " " << __await_lift_0 << "\n";
-        // a.n = 100
         (*a).n = 100;
         __coro_arg_1 = std::tuple<Tag*, Tag*>{&((*a)), &((*b))};
-        // print("after:", await asum((a, b)))      # aliased: sees the mutation
         __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
@@ -105,11 +111,8 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print("after:", await asum((a, b)))      # aliased: sees the mutation
         std::cout << "after:" << " " << __await_lift_1 << "\n";
-        // total = 0
         total = 0;
-        // for v in gsum((a, b)):
         {
             auto __src_0 = gsum(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))});
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -117,13 +120,10 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 int32_t v = ::tpy::unwrap_ref(*__r_1);
-            // total += v
             total = ::tpy::add_check<int32_t>(total, v);
             }
         }
-        // print("gsum:", total)
         std::cout << "gsum:" << " " << total << "\n";
-        // print("pick:", pick((a, b), (b, a), True))
         std::cout << "pick:" << " " << pick(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))}, std::tuple<const Tag*, const Tag*>{&((*b)), &((*a))}, true) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -140,22 +140,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # readonly[tuple[Record,...]] params on async / generators keep their readonly:
+// # a @nocopy element + mutate-and-observe proves borrow-not-copy (async, generator,
+// # branch-aliased-local reads).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # readonly[tuple[Record,...]] params on async / generators keep their readonly:
-    // # a @nocopy element + mutate-and-observe proves borrow-not-copy (async, generator,
-    // # branch-aliased-local reads).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

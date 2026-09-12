@@ -20,9 +20,10 @@ struct Holder {
     ::tpy::UninitHeapStorage<T> _storage;
 
     // def __init__(self, value: T):
+    //     self._storage = UninitHeapStorage[T](1)
+    //     self._storage.init0(value)
     Holder() = default;
     explicit Holder(::tpy::readonly_form_t<T> value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-        // self._storage.init0(value)
         this->_storage.init0(::tpy::param_to_storage<T>(value));
     }
     // non-copyable (field '_storage')
@@ -32,22 +33,22 @@ struct Holder {
     Holder& operator=(Holder&&) = default;
 
     // def get(self) -> T:
+    //     return self._storage.load0()
     ::tpy::val_or_cref_t<T> get() const {
-        // return self._storage.load0()
         return this->_storage.load0();
     }
 
     // def set(self, value: T) -> None:
+    //     self._storage.drop0()
+    //     self._storage.init0(value)
     void set(::tpy::param_val_or_ref_t<T> value) {
-        // self._storage.drop0()
         this->_storage.drop0();
-        // self._storage.init0(value)
         this->_storage.init0(::tpy::param_to_storage<T>(value));
     }
 
     // def take(self) -> Own[T]:
+    //     return self._storage.take0()
     ::tpy::own_return_t<T> take() {
-        // return self._storage.take0()
         return this->_storage.take0();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";

@@ -12,6 +12,7 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # User Exception subclass with no own __init__ inherits Exception(message).

@@ -6,55 +6,60 @@ namespace tpyapp::main {
 
 
 
+// def get_value(animal: Dog | Cat) -> str | int:
+//     if isinstance(animal, Dog):
+//         return animal.name
+//     else:
+//         return animal.lives
 // @overload
 // def get_value(animal: Dog) -> str: ...  # tpyc: ok
 std::string get_value(const Dog& animal) {
-    // return animal.name
     return animal.name;
 }
 
 // @overload
 // def get_value(animal: Cat) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_value(const Cat& animal) {
-    // return animal.lives
     return animal.lives;
 }
 
 
 // def use_dog_result(name: str) -> None:
+//     print("Dog name: " + name)
 void use_dog_result(std::string_view name) {
-    // print("Dog name: " + name)
     std::cout << (::tpy::str_concat("Dog name: ", name)) << "\n";
 }
 
 // def use_cat_result(lives: int) -> None:
+//     print("Cat lives: " + str(lives))
 void use_cat_result(const ::tpy::BigInt& lives) {
-    // print("Cat lives: " + str(lives))
     std::cout << (::tpy::str_concat("Cat lives: ", (lives).to_string())) << "\n";
 }
 
 // def main() -> None:
+//     d = Dog("Rex")
+//     c = Cat(9)
+//
+//     dog_val = get_value(d)  # tpyc: type(str)
+//     cat_val = get_value(c)  # tpyc: type(int)
+//
+//     use_dog_result(dog_val)
+//     use_cat_result(cat_val)
 void main() {
-    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    // c = Cat(9)
     Cat c = Cat(::tpy::BigInt(9));
-    // dog_val = get_value(d)  # tpyc: type(str)
     std::string dog_val = get_value(d);
-    // cat_val = get_value(c)  # tpyc: type(int)
     ::tpy::BigInt cat_val = get_value(c);
-    // use_dog_result(dog_val)
     use_dog_result(dog_val);
-    // use_cat_result(cat_val)
     use_cat_result(cat_val);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,37 +3,37 @@
 
 namespace tpyapp::main {
 
-// x: int = 0
 ::tpy::BigInt x;
 
 // def update(val: int) -> None:
+//     global x
+//     if val > 0:
+//         x = val
+//     else:
+//         x = 0
 void update(const ::tpy::BigInt& val) {
-    // global x
-    // if val > 0:
     if ((val > 0)) {
-        // x = val
         x = val;
-    // else:
     } else {
-        // x = 0
         x = ::tpy::BigInt(0);
     }
 }
 
+// x: int = 0
+//
+// update(42)
+// print(x)
+// update(-1)
+// print(x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int = 0
     x = ::tpy::BigInt(0);
-    // update(42)
     update(::tpy::BigInt(42));
-    // print(x)
     std::cout << x << "\n";
-    // update(-1)
     update(::tpy::BigInt(-1));
-    // print(x)
     std::cout << x << "\n";
 }
 

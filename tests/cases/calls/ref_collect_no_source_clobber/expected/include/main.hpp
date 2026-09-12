@@ -11,7 +11,9 @@ struct Named;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity(n: Named) -> Named:
 Named& identity(Named& n);
+// def main() -> None:
 void main();
 
 // class Named:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Named::Named(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

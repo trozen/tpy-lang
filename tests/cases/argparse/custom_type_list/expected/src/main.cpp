@@ -5,62 +5,65 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     parser = ArgumentParser()
+//     parser.add_argument("--include", type=Tag, action="append")
+//     parser.add_argument("--paths", type=Tag, nargs="+")
+//     args = parser.parse_args(
+//         ["--include", "core", "--include", "extra",
+//          "--paths", "a", "b", "c"])
+//     # Iterate elements rather than ``print(include)``: ``args.include``
+//     # is ``Optional[list[Tag]]`` and TPy's print_optional wrapper for
+//     # nested list[T] doesn't currently unwrap to a list-formatter.
+//     # custom_type_positional_nargs/ exercises the ``print(list[Tag])``
+//     # path against a non-Optional positional list.
+//     include = args.include
+//     if include is not None:
+//         for t in include:
+//             print(t)
+//     print("--")
+//     paths = args.paths
+//     if paths is not None:
+//         for t in paths:
+//             print(t)
 void main() {
-    // args = parser.parse_args(
-    // ["--include", "core", "--include", "extra",
-    // "--paths", "a", "b", "c"])
     std::vector<std::string> __tmp_1 = {"--include", "core", "--include", "extra", "--paths", "a", "b", "c"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // # Iterate elements rather than ``print(include)``: ``args.include``
-    // # is ``Optional[list[Tag]]`` and TPy's print_optional wrapper for
-    // # nested list[T] doesn't currently unwrap to a list-formatter.
-    // # custom_type_positional_nargs/ exercises the ``print(list[Tag])``
-    // # path against a non-Optional positional list.
-    // include = args.include
     std::vector<Tag>* include = ::tpy::optional_to_ptr(args.include);
-    // if include is not None:
     if ((include != nullptr)) {
-        // for t in include:
         auto& __src_0 = (*include);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& t = ::tpy::unwrap_ref(*__r_1);
-            // print(t)
             std::cout << t << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // paths = args.paths
     std::vector<Tag>* paths = ::tpy::optional_to_ptr(args.paths);
-    // if paths is not None:
     if ((paths != nullptr)) {
-        // for t in paths:
         auto& __src_2 = (*paths);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& t = ::tpy::unwrap_ref(*__r_3);
-            // print(t)
             std::cout << t << "\n";
         }
     }
 }
 
 // args = parser.parse_args(
-// ["--include", "core", "--include", "extra",
-// "--paths", "a", "b", "c"])
+//     ["--include", "core", "--include", "extra",
+//      "--paths", "a", "b", "c"])
 void __tpy_builder_argparse_help_1() {
     std::cout << "usage: prog [-h] [--include INCLUDE] [--paths PATHS [PATHS ...]]\n\noptions:\n  -h, --help                 show this help message and exit\n  --include INCLUDE\n  --paths PATHS [PATHS ...]" << "\n";
     ::tpy::sys_exit(0);
 }
 
 // args = parser.parse_args(
-// ["--include", "core", "--include", "extra",
-// "--paths", "a", "b", "c"])
+//     ["--include", "core", "--include", "extra",
+//      "--paths", "a", "b", "c"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
     std::optional<std::vector<Tag>> __slot_4;
     std::optional<std::vector<Tag>> __slot_1;
@@ -118,14 +121,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(std::move(include ? std::optional<std::vector<Tag>>(std::move(*include)) : std::nullopt), std::move(paths ? std::optional<std::vector<Tag>>(std::move(*paths)) : std::nullopt));
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

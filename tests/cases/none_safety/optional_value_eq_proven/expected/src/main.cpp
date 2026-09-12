@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def eq_proven(x: int32 | None, y: int32) -> bool:
+//     assert x is not None
+//     return x == y  # tpyc: ok
 bool eq_proven(std::optional<int32_t> x, int32_t y) {
-    // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
-    // return x == y  # tpyc: ok
     return ((*x) == y);
 }
 
+// print(eq_proven(5, 5))
+// print(eq_proven(3, 5))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(eq_proven(5, 5))
     std::cout << ::tpy::print_bool(eq_proven(5, 5)) << "\n";
-    // print(eq_proven(3, 5))
     std::cout << ::tpy::print_bool(eq_proven(3, 5)) << "\n";
 }
 

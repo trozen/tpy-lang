@@ -12,9 +12,13 @@ struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_ref(h: H | None) -> int:      # h inferred const H*; REF_ALIAS off narrowed h
 ::tpy::BigInt read_ref(const H* h);
+// def read_opt(h: H | None) -> int:      # OPTIONAL_TO_PTR lift off narrowed h
 ::tpy::BigInt read_opt(const H* h);
+// def bump(h: H | None) -> None:         # inverse: mutates through the borrow-local -> non-const
 void bump(H* h);
+// def main() -> None:
 void main();
 
 // # A borrow-local off a narrowed pointer-repr Optional param inferred `const H*` must
@@ -54,9 +58,12 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline A::A(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.g = A(1)
+//     self.f = A(2)
 inline H::H() : g(A(::tpy::BigInt(1))), f(A(::tpy::BigInt(2))) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,165 +5,167 @@ namespace tpyapp::main {
 
 
 // def take(p: Probe | None) -> bool:
+//     """Reference param, so a `Probe(...)` rvalue argument needs a hoisted temp."""
+//     return p is not None
 bool take(const Probe* p) {
-    // return p is not None
     return (p != nullptr);
 }
 
 // def and_skips_rhs(c: Counter) -> bool:
+//     return False and take(Probe(c, 1))  # LHS false -> Probe must NOT be built
 bool and_skips_rhs(Counter& c) {
-    // return False and take(Probe(c, 1))  # LHS false -> Probe must NOT be built
     std::optional<Probe> __tmp_1;
     return (false && (__tmp_1.emplace(Probe(c, 1)), take(&((*__tmp_1)))));
 }
 
 // def and_runs_rhs(c: Counter) -> bool:
+//     return True and take(Probe(c, 2))  # LHS true -> Probe IS built
 bool and_runs_rhs(Counter& c) {
-    // return True and take(Probe(c, 2))  # LHS true -> Probe IS built
     std::optional<Probe> __tmp_2;
     return (true && (__tmp_2.emplace(Probe(c, 2)), take(&((*__tmp_2)))));
 }
 
 // def or_skips_rhs(c: Counter) -> bool:
+//     return True or take(Probe(c, 3))  # LHS true -> Probe must NOT be built
 bool or_skips_rhs(Counter& c) {
-    // return True or take(Probe(c, 3))  # LHS true -> Probe must NOT be built
     std::optional<Probe> __tmp_3;
     return (true || (__tmp_3.emplace(Probe(c, 3)), take(&((*__tmp_3)))));
 }
 
 // def or_runs_rhs(c: Counter) -> bool:
+//     return False or take(Probe(c, 4))  # LHS false -> Probe IS built
 bool or_runs_rhs(Counter& c) {
-    // return False or take(Probe(c, 4))  # LHS false -> Probe IS built
     std::optional<Probe> __tmp_4;
     return (false || (__tmp_4.emplace(Probe(c, 4)), take(&((*__tmp_4)))));
 }
 
 // def ternary_skips_else(c: Counter) -> bool:
+//     return True if True else take(Probe(c, 5))  # else arm must NOT be built
 bool ternary_skips_else(Counter& c) {
-    // return True if True else take(Probe(c, 5))  # else arm must NOT be built
     std::optional<Probe> __tmp_5;
     return ((true) ? (true) : (__tmp_5.emplace(Probe(c, 5)), take(&((*__tmp_5)))));
 }
 
 // def ternary_skips_then(c: Counter, cond: bool) -> bool:
+//     return take(Probe(c, 6)) if cond else False  # then arm skipped when cond false
 bool ternary_skips_then(Counter& c, bool cond) {
-    // return take(Probe(c, 6)) if cond else False  # then arm skipped when cond false
     std::optional<Probe> __tmp_6;
     return ((cond) ? (__tmp_6.emplace(Probe(c, 6)), take(&((*__tmp_6)))) : (false));
 }
 
 // def nested_and(c: Counter, inner: bool) -> bool:
+//     # Regions nest: the temp defers to the INNER short circuit, so a false
+//     # `inner` skips it even though the outer `and` was taken.
+//     return True and (inner and take(Probe(c, 7)))
 bool nested_and(Counter& c, bool inner) {
-    // # Regions nest: the temp defers to the INNER short circuit, so a false
-    // # `inner` skips it even though the outer `and` was taken.
-    // return True and (inner and take(Probe(c, 7)))
     std::optional<Probe> __tmp_7;
     return (true && (inner && (__tmp_7.emplace(Probe(c, 7)), take(&((*__tmp_7))))));
 }
 
 // def nested_mixed(c: Counter, first: bool, deep: bool) -> bool:
+//     # Probe 8 is the always-evaluated LHS of the `or`. Probe 9 sits one level
+//     # deeper: reached only when the `or` LHS is false, and built only when
+//     # `deep` is true. `first` exists to make that LHS falsifiable -- `take`
+//     # alone is always True, so without it the `or` would short-circuit and
+//     # Probe 9 would be dead in both directions. A single-level region would
+//     # bank Probe 9's emplace into the OUTER prefix and build it regardless.
+//     return True and ((take(Probe(c, 8)) and first)
+//                      or (deep and take(Probe(c, 9))))
 bool nested_mixed(Counter& c, bool first, bool deep) {
-    // # Probe 8 is the always-evaluated LHS of the `or`. Probe 9 sits one level
-    // # deeper: reached only when the `or` LHS is false, and built only when
-    // # `deep` is true. `first` exists to make that LHS falsifiable -- `take`
-    // # alone is always True, so without it the `or` would short-circuit and
-    // # Probe 9 would be dead in both directions. A single-level region would
-    // # bank Probe 9's emplace into the OUTER prefix and build it regardless.
-    // return True and ((take(Probe(c, 8)) and first)
-    // or (deep and take(Probe(c, 9))))
     std::optional<Probe> __tmp_8;
     std::optional<Probe> __tmp_9;
     return (true && (__tmp_8.emplace(Probe(c, 8)), ((take(&((*__tmp_8))) && first) || (deep && (__tmp_9.emplace(Probe(c, 9)), take(&((*__tmp_9))))))));
 }
 
 // def nested_ternary(c: Counter, inner: bool) -> bool:
+//     return (take(Probe(c, 10)) if inner else False) if True else False
 bool nested_ternary(Counter& c, bool inner) {
-    // return (take(Probe(c, 10)) if inner else False) if True else False
     std::optional<Probe> __tmp_10;
     return ((true) ? (((inner) ? (__tmp_10.emplace(Probe(c, 10)), take(&((*__tmp_10)))) : (false))) : (false));
 }
 
 // def unconditional(c: Counter) -> bool:
+//     """Inverse: a temp in an unconditional position must still materialize."""
+//     return take(Probe(c, 11))
 bool unconditional(Counter& c) {
-    // return take(Probe(c, 11))
     Probe __tmp_11 = Probe(c, 11);
     return take(&(__tmp_11));
 }
 
 // def main() -> None:
+//     # Each check uses a fresh Counter so `n` is exactly the number of Probes
+//     # actually constructed by that expression.
+//     c = Counter()
+//     print("and_skips_rhs", and_skips_rhs(c), c.n)      # False 0
+//     c = Counter()
+//     print("and_runs_rhs", and_runs_rhs(c), c.n)        # True 1
+//     c = Counter()
+//     print("or_skips_rhs", or_skips_rhs(c), c.n)        # True 0
+//     c = Counter()
+//     print("or_runs_rhs", or_runs_rhs(c), c.n)          # True 1
+//     c = Counter()
+//     print("ternary_skips_else", ternary_skips_else(c), c.n)   # True 0
+//     c = Counter()
+//     print("ternary_then_skipped", ternary_skips_then(c, False), c.n)  # False 0
+//     c = Counter()
+//     print("ternary_then_taken", ternary_skips_then(c, True), c.n)     # True 1
+//     c = Counter()
+//     print("nested_and_skipped", nested_and(c, False), c.n)    # False 0
+//     c = Counter()
+//     print("nested_and_taken", nested_and(c, True), c.n)       # True 1
+//     c = Counter()
+//     print("nested_mixed_or_short", nested_mixed(c, True, True), c.n)   # True 1
+//     c = Counter()
+//     print("nested_mixed_shallow", nested_mixed(c, False, False), c.n)  # False 1
+//     c = Counter()
+//     print("nested_mixed_deep", nested_mixed(c, False, True), c.n)      # True 2
+//     c = Counter()
+//     print("nested_ternary_skipped", nested_ternary(c, False), c.n)  # False 0
+//     c = Counter()
+//     print("nested_ternary_taken", nested_ternary(c, True), c.n)     # True 1
+//     c = Counter()
+//     print("unconditional", unconditional(c), c.n)      # True 1
 void main() {
     std::optional<Counter> __slot_2;
-    // # Each check uses a fresh Counter so `n` is exactly the number of Probes
-    // # actually constructed by that expression.
-    // c = Counter()
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
-    // print("and_skips_rhs", and_skips_rhs(c), c.n)      # False 0
     std::cout << "and_skips_rhs" << " " << ::tpy::print_bool(and_skips_rhs((*c))) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("and_runs_rhs", and_runs_rhs(c), c.n)        # True 1
     std::cout << "and_runs_rhs" << " " << ::tpy::print_bool(and_runs_rhs((*c))) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("or_skips_rhs", or_skips_rhs(c), c.n)        # True 0
     std::cout << "or_skips_rhs" << " " << ::tpy::print_bool(or_skips_rhs((*c))) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("or_runs_rhs", or_runs_rhs(c), c.n)          # True 1
     std::cout << "or_runs_rhs" << " " << ::tpy::print_bool(or_runs_rhs((*c))) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("ternary_skips_else", ternary_skips_else(c), c.n)   # True 0
     std::cout << "ternary_skips_else" << " " << ::tpy::print_bool(ternary_skips_else((*c))) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("ternary_then_skipped", ternary_skips_then(c, False), c.n)  # False 0
     std::cout << "ternary_then_skipped" << " " << ::tpy::print_bool(ternary_skips_then((*c), false)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("ternary_then_taken", ternary_skips_then(c, True), c.n)     # True 1
     std::cout << "ternary_then_taken" << " " << ::tpy::print_bool(ternary_skips_then((*c), true)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("nested_and_skipped", nested_and(c, False), c.n)    # False 0
     std::cout << "nested_and_skipped" << " " << ::tpy::print_bool(nested_and((*c), false)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("nested_and_taken", nested_and(c, True), c.n)       # True 1
     std::cout << "nested_and_taken" << " " << ::tpy::print_bool(nested_and((*c), true)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("nested_mixed_or_short", nested_mixed(c, True, True), c.n)   # True 1
     std::cout << "nested_mixed_or_short" << " " << ::tpy::print_bool(nested_mixed((*c), true, true)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("nested_mixed_shallow", nested_mixed(c, False, False), c.n)  # False 1
     std::cout << "nested_mixed_shallow" << " " << ::tpy::print_bool(nested_mixed((*c), false, false)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("nested_mixed_deep", nested_mixed(c, False, True), c.n)      # True 2
     std::cout << "nested_mixed_deep" << " " << ::tpy::print_bool(nested_mixed((*c), false, true)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("nested_ternary_skipped", nested_ternary(c, False), c.n)  # False 0
     std::cout << "nested_ternary_skipped" << " " << ::tpy::print_bool(nested_ternary((*c), false)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("nested_ternary_taken", nested_ternary(c, True), c.n)     # True 1
     std::cout << "nested_ternary_taken" << " " << ::tpy::print_bool(nested_ternary((*c), true)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("unconditional", unconditional(c), c.n)      # True 1
     std::cout << "unconditional" << " " << ::tpy::print_bool(unconditional((*c))) << " " << c->n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

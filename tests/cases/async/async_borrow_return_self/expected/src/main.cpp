@@ -5,12 +5,17 @@ namespace tpyapp::main {
 
 
 // async def main() -> None:
+//     w = Wrap()
+//     r = await w.me()
+//     r.inner.n = 99
+//     print(w.inner.n)
+//     s = await w.unwrap()
+//     s.n = 5
+//     print(w.inner.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // w = Wrap()
         w.emplace(Wrap());
-        // r = await w.me()
         __sub_0.emplace((*w));
         __state = S_RESUME_0;
         continue;
@@ -20,11 +25,8 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        // r.inner.n = 99
         r->inner.n = ::tpy::BigInt(99);
-        // print(w.inner.n)
         std::cout << (*w).inner.n << "\n";
-        // s = await w.unwrap()
         __sub_1.emplace((*w));
         __state = S_RESUME_1;
         continue;
@@ -34,9 +36,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         s = std::move(__r1).value();
         __sub_1.reset();
-        // s.n = 5
         s->n = ::tpy::BigInt(5);
-        // print(w.inner.n)
         std::cout << (*w).inner.n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -53,10 +53,11 @@ __coro_main main() {
 }
 
 // async def me(self) -> "Wrap":
+//     await asyncio.sleep(0)
+//     return self
 ::tpystd::tpy::Poll<Wrap*> __coro_Wrap_me::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -66,7 +67,6 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Wrap*>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self
         __state = S_DONE;
         Wrap* __tpy_async_ret = &(__self);
         return ::tpystd::tpy::Poll<Wrap*>::ready(std::move(__tpy_async_ret));
@@ -78,10 +78,11 @@ __coro_main main() {
 
 
 // async def unwrap(self) -> Server:
+//     await asyncio.sleep(0)
+//     return self.inner
 ::tpystd::tpy::Poll<Server*> __coro_Wrap_unwrap::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -91,7 +92,6 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Server*>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self.inner
         __state = S_DONE;
         Server* __tpy_async_ret = &(__self.inner);
         return ::tpystd::tpy::Poll<Server*>::ready(std::move(__tpy_async_ret));
@@ -102,18 +102,19 @@ __coro_main main() {
 }
 
 
+// # Async borrow-return ABI: `async def -> C: return self` hands back an
+// # ALIAS of the receiver (pointer Poll payload) at a direct await --
+// # mutations through the awaited result are visible on the original
+// # (CPython aliasing). Also covers a field-rooted borrow return.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async borrow-return ABI: `async def -> C: return self` hands back an
-    // # ALIAS of the receiver (pointer Poll payload) at a direct await --
-    // # mutations through the awaited result are visible on the original
-    // # (CPython aliasing). Also covers a field-rooted borrow return.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def main():
+//     h = Holder(Box(1))
+//     match h.opt:
+//         case q:
+//             q.v = 99  # tpyc: warning(/Potential None access/)
+//     if h.opt is not None:
+//         print(h.opt.v)   # 99 -- q aliased the field's Box
 void main() {
-    // h = Holder(Box(1))
     Box __tmp_1 = Box(::tpy::BigInt(1));
     Holder h = Holder(&(__tmp_1));
-    // match h.opt:
     Box* q;
     auto __match_subject_1 = ::tpy::optional_to_ptr(h.opt);
-    // case q:
     {
         q = __match_subject_1;
-        // q.v = 99  # tpyc: warning(/Potential None access/)
         ::tpy::deref_check(q).v = ::tpy::BigInt(99);
     }
-    // if h.opt is not None:
     if ((h.opt.has_value())) {
-        // print(h.opt.v)   # 99 -- q aliased the field's Box
         std::cout << (*h.opt).v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

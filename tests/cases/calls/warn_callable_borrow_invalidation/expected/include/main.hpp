@@ -11,15 +11,21 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mutate(xs: list[P]) -> None:
 void mutate(std::vector<P>& xs);
+// def use_fn(f: Fn[[list[P]], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, std::vector<P>& __a0) {
       __fn(__a0);
   }
 void use_fn(__F0&& f);
+// def use_callable(f: Callable[[list[P]], None]) -> None:
 void use_callable(const std::function<void(std::vector<P>&)>& f);
+// def use_local() -> None:
 void use_local();
+// def use_direct() -> None:
 void use_direct();
+// def main() -> None:
 void main();
 
 // class P:
@@ -40,22 +46,23 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline P::P(int32_t v) : v(v) {}
 // def use_fn(f: Fn[[list[P]], None]) -> None:
+//     xs: list[P] = [P(1), P(2)]
+//     p = xs[0]
+//     print(p.v)
+//     f(xs)  # tpyc: warning(/Passing borrowed container/)
+//     print(len(xs))
 template<typename __F0>
   requires requires(__F0& __fn, std::vector<P>& __a0) {
       __fn(__a0);
   }
 void use_fn(__F0&& f) {
-    // xs: list[P] = [P(1), P(2)]
     std::vector<P> xs = {P(1), P(2)};
-    // p = xs[0]
     P& p = ::tpy::__getitem__(xs, 0);
-    // print(p.v)
     std::cout << p.v << "\n";
-    // f(xs)  # tpyc: warning(/Passing borrowed container/)
     f(xs);
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 

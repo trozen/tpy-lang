@@ -29,6 +29,7 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 
 // def __init__(self, radius: int32) -> None:
+//     self.radius = radius
 inline Circle::Circle(int32_t radius) : radius(radius) {}
 void __tpy_init();
 } // namespace tpyapp::shapes

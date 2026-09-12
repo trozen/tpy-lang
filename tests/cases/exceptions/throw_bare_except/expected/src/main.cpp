@@ -6,31 +6,32 @@ namespace tpyapp::main {
 
 // # Bare except: catches any exception
 // def fail() -> None:
+//     raise ValueError("oops")
 void fail() {
-    // raise ValueError("oops")
     throw ::tpy::ValueError("oops");
 }
 
 // def main() -> None:
+//     try:
+//         fail()
+//     except:
+//         print("caught something")
 void main() {
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (...) {
-            // print("caught something")
             std::cout << "caught something" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

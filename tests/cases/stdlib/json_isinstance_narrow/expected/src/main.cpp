@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = json.loads('{"a": 1, "b": 2}')
+//     if isinstance(d, dict):
+//         d["c"] = 3
+//         print(json.dumps(d, sort_keys=True))
 void main() {
-    // d = json.loads('{"a": 1, "b": 2}')
     ::tpystd::json::JsonValue d = ::tpystd::json::loads("{\"a\": 1, \"b\": 2}");
-    // if isinstance(d, dict):
     if (std::holds_alternative<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value)) {
         auto& __d = std::get<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value);
-        // d["c"] = 3
         ::tpy::__setitem__(__d, "c", 3);
-        // print(json.dumps(d, sort_keys=True))
         std::cout << ::tpystd::json::dumps(__d, 0, true) << "\n";
     }
 }
 
+// # Bare-generic isinstance narrows a json.loads() result to its dict member
+// # -- the idiomatic CPython spelling for consuming untyped JSON. Mutating the
+// # narrowed dict and re-dumping proves it aliases the parsed object.
+// import json
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Bare-generic isinstance narrows a json.loads() result to its dict member
-    // # -- the idiomatic CPython spelling for consuming untyped JSON. Mutating the
-    // # narrowed dict and re-dumping proves it aliases the parsed object.
-    // import json
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

@@ -6,17 +6,17 @@ namespace tpyapp::b {
 
 
 // def H(x: A) -> int32:
+//     return x.go()
 int32_t H(const ::tpyapp::a::A& x) {
-    // return x.go()
     return x.go();
 }
 
+// from a import A
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import A
     ::tpyapp::a::__tpy_init();
 }
 

@@ -88,52 +88,56 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 
 
 // def __init__(self, x: int64):
+//     self.x = x
 inline Inner::Inner(int64_t x) : x(x) {}
 
 // def __init__(self):
+//     self._a = Inner(1)
+//     self._b = Inner(2)
+//     self._c = Inner(3)
 inline Base::Base() : _a(Inner(1)), _b(Inner(2)), _c(Inner(3)) {}
 
 // def get_a(self) -> Inner:
+//     return self._a  # tpyc: warning(/no live object behind it/)
 inline Inner& Base::get_a() {
-    // return self._a  # tpyc: warning(/no live object behind it/)
     return this->_a;
 }
 
 // def get_b(self) -> Inner:
+//     return self._b  # tpyc: warning(/no live object behind it/)
 inline Inner& Base::get_b() {
-    // return self._b  # tpyc: warning(/no live object behind it/)
     return this->_b;
 }
 
 // def get_c(self) -> Inner:
+//     return self._c  # tpyc: warning(/no live object behind it/)
 inline Inner& Base::get_c() {
-    // return self._c  # tpyc: warning(/no live object behind it/)
     return this->_c;
 }
 
 // @property
 // def c(self) -> int64:
+//     return self._c.x
 inline int64_t Base::c() const {
-    // return self._c.x
     return this->_c.x;
 }
 
 // @c.setter
 // def c(self, value: int64) -> None:
+//     self._c = Inner(value)
 inline void Base::set_c(int64_t value) {
-    // self._c = Inner(value)
     this->_c = Inner(value);
 }
 
 // def clobber_a(self) -> None:
+//     self._a = Inner(0)
 inline void Sub::clobber_a() {
-    // self._a = Inner(0)
     this->_a = Inner(0);
 }
 
 // def clobber_b(self) -> None:
+//     Base._b = Inner(0)
 inline void Sub::clobber_b() {
-    // Base._b = Inner(0)
     this->Base::_b = Inner(0);
 }
 void __tpy_init();

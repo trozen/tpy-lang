@@ -3,15 +3,14 @@
 
 namespace tpyapp::main {
 
-// done: Future[int32] = Future[int32]()
 ::tpystd::asyncio::Future<int32_t>* done{};
 
 // async def producer() -> None:
+//     done.set_result(42)
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // done.set_result(42)
         done->set_result(42);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -28,12 +27,13 @@ __coro_producer producer() {
 }
 
 // async def main_coro() -> None:
+//     _t = asyncio.create_task(producer())
+//     x = await done
+//     print(x)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // _t = asyncio.create_task(producer())
         _t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer())));
-        // x = await done
         __sub_0 = done;
         __state = S_RESUME_0;
         continue;
@@ -43,7 +43,6 @@ __coro_producer producer() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         x = std::move(__r0).value();
         __sub_0 = nullptr;
-        // print(x)
         std::cout << x << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -60,25 +59,27 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # `await` of a module-global awaitable. A global is accessed through a
+// # pointer slot, so the await borrow must not re-take its address. The
+// # Future is completed by a spawned task so the await resolves.
+// import asyncio
+//
+// done: Future[int32] = Future[int32]()
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` of a module-global awaitable. A global is accessed through a
-    // # pointer slot, so the await borrow must not re-take its address. The
-    // # Future is completed by a spawned task so the await resolves.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // done: Future[int32] = Future[int32]()
     static ::tpystd::asyncio::Future<int32_t> __global_slot_1 = ::tpystd::asyncio::Future<int32_t>();
     done = &__global_slot_1;
-    // main()
     main();
 }
 

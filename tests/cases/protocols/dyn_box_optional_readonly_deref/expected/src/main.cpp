@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     h.emit()
+//     h.val = Box(Dog())
+//     h.emit()
+//     h.val = Box(Cat())
+//     h.emit()
+//     h.val = None
+//     h.emit()
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // h.emit()
     h.emit();
-    // h.val = Box(Dog())
     h.val = ::tpystd::tplib::box::Box<Dog>(Dog());
-    // h.emit()
     h.emit();
-    // h.val = Box(Cat())
     h.val = ::tpystd::tplib::box::Box<Cat>(Cat());
-    // h.emit()
     h.emit();
-    // h.val = None
     h.val = std::nullopt;
-    // h.emit()
     h.emit();
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

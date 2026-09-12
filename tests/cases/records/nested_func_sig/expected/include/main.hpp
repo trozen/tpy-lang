@@ -11,6 +11,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container:
@@ -45,8 +46,11 @@ inline std::ostream& operator<<(std::ostream& os, const Container::Inner& obj) {
     return os;
 }
 
+// def make_inner(v: int32) -> Own[Container.Inner]:
 Container::Inner make_inner(int32_t v);
+// def take_inner(i: Container.Inner) -> int32:
 int32_t take_inner(const Container::Inner& i);
+// def get_kind() -> Container.Kind:
 Container::Kind get_kind();
 
 } // namespace tpyapp::main
@@ -69,6 +73,7 @@ inline std::ostream& operator<<(std::ostream& __os, Container::Kind __e) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Container::Inner::Inner(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

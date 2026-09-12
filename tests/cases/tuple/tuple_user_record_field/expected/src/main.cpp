@@ -5,34 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Point(1, 2)
+//     b = Point(3, 4)
+//     h = PairHolder((a, b))
+//     # Field access + printing + equality all go through is_user_record paths
+//     # on the tuple elements.
+//     print(h.pair[0].x)
+//     print(h.pair[1].y)
+//     print(h == PairHolder((Point(1, 2), Point(3, 4))))
 void main() {
-    // a = Point(1, 2)
     Point a = Point(1, 2);
-    // b = Point(3, 4)
     Point b = Point(3, 4);
-    // h = PairHolder((a, b))
     PairHolder h = PairHolder(std::tuple<Point*, Point*>{&(a), &(b)});
-    // # Field access + printing + equality all go through is_user_record paths
-    // # on the tuple elements.
-    // print(h.pair[0].x)
     std::cout << std::get<0>(h.pair).x << "\n";
-    // print(h.pair[1].y)
     std::cout << std::get<1>(h.pair).y << "\n";
-    // print(h == PairHolder((Point(1, 2), Point(3, 4))))
     std::cout << ::tpy::print_bool(((h) == (PairHolder(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}))))) << "\n";
 }
 
+// # User record inside tuple[T, U] as a dataclass field: exercises the
+// # resolve_type TupleType recursion and is_user_record propagation that
+// # post-Phase-F.1 need to walk into tuple element types so Point gets
+// # _module_qname and default-constructibility / equality dunders resolve.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # User record inside tuple[T, U] as a dataclass field: exercises the
-    // # resolve_type TupleType recursion and is_user_record propagation that
-    // # post-Phase-F.1 need to walk into tuple element types so Point gets
-    // # _module_qname and default-constructibility / equality dunders resolve.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

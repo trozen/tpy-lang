@@ -6,59 +6,66 @@ namespace tpyapp::main {
 
 // @error_return(E)
 // def positive(p: Point) -> Point:
+//     if p.x < 0 or p.y < 0:
+//         raise E
+//     return p
 std::expected<::tpy::val_or_ref<Point>, E> positive(Point& p) {
-    // if p.x < 0 or p.y < 0:
     if (((p.x < 0) || (p.y < 0))) {
-        // raise E
         return ::tpy::make_unexpected(E{});
     }
-    // return p
     return p;
 }
 
 // @error_return(E)
 // def modify(p: Point) -> Point:
+//     return positive(p).updated()
 std::expected<::tpy::val_or_ref<Point>, E> modify(Point& p) {
-    // return positive(p).updated()
     return (*({ auto __er_1 = positive(p); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); &::tpy::unwrap_ref(*__er_1); })).updated();
 }
 
 // def main() -> None:
+//     p = Point(1, 2)
+//     try:
+//         result = modify(p)
+//     except E:
+//         print("error")
+//     else:
+//         print(result.x)
+//         print(result.y)
+//     # Original modified by .updated() through the error_return reference chain
+//     print(p.x)
+//     print(p.y)
+//
+//     # Error case
+//     p2 = Point(-1, 2)
+//     try:
+//         modify(p2)
+//     except E:
+//         print("caught")
+//     print(p2.x)
+//     print(p2.y)
 void main() {
-    // p = Point(1, 2)
     Point p = Point(1, 2);
-    // try:
     Point* result;
     {
-        // result = modify(p)
         {
             auto __try_tmp_3 = modify(p);
             if (!__try_tmp_3.has_value()) goto __except_2;
             result = &(::tpy::unwrap_ref(*__try_tmp_3));
         }
         // else:
-        // print(result.x)
         std::cout << result->x << "\n";
-        // print(result.y)
         std::cout << result->y << "\n";
         goto __after_try_2;
         // except E:
         __except_2:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_2:;
     }
-    // # Original modified by .updated() through the error_return reference chain
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(p.y)
     std::cout << p.y << "\n";
-    // # Error case
-    // p2 = Point(-1, 2)
     Point p2 = Point(-1, 2);
-    // try:
     {
-        // modify(p2)
         {
             auto __try_tmp_5 = modify(p2);
             if (!__try_tmp_5.has_value()) goto __except_4;
@@ -66,22 +73,19 @@ void main() {
         goto __after_try_4;
         // except E:
         __except_4:;
-        // print("caught")
         std::cout << "caught" << "\n";
         __after_try_4:;
     }
-    // print(p2.x)
     std::cout << p2.x << "\n";
-    // print(p2.y)
     std::cout << p2.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

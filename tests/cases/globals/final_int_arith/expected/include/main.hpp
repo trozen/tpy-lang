@@ -8,24 +8,43 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// A: Final[int32] = 5
 inline constexpr int32_t A = 5;
+// B: Final[int32] = 3
 inline constexpr int32_t B = 3;
+// SUM: Final[int32] = A + B
 inline constexpr int32_t SUM = (::tpy::add_check<int32_t>(A, B));
+// DIFF: Final[int32] = A - B
 inline constexpr int32_t DIFF = (::tpy::sub_check<int32_t>(A, B));
+// PROD: Final[int32] = A * B
 inline constexpr int32_t PROD = (::tpy::mul_check<int32_t>(A, B));
+// QUOT: Final[int32] = A // B
 inline constexpr int32_t QUOT = (::tpy::div_floor<int32_t>(A, B));
+// MODR: Final[int32] = A % B
 inline constexpr int32_t MODR = (::tpy::mod_floor<int32_t>(A, B));
+// SHL: Final[int32] = A << 2
 inline constexpr int32_t SHL = (::tpy::lshift_check<int32_t>(A, 2));
+// SHR: Final[int32] = A >> 1
 inline constexpr int32_t SHR = (::tpy::rshift_check<int32_t>(A, 1));
+// POW: Final[int32] = A ** 2
 inline constexpr int32_t POW = (::tpy::pow_check<int32_t>(A, 2));
+// NESTED: Final[int32] = (A + B) * 2 - 1
 inline constexpr int32_t NESTED = (::tpy::sub_check<int32_t>((::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(A, B)), 2)), 1));
+// AND_: Final[int32] = A & B
 inline constexpr int32_t AND_ = (static_cast<int32_t>(A & B));
+// OR_: Final[int32] = A | B
 inline constexpr int32_t OR_ = (static_cast<int32_t>(A | B));
+// XOR: Final[int32] = A ^ B
 inline constexpr int32_t XOR = (static_cast<int32_t>(A ^ B));
+// # Works on int64 too
+// X: Final[int64] = 100
 inline constexpr int64_t X = 100;
+// Y: Final[int64] = 7
 inline constexpr int64_t Y = 7;
+// Z: Final[int64] = X * Y + 3
 inline constexpr int64_t Z = (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(X, Y)), 3));
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

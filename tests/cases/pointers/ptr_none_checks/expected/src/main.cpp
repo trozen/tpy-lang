@@ -3,55 +3,56 @@
 
 namespace tpyapp::main {
 
-// p: Ptr[int32] = None  # tpyc: ok
 int32_t* p{};
-// x: int32 = int32(7)
 int32_t x{};
-// cp: Ptr[readonly[int32]] = None  # tpyc: ok
 const int32_t* cp{};
 
+// p: Ptr[int32] = None  # tpyc: ok
+// print(p is None)
+//
+// x: int32 = int32(7)
+// p = take_ptr(x)
+// print(p is None)
+// print(p is not None)
+//
+// p = None  # tpyc: ok
+// print(p is None)
+//
+// cp: Ptr[readonly[int32]] = None  # tpyc: ok
+// print(cp is None)
+// cp = take_ptr(x)
+// print(cp is None)
+// print(cp is not None)
+// cp = None  # tpyc: ok
+// print(cp is None)
+//
+// if p is not None:
+//     print(p.__deref__())
+// else:
+//     print(int32(0))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // p: Ptr[int32] = None  # tpyc: ok
     p = nullptr;
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // x: int32 = int32(7)
     x = 7;
-    // p = take_ptr(x)
     p = &x;
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // print(p is not None)
     std::cout << ::tpy::print_bool((p != nullptr)) << "\n";
-    // p = None  # tpyc: ok
     p = nullptr;
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // cp: Ptr[readonly[int32]] = None  # tpyc: ok
     cp = nullptr;
-    // print(cp is None)
     std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
-    // cp = take_ptr(x)
     cp = &x;
-    // print(cp is None)
     std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
-    // print(cp is not None)
     std::cout << ::tpy::print_bool((cp != nullptr)) << "\n";
-    // cp = None  # tpyc: ok
     cp = nullptr;
-    // print(cp is None)
     std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
-    // if p is not None:
     if ((p != nullptr)) {
-        // print(p.__deref__())
         std::cout << ::tpy::deref_check(p) << "\n";
-    // else:
     } else {
-        // print(int32(0))
         std::cout << 0 << "\n";
     }
 }

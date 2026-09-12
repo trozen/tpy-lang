@@ -5,6 +5,13 @@ namespace tpyapp::main {
 
 
 // def guarded(xs: list[int]) -> Iterator[int]:
+//     for x in xs:
+//         try:
+//             if x < 0:
+//                 raise ValueError("negative")
+//             yield x
+//         except ValueError:
+//             yield -1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -18,7 +25,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_guarded::__next__() {
             __state = S_JOIN_1;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // yield -1
             __state = S_RESUME_1;
             return ::tpy::BigInt(-1);
         } catch (...) {
@@ -44,16 +50,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_guarded::__next__() {
     }
     case S_JOIN_2: {
         try {
-            // if x < 0:
             if ((x < 0)) {
-                // raise ValueError("negative")
                 throw ::tpy::ValueError("negative");
             }
-            // yield x
             __state = S_RESUME_0;
             return x;
         } catch (const ::tpy::ValueError&) {
-            // yield -1
             __state = S_RESUME_1;
             return ::tpy::BigInt(-1);
         } catch (...) {
@@ -72,28 +74,28 @@ __gen_guarded guarded(std::vector<::tpy::BigInt>& xs) {
 }
 
 // def main():
+//     g = guarded([1, -2, 3, -4, 5])
+//     for v in g:
+//         print(v)
 void main() {
-    // g = guarded([1, -2, 3, -4, 5])
     std::vector<::tpy::BigInt> __tmp_1 = {1, -2, 3, -4, 5};
     auto g = guarded(__tmp_1);
-    // for v in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

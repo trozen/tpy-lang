@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def bump(p: Box | None, h: Holder, c: bool) -> None:
+//     t = p if c else h.opt
+//     if t is not None:
+//         t.val += 100             # writes through whichever arm aliased
 void bump(Box* p, Holder& h, bool c) {
-    // t = p if c else h.opt
     Box* t = ((c) ? (p) : (::tpy::optional_to_ptr(h.opt)));
-    // if t is not None:
     if ((t != nullptr)) {
-        // t.val += 100             # writes through whichever arm aliased
         t->val = (t->val) + (::tpy::BigInt(100));
     }
 }
 
 // def main() -> None:
+//     h = Holder(Box(7))
+//     param = Box(3)
+//     bump(param, h, True)         # param arm
+//     print(param.val)             # 103 -- visible on caller's object
+//     bump(param, h, False)        # field arm
+//     if h.opt is not None:
+//         print(h.opt.val)         # 107 -- visible on the field
 void main() {
-    // h = Holder(Box(7))
     Box __tmp_1 = Box(::tpy::BigInt(7));
     Holder h = Holder(&(__tmp_1));
-    // param = Box(3)
     Box param = Box(::tpy::BigInt(3));
-    // bump(param, h, True)         # param arm
     bump(&(param), h, true);
-    // print(param.val)             # 103 -- visible on caller's object
     std::cout << param.val << "\n";
-    // bump(param, h, False)        # field arm
     bump(&(param), h, false);
-    // if h.opt is not None:
     if ((h.opt.has_value())) {
-        // print(h.opt.val)         # 107 -- visible on the field
         std::cout << (*h.opt).val << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -4,16 +4,16 @@
 namespace tpystd::tplib::json {
 
 
+// # tplib.json -- JSON parsing and serialization.
+// from tplib.json.parser import JsonError, JsonToken, JsonReader
+// from tplib.json.writer import JsonWriter
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.json -- JSON parsing and serialization.
-    // from tplib.json.parser import JsonError, JsonToken, JsonReader
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // from tplib.json.writer import JsonWriter
     ::tpystd::tplib::json::writer::__tpy_init();
 }
 

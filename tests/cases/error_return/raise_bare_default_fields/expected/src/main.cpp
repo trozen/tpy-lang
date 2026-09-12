@@ -6,18 +6,20 @@ namespace tpyapp::main {
 
 // @error_return(MyError)
 // def fail() -> int32:
+//     raise MyError
 std::expected<int32_t, MyError> fail() {
-    // raise MyError
     return ::tpy::make_unexpected(MyError{});
 }
 
 // def main() -> None:
+//     try:
+//         v = fail()
+//     except MyError as e:
+//         print(e.code)
 void main() {
-    // try:
     int32_t v;
     {
         std::optional<MyError> __err_opt_1;
-        // v = fail()
         {
             auto __try_tmp_2 = fail();
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
@@ -28,19 +30,18 @@ void main() {
         __except_1:;
         {
             auto& e = *__err_opt_1;
-            // print(e.code)
             std::cout << e.code << "\n";
         }
         __after_try_1:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

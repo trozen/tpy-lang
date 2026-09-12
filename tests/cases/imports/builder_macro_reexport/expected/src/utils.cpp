@@ -4,13 +4,13 @@
 namespace tpyapp::utils {
 
 
+// from argparse import ArgumentParser
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
 }
 
 } // namespace tpyapp::utils

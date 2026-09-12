@@ -5,21 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(X)
+//     print(Y)
+//     print(Z)
 void main() {
-    // print(X)
     std::cout << ::tpy::print_float(static_cast<double>(X)) << "\n";
-    // print(Y)
     std::cout << Y << "\n";
-    // print(Z)
     std::cout << Z << "\n";
 }
 
+// X: Final[float32] = float32(0.5)
+// Y: Final[int64] = int64(42)
+// BASE: Final[int32] = 10
+// Z: Final[int64] = int64(BASE)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

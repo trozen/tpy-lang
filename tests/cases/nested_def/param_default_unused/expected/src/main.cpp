@@ -5,29 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     def scale(x: int32 = 1) -> int32:  # tpyc: warning(/default value for parameter 'x'.*is ignored/)
+//         return x * 3
+//
+//     def label(prefix: str, n: int32 = 0) -> str:  # tpyc: warning(/default value for parameter 'n'.*is ignored/)
+//         return prefix + str(n)
+//
+//     print(scale(4))
+//     print(label("n=", 7))
 void main() {
-    // def scale(x: int32 = 1) -> int32:  # tpyc: warning(/default value for parameter 'x'.*is ignored/)
     auto scale = [](int32_t x) -> int32_t {
-        // return x * 3
         return (::tpy::mul_check<int32_t>(x, 3));
     };
-    // def label(prefix: str, n: int32 = 0) -> str:  # tpyc: warning(/default value for parameter 'n'.*is ignored/)
     auto label = [](std::string_view prefix, int32_t n) -> std::string {
-        // return prefix + str(n)
         return (::tpy::str_concat(prefix, ::tpy::fixed_to_str<int32_t>(n)));
     };
-    // print(scale(4))
     std::cout << scale(4) << "\n";
-    // print(label("n=", 7))
     std::cout << label("n=", 7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

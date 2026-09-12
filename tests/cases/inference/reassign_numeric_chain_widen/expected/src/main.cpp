@@ -3,31 +3,30 @@
 
 namespace tpyapp::main {
 
-// x = 0  # tpyc: type(int)
 ::tpy::BigInt x;
-// f = 0  # tpyc: type(float)
 double f{};
 
+// x = 0  # tpyc: type(int)
+// x = int32(10)  # tpyc: type(int)
+// x = int(20)  # tpyc: type(int)
+// print(x)
+//
+// f = 0  # tpyc: type(float)
+// f = int32(3)  # tpyc: type(float)
+// f = 1.5  # tpyc: type(float)
+// print(f)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = 0  # tpyc: type(int)
     x = ::tpy::BigInt(0);
-    // x = int32(10)  # tpyc: type(int)
     x = 10;
-    // x = int(20)  # tpyc: type(int)
     x = ::tpy::BigInt(20);
-    // print(x)
     std::cout << x << "\n";
-    // f = 0  # tpyc: type(float)
     f = 0;
-    // f = int32(3)  # tpyc: type(float)
     f = 3;
-    // f = 1.5  # tpyc: type(float)
     f = 1.5;
-    // print(f)
     std::cout << ::tpy::print_float(f) << "\n";
 }
 

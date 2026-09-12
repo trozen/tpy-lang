@@ -9,14 +9,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def search_break(items: list[int32], target: int32) -> None:
 void search_break(const std::vector<int32_t>& items, int32_t target);
+// def no_break() -> None:
 void no_break();
+// def with_continue() -> None:
 void with_continue();
+// def nested_inner_else() -> None:
 void nested_inner_else();
+// def nested_outer_else() -> None:
 void nested_outer_else();
+// def nested_both_else() -> None:
 void nested_both_else();
+// def empty_iterable() -> None:
 void empty_iterable();
+// def var_decl_in_else() -> None:
 void var_decl_in_else();
+// def main() -> None:
 void main();
 
 void __tpy_init();

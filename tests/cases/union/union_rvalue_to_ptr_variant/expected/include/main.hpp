@@ -13,7 +13,9 @@ struct Pen;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(pet: Dog | Cat) -> None:
 void greet(::tpy::Union<const Cat*, const Dog*> pet);
+// def main() -> None:
 void main();
 
 // # Constructor rvalue passed to pointer-variant union param
@@ -70,17 +72,20 @@ inline std::ostream& operator<<(std::ostream& os, const Pen& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat) -> None:
+//     self.pet = pet  # tpyc: warning(/copies/)
 inline Pen::Pen(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def set_pet(self, pet: Dog | Cat) -> None:
+//     self.pet = pet  # tpyc: warning(/copies/)
 inline void Pen::set_pet(::tpy::Union<const Cat*, const Dog*> pet) {
-    // self.pet = pet  # tpyc: warning(/copies/)
     this->pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet);
 }
 void __tpy_init();

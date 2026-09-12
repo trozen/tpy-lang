@@ -17,12 +17,16 @@ struct __coro_bump_arr;
 struct __coro_push_list;
 struct __coro_drive;
 
+// async def fill_buf(b: bytearray) -> int32:  # tpyc: ok
 __coro_fill_buf fill_buf(::tpy::ByteArray& b);
+// async def bump_arr(a: Array[int32, 2]) -> int32:  # tpyc: ok
 __coro_bump_arr bump_arr(std::array<int32_t, 2>& a);
+// async def push_list(xs: list[int32]) -> int32:
 __coro_push_list push_list(std::vector<int32_t>& xs);
+// async def drive() -> None:
 __coro_drive drive();
 
-// Async coroutine: fill_buf
+// async def fill_buf(b: bytearray) -> int32:  # tpyc: ok
 struct __coro_fill_buf {
     int32_t __state;
     bool __cancel_pending;
@@ -46,7 +50,7 @@ struct __coro_fill_buf {
     }
 };
 
-// Async coroutine: bump_arr
+// async def bump_arr(a: Array[int32, 2]) -> int32:  # tpyc: ok
 struct __coro_bump_arr {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +74,7 @@ struct __coro_bump_arr {
     }
 };
 
-// Async coroutine: push_list
+// async def push_list(xs: list[int32]) -> int32:
 struct __coro_push_list {
     int32_t __state;
     bool __cancel_pending;
@@ -94,7 +98,7 @@ struct __coro_push_list {
     }
 };
 
-// Async coroutine: drive
+// async def drive() -> None:
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;

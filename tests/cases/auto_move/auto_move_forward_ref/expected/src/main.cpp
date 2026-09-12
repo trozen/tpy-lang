@@ -5,35 +5,38 @@ namespace tpyapp::main {
 
 
 // def consume(x: Own[Box]) -> int32:
+//     return x.value
 int32_t consume(Box&& x) {
-    // return x.value
     return x.value;
 }
 
 // def main():
+//     b1 = Box()
+//     b1.value = 10
+//     # Concrete Own: std::move at last use
+//     print(consume(b1))
+//
+//     b2 = Box()
+//     b2.value = 20
+//     # Generic chain: wrapper -> sink, both T&&
+//     wrapper[Box](b2)
+//
+//     b3 = Box()
+//     b3.value = 30
+//     # Same but with inferred type argument
+//     wrapper(b3)
+//
+//     print("done")
 void main() {
-    // b1 = Box()
     Box b1 = Box();
-    // b1.value = 10
     b1.value = 10;
-    // # Concrete Own: std::move at last use
-    // print(consume(b1))
     std::cout << consume(std::move(b1)) << "\n";
-    // b2 = Box()
     Box b2 = Box();
-    // b2.value = 20
     b2.value = 20;
-    // # Generic chain: wrapper -> sink, both T&&
-    // wrapper[Box](b2)
     wrapper<Box>(std::move(b2));
-    // b3 = Box()
     Box b3 = Box();
-    // b3.value = 30
     b3.value = 30;
-    // # Same but with inferred type argument
-    // wrapper(b3)
     wrapper<Box>(std::move(b3));
-    // print("done")
     std::cout << "done" << "\n";
 }
 

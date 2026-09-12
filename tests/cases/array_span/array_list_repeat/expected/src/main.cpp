@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def test_basic() -> None:
+//     buf: Array[int16, 5] = [0] * 5
+//     print(len(buf))
+//     print(buf[0], buf[4])
 void test_basic() {
-    // buf: Array[int16, 5] = [0] * 5
     std::array<int16_t, 5> buf = ({
         int16_t __rep_0 = 0;
         ::tpy::array_from_index<int16_t, 5>([&](std::size_t) -> int16_t { return __rep_0; });
     });
-    // print(len(buf))
     std::cout << ::tpy::__len__(buf) << "\n";
-    // print(buf[0], buf[4])
     std::cout << ::tpy::__getitem__(buf, 0) << " " << ::tpy::__getitem__(buf, 4) << "\n";
 }
 
 // def test_nonzero() -> None:
+//     arr: Array[int32, 4] = [42] * 4
+//     print(arr[0], arr[1], arr[2], arr[3])
 void test_nonzero() {
-    // arr: Array[int32, 4] = [42] * 4
     std::array<int32_t, 4> arr = ({
         int32_t __rep_0 = 42;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t) -> int32_t { return __rep_0; });
     });
-    // print(arr[0], arr[1], arr[2], arr[3])
     std::cout << ::tpy::__getitem__(arr, 0) << " " << ::tpy::__getitem__(arr, 1) << " " << ::tpy::__getitem__(arr, 2) << " " << ::tpy::__getitem__(arr, 3) << "\n";
 }
 
 // def test_multi_element() -> None:
+//     arr: Array[int32, 6] = [1, 2, 3] * 2
+//     print(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5])
 void test_multi_element() {
-    // arr: Array[int32, 6] = [1, 2, 3] * 2
     std::array<int32_t, 6> arr = ({
         std::array<int32_t, 3> __rep_0{1, 2, 3};
         ::tpy::array_from_index<int32_t, 6>([&](std::size_t __i_0) -> int32_t { return __rep_0[__i_0 % 3]; });
     });
-    // print(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5])
     std::cout << ::tpy::__getitem__(arr, 0) << " " << ::tpy::__getitem__(arr, 1) << " " << ::tpy::__getitem__(arr, 2) << " " << ::tpy::__getitem__(arr, 3) << " " << ::tpy::__getitem__(arr, 4) << " " << ::tpy::__getitem__(arr, 5) << "\n";
 }
 
+// test_basic()
+// test_nonzero()
+// test_multi_element()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_basic()
     test_basic();
-    // test_nonzero()
     test_nonzero();
-    // test_multi_element()
     test_multi_element();
 }
 

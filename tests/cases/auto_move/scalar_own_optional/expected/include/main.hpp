@@ -12,22 +12,39 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(x: Own[P | None]) -> int32:
 int32_t take(std::optional<P>&& x);
+// def make(v: int32) -> Own[P | None]:
 std::optional<P> make(int32_t v);
+// def passthrough(x: Own[P | None]) -> Own[P | None]:
 std::optional<P> passthrough(std::optional<P>&& x);
+// def borrow(p: P | None) -> int32:
 int32_t borrow(const P* p);
+// def forward_borrow(x: Own[P | None]) -> int32:
 int32_t forward_borrow(std::optional<P>&& x);
+// def reassign_pointer(x: Own[P | None]) -> int32:
 int32_t reassign_pointer(std::optional<P>&& x);
+// def first_decl(x: Own[P | None]) -> int32:
 int32_t first_decl(std::optional<P>&& x);
+// def test_call_arg_lvalue_and_none() -> None:
 void test_call_arg_lvalue_and_none();
+// def test_field_assign() -> None:
 void test_field_assign();
+// def test_return_into_pointer_receiver() -> None:
 void test_return_into_pointer_receiver();
+// def test_forward_own_return_to_own_param() -> None:
 void test_forward_own_return_to_own_param();
+// def test_return_passthrough() -> None:
 void test_return_passthrough();
+// def test_forward_to_borrow_slot() -> None:
 void test_forward_to_borrow_slot();
+// def test_reassign_pointer_local() -> None:
 void test_reassign_pointer_local();
+// def test_first_decl_pointer_local() -> None:
 void test_first_decl_pointer_local();
+// def test_rebind_from_successive_returns() -> None:
 void test_rebind_from_successive_returns();
+// def main() -> None:
 void main();
 
 // class P:
@@ -66,14 +83,16 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.slot = None
 inline Holder::Holder() : slot(std::nullopt) {}
 
 // def store(self, p: Own[P | None]) -> None:
+//     self.slot = p
 inline void Holder::store(std::optional<P>&& p) {
-    // self.slot = p
     this->slot = std::move(p);
 }
 void __tpy_init();

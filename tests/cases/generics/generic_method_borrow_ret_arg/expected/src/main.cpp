@@ -6,75 +6,75 @@ namespace tpyapp::main {
 
 // # free function
 // def in_free_function() -> None:
+//     h = Holder(1)
+//     b = Bumper[Cell]()
+//     # The subject: the `T&` getter result binds the method's T slot bare, so
+//     # the bump lands on the holder's own cell.
+//     b.bump_it(h.borrow())  # tpyc: ok
+//     print("free_function", h.c.n)
 void in_free_function() {
-    // h = Holder(1)
     Holder h = Holder(1);
-    // b = Bumper[Cell]()
     Bumper<Cell> b = Bumper<Cell>();
-    // # The subject: the `T&` getter result binds the method's T slot bare, so
-    // # the bump lands on the holder's own cell.
-    // b.bump_it(h.borrow())  # tpyc: ok
     b.bump_it(h.borrow());
-    // print("free_function", h.c.n)
     std::cout << "free_function" << " " << h.c.n << "\n";
 }
 
 // # loop body: the same bind once per iteration accumulates on the one cell.
 // def in_loop() -> None:
+//     h = Holder(20)
+//     b = Bumper[Cell]()
+//     for i in range(3):
+//         b.bump_it(h.borrow())  # tpyc: ok
+//         print("in_loop", i, h.c.n)
 void in_loop() {
-    // h = Holder(20)
     Holder h = Holder(20);
-    // b = Bumper[Cell]()
     Bumper<Cell> b = Bumper<Cell>();
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // b.bump_it(h.borrow())  # tpyc: ok
         b.bump_it(h.borrow());
-        // print("in_loop", i, h.c.n)
         std::cout << "in_loop" << " " << i << " " << h.c.n << "\n";
     }
 }
 
 // # try/finally body
 // def in_try_finally() -> None:
+//     h = Holder(30)
+//     b = Bumper[Cell]()
+//     try:
+//         b.bump_it(h.borrow())  # tpyc: ok
+//     finally:
+//         print("try_finally", h.c.n)
 void in_try_finally() {
-    // h = Holder(30)
     Holder h = Holder(30);
-    // b = Bumper[Cell]()
     Bumper<Cell> b = Bumper<Cell>();
-    // try:
     {
         try {
-            // b.bump_it(h.borrow())  # tpyc: ok
             b.bump_it(h.borrow());
         } catch (...) {
-            // print("try_finally", h.c.n)
             std::cout << "try_finally" << " " << h.c.n << "\n";
             throw;
         }
-        // print("try_finally", h.c.n)
         std::cout << "try_finally" << " " << h.c.n << "\n";
     }
 }
 
 // def main() -> None:
+//     in_free_function()
+//     Owner().run()
+//     in_loop()
+//     in_try_finally()
 void main() {
-    // in_free_function()
     in_free_function();
-    // Owner().run()
     Owner().run();
-    // in_loop()
     in_loop();
-    // in_try_finally()
     in_try_finally();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

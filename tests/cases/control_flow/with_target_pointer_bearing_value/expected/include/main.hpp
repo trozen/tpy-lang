@@ -14,7 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen() -> Iterator[int32]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class Item:
@@ -57,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<Pair> pr;
@@ -87,20 +89,23 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Item::Item(int32_t v) : v(v) {}
 
 // def __init__(self, v: int32):
+//     self.item = Item(v)
+//     self.tag = v
 inline Pair::Pair(int32_t v) : item(Item(v)), tag(v) {}
 
 // def __enter__(self) -> tuple[Item, int32]:
+//     return (self.item, self.tag)
 inline std::tuple<Item*, int32_t> Pair::__enter__() {
-    // return (self.item, self.tag)
     return std::tuple<Item*, int32_t>{&(this->item), this->tag};
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Pair::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

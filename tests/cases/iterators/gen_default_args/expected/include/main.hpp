@@ -35,7 +35,9 @@ struct Box;
 template<typename T> struct Box2;
 
 inline constexpr std::string_view __name__ = "__main__";
+// DEFAULT_STOP: Final[int32] = 4
 inline constexpr int32_t DEFAULT_STOP = 4;
+// WIDTH: Final[int32] = 7
 inline constexpr int32_t WIDTH = 7;
 
 struct __gen_bounded;
@@ -46,9 +48,12 @@ struct __gen_Box_shapes;
 template <typename T>
 struct __gen_Box2_take;
 
+// def bounded(limit: int32 = 2) -> Iterator[int32]:
 __gen_bounded bounded(int32_t limit = 2);
+// def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_head<T, T_it> head(T_it&& it, int32_t n = 2);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -76,14 +81,16 @@ struct Box {
     Box();
 
     // def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
+    //     i: int32 = 0
+    //     while i < stop:
+    //         yield i
+    //         i += 1
     auto upto_m(int32_t stop = 2) const {
-        // i: int32 = 0
         int32_t i = 0;
         return ::tpy::make_generator<int32_t>(
             [this, stop, i]() mutable -> std::optional<int32_t> {
                 while ((i < stop)) {
                     auto __val = i;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
                     return std::optional<int32_t>(__val);
                 }
@@ -110,6 +117,7 @@ struct Box2 {
     std::vector<T> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
+    //     self.items = items
     Box2() = default;
     explicit Box2(std::vector<T>&& items) : items(std::move(items)) {}
 
@@ -123,7 +131,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box2<T>& obj) {
     return os;
 }
 
-// Generator: bounded
+// def bounded(limit: int32 = 2) -> Iterator[int32]:
 struct __gen_bounded : public ::tpy::next_iter_mixin<__gen_bounded, int32_t> {
     int32_t __state;
     int32_t limit;
@@ -148,7 +156,7 @@ struct __gen_bounded : public ::tpy::next_iter_mixin<__gen_bounded, int32_t> {
     }
 };
 
-// Generator: head
+// def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
     int32_t __state;
@@ -178,18 +186,22 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
     }
 };
 // def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
+//     c: int32 = 0
+//     for x in it:
+//         if c >= n:
+//             break
+//         yield x
+//         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: int32 = 0
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // c += 1
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
@@ -205,7 +217,6 @@ std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         }
@@ -226,7 +237,7 @@ __gen_head<T, T_it> head(T_it&& it, int32_t n) {
     return __gen_head<T, T_it>(std::forward<T_it>(it), n);
 }
 
-// Generator: Box.bounded_m
+// def bounded_m(self, limit: int32 = 2) -> Iterator[int32]:
 struct __gen_Box_bounded_m : public ::tpy::next_iter_mixin<__gen_Box_bounded_m, int32_t> {
     int32_t __state;
     const Box& __self;
@@ -256,7 +267,9 @@ inline __gen_Box_bounded_m Box::bounded_m(int32_t limit) const {
     return __gen_Box_bounded_m(*this, limit);
 }
 
-// Generator: Box.shapes
+// def shapes(self, tag: str = "t", flag: bool = True, ratio: float = 0.5,
+//            m: Mode = Mode.B, r: Rec | None = None, w: int32 = int32(3),
+//            neg: int32 = -1, f: int32 = WIDTH) -> Iterator[int32]:
 struct __gen_Box_shapes : public ::tpy::next_iter_mixin<__gen_Box_shapes, int32_t> {
     int32_t __state;
     const Box& __self;
@@ -291,7 +304,7 @@ inline __gen_Box_shapes Box::shapes(std::string_view tag, bool flag, double rati
     return __gen_Box_shapes(*this, tag, flag, ratio, m, r, w, neg, f);
 }
 
-// Generator: Box2.take
+// def take(self, n: int32 = 2) -> Iterator[T]:
 template <typename T>
 struct __gen_Box2_take : public ::tpy::next_iter_mixin<__gen_Box2_take<T>, T> {
     int32_t __state;
@@ -323,11 +336,17 @@ struct __gen_Box2_take : public ::tpy::next_iter_mixin<__gen_Box2_take<T>, T> {
 };
 
 // def take(self, n: int32 = 2) -> Iterator[T]:
+//     c: int32 = 0
+//     for x in self.items:
+//         if c >= n:
+//             break
+//         yield x
+//         c += 1
+//     yield self.items[0]
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Box2_take<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: int32 = 0
         c = 0;
         __for_it_0.emplace((__self.items).begin());
         __for_end_0.emplace((__self.items).end());
@@ -335,7 +354,6 @@ std::expected<T, ::tpy::StopIteration> __gen_Box2_take<T>::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // c += 1
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
@@ -354,13 +372,11 @@ std::expected<T, ::tpy::StopIteration> __gen_Box2_take<T>::__next__() {
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         }
     }
     case S_JOIN_1: {
-        // yield self.items[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(__self.items, 0);
     }
@@ -377,18 +393,23 @@ inline __gen_Box2_take<T> Box2<T>::take(int32_t n) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Rec::Rec(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.base = 0
 inline Box::Box() : base(0) {}
+// def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < stop:
+//         yield i
+//         i += step
 inline auto upto(int32_t stop = 3, int32_t step = 1) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [stop, step, i]() mutable -> std::optional<int32_t> {
             while ((i < stop)) {
                 auto __val = i;
-                // i += step
                 i = ::tpy::add_check<int32_t>(i, step);
                 return std::optional<int32_t>(__val);
             }
@@ -397,14 +418,17 @@ inline auto upto(int32_t stop = 3, int32_t step = 1) {
     );
 }
 
+// def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < stop:
+//         yield i
+//         i += 1
 inline auto upto_final(int32_t stop = DEFAULT_STOP) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [stop, i]() mutable -> std::optional<int32_t> {
             while ((i < stop)) {
                 auto __val = i;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }

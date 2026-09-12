@@ -5,19 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(A, NA)
+//     print(B, NB)
 void main() {
-    // print(A, NA)
     std::cout << A << " " << NA << "\n";
-    // print(B, NB)
     std::cout << B << " " << NB << "\n";
 }
 
+// A: Final[int32] = 5
+// NA: Final[int32] = -A
+// B: Final[int64] = -1000
+// NB: Final[int64] = -B
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

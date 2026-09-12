@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
+//     yield -1
+//     for a, b in pairs:
+//         yield a + b
 std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
@@ -28,11 +30,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = *((*__for_it_0))++;
-        // for a, b in pairs:
         const auto& __tup_1 = __for_tup_0;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
-        // yield a + b
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(a, b));
     }
@@ -48,6 +48,8 @@ __gen_sums sums(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 }
 
 // def firsts(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
+//     for x, _ in pairs:
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -66,10 +68,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_1 = *((*__for_it_0))++;
-        // for x, _ in pairs:
         const auto& __tup_1 = __for_tup_1;
         x = std::get<0>(__tup_1);
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -85,6 +85,10 @@ __gen_firsts firsts(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 }
 
 // def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
+//     for a, b in p1:
+//         yield a + b
+//     for c, d in p2:
+//         yield c * d
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -109,11 +113,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
             continue;
         }
         __for_tup_2 = *((*__for_it_0))++;
-        // for a, b in p1:
         const auto& __tup_1 = __for_tup_2;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
-        // yield a + b
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(a, b));
     }
@@ -123,11 +125,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_3 = *((*__for_it_1))++;
-        // for c, d in p2:
         const auto& __tup_2 = __for_tup_3;
         c = std::get<0>(__tup_2);
         d = std::get<1>(__tup_2);
-        // yield c * d
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(c, d));
     }
@@ -143,8 +143,15 @@ __gen_multi multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std
 }
 
 // def main():
+//     for v in sums([(1, 2), (3, 4), (5, 6)]):
+//         print(v)
+//     print("---")
+//     for v in firsts([(10, 20), (30, 40)]):
+//         print(v)
+//     print("---")
+//     for v in multi([(1, 2)], [(3, 4), (5, 6)]):
+//         print(v)
 void main() {
-    // for v in sums([(1, 2), (3, 4), (5, 6)]):
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}, std::tuple<int32_t, int32_t>{5, 6}};
         auto __src_0 = sums(__tmp_1);
@@ -153,13 +160,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("---")
     std::cout << "---" << "\n";
-    // for v in firsts([(10, 20), (30, 40)]):
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_2 = {std::tuple<int32_t, int32_t>{10, 20}, std::tuple<int32_t, int32_t>{30, 40}};
         auto __src_2 = firsts(__tmp_2);
@@ -168,13 +172,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("---")
     std::cout << "---" << "\n";
-    // for v in multi([(1, 2)], [(3, 4), (5, 6)]):
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_3 = {std::tuple<int32_t, int32_t>{1, 2}};
         std::vector<std::tuple<int32_t, int32_t>> __tmp_4 = {std::tuple<int32_t, int32_t>{3, 4}, std::tuple<int32_t, int32_t>{5, 6}};
@@ -184,18 +185,17 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

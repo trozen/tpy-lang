@@ -5,61 +5,61 @@ namespace tpyapp::main {
 
 
 // def sum_last_use() -> int32:
+//     items: list[int32] = [10, 20, 30]
+//     # items at last use but x is read-only -- borrows
+//     total: int32 = 0
+//     for x in items:
+//         total += x
+//     return total
 int32_t sum_last_use() {
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // # items at last use but x is read-only -- borrows
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 
 // def sum_not_last_use() -> int32:
+//     items: list[int32] = [1, 2, 3]
+//     total: int32 = 0
+//     # items is NOT at last use -- borrows
+//     for x in items:
+//         total += x
+//     print(len(items))  # items used after loop
+//     return total
 int32_t sum_not_last_use() {
-    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // total: int32 = 0
     int32_t total = 0;
-    // # items is NOT at last use -- borrows
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(len(items))  # items used after loop
     std::cout << ::tpy::__len__(items) << "\n";
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     print(sum_last_use())
+//     print(sum_not_last_use())
 void main() {
-    // print(sum_last_use())
     std::cout << sum_last_use() << "\n";
-    // print(sum_not_last_use())
     std::cout << sum_not_last_use() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

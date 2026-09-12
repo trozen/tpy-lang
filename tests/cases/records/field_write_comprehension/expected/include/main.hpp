@@ -13,10 +13,15 @@ struct Grid;
 extern Pic* top;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fill_free(p: Pic, n: int32) -> None:
 void fill_free(Pic& p, int32_t n);
+// def reseat_opt(p: Pic) -> None:
 void reseat_opt(Pic& p);
+// def setitems(p: Pic, n: int32) -> None:
 void setitems(Pic& p, int32_t n);
+// def closure(p: Pic) -> None:
 void closure(Pic& p);
+// def main() -> None:
 void main();
 
 // class Pic:
@@ -70,12 +75,17 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self) -> None:
+//     self.data = []
+//     self.flat = []
+//     self.d = {}
+//     self.s = set()
+//     self.opt = None
 inline Pic::Pic() : data(std::vector<std::vector<int32_t>>{}), flat(std::vector<int32_t>{}), d(::tpy::ordered_map<std::string, int32_t>()), s(::tpy::ordered_set<int32_t>()), opt(std::nullopt) {}
 
 // # Method body, a nested comprehension.
 // def fill(self, w: int32, h: int32) -> None:
+//     self.data = [[0 for k in range(h)] for j in range(w)]  # tpyc: ok
 inline void Pic::fill(int32_t w, int32_t h) {
-    // self.data = [[0 for k in range(h)] for j in range(w)]  # tpyc: ok
     this->data = ({
         std::vector<std::vector<int32_t>> __result;
         const int32_t __stop_0 = w;
@@ -98,16 +108,18 @@ inline void Pic::fill(int32_t w, int32_t h) {
 // # The doom shape: locals first, so the field writes land in the
 // # constructor BODY rather than the member-init prefix.
 // def __init__(self, raw: list[int32]) -> None:
+//     width = raw[0]
+//     height = raw[1]
+//     self.width = width
+//     self.height = height
+//     self.data = [[0 for k in range(height)] for j in range(width)]  # tpyc: ok
+//     for j in range(width):
+//         self.data[j][0] = j + 1
 inline Grid::Grid(const std::vector<int32_t>& raw) {
-    // width = raw[0]
     int32_t width = ::tpy::__getitem__(raw, 0);
-    // height = raw[1]
     int32_t height = ::tpy::__getitem__(raw, 1);
-    // self.width = width
     this->width = width;
-    // self.height = height
     this->height = height;
-    // self.data = [[0 for k in range(height)] for j in range(width)]  # tpyc: ok
     this->data = ({
         std::vector<std::vector<int32_t>> __result;
         const int32_t __stop_0 = width;
@@ -125,19 +137,21 @@ inline Grid::Grid(const std::vector<int32_t>& raw) {
         }
         std::move(__result);
     });
-    // for j in range(width):
     int32_t __stop_2 = width;
     for (int32_t j = 0; j < __stop_2; ++j) {
-        // self.data[j][0] = j + 1
         ::tpy::__setitem__(::tpy::__getitem__(this->data, j), 0, (::tpy::add_check<int32_t>(j, 1)));
     }
 }
+// def gen(p: Pic, k: int32) -> Iterator[int32]:
+//     for i in range(k):
+//         p.flat = [i + j for j in range(2)]  # tpyc: ok
+//         p.flat.append(9)
+//         yield len(p.flat)
 inline auto gen(Pic& p, int32_t k) {
     return ::tpy::make_generator<int32_t>(
         [&p, k, __i = int32_t(0), __stop = static_cast<int32_t>(k)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t i = __i++;
-                // p.flat = [i + j for j in range(2)]  # tpyc: ok
                 p.flat = ({
                     std::vector<int32_t> __result;
                     const int32_t __stop_0 = 2;
@@ -147,7 +161,6 @@ inline auto gen(Pic& p, int32_t k) {
                     }
                     std::move(__result);
                 });
-                // p.flat.append(9)
                 p.flat.push_back(9);
                 auto __val = ::tpy::__len__(p.flat);
                 return std::optional<int32_t>(__val);

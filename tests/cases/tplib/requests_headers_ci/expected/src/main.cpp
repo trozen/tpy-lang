@@ -5,174 +5,180 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 200 OK\r\n"
+//               b"Content-Type: application/json\r\n"
+//               b"X-Custom-Header: Yes\r\n"
+//               b"X-Multi: a\r\n"
+//               b"X-Multi: b\r\n"
+//               b"Content-Length: 2\r\n\r\nok")
+//     s = requests.Session()
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.get("http://api.test/")
+//     b.recv(65536)
+//     b.close()
+//
+//     print(r.headers["content-type"], r.headers["Content-Type"],
+//           r.headers["CONTENT-TYPE"])
+//     print("x-custom-header" in r.headers, "X-CUSTOM-HEADER" in r.headers,
+//           "missing" in r.headers)
+//     cl = r.headers.get("content-length")
+//     if cl is not None:
+//         print("len:", cl)
+//     print(r.headers.get("nope", "dflt"))
+//     print(r.headers["x-multi"])              # repeated headers joined with ", "
+//     print(len(r.headers))
+//     names: list[str] = []
+//     for k in r.headers:                      # __iter__ yields original-case keys
+//         names.append(k)
+//     print(sorted(names))
+//     print(sorted(r.headers.keys()))
+//     print(sorted(r.headers.values()))
+//
+//     other = CaseInsensitiveDict()
+//     other["CONTENT-TYPE"] = "application/json"
+//     other["x-custom-header"] = "Yes"
+//     other["X-Multi"] = "a, b"
+//     other["Content-Length"] = "2"
+//     print(r.headers == other)               # equal despite key casing
+//     other["content-length"] = "3"           # value differs
+//     print(r.headers == other)
+//     del other["CONTENT-length"]             # case-insensitive delete
+//     print("content-length" in other, len(other))
+//
+//     # re-setting a key under different casing overwrites in place (last casing
+//     # wins, len unchanged) -- the invariant that makes this not a plain dict
+//     cid = CaseInsensitiveDict()
+//     cid["Accept"] = "text/html"
+//     cid["ACCEPT"] = "application/json"
+//     print(len(cid), cid["accept"], sorted(cid.keys()))
+//     # __eq__ false on a same-length, different-key pair
+//     lhs = CaseInsensitiveDict()
+//     lhs["A"] = "1"
+//     rhs = CaseInsensitiveDict()
+//     rhs["B"] = "1"
+//     print(lhs == rhs)
+//
+//     # mutable-mapping surface: pop / setdefault / popitem / clear / copy / update
+//     m = CaseInsensitiveDict()
+//     m["Accept"] = "text/html"
+//     m["X-N"] = "1"
+//     print(m.pop("accept"), "accept" in m)            # case-insensitive pop
+//     print(m.pop("gone", "fallback"))                 # absent -> default
+//     print(m.setdefault("X-N", "z"), m.setdefault("X-M", "new"))
+//     dup = m.copy()
+//     dup["X-O"] = "9"
+//     print(len(m), len(dup))                          # copy independent
+//     m.update(dup)                                    # merge dup back in
+//     print(sorted(m.keys()))
+//     kv = m.popitem()
+//     print(kv[0] != "", len(m))                       # popitem removed one
+//     m.clear()
+//     print(len(m))
+//     try:
+//         m.popitem()                                  # popitem on empty -> KeyError
+//         print("no raise")
+//     except KeyError:
+//         print("KeyError")
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 200 OK\r\n"
-    // b"Content-Type: application/json\r\n"
-    // b"X-Custom-Header: Yes\r\n"
-    // b"X-Multi: a\r\n"
-    // b"X-Multi: b\r\n"
-    // b"Content-Length: 2\r\n\r\nok")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Custom-Header: Yes\r\nX-Multi: a\r\nX-Multi: b\r\nContent-Length: 2\r\n\r\nok", 118));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.get("http://api.test/")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/");
-    // b.recv(65536)
     b.recv(65536);
-    // b.close()
     b.close();
-    // print(r.headers["content-type"], r.headers["Content-Type"],
-    // r.headers["CONTENT-TYPE"])
     std::cout << r.headers["content-type"] << " " << r.headers["Content-Type"] << " " << r.headers["CONTENT-TYPE"] << "\n";
-    // print("x-custom-header" in r.headers, "X-CUSTOM-HEADER" in r.headers,
-    // "missing" in r.headers)
     std::cout << ::tpy::print_bool((r.headers.__contains__("x-custom-header"))) << " " << ::tpy::print_bool((r.headers.__contains__("X-CUSTOM-HEADER"))) << " " << ::tpy::print_bool((r.headers.__contains__("missing"))) << "\n";
-    // cl = r.headers.get("content-length")
     std::optional<std::string> cl = r.headers.get("content-length");
-    // if cl is not None:
     if ((cl.has_value())) {
-        // print("len:", cl)
         std::cout << "len:" << " " << ::tpy::print_optional_val(cl) << "\n";
     }
-    // print(r.headers.get("nope", "dflt"))
     std::cout << ::tpy::print_optional_val(r.headers.get("nope", "dflt")) << "\n";
-    // print(r.headers["x-multi"])              # repeated headers joined with ", "
     std::cout << r.headers["x-multi"] << "\n";
-    // print(len(r.headers))
     std::cout << ::tpy::__len__(r.headers) << "\n";
-    // names: list[str] = []
     std::vector<std::string> names = std::vector<std::string>{};
-    // for k in r.headers:                      # __iter__ yields original-case keys
     auto& __src_0 = r.headers;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_1);
-        // names.append(k)
         names.push_back(std::string(k));
     }
-    // print(sorted(names))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(names)) << "\n";
-    // print(sorted(r.headers.keys()))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(r.headers.keys())) << "\n";
-    // print(sorted(r.headers.values()))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(r.headers.values())) << "\n";
-    // other = CaseInsensitiveDict()
     ::tpystd::tplib::requests::CaseInsensitiveDict other = ::tpystd::tplib::requests::CaseInsensitiveDict();
-    // other["CONTENT-TYPE"] = "application/json"
     ::tpy::__setitem__(other, "CONTENT-TYPE", "application/json");
-    // other["x-custom-header"] = "Yes"
     ::tpy::__setitem__(other, "x-custom-header", "Yes");
-    // other["X-Multi"] = "a, b"
     ::tpy::__setitem__(other, "X-Multi", "a, b");
-    // other["Content-Length"] = "2"
     ::tpy::__setitem__(other, "Content-Length", "2");
-    // print(r.headers == other)               # equal despite key casing
     std::cout << ::tpy::print_bool(((r.headers) == (other))) << "\n";
-    // other["content-length"] = "3"           # value differs
     ::tpy::__setitem__(other, "content-length", "3");
-    // print(r.headers == other)
     std::cout << ::tpy::print_bool(((r.headers) == (other))) << "\n";
-    // del other["CONTENT-length"]             # case-insensitive delete
     ::tpy::__delitem__(other, "CONTENT-length");
-    // print("content-length" in other, len(other))
     std::cout << ::tpy::print_bool((other.__contains__("content-length"))) << " " << ::tpy::__len__(other) << "\n";
-    // # re-setting a key under different casing overwrites in place (last casing
-    // # wins, len unchanged) -- the invariant that makes this not a plain dict
-    // cid = CaseInsensitiveDict()
     ::tpystd::tplib::requests::CaseInsensitiveDict cid = ::tpystd::tplib::requests::CaseInsensitiveDict();
-    // cid["Accept"] = "text/html"
     ::tpy::__setitem__(cid, "Accept", "text/html");
-    // cid["ACCEPT"] = "application/json"
     ::tpy::__setitem__(cid, "ACCEPT", "application/json");
-    // print(len(cid), cid["accept"], sorted(cid.keys()))
     std::cout << ::tpy::__len__(cid) << " " << cid["accept"] << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(cid.keys())) << "\n";
-    // # __eq__ false on a same-length, different-key pair
-    // lhs = CaseInsensitiveDict()
     ::tpystd::tplib::requests::CaseInsensitiveDict lhs = ::tpystd::tplib::requests::CaseInsensitiveDict();
-    // lhs["A"] = "1"
     ::tpy::__setitem__(lhs, "A", "1");
-    // rhs = CaseInsensitiveDict()
     ::tpystd::tplib::requests::CaseInsensitiveDict rhs = ::tpystd::tplib::requests::CaseInsensitiveDict();
-    // rhs["B"] = "1"
     ::tpy::__setitem__(rhs, "B", "1");
-    // print(lhs == rhs)
     std::cout << ::tpy::print_bool(((lhs) == (rhs))) << "\n";
-    // # mutable-mapping surface: pop / setdefault / popitem / clear / copy / update
-    // m = CaseInsensitiveDict()
     ::tpystd::tplib::requests::CaseInsensitiveDict m = ::tpystd::tplib::requests::CaseInsensitiveDict();
-    // m["Accept"] = "text/html"
     ::tpy::__setitem__(m, "Accept", "text/html");
-    // m["X-N"] = "1"
     ::tpy::__setitem__(m, "X-N", "1");
-    // print(m.pop("accept"), "accept" in m)            # case-insensitive pop
     std::cout << ::tpy::print_optional_val(m.pop("accept")) << " " << ::tpy::print_bool((m.__contains__("accept"))) << "\n";
-    // print(m.pop("gone", "fallback"))                 # absent -> default
     std::cout << ::tpy::print_optional_val(m.pop("gone", "fallback")) << "\n";
-    // print(m.setdefault("X-N", "z"), m.setdefault("X-M", "new"))
     std::cout << m.setdefault("X-N", "z") << " " << m.setdefault("X-M", "new") << "\n";
-    // dup = m.copy()
     ::tpystd::tplib::requests::CaseInsensitiveDict dup = m.copy();
-    // dup["X-O"] = "9"
     ::tpy::__setitem__(dup, "X-O", "9");
-    // print(len(m), len(dup))                          # copy independent
     std::cout << ::tpy::__len__(m) << " " << ::tpy::__len__(dup) << "\n";
-    // m.update(dup)                                    # merge dup back in
     m.update(dup);
-    // print(sorted(m.keys()))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(m.keys())) << "\n";
-    // kv = m.popitem()
     std::tuple<std::string, std::string> kv = m.popitem();
-    // print(kv[0] != "", len(m))                       # popitem removed one
     std::cout << ::tpy::print_bool((std::get<0>(kv) != "")) << " " << ::tpy::__len__(m) << "\n";
-    // m.clear()
     m.clear();
-    // print(len(m))
     std::cout << ::tpy::__len__(m) << "\n";
-    // try:
     {
         try {
-            // m.popitem()                                  # popitem on empty -> KeyError
             m.popitem();
-            // print("no raise")
             std::cout << "no raise" << "\n";
         } catch (const ::tpy::KeyError&) {
-            // print("KeyError")
             std::cout << "KeyError" << "\n";
         }
     }
 }
 
+// # tplib.requests Response.headers is a CaseInsensitiveDict: lookups ignore case
+// # while items()/keys() keep the server's casing, repeated headers join with ", ",
+// # and the full mutable-mapping surface works. no_cpython (requests has no CPython
+// # module; the socket-injection seam is not real-requests API).
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests Response.headers is a CaseInsensitiveDict: lookups ignore case
-    // # while items()/keys() keep the server's casing, repeated headers join with ", ",
-    // # and the full mutable-mapping surface works. no_cpython (requests has no CPython
-    // # module; the socket-injection seam is not real-requests API).
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

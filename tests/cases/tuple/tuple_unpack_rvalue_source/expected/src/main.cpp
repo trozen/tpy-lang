@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def make(n: int32) -> tuple[int32, int32]:
+//     return (n, n + 1)
 std::tuple<int32_t, int32_t> make(int32_t n) {
-    // return (n, n + 1)
     return std::tuple<int32_t, int32_t>{n, (::tpy::add_check<int32_t>(n, 1))};
 }
 
 // def from_call(n: int32) -> int32:
+//     a, b = make(n)  # tpyc: ok
+//     return a + b
 int32_t from_call(int32_t n) {
-    // a, b = make(n)  # tpyc: ok
     auto __tup_1 = make(n);
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def from_field(h: Holder) -> int32:
+//     a, b = h.pair  # tpyc: ok
+//     return a + b
 int32_t from_field(const Holder& h) {
-    // a, b = h.pair  # tpyc: ok
     auto __tup_1 = h.pair;
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main() -> None:
+//     print(from_call(10))
+//     print(from_field(Holder()))
 void main() {
-    // print(from_call(10))
     std::cout << from_call(10) << "\n";
-    // print(from_field(Holder()))
     Holder __tmp_1 = Holder();
     std::cout << from_field(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

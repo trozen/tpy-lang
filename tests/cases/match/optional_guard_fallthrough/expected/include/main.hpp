@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def with_wildcard(x: Optional[int32], flag: bool) -> str:
 std::string with_wildcard(std::optional<int32_t> x, bool flag);
+// def with_capture(x: Optional[int32], flag: bool) -> str:
 std::string with_capture(std::optional<int32_t> x, bool flag);
+// def main() -> None:
 void main();
 
 void __tpy_init();

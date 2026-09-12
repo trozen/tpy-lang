@@ -5,41 +5,40 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     ps: list[tuple[int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
+//     for s in names(ps):
+//         print(s)
+//     qs: list[tuple[str, int32]] = [("a", 3), ("b", 7), ("c", 1)]
+//     for k, n in keep(qs):
+//         print(k, n)
 void main() {
-    // ps: list[tuple[int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
     std::vector<std::tuple<int32_t, std::string>> ps = {std::tuple<int32_t, std::string>{1, "c"}, std::tuple<int32_t, std::string>{2, "a"}, std::tuple<int32_t, std::string>{3, "b"}};
-    // for s in names(ps):
     auto __obj_0 = names<int32_t>(ps);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view s = *__beg_0;
-        // print(s)
         std::cout << s << "\n";
     }
-    // qs: list[tuple[str, int32]] = [("a", 3), ("b", 7), ("c", 1)]
     std::vector<std::tuple<std::string, int32_t>> qs = {std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 7}, std::tuple<std::string, int32_t>{"c", 1}};
-    // for k, n in keep(qs):
     auto __obj_1 = keep<std::string>(qs);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_0 = *__beg_1;
-        // for k, n in keep(qs):
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        // print(k, n)
         std::cout << k << " " << n << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

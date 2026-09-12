@@ -9,27 +9,30 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_iterable(it: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it);
+// def sum_readonly(rs: Span[readonly[int32]]) -> int32:
 int32_t sum_readonly(std::span<const int32_t> rs);
+// def main() -> None:
 void main();
 
 // def sum_iterable(it: Iterable[int32]) -> int32:
+//     total: int32 = 0
+//     for x in it:
+//         total += x
+//     return total
 template<::tpystd::typing::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 

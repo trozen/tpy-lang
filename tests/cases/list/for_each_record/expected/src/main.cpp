@@ -5,74 +5,75 @@ namespace tpyapp::main {
 
 
 // def total(ps: list[P]) -> int32:
+//     s = 0
+//     for p in ps:          # read-only loop var -> const auto&
+//         s = s + p.x
+//     return s
 int32_t total(const std::vector<P>& ps) {
-    // s = 0
     int32_t s = 0;
-    // for p in ps:          # read-only loop var -> const auto&
     auto& __obj_0 = ps;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // s = s + p.x
         s = (::tpy::add_check<int32_t>(s, p.x));
     }
-    // return s
     return s;
 }
 
 // def bump_all(ps: list[P]) -> None:
+//     for p in ps:          # mutated loop var -> auto&&; the write goes through the alias
+//         p.x = p.x + 10
 void bump_all(std::vector<P>& ps) {
-    // for p in ps:          # mutated loop var -> auto&&; the write goes through the alias
     auto& __obj_0 = ps;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // p.x = p.x + 10
         p.x = (::tpy::add_check<int32_t>(p.x, 10));
     }
 }
 
 // def count_total(cs: list[Counter]) -> int32:
+//     s = 0
+//     for c in cs:          # @nocopy element: a copy at the binding would be a compile error
+//         s = s + c.n
+//     return s
 int32_t count_total(const std::vector<Counter>& cs) {
-    // s = 0
     int32_t s = 0;
-    // for c in cs:          # @nocopy element: a copy at the binding would be a compile error
     auto& __obj_0 = cs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& c = *__beg_0;
-        // s = s + c.n
         s = (::tpy::add_check<int32_t>(s, c.n));
     }
-    // return s
     return s;
 }
 
 // def main() -> None:
+//     ps = [P(1), P(2), P(3)]
+//     print(total(ps))       # 6
+//     bump_all(ps)
+//     print(total(ps))       # 36 -- mutation through the loop var is visible in the list
+//
+//     cs = [Counter(5), Counter(7)]
+//     print(count_total(cs))  # 12
 void main() {
-    // ps = [P(1), P(2), P(3)]
     std::vector<P> ps = {P(1), P(2), P(3)};
-    // print(total(ps))       # 6
     std::cout << total(ps) << "\n";
-    // bump_all(ps)
     bump_all(ps);
-    // print(total(ps))       # 36 -- mutation through the loop var is visible in the list
     std::cout << total(ps) << "\n";
-    // cs = [Counter(5), Counter(7)]
     std::vector<Counter> cs = ::tpy::make_vector<Counter>(Counter(5), Counter(7));
-    // print(count_total(cs))  # 12
     std::cout << count_total(cs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

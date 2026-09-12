@@ -5,9 +5,18 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Single condition -- integer sets have deterministic order
+//     evens: set[int32] = {x for x in range(10) if x % 2 == 0}
+//     for v in evens:
+//         print(v)
+//
+//     # Filter from list -- check membership and size instead of iteration order
+//     words: list[str] = ["hello", "hi", "world", "hey", "wow"]
+//     long_words: set[str] = {w for w in words if len(w) > 2}
+//     print(len(long_words))
+//     print("hello" in long_words)
+//     print("hi" in long_words)
 void main() {
-    // # Single condition -- integer sets have deterministic order
-    // evens: set[int32] = {x for x in range(10) if x % 2 == 0}
     ::tpy::ordered_set<int32_t> evens = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 10;
@@ -18,19 +27,14 @@ void main() {
         }
         std::move(__result);
     });
-    // for v in evens:
     auto& __obj_1 = evens;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t v = *__beg_1;
-        // print(v)
         std::cout << v << "\n";
     }
-    // # Filter from list -- check membership and size instead of iteration order
-    // words: list[str] = ["hello", "hi", "world", "hey", "wow"]
     std::vector<std::string> words = {"hello", "hi", "world", "hey", "wow"};
-    // long_words: set[str] = {w for w in words if len(w) > 2}
     ::tpy::ordered_set<std::string> long_words = ({
         ::tpy::ordered_set<std::string> __result;
         auto& __obj_2 = words;
@@ -44,20 +48,17 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(long_words))
     std::cout << ::tpy::__len__(long_words) << "\n";
-    // print("hello" in long_words)
     std::cout << ::tpy::print_bool((long_words.contains("hello"))) << "\n";
-    // print("hi" in long_words)
     std::cout << ::tpy::print_bool((long_words.contains("hi"))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

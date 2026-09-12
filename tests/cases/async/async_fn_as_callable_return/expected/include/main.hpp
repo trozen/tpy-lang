@@ -15,12 +15,16 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_triple;
 struct __coro_main_coro;
 
+// async def triple(n: int32) -> int32:
 __coro_triple triple(int32_t n);
+// def pick() -> Callable[[int32], Own[Cancellable[int32]]]:
 std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> pick();
+// async def main_coro() -> int32:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: triple
+// async def triple(n: int32) -> int32:
 struct __coro_triple {
     int32_t __state;
     bool __cancel_pending;
@@ -44,7 +48,7 @@ struct __coro_triple {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> int32:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

@@ -39,8 +39,11 @@ struct __coro_2_5_Outer_10_Layer_Deep_7_compute;
 struct __coro_2_11_Outer_Layer_4_Deep_7_compute;
 struct __coro_Outer_Layer_Deep_compute;
 
+// async def Outer_Inner_echo() -> int:
 __coro_Outer_Inner_echo Outer_Inner_echo();
+// async def async_sections() -> None:
 __coro_async_sections async_sections();
+// def main() -> None:
 void main();
 
 // class Outer:
@@ -52,6 +55,8 @@ struct Outer {
         T value;
 
         // def __init__(self, value: T) -> None:
+        //     # Unconstrained T may require a copy into inline field storage.
+        //     self.value = value  # tpyc: warning(/may copy T into field/)
         Box() = default;
         explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
@@ -78,6 +83,9 @@ struct Outer {
         __gen_2_5_Outer_5_Inner_6_values values() const;
 
         // def simple(self) -> Iterator[int]:
+        //     # The simple generator route is the unnamed sibling.
+        //     for n in range(2):
+        //         yield self.value + n  # tpyc: ok
         auto simple() const {
             return ::tpy::make_generator<::tpy::BigInt>(
                 [this, __i = int32_t(0), __stop = static_cast<int32_t>(2)]() mutable -> std::optional<::tpy::BigInt> {
@@ -206,12 +214,15 @@ inline std::ostream& operator<<(std::ostream& os, const Outer_Layer_Deep& obj) {
     return os;
 }
 
+// def delegated(inner: Outer.Inner) -> Iterator[int]:
 __gen_delegated delegated(Outer::Inner& inner);
+// async def nested_compute(inner: Outer.Inner, delta: int = 1) -> int:
 __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta = ::tpy::BigInt(1));
+// async def nested_echo[T](inner: Outer.Inner, value: T, delta: int = 1) -> T:
 template <typename T>
 __coro_nested_echo<T> nested_echo(Outer::Inner& inner, ::tpy::param_val_or_ref_t<T> value, ::tpy::BigInt delta = ::tpy::BigInt(1));
 
-// Async coroutine: Outer.Box.get
+// async def get(self) -> T:
 template <typename T>
 struct __coro_2_5_Outer_3_Box_3_get {
     int32_t __state;
@@ -237,11 +248,12 @@ struct __coro_2_5_Outer_3_Box_3_get {
 };
 
 // async def get(self) -> T:
+//     await asyncio.sleep(0)
+//     return self.value
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_2_5_Outer_3_Box_3_get<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -251,7 +263,6 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self.value
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.value);
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -267,7 +278,7 @@ inline __coro_2_5_Outer_3_Box_3_get<T> Outer::Box<T>::get() {
     return __coro_2_5_Outer_3_Box_3_get<T>(*this);
 }
 
-// Async coroutine: Outer.Inner.compute
+// async def compute(self, delta: int) -> int:
 struct __coro_2_5_Outer_5_Inner_7_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -296,7 +307,7 @@ inline __coro_2_5_Outer_5_Inner_7_compute Outer::Inner::compute(::tpy::BigInt de
     return __coro_2_5_Outer_5_Inner_7_compute(*this, delta);
 }
 
-// Async coroutine: Outer.Inner.echo
+// async def echo[T](self, value: T) -> T:
 template <typename T>
 struct __coro_2_5_Outer_5_Inner_4_echo {
     int32_t __state;
@@ -323,11 +334,12 @@ struct __coro_2_5_Outer_5_Inner_4_echo {
 };
 
 // async def echo[T](self, value: T) -> T:
+//     await asyncio.sleep(0)
+//     return value
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_2_5_Outer_5_Inner_4_echo<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -337,7 +349,6 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return value
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -353,7 +364,7 @@ inline __coro_2_5_Outer_5_Inner_4_echo<T> Outer::Inner::echo(::tpy::param_val_or
     return __coro_2_5_Outer_5_Inner_4_echo<T>(*this, value);
 }
 
-// Async coroutine: Outer.Inner.cleanup
+// async def cleanup(self) -> int:
 struct __coro_2_5_Outer_5_Inner_7_cleanup {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -397,7 +408,7 @@ inline __coro_2_5_Outer_5_Inner_7_cleanup Outer::Inner::cleanup() {
     return __coro_2_5_Outer_5_Inner_7_cleanup(*this);
 }
 
-// Async coroutine: Outer.Gate.__aenter__
+// async def __aenter__(self) -> int:
 struct __coro_2_5_Outer_4_Gate_10___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -425,7 +436,7 @@ inline __coro_2_5_Outer_4_Gate_10___aenter__ Outer::Gate::__aenter__() {
     return __coro_2_5_Outer_4_Gate_10___aenter__(*this);
 }
 
-// Async coroutine: Outer.Gate.__aexit__
+// async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_2_5_Outer_4_Gate_9___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -456,7 +467,7 @@ inline __coro_2_5_Outer_4_Gate_9___aexit__ Outer::Gate::__aexit__(std::monostate
     return __coro_2_5_Outer_4_Gate_9___aexit__(*this, et, ev, tb);
 }
 
-// Async coroutine: Outer.Layer.Deep.compute
+// async def compute(self) -> int:
 struct __coro_3_5_Outer_5_Layer_4_Deep_7_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -482,7 +493,7 @@ inline __coro_3_5_Outer_5_Layer_4_Deep_7_compute Outer::Layer::Deep::compute() c
     return __coro_3_5_Outer_5_Layer_4_Deep_7_compute(*this);
 }
 
-// Async coroutine: Outer.Layer_Deep.compute
+// async def compute(self) -> int:
 struct __coro_2_5_Outer_10_Layer_Deep_7_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -508,7 +519,7 @@ inline __coro_2_5_Outer_10_Layer_Deep_7_compute Outer::Layer_Deep::compute() con
     return __coro_2_5_Outer_10_Layer_Deep_7_compute(*this);
 }
 
-// Async coroutine: Outer_Layer.Deep.compute
+// async def compute(self) -> int:
 struct __coro_2_11_Outer_Layer_4_Deep_7_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -534,7 +545,7 @@ inline __coro_2_11_Outer_Layer_4_Deep_7_compute Outer_Layer::Deep::compute() con
     return __coro_2_11_Outer_Layer_4_Deep_7_compute(*this);
 }
 
-// Async coroutine: Outer_Layer_Deep.compute
+// async def compute(self) -> int:
 struct __coro_Outer_Layer_Deep_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -560,7 +571,7 @@ inline __coro_Outer_Layer_Deep_compute Outer_Layer_Deep::compute() const {
     return __coro_Outer_Layer_Deep_compute(*this);
 }
 
-// Async coroutine: Outer_Inner_echo
+// async def Outer_Inner_echo() -> int:
 struct __coro_Outer_Inner_echo {
     int32_t __state;
     bool __cancel_pending;
@@ -581,7 +592,7 @@ struct __coro_Outer_Inner_echo {
     }
 };
 
-// Async coroutine: nested_compute
+// async def nested_compute(inner: Outer.Inner, delta: int = 1) -> int:
 struct __coro_nested_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -606,7 +617,7 @@ struct __coro_nested_compute {
     }
 };
 
-// Async coroutine: nested_echo
+// async def nested_echo[T](inner: Outer.Inner, value: T, delta: int = 1) -> T:
 template <typename T>
 struct __coro_nested_echo {
     int32_t __state;
@@ -633,11 +644,13 @@ struct __coro_nested_echo {
     }
 };
 // async def nested_echo[T](inner: Outer.Inner, value: T, delta: int = 1) -> T:
+//     # The generic twin must retain its template header and default argument.
+//     await inner.compute(delta)  # tpyc: ok
+//     return value
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_nested_echo<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await inner.compute(delta)  # tpyc: ok
         __sub_0.emplace(inner, delta);
         __state = S_RESUME_0;
         continue;
@@ -647,7 +660,6 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return value
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -664,7 +676,7 @@ __coro_nested_echo<T> nested_echo(Outer::Inner& inner, ::tpy::param_val_or_ref_t
     return __coro_nested_echo<T>(inner, value, delta);
 }
 
-// Generator: Outer.Inner.values
+// def values(self) -> Iterator[int]:
 struct __gen_2_5_Outer_5_Inner_6_values : public ::tpy::next_iter_mixin<__gen_2_5_Outer_5_Inner_6_values, ::tpy::BigInt> {
     int32_t __state;
     const Outer::Inner& __self;
@@ -691,7 +703,7 @@ inline __gen_2_5_Outer_5_Inner_6_values Outer::Inner::values() const {
     return __gen_2_5_Outer_5_Inner_6_values(*this);
 }
 
-// Async coroutine: async_sections
+// async def async_sections() -> None:
 struct __coro_async_sections {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -801,7 +813,7 @@ struct __coro_async_sections {
     }
 };
 
-// Generator: delegated
+// def delegated(inner: Outer.Inner) -> Iterator[int]:
 struct __gen_delegated : public ::tpy::next_iter_mixin<__gen_delegated, ::tpy::BigInt> {
     int32_t __state;
     Outer::Inner& inner;
@@ -830,9 +842,11 @@ struct __gen_delegated : public ::tpy::next_iter_mixin<__gen_delegated, ::tpy::B
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Outer::Inner::Inner(const ::tpy::BigInt& value) : value(value) {}
 
 // def __init__(self) -> None:
+//     self.value = 0
 inline Outer::Gate::Gate() : value(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -17,12 +17,19 @@ struct __gen_rebind_after_none;
 struct __gen_own_opt_call;
 struct __gen_loop_rebind;
 
+// def make_opt(n: int32) -> Own[Optional[Point]]:
 std::optional<Point> make_opt(int32_t n);
+// def rvalue_init() -> Iterator[int32]:
 __gen_rvalue_init rvalue_init();
+// def rebind_after_alias(items: list[Point]) -> Iterator[int32]:
 __gen_rebind_after_alias rebind_after_alias(std::vector<Point>& items);
+// def rebind_after_none() -> Iterator[int32]:
 __gen_rebind_after_none rebind_after_none();
+// def own_opt_call() -> Iterator[int32]:
 __gen_own_opt_call own_opt_call();
+// def loop_rebind(n: int32) -> Iterator[int32]:
 __gen_loop_rebind loop_rebind(int32_t n);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -41,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// Generator: rvalue_init
+// def rvalue_init() -> Iterator[int32]:
 struct __gen_rvalue_init : public ::tpy::next_iter_mixin<__gen_rvalue_init, int32_t> {
     int32_t __state;
     Point* saved = nullptr;
@@ -70,7 +77,7 @@ struct __gen_rvalue_init : public ::tpy::next_iter_mixin<__gen_rvalue_init, int3
     }
 };
 
-// Generator: rebind_after_alias
+// def rebind_after_alias(items: list[Point]) -> Iterator[int32]:
 struct __gen_rebind_after_alias : public ::tpy::next_iter_mixin<__gen_rebind_after_alias, int32_t> {
     int32_t __state;
     std::vector<Point>& items;
@@ -97,7 +104,7 @@ struct __gen_rebind_after_alias : public ::tpy::next_iter_mixin<__gen_rebind_aft
     }
 };
 
-// Generator: rebind_after_none
+// def rebind_after_none() -> Iterator[int32]:
 struct __gen_rebind_after_none : public ::tpy::next_iter_mixin<__gen_rebind_after_none, int32_t> {
     int32_t __state;
     Point* saved = nullptr;
@@ -123,7 +130,7 @@ struct __gen_rebind_after_none : public ::tpy::next_iter_mixin<__gen_rebind_afte
     }
 };
 
-// Generator: own_opt_call
+// def own_opt_call() -> Iterator[int32]:
 struct __gen_own_opt_call : public ::tpy::next_iter_mixin<__gen_own_opt_call, int32_t> {
     int32_t __state;
     Point* got = nullptr;
@@ -149,7 +156,7 @@ struct __gen_own_opt_call : public ::tpy::next_iter_mixin<__gen_own_opt_call, in
     }
 };
 
-// Generator: loop_rebind
+// def loop_rebind(n: int32) -> Iterator[int32]:
 struct __gen_loop_rebind : public ::tpy::next_iter_mixin<__gen_loop_rebind, int32_t> {
     int32_t __state;
     int32_t n;
@@ -179,6 +186,7 @@ struct __gen_loop_rebind : public ::tpy::next_iter_mixin<__gen_loop_rebind, int3
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

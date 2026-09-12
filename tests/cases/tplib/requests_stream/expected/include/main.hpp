@@ -19,12 +19,19 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def stream_content_length() -> None:
 void stream_content_length();
+// def stream_chunked() -> None:
 void stream_chunked();
+// def stream_raw() -> None:
 void stream_raw();
+// def stream_context_manager() -> None:
 void stream_context_manager();
+// def stream_empty_body() -> None:
 void stream_empty_body();
+// def non_streamed_iter_content() -> None:
 void non_streamed_iter_content();
+// def main() -> None:
 void main();
 
 void __tpy_init();

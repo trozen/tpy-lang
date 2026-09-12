@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def narrowed_list(xs: list[str] | None) -> int:
 ::tpy::BigInt narrowed_list(const std::vector<std::string>* xs);
+// def narrowed_dict(d: dict[str, str] | None) -> int:
 ::tpy::BigInt narrowed_dict(const ::tpy::ordered_map<std::string, std::string>* d);
+// def narrowed_set(s: set[str] | None) -> int:
 ::tpy::BigInt narrowed_set(const ::tpy::ordered_set<std::string>* s);
+// def main():
 void main();
 
 void __tpy_init();

@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: same shape as narrowed_field_reassign_none_box but for a
@@ -37,18 +38,19 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.slot = 1
 inline Holder::Holder() : slot(1) {}
 
 // def step(self) -> bool:
+//     if self.slot is None:
+//         return False
+//     self.slot = None
+//     return True
 inline bool Holder::step() {
-    // if self.slot is None:
     if ((!this->slot.has_value())) {
-        // return False
         return false;
     }
-    // self.slot = None
     this->slot = std::nullopt;
-    // return True
     return true;
 }
 void __tpy_init();

@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(1, 2)
+//     print(c.a)
+//     print(c.b)  # "post_init" printed once above, not twice
 void main() {
-    // c = Child(1, 2)
     Child c = Child(1, 2);
-    // print(c.a)
     std::cout << c.a << "\n";
-    // print(c.b)  # "post_init" printed once above, not twice
     std::cout << c.b << "\n";
 }
 
+// # An inherited __post_init__ fires exactly once, via the super().__init__ chain.
+// # The child must not re-append its own call for an inherited hook, or the hook
+// # would run twice under TPy's static dispatch (CPython runs it once).
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An inherited __post_init__ fires exactly once, via the super().__init__ chain.
-    // # The child must not re-append its own call for an inherited hook, or the hook
-    // # would run twice under TPy's static dispatch (CPython runs it once).
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def compound_of_params(a: str, b: str, cond: bool) -> None:
 void compound_of_params(std::string_view a, std::string_view b, bool cond);
+// def compound_of_unmutated_elems(c: list[str], d: list[str], cond: bool) -> None:
 void compound_of_unmutated_elems(const std::vector<std::string>& c, const std::vector<std::string>& d, bool cond);
+// def owning_rvalue_arm(a: str, cond: bool) -> None:
 void owning_rvalue_arm(std::string_view a, bool cond);
+// def mk() -> str:
 std::string mk();
+// def main() -> None:
 void main();
 
 void __tpy_init();

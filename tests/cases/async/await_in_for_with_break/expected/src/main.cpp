@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,17 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def first_match() -> int:
+//     total = 0
+//     for i in range(10):
+//         if i == 3:
+//             continue
+//         if i >= 6:
+//             break
+//         total = total + await value(i)
+//     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_first_match::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(10));
@@ -41,7 +48,6 @@ __coro_value value(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // total = total + await value(i)
         total = ((::tpy::BigInt(total)) + (__await_lift_0));
         __state = S_JOIN_0;
         continue;
@@ -60,7 +66,6 @@ __coro_value value(::tpy::BigInt n) {
                 __state = S_JOIN_1;
                 continue;
             } else {
-                // total = total + await value(i)
                 __sub_0.emplace(::tpy::BigInt(i));
                 __state = S_RESUME_0;
                 continue;
@@ -68,7 +73,6 @@ __coro_value value(::tpy::BigInt n) {
         }
     }
     case S_JOIN_1: {
-        // return total
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = std::move(total);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -85,21 +89,22 @@ __coro_first_match first_match() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(first_match()))
 void main() {
-    // print(asyncio.run(first_match()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(first_match())) << "\n";
 }
 
+// # `break` / `continue` inside a CFG-lowered `for`-with-await
+// # body translate to state transitions, not C++ break/continue.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `break` / `continue` inside a CFG-lowered `for`-with-await
-    // # body translate to state transitions, not C++ break/continue.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def split(p: Point) -> tuple[Point, Own[Point]]:
+//     return (p, copy(p))
 std::tuple<Point*, Point> split(Point& p) {
-    // return (p, copy(p))
     return std::tuple<Point*, Point>{&(p), Point(p)};
 }
 
 // def main() -> None:
+//     p = Point(int32(1), int32(2))
+//     ref, owned = split(p)
+//     print(ref)
+//     print(owned)
+//     # Mutation visible through ref, not through owned copy
+//     p.x = int32(99)
+//     print(ref)
+//     print(owned)
 void main() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // ref, owned = split(p)
     auto __tup_1 = split(p);
     auto&& ref = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     Point owned = std::move(std::get<1>(__tup_1));
-    // print(ref)
     std::cout << ref << "\n";
-    // print(owned)
     std::cout << owned << "\n";
-    // # Mutation visible through ref, not through owned copy
-    // p.x = int32(99)
     p.x = 99;
-    // print(ref)
     std::cout << ref << "\n";
-    // print(owned)
     std::cout << owned << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

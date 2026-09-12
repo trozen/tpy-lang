@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // # Nested tuples with bare int literals (no explicit int32)
 // def main() -> None:
+//     t = ((1, 2), (3, 4))
+//     print(t)
+//     print(t[0])
+//     print(t[1][1])
 void main() {
-    // t = ((1, 2), (3, 4))
     std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>> t = std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
-    // print(t[0])
     std::cout << ::tpy::TuplePrinter(std::get<0>(t)) << "\n";
-    // print(t[1][1])
     std::cout << std::get<1>(std::get<1>(t)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

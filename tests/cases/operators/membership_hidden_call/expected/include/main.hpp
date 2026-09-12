@@ -12,7 +12,9 @@ struct P;
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump() -> int:
 ::tpy::BigInt bump();
+// def main() -> None:
 void main();
 
 // class P:
@@ -36,12 +38,13 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self) -> None:
+//     self.plain = 7
 inline P::P() : plain(::tpy::BigInt(7)) {}
 
 // @property
 // def probe(self) -> int:
+//     return bump()
 inline ::tpy::BigInt P::probe() const {
-    // return bump()
     return bump();
 }
 void __tpy_init();

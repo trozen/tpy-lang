@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     impl = Impl(int32(42))
+//     use_callable(impl)
+//     use_one_arg(impl)
 void main() {
-    // impl = Impl(int32(42))
     Impl impl = Impl(42);
-    // use_callable(impl)
     use_callable(impl);
-    // use_one_arg(impl)
     use_one_arg(impl);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

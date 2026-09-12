@@ -5,55 +5,57 @@ namespace tpyapp::main {
 
 
 // def show_desc(d: Describable) -> None:
+//     print(d.describe())
 void show_desc(Describable& d) {
-    // print(d.describe())
     std::cout << d.describe() << "\n";
 }
 
 // def show_noise(n: Noise) -> None:
+//     print(n.make_noise())
 void show_noise(Noise& n) {
-    // print(n.make_noise())
     std::cout << n.make_noise() << "\n";
 }
 
 // def main() -> None:
+//     d: Describable = Dog()
+//     show_desc(d)
+//     d = Cat()
+//     show_desc(d)
+//
+//     n: Noise = Cat()
+//     show_noise(n)
+//     n = Dog()
+//     show_noise(n)
+//
+//     show_desc(Dog())
+//     show_noise(Cat())
 void main() {
     std::optional<Cat> __slot_2;
     std::optional<Dog> __slot_4;
-    // d: Describable = Dog()
     Dog __slot_1{Dog()};
     Describable* d = &__slot_1;
-    // show_desc(d)
     show_desc((*d));
-    // d = Cat()
     __slot_2.emplace(Cat());
     d = &*__slot_2;
-    // show_desc(d)
     show_desc((*d));
-    // n: Noise = Cat()
     Cat __slot_3{Cat()};
     Noise* n = &__slot_3;
-    // show_noise(n)
     show_noise((*n));
-    // n = Dog()
     __slot_4.emplace(Dog());
     n = &*__slot_4;
-    // show_noise(n)
     show_noise((*n));
-    // show_desc(Dog())
     Dog __tmp_1{Dog()};
     show_desc(__tmp_1);
-    // show_noise(Cat())
     Cat __tmp_2{Cat()};
     show_noise(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

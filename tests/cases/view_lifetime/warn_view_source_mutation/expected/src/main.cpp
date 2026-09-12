@@ -5,77 +5,77 @@ namespace tpyapp::main {
 
 
 // def make() -> str:
+//     return "this is long enough to dodge the small-string buffer"
 std::string make() {
-    // return "this is long enough to dodge the small-string buffer"
     return "this is long enough to dodge the small-string buffer";
 }
 
 // def inferred_view() -> None:
+//     a = make()
+//     v = a.strip()
+//     print(v)
+//     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
 void inferred_view() {
-    // a = make()
     std::string a = make();
-    // v = a.strip()
     std::string_view v = ::tpy::str_strip(a);
-    // print(v)
     std::cout << v << "\n";
-    // a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
     a += " appended text that forces the std::string buffer to reallocate";
 }
 
 // def pinned_view() -> None:
+//     a = make()
+//     c: StrView = a
+//     print(c)
+//     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
 void pinned_view() {
-    // a = make()
     std::string a = make();
-    // c: StrView = a
     std::string_view c = a;
-    // print(c)
     std::cout << c << "\n";
-    // a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
     a += " appended text that forces the std::string buffer to reallocate";
 }
 
 // def slice_view() -> None:
+//     a = make()
+//     v = a[3:9]
+//     print(v)
+//     a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
 void slice_view() {
-    // a = make()
     std::string a = make();
-    // v = a[3:9]
     std::string_view v = ::tpy::str_slice(a, ::tpy::BasicSlice{3, 9});
-    // print(v)
     std::cout << v << "\n";
-    // a += " appended text that forces the std::string buffer to reallocate"  # tpyc: warning(/while borrowed/)
     a += " appended text that forces the std::string buffer to reallocate";
 }
 
 // def bytearray_slice_view() -> None:
+//     ba = bytearray(b"   padded long bytes that dodge the small buffer here   ")
+//     v = ba[3:9]
+//     print(len(v))
+//     ba.append(33)  # tpyc: warning(/while borrowed/)
 void bytearray_slice_view() {
-    // ba = bytearray(b"   padded long bytes that dodge the small buffer here   ")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("   padded long bytes that dodge the small buffer here   ", 56));
-    // v = ba[3:9]
     ::tpy::BytesView v = ::tpy::bytes_slice(ba, ::tpy::BasicSlice{3, 9});
-    // print(len(v))
     std::cout << ::tpy::__len__(v) << "\n";
-    // ba.append(33)  # tpyc: warning(/while borrowed/)
     ba.push_back(33);
 }
 
 // def main() -> None:
+//     inferred_view()
+//     pinned_view()
+//     slice_view()
+//     bytearray_slice_view()
 void main() {
-    // inferred_view()
     inferred_view();
-    // pinned_view()
     pinned_view();
-    // slice_view()
     slice_view();
-    // bytearray_slice_view()
     bytearray_slice_view();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

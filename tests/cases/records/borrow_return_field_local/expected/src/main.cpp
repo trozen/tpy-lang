@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = H()
+//     # The binding under test: a borrow-returned bytearray in a plain local.
+//     v = h.view()
+//     v.append(33)
+//     print(len(h.buf), len(v))
+//     ns = h.nums()
+//     ns.append(3)
+//     print(len(h.xs), len(ns))
 void main() {
-    // h = H()
     H h = H();
-    // # The binding under test: a borrow-returned bytearray in a plain local.
-    // v = h.view()
     ::tpy::ByteArray& v = h.view();
-    // v.append(33)
     v.push_back(33);
-    // print(len(h.buf), len(v))
     std::cout << ::tpy::__len__(h.buf) << " " << ::tpy::__len__(v) << "\n";
-    // ns = h.nums()
     std::vector<int32_t>& ns = h.nums();
-    // ns.append(3)
     ns.push_back(3);
-    // print(len(h.xs), len(ns))
     std::cout << ::tpy::__len__(h.xs) << " " << ::tpy::__len__(ns) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

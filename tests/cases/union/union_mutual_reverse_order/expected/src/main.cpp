@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def eval_expr(e: Expr) -> int:
+//     match e:
+//         case Lit(value=v):
+//             return v
+//         case BinOp(left=l, op=op, right=r):
+//             lv = eval_expr(l.get())
+//             rv = eval_expr(r.get())
+//             if op == "+":
+//                 return lv + rv
+//             else:
+//                 return lv - rv
 ::tpy::BigInt eval_expr(const Expr& e) {
-    // match e:
     auto& __match_subject_1 = e;
     switch (__match_subject_1.value.index()) {
-    // case Lit(value=v):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& v = __case_0.value;
-        // return v
         return v;
         break;
     }
-    // case BinOp(left=l, op=op, right=r):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1.value);
         auto& l = __case_1.left;
         auto& op = __case_1.op;
         auto& r = __case_1.right;
-        // lv = eval_expr(l.get())
         ::tpy::BigInt lv = eval_expr(l.get());
-        // rv = eval_expr(r.get())
         ::tpy::BigInt rv = eval_expr(r.get());
-        // if op == "+":
         if ((op == "+")) {
-            // return lv + rv
             return ((lv) + (rv));
-        // else:
         } else {
-            // return lv - rv
             return ((lv) - (rv));
         }
         break;
@@ -43,28 +43,29 @@ namespace tpyapp::main {
 }
 
 // def main() -> None:
+//     print(eval_expr(Lit(42)))
+//     e = BinOp(Box(BinOp(Box(Lit(10)), "+", Box(Lit(3)))), "-", Box(Lit(1)))
+//     print(eval_expr(e))
 void main() {
-    // print(eval_expr(Lit(42)))
     Expr __tmp_1 = Lit(::tpy::BigInt(42));
     std::cout << eval_expr(__tmp_1) << "\n";
-    // e = BinOp(Box(BinOp(Box(Lit(10)), "+", Box(Lit(3)))), "-", Box(Lit(1)))
     BinOp e = BinOp(::tpystd::tplib::box::Box<Expr>(BinOp(::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(10))), "+", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(3))))), "-", ::tpystd::tplib::box::Box<Expr>(Lit(::tpy::BigInt(1))));
-    // print(eval_expr(e))
     Expr __tmp_2 = std::move(e);
     std::cout << eval_expr(__tmp_2) << "\n";
 }
 
+// # D20 mutual recursion with classes defined BEFORE the union alias.
+// # Exercises the codegen path where Box[Expr] fields carry NominalType("Expr")
+// # (alias not yet registered at parse time) rather than the expanded UnionType.
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # D20 mutual recursion with classes defined BEFORE the union alias.
-    // # Exercises the codegen path where Box[Expr] fields carry NominalType("Expr")
-    // # (alias not yet registered at parse time) rather than the expanded UnionType.
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

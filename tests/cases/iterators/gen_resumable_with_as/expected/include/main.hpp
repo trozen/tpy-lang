@@ -14,7 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen(n: int32) -> Iterator[int32]:
 __gen_gen gen(int32_t n);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -55,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen(n: int32) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_state __state;
     int32_t n;
@@ -102,20 +104,22 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Item::Item(int32_t val) : val(val) {}
 
 // def __init__(self, seed: int32) -> None:
+//     self.item = Item(seed)
 inline Resource::Resource(int32_t seed) : item(Item(seed)) {}
 
 // def __enter__(self) -> Item:
+//     return self.item
 inline Item& Resource::__enter__() {
-    // return self.item
     return this->item;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("exit")
 inline void Resource::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("exit")
     std::cout << "exit" << "\n";
 }
 void __tpy_init();

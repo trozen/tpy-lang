@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def set_first(s: Span[int32], val: int32) -> None:
+//     s[0] = val
 void set_first(std::span<int32_t> s, int32_t val) {
-    // s[0] = val
     ::tpy::__setitem__(s, 0, val);
 }
 
 // def main() -> None:
+//     arr = Array[int32, 3]([10, 20, 30])
+//     set_first(arr, 42)
+//     print(arr[0])
+//     print(arr[1])
+//     print(arr[2])
 void main() {
-    // arr = Array[int32, 3]([10, 20, 30])
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
-    // set_first(arr, 42)
     set_first(::tpy::as_mut_span(arr), 42);
-    // print(arr[0])
     std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    // print(arr[1])
     std::cout << ::tpy::__getitem__(arr, 1) << "\n";
-    // print(arr[2])
     std::cout << ::tpy::__getitem__(arr, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

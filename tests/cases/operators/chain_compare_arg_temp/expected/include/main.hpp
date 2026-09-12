@@ -12,11 +12,17 @@ struct Probe;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(p: Probe | None) -> int32:
 int32_t take(const Probe* p);
+// def inline_chain(c: Counter, a: int32, b: int32) -> bool:
 bool inline_chain(Counter& c, int32_t a, int32_t b);
+// def stmtexpr_chain(c: Counter, a: int32, xs: list[int32]) -> bool:
 bool stmtexpr_chain(Counter& c, int32_t a, const std::vector<int32_t>& xs);
+// def stmtexpr_chain_long(c: Counter, a: int32, xs: list[int32]) -> bool:
 bool stmtexpr_chain_long(Counter& c, int32_t a, const std::vector<int32_t>& xs);
+// def first_pair_only(c: Counter, a: int32, b: int32) -> bool:
 bool first_pair_only(Counter& c, int32_t a, int32_t b);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -52,15 +58,16 @@ inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Counter::Counter() : n(0) {}
 
 // def __init__(self, c: Counter, tag: int32) -> None:
+//     # Counted mutation through a shared reference: proves whether this
+//     # comparator was evaluated at all.
+//     c.n += 1
+//     self.tag = tag
 inline Probe::Probe(Counter& c, int32_t tag) {
-    // # Counted mutation through a shared reference: proves whether this
-    // # comparator was evaluated at all.
-    // c.n += 1
     c.n = ::tpy::add_check<int32_t>(c.n, 1);
-    // self.tag = tag
     this->tag = tag;
 }
 void __tpy_init();

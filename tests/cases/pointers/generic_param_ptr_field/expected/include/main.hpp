@@ -18,8 +18,10 @@ template<Adds W> struct Adder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_adder[W: Adds](sink: W) -> Own[Adder[W]]:
 template<Adds W>
 Adder<W> make_adder(::tpy::param_val_or_ref_t<W> sink);
+// def main() -> None:
 void main();
 
 // class Sink(Adds):
@@ -47,12 +49,13 @@ struct Adder {
     W* _sink;
 
     // def __init__(self, sink: W) -> None:
+    //     self._sink = sink
     Adder() = default;
     explicit Adder(::tpy::param_val_or_ref_t<W> sink) : _sink(&sink) {}
 
     // def push(self, n: int32) -> None:
+    //     self._sink.add(n)
     void push(int32_t n) {
-        // self._sink.add(n)
         ::tpy::deref_check(this->_sink).add(n);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Adder";
@@ -66,21 +69,22 @@ inline std::ostream& operator<<(std::ostream& os, const Adder<W>& obj) {
 
 
 // def __init__(self) -> None:
+//     self.total = 0
 inline Sink::Sink() : total(0) {}
 
 // def add(self, n: int32) -> None:
+//     self.total += n
 inline void Sink::add(int32_t n) {
-    // self.total += n
     this->total = ::tpy::add_check<int32_t>(this->total, n);
 }
 // def make_adder[W: Adds](sink: W) -> Own[Adder[W]]:
+//     p: Ptr[W] = sink
+//     p.add(0)
+//     return Adder(sink)
 template<Adds W>
 Adder<W> make_adder(::tpy::param_val_or_ref_t<W> sink) {
-    // p: Ptr[W] = sink
     W* p = &sink;
-    // p.add(0)
     p->add(0);
-    // return Adder(sink)
     return Adder<W>(sink);
 }
 

@@ -5,46 +5,47 @@ namespace tpyapp::main {
 
 
 // def describe(o: Owner) -> str:
+//     match o.pet:  # tpyc: ok
+//         case Dog():
+//             return "dog"
+//         case Snake() as s:
+//             return "snake legs=" + str(s.legs)
+//         case _:
+//             return "?"
 std::string describe(const Owner& o) {
-    // match o.pet:  # tpyc: ok
     auto& __match_subject_1 = o.pet;
-    // case Dog():
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
         const Dog& __case_0 = *__mpoly_0;
-        // return "dog"
         return "dog";
-    // case Snake() as s:
     } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&(__match_subject_1.__deref__()))) {
         const Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
-        // return "snake legs=" + str(s.legs)
         return (::tpy::str_concat("snake legs=", (s.legs).to_string()));
-    // case _:
     } else {
-        // return "?"
         return "?";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(describe(Owner(Box(Dog()))))
+//     print(describe(Owner(Box(Snake()))))
 void main() {
-    // print(describe(Owner(Box(Dog()))))
     Owner __tmp_1 = Owner(::tpystd::tplib::box::Box<Dog>(Dog()));
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Owner(Box(Snake()))))
     Owner __tmp_2 = Owner(::tpystd::tplib::box::Box<Snake>(Snake()));
     std::cout << describe(__tmp_2) << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

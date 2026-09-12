@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def del_it(t: Tracker, name: str) -> None:
+//     delattr(t, name)
 void del_it(Tracker& t, std::string_view name) {
-    // delattr(t, name)
     t.__delattr__(name);
 }
 
 // def main() -> None:
+//     t = Tracker()
+//     for k in ["host", "port"]:
+//         del_it(t, k)
+//     print(t._last_deleted)
 void main() {
-    // t = Tracker()
     Tracker t = Tracker();
-    // for k in ["host", "port"]:
     auto __obj_0 = {"host", "port"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // del_it(t, k)
         del_it(t, k);
     }
-    // print(t._last_deleted)
     std::cout << t._last_deleted << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

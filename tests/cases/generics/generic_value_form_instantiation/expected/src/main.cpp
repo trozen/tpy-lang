@@ -43,91 +43,93 @@ namespace tpyapp::main {
 
 
 // def free_function() -> None:
+//     fs: list[float32] = [0.5, 1.5]
+//     k: float32 = 1.5
+//     # The T param slot at float32, reached by an lvalue and by an rvalue.
+//     print("free_function:", has_item(fs, k), has_item(fs, float32(2.25)))
+//     print("free_function:", echo(k))  # tpyc: ok
 void free_function() {
-    // fs: list[float32] = [0.5, 1.5]
     std::vector<float> fs = {0.5, 1.5};
-    // k: float32 = 1.5
     float k = 1.5f;
-    // # The T param slot at float32, reached by an lvalue and by an rvalue.
-    // print("free_function:", has_item(fs, k), has_item(fs, float32(2.25)))
     std::cout << "free_function:" << " " << ::tpy::print_bool(has_item<float>(fs, k)) << " " << ::tpy::print_bool(has_item<float>(fs, 2.25f)) << "\n";
-    // print("free_function:", echo(k))  # tpyc: ok
     std::cout << "free_function:" << " " << ::tpy::print_float(static_cast<double>(echo<float>(k))) << "\n";
 }
 
 // def method() -> None:
+//     c = Cell(float32(1.5))
+//     hit = c.find(float32(1.5))
+//     miss = c.find(float32(2.25))
+//     # The val_or_ref_t<T> field read at float32. `find`'s `T | None` renders a
+//     # pointer for every T (decided per declaration, not by the trait); it is
+//     # pinned here as today's render, not as a value-form subject.
+//     print("method:", c.get(), hit is not None, miss is None)
 void method() {
-    // c = Cell(float32(1.5))
     Cell<float> c = Cell<float>(1.5f);
-    // hit = c.find(float32(1.5))
     float* hit = c.find(1.5f);
-    // miss = c.find(float32(2.25))
     float* miss = c.find(2.25f);
-    // # The val_or_ref_t<T> field read at float32. `find`'s `T | None` renders a
-    // # pointer for every T (decided per declaration, not by the trait); it is
-    // # pinned here as today's render, not as a value-form subject.
-    // print("method:", c.get(), hit is not None, miss is None)
     std::cout << "method:" << " " << ::tpy::print_float(static_cast<double>(c.get())) << " " << ::tpy::print_bool((hit != nullptr)) << " " << ::tpy::print_bool((miss == nullptr)) << "\n";
 }
 
 // def enum_instantiation() -> None:
+//     c = Cell(Color.RED)
+//     # The same field read at an enum -- the trait decides enums by kind.
+//     print("enum_instantiation:", c.get() == Color.RED, c.get() == Color.GREEN)
 void enum_instantiation() {
-    // c = Cell(Color.RED)
     Cell<Color> c = Cell<Color>(Color::RED);
-    // # The same field read at an enum -- the trait decides enums by kind.
-    // print("enum_instantiation:", c.get() == Color.RED, c.get() == Color.GREEN)
     std::cout << "enum_instantiation:" << " " << ::tpy::print_bool((c.get() == Color::RED)) << " " << ::tpy::print_bool((c.get() == Color::GREEN)) << "\n";
 }
 
 // def generator_frame() -> None:
+//     v: float32 = 1.5
+//     it = hold(v)
+//     try:
+//         first = next(it)
+//         v = 2.5
+//         # The resumable frame's val_or_ref_t<T> field held a COPY of the caller's
+//         # local, so the second yield is still 1.5 -- it aliased `v` before the
+//         # runtime called float32 a value type.
+//         second = next(it)
+//         print("generator_frame:", first, second, v)
+//     except StopIteration:
+//         print("generator_frame: stop")
 void generator_frame() {
-    // v: float32 = 1.5
     float v = 1.5f;
-    // it = hold(v)
     auto it = hold<float>(v);
-    // try:
     float first;
     float second;
     {
-        // first = next(it)
         {
             auto __try_tmp_2 = ::tpy::next(it);
             if (!__try_tmp_2.has_value()) goto __except_1;
             first = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        // v = 2.5
         v = 2.5f;
-        // # The resumable frame's val_or_ref_t<T> field held a COPY of the caller's
-        // # local, so the second yield is still 1.5 -- it aliased `v` before the
-        // # runtime called float32 a value type.
-        // second = next(it)
         {
             auto __try_tmp_3 = ::tpy::next(it);
             if (!__try_tmp_3.has_value()) goto __except_1;
             second = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        // print("generator_frame:", first, second, v)
         std::cout << "generator_frame:" << " " << ::tpy::print_float(static_cast<double>(first)) << " " << ::tpy::print_float(static_cast<double>(second)) << " " << ::tpy::print_float(static_cast<double>(v)) << "\n";
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        // print("generator_frame: stop")
         std::cout << "generator_frame: stop" << "\n";
         __after_try_1:;
     }
 }
 
 // async def async_frame() -> None:
+//     v: float32 = 1.5
+//     c = held(v)
+//     v = 2.5
+//     # Same field in a coroutine frame, mutated between the call and the await.
+//     print("async_frame:", await c, v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_frame::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // v: float32 = 1.5
         v = 1.5;
-        // c = held(v)
         c.emplace(held<float>(v));
-        // v = 2.5
         v = 2.5;
-        // print("async_frame:", await c, v)
         __state = S_RESUME_0;
         continue;
     }
@@ -136,8 +138,6 @@ void generator_frame() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         c.reset();
-        // # Same field in a coroutine frame, mutated between the call and the await.
-        // print("async_frame:", await c, v)
         std::cout << "async_frame:" << " " << ::tpy::print_float(static_cast<double>(__await_lift_0)) << " " << ::tpy::print_float(static_cast<double>(v)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -154,32 +154,33 @@ __coro_async_frame async_frame() {
 }
 
 // def main() -> None:
+//     free_function()
+//     method()
+//     enum_instantiation()
+//     generator_frame()
+//     asyncio.run(async_frame())
 void main() {
-    // free_function()
     free_function();
-    // method()
     method();
-    // enum_instantiation()
     enum_instantiation();
-    // generator_frame()
     generator_frame();
-    // asyncio.run(async_frame())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_frame()));
 }
 
+// # Pins the value form of a generic instantiation at float32 and at an enum: a T
+// # slot borrows a value, and a generator / coroutine frame COPIES it rather than
+// # aliasing the caller's local across a suspension.
+// # BytesView cannot appear here -- BUGS.md#generic-slot-view-enum-arg-rejects.
+// import asyncio
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Pins the value form of a generic instantiation at float32 and at an enum: a T
-    // # slot borrows a value, and a generator / coroutine frame COPIES it rather than
-    // # aliasing the caller's local across a suspension.
-    // # BytesView cannot appear here -- BUGS.md#generic-slot-view-enum-arg-rejects.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from enum import Enum
-    // main()
     main();
 }
 

@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // def static_source_view() -> Iterator[str]:
+//     lit = "static"  # tpyc: type(StrView)
+//     yield lit  # tpyc: ok
+//     yield "end"
 std::expected<std::string, ::tpy::StopIteration> __gen_static_source_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // lit = "static"  # tpyc: type(StrView)
         lit = "static";
-        // yield lit  # tpyc: ok
         __state = S_RESUME_0;
         return std::string(lit);
     }
     case S_RESUME_0: {
-        // yield "end"
         __state = S_RESUME_1;
         return "end";
     }
@@ -35,17 +35,17 @@ __gen_static_source_view static_source_view() {
 }
 
 // def static_bytes_view() -> Iterator[bytes]:
+//     raw = b"xy"  # tpyc: type(BytesView)
+//     yield raw  # tpyc: ok
+//     yield raw
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_static_bytes_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // raw = b"xy"  # tpyc: type(BytesView)
         raw = ::tpy::bytes_literal_owned("xy", 2);
-        // yield raw  # tpyc: ok
         __state = S_RESUME_0;
         return ::tpy::Bytes(raw);
     }
     case S_RESUME_0: {
-        // yield raw
         __state = S_RESUME_1;
         return ::tpy::Bytes(raw);
     }
@@ -65,17 +65,17 @@ __gen_static_bytes_view static_bytes_view() {
 }
 
 // def explicit_view_local(s: StrView) -> Iterator[str]:
+//     v: StrView = s  # tpyc: ok
+//     yield v  # tpyc: ok
+//     yield "tail"
 std::expected<std::string, ::tpy::StopIteration> __gen_explicit_view_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // v: StrView = s  # tpyc: ok
         v = s;
-        // yield v  # tpyc: ok
         __state = S_RESUME_0;
         return std::string(v);
     }
     case S_RESUME_0: {
-        // yield "tail"
         __state = S_RESUME_1;
         return "tail";
     }
@@ -95,6 +95,9 @@ __gen_explicit_view_local explicit_view_local(std::string_view s) {
 }
 
 // def with_view_target(h: Holder) -> Iterator[str]:
+//     with h as label:
+//         yield label  # tpyc: ok
+//         yield label
 std::expected<std::string, ::tpy::StopIteration> __gen_with_view_target::__next__() {
     try {
     while (true) switch (__state) {
@@ -106,7 +109,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_with_view_target::__next_
     }
     case S_RESUME_0: {
         try {
-            // yield label
             __state = S_RESUME_1;
             return std::string(label);
         } catch (::tpy::BaseException& __exc_0) {
@@ -139,7 +141,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_with_view_target::__next_
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield label  # tpyc: ok
         __state = S_RESUME_0;
         return std::string(label);
     }
@@ -159,15 +160,15 @@ __gen_with_view_target with_view_target(Holder& h) {
 }
 
 // def owned_param_stays_bare(s: str) -> Iterator[str]:
+//     yield s  # tpyc: ok
+//     yield s
 std::expected<std::string, ::tpy::StopIteration> __gen_owned_param_stays_bare::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s  # tpyc: ok
         __state = S_RESUME_0;
         return s;
     }
     case S_RESUME_0: {
-        // yield s
         __state = S_RESUME_1;
         return s;
     }
@@ -187,8 +188,24 @@ __gen_owned_param_stays_bare owned_param_stays_bare(std::string_view s) {
 }
 
 // def main() -> None:
+//     for v in static_source_view():
+//         print(v)
+//
+//     for c in static_bytes_view():
+//         print(len(c))
+//
+//     for v in explicit_view_local("borrowed"):
+//         print(v)
+//
+//     for v in with_view_target(Holder("managed")):
+//         print(v)
+//
+//     for v in peephole_view(2):
+//         print(v)
+//
+//     for v in owned_param_stays_bare("kept"):
+//         print(v)
 void main() {
-    // for v in static_source_view():
     {
         auto __src_0 = static_source_view();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -196,11 +213,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for c in static_bytes_view():
     {
         auto __src_2 = static_bytes_view();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -208,11 +223,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             ::tpy::BytesView c = ::tpy::unwrap_ref(*__r_3);
-        // print(len(c))
         std::cout << ::tpy::__len__(c) << "\n";
         }
     }
-    // for v in explicit_view_local("borrowed"):
     {
         std::string __tmp_1 = "borrowed";
         auto __src_4 = explicit_view_local(__tmp_1);
@@ -221,11 +234,9 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_5);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in with_view_target(Holder("managed")):
     {
         Holder __tmp_2 = Holder("managed");
         auto __src_6 = with_view_target(__tmp_2);
@@ -234,11 +245,9 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_7);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in peephole_view(2):
     {
         auto __src_8 = peephole_view(2);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -246,11 +255,9 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_9);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in owned_param_stays_bare("kept"):
     {
         std::string __tmp_3 = "kept";
         auto __src_10 = owned_param_stays_bare(__tmp_3);
@@ -259,18 +266,17 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_11);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

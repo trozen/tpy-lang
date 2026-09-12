@@ -6,43 +6,43 @@ namespace tpyapp::main {
 
 // @export
 // def push(xs: list[int], v: int) -> None:  # tpyc: warning(/list parameter 'xs' is copied in.*not visible to the caller/)
+//     xs.append(v)
 void push(std::vector<::tpy::BigInt>& xs, const ::tpy::BigInt& v) {
-    // xs.append(v)
     xs.push_back(v);
 }
 
 // @export
 // def fill(d: dict[str, int]) -> None:  # tpyc: warning(/dict parameter 'd' is copied in.*not visible to the caller/)
+//     d["k"] = 1
 void fill(::tpy::ordered_map<std::string, ::tpy::BigInt>& d) {
-    // d["k"] = 1
     ::tpy::__setitem__(d, "k", ::tpy::BigInt(1));
 }
 
 // @export
 // def add_one(s: set[int], v: int) -> None:  # tpyc: warning(/set parameter 's' is copied in.*not visible to the caller/)
+//     s.add(v)
 void add_one(::tpy::ordered_set<::tpy::BigInt>& s, const ::tpy::BigInt& v) {
-    // s.add(v)
     s.insert(v);
 }
 
 // @export
 // def read_only(s: set[int]) -> int:  # tpyc: ok
+//     return len(s)
 ::tpy::BigInt read_only(const ::tpy::ordered_set<::tpy::BigInt>& s) {
-    // return len(s)
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 
+// # A list/dict/set @export param crosses the boundary copy-in, so mutating it
+// # (append / setitem) is not visible to the Python caller -- warn precisely where
+// # sema proves the mutation happens. A read-only container param has no
+// # observable divergence and stays quiet.
+// # tpy: ext_module
+// from tpy.extern import export
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A list/dict/set @export param crosses the boundary copy-in, so mutating it
-    // # (append / setitem) is not visible to the Python caller -- warn precisely where
-    // # sema proves the mutation happens. A read-only container param has no
-    // # observable divergence and stays quiet.
-    // # tpy: ext_module
-    // from tpy.extern import export
 }
 
 } // namespace tpyapp::main

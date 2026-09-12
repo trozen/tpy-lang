@@ -33,7 +33,9 @@ inline std::ostream& operator<<(std::ostream& __os, Prio __e) {
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(v: Prio) -> Prio:
 Prio make(Prio v);
+// def main() -> None:
 void main();
 
 void __tpy_init();

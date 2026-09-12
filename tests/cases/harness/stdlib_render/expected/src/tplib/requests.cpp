@@ -3,864 +3,873 @@
 
 namespace tpystd::tplib::requests {
 
-// # The multipart/form-data boundary. Fixed (not randomized like urllib3) so the
-// # emitted wire bytes are deterministic and snapshot-testable; as with urllib3
-// # there is no scan for the token appearing inside a part's content, which for a
-// # 30-char marker is not a practical collision risk. Plain `str` (not Final):
-// # Final[str] lowers to a StrView, which has no .encode() for the body bytes.
-// _MULTIPART_BOUNDARY: str = "----TPyFormBoundary7MA4YWxkTrZu0gW"
 std::string _MULTIPART_BOUNDARY;
 
 // def _parse_maxage(raw: str) -> tuple[bool, int]:
+//     # (ok, seconds) for a Set-Cookie Max-Age. RFC 6265: a non-integer value is
+//     # ignored (ok=False); a <= 0 value means expire immediately.
+//     try:
+//         return (True, int(raw.strip()))
+//     except ValueError:
+//         return (False, 0)
 std::tuple<bool, ::tpy::BigInt> _parse_maxage(std::string_view raw) {
-    // # (ok, seconds) for a Set-Cookie Max-Age. RFC 6265: a non-integer value is
-    // # ignored (ok=False); a <= 0 value means expire immediately.
-    // try:
     {
         try {
-            // return (True, int(raw.strip()))
             return std::tuple<bool, ::tpy::BigInt>{true, ::tpy::BigInt::from_str(::tpy::str_strip(raw))};
         } catch (const ::tpy::ValueError&) {
-            // return (False, 0)
             return std::tuple<bool, ::tpy::BigInt>{false, ::tpy::BigInt(0)};
         }
     }
 }
 
 // def _parse_http_date(raw: str) -> tuple[bool, float]:
+//     # (ok, unix_ts) for a Set-Cookie Expires, matching what CPython's
+//     # http.cookiejar parses: the RFC 1123 form ("Wdy, DD Mon YYYY HH:MM:SS GMT")
+//     # and the legacy RFC 850 form ("Weekday, DD-Mon-YY HH:MM:SS GMT",
+//     # 2-digit year). The asctime form is not parsed (ok=False -> the attribute
+//     # is ignored and the cookie is session-lifetime), matching CPython. Expires
+//     # is always GMT, so the naive parse is stamped UTC before the timestamp
+//     # (a naive datetime.timestamp() would assume system-local time).
+//     for fmt in ["%a, %d %b %Y %H:%M:%S GMT", "%A, %d-%b-%y %H:%M:%S GMT"]:
+//         try:
+//             dt = datetime.strptime(raw, fmt)
+//         except ValueError:
+//             continue
+//         return (True, dt.replace(tzinfo=UTC).timestamp())
+//     return (False, 0.0)
 std::tuple<bool, double> _parse_http_date(std::string_view raw) {
-    // # (ok, unix_ts) for a Set-Cookie Expires, matching what CPython's
-    // # http.cookiejar parses: the RFC 1123 form ("Wdy, DD Mon YYYY HH:MM:SS GMT")
-    // # and the legacy RFC 850 form ("Weekday, DD-Mon-YY HH:MM:SS GMT",
-    // # 2-digit year). The asctime form is not parsed (ok=False -> the attribute
-    // # is ignored and the cookie is session-lifetime), matching CPython. Expires
-    // # is always GMT, so the naive parse is stamped UTC before the timestamp
-    // # (a naive datetime.timestamp() would assume system-local time).
-    // for fmt in ["%a, %d %b %Y %H:%M:%S GMT", "%A, %d-%b-%y %H:%M:%S GMT"]:
     auto __obj_0 = {"%a, %d %b %Y %H:%M:%S GMT", "%A, %d-%b-%y %H:%M:%S GMT"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view fmt = *__beg_0;
-        // try:
         ::tpystd::datetime::datetime dt;
         {
             try {
-                // dt = datetime.strptime(raw, fmt)
                 dt = datetime::strptime(raw, fmt);
             } catch (const ::tpy::ValueError&) {
-                // continue
                 continue;
             }
         }
-        // return (True, dt.replace(tzinfo=UTC).timestamp())
         ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::UTC;
         return std::tuple<bool, double>{true, dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_1).timestamp()};
     }
-    // return (False, 0.0)
     return std::tuple<bool, double>{false, 0.0};
 }
 
 // def _path_match(req_path: str, cookie_path: str) -> bool:
+//     # RFC 6265 5.1.4 path-match: equal, or the cookie path is a prefix ending in
+//     # "/", or a prefix whose next request-path char is "/". A bare `startswith`
+//     # would wrongly match `/foobar` against a `/foo` cookie.
+//     if req_path == cookie_path:
+//         return True
+//     if not req_path.startswith(cookie_path):
+//         return False
+//     if cookie_path.endswith("/"):
+//         return True
+//     return req_path[len(cookie_path)] == '/'
 bool _path_match(std::string_view req_path, std::string_view cookie_path) {
-    // # RFC 6265 5.1.4 path-match: equal, or the cookie path is a prefix ending in
-    // # "/", or a prefix whose next request-path char is "/". A bare `startswith`
-    // # would wrongly match `/foobar` against a `/foo` cookie.
-    // if req_path == cookie_path:
     if ((req_path == cookie_path)) {
-        // return True
         return true;
     }
-    // if not req_path.startswith(cookie_path):
     if ((!(::tpy::str_startswith(req_path, cookie_path)))) {
-        // return False
         return false;
     }
-    // if cookie_path.endswith("/"):
     if (::tpy::str_endswith(cookie_path, "/")) {
-        // return True
         return true;
     }
-    // return req_path[len(cookie_path)] == '/'
     return (::tpy::__getitem__(req_path, ::tpy::__len__(cookie_path)) == '/');
 }
 
 // def _basic_auth_header(user: str, password: str) -> str:
+//     creds: str = user + ":" + password
+//     return "Basic " + base64.b64encode(creds.encode()).decode()
 std::string _basic_auth_header(std::string_view user, std::string_view password) {
-    // creds: str = user + ":" + password
     std::string creds = (::tpy::str_concat((::tpy::str_concat(user, ":")), password));
-    // return "Basic " + base64.b64encode(creds.encode()).decode()
     return (::tpy::str_concat("Basic ", ::tpy::bytes_decode(::tpystd::base64::b64encode(::tpy::bytes_from_str(creds)))));
 }
 
 // def _merge_query(path: str, query: str, params: dict[str, str] | None) -> str:
+//     target: str = path
+//     if target == "":
+//         target = "/"
+//     combined: str = query
+//     if params is not None and len(params) > 0:
+//         extra = urlencode(params)
+//         if combined == "":
+//             combined = extra
+//         else:
+//             combined = combined + "&" + extra
+//     if combined != "":
+//         target = target + "?" + combined
+//     return target
 std::string _merge_query(std::string_view path, std::string_view query, const ::tpy::ordered_map<std::string, std::string>* params) {
-    // target: str = path
     std::string target = std::string(path);
-    // if target == "":
     if ((target == "")) {
-        // target = "/"
         target = "/";
     }
-    // combined: str = query
     std::string combined = std::string(query);
-    // if params is not None and len(params) > 0:
     if (((params != nullptr) && (::tpy::__len__((*params)) > 0))) {
-        // extra = urlencode(params)
         std::string extra = ::tpystd::urllib::parse::urlencode((*params));
-        // if combined == "":
         if ((combined == "")) {
-            // combined = extra
             combined = extra;
-        // else:
         } else {
-            // combined = combined + "&" + extra
             combined = (::tpy::str_concat((::tpy::str_concat(combined, "&")), extra));
         }
     }
-    // if combined != "":
     if ((combined != "")) {
-        // target = target + "?" + combined
         target = (::tpy::str_concat((::tpy::str_concat(target, "?")), combined));
     }
-    // return target
     return target;
 }
 
 // def _escape_header_param(value: str) -> str:
+//     # A field name / filename goes into a Content-Disposition quoted param, so a
+//     # `"` or CR/LF would break the header (or inject into the wire body). Percent-
+//     # escape those three, as requests/urllib3 do; other bytes pass through.
+//     return value.replace('"', "%22").replace("\r", "%0D").replace("\n", "%0A")
 std::string _escape_header_param(std::string_view value) {
-    // # A field name / filename goes into a Content-Disposition quoted param, so a
-    // # `"` or CR/LF would break the header (or inject into the wire body). Percent-
-    // # escape those three, as requests/urllib3 do; other bytes pass through.
-    // return value.replace('"', "%22").replace("\r", "%0D").replace("\n", "%0A")
     return ::tpy::str_replace(::tpy::str_replace(::tpy::str_replace(value, "\"", "%22"), "\r", "%0D"), "\n", "%0A");
 }
 
 // def _multipart_body(data: dict[str, str] | None,
-// files: dict[str, FileField]) -> Own[bytes]:
+//                     files: dict[str, FileField]) -> Own[bytes]:
+//     # RFC 7578 multipart/form-data. Any dict `data` entries become plain form
+//     # parts (no filename); each `files` entry is a file part carrying its
+//     # filename and content type (application/octet-stream unless the FileField
+//     # set one).
+//     bnd = _MULTIPART_BOUNDARY.encode()
+//     body = bytearray()
+//     if data is not None:
+//         for kv in data.items():
+//             body += b"--" + bnd + b"\r\n"
+//             body += (b'Content-Disposition: form-data; name="'
+//                      + _escape_header_param(kv[0]).encode() + b'"\r\n\r\n')
+//             body += kv[1].encode() + b"\r\n"
+//     for k in files:
+//         f = files[k]
+//         body += b"--" + bnd + b"\r\n"
+//         body += (b'Content-Disposition: form-data; name="'
+//                  + _escape_header_param(k).encode() + b'"; filename="'
+//                  + _escape_header_param(f.filename).encode() + b'"\r\n')
+//         body += b"Content-Type: " + f.content_type.encode() + b"\r\n\r\n"
+//         body += f.content + b"\r\n"
+//     body += b"--" + bnd + b"--\r\n"
+//     return bytes(body)
 ::tpy::Bytes _multipart_body(const ::tpy::ordered_map<std::string, std::string>* data, const ::tpy::ordered_map<std::string, FileField>& files) {
-    // # RFC 7578 multipart/form-data. Any dict `data` entries become plain form
-    // # parts (no filename); each `files` entry is a file part carrying its
-    // # filename and content type (application/octet-stream unless the FileField
-    // # set one).
-    // bnd = _MULTIPART_BOUNDARY.encode()
     ::tpy::Bytes bnd = ::tpy::bytes_from_str(_MULTIPART_BOUNDARY);
-    // body = bytearray()
     ::tpy::ByteArray body = ::tpy::ByteArray();
-    // if data is not None:
     if ((data != nullptr)) {
-        // for kv in data.items():
         auto __obj_0 = ::tpy::dict_items((*data));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& kv = *__beg_0;
-            // body += b"--" + bnd + b"\r\n"
             body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("--", 2), bnd)), ::tpy::bytes_literal_owned("\r\n", 2))));
-            // body += (b'Content-Disposition: form-data; name="'
-            // + _escape_header_param(kv[0]).encode() + b'"\r\n\r\n')
             body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(_escape_header_param(std::get<0>(kv))))), ::tpy::bytes_literal_owned("\"\r\n\r\n", 5))));
-            // body += kv[1].encode() + b"\r\n"
             body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(::tpy::bytes_from_str(std::get<1>(kv)), ::tpy::bytes_literal_owned("\r\n", 2))));
         }
     }
-    // for k in files:
     auto& __obj_1 = files;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // f = files[k]
         const FileField& f = ::tpy::__getitem__(files, k);
-        // body += b"--" + bnd + b"\r\n"
         body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("--", 2), bnd)), ::tpy::bytes_literal_owned("\r\n", 2))));
-        // body += (b'Content-Disposition: form-data; name="'
-        // + _escape_header_param(k).encode() + b'"; filename="'
-        // + _escape_header_param(f.filename).encode() + b'"\r\n')
         body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(_escape_header_param(k)))), ::tpy::bytes_literal_owned("\"; filename=\"", 13))), ::tpy::bytes_from_str(_escape_header_param(f.filename)))), ::tpy::bytes_literal_owned("\"\r\n", 3))));
-        // body += b"Content-Type: " + f.content_type.encode() + b"\r\n\r\n"
         body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("Content-Type: ", 14), ::tpy::bytes_from_str(f.content_type))), ::tpy::bytes_literal_owned("\r\n\r\n", 4))));
-        // body += f.content + b"\r\n"
         body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(f.content, ::tpy::bytes_literal_owned("\r\n", 2))));
     }
-    // body += b"--" + bnd + b"--\r\n"
     body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal_owned("--", 2), bnd)), ::tpy::bytes_literal_owned("--\r\n", 4))));
-    // return bytes(body)
     return ::tpy::Bytes(body);
 }
 
 // def _encode_body(data: bytes | dict[str, str] | None,
-// files: dict[str, FileField] | None,
-// json: JsonValue | None) -> Own[tuple[bytes | None, str | None]]:
+//                  files: dict[str, FileField] | None,
+//                  json: JsonValue | None) -> Own[tuple[bytes | None, str | None]]:
+//     # Resolve (data, files, json) into the wire body and the Content-Type it
+//     # implies (None = set no default, leaving it to the caller's headers). A raw
+//     # bytes `data` carries no implied type; a dict `data` is urlencoded; `files`
+//     # (folding any dict `data` in) is multipart; `json` is JSON. A falsy `data`
+//     # (None / empty dict / empty bytes) is treated as no body -- matching
+//     # requests' `elif data:` truthiness, so an empty dict is not an empty form
+//     # and a `json=` body still fires alongside one. An empty `files` dict is
+//     # likewise falsy (requests gates on `if files:`), so it does not force a
+//     # multipart body -- data= handling applies instead.
+//     if files is not None and len(files) > 0:
+//         form: dict[str, str] | None = None
+//         if data is not None and isinstance(data, dict) and len(data) > 0:
+//             form = data
+//         return (_multipart_body(form, files),
+//                 "multipart/form-data; boundary=" + _MULTIPART_BOUNDARY)
+//     if data is not None:
+//         if isinstance(data, dict):
+//             if len(data) > 0:
+//                 return (urlencode(data).encode(),
+//                         "application/x-www-form-urlencoded")
+//         else:
+//             # `else` (not `elif len...`) so `data` narrows to bytes here -- an
+//             # isinstance-false narrows the else arm but not an elif condition.
+//             if len(data) > 0:
+//                 return (data, None)
+//     if json is not None:
+//         return (dumps(json).encode(), "application/json")
+//     return (None, None)
 std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>> _encode_body(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json) {
-    // # Resolve (data, files, json) into the wire body and the Content-Type it
-    // # implies (None = set no default, leaving it to the caller's headers). A raw
-    // # bytes `data` carries no implied type; a dict `data` is urlencoded; `files`
-    // # (folding any dict `data` in) is multipart; `json` is JSON. A falsy `data`
-    // # (None / empty dict / empty bytes) is treated as no body -- matching
-    // # requests' `elif data:` truthiness, so an empty dict is not an empty form
-    // # and a `json=` body still fires alongside one. An empty `files` dict is
-    // # likewise falsy (requests gates on `if files:`), so it does not force a
-    // # multipart body -- data= handling applies instead.
-    // if files is not None and len(files) > 0:
     if (((files != nullptr) && (::tpy::__len__((*files)) > 0))) {
-        // form: dict[str, str] | None = None
         ::tpy::ordered_map<std::string, std::string>* form = nullptr;
-        // if data is not None and isinstance(data, dict) and len(data) > 0:
         if ((((!std::holds_alternative<std::monostate>(data)) && std::holds_alternative<::tpy::ordered_map<std::string, std::string>*>(data)) && (::tpy::__len__((*std::get<::tpy::ordered_map<std::string, std::string>*>(data))) > 0))) {
             auto& __data = *std::get<::tpy::ordered_map<std::string, std::string>*>(data);
-            // form = data
             form = &(__data);
         }
-        // return (_multipart_body(form, files),
-        // "multipart/form-data; boundary=" + _MULTIPART_BOUNDARY)
         return std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>{_multipart_body(form, (*files)), (::tpy::str_concat("multipart/form-data; boundary=", _MULTIPART_BOUNDARY))};
     }
-    // if data is not None:
     if ((!std::holds_alternative<std::monostate>(data))) {
-        // if isinstance(data, dict):
         if (std::holds_alternative<::tpy::ordered_map<std::string, std::string>*>(data)) {
             auto& __data = *std::get<::tpy::ordered_map<std::string, std::string>*>(data);
-            // if len(data) > 0:
             if ((::tpy::__len__(__data) > 0)) {
-                // return (urlencode(data).encode(),
-                // "application/x-www-form-urlencoded")
                 return std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>{::tpy::bytes_from_str(::tpystd::urllib::parse::urlencode(__data)), "application/x-www-form-urlencoded"};
             }
-        // else:
         } else {
             auto& __data = *std::get<::tpy::Bytes*>(data);
-            // # `else` (not `elif len...`) so `data` narrows to bytes here -- an
-            // # isinstance-false narrows the else arm but not an elif condition.
-            // if len(data) > 0:
             if ((::tpy::__len__(__data) > 0)) {
-                // return (data, None)
                 return std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>{__data, std::nullopt};
             }
         }
     }
-    // if json is not None:
     if ((json != nullptr)) {
-        // return (dumps(json).encode(), "application/json")
         return std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>{::tpy::bytes_from_str(::tpystd::json::dumps((*json), 0, false)), "application/json"};
     }
-    // return (None, None)
     return std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>{std::nullopt, std::nullopt};
 }
 
 // def _prepare_headers(headers: dict[str, str] | None,
-// auth: tuple[str, str] | None,
-// content_type: str | None) -> Own[dict[str, str]]:
+//                      auth: tuple[str, str] | None,
+//                      content_type: str | None) -> Own[dict[str, str]]:
+//     out: dict[str, str] = {}
+//     if headers is not None:
+//         for kv in headers.items():
+//             out[kv[0]] = kv[1]
+//     # A default User-Agent (overridable by the caller), as CPython requests
+//     # sends one -- some servers (e.g. the GitHub API) reject UA-less requests.
+//     has_ua = False
+//     for k in out:
+//         if k.lower() == "user-agent":
+//             has_ua = True
+//             break
+//     if not has_ua:
+//         # major.minor (not full version) so a patch/dev bump doesn't churn it.
+//         # TODO: hoist to a module constant computed once, when tpyc can
+//         # const-fold a str-concat Final initializer (today it rejects it -- see
+//         # BUGS.md); until then this rebuilds the tiny string per request.
+//         out["User-Agent"] = ("tpy-requests/" + str(_tpy_version_info[0])
+//                              + "." + str(_tpy_version_info[1]))
+//     if auth is not None:
+//         out["Authorization"] = _basic_auth_header(auth[0], auth[1])
+//     if content_type is not None and "Content-Type" not in out:
+//         out["Content-Type"] = content_type
+//     return out
 ::tpy::ordered_map<std::string, std::string> _prepare_headers(const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<std::string_view> content_type) {
-    // out: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> out = ::tpy::ordered_map<std::string, std::string>();
-    // if headers is not None:
     if ((headers != nullptr)) {
-        // for kv in headers.items():
         auto __obj_0 = ::tpy::dict_items((*headers));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& kv = *__beg_0;
-            // out[kv[0]] = kv[1]
             ::tpy::__setitem__(out, std::get<0>(kv), std::get<1>(kv));
         }
     }
-    // # A default User-Agent (overridable by the caller), as CPython requests
-    // # sends one -- some servers (e.g. the GitHub API) reject UA-less requests.
-    // has_ua = False
     bool has_ua = false;
-    // for k in out:
     auto& __obj_1 = out;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // if k.lower() == "user-agent":
         if ((::tpy::str_lower(k) == "user-agent")) {
-            // has_ua = True
             has_ua = true;
-            // break
             break;
         }
     }
-    // if not has_ua:
     if ((!(has_ua))) {
-        // # major.minor (not full version) so a patch/dev bump doesn't churn it.
-        // # TODO: hoist to a module constant computed once, when tpyc can
-        // # const-fold a str-concat Final initializer (today it rejects it -- see
-        // # BUGS.md); until then this rebuilds the tiny string per request.
-        // out["User-Agent"] = ("tpy-requests/" + str(_tpy_version_info[0])
-        // + "." + str(_tpy_version_info[1]))
         ::tpy::__setitem__(out, "User-Agent", (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("tpy-requests/", ::tpy::fixed_to_str<int32_t>(std::get<0>(::tpystd::tpy::version::version_info)))), ".")), ::tpy::fixed_to_str<int32_t>(std::get<1>(::tpystd::tpy::version::version_info)))));
     }
-    // if auth is not None:
     if ((auth.has_value())) {
-        // out["Authorization"] = _basic_auth_header(auth[0], auth[1])
         ::tpy::__setitem__(out, "Authorization", _basic_auth_header(std::get<0>((*auth)), std::get<1>((*auth))));
     }
-    // if content_type is not None and "Content-Type" not in out:
     if (((content_type.has_value()) && (!(out.contains("Content-Type"))))) {
-        // out["Content-Type"] = content_type
         ::tpy::__setitem__(out, "Content-Type", std::string((*content_type)));
     }
-    // return out
     return out;
 }
 
 // def _is_redirect(status: int32) -> bool:
+//     return (status == 301 or status == 302 or status == 303
+//             or status == 307 or status == 308)
 bool _is_redirect(int32_t status) {
-    // return (status == 301 or status == 302 or status == 303
-    // or status == 307 or status == 308)
     return (((((status == 301) || (status == 302)) || (status == 303)) || (status == 307)) || (status == 308));
 }
 
 // def _host_of(url: str) -> str:
+//     h = urlsplit(url).hostname
+//     if h is None:
+//         return ""
+//     return h
 std::string _host_of(std::string_view url) {
-    // h = urlsplit(url).hostname
     std::optional<std::string> h = ::tpystd::urllib::parse::urlsplit(url).hostname();
-    // if h is None:
     if ((!h.has_value())) {
-        // return ""
         return "";
     }
-    // return h
     return (*h);
 }
 
 // def _should_strip_auth(old_url: str, new_url: str) -> bool:
+//     # Mirrors requests.Session.should_strip_auth: drop Authorization across a
+//     # redirect unless host, scheme, and port all match -- so a scheme change or
+//     # port change (even same host) strips, preventing a credential leak on an
+//     # https->http downgrade or a same-host non-default-port hop. The one
+//     # exception (requests back-compat): a same-host http->https upgrade on the
+//     # standard ports keeps auth. Ports compared raw (None vs int), as CPython does.
+//     o = urlsplit(old_url)
+//     n = urlsplit(new_url)
+//     if o.hostname != n.hostname:
+//         return True
+//     op = o.port
+//     np = n.port
+//     if (o.scheme == "http" and (op is None or op == 80)
+//             and n.scheme == "https" and (np is None or np == 443)):
+//         return False
+//     if o.scheme != n.scheme:
+//         return True
+//     if op is None and np is None:
+//         return False
+//     if op is None or np is None:
+//         return True
+//     return op != np
 bool _should_strip_auth(std::string_view old_url, std::string_view new_url) {
-    // # Mirrors requests.Session.should_strip_auth: drop Authorization across a
-    // # redirect unless host, scheme, and port all match -- so a scheme change or
-    // # port change (even same host) strips, preventing a credential leak on an
-    // # https->http downgrade or a same-host non-default-port hop. The one
-    // # exception (requests back-compat): a same-host http->https upgrade on the
-    // # standard ports keeps auth. Ports compared raw (None vs int), as CPython does.
-    // o = urlsplit(old_url)
     ::tpystd::urllib::parse::SplitResult o = ::tpystd::urllib::parse::urlsplit(old_url);
-    // n = urlsplit(new_url)
     ::tpystd::urllib::parse::SplitResult n = ::tpystd::urllib::parse::urlsplit(new_url);
-    // if o.hostname != n.hostname:
     if ((o.hostname() != n.hostname())) {
-        // return True
         return true;
     }
-    // op = o.port
     std::optional<::tpy::BigInt> op = o.port();
-    // np = n.port
     std::optional<::tpy::BigInt> np = n.port();
-    // if (o.scheme == "http" and (op is None or op == 80)
-    // and n.scheme == "https" and (np is None or np == 443)):
     if (((((o.scheme == "http") && ((!op.has_value()) || ((*op) == 80))) && (n.scheme == "https")) && ((!np.has_value()) || ((*np) == 443)))) {
-        // return False
         return false;
     }
-    // if o.scheme != n.scheme:
     if ((o.scheme != n.scheme)) {
-        // return True
         return true;
     }
-    // if op is None and np is None:
     if (((!op.has_value()) && (!np.has_value()))) {
-        // return False
         return false;
     }
-    // if op is None or np is None:
     if (((!op.has_value()) || (!np.has_value()))) {
-        // return True
         return true;
     }
-    // return op != np
     return ((*op) != (*np));
 }
 
 // def _drop_body_headers(headers: dict[str, str]) -> None:
+//     # When a redirect coerces the method to GET the body is dropped, so its
+//     # content headers must go too (requests purges Content-Type/Length/Transfer-
+//     # Encoding/Content-Encoding). Case-insensitive: the caller may use any case.
+//     to_drop: list[str] = []
+//     for kv in headers.items():
+//         low = kv[0].lower()
+//         if (low == "content-type" or low == "content-length"
+//                 or low == "transfer-encoding" or low == "content-encoding"):
+//             to_drop.append(kv[0])
+//     for k in to_drop:
+//         del headers[k]
 void _drop_body_headers(::tpy::ordered_map<std::string, std::string>& headers) {
-    // # When a redirect coerces the method to GET the body is dropped, so its
-    // # content headers must go too (requests purges Content-Type/Length/Transfer-
-    // # Encoding/Content-Encoding). Case-insensitive: the caller may use any case.
-    // to_drop: list[str] = []
     std::vector<std::string> to_drop = std::vector<std::string>{};
-    // for kv in headers.items():
     auto __obj_0 = ::tpy::dict_items(headers);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        // low = kv[0].lower()
         std::string low = ::tpy::str_lower(std::get<0>(kv));
-        // if (low == "content-type" or low == "content-length"
-        // or low == "transfer-encoding" or low == "content-encoding"):
         if (((((low == "content-type") || (low == "content-length")) || (low == "transfer-encoding")) || (low == "content-encoding"))) {
-            // to_drop.append(kv[0])
             to_drop.push_back(std::get<0>(kv));
         }
     }
-    // for k in to_drop:
     auto& __obj_1 = to_drop;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // del headers[k]
         ::tpy::__delitem__(headers, k);
     }
 }
 
 // def _rebuild_method(method: str, status: int32) -> str:
+//     # Mirrors requests.Session.rebuild_method: 303 and 302 coerce any non-HEAD
+//     # method to GET; 301 coerces only POST. 307/308 preserve the method.
+//     if status == 303 and method != "HEAD":
+//         return "GET"
+//     if status == 302 and method != "HEAD":
+//         return "GET"
+//     if status == 301 and method == "POST":
+//         return "GET"
+//     return method
 std::string _rebuild_method(std::string_view method, int32_t status) {
-    // # Mirrors requests.Session.rebuild_method: 303 and 302 coerce any non-HEAD
-    // # method to GET; 301 coerces only POST. 307/308 preserve the method.
-    // if status == 303 and method != "HEAD":
     if (((status == 303) && (method != "HEAD"))) {
-        // return "GET"
         return "GET";
     }
-    // if status == 302 and method != "HEAD":
     if (((status == 302) && (method != "HEAD"))) {
-        // return "GET"
         return "GET";
     }
-    // if status == 301 and method == "POST":
     if (((status == 301) && (method == "POST"))) {
-        // return "GET"
         return "GET";
     }
-    // return method
     return std::string(method);
 }
 
 // def _send_recv(conn: Box[_Connection], method: str, target: str,
-// body: bytes | None, hdrs: dict[str, str],
-// url: str) -> Own[HTTPResponse]:
+//                body: bytes | None, hdrs: dict[str, str],
+//                url: str) -> Own[HTTPResponse]:
+//     # Send the request and read the response head, re-wrapping socket errors
+//     # into the requests surface. Order matters -- each arm's exception is an
+//     # OSError subclass and the first matching handler wins: ssl.SSLError
+//     # (TLS/cert) before TimeoutError (a timed-out connect) before the generic
+//     # OSError (CPython's SSLError/Timeout/ConnectionError split).
+//     #
+//     # Kept a separate function (not an inline try) so its result binds to a
+//     # normal local in _request_on: a try-block-scoped Own local is stored in
+//     # optional form and cannot be MOVED into the streamed Response's raw field
+//     # afterwards -- it would silently copy, which the non-copyable HTTPResponse
+//     # forbids. See BUGS.md on try-scoped-local moves.
+//     try:
+//         conn.request(method, target, body, hdrs)
+//         return conn.getresponse()
+//     except ssl.SSLError as e:
+//         conn.close()
+//         raise SSLError("TLS error for " + url + ": " + str(e))
+//     except TimeoutError:
+//         conn.close()
+//         raise Timeout("request timed out: " + url)
+//     except OSError:
+//         conn.close()
+//         raise ConnectionError("connection failed: " + url)
 ::tpystd::http::client::HTTPResponse _send_recv(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view target, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>& hdrs, std::string_view url) {
-    // # Send the request and read the response head, re-wrapping socket errors
-    // # into the requests surface. Order matters -- each arm's exception is an
-    // # OSError subclass and the first matching handler wins: ssl.SSLError
-    // # (TLS/cert) before TimeoutError (a timed-out connect) before the generic
-    // # OSError (CPython's SSLError/Timeout/ConnectionError split).
-    // #
-    // # Kept a separate function (not an inline try) so its result binds to a
-    // # normal local in _request_on: a try-block-scoped Own local is stored in
-    // # optional form and cannot be MOVED into the streamed Response's raw field
-    // # afterwards -- it would silently copy, which the non-copyable HTTPResponse
-    // # forbids. See BUGS.md on try-scoped-local moves.
-    // try:
     {
         try {
-            // conn.request(method, target, body, hdrs)
             conn.__deref__().request(method, target, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt, &(hdrs));
-            // return conn.getresponse()
             return conn.__deref__().getresponse();
         } catch (const ::tpystd::ssl::SSLError& e) {
-            // conn.close()
             conn.__deref__().close();
-            // raise SSLError("TLS error for " + url + ": " + str(e))
             throw SSLError((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("TLS error for ", url)), ": ")), std::string(::tpy::__str__(e)))));
         } catch (const ::tpy::TimeoutError&) {
-            // conn.close()
             conn.__deref__().close();
-            // raise Timeout("request timed out: " + url)
             throw Timeout((::tpy::str_concat("request timed out: ", url)));
         } catch (const ::tpy::OSError&) {
-            // conn.close()
             conn.__deref__().close();
-            // raise ConnectionError("connection failed: " + url)
             throw ConnectionError((::tpy::str_concat("connection failed: ", url)));
         }
     }
 }
 
 // def _request_on(conn: Box[_Connection], method: str, url: str,
-// params: dict[str, str] | None,
-// data: bytes | dict[str, str] | None,
-// files: dict[str, FileField] | None,
-// json: JsonValue | None, headers: dict[str, str] | None,
-// auth: tuple[str, str] | None,
-// send_cookies: CookieJar,
-// stream: bool = False, follow: bool = False) -> Own[Response]:
+//                 params: dict[str, str] | None,
+//                 data: bytes | dict[str, str] | None,
+//                 files: dict[str, FileField] | None,
+//                 json: JsonValue | None, headers: dict[str, str] | None,
+//                 auth: tuple[str, str] | None,
+//                 send_cookies: CookieJar,
+//                 stream: bool = False, follow: bool = False) -> Own[Response]:
+//     # By default reads the full body, then closes the connection only when the
+//     # server ended keep-alive (will_close) or the request failed -- a still-open
+//     # connection is reusable and the caller may pool it. With stream=True the
+//     # body is left unread and the live HTTPResponse is moved into the Response;
+//     # the caller then drops (never pools) the connection, since its socket is
+//     # mid-body -- the response reader holds its own dup'd fd and survives.
+//     # stream is honored only on the terminal response: a followed redirect
+//     # (follow and a 3xx carrying Location) is always drained + poolable, so only
+//     # its status/headers matter, matching requests (which streams only the last).
+//     parts = urlsplit(url)
+//     target = _merge_query(parts.path, parts.query, params)
+//     host = parts.hostname
+//     if host is None:
+//         host = ""
+//     req_path = parts.path
+//     if req_path == "":
+//         req_path = "/"
+//     is_https = parts.scheme == "https"
+//
+//     body, body_ctype = _encode_body(data, files, json)
+//     hdrs = _prepare_headers(headers, auth, body_ctype)
+//     # One clock read per request drives both the send-side expiry filter and
+//     # the Set-Cookie expiry resolution below.
+//     now = time.time()
+//     # Attach matching cookies unless the caller set a Cookie header explicitly.
+//     if "Cookie" not in hdrs:
+//         cookie_header = send_cookies.header_for(host, req_path, is_https, now)
+//         if cookie_header != "":
+//             hdrs["Cookie"] = cookie_header
+//
+//     # resp binds to a normal (non-try-scoped) local so it can be moved into the
+//     # streamed Response below; _send_recv owns the send/receive try + rewrapping.
+//     resp = _send_recv(conn, method, target, body, hdrs, url)
+//     # A followable redirect is never streamed (drained + poolable below); only a
+//     # terminal response honors stream. Status + Location are eager (read by
+//     # getresponse), so this decision needs no body read.
+//     followable = (follow and _is_redirect(resp.status)
+//                   and resp.getheader("location") is not None)
+//     do_stream = stream and not followable
+//     status = resp.status
+//     reason = resp.reason
+//     will_close = resp.will_close
+//     # Materialize the header list before the loop so resp is not borrowed across
+//     # it (the loop would otherwise extend resp's live range past the move below).
+//     all_headers = resp.getheaders()
+//     out_headers = CaseInsensitiveDict()
+//     resp_cookies = CookieJar()
+//     for kv in all_headers:
+//         # Parse Set-Cookie from the raw header (before the ", "-join below --
+//         # a cookie's Expires value contains a comma, so a joined Set-Cookie is
+//         # unparseable). Each Set-Cookie is scoped to the request host/path.
+//         if kv[0].lower() == "set-cookie":
+//             resp_cookies._ingest(kv[1], host, req_path, now)
+//         # Join repeated header names with ", " rather than last-wins, matching
+//         # CPython requests (urllib3's HTTPHeaderDict).
+//         existing = out_headers.get(kv[0])
+//         if existing is not None:
+//             out_headers[kv[0]] = existing + ", " + kv[1]
+//         else:
+//             out_headers[kv[0]] = kv[1]
+//     if do_stream:
+//         # Keep the reader alive; the connection is dropped (not pooled) by the
+//         # caller since its socket is mid-body. Move resp into the Response.
+//         return Response(status, reason, url, out_headers, b"", resp_cookies,
+//                         resp)
+//     # Non-stream: read the full body, re-wrapping read errors the same way the
+//     # send phase does.
+//     try:
+//         content = resp.read()
+//     except ssl.SSLError as e:
+//         conn.close()
+//         raise SSLError("TLS error for " + url + ": " + str(e))
+//     except TimeoutError:
+//         conn.close()
+//         raise Timeout("request timed out: " + url)
+//     except OSError:
+//         conn.close()
+//         raise ConnectionError("connection failed: " + url)
+//     if will_close:
+//         conn.close()
+//     return Response(status, reason, url, out_headers, content, resp_cookies)
 Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, CookieJar& send_cookies, bool stream, bool follow) {
-    // # By default reads the full body, then closes the connection only when the
-    // # server ended keep-alive (will_close) or the request failed -- a still-open
-    // # connection is reusable and the caller may pool it. With stream=True the
-    // # body is left unread and the live HTTPResponse is moved into the Response;
-    // # the caller then drops (never pools) the connection, since its socket is
-    // # mid-body -- the response reader holds its own dup'd fd and survives.
-    // # stream is honored only on the terminal response: a followed redirect
-    // # (follow and a 3xx carrying Location) is always drained + poolable, so only
-    // # its status/headers matter, matching requests (which streams only the last).
-    // parts = urlsplit(url)
     ::tpystd::urllib::parse::SplitResult parts = ::tpystd::urllib::parse::urlsplit(url);
-    // target = _merge_query(parts.path, parts.query, params)
     std::string target = _merge_query(parts.path, parts.query, params);
-    // host = parts.hostname
     std::optional<std::string> host = parts.hostname();
-    // if host is None:
     if ((!host.has_value())) {
-        // host = ""
         host = "";
     }
-    // req_path = parts.path
     std::string_view req_path = parts.path;
-    // if req_path == "":
     if ((req_path == "")) {
-        // req_path = "/"
         req_path = "/";
     }
-    // is_https = parts.scheme == "https"
     bool is_https = (parts.scheme == "https");
-    // body, body_ctype = _encode_body(data, files, json)
     auto __tup_1 = _encode_body(data, files, json);
     std::optional<::tpy::Bytes> body = std::get<0>(__tup_1);
     std::optional<std::string> body_ctype = std::get<1>(__tup_1);
-    // hdrs = _prepare_headers(headers, auth, body_ctype)
     ::tpy::ordered_map<std::string, std::string> hdrs = _prepare_headers(headers, auth, body_ctype);
-    // # One clock read per request drives both the send-side expiry filter and
-    // # the Set-Cookie expiry resolution below.
-    // now = time.time()
     double now = ::tpy::time_time();
-    // # Attach matching cookies unless the caller set a Cookie header explicitly.
-    // if "Cookie" not in hdrs:
     if ((!(hdrs.contains("Cookie")))) {
-        // cookie_header = send_cookies.header_for(host, req_path, is_https, now)
         std::string cookie_header = send_cookies.header_for((*host), req_path, is_https, now);
-        // if cookie_header != "":
         if ((cookie_header != "")) {
-            // hdrs["Cookie"] = cookie_header
             ::tpy::__setitem__(hdrs, "Cookie", cookie_header);
         }
     }
-    // # resp binds to a normal (non-try-scoped) local so it can be moved into the
-    // # streamed Response below; _send_recv owns the send/receive try + rewrapping.
-    // resp = _send_recv(conn, method, target, body, hdrs, url)
     ::tpystd::http::client::HTTPResponse resp = _send_recv(conn, method, target, body, hdrs, url);
-    // # A followable redirect is never streamed (drained + poolable below); only a
-    // # terminal response honors stream. Status + Location are eager (read by
-    // # getresponse), so this decision needs no body read.
-    // followable = (follow and _is_redirect(resp.status)
-    // and resp.getheader("location") is not None)
     bool followable = ((follow && _is_redirect(resp.status)) && (resp.getheader("location").has_value()));
-    // do_stream = stream and not followable
     bool do_stream = (stream && (!(followable)));
-    // status = resp.status
     int32_t status = resp.status;
-    // reason = resp.reason
     std::string reason = resp.reason;
-    // will_close = resp.will_close
     bool will_close = resp.will_close;
-    // # Materialize the header list before the loop so resp is not borrowed across
-    // # it (the loop would otherwise extend resp's live range past the move below).
-    // all_headers = resp.getheaders()
     std::vector<std::tuple<std::string, std::string>> all_headers = resp.getheaders();
-    // out_headers = CaseInsensitiveDict()
     CaseInsensitiveDict out_headers = CaseInsensitiveDict();
-    // resp_cookies = CookieJar()
     CookieJar resp_cookies = CookieJar();
-    // for kv in all_headers:
     auto& __obj_0 = all_headers;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        // # Parse Set-Cookie from the raw header (before the ", "-join below --
-        // # a cookie's Expires value contains a comma, so a joined Set-Cookie is
-        // # unparseable). Each Set-Cookie is scoped to the request host/path.
-        // if kv[0].lower() == "set-cookie":
         if ((::tpy::str_lower(std::get<0>(kv)) == "set-cookie")) {
-            // resp_cookies._ingest(kv[1], host, req_path, now)
             resp_cookies._ingest(std::get<1>(kv), (*host), req_path, now);
         }
-        // # Join repeated header names with ", " rather than last-wins, matching
-        // # CPython requests (urllib3's HTTPHeaderDict).
-        // existing = out_headers.get(kv[0])
         std::optional<std::string> existing = out_headers.get(std::get<0>(kv));
-        // if existing is not None:
         if ((existing.has_value())) {
-            // out_headers[kv[0]] = existing + ", " + kv[1]
             ::tpy::__setitem__(out_headers, std::get<0>(kv), (::tpy::str_concat((::tpy::str_concat((*existing), ", ")), std::get<1>(kv))));
-        // else:
         } else {
-            // out_headers[kv[0]] = kv[1]
             ::tpy::__setitem__(out_headers, std::get<0>(kv), std::get<1>(kv));
         }
     }
-    // if do_stream:
     if (do_stream) {
-        // # Keep the reader alive; the connection is dropped (not pooled) by the
-        // # caller since its socket is mid-body. Move resp into the Response.
-        // return Response(status, reason, url, out_headers, b"", resp_cookies,
-        // resp)
         return Response(status, reason, url, std::move(out_headers), ::tpy::BytesView{}, std::move(resp_cookies), std::move(resp));
     }
-    // # Non-stream: read the full body, re-wrapping read errors the same way the
-    // # send phase does.
-    // try:
     ::tpy::Bytes content;
     {
         try {
-            // content = resp.read()
             content = resp.read();
         } catch (const ::tpystd::ssl::SSLError& e) {
-            // conn.close()
             conn.__deref__().close();
-            // raise SSLError("TLS error for " + url + ": " + str(e))
             throw SSLError((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("TLS error for ", url)), ": ")), std::string(::tpy::__str__(e)))));
         } catch (const ::tpy::TimeoutError&) {
-            // conn.close()
             conn.__deref__().close();
-            // raise Timeout("request timed out: " + url)
             throw Timeout((::tpy::str_concat("request timed out: ", url)));
         } catch (const ::tpy::OSError&) {
-            // conn.close()
             conn.__deref__().close();
-            // raise ConnectionError("connection failed: " + url)
             throw ConnectionError((::tpy::str_concat("connection failed: ", url)));
         }
     }
-    // if will_close:
     if (will_close) {
-        // conn.close()
         conn.__deref__().close();
     }
-    // return Response(status, reason, url, out_headers, content, resp_cookies)
     return Response(status, reason, url, std::move(out_headers), content, std::move(resp_cookies));
 }
 
 // def _ssl_context_for(verify: bool | str) -> Own[ssl.SSLContext]:
+//     # verify=True -> verified default context; verify="<path>" -> trust that CA
+//     # file; verify=False -> disable verification (check_hostname must be cleared
+//     # before CERT_NONE, or the context rejects the combination, as in CPython).
+//     ctx = ssl.create_default_context()
+//     if isinstance(verify, str):
+//         ctx.load_verify_locations(verify)
+//         return ctx
+//     if not verify:
+//         ctx.check_hostname = False
+//         ctx.verify_mode = ssl.CERT_NONE
+//     return ctx
 ::tpystd::ssl::SSLContext _ssl_context_for(const ::tpy::Union<bool, std::string>& verify) {
-    // # verify=True -> verified default context; verify="<path>" -> trust that CA
-    // # file; verify=False -> disable verification (check_hostname must be cleared
-    // # before CERT_NONE, or the context rejects the combination, as in CPython).
-    // ctx = ssl.create_default_context()
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
-    // if isinstance(verify, str):
     if (std::holds_alternative<std::string>(verify)) {
         const auto& __verify = std::get<std::string>(verify);
-        // ctx.load_verify_locations(verify)
         ctx.load_verify_locations(__verify);
-        // return ctx
         return ctx;
     }
     const auto& __verify = std::get<bool>(verify);
-    // if not verify:
     if ((!(__verify))) {
-        // ctx.check_hostname = False
         ctx.check_hostname = false;
-        // ctx.verify_mode = ssl.CERT_NONE
         ctx.verify_mode = ::tpystd::ssl::CERT_NONE;
     }
-    // return ctx
     return ctx;
 }
 
 // def _connect(url: str, timeout: float | None = None,
-// verify: bool | str = True) -> Own[Box[_Connection]]:
+//              verify: bool | str = True) -> Own[Box[_Connection]]:
+//     parts = urlsplit(url)
+//     host = parts.hostname
+//     if host is None:
+//         raise ConnectionError("No host in URL: " + url)
+//     pnum = parts.port
+//     # Box sites are rvalues: a nominal @dynamic conformer can't be moved into
+//     # Box from a named local (slicing guard), so build the connection inline.
+//     if parts.scheme == "https":
+//         hport: int32 = DEFAULT_HTTPS_PORT
+//         if pnum is not None:
+//             hport = int32(pnum)
+//         return Box(HTTPSConnection(host, hport, timeout, _ssl_context_for(verify)))
+//     port: int32 = DEFAULT_HTTP_PORT
+//     if pnum is not None:
+//         port = int32(pnum)
+//     return Box(HTTPConnection(host, port, timeout))
 ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> _connect(std::string_view url, std::optional<double> timeout, const ::tpy::Union<bool, std::string>& verify) {
-    // parts = urlsplit(url)
     ::tpystd::urllib::parse::SplitResult parts = ::tpystd::urllib::parse::urlsplit(url);
-    // host = parts.hostname
     std::optional<std::string> host = parts.hostname();
-    // if host is None:
     if ((!host.has_value())) {
-        // raise ConnectionError("No host in URL: " + url)
         throw ConnectionError((::tpy::str_concat("No host in URL: ", url)));
     }
-    // pnum = parts.port
     std::optional<::tpy::BigInt> pnum = parts.port();
-    // # Box sites are rvalues: a nominal @dynamic conformer can't be moved into
-    // # Box from a named local (slicing guard), so build the connection inline.
-    // if parts.scheme == "https":
     if ((parts.scheme == "https")) {
-        // hport: int32 = DEFAULT_HTTPS_PORT
         int32_t hport = DEFAULT_HTTPS_PORT;
-        // if pnum is not None:
         if ((pnum.has_value())) {
-            // hport = int32(pnum)
             hport = ((*pnum)).to_fixed_check<int32_t>();
         }
-        // return Box(HTTPSConnection(host, hport, timeout, _ssl_context_for(verify)))
         ::tpystd::ssl::SSLContext __tmp_2 = _ssl_context_for(verify);
         return ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection((*host), hport, timeout, &(__tmp_2)));
     }
-    // port: int32 = DEFAULT_HTTP_PORT
     int32_t port = DEFAULT_HTTP_PORT;
-    // if pnum is not None:
     if ((pnum.has_value())) {
-        // port = int32(pnum)
         port = ((*pnum)).to_fixed_check<int32_t>();
     }
-    // return Box(HTTPConnection(host, port, timeout))
     return ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection((*host), port, timeout));
 }
 
 // def _pool_key(url: str, verify: bool | str) -> str:
+//     # One pooled connection per (scheme, host, port) -- plus the TLS trust
+//     # selection, so reusing a socket never silently changes what a request
+//     # trusts (a different `verify` gets its own connection).
+//     parts = urlsplit(url)
+//     scheme = parts.scheme
+//     host = parts.hostname
+//     if host is None:
+//         host = ""
+//     port: int32 = DEFAULT_HTTPS_PORT if scheme == "https" else DEFAULT_HTTP_PORT
+//     pnum = parts.port
+//     if pnum is not None:
+//         port = int32(pnum)
+//     # isinstance + early return (not elif): the elif arm's `not verify` on the
+//     # un-narrowed bool|str union miscompiles (BUGS.md); _ssl_context_for uses
+//     # the same return-based shape.
+//     if isinstance(verify, str):
+//         return scheme + "|" + host + "|" + str(port) + "|path:" + verify
+//     vtok: str = "on"
+//     if not verify:
+//         vtok = "off"
+//     return scheme + "|" + host + "|" + str(port) + "|" + vtok
 std::string _pool_key(std::string_view url, const ::tpy::Union<bool, std::string>& verify) {
-    // # One pooled connection per (scheme, host, port) -- plus the TLS trust
-    // # selection, so reusing a socket never silently changes what a request
-    // # trusts (a different `verify` gets its own connection).
-    // parts = urlsplit(url)
     ::tpystd::urllib::parse::SplitResult parts = ::tpystd::urllib::parse::urlsplit(url);
-    // scheme = parts.scheme
     std::string_view scheme = parts.scheme;
-    // host = parts.hostname
     std::optional<std::string> host = parts.hostname();
-    // if host is None:
     if ((!host.has_value())) {
-        // host = ""
         host = "";
     }
-    // port: int32 = DEFAULT_HTTPS_PORT if scheme == "https" else DEFAULT_HTTP_PORT
     int32_t port = (((scheme == "https")) ? (DEFAULT_HTTPS_PORT) : (DEFAULT_HTTP_PORT));
-    // pnum = parts.port
     std::optional<::tpy::BigInt> pnum = parts.port();
-    // if pnum is not None:
     if ((pnum.has_value())) {
-        // port = int32(pnum)
         port = ((*pnum)).to_fixed_check<int32_t>();
     }
-    // # isinstance + early return (not elif): the elif arm's `not verify` on the
-    // # un-narrowed bool|str union miscompiles (BUGS.md); _ssl_context_for uses
-    // # the same return-based shape.
-    // if isinstance(verify, str):
     if (std::holds_alternative<std::string>(verify)) {
         const auto& __verify = std::get<std::string>(verify);
-        // return scheme + "|" + host + "|" + str(port) + "|path:" + verify
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(scheme, "|")), (*host))), "|")), ::tpy::fixed_to_str<int32_t>(port))), "|path:")), __verify));
     }
     const auto& __verify = std::get<bool>(verify);
-    // vtok: str = "on"
     std::string_view vtok = "on";
-    // if not verify:
     if ((!(__verify))) {
-        // vtok = "off"
         vtok = "off";
     }
-    // return scheme + "|" + host + "|" + str(port) + "|" + vtok
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(scheme, "|")), (*host))), "|")), ::tpy::fixed_to_str<int32_t>(port))), "|")), vtok));
 }
 
 // def request(method: str, url: str, params: dict[str, str] | None = None,
-// data: bytes | dict[str, str] | None = None,
-// json: JsonValue | None = None,
-// headers: dict[str, str] | None = None,
-// auth: tuple[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// files: dict[str, FileField] | None = None,
-// stream: bool = False
-// ) -> Own[Response]:
+//             data: bytes | dict[str, str] | None = None,
+//             json: JsonValue | None = None,
+//             headers: dict[str, str] | None = None,
+//             auth: tuple[str, str] | None = None,
+//             timeout: float | None = None,
+//             allow_redirects: bool = True,
+//             verify: bool | str = True,
+//             cookies: dict[str, str] | None = None,
+//             files: dict[str, FileField] | None = None,
+//             stream: bool = False
+//             ) -> Own[Response]:
+//     # A fresh Session per call, like CPython requests' module-level API (its
+//     # pool dies with the call too; same-host redirect hops still reuse the
+//     # pooled connection within the call). Routing through Session keeps the
+//     # redirect engine in one place. files= is last so the existing positional
+//     # param order (params/data/json/headers/...) is preserved for callers.
+//     s = Session()
+//     return s.request(method, url, params, data, json, headers, auth, timeout,
+//                      allow_redirects, verify, cookies, files, stream)
 Response request(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
-    // # A fresh Session per call, like CPython requests' module-level API (its
-    // # pool dies with the call too; same-host redirect hops still reuse the
-    // # pooled connection within the call). Routing through Session keeps the
-    // # redirect engine in one place. files= is last so the existing positional
-    // # param order (params/data/json/headers/...) is preserved for callers.
-    // s = Session()
     Session s = Session();
-    // return s.request(method, url, params, data, json, headers, auth, timeout,
-    // allow_redirects, verify, cookies, files, stream)
     return s.request(method, url, params, data, json, headers, auth, timeout, allow_redirects, verify, cookies, files, stream);
 }
 
 // def get(url: str, params: dict[str, str] | None = None,
-// headers: dict[str, str] | None = None,
-// auth: tuple[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// stream: bool = False) -> Own[Response]:
+//         headers: dict[str, str] | None = None,
+//         auth: tuple[str, str] | None = None,
+//         timeout: float | None = None,
+//         allow_redirects: bool = True,
+//         verify: bool | str = True,
+//         cookies: dict[str, str] | None = None,
+//         stream: bool = False) -> Own[Response]:
+//     return request("GET", url, params, None, None, headers, auth, timeout,
+//                    allow_redirects, verify, cookies, None, stream)
 Response get(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
-    // return request("GET", url, params, None, None, headers, auth, timeout,
-    // allow_redirects, verify, cookies, None, stream)
     return request("GET", url, params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, headers, auth, timeout, allow_redirects, verify, cookies, nullptr, stream);
 }
 
 // def head(url: str, params: dict[str, str] | None = None,
-// headers: dict[str, str] | None = None,
-// auth: tuple[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = False,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// stream: bool = False) -> Own[Response]:
+//          headers: dict[str, str] | None = None,
+//          auth: tuple[str, str] | None = None,
+//          timeout: float | None = None,
+//          allow_redirects: bool = False,
+//          verify: bool | str = True,
+//          cookies: dict[str, str] | None = None,
+//          stream: bool = False) -> Own[Response]:
+//     return request("HEAD", url, params, None, None, headers, auth, timeout,
+//                    allow_redirects, verify, cookies, None, stream)
 Response head(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
-    // return request("HEAD", url, params, None, None, headers, auth, timeout,
-    // allow_redirects, verify, cookies, None, stream)
     return request("HEAD", url, params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, headers, auth, timeout, allow_redirects, verify, cookies, nullptr, stream);
 }
 
 // def post(url: str, data: bytes | dict[str, str] | None = None,
-// json: JsonValue | None = None,
-// params: dict[str, str] | None = None,
-// headers: dict[str, str] | None = None,
-// auth: tuple[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// files: dict[str, FileField] | None = None,
-// stream: bool = False
-// ) -> Own[Response]:
+//          json: JsonValue | None = None,
+//          params: dict[str, str] | None = None,
+//          headers: dict[str, str] | None = None,
+//          auth: tuple[str, str] | None = None,
+//          timeout: float | None = None,
+//          allow_redirects: bool = True,
+//          verify: bool | str = True,
+//          cookies: dict[str, str] | None = None,
+//          files: dict[str, FileField] | None = None,
+//          stream: bool = False
+//          ) -> Own[Response]:
+//     return request("POST", url, params, data, json, headers, auth, timeout,
+//                    allow_redirects, verify, cookies, files, stream)
 Response post(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
-    // return request("POST", url, params, data, json, headers, auth, timeout,
-    // allow_redirects, verify, cookies, files, stream)
     return request("POST", url, params, data, json, headers, auth, timeout, allow_redirects, verify, cookies, files, stream);
 }
 
 // def put(url: str, data: bytes | dict[str, str] | None = None,
-// json: JsonValue | None = None,
-// params: dict[str, str] | None = None,
-// headers: dict[str, str] | None = None,
-// auth: tuple[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// files: dict[str, FileField] | None = None,
-// stream: bool = False
-// ) -> Own[Response]:
+//         json: JsonValue | None = None,
+//         params: dict[str, str] | None = None,
+//         headers: dict[str, str] | None = None,
+//         auth: tuple[str, str] | None = None,
+//         timeout: float | None = None,
+//         allow_redirects: bool = True,
+//         verify: bool | str = True,
+//         cookies: dict[str, str] | None = None,
+//         files: dict[str, FileField] | None = None,
+//         stream: bool = False
+//         ) -> Own[Response]:
+//     return request("PUT", url, params, data, json, headers, auth, timeout,
+//                    allow_redirects, verify, cookies, files, stream)
 Response put(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
-    // return request("PUT", url, params, data, json, headers, auth, timeout,
-    // allow_redirects, verify, cookies, files, stream)
     return request("PUT", url, params, data, json, headers, auth, timeout, allow_redirects, verify, cookies, files, stream);
 }
 
 // def patch(url: str, data: bytes | dict[str, str] | None = None,
-// json: JsonValue | None = None,
-// params: dict[str, str] | None = None,
-// headers: dict[str, str] | None = None,
-// auth: tuple[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// files: dict[str, FileField] | None = None,
-// stream: bool = False
-// ) -> Own[Response]:
+//           json: JsonValue | None = None,
+//           params: dict[str, str] | None = None,
+//           headers: dict[str, str] | None = None,
+//           auth: tuple[str, str] | None = None,
+//           timeout: float | None = None,
+//           allow_redirects: bool = True,
+//           verify: bool | str = True,
+//           cookies: dict[str, str] | None = None,
+//           files: dict[str, FileField] | None = None,
+//           stream: bool = False
+//           ) -> Own[Response]:
+//     return request("PATCH", url, params, data, json, headers, auth, timeout,
+//                    allow_redirects, verify, cookies, files, stream)
 Response patch(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
-    // return request("PATCH", url, params, data, json, headers, auth, timeout,
-    // allow_redirects, verify, cookies, files, stream)
     return request("PATCH", url, params, data, json, headers, auth, timeout, allow_redirects, verify, cookies, files, stream);
 }
 
 // def delete(url: str, params: dict[str, str] | None = None,
-// headers: dict[str, str] | None = None,
-// auth: tuple[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// stream: bool = False) -> Own[Response]:
+//            headers: dict[str, str] | None = None,
+//            auth: tuple[str, str] | None = None,
+//            timeout: float | None = None,
+//            allow_redirects: bool = True,
+//            verify: bool | str = True,
+//            cookies: dict[str, str] | None = None,
+//            stream: bool = False) -> Own[Response]:
+//     return request("DELETE", url, params, None, None, headers, auth, timeout,
+//                    allow_redirects, verify, cookies, None, stream)
 Response delete_(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
-    // return request("DELETE", url, params, None, None, headers, auth, timeout,
-    // allow_redirects, verify, cookies, None, stream)
     return request("DELETE", url, params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, headers, auth, timeout, allow_redirects, verify, cookies, nullptr, stream);
 }
 
 // def __iter__(self) -> Iterator[str]:
+//     # Deleted markers are tombstones, invisible through every accessor
+//     # (get / in / keys / items) -- iteration must hide them too.
+//     for name in self._store:
+//         if not self._store[name].deleted:
+//             yield name
 std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -880,7 +889,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__nex
         }
         name = *((*__for_it_0))++;
         if ((!(::tpy::__getitem__(__self._store, name).deleted))) {
-            // yield name
             __state = S_RESUME_0;
             return name;
         } else {
@@ -899,26 +907,39 @@ std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__nex
 
 
 // def iter_content(self, chunk_size: int32) -> Iterator[bytes]:
+//     # chunk_size is required (no default): a generator method with a default
+//     # parameter that narrows an Optional reference-type self field drops the
+//     # default in codegen (BUGS.md). requests' chunk_size=1 default is
+//     # pathological anyway -- real callers always pass a size.
+//     r = self._raw
+//     if r is not None:
+//         while True:
+//             chunk = r.read(chunk_size)
+//             if len(chunk) == 0:
+//                 break
+//             yield chunk
+//     else:
+//         # Non-streamed response: chunk over the already-read body, so
+//         # iter_content works regardless of stream= (matching requests).
+//         data = self.content
+//         n = len(data)
+//         pos: int32 = 0
+//         while pos < n:
+//             end = pos + chunk_size
+//             if end > n:
+//                 end = n
+//             yield data[pos:end]
+//             pos = end
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # chunk_size is required (no default): a generator method with a default
-        // # parameter that narrows an Optional reference-type self field drops the
-        // # default in codegen (BUGS.md). requests' chunk_size=1 default is
-        // # pathological anyway -- real callers always pass a size.
-        // r = self._raw
         r = ::tpy::optional_to_ptr(__self._raw);
         if ((r != nullptr)) {
             __state = S_JOIN_1;
             continue;
         } else {
-            // # Non-streamed response: chunk over the already-read body, so
-            // # iter_content works regardless of stream= (matching requests).
-            // data = self.content
             data = __self.content;
-            // n = len(data)
             n = ::tpy::__len__(data);
-            // pos: int32 = 0
             pos = 0;
             __state = S_JOIN_3;
             continue;
@@ -929,7 +950,6 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
         continue;
     }
     case S_RESUME_1: {
-        // pos = end
         pos = end;
         __state = S_JOIN_3;
         continue;
@@ -940,13 +960,11 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
     }
     case S_JOIN_1: {
         if (true) {
-            // chunk = r.read(chunk_size)
             chunk = r->read(chunk_size);
             if ((::tpy::__len__(chunk) == 0)) {
                 __state = S_JOIN_2;
                 continue;
             } else {
-                // yield chunk
                 __state = S_RESUME_0;
                 return chunk;
             }
@@ -961,14 +979,10 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
     }
     case S_JOIN_3: {
         if ((pos < n)) {
-            // end = pos + chunk_size
             end = (::tpy::add_check<int32_t>(pos, chunk_size));
-            // if end > n:
             if ((end > n)) {
-                // end = n
                 end = n;
             }
-            // yield data[pos:end]
             __state = S_RESUME_1;
             return ::tpy::Bytes(::tpy::bytes_slice(data, ::tpy::BasicSlice{pos, end}));
         } else {
@@ -983,25 +997,41 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
 
 
 // def iter_lines(self) -> Iterator[bytes]:
+//     # Yields body lines with the trailing line terminator stripped, buffering
+//     # a partial line across chunk boundaries. Splits on "\n" and strips a
+//     # preceding "\r" (so "\r\n" and "\n" both terminate), matching requests'
+//     # splitlines-based default. Bytes, not decoded (decode_unicode=False).
+//     # A lone "\r" (old-Mac) is NOT a terminator here -- declared divergence
+//     # from requests' full splitlines.
+//     pending = bytearray()
+//     for chunk in self.iter_content(_ITER_LINES_CHUNK):
+//         pending += chunk
+//         buf = bytes(pending)
+//         nl = buf.find(b"\n")
+//         while nl >= 0:
+//             end = nl
+//             if end > 0 and buf[end - 1] == 13:  # strip a preceding CR ("\r\n")
+//                 end = end - 1
+//             yield buf[:end]
+//             buf = bytes(buf[nl + 1:])
+//             nl = buf.find(b"\n")
+//         pending = bytearray(buf)
+//     if len(pending) > 0:
+//         tail = bytes(pending)
+//         tend = len(tail)
+//         if tend > 0 and tail[tend - 1] == 13:
+//             tend = tend - 1
+//         yield tail[:tend]
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # Yields body lines with the trailing line terminator stripped, buffering
-        // # a partial line across chunk boundaries. Splits on "\n" and strips a
-        // # preceding "\r" (so "\r\n" and "\n" both terminate), matching requests'
-        // # splitlines-based default. Bytes, not decoded (decode_unicode=False).
-        // # A lone "\r" (old-Mac) is NOT a terminator here -- declared divergence
-        // # from requests' full splitlines.
-        // pending = bytearray()
         pending.emplace(::tpy::ByteArray());
         __for_src_0.emplace(__self.iter_content(_ITER_LINES_CHUNK));
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // buf = bytes(buf[nl + 1:])
         buf = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(nl, 1)), std::nullopt}));
-        // nl = buf.find(b"\n")
         nl = ::tpy::bytes_find(buf, ::tpy::bytes_literal("\n", 1));
         __state = S_JOIN_1;
         continue;
@@ -1014,16 +1044,11 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
             if ((::tpy::__len__((*pending)) > 0)) {
-                // tail = bytes(pending)
                 tail = ::tpy::Bytes((*pending));
-                // tend = len(tail)
                 tend = ::tpy::__len__(tail);
-                // if tend > 0 and tail[tend - 1] == 13:
                 if (((tend > 0) && (::tpy::bytes_getitem(tail, (::tpy::sub_check<int32_t>(tend, 1))) == 13))) {
-                    // tend = tend - 1
                     tend = (::tpy::sub_check<int32_t>(tend, 1));
                 }
-                // yield tail[:tend]
                 __state = S_RESUME_1;
                 return ::tpy::Bytes(::tpy::bytes_slice(tail, ::tpy::BasicSlice{std::nullopt, tend}));
             } else {
@@ -1032,29 +1057,21 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
             }
         }
         chunk = ::tpy::unwrap_ref(*(*__for_r_0));
-        // pending += chunk
         (*pending) = ::tpy::bytearray_concat((*pending), chunk);
-        // buf = bytes(pending)
         buf = ::tpy::Bytes((*pending));
-        // nl = buf.find(b"\n")
         nl = ::tpy::bytes_find(buf, ::tpy::bytes_literal("\n", 1));
         __state = S_JOIN_1;
         continue;
     }
     case S_JOIN_1: {
         if ((nl >= 0)) {
-            // end = nl
             int32_t end = nl;
-            // if end > 0 and buf[end - 1] == 13:  # strip a preceding CR ("\r\n")
             if (((end > 0) && (::tpy::bytes_getitem(buf, (::tpy::sub_check<int32_t>(end, 1))) == 13))) {
-                // end = end - 1
                 end = (::tpy::sub_check<int32_t>(end, 1));
             }
-            // yield buf[:end]
             __state = S_RESUME_0;
             return ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{std::nullopt, end}));
         } else {
-            // pending = bytearray(buf)
             pending.emplace(::tpy::ByteArray(buf));
             __state = S_JOIN_0;
             continue;
@@ -1072,600 +1089,622 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
 
 
 // def popitem(self) -> Own[tuple[str, str]]:
+//     # Pops the first key (CPython MutableMapping.popitem order). Capture the
+//     # key under a read-only scan, then delete outside the loop -- deleting
+//     # mid-iteration would invalidate the iterator.
+//     lk = ""
+//     found = False
+//     for k in self._store:
+//         lk = k
+//         found = True
+//         break
+//     if not found:
+//         raise KeyError("popitem(): CaseInsensitiveDict is empty")
+//     pair = (String(self._store[lk][0]), String(self._store[lk][1]))
+//     del self._store[lk]
+//     return pair
 std::tuple<std::string, std::string> CaseInsensitiveDict::popitem() {
-    // # Pops the first key (CPython MutableMapping.popitem order). Capture the
-    // # key under a read-only scan, then delete outside the loop -- deleting
-    // # mid-iteration would invalidate the iterator.
-    // lk = ""
     std::string_view lk = "";
-    // found = False
     bool found = false;
-    // for k in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // lk = k
         lk = k;
-        // found = True
         found = true;
-        // break
         break;
     }
-    // if not found:
     if ((!(found))) {
-        // raise KeyError("popitem(): CaseInsensitiveDict is empty")
         throw ::tpy::KeyError("popitem(): CaseInsensitiveDict is empty");
     }
-    // pair = (String(self._store[lk][0]), String(self._store[lk][1]))
     std::tuple<::tpy::String, ::tpy::String> pair = std::tuple<::tpy::String, ::tpy::String>{::tpy::String(std::get<0>(::tpy::__getitem__(this->_store, lk))), ::tpy::String(std::get<1>(::tpy::__getitem__(this->_store, lk)))};
-    // del self._store[lk]
     ::tpy::__delitem__(this->_store, lk);
-    // return pair
     return pair;
 }
 
 // def __eq__(self, other: CaseInsensitiveDict) -> bool:
+//     # Compare by lowercased key, ignoring original casing (matches
+//     # requests' CaseInsensitiveDict).
+//     if len(self._store) != len(other._store):
+//         return False
+//     for lk in self._store:
+//         if lk not in other._store:
+//             return False
+//         if self._store[lk][1] != other._store[lk][1]:
+//             return False
+//     return True
 bool CaseInsensitiveDict::__eq__(const CaseInsensitiveDict& other) const {
-    // # Compare by lowercased key, ignoring original casing (matches
-    // # requests' CaseInsensitiveDict).
-    // if len(self._store) != len(other._store):
     if ((::tpy::__len__(this->_store) != ::tpy::__len__(other._store))) {
-        // return False
         return false;
     }
-    // for lk in self._store:
     auto& __obj_0 = this->_store;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view lk = *__beg_0;
-        // if lk not in other._store:
         if (!std::ranges::contains(other._store, lk)) {
-            // return False
             return false;
         }
-        // if self._store[lk][1] != other._store[lk][1]:
         if ((std::get<1>(::tpy::__getitem__(this->_store, lk)) != std::get<1>(::tpy::__getitem__(other._store, lk)))) {
-            // return False
             return false;
         }
     }
-    // return True
     return true;
 }
 
 // def matches(self, host: str, path: str, is_https: bool, now: float) -> bool:
+//     if self.deleted:
+//         return False
+//     if self.expires_at != 0.0 and now >= self.expires_at:
+//         return False
+//     if self.secure and not is_https:
+//         return False
+//     if not _path_match(path, self.path):
+//         return False
+//     d = self.domain
+//     if d == "":
+//         return True
+//     if d.startswith("."):
+//         return host == d[1:] or host.endswith(d)
+//     return host == d
 bool Cookie::matches(std::string_view host, std::string_view path, bool is_https, double now) const {
-    // if self.deleted:
     if (this->deleted) {
-        // return False
         return false;
     }
-    // if self.expires_at != 0.0 and now >= self.expires_at:
     if (((this->expires_at != 0.0) && (now >= this->expires_at))) {
-        // return False
         return false;
     }
-    // if self.secure and not is_https:
     if ((this->secure && (!(is_https)))) {
-        // return False
         return false;
     }
-    // if not _path_match(path, self.path):
     if ((!(_path_match(path, this->path)))) {
-        // return False
         return false;
     }
-    // d = self.domain
     std::string_view d = this->domain;
-    // if d == "":
     if ((d == "")) {
-        // return True
         return true;
     }
-    // if d.startswith("."):
     if (::tpy::str_startswith(d, ".")) {
-        // return host == d[1:] or host.endswith(d)
         return ((host == ::tpy::str_slice(d, ::tpy::BasicSlice{1, std::nullopt})) || ::tpy::str_endswith(host, d));
     }
-    // return host == d
     return (host == d);
 }
 
 // def _ingest(self, raw: str, req_host: str, req_path: str,
-// now: float) -> None:
+//             now: float) -> None:
+//     # Parse one Set-Cookie header value into the jar. The first ";"-segment
+//     # is name=value; the rest are attributes (Domain/Path/Secure/Max-Age/
+//     # Expires honored; HttpOnly parsed-and-ignored). Defaults: host-only
+//     # domain (the request host), path "/".
+//     segs = raw.split(";")
+//     if len(segs) == 0:
+//         return
+//     first = segs[0].strip()
+//     eq = first.find("=")
+//     if eq < 0:
+//         return
+//     name = first[:eq].strip()
+//     if name == "":
+//         return
+//     value = first[eq + 1:].strip()
+//     domain_attr: str = ""   # bare Domain= value; "" -> host-only cookie
+//     path: str = "/"
+//     secure = False
+//     # Expiry: Max-Age takes precedence over Expires (RFC 6265). Track each
+//     # separately and resolve after the loop.
+//     max_age_set = False
+//     max_age_secs = 0
+//     bad_max_age = False
+//     expires_ts = 0.0
+//     expires_set = False
+//     i = 1
+//     while i < len(segs):
+//         attr = segs[i].strip()
+//         i += 1
+//         aeq = attr.find("=")
+//         if aeq < 0:
+//             if attr.lower() == "secure":
+//                 secure = True
+//             continue
+//         an = attr[:aeq].strip().lower()
+//         av = attr[aeq + 1:].strip()
+//         if an == "domain":
+//             d = av
+//             if d.startswith("."):
+//                 d = d[1:]
+//             domain_attr = d
+//         elif an == "path":
+//             if av != "":
+//                 path = av
+//         elif an == "max-age":
+//             ok, secs = _parse_maxage(av)
+//             if ok:
+//                 max_age_set = True
+//                 max_age_secs = secs
+//             else:
+//                 bad_max_age = True
+//         elif an == "expires":
+//             ok2, ts = _parse_http_date(av)
+//             if ok2:
+//                 expires_set = True
+//                 expires_ts = ts
+//     # A malformed Max-Age discards the whole Set-Cookie (CPython's
+//     # http.cookiejar marks it a bad cookie), leaving any prior same-name
+//     # cookie untouched -- not just the attribute ignored.
+//     if bad_max_age:
+//         return
+//     domain: str = req_host   # host-only (exact-host match) by default
+//     if domain_attr != "":
+//         # RFC 6265: a Domain attribute must domain-match the responding host,
+//         # else the cookie is rejected outright -- otherwise a host could
+//         # plant a cookie scoped to an unrelated domain that the jar would
+//         # then resend there.
+//         if req_host == domain_attr or req_host.endswith("." + domain_attr):
+//             domain = "." + domain_attr
+//         else:
+//             return
+//     # Resolve expiry -> an absolute Unix time (0.0 = session cookie). An
+//     # already-past expiry becomes a delete marker (drops the cookie and
+//     # propagates the removal into a persisted jar on merge).
+//     expires_at = 0.0
+//     delete = False
+//     if max_age_set:
+//         if max_age_secs <= 0:
+//             delete = True
+//         else:
+//             expires_at = now + float(max_age_secs)
+//     elif expires_set:
+//         if expires_ts <= now:
+//             delete = True
+//         else:
+//             expires_at = expires_ts
+//     self._store[name] = Cookie(name, value, domain, path, secure, delete,
+//                                expires_at)
 void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::string_view req_path, double now) {
-    // # Parse one Set-Cookie header value into the jar. The first ";"-segment
-    // # is name=value; the rest are attributes (Domain/Path/Secure/Max-Age/
-    // # Expires honored; HttpOnly parsed-and-ignored). Defaults: host-only
-    // # domain (the request host), path "/".
-    // segs = raw.split(";")
     std::vector<std::string> segs = ::tpy::str_split(raw, ";");
-    // if len(segs) == 0:
     if ((::tpy::__len__(segs) == 0)) {
-        // return
         return;
     }
-    // first = segs[0].strip()
     std::string_view first = ::tpy::str_strip(::tpy::__getitem__(segs, 0));
-    // eq = first.find("=")
     int32_t eq = ::tpy::str_find(first, "=");
-    // if eq < 0:
     if ((eq < 0)) {
-        // return
         return;
     }
-    // name = first[:eq].strip()
     std::string_view name = ::tpy::str_strip(::tpy::str_slice(first, ::tpy::BasicSlice{std::nullopt, eq}));
-    // if name == "":
     if ((name == "")) {
-        // return
         return;
     }
-    // value = first[eq + 1:].strip()
     std::string_view value = ::tpy::str_strip(::tpy::str_slice(first, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(eq, 1)), std::nullopt}));
-    // domain_attr: str = ""   # bare Domain= value; "" -> host-only cookie
     std::string_view domain_attr = "";
-    // path: str = "/"
     std::string_view path = "/";
-    // secure = False
     bool secure = false;
-    // # Expiry: Max-Age takes precedence over Expires (RFC 6265). Track each
-    // # separately and resolve after the loop.
-    // max_age_set = False
     bool max_age_set = false;
-    // max_age_secs = 0
     ::tpy::BigInt max_age_secs = ::tpy::BigInt(0);
-    // bad_max_age = False
     bool bad_max_age = false;
-    // expires_ts = 0.0
     double expires_ts = 0.0;
-    // expires_set = False
     bool expires_set = false;
-    // i = 1
     int32_t i = 1;
-    // while i < len(segs):
     while ((i < ::tpy::__len__(segs))) {
-        // attr = segs[i].strip()
         std::string_view attr = ::tpy::str_strip(segs[static_cast<std::size_t>(i)]);
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
-        // aeq = attr.find("=")
         int32_t aeq = ::tpy::str_find(attr, "=");
-        // if aeq < 0:
         if ((aeq < 0)) {
-            // if attr.lower() == "secure":
             if ((::tpy::str_lower(attr) == "secure")) {
-                // secure = True
                 secure = true;
             }
-            // continue
             continue;
         }
-        // an = attr[:aeq].strip().lower()
         std::string an = ::tpy::str_lower(::tpy::str_strip(::tpy::str_slice(attr, ::tpy::BasicSlice{std::nullopt, aeq})));
-        // av = attr[aeq + 1:].strip()
         std::string_view av = ::tpy::str_strip(::tpy::str_slice(attr, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(aeq, 1)), std::nullopt}));
-        // if an == "domain":
         if ((an == "domain")) {
-            // d = av
             std::string_view d = av;
-            // if d.startswith("."):
             if (::tpy::str_startswith(d, ".")) {
-                // d = d[1:]
                 d = ::tpy::str_slice(d, ::tpy::BasicSlice{1, std::nullopt});
             }
-            // domain_attr = d
             domain_attr = d;
-        // elif an == "path":
         } else if ((an == "path")) {
-            // if av != "":
             if ((av != "")) {
-                // path = av
                 path = av;
             }
-        // elif an == "max-age":
         } else if ((an == "max-age")) {
-            // ok, secs = _parse_maxage(av)
             auto __tup_1 = _parse_maxage(av);
             bool ok = std::get<0>(__tup_1);
             const ::tpy::BigInt& secs = std::get<1>(__tup_1);
-            // if ok:
             if (ok) {
-                // max_age_set = True
                 max_age_set = true;
-                // max_age_secs = secs
                 max_age_secs = secs;
-            // else:
             } else {
-                // bad_max_age = True
                 bad_max_age = true;
             }
-        // elif an == "expires":
         } else if ((an == "expires")) {
-            // ok2, ts = _parse_http_date(av)
             auto __tup_2 = _parse_http_date(av);
             bool ok2 = std::get<0>(__tup_2);
             double ts = std::get<1>(__tup_2);
-            // if ok2:
             if (ok2) {
-                // expires_set = True
                 expires_set = true;
-                // expires_ts = ts
                 expires_ts = ts;
             }
         }
     }
-    // # A malformed Max-Age discards the whole Set-Cookie (CPython's
-    // # http.cookiejar marks it a bad cookie), leaving any prior same-name
-    // # cookie untouched -- not just the attribute ignored.
-    // if bad_max_age:
     if (bad_max_age) {
-        // return
         return;
     }
-    // domain: str = req_host   # host-only (exact-host match) by default
     std::string domain = std::string(req_host);
-    // if domain_attr != "":
     if ((domain_attr != "")) {
-        // # RFC 6265: a Domain attribute must domain-match the responding host,
-        // # else the cookie is rejected outright -- otherwise a host could
-        // # plant a cookie scoped to an unrelated domain that the jar would
-        // # then resend there.
-        // if req_host == domain_attr or req_host.endswith("." + domain_attr):
         if (((req_host == domain_attr) || ::tpy::str_endswith(req_host, (::tpy::str_concat(".", domain_attr))))) {
-            // domain = "." + domain_attr
             domain = (::tpy::str_concat(".", domain_attr));
-        // else:
         } else {
-            // return
             return;
         }
     }
-    // # Resolve expiry -> an absolute Unix time (0.0 = session cookie). An
-    // # already-past expiry becomes a delete marker (drops the cookie and
-    // # propagates the removal into a persisted jar on merge).
-    // expires_at = 0.0
     double expires_at = 0.0;
-    // delete = False
     bool delete_ = false;
-    // if max_age_set:
     if (max_age_set) {
-        // if max_age_secs <= 0:
         if ((max_age_secs <= 0)) {
-            // delete = True
             delete_ = true;
-        // else:
         } else {
-            // expires_at = now + float(max_age_secs)
             expires_at = ((now) + (static_cast<double>(max_age_secs)));
         }
-    // elif expires_set:
     } else if (expires_set) {
-        // if expires_ts <= now:
         if ((expires_ts <= now)) {
-            // delete = True
             delete_ = true;
-        // else:
         } else {
-            // expires_at = expires_ts
             expires_at = expires_ts;
         }
     }
-    // self._store[name] = Cookie(name, value, domain, path, secure, delete,
-    // expires_at)
     ::tpy::__setitem__(this->_store, name, Cookie(name, value, domain, path, secure, delete_, expires_at));
 }
 
 // def __init__(self, status_code: int32, reason: str, url: str,
-// headers: Own[CaseInsensitiveDict], content: bytes,
-// cookies: Own[CookieJar],
-// raw: Own[HTTPResponse] | None = None) -> None:
+//              headers: Own[CaseInsensitiveDict], content: bytes,
+//              cookies: Own[CookieJar],
+//              raw: Own[HTTPResponse] | None = None) -> None:
+//     self.status_code = status_code
+//     self.reason = reason
+//     self.url = url
+//     self.headers = headers
+//     self.content = content
+//     self.cookies = cookies
+//     self.history = []
+//     self._raw = raw
 Response::Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, ::tpy::BytesView content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw) : status_code(status_code), reason(reason), url(url), headers(std::move(headers)), content(::tpy::Bytes(content)), cookies(std::move(cookies)), history(std::vector<Response>{}), _raw(std::move(raw)) {}
 
 // def __init__(self) -> None:
+//     self.headers = {}
+//     self.params = {}
+//     self.auth = None
+//     self.cookies = CookieJar()
+//     self._connection = None
+//     self._redirect_connections = []
+//     self._pool = {}
+//     self.max_redirects = 30
 Session::Session() : headers(::tpy::ordered_map<std::string, std::string>()), params(::tpy::ordered_map<std::string, std::string>()), auth(std::nullopt), cookies(CookieJar()), _connection(std::nullopt), _redirect_connections(std::vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>{}), _pool(::tpy::ordered_map<std::string, ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>()), max_redirects(30) {}
 
 // def _send_for_hop(self, method: str, url: str,
-// params: dict[str, str] | None,
-// data: bytes | dict[str, str] | None,
-// files: dict[str, FileField] | None,
-// json: JsonValue | None, headers: dict[str, str],
-// auth: tuple[str, str] | None,
-// timeout: float | None, hop: int32,
-// send_cookies: CookieJar,
-// verify: bool | str = True,
-// stream: bool = False,
-// follow: bool = False) -> Own[Response]:
+//                   params: dict[str, str] | None,
+//                   data: bytes | dict[str, str] | None,
+//                   files: dict[str, FileField] | None,
+//                   json: JsonValue | None, headers: dict[str, str],
+//                   auth: tuple[str, str] | None,
+//                   timeout: float | None, hop: int32,
+//                   send_cookies: CookieJar,
+//                   verify: bool | str = True,
+//                   stream: bool = False,
+//                   follow: bool = False) -> Own[Response]:
+//     # A streamed response (resp._raw is not None) is never pooled: its socket
+//     # is mid-body, so reuse would interleave a new request into the unread
+//     # stream. The connection Box is dropped instead (RAII closes its fd; the
+//     # response reader's own dup keeps the socket alive).
+//     if hop == 0 and self._connection is not None:
+//         # Clear even if the request raises -- the injected connection is
+//         # single-use and must not be reused after a failure.
+//         try:
+//             return _request_on(self._connection, method, url, params, data,
+//                                files, json, headers, auth, send_cookies,
+//                                stream, follow)
+//         finally:
+//             self._connection = None
+//     if len(self._redirect_connections) > 0:
+//         conn = self._redirect_connections.pop(0)
+//         return _request_on(conn, method, url, params, data, files, json,
+//                            headers, auth, send_cookies, stream, follow)
+//     # Pool pop -> use -> put back. A raise inside _request_on drops the
+//     # popped/fresh connection (RAII closes the socket); on success a
+//     # fully-read response goes back in even if will_close closed it -- the
+//     # pooled entry then acts as a lazy-reconnect handle for the next request
+//     # to the same target.
+//     key = _pool_key(url, verify)
+//     if key in self._pool:
+//         pooled = self._pool.pop(key)
+//         resp = _request_on(pooled, method, url, params, data, files, json,
+//                            headers, auth, send_cookies, stream, follow)
+//         if resp._raw is None:
+//             self._pool[key] = pooled
+//         return resp
+//     fresh = _connect(url, timeout, verify)
+//     resp = _request_on(fresh, method, url, params, data, files, json,
+//                        headers, auth, send_cookies, stream, follow)
+//     if resp._raw is None:
+//         self._pool[key] = fresh
+//     return resp
 Response Session::_send_for_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, int32_t hop, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify, bool stream, bool follow) {
-    // # A streamed response (resp._raw is not None) is never pooled: its socket
-    // # is mid-body, so reuse would interleave a new request into the unread
-    // # stream. The connection Box is dropped instead (RAII closes its fd; the
-    // # response reader's own dup keeps the socket alive).
-    // if hop == 0 and self._connection is not None:
     if (((hop == 0) && (this->_connection.has_value()))) {
-        // # Clear even if the request raises -- the injected connection is
-        // # single-use and must not be reused after a failure.
-        // try:
         {
             bool __fin_ran_1 = false;
             try {
-                // return _request_on(self._connection, method, url, params, data,
-                // files, json, headers, auth, send_cookies,
-                // stream, follow)
                 Response __tpy_ret_0 = _request_on((*this->_connection), method, url, params, data, files, json, &(headers), auth, send_cookies, stream, follow);
                 __fin_ran_1 = true;
-                // self._connection = None
                 this->_connection = std::nullopt;
                 return __tpy_ret_0;
             } catch (...) {
                 if (!__fin_ran_1) {
-                    // self._connection = None
                     this->_connection = std::nullopt;
                 }
                 throw;
             }
         }
     }
-    // if len(self._redirect_connections) > 0:
     if ((::tpy::__len__(this->_redirect_connections) > 0)) {
-        // conn = self._redirect_connections.pop(0)
         ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn = ::tpy::list_pop_at(this->_redirect_connections, 0);
-        // return _request_on(conn, method, url, params, data, files, json,
-        // headers, auth, send_cookies, stream, follow)
         return _request_on(conn, method, url, params, data, files, json, &(headers), auth, send_cookies, stream, follow);
     }
-    // # Pool pop -> use -> put back. A raise inside _request_on drops the
-    // # popped/fresh connection (RAII closes the socket); on success a
-    // # fully-read response goes back in even if will_close closed it -- the
-    // # pooled entry then acts as a lazy-reconnect handle for the next request
-    // # to the same target.
-    // key = _pool_key(url, verify)
     std::string key = _pool_key(url, verify);
-    // if key in self._pool:
     if ((this->_pool.contains(key))) {
-        // pooled = self._pool.pop(key)
         ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> pooled = ::tpy::dict_pop(this->_pool, key);
-        // resp = _request_on(pooled, method, url, params, data, files, json,
-        // headers, auth, send_cookies, stream, follow)
         Response __slot_1 = _request_on(pooled, method, url, params, data, files, json, &(headers), auth, send_cookies, stream, follow);
         Response* resp = &__slot_1;
-        // if resp._raw is None:
         if ((!resp->_raw.has_value())) {
-            // self._pool[key] = pooled
             ::tpy::__setitem__(this->_pool, key, std::move(pooled));
         }
-        // return resp
         return std::move((*resp));
     }
-    // fresh = _connect(url, timeout, verify)
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> fresh = _connect(url, timeout, verify);
-    // resp = _request_on(fresh, method, url, params, data, files, json,
-    // headers, auth, send_cookies, stream, follow)
     Response __slot_3 = _request_on(fresh, method, url, params, data, files, json, &(headers), auth, send_cookies, stream, follow);
     Response* resp = &__slot_3;
-    // if resp._raw is None:
     if ((!resp->_raw.has_value())) {
-        // self._pool[key] = fresh
         ::tpy::__setitem__(this->_pool, key, std::move(fresh));
     }
-    // return resp
     return std::move((*resp));
 }
 
 // def _hop(self, method: str, url: str, params: dict[str, str] | None,
-// data: bytes | dict[str, str] | None,
-// files: dict[str, FileField] | None,
-// json: JsonValue | None,
-// headers: dict[str, str], auth: tuple[str, str] | None,
-// timeout: float | None, history: Own[list[Response]],
-// hop: int32, follow: bool, send_cookies: CookieJar,
-// verify: bool | str = True,
-// stream: bool = False) -> Own[Response]:
+//          data: bytes | dict[str, str] | None,
+//          files: dict[str, FileField] | None,
+//          json: JsonValue | None,
+//          headers: dict[str, str], auth: tuple[str, str] | None,
+//          timeout: float | None, history: Own[list[Response]],
+//          hop: int32, follow: bool, send_cookies: CookieJar,
+//          verify: bool | str = True,
+//          stream: bool = False) -> Own[Response]:
+//     # One request, then (when following) recurse on a 3xx Location. Recursion
+//     # rather than a loop so each `return resp` is a straight-line last use --
+//     # a loop-carried Own local trips the borrow checker's return guard.
+//     # `follow` gates whether _request_on may stream this hop: only a terminal
+//     # (non-followed) response streams, so an intermediate redirect is always
+//     # drained + poolable and never lands in history holding an open reader.
+//     resp = self._send_for_hop(method, url, params, data, files, json,
+//                               headers, auth, timeout, hop, send_cookies,
+//                               verify, stream, follow)
+//     # Persist cookies this response set (into the Session jar) and feed them
+//     # to the send jar so a following redirect hop sends the ones that match.
+//     self.cookies.update(resp.cookies)
+//     send_cookies.update(resp.cookies)
+//     if not follow or not _is_redirect(resp.status_code):
+//         resp.history = history
+//         return resp
+//     location = resp.headers.get("location")
+//     if location is None:
+//         resp.history = history
+//         return resp
+//     if len(history) >= self.max_redirects:
+//         raise TooManyRedirects("Exceeded " + str(self.max_redirects)
+//                                + " redirects for url: " + url)
+//     next_url = urljoin(url, location)
+//     next_scheme = urlsplit(next_url).scheme
+//     if next_scheme != "" and next_scheme != "http" and next_scheme != "https":
+//         raise ConnectionError("redirect to unsupported scheme '"
+//                               + next_scheme + "': " + next_url)
+//     # Read everything needed off `resp` before appending it -- the append is
+//     # resp's last use so it moves into history (no copy).
+//     new_method = _rebuild_method(method, resp.status_code)
+//     next_auth = auth
+//     if _should_strip_auth(url, next_url):
+//         # Don't leak credentials across a host/scheme/port change
+//         # (requests.rebuild_auth / should_strip_auth).
+//         if "Authorization" in headers:
+//             del headers["Authorization"]
+//         next_auth = None
+//     history.append(resp)
+//     # Redirect targets carry their own query in the Location, so the
+//     # caller's params apply only to the first hop. The data/files/json body
+//     # is forwarded directly (not via a reassignable local) so the recursive-
+//     # union `json` param stays read-only (const) up the call chain.
+//     if new_method != method:
+//         _drop_body_headers(headers)
+//         return self._hop(new_method, next_url, None, None, None, None,
+//                          headers, next_auth, timeout, history, hop + 1, True,
+//                          send_cookies, verify, stream)
+//     return self._hop(new_method, next_url, None, data, files, json, headers,
+//                      next_auth, timeout, history, hop + 1, True,
+//                      send_cookies, verify, stream)
 Response Session::_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, std::vector<Response>&& history, int32_t hop, bool follow, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify, bool stream) {
-    // # One request, then (when following) recurse on a 3xx Location. Recursion
-    // # rather than a loop so each `return resp` is a straight-line last use --
-    // # a loop-carried Own local trips the borrow checker's return guard.
-    // # `follow` gates whether _request_on may stream this hop: only a terminal
-    // # (non-followed) response streams, so an intermediate redirect is always
-    // # drained + poolable and never lands in history holding an open reader.
-    // resp = self._send_for_hop(method, url, params, data, files, json,
-    // headers, auth, timeout, hop, send_cookies,
-    // verify, stream, follow)
     Response resp = this->_send_for_hop(method, url, params, data, files, json, headers, auth, timeout, hop, send_cookies, verify, stream, follow);
-    // # Persist cookies this response set (into the Session jar) and feed them
-    // # to the send jar so a following redirect hop sends the ones that match.
-    // self.cookies.update(resp.cookies)
     this->cookies.update(resp.cookies);
-    // send_cookies.update(resp.cookies)
     send_cookies.update(resp.cookies);
-    // if not follow or not _is_redirect(resp.status_code):
     if (((!(follow)) || (!(_is_redirect(resp.status_code))))) {
-        // resp.history = history
         resp.history = std::move(history);
-        // return resp
         return resp;
     }
-    // location = resp.headers.get("location")
     std::optional<std::string> location = resp.headers.get("location");
-    // if location is None:
     if ((!location.has_value())) {
-        // resp.history = history
         resp.history = std::move(history);
-        // return resp
         return resp;
     }
-    // if len(history) >= self.max_redirects:
     if ((::tpy::__len__(history) >= this->max_redirects)) {
-        // raise TooManyRedirects("Exceeded " + str(self.max_redirects)
-        // + " redirects for url: " + url)
         throw TooManyRedirects((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Exceeded ", ::tpy::fixed_to_str<int32_t>(this->max_redirects))), " redirects for url: ")), url)));
     }
-    // next_url = urljoin(url, location)
     std::string next_url = ::tpystd::urllib::parse::urljoin(url, (*location));
-    // next_scheme = urlsplit(next_url).scheme
     std::string next_scheme = ::tpystd::urllib::parse::urlsplit(next_url).scheme;
-    // if next_scheme != "" and next_scheme != "http" and next_scheme != "https":
     if ((((next_scheme != "") && (next_scheme != "http")) && (next_scheme != "https"))) {
-        // raise ConnectionError("redirect to unsupported scheme '"
-        // + next_scheme + "': " + next_url)
         throw ConnectionError((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("redirect to unsupported scheme '", next_scheme)), "': ")), next_url)));
     }
-    // # Read everything needed off `resp` before appending it -- the append is
-    // # resp's last use so it moves into history (no copy).
-    // new_method = _rebuild_method(method, resp.status_code)
     std::string new_method = _rebuild_method(method, resp.status_code);
-    // next_auth = auth
     std::optional<std::tuple<std::string, std::string>> next_auth = auth;
-    // if _should_strip_auth(url, next_url):
     if (_should_strip_auth(url, next_url)) {
-        // # Don't leak credentials across a host/scheme/port change
-        // # (requests.rebuild_auth / should_strip_auth).
-        // if "Authorization" in headers:
         if ((headers.contains("Authorization"))) {
-            // del headers["Authorization"]
             ::tpy::__delitem__(headers, "Authorization");
         }
-        // next_auth = None
         next_auth = std::nullopt;
     }
-    // history.append(resp)
     history.push_back(std::move(resp));
-    // # Redirect targets carry their own query in the Location, so the
-    // # caller's params apply only to the first hop. The data/files/json body
-    // # is forwarded directly (not via a reassignable local) so the recursive-
-    // # union `json` param stays read-only (const) up the call chain.
-    // if new_method != method:
     if ((new_method != method)) {
-        // _drop_body_headers(headers)
         _drop_body_headers(headers);
-        // return self._hop(new_method, next_url, None, None, None, None,
-        // headers, next_auth, timeout, history, hop + 1, True,
-        // send_cookies, verify, stream)
         return this->_hop(new_method, next_url, nullptr, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, nullptr, headers, next_auth, timeout, std::move(history), (::tpy::add_check<int32_t>(hop, 1)), true, send_cookies, verify, stream);
     }
-    // return self._hop(new_method, next_url, None, data, files, json, headers,
-    // next_auth, timeout, history, hop + 1, True,
-    // send_cookies, verify, stream)
     return this->_hop(new_method, next_url, nullptr, data, files, json, headers, next_auth, timeout, std::move(history), (::tpy::add_check<int32_t>(hop, 1)), true, send_cookies, verify, stream);
 }
 
 // def request(self, method: str, url: str,
-// params: dict[str, str] | None = None,
-// data: bytes | dict[str, str] | None = None,
-// json: JsonValue | None = None,
-// headers: dict[str, str] | None = None,
-// auth: tuple[str, str] | None = None,
-// timeout: float | None = None,
-// allow_redirects: bool = True,
-// verify: bool | str = True,
-// cookies: dict[str, str] | None = None,
-// files: dict[str, FileField] | None = None,
-// stream: bool = False
-// ) -> Own[Response]:
+//             params: dict[str, str] | None = None,
+//             data: bytes | dict[str, str] | None = None,
+//             json: JsonValue | None = None,
+//             headers: dict[str, str] | None = None,
+//             auth: tuple[str, str] | None = None,
+//             timeout: float | None = None,
+//             allow_redirects: bool = True,
+//             verify: bool | str = True,
+//             cookies: dict[str, str] | None = None,
+//             files: dict[str, FileField] | None = None,
+//             stream: bool = False
+//             ) -> Own[Response]:
+//     merged_headers = self._merge_headers(headers)
+//     merged_params = self._merge_params(params)
+//     use_auth = auth
+//     if use_auth is None:
+//         use_auth = self.auth
+//     # The send jar for this call: the persisted Session cookies plus any
+//     # per-call cookies= (unscoped -- domain "" sends them to every hop of
+//     # this call). The per-call ones are NOT persisted into self.cookies.
+//     send_cookies = CookieJar()
+//     send_cookies.update(self.cookies)
+//     if cookies is not None:
+//         for kv in cookies.items():
+//             send_cookies.set(kv[0], kv[1])
+//     history: list[Response] = []
+//     return self._hop(method, url, merged_params, data, files, json,
+//                      merged_headers, use_auth, timeout, history, 0,
+//                      allow_redirects, send_cookies, verify, stream)
 Response Session::request(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
-    // merged_headers = self._merge_headers(headers)
     ::tpy::ordered_map<std::string, std::string> merged_headers = this->_merge_headers(headers);
-    // merged_params = self._merge_params(params)
     ::tpy::ordered_map<std::string, std::string> merged_params = this->_merge_params(params);
-    // use_auth = auth
     std::optional<std::tuple<std::string, std::string>> use_auth = auth;
-    // if use_auth is None:
     if ((!use_auth.has_value())) {
-        // use_auth = self.auth
         use_auth = this->auth;
     }
-    // # The send jar for this call: the persisted Session cookies plus any
-    // # per-call cookies= (unscoped -- domain "" sends them to every hop of
-    // # this call). The per-call ones are NOT persisted into self.cookies.
-    // send_cookies = CookieJar()
     CookieJar send_cookies = CookieJar();
-    // send_cookies.update(self.cookies)
     send_cookies.update(this->cookies);
-    // if cookies is not None:
     if ((cookies != nullptr)) {
-        // for kv in cookies.items():
         auto __obj_0 = ::tpy::dict_items((*cookies));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& kv = *__beg_0;
-            // send_cookies.set(kv[0], kv[1])
             send_cookies.set(std::get<0>(kv), std::get<1>(kv));
         }
     }
-    // history: list[Response] = []
     std::vector<Response> history = std::vector<Response>{};
-    // return self._hop(method, url, merged_params, data, files, json,
-    // merged_headers, use_auth, timeout, history, 0,
-    // allow_redirects, send_cookies, verify, stream)
     return this->_hop(method, url, &(merged_params), data, files, json, merged_headers, use_auth, timeout, std::move(history), 0, allow_redirects, send_cookies, verify, stream);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     if self._connection is not None:
+//         self._connection.close()
+//         self._connection = None
+//     for conn in self._redirect_connections:
+//         conn.close()
+//     for k in self._pool:
+//         self._pool[k].close()
+//     self._pool.clear()
 void Session::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // if self._connection is not None:
     if ((this->_connection.has_value())) {
-        // self._connection.close()
         (*this->_connection).__deref__().close();
-        // self._connection = None
         this->_connection = std::nullopt;
     }
-    // for conn in self._redirect_connections:
     auto& __obj_0 = this->_redirect_connections;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& conn = *__beg_0;
-        // conn.close()
         conn.__deref__().close();
     }
-    // for k in self._pool:
     auto& __obj_1 = this->_pool;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // self._pool[k].close()
         ::tpy::__getitem__(this->_pool, k).__deref__().close();
     }
-    // self._pool.clear()
     this->_pool.clear();
 }
+// from tpy.version import version_info as _tpy_version_info
+// from tplib import Box
+// from http.client import HTTPConnection, HTTPSConnection, HTTPResponse, _Connection
+// import ssl
+// from urllib.parse import urlsplit, urlencode, urljoin
+// from json import loads, dumps, JsonValue
+// from datetime import datetime, UTC
+// import base64
+// import time
+//
+// DEFAULT_HTTP_PORT: Final[int32] = 80
+// DEFAULT_HTTPS_PORT: Final[int32] = 443
+//
+// # Chunk size iter_lines pulls from the raw stream between newline scans. requests
+// # uses 512 for iter_lines; iter_content has no default (see Response.iter_content).
+// _ITER_LINES_CHUNK: Final[int32] = 512
+//
+// # The multipart/form-data boundary. Fixed (not randomized like urllib3) so the
+// # emitted wire bytes are deterministic and snapshot-testable; as with urllib3
+// # there is no scan for the token appearing inside a part's content, which for a
+// # 30-char marker is not a practical collision risk. Plain `str` (not Final):
+// # Final[str] lowers to a StrView, which has no .encode() for the body bytes.
+// _MULTIPART_BOUNDARY: str = "----TPyFormBoundary7MA4YWxkTrZu0gW"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.version import version_info as _tpy_version_info
     ::tpystd::tpy::version::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // from http.client import HTTPConnection, HTTPSConnection, HTTPResponse, _Connection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // import ssl
     ::tpystd::ssl::__tpy_init();
-    // from urllib.parse import urlsplit, urlencode, urljoin
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
-    // from json import loads, dumps, JsonValue
     ::tpystd::json::__tpy_init();
-    // from datetime import datetime, UTC
     ::tpystd::datetime::__tpy_init();
-    // import base64
     ::tpystd::base64::__tpy_init();
-    // import time
-    // # Chunk size iter_lines pulls from the raw stream between newline scans. requests
-    // # uses 512 for iter_lines; iter_content has no default (see Response.iter_content).
-    // # The multipart/form-data boundary. Fixed (not randomized like urllib3) so the
-    // # emitted wire bytes are deterministic and snapshot-testable; as with urllib3
-    // # there is no scan for the token appearing inside a part's content, which for a
-    // # 30-char marker is not a practical collision risk. Plain `str` (not Final):
-    // # Final[str] lowers to a StrView, which has no .encode() for the body bytes.
-    // _MULTIPART_BOUNDARY: str = "----TPyFormBoundary7MA4YWxkTrZu0gW"
     _MULTIPART_BOUNDARY = "----TPyFormBoundary7MA4YWxkTrZu0gW";
 }
 

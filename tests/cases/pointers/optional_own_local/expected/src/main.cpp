@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def make_box(v: int) -> Own[Box]:
+//     return Box(v)
 Box make_box(const ::tpy::BigInt& v) {
-    // return Box(v)
     return Box(v);
 }
 
 // def main() -> None:
+//     t: Box | None = make_box(5)  # tpyc: ok
+//     if t is not None:
+//         t.val += 1
+//         print(t.val)
 void main() {
-    // t: Box | None = make_box(5)  # tpyc: ok
     Box __slot_1 = make_box(::tpy::BigInt(5));
     Box* t = &__slot_1;
-    // if t is not None:
     if ((t != nullptr)) {
-        // t.val += 1
         t->val = (t->val) + (::tpy::BigInt(1));
-        // print(t.val)
         std::cout << t->val << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

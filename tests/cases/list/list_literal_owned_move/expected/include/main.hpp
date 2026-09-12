@@ -13,9 +13,13 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def array_lit() -> None:
 void array_lit();
+// def vector_lit() -> None:
 void vector_lit();
+// def not_last_use() -> None:
 void not_last_use();
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,45 +5,48 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     box_int: Box[int32] = Box[int32](42)
+//     print(box_int.get())
+//     box_int.set(100)
+//     print(box_int.get())
+//
+//     box_bool: Box[bool] = Box[bool](True)
+//     print(box_bool.get())
+//     box_bool.set(False)
+//     print(box_bool.get())
+//
+//     ring: Ring[int32] = Ring[int32](0)
+//     ring.put(10)
+//     ring.put(20)
+//     print(ring.get(0))
+//     print(ring.get(1))
+//
+//     v: int32 = 99
+//     print(identity(v))
 void main() {
-    // box_int: Box[int32] = Box[int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
-    // print(box_int.get())
     std::cout << box_int.get() << "\n";
-    // box_int.set(100)
     box_int.set(100);
-    // print(box_int.get())
     std::cout << box_int.get() << "\n";
-    // box_bool: Box[bool] = Box[bool](True)
     Box<bool> box_bool = Box<bool>(true);
-    // print(box_bool.get())
     std::cout << ::tpy::print_bool(box_bool.get()) << "\n";
-    // box_bool.set(False)
     box_bool.set(false);
-    // print(box_bool.get())
     std::cout << ::tpy::print_bool(box_bool.get()) << "\n";
-    // ring: Ring[int32] = Ring[int32](0)
     Ring<int32_t> ring = Ring<int32_t>(0);
-    // ring.put(10)
     ring.put(10);
-    // ring.put(20)
     ring.put(20);
-    // print(ring.get(0))
     std::cout << ring.get(0) << "\n";
-    // print(ring.get(1))
     std::cout << ring.get(1) << "\n";
-    // v: int32 = 99
     int32_t v = 99;
-    // print(identity(v))
     std::cout << identity<int32_t>(v) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

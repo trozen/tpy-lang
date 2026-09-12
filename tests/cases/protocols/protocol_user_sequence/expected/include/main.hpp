@@ -11,10 +11,13 @@ struct IntWrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_seq(s: Sequence[int32]) -> int32:
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t sum_seq(const T_s& s);
+// def first(s: Sequence[int32]) -> int32:
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t first(const T_s& s);
+// def main() -> None:
 void main();
 
 // class IntWrapper:
@@ -51,40 +54,41 @@ inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
 
 
 // def __init__(self, items: list[int32]) -> None:
+//     self.data = items
 inline IntWrapper::IntWrapper(const std::vector<int32_t>& items) : data(items) {}
 
 // def __len__(self) -> int32:
+//     return len(self.data)
 inline int32_t IntWrapper::__len__() const {
-    // return len(self.data)
     return ::tpy::__len__(this->data);
 }
 
 // def __getitem__(self, index: int32) -> int32:
+//     return self.data[index]
 inline int32_t IntWrapper::__getitem__(int32_t index) const {
-    // return self.data[index]
     return ::tpy::__getitem__(this->data, index);
 }
 // def sum_seq(s: Sequence[int32]) -> int32:
+//     total: int32 = 0
+//     i: int32 = 0
+//     while i < len(s):
+//         total += s[i]
+//         i += 1
+//     return total
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t sum_seq(const T_s& s) {
-    // total: int32 = 0
     int32_t total = 0;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < len(s):
     while ((i < ::tpy::__len__(s))) {
-        // total += s[i]
         total = ::tpy::add_check<int32_t>(total, s[static_cast<std::size_t>(i)]);
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return total
     return total;
 }
 // def first(s: Sequence[int32]) -> int32:
+//     return s[0]
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t first(const T_s& s) {
-    // return s[0]
     return ::tpy::__getitem__(s, 0);
 }
 

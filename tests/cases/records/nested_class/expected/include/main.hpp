@@ -11,6 +11,7 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Outer:
@@ -69,11 +70,12 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Pair& obj) {
 
 
 // def __init__(self, y: int32) -> None:
+//     self.y = y
 inline Outer::Inner::Inner(int32_t y) : y(y) {}
 
 // def doubled(self) -> int32:
+//     return self.y * 2
 inline int32_t Outer::Inner::doubled() const {
-    // return self.y * 2
     return (::tpy::mul_check<int32_t>(this->y, 2));
 }
 
@@ -81,9 +83,11 @@ inline int32_t Outer::Inner::doubled() const {
 // # positional argument or left to its default; the keyword
 // # spelling is tests/cases/calls/error_nested_ctor_kwargs.
 // def __init__(self, v: int32, w: int32 = 0) -> None:
+//     self.v = v + w
 inline Outer::Pair::Pair(int32_t v, int32_t w) : v((::tpy::add_check<int32_t>(v, w))) {}
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Outer::Outer(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

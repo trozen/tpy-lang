@@ -4,13 +4,13 @@
 namespace tpyapp::mypackage {
 
 
+// # Package init with side effect
+// print("init executed")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Package init with side effect
-    // print("init executed")
     std::cout << "init executed" << "\n";
 }
 

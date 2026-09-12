@@ -19,12 +19,15 @@ template <typename T>
 struct __coro_unwrap;
 struct __coro_main_coro;
 
+// async def unwrap[T](b: Box[T]) -> T:
 template <typename T>
 __coro_unwrap<T> unwrap(::tpystd::tplib::box::Box<T>& b);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: unwrap
+// async def unwrap[T](b: Box[T]) -> T:
 template <typename T>
 struct __coro_unwrap {
     int32_t __state;
@@ -47,12 +50,12 @@ struct __coro_unwrap {
     }
 };
 // async def unwrap[T](b: Box[T]) -> T:
+//     return b.get()
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_unwrap<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return b.get()
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(b.get());
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -69,7 +72,7 @@ __coro_unwrap<T> unwrap(::tpystd::tplib::box::Box<T>& b) {
     return __coro_unwrap<T>(b);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

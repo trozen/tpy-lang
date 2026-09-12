@@ -11,11 +11,17 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def both_element_arms(rs: list[Rec], c: bool) -> None:
 void both_element_arms(std::vector<Rec>& rs, bool c);
+// def two_containers(xs: list[Rec], ys: list[Rec], c: bool) -> None:
 void two_containers(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c);
+// def optional_arm(rs: list[Rec], c: bool) -> None:
 void optional_arm(std::vector<Rec>& rs, bool c);
+// def alias_arms(xs: list[Rec], ys: list[Rec], c: bool) -> None:
 void alias_arms(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c);
+// def value_elements(ns: list[int32], c: bool) -> None:
 void value_elements(std::vector<int32_t>& ns, bool c);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Rec::Rec(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

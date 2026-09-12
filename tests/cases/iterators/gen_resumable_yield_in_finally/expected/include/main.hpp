@@ -12,11 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_return_then_finally_yield;
 struct __gen_gen_exception_then_finally_yield;
 
+// def gen_return_then_finally_yield() -> Iterator[int]:
 __gen_gen_return_then_finally_yield gen_return_then_finally_yield();
+// def gen_exception_then_finally_yield(x: int) -> Iterator[int]:
 __gen_gen_exception_then_finally_yield gen_exception_then_finally_yield(::tpy::BigInt x);
+// def main():
 void main();
 
-// Generator: gen_return_then_finally_yield
+// def gen_return_then_finally_yield() -> Iterator[int]:
 struct __gen_gen_return_then_finally_yield : public ::tpy::next_iter_mixin<__gen_gen_return_then_finally_yield, ::tpy::BigInt> {
     int32_t __state;
     std::exception_ptr __finally_exc_0;
@@ -42,7 +45,7 @@ struct __gen_gen_return_then_finally_yield : public ::tpy::next_iter_mixin<__gen
     }
 };
 
-// Generator: gen_exception_then_finally_yield
+// def gen_exception_then_finally_yield(x: int) -> Iterator[int]:
 struct __gen_gen_exception_then_finally_yield : public ::tpy::next_iter_mixin<__gen_gen_exception_then_finally_yield, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt x;

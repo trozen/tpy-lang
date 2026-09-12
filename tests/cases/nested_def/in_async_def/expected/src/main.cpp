@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // async def outer() -> int:
+//     await asyncio.sleep(0)
+//
+//     def g() -> int:
+//         return 5
+//
+//     return g()
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_outer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,9 +23,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // def g() -> int:
         // def g: frame member
-        // return g()
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = g();
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -31,7 +34,6 @@ namespace tpyapp::main {
 }
 
 ::tpy::BigInt __coro_outer::g() {
-    // return 5
     return ::tpy::BigInt(5);
 }
 
@@ -41,22 +43,23 @@ __coro_outer outer() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(outer()))
 void main() {
-    // print(asyncio.run(outer()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(outer())) << "\n";
 }
 
+// # A nested def inside an async def is a plain sync function emitted as a
+// # frame member: its return must not lower to the coroutine's Poll-ready
+// # shape.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A nested def inside an async def is a plain sync function emitted as a
-    // # frame member: its return must not lower to the coroutine's Poll-ready
-    // # shape.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

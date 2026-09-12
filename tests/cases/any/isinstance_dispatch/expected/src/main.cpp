@@ -5,47 +5,47 @@ namespace tpyapp::main {
 
 
 // def show(v: Any) -> None:
+//     if isinstance(v, int):
+//         print("int", v)
+//     elif isinstance(v, str):
+//         print("str", v)
+//     elif isinstance(v, float):
+//         print("float", v)
+//     else:
+//         print("other")
 void show(::tpy::Any v) {
-    // if isinstance(v, int):
     if ((v.value.has_value() && v.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __v = std::any_cast<const ::tpy::BigInt&>(v.value);
-        // print("int", v)
         std::cout << "int" << " " << __v << "\n";
-    // elif isinstance(v, str):
     } else if ((v.value.has_value() && v.value.type() == typeid(std::string))) {
         const std::string& __v = std::any_cast<const std::string&>(v.value);
-        // print("str", v)
         std::cout << "str" << " " << __v << "\n";
-    // elif isinstance(v, float):
     } else if ((v.value.has_value() && v.value.type() == typeid(double))) {
         const double& __v = std::any_cast<const double&>(v.value);
-        // print("float", v)
         std::cout << "float" << " " << __v << "\n";
-    // else:
     } else {
-        // print("other")
         std::cout << "other" << "\n";
     }
 }
 
 // def main() -> None:
+//     show(1)
+//     show("hi")
+//     show(2.5)
+//     show(None)
 void main() {
-    // show(1)
     show(::tpy::make_any(::tpy::BigInt(1)));
-    // show("hi")
     show(::tpy::make_any(std::string("hi")));
-    // show(2.5)
     show(::tpy::make_any(static_cast<double>(2.5)));
-    // show(None)
     show(::tpy::make_any(std::monostate{}));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

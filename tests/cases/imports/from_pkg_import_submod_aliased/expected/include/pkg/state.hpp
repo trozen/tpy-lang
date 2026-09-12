@@ -10,6 +10,7 @@ namespace tpyapp::pkg::state {
 struct Counter;
 
 inline constexpr std::string_view __name__ = "pkg.state";
+// LIMIT: Final[int32] = 16
 inline constexpr int32_t LIMIT = 16;
 
 // class Counter:
@@ -30,6 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::pkg::state

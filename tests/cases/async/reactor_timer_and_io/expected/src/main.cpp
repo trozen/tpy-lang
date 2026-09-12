@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // async def delayed_send(sock: socket) -> None:
+//     await asyncio.sleep(0.02)
+//     loop = asyncio.get_running_loop()
+//     await loop.sock_sendall(sock, b"late")
 ::tpystd::tpy::Poll<::std::monostate> __coro_delayed_send::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.02)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.02)));
         __state = S_RESUME_0;
         continue;
@@ -18,9 +20,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // await loop.sock_sendall(sock, b"late")
         __sub_1.emplace(std::move((*loop).sock_sendall(sock, ::tpy::bytes_literal("late", 4))));
         __state = S_RESUME_1;
         continue;
@@ -45,22 +45,24 @@ __coro_delayed_send delayed_send(::tpystd::socket::socket& sock) {
 }
 
 // async def main_coro() -> None:
+//     a, b = socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     sender = asyncio.create_task(delayed_send(a))
+//     loop = asyncio.get_running_loop()
+//     data = await loop.sock_recv(b, 1024)
+//     print(data)
+//     await sender
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = socketpair()
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
-        // a.setblocking(False)
         (*a).setblocking(false);
-        // b.setblocking(False)
         (*b).setblocking(false);
-        // sender = asyncio.create_task(delayed_send(a))
         sender.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(delayed_send((*a)))));
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // data = await loop.sock_recv(b, 1024)
         __sub_0.emplace(std::move((*loop).sock_recv((*b), 1024)));
         __state = S_RESUME_0;
         continue;
@@ -70,9 +72,7 @@ __coro_delayed_send delayed_send(::tpystd::socket::socket& sock) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         data = std::move(__r0).value();
         __sub_0.reset();
-        // print(data)
         std::cout << ::tpy::BytesPrinter(data) << "\n";
-        // await sender
         __sub_1 = &((*sender));
         __state = S_RESUME_1;
         continue;
@@ -97,25 +97,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio epoll reactor (v2): timer + I/O interleaved on one executor.
+// # The main coroutine parks in the reactor on recv while a sleeping task
+// # holds a timer; wait_for_event must block in epoll_wait bounded by the
+// # timer deadline, fire the timer, let the sender run, then wake the recv.
+// import asyncio
+// from socket import socketpair, socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio epoll reactor (v2): timer + I/O interleaved on one executor.
-    // # The main coroutine parks in the reactor on recv while a sleeping task
-    // # holds a timer; wait_for_event must block in epoll_wait bounded by the
-    // # timer deadline, fire the timer, let the sender run, then wake the recv.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socketpair, socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def leaf(*items: Box) -> None:
+//     for b in items:
+//         b.val *= 2
 void leaf(::tpy::varargs<Box> items) {
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
-        // b.val *= 2
         b.val = ::tpy::mul_check<int32_t>(b.val, 2);
     }
 }
 
 // def mid(*items: Box) -> None:
+//     leaf(*items)
 void mid(::tpy::varargs<Box> items) {
-    // leaf(*items)
     leaf(::tpy::varargs<Box>(items));
 }
 
 // def top(*items: Box) -> None:  # tpyc: ok
+//     mid(*items)
 void top(::tpy::varargs<Box> items) {
-    // mid(*items)
     mid(::tpy::varargs<Box>(items));
 }
 
 // def main() -> None:
+//     a = Box(3)
+//     b = Box(5)
+//     top(a, b)
+//     print(a.val)
+//     print(b.val)
 void main() {
-    // a = Box(3)
     Box a = Box(3);
-    // b = Box(5)
     Box b = Box(5);
-    // top(a, b)
     std::array<Box*, 2> __tmp_1{&a, &b};
     top(::tpy::varargs<Box>(__tmp_1));
-    // print(a.val)
     std::cout << a.val << "\n";
-    // print(b.val)
     std::cout << b.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

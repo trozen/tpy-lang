@@ -5,54 +5,56 @@ namespace tpyapp::main {
 
 
 // def update_same_name(a: int32, b: int32) -> None:
+//     global opentop
+//     if a < b:
+//         opentop = a
+//     else:
+//         opentop = b
 void update_same_name(int32_t a, int32_t b) {
-    // global opentop
-    // if a < b:
     if ((a < b)) {
-        // opentop = a
         opentop = a;
-    // else:
     } else {
-        // opentop = b
         opentop = b;
     }
 }
 
 // def update_renamed(a: int32, b: int32) -> None:
+//     global counter
+//     if a < b:
+//         counter = a
+//     else:
+//         counter = b
 void update_renamed(int32_t a, int32_t b) {
-    // global counter
-    // if a < b:
     if ((a < b)) {
-        // counter = a
         g_counter = a;
-    // else:
     } else {
-        // counter = b
         g_counter = b;
     }
 }
 
 // def main() -> None:
+//     update_same_name(int32(10), int32(20))
+//     print(opentop)
+//     update_renamed(int32(30), int32(40))
+//     print(counter)
 void main() {
-    // update_same_name(int32(10), int32(20))
     update_same_name(10, 20);
-    // print(opentop)
     std::cout << ::opentop << "\n";
-    // update_renamed(int32(30), int32(40))
     update_renamed(30, 40);
-    // print(counter)
     std::cout << ::g_counter << "\n";
 }
 
+// from tpy.extern import native_global
+//
+// opentop: int32 = native_global("opentop", binding="C")
+// counter: int32 = native_global("g_counter", binding="C")
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native_global
-    // # Write to native C globals inside if/else branches (no prior function-scope assignment).
-    // # Must NOT emit a local declaration that shadows the extern global.
-    // main()
     main();
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag({"alpha": "first", "beta": "second"})
+//     a = cast(str, getattr(b, "alpha"))
+//     print(a)
 void main() {
-    // b = Bag({"alpha": "first", "beta": "second"})
     Bag b = Bag(::tpy::ordered_map<std::string, ::tpy::Any>({{"alpha", ::tpy::make_any(std::string("first"))}, {"beta", ::tpy::make_any(std::string("second"))}}));
-    // a = cast(str, getattr(b, "alpha"))
     std::string a = ::tpy::any_cast_or_panic<std::string>(b.__getattr__("alpha"));
-    // print(a)
     std::cout << a << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

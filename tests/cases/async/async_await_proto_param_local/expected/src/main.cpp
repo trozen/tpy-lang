@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     named = Counter(0, 3)
+//     await consume(named)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // named = Counter(0, 3)
         named.emplace(Counter(0, 3));
-        // await consume(named)
         __sub_0.emplace((*named));
         __state = S_RESUME_0;
         continue;
@@ -35,27 +35,28 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Awaiting a protocol-param coroutine with a hoisted-local iterable arg.
+// # The local is stored in the resumable frame as a `frame_slot`, so the
+// # sub-future field type must spell the arg with the same body-context deref the
+// # emplace uses (`*named`), not the bare `frame_slot` wrapper. Both the iterable
+// # (captured into the sub-future) and the iterator (stored in the for-loop's
+// # `__for_itr` frame slot) are @nocopy, so a silent copy on either path -- the
+// # borrow capture or the iterator storage -- is a compile error, not just a
+// # spelling regression.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Awaiting a protocol-param coroutine with a hoisted-local iterable arg.
-    // # The local is stored in the resumable frame as a `frame_slot`, so the
-    // # sub-future field type must spell the arg with the same body-context deref the
-    // # emplace uses (`*named`), not the bare `frame_slot` wrapper. Both the iterable
-    // # (captured into the sub-future) and the iterator (stored in the for-loop's
-    // # `__for_itr` frame slot) are @nocopy, so a silent copy on either path -- the
-    // # borrow capture or the iterator storage -- is a compile error, not just a
-    // # spelling regression.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

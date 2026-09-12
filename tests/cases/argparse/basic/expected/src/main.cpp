@@ -5,13 +5,15 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser()
+//     parser.add_argument("name")
+//     args = parser.parse_args(["alice"])
+//     print(args.name)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["alice"])
     std::vector<std::string> __tmp_1 = {"alice"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.name)
     std::cout << args.name << "\n";
-    // return 0
     return 0;
 }
 
@@ -54,14 +56,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(name);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

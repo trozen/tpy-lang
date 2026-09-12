@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[tuple[T, T]] = [(T(1), T(2)), (T(3), T(4))]
+//     for it in items:
+//         a, b = it
+//         print(a.x)
+//         print(b.x)
 void main() {
-    // items: list[tuple[T, T]] = [(T(1), T(2)), (T(3), T(4))]
     std::vector<std::tuple<T, T>> items = {::tpy::tuple_to_storage<std::tuple<T, T>>(std::tuple<T, T>{T(1), T(2)}), ::tpy::tuple_to_storage<std::tuple<T, T>>(std::tuple<T, T>{T(3), T(4)})};
-    // for it in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        // a, b = it
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(it);
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        // print(a.x)
         std::cout << a.x << "\n";
-        // print(b.x)
         std::cout << b.x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -15,7 +15,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_collect;
 
+// def collect(src: Fresh) -> Iterator[int32]:
 __gen_collect collect(Fresh& src);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -68,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
     return os;
 }
 
-// Generator: collect
+// def collect(src: Fresh) -> Iterator[int32]:
 struct __gen_collect : public ::tpy::next_iter_mixin<__gen_collect, int32_t> {
     int32_t __state;
     Fresh& src;
@@ -97,27 +99,29 @@ struct __gen_collect : public ::tpy::next_iter_mixin<__gen_collect, int32_t> {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Counter::Counter() : n(0) {}
 
 // def __next__(self) -> Own[Node]:
+//     if self.n >= 3:
+//         raise StopIteration()
+//     self.n += 1
+//     return Node(self.n)
 inline std::expected<Node, ::tpy::StopIteration> Counter::__next__() {
-    // if self.n >= 3:
     if ((this->n >= 3)) {
-        // raise StopIteration()
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
-    // return Node(self.n)
     return Node(this->n);
 }
 
 // def __iter__(self) -> Own[Counter]:
+//     return Counter()
 inline Counter Fresh::__iter__() const {
-    // return Counter()
     return Counter();
 }
 void __tpy_init();

@@ -9,14 +9,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_if_not_zero_floordiv() -> None:
 void test_if_not_zero_floordiv();
+// def test_if_not_zero_mod() -> None:
 void test_if_not_zero_mod();
+// def test_no_elision_unchecked() -> None:
 void test_no_elision_unchecked();
+// def test_assert_not_zero() -> None:
 void test_assert_not_zero();
+// def test_assert_positive() -> None:
 void test_assert_positive();
+// def test_no_elision_after_reassign() -> None:
 void test_no_elision_after_reassign();
+// def test_else_of_eq_zero() -> None:
 void test_else_of_eq_zero();
+// def test_literal_divisor() -> None:
 void test_literal_divisor();
+// def test_literal_named_divisor() -> None:
 void test_literal_named_divisor();
 
 void __tpy_init();

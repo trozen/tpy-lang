@@ -11,6 +11,7 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # A generator expression over a concrete reference type hands out a live borrow
@@ -35,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, v: int):
+//     self.val = v
 inline Node::Node(const ::tpy::BigInt& v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

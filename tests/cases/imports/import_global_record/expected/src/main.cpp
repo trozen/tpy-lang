@@ -4,19 +4,21 @@
 namespace tpyapp::main {
 
 
+// """Test importing non-value-type globals from another module."""
+// from config import Settings, DEFAULT
+//
+// # Use imported record global — field access, method call
+// print(DEFAULT.width)
+// print(DEFAULT.height)
+// print(DEFAULT.area())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from config import Settings, DEFAULT
     ::tpyapp::config::__tpy_init();
-    // # Use imported record global — field access, method call
-    // print(DEFAULT.width)
     std::cout << ::tpyapp::config::DEFAULT->width << "\n";
-    // print(DEFAULT.height)
     std::cout << ::tpyapp::config::DEFAULT->height << "\n";
-    // print(DEFAULT.area())
     std::cout << ::tpyapp::config::DEFAULT->area() << "\n";
 }
 

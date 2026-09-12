@@ -13,6 +13,7 @@ struct ContainerOk;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -73,23 +74,27 @@ inline std::ostream& operator<<(std::ostream& os, const ContainerOk& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, p: Point, n: int32) -> None:
+//     self.data = (p, n)  # tpyc: warning(/copies Point into field/)
 inline Container::Container(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{p, n})) {}
 
 // def __repr__(self) -> str:
+//     return "Container"
 inline std::string Container::__repr__() const {
-    // return "Container"
     return "Container";
 }
 
 // def __init__(self, p: Point, n: int32) -> None:
+//     self.data = (copy(p), n)  # tpyc: ok
 inline ContainerOk::ContainerOk(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{Point(p), n})) {}
 
 // def __repr__(self) -> str:
+//     return "ContainerOk"
 inline std::string ContainerOk::__repr__() const {
-    // return "ContainerOk"
     return "ContainerOk";
 }
 void __tpy_init();

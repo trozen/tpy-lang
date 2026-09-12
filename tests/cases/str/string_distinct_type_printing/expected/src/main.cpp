@@ -5,62 +5,62 @@ namespace tpyapp::main {
 
 
 // def repr_and_str(s: String) -> None:
+//     # repr must still quote (the formattable fallback would print it raw)
+//     print("repr", repr(s), str(s), len(s))
 void repr_and_str(const ::tpy::String& s) {
-    // # repr must still quote (the formattable fallback would print it raw)
-    // print("repr", repr(s), str(s), len(s))
     std::cout << "repr" << " " << ::tpy::repr_of(s) << " " << std::string(s) << " " << ::tpy::__len__(s) << "\n";
 }
 
 // def fstring(s: String) -> None:
+//     # an f-string operand goes through std::format, which needs a formatter
+//     print("fstring", f"[{s}]")
 void fstring(const ::tpy::String& s) {
-    // # an f-string operand goes through std::format, which needs a formatter
-    // print("fstring", f"[{s}]")
     std::cout << "fstring" << " " << std::format("[{}]", s) << "\n";
 }
 
 // def container_element(s: String) -> None:
+//     # a list element reprs through repr_of, not through operator<<
+//     xs: list[String] = [s, String("b")]
+//     print("element", xs)
 void container_element(const ::tpy::String& s) {
-    // # a list element reprs through repr_of, not through operator<<
-    // xs: list[String] = [s, String("b")]
     std::vector<::tpy::String> xs = {s, ::tpy::String("b")};
-    // print("element", xs)
     std::cout << "element" << " " << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def dict_key(s: String) -> None:
+//     # a dict keyed on String, probed with a `str` key: the lookup must compare
+//     # and hash in the stored type's domain rather than building an element
+//     d: dict[String, int32] = {}
+//     d[s] = 1
+//     print("dictkey", "a" in d, d["a"], len(d))
 void dict_key(const ::tpy::String& s) {
-    // # a dict keyed on String, probed with a `str` key: the lookup must compare
-    // # and hash in the stored type's domain rather than building an element
-    // d: dict[String, int32] = {}
     ::tpy::ordered_map<::tpy::String, int32_t> d = ::tpy::ordered_map<::tpy::String, int32_t>();
-    // d[s] = 1
     ::tpy::__setitem__(d, s, 1);
-    // print("dictkey", "a" in d, d["a"], len(d))
     std::cout << "dictkey" << " " << ::tpy::print_bool((d.contains("a"))) << " " << ::tpy::__getitem__(d, "a") << " " << ::tpy::__len__(d) << "\n";
 }
 
 // def main() -> None:
+//     s = String("a")
+//     repr_and_str(s)
+//     fstring(s)
+//     container_element(s)
+//     show(s)
+//     dict_key(s)
 void main() {
-    // s = String("a")
     ::tpy::String s = ::tpy::String("a");
-    // repr_and_str(s)
     repr_and_str(s);
-    // fstring(s)
     fstring(s);
-    // container_element(s)
     container_element(s);
-    // show(s)
     show<::tpy::String>(s);
-    // dict_key(s)
     dict_key(s);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

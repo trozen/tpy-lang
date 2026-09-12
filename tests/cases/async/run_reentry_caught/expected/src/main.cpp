@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def inner() -> None:
+//     print("inner ran -- should not happen")
 ::tpystd::tpy::Poll<::std::monostate> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("inner ran -- should not happen")
         std::cout << "inner ran -- should not happen" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,17 +26,18 @@ __coro_inner inner() {
 }
 
 // async def outer() -> None:
+//     try:
+//         asyncio.run(inner())
+//     except RuntimeError as e:
+//         print("caught:", e)
 ::tpystd::tpy::Poll<::std::monostate> __coro_outer::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // try:
         {
             try {
-                // asyncio.run(inner())
                 ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(inner()));
             } catch (const ::tpy::RuntimeError& e) {
-                // print("caught:", e)
                 std::cout << "caught:" << " " << e << "\n";
             }
         }
@@ -55,20 +56,21 @@ __coro_outer outer() {
 }
 
 // def main() -> None:
+//     asyncio.run(outer())
 void main() {
-    // asyncio.run(outer())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(outer()));
 }
 
+// # Nested asyncio.run raises a catchable RuntimeError.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Nested asyncio.run raises a catchable RuntimeError.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

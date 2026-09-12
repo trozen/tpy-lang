@@ -13,21 +13,23 @@ using ::tpystd::tplib::array_list::ArrayList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(it: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_it>
 void consume(T_it& it);
+// def main() -> None:
 void main();
 
 // def consume(it: Iterable[int32]) -> None:
+//     for x in it:
+//         print(x)
 template<::tpystd::typing::Iterable<int32_t> T_it>
 void consume(T_it& it) {
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
 }

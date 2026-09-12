@@ -5,34 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Arc.new(Counter(0))
+//     b = a.clone()              # b aliases a's Counter -- the same atomic cell
+//     a.get().n += 5             # mutate through a (in-place atomic RMW)
+//     a.get().n.fetch_add(3)     # -> 8
+//     print(b.get().n.load())    # 8 -- observed through b
+//     b.get().n.store(100, MemoryOrder.RELAXED)
+//     print(a.get().n.load())    # 100 -- and visible back through a
 void main() {
-    // a = Arc.new(Counter(0))
     ::tpystd::tplib::arc::Arc<Counter> a = Arc<Counter>::new_<Counter>(Counter(0));
-    // b = a.clone()              # b aliases a's Counter -- the same atomic cell
     ::tpystd::tplib::arc::Arc<Counter> b = a.clone();
-    // a.get().n += 5             # mutate through a (in-place atomic RMW)
     a.get().n.__iadd__(5);
-    // a.get().n.fetch_add(3)     # -> 8
     a.get().n.fetch_add(3);
-    // print(b.get().n.load())    # 8 -- observed through b
     std::cout << b.get().n.load() << "\n";
-    // b.get().n.store(100, MemoryOrder.RELAXED)
     b.get().n.store(100, ::std::memory_order::relaxed);
-    // print(a.get().n.load())    # 100 -- and visible back through a
     std::cout << a.get().n.load() << "\n";
 }
 
+// from tplib.arc import Arc
+// from tpy.atomic import Atomic, MemoryOrder
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // from tpy.atomic import Atomic, MemoryOrder
     ::tpystd::tpy::atomic::__tpy_init();
-    // main()
     main();
 }
 

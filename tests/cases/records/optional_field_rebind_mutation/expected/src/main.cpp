@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def test(h: Holder) -> None:
+//     p: Point | None = h.value
+//     print(p is None)
+//     h.value = copy(Point(1))
+//     p = h.value
+//     if p is not None:
+//         p.x = 42  # mutate through the alias -- visible on h.value
+//     v = h.value
+//     if v is not None:
+//         print(v.x)
 void test(Holder& h) {
-    // p: Point | None = h.value
     Point* p = ::tpy::optional_to_ptr(h.value);
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // h.value = copy(Point(1))
     h.value = Point(1);
-    // p = h.value
     p = ::tpy::optional_to_ptr(h.value);
-    // if p is not None:
     if ((p != nullptr)) {
-        // p.x = 42  # mutate through the alias -- visible on h.value
         p->x = 42;
     }
-    // v = h.value
     Point* v = ::tpy::optional_to_ptr(h.value);
-    // if v is not None:
     if ((v != nullptr)) {
-        // print(v.x)
         std::cout << v->x << "\n";
     }
 }
 
 // def main() -> None:
+//     test(Holder())
 void main() {
-    // test(Holder())
     Holder __tmp_1 = Holder();
     test(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

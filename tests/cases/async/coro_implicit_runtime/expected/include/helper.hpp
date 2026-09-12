@@ -12,10 +12,12 @@ inline constexpr std::string_view __name__ = "helper";
 
 struct __coro_compute;
 
+// async def compute(n: int) -> int:  # tpyc: ok
 __coro_compute compute(::tpy::BigInt n);
+// def loaded() -> str:
 std::string loaded();
 
-// Async coroutine: compute
+// async def compute(n: int) -> int:  # tpyc: ok
 struct __coro_compute {
     int32_t __state;
     bool __cancel_pending;

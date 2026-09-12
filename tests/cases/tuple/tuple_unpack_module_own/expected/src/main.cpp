@@ -3,42 +3,41 @@
 
 namespace tpyapp::main {
 
-// n, p = make_pair()
 int32_t n{};
-// n, p = make_pair()
 Point* p{};
 
 // def make_pair() -> tuple[int32, Own[Point]]:
+//     return (int32(42), Point(int32(1), int32(2)))
 std::tuple<int32_t, Point> make_pair() {
-    // return (int32(42), Point(int32(1), int32(2)))
     return std::tuple<int32_t, Point>{42, Point(1, 2)};
 }
 
 // def read_point() -> None:
+//     print(p.x)
+//     print(p.y)
 void read_point() {
-    // print(p.x)
     std::cout << p->x << "\n";
-    // print(p.y)
     std::cout << p->y << "\n";
 }
 
+// n, p = make_pair()
+// print(n)
+// print(p.x)
+// print(p.y)
+//
+// read_point()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // n, p = make_pair()
     auto __tup_1 = make_pair();
     n = std::get<0>(__tup_1);
     static Point __global_slot_1 = std::move(std::get<1>(__tup_1));
     p = &__global_slot_1;
-    // print(n)
     std::cout << n << "\n";
-    // print(p.x)
     std::cout << p->x << "\n";
-    // print(p.y)
     std::cout << p->y << "\n";
-    // read_point()
     read_point();
 }
 

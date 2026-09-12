@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(int32(1), int32(2))
+//     print(c.a)
+//     print(c.b)
 void main() {
-    // c = Child(int32(1), int32(2))
     Child c = Child(1, 2);
-    // print(c.a)
     std::cout << c.a << "\n";
-    // print(c.b)
     std::cout << c.b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

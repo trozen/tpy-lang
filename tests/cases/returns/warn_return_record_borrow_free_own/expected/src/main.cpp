@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def first(rows: list[Payload]) -> Payload:
+//     return rows[0]
 Payload& first(std::vector<Payload>& rows) {
-    // return rows[0]
     return ::tpy::__getitem__(rows, 0);
 }
 
 // def take(rows: list[Payload]) -> Own[Payload]:
+//     # `first(rows)` hands back `Payload&`; filling the owning slot from it is
+//     # the copy the warning declares.
+//     return first(rows)  # tpyc: warning(/copies Payload into owned storage/)
 Payload take(std::vector<Payload>& rows) {
-    // # `first(rows)` hands back `Payload&`; filling the owning slot from it is
-    // # the copy the warning declares.
-    // return first(rows)  # tpyc: warning(/copies Payload into owned storage/)
     return first(rows);
 }
 
 // def take_copy(rows: list[Payload]) -> Own[Payload]:
+//     return copy(first(rows))  # tpyc: ok
 Payload take_copy(std::vector<Payload>& rows) {
-    // return copy(first(rows))  # tpyc: ok
     return Payload(first(rows));
 }
 
 // def main() -> None:
+//     rows = [Payload(1)]
+//     print(take(rows).n, take_copy(rows).n, rows[0].n)
 void main() {
-    // rows = [Payload(1)]
     std::vector<Payload> rows = {Payload(1)};
-    // print(take(rows).n, take_copy(rows).n, rows[0].n)
     std::cout << take(rows).n << " " << take_copy(rows).n << " " << ::tpy::__getitem__(rows, 0).n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

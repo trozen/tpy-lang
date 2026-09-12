@@ -6,41 +6,44 @@ namespace tpyapp::main {
 
 // # sorted() with key= parameter
 // def negate(x: int) -> int:
+//     return -x
 ::tpy::BigInt negate(const ::tpy::BigInt& x) {
-    // return -x
     return -(x);
 }
 
 // def main() -> None:
+//     # sort by negation (reverse order)
+//     a = [3, 1, 4, 1, 5]
+//     print(sorted(a, key=negate))
+//
+//     # sort by absolute value using lambda
+//     b = [-3, 1, -4, 1, 5, -9]
+//     print(sorted(b, key=lambda x: x if x >= 0 else -x))
+//
+//     # sort strings by length
+//     words = ["banana", "pie", "apple", "kiwi"]
+//     print(sorted(words, key=lambda s: len(s)))
+//
+//     # stability: equal-key elements preserve original order
+//     pairs = ["bb", "aa", "cc", "ab", "ba"]
+//     print(sorted(pairs, key=lambda s: len(s)))
 void main() {
-    // # sort by negation (reverse order)
-    // a = [3, 1, 4, 1, 5]
     std::array<int32_t, 5> a = {3, 1, 4, 1, 5};
-    // print(sorted(a, key=negate))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted_key<::tpy::BigInt>(a, negate)) << "\n";
-    // # sort by absolute value using lambda
-    // b = [-3, 1, -4, 1, 5, -9]
     std::array<int32_t, 6> b = {-3, 1, -4, 1, 5, -9};
-    // print(sorted(b, key=lambda x: x if x >= 0 else -x))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int32_t>(b, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); })) << "\n";
-    // # sort strings by length
-    // words = ["banana", "pie", "apple", "kiwi"]
     std::array<std::string, 4> words = {"banana", "pie", "apple", "kiwi"};
-    // print(sorted(words, key=lambda s: len(s)))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::string>(words, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); })) << "\n";
-    // # stability: equal-key elements preserve original order
-    // pairs = ["bb", "aa", "cc", "ab", "ba"]
     std::array<std::string, 5> pairs = {"bb", "aa", "cc", "ab", "ba"};
-    // print(sorted(pairs, key=lambda s: len(s)))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted_key<std::string>(pairs, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); })) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

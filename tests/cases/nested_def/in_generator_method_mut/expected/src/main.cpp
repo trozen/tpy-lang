@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = Tally()
+//     for v in t.steps(3):
+//         print(v)
+//     print(t.total)
 void main() {
-    // t = Tally()
     Tally t = Tally();
-    // for v in t.steps(3):
     {
         auto __src_0 = t.steps(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,19 +18,22 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(t.total)
     std::cout << t.total << "\n";
 }
 
 // def steps(self, k: int32) -> Iterator[int32]:
+//     def push(v: int32) -> None:
+//         self.total += v
+//
+//     for i in range(k):
+//         push(i + 1)
+//         yield self.total
 std::expected<int32_t, ::tpy::StopIteration> __gen_Tally_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // def push(v: int32) -> None:
         // def push: frame member
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(k));
@@ -45,9 +50,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Tally_steps::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        // push(i + 1)
         push((::tpy::add_check<int32_t>(i, 1)));
-        // yield self.total
         __state = S_RESUME_0;
         return __self.total;
     }
@@ -57,16 +60,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Tally_steps::__next__() {
 }
 
 void __gen_Tally_steps::push(int32_t v) {
-    // self.total += v
     __self.total = ::tpy::add_check<int32_t>(__self.total, v);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

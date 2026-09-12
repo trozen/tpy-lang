@@ -11,8 +11,10 @@ struct MyCollection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count(items: Sized) -> int:
 template<::tpystd::typing::Sized T_items>
 ::tpy::BigInt count(const T_items& items);
+// def main() -> None:
 void main();
 
 // class MyCollection:
@@ -36,17 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.size = n
 inline MyCollection::MyCollection(const ::tpy::BigInt& n) : size(n) {}
 
 // def __len__(self) -> int:
+//     return self.size
 inline ::tpy::BigInt MyCollection::__len__() const {
-    // return self.size
     return this->size;
 }
 // def count(items: Sized) -> int:
+//     return len(items)
 template<::tpystd::typing::Sized T_items>
 ::tpy::BigInt count(const T_items& items) {
-    // return len(items)
     return ::tpy::BigInt(::tpy::__len__(items));
 }
 

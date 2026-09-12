@@ -12,6 +12,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Assignment narrowing: union var initialized with concrete type narrows without isinstance
@@ -51,9 +52,12 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 
 // def __init__(self, radius: float) -> None:
+//     self.radius = radius
 inline Circle::Circle(double radius) : radius(radius) {}
 
 // def __init__(self, width: float, height: float) -> None:
+//     self.width = width
+//     self.height = height
 inline Rect::Rect(double width, double height) : width(width), height(height) {}
 void __tpy_init();
 } // namespace tpyapp::main

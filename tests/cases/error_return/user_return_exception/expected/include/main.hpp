@@ -11,7 +11,9 @@ struct ParseError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def parse_digit(s: str) -> int32:
 std::expected<int32_t, ParseError> parse_digit(std::string_view s);
+// def main() -> None:
 void main();
 
 // class ParseError(Exception, ReturnException):

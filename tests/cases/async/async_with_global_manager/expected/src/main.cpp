@@ -3,15 +3,18 @@
 
 namespace tpyapp::main {
 
-// g = Counter()
 Counter* g{};
 
 // async def main_coro() -> None:
+//     async with g as n1:
+//         print(n1)
+//     async with g as n2:
+//         print(n2)
+//     print(g.opens)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0 = g;
-        // async with g as n1:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -59,21 +62,18 @@ Counter* g{};
         continue;
     }
     case S_JOIN_0: {
-        // async with g as n1:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_1: {
         __with_ctx_1 = g;
-        // async with g as n2:
         __sub_2.emplace((*__with_ctx_1));
         __state = S_RESUME_2;
         continue;
     }
     case S_JOIN_2: {
         try {
-            // print(n1)
             std::cout << n1 << "\n";
             __state = S_JOIN_0;
             continue;
@@ -84,20 +84,17 @@ Counter* g{};
         }
     }
     case S_JOIN_3: {
-        // async with g as n2:
         __sub_3.emplace((*__with_ctx_1), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_3;
         continue;
     }
     case S_JOIN_4: {
-        // print(g.opens)
         std::cout << g->opens << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_5: {
         try {
-            // print(n2)
             std::cout << n2 << "\n";
             __state = S_JOIN_3;
             continue;
@@ -119,19 +116,19 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def __aenter__(self) -> int32:
+//     self.opens += 1
+//     return self.opens
 ::tpystd::tpy::Poll<int32_t> __coro_Counter___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // self.opens += 1
         __self.opens = ::tpy::add_check<int32_t>(__self.opens, 1);
-        // return self.opens
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.opens;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -143,12 +140,12 @@ void main() {
 
 
 // async def __aexit__(self, exc_type: None, exc_val: None,
-// exc_tb: None) -> None:
+//                     exc_tb: None) -> None:
+//     pass
 ::tpystd::tpy::Poll<::std::monostate> __coro_Counter___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // pass
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -158,22 +155,24 @@ void main() {
 }
 
 
+// # `async with g:` on a module-global async context manager (a global
+// # already renders as the `CM*` the borrowed frame field wants, so the
+// # bind must not re-take its address). The manager mutates its own state
+// # across the region; observing the count through the global afterward
+// # forces the borrow -- a silent copy would lose it.
+// import asyncio
+//
+// g = Counter()
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `async with g:` on a module-global async context manager (a global
-    // # already renders as the `CM*` the borrowed frame field wants, so the
-    // # bind must not re-take its address). The manager mutates its own state
-    // # across the region; observing the count through the global afterward
-    // # forces the borrow -- a silent copy would lose it.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // g = Counter()
     static Counter __global_slot_1 = Counter();
     g = &__global_slot_1;
-    // main()
     main();
 }
 

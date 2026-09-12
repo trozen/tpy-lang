@@ -15,7 +15,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 using ::tpyapp::shapes::Shape;
 
+// def describe(s: Shape) -> str:
 std::string describe(::tpy::Union<const ::tpyapp::shapes::Circle*, const ::tpyapp::shapes::Rect*> s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

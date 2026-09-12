@@ -11,6 +11,7 @@ struct Fussy;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Fussy:
@@ -38,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fussy& obj) {
 
 
 // def __init__(self, id: int32):
+//     self._id = id
 inline Fussy::Fussy(int32_t id) : _id(id) {}
 
 inline Fussy::Fussy(Fussy&& other) noexcept : _id(std::move(other._id)) {
@@ -52,12 +54,12 @@ inline Fussy& Fussy::operator=(Fussy&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("del", self._id)
+//     raise ValueError("cleanup failed")  # tpyc: warning(/.raise. in .__del__. cannot propagate/)
 inline Fussy::~Fussy() {
     if (!this->__tpy_owned_) return;
     try {
-        // print("del", self._id)
         std::cout << "del" << " " << this->_id << "\n";
-        // raise ValueError("cleanup failed")  # tpyc: warning(/.raise. in .__del__. cannot propagate/)
         throw ::tpy::ValueError("cleanup failed");
     } catch (const std::exception& __del_exc) {
         ::tpy::report_del_exception(__del_exc);

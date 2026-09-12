@@ -45,15 +45,15 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 // @readonly
 // def value(self) -> int32:
+//     return 7
 inline int32_t Base::value() const {
-    // return 7
     return 7;
 }
 
 // @readonly
 // def value_plus_one(self) -> int32:
+//     return super().value() + 1  # tpyc: ok
 inline int32_t Child::value_plus_one() const {
-    // return super().value() + 1  # tpyc: ok
     return (::tpy::add_check<int32_t>(this->Base::value(), 1));
 }
 void __tpy_init();

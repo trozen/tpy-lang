@@ -11,7 +11,9 @@ struct __tpy_builder_config_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> int32:
 int32_t main();
+// cfg = cfg_builder.build()
 __tpy_builder_config_1 __tpy_builder_build_config_1();
 
 // cfg = cfg_builder.build()

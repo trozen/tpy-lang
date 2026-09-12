@@ -11,6 +11,7 @@ struct AppError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # An Exception subclass declares a data field via __init__ (no class annotation),
@@ -37,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 
 
 // def __init__(self, code: int):
+//     self.code = code
 inline AppError::AppError(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

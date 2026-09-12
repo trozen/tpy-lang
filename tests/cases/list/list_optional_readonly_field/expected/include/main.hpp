@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class P:
@@ -51,31 +52,33 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.pairs = [P(int32(1)), None, P(int32(3))]
 inline Holder::Holder() : pairs(std::vector<std::optional<P>>{P(1), std::nullopt, P(3)}) {}
 
 // @readonly
 // def first_nonnull(self) -> int32:
+//     for it in self.pairs:
+//         # `it` is in const_storage_form_optional_locals; the var-decl
+//         # below must declare `const P* first = optional_to_ptr(it)`.
+//         first = it
+//         if first is not None:
+//             return first.x
+//     return int32(-1)
 inline int32_t Holder::first_nonnull() const {
-    // for it in self.pairs:
     auto& __obj_0 = this->pairs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        // # `it` is in const_storage_form_optional_locals; the var-decl
-        // # below must declare `const P* first = optional_to_ptr(it)`.
-        // first = it
         const P* first = ::tpy::optional_to_ptr(it);
-        // if first is not None:
         if ((first != nullptr)) {
-            // return first.x
             return first->x;
         }
     }
-    // return int32(-1)
     return -1;
 }
 void __tpy_init();

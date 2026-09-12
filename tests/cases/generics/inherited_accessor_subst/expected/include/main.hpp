@@ -13,6 +13,7 @@ struct Sub;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -40,52 +41,54 @@ struct Holder {
     V _v;
 
     // def __init__(self, k: K, v: V):
+    //     self._k = k
+    //     self._v = v
     Holder() = default;
     explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : _k(k), _v(v) {}
 
     // @property
     // def key(self) -> K:
+    //     return self._k
     ::tpy::val_or_ref_t<K> key() {
-        // return self._k
         return this->_k;
     }
 
     // @property
     // def key(self) -> K:
+    //     return self._k
     ::tpy::val_or_cref_t<K> key() const {
-        // return self._k
         return this->_k;
     }
 
     // @key.setter
     // def key(self, value: K) -> None:
+    //     self._k = value
     void set_key(::tpy::own_param_t<K> value) {
-        // self._k = value
         this->_k = std::move(value);
     }
 
     // @property
     // def val(self) -> V:
+    //     return self._v
     ::tpy::val_or_ref_t<V> val() {
-        // return self._v
         return this->_v;
     }
 
     // @property
     // def val(self) -> V:
+    //     return self._v
     ::tpy::val_or_cref_t<V> val() const {
-        // return self._v
         return this->_v;
     }
 
     // def find(self, want: int32) -> V | None:
+    //     if want > 0:
+    //         return self._v
+    //     return None
     V* find(int32_t want) {
-        // if want > 0:
         if ((want > 0)) {
-            // return self._v
             return &(this->_v);
         }
-        // return None
         return nullptr;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -111,6 +114,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Rec::Rec(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

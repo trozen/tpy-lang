@@ -9,8 +9,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity[T](x: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // # Generic function instantiated with explicit [None] type arg. Tests
@@ -18,9 +20,9 @@ void main();
 // # type-arg position, so None must lower to the unit type (not VoidType)
 // # so the substituted parameter / return slots are well-formed C++.
 // def identity[T](x: T) -> T:
+//     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    // return x
     return ::tpy::param_to_return<T>(x);
 }
 

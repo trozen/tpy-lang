@@ -11,11 +11,17 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def empty_list() -> Own[list[int32]]:
 std::vector<int32_t> empty_list();
+// def empty_dict() -> Own[dict[int32, int32]]:
 ::tpy::ordered_map<int32_t, int32_t> empty_dict();
+// def empty_set() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> empty_set();
+// def empty_str_set() -> Own[set[str]]:
 ::tpy::ordered_set<std::string> empty_str_set();
+// def empty_record_dict() -> Own[dict[int32, Point]]:
 ::tpy::ordered_map<int32_t, Point> empty_record_dict();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

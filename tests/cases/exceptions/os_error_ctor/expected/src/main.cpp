@@ -11,180 +11,191 @@ namespace tpyapp::main {
 // # direct `raise OSError(...)` and bound-then-raise forms map; post-hoc
 // # attribute assignment and explicit subclasses never re-map, like CPython).
 // def refuse() -> None:
+//     raise ConnectionRefusedError(111, "Connection refused")
 void refuse() {
-    // raise ConnectionRefusedError(111, "Connection refused")
     throw ::tpy::ConnectionRefusedError(111, "Connection refused");
 }
 
 // def direct_mapped() -> None:
+//     raise OSError(5, "Input/output error")  # EIO maps to no subclass
 void direct_mapped() {
-    // raise OSError(5, "Input/output error")  # EIO maps to no subclass
     ::tpy::OSError(5, "Input/output error").__raise__();
 }
 
 // def direct_mapped_enoent() -> None:
+//     raise OSError(2, "No such file or directory")
 void direct_mapped_enoent() {
-    // raise OSError(2, "No such file or directory")
     ::tpy::OSError(2, "No such file or directory").__raise__();
 }
 
 // def bound_mapped() -> None:
+//     e = OSError(17, "File exists")
+//     raise e
 void bound_mapped() {
-    // e = OSError(17, "File exists")
     ::tpy::OSError e = ::tpy::OSError(17, "File exists");
-    // raise e
     e.__raise__();
 }
 
 // def posthoc_plain() -> None:
+//     e = OSError("plain")
+//     e.errno = 2
+//     raise e
 void posthoc_plain() {
-    // e = OSError("plain")
     ::tpy::OSError e = ::tpy::OSError("plain");
-    // e.errno = 2
     e.error_number = 2;
-    // raise e
     e.__raise__();
 }
 
 // def main() -> None:
+//     e = OSError(2, "No such file or directory")
+//     print(e)
+//     print(e.errno, e.strerror)
+//     f = OSError(13, "Permission denied", "/etc/shadow")
+//     print(f)
+//     print(f.errno, f.strerror, f.filename)
+//     # Message-only form keeps its plain text; errno stays unset (TPy 0 /
+//     # CPython None -- both falsy, the declared no-Optional-attrs divergence).
+//     g = OSError("plain msg")
+//     print(g, not g.errno)
+//     # Subclass ctors are CPython-exact; an explicit subclass keeps its type.
+//     h = FileNotFoundError(2, "No such file or directory", "x.txt")
+//     print(h)
+//     try:
+//         refuse()
+//     except ConnectionError as exc:
+//         print(exc)
+//         print(exc.errno)
+//     try:
+//         raise FileExistsError(17, "File exists", "out.txt")
+//     except OSError as exc:
+//         print(exc, exc.filename)
+//     # Zero-arg form (a distinct overload).
+//     z = OSError()
+//     print(str(z) == "", not z.errno)
+//     # The errno -> subclass mapping at raise time, in every shape:
+//     try:
+//         direct_mapped_enoent()
+//     except FileNotFoundError as exc:
+//         print("direct mapped:", exc)
+//     try:
+//         bound_mapped()
+//     except FileExistsError as exc:
+//         print("bound mapped:", exc)
+//     try:
+//         direct_mapped()
+//     except OSError as exc:
+//         print("unmapped errno stays plain:", exc)
+//     try:
+//         posthoc_plain()
+//     except FileNotFoundError:
+//         print("WRONG: post-hoc assignment re-mapped")
+//     except OSError as exc:
+//         print("post-hoc stays plain:", exc, exc.errno)
+//     try:
+//         raise FileNotFoundError(1, "Operation not permitted")
+//     except PermissionError:
+//         print("WRONG: explicit subclass re-mapped")
+//     except FileNotFoundError as exc:
+//         print("subclass kept:", exc)
+//     # The filename-carrying ctor maps too, and the filename travels.
+//     try:
+//         raise OSError(2, "No such file or directory", "cfg.txt")
+//     except FileNotFoundError as exc:
+//         print("filename mapped:", exc, exc.filename)
+//     # Zero-arg raise (kind none) stays a plain OSError.
+//     try:
+//         raise OSError()
+//     except OSError as exc:
+//         print("zero-arg plain:", str(exc) == "")
 void main() {
-    // e = OSError(2, "No such file or directory")
     ::tpy::OSError e = ::tpy::OSError(2, "No such file or directory");
-    // print(e)
     std::cout << e << "\n";
-    // print(e.errno, e.strerror)
     std::cout << e.error_number << " " << e.strerror_text << "\n";
-    // f = OSError(13, "Permission denied", "/etc/shadow")
     ::tpy::OSError f = ::tpy::OSError(13, "Permission denied", "/etc/shadow");
-    // print(f)
     std::cout << f << "\n";
-    // print(f.errno, f.strerror, f.filename)
     std::cout << f.error_number << " " << f.strerror_text << " " << f.filename << "\n";
-    // # Message-only form keeps its plain text; errno stays unset (TPy 0 /
-    // # CPython None -- both falsy, the declared no-Optional-attrs divergence).
-    // g = OSError("plain msg")
     ::tpy::OSError g = ::tpy::OSError("plain msg");
-    // print(g, not g.errno)
     std::cout << g << " " << ::tpy::print_bool((!(g.error_number))) << "\n";
-    // # Subclass ctors are CPython-exact; an explicit subclass keeps its type.
-    // h = FileNotFoundError(2, "No such file or directory", "x.txt")
     ::tpy::FileNotFoundError h = ::tpy::FileNotFoundError(2, "No such file or directory", "x.txt");
-    // print(h)
     std::cout << h << "\n";
-    // try:
     {
         try {
-            // refuse()
             refuse();
         } catch (const ::tpy::ConnectionError& exc) {
-            // print(exc)
             std::cout << exc << "\n";
-            // print(exc.errno)
             std::cout << exc.error_number << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise FileExistsError(17, "File exists", "out.txt")
             throw ::tpy::FileExistsError(17, "File exists", "out.txt");
         } catch (const ::tpy::OSError& exc) {
-            // print(exc, exc.filename)
             std::cout << exc << " " << exc.filename << "\n";
         }
     }
-    // # Zero-arg form (a distinct overload).
-    // z = OSError()
     ::tpy::OSError z = ::tpy::OSError();
-    // print(str(z) == "", not z.errno)
     std::cout << ::tpy::print_bool((std::string(::tpy::__str__(z)) == "")) << " " << ::tpy::print_bool((!(z.error_number))) << "\n";
-    // # The errno -> subclass mapping at raise time, in every shape:
-    // try:
     {
         try {
-            // direct_mapped_enoent()
             direct_mapped_enoent();
         } catch (const ::tpy::FileNotFoundError& exc) {
-            // print("direct mapped:", exc)
             std::cout << "direct mapped:" << " " << exc << "\n";
         }
     }
-    // try:
     {
         try {
-            // bound_mapped()
             bound_mapped();
         } catch (const ::tpy::FileExistsError& exc) {
-            // print("bound mapped:", exc)
             std::cout << "bound mapped:" << " " << exc << "\n";
         }
     }
-    // try:
     {
         try {
-            // direct_mapped()
             direct_mapped();
         } catch (const ::tpy::OSError& exc) {
-            // print("unmapped errno stays plain:", exc)
             std::cout << "unmapped errno stays plain:" << " " << exc << "\n";
         }
     }
-    // try:
     {
         try {
-            // posthoc_plain()
             posthoc_plain();
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("WRONG: post-hoc assignment re-mapped")
             std::cout << "WRONG: post-hoc assignment re-mapped" << "\n";
         } catch (const ::tpy::OSError& exc) {
-            // print("post-hoc stays plain:", exc, exc.errno)
             std::cout << "post-hoc stays plain:" << " " << exc << " " << exc.error_number << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise FileNotFoundError(1, "Operation not permitted")
             throw ::tpy::FileNotFoundError(1, "Operation not permitted");
         } catch (const ::tpy::PermissionError&) {
-            // print("WRONG: explicit subclass re-mapped")
             std::cout << "WRONG: explicit subclass re-mapped" << "\n";
         } catch (const ::tpy::FileNotFoundError& exc) {
-            // print("subclass kept:", exc)
             std::cout << "subclass kept:" << " " << exc << "\n";
         }
     }
-    // # The filename-carrying ctor maps too, and the filename travels.
-    // try:
     {
         try {
-            // raise OSError(2, "No such file or directory", "cfg.txt")
             ::tpy::OSError(2, "No such file or directory", "cfg.txt").__raise__();
         } catch (const ::tpy::FileNotFoundError& exc) {
-            // print("filename mapped:", exc, exc.filename)
             std::cout << "filename mapped:" << " " << exc << " " << exc.filename << "\n";
         }
     }
-    // # Zero-arg raise (kind none) stays a plain OSError.
-    // try:
     {
         try {
-            // raise OSError()
             ::tpy::OSError{}.__raise__();
         } catch (const ::tpy::OSError& exc) {
-            // print("zero-arg plain:", str(exc) == "")
             std::cout << "zero-arg plain:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(exc)) == "")) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

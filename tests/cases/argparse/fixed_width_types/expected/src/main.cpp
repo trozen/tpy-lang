@@ -5,21 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser()
+//     parser.add_argument("--width", type=int32)
+//     parser.add_argument("--height", type=uint16, default=64)
+//     parser.add_argument("--depth", type=int64)
+//     args = parser.parse_args(["--width", "42", "--depth", "9999999999"])
+//     assert args.width is not None
+//     assert args.depth is not None
+//     print(args.width)
+//     print(args.height)
+//     print(args.depth)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["--width", "42", "--depth", "9999999999"])
     std::vector<std::string> __tmp_1 = {"--width", "42", "--depth", "9999999999"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // assert args.width is not None
     if (!((args.width.has_value()))) ::tpy::raise_assertion_error();
-    // assert args.depth is not None
     if (!((args.depth.has_value()))) ::tpy::raise_assertion_error();
-    // print(args.width)
     std::cout << ::tpy::print_optional_val(args.width) << "\n";
-    // print(args.height)
     std::cout << args.height << "\n";
-    // print(args.depth)
     std::cout << ::tpy::print_optional_val(args.depth) << "\n";
-    // return 0
     return 0;
 }
 
@@ -74,14 +78,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(width, height, depth);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

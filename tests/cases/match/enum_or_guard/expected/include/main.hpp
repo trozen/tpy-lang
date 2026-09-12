@@ -33,11 +33,17 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(c: Color) -> str:
 std::string classify(Color c);
+// def check(c: Color, allow_red: bool) -> str:
 std::string check(Color c, bool allow_red);
+// def mixed(c: Color, allow: bool) -> str:
 std::string mixed(Color c, bool allow);
+// def or_guard(c: Color, flag: bool) -> str:
 std::string or_guard(Color c, bool flag);
+// def multi_guard(c: Color, x: bool, y: bool) -> str:
 std::string multi_guard(Color c, bool x, bool y);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -3,60 +3,66 @@
 
 namespace tpyapp::main {
 
-// x = [10, 20, 30]
 std::vector<int32_t>* x{};
-// # List comprehension
-// r1 = [len(x) for x in ["a", "bb", "ccc"]]
 std::vector<int32_t>* r1{};
-// # Set comprehension
-// r2 = {len(x) for x in ["a", "bb", "ccc"]}
 ::tpy::ordered_set<int32_t>* r2{};
-// # Dict comprehension
-// r3 = {x: len(x) for x in ["a", "bb", "ccc"]}
 ::tpy::ordered_map<std::string, int32_t>* r3{};
-// # Generator expression
-// r4 = list(len(x) for x in ["a", "bb", "ccc"])
 std::vector<int32_t>* r4{};
-// # With filter condition
-// r5 = [len(x) for x in ["a", "bb", "ccc", "dd"] if len(x) > 1]
 std::vector<int32_t>* r5{};
-// # Range-based (original bug repro from TODO)
-// r6 = [x * x for x in range(5)]
 std::vector<int32_t>* r6{};
-// # Array comprehension path (range-based, promotes to std::array)
-// r7: Array[int, 5] = [x * x for x in range(5)]
 std::array<::tpy::BigInt, 5>* r7{};
 
 // def main() -> None:
+//     print(x)
+//     print(r1)
+//     print(r2)
+//     print(r3)
+//     print(r4)
+//     print(r5)
+//     print(r6)
+//     print(r7)
 void main() {
-    // print(x)
     std::cout << ::tpy::ListPrinter((*x)) << "\n";
-    // print(r1)
     std::cout << ::tpy::ListPrinter((*r1)) << "\n";
-    // print(r2)
     std::cout << ::tpy::SetPrinter((*r2)) << "\n";
-    // print(r3)
     std::cout << ::tpy::DictPrinter((*r3)) << "\n";
-    // print(r4)
     std::cout << ::tpy::ListPrinter((*r4)) << "\n";
-    // print(r5)
     std::cout << ::tpy::ListPrinter((*r5)) << "\n";
-    // print(r6)
     std::cout << ::tpy::ListPrinter((*r6)) << "\n";
-    // print(r7)
     std::cout << ::tpy::ListPrinter((*r7)) << "\n";
 }
 
+// x = [10, 20, 30]
+//
+// # List comprehension
+// r1 = [len(x) for x in ["a", "bb", "ccc"]]
+//
+// # Set comprehension
+// r2 = {len(x) for x in ["a", "bb", "ccc"]}
+//
+// # Dict comprehension
+// r3 = {x: len(x) for x in ["a", "bb", "ccc"]}
+//
+// # Generator expression
+// r4 = list(len(x) for x in ["a", "bb", "ccc"])
+//
+// # With filter condition
+// r5 = [len(x) for x in ["a", "bb", "ccc", "dd"] if len(x) > 1]
+//
+// # Range-based (original bug repro from TODO)
+// r6 = [x * x for x in range(5)]
+//
+// # Array comprehension path (range-based, promotes to std::array)
+// r7: Array[int, 5] = [x * x for x in range(5)]
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = [10, 20, 30]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     x = &__global_slot_1;
-    // # List comprehension
-    // r1 = [len(x) for x in ["a", "bb", "ccc"]]
     static std::vector<int32_t> __global_slot_2 = ({
         std::vector<int32_t> __result;
         auto __obj_0 = {"a", "bb", "ccc"};
@@ -70,8 +76,6 @@ void __tpy_init() {
         std::move(__result);
     });
     r1 = &__global_slot_2;
-    // # Set comprehension
-    // r2 = {len(x) for x in ["a", "bb", "ccc"]}
     static ::tpy::ordered_set<int32_t> __global_slot_3 = ({
         ::tpy::ordered_set<int32_t> __result;
         auto __obj_1 = {"a", "bb", "ccc"};
@@ -84,8 +88,6 @@ void __tpy_init() {
         std::move(__result);
     });
     r2 = &__global_slot_3;
-    // # Dict comprehension
-    // r3 = {x: len(x) for x in ["a", "bb", "ccc"]}
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_4 = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto __obj_2 = {"a", "bb", "ccc"};
@@ -98,8 +100,6 @@ void __tpy_init() {
         std::move(__result);
     });
     r3 = &__global_slot_4;
-    // # Generator expression
-    // r4 = list(len(x) for x in ["a", "bb", "ccc"])
     static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
         [__src = std::vector<std::string>({"a", "bb", "ccc"}), __started = false, __beg = std::vector<std::string>::iterator(), __end = std::vector<std::string>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
@@ -111,8 +111,6 @@ void __tpy_init() {
         }
     ));
     r4 = &__global_slot_5;
-    // # With filter condition
-    // r5 = [len(x) for x in ["a", "bb", "ccc", "dd"] if len(x) > 1]
     static std::vector<int32_t> __global_slot_6 = ({
         std::vector<int32_t> __result;
         auto __obj_3 = {"a", "bb", "ccc", "dd"};
@@ -128,8 +126,6 @@ void __tpy_init() {
         std::move(__result);
     });
     r5 = &__global_slot_6;
-    // # Range-based (original bug repro from TODO)
-    // r6 = [x * x for x in range(5)]
     static std::vector<int32_t> __global_slot_7 = ({
         std::vector<int32_t> __result;
         const int32_t __stop_4 = 5;
@@ -140,14 +136,11 @@ void __tpy_init() {
         std::move(__result);
     });
     r6 = &__global_slot_7;
-    // # Array comprehension path (range-based, promotes to std::array)
-    // r7: Array[int, 5] = [x * x for x in range(5)]
     static std::array<::tpy::BigInt, 5> __global_slot_8 = ::tpy::array_from_index<::tpy::BigInt, 5>([&](std::size_t __i_5) -> ::tpy::BigInt {
         int32_t x = int32_t(__i_5);
         return ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x)));
     });
     r7 = &__global_slot_8;
-    // main()
     main();
 }
 

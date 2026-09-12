@@ -6,34 +6,34 @@ namespace tpyapp::main {
 
 // # bytes.upper() -- ASCII uppercase
 // def main() -> None:
+//     print(b"hello".upper())       # b'HELLO'
+//     print(b"Hello World".upper()) # b'HELLO WORLD'
+//     print(b"ALREADY".upper())     # b'ALREADY'
+//     print(b"123abc".upper())      # b'123ABC'
+//     # bytearray too
+//     ba = bytearray(b"mixed Case")
+//     print(ba.upper())             # bytearray(b'MIXED CASE')
+//     # BytesView (from slice)
+//     print(b"hello world"[0:5].upper())   # b'HELLO'
+//     # chain: slice -> rstrip -> upper
+//     print(b"hello\x00\x00"[0:7].rstrip(b"\x00").upper())  # b'HELLO'
 void main() {
-    // print(b"hello".upper())       # b'HELLO'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("hello", 5))) << "\n";
-    // print(b"Hello World".upper()) # b'HELLO WORLD'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("Hello World", 11))) << "\n";
-    // print(b"ALREADY".upper())     # b'ALREADY'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("ALREADY", 7))) << "\n";
-    // print(b"123abc".upper())      # b'123ABC'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("123abc", 6))) << "\n";
-    // # bytearray too
-    // ba = bytearray(b"mixed Case")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("mixed Case", 10));
-    // print(ba.upper())             # bytearray(b'MIXED CASE')
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper(ba)) << "\n";
-    // # BytesView (from slice)
-    // print(b"hello world"[0:5].upper())   # b'HELLO'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello world", 11), ::tpy::BasicSlice{0, 5}))) << "\n";
-    // # chain: slice -> rstrip -> upper
-    // print(b"hello\x00\x00"[0:7].rstrip(b"\x00").upper())  # b'HELLO'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello\000\000", 7), ::tpy::BasicSlice{0, 7}), ::tpy::bytes_literal("\000", 1)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

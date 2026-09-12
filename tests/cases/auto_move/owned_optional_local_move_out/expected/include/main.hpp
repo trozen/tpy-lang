@@ -14,10 +14,15 @@ struct Pt;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def move_owned_optional_into_field() -> int:
 ::tpy::BigInt move_owned_optional_into_field();
+// def move_owned_optional_out_return(c: bool) -> Own[Box] | None:
 std::optional<Box> move_owned_optional_out_return(bool c);
+// def move_owned_optional_into_ctor_arg() -> int:
 ::tpy::BigInt move_owned_optional_into_ctor_arg();
+// def alias_then_rebind() -> int:
 ::tpy::BigInt alias_then_rebind();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -101,15 +106,19 @@ inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Box::Box(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.slot = None
 inline Holder::Holder() : slot(std::nullopt) {}
 
 // def __init__(self, b: Own[Box] | None) -> None:
+//     self.slot = b            # MIL: move the Own-optional param into the field
 inline Boxed::Boxed(std::optional<Box> b) : slot(std::move(b)) {}
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Pt::Pt(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

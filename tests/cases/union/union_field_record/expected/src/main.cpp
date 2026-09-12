@@ -5,47 +5,48 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog("Rex")
+//     pet: Dog | Cat = d
+//     z = Zoo(pet, "test")
+//     print(z.tag)
+//     p = z.pet
+//     if isinstance(p, Dog):
+//         print(p.name)
+//
+//     c = Cat("Whiskers")
+//     pet2: Dog | Cat = c
+//     z2 = Zoo(pet2, "cats")
+//     print(z2.tag)
+//     p2 = z2.pet
+//     if isinstance(p2, Cat):
+//         print(p2.name)
 void main() {
-    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    // pet: Dog | Cat = d
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
-    // z = Zoo(pet, "test")
     Zoo z = Zoo(pet.as_const(), "test");
-    // print(z.tag)
     std::cout << z.tag << "\n";
-    // p = z.pet
     ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
-    // if isinstance(p, Dog):
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
-        // print(p.name)
         std::cout << __p.name << "\n";
     }
-    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    // pet2: Dog | Cat = c
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
-    // z2 = Zoo(pet2, "cats")
     Zoo z2 = Zoo(pet2.as_const(), "cats");
-    // print(z2.tag)
     std::cout << z2.tag << "\n";
-    // p2 = z2.pet
     ::tpy::Union<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z2.pet);
-    // if isinstance(p2, Cat):
     if (std::holds_alternative<Cat*>(p2)) {
         auto& __p2 = *std::get<Cat*>(p2);
-        // print(p2.name)
         std::cout << __p2.name << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -8,6 +8,7 @@
 namespace tpyapp::const_mod {
 
 inline constexpr std::string_view __name__ = "const_mod";
+// VERSION: Final[str] = "1.2.3"
 inline constexpr std::string_view VERSION = "1.2.3";
 
 void __tpy_init();

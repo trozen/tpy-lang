@@ -5,78 +5,80 @@ namespace tpyapp::main {
 
 
 // def get_int() -> int32:
+//     return 42
 int32_t get_int() {
-    // return 42
     return 42;
 }
 
 // def get_str() -> str:
+//     return "hello"
 std::string get_str() {
-    // return "hello"
     return "hello";
 }
 
 // def get_list() -> Own[list[int32]]:
+//     return [1, 2, 3]
 std::vector<int32_t> get_list() {
-    // return [1, 2, 3]
     return {1, 2, 3};
 }
 
 // def main() -> None:
+//     # int32 -- trivial type
+//     try:
+//         x = get_int()
+//     finally:
+//         print(x)
+//
+//     # str (std::string)
+//     try:
+//         s = get_str()
+//     finally:
+//         print(s)
+//
+//     # list (std::vector, non-value type)
+//     try:
+//         items = get_list()
+//     finally:
+//         print(len(items))
 void main() {
-    // # int32 -- trivial type
-    // try:
     int32_t x;
     {
         try {
-            // x = get_int()
             x = get_int();
         } catch (...) {
-            // print(x)
             std::cout << x << "\n";
             throw;
         }
-        // print(x)
         std::cout << x << "\n";
     }
-    // # str (std::string)
-    // try:
     std::string s;
     {
         try {
-            // s = get_str()
             s = get_str();
         } catch (...) {
-            // print(s)
             std::cout << s << "\n";
             throw;
         }
-        // print(s)
         std::cout << s << "\n";
     }
-    // # list (std::vector, non-value type)
-    // try:
     std::optional<std::vector<int32_t>> items;
     {
         try {
-            // items = get_list()
             items = get_list();
         } catch (...) {
-            // print(len(items))
             std::cout << ::tpy::__len__((*items)) << "\n";
             throw;
         }
-        // print(len(items))
         std::cout << ::tpy::__len__((*items)) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

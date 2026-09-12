@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pt: Point = Point(10, 20)
+//     p: Ptr[Point] = take_ptr(pt)
+//     # Method call through Ptr auto-deref
+//     print(p.sum())
+//     print(p.describe())
 void main() {
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // p: Ptr[Point] = take_ptr(pt)
     Point* p = &pt;
-    // # Method call through Ptr auto-deref
-    // print(p.sum())
     std::cout << p->sum() << "\n";
-    // print(p.describe())
     std::cout << p->describe() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

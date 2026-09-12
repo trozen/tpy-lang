@@ -6,64 +6,69 @@ namespace tpyapp::main {
 
 // @error_return(StopIteration)
 // def parse_positive(s: str) -> int32:
+//     if s == "two":
+//         return 2
+//     raise StopIteration
 std::expected<int32_t, ::tpy::StopIteration> parse_positive(std::string_view s) {
-    // if s == "two":
     if ((s == "two")) {
-        // return 2
         return 2;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def main() -> None:
+//     try:
+//         v = parse_positive("two")
+//     except StopIteration:
+//         print("error")
+//     else:
+//         print(v)
+//
+//     try:
+//         v2 = parse_positive("three")
+//     except StopIteration:
+//         print("error")
+//     else:
+//         print(v2)
 void main() {
-    // try:
     int32_t v;
     {
-        // v = parse_positive("two")
         {
             auto __try_tmp_2 = parse_positive("two");
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_1:;
     }
-    // try:
     int32_t v2;
     {
-        // v2 = parse_positive("three")
         {
             auto __try_tmp_4 = parse_positive("three");
             if (!__try_tmp_4.has_value()) goto __except_3;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_3;
         // except StopIteration:
         __except_3:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_3:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

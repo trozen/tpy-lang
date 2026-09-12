@@ -5,62 +5,62 @@ namespace tpyapp::main {
 
 
 // def depth(t: Tree) -> int:
+//     if isinstance(t, int):
+//         return 0
+//     else:
+//         result = 0
+//         for child in t:
+//             d = depth(child)
+//             if d > result:
+//                 result = d
+//         return result + 1
 ::tpy::BigInt depth(const Tree& t) {
-    // if isinstance(t, int):
     if (std::holds_alternative<::tpy::BigInt>(t.value)) {
         const auto& __t = std::get<::tpy::BigInt>(t.value);
-        // return 0
         return ::tpy::BigInt(0);
-    // else:
     } else {
         const auto& __t = std::get<std::vector<Tree>>(t.value);
-        // result = 0
         ::tpy::BigInt result = ::tpy::BigInt(0);
-        // for child in t:
         auto& __src_0 = __t;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            // d = depth(child)
             ::tpy::BigInt d = depth(child);
-            // if d > result:
             if ((d > result)) {
-                // result = d
                 result = d;
             }
         }
-        // return result + 1
         return ((result) + (::tpy::BigInt(1)));
     }
 }
 
 // def main() -> None:
+//     leaf: Tree = 1
+//     branch: Tree = [1, 2]
+//     inner: list[Tree] = [3, 4]
+//     nested: list[Tree] = [1, inner]
+//     print(depth(leaf))
+//     print(depth(branch))
+//     print(depth(nested))
 void main() {
-    // leaf: Tree = 1
     Tree leaf = 1;
-    // branch: Tree = [1, 2]
     Tree branch = std::vector<Tree>{1, 2};
-    // inner: list[Tree] = [3, 4]
     std::vector<Tree> inner = {3, 4};
-    // nested: list[Tree] = [1, inner]
     std::vector<Tree> nested = ::tpy::make_vector<Tree>(1, std::move(inner));
-    // print(depth(leaf))
     std::cout << depth(leaf) << "\n";
-    // print(depth(branch))
     std::cout << depth(branch) << "\n";
-    // print(depth(nested))
     Tree __tmp_1 = std::move(nested);
     std::cout << depth(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

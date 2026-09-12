@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def all_arm(v: int32 | None) -> None:
+//     match v:  # tpyc: ok
+//         case None | _:
+//             print("any")
 void all_arm(std::optional<int32_t> v) {
-    // match v:  # tpyc: ok
     auto& __match_subject_1 = v;
-    // case None | _:
     {
-        // print("any")
         std::cout << "any" << "\n";
     }
 }
 
 // def none_or_five(v: int32 | None) -> None:
+//     match v:
+//         case None | 5:
+//             print("none-or-five")
+//         case _:
+//             print("other")
 void none_or_five(std::optional<int32_t> v) {
-    // match v:
     auto& __match_subject_1 = v;
-    // case None | 5:
     if (!__match_subject_1.has_value() || (__match_subject_1.has_value() && (*__match_subject_1) == 5)) {
-        // print("none-or-five")
         std::cout << "none-or-five" << "\n";
-    // case _:
     } else {
-        // print("other")
         std::cout << "other" << "\n";
     }
 }
 
 // def main() -> None:
+//     all_arm(1)
+//     all_arm(None)
+//     none_or_five(None)
+//     none_or_five(5)
+//     none_or_five(2)
 void main() {
-    // all_arm(1)
     all_arm(1);
-    // all_arm(None)
     all_arm(std::nullopt);
-    // none_or_five(None)
     none_or_five(std::nullopt);
-    // none_or_five(5)
     none_or_five(5);
-    // none_or_five(2)
     none_or_five(2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

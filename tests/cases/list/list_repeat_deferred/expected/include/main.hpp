@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_array_resolution() -> None:
 void test_array_resolution();
+// def test_list_promotion() -> None:
 void test_list_promotion();
+// def test_annotated_list() -> None:
 void test_annotated_list();
+// def test_subscript_stays_array() -> None:
 void test_subscript_stays_array();
+// def takes_span(s: Span[int32]) -> None:
 void takes_span(std::span<int32_t> s);
+// def test_variable_repeat_assigned_to_span() -> None:
 void test_variable_repeat_assigned_to_span();
 
 void __tpy_init();

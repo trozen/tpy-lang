@@ -5,53 +5,56 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # +inf -> int (BigInt path).
+//     try:
+//         print(int(math.inf))
+//     except OverflowError as e:
+//         print("caught:", str(e))
+//
+//     # -inf -> int.
+//     try:
+//         print(int(-math.inf))
+//     except OverflowError as e:
+//         print("caught:", str(e))
+//
+//     # ArithmeticError catches OverflowError too.
+//     try:
+//         print(int(math.inf))
+//     except ArithmeticError as e:
+//         print("via ArithmeticError:", str(e))
 void main() {
-    // # +inf -> int (BigInt path).
-    // try:
     {
         try {
-            // print(int(math.inf))
             std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n";
         } catch (const ::tpy::OverflowError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # -inf -> int.
-    // try:
     {
         try {
-            // print(int(-math.inf))
             std::cout << ::tpy::BigInt::from_float(-(::tpystd::math::inf)) << "\n";
         } catch (const ::tpy::OverflowError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # ArithmeticError catches OverflowError too.
-    // try:
     {
         try {
-            // print(int(math.inf))
             std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n";
         } catch (const ::tpy::ArithmeticError& e) {
-            // print("via ArithmeticError:", str(e))
             std::cout << "via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Runtime OverflowError is raised by float-to-int conversion when the source
-    // # is positive or negative infinity. NaN routes to ValueError (covered by
-    // # value_error_caught). Both messages match CPython.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

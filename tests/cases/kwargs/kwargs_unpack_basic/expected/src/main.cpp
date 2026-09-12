@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def connect(**kwargs: Unpack[Options]) -> None:
+//     print(kwargs["host"])
+//     print(kwargs["port"])
 void connect(const Options& kwargs) {
-    // print(kwargs["host"])
     std::cout << kwargs.host << "\n";
-    // print(kwargs["port"])
     std::cout << kwargs.port << "\n";
 }
 
 // def main() -> None:
+//     connect(host="localhost", port=int32(8080))
+//     connect(host="example.com", port=int32(443))
 void main() {
-    // connect(host="localhost", port=int32(8080))
     Options __tmp_1 = Options("localhost", 8080);
     connect(__tmp_1);
-    // connect(host="example.com", port=int32(443))
     Options __tmp_2 = Options("example.com", 443);
     connect(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

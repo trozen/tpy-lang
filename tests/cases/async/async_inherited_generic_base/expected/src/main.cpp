@@ -5,14 +5,30 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     # await: fetch through the inherited templated coro, then mutate the box
+//     # and re-fetch -- the second value proves the coro aliased the receiver.
+//     b = IntBox(7)
+//     print("fetch:", await b.fetch())
+//     b.put(99)
+//     print("refetch:", await b.fetch())
+//
+//     # async with: the inherited __aenter__ bumps `entered` on the shared
+//     # manager; observing entered == 1 after exit proves it was not copied.
+//     g = IntGuard(42)
+//     async with g as v:
+//         print("entered:", v)
+//     print("count:", g.entered)
+//
+//     # async for: the inherited __anext__ advances `cur` across suspensions;
+//     # a copied iterator would never advance.
+//     total = 0
+//     async for x in IntCounter(3, 10):
+//         total += x
+//     print("total:", total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # await: fetch through the inherited templated coro, then mutate the box
-        // # and re-fetch -- the second value proves the coro aliased the receiver.
-        // b = IntBox(7)
         b.emplace(IntBox(7));
-        // print("fetch:", await b.fetch())
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
@@ -22,11 +38,8 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print("fetch:", await b.fetch())
         std::cout << "fetch:" << " " << __await_lift_0 << "\n";
-        // b.put(99)
         (*b).put(99);
-        // print("refetch:", await b.fetch())
         __sub_1.emplace((*b));
         __state = S_RESUME_1;
         continue;
@@ -36,14 +49,9 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print("refetch:", await b.fetch())
         std::cout << "refetch:" << " " << __await_lift_1 << "\n";
-        // # async with: the inherited __aenter__ bumps `entered` on the shared
-        // # manager; observing entered == 1 after exit proves it was not copied.
-        // g = IntGuard(42)
         g.emplace(IntGuard(42));
         __with_ctx_0 = &((*g));
-        // async with g as v:
         __sub_2.emplace((*__with_ctx_0));
         __state = S_RESUME_2;
         continue;
@@ -87,23 +95,17 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_0: {
-        // async for x in IntCounter(3, 10):
         __sub_4.emplace(*__for_itr_0);
         __state = S_RESUME_4;
         continue;
     }
     case S_JOIN_1: {
-        // async with g as v:
         __sub_3.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_3;
         continue;
     }
     case S_JOIN_2: {
-        // print("count:", g.entered)
         std::cout << "count:" << " " << (*g).entered << "\n";
-        // # async for: the inherited __anext__ advances `cur` across suspensions;
-        // # a copied iterator would never advance.
-        // total = 0
         total = 0;
         __for_itr_0.emplace((IntCounter(3, 10)).__aiter__());
         __state = S_JOIN_0;
@@ -111,7 +113,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_3: {
         try {
-            // print("entered:", v)
             std::cout << "entered:" << " " << v << "\n";
             __state = S_JOIN_1;
             continue;
@@ -122,13 +123,11 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_4: {
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_5: {
-        // print("total:", total)
         std::cout << "total:" << " " << total << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -145,22 +144,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Inherited await / async with / async for on a generic base: a concrete
+// # subclass reuses the base's templated coro struct with the bound element type.
+// # Mutate-and-observe confirms the receiver is aliased across the boundary.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Inherited await / async with / async for on a generic base: a concrete
-    // # subclass reuses the base's templated coro struct with the bound element type.
-    // # Mutate-and-observe confirms the receiver is aliased across the boundary.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bad(x: int32 | None) -> int32:
 int32_t bad(std::optional<int32_t> x);
 
 void __tpy_init();

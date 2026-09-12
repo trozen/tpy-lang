@@ -5,27 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = HeapVal(int32(42))
+//     val: int32 = h.take()
+//     print("got", val)
+//
+//     # Temporary
+//     val2: int32 = HeapVal(int32(99)).take()
+//     print("got", val2)
 void main() {
-    // h = HeapVal(int32(42))
     HeapVal h = HeapVal(42);
-    // val: int32 = h.take()
     int32_t val = std::move(h).take();
-    // print("got", val)
     std::cout << "got" << " " << val << "\n";
-    // # Temporary
-    // val2: int32 = HeapVal(int32(99)).take()
     int32_t val2 = HeapVal(99).take();
-    // print("got", val2)
     std::cout << "got" << " " << val2 << "\n";
 }
 
+// from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
-    // main()
     main();
 }
 

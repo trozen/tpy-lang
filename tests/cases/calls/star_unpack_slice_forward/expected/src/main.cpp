@@ -7,41 +7,41 @@ namespace tpyapp::main {
 // # Forwarding a slice of a *args body view into another *args parameter works:
 // # the slice stays a varargs, so *items[1:] unpacks into g's vararg slot.
 // def g(*nums: int) -> int:
+//     t = 0
+//     for n in nums:
+//         t += n
+//     return t
 ::tpy::BigInt g(::tpy::varargs<const ::tpy::BigInt> nums) {
-    // t = 0
     int32_t t = 0;
-    // for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& n = *__beg_0;
-        // t += n
         t = ::tpy::add_check<int32_t>(t, (n).to_fixed_check<int32_t>());
     }
-    // return t
     return ::tpy::BigInt(t);
 }
 
 // def f(*items: int) -> int:
+//     return g(*items[1:])
 ::tpy::BigInt f(::tpy::varargs<const ::tpy::BigInt> items) {
-    // return g(*items[1:])
     return g(::tpy::varargs<const ::tpy::BigInt>(::tpy::list_slice(items, ::tpy::BasicSlice{1, std::nullopt})));
 }
 
 // def main() -> None:
+//     print(f(10, 1, 2, 3))
 void main() {
-    // print(f(10, 1, 2, 3))
     std::array<const ::tpy::BigInt, 4> __tmp_1{10, 1, 2, 3};
     std::cout << f(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

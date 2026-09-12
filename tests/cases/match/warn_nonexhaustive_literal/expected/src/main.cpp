@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def incomplete(mode: Literal["r", "w", "rb"]) -> None:
+//     match mode:  # tpyc: warning(/missing: "rb"/)
+//         case "r":
+//             print("read")
+//         case "w":
+//             print("write")
 void incomplete(std::string_view mode) {
-    // match mode:  # tpyc: warning(/missing: "rb"/)
     auto& __match_subject_1 = mode;
-    // case "r":
     if (__match_subject_1 == "r") {
-        // print("read")
         std::cout << "read" << "\n";
-    // case "w":
     } else if (__match_subject_1 == "w") {
-        // print("write")
         std::cout << "write" << "\n";
     }
 }
 
 // def main() -> None:
+//     incomplete("r")
+//     incomplete("w")
 void main() {
-    // incomplete("r")
     incomplete("r");
-    // incomplete("w")
     incomplete("w");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

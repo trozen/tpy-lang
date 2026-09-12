@@ -5,79 +5,79 @@ namespace tpyapp::main {
 
 
 // def show(p: tuple[Point | None, int32]) -> None:
+//     a, n = p
+//     if a is not None:
+//         print(a.x)
+//     else:
+//         print("none")
+//     print(n)
 void show(const std::tuple<const Point*, int32_t>& p) {
-    // a, n = p
     auto& __tup_1 = p;
     const Point* a = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
-    // else:
     } else {
-        // print("none")
         std::cout << "none" << "\n";
     }
-    // print(n)
     std::cout << n << "\n";
 }
 
 // def show2(p: tuple[Point | None, Point | None]) -> None:
+//     a, b = p
+//     if a is not None:
+//         print(a.x)
+//     else:
+//         print("none")
+//     if b is not None:
+//         print(b.x)
+//     else:
+//         print("none")
 void show2(const std::tuple<const Point*, const Point*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     const Point* a = std::get<0>(__tup_1);
     const Point* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
-    // else:
     } else {
-        // print("none")
         std::cout << "none" << "\n";
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.x)
         std::cout << b->x << "\n";
-    // else:
     } else {
-        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
 // def main() -> None:
+//     # All-rvalue tuple literal at call site.
+//     show((Point(1), 42))
+//     # Mixed: rvalue + None + lvalue at the same call site.
+//     p = Point(7)
+//     show((Point(2), 99))
+//     show((None, 5))
+//     show((p, 11))
+//     # Helper's pointer-pass-through path: rvalue + lvalue elements both
+//     # land in pointer-form Optional slots, so the source value-tuple has
+//     # mixed slot shapes (T value at slot 0, T* at slot 1).
+//     show2((Point(20), p))
+//     show2((p, Point(30)))
 void main() {
-    // # All-rvalue tuple literal at call site.
-    // show((Point(1), 42))
     show(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1), 42}));
-    // # Mixed: rvalue + None + lvalue at the same call site.
-    // p = Point(7)
     Point p = Point(7);
-    // show((Point(2), 99))
     show(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(2), 99}));
-    // show((None, 5))
     show(std::tuple<Point*, int32_t>{nullptr, 5});
-    // show((p, 11))
     show(std::tuple<Point*, int32_t>{&(p), 11});
-    // # Helper's pointer-pass-through path: rvalue + lvalue elements both
-    // # land in pointer-form Optional slots, so the source value-tuple has
-    // # mixed slot shapes (T value at slot 0, T* at slot 1).
-    // show2((Point(20), p))
     show2(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point*>{Point(20), &(p)}));
-    // show2((p, Point(30)))
     show2(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point*, Point>{&(p), Point(30)}));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

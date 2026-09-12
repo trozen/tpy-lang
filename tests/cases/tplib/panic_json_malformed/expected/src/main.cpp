@@ -6,22 +6,22 @@ namespace tpyapp::main {
 
 // @error_return(JsonError)
 // def parse_bad() -> None:
+//     reader = JsonReader('{"name": "hello')
+//     reader.read_object_start()
+//     reader.has_next()
+//     reader.read_key()
+//     reader.read_str()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> parse_bad() {
-    // reader = JsonReader('{"name": "hello')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"name\": \"hello");
-    // reader.read_object_start()
     {
         auto __try_tmp_1 = reader.read_object_start();
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
     }
-    // reader.has_next()
     reader.has_next();
-    // reader.read_key()
     {
         auto __try_tmp_2 = reader.read_key();
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
     }
-    // reader.read_str()
     {
         auto __try_tmp_3 = reader.read_str();
         if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
@@ -30,10 +30,12 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> parse_bad() {
 }
 
 // def main() -> None:
+//     try:
+//         parse_bad()
+//     except JsonError:
+//         print("caught: malformed json")
 void main() {
-    // try:
     {
-        // parse_bad()
         {
             auto __try_tmp_5 = parse_bad();
             if (!__try_tmp_5.has_value()) goto __except_4;
@@ -41,21 +43,21 @@ void main() {
         goto __after_try_4;
         // except JsonError:
         __except_4:;
-        // print("caught: malformed json")
         std::cout << "caught: malformed json" << "\n";
         __after_try_4:;
     }
 }
 
+// from tplib.json import JsonError, JsonReader
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.json import JsonError, JsonReader
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
-    // main()
     main();
 }
 

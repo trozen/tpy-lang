@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main():
+//     inner = Inner()
+//     inner.value = 42
+//     box = Box[Inner](inner)
+//     print(box.item.value)
 void main() {
-    // inner = Inner()
     Inner inner = Inner();
-    // inner.value = 42
     inner.value = 42;
-    // box = Box[Inner](inner)
     Box<Inner> box = Box<Inner>(std::move(inner));
-    // print(box.item.value)
     std::cout << box.item.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

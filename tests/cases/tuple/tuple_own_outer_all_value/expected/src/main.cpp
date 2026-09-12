@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def make_pair() -> Own[tuple[int32, int32]]:
+//     return (int32(10), int32(20))
 std::tuple<int32_t, int32_t> make_pair() {
-    // return (int32(10), int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
 // def main() -> None:
+//     pair = make_pair()
+//     print(pair[0])
+//     print(pair[1])
 void main() {
-    // pair = make_pair()
     std::tuple<int32_t, int32_t> pair = make_pair();
-    // print(pair[0])
     std::cout << std::get<0>(pair) << "\n";
-    // print(pair[1])
     std::cout << std::get<1>(pair) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -33,7 +33,9 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "b";
 
+// def describe(c: Color) -> str:
 std::string describe(Color c);
+// def describe_default() -> str:
 std::string describe_default();
 
 void __tpy_init();

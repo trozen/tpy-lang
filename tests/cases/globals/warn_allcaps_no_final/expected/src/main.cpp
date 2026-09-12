@@ -3,23 +3,23 @@
 
 namespace tpyapp::main {
 
-// MAX_SIZE: int32 = 100  # tpyc: warning(/without Final/)
 int32_t MAX_SIZE{};
 
 // def main() -> None:
+//     print(MAX_SIZE)
 void main() {
-    // print(MAX_SIZE)
     std::cout << MAX_SIZE << "\n";
 }
 
+// MAX_SIZE: int32 = 100  # tpyc: warning(/without Final/)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // MAX_SIZE: int32 = 100  # tpyc: warning(/without Final/)
     MAX_SIZE = 100;
-    // main()
     main();
 }
 

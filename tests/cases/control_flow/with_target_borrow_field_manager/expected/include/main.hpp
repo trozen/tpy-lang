@@ -15,7 +15,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen() -> Iterator[int32]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -78,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<Holder> h;
@@ -109,34 +111,37 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Box::Box(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32):
+//     self.box = Box(n)
 inline Holder::Holder(int32_t n) : box(Box(n)) {}
 
 // def __enter__(self) -> "Box | None":
+//     return self.box
 inline Box* Holder::__enter__() {
-    // return self.box
     return &(this->box);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Holder::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 
 // def __init__(self, name: str):
+//     self.name = name
 inline Named::Named(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> StrView:
+//     return self.name
 inline std::string_view Named::__enter__() const {
-    // return self.name
     return this->name;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Named::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

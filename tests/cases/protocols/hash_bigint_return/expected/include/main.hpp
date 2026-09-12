@@ -11,6 +11,7 @@ struct Key;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Key:
@@ -51,17 +52,18 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int) -> None:
+//     self.val = v
 inline Key::Key(const ::tpy::BigInt& v) : val(v) {}
 
 // def __hash__(self) -> int:
+//     return self.val
 inline ::tpy::BigInt Key::__hash__() const {
-    // return self.val
     return this->val;
 }
 
 // def __eq__(self, other: Key) -> bool:
+//     return self.val == other.val
 inline bool Key::__eq__(const Key& other) const {
-    // return self.val == other.val
     return (this->val == other.val);
 }
 void __tpy_init();

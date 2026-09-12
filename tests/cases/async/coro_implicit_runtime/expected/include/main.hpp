@@ -29,13 +29,20 @@ struct __coro_2_5_Outer_5_Inner_7_compute;
 struct __coro_Gate___aenter__;
 struct __coro_Gate___aexit__;
 
+// async def scalar(n: int) -> int:  # tpyc: ok
 __coro_scalar scalar(::tpy::BigInt n);
+// async def wrapped(n: tuple[int]) -> tuple[int]:  # tpyc: ok
 __coro_wrapped wrapped(std::tuple<::tpy::BigInt> n);
+// async def optional(n: int | None) -> int | None:  # tpyc: ok
 __coro_optional optional(std::optional<::tpy::BigInt> n);
+// async def identity[T](n: T) -> T:  # tpyc: ok
 template <typename T>
 __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> n);
+// async def chained(n: int) -> int:
 __coro_chained chained(::tpy::BigInt n);
+// async def cleanup(n: int) -> int:
 __coro_cleanup cleanup(::tpy::BigInt n);
+// def main() -> None:
 void main();
 
 // # Method and nested-record method: the defining module owns both frame dependencies.
@@ -92,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
     return os;
 }
 
-// Async coroutine: Worker.compute
+// async def compute(self, n: int) -> int:  # tpyc: ok
 struct __coro_Worker_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -119,7 +126,7 @@ inline __coro_Worker_compute Worker::compute(::tpy::BigInt n) const {
     return __coro_Worker_compute(*this, n);
 }
 
-// Async coroutine: Outer.Inner.compute
+// async def compute(self, n: int) -> int:  # tpyc: ok
 struct __coro_2_5_Outer_5_Inner_7_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -146,7 +153,7 @@ inline __coro_2_5_Outer_5_Inner_7_compute Outer::Inner::compute(::tpy::BigInt n)
     return __coro_2_5_Outer_5_Inner_7_compute(*this, n);
 }
 
-// Async coroutine: Gate.__aenter__
+// async def __aenter__(self) -> int:  # tpyc: ok
 struct __coro_Gate___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -172,7 +179,7 @@ inline __coro_Gate___aenter__ Gate::__aenter__() const {
     return __coro_Gate___aenter__(*this);
 }
 
-// Async coroutine: Gate.__aexit__
+// async def __aexit__(self, et: None, ev: None, tb: None) -> None:  # tpyc: ok
 struct __coro_Gate___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -201,7 +208,7 @@ inline __coro_Gate___aexit__ Gate::__aexit__(std::monostate et, std::monostate e
     return __coro_Gate___aexit__(*this, et, ev, tb);
 }
 
-// Async coroutine: scalar
+// async def scalar(n: int) -> int:  # tpyc: ok
 struct __coro_scalar {
     int32_t __state;
     bool __cancel_pending;
@@ -223,7 +230,7 @@ struct __coro_scalar {
     }
 };
 
-// Async coroutine: wrapped
+// async def wrapped(n: tuple[int]) -> tuple[int]:  # tpyc: ok
 struct __coro_wrapped {
     int32_t __state;
     bool __cancel_pending;
@@ -245,7 +252,7 @@ struct __coro_wrapped {
     }
 };
 
-// Async coroutine: optional
+// async def optional(n: int | None) -> int | None:  # tpyc: ok
 struct __coro_optional {
     int32_t __state;
     bool __cancel_pending;
@@ -267,7 +274,7 @@ struct __coro_optional {
     }
 };
 
-// Async coroutine: identity
+// async def identity[T](n: T) -> T:  # tpyc: ok
 template <typename T>
 struct __coro_identity {
     int32_t __state;
@@ -290,12 +297,12 @@ struct __coro_identity {
     }
 };
 // async def identity[T](n: T) -> T:  # tpyc: ok
+//     return n
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_identity<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(n));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -312,7 +319,7 @@ __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> n) {
     return __coro_identity<T>(n);
 }
 
-// Async coroutine: chained
+// async def chained(n: int) -> int:
 struct __coro_chained {
     int32_t __state;
     bool __cancel_pending;
@@ -339,7 +346,7 @@ struct __coro_chained {
     }
 };
 
-// Async coroutine: cleanup
+// async def cleanup(n: int) -> int:
 struct __coro_cleanup {
     ::tpy::frame_state __state;
     bool __cancel_pending;

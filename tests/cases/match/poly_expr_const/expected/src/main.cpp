@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Owner(Box(Dog())).describe())
+//     print(Owner(Box(Snake())).describe())
 void main() {
-    // print(Owner(Box(Dog())).describe())
     std::cout << Owner(::tpystd::tplib::box::Box<Dog>(Dog())).describe() << "\n";
-    // print(Owner(Box(Snake())).describe())
     std::cout << Owner(::tpystd::tplib::box::Box<Snake>(Snake())).describe() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

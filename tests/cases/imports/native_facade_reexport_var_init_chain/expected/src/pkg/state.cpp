@@ -3,22 +3,21 @@
 
 namespace repro_init::pkg::state {
 
-// COUNTER: int32 = _seed()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
 int32_t COUNTER{};
 
 // def _seed() -> int32:
+//     # Non-trivial init: forces __tpy_init() rather than constexpr fold.
+//     return int32(20) + int32(22)
 int32_t _seed() {
-    // # Non-trivial init: forces __tpy_init() rather than constexpr fold.
-    // return int32(20) + int32(22)
     return (::tpy::add_check<int32_t>(20, 22));
 }
 
+// COUNTER: int32 = _seed()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // COUNTER: int32 = _seed()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
     COUNTER = _seed();
 }
 

@@ -15,11 +15,17 @@ extern ::tpy::ordered_map<std::string, int32_t>* ta2;
 extern ::tpy::ordered_map<std::string, int32_t>* tb2;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_or(a: dict[str, int32], b: dict[str, int32]) -> None:
 void test_or(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b);
+// def test_and(a: dict[str, int32], b: dict[str, int32]) -> None:
 void test_and(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b);
+// def test_ternary(a: dict[str, int32], b: dict[str, int32], cond: bool) -> None:
 void test_ternary(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b, bool cond);
+// def test_literal_or() -> None:
 void test_literal_or();
+// def test_literal_ternary(cond: bool) -> None:
 void test_literal_ternary(bool cond);
+// def test_ternary_alias(a: dict[str, int32], b: dict[str, int32], cond: bool) -> None:
 void test_ternary_alias(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b, bool cond);
 
 void __tpy_init();

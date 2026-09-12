@@ -9,8 +9,12 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
+// def gen_value_pairs(items: list[int32]) -> Iterator[tuple[int32 | None, int32 | None]]:
+//     for it in items:
+//         yield (it, None)
 inline auto gen_value_pairs(std::vector<int32_t>& items) {
     return ::tpy::make_generator<std::tuple<std::optional<int32_t>, std::optional<int32_t>>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<std::optional<int32_t>, std::optional<int32_t>>> {

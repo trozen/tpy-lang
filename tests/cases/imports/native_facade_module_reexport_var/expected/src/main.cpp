@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(VERSION)
+//     print(LIMIT)
+//     print(int32(LIMIT) + int32(1))
 void main() {
-    // print(VERSION)
     std::cout << ::tpyapp::constants::VERSION << "\n";
-    // print(LIMIT)
     std::cout << ::tpyapp::constants::LIMIT << "\n";
-    // print(int32(LIMIT) + int32(1))
     std::cout << (::tpy::add_check<int32_t>(::tpyapp::constants::LIMIT, 1)) << "\n";
 }
 
+// # Re-exporting a Final[T] constant through a flat `# tpy: native_module`
+// # (not __init__.py). Exercises the can_reexport extension to native_module
+// # facades plus the reexport-chain chase in codegen.
+// from facade import VERSION, LIMIT
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Re-exporting a Final[T] constant through a flat `# tpy: native_module`
-    // # (not __init__.py). Exercises the can_reexport extension to native_module
-    // # facades plus the reexport-chain chase in codegen.
-    // from facade import VERSION, LIMIT
     ::tpyapp::constants::__tpy_init();
-    // main()
     main();
 }
 

@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def from_param(b: bytes) -> BytesView:
 ::tpy::BytesView from_param(::tpy::BytesView b);
+// def from_param_sliced(b: bytes) -> BytesView:
 ::tpy::BytesView from_param_sliced(::tpy::BytesView b);
+// def from_literal() -> BytesView:
 ::tpy::BytesView from_literal();
+// def main() -> None:
 void main();
 
 void __tpy_init();

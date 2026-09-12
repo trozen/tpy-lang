@@ -5,77 +5,81 @@ namespace tpyapp::main {
 
 
 // def _hang_request() -> None:
+//     a, b = socket.socketpair()
+//     a.settimeout(0.05)
+//     s = requests.Session()
+//     conn = HTTPConnection("api.test", 8002)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     s.get("http://api.test:8002/hang")
+//     b.close()
 void _hang_request() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.settimeout(0.05)
     a.settimeout(0.05);
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // conn = HTTPConnection("api.test", 8002)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // s.get("http://api.test:8002/hang")
     s.get("http://api.test:8002/hang");
-    // b.close()
     b.close();
 }
 
 // def main() -> None:
+//     try:
+//         _hang_request()
+//         print("NO TIMEOUT")
+//     except Timeout as e:
+//         print("timeout msg ok:", "timed out" in str(e))
+//
+//     # The same timeout is catchable as the RequestException base class.
+//     try:
+//         _hang_request()
+//         print("NO TIMEOUT")
+//     except RequestException as e:
+//         print("caught as base:", "timed out" in str(e))
 void main() {
-    // try:
     {
         try {
-            // _hang_request()
             _hang_request();
-            // print("NO TIMEOUT")
             std::cout << "NO TIMEOUT" << "\n";
         } catch (const ::tpystd::tplib::requests::Timeout& e) {
-            // print("timeout msg ok:", "timed out" in str(e))
             std::cout << "timeout msg ok:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find("timed out") != std::string::npos)) << "\n";
         }
     }
-    // # The same timeout is catchable as the RequestException base class.
-    // try:
     {
         try {
-            // _hang_request()
             _hang_request();
-            // print("NO TIMEOUT")
             std::cout << "NO TIMEOUT" << "\n";
         } catch (const ::tpystd::tplib::requests::RequestException& e) {
-            // print("caught as base:", "timed out" in str(e))
             std::cout << "caught as base:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find("timed out") != std::string::npos)) << "\n";
         }
     }
 }
 
+// # A read timeout surfaces as requests.Timeout (a RequestException), not a raw
+// # OSError. Driven over a socketpair whose peer never answers; the timeout is set
+// # directly on the injected socket (the connection seam bypasses
+// # create_connection), so getresponse's makefile-backed read times out and
+// # _request_on re-raises it as Timeout. The second attempt confirms a timeout is
+// # also catchable as the RequestException base.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A read timeout surfaces as requests.Timeout (a RequestException), not a raw
-    // # OSError. Driven over a socketpair whose peer never answers; the timeout is set
-    // # directly on the injected socket (the connection seam bypasses
-    // # create_connection), so getresponse's makefile-backed read times out and
-    // # _request_on re-raises it as Timeout. The second attempt confirms a timeout is
-    // # also catchable as the RequestException base.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

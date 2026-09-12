@@ -6,9 +6,22 @@ namespace tpystd::os::_types {
 
 
 // def __init__(self, mode: int64, ino: int64, dev: int64, nlink: int64,
-// uid: int64, gid: int64, size: int64,
-// atime: float, mtime: float, ctime: float,
-// atime_ns: int64, mtime_ns: int64, ctime_ns: int64) -> None:
+//              uid: int64, gid: int64, size: int64,
+//              atime: float, mtime: float, ctime: float,
+//              atime_ns: int64, mtime_ns: int64, ctime_ns: int64) -> None:
+//     self.st_mode = mode
+//     self.st_ino = ino
+//     self.st_dev = dev
+//     self.st_nlink = nlink
+//     self.st_uid = uid
+//     self.st_gid = gid
+//     self.st_size = size
+//     self.st_atime = atime
+//     self.st_mtime = mtime
+//     self.st_ctime = ctime
+//     self.st_atime_ns = atime_ns
+//     self.st_mtime_ns = mtime_ns
+//     self.st_ctime_ns = ctime_ns
 stat_result::stat_result(int64_t mode, int64_t ino, int64_t dev, int64_t nlink, int64_t uid, int64_t gid, int64_t size, double atime, double mtime, double ctime, int64_t atime_ns, int64_t mtime_ns, int64_t ctime_ns) : st_mode(mode), st_ino(ino), st_dev(dev), st_nlink(nlink), st_uid(uid), st_gid(gid), st_size(size), st_atime(atime), st_mtime(mtime), st_ctime(ctime), st_atime_ns(atime_ns), st_mtime_ns(mtime_ns), st_ctime_ns(ctime_ns) {}
 void __tpy_init() {
     static bool initialized = false;

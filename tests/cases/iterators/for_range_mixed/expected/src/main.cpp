@@ -3,57 +3,51 @@
 
 namespace tpyapp::main {
 
-// # Mixed int32/BigInt args should widen to BigInt (not truncate to int32)
-// start: int32 = 0
 int32_t start{};
-// big_end = 1 << 40  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt big_end;
-// # 1. int32 start, BigInt stop
-// count: int32 = 0
 int32_t count{};
-// # 2. BigInt start, int32 stop -- stop widened to BigInt
-// end: int32 = 5
 int32_t end{};
-// big_start = 1 << 40  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt big_start;
 
+// # Mixed int32/BigInt args should widen to BigInt (not truncate to int32)
+// start: int32 = 0
+// big_end = 1 << 40  # tpyc: warning(/outside default int32 range/)
+//
+// # 1. int32 start, BigInt stop
+// count: int32 = 0
+// for i in range(start, big_end):
+//     count += 1
+//     if count >= 5:
+//         break
+// print(count)
+//
+// # 2. BigInt start, int32 stop -- stop widened to BigInt
+// end: int32 = 5
+// big_start = 1 << 40  # tpyc: warning(/outside default int32 range/)
+// for i in range(big_start, big_start + end):
+//     print(i)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Mixed int32/BigInt args should widen to BigInt (not truncate to int32)
-    // start: int32 = 0
     start = 0;
-    // big_end = 1 << 40  # tpyc: warning(/outside default int32 range/)
     big_end = ((::tpy::BigInt(1)) << (::tpy::BigInt(40)));
-    // # 1. int32 start, BigInt stop
-    // count: int32 = 0
     count = 0;
-    // for i in range(start, big_end):
     ::tpy::BigInt __start_0 = ::tpy::BigInt(start);
     ::tpy::BigInt __stop_0 = big_end;
     for (::tpy::BigInt i = __start_0; i < __stop_0; ++i) {
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
-        // if count >= 5:
         if ((count >= 5)) {
-            // break
             break;
         }
     }
-    // print(count)
     std::cout << count << "\n";
-    // # 2. BigInt start, int32 stop -- stop widened to BigInt
-    // end: int32 = 5
     end = 5;
-    // big_start = 1 << 40  # tpyc: warning(/outside default int32 range/)
     big_start = ((::tpy::BigInt(1)) << (::tpy::BigInt(40)));
-    // for i in range(big_start, big_start + end):
     ::tpy::BigInt __start_1 = big_start;
     ::tpy::BigInt __stop_1 = ((big_start) + (::tpy::BigInt(end)));
     for (::tpy::BigInt i = __start_1; i < __stop_1; ++i) {
-        // print(i)
         std::cout << i << "\n";
     }
 }

@@ -12,7 +12,9 @@ using ::tpyapp::a::Pair;
 
 inline constexpr std::string_view __name__ = "b";
 
+// def sum_pair(p: Pair) -> int32:
 int32_t sum_pair(const ::tpyapp::a::Pair& p);
+// def make_pair_sum(x: int32, y: int32) -> int32:
 int32_t make_pair_sum(int32_t x, int32_t y);
 
 void __tpy_init();

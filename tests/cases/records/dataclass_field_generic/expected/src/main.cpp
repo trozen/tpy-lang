@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper("test")
+//     print(w.pair.first)
+//     print(w.pair.second)
+//     w2 = Wrapper("test2", Pair(10, 20))
+//     print(w2.pair.first)
+//     print(w2.pair.second)
 void main() {
-    // w = Wrapper("test")
     Wrapper w = Wrapper("test");
-    // print(w.pair.first)
     std::cout << w.pair.first << "\n";
-    // print(w.pair.second)
     std::cout << w.pair.second << "\n";
-    // w2 = Wrapper("test2", Pair(10, 20))
     Wrapper w2 = Wrapper("test2", Pair<int32_t>(10, 20));
-    // print(w2.pair.first)
     std::cout << w2.pair.first << "\n";
-    // print(w2.pair.second)
     std::cout << w2.pair.second << "\n";
 }
 
+// # field(default_factory=...) with generic user type
+// from dataclasses import dataclass, field
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # field(default_factory=...) with generic user type
-    // from dataclasses import dataclass, field
-    // main()
     main();
 }
 

@@ -8,21 +8,21 @@ namespace tpyapp::main {
 // # wording; panic cases are exec-only (no cpy phase), so this guards TPy's
 // # message text independent of any CPython version.
 // def main() -> None:
+//     a: int = 10
+//     b: int = 0
+//     print(a % b)
 void main() {
-    // a: int = 10
     ::tpy::BigInt a = ::tpy::BigInt(10);
-    // b: int = 0
     ::tpy::BigInt b = ::tpy::BigInt(0);
-    // print(a % b)
     std::cout << ((a) % (b)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

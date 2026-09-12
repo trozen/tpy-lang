@@ -34,6 +34,7 @@ struct Circle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Circle(Shape):
@@ -86,23 +87,24 @@ namespace tpyapp::main {
 
 
 // def __init__(self, radius: float) -> None:
+//     self.radius = radius
 inline Circle::Circle(double radius) : radius(radius) {}
 
 // def area(self) -> float:
+//     return 3.14159 * self.radius * self.radius
 inline double Circle::area() {
-    // return 3.14159 * self.radius * self.radius
     return ((((3.14159) * (this->radius))) * (this->radius));
 }
 
 // def name(self) -> str:
+//     return "Circle"
 inline std::string Circle::name() {
-    // return "Circle"
     return "Circle";
 }
 
 // def scale(self, factor: float) -> None:
+//     self.radius = self.radius * factor
 inline void Circle::scale(double factor) {
-    // self.radius = self.radius * factor
     this->radius = ((this->radius) * (factor));
 }
 void __tpy_init();

@@ -4,12 +4,12 @@
 namespace tpystd::functools {
 
 
+// from _functools_macros import total_ordering
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from _functools_macros import total_ordering
 }
 
 } // namespace tpystd::functools

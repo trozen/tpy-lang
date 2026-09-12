@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pairs: list[Pair[int32]] = [(int32(1), int32(2)), (int32(3), int32(4))]  # tpyc: type(/list\[tuple\[int32, int32\]\]/)
+//     for p in pairs:  # tpyc: type(/tuple\[int32, int32\]/)
+//         print(p)
 void main() {
-    // pairs: list[Pair[int32]] = [(int32(1), int32(2)), (int32(3), int32(4))]  # tpyc: type(/list\[tuple\[int32, int32\]\]/)
     std::vector<std::tuple<int32_t, int32_t>> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // for p in pairs:  # tpyc: type(/tuple\[int32, int32\]/)
     auto& __obj_0 = pairs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // print(p)
         std::cout << ::tpy::TuplePrinter(p) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

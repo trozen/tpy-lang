@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Strict()
+//     s._private = "bad"
 void main() {
-    // s = Strict()
     Strict s = Strict();
-    // s._private = "bad"
     s.__setattr__("_private", "bad");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

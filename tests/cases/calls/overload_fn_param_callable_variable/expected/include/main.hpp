@@ -9,36 +9,39 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<T>;
-  }
-::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
-template<typename T, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
-  }
-::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
-void main();
-
-// @dispatch
 // def apply[T](f: Fn[[T], T], x: T) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    // return f(x)
-    return f(x);
-}
-// @dispatch
+::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // def apply[T](f: Fn[[T, T], T], x: T) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
+::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
+void main();
+
+// @dispatch
+// def apply[T](f: Fn[[T], T], x: T) -> T:  # tpyc: ok
+//     return f(x)
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<T>;
+  }
 ::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
-    // return f(x, x)
+    return f(x);
+}
+// @dispatch
+// def apply[T](f: Fn[[T, T], T], x: T) -> T:  # tpyc: ok
+//     return f(x, x)
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+  }
+::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
     return f(x, x);
 }
 

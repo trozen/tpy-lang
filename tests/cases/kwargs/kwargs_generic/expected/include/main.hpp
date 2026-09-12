@@ -9,15 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first[T](a: T, b: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
 // # Keyword arguments with generic functions
 // def first[T](a: T, b: T) -> T:
+//     return a
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // return a
     return ::tpy::param_to_return<T>(a);
 }
 

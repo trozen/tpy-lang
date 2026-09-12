@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[tuple[int32, Box]]:
+//     items: list[tuple[int32, Box]] = [(1, Box(5))]
+//     yield items[0]
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items: list[tuple[int32, Box]] = [(1, Box(5))]
         items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
-        // yield items[0]
         __state = S_RESUME_0;
         return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*items), 0));
     }
@@ -30,8 +30,12 @@ __gen_gen gen() {
 }
 
 // def pick(h: Holder) -> tuple[int32, Box]:
+//     for p in gen():
+//         q = p
+//         q = h.pair
+//         return q
+//     raise RuntimeError("empty")
 std::tuple<int32_t, Box*> pick(Holder& h) {
-    // for p in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -39,38 +43,34 @@ std::tuple<int32_t, Box*> pick(Holder& h) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_1);
-        // q = p
         std::tuple<int32_t, Box*> q = p;
-        // q = h.pair
         q = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
-        // return q
         return q;
         }
     }
-    // raise RuntimeError("empty")
     throw ::tpy::RuntimeError("empty");
 }
 
 // def main() -> None:
+//     h = Holder(Box(7))
+//     t = pick(h)
+//     t[1].val = 99
+//     print(t[0])
+//     print(h.pair[1].val)
 void main() {
-    // h = Holder(Box(7))
     Holder h = Holder(Box(7));
-    // t = pick(h)
     auto t = pick(h);
-    // t[1].val = 99
     std::get<1>(t)->val = 99;
-    // print(t[0])
     std::cout << std::get<0>(t) << "\n";
-    // print(h.pair[1].val)
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,48 +5,48 @@ namespace tpyapp::main {
 
 
 // def fill(h: H) -> None:
+//     # A PARAM subject: the writes through the captures are what keep `h`
+//     # mutable (`H&`). No `set` leg: a set FIELD capture rejects at
+//     # `stmt.match` (BUGS.md#match-capture-set-field).
+//     match h:
+//         case H(arr=a, xs=v, d=m):  # tpyc: ok
+//             # Mutating through each capture and reading `h` afterwards is what
+//             # separates an alias from a copy; a read-only arm would match
+//             # CPython either way.
+//             a[0] = 7
+//             v.append(2)
+//             m["b"] = 3
 void fill(H& h) {
-    // # A PARAM subject: the writes through the captures are what keep `h`
-    // # mutable (`H&`). No `set` leg: a set FIELD capture rejects at
-    // # `stmt.match` (BUGS.md#match-capture-set-field).
-    // match h:
     std::array<int32_t, 2>* a;
     ::tpy::ordered_map<std::string, int32_t>* m;
     std::vector<int32_t>* v;
     auto& __match_subject_1 = h;
-    // case H(arr=a, xs=v, d=m):  # tpyc: ok
     {
         a = &(__match_subject_1.arr);
         v = &(__match_subject_1.xs);
         m = &(__match_subject_1.d);
-        // # Mutating through each capture and reading `h` afterwards is what
-        // # separates an alias from a copy; a read-only arm would match
-        // # CPython either way.
-        // a[0] = 7
         ::tpy::__setitem__((*a), 0, 7);
-        // v.append(2)
         v->push_back(2);
-        // m["b"] = 3
         ::tpy::__setitem__((*m), "b", 3);
     }
 }
 
 // def main() -> None:
+//     h = H()
+//     fill(h)
+//     print(h.arr[0], len(h.xs), len(h.d))
 void main() {
-    // h = H()
     H h = H();
-    // fill(h)
     fill(h);
-    // print(h.arr[0], len(h.xs), len(h.d))
     std::cout << ::tpy::__getitem__(h.arr, 0) << " " << ::tpy::__len__(h.xs) << " " << ::tpy::__len__(h.d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     return Boosted(3).boost()
 int32_t main() {
-    // return Boosted(3).boost()
     return ::tpyapp::pkg::helper::Boosted(3).boost();
 }
 
+// # A package __init__.py inside a cycle: previously rejected by the
+// # cycle-facade gate; now accepted thanks to Phase 5's universal
+// # re-export and cycle-aware `using` suppression. CPython hits a real
+// # circular-import error on this exact pkg/__init__.py + helper.py
+// # shape, so the cpy phase is skipped via no_cpython.txt.
+// from pkg import Boosted
+//
+// # Print the result so a regression that silently misroutes the
+// # suppressed `use_pkg` re-export surfaces via output.txt comparison.
+// print(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A package __init__.py inside a cycle: previously rejected by the
-    // # cycle-facade gate; now accepted thanks to Phase 5's universal
-    // # re-export and cycle-aware `using` suppression. CPython hits a real
-    // # circular-import error on this exact pkg/__init__.py + helper.py
-    // # shape, so the cpy phase is skipped via no_cpython.txt.
-    // from pkg import Boosted
     ::tpyapp::pkg::__tpy_init();
-    // # Print the result so a regression that silently misroutes the
-    // # suppressed `use_pkg` re-export surfaces via output.txt comparison.
-    // print(main())
     std::cout << main() << "\n";
 }
 

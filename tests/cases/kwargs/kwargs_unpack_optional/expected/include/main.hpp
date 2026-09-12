@@ -11,8 +11,11 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def start(**kwargs: Unpack[Config]) -> None:
 void start(const Config& kwargs);
+// def start_safe(**kwargs: Unpack[Config]) -> None:
 void start_safe(const Config& kwargs);
+// def main() -> None:
 void main();
 
 // class Config(TypedDict, total=False):

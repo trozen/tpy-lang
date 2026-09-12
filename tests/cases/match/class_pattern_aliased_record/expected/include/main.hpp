@@ -14,8 +14,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def foreign_x(p: Foreign) -> int:
 ::tpy::BigInt foreign_x(const ::tpyapp::shapes::Point& p);
+// def local_y(p: Point) -> int:
 ::tpy::BigInt local_y(const Point& p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -36,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

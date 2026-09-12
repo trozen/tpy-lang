@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Holder(A("rel")).label)
+//     print(Holder(B("smoke")).label)
 void main() {
-    // print(Holder(A("rel")).label)
     A __tmp_1 = A("rel");
     std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_1}).label() << "\n";
-    // print(Holder(B("smoke")).label)
     B __tmp_2 = B("smoke");
     std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_2}).label() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

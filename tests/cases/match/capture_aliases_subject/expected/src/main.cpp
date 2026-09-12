@@ -5,72 +5,75 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[Box]:
+//     return Box(7)
 Box make() {
-    // return Box(7)
     return Box(::tpy::BigInt(7));
 }
 
 // def main():
+//     b = Box(1)
+//     match b:
+//         case q:
+//             q.v = 99
+//     print(b.v)              # 99 -- q aliased b
+//
+//     b2 = Box(2)
+//     match b2:
+//         case Box() as r:    # as-pattern aliases too
+//             r.v = 50
+//     print(b2.v)             # 50
+//
+//     match make():           # rvalue subject -> capture owns (no dangle)
+//         case s:
+//             s.v = 11
+//             print(s.v)      # 11
+//
+//     n = 5
+//     match n:
+//         case m:             # scalar capture copies by value
+//             print(m)        # 5
 void main() {
-    // b = Box(1)
     Box b = Box(::tpy::BigInt(1));
-    // match b:
     Box* q;
     auto& __match_subject_1 = b;
-    // case q:
     {
         q = &(__match_subject_1);
-        // q.v = 99
         q->v = ::tpy::BigInt(99);
     }
-    // print(b.v)              # 99 -- q aliased b
     std::cout << b.v << "\n";
-    // b2 = Box(2)
     Box b2 = Box(::tpy::BigInt(2));
-    // match b2:
     Box* r;
     auto& __match_subject_2 = b2;
-    // case Box() as r:    # as-pattern aliases too
     {
         r = &(__match_subject_2);
-        // r.v = 50
         r->v = ::tpy::BigInt(50);
     }
-    // print(b2.v)             # 50
     std::cout << b2.v << "\n";
-    // match make():           # rvalue subject -> capture owns (no dangle)
     std::optional<Box> s;
     auto __match_subject_3 = make();
-    // case s:
     {
         s = std::move(__match_subject_3);
-        // s.v = 11
         s->v = ::tpy::BigInt(11);
-        // print(s.v)      # 11
         std::cout << s->v << "\n";
     }
-    // n = 5
     int32_t n = 5;
-    // match n:
     int32_t m;
     auto& __match_subject_4 = n;
     switch (__match_subject_4) {
-    // case m:             # scalar capture copies by value
     default: {
         m = __match_subject_4;
-        // print(m)        # 5
         std::cout << m << "\n";
         break;
     }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

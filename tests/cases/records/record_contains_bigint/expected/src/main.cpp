@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     b = Bag()
+//     k: int = 2
+//     print(k in b)
+//     print(k + 1 in b)
+//     print(5 not in b)
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // k: int = 2
     ::tpy::BigInt k = ::tpy::BigInt(2);
-    // print(k in b)
     std::cout << ::tpy::print_bool((b.__contains__((k).to_fixed_check<int32_t>()))) << "\n";
-    // print(k + 1 in b)
     std::cout << ::tpy::print_bool((b.__contains__((((k) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>()))) << "\n";
-    // print(5 not in b)
     std::cout << ::tpy::print_bool((!(b.__contains__(5)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

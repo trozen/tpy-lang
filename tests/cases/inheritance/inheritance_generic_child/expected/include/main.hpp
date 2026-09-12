@@ -41,12 +41,13 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get(self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> get() {
-        // return self.value
         return this->value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -65,15 +66,16 @@ struct Box : Animal {
     T value;
 
     // def __init__(self, name: str, value: T) -> None:
+    //     self.name = name
+    //     self.value = value
     Box() = default;
     explicit Box(std::string_view name, ::tpy::readonly_form_t<T> value) : value(value) {
-        // self.name = name
         this->name = name;
     }
 
     // def get(self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> get() {
-        // return self.value
         return this->value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -92,9 +94,10 @@ struct Wrapper : Container<int32_t> {
     U extra;
 
     // def __init__(self, value: int32, extra: U) -> None:
+    //     self.value = value
+    //     self.extra = extra
     Wrapper() = default;
     explicit Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra) : extra(extra) {
-        // self.value = value
         this->value = value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
@@ -108,6 +111,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<U>& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

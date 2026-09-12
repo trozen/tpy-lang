@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Svc& obj) {
     return os;
 }
 
-// Async coroutine: Gate.__aenter__
+// async def __aenter__(self) -> int32:
 struct __coro_Gate___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -98,7 +98,7 @@ inline __coro_Gate___aenter__ Gate::__aenter__() const {
     return __coro_Gate___aenter__(*this);
 }
 
-// Async coroutine: Gate.__aexit__
+// async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_Gate___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -129,7 +129,7 @@ inline __coro_Gate___aexit__ Gate::__aexit__(std::monostate et, std::monostate e
     return __coro_Gate___aexit__(*this, et, ev, tb);
 }
 
-// Async coroutine: Ticker.__anext__
+// async def __anext__(self) -> int32:
 struct __coro_Ticker___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -157,7 +157,7 @@ inline __coro_Ticker___anext__ Ticker::__anext__() {
     return __coro_Ticker___anext__(*this);
 }
 
-// Async coroutine: Svc.fetch
+// async def fetch(self) -> int32:
 struct __coro_Svc_fetch {
     int32_t __state;
     bool __cancel_pending;
@@ -187,11 +187,12 @@ inline __coro_Svc_fetch Svc::fetch() const {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Ticker::Ticker(int32_t n) : n(n) {}
 
 // def __aiter__(self) -> "Ticker":
+//     return self
 inline Ticker& Ticker::__aiter__() {
-    // return self
     return (*this);
 }
 void __tpy_init();

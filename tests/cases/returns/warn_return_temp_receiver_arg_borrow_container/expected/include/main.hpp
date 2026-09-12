@@ -12,8 +12,11 @@ struct Finder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(h: Holder) -> Own[list[int32]]:
 std::vector<int32_t> take(Holder& h);
+// def take_copy(h: Holder) -> Own[list[int32]]:
 std::vector<int32_t> take_copy(Holder& h);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -49,17 +52,18 @@ inline std::ostream& operator<<(std::ostream& os, const Finder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2]
 inline Holder::Holder() : items(std::vector<int32_t>{1, 2}) {}
 
 // def __init__(self) -> None:
+//     pass
 inline Finder::Finder() {
-    // pass
 }
 
 // def pick(self, h: Holder) -> list[int32]:
+//     # Borrows from ARGUMENT 0.
+//     return h.items
 inline const std::vector<int32_t>& Finder::pick(const Holder& h) const {
-    // # Borrows from ARGUMENT 0.
-    // return h.items
     return h.items;
 }
 void __tpy_init();

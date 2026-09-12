@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def store(c: Optional[Counter], v: int32) -> None:
+//     c.n = v  # tpyc: warning(/Potential None access/) warning(/Assigning to ClassVar 'Counter.n' via instance/)
 void store(Counter* c, int32_t v) {
-    // c.n = v  # tpyc: warning(/Potential None access/) warning(/Assigning to ClassVar 'Counter.n' via instance/)
     ::tpy::deref_check(c);
     Counter::n = v;
 }
 
 // def main() -> None:
+//     Counter.n = 0
+//     store(Counter(), 7)
+//     print(Counter.n)
 void main() {
-    // Counter.n = 0
     Counter::n = 0;
-    // store(Counter(), 7)
     Counter __tmp_1 = Counter();
     store(&(__tmp_1), 7);
-    // print(Counter.n)
     std::cout << Counter::n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

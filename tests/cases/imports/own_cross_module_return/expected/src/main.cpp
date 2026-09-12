@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = shapes.make_circle(int32(7))
+//     print(c.radius)
 void main() {
-    // c = shapes.make_circle(int32(7))
     ::tpyapp::shapes::Circle c = ::tpyapp::shapes::make_circle(7);
-    // print(c.radius)
     std::cout << c.radius << "\n";
 }
 
+// import shapes
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import shapes
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

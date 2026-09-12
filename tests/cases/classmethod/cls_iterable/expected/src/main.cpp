@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Counter.total_through_cls(4))
+//     print(Counter.total_through_name(4))
 void main() {
-    // print(Counter.total_through_cls(4))
     std::cout << Counter::total_through_cls(4) << "\n";
-    // print(Counter.total_through_name(4))
     std::cout << Counter::total_through_name(4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

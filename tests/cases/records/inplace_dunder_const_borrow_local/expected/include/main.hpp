@@ -12,6 +12,7 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -57,18 +58,20 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def __init__(self, total: int32) -> None:
+//     self.total = total
 inline Acc::Acc(int32_t total) : total(total) {}
 
 // def __iadd__(self, other: Counter) -> "Acc":
+//     c = other  # const borrow of the force-const dunder parameter
+//     self.total += c.n
+//     return self
 inline Acc& Acc::__iadd__(const Counter& other) {
-    // c = other  # const borrow of the force-const dunder parameter
     const Counter& c = other;
-    // self.total += c.n
     this->total = ::tpy::add_check<int32_t>(this->total, c.n);
-    // return self
     return (*this);
 }
 void __tpy_init();

@@ -8,7 +8,9 @@
 namespace tpyapp::constants {
 
 inline constexpr std::string_view __name__ = "constants";
+// VERSION: Final[str] = "1.2.3"
 inline constexpr std::string_view VERSION = "1.2.3";
+// LIMIT: Final[int32] = 16
 inline constexpr int32_t LIMIT = 16;
 
 void __tpy_init();

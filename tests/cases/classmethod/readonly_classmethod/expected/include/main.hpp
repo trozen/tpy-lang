@@ -11,6 +11,7 @@ struct Limits;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Limits:
@@ -40,16 +41,16 @@ inline std::ostream& operator<<(std::ostream& os, const Limits& obj) {
 // @readonly
 // @classmethod
 // def base(cls) -> int32:
+//     return cls.BASE
 inline int32_t Limits::base() {
-    // return cls.BASE
     return Limits::BASE;
 }
 
 // @readonly
 // @classmethod
 // def doubled(cls) -> int32:
+//     return cls.base() * 2
 inline int32_t Limits::doubled() {
-    // return cls.base() * 2
     return (::tpy::mul_check<int32_t>(Limits::base(), 2));
 }
 void __tpy_init();

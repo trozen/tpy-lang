@@ -5,213 +5,219 @@ namespace tpyapp::main {
 
 
 // def depth(t: Tree) -> int32:
+//     if isinstance(t, int32):
+//         return 0
+//     m: int32 = 0
+//     for child in t:
+//         d = depth(child)
+//         if d > m:
+//             m = d
+//     return m + 1
 int32_t depth(const Tree& t) {
-    // if isinstance(t, int32):
     if (std::holds_alternative<int32_t>(t.value)) {
         const auto& __t = std::get<int32_t>(t.value);
-        // return 0
         return 0;
     }
     const auto& __t = std::get<std::vector<Tree>>(t.value);
-    // m: int32 = 0
     int32_t m = 0;
-    // for child in t:
     auto& __src_0 = __t;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
-        // d = depth(child)
         int32_t d = depth(child);
-        // if d > m:
         if ((d > m)) {
-            // m = d
             m = d;
         }
     }
-    // return m + 1
     return (::tpy::add_check<int32_t>(m, 1));
 }
 
 // def count(t: Tree) -> int32:
+//     if isinstance(t, int32):
+//         return 1
+//     total: int32 = 0
+//     for child in t:
+//         total = total + count(child)
+//     return total
 int32_t count(const Tree& t) {
-    // if isinstance(t, int32):
     if (std::holds_alternative<int32_t>(t.value)) {
         const auto& __t = std::get<int32_t>(t.value);
-        // return 1
         return 1;
     }
     const auto& __t = std::get<std::vector<Tree>>(t.value);
-    // total: int32 = 0
     int32_t total = 0;
-    // for child in t:
     auto& __src_0 = __t;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
-        // total = total + count(child)
         total = (::tpy::add_check<int32_t>(total, count(child)));
     }
-    // return total
     return total;
 }
 
 // def leaf_sum(t: Tree) -> int32:
+//     if isinstance(t, int32):
+//         return t
+//     s: int32 = 0
+//     for child in t:
+//         s = s + leaf_sum(child)
+//     return s
 int32_t leaf_sum(const Tree& t) {
-    // if isinstance(t, int32):
     if (std::holds_alternative<int32_t>(t.value)) {
         const auto& __t = std::get<int32_t>(t.value);
-        // return t
         return __t;
     }
     const auto& __t = std::get<std::vector<Tree>>(t.value);
-    // s: int32 = 0
     int32_t s = 0;
-    // for child in t:
     auto& __src_0 = __t;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
-        // s = s + leaf_sum(child)
         s = (::tpy::add_check<int32_t>(s, leaf_sum(child)));
     }
-    // return s
     return s;
 }
 
 // def child_count(t: Tree) -> int32:
+//     if isinstance(t, int32):
+//         return 0
+//     return len(t)
 int32_t child_count(const Tree& t) {
-    // if isinstance(t, int32):
     if (std::holds_alternative<int32_t>(t.value)) {
         const auto& __t = std::get<int32_t>(t.value);
-        // return 0
         return 0;
     }
     const auto& __t = std::get<std::vector<Tree>>(t.value);
-    // return len(t)
     return ::tpy::__len__(__t);
 }
 
 // # isinstance guard inside an else block
 // def depth_nested(t: Tree, offset: int32) -> int32:
+//     if offset < 0:
+//         return 0
+//     else:
+//         if isinstance(t, int32):
+//             return offset
+//         m: int32 = 0
+//         for child in t:
+//             d = depth_nested(child, offset)
+//             if d > m:
+//                 m = d
+//         return m + 1
 int32_t depth_nested(const Tree& t, int32_t offset) {
-    // if offset < 0:
     if ((offset < 0)) {
-        // return 0
         return 0;
-    // else:
     } else {
-        // if isinstance(t, int32):
         if (std::holds_alternative<int32_t>(t.value)) {
             const auto& __t = std::get<int32_t>(t.value);
-            // return offset
             return offset;
         }
         const auto& __t = std::get<std::vector<Tree>>(t.value);
-        // m: int32 = 0
         int32_t m = 0;
-        // for child in t:
         auto& __src_0 = __t;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            // d = depth_nested(child, offset)
             int32_t d = depth_nested(child, offset);
-            // if d > m:
             if ((d > m)) {
-                // m = d
                 m = d;
             }
         }
-        // return m + 1
         return (::tpy::add_check<int32_t>(m, 1));
     }
 }
 
 // def eval_expr(e: Expr) -> str:
+//     if isinstance(e, int32):
+//         return str(e)
+//     elif isinstance(e, str):
+//         return e
+//     parts: list[str] = []
+//     for child in e:
+//         parts.append(eval_expr(child))
+//     return ", ".join(parts)
 std::string eval_expr(const Expr& e) {
-    // if isinstance(e, int32):
     if (std::holds_alternative<int32_t>(e.value)) {
         const auto& __e = std::get<int32_t>(e.value);
-        // return str(e)
         return ::tpy::fixed_to_str<int32_t>(__e);
-    // elif isinstance(e, str):
     } else if (std::holds_alternative<std::string>(e.value)) {
         const auto& __e = std::get<std::string>(e.value);
-        // return e
         return __e;
     }
     const auto& __e = std::get<std::vector<Expr>>(e.value);
-    // parts: list[str] = []
     std::vector<std::string> parts = std::vector<std::string>{};
-    // for child in e:
     auto& __src_0 = __e;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& child = ::tpy::unwrap_ref(*__r_1);
-        // parts.append(eval_expr(child))
         parts.push_back(eval_expr(child));
     }
-    // return ", ".join(parts)
     return ::tpy::str_join(", ", parts);
 }
 
 // def main() -> None:
+//     leaf: Tree = 5
+//     branch: Tree = [1, 2, 3]
+//     nested: Tree = [1, [2, [3, 4]]]
+//
+//     print(depth(leaf))
+//     print(depth(branch))
+//     print(depth(nested))
+//
+//     print(count(leaf))
+//     print(count(branch))
+//     print(count(nested))
+//
+//     print(leaf_sum(leaf))
+//     print(leaf_sum(branch))
+//     print(leaf_sum(nested))
+//
+//     print(child_count(leaf))
+//     print(child_count(branch))
+//
+//     print(depth_nested(branch, 1))
+//     print(depth_nested(leaf, 1))
+//
+//     print(eval_expr(42))
+//     print(eval_expr([1, "two", [3]]))
 void main() {
-    // leaf: Tree = 5
     Tree leaf = 5;
-    // branch: Tree = [1, 2, 3]
     Tree branch = std::vector<Tree>{1, 2, 3};
-    // nested: Tree = [1, [2, [3, 4]]]
     Tree nested = std::vector<Tree>{1, std::vector<Tree>{2, std::vector<Tree>{3, 4}}};
-    // print(depth(leaf))
     std::cout << depth(leaf) << "\n";
-    // print(depth(branch))
     std::cout << depth(branch) << "\n";
-    // print(depth(nested))
     std::cout << depth(nested) << "\n";
-    // print(count(leaf))
     std::cout << count(leaf) << "\n";
-    // print(count(branch))
     std::cout << count(branch) << "\n";
-    // print(count(nested))
     std::cout << count(nested) << "\n";
-    // print(leaf_sum(leaf))
     std::cout << leaf_sum(leaf) << "\n";
-    // print(leaf_sum(branch))
     std::cout << leaf_sum(branch) << "\n";
-    // print(leaf_sum(nested))
     std::cout << leaf_sum(nested) << "\n";
-    // print(child_count(leaf))
     std::cout << child_count(leaf) << "\n";
-    // print(child_count(branch))
     std::cout << child_count(branch) << "\n";
-    // print(depth_nested(branch, 1))
     std::cout << depth_nested(branch, 1) << "\n";
-    // print(depth_nested(leaf, 1))
     std::cout << depth_nested(leaf, 1) << "\n";
-    // print(eval_expr(42))
     std::cout << eval_expr(42) << "\n";
-    // print(eval_expr([1, "two", [3]]))
     Expr __tmp_1 = std::vector<Expr>{1, "two", std::vector<Expr>{3}};
     std::cout << eval_expr(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

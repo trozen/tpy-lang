@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_setitem_mutation():
 void test_setitem_mutation();
 
 void __tpy_init();

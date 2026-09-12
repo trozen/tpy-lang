@@ -9,18 +9,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mk() -> str:
 std::string mk();
+// def main():
 void main();
 
+// def rep[T](obj: T, n: int32 = -1) -> Iterator[T]:
+//     i = 0
+//     while n < 0 or i < n:
+//         yield obj  # tpyc: ok
+//         i += 1
 template<typename T>
 inline auto rep(::tpy::borrow_frame_param_t<T> obj, int32_t n = -1) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<T>(
         [&obj, n, i]() mutable -> std::optional<T> {
             while (((n < 0) || (i < n))) {
                 auto __val = obj;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<T>(__val);
             }

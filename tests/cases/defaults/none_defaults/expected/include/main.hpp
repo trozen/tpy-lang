@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find(items: list[int32], target: int32, default: Optional[int32] = None) -> Optional[int32]:
 std::optional<int32_t> find(const std::vector<int32_t>& items, int32_t target, std::optional<int32_t> default_ = std::nullopt);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,49 +5,49 @@ namespace tpyapp::main {
 
 
 // def or_truthy_skips_ctor(a: Box, log: list[int]) -> None:
+//     # a is always truthy (no __bool__) -> Box(9, log) is NOT constructed
+//     c = a or Box(9, log)  # tpyc: type(/Box/)
+//     c.n = 99              # mutate via result -> reaches a (reference semantics)
+//     print(c.n, a.n, len(log))
 void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
-    // # a is always truthy (no __bool__) -> Box(9, log) is NOT constructed
-    // c = a or Box(9, log)  # tpyc: type(/Box/)
     std::optional<Box> __logical_slot_1;
     Box& c = (*(true ? &(a) : (__logical_slot_1.emplace(Box(::tpy::BigInt(9), log)), &*__logical_slot_1)));
-    // c.n = 99              # mutate via result -> reaches a (reference semantics)
     c.n = ::tpy::BigInt(99);
-    // print(c.n, a.n, len(log))
     std::cout << c.n << " " << a.n << " " << ::tpy::__len__(log) << "\n";
 }
 
 // def and_truthy_returns_ctor(a: Box, log: list[int]) -> int:
+//     # a truthy -> `and` returns the RHS, so Box(5, log) IS constructed
+//     c = a and Box(5, log)  # tpyc: type(/Box/)
+//     return c.n
 ::tpy::BigInt and_truthy_returns_ctor(Box& a, std::vector<::tpy::BigInt>& log) {
-    // # a truthy -> `and` returns the RHS, so Box(5, log) IS constructed
-    // c = a and Box(5, log)  # tpyc: type(/Box/)
     std::optional<Box> __logical_slot_2;
     Box& c = (*(true ? (__logical_slot_2.emplace(Box(::tpy::BigInt(5), log)), &*__logical_slot_2) : &(a)));
-    // return c.n
     return c.n;
 }
 
 // def main() -> None:
+//     seed: list[int] = []
+//     log1: list[int] = []
+//     or_truthy_skips_ctor(Box(3, seed), log1)  # 99 99 0
+//     log2: list[int] = []
+//     print(and_truthy_returns_ctor(Box(3, seed), log2), len(log2))  # 5 1
 void main() {
-    // seed: list[int] = []
     std::vector<::tpy::BigInt> seed = std::vector<::tpy::BigInt>{};
-    // log1: list[int] = []
     std::vector<::tpy::BigInt> log1 = std::vector<::tpy::BigInt>{};
-    // or_truthy_skips_ctor(Box(3, seed), log1)  # 99 99 0
     Box __tmp_3 = Box(::tpy::BigInt(3), seed);
     or_truthy_skips_ctor(__tmp_3, log1);
-    // log2: list[int] = []
     std::vector<::tpy::BigInt> log2 = std::vector<::tpy::BigInt>{};
-    // print(and_truthy_returns_ctor(Box(3, seed), log2), len(log2))  # 5 1
     Box __tmp_4 = Box(::tpy::BigInt(3), seed);
     std::cout << and_truthy_returns_ctor(__tmp_4, log2) << " " << ::tpy::__len__(log2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

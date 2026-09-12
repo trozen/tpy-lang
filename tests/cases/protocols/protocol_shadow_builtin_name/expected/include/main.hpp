@@ -41,8 +41,10 @@ struct Widget;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_user_comparable(x: Comparable) -> int32:
 template<Comparable T_x>
 int32_t use_user_comparable(T_x& x);
+// def main() -> None:
 void main();
 
 // class Widget(Comparable):
@@ -66,17 +68,18 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 
 // def __init__(self, val: int32):
+//     self.val = val
 inline Widget::Widget(int32_t val) : val(val) {}
 
 // def compare_to(self) -> int32:
+//     return self.val
 inline int32_t Widget::compare_to() const {
-    // return self.val
     return this->val;
 }
 // def use_user_comparable(x: Comparable) -> int32:
+//     return x.compare_to()
 template<Comparable T_x>
 int32_t use_user_comparable(T_x& x) {
-    // return x.compare_to()
     return x.compare_to();
 }
 

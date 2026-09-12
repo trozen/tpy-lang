@@ -5,131 +5,133 @@ namespace tpyapp::main {
 
 
 // def test_pop() -> None:
+//     d: dict[str, int32] = {"a": int32(1)}
+//     for k in d:
+//         d.pop(k)  # tpyc: warning(/Mutation of 'd'.*'pop'/)
 void test_pop() {
-    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // d.pop(k)  # tpyc: warning(/Mutation of 'd'.*'pop'/)
         ::tpy::dict_pop(d, k);
     }
 }
 
 // def test_clear() -> None:
+//     d: dict[str, int32] = {"a": int32(1)}
+//     for k in d:
+//         d.clear()  # tpyc: warning(/Mutation of 'd'.*'clear'/)
 void test_clear() {
-    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // d.clear()  # tpyc: warning(/Mutation of 'd'.*'clear'/)
         d.clear();
     }
 }
 
 // def test_update() -> None:
+//     d: dict[str, int32] = {"a": int32(1)}
+//     other: dict[str, int32] = {"b": int32(2)}
+//     for k in d:
+//         d.update(other)  # tpyc: warning(/Mutation of 'd'.*'update'/)
 void test_update() {
-    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // other: dict[str, int32] = {"b": int32(2)}
     ::tpy::ordered_map<std::string, int32_t> other = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // d.update(other)  # tpyc: warning(/Mutation of 'd'.*'update'/)
         ::tpy::dict_update(d, other);
     }
 }
 
 // def test_setdefault() -> None:
+//     d: dict[str, int32] = {"a": int32(1)}
+//     for k in d:
+//         d.setdefault(k, int32(0))  # tpyc: warning(/Mutation of 'd'.*'setdefault'/)
 void test_setdefault() {
-    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // d.setdefault(k, int32(0))  # tpyc: warning(/Mutation of 'd'.*'setdefault'/)
         ::tpy::dict_setdefault(d, k, 0);
     }
 }
 
 // def test_del() -> None:
+//     d: dict[str, int32] = {"a": int32(1)}
+//     for k in d:
+//         del d[k]  # tpyc: warning(/Mutation of 'd'.*'del'/)
 void test_del() {
-    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // del d[k]  # tpyc: warning(/Mutation of 'd'.*'del'/)
         ::tpy::__delitem__(d, k);
     }
 }
 
 // def test_conditional_mutation() -> None:
+//     d: dict[str, int32] = {"a": int32(1), "b": int32(2)}
+//     for k in d:
+//         if k == "a":
+//             d.pop(k)  # tpyc: warning(/Mutation of 'd'/)
 void test_conditional_mutation() {
-    // d: dict[str, int32] = {"a": int32(1), "b": int32(2)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // if k == "a":
         if ((k == "a")) {
-            // d.pop(k)  # tpyc: warning(/Mutation of 'd'/)
             ::tpy::dict_pop(d, k);
         }
     }
 }
 
 // def test_no_warn_after_loop() -> None:
+//     """Mutation after loop exit is fine."""
+//     d: dict[str, int32] = {"a": int32(1)}
+//     for k in d:
+//         pass
+//     d["b"] = int32(2)  # tpyc: ok
 void test_no_warn_after_loop() {
-    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // pass
     }
-    // d["b"] = int32(2)  # tpyc: ok
     ::tpy::__setitem__(d, "b", 2);
 }
 
 // def test_read_only_ok() -> None:
+//     """No warnings for read-only operations during iteration."""
+//     d: dict[str, int32] = {"a": int32(1), "b": int32(2)}
+//     total: int32 = int32(0)
+//     for k in d:
+//         total += d[k]    # tpyc: ok
+//         _ = len(d)        # tpyc: ok
 void test_read_only_ok() {
-    // d: dict[str, int32] = {"a": int32(1), "b": int32(2)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // total: int32 = int32(0)
     int32_t total = 0;
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // total += d[k]    # tpyc: ok
         total = ::tpy::add_check<int32_t>(total, ::tpy::__getitem__(d, k));
-        // _ = len(d)        # tpyc: ok
         int32_t _ = ::tpy::__len__(d);
     }
 }

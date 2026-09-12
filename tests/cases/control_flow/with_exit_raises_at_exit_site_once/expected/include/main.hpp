@@ -12,10 +12,15 @@ struct Suppressor;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ret_out() -> int:
 ::tpy::BigInt ret_out();
+// def brk_out() -> None:
 void brk_out();
+// def cont_out() -> None:
 void cont_out();
+// def ret_out_suppressing() -> int:
 ::tpy::BigInt ret_out_suppressing();
+// def main() -> None:
 void main();
 
 // # Regression: an __exit__ that RAISES must run exactly once when control
@@ -59,30 +64,30 @@ inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
 
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt Thrower::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("exit ran")
+//     raise RuntimeError("from exit")
 inline void Thrower::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("exit ran")
     std::cout << "exit ran" << "\n";
-    // raise RuntimeError("from exit")
     throw ::tpy::RuntimeError("from exit");
 }
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt Suppressor::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, et, ev, tb) -> bool:
+//     print("exit suppress")
+//     return True
 inline bool Suppressor::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("exit suppress")
     std::cout << "exit suppress" << "\n";
-    // return True
     return true;
 }
 void __tpy_init();

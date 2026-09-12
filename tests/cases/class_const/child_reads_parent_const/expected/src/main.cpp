@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Direct access via the child class.
+//     print(Child.LIMIT)
+//     # The parent name still resolves to the same constant.
+//     print(Parent.LIMIT)
+//     # Instance-side read through a Child instance (Phase 5 + 6).
+//     c = Child()
+//     print(c.LIMIT)
 void main() {
-    // # Direct access via the child class.
-    // print(Child.LIMIT)
     std::cout << Parent::LIMIT << "\n";
-    // # The parent name still resolves to the same constant.
-    // print(Parent.LIMIT)
     std::cout << Parent::LIMIT << "\n";
-    // # Instance-side read through a Child instance (Phase 5 + 6).
-    // c = Child()
     Child c = Child();
-    // print(c.LIMIT)
     std::cout << Parent::LIMIT << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

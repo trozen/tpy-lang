@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_src;
 
+// def src() -> Iterator[int32]:
 __gen_src src();
+// def main() -> None:
 void main();
 
-// Generator: src
+// def src() -> Iterator[int32]:
 struct __gen_src : public ::tpy::next_iter_mixin<__gen_src, int32_t> {
     int32_t __state;
 
@@ -36,6 +38,9 @@ struct __gen_src : public ::tpy::next_iter_mixin<__gen_src, int32_t> {
     }
 };
 
+// def g() -> Iterator[int32]:
+//     for x in src():  # tpyc: ok
+//         yield x
 inline auto g() {
     return ::tpy::make_generator<int32_t>(
         [__src = std::optional<std::decay_t<decltype(src())>>()]() mutable -> std::optional<int32_t> {

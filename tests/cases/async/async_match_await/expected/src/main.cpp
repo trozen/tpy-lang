@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,19 +26,20 @@ __coro_sub sub(::tpy::BigInt n) {
 }
 
 // async def caller(tag: int) -> int:
+//     match tag:  # tpyc: ok
+//         case 0:
+//             return await sub(10)
+//         case _:
+//             return await sub(20)
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = tag;
-        // case 0:
         if (__match_subject_1 == 0) {
-            // return await sub(10)
             __sub_0.emplace(::tpy::BigInt(10));
             __state = S_RESUME_0;
             continue;
-        // case _:
         } else {
-            // return await sub(20)
             __sub_1.emplace(::tpy::BigInt(20));
             __state = S_RESUME_1;
             continue;
@@ -74,24 +75,25 @@ __coro_caller caller(::tpy::BigInt tag) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller(0)))
+//     print(asyncio.run(caller(7)))
 void main() {
-    // print(asyncio.run(caller(0)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(0)))) << "\n";
-    // print(asyncio.run(caller(7)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(7)))) << "\n";
 }
 
+// # H1: an `await` inside a `match` lowers on the resumable frame -- the same
+// # CFG `match` decomposition serves generators and `async def` (the dispatch
+// # is suspension-generic; only arm bodies suspend).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # H1: an `await` inside a `match` lowers on the resumable frame -- the same
-    // # CFG `match` decomposition serves generators and `async def` (the dispatch
-    // # is suspension-generic; only arm bodies suspend).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

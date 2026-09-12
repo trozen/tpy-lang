@@ -3,31 +3,27 @@
 
 namespace tpyapp::main {
 
-// # Type conversions
-// a = float(5)
 double a{};
-// b = float(3.14)
 double b{};
-// c: float = 1.0
 double c{};
 
+// # Type conversions
+// a = float(5)
+// b = float(3.14)
+// c: float = 1.0
+// print(a)
+// print(b)
+// print(c)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Type conversions
-    // a = float(5)
     a = 5;
-    // b = float(3.14)
     b = 3.14;
-    // c: float = 1.0
     c = 1.0;
-    // print(a)
     std::cout << ::tpy::print_float(a) << "\n";
-    // print(b)
     std::cout << ::tpy::print_float(b) << "\n";
-    // print(c)
     std::cout << ::tpy::print_float(c) << "\n";
 }
 

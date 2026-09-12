@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     for v in h.bump():
+//         print(v)
+//     print(h.nodes[0].val, h.nodes[1].val)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // for v in h.bump():
     {
         auto __src_0 = h.bump();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,19 +18,20 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(h.nodes[0].val, h.nodes[1].val)
     std::cout << ::tpy::__getitem__(h.nodes, 0).val << " " << ::tpy::__getitem__(h.nodes, 1).val << "\n";
 }
 
 // def bump(self) -> Iterator[int32]:
+//     yield 0
+//     for n in self.nodes:  # tpyc: ok
+//         n.val += 10
+//         yield n.val
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -48,9 +51,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_bump::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         n = &(*((*__for_it_0))++);
-        // n.val += 10
         n->val = ::tpy::add_check<int32_t>(n->val, 10);
-        // yield n.val
         __state = S_RESUME_1;
         return n->val;
     }
@@ -60,12 +61,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_bump::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

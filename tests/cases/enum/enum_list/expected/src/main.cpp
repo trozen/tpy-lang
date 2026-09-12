@@ -47,30 +47,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     colors: list[Color] = [Color.Red, Color.Green, Color.Blue]
+//     for c in colors:
+//         print(c)
+//     print(len(colors))
 void main() {
-    // colors: list[Color] = [Color.Red, Color.Green, Color.Blue]
     std::vector<Color> colors = {Color::Red, Color::Green, Color::Blue};
-    // for c in colors:
     auto& __obj_0 = colors;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        // print(c)
         std::cout << c << "\n";
     }
-    // print(len(colors))
     std::cout << ::tpy::__len__(colors) << "\n";
 }
 
+// # Enum values stored in a list
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum values stored in a list
-    // from enum import Enum
-    // main()
     main();
 }
 

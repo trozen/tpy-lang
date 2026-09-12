@@ -3,33 +3,32 @@
 
 namespace tpyapp::main {
 
-// calls = 0
 int32_t calls{};
 
 // def make() -> Own[Rec]:
+//     global calls
+//     calls += 1
+//     return Rec(1)
 Rec make() {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return Rec(1)
     return Rec(::tpy::BigInt(1));
 }
 
 // def classify(x: int) -> str:
+//     match x:
+//         case 1 if make():
+//             return "one"
+//         case _:
+//             return "other"
 std::string classify(const ::tpy::BigInt& x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case 1 if make():
     if (__match_subject_1 == 1) {
         if ((static_cast<void>(make()), true)) {
-            // return "one"
             return "one";
             goto __match_end_2;
         }
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -38,21 +37,22 @@ std::string classify(const ::tpy::BigInt& x) {
 }
 
 // def main() -> None:
+//     print(classify(1), calls)
+//     print(classify(2), calls)
 void main() {
-    // print(classify(1), calls)
     std::cout << classify(::tpy::BigInt(1)) << " " << calls << "\n";
-    // print(classify(2), calls)
     std::cout << classify(::tpy::BigInt(2)) << " " << calls << "\n";
 }
 
+// calls = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // calls = 0
     calls = 0;
-    // main()
     main();
 }
 

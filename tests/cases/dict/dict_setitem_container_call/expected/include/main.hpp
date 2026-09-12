@@ -15,12 +15,19 @@ struct Source;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_list() -> Own[list[int32]]:
 std::vector<int32_t> make_list();
+// def make_inner() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> make_inner();
+// def make_pair() -> Own[Array[int32, 2]]:
 std::array<int32_t, 2> make_pair();
+// def make_blob() -> Own[bytearray]:
 ::tpy::ByteArray make_blob();
+// def make_tags() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> make_tags();
+// def make_boxes() -> Own[list[Box[int32]]]:
 std::vector<::tpystd::tplib::box::Box<int32_t>> make_boxes();
+// def main() -> None:
 void main();
 
 // class Source:
@@ -44,11 +51,12 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 
 
 // def __init__(self, seed: int32) -> None:
+//     self.seed = seed
 inline Source::Source(int32_t seed) : seed(seed) {}
 
 // def rows(self) -> Own[list[int32]]:
+//     return [self.seed, self.seed + 1]
 inline std::vector<int32_t> Source::rows() const {
-    // return [self.seed, self.seed + 1]
     return {this->seed, (::tpy::add_check<int32_t>(this->seed, 1))};
 }
 void __tpy_init();

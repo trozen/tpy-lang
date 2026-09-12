@@ -37,6 +37,7 @@ template<typename T> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -63,21 +64,21 @@ template<typename T>
 struct Wrapper {
 
     // def __init__(self) -> None:
+    //     pass
     Wrapper() {
-        // pass
     }
 
     // @dispatch
     // def wrap(self, x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
+    //     return Rc.new(x)
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap(::tpystd::tplib::box::Box<T>&& x) {
-        // return Rc.new(x)
         return Rc<::tpystd::tplib::box::Box<T>>::template new_<::tpystd::tplib::box::Box<T>>(std::move(x));
     }
 
     // @dispatch
     // def wrap(self, x: str) -> Own[Rc[Box[str]]]:
+    //     return Rc.new(Box(x))
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap(std::string_view x) {
-        // return Rc.new(Box(x))
         return Rc<::tpystd::tplib::box::Box<std::string>>::new_<::tpystd::tplib::box::Box<std::string>>(::tpystd::tplib::box::Box<std::string>(std::string(x)));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
@@ -110,11 +111,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Dog::Dog(std::string_view label) : label(label) {}
 
 // def name(self) -> StrView:
+//     return self.label
 inline std::string_view Dog::name() const {
-    // return self.label
     return this->label;
 }
 void __tpy_init();

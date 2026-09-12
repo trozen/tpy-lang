@@ -5,11 +5,12 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     # The subject: the literal is hoisted, not passed as a temporary.
+//     await consume([1, 2, 3])  # tpyc: ok
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0.emplace(std::array<int32_t, 3>{1, 2, 3});
-        // await consume([1, 2, 3])  # tpyc: ok
         __sub_0.emplace((*__coro_arg_0));
         __state = S_RESUME_0;
         continue;
@@ -34,25 +35,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Awaiting a protocol-param coroutine with a collection-literal argument. The
+// # literal has no name at the call site, so the uniform frame-temp rule hoists
+// # it into a slot of the AWAITING coroutine's own frame; the sub-future's
+// # protocol field is then deduced off that named local and stays alive across
+// # the suspension. Pairs with async_await_proto_param (lvalue) and
+// # async_await_proto_param_rvalue (owned rvalue).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Awaiting a protocol-param coroutine with a collection-literal argument. The
-    // # literal has no name at the call site, so the uniform frame-temp rule hoists
-    // # it into a slot of the AWAITING coroutine's own frame; the sub-future's
-    // # protocol field is then deduced off that named local and stays alive across
-    // # the suspension. Pairs with async_await_proto_param (lvalue) and
-    // # async_await_proto_param_rvalue (owned rvalue).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

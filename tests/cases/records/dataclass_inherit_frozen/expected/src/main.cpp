@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     v = Vec3(1, 2, 3)
+//     print(v)
+//     print(v.x)
+//     print(v.z)
+//     # Equality with all fields
+//     print(v == Vec3(1, 2, 3))
+//     print(v == Vec3(1, 2, 4))
+//     # Hash works (frozen)
+//     d: dict[Vec3, str] = {v: "a"}
+//     print(d[Vec3(1, 2, 3)])
 void main() {
-    // v = Vec3(1, 2, 3)
     Vec3 v = Vec3(1, 2, 3);
-    // print(v)
     std::cout << v << "\n";
-    // print(v.x)
     std::cout << v.x << "\n";
-    // print(v.z)
     std::cout << v.z << "\n";
-    // # Equality with all fields
-    // print(v == Vec3(1, 2, 3))
     std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 3)))) << "\n";
-    // print(v == Vec3(1, 2, 4))
     std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 4)))) << "\n";
-    // # Hash works (frozen)
-    // d: dict[Vec3, str] = {v: "a"}
     ::tpy::ordered_map<Vec3, std::string> d = ::tpy::make_ordered_map<Vec3, std::string>(std::move(v), "a");
-    // print(d[Vec3(1, 2, 3)])
     std::cout << ::tpy::__getitem__(d, Vec3(1, 2, 3)) << "\n";
 }
 
+// # @dataclass(frozen=True) inheritance: both parent and child frozen
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass(frozen=True) inheritance: both parent and child frozen
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

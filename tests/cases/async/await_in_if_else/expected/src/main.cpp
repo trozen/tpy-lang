@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,16 +26,19 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def pick(cond: bool) -> int:
+//     if cond:
+//         x = await value(10)
+//     else:
+//         x = await value(20)
+//     return x
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (cond) {
-            // x = await value(10)
             __sub_0.emplace(::tpy::BigInt(10));
             __state = S_RESUME_0;
             continue;
         } else {
-            // x = await value(20)
             __sub_1.emplace(::tpy::BigInt(20));
             __state = S_RESUME_1;
             continue;
@@ -58,7 +61,6 @@ __coro_value value(::tpy::BigInt n) {
         continue;
     }
     case S_JOIN_0: {
-        // return x
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = x;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -75,22 +77,23 @@ __coro_pick pick(bool cond) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(pick(True)))
+//     print(asyncio.run(pick(False)))
 void main() {
-    // print(asyncio.run(pick(True)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(pick(true))) << "\n";
-    // print(asyncio.run(pick(False)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(pick(false))) << "\n";
 }
 
+// # `await` inside both branches of an if/else.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` inside both branches of an if/else.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

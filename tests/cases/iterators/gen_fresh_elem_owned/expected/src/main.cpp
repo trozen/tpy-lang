@@ -5,6 +5,10 @@ namespace tpyapp::main {
 
 
 // def collect(src: Fresh) -> Iterator[int32]:
+//     for node in src:
+//         yield node.v
+//         yield node.v
+//     print("leaked loop var after the loop:", node.v)
 std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -13,7 +17,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield node.v
         __state = S_RESUME_1;
         return (*node).v;
     }
@@ -24,13 +27,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, src));
         if (!(*__for_r_0).has_value()) {
-            // print("leaked loop var after the loop:", node.v)
             std::cout << "leaked loop var after the loop:" << " " << (*node).v << "\n";
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         node.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        // yield node.v
         __state = S_RESUME_0;
         return (*node).v;
     }
@@ -46,8 +47,9 @@ __gen_collect collect(Fresh& src) {
 }
 
 // def main() -> None:
+//     for got in collect(Fresh()):
+//         print(got)
 void main() {
-    // for got in collect(Fresh()):
     {
         Fresh __tmp_1 = Fresh();
         auto __src_0 = collect(__tmp_1);
@@ -56,18 +58,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-        // print(got)
         std::cout << got << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

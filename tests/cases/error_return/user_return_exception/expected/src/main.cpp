@@ -6,69 +6,74 @@ namespace tpyapp::main {
 
 // @error_return(ParseError)
 // def parse_digit(s: str) -> int32:
+//     if s == "0":
+//         return 0
+//     if s == "1":
+//         return 1
+//     raise ParseError
 std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
-    // if s == "0":
     if ((s == "0")) {
-        // return 0
         return 0;
     }
-    // if s == "1":
     if ((s == "1")) {
-        // return 1
         return 1;
     }
-    // raise ParseError
     return ::tpy::make_unexpected(ParseError{});
 }
 
 // def main() -> None:
+//     try:
+//         v = parse_digit("1")
+//     except ParseError:
+//         print("error")
+//     else:
+//         print(v)
+//
+//     try:
+//         v2 = parse_digit("x")
+//     except ParseError:
+//         print("error")
+//     else:
+//         print(v2)
 void main() {
-    // try:
     int32_t v;
     {
-        // v = parse_digit("1")
         {
             auto __try_tmp_2 = parse_digit("1");
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_1;
         // except ParseError:
         __except_1:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_1:;
     }
-    // try:
     int32_t v2;
     {
-        // v2 = parse_digit("x")
         {
             auto __try_tmp_4 = parse_digit("x");
             if (!__try_tmp_4.has_value()) goto __except_3;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_3;
         // except ParseError:
         __except_3:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_3:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

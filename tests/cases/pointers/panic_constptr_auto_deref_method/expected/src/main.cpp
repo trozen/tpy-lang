@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p: Ptr[readonly[Counter]] = Ptr[readonly[Counter]]()
+//     print(p.__len__())  # tpyc: nullable(p)
 void main() {
-    // p: Ptr[readonly[Counter]] = Ptr[readonly[Counter]]()
     const Counter* p = static_cast<const Counter*>(nullptr);
-    // print(p.__len__())  # tpyc: nullable(p)
     std::cout << ::tpy::deref_check(p).__len__() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

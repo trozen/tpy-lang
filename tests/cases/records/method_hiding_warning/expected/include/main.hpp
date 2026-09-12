@@ -46,20 +46,20 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def speak(self) -> None:
+//     print("...")
 inline void Animal::speak() const {
-    // print("...")
     std::cout << "..." << "\n";
 }
 
 // def make_noise(self) -> None:
+//     self.speak()
 inline void Animal::make_noise() const {
-    // self.speak()
     this->speak();
 }
 
 // def speak(self) -> None:
+//     print("Woof!")
 inline void Dog::speak() const {
-    // print("Woof!")
     std::cout << "Woof!" << "\n";
 }
 void __tpy_init();

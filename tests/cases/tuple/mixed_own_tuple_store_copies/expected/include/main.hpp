@@ -12,17 +12,29 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
 std::tuple<Box, Box*> make_mixed(Box& b);
+// def via_list_literal(b: Box) -> int32:
 int32_t via_list_literal(Box& b);
+// def via_append(b: Box) -> int32:
 int32_t via_append(Box& b);
+// def via_dict_literal(b: Box) -> int32:
 int32_t via_dict_literal(Box& b);
+// def via_setitem(b: Box) -> int32:
 int32_t via_setitem(Box& b);
+// def via_nested_tuple(b: Box) -> int32:
 int32_t via_nested_tuple(Box& b);
+// def via_dict_comprehension(b: Box) -> int32:
 int32_t via_dict_comprehension(Box& b);
+// def via_ternary_source(b: Box, c: Box, flag: bool) -> int32:
 int32_t via_ternary_source(Box& b, Box& c, bool flag);
+// def via_comprehension(b: Box) -> int32:
 int32_t via_comprehension(Box& b);
+// def via_loop_var(b: Box) -> int32:
 int32_t via_loop_var(Box& b);
+// def via_field(b: Box) -> int32:
 int32_t via_field(Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -59,9 +71,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Box::Box(int32_t val) : val(val) {}
 
 // def __init__(self, b: Box) -> None:
+//     self.t = make_mixed(b)  # tpyc: warning(/copies Box into field/)
 inline Holder::Holder(Box& b) : t(::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))) {}
 void __tpy_init();
 } // namespace tpyapp::main

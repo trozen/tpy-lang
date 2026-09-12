@@ -5,64 +5,69 @@ namespace tpyapp::main {
 
 
 // def show(v: DynValued) -> None:
+//     print(v.value())
 void show(DynValued& v) {
-    // print(v.value())
     std::cout << v.value() << "\n";
 }
 
 // def main() -> None:
+//     c = Counter()
+//     c.increment()
+//     c.increment_twice()
+//     print(c.get())
+//     print(c.is_zero())
+//
+//     b = Box()
+//     b.push(1)
+//     b.push_default()
+//     print(b.size())
+//
+//     sb = SortableBox()
+//     sb.fill(3, 1)
+//     sb.sort_items()
+//     print(sb.get_first())
+//
+//     o = Outer()
+//     print(o.sum_items())
+//     print(o.get_extra())
+//     o.mutate_extra()
+//     print(o.sum_items())
+//
+//     wo = WithOpt()
+//     print(wo.get_child_value())
+//
+//     show(Valued(7))
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // c.increment()
     c.increment();
-    // c.increment_twice()
     c.increment_twice();
-    // print(c.get())
     std::cout << c.get() << "\n";
-    // print(c.is_zero())
     std::cout << ::tpy::print_bool(c.is_zero()) << "\n";
-    // b = Box()
     Box b = Box();
-    // b.push(1)
     b.push(1);
-    // b.push_default()
     b.push_default();
-    // print(b.size())
     std::cout << b.size() << "\n";
-    // sb = SortableBox()
     SortableBox sb = SortableBox();
-    // sb.fill(3, 1)
     sb.fill(3, 1);
-    // sb.sort_items()
     sb.sort_items();
-    // print(sb.get_first())
     std::cout << sb.get_first() << "\n";
-    // o = Outer()
     Outer o = Outer();
-    // print(o.sum_items())
     std::cout << o.sum_items() << "\n";
-    // print(o.get_extra())
     std::cout << o.get_extra() << "\n";
-    // o.mutate_extra()
     o.mutate_extra();
-    // print(o.sum_items())
     std::cout << o.sum_items() << "\n";
-    // wo = WithOpt()
     WithOpt wo = WithOpt();
-    // print(wo.get_child_value())
     std::cout << wo.get_child_value() << "\n";
-    // show(Valued(7))
     Valued __tmp_1{Valued(7)};
     show(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

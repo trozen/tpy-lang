@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def keeps_alias(h: Holder, g: Holder) -> int:
 ::tpy::BigInt keeps_alias(Holder& h, const Holder& g);
+// def main() -> None:
 void main();
 
 // # INVERSE guard: a nested match binding a DIFFERENT name must not disturb the
@@ -55,9 +57,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Inner::Inner(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, inner: Inner, tag: int) -> None:
+//     self.inner = inner
+//     self.tag = tag
 inline Holder::Holder(const Inner& inner, const ::tpy::BigInt& tag) : inner(inner), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

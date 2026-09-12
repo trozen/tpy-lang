@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = ((1, 2), "x")
+//     b = ((1, 3), "x")
+//     c = ((1, 2), "y")
+//
+//     print(less(a, b))   # inner-tuple decides: (1,2) < (1,3)
+//     print(less(a, c))   # outer string decides: "x" < "y"
+//     print(less(b, a))   # False
 void main() {
-    // a = ((1, 2), "x")
     std::tuple<std::tuple<int32_t, int32_t>, std::string> a = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 2}, "x"};
-    // b = ((1, 3), "x")
     std::tuple<std::tuple<int32_t, int32_t>, std::string> b = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 3}, "x"};
-    // c = ((1, 2), "y")
     std::tuple<std::tuple<int32_t, int32_t>, std::string> c = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 2}, "y"};
-    // print(less(a, b))   # inner-tuple decides: (1,2) < (1,3)
     std::cout << ::tpy::print_bool(less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(a, b)) << "\n";
-    // print(less(a, c))   # outer string decides: "x" < "y"
     std::cout << ::tpy::print_bool(less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(a, c)) << "\n";
-    // print(less(b, a))   # False
     std::cout << ::tpy::print_bool(less<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(b, a)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

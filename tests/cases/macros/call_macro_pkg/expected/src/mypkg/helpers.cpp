@@ -5,8 +5,8 @@ namespace tpyapp::mypkg::helpers {
 
 
 // def tag(label: str, value: int32) -> str:
+//     return label + "=" + str(value)
 std::string tag(std::string_view label, int32_t value) {
-    // return label + "=" + str(value)
     return (::tpy::str_concat((::tpy::str_concat(label, "=")), ::tpy::fixed_to_str<int32_t>(value)));
 }
 

@@ -13,10 +13,15 @@ using ::tpystd::tplib::array_list::ArrayList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def from_list() -> None:
 void from_list();
+// def from_array() -> None:
 void from_array();
+// def from_span() -> None:
 void from_span();
+// def from_readonly_span() -> None:
 void from_readonly_span();
+// def from_arraylist() -> None:
 void from_arraylist();
 
 void __tpy_init();

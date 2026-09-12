@@ -5,85 +5,89 @@ namespace tpyapp::main {
 
 
 // def identity(pet: Dog | Cat | None) -> Dog | Cat | None:
+//     return pet
 ::tpy::Union<std::monostate, Cat*, Dog*> identity(::tpy::Union<std::monostate, Cat*, Dog*> pet) {
-    // return pet
     return pet;
 }
 
 // def main() -> None:
+//     d = Dog("Rex")
+//     init_pet: Dog | Cat | None = d
+//     s = Shelter(init_pet)
+//
+//     # Assign from pointer-variant local
+//     new_pet: Dog | Cat | None = Cat("Whiskers")
+//     s.pet = new_pet
+//     p = s.pet
+//     if p is not None:
+//         if isinstance(p, Cat):
+//             print(p.name)
+//
+//     # Assign from function returning pointer-variant
+//     s.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
+//     p2 = s.pet
+//     if p2 is not None:
+//         if isinstance(p2, Cat):
+//             print(p2.name)
+//
+//     # Assign None (must emit std::monostate{}, not nullptr)
+//     s.pet = None  # tpyc: warning(/Mutation.*while borrowed/)
+//     p3 = s.pet
+//     if p3 is None:
+//         print("cleared")
+//
+//     # Assign again from pointer-variant local
+//     another: Dog | Cat | None = Dog("Buddy")
+//     s.pet = another  # tpyc: warning(/Mutation.*while borrowed/)
+//     p4 = s.pet
+//     if p4 is not None:
+//         if isinstance(p4, Dog):
+//             print(p4.name)
 void main() {
-    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    // init_pet: Dog | Cat | None = d
     ::tpy::Union<std::monostate, Cat*, Dog*> init_pet{&(d)};
-    // s = Shelter(init_pet)
     Shelter s = Shelter(init_pet.as_const());
-    // # Assign from pointer-variant local
-    // new_pet: Dog | Cat | None = Cat("Whiskers")
     ::tpy::Union<std::monostate, Cat, Dog> __slot_1 = Cat("Whiskers");
     ::tpy::Union<std::monostate, Cat*, Dog*> new_pet = ::tpy::to_ptr_variant(__slot_1);
-    // s.pet = new_pet
     s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(new_pet);
-    // p = s.pet
     ::tpy::Union<std::monostate, Cat*, Dog*> p = ::tpy::to_ptr_variant(s.pet);
-    // if p is not None:
     if ((!std::holds_alternative<std::monostate>(p))) {
-        // if isinstance(p, Cat):
         if (std::holds_alternative<Cat*>(p)) {
             auto& __p = *std::get<Cat*>(p);
-            // print(p.name)
             std::cout << __p.name << "\n";
         }
     }
-    // # Assign from function returning pointer-variant
-    // s.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
     s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(identity(new_pet));
-    // p2 = s.pet
     ::tpy::Union<std::monostate, Cat*, Dog*> p2 = ::tpy::to_ptr_variant(s.pet);
-    // if p2 is not None:
     if ((!std::holds_alternative<std::monostate>(p2))) {
-        // if isinstance(p2, Cat):
         if (std::holds_alternative<Cat*>(p2)) {
             auto& __p2 = *std::get<Cat*>(p2);
-            // print(p2.name)
             std::cout << __p2.name << "\n";
         }
     }
-    // # Assign None (must emit std::monostate{}, not nullptr)
-    // s.pet = None  # tpyc: warning(/Mutation.*while borrowed/)
     s.pet = std::monostate{};
-    // p3 = s.pet
     ::tpy::Union<std::monostate, Cat*, Dog*> p3 = ::tpy::to_ptr_variant(s.pet);
-    // if p3 is None:
     if ((std::holds_alternative<std::monostate>(p3))) {
-        // print("cleared")
         std::cout << "cleared" << "\n";
     }
-    // # Assign again from pointer-variant local
-    // another: Dog | Cat | None = Dog("Buddy")
     ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Dog("Buddy");
     ::tpy::Union<std::monostate, Cat*, Dog*> another = ::tpy::to_ptr_variant(__slot_2);
-    // s.pet = another  # tpyc: warning(/Mutation.*while borrowed/)
     s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(another);
-    // p4 = s.pet
     ::tpy::Union<std::monostate, Cat*, Dog*> p4 = ::tpy::to_ptr_variant(s.pet);
-    // if p4 is not None:
     if ((!std::holds_alternative<std::monostate>(p4))) {
-        // if isinstance(p4, Dog):
         if (std::holds_alternative<Dog*>(p4)) {
             auto& __p4 = *std::get<Dog*>(p4);
-            // print(p4.name)
             std::cout << __p4.name << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

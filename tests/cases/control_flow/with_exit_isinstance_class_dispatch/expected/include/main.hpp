@@ -11,6 +11,7 @@ struct SuppressVE;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class SuppressVE:
@@ -32,8 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const SuppressVE& obj) {
 
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt SuppressVE::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 void __tpy_init();

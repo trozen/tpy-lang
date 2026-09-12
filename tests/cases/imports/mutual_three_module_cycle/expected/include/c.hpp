@@ -10,6 +10,7 @@ namespace tpyapp::c {
 
 inline constexpr std::string_view __name__ = "c";
 
+// def cc() -> int32:
 int32_t cc();
 
 void __tpy_init();

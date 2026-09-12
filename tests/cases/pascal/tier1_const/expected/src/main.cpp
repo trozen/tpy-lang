@@ -3,44 +3,40 @@
 
 namespace tpyapp::main {
 
-// N = 10;
 int32_t n{};
-// Pi = 3.14159;
 double pi{};
-// Greeting = 'Hello';
 std::string greeting;
-// Enabled = true;
 bool enabled{};
-// i: integer;
 int32_t i{};
 
+// N = 10;
+// Pi = 3.14159;
+// Greeting = 'Hello';
+// Enabled = true;
+//
+// i: integer;
+//
+// i := N + 5;
+// writeln(i);
+// writeln(Pi);
+// writeln(Greeting);
+// if Enabled then writeln('on') else writeln('off');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // N = 10;
     n = 10;
-    // Pi = 3.14159;
     pi = 3.14159;
-    // Greeting = 'Hello';
     greeting = "Hello";
-    // Enabled = true;
     enabled = true;
-    // i := N + 5;
     i = (::tpy::add_check<int32_t>(n, 5));
-    // writeln(i);
     std::cout << i << "\n";
-    // writeln(Pi);
     std::cout << ::tpy::print_float(pi) << "\n";
-    // writeln(Greeting);
     std::cout << std::string(greeting) << "\n";
-    // if Enabled then writeln('on') else writeln('off');
     if (enabled) {
-        // if Enabled then writeln('on') else writeln('off');
         std::cout << "on" << "\n";
     } else {
-        // if Enabled then writeln('on') else writeln('off');
         std::cout << "off" << "\n";
     }
 }

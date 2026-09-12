@@ -5,30 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Iterable[T] reference semantics
+//     pts: list[Point] = [Point(1, 2), Point(3, 4)]
+//     mutate_via_iterable(pts)
+//     print(pts[0].x, pts[0].y)
+//     print(pts[1].x, pts[1].y)
+//
+//     # Iterator[T] reference semantics (iter() returns native_iterator)
+//     pts2: list[Point] = [Point(10, 20), Point(30, 40)]
+//     mutate_via_iterator(iter(pts2))
+//     print(pts2[0].x, pts2[0].y)
+//     print(pts2[1].x, pts2[1].y)
+//
+//     # Generator over Iterable[T] -- mutations visible
+//     pts3: list[Point] = [Point(5, 6)]
+//     for v in gen_double_x(pts3):
+//         print(v)
+//     print(pts3[0].x)
+//
+//     # Dict iteration through Iterable[str]
+//     d: dict[str, int] = {"a": 1, "b": 2}
+//     keys: list[str] = []
+//     for k in d:
+//         keys.append(k)
+//     print(keys[0], keys[1])
 void main() {
-    // # Iterable[T] reference semantics
-    // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(::tpy::BigInt(1), ::tpy::BigInt(2)), Point(::tpy::BigInt(3), ::tpy::BigInt(4))};
-    // mutate_via_iterable(pts)
     mutate_via_iterable(pts);
-    // print(pts[0].x, pts[0].y)
     std::cout << ::tpy::__getitem__(pts, 0).x << " " << ::tpy::__getitem__(pts, 0).y << "\n";
-    // print(pts[1].x, pts[1].y)
     std::cout << ::tpy::__getitem__(pts, 1).x << " " << ::tpy::__getitem__(pts, 1).y << "\n";
-    // # Iterator[T] reference semantics (iter() returns native_iterator)
-    // pts2: list[Point] = [Point(10, 20), Point(30, 40)]
     std::vector<Point> pts2 = {Point(::tpy::BigInt(10), ::tpy::BigInt(20)), Point(::tpy::BigInt(30), ::tpy::BigInt(40))};
-    // mutate_via_iterator(iter(pts2))
     auto __tmp_1 = ::tpy::__iter__(pts2);
     mutate_via_iterator(__tmp_1);
-    // print(pts2[0].x, pts2[0].y)
     std::cout << ::tpy::__getitem__(pts2, 0).x << " " << ::tpy::__getitem__(pts2, 0).y << "\n";
-    // print(pts2[1].x, pts2[1].y)
     std::cout << ::tpy::__getitem__(pts2, 1).x << " " << ::tpy::__getitem__(pts2, 1).y << "\n";
-    // # Generator over Iterable[T] -- mutations visible
-    // pts3: list[Point] = [Point(5, 6)]
     std::vector<Point> pts3 = {Point(::tpy::BigInt(5), ::tpy::BigInt(6))};
-    // for v in gen_double_x(pts3):
     {
         auto __src_0 = gen_double_x(pts3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -36,36 +47,28 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(pts3[0].x)
     std::cout << ::tpy::__getitem__(pts3, 0).x << "\n";
-    // # Dict iteration through Iterable[str]
-    // d: dict[str, int] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
-    // keys: list[str] = []
     std::vector<std::string> keys = std::vector<std::string>{};
-    // for k in d:
     auto& __obj_2 = d;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view k = *__beg_2;
-        // keys.append(k)
         keys.push_back(std::string(k));
     }
-    // print(keys[0], keys[1])
     std::cout << ::tpy::__getitem__(keys, 0) << " " << ::tpy::__getitem__(keys, 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

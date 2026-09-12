@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def greet(s: Speaker) -> None:
+//     print(s.speak())
 void greet(Speaker& s) {
-    // print(s.speak())
     std::cout << s.speak() << "\n";
 }
 
 // def main() -> None:
+//     greet(Dog())
 void main() {
-    // greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

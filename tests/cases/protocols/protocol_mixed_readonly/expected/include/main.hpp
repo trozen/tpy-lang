@@ -19,8 +19,10 @@ struct Impl;
 extern Impl* obj;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def safe_read(m: Mixed) -> int32:
 template<Mixed T_m>
 int32_t safe_read(const T_m& m);
+// def use_both(m: Mixed) -> int32:
 template<Mixed T_m>
 int32_t use_both(T_m& m);
 
@@ -49,33 +51,34 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Impl::Impl(int32_t value) : value(value) {}
 
 // @readonly
 // def read(self) -> int32:
+//     return self.value
 inline int32_t Impl::read() const {
-    // return self.value
     return this->value;
 }
 
 // def write(self, v: int32) -> None:
+//     self.value = v
 inline void Impl::write(int32_t v) {
-    // self.value = v
     this->value = v;
 }
 // @readonly
 // def safe_read(m: Mixed) -> int32:
+//     return m.read()
 template<Mixed T_m>
 int32_t safe_read(const T_m& m) {
-    // return m.read()
     return m.read();
 }
 // def use_both(m: Mixed) -> int32:
+//     m.write(10)
+//     return m.read()
 template<Mixed T_m>
 int32_t use_both(T_m& m) {
-    // m.write(10)
     m.write(10);
-    // return m.read()
     return m.read();
 }
 

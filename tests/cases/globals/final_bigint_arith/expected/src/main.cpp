@@ -3,28 +3,39 @@
 
 namespace tpyapp::main {
 
+// A: Final[int] = 100
 const ::tpy::BigInt A = ::tpy::BigInt(100);
+// B: Final[int] = 7
 const ::tpy::BigInt B = ::tpy::BigInt(7);
+// SUM: Final[int] = A + B
 const ::tpy::BigInt SUM = ((A) + (B));
+// PROD: Final[int] = A * B
 const ::tpy::BigInt PROD = ((A) * (B));
+// NESTED: Final[int] = (A + B) * 10 - 1
 const ::tpy::BigInt NESTED = ((((((A) + (B))) * (::tpy::BigInt(10)))) - (::tpy::BigInt(1)));
 
 // def main() -> None:
+//     print(SUM)
+//     print(PROD)
+//     print(NESTED)
 void main() {
-    // print(SUM)
     std::cout << SUM << "\n";
-    // print(PROD)
     std::cout << PROD << "\n";
-    // print(NESTED)
     std::cout << NESTED << "\n";
 }
 
+// A: Final[int] = 100
+// B: Final[int] = 7
+// SUM: Final[int] = A + B
+// PROD: Final[int] = A * B
+// NESTED: Final[int] = (A + B) * 10 - 1
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

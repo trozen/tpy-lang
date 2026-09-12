@@ -5,6 +5,10 @@ namespace tpyapp::main {
 
 
 // def gen_return_then_finally_yield() -> Iterator[int]:
+//     try:
+//         return
+//     finally:
+//         yield 99
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_then_finally_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -32,7 +36,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_then_finally
     }
     case S_JOIN_1: {
         try {
-            // return
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
             continue;
@@ -43,7 +46,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_then_finally
         }
     }
     case S_JOIN_2: {
-        // yield 99
         __state = S_RESUME_0;
         return ::tpy::BigInt(99);
     }
@@ -59,6 +61,14 @@ __gen_gen_return_then_finally_yield gen_return_then_finally_yield() {
 }
 
 // def gen_exception_then_finally_yield(x: int) -> Iterator[int]:
+//     try:
+//         if x < 0:
+//             raise ValueError("negative")
+//         yield x
+//     except ValueError:
+//         yield -1
+//     finally:
+//         yield 0
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_finally_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -71,7 +81,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_fina
             continue;
         } catch (const ::tpy::ValueError&) {
             try {
-                // yield -1
                 __state = S_RESUME_1;
                 return ::tpy::BigInt(-1);
             } catch (...) {
@@ -94,7 +103,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_fina
         continue;
     }
     case S_JOIN_0: {
-        // yield 0
         __state = S_RESUME_2;
         return ::tpy::BigInt(0);
     }
@@ -109,17 +117,13 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_fina
     }
     case S_JOIN_2: {
         try {
-            // if x < 0:
             if ((x < 0)) {
-                // raise ValueError("negative")
                 throw ::tpy::ValueError("negative");
             }
-            // yield x
             __state = S_RESUME_0;
             return x;
         } catch (const ::tpy::ValueError&) {
             try {
-                // yield -1
                 __state = S_RESUME_1;
                 return ::tpy::BigInt(-1);
             } catch (...) {
@@ -145,22 +149,22 @@ __gen_gen_exception_then_finally_yield gen_exception_then_finally_yield(::tpy::B
 }
 
 // def main():
+//     print(list(gen_return_then_finally_yield()))
+//     print(list(gen_exception_then_finally_yield(5)))
+//     print(list(gen_exception_then_finally_yield(-1)))
 void main() {
-    // print(list(gen_return_then_finally_yield()))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_return_then_finally_yield())) << "\n";
-    // print(list(gen_exception_then_finally_yield(5)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_exception_then_finally_yield(::tpy::BigInt(5)))) << "\n";
-    // print(list(gen_exception_then_finally_yield(-1)))
     ::tpy::BigInt __tmp_1 = ::tpy::BigInt(-1);
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_exception_then_finally_yield(__tmp_1))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

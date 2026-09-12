@@ -33,7 +33,9 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Color:
 Color make();
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -9,25 +9,29 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
+// def sums(items: list[int32]) -> Iterator[int32]:
+//     for x in items:
+//         acc: int32 = 0
+//         for j in range(x):
+//             if j >= 2:
+//                 break
+//             acc += j
+//         yield acc
 inline auto sums(std::vector<int32_t>& items) {
     return ::tpy::make_generator<int32_t>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<int32_t> {
             if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
             if (__beg != __end) {
                 int32_t x = *__beg++;
-                // acc: int32 = 0
                 int32_t acc = 0;
-                // for j in range(x):
                 int32_t __stop_0 = x;
                 for (int32_t j = 0; j < __stop_0; ++j) {
-                    // if j >= 2:
                     if ((j >= 2)) {
-                        // break
                         break;
                     }
-                    // acc += j
                     acc = ::tpy::add_check<int32_t>(acc, j);
                 }
                 auto __val = acc;

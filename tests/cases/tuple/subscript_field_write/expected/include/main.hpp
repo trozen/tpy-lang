@@ -11,7 +11,9 @@ struct Leaf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(t: tuple[int32, Leaf]) -> None:
 void bump(const std::tuple<int32_t, Leaf*>& t);
+// def main() -> None:
 void main();
 
 // class Leaf:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Leaf::Leaf(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

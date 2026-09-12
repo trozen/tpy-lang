@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def pair(n: int32) -> tuple[int32, int32]:
+//     return (n, n + 1)
 std::tuple<int32_t, int32_t> pair(int32_t n) {
-    // return (n, n + 1)
     return std::tuple<int32_t, int32_t>{n, (::tpy::add_check<int32_t>(n, 1))};
 }
 
 // def main() -> None:
+//     flag = len("ab") > 1
+//     if flag:
+//         a, b = pair(1)
+//     else:
+//         a, b = pair(10)
+//     print(a)
+//     print(b)
 void main() {
-    // flag = len("ab") > 1
     bool flag = (::tpy::__len__("ab") > 1);
-    // if flag:
     int32_t a;
     int32_t b;
     if (flag) {
-        // a, b = pair(1)
         auto __tup_1 = pair(1);
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
-    // else:
     } else {
-        // a, b = pair(10)
         auto __tup_2 = pair(10);
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
     }
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

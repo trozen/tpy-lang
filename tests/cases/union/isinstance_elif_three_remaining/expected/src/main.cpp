@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def pick(v: A | B | C) -> int:
+//     if isinstance(v, A):
+//         return v.x + 100
+//     elif isinstance(v, B):
+//         return v.x + 200
+//     return v.x + 300        # v is C; reachable fall-through, needs the extraction
 ::tpy::BigInt pick(::tpy::Union<const A*, const B*, const C*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        // return v.x + 100
         return ((__v.x) + (::tpy::BigInt(100)));
-    // elif isinstance(v, B):
     } else if (std::holds_alternative<const B*>(v)) {
         auto& __v = *std::get<const B*>(v);
-        // return v.x + 200
         return ((__v.x) + (::tpy::BigInt(200)));
     }
     auto& __v = *std::get<const C*>(v);
-    // return v.x + 300        # v is C; reachable fall-through, needs the extraction
     return ((__v.x) + (::tpy::BigInt(300)));
 }
 
 // def main() -> None:
+//     print(pick(A(1)))
+//     print(pick(B(2)))
+//     print(pick(C(3)))
 void main() {
-    // print(pick(A(1)))
     A __tmp_1 = A(::tpy::BigInt(1));
     std::cout << pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
-    // print(pick(B(2)))
     B __tmp_2 = B(::tpy::BigInt(2));
     std::cout << pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
-    // print(pick(C(3)))
     C __tmp_3 = C(::tpy::BigInt(3));
     std::cout << pick(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

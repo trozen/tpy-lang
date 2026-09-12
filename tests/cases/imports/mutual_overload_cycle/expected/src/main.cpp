@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(use_g_int(7))
+//     print(use_g_str("hello"))
+//     print(relay(3))
 void main() {
-    // print(use_g_int(7))
     std::cout << ::tpyapp::a::use_g_int(7) << "\n";
-    // print(use_g_str("hello"))
     std::cout << ::tpyapp::a::use_g_str("hello") << "\n";
-    // print(relay(3))
     std::cout << ::tpyapp::b::relay(3) << "\n";
 }
 
+// # Cyclic import where a peer imports an @overload-grouped function
+// # defined in another peer. Both overloads must be reachable through
+// # the import.
+// from a import use_g_int, use_g_str
+// from b import relay
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cyclic import where a peer imports an @overload-grouped function
-    // # defined in another peer. Both overloads must be reachable through
-    // # the import.
-    // from a import use_g_int, use_g_str
     ::tpyapp::a::__tpy_init();
-    // from b import relay
     ::tpyapp::b::__tpy_init();
-    // main()
     main();
 }
 

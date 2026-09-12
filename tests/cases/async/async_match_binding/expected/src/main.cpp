@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub(n: int) -> int:
+//     return n * 10
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n * 10
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) * (::tpy::BigInt(10)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,20 +26,22 @@ __coro_sub sub(::tpy::BigInt n) {
 }
 
 // async def caller(tag: int) -> int:
+//     match tag:
+//         case 0:
+//             return await sub(1)
+//         case v:
+//             r = await sub(v)
+//             return r + v
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = tag;
-        // case 0:
         if (__match_subject_1 == 0) {
-            // return await sub(1)
             __sub_0.emplace(::tpy::BigInt(1));
             __state = S_RESUME_0;
             continue;
-        // case v:
         } else {
             v = __match_subject_1;
-            // r = await sub(v)
             __sub_1.emplace(v);
             __state = S_RESUME_1;
             continue;
@@ -60,7 +62,6 @@ __coro_sub sub(::tpy::BigInt n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         r = std::move(__r1).value();
         __sub_1.reset();
-        // return r + v
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((r) + (v));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -77,23 +78,24 @@ __coro_caller caller(::tpy::BigInt tag) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller(0)))
+//     print(asyncio.run(caller(5)))
 void main() {
-    // print(asyncio.run(caller(0)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(0)))) << "\n";
-    // print(asyncio.run(caller(5)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(5)))) << "\n";
 }
 
+// # H1: `await` inside a `match` arm, plus a capture binding (`v`) read after
+// # the await in the same arm -- the binding is a frame field on the coroutine.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # H1: `await` inside a `match` arm, plus a capture binding (`v`) read after
-    // # the await in the same arm -- the binding is a frame field on the coroutine.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

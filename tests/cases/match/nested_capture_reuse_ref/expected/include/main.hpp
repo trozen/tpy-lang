@@ -12,10 +12,15 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def reseats(h: Holder, g: Holder) -> int:
 ::tpy::BigInt reseats(const Holder& h, Holder& g);
+// def outer_untouched(h: Holder, g: Holder) -> int:
 ::tpy::BigInt outer_untouched(const Holder& h, const Holder& g);
+// def mixed_const(h: Holder, g: Holder) -> int:
 ::tpy::BigInt mixed_const(Holder& h, const Holder& g);
+// def as_pattern(h: Holder, g: Holder) -> int:
 ::tpy::BigInt as_pattern(const Holder& h, Holder& g);
+// def main() -> None:
 void main();
 
 // # A REFERENCE-typed capture reused by a nested match re-seats the binding (it
@@ -59,9 +64,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Inner::Inner(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, inner: Inner) -> None:
+//     self.inner = inner
 inline Holder::Holder(const Inner& inner) : inner(inner) {}
 void __tpy_init();
 } // namespace tpyapp::main

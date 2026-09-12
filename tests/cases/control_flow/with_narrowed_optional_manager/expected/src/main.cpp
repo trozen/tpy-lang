@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def value_enter(c: Counter | None) -> int32:
+//     if c is None:
+//         return -1
+//     # Narrowed by the early return: the manager is the deref of `c`.
+//     with c as v:  # tpyc: ok
+//         return v + 1
 int32_t value_enter(Counter* c) {
-    // if c is None:
     if ((c == nullptr)) {
-        // return -1
         return -1;
     }
-    // # Narrowed by the early return: the manager is the deref of `c`.
-    // with c as v:  # tpyc: ok
     auto& __ctx_1 = *(c);
     auto v = __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        // return v + 1
         int32_t __tpy_ret_0 = (::tpy::add_check<int32_t>(v, 1));
         __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
@@ -34,16 +34,17 @@ int32_t value_enter(Counter* c) {
 }
 
 // def record_enter(h: Holder | None) -> int32:
+//     assert h is not None
+//     # The assert-narrowed spelling of the same row, with a record enter type:
+//     # the mutation through the borrow is visible on the manager afterwards.
+//     with h as slot:  # tpyc: ok
+//         slot.v += 7
+//     return h.s.v
 int32_t record_enter(Holder* h) {
-    // assert h is not None
     if (!((h != nullptr))) ::tpy::raise_assertion_error();
-    // # The assert-narrowed spelling of the same row, with a record enter type:
-    // # the mutation through the borrow is visible on the manager afterwards.
-    // with h as slot:  # tpyc: ok
     auto& __ctx_2 = *(h);
     auto& slot = __ctx_2.__enter__();
     try {
-        // slot.v += 7
         slot.v = ::tpy::add_check<int32_t>(slot.v, 7);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -55,28 +56,27 @@ int32_t record_enter(Holder* h) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // return h.s.v
     return h->s.v;
 }
 
 // def main() -> None:
+//     print(value_enter(Counter(4)))
+//     print(value_enter(None))
+//     print(record_enter(Holder(1)))
 void main() {
-    // print(value_enter(Counter(4)))
     Counter __tmp_1 = Counter(4);
     std::cout << value_enter(&(__tmp_1)) << "\n";
-    // print(value_enter(None))
     std::cout << value_enter(nullptr) << "\n";
-    // print(record_enter(Holder(1)))
     Holder __tmp_2 = Holder(1);
     std::cout << record_enter(&(__tmp_2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

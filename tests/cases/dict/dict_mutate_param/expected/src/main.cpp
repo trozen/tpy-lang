@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def insert(d: dict[str, int32], key: str, val: int32) -> None:
+//     d[key] = val
 void insert(::tpy::ordered_map<std::string, int32_t>& d, std::string_view key, int32_t val) {
-    // d[key] = val
     ::tpy::__setitem__(d, key, val);
 }
 
 // def main() -> None:
+//     d = {"a": 1}
+//     insert(d, "b", 2)
+//     print(d)
 void main() {
-    // d = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // insert(d, "b", 2)
     insert(d, "b", 2);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

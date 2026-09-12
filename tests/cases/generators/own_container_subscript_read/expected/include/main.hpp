@@ -12,16 +12,24 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_dicts;
 struct __gen_lists;
 
+// def dicts() -> Iterator[Own[dict[str, str]]]:
 __gen_dicts dicts();
+// def lists() -> Iterator[Own[list[int]]]:
 __gen_lists lists();
+// def read_dicts() -> None:
 void read_dicts();
+// def read_list_normalized() -> None:
 void read_list_normalized();
+// def read_ro_dict(d: readonly[dict[str, str]]) -> str:
 std::string read_ro_dict(const ::tpy::ordered_map<std::string, std::string>& d);
+// def list_oob_raises() -> None:
 void list_oob_raises();
+// def dict_missing_raises() -> None:
 void dict_missing_raises();
+// def main() -> None:
 void main();
 
-// Generator: dicts
+// def dicts() -> Iterator[Own[dict[str, str]]]:
 struct __gen_dicts : public ::tpy::next_iter_mixin<__gen_dicts, ::tpy::ordered_map<std::string, std::string>> {
     int32_t __state;
     ::tpy::frame_slot<::tpy::ordered_map<std::string, std::string>> a;
@@ -45,7 +53,7 @@ struct __gen_dicts : public ::tpy::next_iter_mixin<__gen_dicts, ::tpy::ordered_m
     }
 };
 
-// Generator: lists
+// def lists() -> Iterator[Own[list[int]]]:
 struct __gen_lists : public ::tpy::next_iter_mixin<__gen_lists, std::vector<::tpy::BigInt>> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<::tpy::BigInt>> a;

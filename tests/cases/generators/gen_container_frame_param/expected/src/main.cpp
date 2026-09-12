@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def twice_buf(b: bytearray) -> Iterator[bytearray]:  # tpyc: ok
+//     yield b  # tpyc: ok
+//     yield b
 std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> __gen_twice_buf::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield b  # tpyc: ok
         __state = S_RESUME_0;
         return b;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return b;
     }
@@ -33,15 +33,15 @@ __gen_twice_buf twice_buf(::tpy::ByteArray& b) {
 }
 
 // def twice_arr(a: Array[int32, 2]) -> Iterator[Array[int32, 2]]:  # tpyc: ok
+//     yield a  # tpyc: ok
+//     yield a
 std::expected<::tpy::val_or_ref<std::array<int32_t, 2>>, ::tpy::StopIteration> __gen_twice_arr::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield a  # tpyc: ok
         __state = S_RESUME_0;
         return a;
     }
     case S_RESUME_0: {
-        // yield a
         __state = S_RESUME_1;
         return a;
     }
@@ -61,15 +61,15 @@ __gen_twice_arr twice_arr(std::array<int32_t, 2>& a) {
 }
 
 // def twice_list(xs: list[int32]) -> Iterator[list[int32]]:  # tpyc: ok
+//     yield xs
+//     yield xs
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_twice_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield xs
         __state = S_RESUME_0;
         return xs;
     }
     case S_RESUME_0: {
-        // yield xs
         __state = S_RESUME_1;
         return xs;
     }
@@ -89,12 +89,24 @@ __gen_twice_list twice_list(std::vector<int32_t>& xs) {
 }
 
 // def main() -> None:
+//     # Each leg mutates through the yielded borrow and reads the caller's
+//     # object afterwards -- a frame COPY would leave the originals untouched.
+//     b = bytearray(b"a")
+//     for got in twice_buf(b):
+//         got.append(66)
+//     print(len(b))
+//
+//     a = Array[int32, 2]()
+//     for ga in twice_arr(a):
+//         ga[0] = ga[0] + 1
+//     print(a[0])
+//
+//     xs = [1]
+//     for gx in twice_list(xs):
+//         gx.append(2)
+//     print(len(xs))
 void main() {
-    // # Each leg mutates through the yielded borrow and reads the caller's
-    // # object afterwards -- a frame COPY would leave the originals untouched.
-    // b = bytearray(b"a")
     ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
-    // for got in twice_buf(b):
     {
         auto __src_0 = twice_buf(b);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -102,15 +114,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& got = ::tpy::unwrap_ref(*__r_1);
-        // got.append(66)
         got.push_back(66);
         }
     }
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    // a = Array[int32, 2]()
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
-    // for ga in twice_arr(a):
     {
         auto __src_2 = twice_arr(a);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -118,15 +126,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& ga = ::tpy::unwrap_ref(*__r_3);
-        // ga[0] = ga[0] + 1
         ::tpy::__setitem__(ga, 0, (::tpy::add_check<int32_t>(::tpy::__getitem__(ga, 0), 1)));
         }
     }
-    // print(a[0])
     std::cout << ::tpy::__getitem__(a, 0) << "\n";
-    // xs = [1]
     std::vector<int32_t> xs = {1};
-    // for gx in twice_list(xs):
     {
         auto __src_4 = twice_list(xs);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -134,20 +138,18 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& gx = ::tpy::unwrap_ref(*__r_5);
-        // gx.append(2)
         gx.push_back(2);
         }
     }
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

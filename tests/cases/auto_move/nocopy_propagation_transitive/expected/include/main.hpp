@@ -13,7 +13,9 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(o: Own[Outer]) -> int32:
 int32_t consume(Outer&& o);
+// def main():
 void main();
 
 // @nocopy
@@ -82,12 +84,15 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, id: int32):
+//     self.id = id
 inline Resource::Resource(int32_t id) : id(id) {}
 
 // def __init__(self, res: Own[Resource]):
+//     self.res = res
 inline Wrapper::Wrapper(Resource&& res) : res(std::move(res)) {}
 
 // def __init__(self, w: Own[Wrapper]):
+//     self.w = w
 inline Outer::Outer(Wrapper&& w) : w(std::move(w)) {}
 void __tpy_init();
 } // namespace tpyapp::main

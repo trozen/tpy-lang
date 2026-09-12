@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def view_of_param(s: str) -> None:
 void view_of_param(std::string_view s);
+// def explicit_view_of_param(s: str) -> None:
 void explicit_view_of_param(std::string_view s);
+// def slice_of_param(s: str) -> None:
 void slice_of_param(std::string_view s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -14,11 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_value;
 struct __coro_total_of;
 
+// async def value(n: int) -> int:
 __coro_value value(::tpy::BigInt n);
+// async def total_of(xs: list[int]) -> int:
 __coro_total_of total_of(std::vector<::tpy::BigInt>& xs);
+// def main() -> None:
 void main();
 
-// Async coroutine: value
+// async def value(n: int) -> int:
 struct __coro_value {
     int32_t __state;
     bool __cancel_pending;
@@ -40,7 +43,7 @@ struct __coro_value {
     }
 };
 
-// Async coroutine: total_of
+// async def total_of(xs: list[int]) -> int:
 struct __coro_total_of {
     int32_t __state;
     bool __cancel_pending;

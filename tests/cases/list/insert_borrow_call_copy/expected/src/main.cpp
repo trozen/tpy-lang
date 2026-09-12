@@ -5,40 +5,42 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     recs: list[Payload] = []
+//     # The record payload: the borrow-returning call is copied in one step.
+//     recs.append(copy(h.brec()))  # tpyc: ok
+//     recs.insert(0, copy(h.p))  # tpyc: ok
+//
+//     ctrs: list[list[int32]] = []
+//     # The container payload takes the same one-step spelling.
+//     ctrs.append(copy(h.bctr()))  # tpyc: ok
+//     ctrs.insert(0, copy(h.items))  # tpyc: ok
+//
+//     # Mutating the sources leaves every inserted copy alone.
+//     h.p.v = 7
+//     h.items.append(3)
+//     print(h.p.v, recs[0].v, recs[1].v)
+//     print(len(h.items), len(ctrs[0]), len(ctrs[1]))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // recs: list[Payload] = []
     std::vector<Payload> recs = std::vector<Payload>{};
-    // # The record payload: the borrow-returning call is copied in one step.
-    // recs.append(copy(h.brec()))  # tpyc: ok
     recs.push_back(Payload(h.brec()));
-    // recs.insert(0, copy(h.p))  # tpyc: ok
     ::tpy::list_insert(recs, 0, Payload(h.p));
-    // ctrs: list[list[int32]] = []
     std::vector<std::vector<int32_t>> ctrs = std::vector<std::vector<int32_t>>{};
-    // # The container payload takes the same one-step spelling.
-    // ctrs.append(copy(h.bctr()))  # tpyc: ok
     ctrs.push_back(std::vector<int32_t>(h.bctr()));
-    // ctrs.insert(0, copy(h.items))  # tpyc: ok
     ::tpy::list_insert(ctrs, 0, std::vector<int32_t>(h.items));
-    // # Mutating the sources leaves every inserted copy alone.
-    // h.p.v = 7
     h.p.v = 7;
-    // h.items.append(3)
     h.items.push_back(3);
-    // print(h.p.v, recs[0].v, recs[1].v)
     std::cout << h.p.v << " " << ::tpy::__getitem__(recs, 0).v << " " << ::tpy::__getitem__(recs, 1).v << "\n";
-    // print(len(h.items), len(ctrs[0]), len(ctrs[1]))
     std::cout << ::tpy::__len__(h.items) << " " << ::tpy::__len__(::tpy::__getitem__(ctrs, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(ctrs, 1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

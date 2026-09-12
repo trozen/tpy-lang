@@ -12,8 +12,11 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def rename(pet: Cat | Dog, new_name: str) -> None:
 void rename(::tpy::Union<Cat*, Dog*> pet, std::string_view new_name);
+// def read_name(pet: Cat | Dog) -> str:
 std::string read_name(::tpy::Union<const Cat*, const Dog*> pet);
+// def test() -> None:
 void test();
 
 // # Union param mutation inference: mutated params stay T& (non-const);
@@ -52,9 +55,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

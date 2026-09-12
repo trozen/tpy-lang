@@ -5,56 +5,56 @@ namespace tpyapp::main {
 
 
 // def make_pair(v: int32) -> Own[tuple[int32, Box]]:
+//     return (v, Box(v))
 std::tuple<int32_t, Box> make_pair(int32_t v) {
-    // return (v, Box(v))
     return std::tuple<int32_t, Box>{v, Box(v)};
 }
 
 // def use() -> int32:
+//     if (t := make_pair(5))[0] > 0:
+//         return t[0] + t[1].val
+//     return 0
 int32_t use() {
-    // if (t := make_pair(5))[0] > 0:
     std::optional<std::tuple<int32_t, Box>> t;
     if ((std::get<0>((t = make_pair(5), *t)) > 0)) {
-        // return t[0] + t[1].val
         return (::tpy::add_check<int32_t>(std::get<0>((*t)), std::get<1>((*t)).val));
     }
-    // return 0
     return 0;
 }
 
 // def use_branches(c: bool) -> int32:
+//     # The slot's (*t) read rewrite and storage-form classification are
+//     # function-scope (the pre-decl is hoisted), so reads in a SIBLING
+//     # branch of the walrus must see them too.
+//     if (t := make_pair(7))[0] > 0 and c:
+//         return t[0]
+//     else:
+//         return t[1].val
 int32_t use_branches(bool c) {
-    // # The slot's (*t) read rewrite and storage-form classification are
-    // # function-scope (the pre-decl is hoisted), so reads in a SIBLING
-    // # branch of the walrus must see them too.
-    // if (t := make_pair(7))[0] > 0 and c:
     std::optional<std::tuple<int32_t, Box>> t;
     if (((std::get<0>((t = make_pair(7), *t)) > 0) && c)) {
-        // return t[0]
         return std::get<0>((*t));
-    // else:
     } else {
-        // return t[1].val
         return std::get<1>((*t)).val;
     }
 }
 
 // def main() -> None:
+//     print(use())
+//     print(use_branches(True))
+//     print(use_branches(False))
 void main() {
-    // print(use())
     std::cout << use() << "\n";
-    // print(use_branches(True))
     std::cout << use_branches(true) << "\n";
-    // print(use_branches(False))
     std::cout << use_branches(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,99 +5,104 @@ namespace tpyapp::main {
 
 
 // def raise_from_finally() -> None:
+//     """Try body falls through; the finally's raise must still fire."""
+//     try:
+//         print("try body ran")
+//     except ValueError:
+//         print("unreachable handler")
+//     finally:
+//         print("finally ran")
+//         raise RuntimeError("from finally")
 void raise_from_finally() {
-    // try:
     {
         try {
             try {
-                // print("try body ran")
                 std::cout << "try body ran" << "\n";
             } catch (const ::tpy::ValueError&) {
-                // print("unreachable handler")
                 std::cout << "unreachable handler" << "\n";
             }
         } catch (...) {
-            // print("finally ran")
             std::cout << "finally ran" << "\n";
-            // raise RuntimeError("from finally")
             throw ::tpy::RuntimeError("from finally");
         }
-        // print("finally ran")
         std::cout << "finally ran" << "\n";
-        // raise RuntimeError("from finally")
         throw ::tpy::RuntimeError("from finally");
     }
 }
 
 // def return_from_finally() -> int32:
+//     """The finally's return is the function's only exit on this path."""
+//     try:
+//         print("try body ran")
+//     except ValueError:
+//         print("unreachable handler")
+//     finally:
+//         print("finally ran")
+//         return 7
 int32_t return_from_finally() {
-    // try:
     {
         try {
             try {
-                // print("try body ran")
                 std::cout << "try body ran" << "\n";
             } catch (const ::tpy::ValueError&) {
-                // print("unreachable handler")
                 std::cout << "unreachable handler" << "\n";
             }
         } catch (...) {
-            // print("finally ran")
             std::cout << "finally ran" << "\n";
-            // return 7
             return 7;
         }
-        // print("finally ran")
         std::cout << "finally ran" << "\n";
-        // return 7
         return 7;
     }
 }
 
 // def handler_falls_through() -> None:
+//     """Try terminates but the handler does not -- finally still needed."""
+//     try:
+//         raise ValueError("boom")
+//     except ValueError:
+//         print("handler ran")
+//     finally:
+//         print("finally ran")
+//         raise RuntimeError("from finally")
 void handler_falls_through() {
-    // try:
     {
         try {
             try {
-                // raise ValueError("boom")
                 throw ::tpy::ValueError("boom");
             } catch (const ::tpy::ValueError&) {
-                // print("handler ran")
                 std::cout << "handler ran" << "\n";
             }
         } catch (...) {
-            // print("finally ran")
             std::cout << "finally ran" << "\n";
-            // raise RuntimeError("from finally")
             throw ::tpy::RuntimeError("from finally");
         }
-        // print("finally ran")
         std::cout << "finally ran" << "\n";
-        // raise RuntimeError("from finally")
         throw ::tpy::RuntimeError("from finally");
     }
 }
 
 // def finally_return_wins() -> int32:
+//     """Handler returns, then the finally's return overrides it (Python)."""
+//     try:
+//         raise ValueError("boom")
+//     except ValueError:
+//         return 1
+//     finally:
+//         return 2
 int32_t finally_return_wins() {
-    // try:
     {
         bool __fin_ran_4 = false;
         try {
             try {
-                // raise ValueError("boom")
                 throw ::tpy::ValueError("boom");
             } catch (const ::tpy::ValueError&) {
-                // return 1
                 [[maybe_unused]] int32_t __tpy_ret_0 = 1;
                 __fin_ran_4 = true;
-                // return 2
                 return 2;
             }
         } catch (...) {
             if (!__fin_ran_4) {
-                // return 2
                 return 2;
             }
             throw;
@@ -106,93 +111,105 @@ int32_t finally_return_wins() {
 }
 
 // def tuple_clause_falls_through() -> None:
+//     """A tuple clause expands to one handler per element, all sharing a body.
+//
+//     The fall-through decision asks every handler, so the expansion must not
+//     change the answer the single written clause implies.
+//     """
+//     try:
+//         raise ValueError("boom")
+//     except (ValueError, TypeError):
+//         print("handler ran")
+//     finally:
+//         print("finally ran")
+//         raise RuntimeError("from finally")
 void tuple_clause_falls_through() {
-    // try:
     {
         try {
             try {
-                // raise ValueError("boom")
                 throw ::tpy::ValueError("boom");
             } catch (const ::tpy::ValueError&) {
-                // print("handler ran")
                 std::cout << "handler ran" << "\n";
             } catch (const ::tpy::TypeError&) {
-                // print("handler ran")
                 std::cout << "handler ran" << "\n";
             }
         } catch (...) {
-            // print("finally ran")
             std::cout << "finally ran" << "\n";
-            // raise RuntimeError("from finally")
             throw ::tpy::RuntimeError("from finally");
         }
-        // print("finally ran")
         std::cout << "finally ran" << "\n";
-        // raise RuntimeError("from finally")
         throw ::tpy::RuntimeError("from finally");
     }
 }
 
 // def deep_terminating_finally(c: bool) -> None:
+//     """The finally terminates via both if-branches, not a literal last raise.
+//
+//     Exercises the recursive termination check: the fall-through copy is still
+//     required even though the finally's last statement is not itself a raise.
+//     """
+//     try:
+//         print("try body ran")
+//     except ValueError:
+//         print("unreachable handler")
+//     finally:
+//         if c:
+//             raise RuntimeError("from if-branch")
+//         else:
+//             raise RuntimeError("from else-branch")
 void deep_terminating_finally(bool c) {
-    // try:
     {
         try {
             try {
-                // print("try body ran")
                 std::cout << "try body ran" << "\n";
             } catch (const ::tpy::ValueError&) {
-                // print("unreachable handler")
                 std::cout << "unreachable handler" << "\n";
             }
         } catch (...) {
-            // if c:
             if (c) {
-                // raise RuntimeError("from if-branch")
                 throw ::tpy::RuntimeError("from if-branch");
-            // else:
             } else {
-                // raise RuntimeError("from else-branch")
                 throw ::tpy::RuntimeError("from else-branch");
             }
             throw;
         }
-        // if c:
         if (c) {
-            // raise RuntimeError("from if-branch")
             throw ::tpy::RuntimeError("from if-branch");
-        // else:
         } else {
-            // raise RuntimeError("from else-branch")
             throw ::tpy::RuntimeError("from else-branch");
         }
     }
 }
 
 // def all_paths_terminate() -> int32:
+//     """Control: try and handler both terminate, so no fall-through exists.
+//
+//     The finally is reached only via the return sites and the exception path;
+//     the normal-path copy is correctly elided here.
+//     """
+//     try:
+//         return 10
+//     except ValueError:
+//         return 20
+//     finally:
+//         print("finally ran")
 int32_t all_paths_terminate() {
-    // try:
     {
         bool __fin_ran_7 = false;
         try {
             try {
-                // return 10
                 int32_t __tpy_ret_0 = 10;
                 __fin_ran_7 = true;
-                // print("finally ran")
                 std::cout << "finally ran" << "\n";
                 return __tpy_ret_0;
             } catch (const ::tpy::ValueError&) {
-                // return 20
                 int32_t __tpy_ret_1 = 20;
                 __fin_ran_7 = true;
-                // print("finally ran")
                 std::cout << "finally ran" << "\n";
                 return __tpy_ret_1;
             }
         } catch (...) {
             if (!__fin_ran_7) {
-                // print("finally ran")
                 std::cout << "finally ran" << "\n";
             }
             throw;
@@ -201,71 +218,83 @@ int32_t all_paths_terminate() {
 }
 
 // def main() -> None:
+//     try:
+//         raise_from_finally()
+//     except RuntimeError:
+//         print("caught from raise_from_finally")
+//
+//     print(return_from_finally())
+//
+//     try:
+//         handler_falls_through()
+//     except RuntimeError:
+//         print("caught from handler_falls_through")
+//
+//     print(finally_return_wins())
+//
+//     try:
+//         tuple_clause_falls_through()
+//     except RuntimeError:
+//         print("caught from tuple_clause_falls_through")
+//
+//     try:
+//         deep_terminating_finally(True)
+//     except RuntimeError:
+//         print("caught from deep if-branch")
+//
+//     try:
+//         deep_terminating_finally(False)
+//     except RuntimeError:
+//         print("caught from deep else-branch")
+//
+//     print(all_paths_terminate())
 void main() {
-    // try:
     {
         try {
-            // raise_from_finally()
             raise_from_finally();
         } catch (const ::tpy::RuntimeError&) {
-            // print("caught from raise_from_finally")
             std::cout << "caught from raise_from_finally" << "\n";
         }
     }
-    // print(return_from_finally())
     std::cout << return_from_finally() << "\n";
-    // try:
     {
         try {
-            // handler_falls_through()
             handler_falls_through();
         } catch (const ::tpy::RuntimeError&) {
-            // print("caught from handler_falls_through")
             std::cout << "caught from handler_falls_through" << "\n";
         }
     }
-    // print(finally_return_wins())
     std::cout << finally_return_wins() << "\n";
-    // try:
     {
         try {
-            // tuple_clause_falls_through()
             tuple_clause_falls_through();
         } catch (const ::tpy::RuntimeError&) {
-            // print("caught from tuple_clause_falls_through")
             std::cout << "caught from tuple_clause_falls_through" << "\n";
         }
     }
-    // try:
     {
         try {
-            // deep_terminating_finally(True)
             deep_terminating_finally(true);
         } catch (const ::tpy::RuntimeError&) {
-            // print("caught from deep if-branch")
             std::cout << "caught from deep if-branch" << "\n";
         }
     }
-    // try:
     {
         try {
-            // deep_terminating_finally(False)
             deep_terminating_finally(false);
         } catch (const ::tpy::RuntimeError&) {
-            // print("caught from deep else-branch")
             std::cout << "caught from deep else-branch" << "\n";
         }
     }
-    // print(all_paths_terminate())
     std::cout << all_paths_terminate() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

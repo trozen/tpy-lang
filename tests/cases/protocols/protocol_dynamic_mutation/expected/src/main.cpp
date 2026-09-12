@@ -5,54 +5,57 @@ namespace tpyapp::main {
 
 
 // def bump(c: Counter) -> None:
+//     c.increment()
 void bump(Counter& c) {
-    // c.increment()
     c.increment();
 }
 
 // def main() -> None:
+//     # 1. Direct inheritance: mutation visible (pass by ref, implicit upcast)
+//     mc = MyCounter()
+//     bump(mc)
+//     print(mc.value())      # 1
+//
+//     # 2. Structural conformance lvalue: mutation visible (ref adapter)
+//     t = Tally()
+//     bump(t)
+//     print(t.value())       # 1
+//
+//     # 3. Local owning: mutation visible (modifying through pointer to owned slot)
+//     c: Counter = MyCounter()
+//     c.increment()
+//     c.increment()
+//     print(c.value())       # 2
+//
+//     # 4. Local owning, structural: same behavior
+//     c2: Counter = Tally()
+//     c2.increment()
+//     print(c2.value())      # 1
 void main() {
-    // # 1. Direct inheritance: mutation visible (pass by ref, implicit upcast)
-    // mc = MyCounter()
     MyCounter mc = MyCounter();
-    // bump(mc)
     bump(mc);
-    // print(mc.value())      # 1
     std::cout << mc.value() << "\n";
-    // # 2. Structural conformance lvalue: mutation visible (ref adapter)
-    // t = Tally()
     Tally t = Tally();
-    // bump(t)
     ::tpy::RefAdapter<Counter, Tally> __tmp_1{t};
     bump(__tmp_1);
-    // print(t.value())       # 1
     std::cout << t.value() << "\n";
-    // # 3. Local owning: mutation visible (modifying through pointer to owned slot)
-    // c: Counter = MyCounter()
     MyCounter __slot_1{MyCounter()};
     Counter* c = &__slot_1;
-    // c.increment()
     c->increment();
-    // c.increment()
     c->increment();
-    // print(c.value())       # 2
     std::cout << c->value() << "\n";
-    // # 4. Local owning, structural: same behavior
-    // c2: Counter = Tally()
     ::tpy::Adapter<Counter, Tally> __slot_2{Tally()};
     Counter* c2 = &__slot_2;
-    // c2.increment()
     c2->increment();
-    // print(c2.value())      # 1
     std::cout << c2->value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

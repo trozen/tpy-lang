@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def reader(sock: socket) -> bytes:
+//     loop = asyncio.get_running_loop()
+//     return await loop.sock_recv(sock, 16)
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_reader::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // return await loop.sock_recv(sock, 16)
         __sub_0.emplace(std::move((*loop).sock_recv(sock, 16)));
         __state = S_RESUME_0;
         continue;
@@ -35,26 +35,32 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
 }
 
 // async def main_coro() -> None:
+//     a1, b1 = socketpair()
+//     a2, b2 = socketpair()
+//     b1.setblocking(False)
+//     b2.setblocking(False)
+//     t1 = asyncio.create_task(reader(b1))
+//     t2 = asyncio.create_task(reader(b2))
+//     await asyncio.sleep(0.01)  # let both readers park on the reactor
+//     a1.sendall(b"one")
+//     a2.sendall(b"two")
+//     r1 = await t1
+//     r2 = await t2
+//     print(r1)
+//     print(r2)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a1, b1 = socketpair()
         auto __tup_1 = ::tpystd::socket::socketpair();
         a1.emplace(std::move(std::get<0>(__tup_1)));
         b1.emplace(std::move(std::get<1>(__tup_1)));
-        // a2, b2 = socketpair()
         auto __tup_2 = ::tpystd::socket::socketpair();
         a2.emplace(std::move(std::get<0>(__tup_2)));
         b2.emplace(std::move(std::get<1>(__tup_2)));
-        // b1.setblocking(False)
         (*b1).setblocking(false);
-        // b2.setblocking(False)
         (*b2).setblocking(false);
-        // t1 = asyncio.create_task(reader(b1))
         t1.emplace(::tpystd::asyncio::create_task<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(reader((*b1)))));
-        // t2 = asyncio.create_task(reader(b2))
         t2.emplace(::tpystd::asyncio::create_task<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(reader((*b2)))));
-        // await asyncio.sleep(0.01)  # let both readers park on the reactor
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
         __state = S_RESUME_0;
         continue;
@@ -64,11 +70,8 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // a1.sendall(b"one")
         (*a1).sendall(::tpy::bytes_literal("one", 3));
-        // a2.sendall(b"two")
         (*a2).sendall(::tpy::bytes_literal("two", 3));
-        // r1 = await t1
         __sub_1 = &((*t1));
         __state = S_RESUME_1;
         continue;
@@ -78,7 +81,6 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r1 = std::move(__r1).value();
         __sub_1 = nullptr;
-        // r2 = await t2
         __sub_2 = &((*t2));
         __state = S_RESUME_2;
         continue;
@@ -88,9 +90,7 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r2 = std::move(__r2).value();
         __sub_2 = nullptr;
-        // print(r1)
         std::cout << ::tpy::BytesPrinter(r1) << "\n";
-        // print(r2)
         std::cout << ::tpy::BytesPrinter(r2) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -107,26 +107,27 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio epoll reactor (v2): two coroutines park on two different fds, then
+// # both peers send while both are parked, so a single epoll_wait returns both
+// # ready fds at once -- the n>1 batch branch of EpollReactor.poll. Results are
+// # awaited in task order so the printed output is deterministic regardless of
+// # the order the batch wakes the two wakers.
+// import asyncio
+// from socket import socketpair, socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio epoll reactor (v2): two coroutines park on two different fds, then
-    // # both peers send while both are parked, so a single epoll_wait returns both
-    // # ready fds at once -- the n>1 batch branch of EpollReactor.poll. Results are
-    // # awaited in task order so the printed output is deterministic regardless of
-    // # the order the batch wakes the two wakers.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socketpair, socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

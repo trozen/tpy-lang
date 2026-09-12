@@ -16,7 +16,9 @@ struct BinOp;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(e: Expr) -> str:
 std::string describe(const Expr& e);
+// def main() -> None:
 void main();
 
 // class Lit:
@@ -54,6 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 struct Expr {
     using variant_type = ::tpy::Union<BinOp, Lit>;

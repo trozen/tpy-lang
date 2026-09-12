@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def scalar(n: int) -> int:  # tpyc: ok
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_scalar::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,11 @@ __coro_scalar scalar(::tpy::BigInt n) {
 }
 
 // async def wrapped(n: tuple[int]) -> tuple[int]:  # tpyc: ok
+//     return n
 ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt>> __coro_wrapped::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         std::tuple<::tpy::BigInt> __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt>>::ready(std::move(__tpy_async_ret));
@@ -47,11 +47,11 @@ __coro_wrapped wrapped(std::tuple<::tpy::BigInt> n) {
 }
 
 // async def optional(n: int | None) -> int | None:  # tpyc: ok
+//     return n
 ::tpystd::tpy::Poll<std::optional<::tpy::BigInt>> __coro_optional::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         std::optional<::tpy::BigInt> __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<std::optional<::tpy::BigInt>>::ready(std::move(__tpy_async_ret));
@@ -68,10 +68,11 @@ __coro_optional optional(std::optional<::tpy::BigInt> n) {
 }
 
 // async def chained(n: int) -> int:
+//     value = await scalar(n)  # tpyc: ok
+//     return await identity(value)  # tpyc: ok
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_chained::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // value = await scalar(n)  # tpyc: ok
         __sub_0.emplace(n);
         __state = S_RESUME_0;
         continue;
@@ -81,7 +82,6 @@ __coro_optional optional(std::optional<::tpy::BigInt> n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         value = std::move(__r0).value();
         __sub_0.reset();
-        // return await identity(value)  # tpyc: ok
         __sub_1.emplace(value);
         __state = S_RESUME_1;
         continue;
@@ -106,6 +106,10 @@ __coro_chained chained(::tpy::BigInt n) {
 }
 
 // async def cleanup(n: int) -> int:
+//     try:
+//         return await chained(n)  # tpyc: ok
+//     finally:
+//         print("try/finally: cleanup")
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -133,7 +137,6 @@ __coro_chained chained(::tpy::BigInt n) {
         }
     }
     case S_JOIN_0: {
-        // return await chained(n)  # tpyc: ok
         __sub_0.emplace(n);
         __state = S_RESUME_0;
         continue;
@@ -148,7 +151,6 @@ __coro_chained chained(::tpy::BigInt n) {
 }
 
 void __coro_cleanup::__finally_0() {
-    // print("try/finally: cleanup")
     std::cout << "try/finally: cleanup" << "\n";
 }
 
@@ -158,31 +160,31 @@ __coro_cleanup cleanup(::tpy::BigInt n) {
 }
 
 // def main() -> None:
+//     print("free: loaded")
+//     print("generic: loaded")
+//     print("method: loaded")
+//     print("nested record: loaded")
+//     print("context manager: loaded")
+//     print("chained await: loaded")
+//     print("try/finally: loaded")
+//     print("imported module:", loaded())
 void main() {
-    // print("free: loaded")
     std::cout << "free: loaded" << "\n";
-    // print("generic: loaded")
     std::cout << "generic: loaded" << "\n";
-    // print("method: loaded")
     std::cout << "method: loaded" << "\n";
-    // print("nested record: loaded")
     std::cout << "nested record: loaded" << "\n";
-    // print("context manager: loaded")
     std::cout << "context manager: loaded" << "\n";
-    // print("chained await: loaded")
     std::cout << "chained await: loaded" << "\n";
-    // print("try/finally: loaded")
     std::cout << "try/finally: loaded" << "\n";
-    // print("imported module:", loaded())
     std::cout << "imported module:" << " " << ::tpyapp::helper::loaded() << "\n";
 }
 
 // async def compute(self, n: int) -> int:  # tpyc: ok
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Worker_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -194,11 +196,11 @@ void main() {
 
 
 // async def compute(self, n: int) -> int:  # tpyc: ok
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_5_Outer_5_Inner_7_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -210,11 +212,11 @@ void main() {
 
 
 // async def __aenter__(self) -> int:  # tpyc: ok
+//     return 7
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Gate___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return 7
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -226,11 +228,11 @@ void main() {
 
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:  # tpyc: ok
+//     pass
 ::tpystd::tpy::Poll<::std::monostate> __coro_Gate___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // pass
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -240,16 +242,17 @@ void main() {
 }
 
 
+// # Async declarations must build without importing an executor or coroutine runtime.
+// # Loading these definitions exercises header dependencies without creating coroutines.
+// from helper import loaded
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async declarations must build without importing an executor or coroutine runtime.
-    // # Loading these definitions exercises header dependencies without creating coroutines.
-    // from helper import loaded
     ::tpyapp::helper::__tpy_init();
-    // main()
     main();
 }
 

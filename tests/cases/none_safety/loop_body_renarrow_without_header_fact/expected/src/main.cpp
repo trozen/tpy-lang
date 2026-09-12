@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def body_renarrow(flag: bool, x: int32 | None) -> int32:
+//     while flag:
+//         if x is not None:
+//             return x + 1  # tpyc: ok
+//         flag = False
+//     return 0
 int32_t body_renarrow(bool flag, std::optional<int32_t> x) {
-    // while flag:
     while (flag) {
-        // if x is not None:
         if ((x.has_value())) {
-            // return x + 1  # tpyc: ok
             return (::tpy::add_check<int32_t>((*x), 1));
         }
-        // flag = False
         flag = false;
     }
-    // return 0
     return 0;
 }
 
+// print(body_renarrow(True, 8))
+// print(body_renarrow(True, None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(body_renarrow(True, 8))
     std::cout << body_renarrow(true, 8) << "\n";
-    // print(body_renarrow(True, None))
     std::cout << body_renarrow(true, std::nullopt) << "\n";
 }
 

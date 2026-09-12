@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     m = M.from_json('{"n": 1.5}')
+//     print(m.n)
 void main() {
-    // m = M.from_json('{"n": 1.5}')
     M m = M::from_json("{\"n\": 1.5}");
-    // print(m.n)
     std::cout << m.n << "\n";
 }
 
@@ -49,6 +49,14 @@ std::expected<M, ::tpystd::tplib::json::parser::JsonError> M::__json_decode__(::
     }
     return M(n);
 }
+// # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
+// # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
+// # with CPython int("1.5") raising ValueError. Pins the failure mode after the
+// # switch to bare-number BigInt (the old string encoding rejected this earlier,
+// # with an opaque `expected '"'`).
+// from tplib.json.model import model
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -58,13 +66,6 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
-    // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
-    // # with CPython int("1.5") raising ValueError. Pins the failure mode after the
-    // # switch to bare-number BigInt (the old string encoding rejected this earlier,
-    // # with an opaque `expected '"'`).
-    // from tplib.json.model import model
-    // main()
     main();
 }
 

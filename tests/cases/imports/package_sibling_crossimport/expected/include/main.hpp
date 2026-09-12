@@ -24,8 +24,11 @@ inline auto& V = ::tpyapp::pkg::b::V;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def cap(n: int32 = V) -> int32:
 int32_t cap(int32_t n = ::tpyapp::pkg::b::V);
+// def takes_greeter(g: Greeter) -> int32:
 int32_t takes_greeter(::tpyapp::pkg::b::Greeter& g);
+// def main() -> None:
 void main();
 
 void __tpy_init();

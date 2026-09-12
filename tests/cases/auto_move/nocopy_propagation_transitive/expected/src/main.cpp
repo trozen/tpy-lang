@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def consume(o: Own[Outer]) -> int32:
+//     return o.w.res.id
 int32_t consume(Outer&& o) {
-    // return o.w.res.id
     return o.w.res.id;
 }
 
 // def main():
+//     o = Outer(Wrapper(Resource(99)))
+//     print(consume(o))  # tpyc: ok
 void main() {
-    // o = Outer(Wrapper(Resource(99)))
     Outer o = Outer(Wrapper(Resource(99)));
-    // print(consume(o))  # tpyc: ok
     std::cout << consume(std::move(o)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

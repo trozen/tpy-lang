@@ -3,34 +3,33 @@
 
 namespace tpyapp::main {
 
-// a = Child(int32(3))
 Child* a{};
-// b = Child(int32(5))
 Child* b{};
 
+// # @total_ordering on a subclass with the anchor (and __eq__) inherited
+// # from a base class. CPython-faithful: ClassInfo.has_method walks
+// # parent records via the registry so inherited dunders count.
+// from functools import total_ordering
+//
+// a = Child(int32(3))
+// b = Child(int32(5))
+// print(a < b)
+// print(a <= b)
+// print(a > b)
+// print(a >= b)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @total_ordering on a subclass with the anchor (and __eq__) inherited
-    // # from a base class. CPython-faithful: ClassInfo.has_method walks
-    // # parent records via the registry so inherited dunders count.
-    // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Child(int32(3))
     static Child __global_slot_1 = Child(3);
     a = &__global_slot_1;
-    // b = Child(int32(5))
     static Child __global_slot_2 = Child(5);
     b = &__global_slot_2;
-    // print(a < b)
     std::cout << ::tpy::print_bool(((*a) < (*b))) << "\n";
-    // print(a <= b)
     std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    // print(a > b)
     std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
-    // print(a >= b)
     std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
 }
 

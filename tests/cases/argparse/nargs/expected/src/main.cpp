@@ -5,47 +5,59 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     p1 = ArgumentParser()
+//     p1.add_argument("files", nargs="+")
+//     a1 = p1.parse_args(["a.txt", "b.txt"])
+//     print(a1.files[0])
+//     print(a1.files[1])
+//     print(len(a1.files))
+//
+//     p2 = ArgumentParser()
+//     p2.add_argument("--coord", nargs=2, type=int)
+//     p2.add_argument("--tag", action="extend", nargs="+")
+//     a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
+//     assert a2.coord is not None
+//     assert a2.tag is not None
+//     print(a2.coord[0])
+//     print(a2.coord[1])
+//     print(a2.tag[0])
+//     print(a2.tag[1])
+//     print(a2.tag[2])
+//
+//     p3 = ArgumentParser()
+//     p3.add_argument("--mode", nargs="?", const="auto", default="off")
+//     a3 = p3.parse_args(["--mode"])
+//     print(a3.mode)
+//
+//     p4 = ArgumentParser()
+//     p4.add_argument("--limit", type=int)
+//     a4 = p4.parse_args([])
+//     if a4.limit is None:
+//         print("none")
+//     return 0
 int32_t main() {
-    // a1 = p1.parse_args(["a.txt", "b.txt"])
     std::vector<std::string> __tmp_1 = {"a.txt", "b.txt"};
     __tpy_builder_argparse_args_1 a1 = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(a1.files[0])
     std::cout << ::tpy::__getitem__(a1.files, 0) << "\n";
-    // print(a1.files[1])
     std::cout << ::tpy::__getitem__(a1.files, 1) << "\n";
-    // print(len(a1.files))
     std::cout << ::tpy::__len__(a1.files) << "\n";
-    // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
     std::vector<std::string> __tmp_2 = {"--coord", "10", "20", "--tag", "x", "y", "--tag", "z"};
     __tpy_builder_argparse_args_2 a2 = __tpy_builder_argparse_parse_2(__tmp_2);
-    // assert a2.coord is not None
     if (!((a2.coord.has_value()))) ::tpy::raise_assertion_error();
-    // assert a2.tag is not None
     if (!((a2.tag.has_value()))) ::tpy::raise_assertion_error();
-    // print(a2.coord[0])
     std::cout << ::tpy::__getitem__((*a2.coord), 0) << "\n";
-    // print(a2.coord[1])
     std::cout << ::tpy::__getitem__((*a2.coord), 1) << "\n";
-    // print(a2.tag[0])
     std::cout << ::tpy::__getitem__((*a2.tag), 0) << "\n";
-    // print(a2.tag[1])
     std::cout << ::tpy::__getitem__((*a2.tag), 1) << "\n";
-    // print(a2.tag[2])
     std::cout << ::tpy::__getitem__((*a2.tag), 2) << "\n";
-    // a3 = p3.parse_args(["--mode"])
     std::vector<std::string> __tmp_3 = {"--mode"};
     __tpy_builder_argparse_args_3 a3 = __tpy_builder_argparse_parse_3(__tmp_3);
-    // print(a3.mode)
     std::cout << a3.mode << "\n";
-    // a4 = p4.parse_args([])
     std::vector<std::string> __tmp_4 = std::vector<std::string>{};
     __tpy_builder_argparse_args_4 a4 = __tpy_builder_argparse_parse_4(__tmp_4);
-    // if a4.limit is None:
     if ((!a4.limit.has_value())) {
-        // print("none")
         std::cout << "none" << "\n";
     }
-    // return 0
     return 0;
 }
 
@@ -231,14 +243,15 @@ __tpy_builder_argparse_args_4 __tpy_builder_argparse_parse_4(const std::vector<s
     return __tpy_builder_argparse_args_4(limit);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

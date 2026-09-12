@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     g = Grid(3)
+//     # Mutating through the field proves the member init built it in place.
+//     g.cells[0].v = 9
+//     print(len(g.cells), g.cells[0].v, g.cells[2].v)
+//     print(len(g.seen), 4 in g.seen)
+//     print(len(g.index), g.index[2])
 void main() {
-    // g = Grid(3)
     Grid g = Grid(3);
-    // # Mutating through the field proves the member init built it in place.
-    // g.cells[0].v = 9
     ::tpy::__getitem__(g.cells, 0).v = 9;
-    // print(len(g.cells), g.cells[0].v, g.cells[2].v)
     std::cout << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 0).v << " " << ::tpy::__getitem__(g.cells, 2).v << "\n";
-    // print(len(g.seen), 4 in g.seen)
     std::cout << ::tpy::__len__(g.seen) << " " << ::tpy::print_bool((g.seen.contains(4))) << "\n";
-    // print(len(g.index), g.index[2])
     std::cout << ::tpy::__len__(g.index) << " " << ::tpy::__getitem__(g.index, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

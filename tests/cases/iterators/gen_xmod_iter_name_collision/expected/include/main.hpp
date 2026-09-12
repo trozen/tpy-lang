@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Bag___iter__;
 
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -33,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
-// Generator: Bag.__iter__
+// def __iter__(self) -> Iterator[int32]:
 struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, int32_t> {
     int32_t __state;
     const Bag& __self;
@@ -66,6 +67,7 @@ inline __gen_Bag___iter__ Bag::__iter__() const {
 
 
 // def __init__(self) -> None:
+//     self.src = bags.Bag()
 inline Bag::Bag() : src(::tpyapp::bags::Bag()) {}
 void __tpy_init();
 } // namespace tpyapp::main

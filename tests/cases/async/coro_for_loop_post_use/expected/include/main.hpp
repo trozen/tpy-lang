@@ -18,6 +18,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_driver;
 struct __coro_Container_last_n;
 
+// async def driver() -> None:
 __coro_driver driver();
 
 // class Item:
@@ -53,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// Async coroutine: Container.last_n
+// async def last_n(self) -> int32:
 struct __coro_Container_last_n {
     int32_t __state;
     bool __cancel_pending;
@@ -81,7 +82,7 @@ inline __coro_Container_last_n Container::last_n() const {
     return __coro_Container_last_n(*this);
 }
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -108,13 +109,15 @@ struct __coro_driver {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.items = []
+//     self.items.append(Item(1))
+//     self.items.append(Item(99))
 inline Container::Container() : items(std::vector<Item>{}) {
-    // self.items.append(Item(1))
     this->items.push_back(Item(1));
-    // self.items.append(Item(99))
     this->items.push_back(Item(99));
 }
 void __tpy_init();

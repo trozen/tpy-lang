@@ -20,10 +20,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_yield_once;
 
+// async def yield_once() -> int32:
 __coro_yield_once yield_once();
+// def main() -> None:
 void main();
 
-// Async coroutine: yield_once
+// async def yield_once() -> int32:
 struct __coro_yield_once {
     int32_t __state;
     bool __cancel_pending;

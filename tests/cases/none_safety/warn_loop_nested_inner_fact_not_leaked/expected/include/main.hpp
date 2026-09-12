@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def nested_warn(x: int32 | None, y: int32 | None) -> int32:
 int32_t nested_warn(std::optional<int32_t> x, std::optional<int32_t> y);
 
 void __tpy_init();

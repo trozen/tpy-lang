@@ -3,44 +3,45 @@
 
 namespace tpyapp::main {
 
-// # Iterator stored in a list, accessed by subscript
-// items: list[Counter] = [Counter(3)]
 std::vector<Counter>* items{};
 
+// # Iterator stored in a list, accessed by subscript
+// items: list[Counter] = [Counter(3)]
+//
+// print("first:")
+// for x in items[0]:
+//     print(x)
+//
+// print("second:")
+// for x in items[0]:
+//     print(x)
+//
+// print("done")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Iterator stored in a list, accessed by subscript
-    // items: list[Counter] = [Counter(3)]
     static std::vector<Counter> __global_slot_1 = {Counter(3)};
     items = &__global_slot_1;
-    // print("first:")
     std::cout << "first:" << "\n";
-    // for x in items[0]:
     auto& __src_0 = ::tpy::__getitem__((*items), 0);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
-    // print("second:")
     std::cout << "second:" << "\n";
-    // for x in items[0]:
     auto& __src_2 = ::tpy::__getitem__((*items), 0);
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
     }
-    // print("done")
     std::cout << "done" << "\n";
 }
 

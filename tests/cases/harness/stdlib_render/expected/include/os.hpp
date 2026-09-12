@@ -43,56 +43,113 @@ struct _WalkEmit;
 struct terminal_size;
 
 inline constexpr std::string_view __name__ = "os";
+// # st_mode S_IF* type bits, for DirEntry's stat fallback when readdir's d_type is
+// # unknown or a symlink (which is_dir/is_file must follow).
+// _S_IFMT: Final[int64] = 0o170000
 inline constexpr int64_t _S_IFMT = 61440;
+// _S_IFDIR: Final[int64] = 0o040000
 inline constexpr int64_t _S_IFDIR = 16384;
+// _S_IFREG: Final[int64] = 0o100000
 inline constexpr int64_t _S_IFREG = 32768;
+// _S_IFLNK: Final[int64] = 0o120000
 inline constexpr int64_t _S_IFLNK = 40960;
+// # POSIX path/line separators and special names (os.name is "posix"). altsep is
+// # None on POSIX (omitted; matches the os.path decision). These mirror the
+// # os.path constants for the values shared between the two modules.
+// name: Final[str] = "posix"
 inline constexpr std::string_view name = "posix";
+// sep: Final[str] = "/"
 inline constexpr std::string_view sep = "/";
+// extsep: Final[str] = "."
 inline constexpr std::string_view extsep = ".";
+// pathsep: Final[str] = ":"
 inline constexpr std::string_view pathsep = ":";
+// linesep: Final[str] = "\n"
 inline constexpr std::string_view linesep = "\n";
+// curdir: Final[str] = "."
 inline constexpr std::string_view curdir = ".";
+// pardir: Final[str] = ".."
 inline constexpr std::string_view pardir = "..";
+// devnull: Final[str] = "/dev/null"
 inline constexpr std::string_view devnull = "/dev/null";
 
 struct __gen_walk;
 
+// def _wrap_stat(t: tuple[int64, int64, int64, int64, int64, int64, int64,
+//                         float, float, float, int64, int64, int64]
+//                ) -> Own[stat_result]:
 ::tpystd::os::_types::stat_result _wrap_stat(const std::tuple<int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, double, double, double, int64_t, int64_t, int64_t>& t);
+// def stat(path: str) -> Own[stat_result]:
 ::tpystd::os::_types::stat_result stat(std::string_view path);
+// def lstat(path: str) -> Own[stat_result]:
 ::tpystd::os::_types::stat_result lstat(std::string_view path);
+// def scandir(path: str = ".") -> Own[list[DirEntry]]:
 std::vector<DirEntry> scandir(std::string_view path = ".");
+// def listdir(path: str = ".") -> Own[list[str]]:
 std::vector<std::string> listdir(std::string_view path = ".");
+// def walk(top: str, topdown: bool = True,
+//          onerror: Callable[[readonly[OSError]], None] | None = None,
+//          followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
 __gen_walk walk(std::string_view top, bool topdown = true, std::optional<std::function<void(const ::tpy::OSError&)>> onerror = std::nullopt, bool followlinks = false);
+// def mkdir(path: str, mode: int64 = 0o777) -> None:
 void mkdir(std::string_view path, int64_t mode = 511);
+// def getenv(key: str) -> str | None:
 std::optional<std::string> getenv(std::string_view key);
+// def getenv(key: str, default: str) -> str:
 std::string getenv(std::string_view key, std::string_view default_);
+// def putenv(key: str, value: str) -> None:
 void putenv(std::string_view key, std::string_view value);
+// def unsetenv(key: str) -> None:
 void unsetenv(std::string_view key);
+// def replace(src: str, dst: str) -> None:
 void replace(std::string_view src, std::string_view dst);
+// def makedirs(name: str, mode: int64 = 0o777, exist_ok: bool = False) -> None:
 void makedirs(std::string_view name, int64_t mode = 511, bool exist_ok = false);
+// def removedirs(name: str) -> None:
 void removedirs(std::string_view name);
+// def open(path: str, flags: int64, mode: int64 = 0o777) -> int64:
 int64_t open(std::string_view path, int64_t flags, int64_t mode = 511);
+// def close(fd: int64) -> None:
 void close(int64_t fd);
+// def read(fd: int64, n: int64) -> Own[bytes]:
 ::tpy::Bytes read(int64_t fd, int64_t n);
+// def write(fd: int64, data: bytes) -> int64:
 int64_t write(int64_t fd, ::tpy::BytesView data);
+// def lseek(fd: int64, pos: int64, how: int64) -> int64:
 int64_t lseek(int64_t fd, int64_t pos, int64_t how);
+// def pipe() -> tuple[int64, int64]:
 std::tuple<int64_t, int64_t> pipe();
+// def dup(fd: int64) -> int64:
 int64_t dup(int64_t fd);
+// def dup2(fd: int64, fd2: int64) -> int64:
 int64_t dup2(int64_t fd, int64_t fd2);
+// def fstat(fd: int64) -> Own[stat_result]:
 ::tpystd::os::_types::stat_result fstat(int64_t fd);
+// def chmod(path: str, mode: int64) -> None:
 void chmod(std::string_view path, int64_t mode);
+// def chown(path: str, uid: int64, gid: int64) -> None:
 void chown(std::string_view path, int64_t uid, int64_t gid);
+// def utime(path: str, times: tuple[float, float]) -> None:
 void utime(std::string_view path, const std::tuple<double, double>& times);
+// def access(path: str, mode: int64) -> bool:
 bool access(std::string_view path, int64_t mode);
+// def urandom(n: int64) -> Own[bytes]:
 ::tpy::Bytes urandom(int64_t n);
+// def link(src: str, dst: str) -> None:
 void link(std::string_view src, std::string_view dst);
+// def truncate(path: str, length: int64) -> None:
 void truncate(std::string_view path, int64_t length);
+// def ftruncate(fd: int64, length: int64) -> None:
 void ftruncate(int64_t fd, int64_t length);
+// def fsync(fd: int64) -> None:
 void fsync(int64_t fd);
+// def get_terminal_size(fd: int64 = 1) -> Own[terminal_size]:
 terminal_size get_terminal_size(int64_t fd = 1);
+// def fspath(path: str) -> str:
 std::string fspath(std::string_view path);
+// def cpu_count() -> int64 | None:
 std::optional<int64_t> cpu_count();
+// def unlink(path: str) -> None:
 void unlink(std::string_view path);
 
 // # os.scandir entry. `_kind` is the normalized readdir d_type (1 dir / 2 file /
@@ -162,7 +219,7 @@ struct _WalkEmit {
     std::vector<std::string> filenames;
 
     // def __init__(self, path: str, dirnames: Own[list[str]],
-    // filenames: Own[list[str]]) -> None:
+    //              filenames: Own[list[str]]) -> None:
     _WalkEmit() = default;
     explicit _WalkEmit(std::string_view path, std::vector<std::string>&& dirnames, std::vector<std::string>&& filenames);
     static constexpr std::string_view __tpy_class_name__ = "os._WalkEmit";
@@ -194,7 +251,9 @@ inline std::ostream& operator<<(std::ostream& os, const terminal_size& obj) {
     return os;
 }
 
-// Generator: walk
+// def walk(top: str, topdown: bool = True,
+//          onerror: Callable[[readonly[OSError]], None] | None = None,
+//          followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>> {
     int32_t __state;
     std::string top;
@@ -249,70 +308,79 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
 
 
 // def __init__(self, name: str, path: str, kind: int64) -> None:
+//     self.name = name
+//     self.path = path
+//     self._kind = kind
 inline DirEntry::DirEntry(std::string_view name, std::string_view path, int64_t kind) : name(name), path(path), _kind(kind) {}
 
 // def is_dir(self) -> bool:
+//     if self._kind == 1:
+//         return True
+//     if self._kind == 2:
+//         return False
+//     return (_wrap_stat(_stat_raw(self.path)).st_mode & _S_IFMT) == _S_IFDIR
 inline bool DirEntry::is_dir() const {
-    // if self._kind == 1:
     if ((this->_kind == 1)) {
-        // return True
         return true;
     }
-    // if self._kind == 2:
     if ((this->_kind == 2)) {
-        // return False
         return false;
     }
-    // return (_wrap_stat(_stat_raw(self.path)).st_mode & _S_IFMT) == _S_IFDIR
     return ((static_cast<int64_t>(_wrap_stat(::tpy::stdlib::os::stat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFDIR);
 }
 
 // def is_file(self) -> bool:
+//     if self._kind == 2:
+//         return True
+//     if self._kind == 1:
+//         return False
+//     return (_wrap_stat(_stat_raw(self.path)).st_mode & _S_IFMT) == _S_IFREG
 inline bool DirEntry::is_file() const {
-    // if self._kind == 2:
     if ((this->_kind == 2)) {
-        // return True
         return true;
     }
-    // if self._kind == 1:
     if ((this->_kind == 1)) {
-        // return False
         return false;
     }
-    // return (_wrap_stat(_stat_raw(self.path)).st_mode & _S_IFMT) == _S_IFREG
     return ((static_cast<int64_t>(_wrap_stat(::tpy::stdlib::os::stat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFREG);
 }
 
 // def is_symlink(self) -> bool:
+//     if self._kind == 3:
+//         return True
+//     if self._kind == 1 or self._kind == 2:
+//         return False
+//     return (_wrap_stat(_lstat_raw(self.path)).st_mode & _S_IFMT) == _S_IFLNK
 inline bool DirEntry::is_symlink() const {
-    // if self._kind == 3:
     if ((this->_kind == 3)) {
-        // return True
         return true;
     }
-    // if self._kind == 1 or self._kind == 2:
     if (((this->_kind == 1) || (this->_kind == 2))) {
-        // return False
         return false;
     }
-    // return (_wrap_stat(_lstat_raw(self.path)).st_mode & _S_IFMT) == _S_IFLNK
     return ((static_cast<int64_t>(_wrap_stat(::tpy::stdlib::os::lstat_raw(this->path)).st_mode & _S_IFMT)) == _S_IFLNK);
 }
 
 // def stat(self) -> Own[stat_result]:
+//     return _wrap_stat(_stat_raw(self.path))
 inline ::tpystd::os::_types::stat_result DirEntry::stat() const {
-    // return _wrap_stat(_stat_raw(self.path))
     return _wrap_stat(::tpy::stdlib::os::stat_raw(this->path));
 }
 
 // def __init__(self, path: str) -> None:
+//     self.path = path
 inline _WalkExpand::_WalkExpand(std::string_view path) : path(path) {}
 
 // def __init__(self, path: str, dirnames: Own[list[str]],
-// filenames: Own[list[str]]) -> None:
+//              filenames: Own[list[str]]) -> None:
+//     self.path = path
+//     self.dirnames = dirnames
+//     self.filenames = filenames
 inline _WalkEmit::_WalkEmit(std::string_view path, std::vector<std::string>&& dirnames, std::vector<std::string>&& filenames) : path(path), dirnames(std::move(dirnames)), filenames(std::move(filenames)) {}
 
 // def __init__(self, columns: int64, lines: int64) -> None:
+//     self.columns = columns
+//     self.lines = lines
 inline terminal_size::terminal_size(int64_t columns, int64_t lines) : columns(columns), lines(lines) {}
 void __tpy_init();
 } // namespace tpystd::os

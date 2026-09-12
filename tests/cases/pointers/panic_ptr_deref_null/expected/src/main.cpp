@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p: Ptr[int32] = Ptr[int32]()
+//     print(p.__deref__())
 void main() {
-    // p: Ptr[int32] = Ptr[int32]()
     int32_t* p = static_cast<int32_t*>(nullptr);
-    // print(p.__deref__())
     std::cout << ::tpy::deref_check(p) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

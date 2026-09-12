@@ -5,40 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     random.seed(int32(42))
+//     a = random.random()
+//     b = random.random()
+//     # Values should be in [0, 1)
+//     print(a >= 0.0)  # True
+//     print(a < 1.0)   # True
+//     print(b >= 0.0)  # True
+//     print(b < 1.0)   # True
+//     # Same seed should give same sequence
+//     random.seed(int32(42))
+//     c = random.random()
+//     print(a == c)  # True
 void main() {
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // a = random.random()
     double a = ::tpystd::random::random();
-    // b = random.random()
     double b = ::tpystd::random::random();
-    // # Values should be in [0, 1)
-    // print(a >= 0.0)  # True
     std::cout << ::tpy::print_bool((a >= 0.0)) << "\n";
-    // print(a < 1.0)   # True
     std::cout << ::tpy::print_bool((a < 1.0)) << "\n";
-    // print(b >= 0.0)  # True
     std::cout << ::tpy::print_bool((b >= 0.0)) << "\n";
-    // print(b < 1.0)   # True
     std::cout << ::tpy::print_bool((b < 1.0)) << "\n";
-    // # Same seed should give same sequence
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // c = random.random()
     double c = ::tpystd::random::random();
-    // print(a == c)  # True
     std::cout << ::tpy::print_bool((a == c)) << "\n";
 }
 
+// # random.random() and random.seed()
+// import random
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # random.random() and random.seed()
-    // import random
     ::tpystd::random::__tpy_init();
-    // main()
     main();
 }
 

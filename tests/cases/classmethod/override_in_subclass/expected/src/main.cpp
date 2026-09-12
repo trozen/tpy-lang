@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Shape.make()
+//     b = Square.make()
+//     print(a.sides, b.sides)
 void main() {
-    // a = Shape.make()
     Shape a = Shape::make();
-    // b = Square.make()
     Square b = Square::make();
-    // print(a.sides, b.sides)
     std::cout << a.sides << " " << b.sides << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

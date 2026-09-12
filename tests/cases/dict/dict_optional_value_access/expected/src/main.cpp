@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def borrow(p: P | None) -> int32:
+//     if p is None:
+//         return int32(-1)
+//     return p.x
 int32_t borrow(const P* p) {
-    // if p is None:
     if ((p == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return p.x
     return p->x;
 }
 
 // def main() -> None:
+//     d: dict[str, P | None] = {"a": P(int32(10)), "b": None, "c": P(int32(30))}
+//     # Subscript-then-access
+//     if d["a"] is not None:
+//         print(d["a"].x)
+//     # Var-decl from subscript
+//     a = d["a"]
+//     if a is not None:
+//         print(a.x)
+//     # For-loop binding from dict.values()
+//     for v in d.values():
+//         print(borrow(v))
 void main() {
-    // d: dict[str, P | None] = {"a": P(int32(10)), "b": None, "c": P(int32(30))}
     ::tpy::ordered_map<std::string, std::optional<P>> d = ::tpy::ordered_map<std::string, std::optional<P>>({{"a", P(10)}, {"b", std::nullopt}, {"c", P(30)}});
-    // # Subscript-then-access
-    // if d["a"] is not None:
     if ((::tpy::__getitem__(d, "a").has_value())) {
-        // print(d["a"].x)
         std::cout << ::tpy::deref_optional_check(::tpy::__getitem__(d, "a")).x << "\n";
     }
-    // # Var-decl from subscript
-    // a = d["a"]
     P* a = ::tpy::optional_to_ptr(::tpy::__getitem__(d, "a"));
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
     }
-    // # For-loop binding from dict.values()
-    // for v in d.values():
     auto __obj_0 = ::tpy::dict_values(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& v = *__beg_0;
-        // print(borrow(v))
         std::cout << borrow(::tpy::optional_to_ptr(v)) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

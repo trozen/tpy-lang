@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def addr(n: Node) -> Ptr[Node]:
+//     return n
 Node* addr(Node& n) {
-    // return n
     return &n;
 }
 
 // def rewrap(h: Handle) -> Own[Handle]:
+//     return Handle(h.p)
 Handle rewrap(const Handle& h) {
-    // return Handle(h.p)
     return Handle(h.p);
 }
 
 // def make_handle(n: Node) -> Own[Handle]:
+//     h = Handle(addr(n))
+//     return rewrap(h)
 Handle make_handle(Node& n) {
-    // h = Handle(addr(n))
     Handle h = Handle(addr(n));
-    // return rewrap(h)
     return rewrap(h);
 }
 
 // def main() -> None:
+//     n = Node(5)
+//     h = make_handle(n)
+//     print(h.p.v)
+//     h.p.v = 99
+//     print(n.v)
 void main() {
-    // n = Node(5)
     Node n = Node(5);
-    // h = make_handle(n)
     Handle h = make_handle(n);
-    // print(h.p.v)
     std::cout << ::tpy::deref_check(h.p).v << "\n";
-    // h.p.v = 99
     h.p->v = 99;
-    // print(n.v)
     std::cout << n.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

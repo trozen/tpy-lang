@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def read_items(c: readonly[Container]) -> None:
+//     items = c.items()
+//     print(len(items))
+//     print(items[0])
 void read_items(const Container& c) {
-    // items = c.items()
     const std::vector<int32_t>& items = c.items();
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    // print(items[0])
     std::cout << ::tpy::__getitem__(items, 0) << "\n";
 }
 
 // def main() -> None:
+//     c = Container()
+//     read_items(c)
+//     print(c.count())
 void main() {
-    // c = Container()
     Container c = Container();
-    // read_items(c)
     read_items(c);
-    // print(c.count())
     std::cout << c.count() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

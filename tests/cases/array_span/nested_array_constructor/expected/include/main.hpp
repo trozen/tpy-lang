@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_span_nested(s: Span[Array[int32, 2]]) -> int32:
 int32_t take_span_nested(std::span<std::array<int32_t, 2>> s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

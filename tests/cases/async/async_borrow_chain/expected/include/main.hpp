@@ -18,7 +18,9 @@ struct __coro_relay;
 struct __coro_main;
 struct __coro_Box2_me;
 
+// async def relay(b: Box2) -> Box2:
 __coro_relay relay(Box2& b);
+// async def main() -> None:
 __coro_main main();
 
 // class Box2:
@@ -39,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box2& obj) {
     return os;
 }
 
-// Async coroutine: Box2.me
+// async def me(self) -> "Box2":
 struct __coro_Box2_me {
     int32_t __state;
     bool __cancel_pending;
@@ -67,7 +69,7 @@ inline __coro_Box2_me Box2::me() {
     return __coro_Box2_me(*this);
 }
 
-// Async coroutine: relay
+// async def relay(b: Box2) -> Box2:
 struct __coro_relay {
     int32_t __state;
     bool __cancel_pending;
@@ -91,7 +93,7 @@ struct __coro_relay {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -118,6 +120,7 @@ struct __coro_main {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Box2::Box2(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

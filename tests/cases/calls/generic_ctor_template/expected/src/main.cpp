@@ -5,37 +5,40 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # list[T] constructor -- {T} resolved to int32_t
+//     items = list[int32](range(5))
+//     print(len(items))
+//
+//     # set[T] constructor -- {T} resolved to int32_t
+//     s = set[int32](items)
+//     print(len(s))
+//
+//     # dict[K,V] constructor -- {K}/{V} resolved
+//     pairs: list[tuple[str, int32]] = [("a", int32(1)), ("b", int32(2))]
+//     d = dict[str, int32](pairs)
+//     print(len(d))
+//
+//     # Inferred type (no explicit [T]) -- same resolution path
+//     items2 = list(range(3))
+//     print(len(items2))
 void main() {
-    // # list[T] constructor -- {T} resolved to int32_t
-    // items = list[int32](range(5))
     std::vector<int32_t> items = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5));
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    // # set[T] constructor -- {T} resolved to int32_t
-    // s = set[int32](items)
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(items)));
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // # dict[K,V] constructor -- {K}/{V} resolved
-    // pairs: list[tuple[str, int32]] = [("a", int32(1)), ("b", int32(2))]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}};
-    // d = dict[str, int32](pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // # Inferred type (no explicit [T]) -- same resolution path
-    // items2 = list(range(3))
     std::vector<int32_t> items2 = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(3));
-    // print(len(items2))
     std::cout << ::tpy::__len__(items2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

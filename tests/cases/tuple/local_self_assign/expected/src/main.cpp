@@ -8,30 +8,31 @@ namespace tpyapp::main {
 // # lowers verbatim to `x = x;` (Clang's -Wself-assign is suppressed for generated
 // # code) and the binding keeps its value. Scalar value-local + list pointer-local.
 // def main() -> None:
+//     x = 7
+//     x = x
+//     print(x)
+//
+//     xs = [1, 2, 3]
+//     xs = xs
+//     xs[0] = 9
+//     print(xs[0] + xs[1] + xs[2])
 void main() {
-    // x = 7
     int32_t x = 7;
-    // x = x
     x = x;
-    // print(x)
     std::cout << x << "\n";
-    // xs = [1, 2, 3]
     std::array<int32_t, 3> __slot_1 = {1, 2, 3};
     std::array<int32_t, 3>* xs = &__slot_1;
-    // xs = xs
     xs = xs;
-    // xs[0] = 9
     ::tpy::__setitem__((*xs), 0, 9);
-    // print(xs[0] + xs[1] + xs[2])
     std::cout << (::tpy::add_check<int32_t>(::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__getitem__((*xs), 1)), ::tpy::__getitem__((*xs), 2))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

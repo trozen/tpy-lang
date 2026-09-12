@@ -11,10 +11,15 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_list(lst: list[int] | None) -> None:
 void take_list(const std::vector<::tpy::BigInt>* lst);
+// def take_dict(d: dict[str, int32] | None) -> None:
 void take_dict(const ::tpy::ordered_map<std::string, int32_t>* d);
+// def take_set(s: set[int32] | None) -> None:
 void take_set(const ::tpy::ordered_set<int32_t>* s);
+// def local_init() -> None:
 void local_init();
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -39,16 +44,18 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = None
+//     self.by_key = None
 inline Bag::Bag() : items(std::nullopt), by_key(std::nullopt) {}
 
 // def fill(self) -> None:
+//     # Post-construction field assignment from a container literal.
+//     # Field storage is `std::optional<T>` and accepts the value via
+//     # implicit ctor; covers a distinct code path from local-init.
+//     self.items = [10, 20]
+//     self.by_key = {"x": 99}
 inline void Bag::fill() {
-    // # Post-construction field assignment from a container literal.
-    // # Field storage is `std::optional<T>` and accepts the value via
-    // # implicit ctor; covers a distinct code path from local-init.
-    // self.items = [10, 20]
     this->items = std::vector<::tpy::BigInt>{10, 20};
-    // self.by_key = {"x": 99}
     this->by_key = ::tpy::ordered_map<std::string, int32_t>({{"x", 99}});
 }
 void __tpy_init();

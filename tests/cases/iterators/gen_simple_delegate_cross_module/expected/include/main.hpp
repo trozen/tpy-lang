@@ -12,8 +12,12 @@ using ::tpyapp::itersrc::walk;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
+// def g() -> Iterator[int32]:
+//     for x in walk():  # tpyc: ok
+//         yield x
 inline auto g() {
     return ::tpy::make_generator<int32_t>(
         [__src = std::optional<std::decay_t<decltype(::tpyapp::itersrc::walk())>>()]() mutable -> std::optional<int32_t> {

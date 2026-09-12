@@ -5,52 +5,56 @@ namespace tpyapp::main {
 
 
 // def print_area(b: Box[Shape]) -> None:
+//     print(b.get().area())
 void print_area(::tpystd::tplib::box::Box<Shape>& b) {
-    // print(b.get().area())
     std::cout << ::tpy::print_float(b.get().area()) << "\n";
 }
 
 // def make_shape() -> Own[Box[Shape]]:
+//     return Box(Circle(3.0))
 ::tpystd::tplib::box::Box<Shape> make_shape() {
-    // return Box(Circle(3.0))
     return ::tpystd::tplib::box::Box<Circle>(Circle(3.0));
 }
 
 // def main() -> None:
+//     # Function arg coercion
+//     bc = Box(Circle(5.0))
+//     print_area(bc)
+//
+//     bs = Box(Square(3.0))
+//     print_area(bs)
+//
+//     # Variable assignment coercion
+//     bc2 = Box(Circle(2.0))
+//     b_shape: Box[Shape] = bc2
+//     print(b_shape.get().area())
+//
+//     # Return coercion via Own
+//     b3 = make_shape()
+//     print(b3.get().area())
 void main() {
-    // # Function arg coercion
-    // bc = Box(Circle(5.0))
     ::tpystd::tplib::box::Box<Circle> bc = ::tpystd::tplib::box::Box<Circle>(Circle(5.0));
-    // print_area(bc)
     ::tpystd::tplib::box::Box<Shape> __tmp_1 = std::move(bc);
     print_area(__tmp_1);
-    // bs = Box(Square(3.0))
     ::tpystd::tplib::box::Box<Square> bs = ::tpystd::tplib::box::Box<Square>(Square(3.0));
-    // print_area(bs)
     ::tpystd::tplib::box::Box<Shape> __tmp_2 = std::move(bs);
     print_area(__tmp_2);
-    // # Variable assignment coercion
-    // bc2 = Box(Circle(2.0))
     ::tpystd::tplib::box::Box<Circle> bc2 = ::tpystd::tplib::box::Box<Circle>(Circle(2.0));
-    // b_shape: Box[Shape] = bc2
     ::tpystd::tplib::box::Box<Shape> b_shape = std::move(bc2);
-    // print(b_shape.get().area())
     std::cout << ::tpy::print_float(b_shape.get().area()) << "\n";
-    // # Return coercion via Own
-    // b3 = make_shape()
     ::tpystd::tplib::box::Box<Shape> b3 = make_shape();
-    // print(b3.get().area())
     std::cout << ::tpy::print_float(b3.get().area()) << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

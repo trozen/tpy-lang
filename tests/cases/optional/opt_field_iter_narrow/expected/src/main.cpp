@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     print(h.scan_dict())
+//     print(h.sum_list())
+//     print(h.sum_set())
+//     print(h.count_str())
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(h.scan_dict())
     std::cout << h.scan_dict() << "\n";
-    // print(h.sum_list())
     std::cout << h.sum_list() << "\n";
-    // print(h.sum_set())
     std::cout << h.sum_set() << "\n";
-    // print(h.count_str())
     std::cout << h.count_str() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

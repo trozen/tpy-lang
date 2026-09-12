@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def show(v: HasValue) -> None:
+//     print(v.value())
 void show(HasValue& v) {
-    // print(v.value())
     std::cout << v.value() << "\n";
 }
 
 // def main() -> None:
+//     show(Parent(7))
+//     show(Child(7))
 void main() {
-    // show(Parent(7))
     Parent __tmp_1{Parent(7)};
     show(__tmp_1);
-    // show(Child(7))
     ::tpy::Adapter<HasValue, Child> __tmp_2{Child(7)};
     show(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

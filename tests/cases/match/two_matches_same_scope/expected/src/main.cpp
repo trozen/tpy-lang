@@ -77,68 +77,69 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Color.Red
+//     s = Size.Small
+//     match c:
+//         case Color.Red:
+//             match s:
+//                 case Size.Big:
+//                     print("red big")
+//                 case Size.Small:
+//                     print("red small")
+//         case Color.Green:
+//             print("green")
+//     match s:
+//         case Size.Big:
+//             print("big")
+//         case Size.Small:
+//             print("small")
 void main() {
-    // c = Color.Red
     Color c = Color::Red;
-    // s = Size.Small
     Size s = Size::Small;
-    // match c:
     auto& __match_subject_1 = c;
     switch (__match_subject_1) {
-    // case Color.Red:
     case Color::Red: {
-        // match s:
         auto& __match_subject_2 = s;
         switch (__match_subject_2) {
-        // case Size.Big:
         case Size::Big: {
-            // print("red big")
             std::cout << "red big" << "\n";
             break;
         }
-        // case Size.Small:
         case Size::Small: {
-            // print("red small")
             std::cout << "red small" << "\n";
             break;
         }
         }
         break;
     }
-    // case Color.Green:
     case Color::Green: {
-        // print("green")
         std::cout << "green" << "\n";
         break;
     }
     }
-    // match s:
     auto& __match_subject_3 = s;
     switch (__match_subject_3) {
-    // case Size.Big:
     case Size::Big: {
-        // print("big")
         std::cout << "big" << "\n";
         break;
     }
-    // case Size.Small:
     case Size::Small: {
-        // print("small")
         std::cout << "small" << "\n";
         break;
     }
     }
 }
 
+// # Two sequential match statements in one scope (and a nested one): the
+// # subject bindings are numbered, so the C++ locals must not collide.
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two sequential match statements in one scope (and a nested one): the
-    // # subject bindings are numbered, so the C++ locals must not collide.
-    // from enum import Enum
-    // main()
     main();
 }
 

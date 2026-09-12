@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def describe(t: Tree) -> str:
+//     match t:
+//         case Leaf(value=v):
+//             return "leaf=" + str(v)
+//         case _:
+//             return "branch"
 std::string describe(const Tree& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case Leaf(value=v):
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1.value);
         auto& v = __case_0.value;
-        // return "leaf=" + str(v)
         return (::tpy::str_concat("leaf=", (v).to_string()));
         break;
     }
-    // case _:
     default: {
-        // return "branch"
         return "branch";
         break;
     }
@@ -28,24 +28,24 @@ std::string describe(const Tree& t) {
 }
 
 // def main() -> None:
+//     a: Tree = Leaf(42)
+//     b: list[Tree] = [Leaf(1), Leaf(2)]
+//     print(describe(a))
+//     print(describe(b))
 void main() {
-    // a: Tree = Leaf(42)
     Tree a = Leaf(::tpy::BigInt(42));
-    // b: list[Tree] = [Leaf(1), Leaf(2)]
     std::vector<Tree> b = {Leaf(::tpy::BigInt(1)), Leaf(::tpy::BigInt(2))};
-    // print(describe(a))
     std::cout << describe(a) << "\n";
-    // print(describe(b))
     Tree __tmp_1 = std::move(b);
     std::cout << describe(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

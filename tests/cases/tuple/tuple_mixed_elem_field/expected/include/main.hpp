@@ -12,6 +12,7 @@ struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -51,14 +52,16 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, a: Box, b: Box) -> None:
+//     self.t = (a, b)  # tpyc: warning(/copies/) warning(/copies/)
 inline H::H(const Box& a, const Box& b) : t(::tpy::tuple_to_storage<std::tuple<std::optional<Box>, Box>>(std::tuple<std::optional<Box>, Box>{a, b})) {}
 
 // def set(self, p: tuple[Optional[Box], Box]) -> None:
+//     self.t = p  # tpyc: warning(/copies/) warning(/copies/)
 inline void H::set(const std::tuple<const Box*, const Box*>& p) {
-    // self.t = p  # tpyc: warning(/copies/) warning(/copies/)
     this->t = ::tpy::tuple_to_storage<std::tuple<std::optional<Box>, Box>>(p);
 }
 void __tpy_init();

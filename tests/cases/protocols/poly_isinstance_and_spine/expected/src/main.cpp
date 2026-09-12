@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def check_and(p: Pet, threshold: int32) -> bool:
+//     return isinstance(p, Dog) and len(p.bark()) > threshold
 bool check_and(Pet& p, int32_t threshold) {
-    // return isinstance(p, Dog) and len(p.bark()) > threshold
     return ((dynamic_cast<Dog*>(&p) != nullptr) && (::tpy::__len__((*static_cast<Dog*>(&p)).bark()) > threshold));
 }
 
 // def main() -> None:
+//     print(check_and(Dog(), 2), check_and(Dog(), 9), check_and(Pet(), 0))
 void main() {
-    // print(check_and(Dog(), 2), check_and(Dog(), 9), check_and(Pet(), 0))
     Dog __tmp_1 = Dog();
     Dog __tmp_2 = Dog();
     Pet __tmp_3 = Pet();
     std::cout << ::tpy::print_bool(check_and(__tmp_1, 2)) << " " << ::tpy::print_bool(check_and(__tmp_2, 9)) << " " << ::tpy::print_bool(check_and(__tmp_3, 0)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

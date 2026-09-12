@@ -5,35 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Window()
+//
+//     # basic_slice dispatch (a[1:4]) -- no step printed
+//     sp = w[1:4]
+//     for x in sp:
+//         print(x)
+//
+//     # stepped slice dispatch (a[0:5:2]) -- prints step=2
+//     sp2 = w[0:5:2]
+//
+//     # stepped slice dispatch (a[0:5:-1]) -- prints step=-1
+//     sp3 = w[0:5:-1]
 void main() {
-    // w = Window()
     Window w = Window();
-    // # basic_slice dispatch (a[1:4]) -- no step printed
-    // sp = w[1:4]
     std::span<const int32_t> sp = w.__getitem__(::tpy::BasicSlice{1, 4});
-    // for x in sp:
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # stepped slice dispatch (a[0:5:2]) -- prints step=2
-    // sp2 = w[0:5:2]
     std::span<const int32_t> sp2 = w.__getitem__(::tpy::Slice{0, 5, 2});
-    // # stepped slice dispatch (a[0:5:-1]) -- prints step=-1
-    // sp3 = w[0:5:-1]
     std::span<const int32_t> sp3 = w.__getitem__(::tpy::Slice{0, 5, -1});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -10,7 +10,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def wrap_bigint() -> tuple[float, int]:
 std::tuple<double, ::tpy::BigInt> wrap_bigint();
+// def main() -> None:
 void main();
 
 void __tpy_init();

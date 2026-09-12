@@ -11,6 +11,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T]:
@@ -20,11 +21,12 @@ struct Container {
     std::vector<T> _data;
 
     // def __init__(self) -> None:
+    //     self._data = []
     Container() : _data(std::vector<T>{}) {}
 
     // def add(self, item: T) -> None:
+    //     self._data.append(item)
     void add(::tpy::param_val_or_ref_t<T> item) {
-        // self._data.append(item)
         this->_data.push_back(::tpy::param_to_storage<T>(item));
     }
 
@@ -32,7 +34,6 @@ struct Container {
     // @auto_readonly
     // def __getitem__(self, index: int32) -> T: ...  # tpyc: ok
     ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
-        // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
     }
 
@@ -40,22 +41,16 @@ struct Container {
     // @auto_readonly
     // def __getitem__(self, index: int32) -> T: ...  # tpyc: ok
     ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
-        // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
     }
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
     std::span<const T> __getitem__(::tpy::Slice index) const {
-        // s_start = index.start
         std::optional<int32_t> s_start = index.start;
-        // s_stop = index.stop
         std::optional<int32_t> s_stop = index.stop;
-        // start: int32 = s_start if s_start is not None else int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        // stop: int32 = s_stop if s_stop is not None else int32(len(self._data))
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        // return self._data[start:stop]
         return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
     }
 

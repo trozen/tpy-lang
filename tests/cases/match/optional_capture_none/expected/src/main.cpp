@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def full(v: int32 | None) -> None:
+//     match v:
+//         case x:
+//             if x is None:
+//                 print("got none")
+//             else:
+//                 print(x + 1)
 void full(std::optional<int32_t> v) {
-    // match v:
     std::optional<int32_t> x;
     auto& __match_subject_1 = v;
-    // case x:
     {
         x = __match_subject_1;
-        // if x is None:
         if ((!x.has_value())) {
-            // print("got none")
             std::cout << "got none" << "\n";
-        // else:
         } else {
-            // print(x + 1)
             std::cout << (::tpy::add_check<int32_t>((*x), 1)) << "\n";
         }
     }
 }
 
 // def narrowed(v: int32 | None) -> None:
+//     match v:
+//         case None:
+//             print("none arm")
+//         case x:
+//             print(x * 2)
 void narrowed(std::optional<int32_t> v) {
-    // match v:
     auto& __match_subject_1 = v;
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // print("none arm")
         std::cout << "none arm" << "\n";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         switch (__match_inner_1) {
-        // case x:
         default: {
             auto x = __match_inner_1;
-            // print(x * 2)
             std::cout << (::tpy::mul_check<int32_t>(x, 2)) << "\n";
             break;
         }
@@ -47,23 +47,23 @@ void narrowed(std::optional<int32_t> v) {
 }
 
 // def main() -> None:
+//     full(4)
+//     full(None)
+//     narrowed(10)
+//     narrowed(None)
 void main() {
-    // full(4)
     full(4);
-    // full(None)
     full(std::nullopt);
-    // narrowed(10)
     narrowed(10);
-    // narrowed(None)
     narrowed(std::nullopt);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

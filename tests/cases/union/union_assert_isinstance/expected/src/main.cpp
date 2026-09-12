@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def get_radius(s: Circle | Rect) -> int32:
+//     assert isinstance(s, Circle)
+//     return s.radius
 int32_t get_radius(::tpy::Union<const Circle*, const Rect*> s) {
-    // assert isinstance(s, Circle)
     if (!(std::holds_alternative<const Circle*>(s))) ::tpy::raise_assertion_error();
     auto& __s = *std::get<const Circle*>(s);
-    // return s.radius
     return __s.radius;
 }
 
 // def main() -> None:
+//     c: Circle | Rect = Circle(int32(5))
+//     print(get_radius(c))
 void main() {
-    // c: Circle | Rect = Circle(int32(5))
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    // print(get_radius(c))
     std::cout << get_radius(c.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

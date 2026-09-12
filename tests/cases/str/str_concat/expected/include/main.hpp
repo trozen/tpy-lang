@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_str_concat() -> None:
 void test_str_concat();
+// def test_str_plus_eq() -> None:
 void test_str_plus_eq();
+// def test_str_multiconcat() -> None:
 void test_str_multiconcat();
+// def test_literal_concat() -> None:
 void test_literal_concat();
+// def test_cross_type_concat() -> None:
 void test_cross_type_concat();
+// def test_reassign_concat() -> None:
 void test_reassign_concat();
+// def test_loop_concat() -> None:
 void test_loop_concat();
 
 void __tpy_init();

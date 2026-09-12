@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child()
+//     c.x = "value"
+//     del c.x
+//     print(len(c._data))
 void main() {
-    // c = Child()
     Child c = Child();
-    // c.x = "value"
     c.__setattr__("x", ::tpy::make_any(std::string("value")));
-    // del c.x
     c.__delattr__("x");
-    // print(len(c._data))
     std::cout << ::tpy::__len__(c._data) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

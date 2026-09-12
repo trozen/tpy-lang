@@ -5,17 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     parser = ArgumentParser()
+//     parser.add_argument("scale", type=float32)
+//     parser.add_argument("--bias", type=float32, default=0.5)
+//     parser.add_argument("--gain", type=float32)
+//     args = parser.parse_args(["2.5", "--gain", "1.25"])
+//     assert args.gain is not None
+//     print(args.scale)
+//     print(args.bias)
+//     print(args.gain)
 void main() {
-    // args = parser.parse_args(["2.5", "--gain", "1.25"])
     std::vector<std::string> __tmp_1 = {"2.5", "--gain", "1.25"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // assert args.gain is not None
     if (!((args.gain.has_value()))) ::tpy::raise_assertion_error();
-    // print(args.scale)
     std::cout << ::tpy::print_float(static_cast<double>(args.scale)) << "\n";
-    // print(args.bias)
     std::cout << ::tpy::print_float(static_cast<double>(args.bias)) << "\n";
-    // print(args.gain)
     std::cout << ::tpy::print_optional_val<::tpy::print_float, float>(args.gain) << "\n";
 }
 
@@ -72,14 +76,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(scale, bias, gain);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

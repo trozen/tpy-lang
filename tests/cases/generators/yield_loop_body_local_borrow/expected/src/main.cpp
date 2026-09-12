@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[list[int32]]:
+//     i = 0
+//     while i < 2:
+//         buf: list[int32] = []
+//         buf.append(10)
+//         buf.append(20)
+//         yield buf                 # tpyc: ok
+//         print("resume sees len", len(buf))
+//         i += 1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // print("resume sees len", len(buf))
         std::cout << "resume sees len" << " " << ::tpy::__len__((*buf)) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // buf: list[int32] = []
             buf.emplace(std::vector<int32_t>{});
-            // buf.append(10)
             (*buf).push_back(10);
-            // buf.append(20)
             (*buf).push_back(20);
-            // yield buf                 # tpyc: ok
             __state = S_RESUME_0;
             return (*buf);
         } else {
@@ -49,24 +50,31 @@ __gen_gen gen() {
 }
 
 // def walk() -> Iterator[tuple[int32, list[int32]]]:
+//     stack: list[int32] = []
+//     stack.append(2)
+//     while len(stack) > 0:
+//         cur = stack.pop()
+//         kids: list[int32] = []
+//         if cur > 0:
+//             kids.append(cur - 1)
+//             kids.append(cur - 1)
+//         yield (cur, kids)         # tpyc: ok
+//         for k in kids:
+//             stack.append(k)
 std::expected<std::tuple<int32_t, std::vector<int32_t>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // stack: list[int32] = []
         stack.emplace(std::vector<int32_t>{});
-        // stack.append(2)
         (*stack).push_back(2);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // for k in kids:
         auto& __obj_0 = (*kids);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t k = *__beg_0;
-            // stack.append(k)
             (*stack).push_back(k);
         }
         __state = S_JOIN_0;
@@ -74,18 +82,12 @@ std::expected<std::tuple<int32_t, std::vector<int32_t>*>, ::tpy::StopIteration> 
     }
     case S_JOIN_0: {
         if ((::tpy::__len__((*stack)) > 0)) {
-            // cur = stack.pop()
             cur = ::tpy::pop_back((*stack));
-            // kids: list[int32] = []
             kids.emplace(std::vector<int32_t>{});
-            // if cur > 0:
             if ((cur > 0)) {
-                // kids.append(cur - 1)
                 (*kids).push_back((::tpy::sub_check<int32_t>(cur, 1)));
-                // kids.append(cur - 1)
                 (*kids).push_back((::tpy::sub_check<int32_t>(cur, 1)));
             }
-            // yield (cur, kids)         # tpyc: ok
             __state = S_RESUME_0;
             return std::tuple<int32_t, std::vector<int32_t>*>{cur, &((*kids))};
         } else {
@@ -105,6 +107,11 @@ __gen_walk walk() {
 }
 
 // def gen_range() -> Iterator[list[int32]]:
+//     for _ in range(2):
+//         buf: list[int32] = []
+//         buf.append(1)
+//         yield buf                 # tpyc: ok
+//         print("range resume len", len(buf))
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_range::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -114,7 +121,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         continue;
     }
     case S_RESUME_0: {
-        // print("range resume len", len(buf))
         std::cout << "range resume len" << " " << ::tpy::__len__((*buf)) << "\n";
         __state = S_JOIN_0;
         continue;
@@ -125,11 +131,8 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         _ = ((*__for_i_0))++;
-        // buf: list[int32] = []
         buf.emplace(std::vector<int32_t>{});
-        // buf.append(1)
         (*buf).push_back(1);
-        // yield buf                 # tpyc: ok
         __state = S_RESUME_0;
         return (*buf);
     }
@@ -145,33 +148,34 @@ __gen_gen_range gen_range() {
 }
 
 // def gen_ternary(flag: bool) -> Iterator[list[int32]]:
+//     i = 0
+//     while i < 2:
+//         a: list[int32] = []
+//         a.append(7)
+//         b: list[int32] = []
+//         b.append(8)
+//         yield (a if flag else b)  # tpyc: ok
+//         print("ternary resume", len(a if flag else b))
+//         i += 1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_ternary::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // print("ternary resume", len(a if flag else b))
         std::cout << "ternary resume" << " " << ::tpy::__len__(((flag) ? ((*a)) : ((*b)))) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // a: list[int32] = []
             a.emplace(std::vector<int32_t>{});
-            // a.append(7)
             (*a).push_back(7);
-            // b: list[int32] = []
             b.emplace(std::vector<int32_t>{});
-            // b.append(8)
             (*b).push_back(8);
-            // yield (a if flag else b)  # tpyc: ok
             __state = S_RESUME_0;
             return ((flag) ? ((*a)) : ((*b)));
         } else {
@@ -191,29 +195,30 @@ __gen_gen_ternary gen_ternary(bool flag) {
 }
 
 // def gen_walrus() -> Iterator[list[int32]]:
+//     i = 0
+//     while i < 2:
+//         buf: list[int32] = []
+//         buf.append(3)
+//         yield (x := buf)          # tpyc: ok
+//         print("walrus resume", len(buf))
+//         i += 1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_walrus::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // print("walrus resume", len(buf))
         std::cout << "walrus resume" << " " << ::tpy::__len__((*buf)) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // buf: list[int32] = []
             buf.emplace(std::vector<int32_t>{});
-            // buf.append(3)
             (*buf).push_back(3);
-            // yield (x := buf)          # tpyc: ok
             __state = S_RESUME_0;
             return (x = &((*buf)), *x);
         } else {
@@ -233,10 +238,30 @@ __gen_gen_walrus gen_walrus() {
 }
 
 // def main() -> None:
+//     seen = 0
+//     for v in gen():
+//         seen += 1
+//         v[:] = []                 # prune: generator's resume sees len 0
+//
+//     for w in gen_range():
+//         w[:] = []
+//
+//     for t in gen_ternary(True):
+//         t[:] = []
+//
+//     for u in gen_walrus():
+//         u[:] = []
+//
+//     s = Source()
+//     for m in s.gen():
+//         m[:] = []
+//
+//     for level, kids in walk():
+//         print("level", level, "kids", len(kids))
+//         if level == 1:
+//             kids.clear()          # stop descending past level 1
 void main() {
-    // seen = 0
     int32_t seen = 0;
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -244,13 +269,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_1);
-        // seen += 1
         seen = ::tpy::add_check<int32_t>(seen, 1);
-        // v[:] = []                 # prune: generator's resume sees len 0
         ::tpy::list_set_slice(v, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
-    // for w in gen_range():
     {
         auto __src_2 = gen_range();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -258,11 +280,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& w = ::tpy::unwrap_ref(*__r_3);
-        // w[:] = []
         ::tpy::list_set_slice(w, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
-    // for t in gen_ternary(True):
     {
         auto __src_4 = gen_ternary(true);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -270,11 +290,9 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& t = ::tpy::unwrap_ref(*__r_5);
-        // t[:] = []
         ::tpy::list_set_slice(t, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
-    // for u in gen_walrus():
     {
         auto __src_6 = gen_walrus();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -282,13 +300,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& u = ::tpy::unwrap_ref(*__r_7);
-        // u[:] = []
         ::tpy::list_set_slice(u, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
-    // s = Source()
     Source s = Source();
-    // for m in s.gen():
     {
         auto __src_8 = s.gen();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -296,11 +311,9 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             auto&& m = ::tpy::unwrap_ref(*__r_9);
-        // m[:] = []
         ::tpy::list_set_slice(m, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{});
         }
     }
-    // for level, kids in walk():
     {
         auto __src_10 = walk();
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
@@ -308,15 +321,11 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_11);
-        // for level, kids in walk():
         auto& __tup_1 = __for_tup_0;
         int32_t level = std::get<0>(__tup_1);
         auto&& kids = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        // print("level", level, "kids", len(kids))
         std::cout << "level" << " " << level << " " << "kids" << " " << ::tpy::__len__(kids) << "\n";
-        // if level == 1:
         if ((level == 1)) {
-            // kids.clear()          # stop descending past level 1
             kids.clear();
         }
         }
@@ -324,29 +333,30 @@ void main() {
 }
 
 // def gen(self) -> Iterator[list[int32]]:
+//     i = 0
+//     while i < 2:
+//         buf: list[int32] = []
+//         buf.append(5)
+//         yield buf             # tpyc: ok
+//         print("method resume", len(buf))
+//         i += 1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Source_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // print("method resume", len(buf))
         std::cout << "method resume" << " " << ::tpy::__len__((*buf)) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // buf: list[int32] = []
             buf.emplace(std::vector<int32_t>{});
-            // buf.append(5)
             (*buf).push_back(5);
-            // yield buf             # tpyc: ok
             __state = S_RESUME_0;
             return (*buf);
         } else {
@@ -360,12 +370,12 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

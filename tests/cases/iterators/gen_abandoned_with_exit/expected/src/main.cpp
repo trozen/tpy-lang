@@ -5,11 +5,14 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int]:
+//     cm = CM()
+//     with cm:
+//         yield 1
+//         yield 2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // cm = CM()
         cm.emplace(CM());
         __with_ctx_0 = &((*cm));
         (*__with_ctx_0).__enter__();
@@ -18,7 +21,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {
         try {
-            // yield 2
             __state = S_RESUME_1;
             return ::tpy::BigInt(2);
         } catch (::tpy::BaseException& __exc_0) {
@@ -51,7 +53,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -71,8 +72,11 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for x in gen():
+//         print(x)
+//         break
+//     print("after")
 void main() {
-    // for x in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -80,22 +84,19 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
-        // break
         break;
         }
     }
-    // print("after")
     std::cout << "after" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // async def via_union(a: Dog | Cat) -> str:
+//     await asyncio.sleep(0)
+//     if isinstance(a, Dog):
+//         return a.name
+//     return "cat"
 ::tpystd::tpy::Poll<std::string> __coro_via_union::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,16 +21,13 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if isinstance(a, Dog):
         if (std::holds_alternative<const Dog*>(a)) {
             auto& __a = *std::get<const Dog*>(a);
-            // return a.name
             __state = S_DONE;
             std::string __tpy_async_ret = __a.name;
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
         auto& __a = *std::get<const Cat*>(a);
-        // return "cat"
         __state = S_DONE;
         std::string __tpy_async_ret = "cat";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -44,10 +44,13 @@ __coro_via_union via_union(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // async def via_optional(a: Dog | None) -> str:
+//     await asyncio.sleep(0)
+//     if a is not None:
+//         return a.name
+//     return "none"
 ::tpystd::tpy::Poll<std::string> __coro_via_optional::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -57,14 +60,11 @@ __coro_via_union via_union(::tpy::Union<const Cat*, const Dog*> a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if a is not None:
         if ((a != nullptr)) {
-            // return a.name
             __state = S_DONE;
             std::string __tpy_async_ret = a->name;
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
-        // return "none"
         __state = S_DONE;
         std::string __tpy_async_ret = "none";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -81,10 +81,11 @@ __coro_via_optional via_optional(Dog* a) {
 }
 
 // async def via_ref(a: Dog) -> str:
+//     await asyncio.sleep(0)
+//     return a.name
 ::tpystd::tpy::Poll<std::string> __coro_via_ref::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -94,7 +95,6 @@ __coro_via_optional via_optional(Dog* a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return a.name
         __state = S_DONE;
         std::string __tpy_async_ret = a.name;
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -111,10 +111,13 @@ __coro_via_ref via_ref(Dog& a) {
 }
 
 // async def via_mixed(tag: str, a: Dog | Cat) -> str:
+//     await asyncio.sleep(0)
+//     if isinstance(a, Dog):
+//         return tag + ":" + a.name
+//     return tag + ":cat"
 ::tpystd::tpy::Poll<std::string> __coro_via_mixed::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -124,16 +127,13 @@ __coro_via_ref via_ref(Dog& a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if isinstance(a, Dog):
         if (std::holds_alternative<const Dog*>(a)) {
             auto& __a = *std::get<const Dog*>(a);
-            // return tag + ":" + a.name
             __state = S_DONE;
             std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat(tag, ":")), __a.name));
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
         auto& __a = *std::get<const Cat*>(a);
-        // return tag + ":cat"
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat(tag, ":cat"));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -150,11 +150,25 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
 }
 
 // async def main() -> None:
+//     print(await via_union(Dog("rex")))
+//     print(await via_union(Cat("tom")))
+//     print(await via_optional(Dog("fido")))
+//     print(await via_ref(Dog("spot")))
+//     # None must NOT be hoisted (lowers to nullptr, not a borrow).
+//     print(await via_optional(None))
+//     # A stable lvalue must NOT be hoisted: its address already persists, and
+//     # hoisting would copy it (breaking @nocopy / mutation-through-borrow).
+//     held = Dog("held")
+//     print(await via_ref(held))
+//     # Mixed borrowed/non-borrowed params.
+//     print(await via_mixed("tag", Dog("max")))
+//     # Lift inside a loop body: each suspension gets a distinct frame slot.
+//     for i in range(2):
+//         print(await via_ref(Dog("loop")))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0.emplace(Dog("rex"));
-        // print(await via_union(Dog("rex")))
         __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
@@ -164,10 +178,8 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await via_union(Dog("rex")))
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1.emplace(Cat("tom"));
-        // print(await via_union(Cat("tom")))
         __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
@@ -177,10 +189,8 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await via_union(Cat("tom")))
         std::cout << __await_lift_1 << "\n";
         __coro_arg_2.emplace(Dog("fido"));
-        // print(await via_optional(Dog("fido")))
         __sub_2.emplace(&((*__coro_arg_2)));
         __state = S_RESUME_2;
         continue;
@@ -190,10 +200,8 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await via_optional(Dog("fido")))
         std::cout << __await_lift_2 << "\n";
         __coro_arg_3.emplace(Dog("spot"));
-        // print(await via_ref(Dog("spot")))
         __sub_3.emplace((*__coro_arg_3));
         __state = S_RESUME_3;
         continue;
@@ -203,9 +211,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        // print(await via_ref(Dog("spot")))
         std::cout << __await_lift_3 << "\n";
-        // print(await via_optional(None))
         __sub_4.emplace(nullptr);
         __state = S_RESUME_4;
         continue;
@@ -215,14 +221,8 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
         __sub_4.reset();
-        // # None must NOT be hoisted (lowers to nullptr, not a borrow).
-        // print(await via_optional(None))
         std::cout << __await_lift_4 << "\n";
-        // # A stable lvalue must NOT be hoisted: its address already persists, and
-        // # hoisting would copy it (breaking @nocopy / mutation-through-borrow).
-        // held = Dog("held")
         held.emplace(Dog("held"));
-        // print(await via_ref(held))
         __sub_5.emplace((*held));
         __state = S_RESUME_5;
         continue;
@@ -232,11 +232,9 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
         __sub_5.reset();
-        // print(await via_ref(held))
         std::cout << __await_lift_5 << "\n";
         __coro_arg_4 = "tag";
         __coro_arg_5.emplace(Dog("max"));
-        // print(await via_mixed("tag", Dog("max")))
         __sub_6.emplace(__coro_arg_4, ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_5))});
         __state = S_RESUME_6;
         continue;
@@ -246,8 +244,6 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_6 = std::move(__r6).value();
         __sub_6.reset();
-        // # Mixed borrowed/non-borrowed params.
-        // print(await via_mixed("tag", Dog("max")))
         std::cout << __await_lift_6 << "\n";
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
@@ -259,7 +255,6 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r7).value();
         __sub_7.reset();
-        // print(await via_ref(Dog("loop")))
         std::cout << __await_lift_7 << "\n";
         __state = S_JOIN_0;
         continue;
@@ -271,7 +266,6 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         }
         i = ((*__for_i_0))++;
         __coro_arg_6.emplace(Dog("loop"));
-        // print(await via_ref(Dog("loop")))
         __sub_7.emplace((*__coro_arg_6));
         __state = S_RESUME_7;
         continue;
@@ -287,22 +281,23 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # Regression: an rvalue-temporary arg bound to a borrowing coro param must be
+// # hoisted into the awaiter's frame, not flushed as a local of the suspending
+// # `case` block. Each coro READS the borrowed arg AFTER a suspension point --
+// # the read dereferences the frame-stored borrow, which dangled before the fix
+// # (silent UB for the union / pointer-form-Optional shapes; a hard C++ error for
+// # the plain non-value ref shape). Covers all three borrowing param shapes plus
+// # the negative cases (None and a stable lvalue must NOT be hoisted), a mixed
+// # borrowed/non-borrowed signature, and a lift inside a loop body.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: an rvalue-temporary arg bound to a borrowing coro param must be
-    // # hoisted into the awaiter's frame, not flushed as a local of the suspending
-    // # `case` block. Each coro READS the borrowed arg AFTER a suspension point --
-    // # the read dereferences the frame-stored borrow, which dangled before the fix
-    // # (silent UB for the union / pointer-form-Optional shapes; a hard C++ error for
-    // # the plain non-value ref shape). Covers all three borrowing param shapes plus
-    // # the negative cases (None and a stable lvalue must NOT be hoisted), a mixed
-    // # borrowed/non-borrowed signature, and a lift inside a loop body.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

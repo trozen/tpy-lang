@@ -9,22 +9,6 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename __F0, typename __F1>
-  requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  } && requires(__F1& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  }
-int32_t apply_both(__F0&& f, __F1&& g, int32_t x);
-template<typename __F0, typename __F1>
-  requires requires(__F0& __fn, int32_t __a0) {
-      __fn(__a0);
-  } && requires(__F1& __fn, int32_t __a0) {
-      __fn(__a0);
-  }
-void do_both(__F0&& a, __F1&& b, int32_t x);
-void main();
-
 // def apply_both(f: Fn[[int32], int32], g: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0, typename __F1>
   requires requires(__F0& __fn, int32_t __a0) {
@@ -32,10 +16,7 @@ template<typename __F0, typename __F1>
   } && requires(__F1& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
-int32_t apply_both(__F0&& f, __F1&& g, int32_t x) {
-    // return g(f(x))
-    return g(f(x));
-}
+int32_t apply_both(__F0&& f, __F1&& g, int32_t x);
 // def do_both(a: Fn[[int32], None], b: Fn[[int32], None], x: int32) -> None:
 template<typename __F0, typename __F1>
   requires requires(__F0& __fn, int32_t __a0) {
@@ -43,10 +24,32 @@ template<typename __F0, typename __F1>
   } && requires(__F1& __fn, int32_t __a0) {
       __fn(__a0);
   }
+void do_both(__F0&& a, __F1&& b, int32_t x);
+// def main() -> None:
+void main();
+
+// def apply_both(f: Fn[[int32], int32], g: Fn[[int32], int32], x: int32) -> int32:
+//     return g(f(x))
+template<typename __F0, typename __F1>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  } && requires(__F1& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply_both(__F0&& f, __F1&& g, int32_t x) {
+    return g(f(x));
+}
+// def do_both(a: Fn[[int32], None], b: Fn[[int32], None], x: int32) -> None:
+//     a(x)
+//     b(x)
+template<typename __F0, typename __F1>
+  requires requires(__F0& __fn, int32_t __a0) {
+      __fn(__a0);
+  } && requires(__F1& __fn, int32_t __a0) {
+      __fn(__a0);
+  }
 void do_both(__F0&& a, __F1&& b, int32_t x) {
-    // a(x)
     a(x);
-    // b(x)
     b(x);
 }
 

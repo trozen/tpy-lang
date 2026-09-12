@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def test_last_use() -> None:
+//     b: list[Node] = [Node(1), Node(2)]
+//     it = b.__iter__()
+//     total: int32 = 0
+//     for x in it:
+//         total += x.val
+//     print(total)
 void test_last_use() {
-    // b: list[Node] = [Node(1), Node(2)]
     std::vector<Node> b = {Node(1), Node(2)};
-    // it = b.__iter__()
     auto it = ::tpy::__iter__(b);
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& x = ::tpy::unwrap_ref(*__r_1);
-        // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def test_borrowing_not_last_use() -> None:
+//     b: list[Node] = [Node(10), Node(20)]
+//     it = b.__iter__()
+//     total: int32 = 0
+//     for x in it:
+//         total += x.val
+//     print(total)
+//     print(len(b))
 void test_borrowing_not_last_use() {
-    // b: list[Node] = [Node(10), Node(20)]
     std::vector<Node> b = {Node(10), Node(20)};
-    // it = b.__iter__()
     auto it = ::tpy::__iter__(b);
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& x = ::tpy::unwrap_ref(*__r_1);
-        // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    // print(total)
     std::cout << total << "\n";
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
+// test_last_use()
+// test_borrowing_not_last_use()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_last_use()
     test_last_use();
-    // test_borrowing_not_last_use()
     test_borrowing_not_last_use();
 }
 

@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -51,41 +52,43 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def bump(self) -> None:
+//     self.x += 1
 inline void Point::bump() {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
 }
 
 // def __init__(self, k: int32) -> None:
+//     def inner(n: int32) -> int32:
+//         p = Point(n)
+//         alias = p
+//         p = Point(n * 100)
+//         alias.bump()
+//         return alias.x + p.x
+//
+//     p = Point(1)
+//     if k > 0:
+//         p = Point(99)
+//     self.v = p.x + inner(k)
 inline Holder::Holder(int32_t k) {
     std::optional<Point> __slot_4;
-    // def inner(n: int32) -> int32:
     auto inner = [](int32_t n) -> int32_t {
         std::optional<Point> __slot_2;
-        // p = Point(n)
         Point __slot_1 = Point(n);
         Point* p = &__slot_1;
-        // alias = p
         Point& alias = (*p);
-        // p = Point(n * 100)
         p = &*(__slot_2 = Point((::tpy::mul_check<int32_t>(n, 100))));
-        // alias.bump()
         alias.bump();
-        // return alias.x + p.x
         return (::tpy::add_check<int32_t>(alias.x, p->x));
     };
-    // p = Point(1)
     Point __slot_3 = Point(1);
     Point* p = &__slot_3;
-    // if k > 0:
     if ((k > 0)) {
-        // p = Point(99)
         p = &*(__slot_4 = Point(99));
     }
-    // self.v = p.x + inner(k)
     this->v = (::tpy::add_check<int32_t>(p->x, inner(k)));
 }
 void __tpy_init();

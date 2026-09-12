@@ -5,39 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = ea.Err(7)           # qualified, int code field
+//     print(a.code)           # 7
+//     try:
+//         raise ea.Err(9)
+//     except ea.Err as e:
+//         print(e.code)       # 9
+//     b = Err("oops")         # bare = eb.Err, str msg field
+//     print(b.msg)            # oops
 void main() {
-    // a = ea.Err(7)           # qualified, int code field
     ::tpyapp::ea::Err a = ::tpyapp::ea::Err(::tpy::BigInt(7));
-    // print(a.code)           # 7
     std::cout << a.code << "\n";
-    // try:
     {
         try {
-            // raise ea.Err(9)
             ::tpyapp::ea::Err(::tpy::BigInt(9)).__raise__();
         } catch (const ::tpyapp::ea::Err& e) {
-            // print(e.code)       # 9
             std::cout << e.code << "\n";
         }
     }
-    // b = Err("oops")         # bare = eb.Err, str msg field
     ::tpyapp::eb::Err b = ::tpyapp::eb::Err("oops");
-    // print(b.msg)            # oops
     std::cout << b.msg << "\n";
 }
 
+// # Two same-name Exception subclasses from different modules coexist: the
+// # qualified `ea.Err` must not resolve to the bare-imported `eb.Err`.
+// import ea
+// from eb import Err
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two same-name Exception subclasses from different modules coexist: the
-    // # qualified `ea.Err` must not resolve to the bare-imported `eb.Err`.
-    // import ea
     ::tpyapp::ea::__tpy_init();
-    // from eb import Err
     ::tpyapp::eb::__tpy_init();
-    // main()
     main();
 }
 

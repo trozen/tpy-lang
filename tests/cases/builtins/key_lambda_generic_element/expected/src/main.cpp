@@ -5,57 +5,55 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     ps: list[tuple[str, int32]] = [("a", 3), ("b", 1), ("c", 2)]
+//     for k, n in ranked(ps):
+//         print(k, n)
+//     ns: list[tuple[int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
+//     for nm, s in by_name(ns):
+//         print(nm, s)
+//     sk, sn = smaller(("a", 3), ("b", 1))
+//     print("min:", sk, sn)
+//     lk, ln = larger(("a", 3), ("b", 1))
+//     print("max:", lk, ln)
 void main() {
-    // ps: list[tuple[str, int32]] = [("a", 3), ("b", 1), ("c", 2)]
     std::vector<std::tuple<std::string, int32_t>> ps = {std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1}, std::tuple<std::string, int32_t>{"c", 2}};
-    // for k, n in ranked(ps):
     auto __obj_0 = ranked<std::string>(ps);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        // for k, n in ranked(ps):
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        // print(k, n)
         std::cout << k << " " << n << "\n";
     }
-    // ns: list[tuple[int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
     std::vector<std::tuple<int32_t, std::string>> ns = {std::tuple<int32_t, std::string>{1, "c"}, std::tuple<int32_t, std::string>{2, "a"}, std::tuple<int32_t, std::string>{3, "b"}};
-    // for nm, s in by_name(ns):
     auto __obj_1 = by_name<int32_t>(ns);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_1 = *__beg_1;
-        // for nm, s in by_name(ns):
         const auto& __tup_2 = __for_tup_1;
         int32_t nm = std::get<0>(__tup_2);
         std::string_view s = std::get<1>(__tup_2);
-        // print(nm, s)
         std::cout << nm << " " << s << "\n";
     }
-    // sk, sn = smaller(("a", 3), ("b", 1))
     auto __tup_3 = smaller<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
     std::string_view sk = std::get<0>(__tup_3);
     int32_t sn = std::get<1>(__tup_3);
-    // print("min:", sk, sn)
     std::cout << "min:" << " " << sk << " " << sn << "\n";
-    // lk, ln = larger(("a", 3), ("b", 1))
     auto __tup_4 = larger<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
     std::string_view lk = std::get<0>(__tup_4);
     int32_t ln = std::get<1>(__tup_4);
-    // print("max:", lk, ln)
     std::cout << "max:" << " " << lk << " " << ln << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

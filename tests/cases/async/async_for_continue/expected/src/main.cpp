@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // async def sum_evens(c: Counts) -> int:
+//     total = 0
+//     async for x in c:
+//         if x % 2 != 0:
+//             continue
+//         total += x
+//     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_sum_evens::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_itr_0.emplace((c).__aiter__());
         __state = S_JOIN_0;
@@ -33,7 +38,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         try {
-            // async for x in c:
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -49,14 +53,12 @@ namespace tpyapp::main {
             __state = S_JOIN_0;
             continue;
         } else {
-            // total += x
             total = ::tpy::add_check<int32_t>(total, (x).to_fixed_check<int32_t>());
             __state = S_JOIN_0;
             continue;
         }
     }
     case S_JOIN_2: {
-        // return total
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(total);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -73,12 +75,12 @@ __coro_sum_evens sum_evens(Counts& c) {
 }
 
 // async def main() -> None:
+//     c = Counts(6)
+//     print(await sum_evens(c))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counts(6)
         c.emplace(Counts(::tpy::BigInt(6)));
-        // print(await sum_evens(c))
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -88,7 +90,6 @@ __coro_sum_evens sum_evens(Counts& c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await sum_evens(c))
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -105,18 +106,18 @@ __coro_main main() {
 }
 
 // async def __anext__(self) -> int:
+//     if self.n >= self.limit:
+//         raise StopAsyncIteration
+//     self.n += 1
+//     return self.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if self.n >= self.limit:
         if ((__self.n >= __self.limit)) {
-            // raise StopAsyncIteration
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.n += 1
         __self.n = (__self.n) + (::tpy::BigInt(1));
-        // return self.n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -127,15 +128,16 @@ __coro_main main() {
 }
 
 
+// # `continue` inside an `async for` body. Skip odd values; sum the rest.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `continue` inside an `async for` body. Skip odd values; sum the rest.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

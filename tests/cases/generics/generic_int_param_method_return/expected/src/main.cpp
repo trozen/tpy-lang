@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     g = Grid[int32, 4](10)
+//     g2 = g.copy()
+//     g3 = g.with_value(99)
+//     print(g._value)
+//     print(g2._value)
+//     print(g3._value)
 void main() {
-    // g = Grid[int32, 4](10)
     Grid<int32_t, 4> g = Grid<int32_t, 4>(10);
-    // g2 = g.copy()
     Grid<int32_t, 4> g2 = g.copy();
-    // g3 = g.with_value(99)
     Grid<int32_t, 4> g3 = g.with_value(99);
-    // print(g._value)
     std::cout << g._value << "\n";
-    // print(g2._value)
     std::cout << g2._value << "\n";
-    // print(g3._value)
     std::cout << g3._value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

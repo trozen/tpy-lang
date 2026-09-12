@@ -5,107 +5,117 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(math.fma(2.0, 3.0, 4.0))   # 10.0
+//     print(math.fma(-2.0, 0.5, 1.0))  # 0.0
+//     print(math.fma(0.1, 0.1, 0.0))   # ~= 0.01 (fused -- tighter than naive)
+//
+//     # An intermediate multiply overflows, but the fused final result is finite.
+//     maximum = 1.7976931348623157e308
+//     print("fusion", math.fma(maximum, 2.0, -maximum) == maximum)  # tpyc: ok
+//     # The exact product's low bits survive when the rounded product is one.
+//     print("low bits", math.fma(1.0000000074505806, 0.9999999925494194, -1.0) == -5.551115123125783e-17)  # tpyc: ok
+//
+//     # An input NaN takes precedence over the otherwise invalid zero * infinity.
+//     print("nan third", math.isnan(math.fma(0.0, math.inf, math.nan)))  # tpyc: ok
+//     print("nan third swapped", math.isnan(math.fma(math.inf, 0.0, math.nan)))  # tpyc: ok
+//     print("nan first", math.isnan(math.fma(math.nan, math.inf, -math.inf)))  # tpyc: ok
+//     print("nan second", math.isnan(math.fma(math.inf, math.nan, -math.inf)))  # tpyc: ok
+//     print("infinity", math.fma(math.inf, 2.0, math.inf) == math.inf)  # tpyc: ok
+//     print("negative infinity", math.fma(-math.inf, 2.0, -math.inf) == -math.inf)  # tpyc: ok
+//
+//     # Underflow and signed zero remain valid results.
+//     underflow = math.fma(-5e-324, 0.5, -0.0)  # tpyc: ok
+//     print("underflow", underflow == 0.0, math.copysign(1.0, underflow) == -1.0)
+//     negative_zero = math.fma(-0.0, 2.0, -0.0)  # tpyc: ok
+//     positive_zero = math.fma(-0.0, 2.0, 0.0)  # tpyc: ok
+//     print("zero signs", math.copysign(1.0, negative_zero), math.copysign(1.0, positive_zero))
+//
+//     # NaN without a NaN input is an invalid operation, caught as ValueError.
+//     try:
+//         math.fma(0.0, math.inf, 1.0)  # tpyc: ok
+//         print("invalid missed")
+//     except ValueError:
+//         print("invalid ValueError")
+//     try:
+//         math.fma(math.inf, 1.0, -math.inf)  # tpyc: ok
+//         print("opposed missed")
+//     except ValueError:
+//         print("opposed ValueError")
+//
+//     # All inputs are finite, so either sign of infinite result is overflow.
+//     try:
+//         math.fma(maximum, 2.0, 0.0)  # tpyc: ok
+//         print("overflow missed")
+//     except OverflowError:
+//         print("overflow OverflowError")
+//     try:
+//         math.fma(-maximum, 2.0, 0.0)  # tpyc: ok
+//         print("negative overflow missed")
+//     except OverflowError:
+//         print("negative overflow OverflowError")
 void main() {
-    // print(math.fma(2.0, 3.0, 4.0))   # 10.0
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(2.0, 3.0, 4.0)) << "\n";
-    // print(math.fma(-2.0, 0.5, 1.0))  # 0.0
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(-(2.0), 0.5, 1.0)) << "\n";
-    // print(math.fma(0.1, 0.1, 0.0))   # ~= 0.01 (fused -- tighter than naive)
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fma(0.1, 0.1, 0.0)) << "\n";
-    // # An intermediate multiply overflows, but the fused final result is finite.
-    // maximum = 1.7976931348623157e308
     double maximum = 1.7976931348623157e+308;
-    // print("fusion", math.fma(maximum, 2.0, -maximum) == maximum)  # tpyc: ok
     std::cout << "fusion" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(maximum, 2.0, -(maximum)) == maximum)) << "\n";
-    // # The exact product's low bits survive when the rounded product is one.
-    // print("low bits", math.fma(1.0000000074505806, 0.9999999925494194, -1.0) == -5.551115123125783e-17)  # tpyc: ok
     std::cout << "low bits" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(1.0000000074505806, 0.9999999925494194, -(1.0)) == -(5.551115123125783e-17))) << "\n";
-    // # An input NaN takes precedence over the otherwise invalid zero * infinity.
-    // print("nan third", math.isnan(math.fma(0.0, math.inf, math.nan)))  # tpyc: ok
     std::cout << "nan third" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(0.0, ::tpystd::math::inf, ::tpystd::math::nan))) << "\n";
-    // print("nan third swapped", math.isnan(math.fma(math.inf, 0.0, math.nan)))  # tpyc: ok
     std::cout << "nan third swapped" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::inf, 0.0, ::tpystd::math::nan))) << "\n";
-    // print("nan first", math.isnan(math.fma(math.nan, math.inf, -math.inf)))  # tpyc: ok
     std::cout << "nan first" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::nan, ::tpystd::math::inf, -(::tpystd::math::inf)))) << "\n";
-    // print("nan second", math.isnan(math.fma(math.inf, math.nan, -math.inf)))  # tpyc: ok
     std::cout << "nan second" << " " << ::tpy::print_bool(::std::isnan(::tpy::stdlib::math::checked_fma(::tpystd::math::inf, ::tpystd::math::nan, -(::tpystd::math::inf)))) << "\n";
-    // print("infinity", math.fma(math.inf, 2.0, math.inf) == math.inf)  # tpyc: ok
     std::cout << "infinity" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(::tpystd::math::inf, 2.0, ::tpystd::math::inf) == ::tpystd::math::inf)) << "\n";
-    // print("negative infinity", math.fma(-math.inf, 2.0, -math.inf) == -math.inf)  # tpyc: ok
     std::cout << "negative infinity" << " " << ::tpy::print_bool((::tpy::stdlib::math::checked_fma(-(::tpystd::math::inf), 2.0, -(::tpystd::math::inf)) == -(::tpystd::math::inf))) << "\n";
-    // # Underflow and signed zero remain valid results.
-    // underflow = math.fma(-5e-324, 0.5, -0.0)  # tpyc: ok
     double underflow = ::tpy::stdlib::math::checked_fma(-(5e-324), 0.5, -(0.0));
-    // print("underflow", underflow == 0.0, math.copysign(1.0, underflow) == -1.0)
     std::cout << "underflow" << " " << ::tpy::print_bool((underflow == 0.0)) << " " << ::tpy::print_bool((::std::copysign(1.0, underflow) == -(1.0))) << "\n";
-    // negative_zero = math.fma(-0.0, 2.0, -0.0)  # tpyc: ok
     double negative_zero = ::tpy::stdlib::math::checked_fma(-(0.0), 2.0, -(0.0));
-    // positive_zero = math.fma(-0.0, 2.0, 0.0)  # tpyc: ok
     double positive_zero = ::tpy::stdlib::math::checked_fma(-(0.0), 2.0, 0.0);
-    // print("zero signs", math.copysign(1.0, negative_zero), math.copysign(1.0, positive_zero))
     std::cout << "zero signs" << " " << ::tpy::print_float(::std::copysign(1.0, negative_zero)) << " " << ::tpy::print_float(::std::copysign(1.0, positive_zero)) << "\n";
-    // # NaN without a NaN input is an invalid operation, caught as ValueError.
-    // try:
     {
         try {
-            // math.fma(0.0, math.inf, 1.0)  # tpyc: ok
             ::tpy::stdlib::math::checked_fma(0.0, ::tpystd::math::inf, 1.0);
-            // print("invalid missed")
             std::cout << "invalid missed" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("invalid ValueError")
             std::cout << "invalid ValueError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // math.fma(math.inf, 1.0, -math.inf)  # tpyc: ok
             ::tpy::stdlib::math::checked_fma(::tpystd::math::inf, 1.0, -(::tpystd::math::inf));
-            // print("opposed missed")
             std::cout << "opposed missed" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("opposed ValueError")
             std::cout << "opposed ValueError" << "\n";
         }
     }
-    // # All inputs are finite, so either sign of infinite result is overflow.
-    // try:
     {
         try {
-            // math.fma(maximum, 2.0, 0.0)  # tpyc: ok
             ::tpy::stdlib::math::checked_fma(maximum, 2.0, 0.0);
-            // print("overflow missed")
             std::cout << "overflow missed" << "\n";
         } catch (const ::tpy::OverflowError&) {
-            // print("overflow OverflowError")
             std::cout << "overflow OverflowError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // math.fma(-maximum, 2.0, 0.0)  # tpyc: ok
             ::tpy::stdlib::math::checked_fma(-(maximum), 2.0, 0.0);
-            // print("negative overflow missed")
             std::cout << "negative overflow missed" << "\n";
         } catch (const ::tpy::OverflowError&) {
-            // print("negative overflow OverflowError")
             std::cout << "negative overflow OverflowError" << "\n";
         }
     }
 }
 
+// # Fused results and catchable exceptions follow math.fma in CPython 3.13+.
+// # This case has a version exclusion because the baseline CPython lacks fma.
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Fused results and catchable exceptions follow math.fma in CPython 3.13+.
-    // # This case has a version exclusion because the baseline CPython lacks fma.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

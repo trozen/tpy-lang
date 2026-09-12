@@ -3,11 +3,23 @@
 
 namespace tpyapp::main {
 
-// target, attempt: integer;
 int32_t target{};
-// target, attempt: integer;
 int32_t attempt{};
 
+// target, attempt: integer;
+//
+// target := 7;
+// attempt := 0;
+// while attempt <> target do
+// begin
+//   writeln('Enter a guess:');
+//   readln(attempt);
+//   if attempt < target then
+//     writeln('too low')
+//   else if attempt > target then
+//     writeln('too high');
+// end;
+// writeln('Correct!');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -16,29 +28,19 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::io::__tpy_init();
-    // target := 7;
     target = 7;
-    // attempt := 0;
     attempt = 0;
-    // while attempt <> target do
     while ((attempt != target)) {
-        // writeln('Enter a guess:');
         std::cout << "Enter a guess:" << "\n";
-        // readln(attempt);
         attempt = ::pascal_rt::runtime::io::readln_int();
-        // if attempt < target then
         if ((attempt < target)) {
-            // writeln('too low')
             std::cout << "too low" << "\n";
         } else {
-            // else if attempt > target then
             if ((attempt > target)) {
-                // writeln('too high');
                 std::cout << "too high" << "\n";
             }
         }
     }
-    // writeln('Correct!');
     std::cout << "Correct!" << "\n";
 }
 

@@ -5,43 +5,44 @@ namespace tpyapp::main {
 
 
 // def describe(c: Color) -> str:
+//     if c == Color.Red:
+//         return "red"
+//     return "other"
 std::string describe(::tpyapp::colors::Color c) {
-    // if c == Color.Red:
     if ((c == ::tpyapp::colors::Color::Red)) {
-        // return "red"
         return "red";
     }
-    // return "other"
     return "other";
 }
 
 // def default_color() -> Color:
+//     return Color.Blue
 ::tpyapp::colors::Color default_color() {
-    // return Color.Blue
     return ::tpyapp::colors::Color::Blue;
 }
 
 // def main() -> None:
+//     c: Color = Color.Green
+//     print(c)
+//     print(describe(Color.Red))
+//     print(default_color())
 void main() {
-    // c: Color = Color.Green
     ::tpyapp::colors::Color c = ::tpyapp::colors::Color::Green;
-    // print(c)
     std::cout << c << "\n";
-    // print(describe(Color.Red))
     std::cout << describe(::tpyapp::colors::Color::Red) << "\n";
-    // print(default_color())
     std::cout << default_color() << "\n";
 }
 
+// # Cross-module enum with explicit type annotations in params, returns, and locals
+// from colors import Color
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module enum with explicit type annotations in params, returns, and locals
-    // from colors import Color
     ::tpyapp::colors::__tpy_init();
-    // main()
     main();
 }
 

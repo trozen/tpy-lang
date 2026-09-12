@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def note(tag: str) -> None:
+//     print("ran", tag)
 ::tpystd::tpy::Poll<::std::monostate> __coro_note::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("ran", tag)
         std::cout << "ran" << " " << tag << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,19 +26,20 @@ __coro_note note(std::string_view tag) {
 }
 
 // async def main_coro() -> None:
+//     c = note("dropped")  # tpyc: warning(/never consumed/)
+//     d = note("first")
+//     d = note("second")  # tpyc: warning(/drops the previous coroutine/)
+//     await d
+//     await asyncio.sleep(0.001)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = "dropped";
-        // c = note("dropped")  # tpyc: warning(/never consumed/)
         c.emplace(note(__coro_arg_0));
         __coro_arg_1 = "first";
-        // d = note("first")
         d.emplace(note(__coro_arg_1));
         __coro_arg_2 = "second";
-        // d = note("second")  # tpyc: warning(/drops the previous coroutine/)
         d.emplace(note(__coro_arg_2));
-        // await d
         __state = S_RESUME_0;
         continue;
     }
@@ -47,7 +48,6 @@ __coro_note note(std::string_view tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         d.reset();
-        // await asyncio.sleep(0.001)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_1;
         continue;
@@ -72,23 +72,24 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Diagnostics for unconsumed bound coroutines: a handle never consumed warns
+// # at compile time (runtime: destroyed without running -- CPython's "never
+// # awaited" RuntimeWarning goes to stderr there); rebinding over an unconsumed
+// # handle warns. Output proves the dropped coroutines never ran.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Diagnostics for unconsumed bound coroutines: a handle never consumed warns
-    // # at compile time (runtime: destroyed without running -- CPython's "never
-    // # awaited" RuntimeWarning goes to stderr there); rebinding over an unconsumed
-    // # handle warns. Output proves the dropped coroutines never ran.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -3,47 +3,43 @@
 
 namespace tpyapp::main {
 
-// x: char = "x"
 char x{};
-// y: char = "y"
 char y{};
-// sx: char | None = x
 std::optional<char> sx;
-// sy: char | None = y
 std::optional<char> sy;
-// n: char | None = None
 std::optional<char> n;
 
 // def ne_both(a: char | None, b: char | None) -> bool:
+//     return a != b  # tpyc: ok
 bool ne_both(std::optional<char> a, std::optional<char> b) {
-    // return a != b  # tpyc: ok
     return (a != b);
 }
 
+// x: char = "x"
+// y: char = "y"
+// sx: char | None = x
+// sy: char | None = y
+// n: char | None = None
+//
+// print(ne_both(sx, sx))
+// print(ne_both(sx, sy))
+// print(ne_both(n, sx))
+// print(ne_both(sx, n))
+// print(ne_both(n, n))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: char = "x"
     x = 'x';
-    // y: char = "y"
     y = 'y';
-    // sx: char | None = x
     sx = x;
-    // sy: char | None = y
     sy = y;
-    // n: char | None = None
     n = std::nullopt;
-    // print(ne_both(sx, sx))
     std::cout << ::tpy::print_bool(ne_both(sx, sx)) << "\n";
-    // print(ne_both(sx, sy))
     std::cout << ::tpy::print_bool(ne_both(sx, sy)) << "\n";
-    // print(ne_both(n, sx))
     std::cout << ::tpy::print_bool(ne_both(n, sx)) << "\n";
-    // print(ne_both(sx, n))
     std::cout << ::tpy::print_bool(ne_both(sx, n)) << "\n";
-    // print(ne_both(n, n))
     std::cout << ::tpy::print_bool(ne_both(n, n)) << "\n";
 }
 

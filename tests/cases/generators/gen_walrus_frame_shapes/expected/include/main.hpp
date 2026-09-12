@@ -24,21 +24,37 @@ struct __gen_own_tuple;
 struct __gen_exc_binding;
 struct __gen_Src_gen;
 
+// def val_scalar() -> Iterator[int32]:
 __gen_val_scalar val_scalar();
+// def val_str(words: list[str]) -> Iterator[int]:
 __gen_val_str val_str(std::vector<std::string>& words);
+// def make_pair(i: int32) -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> make_pair(int32_t i);
+// def val_tuple() -> Iterator[int32]:
 __gen_val_tuple val_tuple();
+// def owning() -> Iterator[int32]:
 __gen_owning owning();
+// def borrow_alias(rows: list[list[int32]]) -> Iterator[int32]:
 __gen_borrow_alias borrow_alias(std::vector<std::vector<int32_t>>& rows);
+// def pick(nodes: list[Node], i: int32) -> Node | None:
 Node* pick(std::vector<Node>& nodes, int32_t i);
+// def value_of(n: Node | None) -> int32:
 int32_t value_of(const Node* n);
+// def opt_ptr(nodes: list[Node]) -> Iterator[int32]:
 __gen_opt_ptr opt_ptr(std::vector<Node>& nodes);
+// def borrow_pair(n: Node) -> tuple[int32, Node]:
 std::tuple<int32_t, Node*> borrow_pair(Node& n);
+// def borrow_tuple(nodes: list[Node]) -> Iterator[int32]:
 __gen_borrow_tuple borrow_tuple(std::vector<Node>& nodes);
+// def own_pair(i: int32) -> Own[tuple[int32, Node]]:
 std::tuple<int32_t, Node> own_pair(int32_t i);
+// def own_tuple() -> Iterator[int32]:
 __gen_own_tuple own_tuple();
+// def raiser(i: int32) -> int32:
 int32_t raiser(int32_t i);
+// def exc_binding() -> Iterator[int32]:
 __gen_exc_binding exc_binding();
+// def main() -> None:
 void main();
 
 // class Node:
@@ -96,7 +112,7 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
     return os;
 }
 
-// Generator: val_scalar
+// def val_scalar() -> Iterator[int32]:
 struct __gen_val_scalar : public ::tpy::next_iter_mixin<__gen_val_scalar, int32_t> {
     int32_t __state;
     int32_t i;
@@ -121,7 +137,7 @@ struct __gen_val_scalar : public ::tpy::next_iter_mixin<__gen_val_scalar, int32_
     }
 };
 
-// Generator: val_str
+// def val_str(words: list[str]) -> Iterator[int]:
 struct __gen_val_str : public ::tpy::next_iter_mixin<__gen_val_str, ::tpy::BigInt> {
     int32_t __state;
     std::vector<std::string>& words;
@@ -147,7 +163,7 @@ struct __gen_val_str : public ::tpy::next_iter_mixin<__gen_val_str, ::tpy::BigIn
     }
 };
 
-// Generator: val_tuple
+// def val_tuple() -> Iterator[int32]:
 struct __gen_val_tuple : public ::tpy::next_iter_mixin<__gen_val_tuple, int32_t> {
     int32_t __state;
     int32_t i;
@@ -172,7 +188,7 @@ struct __gen_val_tuple : public ::tpy::next_iter_mixin<__gen_val_tuple, int32_t>
     }
 };
 
-// Generator: owning
+// def owning() -> Iterator[int32]:
 struct __gen_owning : public ::tpy::next_iter_mixin<__gen_owning, int32_t> {
     int32_t __state;
     int32_t i;
@@ -197,7 +213,7 @@ struct __gen_owning : public ::tpy::next_iter_mixin<__gen_owning, int32_t> {
     }
 };
 
-// Generator: borrow_alias
+// def borrow_alias(rows: list[list[int32]]) -> Iterator[int32]:
 struct __gen_borrow_alias : public ::tpy::next_iter_mixin<__gen_borrow_alias, int32_t> {
     int32_t __state;
     std::vector<std::vector<int32_t>>& rows;
@@ -223,7 +239,7 @@ struct __gen_borrow_alias : public ::tpy::next_iter_mixin<__gen_borrow_alias, in
     }
 };
 
-// Generator: opt_ptr
+// def opt_ptr(nodes: list[Node]) -> Iterator[int32]:
 struct __gen_opt_ptr : public ::tpy::next_iter_mixin<__gen_opt_ptr, int32_t> {
     int32_t __state;
     std::vector<Node>& nodes;
@@ -249,7 +265,7 @@ struct __gen_opt_ptr : public ::tpy::next_iter_mixin<__gen_opt_ptr, int32_t> {
     }
 };
 
-// Generator: borrow_tuple
+// def borrow_tuple(nodes: list[Node]) -> Iterator[int32]:
 struct __gen_borrow_tuple : public ::tpy::next_iter_mixin<__gen_borrow_tuple, int32_t> {
     int32_t __state;
     std::vector<Node>& nodes;
@@ -275,7 +291,7 @@ struct __gen_borrow_tuple : public ::tpy::next_iter_mixin<__gen_borrow_tuple, in
     }
 };
 
-// Generator: own_tuple
+// def own_tuple() -> Iterator[int32]:
 struct __gen_own_tuple : public ::tpy::next_iter_mixin<__gen_own_tuple, int32_t> {
     int32_t __state;
     int32_t i;
@@ -300,7 +316,7 @@ struct __gen_own_tuple : public ::tpy::next_iter_mixin<__gen_own_tuple, int32_t>
     }
 };
 
-// Generator: exc_binding
+// def exc_binding() -> Iterator[int32]:
 struct __gen_exc_binding : public ::tpy::next_iter_mixin<__gen_exc_binding, int32_t> {
     int32_t __state;
     int32_t i;
@@ -328,7 +344,7 @@ struct __gen_exc_binding : public ::tpy::next_iter_mixin<__gen_exc_binding, int3
     }
 };
 
-// Generator: Src.gen
+// def gen(self) -> Iterator[int32]:
 struct __gen_Src_gen : public ::tpy::next_iter_mixin<__gen_Src_gen, int32_t> {
     int32_t __state;
     const Src& __self;
@@ -360,12 +376,15 @@ inline __gen_Src_gen Src::gen() const {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self, msg: str) -> None:
+//     self.msg = msg
 inline Boom::Boom(std::string_view msg) : msg(msg) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Src::Src(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -17,17 +17,29 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_through_get(o: Outer) -> int32:   # const Outer&
 int32_t read_through_get(const Outer& o);
+// def write_through_get(o: Outer):           # Outer&
 void write_through_get(Outer& o);
+// def mutate_through_get(o: Outer):          # Outer&
 void mutate_through_get(Outer& o);
+// def aug_through_get(o: Outer):             # Outer&
 void aug_through_get(Outer& o);
+// def alias_read(o: Outer) -> int32:         # Outer&: non-const local alias needs a
 int32_t alias_read(Outer& o);
+// def alias_write(o: Outer):                 # Outer&
 void alias_write(Outer& o);
+// def elem_alias_write(o: Outer):            # Outer&: field-path element-borrow alias write
 void elem_alias_write(Outer& o);
+// def read_user_accessor(c: Cell) -> int32:  # const Cell&
 int32_t read_user_accessor(const Cell& c);
+// def write_user_accessor(c: Cell):          # Cell&
 void write_user_accessor(Cell& c);
+// def peek_user_accessor(c: Cell) -> int32:  # const Cell&: value return, only read
 int32_t peek_user_accessor(const Cell& c);
+// def sum_boxes(boxes: list[Box[Inner]]) -> int32:   # const list&: loop var read through accessor
 int32_t sum_boxes(const std::vector<::tpystd::tplib::box::Box<Inner>>& boxes);
+// def main():
 void main();
 
 // class Inner:
@@ -106,46 +118,50 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Inner::Inner(int32_t v) : v(v) {}
 
 // def bump(self):
+//     self.v += 1
 inline void Inner::bump() {
-    // self.v += 1
     this->v = ::tpy::add_check<int32_t>(this->v, 1);
 }
 
 // def __init__(self, v: int32):
+//     self.inner = Inner(v)
 inline Cell::Cell(int32_t v) : inner(Inner(v)) {}
 
 // @auto_readonly
 // def get(self) -> auto_readonly[Inner]:
+//     return self.inner
 inline Inner& Cell::get() {
-    // return self.inner
     return this->inner;
 }
 
 // @auto_readonly
 // def get(self) -> auto_readonly[Inner]:
+//     return self.inner
 inline const Inner& Cell::get() const {
-    // return self.inner
     return this->inner;
 }
 
 // @auto_readonly
 // def peek(self) -> int32:   # value return: copy, never roots mutation to receiver
+//     return self.inner.v
 inline int32_t Cell::peek() {
-    // return self.inner.v
     return this->inner.v;
 }
 
 // @auto_readonly
 // def peek(self) -> int32:   # value return: copy, never roots mutation to receiver
+//     return self.inner.v
 inline int32_t Cell::peek() const {
-    // return self.inner.v
     return this->inner.v;
 }
 
 // def __init__(self, v: int32):
+//     self.b = Box(Inner(v))
+//     self.items = [Inner(v)]
 inline Outer::Outer(int32_t v) : b(::tpystd::tplib::box::Box<Inner>(Inner(v))), items(std::vector<Inner>{Inner(v)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

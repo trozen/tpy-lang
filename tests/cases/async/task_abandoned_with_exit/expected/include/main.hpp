@@ -17,8 +17,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_worker;
 struct __coro_main_coro;
 
+// async def worker() -> None:
 __coro_worker worker();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class CM:
@@ -38,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
     return os;
 }
 
-// Async coroutine: worker
+// async def worker() -> None:
 struct __coro_worker {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -80,7 +83,7 @@ struct __coro_worker {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -106,14 +109,14 @@ struct __coro_main_coro {
 
 
 // def __enter__(self) -> None:
+//     print("enter")
 inline void CM::__enter__() const {
-    // print("enter")
     std::cout << "enter" << "\n";
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("exit exceptional" if exc_val is not None else "exit normal")
 inline void CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("exit exceptional" if exc_val is not None else "exit normal")
     std::cout << (((exc_val != nullptr)) ? ("exit exceptional") : ("exit normal")) << "\n";
 }
 void __tpy_init();

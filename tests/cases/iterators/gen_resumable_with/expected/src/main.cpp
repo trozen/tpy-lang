@@ -5,6 +5,9 @@ namespace tpyapp::main {
 
 
 // def gen_with_yield(xs: list[int]) -> Iterator[int]:
+//     with Tracer("g"):
+//         for x in xs:
+//             yield x
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_yield::__next__() {
     try {
     while (true) switch (__state) {
@@ -36,7 +39,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_yield::__next_
                 continue;
             }
             x = *((*__for_it_0))++;
-            // yield x
             __state = S_RESUME_0;
             return x;
         } catch (::tpy::BaseException& __exc_0) {
@@ -83,8 +85,9 @@ __gen_gen_with_yield gen_with_yield(std::vector<::tpy::BigInt>& xs) {
 }
 
 // def main():
+//     for v in gen_with_yield([10, 20, 30]):
+//         print(v)
 void main() {
-    // for v in gen_with_yield([10, 20, 30]):
     {
         std::vector<::tpy::BigInt> __tmp_1 = {10, 20, 30};
         auto __src_0 = gen_with_yield(__tmp_1);
@@ -93,18 +96,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

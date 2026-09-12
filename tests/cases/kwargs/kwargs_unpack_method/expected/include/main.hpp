@@ -12,6 +12,7 @@ struct Client;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Options(TypedDict):
@@ -50,15 +51,16 @@ inline std::ostream& operator<<(std::ostream& os, const Client& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Client::Client(std::string_view name) : name(name) {}
 
 // def connect(self, **kwargs: Unpack[Options]) -> None:
+//     print(self.name)
+//     print(kwargs["host"])
+//     print(kwargs["port"])
 inline void Client::connect(const Options& kwargs) const {
-    // print(self.name)
     std::cout << this->name << "\n";
-    // print(kwargs["host"])
     std::cout << kwargs.host << "\n";
-    // print(kwargs["port"])
     std::cout << kwargs.port << "\n";
 }
 void __tpy_init();

@@ -30,11 +30,17 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def speak(p: Pet) -> str:
 std::string speak(const Pet& p);
+// def kind(p: Pet) -> str:
 std::string kind(const Pet& p);
+// def classify_const(p: readonly[Pet]) -> str:
 std::string classify_const(const Pet& p);
+// def assert_dog(p: Pet) -> str:
 std::string assert_dog(const Pet& p);
+// def short_circuit(p: Pet, threshold: int32) -> bool:
 bool short_circuit(const Pet& p, int32_t threshold);
+// def main() -> None:
 void main();
 
 // class Pet(Tagged):
@@ -122,29 +128,33 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Pet::Pet(std::string_view n) : _name(n) {}
 
 // @readonly
 // def name(self) -> str:
+//     return self._name
 inline std::string Pet::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline Dog::Dog(std::string_view n) : Pet(n) {}
 
 // @readonly
 // def bark(self) -> str:
+//     return "woof from " + self._name
 inline std::string Dog::bark() const {
-    // return "woof from " + self._name
     return (::tpy::str_concat("woof from ", this->_name));
 }
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline Cat::Cat(std::string_view n) : Pet(n) {}
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline Bird::Bird(std::string_view n) : Pet(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

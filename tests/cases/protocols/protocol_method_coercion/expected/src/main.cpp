@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     calc = SimpleCalc(32)
+//     use_calc(calc)
+//
+//     # Also test passing constructor as rvalue
+//     use_calc(SimpleCalc(0))
 void main() {
-    // calc = SimpleCalc(32)
     SimpleCalc calc = SimpleCalc(32);
-    // use_calc(calc)
     use_calc(calc);
-    // # Also test passing constructor as rvalue
-    // use_calc(SimpleCalc(0))
     auto __tmp_1 = SimpleCalc(0);
     use_calc(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,34 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Single-arg Fn[[U], U] -- the canonical bug case
+//     s1 = apply(lambda s: s + "!", "hello")
+//     print(s1)
+//
+//     # Two-arg Fn[[U, U], U] -- the reduce-shape variant
+//     s2 = reduce2(lambda a, b: a + b, "foo", "bar")
+//     print(s2)
+//
+//     # int still works the same way
+//     n1 = apply(lambda x: x + 1, 41)
+//     print(n1)
+//
+//     n2 = reduce2(lambda a, b: a + b, 10, 20)
+//     print(n2)
 void main() {
-    // # Single-arg Fn[[U], U] -- the canonical bug case
-    // s1 = apply(lambda s: s + "!", "hello")
     std::string s1 = apply<std::string>([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "!")); }, "hello");
-    // print(s1)
     std::cout << s1 << "\n";
-    // # Two-arg Fn[[U, U], U] -- the reduce-shape variant
-    // s2 = reduce2(lambda a, b: a + b, "foo", "bar")
     std::string s2 = reduce2<std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, "foo", "bar");
-    // print(s2)
     std::cout << s2 << "\n";
-    // # int still works the same way
-    // n1 = apply(lambda x: x + 1, 41)
     int32_t n1 = apply<int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 41);
-    // print(n1)
     std::cout << n1 << "\n";
-    // n2 = reduce2(lambda a, b: a + b, 10, 20)
     int32_t n2 = reduce2<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 10, 20);
-    // print(n2)
     std::cout << n2 << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

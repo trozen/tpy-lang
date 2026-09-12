@@ -41,11 +41,12 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
+//     self.n += 1
 inline void Counter::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 void __tpy_init();

@@ -12,7 +12,9 @@ struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_pair(v: int32) -> Own[tuple[int32, Box]]:
 std::tuple<int32_t, Box> make_pair(int32_t v);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -48,9 +50,11 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self) -> None:
+//     self.t = make_pair(5)  # tpyc: ok
 inline H::H() : t(make_pair(5)) {}
 void __tpy_init();
 } // namespace tpyapp::main

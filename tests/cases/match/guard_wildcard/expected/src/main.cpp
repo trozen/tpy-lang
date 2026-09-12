@@ -5,73 +5,76 @@ namespace tpyapp::main {
 
 
 // def classify(x: int32) -> str:
+//     match x:
+//         case _ if x > 10:
+//             return "big"
+//         case _ if x > 5:
+//             return "medium"
+//         case _:
+//             return "small"
+//     return ""
 std::string classify(int32_t x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1) {
-    // case _ if x > 10:
     default: {
         if ((x > 10)) {
-            // return "big"
             return "big";
         } else if ((x > 5)) {
-            // return "medium"
             return "medium";
         } else {
-            // return "small"
             return "small";
         }
         break;
     }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def describe(x: int32) -> str:
+//     match x:
+//         case n if n == 0:
+//             return "zero"
+//         case n:
+//             return "nonzero: " + str(n)
+//     return ""
 std::string describe(int32_t x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1) {
-    // case n if n == 0:
     default: {
         auto n = __match_subject_1;
         if ((n == 0)) {
-            // return "zero"
             return "zero";
         } else {
-            // return "nonzero: " + str(n)
             return (::tpy::str_concat("nonzero: ", ::tpy::fixed_to_str<int32_t>(n)));
         }
         break;
     }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     print(classify(int32(20)))
+//     print(classify(int32(7)))
+//     print(classify(int32(3)))
+//     print(describe(int32(0)))
+//     print(describe(int32(42)))
 void main() {
-    // print(classify(int32(20)))
     std::cout << classify(20) << "\n";
-    // print(classify(int32(7)))
     std::cout << classify(7) << "\n";
-    // print(classify(int32(3)))
     std::cout << classify(3) << "\n";
-    // print(describe(int32(0)))
     std::cout << describe(0) << "\n";
-    // print(describe(int32(42)))
     std::cout << describe(42) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

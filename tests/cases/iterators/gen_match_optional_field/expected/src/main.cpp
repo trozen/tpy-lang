@@ -5,14 +5,18 @@ namespace tpyapp::main {
 
 
 // def gen(b: Box) -> Iterator[int]:
+//     match b:
+//         case Box(maybe=v):
+//             yield 1
+//             if v is not None:
+//                 print(v.n)
+//             yield 2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = b;
-        // case Box(maybe=v):
         {
             v = ::tpy::optional_to_ptr(__match_subject_1.maybe);
-            // yield 1
             __state = S_RESUME_0;
             return ::tpy::BigInt(1);
         }
@@ -20,12 +24,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // if v is not None:
         if ((v != nullptr)) {
-            // print(v.n)
             std::cout << v->n << "\n";
         }
-        // yield 2
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
@@ -49,8 +50,12 @@ __gen_gen gen(Box& b) {
 }
 
 // def main() -> None:
+//     for x in gen(Box(Inner(7))):
+//         print(x)
+//     print("--")
+//     for x in gen(Box(None)):
+//         print(x)
 void main() {
-    // for x in gen(Box(Inner(7))):
     {
         Inner __tmp_1 = Inner(::tpy::BigInt(7));
         Box __tmp_2 = Box(&(__tmp_1));
@@ -60,13 +65,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for x in gen(Box(None)):
     {
         Box __tmp_3 = Box(nullptr);
         auto __src_2 = gen(__tmp_3);
@@ -75,18 +77,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

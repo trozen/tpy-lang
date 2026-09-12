@@ -21,14 +21,20 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_check_inside;
 struct __coro_trivial;
 
+// def check_outside() -> None:
 void check_outside();
+// async def check_inside() -> None:
 __coro_check_inside check_inside();
+// def check_sleep() -> None:
 void check_sleep();
+// async def trivial() -> None:
 __coro_trivial trivial();
+// def check_teardown() -> None:
 void check_teardown();
+// def main() -> None:
 void main();
 
-// Async coroutine: check_inside
+// async def check_inside() -> None:
 struct __coro_check_inside {
     int32_t __state;
     bool __cancel_pending;
@@ -50,7 +56,7 @@ struct __coro_check_inside {
     }
 };
 
-// Async coroutine: trivial
+// async def trivial() -> None:
 struct __coro_trivial {
     int32_t __state;
     bool __cancel_pending;

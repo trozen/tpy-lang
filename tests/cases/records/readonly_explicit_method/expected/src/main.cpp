@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Counter = Counter(21)
+//     print(c.get_value())
+//     print(c.doubled())
 void main() {
-    // c: Counter = Counter(21)
     Counter c = Counter(21);
-    // print(c.get_value())
     std::cout << c.get_value() << "\n";
-    // print(c.doubled())
     std::cout << c.doubled() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

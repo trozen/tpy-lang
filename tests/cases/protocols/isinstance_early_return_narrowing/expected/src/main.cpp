@@ -5,340 +5,343 @@ namespace tpyapp::main {
 
 
 // def bare_negative(p: Pet) -> str:
+//     # Negative-guard early-return: post-guard p narrows to Dog via cast-and-cache
+//     # at the outer scope. Source is Pet& -- polymorphic_cast_arg emits &p.
+//     if not isinstance(p, Dog):  # tpyc: ok
+//         return "non-dog"
+//     narrowed = p  # tpyc: type(Dog)
+//     return narrowed.bark()
 std::string bare_negative(const Pet& p) {
-    // # Negative-guard early-return: post-guard p narrows to Dog via cast-and-cache
-    // # at the outer scope. Source is Pet& -- polymorphic_cast_arg emits &p.
-    // if not isinstance(p, Dog):  # tpyc: ok
     if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-        // return "non-dog"
         return "non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    // narrowed = p  # tpyc: type(Dog)
     const Dog& narrowed = __p;
-    // return narrowed.bark()
     return narrowed.bark();
 }
 
 // def bare_raise(p: Pet) -> str:
+//     # Same shape, raise instead of return.
+//     if not isinstance(p, Dog):  # tpyc: ok
+//         raise ValueError("expected Dog")
+//     narrowed = p  # tpyc: type(Dog)
+//     return narrowed.bark()
 std::string bare_raise(const Pet& p) {
-    // # Same shape, raise instead of return.
-    // if not isinstance(p, Dog):  # tpyc: ok
     if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-        // raise ValueError("expected Dog")
         throw ::tpy::ValueError("expected Dog");
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    // narrowed = p  # tpyc: type(Dog)
     const Dog& narrowed = __p;
-    // return narrowed.bark()
     return narrowed.bark();
 }
 
 // def bare_const(p: readonly[Pet]) -> str:
+//     # Const-borrow source -- post-guard cast emits `const Dog& __p = *dynamic_cast<const Dog*>(&p)`.
+//     if not isinstance(p, Dog):  # tpyc: ok
+//         return "non-dog"
+//     narrowed = p  # tpyc: type(Dog)
+//     return narrowed.bark()
 std::string bare_const(const Pet& p) {
-    // # Const-borrow source -- post-guard cast emits `const Dog& __p = *dynamic_cast<const Dog*>(&p)`.
-    // if not isinstance(p, Dog):  # tpyc: ok
     if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-        // return "non-dog"
         return "non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    // narrowed = p  # tpyc: type(Dog)
     const Dog& narrowed = __p;
-    // return narrowed.bark()
     return narrowed.bark();
 }
 
 // def optional_negative(p: Optional[Pet]) -> str:
+//     # Optional-source: lowered to Pet*; cast input is `p` (already pointer).
+//     # The narrowed (Dog) post-guard path is comp-only -- constructing
+//     # Optional[Pet] from a Dog rvalue is Phase-20-rejected as slicing. The
+//     # guard-failing branch is reachable via a None literal and is exercised
+//     # at runtime below.
+//     if not isinstance(p, Dog):  # tpyc: ok
+//         return "none-or-non-dog"
+//     narrowed = p  # tpyc: type(Dog)
+//     return narrowed.bark()
 std::string optional_negative(const Pet* p) {
-    // # Optional-source: lowered to Pet*; cast input is `p` (already pointer).
-    // # The narrowed (Dog) post-guard path is comp-only -- constructing
-    // # Optional[Pet] from a Dog rvalue is Phase-20-rejected as slicing. The
-    // # guard-failing branch is reachable via a None literal and is exercised
-    // # at runtime below.
-    // if not isinstance(p, Dog):  # tpyc: ok
     if ((!((dynamic_cast<const Dog*>(p) != nullptr)))) {
-        // return "none-or-non-dog"
         return "none-or-non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(p);
-    // narrowed = p  # tpyc: type(Dog)
     const Dog& narrowed = __p;
-    // return narrowed.bark()
     return narrowed.bark();
 }
 
 // def positive_then_more(p: Pet) -> str:
+//     # Positive guard with early return: the if-body returns. For the positive
+//     # case `if isinstance(p, Dog): return ...`, else_type_facts has no useful
+//     # narrowing for p (p stays Pet) -- no post-guard extraction emits.
+//     if isinstance(p, Dog):  # tpyc: ok
+//         return "DOG: " + p.bark()
+//     return "pet: " + p.name()
 std::string positive_then_more(const Pet& p) {
-    // # Positive guard with early return: the if-body returns. For the positive
-    // # case `if isinstance(p, Dog): return ...`, else_type_facts has no useful
-    // # narrowing for p (p stays Pet) -- no post-guard extraction emits.
-    // if isinstance(p, Dog):  # tpyc: ok
     if (const Dog* __p_ptr = dynamic_cast<const Dog*>(&p); (__p_ptr != nullptr)) {
-        // return "DOG: " + p.bark()
         return (::tpy::str_concat("DOG: ", (*__p_ptr).bark()));
     }
-    // return "pet: " + p.name()
     return (::tpy::str_concat("pet: ", p.name()));
 }
 
 // def sequential_negative(p: Pet) -> str:
+//     # Two chained negative-guard early-returns on the same variable. The first
+//     # cast-and-cache aliases p as `const Dog& __p`; the second binds to a fresh
+//     # `const WatchDog& __p_2` (suffix avoids C++ redecl), and post-second-guard
+//     # reads of p route to __p_2. The cast input for both stays anchored to the
+//     # original Pet& source via polymorphic_cast_arg, not chained through __p.
+//     if not isinstance(p, Dog):  # tpyc: ok
+//         return "non-dog"
+//     nd = p  # tpyc: type(Dog)
+//     if not isinstance(p, WatchDog):  # tpyc: ok
+//         return "DOG: " + nd.bark()
+//     nw = p  # tpyc: type(WatchDog)
+//     return "WATCH: " + nw.alert()
 std::string sequential_negative(const Pet& p) {
-    // # Two chained negative-guard early-returns on the same variable. The first
-    // # cast-and-cache aliases p as `const Dog& __p`; the second binds to a fresh
-    // # `const WatchDog& __p_2` (suffix avoids C++ redecl), and post-second-guard
-    // # reads of p route to __p_2. The cast input for both stays anchored to the
-    // # original Pet& source via polymorphic_cast_arg, not chained through __p.
-    // if not isinstance(p, Dog):  # tpyc: ok
     if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-        // return "non-dog"
         return "non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    // nd = p  # tpyc: type(Dog)
     const Dog& nd = __p;
-    // if not isinstance(p, WatchDog):  # tpyc: ok
     if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
-        // return "DOG: " + nd.bark()
         return (::tpy::str_concat("DOG: ", nd.bark()));
     }
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
-    // nw = p  # tpyc: type(WatchDog)
     const WatchDog& nw = __p_2;
-    // return "WATCH: " + nw.alert()
     return (::tpy::str_concat("WATCH: ", nw.alert()));
 }
 
 // def triple_chain(p: Pet) -> str:
+//     # Three-level chain on the same variable exercises the multi-bump path
+//     # in `_fresh_alias_local`: `__p` -> `__p_2` -> `__p_3`.
+//     if not isinstance(p, Dog):  # tpyc: ok
+//         return "non-dog"
+//     if not isinstance(p, WatchDog):  # tpyc: ok
+//         return "dog only"
+//     if not isinstance(p, GuardDog):  # tpyc: ok
+//         return "watch only"
+//     g = p  # tpyc: type(GuardDog)
+//     return "guard: " + g.patrol()
 std::string triple_chain(const Pet& p) {
-    // # Three-level chain on the same variable exercises the multi-bump path
-    // # in `_fresh_alias_local`: `__p` -> `__p_2` -> `__p_3`.
-    // if not isinstance(p, Dog):  # tpyc: ok
     if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-        // return "non-dog"
         return "non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    // if not isinstance(p, WatchDog):  # tpyc: ok
     if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
-        // return "dog only"
         return "dog only";
     }
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
-    // if not isinstance(p, GuardDog):  # tpyc: ok
     if ((!((dynamic_cast<const GuardDog*>(&p) != nullptr)))) {
-        // return "watch only"
         return "watch only";
     }
     const GuardDog& __p_3 = *dynamic_cast<const GuardDog*>(&p);
-    // g = p  # tpyc: type(GuardDog)
     const GuardDog& g = __p_3;
-    // return "guard: " + g.patrol()
     return (::tpy::str_concat("guard: ", g.patrol()));
 }
 
 // def assert_then_assert(p: Pet) -> str:
+//     # Two persistent emits at the same C++ scope via the assert path. Both
+//     # route through _emit_isinstance_extractions with persistent=True, so
+//     # the second alias must bump to __p_2 -- same mechanism, different
+//     # caller from the early-return shape.
+//     assert isinstance(p, Dog)  # tpyc: ok
+//     assert isinstance(p, WatchDog)  # tpyc: ok
+//     w = p  # tpyc: type(WatchDog)
+//     return "ASSERT-WATCH: " + w.alert()
 std::string assert_then_assert(const Pet& p) {
-    // # Two persistent emits at the same C++ scope via the assert path. Both
-    // # route through _emit_isinstance_extractions with persistent=True, so
-    // # the second alias must bump to __p_2 -- same mechanism, different
-    // # caller from the early-return shape.
-    // assert isinstance(p, Dog)  # tpyc: ok
     if (!((dynamic_cast<const Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    // assert isinstance(p, WatchDog)  # tpyc: ok
     if (!((dynamic_cast<const WatchDog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
-    // w = p  # tpyc: type(WatchDog)
     const WatchDog& w = __p_2;
-    // return "ASSERT-WATCH: " + w.alert()
     return (::tpy::str_concat("ASSERT-WATCH: ", w.alert()));
 }
 
 // def assert_then_early_return(p: Pet) -> str:
+//     # Cross-call-site combination: assert (persistent) then early-return
+//     # (persistent). narrowed_vars state set by the assert must survive into
+//     # the early-return picker so its bump finds a fresh name.
+//     assert isinstance(p, Dog)  # tpyc: ok
+//     if not isinstance(p, WatchDog):  # tpyc: ok
+//         return "ASSERT-DOG: " + p.bark()
+//     w = p  # tpyc: type(WatchDog)
+//     return "ASSERT-EARLY-WATCH: " + w.alert()
 std::string assert_then_early_return(const Pet& p) {
-    // # Cross-call-site combination: assert (persistent) then early-return
-    // # (persistent). narrowed_vars state set by the assert must survive into
-    // # the early-return picker so its bump finds a fresh name.
-    // assert isinstance(p, Dog)  # tpyc: ok
     if (!((dynamic_cast<const Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    // if not isinstance(p, WatchDog):  # tpyc: ok
     if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
-        // return "ASSERT-DOG: " + p.bark()
         return (::tpy::str_concat("ASSERT-DOG: ", __p.bark()));
     }
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
-    // w = p  # tpyc: type(WatchDog)
     const WatchDog& w = __p_2;
-    // return "ASSERT-EARLY-WATCH: " + w.alert()
     return (::tpy::str_concat("ASSERT-EARLY-WATCH: ", w.alert()));
 }
 
 // def sibling_vars(p: Pet, q: Pet) -> str:
+//     # Two sibling polymorphic params each with chained narrowings. Without the
+//     # scope-global alias-name check (`_fresh_alias_local` queries
+//     # `declared_persistent_aliases`), q's first narrowing could pick a base
+//     # name (`__q`) that happens to collide with p's earlier bumped name --
+//     # or vice versa with `p`/`p_2` siblings both producing `__p_2`. C++
+//     # identifiers live in one scope-global namespace; the picker has to
+//     # respect that.
+//     if not isinstance(p, Dog):  # tpyc: ok
+//         return "p non-dog"
+//     if not isinstance(p, WatchDog):  # tpyc: ok
+//         return "p dog: " + p.bark()
+//     if not isinstance(q, Dog):  # tpyc: ok
+//         return "p watch / q non-dog"
+//     return "p watch / q dog: " + q.bark()
 std::string sibling_vars(const Pet& p, const Pet& q) {
-    // # Two sibling polymorphic params each with chained narrowings. Without the
-    // # scope-global alias-name check (`_fresh_alias_local` queries
-    // # `declared_persistent_aliases`), q's first narrowing could pick a base
-    // # name (`__q`) that happens to collide with p's earlier bumped name --
-    // # or vice versa with `p`/`p_2` siblings both producing `__p_2`. C++
-    // # identifiers live in one scope-global namespace; the picker has to
-    // # respect that.
-    // if not isinstance(p, Dog):  # tpyc: ok
     if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-        // return "p non-dog"
         return "p non-dog";
     }
     const Dog& __p = *dynamic_cast<const Dog*>(&p);
-    // if not isinstance(p, WatchDog):  # tpyc: ok
     if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
-        // return "p dog: " + p.bark()
         return (::tpy::str_concat("p dog: ", __p.bark()));
     }
     const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
-    // if not isinstance(q, Dog):  # tpyc: ok
     if ((!((dynamic_cast<const Dog*>(&q) != nullptr)))) {
-        // return "p watch / q non-dog"
         return "p watch / q non-dog";
     }
     const Dog& __q = *dynamic_cast<const Dog*>(&q);
-    // return "p watch / q dog: " + q.bark()
     return (::tpy::str_concat("p watch / q dog: ", __q.bark()));
 }
 
 // def narrow_in_for_body(p: Pet, n: int) -> str:
+//     # Polymorphic post-guard narrowing INSIDE a for body. The cast-and-cache
+//     # alias `__p` is declared inside the loop's `{...}` and narrowed_vars[p]
+//     # was leaking past the closing brace pre-fix. Post-fix, the snapshot at
+//     # `_gen_for_each` entry restores narrowed_vars after the body so the
+//     # post-loop read of `p` doesn't reference the out-of-scope alias.
+//     last = ""
+//     for _ in range(n):
+//         if not isinstance(p, Dog):
+//             return "non-dog in for"
+//         last = p.bark()
+//     return "for done: " + last + " / " + p.name()
 std::string narrow_in_for_body(const Pet& p, const ::tpy::BigInt& n) {
-    // # Polymorphic post-guard narrowing INSIDE a for body. The cast-and-cache
-    // # alias `__p` is declared inside the loop's `{...}` and narrowed_vars[p]
-    // # was leaking past the closing brace pre-fix. Post-fix, the snapshot at
-    // # `_gen_for_each` entry restores narrowed_vars after the body so the
-    // # post-loop read of `p` doesn't reference the out-of-scope alias.
-    // last = ""
     std::string last = "";
-    // for _ in range(n):
     ::tpy::BigInt __stop_0 = n;
     for (::tpy::BigInt _ = 0; _ < __stop_0; ++_) {
-        // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-            // return "non-dog in for"
             return "non-dog in for";
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
-        // last = p.bark()
         last = __p.bark();
     }
-    // return "for done: " + last + " / " + p.name()
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("for done: ", last)), " / ")), p.name()));
 }
 
 // def narrow_in_while_body(p: Pet) -> str:
+//     # `if not isinstance(p, Dog): return` inside a while body. Pre-fix, the
+//     # cast-and-cache `__p` was declared inside the while `{...}` but
+//     # narrowed_vars[p]='__p' leaked past the closing brace -- the post-loop
+//     # `return p.name()` would emit `__p.name()` referencing a now-undeclared
+//     # local. Now narrowed_vars is snapshotted around the body.
+//     count = 0
+//     while count < 1:
+//         if not isinstance(p, Dog):
+//             return "non-dog in loop"
+//         # narrowed_vars[p]='__p' visible HERE (inside body)
+//         count += 1
+//     # narrowed_vars[p] restored to pre-loop state
+//     return "loop done: " + p.name()
 std::string narrow_in_while_body(const Pet& p) {
-    // # `if not isinstance(p, Dog): return` inside a while body. Pre-fix, the
-    // # cast-and-cache `__p` was declared inside the while `{...}` but
-    // # narrowed_vars[p]='__p' leaked past the closing brace -- the post-loop
-    // # `return p.name()` would emit `__p.name()` referencing a now-undeclared
-    // # local. Now narrowed_vars is snapshotted around the body.
-    // count = 0
     int32_t count = 0;
-    // while count < 1:
     while ((count < 1)) {
-        // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-            // return "non-dog in loop"
             return "non-dog in loop";
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
-        // # narrowed_vars[p]='__p' visible HERE (inside body)
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    // # narrowed_vars[p] restored to pre-loop state
-    // return "loop done: " + p.name()
     return (::tpy::str_concat("loop done: ", p.name()));
 }
 
 // def narrow_in_try_body(p: Pet) -> str:
+//     # Persistent narrowing INSIDE a try body. The cast-and-cache alias
+//     # declared inside the C++ `try { ... }` block must not leak into the
+//     # except handler or post-try code -- the alias is out of scope there.
+//     try:
+//         if not isinstance(p, Dog):
+//             raise ValueError("not a dog")
+//         # narrowed_vars[p] aliased HERE inside the try body
+//         return "TRY-DOG: " + p.bark()
+//     except ValueError:
+//         # narrowed_vars restored before this scope -- p reads through Pet
+//         return "EXC: " + p.name()
 std::string narrow_in_try_body(const Pet& p) {
-    // # Persistent narrowing INSIDE a try body. The cast-and-cache alias
-    // # declared inside the C++ `try { ... }` block must not leak into the
-    // # except handler or post-try code -- the alias is out of scope there.
-    // try:
     {
         try {
-            // if not isinstance(p, Dog):
             if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-                // raise ValueError("not a dog")
                 throw ::tpy::ValueError("not a dog");
             }
             const Dog& __p = *dynamic_cast<const Dog*>(&p);
-            // # narrowed_vars[p] aliased HERE inside the try body
-            // return "TRY-DOG: " + p.bark()
             return (::tpy::str_concat("TRY-DOG: ", __p.bark()));
         } catch (const ::tpy::ValueError&) {
-            // # narrowed_vars restored before this scope -- p reads through Pet
-            // return "EXC: " + p.name()
             return (::tpy::str_concat("EXC: ", p.name()));
         }
     }
 }
 
 // def narrow_in_match_case(p: Pet, label: int) -> str:
+//     # Persistent narrowing INSIDE a match case body. Each case opens its own
+//     # C++ `case N: { ... }` scope; aliases from one case must not be visible
+//     # in sibling cases or post-match code.
+//     match label:
+//         case 1:
+//             if not isinstance(p, Dog):
+//                 return "case1 non-dog"
+//             return "case1 dog: " + p.bark()
+//         case 2:
+//             if not isinstance(p, Dog):
+//                 return "case2 non-dog"
+//             return "case2 dog2: " + p.bark()
+//         case _:
+//             return "default: " + p.name()
 std::string narrow_in_match_case(const Pet& p, const ::tpy::BigInt& label) {
-    // # Persistent narrowing INSIDE a match case body. Each case opens its own
-    // # C++ `case N: { ... }` scope; aliases from one case must not be visible
-    // # in sibling cases or post-match code.
-    // match label:
     auto& __match_subject_1 = label;
-    // case 1:
     if (__match_subject_1 == 1) {
-        // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-            // return "case1 non-dog"
             return "case1 non-dog";
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
-        // return "case1 dog: " + p.bark()
         return (::tpy::str_concat("case1 dog: ", __p.bark()));
-    // case 2:
     } else if (__match_subject_1 == 2) {
-        // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-            // return "case2 non-dog"
             return "case2 non-dog";
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
-        // return "case2 dog2: " + p.bark()
         return (::tpy::str_concat("case2 dog2: ", __p.bark()));
-    // case _:
     } else {
-        // return "default: " + p.name()
         return (::tpy::str_concat("default: ", p.name()));
     }
     ::std::unreachable();
 }
 
 // def narrow_in_with_body(p: Pet) -> str:
+//     # Persistent narrowing INSIDE a `with` body. The body is wrapped in
+//     # `try { ... } catch (...) { __exit__; throw; }`; the cast-and-cache
+//     # alias declared inside the body must not leak into the post-with read.
+//     with CM():
+//         if not isinstance(p, Dog):
+//             return "with non-dog"
+//         result = "WITH-DOG: " + p.bark()
+//     # narrowed_vars restored after with-body; p reads through Pet here
+//     return result + " / pet: " + p.name()
 std::string narrow_in_with_body(const Pet& p) {
-    // # Persistent narrowing INSIDE a `with` body. The body is wrapped in
-    // # `try { ... } catch (...) { __exit__; throw; }`; the cast-and-cache
-    // # alias declared inside the body must not leak into the post-with read.
-    // with CM():
     ::tpy::String result;
     auto __ctx_1 = CM();
     __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
-            // return "with non-dog"
             std::string __tpy_ret_0 = "with non-dog";
             __fin_ran_1 = true;
             __ctx_1.__exit__({}, nullptr, {});
             return __tpy_ret_0;
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
-        // result = "WITH-DOG: " + p.bark()
         result = (::tpy::str_concat("WITH-DOG: ", __p.bark()));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -352,123 +355,132 @@ std::string narrow_in_with_body(const Pet& p) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # narrowed_vars restored after with-body; p reads through Pet here
-    // return result + " / pet: " + p.name()
     return (::tpy::str_concat((::tpy::str_concat(result, " / pet: ")), p.name()));
 }
 
 // def safe_raise(p: Pet) -> str:
+//     # Wrap bare_raise to exercise the raise path at runtime without aborting.
+//     try:
+//         return bare_raise(p)
+//     except ValueError as e:
+//         return "caught: " + str(e)
 std::string safe_raise(const Pet& p) {
-    // # Wrap bare_raise to exercise the raise path at runtime without aborting.
-    // try:
     {
         try {
-            // return bare_raise(p)
             return bare_raise(p);
         } catch (const ::tpy::ValueError& e) {
-            // return "caught: " + str(e)
             return (::tpy::str_concat("caught: ", std::string(::tpy::__str__(e))));
         }
     }
 }
 
 // def main() -> None:
+//     d = Dog("rex")
+//     c = Cat("whiskers")
+//     w = WatchDog("rex-watch")
+//
+//     # Narrowed-path coverage (Dog).
+//     print(bare_negative(d))
+//     print(bare_const(d))
+//     print(positive_then_more(d))
+//
+//     # Guard-failing-branch coverage (non-Dog).
+//     print(bare_negative(c))
+//     print(bare_const(c))
+//     print(positive_then_more(c))
+//
+//     # Raise path -- both branches.
+//     print(safe_raise(d))
+//     print(safe_raise(c))
+//
+//     # Sequential narrowing: three runtime outcomes.
+//     print(sequential_negative(c))
+//     print(sequential_negative(d))
+//     print(sequential_negative(w))
+//
+//     # Three-level chain: exercises `__p` -> `__p_2` -> `__p_3`.
+//     g = GuardDog("guard-rex")
+//     print(triple_chain(c))
+//     print(triple_chain(d))
+//     print(triple_chain(w))
+//     print(triple_chain(g))
+//
+//     # Persistent + persistent across call sites (assert + assert, assert + early-return).
+//     print(assert_then_assert(w))
+//     print(assert_then_early_return(d))
+//     print(assert_then_early_return(w))
+//
+//     # Optional[Pet] guard-failing branch -- None bypasses Phase-20 slicing.
+//     print(optional_negative(None))
+//
+//     # Sibling-vars: cross-variable alias-name collision regression guard.
+//     print(sibling_vars(c, d))
+//     print(sibling_vars(d, c))
+//     print(sibling_vars(w, c))
+//     print(sibling_vars(w, d))
+//
+//     # Narrowing inside loop bodies: narrowed_vars must NOT leak past the
+//     # closing brace of the for / while body.
+//     print(narrow_in_for_body(d, 2))
+//     print(narrow_in_for_body(c, 2))
+//     print(narrow_in_while_body(d))
+//     print(narrow_in_while_body(c))
+//
+//     # Narrowing inside try / match-case / with bodies.
+//     print(narrow_in_try_body(d))
+//     print(narrow_in_try_body(c))
+//     print(narrow_in_match_case(d, 1))
+//     print(narrow_in_match_case(c, 1))
+//     print(narrow_in_match_case(d, 2))
+//     print(narrow_in_match_case(c, 99))
+//     print(narrow_in_with_body(d))
 void main() {
-    // d = Dog("rex")
     Dog d = Dog("rex");
-    // c = Cat("whiskers")
     Cat c = Cat("whiskers");
-    // w = WatchDog("rex-watch")
     WatchDog w = WatchDog("rex-watch");
-    // # Narrowed-path coverage (Dog).
-    // print(bare_negative(d))
     std::cout << bare_negative(d) << "\n";
-    // print(bare_const(d))
     std::cout << bare_const(d) << "\n";
-    // print(positive_then_more(d))
     std::cout << positive_then_more(d) << "\n";
-    // # Guard-failing-branch coverage (non-Dog).
-    // print(bare_negative(c))
     std::cout << bare_negative(c) << "\n";
-    // print(bare_const(c))
     std::cout << bare_const(c) << "\n";
-    // print(positive_then_more(c))
     std::cout << positive_then_more(c) << "\n";
-    // # Raise path -- both branches.
-    // print(safe_raise(d))
     std::cout << safe_raise(d) << "\n";
-    // print(safe_raise(c))
     std::cout << safe_raise(c) << "\n";
-    // # Sequential narrowing: three runtime outcomes.
-    // print(sequential_negative(c))
     std::cout << sequential_negative(c) << "\n";
-    // print(sequential_negative(d))
     std::cout << sequential_negative(d) << "\n";
-    // print(sequential_negative(w))
     std::cout << sequential_negative(w) << "\n";
-    // # Three-level chain: exercises `__p` -> `__p_2` -> `__p_3`.
-    // g = GuardDog("guard-rex")
     GuardDog g = GuardDog("guard-rex");
-    // print(triple_chain(c))
     std::cout << triple_chain(c) << "\n";
-    // print(triple_chain(d))
     std::cout << triple_chain(d) << "\n";
-    // print(triple_chain(w))
     std::cout << triple_chain(w) << "\n";
-    // print(triple_chain(g))
     std::cout << triple_chain(g) << "\n";
-    // # Persistent + persistent across call sites (assert + assert, assert + early-return).
-    // print(assert_then_assert(w))
     std::cout << assert_then_assert(w) << "\n";
-    // print(assert_then_early_return(d))
     std::cout << assert_then_early_return(d) << "\n";
-    // print(assert_then_early_return(w))
     std::cout << assert_then_early_return(w) << "\n";
-    // # Optional[Pet] guard-failing branch -- None bypasses Phase-20 slicing.
-    // print(optional_negative(None))
     std::cout << optional_negative(nullptr) << "\n";
-    // # Sibling-vars: cross-variable alias-name collision regression guard.
-    // print(sibling_vars(c, d))
     std::cout << sibling_vars(c, d) << "\n";
-    // print(sibling_vars(d, c))
     std::cout << sibling_vars(d, c) << "\n";
-    // print(sibling_vars(w, c))
     std::cout << sibling_vars(w, c) << "\n";
-    // print(sibling_vars(w, d))
     std::cout << sibling_vars(w, d) << "\n";
-    // # Narrowing inside loop bodies: narrowed_vars must NOT leak past the
-    // # closing brace of the for / while body.
-    // print(narrow_in_for_body(d, 2))
     std::cout << narrow_in_for_body(d, ::tpy::BigInt(2)) << "\n";
-    // print(narrow_in_for_body(c, 2))
     std::cout << narrow_in_for_body(c, ::tpy::BigInt(2)) << "\n";
-    // print(narrow_in_while_body(d))
     std::cout << narrow_in_while_body(d) << "\n";
-    // print(narrow_in_while_body(c))
     std::cout << narrow_in_while_body(c) << "\n";
-    // # Narrowing inside try / match-case / with bodies.
-    // print(narrow_in_try_body(d))
     std::cout << narrow_in_try_body(d) << "\n";
-    // print(narrow_in_try_body(c))
     std::cout << narrow_in_try_body(c) << "\n";
-    // print(narrow_in_match_case(d, 1))
     std::cout << narrow_in_match_case(d, ::tpy::BigInt(1)) << "\n";
-    // print(narrow_in_match_case(c, 1))
     std::cout << narrow_in_match_case(c, ::tpy::BigInt(1)) << "\n";
-    // print(narrow_in_match_case(d, 2))
     std::cout << narrow_in_match_case(d, ::tpy::BigInt(2)) << "\n";
-    // print(narrow_in_match_case(c, 99))
     std::cout << narrow_in_match_case(c, ::tpy::BigInt(99)) << "\n";
-    // print(narrow_in_with_body(d))
     std::cout << narrow_in_with_body(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

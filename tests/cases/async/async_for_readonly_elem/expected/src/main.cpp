@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def step(n: int32) -> int32:
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,15 @@ __coro_step step(int32_t n) {
 }
 
 // async def total(ps: readonly[list[Point]]) -> int32:
+//     n = 0
+//     for p in ps:
+//         # The await splits the loop, so `p` is a frame field rather than a
+//         # block-scoped C++ reference.
+//         n += await step(p.x)
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = 0
         n = 0;
         __for_it_0.emplace((ps).begin());
         __for_end_0.emplace((ps).end());
@@ -41,22 +46,17 @@ __coro_step step(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // # The await splits the loop, so `p` is a frame field rather than a
-        // # block-scoped C++ reference.
-        // n += await step(p.x)
         n = ::tpy::add_check<int32_t>(n, __await_lift_0);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // return n
             __state = S_DONE;
             int32_t __tpy_async_ret = n;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         p = &(*((*__for_it_0))++);
-        // n += await step(p.x)
         __sub_0.emplace(p->x);
         __state = S_RESUME_0;
         continue;
@@ -73,25 +73,26 @@ __coro_total total(const std::vector<Point>& ps) {
 }
 
 // def main() -> None:
+//     pts: list[Point] = [Point(1), Point(2)]
+//     print(asyncio.run(total(pts)))
 void main() {
-    // pts: list[Point] = [Point(1), Point(2)]
     std::vector<Point> pts = ::tpy::make_vector<Point>(Point(1), Point(2));
-    // print(asyncio.run(total(pts)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(total(pts))) << "\n";
 }
 
+// # An async frame's loop var over a `readonly` reference element: the advance
+// # takes `&(*it)` off a const_iterator, so the frame field must be spelled
+// # `const Point*`. `@nocopy` makes the alternative visible -- an owning frame
+// # slot would copy the element and fail to compile.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async frame's loop var over a `readonly` reference element: the advance
-    // # takes `&(*it)` off a const_iterator, so the frame field must be spelled
-    // # `const Point*`. `@nocopy` makes the alternative visible -- an owning frame
-    // # slot would copy the element and fail to compile.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

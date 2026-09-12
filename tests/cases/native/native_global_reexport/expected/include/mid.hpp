@@ -12,7 +12,9 @@ inline auto& NORMAL_VAL = ::tpyapp::leaf::NORMAL_VAL;
 
 inline constexpr std::string_view __name__ = "mid";
 
+// def use_global() -> int32:
 int32_t use_global();
+// def use_normal() -> int32:
 int32_t use_normal();
 
 void __tpy_init();

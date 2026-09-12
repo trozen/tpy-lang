@@ -11,7 +11,9 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_pair() -> tuple[Own[Tree[int32]], int32]:
 std::tuple<Tree<int32_t>, int32_t> make_pair();
+// def main() -> None:
 void main();
 
 template<typename T>

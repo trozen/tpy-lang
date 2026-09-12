@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Adder(10)
+//     print(a(1))
+//     print(a(1, 2))
+//     use(a)
 void main() {
-    // a = Adder(10)
     Adder a = Adder(10);
-    // print(a(1))
     std::cout << a.__call__(1) << "\n";
-    // print(a(1, 2))
     std::cout << a.__call__(1, 2) << "\n";
-    // use(a)
     use(a);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

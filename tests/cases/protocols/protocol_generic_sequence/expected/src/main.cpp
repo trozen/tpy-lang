@@ -5,56 +5,60 @@ namespace tpyapp::main {
 
 
 // def use_span(s: Span[int32]) -> int32:
+//     # Pass Span to Sequence-accepting function
+//     return sum_all(s)
 int32_t use_span(std::span<int32_t> s) {
-    // # Pass Span to Sequence-accepting function
-    // return sum_all(s)
     return sum_all(s);
 }
 
 // def main() -> None:
+//     # Test with list[int32]
+//     nums: list[int32] = [1, 2, 3, 4, 5]
+//     print(first(nums))     # 1
+//     print(sum_all(nums))   # 15
+//
+//     # Test with Array[int32, N]
+//     arr: Array[int32, 3] = [10, 20, 30]
+//     print(first(arr))      # 10
+//     print(sum_all(arr))    # 60
+//
+//     # Test with Span[int32]
+//     print(use_span(arr))   # 60 (Span from Array)
+//     print(use_span(nums))  # 15 (Span from list)
+//
+//     # Test with ArrayList[int32, N] (user/library type)
+//     al = ArrayList[int32, 8]()
+//     al.append(100)
+//     al.append(200)
+//     al.append(300)
+//     print(first(al))       # 100
+//     print(sum_all(al))     # 600
 void main() {
-    // # Test with list[int32]
-    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // print(first(nums))     # 1
     std::cout << first(nums) << "\n";
-    // print(sum_all(nums))   # 15
     std::cout << sum_all(nums) << "\n";
-    // # Test with Array[int32, N]
-    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // print(first(arr))      # 10
     std::cout << first(arr) << "\n";
-    // print(sum_all(arr))    # 60
     std::cout << sum_all(arr) << "\n";
-    // # Test with Span[int32]
-    // print(use_span(arr))   # 60 (Span from Array)
     std::cout << use_span(::tpy::as_mut_span(arr)) << "\n";
-    // print(use_span(nums))  # 15 (Span from list)
     std::cout << use_span(::tpy::as_mut_span(nums)) << "\n";
-    // # Test with ArrayList[int32, N] (user/library type)
-    // al = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    // al.append(100)
     al.append(100);
-    // al.append(200)
     al.append(200);
-    // al.append(300)
     al.append(300);
-    // print(first(al))       # 100
     std::cout << first(al) << "\n";
-    // print(sum_all(al))     # 600
     std::cout << sum_all(al) << "\n";
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

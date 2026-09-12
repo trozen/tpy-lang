@@ -12,13 +12,21 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(u: Own[A | B]) -> int32:
 int32_t describe(::tpy::Union<A, B>&& u);
+// def pick(flag: bool) -> Own[A | B]:
 ::tpy::Union<A, B> pick(bool flag);
+// def borrow_union(u: A | B) -> int32:
 int32_t borrow_union(::tpy::Union<const A*, const B*> u);
+// def forward_to_borrow(u: Own[A | B]) -> int32:
 int32_t forward_to_borrow(::tpy::Union<A, B>&& u);
+// def test_body_isinstance_narrowing() -> None:
 void test_body_isinstance_narrowing();
+// def test_return_into_pointer_variant_receiver() -> None:
 void test_return_into_pointer_variant_receiver();
+// def test_forward_to_borrow_slot() -> None:
 void test_forward_to_borrow_slot();
+// def main() -> None:
 void main();
 
 // class A:
@@ -55,9 +63,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32) -> None:
+//     self.y = y
 inline B::B(int32_t y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

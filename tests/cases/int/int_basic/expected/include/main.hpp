@@ -10,8 +10,11 @@ namespace tpyapp::main {
 extern int32_t neg;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def factorial(n: int) -> int:
 ::tpy::BigInt factorial(const ::tpy::BigInt& n);
+// def test_arithmetic():
 void test_arithmetic();
+// def test_comparison():
 void test_comparison();
 
 void __tpy_init();

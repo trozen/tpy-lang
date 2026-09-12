@@ -12,11 +12,17 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_and_rhs(v: A | B) -> int:
 ::tpy::BigInt test_and_rhs(::tpy::Union<const A*, const B*> v);
+// def test_and_true(v: A | B) -> int:
 ::tpy::BigInt test_and_true(::tpy::Union<const A*, const B*> v);
+// def test_or_rhs(v: A | B) -> bool:
 bool test_or_rhs(::tpy::Union<const A*, const B*> v);
+// def test_negation(v: A | B) -> int:
 ::tpy::BigInt test_negation(::tpy::Union<const A*, const B*> v);
+// def test_multi_var(a: A | B, b: A | B) -> int:
 ::tpy::BigInt test_multi_var(::tpy::Union<const A*, const B*> a, ::tpy::Union<const A*, const B*> b);
+// def main() -> None:
 void main();
 
 // # isinstance in compound conditions: and/or, negation, multi-variable
@@ -54,9 +60,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

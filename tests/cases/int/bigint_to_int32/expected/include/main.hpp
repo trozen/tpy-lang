@@ -21,12 +21,19 @@ extern int32_t result5;
 extern int32_t result6;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def takes_int32(x: int32) -> int32:
 int32_t takes_int32(int32_t x);
+// def return_as_int32(x: int) -> int32:
 int32_t return_as_int32(const ::tpy::BigInt& x);
+// def var_decl_test(x: int) -> int32:
 int32_t var_decl_test(const ::tpy::BigInt& x);
+// def assign_test(x: int) -> int32:
 int32_t assign_test(const ::tpy::BigInt& x);
+// def loop_test(n: int) -> int32:
 int32_t loop_test(const ::tpy::BigInt& n);
+// def constructor_test(x: int) -> int32:
 int32_t constructor_test(const ::tpy::BigInt& x);
+// def literal_ops_local() -> int32:
 int32_t literal_ops_local();
 
 void __tpy_init();

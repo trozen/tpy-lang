@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Widget("button", int32(5))
+//     print(w.name)
+//     print(w.count)
+//     print(w.describe())
+//     w.inc()
+//     w.inc()
+//     print(w.value())
 void main() {
-    // w = Widget("button", int32(5))
     Widget w = Widget("button", 5);
-    // print(w.name)
     std::cout << w.name << "\n";
-    // print(w.count)
     std::cout << w.count << "\n";
-    // print(w.describe())
     std::cout << w.describe() << "\n";
-    // w.inc()
     w.inc();
-    // w.inc()
     w.inc();
-    // print(w.value())
     std::cout << w.value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

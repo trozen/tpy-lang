@@ -3,75 +3,73 @@
 
 namespace tpyapp::main {
 
-// pts: list[Point] = list()
 std::vector<Point>* pts{};
-// e1 = Edge(None)
 Edge* e1{};
-// p = Point(7, 70)
 Point* p{};
-// e2 = Edge(p)
 Edge* e2{};
-// e3 = Edge(find(pts, 3))
 Edge* e3{};
-// e4 = Edge(find(pts, 99))
 Edge* e4{};
 
 // def find(items: list[Point], target: int32) -> Point | None:
+//     for p in items:
+//         if p.x == target:
+//             return p
+//     return None
 Point* find(std::vector<Point>& items, int32_t target) {
-    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // if p.x == target:
         if ((p.x == target)) {
-            // return p
             return &(p);
         }
     }
-    // return None
     return nullptr;
 }
 
+// pts: list[Point] = list()
+// pts.append(Point(5, 50))
+// pts.append(Point(3, 30))
+//
+// e1 = Edge(None)
+// print(e1.target is None)
+//
+// p = Point(7, 70)
+// e2 = Edge(p)
+// print(e2.target is not None)
+// print(e2.target.x)
+// print(e2.target.y)
+//
+// e3 = Edge(find(pts, 3))
+// print(e3.target.x)
+//
+// e4 = Edge(find(pts, 99))
+// print(e4.target is None)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // pts: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     pts = &__global_slot_1;
-    // pts.append(Point(5, 50))
     pts->push_back(Point(5, 50));
-    // pts.append(Point(3, 30))
     pts->push_back(Point(3, 30));
-    // e1 = Edge(None)
     static Edge __global_slot_2 = Edge(nullptr);
     e1 = &__global_slot_2;
-    // print(e1.target is None)
     std::cout << ::tpy::print_bool((!e1->target.has_value())) << "\n";
-    // p = Point(7, 70)
     static Point __global_slot_3 = Point(7, 70);
     p = &__global_slot_3;
-    // e2 = Edge(p)
     static Edge __global_slot_4 = Edge(p);
     e2 = &__global_slot_4;
-    // print(e2.target is not None)
     std::cout << ::tpy::print_bool((e2->target.has_value())) << "\n";
-    // print(e2.target.x)
     std::cout << ::tpy::deref_optional_check(e2->target).x << "\n";
-    // print(e2.target.y)
     std::cout << ::tpy::deref_optional_check(e2->target).y << "\n";
-    // e3 = Edge(find(pts, 3))
     static Edge __global_slot_5 = Edge(find((*pts), 3));
     e3 = &__global_slot_5;
-    // print(e3.target.x)
     std::cout << ::tpy::deref_optional_check(e3->target).x << "\n";
-    // e4 = Edge(find(pts, 99))
     static Edge __global_slot_6 = Edge(find((*pts), 99));
     e4 = &__global_slot_6;
-    // print(e4.target is None)
     std::cout << ::tpy::print_bool((!e4->target.has_value())) << "\n";
 }
 

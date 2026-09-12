@@ -5,39 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pq: list[tuple[int32, str]] = []
+//     heappush(pq, (3, "third"))
+//     heappush(pq, (1, "first"))
+//     heappush(pq, (2, "second"))
+//     heappush(pq, (1, "tied_with_first"))
+//
+//     while len(pq) > 0:
+//         prio, payload = heappop(pq)
+//         print(prio, payload)
 void main() {
-    // pq: list[tuple[int32, str]] = []
     std::vector<std::tuple<int32_t, std::string>> pq = std::vector<std::tuple<int32_t, std::string>>{};
-    // heappush(pq, (3, "third"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{3, "third"});
-    // heappush(pq, (1, "first"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{1, "first"});
-    // heappush(pq, (2, "second"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{2, "second"});
-    // heappush(pq, (1, "tied_with_first"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{1, "tied_with_first"});
-    // while len(pq) > 0:
     while ((::tpy::__len__(pq) > 0)) {
-        // prio, payload = heappop(pq)
         auto __tup_1 = ::tpystd::heapq::heappop<std::tuple<int32_t, std::string>>(pq);
         int32_t prio = std::get<0>(__tup_1);
         std::string_view payload = std::get<1>(__tup_1);
-        // print(prio, payload)
         std::cout << prio << " " << payload << "\n";
     }
 }
 
+// # Canonical priority-queue pattern: list[tuple[priority, payload]] with heapq.
+// # Requires tuple[T1, T2] to satisfy Comparable so heappush[T: Comparable]
+// # accepts the tuple element type.
+// from heapq import heappush, heappop
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Canonical priority-queue pattern: list[tuple[priority, payload]] with heapq.
-    // # Requires tuple[T1, T2] to satisfy Comparable so heappush[T: Comparable]
-    // # accepts the tuple element type.
-    // from heapq import heappush, heappop
     ::tpystd::heapq::__tpy_init();
-    // main()
     main();
 }
 

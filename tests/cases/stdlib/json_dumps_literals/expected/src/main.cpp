@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(json.dumps([1, 2, 3]))
+//     print(json.dumps({"a": 1, "b": 2}))
+//     print(json.dumps([1, [2, 3], 4]))
+//     print(json.dumps({"a": [1, 2], "b": 3}))
+//     print(json.dumps(["x", True, 1.5]))
 void main() {
-    // print(json.dumps([1, 2, 3]))
     ::tpystd::json::JsonValue __tmp_1 = std::vector<::tpystd::json::JsonValue>{1, 2, 3};
     std::cout << ::tpystd::json::dumps(__tmp_1, 0, false) << "\n";
-    // print(json.dumps({"a": 1, "b": 2}))
     ::tpystd::json::JsonValue __tmp_2 = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", 1}, {"b", 2}});
     std::cout << ::tpystd::json::dumps(__tmp_2, 0, false) << "\n";
-    // print(json.dumps([1, [2, 3], 4]))
     ::tpystd::json::JsonValue __tmp_3 = std::vector<::tpystd::json::JsonValue>{1, std::vector<::tpystd::json::JsonValue>{2, 3}, 4};
     std::cout << ::tpystd::json::dumps(__tmp_3, 0, false) << "\n";
-    // print(json.dumps({"a": [1, 2], "b": 3}))
     ::tpystd::json::JsonValue __tmp_4 = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", std::vector<::tpystd::json::JsonValue>{1, 2}}, {"b", 3}});
     std::cout << ::tpystd::json::dumps(__tmp_4, 0, false) << "\n";
-    // print(json.dumps(["x", True, 1.5]))
     ::tpystd::json::JsonValue __tmp_5 = std::vector<::tpystd::json::JsonValue>{"x", true, 1.5};
     std::cout << ::tpystd::json::dumps(__tmp_5, 0, false) << "\n";
 }
 
+// # json.dumps on raw list/dict literals WITHOUT importing the internal JsonValue
+// # alias -- the idiomatic form: the cross-module recursive-union parameter
+// # resolves at a call site that doesn't import the alias. CPython byte-compatible.
+// import json
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # json.dumps on raw list/dict literals WITHOUT importing the internal JsonValue
-    // # alias -- the idiomatic form: the cross-module recursive-union parameter
-    // # resolves at a call site that doesn't import the alias. CPython byte-compatible.
-    // import json
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

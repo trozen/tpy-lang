@@ -5,60 +5,64 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Inverse guard: a write to a live peer still succeeds -- the errno->subclass
+//     # mapping must not perturb a normal send.
+//     a, b = socket.socketpair()
+//     a.sendall(b"hi")
+//     print("live send:", b.recv(2))
+//     a.close()
+//     b.close()
+//
+//     # The peer hangs up; the next write must raise BrokenPipeError specifically.
+//     c, d = socket.socketpair()
+//     d.close()
+//     try:
+//         c.sendall(b"x")
+//         print("NO ERROR")
+//     except BrokenPipeError:
+//         print("caught BrokenPipeError")
+//     except OSError:
+//         print("caught generic OSError")
+//     print("survived")
+//     c.close()
 void main() {
-    // # Inverse guard: a write to a live peer still succeeds -- the errno->subclass
-    // # mapping must not perturb a normal send.
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.sendall(b"hi")
     a.sendall(::tpy::bytes_literal("hi", 2));
-    // print("live send:", b.recv(2))
     std::cout << "live send:" << " " << ::tpy::BytesPrinter(b.recv(2)) << "\n";
-    // a.close()
     a.close();
-    // b.close()
     b.close();
-    // # The peer hangs up; the next write must raise BrokenPipeError specifically.
-    // c, d = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    // d.close()
     d.close();
-    // try:
     {
         try {
-            // c.sendall(b"x")
             c.sendall(::tpy::bytes_literal("x", 1));
-            // print("NO ERROR")
             std::cout << "NO ERROR" << "\n";
         } catch (const ::tpy::BrokenPipeError&) {
-            // print("caught BrokenPipeError")
             std::cout << "caught BrokenPipeError" << "\n";
         } catch (const ::tpy::OSError&) {
-            // print("caught generic OSError")
             std::cout << "caught generic OSError" << "\n";
         }
     }
-    // print("survived")
     std::cout << "survived" << "\n";
-    // c.close()
     c.close();
 }
 
+// # A write to a hung-up peer raises BrokenPipeError (an OSError/ConnectionError
+// # subclass, PEP 3151), not a process-killing SIGPIPE. The except-clause order
+// # proves the concrete subclass is raised, not the generic SocketError/OSError.
+// import socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A write to a hung-up peer raises BrokenPipeError (an OSError/ConnectionError
-    // # subclass, PEP 3151), not a process-killing SIGPIPE. The except-clause order
-    // # proves the concrete subclass is raised, not the generic SocketError/OSError.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def make_adder(n: int32) -> Callable[[int32], int32]:
+//     def add(x: int32) -> int32:
+//         return x + n
+//     return add
 std::function<int32_t(int32_t)> make_adder(int32_t n) {
-    // def add(x: int32) -> int32:
     auto add = [n](int32_t x) -> int32_t {
-        // return x + n
         return (::tpy::add_check<int32_t>(x, n));
     };
-    // return add
     return add;
 }
 
 // def main() -> None:
+//     add5 = make_adder(5)
+//     print(add5(10))
+//     add100 = make_adder(100)
+//     print(add100(42))
 void main() {
-    // add5 = make_adder(5)
     std::function<int32_t(int32_t)> add5 = make_adder(5);
-    // print(add5(10))
     std::cout << add5(10) << "\n";
-    // add100 = make_adder(100)
     std::function<int32_t(int32_t)> add100 = make_adder(100);
-    // print(add100(42))
     std::cout << add100(42) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

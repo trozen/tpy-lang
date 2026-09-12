@@ -12,15 +12,25 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump_all(patches: list[Pic | None]) -> None:
 void bump_all(std::vector<std::optional<Pic>>& patches);
+// def show(tag: str, patches: list[Pic | None]) -> None:
 void show(std::string_view tag, const std::vector<std::optional<Pic>>& patches);
+// def take_own_opt(p: Own[Pic | None], sink: list[Pic | None]) -> None:
 void take_own_opt(std::optional<Pic>&& p, std::vector<std::optional<Pic>>& sink);
+// def take_opt_own(p: Own[Pic] | None) -> int32:
 int32_t take_opt_own(std::optional<Pic> p);
+// def append_try_reassigned(d: dict[bytes, int32]) -> None:
 void append_try_reassigned(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d);
+// def append_branch_reassigned(c: bool) -> None:
 void append_branch_reassigned(bool c);
+// def append_none_declared() -> None:
 void append_none_declared();
+// def other_slots(c: bool) -> None:
 void other_slots(bool c);
+// def setdefault_slot(c: bool) -> None:
 void setdefault_slot(bool c);
+// def main() -> None:
 void main();
 
 // class Pic:
@@ -63,39 +73,44 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Pic::Pic(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.items = []
 inline Bag::Bag() : items(std::vector<std::optional<Pic>>{}) {}
 
 // def add(self, p: Own[Pic | None]) -> None:
+//     self.items.append(p)
 inline void Bag::add(std::optional<Pic>&& p) {
-    // self.items.append(p)
     this->items.push_back(p ? std::optional<Pic>(std::move(*p)) : std::nullopt);
 }
 
 // @staticmethod
 // def put(p: Own[Pic | None], sink: list[Pic | None]) -> None:
+//     sink.append(p)
 inline void Bag::put(std::optional<Pic>&& p, std::vector<std::optional<Pic>>& sink) {
-    // sink.append(p)
     sink.push_back(p ? std::optional<Pic>(std::move(*p)) : std::nullopt);
 }
+// def gen(k: int32) -> Iterator[int32]:
+//     patches: list[Pic | None] = []
+//     for j in range(k):
+//         patch: Pic | None = None
+//         if j != 1:
+//             patch = Pic(j)
+//         patches.append(patch)  # tpyc: ok
+//         yield len(patches)
 inline auto gen(int32_t k) {
-    // patches: list[Pic | None] = []
     std::vector<std::optional<Pic>> patches = std::vector<std::optional<Pic>>{};
     return ::tpy::make_generator<int32_t>(
         [k, patches, __i = int32_t(0), __stop = static_cast<int32_t>(k)]() mutable -> std::optional<int32_t> {
             std::optional<Pic> __slot_1;
             while (__i < __stop) {
                 int32_t j = __i++;
-                // patch: Pic | None = None
                 Pic* patch = nullptr;
-                // if j != 1:
                 if ((j != 1)) {
-                    // patch = Pic(j)
                     patch = &*(__slot_1 = Pic(j));
                 }
-                // patches.append(patch)  # tpyc: ok
                 patches.push_back(patch ? std::optional<Pic>(std::move(*patch)) : std::nullopt);
                 auto __val = ::tpy::__len__(patches);
                 return std::optional<int32_t>(__val);

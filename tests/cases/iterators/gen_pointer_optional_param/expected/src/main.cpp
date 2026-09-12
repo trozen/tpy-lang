@@ -5,6 +5,11 @@ namespace tpyapp::main {
 
 
 // def gen_n_times(p: P | None, n: int32) -> Iterator[int32]:
+//     for _ in range(n):
+//         if p is not None:
+//             yield p.n
+//         else:
+//             yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_n_times::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -28,11 +33,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_n_times::__next__() {
         }
         _ = ((*__for_i_0))++;
         if ((p != nullptr)) {
-            // yield p.n
             __state = S_RESUME_0;
             return p->n;
         } else {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
@@ -53,12 +56,15 @@ __gen_gen_n_times gen_n_times(P* p, int32_t n) {
 }
 
 // def main() -> None:
+//     items: list[P] = []
+//     items.append(P(42))
+//     for v in gen_n_times(items[0], 3):
+//         print(v)
+//     for v in gen_n_times(None, 2):
+//         print(v)
 void main() {
-    // items: list[P] = []
     std::vector<P> items = std::vector<P>{};
-    // items.append(P(42))
     items.push_back(P(42));
-    // for v in gen_n_times(items[0], 3):
     {
         auto __src_0 = gen_n_times(&(::tpy::__getitem__(items, 0)), 3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -66,11 +72,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in gen_n_times(None, 2):
     {
         auto __src_2 = gen_n_times(nullptr, 2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -78,18 +82,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

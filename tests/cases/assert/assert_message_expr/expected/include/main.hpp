@@ -11,8 +11,11 @@ struct Error;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check_positive(n: int32, msg: str) -> int32:
 int32_t check_positive(int32_t n, std::string_view msg);
+// def check_error(n: int32, e: Error) -> int32:
 int32_t check_error(int32_t n, const Error& e);
+// def main() -> None:
 void main();
 
 // class Error:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Error& obj) {
 
 
 // def __init__(self, message: str) -> None:
+//     self.message = message
 inline Error::Error(std::string_view message) : message(message) {}
 void __tpy_init();
 } // namespace tpyapp::main

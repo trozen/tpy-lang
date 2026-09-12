@@ -15,12 +15,16 @@ struct __coro_add_one;
 struct __coro_consume;
 struct __coro_main_coro;
 
+// async def add_one(n: int) -> int:
 __coro_add_one add_one(::tpy::BigInt n);
+// async def consume(c: Own[Cancellable[int]]) -> int:
 __coro_consume consume(std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> c);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: add_one
+// async def add_one(n: int) -> int:
 struct __coro_add_one {
     int32_t __state;
     bool __cancel_pending;
@@ -42,7 +46,7 @@ struct __coro_add_one {
     }
 };
 
-// Async coroutine: consume
+// async def consume(c: Own[Cancellable[int]]) -> int:
 struct __coro_consume {
     int32_t __state;
     bool __cancel_pending;
@@ -66,7 +70,7 @@ struct __coro_consume {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

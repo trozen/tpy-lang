@@ -5,73 +5,73 @@ namespace tpyapp::main {
 
 
 // def test_list_inferred() -> None:
+//     xs = [1.5, 2.5, 3.5]  # tpyc: type(list[float])
+//     xs.append(4.5)
+//     print(xs)
 void test_list_inferred() {
-    // xs = [1.5, 2.5, 3.5]  # tpyc: type(list[float])
     std::vector<double> xs = {1.5, 2.5, 3.5};
-    // xs.append(4.5)
     xs.push_back(4.5);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_list_annotated_float32() -> None:
+//     xs: list[float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[float32])
+//     print(xs)
 void test_list_annotated_float32() {
-    // xs: list[float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[float32])
     std::vector<float> xs = {1.0, 2.0, 3.0};
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_dict_inferred() -> None:
+//     d = {"a": 1.5, "b": 2.5}  # tpyc: type(dict[str, float])
+//     print(d)
 void test_dict_inferred() {
-    // d = {"a": 1.5, "b": 2.5}  # tpyc: type(dict[str, float])
     ::tpy::ordered_map<std::string, double> d = ::tpy::ordered_map<std::string, double>({{"a", 1.5}, {"b", 2.5}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_set_inferred() -> None:
+//     s = {1.5, 2.5, 3.5}  # tpyc: type(set[float])
+//     print(s)
 void test_set_inferred() {
-    // s = {1.5, 2.5, 3.5}  # tpyc: type(set[float])
     ::tpy::ordered_set<double> s = ::tpy::ordered_set<double>({1.5, 2.5, 3.5});
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def test_ternary_float_literal() -> None:
+//     x: float32 = float32(1.0)
+//     y = x if True else 2.0  # tpyc: type(float32)
+//     print(y)
 void test_ternary_float_literal() {
-    // x: float32 = float32(1.0)
     float x = 1.0f;
-    // y = x if True else 2.0  # tpyc: type(float32)
     float y = ((true) ? (x) : (2.0f));
-    // print(y)
     std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n";
 }
 
 // def test_annotated_float64() -> None:
+//     b: float = 5.0  # tpyc: type(float)
+//     print(b)
 void test_annotated_float64() {
-    // b: float = 5.0  # tpyc: type(float)
     double b = 5.0;
-    // print(b)
     std::cout << ::tpy::print_float(b) << "\n";
 }
 
+// test_list_inferred()
+// test_list_annotated_float32()
+// test_dict_inferred()
+// test_set_inferred()
+// test_ternary_float_literal()
+// test_annotated_float64()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_list_inferred()
     test_list_inferred();
-    // test_list_annotated_float32()
     test_list_annotated_float32();
-    // test_dict_inferred()
     test_dict_inferred();
-    // test_set_inferred()
     test_set_inferred();
-    // test_ternary_float_literal()
     test_ternary_float_literal();
-    // test_annotated_float64()
     test_annotated_float64();
 }
 

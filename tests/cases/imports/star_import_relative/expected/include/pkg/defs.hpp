@@ -11,6 +11,7 @@ struct Vec2;
 
 inline constexpr std::string_view __name__ = "pkg.defs";
 
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x);
 
 // class Vec2:
@@ -33,6 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::pkg::defs

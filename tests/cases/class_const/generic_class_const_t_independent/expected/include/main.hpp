@@ -11,6 +11,7 @@ template<typename T> struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class C[T]:
@@ -22,8 +23,8 @@ struct C {
     static constexpr double SCALE = 1.5;
 
     // def __init__(self) -> None:
+    //     pass
     C() {
-        // pass
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };

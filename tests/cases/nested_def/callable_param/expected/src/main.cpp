@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def invoke(f: Callable[[int32], int32], x: int32) -> int32:
+//     return f(x)
 int32_t invoke(const std::function<int32_t(int32_t)>& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 
 // def main() -> None:
+//     offset: int32 = 50
+//     def add_offset(x: int32) -> int32:
+//         return x + offset
+//     print(invoke(add_offset, 7))
 void main() {
-    // offset: int32 = 50
     int32_t offset = 50;
-    // def add_offset(x: int32) -> int32:
     auto add_offset = [offset](int32_t x) -> int32_t {
-        // return x + offset
         return (::tpy::add_check<int32_t>(x, offset));
     };
-    // print(invoke(add_offset, 7))
     std::cout << invoke(add_offset, 7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,7 +12,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(method: str, response: bytes) -> None:
 void run(std::string_view method, ::tpy::BytesView response);
+// def main() -> None:
 void main();
 
 void __tpy_init();

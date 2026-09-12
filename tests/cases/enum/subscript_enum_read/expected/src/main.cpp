@@ -47,30 +47,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs = [Color.Red, Color.Green, Color.Blue]
+//     print(xs[0])
+//     i = 2
+//     print(xs[i])
+//     d = {1: Color.Blue, 2: Color.Green}
+//     print(d[1])
+//     print(d[i])
 void main() {
-    // xs = [Color.Red, Color.Green, Color.Blue]
     std::array<Color, 3> xs = {Color::Red, Color::Green, Color::Blue};
-    // print(xs[0])
     std::cout << ::tpy::__getitem__(xs, 0) << "\n";
-    // i = 2
     int32_t i = 2;
-    // print(xs[i])
     std::cout << ::tpy::__getitem__(xs, i) << "\n";
-    // d = {1: Color.Blue, 2: Color.Green}
     ::tpy::ordered_map<int32_t, Color> d = ::tpy::ordered_map<int32_t, Color>({{1, Color::Blue}, {2, Color::Green}});
-    // print(d[1])
     std::cout << ::tpy::__getitem__(d, 1) << "\n";
-    // print(d[i])
     std::cout << ::tpy::__getitem__(d, i) << "\n";
 }
 
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
-    // main()
     main();
 }
 

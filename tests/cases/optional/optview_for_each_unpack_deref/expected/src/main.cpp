@@ -5,51 +5,50 @@ namespace tpyapp::main {
 
 
 // def sink(v: str | None) -> int32:
+//     return 1 if v is not None else 0
 int32_t sink(std::optional<std::string_view> v) {
-    // return 1 if v is not None else 0
     return (((v.has_value())) ? (1) : (0));
 }
 
 // def use(rows: list[tuple[bytes | None, str | None]]) -> int32:
+//     n = 0
+//     for body, ctype in rows:  # the unpacked optional-view elements
+//         if ctype is not None:
+//             n += len(ctype)  # the narrowed element deref
+//         n += sink(ctype)
+//     return n
 int32_t use(const std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>>& rows) {
-    // n = 0
     int32_t n = 0;
-    // for body, ctype in rows:  # the unpacked optional-view elements
     auto& __obj_0 = rows;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        // for body, ctype in rows:  # the unpacked optional-view elements
         const auto& __tup_1 = __for_tup_0;
         std::optional<::tpy::Bytes> body = std::get<0>(__tup_1);
         std::optional<std::string> ctype = std::get<1>(__tup_1);
-        // if ctype is not None:
         if ((ctype.has_value())) {
-            // n += len(ctype)  # the narrowed element deref
             n = ::tpy::add_check<int32_t>(n, ::tpy::__len__((*ctype)));
         }
-        // n += sink(ctype)
         n = ::tpy::add_check<int32_t>(n, sink(ctype));
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     rows: list[tuple[bytes | None, str | None]] = []
+//     print(use(rows))
 void main() {
-    // rows: list[tuple[bytes | None, str | None]] = []
     std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>> rows = std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>>{};
-    // print(use(rows))
     std::cout << use(rows) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

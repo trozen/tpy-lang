@@ -5,56 +5,61 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: set[int32] = {10, 20, 30}
+//
+//     # discard (no error if missing)
+//     s.discard(20)
+//     print(s)
+//     s.discard(99)  # no error
+//     print(s)
+//
+//     # remove (panics if missing, tested separately)
+//     s.remove(10)
+//     print(s)
+//
+//     # pop (removes first element)
+//     val: int32 = s.pop()
+//     print(val)
+//     print(s)
+//
+//     # copy
+//     a: set[int32] = {1, 2, 3}
+//     b: set[int32] = a.copy()
+//     b.add(4)
+//     print(a)
+//     print(b)
+//
+//     # clear
+//     a.clear()
+//     print(a)
+//     print(len(a))
 void main() {
-    // s: set[int32] = {10, 20, 30}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
-    // # discard (no error if missing)
-    // s.discard(20)
     s.erase(20);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // s.discard(99)  # no error
     s.erase(99);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // # remove (panics if missing, tested separately)
-    // s.remove(10)
     ::tpy::set_remove(s, 10);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // # pop (removes first element)
-    // val: int32 = s.pop()
     int32_t val = ::tpy::set_pop(s);
-    // print(val)
     std::cout << val << "\n";
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // # copy
-    // a: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> a = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    // b: set[int32] = a.copy()
     ::tpy::ordered_set<int32_t> b = ::tpy::set_copy(a);
-    // b.add(4)
     b.insert(4);
-    // print(a)
     std::cout << ::tpy::SetPrinter(a) << "\n";
-    // print(b)
     std::cout << ::tpy::SetPrinter(b) << "\n";
-    // # clear
-    // a.clear()
     a.clear();
-    // print(a)
     std::cout << ::tpy::SetPrinter(a) << "\n";
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     rows = [Row(1)]
+//     print(Holder().take(rows).v, Holder().take_copy(rows).v, rows[0].v)
 void main() {
-    // rows = [Row(1)]
     std::vector<Row> rows = {Row(1)};
-    // print(Holder().take(rows).v, Holder().take_copy(rows).v, rows[0].v)
     std::cout << Holder().take(rows).v << " " << Holder().take_copy(rows).v << " " << ::tpy::__getitem__(rows, 0).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

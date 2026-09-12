@@ -20,9 +20,13 @@ struct Owner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_free_function() -> None:
 void in_free_function();
+// def in_loop() -> None:
 void in_loop();
+// def in_try_finally() -> None:
 void in_try_finally();
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -69,8 +73,8 @@ struct Bumper {
 
 
     // def bump_it(self, v: T) -> None:
+    //     v.bump()
     void bump_it(::tpy::param_val_or_ref_t<T> v) const {
-        // v.bump()
         v.bump();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bumper";
@@ -103,33 +107,36 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
+//     self.n = self.n + 1
 inline void Cell::bump() {
-    // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.c = Cell(n)
 inline Holder::Holder(int32_t n) : c(Cell(n)) {}
 
 // def borrow(self) -> Cell:
+//     return self.c
 inline Cell& Holder::borrow() {
-    // return self.c
     return this->c;
 }
 
 // def __init__(self) -> None:
+//     self.h = Holder(10)
 inline Owner::Owner() : h(Holder(10)) {}
 
 // def run(self) -> None:
+//     b = Bumper[Cell]()
+//     b.bump_it(self.h.borrow())  # tpyc: ok
+//     print("method", self.h.c.n)
 inline void Owner::run() {
-    // b = Bumper[Cell]()
     Bumper<Cell> b = Bumper<Cell>();
-    // b.bump_it(self.h.borrow())  # tpyc: ok
     b.bump_it(this->h.borrow());
-    // print("method", self.h.c.n)
     std::cout << "method" << " " << this->h.c.n << "\n";
 }
 void __tpy_init();

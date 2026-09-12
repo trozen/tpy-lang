@@ -12,6 +12,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Assignment narrowing works for method calls on narrowed union vars
@@ -57,20 +58,23 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 
 // def __init__(self, radius: float) -> None:
+//     self.radius = radius
 inline Circle::Circle(double radius) : radius(radius) {}
 
 // def area(self) -> float:
+//     return 3.14 * self.radius * self.radius
 inline double Circle::area() const {
-    // return 3.14 * self.radius * self.radius
     return ((((3.14) * (this->radius))) * (this->radius));
 }
 
 // def __init__(self, width: float, height: float) -> None:
+//     self.width = width
+//     self.height = height
 inline Rect::Rect(double width, double height) : width(width), height(height) {}
 
 // def area(self) -> float:
+//     return self.width * self.height
 inline double Rect::area() const {
-    // return self.width * self.height
     return ((this->width) * (this->height));
 }
 void __tpy_init();

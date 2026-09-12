@@ -3,64 +3,59 @@
 
 namespace tpyapp::main {
 
-// # Inverse of global_walrus_write: WITHOUT a `global` declaration a walrus binds
-// # a function-local that shadows the module variable, leaving it untouched --
-// # exactly what CPython does.
-// counter = 5
 int32_t counter{};
 
 // def observe() -> int:
+//     return counter
 ::tpy::BigInt observe() {
-    // return counter
     return ::tpy::BigInt(counter);
 }
 
 // def shadow() -> int:
+//     v = (counter := 99)
+//     # Reads inside this function see the local shadow.
+//     return v + counter
 ::tpy::BigInt shadow() {
-    // v = (counter := 99)
     int32_t counter;
     int32_t v = (counter = 99);
-    // # Reads inside this function see the local shadow.
-    // return v + counter
     return ::tpy::BigInt((::tpy::add_check<int32_t>(v, counter)));
 }
 
 // def nested_shadow() -> int:
+//     # A nested def has its own scope: no `global` anywhere, so the inner walrus
+//     # binds an inner local. (A nested-def walrus whose name COLLIDES with a
+//     # module global is a separate open defect -- see BUGS.md.)
+//     def inner() -> int:
+//         return (tally := 3)
+//
+//     return inner()
 ::tpy::BigInt nested_shadow() {
-    // # A nested def has its own scope: no `global` anywhere, so the inner walrus
-    // # binds an inner local. (A nested-def walrus whose name COLLIDES with a
-    // # module global is a separate open defect -- see BUGS.md.)
-    // def inner() -> int:
     auto inner = []() -> ::tpy::BigInt {
-        // return (tally := 3)
         int32_t tally;
         return (tally = 3);
     };
-    // return inner()
     return inner();
 }
 
 // def main() -> None:
+//     print("shadow:", shadow())
+//     print("nested:", nested_shadow())
+//     print("module untouched:", observe(), counter)
 void main() {
-    // print("shadow:", shadow())
     std::cout << "shadow:" << " " << shadow() << "\n";
-    // print("nested:", nested_shadow())
     std::cout << "nested:" << " " << nested_shadow() << "\n";
-    // print("module untouched:", observe(), counter)
     std::cout << "module untouched:" << " " << observe() << " " << counter << "\n";
 }
 
+// counter = 5
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Inverse of global_walrus_write: WITHOUT a `global` declaration a walrus binds
-    // # a function-local that shadows the module variable, leaving it untouched --
-    // # exactly what CPython does.
-    // counter = 5
     counter = 5;
-    // main()
     main();
 }
 

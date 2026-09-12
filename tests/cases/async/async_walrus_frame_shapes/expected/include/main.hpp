@@ -21,13 +21,21 @@ struct __coro_borrow_alias;
 struct __coro_opt_ptr;
 struct __coro_drive;
 
+// async def step(i: int32) -> int32:
 __coro_step step(int32_t i);
+// async def val_scalar() -> None:
 __coro_val_scalar val_scalar();
+// async def owning() -> None:
 __coro_owning owning();
+// async def borrow_alias(rows: list[list[int32]]) -> None:
 __coro_borrow_alias borrow_alias(std::vector<std::vector<int32_t>>& rows);
+// def pick(nodes: list[Node], i: int32) -> Node | None:
 Node* pick(std::vector<Node>& nodes, int32_t i);
+// async def opt_ptr(nodes: list[Node]) -> None:
 __coro_opt_ptr opt_ptr(std::vector<Node>& nodes);
+// async def drive() -> None:
 __coro_drive drive();
+// def main() -> None:
 void main();
 
 // class Node:
@@ -46,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
-// Async coroutine: step
+// async def step(i: int32) -> int32:
 struct __coro_step {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +78,7 @@ struct __coro_step {
     }
 };
 
-// Async coroutine: val_scalar
+// async def val_scalar() -> None:
 struct __coro_val_scalar {
     int32_t __state;
     bool __cancel_pending;
@@ -99,7 +107,7 @@ struct __coro_val_scalar {
     }
 };
 
-// Async coroutine: owning
+// async def owning() -> None:
 struct __coro_owning {
     int32_t __state;
     bool __cancel_pending;
@@ -125,7 +133,7 @@ struct __coro_owning {
     }
 };
 
-// Async coroutine: borrow_alias
+// async def borrow_alias(rows: list[list[int32]]) -> None:
 struct __coro_borrow_alias {
     int32_t __state;
     bool __cancel_pending;
@@ -152,7 +160,7 @@ struct __coro_borrow_alias {
     }
 };
 
-// Async coroutine: opt_ptr
+// async def opt_ptr(nodes: list[Node]) -> None:
 struct __coro_opt_ptr {
     int32_t __state;
     bool __cancel_pending;
@@ -180,7 +188,7 @@ struct __coro_opt_ptr {
     }
 };
 
-// Async coroutine: drive
+// async def drive() -> None:
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;
@@ -213,6 +221,7 @@ struct __coro_drive {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: MyContainer = MyContainer(42)
+//     print(count(c))
 void main() {
-    // c: MyContainer = MyContainer(42)
     MyContainer c = MyContainer(42);
-    // print(count(c))
     std::cout << count(c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

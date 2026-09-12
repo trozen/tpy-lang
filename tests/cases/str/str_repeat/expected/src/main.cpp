@@ -5,35 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: str = "abc"
+//     n: int32 = 3
+//
+//     # Basic repetition
+//     print(s * n)
+//     print(s * 1)
+//     print(s * 0)
+//
+//     # Reverse form
+//     print(n * s)
+//
+//     # Literal repetition
+//     print("xy" * 4)
+//
+//     # Negative count returns empty
+//     print(s * -1)
 void main() {
-    // s: str = "abc"
     std::string_view s = "abc";
-    // n: int32 = 3
     int32_t n = 3;
-    // # Basic repetition
-    // print(s * n)
     std::cout << (::tpy::str_repeat(s, n)) << "\n";
-    // print(s * 1)
     std::cout << (::tpy::str_repeat(s, 1)) << "\n";
-    // print(s * 0)
     std::cout << (::tpy::str_repeat(s, 0)) << "\n";
-    // # Reverse form
-    // print(n * s)
     std::cout << (::tpy::str_repeat(s, n)) << "\n";
-    // # Literal repetition
-    // print("xy" * 4)
     std::cout << (::tpy::str_repeat("xy", 4)) << "\n";
-    // # Negative count returns empty
-    // print(s * -1)
     std::cout << (::tpy::str_repeat(s, -1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_voice;
 struct __coro_amain;
 
+// async def voice(a: Dog | Cat) -> str:
 __coro_voice voice(::tpy::Union<Cat*, Dog*> a);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Dog:
@@ -49,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Async coroutine: voice
+// async def voice(a: Dog | Cat) -> str:
 struct __coro_voice {
     int32_t __state;
     bool __cancel_pending;
@@ -73,7 +75,7 @@ struct __coro_voice {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -104,14 +106,14 @@ struct __coro_amain {
 
 
 // def sound(self) -> str:
+//     return "woof"
 inline std::string Dog::sound() const {
-    // return "woof"
     return "woof";
 }
 
 // def sound(self) -> str:
+//     return "meow"
 inline std::string Cat::sound() const {
-    // return "meow"
     return "meow";
 }
 void __tpy_init();

@@ -9,9 +9,14 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[list[int32]]:
 std::vector<int32_t> make();
+// def main() -> None:
 void main();
 
+// def g() -> Iterator[int32]:
+//     for x in make():  # tpyc: ok
+//         yield x
 inline auto g() {
     return ::tpy::make_generator<int32_t>(
         [__src = std::optional<std::decay_t<decltype(make())>>(), __beg = decltype((make()).begin())(), __end = decltype((make()).begin())(), __init = false]() mutable -> std::optional<int32_t> {

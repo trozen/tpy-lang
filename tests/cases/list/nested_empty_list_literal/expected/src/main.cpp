@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def rows() -> int32:
+//     xs: list[list[int32]] = [[], [1]]   # tpyc: ok -- an empty nested element
+//     xs[0].append(9)                     # the empty row is a real, mutable list
+//     return len(xs) * 10 + len(xs[0])
 int32_t rows() {
-    // xs: list[list[int32]] = [[], [1]]   # tpyc: ok -- an empty nested element
     std::vector<std::vector<int32_t>> xs = {{}, {1}};
-    // xs[0].append(9)                     # the empty row is a real, mutable list
     ::tpy::__getitem__(xs, 0).push_back(9);
-    // return len(xs) * 10 + len(xs[0])
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__len__(xs), 10)), ::tpy::__len__(::tpy::__getitem__(xs, 0))));
 }
 
 // def main() -> None:
+//     print(rows())
 void main() {
-    // print(rows())
     std::cout << rows() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

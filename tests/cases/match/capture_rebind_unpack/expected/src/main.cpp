@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def unpack_rebind(a: Cat) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             xs: tuple[int, int] = (5, 6)
+//             v, w = xs             # tuple-unpack rebinds the capture v
+//             return v + w          # 11
+//     return -1
 ::tpy::BigInt unpack_rebind(const Cat& a) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // xs: tuple[int, int] = (5, 6)
         std::tuple<::tpy::BigInt, ::tpy::BigInt> xs = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(5), ::tpy::BigInt(6)};
-        // v, w = xs             # tuple-unpack rebinds the capture v
         const auto& __tup_1 = xs;
         v = std::get<0>(__tup_1);
         const ::tpy::BigInt& w = std::get<1>(__tup_1);
-        // return v + w          # 11
         return ((v) + (w));
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main():
+//     c = Cat(9)
+//     print(unpack_rebind(c), c.lives)   # 11 9 -- field untouched by the rebind
 void main() {
-    // c = Cat(9)
     Cat c = Cat(::tpy::BigInt(9));
-    // print(unpack_rebind(c), c.lives)   # 11 9 -- field untouched by the rebind
     std::cout << unpack_rebind(c) << " " << c.lives << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

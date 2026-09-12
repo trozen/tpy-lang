@@ -9,6 +9,7 @@ namespace tpyapp::helpers {
 
 inline constexpr std::string_view __name__ = "helpers";
 
+// def mutate() -> None:
 void mutate();
 
 void __tpy_init();

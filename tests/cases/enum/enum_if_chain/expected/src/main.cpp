@@ -47,42 +47,43 @@ namespace tpyapp::main {
 
 
 // def color_name(c: Color) -> str:
+//     if c == Color.Red:
+//         return "red"
+//     elif c == Color.Green:
+//         return "green"
+//     elif c == Color.Blue:
+//         return "blue"
+//     return "unknown"
 std::string color_name(Color c) {
-    // if c == Color.Red:
     if ((c == Color::Red)) {
-        // return "red"
         return "red";
-    // elif c == Color.Green:
     } else if ((c == Color::Green)) {
-        // return "green"
         return "green";
-    // elif c == Color.Blue:
     } else if ((c == Color::Blue)) {
-        // return "blue"
         return "blue";
     }
-    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
+//     print(color_name(Color.Red))
+//     print(color_name(Color.Green))
+//     print(color_name(Color.Blue))
 void main() {
-    // print(color_name(Color.Red))
     std::cout << color_name(Color::Red) << "\n";
-    // print(color_name(Color.Green))
     std::cout << color_name(Color::Green) << "\n";
-    // print(color_name(Color.Blue))
     std::cout << color_name(Color::Blue) << "\n";
 }
 
+// # Enum if/elif chain with comparison
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum if/elif chain with comparison
-    // from enum import Enum
-    // main()
     main();
 }
 

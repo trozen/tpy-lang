@@ -7,26 +7,27 @@ namespace tpyapp::main {
 
 // @dispatch
 // def log(x: float, base: float) -> float:  # tpyc: ok
+//     return log(x) / log(base)
 double log(double x, double base) {
-    // return log(x) / log(base)
     return (::tpy::truediv(::std::log(x), ::std::log(base)));
 }
 
 // def main() -> None:
+//     print(log(1.0))
+//     print(log(8.0, 2.0))
 void main() {
-    // print(log(1.0))
     std::cout << ::tpy::print_float(::std::log(1.0)) << "\n";
-    // print(log(8.0, 2.0))
     std::cout << ::tpy::print_float(log(8.0, 2.0)) << "\n";
 }
 
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
-    // main()
     main();
 }
 

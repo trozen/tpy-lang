@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(fa.make(5))   # 1005 -- qualified fa.make (int), with bare fb.make in scope
+//     print(make("xy"))   # 2 -- bare import is fb.make (str)
 void main() {
-    // print(fa.make(5))   # 1005 -- qualified fa.make (int), with bare fb.make in scope
     std::cout << ::tpyapp::fa::make(::tpy::BigInt(5)) << "\n";
-    // print(make("xy"))   # 2 -- bare import is fb.make (str)
     std::cout << ::tpyapp::fb::make("xy") << "\n";
 }
 
+// # Sibling of the qualified-ctor shadow bug for module functions: `fa.make(...)`
+// # must call fa.make even when a same-named fb.make is bare-imported here.
+// import fa
+// from fb import make
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Sibling of the qualified-ctor shadow bug for module functions: `fa.make(...)`
-    // # must call fa.make even when a same-named fb.make is bare-imported here.
-    // import fa
     ::tpyapp::fa::__tpy_init();
-    // from fb import make
     ::tpyapp::fb::__tpy_init();
-    // main()
     main();
 }
 

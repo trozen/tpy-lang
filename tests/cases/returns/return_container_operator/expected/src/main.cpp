@@ -5,69 +5,69 @@ namespace tpyapp::main {
 
 
 // def cat(a: list[int32], b: list[int32]) -> Own[list[int32]]:
+//     return a + b  # the concat is a fresh list, not an alias of either operand
 std::vector<int32_t> cat(const std::vector<int32_t>& a, const std::vector<int32_t>& b) {
-    // return a + b  # the concat is a fresh list, not an alias of either operand
     return (::tpy::list_concat(a, b));
 }
 
 // def uni(a: set[int32], b: set[int32]) -> Own[set[int32]]:
+//     return a | b
 ::tpy::ordered_set<int32_t> uni(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b) {
-    // return a | b
     return (::tpy::set_union(a, b));
 }
 
 // def inter(a: set[int32], b: set[int32]) -> Own[set[int32]]:
+//     return a & b
 ::tpy::ordered_set<int32_t> inter(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b) {
-    // return a & b
     return (::tpy::set_intersection(a, b));
 }
 
 // def diff(a: set[int32], b: set[int32]) -> Own[set[int32]]:
+//     return a - b
 ::tpy::ordered_set<int32_t> diff(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b) {
-    // return a - b
     return (::tpy::set_difference(a, b));
 }
 
 // def sym(a: set[int32], b: set[int32]) -> Own[set[int32]]:
+//     return a ^ b
 ::tpy::ordered_set<int32_t> sym(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b) {
-    // return a ^ b
     return (::tpy::set_symmetric_difference(a, b));
 }
 
 // def main():
+//     xs = [1, 2]
+//     ys = [3]
+//     got = cat(xs, ys)
+//     # Mutating the result must not reach either operand -- a returned alias
+//     # would show up as a length change on xs.
+//     got.append(9)
+//     print(len(got), len(xs), len(ys))
+//     s1 = {1, 2}
+//     s2 = {2, 3}
+//     u = uni(s1, s2)
+//     u.add(9)
+//     print(len(u), len(s1), len(s2))
+//     print(len(inter(s1, s2)), len(diff(s1, s2)), len(sym(s1, s2)))
 void main() {
-    // xs = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // ys = [3]
     std::vector<int32_t> ys = {3};
-    // got = cat(xs, ys)
     std::vector<int32_t> got = cat(xs, ys);
-    // # Mutating the result must not reach either operand -- a returned alias
-    // # would show up as a length change on xs.
-    // got.append(9)
     got.push_back(9);
-    // print(len(got), len(xs), len(ys))
     std::cout << ::tpy::__len__(got) << " " << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
-    // s1 = {1, 2}
     ::tpy::ordered_set<int32_t> s1 = ::tpy::ordered_set<int32_t>({1, 2});
-    // s2 = {2, 3}
     ::tpy::ordered_set<int32_t> s2 = ::tpy::ordered_set<int32_t>({2, 3});
-    // u = uni(s1, s2)
     ::tpy::ordered_set<int32_t> u = uni(s1, s2);
-    // u.add(9)
     u.insert(9);
-    // print(len(u), len(s1), len(s2))
     std::cout << ::tpy::__len__(u) << " " << ::tpy::__len__(s1) << " " << ::tpy::__len__(s2) << "\n";
-    // print(len(inter(s1, s2)), len(diff(s1, s2)), len(sym(s1, s2)))
     std::cout << ::tpy::__len__(inter(s1, s2)) << " " << ::tpy::__len__(diff(s1, s2)) << " " << ::tpy::__len__(sym(s1, s2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

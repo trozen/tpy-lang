@@ -20,6 +20,7 @@ struct Writer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -52,19 +53,23 @@ inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
 
 
 // def __init__(self, shared: Own[Arc[RwLock[list[int32]]]], id: int32, iters: int32) -> None:
+//     self.shared = shared
+//     self.id = id
+//     self.iters = iters
 inline Writer::Writer(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters) : shared(std::move(shared)), id(id), iters(iters) {}
 
 // def run(self) -> None:
+//     i = 0
+//     while i < self.iters:
+//         with self.shared.get().write() as w:
+//             w.append(self.id)
+//         i += 1
 inline void Writer::run() const {
-    // i = 0
     int32_t i = 0;
-    // while i < self.iters:
     while ((i < this->iters)) {
-        // with self.shared.get().write() as w:
         auto __ctx_1 = this->shared.get().write();
         auto& w = __ctx_1.__enter__();
         try {
-            // w.append(self.id)
             w.__deref__().push_back(this->id);
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -76,7 +81,6 @@ inline void Writer::run() const {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }

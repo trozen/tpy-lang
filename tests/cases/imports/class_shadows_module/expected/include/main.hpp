@@ -13,6 +13,7 @@ struct time;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class time:
@@ -33,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const time& obj) {
 
 
 // def __init__(self, v: int):
+//     self.value = v
 inline time::time(const ::tpy::BigInt& v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

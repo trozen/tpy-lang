@@ -11,11 +11,17 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_nodes() -> Own[list[Node]]:
 std::vector<Node> make_nodes();
+// def test_set_ctor_ref_type_warns() -> None:
 void test_set_ctor_ref_type_warns();
+// def test_set_ctor_value_type_no_warn() -> None:
 void test_set_ctor_value_type_no_warn();
+// def test_set_ctor_copy_no_warn() -> None:
 void test_set_ctor_copy_no_warn();
+// def test_set_ctor_last_use_no_warn() -> None:
 void test_set_ctor_last_use_no_warn();
+// def test_set_ctor_rvalue_no_warn() -> None:
 void test_set_ctor_rvalue_no_warn();
 
 // class Node:
@@ -56,17 +62,18 @@ namespace tpyapp::main {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Node::Node(int32_t val) : val(val) {}
 
 // def __hash__(self) -> int32:
+//     return self.val
 inline int32_t Node::__hash__() const {
-    // return self.val
     return this->val;
 }
 
 // def __eq__(self, other: Node) -> bool:
+//     return self.val == other.val
 inline bool Node::__eq__(const Node& other) const {
-    // return self.val == other.val
     return (this->val == other.val);
 }
 void __tpy_init();

@@ -5,14 +5,15 @@ namespace tpyapp::main {
 
 
 // def make() -> str:
+//     return "x" + "y"
 std::string make() {
-    // return "x" + "y"
     return (::tpy::str_concat("x", "y"));
 }
 
 // def main() -> None:
+//     for v in echo_n(make(), 3):  # tpyc: ok
+//         print(v)
 void main() {
-    // for v in echo_n(make(), 3):  # tpyc: ok
     {
         std::string __tmp_1 = make();
         auto __src_0 = echo_n(__tmp_1, ::tpy::BigInt(3));
@@ -21,18 +22,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

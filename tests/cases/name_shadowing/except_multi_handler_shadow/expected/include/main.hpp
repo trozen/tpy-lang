@@ -13,7 +13,9 @@ struct Denied;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(which: int32) -> int32:
 int32_t pick(int32_t which);
+// def main() -> None:
 void main();
 
 // class Registry:
@@ -71,9 +73,11 @@ inline std::ostream& operator<<(std::ostream& os, const Denied& obj) {
 
 
 // def __init__(self, code: int32):
+//     self.code = code
 inline NotFound::NotFound(int32_t code) : code(code) {}
 
 // def __init__(self, code: int32):
+//     self.code = code
 inline Denied::Denied(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

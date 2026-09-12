@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = make_tag("x", 42)
+//     print(s)
 void main() {
-    // s = make_tag("x", 42)
     std::string s = ::tpyapp::mypkg::helpers::tag("x", 42);
-    // print(s)
     std::cout << s << "\n";
 }
 
+// from mypkg.macros import make_tag
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::mypkg::helpers::__tpy_init();
-    // from mypkg.macros import make_tag
-    // main()
     main();
 }
 

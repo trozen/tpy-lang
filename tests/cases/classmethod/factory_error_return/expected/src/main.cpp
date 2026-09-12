@@ -5,42 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         p = Point.parse(3)
+//         print(p.x)
+//         q = Point.parse(-1)
+//         print(q.x)
+//     except Invalid:
+//         print("invalid")
 void main() {
-    // try:
     std::optional<Point> p;
     std::optional<Point> q;
     {
-        // p = Point.parse(3)
         {
             auto __try_tmp_2 = Point::parse(3);
             if (!__try_tmp_2.has_value()) goto __except_1;
             p = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        // print(p.x)
         std::cout << p->x << "\n";
-        // q = Point.parse(-1)
         {
             auto __try_tmp_3 = Point::parse(-1);
             if (!__try_tmp_3.has_value()) goto __except_1;
             q = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        // print(q.x)
         std::cout << q->x << "\n";
         goto __after_try_1;
         // except Invalid:
         __except_1:;
-        // print("invalid")
         std::cout << "invalid" << "\n";
         __after_try_1:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

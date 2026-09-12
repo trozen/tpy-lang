@@ -16,11 +16,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_amain;
 
+// async def main_coro(f: Future[int32]) -> None:
 __coro_main_coro main_coro(::tpystd::asyncio::Future<int32_t>& f);
+// async def amain() -> None:
 __coro_amain amain();
+// def main() -> None:
 void main();
 
-// Async coroutine: main_coro
+// async def main_coro(f: Future[int32]) -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -45,7 +48,7 @@ struct __coro_main_coro {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;

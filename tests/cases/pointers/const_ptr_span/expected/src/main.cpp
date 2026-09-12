@@ -5,60 +5,63 @@ namespace tpyapp::main {
 
 
 // def read_span(s: Span[readonly[int32]]) -> None:
+//     for v in s:
+//         print(v)
 void read_span(std::span<const int32_t> s) {
-    // for v in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
 // def from_readonly_ptr(p: Ptr[readonly[int32]], n: int32) -> None:
+//     s = p.span(n)  # tpyc: type(Span[readonly[int32]])
+//     read_span(s)
 void from_readonly_ptr(const int32_t* p, int32_t n) {
-    // s = p.span(n)  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = std::span(p, static_cast<size_t>(n));
-    // read_span(s)
     read_span(s);
 }
 
 // def from_mutable_ptr(p: Ptr[int32], n: int32) -> None:
+//     s = p.span(n)  # tpyc: type(Span[int32])
+//     read_span(s)
 void from_mutable_ptr(int32_t* p, int32_t n) {
-    // s = p.span(n)  # tpyc: type(Span[int32])
     std::span<int32_t> s = std::span(p, static_cast<size_t>(n));
-    // read_span(s)
     read_span(s);
 }
 
 // def main() -> None:
+//     a = int32(10)
+//     b = int32(20)
+//
+//     mp: Ptr[int32] = take_ptr(a)
+//     cp: Ptr[readonly[int32]] = take_ptr(b)
+//
+//     print("mutable ptr span:")
+//     from_mutable_ptr(mp, int32(1))
+//
+//     print("const ptr span:")
+//     from_readonly_ptr(cp, int32(1))
 void main() {
-    // a = int32(10)
     int32_t a = 10;
-    // b = int32(20)
     int32_t b = 20;
-    // mp: Ptr[int32] = take_ptr(a)
     int32_t* mp = &a;
-    // cp: Ptr[readonly[int32]] = take_ptr(b)
     const int32_t* cp = &b;
-    // print("mutable ptr span:")
     std::cout << "mutable ptr span:" << "\n";
-    // from_mutable_ptr(mp, int32(1))
     from_mutable_ptr(mp, 1);
-    // print("const ptr span:")
     std::cout << "const ptr span:" << "\n";
-    // from_readonly_ptr(cp, int32(1))
     from_readonly_ptr(cp, 1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

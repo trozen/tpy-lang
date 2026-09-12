@@ -20,14 +20,20 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_first_n;
 struct __gen_Doubler_each_twice;
 
+// def is_small(n: int32) -> bool:
 bool is_small(int32_t n);
+// def skip_first[T](it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_skip_first<T, T_it> skip_first(T_it&& it);
+// def gtakewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 __gen_gtakewhile<T, T_it, F_pred> gtakewhile(F_pred&& pred, T_it&& it);
+// def tag(it: list[int32]) -> Iterator[int32]:
 __gen_tag tag(std::vector<int32_t>& it);
+// def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_first_n<T, T_it> first_n(T_it&& it, int32_t n);
+// def main() -> None:
 void main();
 
 // class Doubler:
@@ -43,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
     return os;
 }
 
-// Generator: skip_first
+// def skip_first[T](it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it>, T> {
     int32_t __state;
@@ -72,11 +78,15 @@ struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it
     }
 };
 // def skip_first[T](it: Iterable[T]) -> Iterator[T]:
+//     started = False
+//     for x in it:
+//         if started:
+//             yield x
+//         started = True
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_skip_first<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // started = False
         started = false;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -94,7 +104,6 @@ std::expected<T, ::tpy::StopIteration> __gen_skip_first<T, T_it>::__next__() {
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
         if (started) {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         } else {
@@ -103,7 +112,6 @@ std::expected<T, ::tpy::StopIteration> __gen_skip_first<T, T_it>::__next__() {
         }
     }
     case S_JOIN_1: {
-        // started = True
         started = true;
         __state = S_JOIN_0;
         continue;
@@ -120,7 +128,7 @@ __gen_skip_first<T, T_it> skip_first(T_it&& it) {
     return __gen_skip_first<T, T_it>(std::forward<T_it>(it));
 }
 
-// Generator: gtakewhile
+// def gtakewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it, F_pred>, T> {
     int32_t __state;
@@ -149,6 +157,10 @@ struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it
     }
 };
 // def gtakewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
+//     for x in it:
+//         if not pred(x):
+//             break
+//         yield x
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<T, ::tpy::StopIteration> __gen_gtakewhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
@@ -172,7 +184,6 @@ std::expected<T, ::tpy::StopIteration> __gen_gtakewhile<T, T_it, F_pred>::__next
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         }
@@ -193,7 +204,7 @@ __gen_gtakewhile<T, T_it, F_pred> gtakewhile(F_pred&& pred, T_it&& it) {
     return __gen_gtakewhile<T, T_it, F_pred>(std::forward<F_pred>(pred), std::forward<T_it>(it));
 }
 
-// Generator: tag
+// def tag(it: list[int32]) -> Iterator[int32]:
 struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
     int32_t __state;
     std::vector<int32_t>& it;
@@ -220,7 +231,7 @@ struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
     }
 };
 
-// Generator: first_n
+// def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, T> {
     int32_t __state;
@@ -250,18 +261,22 @@ struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, T> 
     }
 };
 // def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
+//     c: int32 = 0
+//     for x in it:
+//         if c >= n:
+//             break
+//         yield x
+//         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_first_n<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: int32 = 0
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // c += 1
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
@@ -277,7 +292,6 @@ std::expected<T, ::tpy::StopIteration> __gen_first_n<T, T_it>::__next__() {
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         }
@@ -298,7 +312,7 @@ __gen_first_n<T, T_it> first_n(T_it&& it, int32_t n) {
     return __gen_first_n<T, T_it>(std::forward<T_it>(it), n);
 }
 
-// Generator: Doubler.each_twice
+// def each_twice(self, it: list[int32]) -> Iterator[int32]:
 struct __gen_Doubler_each_twice : public ::tpy::next_iter_mixin<__gen_Doubler_each_twice, int32_t> {
     int32_t __state;
     const Doubler& __self;

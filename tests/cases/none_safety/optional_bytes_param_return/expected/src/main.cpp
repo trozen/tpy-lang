@@ -8,50 +8,50 @@ namespace tpyapp::main {
 // # the None-test and the return sinks (None -> nullopt, bytes-literal -> owned,
 // # param -> the view->owned `bytes` constructor). Truthiness/print stay AST (BUGS.md).
 // def is_absent(b: bytes | None) -> bool:
+//     return b is None
 bool is_absent(std::optional<::tpy::BytesView> b) {
-    // return b is None
     return (!b.has_value());
 }
 
 // def pick(keep: bool) -> bytes | None:
+//     if keep:
+//         return b"data"
+//     return None
 std::optional<::tpy::Bytes> pick(bool keep) {
-    // if keep:
     if (keep) {
-        // return b"data"
         return ::tpy::bytes_literal_owned("data", 4);
     }
-    // return None
     return std::nullopt;
 }
 
 // def forward(b: bytes | None) -> bytes | None:
+//     return b
 std::optional<::tpy::Bytes> forward(std::optional<::tpy::BytesView> b) {
-    // return b
     return b ? std::make_optional(::tpy::Bytes(*b)) : std::nullopt;
 }
 
 // def main() -> None:
+//     print(is_absent(None))
+//     print(is_absent(b"x"))
+//     print(pick(True) is None)
+//     print(pick(False) is None)
+//     print(forward(b"z") is None)
+//     print(forward(None) is None)
 void main() {
-    // print(is_absent(None))
     std::cout << ::tpy::print_bool(is_absent(std::nullopt)) << "\n";
-    // print(is_absent(b"x"))
     std::cout << ::tpy::print_bool(is_absent(::tpy::bytes_literal_owned("x", 1))) << "\n";
-    // print(pick(True) is None)
     std::cout << ::tpy::print_bool((!pick(true).has_value())) << "\n";
-    // print(pick(False) is None)
     std::cout << ::tpy::print_bool((!pick(false).has_value())) << "\n";
-    // print(forward(b"z") is None)
     std::cout << ::tpy::print_bool((!forward(::tpy::bytes_literal_owned("z", 1)).has_value())) << "\n";
-    // print(forward(None) is None)
     std::cout << ::tpy::print_bool((!forward(std::nullopt).has_value())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

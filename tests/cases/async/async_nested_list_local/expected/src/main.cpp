@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // async def work() -> int:
+//     rows = [[i, i + 1] for i in range(3) if i > 0]
+//     await asyncio.sleep(0)
+//     rows[0][1] = 50
+//     return rows[0][0] + rows[0][1]
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_work::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // rows = [[i, i + 1] for i in range(3) if i > 0]
         rows.emplace(({
             std::vector<std::array<int32_t, 2>> __result;
             const int32_t __stop_0 = 3;
@@ -20,7 +23,6 @@ namespace tpyapp::main {
             }
             std::move(__result);
         }));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -30,9 +32,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // rows[0][1] = 50
         ::tpy::__setitem__(::tpy::__getitem__((*rows), 0), 1, 50);
-        // return rows[0][0] + rows[0][1]
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__(::tpy::__getitem__((*rows), 0), 0), ::tpy::__getitem__(::tpy::__getitem__((*rows), 0), 1))));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -49,10 +49,10 @@ __coro_work work() {
 }
 
 // async def main() -> None:
+//     print(await work())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await work())
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -62,7 +62,6 @@ __coro_work work() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await work())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -78,16 +77,17 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # An async frame holding a list-of-lists local across an await: the frame field
+// # carries a pending list element that must be finalized after resolution.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async frame holding a list-of-lists local across an await: the frame field
-    // # carries a pending list element that must be finalized after resolution.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

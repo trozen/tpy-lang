@@ -6,72 +6,72 @@ namespace tpyapp::main {
 
 // # copy() suppresses escape error
 // def loop_escape_copy_ok() -> None:
+//     saved: Point = Point(0, 0)
+//     for i in range(3):
+//         p: Point = Point(i, i)
+//         saved = copy(p)  # tpyc: ok
+//     print(saved.x, saved.y)
 void loop_escape_copy_ok() {
     std::optional<Point> __slot_2;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p: Point = Point(i, i)
         Point p = Point(i, i);
-        // saved = copy(p)  # tpyc: ok
         saved = &*(__slot_2 = Point(p));
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
 // # Rvalue in loop: no escape (fresh storage)
 // def loop_rvalue_ok() -> None:
+//     saved: Point = Point(0, 0)
+//     for i in range(3):
+//         saved = Point(i, i)  # tpyc: ok
+//     print(saved.x, saved.y)
 void loop_rvalue_ok() {
     std::optional<Point> __slot_2;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // saved = Point(i, i)  # tpyc: ok
         saved = &*(__slot_2 = Point(i, i));
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
 // # For-each from outer-scoped container: safe
 // def foreach_outer_container() -> None:
+//     items: list[Point] = [Point(1, 2), Point(3, 4)]
+//     saved: Point = Point(0, 0)
+//     for p in items:
+//         saved = p  # tpyc: ok
+//     print(saved.x, saved.y)
 void foreach_outer_container() {
-    // items: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for p in items:
     auto __obj_0 = ::tpy::own_iter(std::move(items));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // saved = p  # tpyc: ok
         saved = &(p);
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
 // # Value type: no escape concern
 // def value_type_ok() -> None:
+//     saved: int32 = 0
+//     for i in range(3):
+//         n: int32 = i * 10
+//         saved = n  # tpyc: ok
+//     print(saved)
 void value_type_ok() {
-    // saved: int32 = 0
     int32_t saved = 0;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // n: int32 = i * 10
         int32_t n = (::tpy::mul_check<int32_t>(i, 10));
-        // saved = n  # tpyc: ok
         saved = n;
     }
-    // print(saved)
     std::cout << saved << "\n";
 }
 
@@ -79,224 +79,224 @@ void value_type_ok() {
 // # as for-each var over an outer container. Depth should be container's (1),
 // # not the stale depth (2) from the previous loop.
 // def foreach_shadow_safe() -> None:
+//     items: list[Point] = [Point(7, 8)]
+//     saved: Point = Point(0, 0)
+//     for i in range(1):
+//         p: Point = Point(i, i)
+//         pass
+//     for p in items:
+//         saved = p  # tpyc: ok
+//     print(saved.x, saved.y)
 void foreach_shadow_safe() {
-    // items: list[Point] = [Point(7, 8)]
     std::vector<Point> items = {Point(7, 8)};
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(1):
     for (int32_t i = 0; i < 1; ++i) {
-        // p: Point = Point(i, i)
         Point __slot_2 = Point(i, i);
         Point* p = &__slot_2;
-        // pass
     }
-    // for p in items:
     auto __obj_1 = ::tpy::own_iter(std::move(items));
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& p = *__beg_1;
-        // saved = p  # tpyc: ok
         saved = &(p);
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
 // # Sequential loops with same var name: first loop's depth must not
 // # leak into second loop.
 // def sequential_loops_same_var() -> None:
+//     items1: list[Point] = [Point(10, 20)]
+//     items2: list[Point] = [Point(30, 40)]
+//     saved: Point = Point(0, 0)
+//     for p in items1:
+//         pass
+//     for p in items2:
+//         saved = p  # tpyc: ok
+//     print(saved.x, saved.y)
 void sequential_loops_same_var() {
-    // items1: list[Point] = [Point(10, 20)]
     std::vector<Point> items1 = {Point(10, 20)};
-    // items2: list[Point] = [Point(30, 40)]
     std::vector<Point> items2 = {Point(30, 40)};
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for p in items1:
     auto& __obj_0 = items1;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // pass
     }
-    // for p in items2:
     auto __obj_1 = ::tpy::own_iter(std::move(items2));
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& p = *__beg_1;
-        // saved = p  # tpyc: ok
         saved = &(p);
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
 // # Same-scope assignment: both vars at same depth, no escape.
 // def same_scope_ok() -> None:
+//     a: Point = Point(1, 1)
+//     b: Point = a  # tpyc: ok
+//     print(b.x)
 void same_scope_ok() {
-    // a: Point = Point(1, 1)
     Point a = Point(1, 1);
-    // b: Point = a  # tpyc: ok
     Point b = std::move(a);
-    // print(b.x)
     std::cout << b.x << "\n";
 }
 
 // # Lvalue-init pointer-local with rvalue rebind in loop: rebind slot
 // # is pre-declared at function scope so it outlives the loop.
 // def lvalue_init_rvalue_rebind() -> None:
+//     items: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
+//     best: Point = items[0]
+//     for p in items:
+//         if p.x > best.x:
+//             best = copy(p)  # tpyc: ok
+//     print(best.x, best.y)
 void lvalue_init_rvalue_rebind() {
     std::optional<Point> __slot_1;
-    // items: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
-    // best: Point = items[0]
     Point* best = &(::tpy::__getitem__(items, 0));
-    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // if p.x > best.x:
         if ((p.x > best->x)) {
-            // best = copy(p)  # tpyc: ok
             best = &*(__slot_1 = Point(p));
         }
     }
-    // print(best.x, best.y)
     std::cout << best->x << " " << best->y << "\n";
 }
 
 // # Rvalue-init pointer-local: alias preserves original value after rebind.
 // # Uses separate init/rebind slots so alias still sees the old object.
 // def rvalue_alias_preserved() -> None:
+//     p: Point = Point(1, 1)
+//     alias: Point = p  # tpyc: ok
+//     p = Point(2, 2)
+//     print(alias.x, alias.y)
+//     print(p.x, p.y)
 void rvalue_alias_preserved() {
     std::optional<Point> __slot_2;
-    // p: Point = Point(1, 1)
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
-    // alias: Point = p  # tpyc: ok
     Point& alias = (*p);
-    // p = Point(2, 2)
     p = &*(__slot_2 = Point(2, 2));
-    // print(alias.x, alias.y)
     std::cout << alias.x << " " << alias.y << "\n";
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
 // # Rvalue rebind in one if-branch only.
 // def if_branch_rvalue_rebind() -> None:
+//     p: Point = Point(1, 1)
+//     if p.x > 0:
+//         p = Point(2, 2)
+//     print(p.x, p.y)
 void if_branch_rvalue_rebind() {
     std::optional<Point> __slot_2;
-    // p: Point = Point(1, 1)
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
-    // if p.x > 0:
     if ((p->x > 0)) {
-        // p = Point(2, 2)
         p = &*(__slot_2 = Point(2, 2));
     }
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
 // # Different rvalue rebinds in if vs else.
 // def if_else_rvalue_rebinds() -> None:
+//     p: Point = Point(1, 1)
+//     if p.x > 0:
+//         p = Point(2, 2)
+//     else:
+//         p = Point(3, 3)
+//     print(p.x, p.y)
 void if_else_rvalue_rebinds() {
     std::optional<Point> __slot_2;
-    // p: Point = Point(1, 1)
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
-    // if p.x > 0:
     if ((p->x > 0)) {
-        // p = Point(2, 2)
         p = &*(__slot_2 = Point(2, 2));
-    // else:
     } else {
-        // p = Point(3, 3)
         p = &*(__slot_2 = Point(3, 3));
     }
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
 // # Alias preserved through if-branch rvalue rebind.
 // def if_alias_preserved() -> None:
+//     p: Point = Point(1, 1)
+//     alias: Point = p  # tpyc: ok
+//     if p.x > 0:
+//         p = Point(2, 2)
+//     print(alias.x, alias.y)
+//     print(p.x, p.y)
 void if_alias_preserved() {
     std::optional<Point> __slot_2;
-    // p: Point = Point(1, 1)
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
-    // alias: Point = p  # tpyc: ok
     Point& alias = (*p);
-    // if p.x > 0:
     if ((p->x > 0)) {
-        // p = Point(2, 2)
         p = &*(__slot_2 = Point(2, 2));
     }
-    // print(alias.x, alias.y)
     std::cout << alias.x << " " << alias.y << "\n";
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
 // # Rvalue rebind inside while loop.
 // def while_rvalue_rebind() -> None:
+//     p: Point = Point(0, 0)
+//     i: int32 = 0
+//     while i < 3:
+//         p = Point(i, i)
+//         i = i + 1
+//     print(p.x, p.y)
 void while_rvalue_rebind() {
     std::optional<Point> __slot_2;
-    // p: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* p = &__slot_1;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 3:
     while ((i < 3)) {
-        // p = Point(i, i)
         p = &*(__slot_2 = Point(i, i));
-        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
+// loop_escape_copy_ok()
+// loop_rvalue_ok()
+// foreach_outer_container()
+// value_type_ok()
+// foreach_shadow_safe()
+// sequential_loops_same_var()
+// same_scope_ok()
+// lvalue_init_rvalue_rebind()
+// rvalue_alias_preserved()
+// if_branch_rvalue_rebind()
+// if_else_rvalue_rebinds()
+// if_alias_preserved()
+// while_rvalue_rebind()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // loop_escape_copy_ok()
     loop_escape_copy_ok();
-    // loop_rvalue_ok()
     loop_rvalue_ok();
-    // foreach_outer_container()
     foreach_outer_container();
-    // value_type_ok()
     value_type_ok();
-    // foreach_shadow_safe()
     foreach_shadow_safe();
-    // sequential_loops_same_var()
     sequential_loops_same_var();
-    // same_scope_ok()
     same_scope_ok();
-    // lvalue_init_rvalue_rebind()
     lvalue_init_rvalue_rebind();
-    // rvalue_alias_preserved()
     rvalue_alias_preserved();
-    // if_branch_rvalue_rebind()
     if_branch_rvalue_rebind();
-    // if_else_rvalue_rebinds()
     if_else_rvalue_rebinds();
-    // if_alias_preserved()
     if_alias_preserved();
-    // while_rvalue_rebind()
     while_rvalue_rebind();
 }
 

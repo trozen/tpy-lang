@@ -8,6 +8,7 @@
 namespace tpyapp::constants {
 
 inline constexpr std::string_view __name__ = "constants";
+// BIG_VALUE: Final[int] = 1000000
 extern const ::tpy::BigInt BIG_VALUE;
 
 void __tpy_init();

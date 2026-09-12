@@ -12,10 +12,13 @@ template<typename T> struct MyList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def length[T](xs: Iterable[T]) -> int32:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 int32_t length(T_xs& xs);
+// def total_of[T](xs: MyList[T]) -> int32:
 template<typename T>
 int32_t total_of(MyList<T>& xs);
+// def main() -> None:
 void main();
 
 // class MyIter[T]:
@@ -27,23 +30,25 @@ struct MyIter {
     int32_t pos;
 
     // def __init__(self, items: list[T]) -> None:
+    //     self.items = items
+    //     self.pos = 0
     MyIter() = default;
     explicit MyIter(const std::vector<T>& items) : items(items), pos(0) {}
 
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> T:
+    //     if self.pos >= len(self.items):
+    //         raise StopIteration
+    //     v = self.items[self.pos]
+    //     self.pos += 1
+    //     return v
     std::expected<::tpy::val_or_ref<T>, ::tpy::StopIteration> __next__() {
-        // if self.pos >= len(self.items):
         if ((this->pos >= ::tpy::__len__(this->items))) {
-            // raise StopIteration
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        // v = self.items[self.pos]
         T& v = ::tpy::__getitem__(this->items, this->pos);
-        // self.pos += 1
         this->pos = ::tpy::add_check<int32_t>(this->pos, 1);
-        // return v
         return v;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyIter";
@@ -65,17 +70,18 @@ struct MyList {
     std::vector<T> items;
 
     // def __init__(self) -> None:
+    //     self.items = []
     MyList() : items(std::vector<T>{}) {}
 
     // def add(self, x: T) -> None:
+    //     self.items.append(x)
     void add(::tpy::param_val_or_ref_t<T> x) {
-        // self.items.append(x)
         this->items.push_back(::tpy::param_to_storage<T>(x));
     }
 
     // def __iter__(self) -> Own[MyIter[T]]:
+    //     return MyIter[T](self.items)
     MyIter<T> __iter__() const {
-        // return MyIter[T](self.items)
         return MyIter<T>(this->items);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyList";
@@ -88,31 +94,31 @@ inline std::ostream& operator<<(std::ostream& os, const MyList<T>& obj) {
 }
 
 // def length[T](xs: Iterable[T]) -> int32:
+//     n: int32 = 0
+//     for _ in xs:
+//         n += 1
+//     return n
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 int32_t length(T_xs& xs) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for _ in xs:
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& _ = ::tpy::unwrap_ref(*__r_1);
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // return n
     return n;
 }
 // def total_of[T](xs: MyList[T]) -> int32:
+//     # Generic outer T -- forces Ref[MyList[T]] at the call site.
+//     # `length[T]` infers via `Iterable[T]`; conformance is via the
+//     # extends declaration on MyList, so the path goes through
+//     # `get_extends_protocol_type_arg` with a Ref-wrapped arg.
+//     return length(xs)
 template<typename T>
 int32_t total_of(MyList<T>& xs) {
-    // # Generic outer T -- forces Ref[MyList[T]] at the call site.
-    // # `length[T]` infers via `Iterable[T]`; conformance is via the
-    // # extends declaration on MyList, so the path goes through
-    // # `get_extends_protocol_type_arg` with a Ref-wrapped arg.
-    // return length(xs)
     return length<T>(xs);
 }
 

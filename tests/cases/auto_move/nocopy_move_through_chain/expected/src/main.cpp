@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def chain() -> Own[Handle]:
+//     h = Handle(99)
+//     a = h
+//     b = a
+//     return b
 Handle chain() {
-    // h = Handle(99)
     Handle h = Handle(99);
-    // a = h
     Handle a = std::move(h);
-    // b = a
     Handle b = std::move(a);
-    // return b
     return b;
 }
 
 // def main():
+//     r = chain()
+//     print(r.fd)
 void main() {
-    // r = chain()
     Handle r = chain();
-    // print(r.fd)
     std::cout << r.fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

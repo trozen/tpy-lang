@@ -15,6 +15,7 @@ struct A;
 
 inline constexpr std::string_view __name__ = "pkg.a";
 
+// def with_b() -> int32:
 int32_t with_b();
 
 // class A:

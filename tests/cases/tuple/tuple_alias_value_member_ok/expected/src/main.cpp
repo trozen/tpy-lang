@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[tuple[int32, int32]]:
+//     t = (1, 2)
+//     u = t
+//     v = u
+//     yield v
 std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (1, 2)
         t = std::tuple<int32_t, int32_t>{1, 2};
-        // u = t
         u = t;
-        // v = u
         v = u;
-        // yield v
         __state = S_RESUME_0;
         return v;
     }
@@ -34,8 +34,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for pair in gen():
+//         print(pair[0] + pair[1])
 void main() {
-    // for pair in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -43,18 +44,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-        // print(pair[0] + pair[1])
         std::cout << (::tpy::add_check<int32_t>(std::get<0>(pair), std::get<1>(pair))) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

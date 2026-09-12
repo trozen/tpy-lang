@@ -7,14 +7,26 @@ namespace tpyapp::main {
 // # Appending a list literal to a list whose element type is itself a (pending)
 // # list literal: the two pending list types must compare compatible at sema.
 // def take(g: list[list[int]]) -> None:  # tpyc: ok
+//     print(g)
 void take(const std::vector<std::vector<::tpy::BigInt>>& g) {
-    // print(g)
     std::cout << ::tpy::ListPrinter(g) << "\n";
 }
 
 // def main() -> None:
+//     rows = [[i, i + 1] for i in range(3)]
+//     rows.append([9, 9])  # tpyc: ok
+//     print(rows)
+//     # Mutate a row in place to prove the stored sublists are real containers.
+//     rows[0][0] = 99
+//     print(rows)
+//     take([[1, 2], [3, 4]])  # param-passing sibling
+//
+//     # Both rows pending with int-LITERAL elements (not int32): the element
+//     # predicate must accept two distinct literals, like peer-unification does.
+//     lits = [[1, 2]]
+//     lits.append([3, 4])  # tpyc: ok
+//     print(lits)
 void main() {
-    // rows = [[i, i + 1] for i in range(3)]
     std::vector<std::array<int32_t, 2>> rows = ({
         std::vector<std::array<int32_t, 2>> __result;
         const int32_t __stop_0 = 3;
@@ -24,34 +36,23 @@ void main() {
         }
         std::move(__result);
     });
-    // rows.append([9, 9])  # tpyc: ok
     rows.push_back({9, 9});
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
-    // # Mutate a row in place to prove the stored sublists are real containers.
-    // rows[0][0] = 99
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 99);
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
-    // take([[1, 2], [3, 4]])  # param-passing sibling
     std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3, 4}};
     take(__tmp_1);
-    // # Both rows pending with int-LITERAL elements (not int32): the element
-    // # predicate must accept two distinct literals, like peer-unification does.
-    // lits = [[1, 2]]
     std::vector<std::array<int32_t, 2>> lits = {{1, 2}};
-    // lits.append([3, 4])  # tpyc: ok
     lits.push_back({3, 4});
-    // print(lits)
     std::cout << ::tpy::ListPrinter(lits) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

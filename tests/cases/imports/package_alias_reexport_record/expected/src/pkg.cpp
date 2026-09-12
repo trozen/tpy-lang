@@ -4,12 +4,12 @@
 namespace tpyapp::pkg {
 
 
+// from .sub import Point as P
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from .sub import Point as P
     ::tpyapp::pkg::sub::__tpy_init();
 }
 

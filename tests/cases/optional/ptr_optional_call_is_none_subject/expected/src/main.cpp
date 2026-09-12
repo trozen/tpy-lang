@@ -5,60 +5,60 @@ namespace tpyapp::main {
 
 
 // def find(xs: list[Rec], want: int32) -> Rec | None:
+//     for r in xs:
+//         if r.v == want:
+//             return r
+//     return None
 Rec* find(std::vector<Rec>& xs, int32_t want) {
-    // for r in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& r = *__beg_0;
-        // if r.v == want:
         if ((r.v == want)) {
-            // return r
             return &(r);
         }
     }
-    // return None
     return nullptr;
 }
 
 // def passthrough(x: Rec | None) -> Rec | None:
+//     # A bare optional-record name returned at the same optional slot.
+//     return x
 Rec* passthrough(Rec* x) {
-    // # A bare optional-record name returned at the same optional slot.
-    // return x
     return x;
 }
 
 // def main() -> None:
+//     xs = [Rec(1)]
+//     # The call result itself is what the None test compares.
+//     print(find(xs, 1) is None)
+//     print(find(xs, 2) is None)
+//     print(passthrough(find(xs, 1)) is None)
+//     # The returned optional BORROWS the list element, so a write through it
+//     # shows through the original owner.
+//     found = find(xs, 1)
+//     if found is not None:
+//         found.v = 9
+//     print(xs[0].v)
 void main() {
-    // xs = [Rec(1)]
     std::vector<Rec> xs = {Rec(1)};
-    // # The call result itself is what the None test compares.
-    // print(find(xs, 1) is None)
     std::cout << ::tpy::print_bool((find(xs, 1) == nullptr)) << "\n";
-    // print(find(xs, 2) is None)
     std::cout << ::tpy::print_bool((find(xs, 2) == nullptr)) << "\n";
-    // print(passthrough(find(xs, 1)) is None)
     std::cout << ::tpy::print_bool((passthrough(find(xs, 1)) == nullptr)) << "\n";
-    // # The returned optional BORROWS the list element, so a write through it
-    // # shows through the original owner.
-    // found = find(xs, 1)
     Rec* found = find(xs, 1);
-    // if found is not None:
     if ((found != nullptr)) {
-        // found.v = 9
         found->v = 9;
     }
-    // print(xs[0].v)
     std::cout << ::tpy::__getitem__(xs, 0).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

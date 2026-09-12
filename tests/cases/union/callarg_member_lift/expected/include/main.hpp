@@ -14,10 +14,15 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(u: A | B) -> None:
 void bump(::tpy::Union<A*, B*> u);
+// def bump_counter(u: Counter | A) -> None:
 void bump_counter(::tpy::Union<A*, Counter*> u);
+// def describe(u: A | B | None) -> int32:
 int32_t describe(::tpy::Union<std::monostate, const A*, const B*> u);
+// def via_param(a: A) -> int32:
 int32_t via_param(A& a);
+// def main() -> None:
 void main();
 
 // class A:
@@ -94,33 +99,38 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32) -> None:
+//     self.y = y
 inline B::B(int32_t y) : y(y) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump_via_union(self) -> None:
+//     bump_counter(self)
 inline void Counter::bump_via_union() {
-    // bump_counter(self)
     bump_counter(::tpy::Union<A*, Counter*>{&((*this))});
 }
 
 // def __init__(self, m: int32, n: int32) -> None:
+//     self.a1 = A(m)
+//     self.a2 = A(n)
 inline Pair::Pair(int32_t m, int32_t n) : a1(A(m)), a2(A(n)) {}
 
 // def bump_picked(self, flip: bool) -> None:
+//     p = self.a1
+//     if flip:
+//         p = self.a2
+//     bump(p)
 inline void Pair::bump_picked(bool flip) {
-    // p = self.a1
     A* p = &(this->a1);
-    // if flip:
     if (flip) {
-        // p = self.a2
         p = &(this->a2);
     }
-    // bump(p)
     bump(::tpy::Union<A*, B*>{&((*p))});
 }
 void __tpy_init();

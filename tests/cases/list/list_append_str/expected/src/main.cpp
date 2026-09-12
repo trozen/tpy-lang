@@ -6,27 +6,27 @@ namespace tpyapp::main {
 
 // # list[str].append with local string variable (string_view -> string conversion)
 // def main() -> None:
+//     items: list[str] = []
+//     s = "hello"
+//     items.append(s)
+//     items.append("literal")
+//     items.append(s + " world")
+//     print(items)
 void main() {
-    // items: list[str] = []
     std::vector<std::string> items = std::vector<std::string>{};
-    // s = "hello"
     std::string_view s = "hello";
-    // items.append(s)
     items.push_back(std::string(s));
-    // items.append("literal")
     items.push_back("literal");
-    // items.append(s + " world")
     items.push_back((::tpy::str_concat(s, " world")));
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,77 +5,78 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(quote("AZaz09-._~"))
+//     print(quote("/a b/c?x=1"))
+//     print(quote("/a b", safe=""))
+//     print(quote("\u00e9\u4e2d"))   # UTF-8 multibyte (e-acute, CJK) -> %XX per byte
+//
+//     print(quote_plus("a b+c/d"))           # space -> '+', '+' and '/' encoded
+//     print(unquote("%2Fa%20b%C3%A9"))
+//     print(unquote_plus("a+b%2Bc"))
+//     print(unquote("100%"))                 # trailing '%' with no hex -> literal
+//     print(unquote("%zz"))                  # invalid hex -> literal
+//
+//     # urlencode iterates in insertion order (TPy dicts are ordered like CPython).
+//     print(urlencode({"limit": "10", "name": "a b", "path": "x/y"}))
+//     print(urlencode({}))
+//
+//     # blank values and no-'=' keys drop by default; kept with keep_blank_values.
+//     for k, v in parse_qsl("a=1&b=hello+world&c=&noeq&d=z%2Fw"):
+//         print(k + "=" + v)
+//     print("--keep-blank--")
+//     for k, v in parse_qsl("a=1&b=&c", True):
+//         print("[" + k + "]=[" + v + "]")
 void main() {
-    // print(quote("AZaz09-._~"))
     std::cout << ::tpystd::urllib::parse::quote("AZaz09-._~") << "\n";
-    // print(quote("/a b/c?x=1"))
     std::cout << ::tpystd::urllib::parse::quote("/a b/c?x=1") << "\n";
-    // print(quote("/a b", safe=""))
     std::cout << ::tpystd::urllib::parse::quote("/a b", "") << "\n";
-    // print(quote("\u00e9\u4e2d"))   # UTF-8 multibyte (e-acute, CJK) -> %XX per byte
     std::cout << ::tpystd::urllib::parse::quote("\xc3\xa9\xe4\xb8\xad") << "\n";
-    // print(quote_plus("a b+c/d"))           # space -> '+', '+' and '/' encoded
     std::cout << ::tpystd::urllib::parse::quote_plus("a b+c/d") << "\n";
-    // print(unquote("%2Fa%20b%C3%A9"))
     std::cout << ::tpystd::urllib::parse::unquote("%2Fa%20b%C3%A9") << "\n";
-    // print(unquote_plus("a+b%2Bc"))
     std::cout << ::tpystd::urllib::parse::unquote_plus("a+b%2Bc") << "\n";
-    // print(unquote("100%"))                 # trailing '%' with no hex -> literal
     std::cout << ::tpystd::urllib::parse::unquote("100%") << "\n";
-    // print(unquote("%zz"))                  # invalid hex -> literal
     std::cout << ::tpystd::urllib::parse::unquote("%zz") << "\n";
-    // # urlencode iterates in insertion order (TPy dicts are ordered like CPython).
-    // print(urlencode({"limit": "10", "name": "a b", "path": "x/y"}))
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"limit", "10"}, {"name", "a b"}, {"path", "x/y"}});
     std::cout << ::tpystd::urllib::parse::urlencode(__tmp_1) << "\n";
-    // print(urlencode({}))
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>();
     std::cout << ::tpystd::urllib::parse::urlencode(__tmp_2) << "\n";
-    // # blank values and no-'=' keys drop by default; kept with keep_blank_values.
-    // for k, v in parse_qsl("a=1&b=hello+world&c=&noeq&d=z%2Fw"):
     auto __obj_0 = ::tpystd::urllib::parse::parse_qsl("a=1&b=hello+world&c=&noeq&d=z%2Fw");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        // # blank values and no-'=' keys drop by default; kept with keep_blank_values.
-        // for k, v in parse_qsl("a=1&b=hello+world&c=&noeq&d=z%2Fw"):
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         std::string_view v = std::get<1>(__tup_1);
-        // print(k + "=" + v)
         std::cout << (::tpy::str_concat((::tpy::str_concat(k, "=")), v)) << "\n";
     }
-    // print("--keep-blank--")
     std::cout << "--keep-blank--" << "\n";
-    // for k, v in parse_qsl("a=1&b=&c", True):
     auto __obj_1 = ::tpystd::urllib::parse::parse_qsl("a=1&b=&c", true);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_1 = *__beg_1;
-        // for k, v in parse_qsl("a=1&b=&c", True):
         const auto& __tup_2 = __for_tup_1;
         std::string_view k = std::get<0>(__tup_2);
         std::string_view v = std::get<1>(__tup_2);
-        // print("[" + k + "]=[" + v + "]")
         std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("[", k)), "]=[")), v)), "]")) << "\n";
     }
 }
 
+// # urllib.parse percent-encode/decode -- quote/quote_plus, unquote/unquote_plus,
+// # urlencode, parse_qsl -- UTF-8 multibyte, safe-char overrides, degenerate escapes.
+// from urllib.parse import (
+//     quote, quote_plus, unquote, unquote_plus, urlencode, parse_qsl,
+// )
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # urllib.parse percent-encode/decode -- quote/quote_plus, unquote/unquote_plus,
-    // # urlencode, parse_qsl -- UTF-8 multibyte, safe-char overrides, degenerate escapes.
-    // from urllib.parse import (
-    // quote, quote_plus, unquote, unquote_plus, urlencode, parse_qsl,
-    // )
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
-    // main()
     main();
 }
 

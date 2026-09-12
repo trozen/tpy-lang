@@ -5,65 +5,69 @@ namespace tpyapp::main {
 
 
 // def test_list_view() -> None:
+//     """No mutation: BytesView."""
+//     items: list[bytes] = [b"alice", b"bob"]
+//     x = items[int32(0)]  # tpyc: type(BytesView)
+//     print(x)
 void test_list_view() {
-    // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
-    // x = items[int32(0)]  # tpyc: type(BytesView)
     ::tpy::BytesView x = ::tpy::__getitem__(items, 0);
-    // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }
 
 // def test_list_mutation_fallback() -> None:
+//     """Source mutated after borrow: falls back to owned bytes."""
+//     items: list[bytes] = [b"alice", b"bob"]
+//     x = items[int32(0)]  # tpyc: type(bytes)
+//     items.append(b"carol")
+//     print(x)
 void test_list_mutation_fallback() {
-    // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
-    // x = items[int32(0)]  # tpyc: type(bytes)
     ::tpy::Bytes x = ::tpy::__getitem__(items, 0);
-    // items.append(b"carol")
     items.push_back(::tpy::bytes_literal_owned("carol", 5));
-    // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }
 
 // def test_list_reassign_fallback() -> None:
+//     """Source reassigned after borrow: falls back to owned bytes."""
+//     items: list[bytes] = [b"alice", b"bob"]
+//     x = items[int32(0)]  # tpyc: type(bytes)
+//     items = [b"dave"]
+//     print(x)
 void test_list_reassign_fallback() {
     std::optional<std::vector<::tpy::Bytes>> __slot_2;
-    // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> __slot_1 = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     std::vector<::tpy::Bytes>* items = &__slot_1;
-    // x = items[int32(0)]  # tpyc: type(bytes)
     ::tpy::Bytes x = ::tpy::__getitem__((*items), 0);
-    // items = [b"dave"]
     items = &*(__slot_2 = {::tpy::bytes_literal_owned("dave", 4)});
-    // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }
 
 // def test_list_subscript_write_fallback() -> None:
+//     """Subscript write on source: falls back to owned bytes."""
+//     items: list[bytes] = [b"alice", b"bob"]
+//     x = items[int32(0)]  # tpyc: type(bytes)
+//     items[int32(0)] = b"eve"
+//     print(x)
 void test_list_subscript_write_fallback() {
-    // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
-    // x = items[int32(0)]  # tpyc: type(bytes)
     ::tpy::Bytes x = ::tpy::__getitem__(items, 0);
-    // items[int32(0)] = b"eve"
     ::tpy::__setitem__(items, 0, ::tpy::bytes_literal_owned("eve", 3));
-    // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }
 
+// test_list_view()
+// test_list_mutation_fallback()
+// test_list_reassign_fallback()
+// test_list_subscript_write_fallback()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_list_view()
     test_list_view();
-    // test_list_mutation_fallback()
     test_list_mutation_fallback();
-    // test_list_reassign_fallback()
     test_list_reassign_fallback();
-    // test_list_subscript_write_fallback()
     test_list_subscript_write_fallback();
 }
 

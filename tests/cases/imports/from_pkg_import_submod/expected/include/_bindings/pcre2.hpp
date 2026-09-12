@@ -11,6 +11,7 @@ struct Code;
 
 inline constexpr std::string_view __name__ = "_bindings.pcre2";
 
+// def compile_pattern(s: str) -> int32:
 int32_t compile_pattern(std::string_view s);
 
 // class Code:
@@ -31,6 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Code& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Code::Code(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::_bindings::pcre2

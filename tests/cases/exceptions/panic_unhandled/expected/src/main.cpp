@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // # Unhandled exception terminates with message
 // def fail() -> None:
+//     raise ValueError("something went wrong")
 void fail() {
-    // raise ValueError("something went wrong")
     throw ::tpy::ValueError("something went wrong");
 }
 
 // def main() -> None:
+//     fail()
 void main() {
-    // fail()
     fail();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

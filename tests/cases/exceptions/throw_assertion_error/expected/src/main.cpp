@@ -6,35 +6,36 @@ namespace tpyapp::main {
 
 // # `assert` failures throw AssertionError (catchable). Matches CPython.
 // def check(n: int) -> int:
+//     assert n > 0, "n must be positive"
+//     return n * 2
 ::tpy::BigInt check(const ::tpy::BigInt& n) {
-    // assert n > 0, "n must be positive"
     if (!((n > 0))) ::tpy::raise_assertion_error("n must be positive");
-    // return n * 2
     return ((n) * (::tpy::BigInt(2)));
 }
 
 // def main() -> None:
+//     print(check(3))
+//     try:
+//         print(check(-1))
+//     except AssertionError as e:
+//         print("caught:", str(e))
 void main() {
-    // print(check(3))
     std::cout << check(::tpy::BigInt(3)) << "\n";
-    // try:
     {
         try {
-            // print(check(-1))
             std::cout << check(::tpy::BigInt(-1)) << "\n";
         } catch (const ::tpy::AssertionError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

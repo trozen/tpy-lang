@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_array_to_ptr() -> None:
 void test_array_to_ptr();
+// def test_write_through_array_ptr() -> None:
 void test_write_through_array_ptr();
 
 void __tpy_init();

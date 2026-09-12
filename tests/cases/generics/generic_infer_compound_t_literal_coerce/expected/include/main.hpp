@@ -12,45 +12,51 @@ using ::tpystd::heapq::heappush;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def push_t[T](xs: list[T], item: T) -> None:
 template<typename T>
 void push_t(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> item);
+// def put_dict[K, V](d: dict[K, V], k: K, v: V) -> None:
 template<typename K, typename V>
 void put_dict(::tpy::ordered_map<K, V>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v);
+// def add_to_set[T](s: set[T], v: T) -> None:
 template<typename T>
 void add_to_set(::tpy::ordered_set<T>& s, ::tpy::param_val_or_ref_t<T> v);
+// def take_any[T](x: T) -> None:
 template<typename T>
 void take_any(::tpy::param_val_or_ref_t<T> x);
+// def pair_any[T](a: T, b: T) -> None:
 template<typename T>
 void pair_any(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
 // def push_t[T](xs: list[T], item: T) -> None:
+//     xs.append(item)
 template<typename T>
 void push_t(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> item) {
-    // xs.append(item)
     xs.push_back(::tpy::param_to_storage<T>(item));
 }
 // def put_dict[K, V](d: dict[K, V], k: K, v: V) -> None:
+//     d[k] = v
 template<typename K, typename V>
 void put_dict(::tpy::ordered_map<K, V>& d, ::tpy::param_val_or_ref_t<K> k, ::tpy::param_val_or_ref_t<V> v) {
-    // d[k] = v
     ::tpy::__setitem__(d, k, v);
 }
 // def add_to_set[T](s: set[T], v: T) -> None:
+//     s.add(v)
 template<typename T>
 void add_to_set(::tpy::ordered_set<T>& s, ::tpy::param_val_or_ref_t<T> v) {
-    // s.add(v)
     s.insert(::tpy::param_to_storage<T>(v));
 }
 // def take_any[T](x: T) -> None:
+//     pass
 template<typename T>
 void take_any(::tpy::param_val_or_ref_t<T> x) {
-    // pass
 }
 // def pair_any[T](a: T, b: T) -> None:
+//     pass
 template<typename T>
 void pair_any(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // pass
 }
 
 void __tpy_init();

@@ -5,16 +5,20 @@ namespace tpyapp::main {
 
 
 // def steps(start: int32) -> Iterator[int32]:
+//     h = Holder(start)
+//     with h as it:
+//         pass
+//     yield it.n
+//     it.n += 1  # mutates through the alias, after the statement AND a suspension
+//     yield it.n
+//     yield h.total()  # the manager sees the mutation -- proof it was not copied
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // h = Holder(start)
         h.emplace(Holder(start));
-        // with h as it:
         auto& __ctx_1 = (*h);
         it.emplace(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -25,19 +29,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // yield it.n
         __state = S_RESUME_0;
         return (*it).n;
     }
     case S_RESUME_0: {
-        // it.n += 1  # mutates through the alias, after the statement AND a suspension
         (*it).n = ::tpy::add_check<int32_t>((*it).n, 1);
-        // yield it.n
         __state = S_RESUME_1;
         return (*it).n;
     }
     case S_RESUME_1: {
-        // yield h.total()  # the manager sees the mutation -- proof it was not copied
         __state = S_RESUME_2;
         return (*h).total();
     }
@@ -57,8 +57,9 @@ __gen_steps steps(int32_t start) {
 }
 
 // def main() -> None:
+//     for v in steps(5):
+//         print(v)
 void main() {
-    // for v in steps(5):
     {
         auto __src_0 = steps(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -66,18 +67,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

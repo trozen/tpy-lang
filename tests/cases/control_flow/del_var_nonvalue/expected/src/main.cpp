@@ -6,36 +6,37 @@ namespace tpyapp::main {
 
 // # del on non-value type locals (list, str)
 // def main() -> None:
+//     items: list[int] = [1, 2, 3]
+//     print(len(items))
+//     del items
+//     items = [4, 5]
+//     print(len(items))
+//
+//     s = "hello"
+//     print(s)
+//     del s
+//     s = "world"
+//     print(s)
 void main() {
     std::optional<std::vector<::tpy::BigInt>> __slot_2;
-    // items: list[int] = [1, 2, 3]
     std::vector<::tpy::BigInt> __slot_1 = {1, 2, 3};
     std::vector<::tpy::BigInt>* items = &__slot_1;
-    // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
-    // del items
     { auto __del_sink = std::move(*items); }
-    // items = [4, 5]
     items = &*(__slot_2 = {4, 5});
-    // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
-    // s = "hello"
     std::string_view s = "hello";
-    // print(s)
     std::cout << s << "\n";
-    // del s
-    // s = "world"
     s = "world";
-    // print(s)
     std::cout << s << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

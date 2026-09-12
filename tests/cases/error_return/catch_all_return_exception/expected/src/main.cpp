@@ -6,111 +6,118 @@ namespace tpyapp::main {
 
 // @error_return(ParseError)
 // def parse_digit(s: str) -> int32:
+//     if s == "1":
+//         return 1
+//     raise ParseError
 std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
-    // if s == "1":
     if ((s == "1")) {
-        // return 1
         return 1;
     }
-    // raise ParseError
     return ::tpy::make_unexpected(ParseError{});
 }
 
 // @error_return(NotFound)
 // def lookup(items: list[int32], target: int32) -> int32:
+//     for i in range(len(items)):
+//         if items[i] == target:
+//             return i
+//     raise NotFound
 std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32_t target) {
-    // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if items[i] == target:
         if ((items[static_cast<std::size_t>(i)] == target)) {
-            // return i
             return i;
         }
     }
-    // raise NotFound
     return ::tpy::make_unexpected(NotFound{});
 }
 
 // def main() -> None:
+//     items: list[int32] = [10, 20]
+//
+//     # Success: both calls succeed
+//     try:
+//         v = parse_digit("1")
+//         idx = lookup(items, 20)
+//     except ReturnException:
+//         print("error")
+//     else:
+//         print(v)
+//         print(idx)
+//
+//     # ParseError triggers the catch-all
+//     try:
+//         v2 = parse_digit("x")
+//         print("unreachable")
+//     except ReturnException:
+//         print("caught parse error")
+//
+//     # NotFound triggers the catch-all
+//     try:
+//         idx2 = lookup(items, 99)
+//         print("unreachable")
+//     except ReturnException:
+//         print("caught not found")
 void main() {
-    // items: list[int32] = [10, 20]
     std::vector<int32_t> items = {10, 20};
-    // # Success: both calls succeed
-    // try:
     int32_t idx;
     int32_t v;
     {
-        // v = parse_digit("1")
         {
             auto __try_tmp_2 = parse_digit("1");
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        // idx = lookup(items, 20)
         {
             auto __try_tmp_3 = lookup(items, 20);
             if (!__try_tmp_3.has_value()) goto __except_1;
             idx = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
-        // print(idx)
         std::cout << idx << "\n";
         goto __after_try_1;
         // except ReturnException:
         __except_1:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_1:;
     }
-    // # ParseError triggers the catch-all
-    // try:
     int32_t v2;
     {
-        // v2 = parse_digit("x")
         {
             auto __try_tmp_5 = parse_digit("x");
             if (!__try_tmp_5.has_value()) goto __except_4;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
-        // print("unreachable")
         std::cout << "unreachable" << "\n";
         goto __after_try_4;
         // except ReturnException:
         __except_4:;
-        // print("caught parse error")
         std::cout << "caught parse error" << "\n";
         __after_try_4:;
     }
-    // # NotFound triggers the catch-all
-    // try:
     int32_t idx2;
     {
-        // idx2 = lookup(items, 99)
         {
             auto __try_tmp_7 = lookup(items, 99);
             if (!__try_tmp_7.has_value()) goto __except_6;
             idx2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
-        // print("unreachable")
         std::cout << "unreachable" << "\n";
         goto __after_try_6;
         // except ReturnException:
         __except_6:;
-        // print("caught not found")
         std::cout << "caught not found" << "\n";
         __after_try_6:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

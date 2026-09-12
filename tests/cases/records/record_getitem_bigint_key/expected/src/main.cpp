@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     c = SparseCounter()
+//     k: int = 17592186044416  # 2**44
+//     c[k] = 7
+//     print(c[k])
+//     print(c[k + 1])
 void main() {
-    // c = SparseCounter()
     SparseCounter c = SparseCounter();
-    // k: int = 17592186044416  # 2**44
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(17592186044416LL));
-    // c[k] = 7
     ::tpy::__setitem__(c, k, 7);
-    // print(c[k])
     std::cout << c[k] << "\n";
-    // print(c[k + 1])
     std::cout << c[((k) + (::tpy::BigInt(1)))] << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

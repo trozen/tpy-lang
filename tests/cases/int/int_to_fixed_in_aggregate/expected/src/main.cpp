@@ -5,56 +5,60 @@ namespace tpyapp::main {
 
 
 // def port() -> int:
+//     return 8765
 ::tpy::BigInt port() {
-    // return 8765
     return ::tpy::BigInt(8765);
 }
 
 // def make_addr() -> tuple[str, int32]:
+//     return ("127.0.0.1", port())  # tuple return-position element
 std::tuple<std::string, int32_t> make_addr() {
-    // return ("127.0.0.1", port())  # tuple return-position element
     return std::tuple<std::string, int32_t>{"127.0.0.1", (port()).to_fixed_check<int32_t>()};
 }
 
 // def main() -> None:
+//     # list literal element
+//     ports: list[int32] = [port(), port()]
+//     print(ports[0])
+//
+//     # tuple return-position element
+//     host, p = make_addr()
+//     print(p)
+//
+//     # nested aggregate: list of tuples
+//     addrs: list[tuple[str, int32]] = [("a", port())]
+//     _, np = addrs[0]
+//     print(np)
+//
+//     # Inverse guard: @nocopy Box elements must still move/alias, not copy.
+//     boxes: list[Box[int32]] = [Box(1), Box(2)]
+//     boxes[0].set(99)
+//     print(boxes[0].get())
 void main() {
-    // # list literal element
-    // ports: list[int32] = [port(), port()]
     std::vector<int32_t> ports = {(port()).to_fixed_check<int32_t>(), (port()).to_fixed_check<int32_t>()};
-    // print(ports[0])
     std::cout << ::tpy::__getitem__(ports, 0) << "\n";
-    // # tuple return-position element
-    // host, p = make_addr()
     auto __tup_1 = make_addr();
     std::string_view host = std::get<0>(__tup_1);
     int32_t p = std::get<1>(__tup_1);
-    // print(p)
     std::cout << p << "\n";
-    // # nested aggregate: list of tuples
-    // addrs: list[tuple[str, int32]] = [("a", port())]
     std::vector<std::tuple<std::string, int32_t>> addrs = {std::tuple<std::string, int32_t>{"a", (port()).to_fixed_check<int32_t>()}};
-    // _, np = addrs[0]
     auto __tup_2 = ::tpy::__getitem__(addrs, 0);
     int32_t np = std::get<1>(__tup_2);
-    // print(np)
     std::cout << np << "\n";
-    // # Inverse guard: @nocopy Box elements must still move/alias, not copy.
-    // boxes: list[Box[int32]] = [Box(1), Box(2)]
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1), ::tpystd::tplib::box::Box<int32_t>(2));
-    // boxes[0].set(99)
     ::tpy::__getitem__(boxes, 0).set(99);
-    // print(boxes[0].get())
     std::cout << ::tpy::__getitem__(boxes, 0).get() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

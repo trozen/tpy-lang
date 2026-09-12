@@ -12,7 +12,9 @@ using ::tpyapp::shapes::Circle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_radius(c: Circle) -> int32:
 int32_t get_radius(const ::tpyapp::shapes::Circle& c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

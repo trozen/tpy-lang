@@ -3,73 +3,63 @@
 
 namespace tpyapp::main {
 
-// # Default value
-// b0: bool = bool()
 bool b0{};
-// # From bool
-// b1: bool = bool(True)
 bool b1{};
-// b2: bool = bool(False)
 bool b2{};
-// # From int32
-// b3: bool = bool(int32(0))
 bool b3{};
-// b4: bool = bool(int32(1))
 bool b4{};
-// b5: bool = bool(int32(-5))
 bool b5{};
-// # From int (BigInt)
-// b6: bool = bool(0)
 bool b6{};
-// b7: bool = bool(42)
 bool b7{};
-// b8: bool = bool(-100)
 bool b8{};
 
+// # Default value
+// b0: bool = bool()
+// print(b0)  # False
+//
+// # From bool
+// b1: bool = bool(True)
+// print(b1)  # True
+// b2: bool = bool(False)
+// print(b2)  # False
+//
+// # From int32
+// b3: bool = bool(int32(0))
+// print(b3)  # False
+// b4: bool = bool(int32(1))
+// print(b4)  # True
+// b5: bool = bool(int32(-5))
+// print(b5)  # True
+//
+// # From int (BigInt)
+// b6: bool = bool(0)
+// print(b6)  # False
+// b7: bool = bool(42)
+// print(b7)  # True
+// b8: bool = bool(-100)
+// print(b8)  # True
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Default value
-    // b0: bool = bool()
     b0 = false;
-    // print(b0)  # False
     std::cout << ::tpy::print_bool(b0) << "\n";
-    // # From bool
-    // b1: bool = bool(True)
     b1 = true;
-    // print(b1)  # True
     std::cout << ::tpy::print_bool(b1) << "\n";
-    // b2: bool = bool(False)
     b2 = false;
-    // print(b2)  # False
     std::cout << ::tpy::print_bool(b2) << "\n";
-    // # From int32
-    // b3: bool = bool(int32(0))
     b3 = (0 != 0);
-    // print(b3)  # False
     std::cout << ::tpy::print_bool(b3) << "\n";
-    // b4: bool = bool(int32(1))
     b4 = (1 != 0);
-    // print(b4)  # True
     std::cout << ::tpy::print_bool(b4) << "\n";
-    // b5: bool = bool(int32(-5))
     b5 = (-5 != 0);
-    // print(b5)  # True
     std::cout << ::tpy::print_bool(b5) << "\n";
-    // # From int (BigInt)
-    // b6: bool = bool(0)
     b6 = (0 != 0);
-    // print(b6)  # False
     std::cout << ::tpy::print_bool(b6) << "\n";
-    // b7: bool = bool(42)
     b7 = (42 != 0);
-    // print(b7)  # True
     std::cout << ::tpy::print_bool(b7) << "\n";
-    // b8: bool = bool(-100)
     b8 = (-100 != 0);
-    // print(b8)  # True
     std::cout << ::tpy::print_bool(b8) << "\n";
 }
 

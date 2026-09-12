@@ -3,57 +3,57 @@
 
 namespace tpyapp::main {
 
-// points: list[Point] = list()
 std::vector<Point>* points{};
-// # Print Optional local
-// p: Point | None = None
 Point* p{};
 
 // def find(points: list[Point], target: int32) -> Point | None:
+//     for p in points:
+//         if p.x == target:
+//             return p
+//     return None
 Point* find(std::vector<Point>& points, int32_t target) {
-    // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // if p.x == target:
         if ((p.x == target)) {
-            // return p
             return &(p);
         }
     }
-    // return None
     return nullptr;
 }
 
+// points: list[Point] = list()
+// points.append(Point(3, 4))
+//
+// # Print Optional from function return
+// print(find(points, 3))
+// print(find(points, 99))
+//
+// # Print None literal
+// print(None)
+//
+// # Print Optional local
+// p: Point | None = None
+// print(p)
+// p = Point(1, 2)
+// print(p)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // points: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
-    // points.append(Point(3, 4))
     points->push_back(Point(3, 4));
-    // # Print Optional from function return
-    // print(find(points, 3))
     std::cout << ::tpy::print_optional(find((*points), 3)) << "\n";
-    // print(find(points, 99))
     std::cout << ::tpy::print_optional(find((*points), 99)) << "\n";
-    // # Print None literal
-    // print(None)
     std::cout << "None" << "\n";
-    // # Print Optional local
-    // p: Point | None = None
     p = nullptr;
-    // print(p)
     std::cout << ::tpy::print_optional(p) << "\n";
-    // p = Point(1, 2)
     static Point __global_slot_2 = Point(1, 2);
     p = &__global_slot_2;
-    // print(p)
     std::cout << ::tpy::print_optional(p) << "\n";
 }
 

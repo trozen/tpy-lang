@@ -12,6 +12,7 @@ struct Bag;
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -35,14 +36,15 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self, base: int) -> None:
+//     self._base = base
 inline Bag::Bag(const ::tpy::BigInt& base) : _base(base) {}
 
 // def __getattr__(self, name: str) -> int:
+//     global calls
+//     calls += 1
+//     return self._base
 inline ::tpy::BigInt Bag::__getattr__(std::string_view name) const {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return self._base
     return this->_base;
 }
 void __tpy_init();

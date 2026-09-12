@@ -5,97 +5,102 @@ namespace tpyapp::main {
 
 
 // def print_point(p: Point) -> None:
+//     print(p.x)
+//     print(p.y)
 void print_point(const Point& p) {
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(p.y)
     std::cout << p.y << "\n";
 }
 
 // def get_sum(p: Point) -> int32:
+//     return p.x + p.y
 int32_t get_sum(const Point& p) {
-    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def modify_point(p: Point) -> None:
+//     p.x = 999
 void modify_point(Point& p) {
-    // p.x = 999
     p.x = 999;
 }
 
 // def deref_and_return(ptr: Ptr[Point]) -> Point:
+//     # Ptr -> Point coercion in return statement
+//     return ptr
 Point& deref_and_return(Point* ptr) {
-    // # Ptr -> Point coercion in return statement
-    // return ptr
     return ::tpy::deref_check(ptr);
 }
 
 // def test_ptr_to_value() -> None:
+//     pt: Point = Point(10, 20)
+//     ptr: Ptr[Point] = pt
+//
+//     # Ptr[Point] -> Point coercion in function call
+//     print_point(ptr)
+//
+//     result: int32 = get_sum(ptr)
+//     print(result)
+//
+//     # Modification through coerced pointer affects original
+//     modify_point(ptr)
+//     print(pt.x)
 void test_ptr_to_value() {
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // # Ptr[Point] -> Point coercion in function call
-    // print_point(ptr)
     print_point(::tpy::deref_check(ptr));
-    // result: int32 = get_sum(ptr)
     int32_t result = get_sum(::tpy::deref_check(ptr));
-    // print(result)
     std::cout << result << "\n";
-    // # Modification through coerced pointer affects original
-    // modify_point(ptr)
     modify_point(::tpy::deref_check(ptr));
-    // print(pt.x)
     std::cout << pt.x << "\n";
 }
 
 // def test_ptr_to_value_assign() -> None:
+//     pt: Point = Point(5, 7)
+//     ptr: Ptr[Point] = pt
+//
+//     # Ptr[Point] -> Point coercion in assignment
+//     p2: Point = ptr
+//     print(p2.x)
+//     print(p2.y)
 void test_ptr_to_value_assign() {
-    // pt: Point = Point(5, 7)
     Point pt = Point(5, 7);
-    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // # Ptr[Point] -> Point coercion in assignment
-    // p2: Point = ptr
     Point& p2 = ::tpy::deref_check(ptr);
-    // print(p2.x)
     std::cout << p2.x << "\n";
-    // print(p2.y)
     std::cout << p2.y << "\n";
 }
 
 // def test_ptr_to_value_return() -> None:
+//     pt: Point = Point(100, 200)
+//     ptr: Ptr[Point] = pt
+//
+//     # Ptr -> Point coercion in return
+//     p2: Point = deref_and_return(ptr)
+//     print(p2.x)
 void test_ptr_to_value_return() {
-    // pt: Point = Point(100, 200)
     Point pt = Point(100, 200);
-    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // # Ptr -> Point coercion in return
-    // p2: Point = deref_and_return(ptr)
     Point& p2 = deref_and_return(ptr);
-    // print(p2.x)
     std::cout << p2.x << "\n";
 }
 
+// # Run tests
+// print("=== call ===")
+// test_ptr_to_value()
+// print("=== assign ===")
+// test_ptr_to_value_assign()
+// print("=== return ===")
+// test_ptr_to_value_return()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Run tests
-    // print("=== call ===")
     std::cout << "=== call ===" << "\n";
-    // test_ptr_to_value()
     test_ptr_to_value();
-    // print("=== assign ===")
     std::cout << "=== assign ===" << "\n";
-    // test_ptr_to_value_assign()
     test_ptr_to_value_assign();
-    // print("=== return ===")
     std::cout << "=== return ===" << "\n";
-    // test_ptr_to_value_return()
     test_ptr_to_value_return();
 }
 

@@ -11,9 +11,13 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump_items(d: dict[str, Point]):
 void bump_items(::tpy::ordered_map<std::string, Point>& d);
+// def bump_values(d: dict[str, list[int32]]):
 void bump_values(::tpy::ordered_map<std::string, std::vector<int32_t>>& d);
+// def total(d: dict[str, list[int32]]) -> int32:
 int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d);
+// def main():
 void main();
 
 // class Point:
@@ -34,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

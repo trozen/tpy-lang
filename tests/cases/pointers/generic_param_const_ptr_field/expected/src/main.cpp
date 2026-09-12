@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(42)
+//     print(RWView(c).read())   # 42, mutable source -> readonly borrow
+//     print(ROView(c).read())   # 42, readonly source -> readonly borrow
 void main() {
-    // c = Counter(42)
     Counter c = Counter(42);
-    // print(RWView(c).read())   # 42, mutable source -> readonly borrow
     std::cout << RWView<Counter>(c).read() << "\n";
-    // print(ROView(c).read())   # 42, readonly source -> readonly borrow
     std::cout << ROView<Counter>(c).read() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

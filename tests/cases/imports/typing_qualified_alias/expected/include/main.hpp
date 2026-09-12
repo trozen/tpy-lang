@@ -17,9 +17,12 @@ struct Person;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def safe_inc(x: t.Optional[int32]) -> int32:
 int32_t safe_inc(std::optional<int32_t> x);
+// def hello(g: Greetable) -> None:
 template<Greetable T_g>
 void hello(T_g& g);
+// def main():
 void main();
 
 // class Person:
@@ -43,17 +46,18 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 
 
 // def __init__(self, n: str):
+//     self.name = n
 inline Person::Person(std::string_view n) : name(n) {}
 
 // def greet(self) -> str:
+//     return self.name
 inline std::string Person::greet() const {
-    // return self.name
     return this->name;
 }
 // def hello(g: Greetable) -> None:
+//     print(g.greet())
 template<Greetable T_g>
 void hello(T_g& g) {
-    // print(g.greet())
     std::cout << g.greet() << "\n";
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def use(x: int32 | None) -> int32:
+//     assert x  # tpyc: warning(/Truthiness check on optional value/)
+//     return x + 1  # tpyc: ok
 int32_t use(std::optional<int32_t> x) {
-    // assert x  # tpyc: warning(/Truthiness check on optional value/)
     if (!(::tpy::is_truthy(x))) ::tpy::raise_assertion_error();
-    // return x + 1  # tpyc: ok
     return (::tpy::add_check<int32_t>((*x), 1));
 }
 
+// print(use(41))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(use(41))
     std::cout << use(41) << "\n";
 }
 

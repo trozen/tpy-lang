@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     callbacks: list[Callable[[int32], int32]] = []
+//     n: int32 = 10
+//     def add_offset(x: int32) -> int32:
+//         return x + n
+//     callbacks.append(add_offset)
+//     f: Callable[[int32], int32] = callbacks[0]
+//     print(f(5))
 void main() {
-    // callbacks: list[Callable[[int32], int32]] = []
     std::vector<std::function<int32_t(int32_t)>> callbacks = std::vector<std::function<int32_t(int32_t)>>{};
-    // n: int32 = 10
     int32_t n = 10;
-    // def add_offset(x: int32) -> int32:
     auto add_offset = [n](int32_t x) -> int32_t {
-        // return x + n
         return (::tpy::add_check<int32_t>(x, n));
     };
-    // callbacks.append(add_offset)
     callbacks.push_back(add_offset);
-    // f: Callable[[int32], int32] = callbacks[0]
     std::function<int32_t(int32_t)> f = ::tpy::__getitem__(callbacks, 0);
-    // print(f(5))
     std::cout << f(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

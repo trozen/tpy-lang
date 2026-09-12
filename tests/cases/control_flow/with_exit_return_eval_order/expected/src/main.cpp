@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def f(lk: Lock) -> bool:
+//     with lk:
+//         return lk.held
 bool f(Lock& lk) {
-    // with lk:
     auto& __ctx_1 = lk;
     __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        // return lk.held
         bool __tpy_ret_0 = lk.held;
         __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
@@ -28,21 +28,21 @@ bool f(Lock& lk) {
 }
 
 // def main() -> None:
+//     lk = Lock()
+//     print(f(lk))
+//     print(lk.held)
 void main() {
-    // lk = Lock()
     Lock lk = Lock();
-    // print(f(lk))
     std::cout << ::tpy::print_bool(f(lk)) << "\n";
-    // print(lk.held)
     std::cout << ::tpy::print_bool(lk.held) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

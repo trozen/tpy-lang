@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def main():
+//     c = Counter()
+//     print(c(1))
+//     print(c(5))
+//     print(c(10))
+//
+//     a = Accumulator(0.0)
+//     print(a(1.5))
+//     print(a(2.5))
+//     print(a(6.0))
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // print(c(1))
     std::cout << c.__call__(1) << "\n";
-    // print(c(5))
     std::cout << c.__call__(5) << "\n";
-    // print(c(10))
     std::cout << c.__call__(10) << "\n";
-    // a = Accumulator(0.0)
     Accumulator a = Accumulator(0.0);
-    // print(a(1.5))
     std::cout << ::tpy::print_float(a.__call__(1.5)) << "\n";
-    // print(a(2.5))
     std::cout << ::tpy::print_float(a.__call__(2.5)) << "\n";
-    // print(a(6.0))
     std::cout << ::tpy::print_float(a.__call__(6.0)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

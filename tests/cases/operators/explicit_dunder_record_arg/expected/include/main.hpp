@@ -11,8 +11,11 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def total(a: Acc, b: Acc) -> int32:
 int32_t total(const Acc& a, const Acc& b);
+// def same(a: Acc, b: Acc) -> bool:
 bool same(const Acc& a, const Acc& b);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -53,17 +56,18 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Acc::Acc(int32_t v) : v(v) {}
 
 // def __add__(self, other: 'Acc') -> int32:
+//     return self.v + other.v
 inline int32_t Acc::__add__(const Acc& other) const {
-    // return self.v + other.v
     return (::tpy::add_check<int32_t>(this->v, other.v));
 }
 
 // def __eq__(self, other: 'Acc') -> bool:
+//     return self.v == other.v
 inline bool Acc::__eq__(const Acc& other) const {
-    // return self.v == other.v
     return (this->v == other.v);
 }
 void __tpy_init();

@@ -5,179 +5,185 @@ namespace tpyapp::main {
 
 
 // def remove_literal(xs: list[str]) -> None:
+//     xs.remove("b")  # tpyc: ok -- the literal stays a `const char[2]`
 void remove_literal(std::vector<std::string>& xs) {
-    // xs.remove("b")  # tpyc: ok -- the literal stays a `const char[2]`
     ::tpy::list_remove(xs, "b");
 }
 
 // def remove_param(xs: list[str], k: str) -> None:
+//     xs.remove(k)  # tpyc: ok -- `k` is a std::string_view param
 void remove_param(std::vector<std::string>& xs, std::string_view k) {
-    // xs.remove(k)  # tpyc: ok -- `k` is a std::string_view param
     ::tpy::list_remove(xs, k);
 }
 
 // def remove_view_local(xs: list[str], src: str) -> None:
+//     v = src[1:]  # a StrView local, not an owned str
+//     xs.remove(v)  # tpyc: ok
 void remove_view_local(std::vector<std::string>& xs, std::string_view src) {
-    // v = src[1:]  # a StrView local, not an owned str
     std::string_view v = ::tpy::str_slice(src, ::tpy::BasicSlice{1, std::nullopt});
-    // xs.remove(v)  # tpyc: ok
     ::tpy::list_remove(xs, v);
 }
 
 // def remove_slice(xs: list[str], src: str) -> None:
+//     # The same view source unbound: the render is shape-blind.
+//     xs.remove(src[1:])  # tpyc: ok
 void remove_slice(std::vector<std::string>& xs, std::string_view src) {
-    // # The same view source unbound: the render is shape-blind.
-    // xs.remove(src[1:])  # tpyc: ok
     ::tpy::list_remove(xs, ::tpy::str_slice(src, ::tpy::BasicSlice{1, std::nullopt}));
 }
 
 // def remove_stripped(xs: list[str], src: str) -> None:
+//     # ... and a view-returning method call.
+//     xs.remove(src.strip())  # tpyc: ok
 void remove_stripped(std::vector<std::string>& xs, std::string_view src) {
-    // # ... and a view-returning method call.
-    // xs.remove(src.strip())  # tpyc: ok
     ::tpy::list_remove(xs, ::tpy::str_strip(src));
 }
 
 // def remove_view_elem(vs: list[StrView], k: StrView) -> None:
+//     # A VIEW-typed element: the lookup key and the element are the same C++
+//     # type here.
+//     # Never called: building a `list[StrView]` local is not lowered yet
+//     # (a literal rejects at `expr.container_literal`, an append at
+//     # `method.arg_shape`), so this leg is pinned by its emitted C++ alone.
+//     vs.remove(k)  # tpyc: ok
 void remove_view_elem(std::vector<std::string_view>& vs, std::string_view k) {
-    // # A VIEW-typed element: the lookup key and the element are the same C++
-    // # type here.
-    // # Never called: building a `list[StrView]` local is not lowered yet
-    // # (a literal rejects at `expr.container_literal`, an append at
-    // # `method.arg_shape`), so this leg is pinned by its emitted C++ alone.
-    // vs.remove(k)  # tpyc: ok
     ::tpy::list_remove(vs, k);
 }
 
 // def remove_owned_local(xs: list[str]) -> None:
+//     # An owned local is the element's own form and passes bare -- the same
+//     # runtime overload takes it, so both spellings reach one comparison.
+//     owned = "a" + "b"
+//     xs.remove(owned)  # tpyc: ok
 void remove_owned_local(std::vector<std::string>& xs) {
-    // # An owned local is the element's own form and passes bare -- the same
-    // # runtime overload takes it, so both spellings reach one comparison.
-    // owned = "a" + "b"
     ::tpy::String owned = (::tpy::str_concat("a", "b"));
-    // xs.remove(owned)  # tpyc: ok
     ::tpy::list_remove(xs, owned);
 }
 
 // def remove_element_read(xs: list[str]) -> None:
+//     # ... and so does a subscript read of the container itself.
+//     xs.remove(xs[0])  # tpyc: ok
 void remove_element_read(std::vector<std::string>& xs) {
-    // # ... and so does a subscript read of the container itself.
-    // xs.remove(xs[0])  # tpyc: ok
     ::tpy::list_remove(xs, ::tpy::__getitem__(xs, 0));
 }
 
 // def find(xs: list[str], k: str) -> int:
+//     return xs.index(k)  # tpyc: ok
 ::tpy::BigInt find(const std::vector<std::string>& xs, std::string_view k) {
-    // return xs.index(k)  # tpyc: ok
     return ::tpy::BigInt(::tpy::list_index(xs, k));
 }
 
 // def tally(xs: list[str], k: str) -> int:
+//     return xs.count(k)  # tpyc: ok
 ::tpy::BigInt tally(const std::vector<std::string>& xs, std::string_view k) {
-    // return xs.count(k)  # tpyc: ok
     return ::tpy::BigInt(::tpy::list_count(xs, k));
 }
 
 // def drop_bytes_literal(bs: list[bytes]) -> None:
+//     # A bytes literal is a static span; the runtime compares it byte-wise
+//     # against the owned `std::vector<uint8_t>` elements.
+//     bs.remove(b"b")  # tpyc: ok
 void drop_bytes_literal(std::vector<::tpy::Bytes>& bs) {
-    // # A bytes literal is a static span; the runtime compares it byte-wise
-    // # against the owned `std::vector<uint8_t>` elements.
-    // bs.remove(b"b")  # tpyc: ok
     ::tpy::list_remove(bs, ::tpy::bytes_literal("b", 1));
 }
 
 // def drop_bytes_param(bs: list[bytes], k: bytes) -> None:
+//     bs.remove(k)  # tpyc: ok
 void drop_bytes_param(std::vector<::tpy::Bytes>& bs, ::tpy::BytesView k) {
-    // bs.remove(k)  # tpyc: ok
     ::tpy::list_remove(bs, k);
 }
 
 // def empty_keys(xs: list[str], bs: list[bytes], k: str, bk: bytes) -> None:
+//     # An EMPTY key: the comparison is a size check before any data read,
+//     # which matters for bytes -- an empty span may carry a null pointer.
+//     print(xs.count(k), xs.index(k), bs.count(bk), bs.index(bk))
+//     xs.remove(k)
+//     bs.remove(bk)
+//     print(xs, len(bs))
 void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, ::tpy::BytesView bk) {
-    // # An EMPTY key: the comparison is a size check before any data read,
-    // # which matters for bytes -- an empty span may carry a null pointer.
-    // print(xs.count(k), xs.index(k), bs.count(bk), bs.index(bk))
     std::cout << ::tpy::list_count(xs, k) << " " << ::tpy::list_index(xs, k) << " " << ::tpy::list_count(bs, bk) << " " << ::tpy::list_index(bs, bk) << "\n";
-    // xs.remove(k)
     ::tpy::list_remove(xs, k);
-    // bs.remove(bk)
     ::tpy::list_remove(bs, bk);
-    // print(xs, len(bs))
     std::cout << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(bs) << "\n";
 }
 
 // def key_len(k: str) -> int:
+//     # A plain free-function `str` param keeps the view form -- the same form
+//     # the lookup slots above receive.
+//     return len(k)
 ::tpy::BigInt key_len(std::string_view k) {
-    // # A plain free-function `str` param keeps the view form -- the same form
-    // # the lookup slots above receive.
-    // return len(k)
     return ::tpy::BigInt(::tpy::__len__(k));
 }
 
 // def main() -> None:
+//     xs = ["a", "b", "c", "b"]
+//     remove_literal(xs)
+//     print(xs)
+//     remove_param(xs, "c")
+//     print(xs)
+//
+//     ys = ["a", "b", "c"]
+//     remove_view_local(ys, "?b")
+//     print(ys)
+//     remove_slice(ys, "?c")
+//     print(ys)
+//     remove_stripped(ys, " a ")
+//     print(ys)
+//
+//     zs = ["ab", "c"]
+//     remove_owned_local(zs)
+//     print(zs)
+//     remove_element_read(zs)
+//     print(zs)
+//
+//     ws = ["a", "b", "a"]
+//     print(find(ws, "b"), tally(ws, "a"))
+//
+//     bs = [b"a", b"b", b"c"]
+//     drop_bytes_literal(bs)
+//     print(len(bs))
+//     drop_bytes_param(bs, b"a")
+//     print(len(bs), bs[0])
+//
+//     empty_keys(["", "a"], [b"", b"a"], "", b"")
+//
+//     print(key_len("abcd"))
 void main() {
-    // xs = ["a", "b", "c", "b"]
     std::vector<std::string> xs = {"a", "b", "c", "b"};
-    // remove_literal(xs)
     remove_literal(xs);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // remove_param(xs, "c")
     remove_param(xs, "c");
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // ys = ["a", "b", "c"]
     std::vector<std::string> ys = {"a", "b", "c"};
-    // remove_view_local(ys, "?b")
     remove_view_local(ys, "?b");
-    // print(ys)
     std::cout << ::tpy::ListPrinter(ys) << "\n";
-    // remove_slice(ys, "?c")
     remove_slice(ys, "?c");
-    // print(ys)
     std::cout << ::tpy::ListPrinter(ys) << "\n";
-    // remove_stripped(ys, " a ")
     remove_stripped(ys, " a ");
-    // print(ys)
     std::cout << ::tpy::ListPrinter(ys) << "\n";
-    // zs = ["ab", "c"]
     std::vector<std::string> zs = {"ab", "c"};
-    // remove_owned_local(zs)
     remove_owned_local(zs);
-    // print(zs)
     std::cout << ::tpy::ListPrinter(zs) << "\n";
-    // remove_element_read(zs)
     remove_element_read(zs);
-    // print(zs)
     std::cout << ::tpy::ListPrinter(zs) << "\n";
-    // ws = ["a", "b", "a"]
     std::vector<std::string> ws = {"a", "b", "a"};
-    // print(find(ws, "b"), tally(ws, "a"))
     std::cout << find(ws, "b") << " " << tally(ws, "a") << "\n";
-    // bs = [b"a", b"b", b"c"]
     std::vector<::tpy::Bytes> bs = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
-    // drop_bytes_literal(bs)
     drop_bytes_literal(bs);
-    // print(len(bs))
     std::cout << ::tpy::__len__(bs) << "\n";
-    // drop_bytes_param(bs, b"a")
     drop_bytes_param(bs, ::tpy::bytes_literal("a", 1));
-    // print(len(bs), bs[0])
     std::cout << ::tpy::__len__(bs) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(bs, 0)) << "\n";
-    // empty_keys(["", "a"], [b"", b"a"], "", b"")
     std::vector<std::string> __tmp_1 = {"", "a"};
     std::vector<::tpy::Bytes> __tmp_2 = {::tpy::Bytes{}, ::tpy::bytes_literal_owned("a", 1)};
     empty_keys(__tmp_1, __tmp_2, "", ::tpy::BytesView{});
-    // print(key_len("abcd"))
     std::cout << key_len("abcd") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

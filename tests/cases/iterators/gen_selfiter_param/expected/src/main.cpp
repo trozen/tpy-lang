@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def wrap(n: int32) -> Iterator[int32]:
+//     yield -1
+//     for x in repeat_n(5, n):
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_wrap::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
@@ -29,7 +31,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_wrap::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -45,11 +46,20 @@ __gen_wrap wrap(int32_t n) {
 }
 
 // def main() -> None:
+//     # Iterable[T] param consuming a move-only generator: for-loop and comprehension
+//     out: list[int32] = []
+//     for v in take(repeat_n(7, 5), 3):
+//         out.append(v)
+//     print(out)                                       # [7, 7, 7]
+//     print([v for v in take(repeat_n(8, 5), 2)])      # [8, 8]
+//     # temporary self-iterator source inside a resumable generator
+//     print([v for v in wrap(3)])                      # [-1, 5, 5, 5]
+//     # inverse: Iterator[T] param over a generator
+//     print([v for v in take_iter(repeat_n(9, 4), 2)])  # [9, 9]
+//     # inverse: list source
+//     print([v for v in doubled([1, 2, 3])])           # [2, 4, 6]
 void main() {
-    // # Iterable[T] param consuming a move-only generator: for-loop and comprehension
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for v in take(repeat_n(7, 5), 3):
     {
         int32_t __tmp_2 = 7;
         auto __tmp_3 = repeat_n<int32_t>(__tmp_2, 5);
@@ -59,13 +69,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // out.append(v)
         out.push_back(v);
         }
     }
-    // print(out)                                       # [7, 7, 7]
     std::cout << ::tpy::ListPrinter(out) << "\n";
-    // print([v for v in take(repeat_n(8, 5), 2)])      # [8, 8]
     int32_t __tmp_4 = 8;
     auto __tmp_5 = repeat_n<int32_t>(__tmp_4, 5);
     std::cout << ::tpy::ListPrinter(({
@@ -79,8 +86,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # temporary self-iterator source inside a resumable generator
-    // print([v for v in wrap(3)])                      # [-1, 5, 5, 5]
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_3 = wrap(3);
@@ -92,8 +97,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # inverse: Iterator[T] param over a generator
-    // print([v for v in take_iter(repeat_n(9, 4), 2)])  # [9, 9]
     int32_t __tmp_6 = 9;
     auto __tmp_7 = repeat_n<int32_t>(__tmp_6, 4);
     std::cout << ::tpy::ListPrinter(({
@@ -107,8 +110,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # inverse: list source
-    // print([v for v in doubled([1, 2, 3])])           # [2, 4, 6]
     std::vector<int32_t> __tmp_8 = {1, 2, 3};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -123,12 +124,12 @@ void main() {
     })) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

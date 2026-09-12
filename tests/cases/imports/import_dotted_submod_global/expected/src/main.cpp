@@ -5,22 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(geo.codec.hi_nibble(58))   # ':' -> _HEX[3] == '3' (51); empty _HEX would panic
 void main() {
-    // print(geo.codec.hi_nibble(58))   # ':' -> _HEX[3] == '3' (51); empty _HEX would panic
     std::cout << ::tpyapp::geo::codec::hi_nibble(58) << "\n";
 }
 
+// # `import pkg.sub` (dotted) must also run the submodule's __tpy_init -- the sibling
+// # of the `from pkg import sub` init path; reads a non-Final submodule global.
+// import geo.codec
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `import pkg.sub` (dotted) must also run the submodule's __tpy_init -- the sibling
-    // # of the `from pkg import sub` init path; reads a non-Final submodule global.
-    // import geo.codec
     ::tpyapp::geo::__tpy_init();
     ::tpyapp::geo::codec::__tpy_init();
-    // main()
     main();
 }
 

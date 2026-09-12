@@ -11,6 +11,7 @@ struct Message;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Message:
@@ -29,6 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
     return os;
 }
 
+// def lookup(n: int32) -> Message.Kind:
 Message::Kind lookup(int32_t n);
 
 } // namespace tpyapp::main

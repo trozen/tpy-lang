@@ -12,9 +12,13 @@ template<typename T, typename U> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(c: Container[int32]) -> None:
 void consume(Container<int32_t>& c);
+// def make_container() -> Own[Container[int64]]:
 Container<int64_t> make_container();
+// def setup_pair(p: Pair[int32, int64]) -> None:
 void setup_pair(Pair<int32_t, int64_t>& p);
+// def main() -> None:
 void main();
 
 // class Container[T]:
@@ -24,19 +28,19 @@ struct Container {
     T val;
 
     // def __init__(self) -> None:
+    //     pass
     Container() {
-        // pass
     }
 
     // def set(self, val: T) -> None:
+    //     self.val = val
     void set(::tpy::param_val_or_ref_t<T> val) {
-        // self.val = val
         this->val = ::tpy::param_to_storage<T>(val);
     }
 
     // def get(self) -> T:
+    //     return self.val
     ::tpy::val_or_ref_t<T> get() {
-        // return self.val
         return this->val;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -57,19 +61,19 @@ struct Pair {
     U b;
 
     // def __init__(self) -> None:
+    //     pass
     Pair() {
-        // pass
     }
 
     // def get_a(self) -> T:
+    //     return self.a
     ::tpy::val_or_ref_t<T> get_a() {
-        // return self.a
         return this->a;
     }
 
     // def get_b(self) -> U:
+    //     return self.b
     ::tpy::val_or_ref_t<U> get_b() {
-        // return self.b
         return this->b;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";

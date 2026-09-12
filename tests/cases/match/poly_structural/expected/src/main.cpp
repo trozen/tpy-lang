@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def classify(s: Shape) -> str:
+//     match s:  # tpyc: ok
+//         case Square(side=k):
+//             return "square " + str(k) + " -> " + str(s.area())
+//         case Rect():
+//             return "rect -> " + str(s.area())
+//         case _:
+//             return "?"
 std::string classify(Shape& s) {
-    // match s:  # tpyc: ok
     auto& __match_subject_1 = s;
-    // case Square(side=k):
     if (Square* __mpoly_0 = ::tpy::dyn_adapter_cast<Shape, Square>(&__match_subject_1)) {
         Square& __case_0 = *__mpoly_0;
         auto& k = __case_0.side;
-        // return "square " + str(k) + " -> " + str(s.area())
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("square ", (k).to_string())), " -> ")), (__case_0.area()).to_string()));
-    // case Rect():
     } else if (Rect* __mpoly_1 = ::tpy::dyn_adapter_cast<Shape, Rect>(&__match_subject_1)) {
         Rect& __case_1 = *__mpoly_1;
-        // return "rect -> " + str(s.area())
         return (::tpy::str_concat("rect -> ", (__case_1.area()).to_string()));
-    // case _:
     } else {
-        // return "?"
         return "?";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(classify(Square(3)))
+//     print(classify(Rect(2, 5)))
 void main() {
-    // print(classify(Square(3)))
     ::tpy::Adapter<Shape, Square> __tmp_1{Square(::tpy::BigInt(3))};
     std::cout << classify(__tmp_1) << "\n";
-    // print(classify(Rect(2, 5)))
     ::tpy::Adapter<Shape, Rect> __tmp_2{Rect(::tpy::BigInt(2), ::tpy::BigInt(5))};
     std::cout << classify(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

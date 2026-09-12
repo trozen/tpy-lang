@@ -11,6 +11,7 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class P:
@@ -31,7 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
+// def first_only(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+//     for it in items:
+//         yield (it, None)
 inline auto first_only(std::vector<P>& items) {
     return ::tpy::make_generator<std::tuple<P*, P*>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {
@@ -46,6 +51,9 @@ inline auto first_only(std::vector<P>& items) {
     );
 }
 
+// def relay(src: Iterator[tuple[P | None, P | None]]) -> Iterator[tuple[P | None, P | None]]:
+//     for pair in src:
+//         yield pair
 template<::tpystd::typing::Iterator<std::tuple<std::optional<P>, std::optional<P>>> T_src>
 inline auto relay(T_src& src) {
     return ::tpy::make_generator<std::tuple<P*, P*>>(

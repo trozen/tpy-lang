@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d: dict[Any, int] = {}
+//     k: Any = "name"
+//     d[k] = 42
+//     print(len(d))
 void main() {
-    // d: dict[Any, int] = {}
     ::tpy::ordered_map<::tpy::Any, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::Any, ::tpy::BigInt>();
-    // k: Any = "name"
     ::tpy::Any k = ::tpy::make_any(std::string("name"));
-    // d[k] = 42
     ::tpy::__setitem__(d, k, ::tpy::BigInt(42));
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

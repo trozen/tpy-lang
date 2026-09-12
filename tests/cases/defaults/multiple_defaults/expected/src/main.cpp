@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def create(name: str, width: int32 = int32(100), height: int32 = int32(50), visible: bool = True) -> None:
+//     print(name)
+//     print(width)
+//     print(height)
+//     print(visible)
 void create(std::string_view name, int32_t width, int32_t height, bool visible) {
-    // print(name)
     std::cout << name << "\n";
-    // print(width)
     std::cout << width << "\n";
-    // print(height)
     std::cout << height << "\n";
-    // print(visible)
     std::cout << ::tpy::print_bool(visible) << "\n";
 }
 
 // def main() -> None:
+//     create("a")
+//     create("b", int32(200))
+//     create("c", int32(200), int32(300))
+//     create("d", int32(200), int32(300), False)
 void main() {
-    // create("a")
     create("a");
-    // create("b", int32(200))
     create("b", 200);
-    // create("c", int32(200), int32(300))
     create("c", 200, 300);
-    // create("d", int32(200), int32(300), False)
     create("d", 200, 300, false);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

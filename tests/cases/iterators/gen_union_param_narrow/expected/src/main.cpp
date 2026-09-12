@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o = Owner()
+//     for s in o.voices(Dog()):
+//         print(s)
+//     for s in o.voices(Cat()):
+//         print(s)
+//     for s in o.first(Cat()):
+//         print(s)
 void main() {
-    // o = Owner()
     Owner o = Owner();
-    // for s in o.voices(Dog()):
     {
         Dog __tmp_1 = Dog();
         auto __src_0 = o.voices(::tpy::Union<Cat*, Dog*>{&__tmp_1});
@@ -17,11 +22,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in o.voices(Cat()):
     {
         Cat __tmp_2 = Cat();
         auto __src_2 = o.voices(::tpy::Union<Cat*, Dog*>{&__tmp_2});
@@ -30,11 +33,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in o.first(Cat()):
     {
         Cat __tmp_3 = Cat();
         auto __src_4 = o.first(::tpy::Union<Cat*, Dog*>{&__tmp_3});
@@ -43,29 +44,30 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_5);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
 // def voices(self, a: Dog | Cat) -> Iterator[str]:
+//     yield "start"
+//     if isinstance(a, Dog):  # tpyc: ok
+//         yield a.sound()
+//     else:
+//         yield "not-a-dog"
 std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield "start"
         __state = S_RESUME_0;
         return "start";
     }
     case S_RESUME_0: {
         if (std::holds_alternative<Dog*>(a)) {
             auto& __a = *std::get<Dog*>(a);
-            // yield a.sound()
             __state = S_RESUME_1;
             return __a.sound();
         } else {
             auto& __a = *std::get<Cat*>(a);
-            // yield "not-a-dog"
             __state = S_RESUME_2;
             return "not-a-dog";
         }
@@ -91,17 +93,19 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__next__() 
 
 
 // def first(self, a: Dog | Cat) -> Iterator[str]:
+//     if isinstance(a, Dog):  # tpyc: ok
+//         yield a.sound()
+//     else:
+//         yield a.sound()
 std::expected<std::string, ::tpy::StopIteration> __gen_Owner_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (std::holds_alternative<Dog*>(a)) {
             auto& __a = *std::get<Dog*>(a);
-            // yield a.sound()
             __state = S_RESUME_0;
             return __a.sound();
         } else {
             auto& __a = *std::get<Cat*>(a);
-            // yield a.sound()
             __state = S_RESUME_1;
             return __a.sound();
         }
@@ -126,12 +130,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Owner_first::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

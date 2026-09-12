@@ -13,6 +13,7 @@ struct Defaulted;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -68,21 +69,26 @@ inline std::ostream& operator<<(std::ostream& os, const Defaulted& obj) {
 
 
 // def __init__(self) -> None:
+//     self.tag = int32(1)
 inline Base::Base() : tag(1) {}
 
 // def __init__(self) -> None:
+//     super().__init__()
+//     self.a = int32(5)
+//     self.tag = int32(3)  # an inherited field: written in the body
+//     # The subject: reading that inherited field demotes this init.
+//     self.b = self.a + self.tag  # tpyc: ok
 inline Inherited::Inherited() : Base(), a(5) {
-    // self.tag = int32(3)  # an inherited field: written in the body
     this->tag = 3;
-    // # The subject: reading that inherited field demotes this init.
-    // self.b = self.a + self.tag  # tpyc: ok
     this->b = (::tpy::add_check<int32_t>(this->a, this->tag));
 }
 
 // def __init__(self) -> None:
+//     super().__init__()
+//     self.a = int32(5)
+//     # The subject: reading a default-only field demotes this init.
+//     self.b = self.a + self.d  # tpyc: ok
 inline Defaulted::Defaulted() : Base(), a(5) {
-    // # The subject: reading a default-only field demotes this init.
-    // self.b = self.a + self.d  # tpyc: ok
     this->b = (::tpy::add_check<int32_t>(this->a, this->d));
 }
 void __tpy_init();

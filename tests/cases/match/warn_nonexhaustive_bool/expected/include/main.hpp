@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(b: bool) -> str:
 std::string describe(bool b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

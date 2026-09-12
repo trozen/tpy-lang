@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def strview_pinned_alias_warns() -> None:
 void strview_pinned_alias_warns();
+// def bytesview_pinned_alias_warns() -> None:
 void bytesview_pinned_alias_warns();
+// def view_rebind_clears_pinned_alias() -> None:
 void view_rebind_clears_pinned_alias();
+// def multiple_pinned_views_per_source() -> None:
 void multiple_pinned_views_per_source();
 
 void __tpy_init();

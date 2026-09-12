@@ -9,6 +9,7 @@ namespace tpyapp::pkg::user {
 
 inline constexpr std::string_view __name__ = "pkg.user";
 
+// def use_pkg() -> int32:
 int32_t use_pkg();
 
 void __tpy_init();

@@ -17,8 +17,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_bump;
 struct __coro_amain;
 
+// def first_two(items: list[Box]) -> tuple[Box, Box]:
 std::tuple<Box*, Box*> first_two(std::vector<Box>& items);
+// async def bump(items: list[Box]) -> int:
 __coro_bump bump(std::vector<Box>& items);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Box:
@@ -37,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: bump
+// async def bump(items: list[Box]) -> int:
 struct __coro_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +66,7 @@ struct __coro_bump {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -90,6 +93,7 @@ struct __coro_amain {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Box::Box(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

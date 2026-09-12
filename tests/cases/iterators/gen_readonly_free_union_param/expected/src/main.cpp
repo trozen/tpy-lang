@@ -5,22 +5,24 @@ namespace tpyapp::main {
 
 
 // def codes(a: Dog | Cat) -> Iterator[int]:
+//     yield 0
+//     if isinstance(a, Dog):
+//         yield 1
+//     else:
+//         yield 2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_codes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return ::tpy::BigInt(0);
     }
     case S_RESUME_0: {
         if (std::holds_alternative<const Dog*>(a)) {
             auto& __a = *std::get<const Dog*>(a);
-            // yield 1
             __state = S_RESUME_1;
             return ::tpy::BigInt(1);
         } else {
             auto& __a = *std::get<const Cat*>(a);
-            // yield 2
             __state = S_RESUME_2;
             return ::tpy::BigInt(2);
         }
@@ -51,11 +53,12 @@ __gen_codes codes(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // def main() -> None:
+//     pet: Dog | Cat = Dog()
+//     for v in codes(pet):
+//         print(v)
 void main() {
-    // pet: Dog | Cat = Dog()
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
-    // for v in codes(pet):
     {
         auto __src_0 = codes(pet.as_const());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -63,18 +66,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,53 +5,54 @@ namespace tpyapp::main {
 
 
 // def bump(c: Counter, key: StrView) -> None:
+//     # Mutating through the parameter must be visible to the caller -- a copy
+//     # here would still print identically for reads alone, hiding the defect.
+//     c[key] = c.get(key, 0) + 1
 void bump(Counter& c, std::string_view key) {
-    // # Mutating through the parameter must be visible to the caller -- a copy
-    // # here would still print identically for reads alone, hiding the defect.
-    // c[key] = c.get(key, 0) + 1
     ::tpy::__setitem__(c, key, (::tpy::add_check<int32_t>(::tpy::dict_get_default(c, key, 0), 1)));
 }
 
 // def add_tag(t: Tags, tag: int32) -> None:
+//     t.add(tag)
 void add_tag(Tags& t, int32_t tag) {
-    // t.add(tag)
     t.insert(tag);
 }
 
 // def main() -> None:
+//     c = Counter("hits")
+//     c["a"] = 1  # inherited __setitem__ on a record receiver
+//     bump(c, "a")
+//     bump(c, "b")
+//     print(c.label, len(c), c["a"], c["b"])
+//
+//     t = Tags()
+//     t.add(7)  # inherited set.add on a record receiver
+//     add_tag(t, 8)
+//     t.add(7)  # duplicate: set semantics keep the size at 2
+//     print(len(t))
+//     t.discard(7)
+//     print(len(t))
 void main() {
-    // c = Counter("hits")
     Counter c = Counter("hits");
-    // c["a"] = 1  # inherited __setitem__ on a record receiver
     ::tpy::__setitem__(c, "a", 1);
-    // bump(c, "a")
     bump(c, "a");
-    // bump(c, "b")
     bump(c, "b");
-    // print(c.label, len(c), c["a"], c["b"])
     std::cout << c.label << " " << ::tpy::__len__(c) << " " << c["a"] << " " << c["b"] << "\n";
-    // t = Tags()
     Tags t = Tags();
-    // t.add(7)  # inherited set.add on a record receiver
     t.insert(7);
-    // add_tag(t, 8)
     add_tag(t, 8);
-    // t.add(7)  # duplicate: set semantics keep the size at 2
     t.insert(7);
-    // print(len(t))
     std::cout << ::tpy::__len__(t) << "\n";
-    // t.discard(7)
     t.erase(7);
-    // print(len(t))
     std::cout << ::tpy::__len__(t) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

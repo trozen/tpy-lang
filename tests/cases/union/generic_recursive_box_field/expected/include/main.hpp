@@ -16,8 +16,10 @@ template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def leaf_count[T](t: Tree[T]) -> int32:
 template<typename T>
 int32_t leaf_count(const Tree<T>& t);
+// def main() -> None:
 void main();
 
 template<typename T>
@@ -45,6 +47,7 @@ struct Holder {
     ::tpystd::tplib::box::Box<Tree<T>> data;
 
     // def __init__(self, data: Own[Box[Tree[T]]]) -> None:
+    //     self.data = data
     Holder() = default;
     explicit Holder(::tpystd::tplib::box::Box<Tree<T>>&& data) : data(std::move(data)) {}
     // non-copyable (field 'data')
@@ -62,32 +65,32 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 }
 
 // def leaf_count[T](t: Tree[T]) -> int32:
+//     match t:
+//         case list() as branches:
+//             total = 0
+//             for child in branches:
+//                 total += leaf_count(child)
+//             return total
+//         case _:
+//             return 1
 template<typename T>
 int32_t leaf_count(const Tree<T>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // total = 0
         int32_t total = 0;
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            // total += leaf_count(child)
             total = ::tpy::add_check<int32_t>(total, leaf_count<T>(child));
         }
-        // return total
         return total;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }

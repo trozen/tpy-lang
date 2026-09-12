@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def make_rc() -> None:
+//     r: Rc[Pet] = Rc.new(Parrot("Polly"))
+//     print(r.get().name())
 void make_rc() {
-    // r: Rc[Pet] = Rc.new(Parrot("Polly"))
     ::tpystd::tplib::rc::Rc<Pet> r = Rc<Pet>::new_<Parrot>(Parrot("Polly"));
-    // print(r.get().name())
     std::cout << r.get().name() << "\n";
 }
 
 // def main() -> None:
+//     print("before make_rc")
+//     make_rc()
+//     print("after make_rc")
 void main() {
-    // print("before make_rc")
     std::cout << "before make_rc" << "\n";
-    // make_rc()
     make_rc();
-    // print("after make_rc")
     std::cout << "after make_rc" << "\n";
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

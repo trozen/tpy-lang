@@ -3,28 +3,27 @@
 
 namespace tpyapp::helper {
 
-// G: int32 = 5
 int32_t G{};
-// label: StrView = "hello"
 std::string_view label;
-// items: list[int32] = [1, 2]
 std::vector<int32_t>* items{};
-// maybe: int32 | None = 4
 std::optional<int32_t> maybe;
 
+// """Value globals of every family the importing module reads bare."""
+//
+// G: int32 = 5
+// label: StrView = "hello"
+// BIG: Final[int32] = 99
+// items: list[int32] = [1, 2]
+// maybe: int32 | None = 4
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // G: int32 = 5
     G = 5;
-    // label: StrView = "hello"
     label = "hello";
-    // items: list[int32] = [1, 2]
     static std::vector<int32_t> __global_slot_1 = {1, 2};
     items = &__global_slot_1;
-    // maybe: int32 | None = 4
     maybe = 4;
 }
 

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def make_list() -> Own[list[int32]]:
+//     return [1, 2]
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make_list::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return [1, 2]
         __state = S_DONE;
         std::vector<int32_t> __tpy_async_ret = {1, 2};
         return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,11 @@ __coro_make_list make_list() {
 }
 
 // async def make_bytes() -> Own[bytearray]:      # the bytearray return slot
+//     return bytearray(b"ab")
 ::tpystd::tpy::Poll<::tpy::ByteArray> __coro_make_bytes::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return bytearray(b"ab")
         __state = S_DONE;
         ::tpy::ByteArray __tpy_async_ret = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
         return ::tpystd::tpy::Poll<::tpy::ByteArray>::ready(std::move(__tpy_async_ret));
@@ -47,11 +47,11 @@ __coro_make_bytes make_bytes() {
 }
 
 // async def make_array() -> Own[Array[int32, 3]]:  # the Array return slot
+//     return [7, 8, 9]
 ::tpystd::tpy::Poll<std::array<int32_t, 3>> __coro_make_array::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return [7, 8, 9]
         __state = S_DONE;
         std::array<int32_t, 3> __tpy_async_ret = {7, 8, 9};
         return ::tpystd::tpy::Poll<std::array<int32_t, 3>>::ready(std::move(__tpy_async_ret));
@@ -68,11 +68,11 @@ __coro_make_array make_array() {
 }
 
 // async def make_boxes() -> Own[list[Box[int32]]]:   # the @nocopy payload
+//     return [Box(1), Box(2)]
 ::tpystd::tpy::Poll<std::vector<::tpystd::tplib::box::Box<int32_t>>> __coro_make_boxes::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return [Box(1), Box(2)]
         __state = S_DONE;
         std::vector<::tpystd::tplib::box::Box<int32_t>> __tpy_async_ret = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1), ::tpystd::tplib::box::Box<int32_t>(2));
         return ::tpystd::tpy::Poll<std::vector<::tpystd::tplib::box::Box<int32_t>>>::ready(std::move(__tpy_async_ret));
@@ -89,10 +89,21 @@ __coro_make_boxes make_boxes() {
 }
 
 // async def drive() -> None:
+//     xs = await make_list()
+//     xs.append(3)                                # the awaited value is owned here
+//     print(len(xs))
+//     ba = await make_bytes()
+//     ba.append(99)
+//     print(len(ba), ba[2])
+//     arr = await make_array()
+//     arr[0] = 70
+//     print(arr[0], arr[2])
+//     bs = await make_boxes()
+//     bs.append(Box(3))
+//     print(len(bs))
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // xs = await make_list()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -102,11 +113,8 @@ __coro_make_boxes make_boxes() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         xs.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // xs.append(3)                                # the awaited value is owned here
         (*xs).push_back(3);
-        // print(len(xs))
         std::cout << ::tpy::__len__((*xs)) << "\n";
-        // ba = await make_bytes()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -116,11 +124,8 @@ __coro_make_boxes make_boxes() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         ba.emplace(std::move(__r1).value());
         __sub_1.reset();
-        // ba.append(99)
         (*ba).push_back(99);
-        // print(len(ba), ba[2])
         std::cout << ::tpy::__len__((*ba)) << " " << static_cast<int>(::tpy::bytes_getitem((*ba), 2)) << "\n";
-        // arr = await make_array()
         __sub_2.emplace();
         __state = S_RESUME_2;
         continue;
@@ -130,11 +135,8 @@ __coro_make_boxes make_boxes() {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         arr.emplace(std::move(__r2).value());
         __sub_2.reset();
-        // arr[0] = 70
         ::tpy::__setitem__((*arr), 0, 70);
-        // print(arr[0], arr[2])
         std::cout << ::tpy::__getitem__((*arr), 0) << " " << ::tpy::__getitem__((*arr), 2) << "\n";
-        // bs = await make_boxes()
         __sub_3.emplace();
         __state = S_RESUME_3;
         continue;
@@ -144,9 +146,7 @@ __coro_make_boxes make_boxes() {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         bs.emplace(std::move(__r3).value());
         __sub_3.reset();
-        // bs.append(Box(3))
         (*bs).push_back(::tpystd::tplib::box::Box<int32_t>(3));
-        // print(len(bs))
         std::cout << ::tpy::__len__((*bs)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -162,24 +162,26 @@ __coro_drive drive() {
     return __coro_drive();
 }
 
+// # A coroutine's Own[container] return slot holds the container by value, so
+// # every reference-typed container spells the same `Poll<T>` payload. bytearray
+// # and Array are reference types like list/dict/set and take the same slot.
+// #
+// # The `Box` leg is the one that proves the frame TRANSFERS the container
+// # rather than copying it out: `Box` is @nocopy, so a copy at the await
+// # boundary would be a C++ compile error instead of an invisible duplicate.
+// import asyncio
+//
+// from tplib.box import Box
+//
+// asyncio.run(drive())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A coroutine's Own[container] return slot holds the container by value, so
-    // # every reference-typed container spells the same `Poll<T>` payload. bytearray
-    // # and Array are reference types like list/dict/set and take the same slot.
-    // #
-    // # The `Box` leg is the one that proves the frame TRANSFERS the container
-    // # rather than copying it out: `Box` is @nocopy, so a copy at the await
-    // # boundary would be a C++ compile error instead of an invisible duplicate.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // asyncio.run(drive())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(drive()));
 }
 

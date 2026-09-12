@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def test_strview_basic() -> None:
+//     s: StrView = StrView("hello")
+//     print(s)  # hello
+//     print(len(s))  # 5
 void test_strview_basic() {
-    // s: StrView = StrView("hello")
     std::string_view s = "hello";
-    // print(s)  # hello
     std::cout << s << "\n";
-    // print(len(s))  # 5
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
 // def test_strview_getitem() -> None:
+//     s: StrView = StrView("abc")
+//     print(s[0])  # a
+//     print(s[-1])  # c
 void test_strview_getitem() {
-    // s: StrView = StrView("abc")
     std::string_view s = "abc";
-    // print(s[0])  # a
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // print(s[-1])  # c
     std::cout << ::tpy::__getitem__(s, -1) << "\n";
 }
 
+// test_strview_basic()
+// test_strview_getitem()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_strview_basic()
     test_strview_basic();
-    // test_strview_getitem()
     test_strview_getitem();
 }
 

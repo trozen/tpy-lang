@@ -5,18 +5,25 @@ namespace tpyapp::main {
 
 
 // def remake() -> tuple[int | str, int]:
+//     return ("hello", 9)
 std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt> remake() {
-    // return ("hello", 9)
     return std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt>{"hello", ::tpy::BigInt(9)};
 }
 
 // def gen(a: int | str) -> Iterator[str]:
+//     if isinstance(a, int):
+//         yield "int:" + str(a + 1)
+//         a, n = remake()
+//         yield "rebound"
+//         if isinstance(a, str):
+//             yield "str:" + a
+//         else:
+//             yield "still-int"
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (std::holds_alternative<::tpy::BigInt>(a)) {
             const auto& __a = std::get<::tpy::BigInt>(a);
-            // yield "int:" + str(a + 1)
             __state = S_RESUME_0;
             return (::tpy::str_concat("int:", (((__a) + (::tpy::BigInt(1)))).to_string()));
         } else {
@@ -27,23 +34,19 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {
         const auto& __a = std::get<::tpy::BigInt>(a);
-        // a, n = remake()
         auto __tup_1 = remake();
         a = std::get<0>(__tup_1);
         n = std::get<1>(__tup_1);
-        // yield "rebound"
         __state = S_RESUME_1;
         return "rebound";
     }
     case S_RESUME_1: {
         if (std::holds_alternative<std::string>(a)) {
             const auto& __a = std::get<std::string>(a);
-            // yield "str:" + a
             __state = S_RESUME_2;
             return (::tpy::str_concat("str:", __a));
         } else {
             const auto& __a = std::get<::tpy::BigInt>(a);
-            // yield "still-int"
             __state = S_RESUME_3;
             return "still-int";
         }
@@ -78,8 +81,9 @@ __gen_gen gen(::tpy::Union<::tpy::BigInt, std::string> a) {
 }
 
 // def main() -> None:
+//     for s in gen(5):
+//         print(s)
 void main() {
-    // for s in gen(5):
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = 5;
         auto __src_0 = gen(__tmp_1);
@@ -88,18 +92,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

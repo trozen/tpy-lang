@@ -13,11 +13,17 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_rec(a: A) -> int32:
 int32_t read_rec(const A& a);
+// def mutate_rec(a: A) -> None:
 void mutate_rec(A& a);
+// def pass_both(a: A, b: A) -> int32:
 int32_t pass_both(const A& a, A& b);
+// def through_pointer(h: Holder, flag: bool) -> int32:
 int32_t through_pointer(Holder& h, bool flag);
+// def through_narrowing(v: A | B) -> int32:
 int32_t through_narrowing(::tpy::Union<A*, B*> v);
+// def main():
 void main();
 
 // class A:
@@ -71,12 +77,16 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32):
+//     self.y = y
 inline B::B(int32_t y) : y(y) {}
 
 // def __init__(self):
+//     self.a = A(1)
+//     self.b = A(2)
 inline Holder::Holder() : a(A(1)), b(A(2)) {}
 void __tpy_init();
 } // namespace tpyapp::main

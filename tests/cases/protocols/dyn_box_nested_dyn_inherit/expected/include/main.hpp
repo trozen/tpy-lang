@@ -50,6 +50,7 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cat(NamedPet):
@@ -112,17 +113,16 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: str) -> None:
+//     self.n = n
 inline Cat::Cat(std::string_view n) : n(n) {}
 
 // def name(self) -> str: return self.n
 inline std::string Cat::name() {
-    // def name(self) -> str: return self.n
     return this->n;
 }
 
 // def label(self) -> str: return self.n
 inline std::string Cat::label() {
-    // def label(self) -> str: return self.n
     return this->n;
 }
 void __tpy_init();

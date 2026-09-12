@@ -6,38 +6,39 @@ namespace tpyapp::main {
 
 // # del on local variables: basic unbinding and re-assignment
 // def main() -> None:
+//     x = 42
+//     print(x)
+//     del x
+//     x = 100
+//     print(x)
+//
+//     # del multiple vars
+//     a = 1
+//     b = 2
+//     print(a, b)
+//     del a, b
+//     a = 10
+//     b = 20
+//     print(a, b)
 void main() {
-    // x = 42
     int32_t x = 42;
-    // print(x)
     std::cout << x << "\n";
-    // del x
-    // x = 100
     x = 100;
-    // print(x)
     std::cout << x << "\n";
-    // # del multiple vars
-    // a = 1
     int32_t a = 1;
-    // b = 2
     int32_t b = 2;
-    // print(a, b)
     std::cout << a << " " << b << "\n";
-    // del a, b
-    // a = 10
     a = 10;
-    // b = 20
     b = 20;
-    // print(a, b)
     std::cout << a << " " << b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

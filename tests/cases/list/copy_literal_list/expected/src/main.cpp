@@ -5,71 +5,71 @@ namespace tpyapp::main {
 
 
 // def literal_list() -> None:
+//     xs = [1, 2]
+//     ys = copy(xs)  # the copy's type resolves with the literal's
+//     ys.append(3)
+//     print(len(xs), len(ys))
 void literal_list() {
-    // xs = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // ys = copy(xs)  # the copy's type resolves with the literal's
     std::vector<int32_t> ys = std::vector<int32_t>(xs);
-    // ys.append(3)
     ys.push_back(3);
-    // print(len(xs), len(ys))
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
 }
 
 // def literal_dict() -> None:
+//     d = {"a": 1}
+//     e = copy(d)
+//     e["b"] = 2
+//     print(len(d), len(e))
 void literal_dict() {
-    // d = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // e = copy(d)
     ::tpy::ordered_map<std::string, int32_t> e = ::tpy::ordered_map<std::string, int32_t>(d);
-    // e["b"] = 2
     ::tpy::__setitem__(e, "b", 2);
-    // print(len(d), len(e))
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(e) << "\n";
 }
 
 // def literal_set() -> None:
+//     s = {1, 2}
+//     t = copy(s)
+//     t.add(3)
+//     print(len(s), len(t))
 void literal_set() {
-    // s = {1, 2}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // t = copy(s)
     ::tpy::ordered_set<int32_t> t = ::tpy::ordered_set<int32_t>(s);
-    // t.add(3)
     t.insert(3);
-    // print(len(s), len(t))
     std::cout << ::tpy::__len__(s) << " " << ::tpy::__len__(t) << "\n";
 }
 
 // def annotated_list() -> None:
+//     xs: list[int32] = [1, 2]  # already resolved: the inverse of the literal case
+//     ys = copy(xs)
+//     ys.append(3)
+//     print(len(xs), len(ys))
 void annotated_list() {
-    // xs: list[int32] = [1, 2]  # already resolved: the inverse of the literal case
     std::vector<int32_t> xs = {1, 2};
-    // ys = copy(xs)
     std::vector<int32_t> ys = std::vector<int32_t>(xs);
-    // ys.append(3)
     ys.push_back(3);
-    // print(len(xs), len(ys))
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
 }
 
 // def main() -> None:
+//     literal_list()
+//     literal_dict()
+//     literal_set()
+//     annotated_list()
 void main() {
-    // literal_list()
     literal_list();
-    // literal_dict()
     literal_dict();
-    // literal_set()
     literal_set();
-    // annotated_list()
     annotated_list();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

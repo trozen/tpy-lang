@@ -18,9 +18,13 @@ struct __coro_f_opt;
 struct __coro_f_alias;
 struct __coro_main;
 
+// async def f() -> Own[Box]:
 __coro_f f();
+// async def f_opt(flag: bool) -> Own[Box] | None:
 __coro_f_opt f_opt(bool flag);
+// async def f_alias() -> Own[Box]:
 __coro_f_alias f_alias();
+// async def main() -> None:
 __coro_main main();
 
 // class Box:
@@ -38,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: f
+// async def f() -> Own[Box]:
 struct __coro_f {
     int32_t __state;
     bool __cancel_pending;
@@ -60,7 +64,7 @@ struct __coro_f {
     }
 };
 
-// Async coroutine: f_opt
+// async def f_opt(flag: bool) -> Own[Box] | None:
 struct __coro_f_opt {
     int32_t __state;
     bool __cancel_pending;
@@ -84,7 +88,7 @@ struct __coro_f_opt {
     }
 };
 
-// Async coroutine: f_alias
+// async def f_alias() -> Own[Box]:
 struct __coro_f_alias {
     int32_t __state;
     bool __cancel_pending;
@@ -107,7 +111,7 @@ struct __coro_f_alias {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -142,6 +146,7 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline Box::Box() : n(10) {}
 void __tpy_init();
 } // namespace tpyapp::main

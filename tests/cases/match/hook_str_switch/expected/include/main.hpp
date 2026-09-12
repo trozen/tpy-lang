@@ -16,12 +16,16 @@ struct __gen_gen;
 struct __coro_acoro;
 struct __coro_amain;
 
+// def gen(s: str, flag: bool) -> Iterator[str]:
 __gen_gen gen(std::string_view s, bool flag);
+// async def acoro(s: str) -> str:
 __coro_acoro acoro(std::string_view s);
+// async def amain() -> None:
 __coro_amain amain();
+// def main() -> None:
 void main();
 
-// Async coroutine: acoro
+// async def acoro(s: str) -> str:
 struct __coro_acoro {
     int32_t __state;
     bool __cancel_pending;
@@ -49,7 +53,7 @@ struct __coro_acoro {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -82,7 +86,7 @@ struct __coro_amain {
     }
 };
 
-// Generator: gen
+// def gen(s: str, flag: bool) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     int32_t __state;
     std::string s;

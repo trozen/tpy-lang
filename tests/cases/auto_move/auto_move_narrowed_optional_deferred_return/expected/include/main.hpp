@@ -11,7 +11,9 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def extract() -> Own[Handle]:
 Handle extract();
+// def main():
 void main();
 
 // class Handle:

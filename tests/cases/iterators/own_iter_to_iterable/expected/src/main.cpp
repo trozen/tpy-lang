@@ -5,34 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [3, 1, 2]
+//     print(list(each(nums)))
+//     print(total(each(nums)))
+//
+//     items: list[Item] = [Item(3, 30), Item(1, 10)]
+//     for it in list(each(items)):
+//         print(it.key, it.tag)
+//
+//     # The frame path yields COPIES too -- mutating the source afterwards
+//     # leaves the collected values alone.
+//     src: list[Item] = [Item(5, 50)]
+//     kept = list(each_twice(src))
+//     src[0].tag = 999
+//     print("frame", [k.tag for k in kept], src[0].tag)
+//     print("frame_scalar", total(each_twice(nums)))
 void main() {
-    // nums: list[int32] = [3, 1, 2]
     std::vector<int32_t> nums = {3, 1, 2};
-    // print(list(each(nums)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(each<int32_t>(nums))) << "\n";
-    // print(total(each(nums)))
     auto __tmp_1 = each<int32_t>(nums);
     std::cout << total(__tmp_1) << "\n";
-    // items: list[Item] = [Item(3, 30), Item(1, 10)]
     std::vector<Item> items = {Item(3, 30), Item(1, 10)};
-    // for it in list(each(items)):
     auto __obj_0 = ::tpy::construct<std::vector<Item>>(each<Item>(items));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& it = *__beg_0;
-        // print(it.key, it.tag)
         std::cout << it.key << " " << it.tag << "\n";
     }
-    // # The frame path yields COPIES too -- mutating the source afterwards
-    // # leaves the collected values alone.
-    // src: list[Item] = [Item(5, 50)]
     std::vector<Item> src = {Item(5, 50)};
-    // kept = list(each_twice(src))
     std::vector<Item> kept = ::tpy::construct<std::vector<Item>>(each_twice<Item>(src));
-    // src[0].tag = 999
     ::tpy::__getitem__(src, 0).tag = 999;
-    // print("frame", [k.tag for k in kept], src[0].tag)
     std::cout << "frame" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_1 = kept;
@@ -45,17 +48,16 @@ void main() {
         }
         std::move(__result);
     })) << " " << ::tpy::__getitem__(src, 0).tag << "\n";
-    // print("frame_scalar", total(each_twice(nums)))
     auto __tmp_2 = each_twice<int32_t>(nums);
     std::cout << "frame_scalar" << " " << total(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

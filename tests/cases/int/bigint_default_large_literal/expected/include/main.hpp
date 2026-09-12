@@ -11,8 +11,11 @@ struct R;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def g(x: int = 86400000000, y: int = -86400000000, z: int = 5) -> int:
 ::tpy::BigInt g(const ::tpy::BigInt& x = ::tpy::BigInt(static_cast<int64_t>(86400000000LL)), const ::tpy::BigInt& y = ::tpy::BigInt(static_cast<int64_t>(-86400000000LL)), const ::tpy::BigInt& z = ::tpy::BigInt(5));
+// def w(x: int = int64(90000000000)) -> int:
 ::tpy::BigInt w(const ::tpy::BigInt& x = ::tpy::BigInt(static_cast<int64_t>(90000000000LL)));
+// def main() -> None:
 void main();
 
 // @dataclass

@@ -11,6 +11,7 @@ struct Meters;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Meters(ValueType):
@@ -50,23 +51,24 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Meters::Meters(int32_t v) : v(v) {}
 
 // def __truediv__(self, other: "Meters") -> float:
+//     return self.v / other.v
 inline double Meters::__truediv__(Meters other) const {
-    // return self.v / other.v
     return (::tpy::truediv(static_cast<int64_t>(this->v), static_cast<int64_t>(other.v)));
 }
 
 // def __floordiv__(self, other: "Meters") -> "Meters":
+//     return Meters(self.v // other.v)
 inline Meters Meters::__floordiv__(Meters other) const {
-    // return Meters(self.v // other.v)
     return Meters((::tpy::div_check<int32_t>(this->v, other.v)));
 }
 
 // def __rfloordiv__(self, other: int32) -> "Meters":
+//     return Meters(other // self.v)
 inline Meters Meters::__rfloordiv__(int32_t other) const {
-    // return Meters(other // self.v)
     return Meters((::tpy::div_check<int32_t>(other, this->v)));
 }
 void __tpy_init();

@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     result: int32 = compute()
+//     print(result)
+//     return int32(0)
 int32_t main() {
-    // result: int32 = compute()
     int32_t result = ::tpyapp::mypackage::consumer::compute();
-    // print(result)
     std::cout << result << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from mypackage.consumer import compute
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mypackage.consumer import compute
     ::tpyapp::mypackage::__tpy_init();
     ::tpyapp::mypackage::consumer::__tpy_init();
-    // main()
     main();
 }
 

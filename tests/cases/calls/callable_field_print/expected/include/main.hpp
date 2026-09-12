@@ -11,6 +11,7 @@ struct Handler;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Handler:
@@ -33,11 +34,12 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 
 
 // def __init__(self) -> None:
+//     self.action = lambda: print(0)
 inline Handler::Handler() : action([]() { std::cout << 0 << "\n"; }) {}
 
 // def __repr__(self) -> str:
+//     return "Handler(action=<function>)"
 inline std::string Handler::__repr__() const {
-    // return "Handler(action=<function>)"
     return "Handler(action=<function>)";
 }
 void __tpy_init();

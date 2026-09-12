@@ -5,46 +5,47 @@ namespace tpyapp::main {
 
 
 // def take(cb: Send[Callable[[int32], None]]) -> None:
+//     cb(1)
 void take(const std::function<void(int32_t)>& cb) {
-    // cb(1)
     cb(1);
 }
 
 // def free_fn(n: int32) -> None:
+//     print("free", n)
 void free_fn(int32_t n) {
-    // print("free", n)
     std::cout << "free" << " " << n << "\n";
 }
 
 // def main() -> None:
+//     take(lambda n: print("lam", n))
+//     k = 10
+//     take(lambda n: print("cap", n + k))
+//     take(free_fn)
+//     xs = [1, 2]
+//     take(lambda n: print("list", n + xs[0]))
+//
+//     def nested(n: int32) -> None:
+//         print("nested", n + k)
+//     take(nested)
 void main() {
-    // take(lambda n: print("lam", n))
     take([](int32_t n) { std::cout << "lam" << " " << n << "\n"; });
-    // k = 10
     int32_t k = 10;
-    // take(lambda n: print("cap", n + k))
     take([k](int32_t n) { std::cout << "cap" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n"; });
-    // take(free_fn)
     take(free_fn);
-    // xs = [1, 2]
     std::array<int32_t, 2> xs = {1, 2};
-    // take(lambda n: print("list", n + xs[0]))
     take([xs](int32_t n) { std::cout << "list" << " " << (::tpy::add_check<int32_t>(n, ::tpy::__getitem__(xs, 0))) << "\n"; });
-    // def nested(n: int32) -> None:
     auto nested = [k](int32_t n) {
-        // print("nested", n + k)
         std::cout << "nested" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n";
     };
-    // take(nested)
     take(nested);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

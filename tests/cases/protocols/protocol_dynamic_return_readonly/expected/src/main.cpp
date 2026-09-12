@@ -3,41 +3,41 @@
 
 namespace tpyapp::main {
 
-// global_pet: Pet = Cat()
 Pet* global_pet{};
 
 // def echo_readonly(pet: readonly[Pet]) -> readonly[Pet]:
+//     return pet
 const Pet& echo_readonly(const Pet& pet) {
-    // return pet
     return pet;
 }
 
 // def get_global_readonly() -> readonly[Pet]:
+//     return global_pet
 const Pet& get_global_readonly() {
-    // return global_pet
     return (*global_pet);
 }
 
 // def main() -> None:
+//     dog = Dog()
+//     print(echo_readonly(dog).name())
+//     print(get_global_readonly().name())
 void main() {
-    // dog = Dog()
     Dog dog = Dog();
-    // print(echo_readonly(dog).name())
     std::cout << echo_readonly(dog).name() << "\n";
-    // print(get_global_readonly().name())
     std::cout << get_global_readonly().name() << "\n";
 }
 
+// global_pet: Pet = Cat()
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     static std::optional<Cat> __global_slot_1;
-    // global_pet: Pet = Cat()
     __global_slot_1.emplace(Cat());
     global_pet = &*__global_slot_1;
-    // main()
     main();
 }
 

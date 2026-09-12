@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(5)
+//     h = Holder(b)
+//     print(h.pair[0])
+//     print(h.pair[1].val)
+//     t = copy((1, b))
+//     print(t[0] + t[1].val)
 void main() {
-    // b = Box(5)
     Box b = Box(5);
-    // h = Holder(b)
     Holder h = Holder(b);
-    // print(h.pair[0])
     std::cout << std::get<0>(h.pair) << "\n";
-    // print(h.pair[1].val)
     std::cout << std::get<1>(h.pair).val << "\n";
-    // t = copy((1, b))
     auto t = std::tuple<int32_t, Box>{1, b};
-    // print(t[0] + t[1].val)
     std::cout << (::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t).val)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

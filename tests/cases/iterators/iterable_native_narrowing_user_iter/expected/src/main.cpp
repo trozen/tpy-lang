@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Counter is Iterable but not NativeIterable under tpyc (no begin/end at
+//     # C++ level), so the else branch runs: sum = 10+11+12+13 = 46.
+//     c = Counter(10, 14)
+//     print(sum_fast(c))
+//
+//     # Sanity: a list takes the fast branch (x * 100 each): 1*100 + 2*100 = 300.
+//     nums: list[int32] = [1, 2]
+//     print(sum_fast(nums))
 void main() {
-    // # Counter is Iterable but not NativeIterable under tpyc (no begin/end at
-    // # C++ level), so the else branch runs: sum = 10+11+12+13 = 46.
-    // c = Counter(10, 14)
     Counter c = Counter(10, 14);
-    // print(sum_fast(c))
     std::cout << sum_fast(c) << "\n";
-    // # Sanity: a list takes the fast branch (x * 100 each): 1*100 + 2*100 = 300.
-    // nums: list[int32] = [1, 2]
     std::vector<int32_t> nums = {1, 2};
-    // print(sum_fast(nums))
     std::cout << sum_fast(nums) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

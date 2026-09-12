@@ -5,62 +5,60 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     total = 0
+//     for name, n in [("a", 1), ("b", 2), ("c", 3)]:  # tpyc: ok
+//         print(name, n)
+//         total += n
+//     print(total)
+//     # The single-var sibling over the same literal: no unpack head.
+//     for pair in [("x", 4), ("y", 5)]:  # tpyc: ok
+//         print(pair)
+//     # An all-scalar element tuple, to keep the str-free shape covered.
+//     acc = 0
+//     for a, b in [(1, 2), (3, 4)]:  # tpyc: ok
+//         acc += a * b
+//     print(acc)
 void main() {
-    // total = 0
     int32_t total = 0;
-    // for name, n in [("a", 1), ("b", 2), ("c", 3)]:  # tpyc: ok
     auto __obj_0 = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        // for name, n in [("a", 1), ("b", 2), ("c", 3)]:  # tpyc: ok
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        // print(name, n)
         std::cout << name << " " << n << "\n";
-        // total += n
         total = ::tpy::add_check<int32_t>(total, n);
     }
-    // print(total)
     std::cout << total << "\n";
-    // # The single-var sibling over the same literal: no unpack head.
-    // for pair in [("x", 4), ("y", 5)]:  # tpyc: ok
     auto __obj_1 = {std::tuple<std::string, int32_t>{"x", 4}, std::tuple<std::string, int32_t>{"y", 5}};
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& pair = *__beg_1;
-        // print(pair)
         std::cout << ::tpy::TuplePrinter(pair) << "\n";
     }
-    // # An all-scalar element tuple, to keep the str-free shape covered.
-    // acc = 0
     int32_t acc = 0;
-    // for a, b in [(1, 2), (3, 4)]:  # tpyc: ok
     auto __obj_2 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         auto&& __for_tup_1 = *__beg_2;
-        // for a, b in [(1, 2), (3, 4)]:  # tpyc: ok
         const auto& __tup_2 = __for_tup_1;
         int32_t a = std::get<0>(__tup_2);
         int32_t b = std::get<1>(__tup_2);
-        // acc += a * b
         acc = ::tpy::add_check<int32_t>(acc, (::tpy::mul_check<int32_t>(a, b)));
     }
-    // print(acc)
     std::cout << acc << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

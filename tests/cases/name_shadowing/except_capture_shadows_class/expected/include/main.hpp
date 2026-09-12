@@ -12,7 +12,9 @@ struct MyError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def boom() -> int32:
 int32_t boom();
+// def main() -> None:
 void main();
 
 // class Registry:
@@ -50,6 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
 
 
 // def __init__(self, code: int32):
+//     self.code = code
 inline MyError::MyError(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

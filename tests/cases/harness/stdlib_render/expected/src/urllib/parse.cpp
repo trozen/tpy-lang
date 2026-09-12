@@ -3,682 +3,689 @@
 
 namespace tpystd::urllib::parse {
 
-// _HEX: bytes = b"0123456789ABCDEF"
 ::tpy::Bytes _HEX;
-// # CPython's uses_netloc / uses_relative / uses_params scheme lists, verbatim.
-// # Module-level sets so each is built once at init (a set literal in the function
-// # body would reconstruct the set on every call); membership is then an O(1)
-// # lookup. (TPy tuples aren't iterable, so a set is the natural constant form.)
-// _USES_NETLOC: set[str] = {"", "ftp", "http", "gopher", "nntp", "telnet", "imap",
-// "wais", "file", "mms", "https", "shttp", "snews",
-// "prospero", "rtsp", "rtsps", "rtspu", "rsync", "svn",
-// "svn+ssh", "sftp", "nfs", "git", "git+ssh", "ws",
-// "wss", "itms-services"}
 ::tpy::ordered_set<std::string>* _USES_NETLOC{};
-// _USES_RELATIVE: set[str] = {"", "ftp", "http", "gopher", "nntp", "imap", "wais",
-// "file", "https", "shttp", "mms", "prospero", "rtsp",
-// "rtsps", "rtspu", "sftp", "svn", "svn+ssh", "ws",
-// "wss"}
 ::tpy::ordered_set<std::string>* _USES_RELATIVE{};
-// _USES_PARAMS: set[str] = {"", "ftp", "hdl", "prospero", "http", "imap", "https",
-// "shttp", "rtsp", "rtsps", "rtspu", "sip", "sips",
-// "mms", "sftp", "tel"}
 ::tpy::ordered_set<std::string>* _USES_PARAMS{};
 
 // def _scheme_uses_netloc(scheme: str) -> bool:
+//     return scheme in _USES_NETLOC
 bool _scheme_uses_netloc(std::string_view scheme) {
-    // return scheme in _USES_NETLOC
     return ((*_USES_NETLOC).contains(scheme));
 }
 
 // def _scheme_uses_relative(scheme: str) -> bool:
+//     return scheme in _USES_RELATIVE
 bool _scheme_uses_relative(std::string_view scheme) {
-    // return scheme in _USES_RELATIVE
     return ((*_USES_RELATIVE).contains(scheme));
 }
 
 // def _scheme_uses_params(scheme: str) -> bool:
+//     return scheme in _USES_PARAMS
 bool _scheme_uses_params(std::string_view scheme) {
-    // return scheme in _USES_PARAMS
     return ((*_USES_PARAMS).contains(scheme));
 }
 
 // # ---------- byte / char classifiers ----------
 // def _is_alpha(c: char) -> bool:
+//     o = ord(c)
+//     return (o >= 65 and o <= 90) or (o >= 97 and o <= 122)
 bool _is_alpha(char c) {
-    // o = ord(c)
     int32_t o = static_cast<int32_t>(static_cast<unsigned char>(c));
-    // return (o >= 65 and o <= 90) or (o >= 97 and o <= 122)
     return (((o >= 65) && (o <= 90)) || ((o >= 97) && (o <= 122)));
 }
 
 // def _is_alnum(c: char) -> bool:
+//     o = ord(c)
+//     return _is_alpha(c) or (o >= 48 and o <= 57)
 bool _is_alnum(char c) {
-    // o = ord(c)
     int32_t o = static_cast<int32_t>(static_cast<unsigned char>(c));
-    // return _is_alpha(c) or (o >= 48 and o <= 57)
     return (_is_alpha(c) || ((o >= 48) && (o <= 57)));
 }
 
 // def _byte_unreserved(c: int32) -> bool:
+//     # RFC 3986 unreserved set -- always safe, never percent-encoded.
+//     # ALPHA / DIGIT / '-' / '.' / '_' / '~'.
+//     if c >= 65 and c <= 90:
+//         return True
+//     if c >= 97 and c <= 122:
+//         return True
+//     if c >= 48 and c <= 57:
+//         return True
+//     return c == 45 or c == 46 or c == 95 or c == 126
 bool _byte_unreserved(int32_t c) {
-    // # RFC 3986 unreserved set -- always safe, never percent-encoded.
-    // # ALPHA / DIGIT / '-' / '.' / '_' / '~'.
-    // if c >= 65 and c <= 90:
     if (((c >= 65) && (c <= 90))) {
-        // return True
         return true;
     }
-    // if c >= 97 and c <= 122:
     if (((c >= 97) && (c <= 122))) {
-        // return True
         return true;
     }
-    // if c >= 48 and c <= 57:
     if (((c >= 48) && (c <= 57))) {
-        // return True
         return true;
     }
-    // return c == 45 or c == 46 or c == 95 or c == 126
     return ((((c == 45) || (c == 46)) || (c == 95)) || (c == 126));
 }
 
 // def _byte_in(c: int32, chars: str) -> bool:
+//     for ch in chars:
+//         if ord(ch) == c:
+//             return True
+//     return False
 bool _byte_in(int32_t c, std::string_view chars) {
-    // for ch in chars:
     auto& __obj_0 = chars;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // if ord(ch) == c:
         if ((static_cast<int32_t>(static_cast<unsigned char>(ch)) == c)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 
 // def _hex_val(c: int32) -> int32:
+//     if c >= 48 and c <= 57:
+//         return c - 48
+//     if c >= 65 and c <= 70:
+//         return c - 55
+//     if c >= 97 and c <= 102:
+//         return c - 87
+//     return -1
 int32_t _hex_val(int32_t c) {
-    // if c >= 48 and c <= 57:
     if (((c >= 48) && (c <= 57))) {
-        // return c - 48
         return (::tpy::sub_check<int32_t>(c, 48));
     }
-    // if c >= 65 and c <= 70:
     if (((c >= 65) && (c <= 70))) {
-        // return c - 55
         return (::tpy::sub_check<int32_t>(c, 55));
     }
-    // if c >= 97 and c <= 102:
     if (((c >= 97) && (c <= 102))) {
-        // return c - 87
         return (::tpy::sub_check<int32_t>(c, 87));
     }
-    // return -1
     return -1;
 }
 
 // # ---------- percent-encoding ----------
 // def _quote_impl(s: str, safe: str, plus: bool) -> str:
+//     data = s.encode()
+//     out = bytearray()
+//     n = len(data)
+//     i = 0
+//     while i < n:
+//         c = int32(data[i])
+//         if _byte_unreserved(c) or _byte_in(c, safe):
+//             out.append(uint8(c))
+//         elif plus and c == 32:
+//             out.append(uint8(43))
+//         else:
+//             out.append(uint8(37))
+//             out.append(_HEX[c >> 4])
+//             out.append(_HEX[c & 0xF])
+//         i += 1
+//     return out.decode()
 std::string _quote_impl(std::string_view s, std::string_view safe, bool plus) {
-    // data = s.encode()
     ::tpy::Bytes data = ::tpy::bytes_from_str(s);
-    // out = bytearray()
     ::tpy::ByteArray out = ::tpy::ByteArray();
-    // n = len(data)
     int32_t n = ::tpy::__len__(data);
-    // i = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // c = int32(data[i])
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
-        // if _byte_unreserved(c) or _byte_in(c, safe):
         if ((_byte_unreserved(c) || _byte_in(c, safe))) {
-            // out.append(uint8(c))
             out.push_back(::tpy::int_cast_check<uint8_t>(c));
-        // elif plus and c == 32:
         } else if ((plus && (c == 32))) {
-            // out.append(uint8(43))
             out.push_back(43);
-        // else:
         } else {
-            // out.append(uint8(37))
             out.push_back(37);
-            // out.append(_HEX[c >> 4])
             out.push_back(::tpy::bytes_getitem(_HEX, (::tpy::rshift_check<int32_t>(c, 4))));
-            // out.append(_HEX[c & 0xF])
             out.push_back(::tpy::bytes_getitem(_HEX, (static_cast<int32_t>(c & 15))));
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return out.decode()
     return ::tpy::bytes_decode(out);
 }
 
 // def quote(s: str, safe: str = "/") -> str:
+//     """Percent-encode `s`, leaving unreserved chars and `safe` chars intact."""
+//     return _quote_impl(s, safe, False)
 std::string quote(std::string_view s, std::string_view safe) {
-    // return _quote_impl(s, safe, False)
     return _quote_impl(s, safe, false);
 }
 
 // def quote_plus(s: str, safe: str = "") -> str:
+//     """Like quote, but encode spaces as '+' (form-encoding); '/' is not safe."""
+//     return _quote_impl(s, safe, True)
 std::string quote_plus(std::string_view s, std::string_view safe) {
-    // return _quote_impl(s, safe, True)
     return _quote_impl(s, safe, true);
 }
 
 // def _unquote_impl(s: str, plus: bool) -> str:
+//     data = s.encode()
+//     out = bytearray()
+//     n = len(data)
+//     i = 0
+//     while i < n:
+//         c = int32(data[i])
+//         if c == 37 and i + 2 < n:
+//             hi = _hex_val(int32(data[i + 1]))
+//             lo = _hex_val(int32(data[i + 2]))
+//             if hi >= 0 and lo >= 0:
+//                 out.append(uint8((hi << 4) | lo))
+//                 i += 3
+//                 continue
+//             out.append(uint8(c))
+//             i += 1
+//         elif plus and c == 43:
+//             out.append(uint8(32))
+//             i += 1
+//         else:
+//             out.append(uint8(c))
+//             i += 1
+//     return out.decode()
 std::string _unquote_impl(std::string_view s, bool plus) {
-    // data = s.encode()
     ::tpy::Bytes data = ::tpy::bytes_from_str(s);
-    // out = bytearray()
     ::tpy::ByteArray out = ::tpy::ByteArray();
-    // n = len(data)
     int32_t n = ::tpy::__len__(data);
-    // i = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // c = int32(data[i])
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
-        // if c == 37 and i + 2 < n:
         if (((c == 37) && ((::tpy::add_check<int32_t>(i, 2)) < n))) {
-            // hi = _hex_val(int32(data[i + 1]))
             int32_t hi = _hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1)))));
-            // lo = _hex_val(int32(data[i + 2]))
             int32_t lo = _hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2)))));
-            // if hi >= 0 and lo >= 0:
             if (((hi >= 0) && (lo >= 0))) {
-                // out.append(uint8((hi << 4) | lo))
                 out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(hi, 4)) | lo))));
-                // i += 3
                 i = ::tpy::add_check<int32_t>(i, 3);
-                // continue
                 continue;
             }
-            // out.append(uint8(c))
             out.push_back(::tpy::int_cast_check<uint8_t>(c));
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
-        // elif plus and c == 43:
         } else if ((plus && (c == 43))) {
-            // out.append(uint8(32))
             out.push_back(32);
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
-        // else:
         } else {
-            // out.append(uint8(c))
             out.push_back(::tpy::int_cast_check<uint8_t>(c));
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         }
     }
-    // return out.decode()
     return ::tpy::bytes_decode(out);
 }
 
 // def unquote(s: str) -> str:
+//     """Replace %XX escapes with their byte, decoding the result as UTF-8."""
+//     return _unquote_impl(s, False)
 std::string unquote(std::string_view s) {
-    // return _unquote_impl(s, False)
     return _unquote_impl(s, false);
 }
 
 // def unquote_plus(s: str) -> str:
+//     """Like unquote, but also turn '+' into a space (form-decoding)."""
+//     return _unquote_impl(s, True)
 std::string unquote_plus(std::string_view s) {
-    // return _unquote_impl(s, True)
     return _unquote_impl(s, true);
 }
 
 // def urlencode(query: dict[str, str]) -> str:
+//     """Build an application/x-www-form-urlencoded query string.
+//
+//     Keys and values are quote_plus-encoded; pairs are joined with '&' in the
+//     dict's insertion order (TPy dicts are ordered, matching CPython)."""
+//     parts: list[str] = []
+//     for k in query:
+//         parts.append(quote_plus(k) + "=" + quote_plus(query[k]))
+//     return "&".join(parts)
 std::string urlencode(const ::tpy::ordered_map<std::string, std::string>& query) {
-    // parts: list[str] = []
     std::vector<std::string> parts = std::vector<std::string>{};
-    // for k in query:
     auto& __obj_0 = query;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // parts.append(quote_plus(k) + "=" + quote_plus(query[k]))
         parts.push_back((::tpy::str_concat((::tpy::str_concat(quote_plus(k), "=")), quote_plus(::tpy::__getitem__(query, k)))));
     }
-    // return "&".join(parts)
     return ::tpy::str_join("&", parts);
 }
 
 // def parse_qsl(qs: str, keep_blank_values: bool = False) -> Own[list[tuple[str, str]]]:
+//     """Parse a query string into an ordered list of (name, value) pairs.
+//
+//     Both name and value are unquote_plus-decoded. With keep_blank_values
+//     False (the default) pairs with an empty value are dropped, matching
+//     CPython."""
+//     result: list[tuple[str, str]] = []
+//     for pair in qs.split("&"):
+//         if len(pair) == 0:
+//             continue
+//         eq = pair.find("=")
+//         if eq < 0:
+//             if keep_blank_values:
+//                 result.append((unquote_plus(pair), ""))
+//             continue
+//         value = pair[eq + 1:]
+//         if len(value) == 0 and not keep_blank_values:
+//             continue
+//         result.append((unquote_plus(pair[:eq]), unquote_plus(value)))
+//     return result
 std::vector<std::tuple<std::string, std::string>> parse_qsl(std::string_view qs, bool keep_blank_values) {
-    // result: list[tuple[str, str]] = []
     std::vector<std::tuple<std::string, std::string>> result = std::vector<std::tuple<std::string, std::string>>{};
-    // for pair in qs.split("&"):
     auto __obj_0 = ::tpy::str_split(qs, "&");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view pair = *__beg_0;
-        // if len(pair) == 0:
         if ((::tpy::__len__(pair) == 0)) {
-            // continue
             continue;
         }
-        // eq = pair.find("=")
         int32_t eq = ::tpy::str_find(pair, "=");
-        // if eq < 0:
         if ((eq < 0)) {
-            // if keep_blank_values:
             if (keep_blank_values) {
-                // result.append((unquote_plus(pair), ""))
                 result.push_back(std::tuple<std::string, std::string>{unquote_plus(pair), ""});
             }
-            // continue
             continue;
         }
-        // value = pair[eq + 1:]
         std::string_view value = ::tpy::str_slice(pair, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(eq, 1)), std::nullopt});
-        // if len(value) == 0 and not keep_blank_values:
         if (((::tpy::__len__(value) == 0) && (!(keep_blank_values)))) {
-            // continue
             continue;
         }
-        // result.append((unquote_plus(pair[:eq]), unquote_plus(value)))
         result.push_back(std::tuple<std::string, std::string>{unquote_plus(::tpy::str_slice(pair, ::tpy::BasicSlice{std::nullopt, eq})), unquote_plus(value)});
     }
-    // return result
     return result;
 }
 
 // # ---------- netloc decomposition (shared by SplitResult / ParseResult) ----------
 // def _netloc_hostinfo(netloc: str) -> str:
+//     at = netloc.rfind("@")
+//     if at >= 0:
+//         return netloc[at + 1:]
+//     return netloc
 std::string _netloc_hostinfo(std::string_view netloc) {
-    // at = netloc.rfind("@")
     int32_t at = ::tpy::str_rfind(netloc, "@");
-    // if at >= 0:
     if ((at >= 0)) {
-        // return netloc[at + 1:]
         return std::string(::tpy::str_slice(netloc, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(at, 1)), std::nullopt}));
     }
-    // return netloc
     return std::string(netloc);
 }
 
 // def _hostinfo_host(hostinfo: str) -> str:
+//     if hostinfo.startswith("["):
+//         end = hostinfo.find("]")
+//         if end >= 0:
+//             return hostinfo[1:end]
+//     colon = hostinfo.find(":")
+//     if colon >= 0:
+//         return hostinfo[:colon]
+//     return hostinfo
 std::string _hostinfo_host(std::string_view hostinfo) {
-    // if hostinfo.startswith("["):
     if (::tpy::str_startswith(hostinfo, "[")) {
-        // end = hostinfo.find("]")
         int32_t end = ::tpy::str_find(hostinfo, "]");
-        // if end >= 0:
         if ((end >= 0)) {
-            // return hostinfo[1:end]
             return std::string(::tpy::str_slice(hostinfo, ::tpy::BasicSlice{1, end}));
         }
     }
-    // colon = hostinfo.find(":")
     int32_t colon = ::tpy::str_find(hostinfo, ":");
-    // if colon >= 0:
     if ((colon >= 0)) {
-        // return hostinfo[:colon]
         return std::string(::tpy::str_slice(hostinfo, ::tpy::BasicSlice{std::nullopt, colon}));
     }
-    // return hostinfo
     return std::string(hostinfo);
 }
 
 // def _hostinfo_port(hostinfo: str) -> str:
+//     if hostinfo.startswith("["):
+//         end = hostinfo.find("]")
+//         if end >= 0:
+//             after = hostinfo[end + 1:]
+//             if after.startswith(":"):
+//                 return after[1:]
+//             return ""
+//     colon = hostinfo.find(":")
+//     if colon >= 0:
+//         return hostinfo[colon + 1:]
+//     return ""
 std::string _hostinfo_port(std::string_view hostinfo) {
-    // if hostinfo.startswith("["):
     if (::tpy::str_startswith(hostinfo, "[")) {
-        // end = hostinfo.find("]")
         int32_t end = ::tpy::str_find(hostinfo, "]");
-        // if end >= 0:
         if ((end >= 0)) {
-            // after = hostinfo[end + 1:]
             std::string_view after = ::tpy::str_slice(hostinfo, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(end, 1)), std::nullopt});
-            // if after.startswith(":"):
             if (::tpy::str_startswith(after, ":")) {
-                // return after[1:]
                 return std::string(::tpy::str_slice(after, ::tpy::BasicSlice{1, std::nullopt}));
             }
-            // return ""
             return "";
         }
     }
-    // colon = hostinfo.find(":")
     int32_t colon = ::tpy::str_find(hostinfo, ":");
-    // if colon >= 0:
     if ((colon >= 0)) {
-        // return hostinfo[colon + 1:]
         return std::string(::tpy::str_slice(hostinfo, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(colon, 1)), std::nullopt}));
     }
-    // return ""
     return "";
 }
 
 // def _netloc_hostname(netloc: str) -> str | None:
+//     h = _hostinfo_host(_netloc_hostinfo(netloc))
+//     if len(h) == 0:
+//         return None
+//     return h.lower()
 std::optional<std::string> _netloc_hostname(std::string_view netloc) {
-    // h = _hostinfo_host(_netloc_hostinfo(netloc))
     std::string h = _hostinfo_host(_netloc_hostinfo(netloc));
-    // if len(h) == 0:
     if ((::tpy::__len__(h) == 0)) {
-        // return None
         return std::nullopt;
     }
-    // return h.lower()
     return ::tpy::str_lower(h);
 }
 
 // def _all_ascii_digits(s: str) -> bool:
+//     if len(s) == 0:
+//         return False
+//     for c in s:
+//         o = ord(c)
+//         if o < 48 or o > 57:
+//             return False
+//     return True
 bool _all_ascii_digits(std::string_view s) {
-    // if len(s) == 0:
     if ((::tpy::__len__(s) == 0)) {
-        // return False
         return false;
     }
-    // for c in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        // o = ord(c)
         int32_t o = static_cast<int32_t>(static_cast<unsigned char>(c));
-        // if o < 48 or o > 57:
         if (((o < 48) || (o > 57))) {
-            // return False
             return false;
         }
     }
-    // return True
     return true;
 }
 
 // def _netloc_port(netloc: str) -> int | None:
+//     ps = _hostinfo_port(_netloc_hostinfo(netloc))
+//     if len(ps) == 0:
+//         return None
+//     # CPython requires ASCII digits; str.isdigit() also accepts Unicode digits.
+//     if not _all_ascii_digits(ps):
+//         raise ValueError("Port could not be cast to integer value")
+//     p = int(ps)
+//     if p < 0 or p > 65535:
+//         raise ValueError("Port out of range 0-65535")
+//     return p
 std::optional<::tpy::BigInt> _netloc_port(std::string_view netloc) {
-    // ps = _hostinfo_port(_netloc_hostinfo(netloc))
     std::string ps = _hostinfo_port(_netloc_hostinfo(netloc));
-    // if len(ps) == 0:
     if ((::tpy::__len__(ps) == 0)) {
-        // return None
         return std::nullopt;
     }
-    // # CPython requires ASCII digits; str.isdigit() also accepts Unicode digits.
-    // if not _all_ascii_digits(ps):
     if ((!(_all_ascii_digits(ps)))) {
-        // raise ValueError("Port could not be cast to integer value")
         throw ::tpy::ValueError("Port could not be cast to integer value");
     }
-    // p = int(ps)
     ::tpy::BigInt p = ::tpy::BigInt::from_str(ps);
-    // if p < 0 or p > 65535:
     if (((p < 0) || (p > 65535))) {
-        // raise ValueError("Port out of range 0-65535")
         throw ::tpy::ValueError("Port out of range 0-65535");
     }
-    // return p
     return p;
 }
 
 // def _netloc_username(netloc: str) -> str | None:
+//     at = netloc.rfind("@")
+//     if at < 0:
+//         return None
+//     userinfo = netloc[:at]
+//     colon = userinfo.find(":")
+//     if colon >= 0:
+//         return userinfo[:colon]
+//     return userinfo
 std::optional<std::string> _netloc_username(std::string_view netloc) {
-    // at = netloc.rfind("@")
     int32_t at = ::tpy::str_rfind(netloc, "@");
-    // if at < 0:
     if ((at < 0)) {
-        // return None
         return std::nullopt;
     }
-    // userinfo = netloc[:at]
     std::string_view userinfo = ::tpy::str_slice(netloc, ::tpy::BasicSlice{std::nullopt, at});
-    // colon = userinfo.find(":")
     int32_t colon = ::tpy::str_find(userinfo, ":");
-    // if colon >= 0:
     if ((colon >= 0)) {
-        // return userinfo[:colon]
         return std::string(::tpy::str_slice(userinfo, ::tpy::BasicSlice{std::nullopt, colon}));
     }
-    // return userinfo
     return std::string(userinfo);
 }
 
 // def _netloc_password(netloc: str) -> str | None:
+//     at = netloc.rfind("@")
+//     if at < 0:
+//         return None
+//     userinfo = netloc[:at]
+//     colon = userinfo.find(":")
+//     if colon >= 0:
+//         return userinfo[colon + 1:]
+//     return None
 std::optional<std::string> _netloc_password(std::string_view netloc) {
-    // at = netloc.rfind("@")
     int32_t at = ::tpy::str_rfind(netloc, "@");
-    // if at < 0:
     if ((at < 0)) {
-        // return None
         return std::nullopt;
     }
-    // userinfo = netloc[:at]
     std::string_view userinfo = ::tpy::str_slice(netloc, ::tpy::BasicSlice{std::nullopt, at});
-    // colon = userinfo.find(":")
     int32_t colon = ::tpy::str_find(userinfo, ":");
-    // if colon >= 0:
     if ((colon >= 0)) {
-        // return userinfo[colon + 1:]
         return std::string(::tpy::str_slice(userinfo, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(colon, 1)), std::nullopt}));
     }
-    // return None
     return std::nullopt;
 }
 
 // # ---------- splitting ----------
 // def _is_scheme(s: str) -> bool:
+//     n = len(s)
+//     if n == 0:
+//         return False
+//     if not _is_alpha(s[0]):
+//         return False
+//     i = 1
+//     while i < n:
+//         c = s[i]
+//         if not (_is_alnum(c) or c == "+" or c == "-" or c == "."):
+//             return False
+//         i += 1
+//     return True
 bool _is_scheme(std::string_view s) {
-    // n = len(s)
     int32_t n = ::tpy::__len__(s);
-    // if n == 0:
     if ((n == 0)) {
-        // return False
         return false;
     }
-    // if not _is_alpha(s[0]):
     if ((!(_is_alpha(::tpy::__getitem__(s, 0))))) {
-        // return False
         return false;
     }
-    // i = 1
     int32_t i = 1;
-    // while i < n:
     while ((i < n)) {
-        // c = s[i]
         char c = ::tpy::__getitem__(s, i);
-        // if not (_is_alnum(c) or c == "+" or c == "-" or c == "."):
         if ((!((((_is_alnum(c) || (c == '+')) || (c == '-')) || (c == '.'))))) {
-            // return False
             return false;
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return True
     return true;
 }
 
 // def _clean(url: str) -> str:
+//     # CPython removes tab/CR/LF anywhere and lstrips leading control-or-space,
+//     # but keeps trailing whitespace (significant in path/query/fragment).
+//     cleaned = url.lstrip().replace("\t", "").replace("\r", "").replace("\n", "")
+//     return cleaned
 std::string _clean(std::string_view url) {
-    // # CPython removes tab/CR/LF anywhere and lstrips leading control-or-space,
-    // # but keeps trailing whitespace (significant in path/query/fragment).
-    // cleaned = url.lstrip().replace("\t", "").replace("\r", "").replace("\n", "")
     std::string cleaned = ::tpy::str_replace(::tpy::str_replace(::tpy::str_replace(::tpy::str_lstrip(url), "\t", ""), "\r", ""), "\n", "");
-    // return cleaned
     return cleaned;
 }
 
 // def _netloc_end(s: str) -> int32:
+//     n = len(s)
+//     i = 0
+//     while i < n:
+//         c = s[i]
+//         if c == "/" or c == "?" or c == "#":
+//             return i
+//         i += 1
+//     return n
 int32_t _netloc_end(std::string_view s) {
-    // n = len(s)
     int32_t n = ::tpy::__len__(s);
-    // i = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // c = s[i]
         char c = ::tpy::__getitem__(s, i);
-        // if c == "/" or c == "?" or c == "#":
         if ((((c == '/') || (c == '?')) || (c == '#'))) {
-            // return i
             return i;
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return n
     return n;
 }
 
 // def urlsplit(url: str) -> Own[SplitResult]:
+//     """Split a URL into (scheme, netloc, path, query, fragment)."""
+//     scheme = ""
+//     netloc = ""
+//     query = ""
+//     fragment = ""
+//     rest = _clean(url)
+//
+//     i = rest.find(":")
+//     if i > 0 and _is_scheme(rest[:i]):
+//         scheme = rest[:i].lower()
+//         rest = rest[i + 1:]
+//
+//     if rest.startswith("//"):
+//         body = rest[2:]
+//         end = _netloc_end(body)
+//         netloc = body[:end]
+//         rest = body[end:]
+//         if (("[" in netloc and "]" not in netloc)
+//                 or ("]" in netloc and "[" not in netloc)):
+//             raise ValueError("Invalid IPv6 URL")
+//
+//     h = rest.find("#")
+//     if h >= 0:
+//         fragment = rest[h + 1:]
+//         rest = rest[:h]
+//
+//     q = rest.find("?")
+//     if q >= 0:
+//         query = rest[q + 1:]
+//         rest = rest[:q]
+//
+//     return SplitResult(scheme, netloc, rest, query, fragment)
 SplitResult urlsplit(std::string_view url) {
-    // scheme = ""
     std::string scheme = "";
-    // netloc = ""
     std::string netloc = "";
-    // query = ""
     std::string query = "";
-    // fragment = ""
     std::string fragment = "";
-    // rest = _clean(url)
     std::string rest = _clean(url);
-    // i = rest.find(":")
     int32_t i = ::tpy::str_find(rest, ":");
-    // if i > 0 and _is_scheme(rest[:i]):
     if (((i > 0) && _is_scheme(::tpy::str_slice(rest, ::tpy::BasicSlice{std::nullopt, i})))) {
-        // scheme = rest[:i].lower()
         scheme = ::tpy::str_lower(::tpy::str_slice(rest, ::tpy::BasicSlice{std::nullopt, i}));
-        // rest = rest[i + 1:]
         rest = ::tpy::str_slice(rest, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), std::nullopt});
     }
-    // if rest.startswith("//"):
     if (::tpy::str_startswith(rest, "//")) {
-        // body = rest[2:]
         std::string_view body = ::tpy::str_slice(rest, ::tpy::BasicSlice{2, std::nullopt});
-        // end = _netloc_end(body)
         int32_t end = _netloc_end(body);
-        // netloc = body[:end]
         netloc = ::tpy::str_slice(body, ::tpy::BasicSlice{std::nullopt, end});
-        // rest = body[end:]
         rest = ::tpy::str_slice(body, ::tpy::BasicSlice{end, std::nullopt});
-        // if (("[" in netloc and "]" not in netloc)
-        // or ("]" in netloc and "[" not in netloc)):
         if ((((netloc.find("[") != std::string::npos) && (netloc.find("]") == std::string::npos)) || ((netloc.find("]") != std::string::npos) && (netloc.find("[") == std::string::npos)))) {
-            // raise ValueError("Invalid IPv6 URL")
             throw ::tpy::ValueError("Invalid IPv6 URL");
         }
     }
-    // h = rest.find("#")
     int32_t h = ::tpy::str_find(rest, "#");
-    // if h >= 0:
     if ((h >= 0)) {
-        // fragment = rest[h + 1:]
         fragment = ::tpy::str_slice(rest, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(h, 1)), std::nullopt});
-        // rest = rest[:h]
         rest = ::tpy::str_slice(rest, ::tpy::BasicSlice{std::nullopt, h});
     }
-    // q = rest.find("?")
     int32_t q = ::tpy::str_find(rest, "?");
-    // if q >= 0:
     if ((q >= 0)) {
-        // query = rest[q + 1:]
         query = ::tpy::str_slice(rest, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(q, 1)), std::nullopt});
-        // rest = rest[:q]
         rest = ::tpy::str_slice(rest, ::tpy::BasicSlice{std::nullopt, q});
     }
-    // return SplitResult(scheme, netloc, rest, query, fragment)
     return SplitResult(scheme, netloc, rest, query, fragment);
 }
 
 // def _split_params(path: str) -> tuple[str, str]:
+//     # ;params attaches to the final path segment only.
+//     slash = path.rfind("/")
+//     start = 0 if slash < 0 else slash
+//     rel = path[start:].find(";")
+//     if rel < 0:
+//         return (path, "")
+//     i = start + rel
+//     return (path[:i], path[i + 1:])
 std::tuple<std::string, std::string> _split_params(std::string_view path) {
-    // # ;params attaches to the final path segment only.
-    // slash = path.rfind("/")
     int32_t slash = ::tpy::str_rfind(path, "/");
-    // start = 0 if slash < 0 else slash
     int32_t start = (((slash < 0)) ? (0) : (slash));
-    // rel = path[start:].find(";")
     int32_t rel = ::tpy::str_find(::tpy::str_slice(path, ::tpy::BasicSlice{start, std::nullopt}), ";");
-    // if rel < 0:
     if ((rel < 0)) {
-        // return (path, "")
         return std::tuple<std::string, std::string>{std::string(path), ""};
     }
-    // i = start + rel
     int32_t i = (::tpy::add_check<int32_t>(start, rel));
-    // return (path[:i], path[i + 1:])
     return std::tuple<std::string, std::string>{std::string(::tpy::str_slice(path, ::tpy::BasicSlice{std::nullopt, i})), std::string(::tpy::str_slice(path, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), std::nullopt}))};
 }
 
 // def urlparse(url: str) -> Own[ParseResult]:
+//     """Split a URL into (scheme, netloc, path, params, query, fragment)."""
+//     sr = urlsplit(url)
+//     params = ""
+//     path = sr.path
+//     if _scheme_uses_params(sr.scheme) and ";" in sr.path:
+//         path, params = _split_params(sr.path)
+//     return ParseResult(sr.scheme, sr.netloc, path, params, sr.query,
+//                        sr.fragment)
 ParseResult urlparse(std::string_view url) {
-    // sr = urlsplit(url)
     SplitResult sr = urlsplit(url);
-    // params = ""
     std::string params = "";
-    // path = sr.path
     std::string path = sr.path;
-    // if _scheme_uses_params(sr.scheme) and ";" in sr.path:
     if ((_scheme_uses_params(sr.scheme) && (sr.path.find(";") != std::string::npos))) {
-        // path, params = _split_params(sr.path)
         auto __tup_1 = _split_params(sr.path);
         path = std::get<0>(__tup_1);
         params = std::get<1>(__tup_1);
     }
-    // return ParseResult(sr.scheme, sr.netloc, path, params, sr.query,
-    // sr.fragment)
     return ParseResult(sr.scheme, sr.netloc, path, params, sr.query, sr.fragment);
 }
 
 // # ---------- unsplitting ----------
 // def urlunsplit(components: tuple[str, str, str, str, str]) -> str:
+//     scheme, netloc, path, query, fragment = components
+//     url = path
+//     if len(netloc) > 0 or (len(scheme) > 0 and _scheme_uses_netloc(scheme)
+//                            and not path.startswith("//")):
+//         if len(url) > 0 and not url.startswith("/"):
+//             url = "/" + url
+//         url = "//" + netloc + url
+//     if len(scheme) > 0:
+//         url = scheme + ":" + url
+//     if len(query) > 0:
+//         url = url + "?" + query
+//     if len(fragment) > 0:
+//         url = url + "#" + fragment
+//     return url
 std::string urlunsplit(const std::tuple<std::string, std::string, std::string, std::string, std::string>& components) {
-    // scheme, netloc, path, query, fragment = components
     const auto& __tup_1 = components;
     std::string_view scheme = std::get<0>(__tup_1);
     std::string_view netloc = std::get<1>(__tup_1);
     std::string_view path = std::get<2>(__tup_1);
     std::string_view query = std::get<3>(__tup_1);
     std::string_view fragment = std::get<4>(__tup_1);
-    // url = path
     std::string url = std::string(path);
-    // if len(netloc) > 0 or (len(scheme) > 0 and _scheme_uses_netloc(scheme)
-    // and not path.startswith("//")):
     if (((::tpy::__len__(netloc) > 0) || (((::tpy::__len__(scheme) > 0) && _scheme_uses_netloc(scheme)) && (!(::tpy::str_startswith(path, "//")))))) {
-        // if len(url) > 0 and not url.startswith("/"):
         if (((::tpy::__len__(url) > 0) && (!(::tpy::str_startswith(url, "/"))))) {
-            // url = "/" + url
             url = (::tpy::str_concat("/", url));
         }
-        // url = "//" + netloc + url
         url = (::tpy::str_concat((::tpy::str_concat("//", netloc)), url));
     }
-    // if len(scheme) > 0:
     if ((::tpy::__len__(scheme) > 0)) {
-        // url = scheme + ":" + url
         url = (::tpy::str_concat((::tpy::str_concat(scheme, ":")), url));
     }
-    // if len(query) > 0:
     if ((::tpy::__len__(query) > 0)) {
-        // url = url + "?" + query
         url = (::tpy::str_concat((::tpy::str_concat(url, "?")), query));
     }
-    // if len(fragment) > 0:
     if ((::tpy::__len__(fragment) > 0)) {
-        // url = url + "#" + fragment
         url = (::tpy::str_concat((::tpy::str_concat(url, "#")), fragment));
     }
-    // return url
     return url;
 }
 
 // def urlunparse(components: tuple[str, str, str, str, str, str]) -> str:
+//     scheme, netloc, path, params, query, fragment = components
+//     if len(params) > 0:
+//         return urlunsplit((scheme, netloc, path + ";" + params, query,
+//                            fragment))
+//     return urlunsplit((scheme, netloc, path, query, fragment))
 std::string urlunparse(const std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>& components) {
-    // scheme, netloc, path, params, query, fragment = components
     const auto& __tup_1 = components;
     std::string_view scheme = std::get<0>(__tup_1);
     std::string_view netloc = std::get<1>(__tup_1);
@@ -686,227 +693,234 @@ std::string urlunparse(const std::tuple<std::string, std::string, std::string, s
     std::string_view params = std::get<3>(__tup_1);
     std::string_view query = std::get<4>(__tup_1);
     std::string_view fragment = std::get<5>(__tup_1);
-    // if len(params) > 0:
     if ((::tpy::__len__(params) > 0)) {
-        // return urlunsplit((scheme, netloc, path + ";" + params, query,
-        // fragment))
         return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), (::tpy::str_concat((::tpy::str_concat(path, ";")), params)), std::string(query), std::string(fragment)});
     }
-    // return urlunsplit((scheme, netloc, path, query, fragment))
     return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), std::string(path), std::string(query), std::string(fragment)});
 }
 
 // # ---------- relative-reference resolution ----------
 // def urljoin(base: str, url: str) -> str:
+//     """Resolve a possibly-relative `url` against `base` (RFC 3986)."""
+//     if len(base) == 0:
+//         return url
+//     if len(url) == 0:
+//         return base
+//
+//     b = urlsplit(base)
+//     r = urlsplit(url)
+//
+//     if r.scheme != b.scheme and len(r.scheme) > 0:
+//         return url
+//     scheme = b.scheme
+//
+//     if not _scheme_uses_relative(scheme):
+//         return url
+//
+//     netloc = r.netloc
+//     if _scheme_uses_netloc(scheme):
+//         if len(netloc) > 0:
+//             return urlunsplit((scheme, netloc, r.path, r.query, r.fragment))
+//         netloc = b.netloc
+//
+//     if len(r.path) == 0:
+//         path = b.path
+//         query = r.query if len(r.query) > 0 else b.query
+//         return urlunsplit((scheme, netloc, path, query, r.fragment))
+//
+//     if r.path.startswith("/"):
+//         segments = r.path.split("/")
+//     else:
+//         base_parts = b.path.split("/")
+//         # Drop the base's last (file) segment unless the base path is a dir.
+//         if len(base_parts) > 0 and len(base_parts[len(base_parts) - 1]) > 0:
+//             base_parts.pop()
+//         rel_parts = url_split_path_only(r.path)
+//         merged: list[str] = []
+//         for p in base_parts:
+//             merged.append(p)
+//         for p in rel_parts:
+//             merged.append(p)
+//         segments = _drop_inner_empties(merged)
+//
+//     resolved: list[str] = []
+//     for seg in segments:
+//         if seg == "..":
+//             if len(resolved) > 0:
+//                 resolved.pop()
+//         elif seg == ".":
+//             continue
+//         else:
+//             resolved.append(seg)
+//
+//     last = segments[len(segments) - 1]
+//     if last == "." or last == "..":
+//         resolved.append("")
+//
+//     joined = "/".join(resolved)
+//     if len(joined) == 0:
+//         joined = "/"
+//     return urlunsplit((scheme, netloc, joined, r.query, r.fragment))
 std::string urljoin(std::string_view base, std::string_view url) {
     std::optional<std::vector<std::string>> __slot_1;
-    // if len(base) == 0:
     if ((::tpy::__len__(base) == 0)) {
-        // return url
         return std::string(url);
     }
-    // if len(url) == 0:
     if ((::tpy::__len__(url) == 0)) {
-        // return base
         return std::string(base);
     }
-    // b = urlsplit(base)
     SplitResult b = urlsplit(base);
-    // r = urlsplit(url)
     SplitResult r = urlsplit(url);
-    // if r.scheme != b.scheme and len(r.scheme) > 0:
     if (((r.scheme != b.scheme) && (::tpy::__len__(r.scheme) > 0))) {
-        // return url
         return std::string(url);
     }
-    // scheme = b.scheme
     std::string_view scheme = b.scheme;
-    // if not _scheme_uses_relative(scheme):
     if ((!(_scheme_uses_relative(scheme)))) {
-        // return url
         return std::string(url);
     }
-    // netloc = r.netloc
     std::string_view netloc = r.netloc;
-    // if _scheme_uses_netloc(scheme):
     if (_scheme_uses_netloc(scheme)) {
-        // if len(netloc) > 0:
         if ((::tpy::__len__(netloc) > 0)) {
-            // return urlunsplit((scheme, netloc, r.path, r.query, r.fragment))
             return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), r.path, r.query, r.fragment});
         }
-        // netloc = b.netloc
         netloc = b.netloc;
     }
-    // if len(r.path) == 0:
     if ((::tpy::__len__(r.path) == 0)) {
-        // path = b.path
         std::string_view path = b.path;
-        // query = r.query if len(r.query) > 0 else b.query
         std::string_view query = (((::tpy::__len__(r.query) > 0)) ? (r.query) : (b.query));
-        // return urlunsplit((scheme, netloc, path, query, r.fragment))
         return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), std::string(path), std::string(query), r.fragment});
     }
-    // if r.path.startswith("/"):
     std::vector<std::string>* segments;
     if (::tpy::str_startswith(r.path, "/")) {
-        // segments = r.path.split("/")
         segments = &*(__slot_1 = ::tpy::str_split(r.path, "/"));
-    // else:
     } else {
-        // base_parts = b.path.split("/")
         std::vector<std::string> base_parts = ::tpy::str_split(b.path, "/");
-        // # Drop the base's last (file) segment unless the base path is a dir.
-        // if len(base_parts) > 0 and len(base_parts[len(base_parts) - 1]) > 0:
         if (((::tpy::__len__(base_parts) > 0) && (::tpy::__len__(::tpy::__getitem__(base_parts, (::tpy::sub_check<int32_t>(::tpy::__len__(base_parts), 1)))) > 0))) {
-            // base_parts.pop()
             ::tpy::pop_back(base_parts);
         }
-        // rel_parts = url_split_path_only(r.path)
         std::vector<std::string> rel_parts = url_split_path_only(r.path);
-        // merged: list[str] = []
         std::vector<std::string> merged = std::vector<std::string>{};
-        // for p in base_parts:
         auto& __obj_0 = base_parts;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             std::string_view p = *__beg_0;
-            // merged.append(p)
             merged.push_back(std::string(p));
         }
-        // for p in rel_parts:
         auto& __obj_1 = rel_parts;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             std::string_view p = *__beg_1;
-            // merged.append(p)
             merged.push_back(std::string(p));
         }
-        // segments = _drop_inner_empties(merged)
         segments = &*(__slot_1 = _drop_inner_empties(merged));
     }
-    // resolved: list[str] = []
     std::vector<std::string> resolved = std::vector<std::string>{};
-    // for seg in segments:
     auto& __obj_2 = (*segments);
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view seg = *__beg_2;
-        // if seg == "..":
         if ((seg == "..")) {
-            // if len(resolved) > 0:
             if ((::tpy::__len__(resolved) > 0)) {
-                // resolved.pop()
                 ::tpy::pop_back(resolved);
             }
-        // elif seg == ".":
         } else if ((seg == ".")) {
-            // continue
             continue;
-        // else:
         } else {
-            // resolved.append(seg)
             resolved.push_back(std::string(seg));
         }
     }
-    // last = segments[len(segments) - 1]
     std::string_view last = ::tpy::__getitem__((*segments), (::tpy::sub_check<int32_t>(::tpy::__len__((*segments)), 1)));
-    // if last == "." or last == "..":
     if (((last == ".") || (last == ".."))) {
-        // resolved.append("")
         resolved.push_back("");
     }
-    // joined = "/".join(resolved)
     std::string joined = ::tpy::str_join("/", resolved);
-    // if len(joined) == 0:
     if ((::tpy::__len__(joined) == 0)) {
-        // joined = "/"
         joined = "/";
     }
-    // return urlunsplit((scheme, netloc, joined, r.query, r.fragment))
     return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), joined, r.query, r.fragment});
 }
 
 // def url_split_path_only(path: str) -> Own[list[str]]:
+//     return path.split("/")
 std::vector<std::string> url_split_path_only(std::string_view path) {
-    // return path.split("/")
     return ::tpy::str_split(path, "/");
 }
 
 // def _drop_inner_empties(segments: list[str]) -> Own[list[str]]:
+//     # Mirror CPython's `segments[1:-1] = filter(None, segments[1:-1])`: keep the
+//     # first and last segments, drop empty ones in between (collapses // runs).
+//     n = len(segments)
+//     if n <= 2:
+//         out: list[str] = []
+//         for s in segments:
+//             out.append(s)
+//         return out
+//     result: list[str] = []
+//     result.append(segments[0])
+//     k = 1
+//     while k < n - 1:
+//         if len(segments[k]) > 0:
+//             result.append(segments[k])
+//         k += 1
+//     result.append(segments[n - 1])
+//     return result
 std::vector<std::string> _drop_inner_empties(const std::vector<std::string>& segments) {
-    // # Mirror CPython's `segments[1:-1] = filter(None, segments[1:-1])`: keep the
-    // # first and last segments, drop empty ones in between (collapses // runs).
-    // n = len(segments)
     int32_t n = ::tpy::__len__(segments);
-    // if n <= 2:
     if ((n <= 2)) {
-        // out: list[str] = []
         std::vector<std::string> out = std::vector<std::string>{};
-        // for s in segments:
         auto& __obj_0 = segments;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             std::string_view s = *__beg_0;
-            // out.append(s)
             out.push_back(std::string(s));
         }
-        // return out
         return out;
     }
-    // result: list[str] = []
     std::vector<std::string> result = std::vector<std::string>{};
-    // result.append(segments[0])
     result.push_back(::tpy::__getitem__(segments, 0));
-    // k = 1
     int32_t k = 1;
-    // while k < n - 1:
     while ((k < (::tpy::sub_check<int32_t>(n, 1)))) {
-        // if len(segments[k]) > 0:
         if ((::tpy::__len__(::tpy::__getitem__(segments, k)) > 0)) {
-            // result.append(segments[k])
             result.push_back(::tpy::__getitem__(segments, k));
         }
-        // k += 1
         k = ::tpy::add_check<int32_t>(k, 1);
     }
-    // result.append(segments[n - 1])
     result.push_back(::tpy::__getitem__(segments, (::tpy::sub_check<int32_t>(n, 1))));
-    // return result
     return result;
 }
 
+// _HEX: bytes = b"0123456789ABCDEF"
+//
+// # CPython's uses_netloc / uses_relative / uses_params scheme lists, verbatim.
+// # Module-level sets so each is built once at init (a set literal in the function
+// # body would reconstruct the set on every call); membership is then an O(1)
+// # lookup. (TPy tuples aren't iterable, so a set is the natural constant form.)
+// _USES_NETLOC: set[str] = {"", "ftp", "http", "gopher", "nntp", "telnet", "imap",
+//                           "wais", "file", "mms", "https", "shttp", "snews",
+//                           "prospero", "rtsp", "rtsps", "rtspu", "rsync", "svn",
+//                           "svn+ssh", "sftp", "nfs", "git", "git+ssh", "ws",
+//                           "wss", "itms-services"}
+// _USES_RELATIVE: set[str] = {"", "ftp", "http", "gopher", "nntp", "imap", "wais",
+//                             "file", "https", "shttp", "mms", "prospero", "rtsp",
+//                             "rtsps", "rtspu", "sftp", "svn", "svn+ssh", "ws",
+//                             "wss"}
+// _USES_PARAMS: set[str] = {"", "ftp", "hdl", "prospero", "http", "imap", "https",
+//                           "shttp", "rtsp", "rtsps", "rtspu", "sip", "sips",
+//                           "mms", "sftp", "tel"}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // _HEX: bytes = b"0123456789ABCDEF"
     _HEX = ::tpy::bytes_literal_owned("0123456789ABCDEF", 16);
-    // # CPython's uses_netloc / uses_relative / uses_params scheme lists, verbatim.
-    // # Module-level sets so each is built once at init (a set literal in the function
-    // # body would reconstruct the set on every call); membership is then an O(1)
-    // # lookup. (TPy tuples aren't iterable, so a set is the natural constant form.)
-    // _USES_NETLOC: set[str] = {"", "ftp", "http", "gopher", "nntp", "telnet", "imap",
-    // "wais", "file", "mms", "https", "shttp", "snews",
-    // "prospero", "rtsp", "rtsps", "rtspu", "rsync", "svn",
-    // "svn+ssh", "sftp", "nfs", "git", "git+ssh", "ws",
-    // "wss", "itms-services"}
     static ::tpy::ordered_set<std::string> __global_slot_1 = ::tpy::ordered_set<std::string>({"", "ftp", "http", "gopher", "nntp", "telnet", "imap", "wais", "file", "mms", "https", "shttp", "snews", "prospero", "rtsp", "rtsps", "rtspu", "rsync", "svn", "svn+ssh", "sftp", "nfs", "git", "git+ssh", "ws", "wss", "itms-services"});
     _USES_NETLOC = &__global_slot_1;
-    // _USES_RELATIVE: set[str] = {"", "ftp", "http", "gopher", "nntp", "imap", "wais",
-    // "file", "https", "shttp", "mms", "prospero", "rtsp",
-    // "rtsps", "rtspu", "sftp", "svn", "svn+ssh", "ws",
-    // "wss"}
     static ::tpy::ordered_set<std::string> __global_slot_2 = ::tpy::ordered_set<std::string>({"", "ftp", "http", "gopher", "nntp", "imap", "wais", "file", "https", "shttp", "mms", "prospero", "rtsp", "rtsps", "rtspu", "sftp", "svn", "svn+ssh", "ws", "wss"});
     _USES_RELATIVE = &__global_slot_2;
-    // _USES_PARAMS: set[str] = {"", "ftp", "hdl", "prospero", "http", "imap", "https",
-    // "shttp", "rtsp", "rtsps", "rtspu", "sip", "sips",
-    // "mms", "sftp", "tel"}
     static ::tpy::ordered_set<std::string> __global_slot_3 = ::tpy::ordered_set<std::string>({"", "ftp", "hdl", "prospero", "http", "imap", "https", "shttp", "rtsp", "rtsps", "rtspu", "sip", "sips", "mms", "sftp", "tel"});
     _USES_PARAMS = &__global_slot_3;
 }

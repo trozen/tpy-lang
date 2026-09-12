@@ -5,61 +5,61 @@ namespace tpyapp::main {
 
 
 // def test_reassign_to_none() -> str:
+//     v: int32 | Dog | None = int32(5)
+//     if v is not None:
+//         v = None
+//         if v is None:
+//             return "reassigned to none"
+//     return "was none"
 std::string test_reassign_to_none() {
-    // v: int32 | Dog | None = int32(5)
     ::tpy::Union<std::monostate, Dog, int32_t> __slot_1 = 5;
     ::tpy::Union<std::monostate, Dog*, int32_t*> v = ::tpy::to_ptr_variant(__slot_1);
-    // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
-        // v = None
         v = std::monostate{};
-        // if v is None:
         if ((std::holds_alternative<std::monostate>(v))) {
-            // return "reassigned to none"
             return "reassigned to none";
         }
     }
-    // return "was none"
     return "was none";
 }
 
 // def test_init_none_then_assign() -> str:
+//     v: int32 | Dog | None = None
+//     v = int32(42)
+//     if v is not None:
+//         if isinstance(v, int32):
+//             return "got int"
+//         return "got dog"
+//     return "none"
 std::string test_init_none_then_assign() {
-    // v: int32 | Dog | None = None
     ::tpy::Union<std::monostate, Dog*, int32_t*> v = std::monostate{};
-    // v = int32(42)
     ::tpy::Union<std::monostate, Dog, int32_t> __slot_1 = 42;
     v = ::tpy::to_ptr_variant(__slot_1);
-    // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
-        // if isinstance(v, int32):
         if (std::holds_alternative<int32_t*>(v)) {
             auto& __v = *std::get<int32_t*>(v);
-            // return "got int"
             return "got int";
         }
         auto& __v = *std::get<Dog*>(v);
-        // return "got dog"
         return "got dog";
     }
-    // return "none"
     return "none";
 }
 
 // def main() -> None:
+//     print(test_reassign_to_none())
+//     print(test_init_none_then_assign())
 void main() {
-    // print(test_reassign_to_none())
     std::cout << test_reassign_to_none() << "\n";
-    // print(test_init_none_then_assign())
     std::cout << test_init_none_then_assign() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

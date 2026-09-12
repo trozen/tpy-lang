@@ -12,6 +12,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Vec2(ValueType):
@@ -71,20 +72,24 @@ namespace tpyapp::main {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def total(self) -> int32:
+//     return self.x + self.y
 inline int32_t Vec2::total() const {
-    // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
 
 // def __init__(self, pos: Vec2, size: Vec2) -> None:
+//     self.pos = pos
+//     self.size = size
 inline Rect::Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {}
 
 // def origin_sum(self) -> int32:
+//     return self.pos.total()
 inline int32_t Rect::origin_sum() const {
-    // return self.pos.total()
     return this->pos.total();
 }
 void __tpy_init();

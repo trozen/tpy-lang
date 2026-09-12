@@ -10,11 +10,17 @@ namespace tpyapp::main {
 extern int32_t call_count;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_int_membership() -> None:
 void test_int_membership();
+// def test_str_membership() -> None:
 void test_str_membership();
+// def test_single_element() -> None:
 void test_single_element();
+// def get_val() -> int32:
 int32_t get_val();
+// def test_call_lhs() -> None:
 void test_call_lhs();
+// def main() -> None:
 void main();
 
 void __tpy_init();

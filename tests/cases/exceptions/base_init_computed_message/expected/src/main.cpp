@@ -5,55 +5,59 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         raise Tagged(5)
+//     except Tagged as e:
+//         print(e.n, str(e))
+//     try:
+//         raise Labelled("lab", Tagged(9))
+//     except Labelled as e2:
+//         print(str(e2))
+//     try:
+//         raise Numbered(7)
+//     except Numbered as e3:
+//         print(e3.n, str(e3))
+//     try:
+//         raise Formatted(8)
+//     except Formatted as e4:
+//         print(e4.n, str(e4))
 void main() {
-    // try:
     {
         try {
-            // raise Tagged(5)
             throw Tagged(5);
         } catch (const Tagged& e) {
-            // print(e.n, str(e))
             std::cout << e.n << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise Labelled("lab", Tagged(9))
             throw Labelled("lab", Tagged(9));
         } catch (const Labelled& e2) {
-            // print(str(e2))
             std::cout << std::string(::tpy::__str__(e2)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise Numbered(7)
             throw Numbered(7);
         } catch (const Numbered& e3) {
-            // print(e3.n, str(e3))
             std::cout << e3.n << " " << std::string(::tpy::__str__(e3)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise Formatted(8)
             throw Formatted(8);
         } catch (const Formatted& e4) {
-            // print(e4.n, str(e4))
             std::cout << e4.n << " " << std::string(::tpy::__str__(e4)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

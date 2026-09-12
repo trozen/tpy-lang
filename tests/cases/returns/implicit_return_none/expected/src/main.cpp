@@ -5,48 +5,47 @@ namespace tpyapp::main {
 
 
 // def find(n: int32) -> int32 | None:
+//     if n > 0:
+//         return n * 2
 std::optional<int32_t> find(int32_t n) {
-    // if n > 0:
     if ((n > 0)) {
-        // return n * 2
         return (::tpy::mul_check<int32_t>(n, 2));
     }
-    // def find(n: int32) -> int32 | None:
     return std::nullopt;
 }
 
 // def pick(n: int32) -> Own[Point | None]:
+//     if n > 0:
+//         return Point(n)
 std::optional<Point> pick(int32_t n) {
-    // if n > 0:
     if ((n > 0)) {
-        // return Point(n)
         return Point(n);
     }
-    // def pick(n: int32) -> Own[Point | None]:
     return std::nullopt;
 }
 
 // def choose(p: Point, t: Tag, flag: int32) -> Point | Tag | None:
+//     if flag == 1:
+//         return p
+//     if flag == 2:
+//         return t
 ::tpy::Union<std::monostate, Point*, Tag*> choose(Point& p, Tag& t, int32_t flag) {
-    // if flag == 1:
     if ((flag == 1)) {
-        // return p
         return &(p);
     }
-    // if flag == 2:
     if ((flag == 2)) {
-        // return t
         return &(t);
     }
-    // def choose(p: Point, t: Tag, flag: int32) -> Point | Tag | None:
     return std::monostate{};
 }
 
 // async def afind(n: int32) -> int32 | None:
+//     await asyncio.sleep(0)
+//     if n > 0:
+//         return n * 3
 ::tpystd::tpy::Poll<std::optional<int32_t>> __coro_afind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -56,14 +55,11 @@ std::optional<Point> pick(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::optional<int32_t>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if n > 0:
         if ((n > 0)) {
-            // return n * 3
             __state = S_DONE;
             std::optional<int32_t> __tpy_async_ret = (::tpy::mul_check<int32_t>(n, 3));
             return ::tpystd::tpy::Poll<std::optional<int32_t>>::ready(std::move(__tpy_async_ret));
         }
-        // async def afind(n: int32) -> int32 | None:
         __state = S_DONE;
         std::optional<int32_t> __tpy_async_ret = std::nullopt;
         return ::tpystd::tpy::Poll<std::optional<int32_t>>::ready(std::move(__tpy_async_ret));
@@ -80,10 +76,11 @@ __coro_afind afind(int32_t n) {
 }
 
 // async def main_coro() -> None:
+//     print(await afind(2))
+//     print(await afind(0))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await afind(2))
         __sub_0.emplace(2);
         __state = S_RESUME_0;
         continue;
@@ -93,9 +90,7 @@ __coro_afind afind(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await afind(2))
         std::cout << ::tpy::print_optional_val(__await_lift_0) << "\n";
-        // print(await afind(0))
         __sub_1.emplace(0);
         __state = S_RESUME_1;
         continue;
@@ -105,7 +100,6 @@ __coro_afind afind(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await afind(0))
         std::cout << ::tpy::print_optional_val(__await_lift_1) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -122,39 +116,40 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     print(find(3))
+//     print(find(0))
+//     p = pick(0)
+//     print(p is None)
+//     pt = Point(1)
+//     tg = Tag(2)
+//     c = choose(pt, tg, 0)
+//     print(c is None)
+//     asyncio.run(main_coro())
 void main() {
-    // print(find(3))
     std::cout << ::tpy::print_optional_val(find(3)) << "\n";
-    // print(find(0))
     std::cout << ::tpy::print_optional_val(find(0)) << "\n";
-    // p = pick(0)
     std::optional<Point> __slot_1 = pick(0);
     Point* p = ::tpy::optional_to_ptr(__slot_1);
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // pt = Point(1)
     Point pt = Point(1);
-    // tg = Tag(2)
     Tag tg = Tag(2);
-    // c = choose(pt, tg, 0)
     ::tpy::Union<std::monostate, Point*, Tag*> c = choose(pt, tg, 0);
-    // print(c is None)
     std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(c))) << "\n";
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # A None-including return type falls through to Python's implicit
+// # `return None` (materialized by sema), in sync, owned-record, and
+// # async forms alike.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A None-including return type falls through to Python's implicit
-    // # `return None` (materialized by sema), in sync, owned-record, and
-    // # async forms alike.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

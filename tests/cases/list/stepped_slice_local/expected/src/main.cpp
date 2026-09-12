@@ -5,35 +5,37 @@ namespace tpyapp::main {
 
 
 // def test_stepped() -> None:
+//     items: list[int32] = [1, 2, 3, 4, 5, 6, 7, 8]
+//     every_other = items[::2]
+//     print(every_other)
+//
+//     rev = items[::-1]
+//     print(rev)
+//
+//     mid = items[1:7:2]
+//     print(mid)
 void test_stepped() {
-    // items: list[int32] = [1, 2, 3, 4, 5, 6, 7, 8]
     std::vector<int32_t> items = {1, 2, 3, 4, 5, 6, 7, 8};
-    // every_other = items[::2]
     std::vector<int32_t> every_other = ::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 2});
-    // print(every_other)
     std::cout << ::tpy::ListPrinter(every_other) << "\n";
-    // rev = items[::-1]
     std::vector<int32_t> rev = ::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, -1});
-    // print(rev)
     std::cout << ::tpy::ListPrinter(rev) << "\n";
-    // mid = items[1:7:2]
     std::vector<int32_t> mid = ::tpy::list_stepped_slice(items, ::tpy::Slice{1, 7, 2});
-    // print(mid)
     std::cout << ::tpy::ListPrinter(mid) << "\n";
 }
 
 // def main() -> None:
+//     test_stepped()
 void main() {
-    // test_stepped()
     test_stepped();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

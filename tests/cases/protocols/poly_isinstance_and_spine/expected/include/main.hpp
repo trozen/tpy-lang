@@ -28,7 +28,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check_and(p: Pet, threshold: int32) -> bool:
 bool check_and(Pet& p, int32_t threshold);
+// def main() -> None:
 void main();
 
 // class Pet(Tagged):
@@ -82,22 +84,23 @@ namespace tpyapp::main {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Pet::Pet() {
-    // pass
 }
 
 // def name(self) -> str:
+//     return "pet"
 inline std::string Pet::name() const {
-    // return "pet"
     return "pet";
 }
 
 // def __init__(self) -> None:
+//     super().__init__()
 inline Dog::Dog() : Pet() {}
 
 // def bark(self) -> str:
+//     return "woof"
 inline std::string Dog::bark() const {
-    // return "woof"
     return "woof";
 }
 void __tpy_init();

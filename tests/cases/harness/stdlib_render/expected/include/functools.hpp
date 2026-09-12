@@ -15,11 +15,13 @@ namespace tpystd::functools {
 
 inline constexpr std::string_view __name__ = "functools";
 
+// def reduce[T, U](func: Fn[[U, T], U], a: Iterable[T], initial: U) -> Own[U]:
 template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
 ::tpy::own_return_t<U> reduce(__F0&& func, T_a& a, ::tpy::param_val_or_ref_t<U> initial);
+// def reduce[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
@@ -28,51 +30,51 @@ template<typename T, typename __F0>
 
 // @dispatch
 // def reduce[T, U](func: Fn[[U, T], U], a: Iterable[T], initial: U) -> Own[U]:
+//     acc: U = copy(initial)
+//     for x in a:
+//         acc = func(acc, x)
+//     return acc
 template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
 ::tpy::own_return_t<U> reduce(__F0&& func, T_a& a, ::tpy::param_val_or_ref_t<U> initial) {
     std::optional<U> __slot_2;
-    // acc: U = copy(initial)
     U __slot_1 = U(initial);
     U* acc = &__slot_1;
-    // for x in a:
     auto& __src_0 = a;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        // acc = func(acc, x)
         acc = &*(__slot_2 = func((*acc), x));
     }
-    // return acc
     return std::move((*acc));
 }
 // @dispatch
 // def reduce[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
+//     if len(a) == 0:
+//         raise ValueError("reduce() of empty list with no initial value")
+//     acc: T = copy(a[0])
+//     for i in range(1, len(a)):
+//         acc = func(acc, a[i])
+//     return acc
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
 ::tpy::own_return_t<T> reduce(__F0&& func, std::vector<T>& a) {
     std::optional<T> __slot_2;
-    // if len(a) == 0:
     if ((::tpy::__len__(a) == 0)) {
-        // raise ValueError("reduce() of empty list with no initial value")
         throw ::tpy::ValueError("reduce() of empty list with no initial value");
     }
-    // acc: T = copy(a[0])
     T __slot_1 = T(::tpy::__getitem__(a, 0));
     T* acc = &__slot_1;
-    // for i in range(1, len(a)):
     int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        // acc = func(acc, a[i])
         acc = &*(__slot_2 = func((*acc), ::tpy::__getitem__(a, i)));
     }
-    // return acc
     return std::move((*acc));
 }
 

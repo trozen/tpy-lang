@@ -14,6 +14,7 @@ struct Leaf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Root:
@@ -71,16 +72,16 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 
 // def __init__(self) -> None:
+//     Middle.token = 10  # resolves to Root.token through Middle's MRO
+//     Other.token = "hi"
 inline Leaf::Leaf() {
-    // Middle.token = 10  # resolves to Root.token through Middle's MRO
     this->Middle::token = 10;
-    // Other.token = "hi"
     this->Other::token = "hi";
 }
 
 // def as_pair(self) -> str:
+//     return Other.token + "/" + str(Middle.token)
 inline std::string Leaf::as_pair() const {
-    // return Other.token + "/" + str(Middle.token)
     return (::tpy::str_concat((::tpy::str_concat(this->Other::token, "/")), ::tpy::fixed_to_str<int32_t>(this->Middle::token)));
 }
 void __tpy_init();

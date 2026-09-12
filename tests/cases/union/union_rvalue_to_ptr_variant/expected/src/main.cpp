@@ -5,63 +5,65 @@ namespace tpyapp::main {
 
 
 // def greet(pet: Dog | Cat) -> None:
+//     if isinstance(pet, Dog):
+//         print(pet.name)
+//     elif isinstance(pet, Cat):
+//         print(pet.name)
 void greet(::tpy::Union<const Cat*, const Dog*> pet) {
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<const Dog*>(pet)) {
         auto& __pet = *std::get<const Dog*>(pet);
-        // print(pet.name)
         std::cout << __pet.name << "\n";
     } else {
-        // elif isinstance(pet, Cat):
         if (true) {
             auto& __pet = *std::get<const Cat*>(pet);
-            // print(pet.name)
             std::cout << __pet.name << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     # Rvalue to free function param
+//     greet(Dog("Rex"))
+//     greet(Cat("Whiskers"))
+//
+//     # Rvalue to constructor param
+//     p = Pen(Dog("Buddy"))
+//     r = p.pet
+//     if isinstance(r, Dog):
+//         print(r.name)
+//
+//     # Rvalue to method param
+//     p.set_pet(Cat("Mittens"))
+//     r2 = p.pet
+//     if isinstance(r2, Cat):
+//         print(r2.name)
 void main() {
-    // # Rvalue to free function param
-    // greet(Dog("Rex"))
     Dog __tmp_1 = Dog("Rex");
     greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
-    // greet(Cat("Whiskers"))
     Cat __tmp_2 = Cat("Whiskers");
     greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
-    // # Rvalue to constructor param
-    // p = Pen(Dog("Buddy"))
     Dog __tmp_3 = Dog("Buddy");
     Pen p = Pen(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
-    // r = p.pet
     ::tpy::Union<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
-    // if isinstance(r, Dog):
     if (std::holds_alternative<Dog*>(r)) {
         auto& __r = *std::get<Dog*>(r);
-        // print(r.name)
         std::cout << __r.name << "\n";
     }
-    // # Rvalue to method param
-    // p.set_pet(Cat("Mittens"))
     Cat __tmp_4 = Cat("Mittens");
     p.set_pet(::tpy::Union<const Cat*, const Dog*>{&__tmp_4});
-    // r2 = p.pet
     ::tpy::Union<Cat*, Dog*> r2 = ::tpy::to_ptr_variant(p.pet);
-    // if isinstance(r2, Cat):
     if (std::holds_alternative<Cat*>(r2)) {
         auto& __r2 = *std::get<Cat*>(r2);
-        // print(r2.name)
         std::cout << __r2.name << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

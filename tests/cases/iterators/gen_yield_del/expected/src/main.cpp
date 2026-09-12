@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     data = [Res(1), Res(2)]
+//     for r in gen(data):
+//         r.fd = r.fd + 10
+//     for r in data:
+//         print(r.fd)
 void main() {
-    // data = [Res(1), Res(2)]
     std::vector<Res> data = ::tpy::make_vector<Res>(Res(1), Res(2));
-    // for r in gen(data):
     {
         auto __src_0 = gen(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,27 +19,24 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& r = ::tpy::unwrap_ref(*__r_1);
-        // r.fd = r.fd + 10
         r.fd = (::tpy::add_check<int32_t>(r.fd, 10));
         }
     }
-    // for r in data:
     auto& __obj_2 = data;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& r = *__beg_2;
-        // print(r.fd)
         std::cout << r.fd << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

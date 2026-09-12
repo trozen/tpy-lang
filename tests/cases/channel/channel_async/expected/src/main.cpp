@@ -5,10 +5,14 @@ namespace tpyapp::main {
 
 
 // async def producer(tx: Own[Sender[Counter]]) -> None:
+//     i = 0
+//     while i < 5:
+//         await tx.send(Counter(i))
+//         i += 1
+//     tx.close()
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -18,19 +22,16 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 5)) {
-            // await tx.send(Counter(i))
             __sub_0.emplace(std::move(tx.send(Counter(i))));
             __state = S_RESUME_0;
             continue;
         } else {
-            // tx.close()
             tx.close();
             __state = S_DONE;
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -48,6 +49,12 @@ __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx) {
 }
 
 // async def consumer(rx: Own[Receiver[Counter]]) -> None:
+//     while True:
+//         try:
+//             c = await rx.recv()
+//             print(c.n)
+//         except ChannelClosed:
+//             break
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -60,7 +67,6 @@ __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             c.emplace(std::move(__r0).value());
             __sub_0.reset();
-            // print(c.n)
             std::cout << (*c).n << "\n";
             __state = S_JOIN_2;
             continue;
@@ -92,7 +98,6 @@ __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx) {
     }
     case S_JOIN_3: {
         try {
-            // c = await rx.recv()
             __sub_0.emplace(std::move(rx.recv()));
             __state = S_RESUME_0;
             continue;
@@ -115,18 +120,19 @@ __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx) {
 }
 
 // async def main_co() -> None:
+//     tx, rx = channel[Counter](2)
+//     p = asyncio.create_task(producer(tx))
+//     c = asyncio.create_task(consumer(rx))
+//     await p
+//     await c
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_co::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tx, rx = channel[Counter](2)
         auto __tup_1 = ::tpystd::tpy::channel::channel<Counter>(2);
         tx.emplace(std::move(std::get<0>(__tup_1)));
         rx.emplace(std::move(std::get<1>(__tup_1)));
-        // p = asyncio.create_task(producer(tx))
         p.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer(std::move((*tx))))));
-        // c = asyncio.create_task(consumer(rx))
         c.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer(std::move((*rx))))));
-        // await p
         __sub_0 = &((*p));
         __state = S_RESUME_0;
         continue;
@@ -136,7 +142,6 @@ __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        // await c
         __sub_1 = &((*c));
         __state = S_RESUME_1;
         continue;
@@ -160,20 +165,22 @@ __coro_main_co main_co() {
     return __coro_main_co();
 }
 
+// # Producer/consumer over a capacity-2 Channel[Counter]: send blocks when the
+// # buffer is full, recv blocks when empty, explicit close() ends the stream.
+// # The @nocopy payload forces move-through-channel -- a silent copy at send or
+// # recv would be a compile error.
+// import asyncio
+//
+// from tpy.channel import channel, Sender, Receiver, ChannelClosed
+//
+// asyncio.run(main_co())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Producer/consumer over a capacity-2 Channel[Counter]: send blocks when the
-    // # buffer is full, recv blocks when empty, explicit close() ends the stream.
-    // # The @nocopy payload forces move-through-channel -- a silent copy at send or
-    // # recv would be a compile error.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.channel import channel, Sender, Receiver, ChannelClosed
     ::tpystd::tpy::channel::__tpy_init();
-    // asyncio.run(main_co())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_co()));
 }
 

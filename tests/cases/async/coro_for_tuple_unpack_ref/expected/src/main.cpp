@@ -5,12 +5,15 @@ namespace tpyapp::main {
 
 
 // async def total(pairs: list[tuple[Item, Item]]) -> int32:
+//     s: int32 = 0
+//     await asyncio.sleep(0)
+//     for a, b in pairs:
+//         s += a.n + b.n
+//     return s
 ::tpystd::tpy::Poll<int32_t> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s: int32 = 0
         s = 0;
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -20,20 +23,16 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // for a, b in pairs:
         auto& __obj_0 = pairs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            // for a, b in pairs:
             auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Item*, const Item*>>(__for_tup_0);
             auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
             auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-            // s += a.n + b.n
             s = ::tpy::add_check<int32_t>(s, (::tpy::add_check<int32_t>(a.n, b.n)));
         }
-        // return s
         __state = S_DONE;
         int32_t __tpy_async_ret = s;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -50,16 +49,16 @@ __coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
 }
 
 // async def driver() -> None:
+//     pairs: list[tuple[Item, Item]] = []
+//     pairs.append((Item(1), Item(2)))
+//     pairs.append((Item(10), Item(20)))
+//     print(await total(pairs))
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // pairs: list[tuple[Item, Item]] = []
         pairs.emplace(std::vector<std::tuple<Item, Item>>{});
-        // pairs.append((Item(1), Item(2)))
         (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(1), Item(2)}));
-        // pairs.append((Item(10), Item(20)))
         (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(10), Item(20)}));
-        // print(await total(pairs))
         __sub_0.emplace((*pairs));
         __state = S_RESUME_0;
         continue;
@@ -69,7 +68,6 @@ __coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await total(pairs))
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -85,20 +83,21 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
+// # Regression: tuple-unpack iter var in an async coro body iterating
+// # `list[tuple[Item, Item]]` (reference-type elements). Codegen emits
+// # `T& a = std::get<0>(...); T& b = std::get<1>(...);` -- C++-scoped
+// # references. Sema added `a`, `b` to `func.generator_locals` ->
+// # `generator_optional_fields`. Before the fix, body-emit's `(*a)` /
+// # `(*b)` peel mis-fired on `a.n` / `b.n`.
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: tuple-unpack iter var in an async coro body iterating
-    // # `list[tuple[Item, Item]]` (reference-type elements). Codegen emits
-    // # `T& a = std::get<0>(...); T& b = std::get<1>(...);` -- C++-scoped
-    // # references. Sema added `a`, `b` to `func.generator_locals` ->
-    // # `generator_optional_fields`. Before the fix, body-emit's `(*a)` /
-    // # `(*b)` peel mis-fired on `a.n` / `b.n`.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

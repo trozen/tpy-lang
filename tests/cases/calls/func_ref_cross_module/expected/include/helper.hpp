@@ -9,7 +9,9 @@ namespace tpyapp::helper {
 
 inline constexpr std::string_view __name__ = "helper";
 
+// def triple(x: int32) -> int32:
 int32_t triple(int32_t x);
+// def shout(s: str) -> str:
 std::string shout(std::string_view s);
 
 void __tpy_init();

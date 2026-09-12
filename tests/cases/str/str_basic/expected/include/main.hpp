@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count_char(text: str, target: char) -> int32:
 int32_t count_char(std::string_view text, char target);
 
 void __tpy_init();

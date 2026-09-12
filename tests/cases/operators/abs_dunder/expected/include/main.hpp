@@ -11,6 +11,7 @@ struct Temp;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Temp(ValueType):
@@ -40,11 +41,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Temp::Temp(int32_t v) : v(v) {}
 
 // def __abs__(self) -> "Temp":
+//     return Temp(self.v if self.v >= 0 else -self.v)
 inline Temp Temp::__abs__() const {
-    // return Temp(self.v if self.v >= 0 else -self.v)
     return Temp((((this->v >= 0)) ? (this->v) : (::tpy::neg_check<int32_t>(this->v))));
 }
 void __tpy_init();

@@ -18,8 +18,10 @@ template <::tpystd::typing::Iterable<int32_t> T_xs>
 struct __coro_combine;
 struct __coro_main;
 
+// async def combine(xs: Iterable[int32]) -> Own[Box]:
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 __coro_combine<T_xs> combine(T_xs&& xs);
+// async def main() -> None:
 __coro_main main();
 
 // class Box:
@@ -37,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: combine
+// async def combine(xs: Iterable[int32]) -> Own[Box]:
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 struct __coro_combine {
     int32_t __state;
@@ -66,27 +68,35 @@ struct __coro_combine {
     }
 };
 // async def combine(xs: Iterable[int32]) -> Own[Box]:
+//     b = Box()
+//
+//     def stash(target: Box, extra: int32) -> None:
+//         target.n += extra
+//
+//     def double() -> None:
+//         nonlocal b
+//         b.n *= 2
+//
+//     for x in xs:
+//         stash(b, x)
+//     await asyncio.sleep(0)
+//     double()
+//     return b
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 ::tpystd::tpy::Poll<Box> __coro_combine<T_xs>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = Box()
         b.emplace(Box());
-        // def stash(target: Box, extra: int32) -> None:
         // def stash: frame member
-        // def double() -> None:
         // def double: frame member
-        // for x in xs:
         auto& __src_0 = xs;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-            // stash(b, x)
             stash((*b), x);
         }
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -96,9 +106,7 @@ template <::tpystd::typing::Iterable<int32_t> T_xs>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // double()
         double_();
-        // return b
         __state = S_DONE;
         Box __tpy_async_ret = std::move((*b));
         return ::tpystd::tpy::Poll<Box>::ready(std::move(__tpy_async_ret));
@@ -110,13 +118,10 @@ template <::tpystd::typing::Iterable<int32_t> T_xs>
 
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 void __coro_combine<T_xs>::stash(Box& target, int32_t extra) {
-    // target.n += extra
     target.n = ::tpy::add_check<int32_t>(target.n, extra);
 }
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 void __coro_combine<T_xs>::double_() {
-    // nonlocal b
-    // b.n *= 2
     (*b).n = ::tpy::mul_check<int32_t>((*b).n, 2);
 }
 
@@ -126,7 +131,7 @@ __coro_combine<T_xs> combine(T_xs&& xs) {
     return __coro_combine<T_xs>(std::forward<T_xs>(xs));
 }
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -153,6 +158,7 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline Box::Box() : n(10) {}
 void __tpy_init();
 } // namespace tpyapp::main

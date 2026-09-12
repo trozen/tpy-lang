@@ -9,42 +9,46 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T>
-::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
-template<typename __F0>
-  requires requires(__F0& __fn, std::string_view __a0) {
-      { __fn(__a0) } -> std::convertible_to<std::string>;
-  }
-std::string apply_str(__F0&& f, std::string_view s);
-template<typename __F0>
-  requires requires(__F0& __fn, ::tpy::BytesView __a0) {
-      { __fn(__a0) } -> std::convertible_to<::tpy::Bytes>;
-  }
-int32_t apply_bytes(__F0&& f, ::tpy::BytesView b);
-void main();
-
 // def identity[T](x: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    // return x
-    return ::tpy::param_to_return<T>(x);
-}
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 // def apply_str(f: Fn[[str], str], s: str) -> str:
 template<typename __F0>
   requires requires(__F0& __fn, std::string_view __a0) {
       { __fn(__a0) } -> std::convertible_to<std::string>;
   }
-std::string apply_str(__F0&& f, std::string_view s) {
-    // return f(s)
-    return f(s);
-}
+std::string apply_str(__F0&& f, std::string_view s);
 // def apply_bytes(f: Fn[[bytes], bytes], b: bytes) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, ::tpy::BytesView __a0) {
       { __fn(__a0) } -> std::convertible_to<::tpy::Bytes>;
   }
+int32_t apply_bytes(__F0&& f, ::tpy::BytesView b);
+// def main() -> None:
+void main();
+
+// def identity[T](x: T) -> T:
+//     return x
+template<typename T>
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
+    return ::tpy::param_to_return<T>(x);
+}
+// def apply_str(f: Fn[[str], str], s: str) -> str:
+//     return f(s)
+template<typename __F0>
+  requires requires(__F0& __fn, std::string_view __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string apply_str(__F0&& f, std::string_view s) {
+    return f(s);
+}
+// def apply_bytes(f: Fn[[bytes], bytes], b: bytes) -> int32:
+//     return int32(len(f(b)))
+template<typename __F0>
+  requires requires(__F0& __fn, ::tpy::BytesView __a0) {
+      { __fn(__a0) } -> std::convertible_to<::tpy::Bytes>;
+  }
 int32_t apply_bytes(__F0&& f, ::tpy::BytesView b) {
-    // return int32(len(f(b)))
     return ::tpy::__len__(f(b));
 }
 

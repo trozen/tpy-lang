@@ -34,11 +34,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
+//     return f"Point({self.x}, {self.y})"
 inline std::string Point::__repr__() const {
-    // return f"Point({self.x}, {self.y})"
     return std::format("Point({}, {})", (this->x).to_string(), (this->y).to_string());
 }
 void __tpy_init();

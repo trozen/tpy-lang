@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def test_borrowing() -> None:
+//     p = Pair[Node](Node(10), Node(20))
+//     x = p.first()
+//     print(x.val)
+//     print(p.second_val.val)
+//     # T is a REFERENCE type here, so the borrowing overload must alias the
+//     # field rather than copy it: 99 proves the alias, a copy would leave
+//     # p.first_val at 10.
+//     x.val = 99
+//     print(p.first_val.val)
 void test_borrowing() {
-    // p = Pair[Node](Node(10), Node(20))
     Pair<Node> p = Pair<Node>(Node(10), Node(20));
-    // x = p.first()
     Node& x = p.first();
-    // print(x.val)
     std::cout << x.val << "\n";
-    // print(p.second_val.val)
     std::cout << p.second_val.val << "\n";
-    // # T is a REFERENCE type here, so the borrowing overload must alias the
-    // # field rather than copy it: 99 proves the alias, a copy would leave
-    // # p.first_val at 10.
-    // x.val = 99
     x.val = 99;
-    // print(p.first_val.val)
     std::cout << p.first_val.val << "\n";
 }
 
 // def test_last_use() -> None:
+//     p = Pair[Node](Node(30), Node(40))
+//     x = p.first()  # borrowing even at last use (not __iter__)
+//     print(x.val)
 void test_last_use() {
-    // p = Pair[Node](Node(30), Node(40))
     Pair<Node> p = Pair<Node>(Node(30), Node(40));
-    // x = p.first()  # borrowing even at last use (not __iter__)
     Node& x = p.first();
-    // print(x.val)
     std::cout << x.val << "\n";
 }
 
+// test_borrowing()
+// test_last_use()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_borrowing()
     test_borrowing();
-    // test_last_use()
     test_last_use();
 }
 

@@ -5,14 +5,15 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     cm = DerivedCM()
+//     with cm:
+//         print("inside:", cm.n)
+//     print("after:", cm.n)
 void main() {
-    // cm = DerivedCM()
     DerivedCM cm = DerivedCM();
-    // with cm:
     auto& __ctx_1 = cm;
     __ctx_1.__enter__();
     try {
-        // print("inside:", cm.n)
         std::cout << "inside:" << " " << cm.n << "\n";
         goto __with_exit_1;
     } catch (...) {
@@ -21,16 +22,15 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    // print("after:", cm.n)
     std::cout << "after:" << " " << cm.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

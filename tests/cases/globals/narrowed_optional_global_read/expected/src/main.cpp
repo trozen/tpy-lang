@@ -3,105 +3,104 @@
 
 namespace tpyapp::main {
 
-// GO: int32 | None = None
 std::optional<int32_t> GO;
-// GP: int32 = 0
 int32_t GP{};
 
 // def enable() -> None:
+//     global GO
+//     GO = 7
 void enable() {
-    // global GO
-    // GO = 7
     GO = 7;
 }
 
 // def read_ret() -> int32:
+//     if GO is not None:
+//         return GO
+//     return -1
 int32_t read_ret() {
-    // if GO is not None:
     if ((GO.has_value())) {
-        // return GO
         return (*GO);
     }
-    // return -1
     return -1;
 }
 
 // def read_sink() -> int32:
+//     if GO is not None:
+//         return GO + 1
+//     return -1
 int32_t read_sink() {
-    // if GO is not None:
     if ((GO.has_value())) {
-        // return GO + 1
         return (::tpy::add_check<int32_t>((*GO), 1));
     }
-    // return -1
     return -1;
 }
 
 // def read_aug() -> int32:
+//     t = 1
+//     if GO is not None:
+//         t += GO
+//     return t
 int32_t read_aug() {
-    // t = 1
     int32_t t = 1;
-    // if GO is not None:
     if ((GO.has_value())) {
-        // t += GO
         t = ::tpy::add_check<int32_t>(t, (*GO));
     }
-    // return t
     return t;
 }
 
 // def write_from(p: int32 | None) -> None:
+//     global GO
+//     if p is not None:
+//         GO = p
 void write_from(std::optional<int32_t> p) {
-    // global GO
-    // if p is not None:
     if ((p.has_value())) {
-        // GO = p
         GO = p;
     }
 }
 
 // def write_plain(p: int32 | None) -> None:
+//     global GP
+//     if p is not None:
+//         GP = p
 void write_plain(std::optional<int32_t> p) {
-    // global GP
-    // if p is not None:
     if ((p.has_value())) {
-        // GP = p
         GP = (*p);
     }
 }
 
 // def main() -> None:
+//     print(read_ret())
+//     enable()
+//     print(read_ret())
+//     print(read_sink())
+//     print(read_aug())
+//     write_from(3)
+//     print(read_ret())
+//     write_plain(11)
+//     print(GP)
 void main() {
-    // print(read_ret())
     std::cout << read_ret() << "\n";
-    // enable()
     enable();
-    // print(read_ret())
     std::cout << read_ret() << "\n";
-    // print(read_sink())
     std::cout << read_sink() << "\n";
-    // print(read_aug())
     std::cout << read_aug() << "\n";
-    // write_from(3)
     write_from(3);
-    // print(read_ret())
     std::cout << read_ret() << "\n";
-    // write_plain(11)
     write_plain(11);
-    // print(GP)
     std::cout << GP << "\n";
 }
 
+// GO: int32 | None = None
+// GP: int32 = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // GO: int32 | None = None
     GO = std::nullopt;
-    // GP: int32 = 0
     GP = 0;
-    // main()
     main();
 }
 

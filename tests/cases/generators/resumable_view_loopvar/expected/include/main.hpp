@@ -13,12 +13,16 @@ struct __gen_words_gen;
 struct __gen_blobs_gen;
 struct __gen_pairs_gen;
 
+// def words_gen(words: list[str]) -> Iterator[int32]:
 __gen_words_gen words_gen(std::vector<std::string>& words);
+// def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
 __gen_blobs_gen blobs_gen(std::vector<::tpy::Bytes>& blobs);
+// def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
 __gen_pairs_gen pairs_gen(std::vector<std::tuple<std::string, int32_t>>& pairs);
+// def main() -> None:
 void main();
 
-// Generator: words_gen
+// def words_gen(words: list[str]) -> Iterator[int32]:
 struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t> {
     int32_t __state;
     std::vector<std::string>& words;
@@ -44,7 +48,7 @@ struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t>
     }
 };
 
-// Generator: blobs_gen
+// def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
 struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t> {
     int32_t __state;
     std::vector<::tpy::Bytes>& blobs;
@@ -70,7 +74,7 @@ struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t>
     }
 };
 
-// Generator: pairs_gen
+// def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
 struct __gen_pairs_gen : public ::tpy::next_iter_mixin<__gen_pairs_gen, int32_t> {
     int32_t __state;
     std::vector<std::tuple<std::string, int32_t>>& pairs;

@@ -6,15 +6,15 @@ namespace tpyapp::moda {
 
 
 // def local_walk() -> Iterator[int32]:
+//     yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_local_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -34,10 +34,12 @@ __gen_local_walk local_walk() {
 }
 
 // def free_delegator() -> Iterator[int32]:
+//     yield 0
+//     for x in local_walk():  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_delegator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -57,7 +59,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_free_delegator::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -73,10 +74,12 @@ __gen_free_delegator free_delegator() {
 }
 
 // def method_delegator(s: Src) -> Iterator[int32]:
+//     yield 20
+//     for x in s.steps():  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_method_delegator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 20
         __state = S_RESUME_0;
         return 20;
     }
@@ -96,7 +99,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_method_delegator::__next__() 
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -113,26 +115,26 @@ __gen_method_delegator method_delegator(Src& s) {
 
 // # the ordinary call that closes the import cycle
 // def ping(n: int32) -> int32:
+//     if n <= 0:
+//         return 0
+//     return modb.pong(n - 1)
 int32_t ping(int32_t n) {
-    // if n <= 0:
     if ((n <= 0)) {
-        // return 0
         return 0;
     }
-    // return modb.pong(n - 1)
     return ::tpyapp::modb::pong((::tpy::sub_check<int32_t>(n, 1)));
 }
 
 // def steps(self) -> Iterator[int32]:
+//     yield self.n
+//     yield self.n + 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.n
         __state = S_RESUME_0;
         return __self.n;
     }
     case S_RESUME_0: {
-        // yield self.n + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(__self.n, 1));
     }
@@ -148,13 +150,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 Src::Src(int32_t n) : n(n) {}
+// import modb
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import modb
     ::tpyapp::modb::__tpy_init();
 }
 

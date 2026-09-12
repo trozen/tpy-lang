@@ -5,61 +5,65 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     srv = socket.create_server(("127.0.0.1", 0))
+//     port = srv.getsockname()[1]
+//
+//     conn = HTTPConnection("127.0.0.1", port, 0.05)
+//     conn.connect()
+//     s = conn.sock
+//     if s is not None:
+//         print("timeout threaded:", s.gettimeout() == 0.05)
+//         print("blocking in timeout mode:", s.getblocking())
+//     conn.close()
+//
+//     # No timeout argument -> the connected socket is plain blocking (None).
+//     conn2 = HTTPConnection("127.0.0.1", port)
+//     conn2.connect()
+//     s2 = conn2.sock
+//     if s2 is not None:
+//         print("default timeout None:", s2.gettimeout() is None)
+//     conn2.close()
+//
+//     srv.close()
 void main() {
-    // srv = socket.create_server(("127.0.0.1", 0))
     ::tpystd::socket::socket srv = ::tpystd::socket::create_server(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
-    // port = srv.getsockname()[1]
     int32_t port = std::get<1>(srv.getsockname());
-    // conn = HTTPConnection("127.0.0.1", port, 0.05)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("127.0.0.1", port, 0.05);
-    // conn.connect()
     conn.connect();
-    // s = conn.sock
     ::tpystd::socket::socket* s = ::tpy::optional_to_ptr(conn.sock);
-    // if s is not None:
     if ((s != nullptr)) {
-        // print("timeout threaded:", s.gettimeout() == 0.05)
         std::cout << "timeout threaded:" << " " << ::tpy::print_bool((s->gettimeout() == 0.05)) << "\n";
-        // print("blocking in timeout mode:", s.getblocking())
         std::cout << "blocking in timeout mode:" << " " << ::tpy::print_bool(s->getblocking()) << "\n";
     }
-    // conn.close()
     conn.close();
-    // # No timeout argument -> the connected socket is plain blocking (None).
-    // conn2 = HTTPConnection("127.0.0.1", port)
     ::tpystd::http::client::HTTPConnection conn2 = ::tpystd::http::client::HTTPConnection("127.0.0.1", port);
-    // conn2.connect()
     conn2.connect();
-    // s2 = conn2.sock
     ::tpystd::socket::socket* s2 = ::tpy::optional_to_ptr(conn2.sock);
-    // if s2 is not None:
     if ((s2 != nullptr)) {
-        // print("default timeout None:", s2.gettimeout() is None)
         std::cout << "default timeout None:" << " " << ::tpy::print_bool((!s2->gettimeout().has_value())) << "\n";
     }
-    // conn2.close()
     conn2.close();
-    // srv.close()
     srv.close();
 }
 
+// # HTTPConnection(timeout=) threads the timeout through connect() ->
+// # socket.create_connection -> settimeout, so the connected socket carries it
+// # (the timeout= plumbing requests/urlopen rely on). Loopback + an ephemeral
+// # port keep it deterministic; http.client is a real CPython module, so this is
+// # a parity test. connect() completes the handshake into the listen backlog
+// # without an accept(), so no server-side accept is needed.
+// import socket
+// from http.client import HTTPConnection
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # HTTPConnection(timeout=) threads the timeout through connect() ->
-    // # socket.create_connection -> settimeout, so the connected socket carries it
-    // # (the timeout= plumbing requests/urlopen rely on). Loopback + an ephemeral
-    // # port keep it deterministic; http.client is a real CPython module, so this is
-    // # a parity test. connect() completes the handshake into the listen backlog
-    // # without an accept(), so no server-side accept is needed.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // main()
     main();
 }
 

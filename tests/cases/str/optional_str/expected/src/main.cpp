@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def check_truthy(s: Optional[str]) -> None:
+//     if s:
+//         print(s)
+//     else:
+//         print("falsy")
 void check_truthy(std::optional<std::string_view> s) {
-    // if s:
     if (::tpy::is_truthy(s)) {
-        // print(s)
         std::cout << ::tpy::print_optional_val(s) << "\n";
-    // else:
     } else {
-        // print("falsy")
         std::cout << "falsy" << "\n";
     }
 }
 
 // def check_none(s: Optional[str]) -> None:
+//     if s is not None:
+//         print(s)
+//     else:
+//         print("none")
 void check_none(std::optional<std::string_view> s) {
-    // if s is not None:
     if ((s.has_value())) {
-        // print(s)
         std::cout << ::tpy::print_optional_val(s) << "\n";
-    // else:
     } else {
-        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
 // def main() -> None:
+//     check_truthy("hello")
+//     check_truthy("")
+//     check_truthy(None)
+//     check_none("world")
+//     check_none(None)
 void main() {
-    // check_truthy("hello")
     check_truthy("hello");
-    // check_truthy("")
     check_truthy("");
-    // check_truthy(None)
     check_truthy(std::nullopt);
-    // check_none("world")
     check_none("world");
-    // check_none(None)
     check_none(std::nullopt);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

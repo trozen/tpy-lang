@@ -7,9 +7,17 @@ namespace tpyapp::main {
 // # A dict comprehension whose value is a collection literal: the brace-init
 // # value is made self-describing (T{...}) so insert_or_assign can deduce it.
 // def main() -> None:
+//     # Fixed-size inner list literal -> Array value.
+//     fixed = {i: [i, i + 1] for i in range(3)}  # tpyc: ok
+//     print(fixed)
+//
+//     # Variable-size inner comprehension -> vector value; grow one through the
+//     # subscript and observe it (reference semantics, not a per-entry copy).
+//     jagged = {i: [k for k in range(i)] for i in range(4)}  # tpyc: ok
+//     print(jagged)
+//     jagged[2].append(99)
+//     print(jagged)
 void main() {
-    // # Fixed-size inner list literal -> Array value.
-    // fixed = {i: [i, i + 1] for i in range(3)}  # tpyc: ok
     ::tpy::ordered_map<int32_t, std::array<int32_t, 2>> fixed = ({
         ::tpy::ordered_map<int32_t, std::array<int32_t, 2>> __result;
         const int32_t __stop_0 = 3;
@@ -18,11 +26,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(fixed)
     std::cout << ::tpy::DictPrinter(fixed) << "\n";
-    // # Variable-size inner comprehension -> vector value; grow one through the
-    // # subscript and observe it (reference semantics, not a per-entry copy).
-    // jagged = {i: [k for k in range(i)] for i in range(4)}  # tpyc: ok
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> jagged = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
         const int32_t __stop_1 = 4;
@@ -39,20 +43,17 @@ void main() {
         }
         std::move(__result);
     });
-    // print(jagged)
     std::cout << ::tpy::DictPrinter(jagged) << "\n";
-    // jagged[2].append(99)
     ::tpy::__getitem__(jagged, 2).push_back(99);
-    // print(jagged)
     std::cout << ::tpy::DictPrinter(jagged) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

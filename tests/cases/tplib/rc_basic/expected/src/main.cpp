@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Rc.new(State(int32(42)))
+//     print(r.get().x)
+//     print(r.get().doubled())
+//     r.get().x = int32(7)
+//     print(r.get().x)
 void main() {
-    // r = Rc.new(State(int32(42)))
     ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_<State>(State(42));
-    // print(r.get().x)
     std::cout << r.get().x << "\n";
-    // print(r.get().doubled())
     std::cout << r.get().doubled() << "\n";
-    // r.get().x = int32(7)
     r.get().x = 7;
-    // print(r.get().x)
     std::cout << r.get().x << "\n";
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

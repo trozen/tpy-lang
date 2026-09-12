@@ -9,40 +9,45 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ranked[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
 template<typename T>
 std::vector<std::tuple<T, int32_t>> ranked(const std::vector<std::tuple<T, int32_t>>& pairs);
+// def by_name[T](pairs: list[tuple[T, str]]) -> Own[list[tuple[T, str]]]:
 template<typename T>
 std::vector<std::tuple<T, std::string>> by_name(const std::vector<std::tuple<T, std::string>>& pairs);
+// def smaller[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
 template<typename T>
 std::tuple<T, int32_t> smaller(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& a, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& b);
+// def larger[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
 template<typename T>
 std::tuple<T, int32_t> larger(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& a, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& b);
+// def main() -> None:
 void main();
 
 // def ranked[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
+//     return sorted(pairs, key=lambda p: -p[1])
 template<typename T>
 std::vector<std::tuple<T, int32_t>> ranked(const std::vector<std::tuple<T, int32_t>>& pairs) {
-    // return sorted(pairs, key=lambda p: -p[1])
     return ::tpy::builtin_sorted_key<std::tuple<T, int32_t>>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return ::tpy::neg_check<int32_t>(std::get<1>(p)); });
 }
 // def by_name[T](pairs: list[tuple[T, str]]) -> Own[list[tuple[T, str]]]:
+//     # Key returns a non-int Comparable (str): K must infer from the body, not
+//     # collapse to its Comparable bound.
+//     return sorted(pairs, key=lambda p: p[1])
 template<typename T>
 std::vector<std::tuple<T, std::string>> by_name(const std::vector<std::tuple<T, std::string>>& pairs) {
-    // # Key returns a non-int Comparable (str): K must infer from the body, not
-    // # collapse to its Comparable bound.
-    // return sorted(pairs, key=lambda p: p[1])
     return ::tpy::builtin_sorted_key<std::tuple<T, std::string>>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
 }
 // def smaller[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
+//     return min(a, b, key=lambda p: p[1])
 template<typename T>
 std::tuple<T, int32_t> smaller(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& a, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& b) {
-    // return min(a, b, key=lambda p: p[1])
     return ::tpy::min_key(a, b, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
 }
 // def larger[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
+//     return max(a, b, key=lambda p: p[1])
 template<typename T>
 std::tuple<T, int32_t> larger(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& a, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& b) {
-    // return max(a, b, key=lambda p: p[1])
     return ::tpy::max_key(a, b, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
 }
 

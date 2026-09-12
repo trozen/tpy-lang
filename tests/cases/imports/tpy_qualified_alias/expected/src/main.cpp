@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def add(a: tp.int32, b: tp.int32) -> tp.int32:
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main():
+//     x: tp.int32 = tp.int32(5)
+//     y: tp.int32 = tp.int32(7)
+//     print(add(x, y))
 void main() {
-    // x: tp.int32 = tp.int32(5)
     int32_t x = 5;
-    // y: tp.int32 = tp.int32(7)
     int32_t y = 7;
-    // print(add(x, y))
     std::cout << add(x, y) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

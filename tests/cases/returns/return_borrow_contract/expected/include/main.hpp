@@ -12,9 +12,13 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_first(items: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& items);
+// def identity(p: Point) -> Point:
 Point& identity(Point& p);
+// def make_point(x: int32) -> Own[Point]:
 Point make_point(int32_t x);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -59,20 +63,23 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
+//     self._items = []
 inline Container::Container() : _items(std::vector<Point>{}) {}
 
 // def add(self, p: Point) -> None:
+//     self._items.append(p)
 inline void Container::add(const Point& p) {
-    // self._items.append(p)
     this->_items.push_back(p);
 }
 
 // def first(self) -> Point:
+//     return self._items[0]  # tpyc: ok (borrows from self)
 inline Point& Container::first() {
-    // return self._items[0]  # tpyc: ok (borrows from self)
     return ::tpy::__getitem__(this->_items, 0);
 }
 void __tpy_init();

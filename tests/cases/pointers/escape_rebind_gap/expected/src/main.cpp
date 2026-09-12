@@ -12,31 +12,31 @@ namespace tpyapp::main {
 // # what `saved` points at (filed in BUGS.md), which is the same single-slot
 // # clobber the loop-body-declared spelling is rejected for.
 // def rebind_gap() -> None:
+//     p: Point = Point(0, 0)
+//     saved: Point = Point(0, 0)
+//     for i in range(3):
+//         p = Point(i, i)
+//         saved = p
+//     print(saved.x, saved.y)
 void rebind_gap() {
     std::optional<Point> __slot_2;
-    // p: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* p = &__slot_1;
-    // saved: Point = Point(0, 0)
     Point __slot_3 = Point(0, 0);
     Point* saved = &__slot_3;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p = Point(i, i)
         p = &*(__slot_2 = Point(i, i));
-        // saved = p
         saved = p;
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// rebind_gap()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // rebind_gap()
     rebind_gap();
 }
 

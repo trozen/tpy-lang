@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def add_b(a: A, b: B) -> None:
+//     a.bs.append(b)  # tpyc: warning(/copies B into owned storage/)
 void add_b(A& a, const B& b) {
-    // a.bs.append(b)  # tpyc: warning(/copies B into owned storage/)
     a.bs.push_back(b);
 }
 
 // def add_a(b: B, a: A) -> None:
+//     b.as_.append(a)  # tpyc: warning(/copies A into owned storage/)
 void add_a(B& b, const A& a) {
-    // b.as_.append(a)  # tpyc: warning(/copies A into owned storage/)
     b.as_.push_back(a);
 }
 
 // def main() -> None:
+//     a = A(1)
+//     b = B(2)
+//     add_b(a, b)
+//     add_a(a.bs[0], A(3))
+//     a.bs[0].val = 200
+//     a.bs[0].as_[0].val = 30
+//     print(a.val, a.bs[0].val, a.bs[0].as_[0].val, len(a.bs), len(a.bs[0].as_))
 void main() {
-    // a = A(1)
     A a = A(1);
-    // b = B(2)
     B b = B(2);
-    // add_b(a, b)
     add_b(a, b);
-    // add_a(a.bs[0], A(3))
     A __tmp_1 = A(3);
     add_a(::tpy::__getitem__(a.bs, 0), __tmp_1);
-    // a.bs[0].val = 200
     ::tpy::__getitem__(a.bs, 0).val = 200;
-    // a.bs[0].as_[0].val = 30
     ::tpy::__getitem__(::tpy::__getitem__(a.bs, 0).as_, 0).val = 30;
-    // print(a.val, a.bs[0].val, a.bs[0].as_[0].val, len(a.bs), len(a.bs[0].as_))
     std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << ::tpy::__getitem__(::tpy::__getitem__(a.bs, 0).as_, 0).val << " " << ::tpy::__len__(a.bs) << " " << ::tpy::__len__(::tpy::__getitem__(a.bs, 0).as_) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

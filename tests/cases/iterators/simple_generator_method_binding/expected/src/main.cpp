@@ -43,10 +43,11 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Source()
+//     for x in s.gen(10):
+//         print(x)
 void main() {
-    // s = Source()
     Source s = Source();
-    // for x in s.gen(10):
     {
         auto __src_0 = s.gen(10);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -54,21 +55,22 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// from enum import Enum
+//
+// import caps
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
-    // import caps
     ::tpyapp::caps::__tpy_init();
-    // main()
     main();
 }
 

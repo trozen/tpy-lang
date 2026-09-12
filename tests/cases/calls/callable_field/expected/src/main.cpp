@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Handler(lambda x: print("event:", x))
+//     h.trigger(10)
+//     h.trigger(20)
 void main() {
-    // h = Handler(lambda x: print("event:", x))
     Handler h = Handler([](int32_t x) { std::cout << "event:" << " " << x << "\n"; });
-    // h.trigger(10)
     h.trigger(10);
-    // h.trigger(20)
     h.trigger(20);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

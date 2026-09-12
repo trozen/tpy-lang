@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1, 2)
+//     print(p.x, p.y)
 void main() {
-    // p = Point(1, 2)
     Point p = Point(1, 2);
-    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
 }
 
+// # @dataclass with user-defined __init__ (user wins, no synthesis)
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass with user-defined __init__ (user wins, no synthesis)
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

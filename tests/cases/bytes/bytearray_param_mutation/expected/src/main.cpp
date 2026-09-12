@@ -10,49 +10,49 @@ namespace tpyapp::main {
 // # no separate mutable form for to_cpp_param to use. Now both forms exist
 // # and codegen picks the mutable one for mutated params.
 // def pack(dst: bytearray, v: int) -> None:
+//     dst.append(v)
+//     dst.append(v + 1)
 void pack(::tpy::ByteArray& dst, const ::tpy::BigInt& v) {
-    // dst.append(v)
     dst.push_back((v).to_fixed_check<uint8_t>());
-    // dst.append(v + 1)
     dst.push_back((((v) + (::tpy::BigInt(1)))).to_fixed_check<uint8_t>());
 }
 
 // def borrow(src: bytearray) -> int:
+//     # Non-mutating param: still uses const ref.
+//     return len(src)
 ::tpy::BigInt borrow(const ::tpy::ByteArray& src) {
-    // # Non-mutating param: still uses const ref.
-    // return len(src)
     return ::tpy::BigInt(::tpy::__len__(src));
 }
 
 // def main() -> None:
+//     buf = bytearray()
+//     pack(buf, 65)
+//     pack(buf, 67)
+//     print(len(buf))
+//     for b in buf:
+//         print(b)
+//     print(borrow(buf))
 void main() {
-    // buf = bytearray()
     ::tpy::ByteArray buf = ::tpy::ByteArray();
-    // pack(buf, 65)
     pack(buf, ::tpy::BigInt(65));
-    // pack(buf, 67)
     pack(buf, ::tpy::BigInt(67));
-    // print(len(buf))
     std::cout << ::tpy::__len__(buf) << "\n";
-    // for b in buf:
     auto& __obj_0 = buf;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         uint8_t b = *__beg_0;
-        // print(b)
         std::cout << static_cast<int>(b) << "\n";
     }
-    // print(borrow(buf))
     std::cout << borrow(buf) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

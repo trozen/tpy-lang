@@ -9,81 +9,86 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<K>;
-  }
-std::vector<K> map_keys(const std::vector<T>& xs, __F0&& f);
-template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<K>;
-  }
-std::vector<T> above_first(const std::vector<T>& xs, __F0&& f);
-template<typename T>
-std::vector<std::string> names(const std::vector<std::tuple<T, std::string>>& pairs);
-template<typename T>
-std::vector<std::tuple<T, int32_t>> keep(const std::vector<std::tuple<T, int32_t>>& pairs);
-void main();
-
-// # K is in the return, so it seeds from the return hint; the caller's T
-// # (enclosing-scope) must still be usable to type the lambda param.
 // def map_keys[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[K]]:
 template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
-std::vector<K> map_keys(const std::vector<T>& xs, __F0&& f) {
-    // out: list[K] = []
-    std::vector<K> out = std::vector<K>{};
-    // i = 0
-    int32_t i = 0;
-    // while i < len(xs):
-    while ((i < ::tpy::__len__(xs))) {
-        // out.append(f(xs[i]))
-        out.push_back(f(xs[static_cast<std::size_t>(i)]));
-        // i += 1
-        i = ::tpy::add_check<int32_t>(i, 1);
-    }
-    // return out
-    return out;
-}
-// # T is in the return (seed non-empty) but bounded K is ONLY in the Fn param, so
-// # without the seed-skip K collapses to Comparable and body inference breaks.
+std::vector<K> map_keys(const std::vector<T>& xs, __F0&& f);
 // def above_first[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[T]]:
 template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
-std::vector<T> above_first(const std::vector<T>& xs, __F0&& f) {
-    // out: list[T] = []
-    std::vector<T> out = std::vector<T>{};
-    // threshold = f(xs[0])
-    ::tpy::val_or_ref_t<K> threshold = f(::tpy::__getitem__(xs, 0));
-    // i = 0
+std::vector<T> above_first(const std::vector<T>& xs, __F0&& f);
+// def names[T](pairs: list[tuple[T, str]]) -> Own[list[str]]:
+template<typename T>
+std::vector<std::string> names(const std::vector<std::tuple<T, std::string>>& pairs);
+// def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
+template<typename T>
+std::vector<std::tuple<T, int32_t>> keep(const std::vector<std::tuple<T, int32_t>>& pairs);
+// def main() -> None:
+void main();
+
+// # K is in the return, so it seeds from the return hint; the caller's T
+// # (enclosing-scope) must still be usable to type the lambda param.
+// def map_keys[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[K]]:
+//     out: list[K] = []
+//     i = 0
+//     while i < len(xs):
+//         out.append(f(xs[i]))
+//         i += 1
+//     return out
+template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<K>;
+  }
+std::vector<K> map_keys(const std::vector<T>& xs, __F0&& f) {
+    std::vector<K> out = std::vector<K>{};
     int32_t i = 0;
-    // while i < len(xs):
     while ((i < ::tpy::__len__(xs))) {
-        // if not (f(xs[i]) < threshold):
-        if ((!((f(xs[static_cast<std::size_t>(i)]) < threshold)))) {
-            // out.append(xs[i])  # tpyc: warning(/may copy .* into owned storage/)
-            out.push_back(xs[static_cast<std::size_t>(i)]);
-        }
-        // i += 1
+        out.push_back(f(xs[static_cast<std::size_t>(i)]));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return out
+    return out;
+}
+// # T is in the return (seed non-empty) but bounded K is ONLY in the Fn param, so
+// # without the seed-skip K collapses to Comparable and body inference breaks.
+// def above_first[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[T]]:
+//     out: list[T] = []
+//     threshold = f(xs[0])
+//     i = 0
+//     while i < len(xs):
+//         if not (f(xs[i]) < threshold):
+//             out.append(xs[i])  # tpyc: warning(/may copy .* into owned storage/)
+//         i += 1
+//     return out
+template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<K>;
+  }
+std::vector<T> above_first(const std::vector<T>& xs, __F0&& f) {
+    std::vector<T> out = std::vector<T>{};
+    ::tpy::val_or_ref_t<K> threshold = f(::tpy::__getitem__(xs, 0));
+    int32_t i = 0;
+    while ((i < ::tpy::__len__(xs))) {
+        if ((!((f(xs[static_cast<std::size_t>(i)]) < threshold)))) {
+            out.push_back(xs[static_cast<std::size_t>(i)]);
+        }
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
     return out;
 }
 // def names[T](pairs: list[tuple[T, str]]) -> Own[list[str]]:
+//     return map_keys(pairs, lambda p: p[1])  # tpyc: ok
 template<typename T>
 std::vector<std::string> names(const std::vector<std::tuple<T, std::string>>& pairs) {
-    // return map_keys(pairs, lambda p: p[1])  # tpyc: ok
     return map_keys<std::tuple<T, std::string>, std::string>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
 }
 // def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
+//     return above_first(pairs, lambda p: p[1])
 template<typename T>
 std::vector<std::tuple<T, int32_t>> keep(const std::vector<std::tuple<T, int32_t>>& pairs) {
-    // return above_first(pairs, lambda p: p[1])
     return above_first<std::tuple<T, int32_t>, int32_t>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
 }
 

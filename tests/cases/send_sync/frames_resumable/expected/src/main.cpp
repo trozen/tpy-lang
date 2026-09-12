@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def inner(n: int32) -> int32:     # tpyc: frame_send(yes)
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,11 @@ __coro_inner inner(int32_t n) {
 }
 
 // async def outer(n: int32) -> int32:     # tpyc: frame_send(yes)
+//     a = await inner(n)
+//     return a + 1
 ::tpystd::tpy::Poll<int32_t> __coro_outer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = await inner(n)
         __sub_0.emplace(n);
         __state = S_RESUME_0;
         continue;
@@ -39,7 +40,6 @@ __coro_inner inner(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         a = std::move(__r0).value();
         __sub_0.reset();
-        // return a + 1
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(a, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -56,11 +56,11 @@ __coro_outer outer(int32_t n) {
 }
 
 // async def borrowing(xs: list[int32]) -> int32:  # tpyc: frame_send(no)
+//     return len(xs)
 ::tpystd::tpy::Poll<int32_t> __coro_borrowing::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return len(xs)
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(xs);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -77,12 +77,12 @@ __coro_borrowing borrowing(std::vector<int32_t>& xs) {
 }
 
 // async def chained(n: int32) -> int32:   # tpyc: frame_send(no)
+//     xs = [n]
+//     return await borrowing(xs)
 ::tpystd::tpy::Poll<int32_t> __coro_chained::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // xs = [n]
         xs.emplace(std::vector<int32_t>{n});
-        // return await borrowing(xs)
         __sub_0.emplace((*xs));
         __state = S_RESUME_0;
         continue;
@@ -107,10 +107,10 @@ __coro_chained chained(int32_t n) {
 }
 
 // def gen_str(s: str) -> Iterator[int32]:         # tpyc: frame_send(no) frame_sync(yes)
+//     yield len(s)
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_str::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield len(s)
         __state = S_RESUME_0;
         return ::tpy::__len__(s);
     }
@@ -130,15 +130,15 @@ __gen_gen_str gen_str(std::string_view s) {
 }
 
 // def gen_own(xs: Own[list[int32]]) -> Iterator[int32]:  # tpyc: frame_send(yes)
+//     yield len(xs)
+//     yield xs[0]
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield len(xs)
         __state = S_RESUME_0;
         return ::tpy::__len__(xs);
     }
     case S_RESUME_0: {
-        // yield xs[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(xs, 0);
     }
@@ -158,11 +158,11 @@ __gen_gen_own gen_own(std::vector<int32_t> xs) {
 }
 
 // async def tup_ref(pair: tuple[Counter, Counter]) -> int32:  # tpyc: frame_send(no)
+//     return pair[0].n + pair[1].n
 ::tpystd::tpy::Poll<int32_t> __coro_tup_ref::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return pair[0].n + pair[1].n
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(std::get<0>(pair)->n, std::get<1>(pair)->n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -179,11 +179,11 @@ __coro_tup_ref tup_ref(std::tuple<const Counter*, const Counter*> pair) {
 }
 
 // async def tup_val(pair: tuple[int32, int32]) -> int32:      # tpyc: frame_send(yes)
+//     return pair[0] + pair[1]
 ::tpystd::tpy::Poll<int32_t> __coro_tup_val::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return pair[0] + pair[1]
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(std::get<0>(pair), std::get<1>(pair)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -200,36 +200,36 @@ __coro_tup_val tup_val(std::tuple<int32_t, int32_t> pair) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(outer(4)))
+//     xs = [1, 2, 3]
+//     print(asyncio.run(borrowing(xs)))
+//     print(asyncio.run(chained(7)))
+//     c = Counter(9)
+//     print(asyncio.run(c.bump()))
+//     print(list(gen_while(3)), list(gen_for(3)), list(gen_str("abc")))
+//     print(list(gen_own([4, 5])))
+//     print(asyncio.run(tup_ref((Counter(2), Counter(3)))))
+//     print(asyncio.run(tup_val((4, 5))))
 void main() {
-    // print(asyncio.run(outer(4)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(outer(4))) << "\n";
-    // xs = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // print(asyncio.run(borrowing(xs)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(borrowing(xs))) << "\n";
-    // print(asyncio.run(chained(7)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(chained(7))) << "\n";
-    // c = Counter(9)
     Counter c = Counter(9);
-    // print(asyncio.run(c.bump()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(c.bump())) << "\n";
-    // print(list(gen_while(3)), list(gen_for(3)), list(gen_str("abc")))
     std::string __tmp_1 = "abc";
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_while(3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_for(3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_str(__tmp_1))) << "\n";
-    // print(list(gen_own([4, 5])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_own({4, 5}))) << "\n";
-    // print(asyncio.run(tup_ref((Counter(2), Counter(3)))))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(tup_ref(::tpy::tuple_value_to_borrow<std::tuple<Counter*, Counter*>>(std::tuple<Counter, Counter>{Counter(2), Counter(3)})))) << "\n";
-    // print(asyncio.run(tup_val((4, 5))))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(tup_val(std::tuple<int32_t, int32_t>{4, 5}))) << "\n";
 }
 
 // async def bump(self) -> int32:      # tpyc: frame_send(no)
+//     return self.n + 1
 ::tpystd::tpy::Poll<int32_t> __coro_Counter_bump::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return self.n + 1
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(__self.n, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -240,22 +240,23 @@ void main() {
 }
 
 
+// # FrameType classification for async coroutines and generators, pinned via
+// # tpyc: frame_send/frame_sync. Value params/locals give Send frames; borrowed
+// # params (list ref) and loop vars (may lower to raw-pointer slots) are
+// # conservatively non-Send; await chains AND in the sub-coroutine's frame;
+// # async methods capture the receiver by reference (never Send).
+// # A str/bytes param is stored owned in the frame but frame_traits classifies it
+// # by the borrow (StrView) traits -- conservatively non-Send (safe direction);
+// # gen_str below is frame_send(no) for that reason.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # FrameType classification for async coroutines and generators, pinned via
-    // # tpyc: frame_send/frame_sync. Value params/locals give Send frames; borrowed
-    // # params (list ref) and loop vars (may lower to raw-pointer slots) are
-    // # conservatively non-Send; await chains AND in the sub-coroutine's frame;
-    // # async methods capture the receiver by reference (never Send).
-    // # A str/bytes param is stored owned in the frame but frame_traits classifies it
-    // # by the borrow (StrView) traits -- conservatively non-Send (safe direction);
-    // # gen_str below is frame_send(no) for that reason.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

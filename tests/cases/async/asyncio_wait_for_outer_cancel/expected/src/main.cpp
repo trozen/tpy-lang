@@ -5,6 +5,12 @@ namespace tpyapp::main {
 
 
 // async def slow() -> int:
+//     try:
+//         await asyncio.sleep(1.0)
+//         return 42
+//     except asyncio.CancelledError:
+//         print("inner-cancelled")
+//         raise
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -17,15 +23,12 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // return 42
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::CancelledError&) {
             __sub_0.reset();
-            // print("inner-cancelled")
             std::cout << "inner-cancelled" << "\n";
-            // raise
             throw;
         } catch (...) {
             __sub_0.reset();
@@ -34,14 +37,11 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         try {
-            // await asyncio.sleep(1.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
-            // print("inner-cancelled")
             std::cout << "inner-cancelled" << "\n";
-            // raise
             throw;
         } catch (...) {
             throw;
@@ -59,12 +59,17 @@ __coro_slow slow() {
 }
 
 // async def main_coro() -> None:
+//     task = asyncio.create_task(asyncio.wait_for(slow(), 5.0))
+//     await asyncio.sleep(0.001)
+//     task.cancel()
+//     try:
+//         await task
+//     except asyncio.CancelledError:
+//         print("outer-cancelled")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // task = asyncio.create_task(asyncio.wait_for(slow(), 5.0))
         task.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpystd::asyncio::wait_for<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(slow()), 5.0))));
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -74,7 +79,6 @@ __coro_slow slow() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // task.cancel()
         (*task).cancel();
         __state = S_JOIN_1;
         continue;
@@ -89,7 +93,6 @@ __coro_slow slow() {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            // print("outer-cancelled")
             std::cout << "outer-cancelled" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -103,7 +106,6 @@ __coro_slow slow() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        // await task
         __sub_1 = &((*task));
         __state = S_RESUME_1;
         continue;
@@ -120,25 +122,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Outer cancellation of a `wait_for` task propagates through to the
+// # inner coroutine. When `task.cancel()` runs and the wait_for task is
+// # polled, the resume cancel-check propagates the cancel into the
+// # in-flight `_WaitForFuture` (and recursively into the user coro),
+// # letting `slow()` observe `CancelledError` in its `try/except` and
+// # do its cleanup before the cancellation surfaces to the outer caller.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Outer cancellation of a `wait_for` task propagates through to the
-    // # inner coroutine. When `task.cancel()` runs and the wait_for task is
-    // # polled, the resume cancel-check propagates the cancel into the
-    // # in-flight `_WaitForFuture` (and recursively into the user coro),
-    // # letting `slow()` observe `CancelledError` in its `try/except` and
-    // # do its cleanup before the cancellation surfaces to the outer caller.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

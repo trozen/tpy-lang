@@ -5,11 +5,13 @@ namespace tpyapp::main {
 
 
 // async def guard_scope(c: Counter) -> None:
+//     async with c:
+//         print("inside:", c.n)
+//     print("after:", c.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_guard_scope::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0 = &(c);
-        // async with c:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -36,20 +38,17 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_0: {
-        // async with c:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_1: {
-        // print("after:", c.n)
         std::cout << "after:" << " " << c.n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_2: {
         try {
-            // print("inside:", c.n)
             std::cout << "inside:" << " " << c.n << "\n";
             __state = S_JOIN_0;
             continue;
@@ -71,6 +70,12 @@ __coro_guard_scope guard_scope(Counter& c) {
 }
 
 // async def raise_scope(c: Counter) -> None:
+//     # __aexit__ must fire on the borrowed original even when the body raises.
+//     try:
+//         async with c:
+//             raise ValueError("boom")
+//     except ValueError:
+//         print("caught, n:", c.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_raise_scope::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -87,7 +92,6 @@ __coro_guard_scope guard_scope(Counter& c) {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            // print("caught, n:", c.n)
             std::cout << "caught, n:" << " " << c.n << "\n";
             __state = S_JOIN_0;
             continue;
@@ -111,7 +115,6 @@ __coro_guard_scope guard_scope(Counter& c) {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_1.reset();
-            // print("caught, n:", c.n)
             std::cout << "caught, n:" << " " << c.n << "\n";
             __state = S_JOIN_0;
             continue;
@@ -127,12 +130,10 @@ __coro_guard_scope guard_scope(Counter& c) {
     case S_JOIN_1: {
         try {
             __with_ctx_0 = &(c);
-            // async with c:
             __sub_0.emplace((*__with_ctx_0));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // print("caught, n:", c.n)
             std::cout << "caught, n:" << " " << c.n << "\n";
             __state = S_JOIN_0;
             continue;
@@ -145,7 +146,6 @@ __coro_guard_scope guard_scope(Counter& c) {
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // print("caught, n:", c.n)
             std::cout << "caught, n:" << " " << c.n << "\n";
             __state = S_JOIN_0;
             continue;
@@ -156,7 +156,6 @@ __coro_guard_scope guard_scope(Counter& c) {
     case S_JOIN_3: {
         try {
             try {
-                // raise ValueError("boom")
                 throw ::tpy::ValueError("boom");
             } catch (...) {
                 this->__finally_exc_0 = std::current_exception();
@@ -164,7 +163,6 @@ __coro_guard_scope guard_scope(Counter& c) {
                 continue;
             }
         } catch (const ::tpy::ValueError&) {
-            // print("caught, n:", c.n)
             std::cout << "caught, n:" << " " << c.n << "\n";
             __state = S_JOIN_0;
             continue;
@@ -173,7 +171,6 @@ __coro_guard_scope guard_scope(Counter& c) {
         }
     }
     case S_JOIN_4: {
-        // async with c:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
@@ -190,12 +187,16 @@ __coro_raise_scope raise_scope(Counter& c) {
 }
 
 // async def main_coro() -> None:
+//     c = Counter()
+//     await guard_scope(c)
+//     print("final:", c.n)
+//     d = Counter()
+//     await raise_scope(d)
+//     print("raised final:", d.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counter()
         c.emplace(Counter());
-        // await guard_scope(c)
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -205,11 +206,8 @@ __coro_raise_scope raise_scope(Counter& c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("final:", c.n)
         std::cout << "final:" << " " << (*c).n << "\n";
-        // d = Counter()
         d.emplace(Counter());
-        // await raise_scope(d)
         __sub_1.emplace((*d));
         __state = S_RESUME_1;
         continue;
@@ -219,7 +217,6 @@ __coro_raise_scope raise_scope(Counter& c) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // print("raised final:", d.n)
         std::cout << "raised final:" << " " << (*d).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -236,16 +233,17 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def __aenter__(self) -> None:
+//     await asyncio.sleep(0)
+//     self.n += 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_Counter___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -255,7 +253,6 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // self.n += 1
         __self.n = (__self.n) + (::tpy::BigInt(1));
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -267,11 +264,12 @@ void main() {
 
 
 // async def __aexit__(self, exc_type: None, exc_val: None,
-// exc_tb: None) -> None:
+//                     exc_tb: None) -> None:
+//     await asyncio.sleep(0)
+//     self.n += 100
 ::tpystd::tpy::Poll<::std::monostate> __coro_Counter___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -281,7 +279,6 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // self.n += 100
         __self.n = (__self.n) + (::tpy::BigInt(100));
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -292,17 +289,18 @@ void main() {
 }
 
 
+// # Regression: `async with` on a reference-type lvalue manager must borrow it
+// # (a `T*` frame field), so __aenter__/__aexit__ act on the original, including
+// # on the body-raises path. Mutate-and-observe.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `async with` on a reference-type lvalue manager must borrow it
-    // # (a `T*` frame field), so __aenter__/__aexit__ act on the original, including
-    // # on the body-raises path. Mutate-and-observe.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

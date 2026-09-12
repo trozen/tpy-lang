@@ -5,85 +5,94 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Final constants behave like their math.* counterparts.
+//     print(math.isnan(MY_NAN))
+//     print(math.isinf(MY_INF))
+//     print(math.isinf(MY_NEG_INF))
+//     print(MY_INF > 0.0)
+//     print(MY_NEG_INF < 0.0)
+//
+//     # Runtime float(literal-string) also folds (non-Final context).
+//     print(math.isnan(float("nan")))
+//     print(math.isinf(float("inf")))
+//     print(math.isinf(float("-inf")))
+//
+//     # Accepted CPython aliases: "infinity", explicit-+, case-insensitive,
+//     # surrounding whitespace.
+//     print(math.isinf(float("infinity")))
+//     print(math.isinf(float("+inf")))
+//     print(math.isinf(float("+infinity")))
+//     print(math.isinf(float("-infinity")))
+//     print(math.isnan(float("NaN")))
+//     print(math.isnan(float("NAN")))
+//     print(math.isinf(float("INF")))
+//     print(math.isinf(float("  inf  ")))
+//
+//     # Signed NaN: -quiet_NaN() flips the IEEE 754 sign bit (matches CPython;
+//     # both are still NaN, self-inequality, print as "nan"). +nan is identity.
+//     print(math.isnan(float("-nan")))
+//     print(math.isnan(float("+nan")))
+//
+//     # Module-qualified builtins.float(str_literal) -- routes through the
+//     # builtin_module_call dispatch in codegen and triggers the same fold.
+//     print(math.isinf(builtins.float("inf")))
+//     print(math.isnan(builtins.float("nan")))
 void main() {
-    // # Final constants behave like their math.* counterparts.
-    // print(math.isnan(MY_NAN))
     std::cout << ::tpy::print_bool(::std::isnan(MY_NAN)) << "\n";
-    // print(math.isinf(MY_INF))
     std::cout << ::tpy::print_bool(::std::isinf(MY_INF)) << "\n";
-    // print(math.isinf(MY_NEG_INF))
     std::cout << ::tpy::print_bool(::std::isinf(MY_NEG_INF)) << "\n";
-    // print(MY_INF > 0.0)
     std::cout << ::tpy::print_bool((MY_INF > 0.0)) << "\n";
-    // print(MY_NEG_INF < 0.0)
     std::cout << ::tpy::print_bool((MY_NEG_INF < 0.0)) << "\n";
-    // # Runtime float(literal-string) also folds (non-Final context).
-    // print(math.isnan(float("nan")))
     std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
-    // print(math.isinf(float("inf")))
     std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    // print(math.isinf(float("-inf")))
     std::cout << ::tpy::print_bool(::std::isinf(-std::numeric_limits<double>::infinity())) << "\n";
-    // # Accepted CPython aliases: "infinity", explicit-+, case-insensitive,
-    // # surrounding whitespace.
-    // print(math.isinf(float("infinity")))
     std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    // print(math.isinf(float("+inf")))
     std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    // print(math.isinf(float("+infinity")))
     std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    // print(math.isinf(float("-infinity")))
     std::cout << ::tpy::print_bool(::std::isinf(-std::numeric_limits<double>::infinity())) << "\n";
-    // print(math.isnan(float("NaN")))
     std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
-    // print(math.isnan(float("NAN")))
     std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
-    // print(math.isinf(float("INF")))
     std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    // print(math.isinf(float("  inf  ")))
     std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    // # Signed NaN: -quiet_NaN() flips the IEEE 754 sign bit (matches CPython;
-    // # both are still NaN, self-inequality, print as "nan"). +nan is identity.
-    // print(math.isnan(float("-nan")))
     std::cout << ::tpy::print_bool(::std::isnan(-std::numeric_limits<double>::quiet_NaN())) << "\n";
-    // print(math.isnan(float("+nan")))
     std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
-    // # Module-qualified builtins.float(str_literal) -- routes through the
-    // # builtin_module_call dispatch in codegen and triggers the same fold.
-    // print(math.isinf(builtins.float("inf")))
     std::cout << ::tpy::print_bool(::std::isinf(std::numeric_limits<double>::infinity())) << "\n";
-    // print(math.isnan(builtins.float("nan")))
     std::cout << ::tpy::print_bool(::std::isnan(std::numeric_limits<double>::quiet_NaN())) << "\n";
 }
 
 // def test_shadow() -> None:
+//     # Regression: peephole must not fire when user shadows float(). Before the
+//     # resolved_function_info gate, codegen matched func_name=="float"
+//     # unconditionally and emitted numeric_limits<double> into a non-float
+//     # context.
+//     def float(s: str) -> int:
+//         return len(s)
+//     x = float("nan")
+//     print(x)  # 3
 void test_shadow() {
-    // # Regression: peephole must not fire when user shadows float(). Before the
-    // # resolved_function_info gate, codegen matched func_name=="float"
-    // # unconditionally and emitted numeric_limits<double> into a non-float
-    // # context.
-    // def float(s: str) -> int:
     auto float_ = [](std::string_view s) -> ::tpy::BigInt {
-        // return len(s)
         return ::tpy::BigInt(::tpy::__len__(s));
     };
-    // x = float("nan")
     ::tpy::BigInt x = float_("nan");
-    // print(x)  # 3
     std::cout << x << "\n";
 }
 
+// import math
+//
+// # Final[float] initializer (would constexpr-panic without the fold).
+// MY_NAN: Final[float] = float("nan")
+// MY_INF: Final[float] = float("inf")
+// MY_NEG_INF: Final[float] = float("-inf")
+//
+// main()
+// test_shadow()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import math
     ::tpystd::math::__tpy_init();
-    // # Final[float] initializer (would constexpr-panic without the fold).
-    // main()
     main();
-    // test_shadow()
     test_shadow();
 }
 

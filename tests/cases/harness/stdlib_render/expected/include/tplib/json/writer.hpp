@@ -18,6 +18,7 @@ struct JsonWriter;
 extern std::string _HEX;
 inline constexpr std::string_view __name__ = "tplib.json.writer";
 
+// def _hex_byte(v: int32) -> str:
 std::string _hex_byte(int32_t v);
 
 // class JsonWriter:
@@ -104,251 +105,256 @@ inline std::ostream& operator<<(std::ostream& os, const JsonWriter& obj) {
 
 
 // def __init__(self, indent: int32 = 0) -> None:
+//     self._buf = ""
+//     self._needs_comma = False
+//     self._indent = indent
+//     self._depth = 0
+//     self._fresh_line = False
 inline JsonWriter::JsonWriter(int32_t indent) : _buf(""), _needs_comma(false), _indent(indent), _depth(0), _fresh_line(false) {}
 
 // # -- pretty-printing helpers (only called when _indent > 0) --
 // def _emit_nl(self) -> None:
+//     self._buf += "\n"
+//     n = self._indent * self._depth
+//     if n > 0:
+//         self._buf += " " * n
 inline void JsonWriter::_emit_nl() {
-    // self._buf += "\n"
     this->_buf += "\n";
-    // n = self._indent * self._depth
     int32_t n = (::tpy::mul_check<int32_t>(this->_indent, this->_depth));
-    // if n > 0:
     if ((n > 0)) {
-        // self._buf += " " * n
         this->_buf += (::tpy::str_repeat(" ", n));
     }
 }
 
 // def _pretty_sep(self) -> None:
+//     if self._needs_comma:
+//         self._buf += ","
+//         self._emit_nl()
+//     elif self._fresh_line:
+//         self._emit_nl()
+//     self._needs_comma = False
+//     self._fresh_line = False
 inline void JsonWriter::_pretty_sep() {
-    // if self._needs_comma:
     if (this->_needs_comma) {
-        // self._buf += ","
         this->_buf += ",";
-        // self._emit_nl()
         this->_emit_nl();
-    // elif self._fresh_line:
     } else if (this->_fresh_line) {
-        // self._emit_nl()
         this->_emit_nl();
     }
-    // self._needs_comma = False
     this->_needs_comma = false;
-    // self._fresh_line = False
     this->_fresh_line = false;
 }
 
 // def _pretty_open(self, bracket: str) -> None:
+//     self._pretty_sep()
+//     self._buf += bracket
+//     self._depth += 1
+//     self._fresh_line = True
+//     self._needs_comma = False
 inline void JsonWriter::_pretty_open(std::string_view bracket) {
-    // self._pretty_sep()
     this->_pretty_sep();
-    // self._buf += bracket
     this->_buf += bracket;
-    // self._depth += 1
     this->_depth = ::tpy::add_check<int32_t>(this->_depth, 1);
-    // self._fresh_line = True
     this->_fresh_line = true;
-    // self._needs_comma = False
     this->_needs_comma = false;
 }
 
 // def _pretty_close(self, bracket: str) -> None:
+//     self._depth -= 1
+//     if not self._fresh_line:
+//         self._emit_nl()
+//     self._fresh_line = False
+//     self._buf += bracket
+//     self._needs_comma = True
 inline void JsonWriter::_pretty_close(std::string_view bracket) {
-    // self._depth -= 1
     this->_depth = ::tpy::sub_check<int32_t>(this->_depth, 1);
-    // if not self._fresh_line:
     if ((!(this->_fresh_line))) {
-        // self._emit_nl()
         this->_emit_nl();
     }
-    // self._fresh_line = False
     this->_fresh_line = false;
-    // self._buf += bracket
     this->_buf += bracket;
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // # -- public API --
 // def object_start(self) -> None:
+//     if self._indent > 0:
+//         self._pretty_open("{")
+//         return
+//     if self._needs_comma:
+//         self._buf += ", "
+//     self._buf += "{"
+//     self._needs_comma = False
 inline void JsonWriter::object_start() {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_open("{")
         this->_pretty_open("{");
-        // return
         return;
     }
-    // if self._needs_comma:
     if (this->_needs_comma) {
-        // self._buf += ", "
         this->_buf += ", ";
     }
-    // self._buf += "{"
     this->_buf += "{";
-    // self._needs_comma = False
     this->_needs_comma = false;
 }
 
 // def object_end(self) -> None:
+//     if self._indent > 0:
+//         self._pretty_close("}")
+//         return
+//     self._buf += "}"
+//     self._needs_comma = True
 inline void JsonWriter::object_end() {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_close("}")
         this->_pretty_close("}");
-        // return
         return;
     }
-    // self._buf += "}"
     this->_buf += "}";
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // def array_start(self) -> None:
+//     if self._indent > 0:
+//         self._pretty_open("[")
+//         return
+//     if self._needs_comma:
+//         self._buf += ", "
+//     self._buf += "["
+//     self._needs_comma = False
 inline void JsonWriter::array_start() {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_open("[")
         this->_pretty_open("[");
-        // return
         return;
     }
-    // if self._needs_comma:
     if (this->_needs_comma) {
-        // self._buf += ", "
         this->_buf += ", ";
     }
-    // self._buf += "["
     this->_buf += "[";
-    // self._needs_comma = False
     this->_needs_comma = false;
 }
 
 // def array_end(self) -> None:
+//     if self._indent > 0:
+//         self._pretty_close("]")
+//         return
+//     self._buf += "]"
+//     self._needs_comma = True
 inline void JsonWriter::array_end() {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_close("]")
         this->_pretty_close("]");
-        // return
         return;
     }
-    // self._buf += "]"
     this->_buf += "]";
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // def write_int(self, v: int64) -> None:
+//     if self._indent > 0:
+//         self._pretty_sep()
+//     elif self._needs_comma:
+//         self._buf += ", "
+//     self._buf += str(v)
+//     self._needs_comma = True
 inline void JsonWriter::write_int(int64_t v) {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_sep()
         this->_pretty_sep();
-    // elif self._needs_comma:
     } else if (this->_needs_comma) {
-        // self._buf += ", "
         this->_buf += ", ";
     }
-    // self._buf += str(v)
     this->_buf += ::tpy::fixed_to_str<int64_t>(v);
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // def write_int32(self, v: int32) -> None:
+//     if self._indent > 0:
+//         self._pretty_sep()
+//     elif self._needs_comma:
+//         self._buf += ", "
+//     self._buf += str(v)
+//     self._needs_comma = True
 inline void JsonWriter::write_int32(int32_t v) {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_sep()
         this->_pretty_sep();
-    // elif self._needs_comma:
     } else if (this->_needs_comma) {
-        // self._buf += ", "
         this->_buf += ", ";
     }
-    // self._buf += str(v)
     this->_buf += ::tpy::fixed_to_str<int32_t>(v);
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // def write_bigint(self, v: int) -> None:
+//     if self._indent > 0:
+//         self._pretty_sep()
+//     elif self._needs_comma:
+//         self._buf += ", "
+//     self._buf += str(v)
+//     self._needs_comma = True
 inline void JsonWriter::write_bigint(const ::tpy::BigInt& v) {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_sep()
         this->_pretty_sep();
-    // elif self._needs_comma:
     } else if (this->_needs_comma) {
-        // self._buf += ", "
         this->_buf += ", ";
     }
-    // self._buf += str(v)
     this->_buf += (v).to_string();
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // def write_float(self, v: float64) -> None:
+//     # TODO: nan/inf produce invalid JSON ("nan", "inf"). JSON has no
+//     # special float values; CPython raises ValueError (or with
+//     # allow_nan=True emits NaN/Infinity). Validate or escape.
+//     if self._indent > 0:
+//         self._pretty_sep()
+//     elif self._needs_comma:
+//         self._buf += ", "
+//     self._buf += str(v)
+//     self._needs_comma = True
 inline void JsonWriter::write_float(double v) {
-    // # TODO: nan/inf produce invalid JSON ("nan", "inf"). JSON has no
-    // # special float values; CPython raises ValueError (or with
-    // # allow_nan=True emits NaN/Infinity). Validate or escape.
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_sep()
         this->_pretty_sep();
-    // elif self._needs_comma:
     } else if (this->_needs_comma) {
-        // self._buf += ", "
         this->_buf += ", ";
     }
-    // self._buf += str(v)
     this->_buf += ::tpy::float_to_str(v);
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // def write_float32(self, v: float32) -> None:
+//     if self._indent > 0:
+//         self._pretty_sep()
+//     elif self._needs_comma:
+//         self._buf += ", "
+//     self._buf += str(v)
+//     self._needs_comma = True
 inline void JsonWriter::write_float32(float v) {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_sep()
         this->_pretty_sep();
-    // elif self._needs_comma:
     } else if (this->_needs_comma) {
-        // self._buf += ", "
         this->_buf += ", ";
     }
-    // self._buf += str(v)
     this->_buf += ::tpy::float_to_str(static_cast<double>(v));
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // def write_null(self) -> None:
+//     if self._indent > 0:
+//         self._pretty_sep()
+//     elif self._needs_comma:
+//         self._buf += ", "
+//     self._buf += "null"
+//     self._needs_comma = True
 inline void JsonWriter::write_null() {
-    // if self._indent > 0:
     if ((this->_indent > 0)) {
-        // self._pretty_sep()
         this->_pretty_sep();
-    // elif self._needs_comma:
     } else if (this->_needs_comma) {
-        // self._buf += ", "
         this->_buf += ", ";
     }
-    // self._buf += "null"
     this->_buf += "null";
-    // self._needs_comma = True
     this->_needs_comma = true;
 }
 
 // def finish(self) -> String:
+//     return self._buf
 inline ::tpy::String JsonWriter::finish() const {
-    // return self._buf
     return this->_buf;
 }
 void __tpy_init();

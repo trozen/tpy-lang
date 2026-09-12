@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def greet(pet: Pet) -> None:
+//     print(pet.name())
 void greet(const Pet& pet) {
-    // print(pet.name())
     std::cout << pet.name() << "\n";
 }
 
 // def main() -> None:
+//     pet: Pet = Dog()
+//     print(pet.name())
+//     pet = Cat()
+//     print(pet.name())
+//     greet(Dog())
+//     greet(Cat())
 void main() {
     std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
-    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // print(pet.name())
     std::cout << pet->name() << "\n";
-    // pet = Cat()
     __slot_2.emplace(Cat());
     pet = &*__slot_2;
-    // print(pet.name())
     std::cout << pet->name() << "\n";
-    // greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    // greet(Cat())
     ::tpy::Adapter<Pet, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

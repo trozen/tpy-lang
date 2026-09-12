@@ -37,7 +37,9 @@ struct Impl;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use(x: DynBase) -> str:
 std::string use(DynBase& x);
+// def main() -> None:
 void main();
 
 // class Impl(Mid):
@@ -78,14 +80,14 @@ namespace tpyapp::main {
 
 
 // def base_method(self) -> str:
+//     return "base"
 inline std::string Impl::base_method() const {
-    // return "base"
     return "base";
 }
 
 // def mid_method(self) -> int:
+//     return 42
 inline ::tpy::BigInt Impl::mid_method() const {
-    // return 42
     return ::tpy::BigInt(42);
 }
 void __tpy_init();

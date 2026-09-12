@@ -14,7 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_names;
 
+// def names(a: readonly[Dog | Cat]) -> Iterator[str]:
 __gen_names names(::tpy::Union<const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -49,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Generator: names
+// def names(a: readonly[Dog | Cat]) -> Iterator[str]:
 struct __gen_names : public ::tpy::next_iter_mixin<__gen_names, std::string> {
     int32_t __state;
     ::tpy::Union<const Cat*, const Dog*> a;
@@ -77,9 +79,11 @@ struct __gen_names : public ::tpy::next_iter_mixin<__gen_names, std::string> {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

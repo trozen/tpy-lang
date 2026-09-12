@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def reduce_to_zero(x: int32 | None) -> int32:
+//     while x:  # tpyc: warning(/Truthiness check on optional value/)
+//         x = x - 1  # tpyc: ok
+//     return 0
 int32_t reduce_to_zero(std::optional<int32_t> x) {
-    // while x:  # tpyc: warning(/Truthiness check on optional value/)
     while (::tpy::is_truthy(x)) {
-        // x = x - 1  # tpyc: ok
         x = (::tpy::sub_check<int32_t>((*x), 1));
     }
-    // return 0
     return 0;
 }
 
+// print(reduce_to_zero(2))
+// print(reduce_to_zero(0))
+// print(reduce_to_zero(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(reduce_to_zero(2))
     std::cout << reduce_to_zero(2) << "\n";
-    // print(reduce_to_zero(0))
     std::cout << reduce_to_zero(0) << "\n";
-    // print(reduce_to_zero(None))
     std::cout << reduce_to_zero(std::nullopt) << "\n";
 }
 

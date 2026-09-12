@@ -6,49 +6,49 @@ namespace tpyapp::main {
 
 // @pure
 // def add_values(a: int32, b: int32) -> int32:
+//     return a + b
 int32_t add_values(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // @pure
 // def compute(p: Point) -> int32:
+//     return p.magnitude_sq() + add_values(p.x, p.y)
 int32_t compute(const Point& p) {
-    // return p.magnitude_sq() + add_values(p.x, p.y)
     return (::tpy::add_check<int32_t>(p.magnitude_sq(), add_values(p.x, p.y)));
 }
 
 // def use_readonly(p: readonly[Point]) -> None:
+//     # Pure methods can be called on readonly receivers
+//     print(p.magnitude_sq())
+//     print(p.distance_sq(Point(int32(0), int32(0))))
 void use_readonly(const Point& p) {
-    // # Pure methods can be called on readonly receivers
-    // print(p.magnitude_sq())
     std::cout << p.magnitude_sq() << "\n";
-    // print(p.distance_sq(Point(int32(0), int32(0))))
     std::cout << p.distance_sq(Point(0, 0)) << "\n";
 }
 
 // def main() -> None:
+//     p = Point(int32(3), int32(4))
+//     print(p.magnitude_sq())
+//     print(p.distance_sq(Point(int32(1), int32(1))))
+//     print(add_values(int32(10), int32(20)))
+//     print(compute(p))
+//     use_readonly(p)
 void main() {
-    // p = Point(int32(3), int32(4))
     Point p = Point(3, 4);
-    // print(p.magnitude_sq())
     std::cout << p.magnitude_sq() << "\n";
-    // print(p.distance_sq(Point(int32(1), int32(1))))
     std::cout << p.distance_sq(Point(1, 1)) << "\n";
-    // print(add_values(int32(10), int32(20)))
     std::cout << add_values(10, 20) << "\n";
-    // print(compute(p))
     std::cout << compute(p) << "\n";
-    // use_readonly(p)
     use_readonly(p);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

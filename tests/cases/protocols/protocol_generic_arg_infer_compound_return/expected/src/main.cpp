@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Cell[int32](int32(42))
+//     print(second_of(c))                   # 1
+//     print(use_consume(c, int32(100)))     # 2
 void main() {
-    // c = Cell[int32](int32(42))
     Cell<int32_t> c = Cell<int32_t>(42);
-    // print(second_of(c))                   # 1
     std::cout << second_of<int32_t>(c) << "\n";
-    // print(use_consume(c, int32(100)))     # 2
     std::cout << use_consume<int32_t>(c, 100) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

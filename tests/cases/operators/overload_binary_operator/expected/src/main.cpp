@@ -5,35 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Day(10)
+//     b = Day(3)
+//
+//     diff = a - b            # tpyc: type(Delta)
+//     print(diff.n)           # 7  -- typechecks only if `diff` narrowed to Delta
+//
+//     moved = a - Delta(2)     # tpyc: type(Day)
+//     print(moved.ordinal)    # 8  -- typechecks only if `moved` narrowed to Day
+//
+//     later = a + Delta(5)     # monomorphic __add__ still works on the same class
+//     print(later.ordinal)    # 15
+//
+//     total = Delta(4) + Delta(6)
+//     print(total.n)          # 10
 void main() {
-    // a = Day(10)
     Day a = Day(::tpy::BigInt(10));
-    // b = Day(3)
     Day b = Day(::tpy::BigInt(3));
-    // diff = a - b            # tpyc: type(Delta)
     Delta diff = ((a) - (b));
-    // print(diff.n)           # 7  -- typechecks only if `diff` narrowed to Delta
     std::cout << diff.n << "\n";
-    // moved = a - Delta(2)     # tpyc: type(Day)
     Day moved = ((a) - (Delta(::tpy::BigInt(2))));
-    // print(moved.ordinal)    # 8  -- typechecks only if `moved` narrowed to Day
     std::cout << moved.ordinal << "\n";
-    // later = a + Delta(5)     # monomorphic __add__ still works on the same class
     Day later = ((a) + (Delta(::tpy::BigInt(5))));
-    // print(later.ordinal)    # 15
     std::cout << later.ordinal << "\n";
-    // total = Delta(4) + Delta(6)
     Delta total = ((Delta(::tpy::BigInt(4))) + (Delta(::tpy::BigInt(6))));
-    // print(total.n)          # 10
     std::cout << total.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

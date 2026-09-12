@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def gcd(a: int, b: int) -> int:
 ::tpy::BigInt gcd(const ::tpy::BigInt& __param_a, const ::tpy::BigInt& __param_b);
+// def repeat_str(s: str, n: int) -> str:
 std::string repeat_str(std::string_view s, const ::tpy::BigInt& n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

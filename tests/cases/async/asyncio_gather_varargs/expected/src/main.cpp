@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def fetch(n: int32) -> int32:
+//     await asyncio.sleep(0.001)
+//     return n * 2
 ::tpystd::tpy::Poll<int32_t> __coro_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return n * 2
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(n, 2));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,17 +35,36 @@ __coro_fetch fetch(int32_t n) {
 }
 
 // async def main_coro() -> None:
+//     # Multi-arg: three positional tasks.
+//     t1 = asyncio.create_task(fetch(1))
+//     t2 = asyncio.create_task(fetch(2))
+//     t3 = asyncio.create_task(fetch(3))
+//     multi_results = await asyncio.gather(t1, t2, t3)
+//     print("multi:")
+//     for r in multi_results:
+//         print(r)
+//
+//     # Single-arg.
+//     s1 = asyncio.create_task(fetch(10))
+//     single_results = await asyncio.gather(s1)
+//     print("single:")
+//     for r in single_results:
+//         print(r)
+//
+//     # *unpack: build a list of tasks and unpack it at the call site.
+//     pending: list[asyncio.Task[int32]] = []
+//     pending.append(asyncio.create_task(fetch(4)))
+//     pending.append(asyncio.create_task(fetch(5)))
+//     unpacked_results = await asyncio.gather(*pending)
+//     print("unpacked:")
+//     for r in unpacked_results:
+//         print(r)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # Multi-arg: three positional tasks.
-        // t1 = asyncio.create_task(fetch(1))
         t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(1))));
-        // t2 = asyncio.create_task(fetch(2))
         t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(2))));
-        // t3 = asyncio.create_task(fetch(3))
         t3.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(3))));
-        // multi_results = await asyncio.gather(t1, t2, t3)
         std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 3> __tmp_1{&(*t1), &(*t2), &(*t3)};
         __sub_0.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(__tmp_1))));
         __state = S_RESUME_0;
@@ -56,21 +75,15 @@ __coro_fetch fetch(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         multi_results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // print("multi:")
         std::cout << "multi:" << "\n";
-        // for r in multi_results:
         auto& __obj_0 = (*multi_results);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t r = *__beg_0;
-            // print(r)
             std::cout << r << "\n";
         }
-        // # Single-arg.
-        // s1 = asyncio.create_task(fetch(10))
         s1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(10))));
-        // single_results = await asyncio.gather(s1)
         std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 1> __tmp_2{&(*s1)};
         __sub_1.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(__tmp_2))));
         __state = S_RESUME_1;
@@ -81,25 +94,17 @@ __coro_fetch fetch(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         single_results.emplace(std::move(__r1).value());
         __sub_1.reset();
-        // print("single:")
         std::cout << "single:" << "\n";
-        // for r in single_results:
         auto& __obj_1 = (*single_results);
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t r = *__beg_1;
-            // print(r)
             std::cout << r << "\n";
         }
-        // # *unpack: build a list of tasks and unpack it at the call site.
-        // pending: list[asyncio.Task[int32]] = []
         pending.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // pending.append(asyncio.create_task(fetch(4)))
         (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(4))));
-        // pending.append(asyncio.create_task(fetch(5)))
         (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(5))));
-        // unpacked_results = await asyncio.gather(*pending)
         __sub_2.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(::tpy::as_mut_span((*pending))))));
         __state = S_RESUME_2;
         continue;
@@ -109,15 +114,12 @@ __coro_fetch fetch(int32_t n) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         unpacked_results.emplace(std::move(__r2).value());
         __sub_2.reset();
-        // print("unpacked:")
         std::cout << "unpacked:" << "\n";
-        // for r in unpacked_results:
         auto& __obj_2 = (*unpacked_results);
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             int32_t r = *__beg_2;
-            // print(r)
             std::cout << r << "\n";
         }
         __state = S_DONE;
@@ -135,24 +137,25 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.gather (variadic-positional form): homogeneous Task[T] args
+// # collected into list[T] result. Covers multi-arg, single-arg, and
+// # *unpack call shapes -- all sharing the same `_GatherFuture[T]`
+// # engine as gather_list. The empty case (n == 0) is covered separately
+// # by `asyncio_gather_empty` (which uses gather_list).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.gather (variadic-positional form): homogeneous Task[T] args
-    // # collected into list[T] result. Covers multi-arg, single-arg, and
-    // # *unpack call shapes -- all sharing the same `_GatherFuture[T]`
-    // # engine as gather_list. The empty case (n == 0) is covered separately
-    // # by `asyncio_gather_empty` (which uses gather_list).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

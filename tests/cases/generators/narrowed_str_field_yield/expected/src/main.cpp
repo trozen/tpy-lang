@@ -5,10 +5,14 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box("v")
+//     for x in b.gen_field():
+//         print(x)
+//     n = Box(None)
+//     for x in n.gen_field():
+//         print(x)
 void main() {
-    // b = Box("v")
     Box b = Box("v");
-    // for x in b.gen_field():
     {
         auto __src_0 = b.gen_field();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,13 +20,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // n = Box(None)
     Box n = Box(std::nullopt);
-    // for x in n.gen_field():
     {
         auto __src_2 = n.gen_field();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -30,18 +31,19 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
 // def gen_field(self) -> Iterator[str]:
+//     if self.s is not None:
+//         yield self.s
+//     yield "end"
 std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((__self.s.has_value())) {
-            // yield self.s
             __state = S_RESUME_0;
             return (*__self.s);
         } else {
@@ -58,7 +60,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_field::__next__()
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield "end"
         __state = S_RESUME_1;
         return "end";
     }
@@ -68,12 +69,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_field::__next__()
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -29,7 +29,9 @@ struct __coro_Guard___aexit__;
 template <typename T>
 struct __coro_Counter___anext__;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -39,12 +41,13 @@ struct Box {
     T v;
 
     // def __init__(self, v: T) -> None:
+    //     self.v = v
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // def put(self, v: T) -> None:
+    //     self.v = v
     void put(::tpy::param_val_or_ref_t<T> v) {
-        // self.v = v
         this->v = ::tpy::param_to_storage<T>(v);
     }
 
@@ -67,6 +70,8 @@ struct Guard {
     int32_t entered;
 
     // def __init__(self, val: T) -> None:
+    //     self.val = val
+    //     self.entered = 0
     Guard() = default;
     explicit Guard(::tpy::readonly_form_t<T> val) : val(val), entered(0) {}
 
@@ -93,12 +98,15 @@ struct Counter {
     T seed;
 
     // def __init__(self, limit: int32, seed: T) -> None:
+    //     self.cur = 0
+    //     self.limit = limit
+    //     self.seed = seed
     Counter() = default;
     explicit Counter(int32_t limit, ::tpy::readonly_form_t<T> seed) : cur(0), limit(limit), seed(seed) {}
 
     // def __aiter__(self) -> "Counter[T]":
+    //     return self
     Counter<T>& __aiter__() {
-        // return self
         return (*this);
     }
 
@@ -154,7 +162,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntCounter& obj) {
     return os;
 }
 
-// Async coroutine: Box.fetch
+// async def fetch(self) -> T:
 template <typename T>
 struct __coro_Box_fetch {
     int32_t __state;
@@ -180,11 +188,12 @@ struct __coro_Box_fetch {
 };
 
 // async def fetch(self) -> T:
+//     await asyncio.sleep(0.001)
+//     return self.v
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Box_fetch<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -194,7 +203,6 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self.v
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.v);
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -210,7 +218,7 @@ inline __coro_Box_fetch<T> Box<T>::fetch() {
     return __coro_Box_fetch<T>(*this);
 }
 
-// Async coroutine: Guard.__aenter__
+// async def __aenter__(self) -> T:
 template <typename T>
 struct __coro_Guard___aenter__ {
     int32_t __state;
@@ -236,11 +244,13 @@ struct __coro_Guard___aenter__ {
 };
 
 // async def __aenter__(self) -> T:
+//     await asyncio.sleep(0.001)
+//     self.entered += 1
+//     return self.val
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Guard___aenter__<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -250,9 +260,7 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // self.entered += 1
         __self.entered = ::tpy::add_check<int32_t>(__self.entered, 1);
-        // return self.val
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.val);
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -268,7 +276,7 @@ inline __coro_Guard___aenter__<T> Guard<T>::__aenter__() {
     return __coro_Guard___aenter__<T>(*this);
 }
 
-// Async coroutine: Guard.__aexit__
+// async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 template <typename T>
 struct __coro_Guard___aexit__ {
     int32_t __state;
@@ -297,11 +305,11 @@ struct __coro_Guard___aexit__ {
 };
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
+//     await asyncio.sleep(0.001)
 template <typename T>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Guard___aexit__<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -325,7 +333,7 @@ inline __coro_Guard___aexit__<T> Guard<T>::__aexit__(std::monostate et, std::mon
     return __coro_Guard___aexit__<T>(*this, et, ev, tb);
 }
 
-// Async coroutine: Counter.__anext__
+// async def __anext__(self) -> T:
 template <typename T>
 struct __coro_Counter___anext__ {
     int32_t __state;
@@ -351,11 +359,15 @@ struct __coro_Counter___anext__ {
 };
 
 // async def __anext__(self) -> T:
+//     await asyncio.sleep(0.001)
+//     if self.cur >= self.limit:
+//         raise StopAsyncIteration
+//     self.cur += 1
+//     return self.seed
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Counter___anext__<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -365,14 +377,10 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if self.cur >= self.limit:
         if ((__self.cur >= __self.limit)) {
-            // raise StopAsyncIteration
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.cur += 1
         __self.cur = ::tpy::add_check<int32_t>(__self.cur, 1);
-        // return self.seed
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.seed);
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -388,7 +396,7 @@ inline __coro_Counter___anext__<T> Counter<T>::__anext__() {
     return __coro_Counter___anext__<T>(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -437,26 +445,26 @@ struct __coro_main_coro {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline IntBox::IntBox(int32_t v) {
-    // self.v = v
     this->v = v;
 }
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
+//     self.entered = 0
 inline IntGuard::IntGuard(int32_t val) {
-    // self.val = val
     this->val = val;
-    // self.entered = 0
     this->entered = 0;
 }
 
 // def __init__(self, limit: int32, seed: int32) -> None:
+//     self.cur = 0
+//     self.limit = limit
+//     self.seed = seed
 inline IntCounter::IntCounter(int32_t limit, int32_t seed) {
-    // self.cur = 0
     this->cur = 0;
-    // self.limit = limit
     this->limit = limit;
-    // self.seed = seed
     this->seed = seed;
 }
 void __tpy_init();

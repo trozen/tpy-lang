@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> Iterator[str]:
+//     yield "start"
+//     match a:
+//         case Dog():
+//             yield "dog:" + a.sound()
+//         case Cat():
+//             yield "cat:" + a.sound()
 std::expected<std::string, ::tpy::StopIteration> __gen_describe::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield "start"
         __state = S_RESUME_0;
         return "start";
     }
     case S_RESUME_0: {
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case Dog():
         case 1: {
             auto& __case_0 = *std::get<1>(__match_subject_1);
-            // yield "dog:" + a.sound()
             __state = S_RESUME_1;
             return (::tpy::str_concat("dog:", __case_0.sound()));
             break;
         }
-        // case Cat():
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
-            // yield "cat:" + a.sound()
             __state = S_RESUME_2;
             return (::tpy::str_concat("cat:", __case_1.sound()));
             break;
@@ -61,9 +62,13 @@ __gen_describe describe(::tpy::Union<Cat*, Dog*> a) {
 }
 
 // def main() -> None:
+//     # First call passes a temporary, second a named local -- both must stay live.
+//     for s in describe(Dog("rex")):
+//         print(s)
+//     pet: Dog | Cat = Cat("tom")
+//     for s in describe(pet):
+//         print(s)
 void main() {
-    // # First call passes a temporary, second a named local -- both must stay live.
-    // for s in describe(Dog("rex")):
     {
         Dog __tmp_1 = Dog("rex");
         auto __src_0 = describe(::tpy::Union<Cat*, Dog*>{&__tmp_1});
@@ -72,14 +77,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // pet: Dog | Cat = Cat("tom")
     ::tpy::Union<Cat, Dog> __slot_1 = Cat("tom");
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
-    // for s in describe(pet):
     {
         auto __src_2 = describe(pet);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -87,18 +89,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

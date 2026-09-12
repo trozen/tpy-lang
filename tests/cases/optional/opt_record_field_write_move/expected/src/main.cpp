@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     print(h.get())
+//     h.set_name(Inner(10))
+//     print(h.get())
+//     h.set_rvalue(20)
+//     print(h.get())
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(h.get())
     std::cout << h.get() << "\n";
-    // h.set_name(Inner(10))
     h.set_name(Inner(10));
-    // print(h.get())
     std::cout << h.get() << "\n";
-    // h.set_rvalue(20)
     h.set_rvalue(20);
-    // print(h.get())
     std::cout << h.get() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

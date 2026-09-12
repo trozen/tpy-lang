@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def sum_all(*args: int32) -> int32:
+//     total: int32 = 0
+//     for x in args:
+//         total += x
+//     return total
 int32_t sum_all(::tpy::varargs<const int32_t> args) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in args:
     auto& __obj_0 = args;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     print(sum_all(1, 2, 3))
+//     print(sum_all())
+//     print(sum_all(10))
+//     print(sum_all(1, 2, 3, 4, 5))
 void main() {
-    // print(sum_all(1, 2, 3))
     std::array<const int32_t, 3> __tmp_1{1, 2, 3};
     std::cout << sum_all(::tpy::varargs<const int32_t>(__tmp_1)) << "\n";
-    // print(sum_all())
     std::cout << sum_all(::tpy::varargs<const int32_t>()) << "\n";
-    // print(sum_all(10))
     std::array<const int32_t, 1> __tmp_2{10};
     std::cout << sum_all(::tpy::varargs<const int32_t>(__tmp_2)) << "\n";
-    // print(sum_all(1, 2, 3, 4, 5))
     std::array<const int32_t, 5> __tmp_3{1, 2, 3, 4, 5};
     std::cout << sum_all(::tpy::varargs<const int32_t>(__tmp_3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

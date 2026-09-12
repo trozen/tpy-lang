@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(int32(1), int32(2))
+//     c = Container(p, int32(42))
+//     print(c.data[0].x, c.data[0].y, c.data[1])
+//     # Mutation of p should NOT affect c.data (value semantics for fields)
+//     p.x = int32(99)
+//     print(c.data[0].x)
 void main() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // c = Container(p, int32(42))
     Container c = Container(p, 42);
-    // print(c.data[0].x, c.data[0].y, c.data[1])
     std::cout << std::get<0>(c.data).x << " " << std::get<0>(c.data).y << " " << std::get<1>(c.data) << "\n";
-    // # Mutation of p should NOT affect c.data (value semantics for fields)
-    // p.x = int32(99)
     p.x = 99;
-    // print(c.data[0].x)
     std::cout << std::get<0>(c.data).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

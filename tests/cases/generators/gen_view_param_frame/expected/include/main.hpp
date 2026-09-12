@@ -50,36 +50,65 @@ struct __gen_Summer_pair;
 struct __gen_Outer_run;
 struct __gen_Outer_run_recv;
 
+// def bump_scalars(s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_bump_scalars bump_scalars(std::span<int32_t> s);
+// def bump_records(s: Span[P]) -> Iterator[int32]:  # tpyc: ok
 __gen_bump_records bump_records(std::span<P> s);
+// def read_ro_elems(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
 __gen_read_ro_elems read_ro_elems(std::span<const int32_t> s);
+// def read_ro_span(s: readonly[Span[int32]]) -> Iterator[int32]:  # tpyc: ok
 __gen_read_ro_span read_ro_span(std::span<int32_t> s);
+// def read_pair(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
 __gen_read_pair read_pair(std::span<const int32_t> s);
+// def make_str(n: int32) -> str:
 std::string make_str(int32_t n);
+// def make_bytes(n: int32) -> bytes:
 ::tpy::Bytes make_bytes(int32_t n);
+// def head_tail(t: StrView) -> Iterator[str]:  # tpyc: ok
 __gen_head_tail head_tail(std::string_view t);
+// def byte_ends(b: BytesView) -> Iterator[int32]:  # tpyc: ok
 __gen_byte_ends byte_ends(::tpy::BytesView b);
+// async def async_head(t: StrView) -> str:  # tpyc: ok
 __coro_async_head async_head(std::string_view t);
+// async def run_head() -> str:
 __coro_run_head run_head();
+// def count_view(it: Iterator[str]) -> int32:
 template<::tpystd::typing::Iterator<std::string> T_it>
 int32_t count_view(T_it& it);
+// def total(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t total(T_it& it);
+// def view_lens(t: StrView, b: BytesView) -> Iterator[int32]:  # tpyc: ok
 __gen_view_lens view_lens(std::string_view t, ::tpy::BytesView b);
+// async def bump_async(s: Span[int32]) -> int32:  # tpyc: ok
 __coro_bump_async bump_async(std::span<int32_t> s);
+// async def run_bump() -> int32:
 __coro_run_bump run_bump();
+// def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_ends ends(std::vector<int32_t>& xs);
+// def outer_for() -> Iterator[str]:
 __gen_outer_for outer_for();
+// def outer_span() -> Iterator[int32]:
 __gen_outer_span outer_span();
+// def outer_comp(src: list[int32]) -> Iterator[int32]:
 __gen_outer_comp outer_comp(std::vector<int32_t>& src);
+// def outer_comp_method(src: list[int32]) -> Iterator[int32]:
 __gen_outer_comp_method outer_comp_method(std::vector<int32_t>& src);
+// def outer_fstring(n: int32) -> Iterator[str]:
 __gen_outer_fstring outer_fstring(int32_t n);
+// async def outer_bind() -> str:
 __coro_outer_bind outer_bind();
+// async def outer_task() -> str:
 __coro_outer_task outer_task();
+// def outer_loop_for(n: int32) -> Iterator[int32]:
 __gen_outer_loop_for outer_loop_for(int32_t n);
+// async def outer_loop_bind(n: int32) -> str:
 __coro_outer_loop_bind outer_loop_bind(int32_t n);
+// async def outer_async_recv(src: list[int32]) -> int32:
 __coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src);
+// async def outer_task_recv() -> int32:
 __coro_outer_task_recv outer_task_recv();
+// def main() -> None:
 void main();
 
 // class P:
@@ -193,7 +222,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
-// Async coroutine: Adder.add
+// async def add(self, s: Span[int32]) -> int32:  # tpyc: ok
 struct __coro_Adder_add {
     int32_t __state;
     bool __cancel_pending;
@@ -222,7 +251,7 @@ inline __coro_Adder_add Adder::add(std::span<int32_t> s) const {
     return __coro_Adder_add(*this, s);
 }
 
-// Async coroutine: async_head
+// async def async_head(t: StrView) -> str:  # tpyc: ok
 struct __coro_async_head {
     int32_t __state;
     bool __cancel_pending;
@@ -246,7 +275,7 @@ struct __coro_async_head {
     }
 };
 
-// Async coroutine: run_head
+// async def run_head() -> str:
 struct __coro_run_head {
     int32_t __state;
     bool __cancel_pending;
@@ -270,7 +299,7 @@ struct __coro_run_head {
     }
 };
 
-// Async coroutine: bump_async
+// async def bump_async(s: Span[int32]) -> int32:  # tpyc: ok
 struct __coro_bump_async {
     int32_t __state;
     bool __cancel_pending;
@@ -294,7 +323,7 @@ struct __coro_bump_async {
     }
 };
 
-// Async coroutine: run_bump
+// async def run_bump() -> int32:
 struct __coro_run_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -318,7 +347,7 @@ struct __coro_run_bump {
     }
 };
 
-// Async coroutine: outer_bind
+// async def outer_bind() -> str:
 struct __coro_outer_bind {
     int32_t __state;
     bool __cancel_pending;
@@ -346,7 +375,7 @@ struct __coro_outer_bind {
     }
 };
 
-// Async coroutine: outer_task
+// async def outer_task() -> str:
 struct __coro_outer_task {
     int32_t __state;
     bool __cancel_pending;
@@ -373,7 +402,7 @@ struct __coro_outer_task {
     }
 };
 
-// Async coroutine: outer_loop_bind
+// async def outer_loop_bind(n: int32) -> str:
 struct __coro_outer_loop_bind {
     int32_t __state;
     bool __cancel_pending;
@@ -406,7 +435,7 @@ struct __coro_outer_loop_bind {
     }
 };
 
-// Async coroutine: outer_task_recv
+// async def outer_task_recv() -> int32:
 struct __coro_outer_task_recv {
     int32_t __state;
     bool __cancel_pending;
@@ -434,7 +463,7 @@ struct __coro_outer_task_recv {
     }
 };
 
-// Generator: bump_scalars
+// def bump_scalars(s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_bump_scalars : public ::tpy::next_iter_mixin<__gen_bump_scalars, int32_t> {
     int32_t __state;
     std::span<int32_t> s;
@@ -457,7 +486,7 @@ struct __gen_bump_scalars : public ::tpy::next_iter_mixin<__gen_bump_scalars, in
     }
 };
 
-// Generator: bump_records
+// def bump_records(s: Span[P]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_bump_records : public ::tpy::next_iter_mixin<__gen_bump_records, int32_t> {
     int32_t __state;
     std::span<P> s;
@@ -480,7 +509,7 @@ struct __gen_bump_records : public ::tpy::next_iter_mixin<__gen_bump_records, in
     }
 };
 
-// Generator: read_ro_elems
+// def read_ro_elems(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_read_ro_elems : public ::tpy::next_iter_mixin<__gen_read_ro_elems, int32_t> {
     int32_t __state;
     std::span<const int32_t> s;
@@ -503,7 +532,7 @@ struct __gen_read_ro_elems : public ::tpy::next_iter_mixin<__gen_read_ro_elems, 
     }
 };
 
-// Generator: read_ro_span
+// def read_ro_span(s: readonly[Span[int32]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_read_ro_span : public ::tpy::next_iter_mixin<__gen_read_ro_span, int32_t> {
     int32_t __state;
     std::span<int32_t> s;
@@ -526,7 +555,7 @@ struct __gen_read_ro_span : public ::tpy::next_iter_mixin<__gen_read_ro_span, in
     }
 };
 
-// Generator: read_pair
+// def read_pair(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_read_pair : public ::tpy::next_iter_mixin<__gen_read_pair, int32_t> {
     int32_t __state;
     std::span<const int32_t> s;
@@ -549,7 +578,7 @@ struct __gen_read_pair : public ::tpy::next_iter_mixin<__gen_read_pair, int32_t>
     }
 };
 
-// Generator: head_tail
+// def head_tail(t: StrView) -> Iterator[str]:  # tpyc: ok
 struct __gen_head_tail : public ::tpy::next_iter_mixin<__gen_head_tail, std::string> {
     int32_t __state;
     std::string_view t;
@@ -572,7 +601,7 @@ struct __gen_head_tail : public ::tpy::next_iter_mixin<__gen_head_tail, std::str
     }
 };
 
-// Generator: byte_ends
+// def byte_ends(b: BytesView) -> Iterator[int32]:  # tpyc: ok
 struct __gen_byte_ends : public ::tpy::next_iter_mixin<__gen_byte_ends, int32_t> {
     int32_t __state;
     ::tpy::BytesView b;
@@ -595,7 +624,7 @@ struct __gen_byte_ends : public ::tpy::next_iter_mixin<__gen_byte_ends, int32_t>
     }
 };
 
-// Generator: view_lens
+// def view_lens(t: StrView, b: BytesView) -> Iterator[int32]:  # tpyc: ok
 struct __gen_view_lens : public ::tpy::next_iter_mixin<__gen_view_lens, int32_t> {
     int32_t __state;
     std::string_view t;
@@ -619,7 +648,7 @@ struct __gen_view_lens : public ::tpy::next_iter_mixin<__gen_view_lens, int32_t>
     }
 };
 
-// Generator: ends
+// def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends, int32_t> {
     int32_t __state;
     std::vector<int32_t>& xs;
@@ -642,7 +671,7 @@ struct __gen_ends : public ::tpy::next_iter_mixin<__gen_ends, int32_t> {
     }
 };
 
-// Generator: outer_for
+// def outer_for() -> Iterator[str]:
 struct __gen_outer_for : public ::tpy::next_iter_mixin<__gen_outer_for, std::string> {
     int32_t __state;
     std::string v;
@@ -669,7 +698,7 @@ struct __gen_outer_for : public ::tpy::next_iter_mixin<__gen_outer_for, std::str
     }
 };
 
-// Generator: outer_span
+// def outer_span() -> Iterator[int32]:
 struct __gen_outer_span : public ::tpy::next_iter_mixin<__gen_outer_span, int32_t> {
     int32_t __state;
     int32_t v;
@@ -696,7 +725,7 @@ struct __gen_outer_span : public ::tpy::next_iter_mixin<__gen_outer_span, int32_
     }
 };
 
-// Generator: outer_comp
+// def outer_comp(src: list[int32]) -> Iterator[int32]:
 struct __gen_outer_comp : public ::tpy::next_iter_mixin<__gen_outer_comp, int32_t> {
     int32_t __state;
     std::vector<int32_t>& src;
@@ -724,7 +753,7 @@ struct __gen_outer_comp : public ::tpy::next_iter_mixin<__gen_outer_comp, int32_
     }
 };
 
-// Generator: outer_fstring
+// def outer_fstring(n: int32) -> Iterator[str]:
 struct __gen_outer_fstring : public ::tpy::next_iter_mixin<__gen_outer_fstring, std::string> {
     int32_t __state;
     int32_t n;
@@ -752,7 +781,7 @@ struct __gen_outer_fstring : public ::tpy::next_iter_mixin<__gen_outer_fstring, 
     }
 };
 
-// Generator: outer_loop_for
+// def outer_loop_for(n: int32) -> Iterator[int32]:
 struct __gen_outer_loop_for : public ::tpy::next_iter_mixin<__gen_outer_loop_for, int32_t> {
     int32_t __state;
     int32_t n;
@@ -783,7 +812,7 @@ struct __gen_outer_loop_for : public ::tpy::next_iter_mixin<__gen_outer_loop_for
     }
 };
 
-// Generator: Scaler.scale
+// def scale(self, s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Scaler_scale : public ::tpy::next_iter_mixin<__gen_Scaler_scale, int32_t> {
     int32_t __state;
     const Scaler& __self;
@@ -811,7 +840,7 @@ inline __gen_Scaler_scale Scaler::scale(std::span<int32_t> s) const {
     return __gen_Scaler_scale(*this, s);
 }
 
-// Generator: Tagger.tag
+// def tag(self, t: StrView) -> Iterator[str]:  # tpyc: ok
 struct __gen_Tagger_tag : public ::tpy::next_iter_mixin<__gen_Tagger_tag, std::string> {
     int32_t __state;
     const Tagger& __self;
@@ -839,7 +868,7 @@ inline __gen_Tagger_tag Tagger::tag(std::string_view t) const {
     return __gen_Tagger_tag(*this, t);
 }
 
-// Generator: Summer.pair
+// def pair(self, xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Summer_pair : public ::tpy::next_iter_mixin<__gen_Summer_pair, int32_t> {
     int32_t __state;
     const Summer& __self;
@@ -867,7 +896,7 @@ inline __gen_Summer_pair Summer::pair(std::vector<int32_t>& xs) const {
     return __gen_Summer_pair(*this, xs);
 }
 
-// Async coroutine: outer_async_recv
+// async def outer_async_recv(src: list[int32]) -> int32:
 struct __coro_outer_async_recv {
     int32_t __state;
     bool __cancel_pending;
@@ -899,7 +928,7 @@ struct __coro_outer_async_recv {
     }
 };
 
-// Generator: outer_comp_method
+// def outer_comp_method(src: list[int32]) -> Iterator[int32]:
 struct __gen_outer_comp_method : public ::tpy::next_iter_mixin<__gen_outer_comp_method, int32_t> {
     int32_t __state;
     std::vector<int32_t>& src;
@@ -928,7 +957,7 @@ struct __gen_outer_comp_method : public ::tpy::next_iter_mixin<__gen_outer_comp_
     }
 };
 
-// Generator: Outer.run
+// def run(self) -> Iterator[str]:
 struct __gen_Outer_run : public ::tpy::next_iter_mixin<__gen_Outer_run, std::string> {
     int32_t __state;
     const Outer& __self;
@@ -960,7 +989,7 @@ inline __gen_Outer_run Outer::run() const {
     return __gen_Outer_run(*this);
 }
 
-// Generator: Outer.run_recv
+// def run_recv(self, xs: list[int32]) -> Iterator[int32]:
 struct __gen_Outer_run_recv : public ::tpy::next_iter_mixin<__gen_Outer_run_recv, int32_t> {
     int32_t __state;
     const Outer& __self;
@@ -995,56 +1024,62 @@ inline __gen_Outer_run_recv Outer::run_recv(std::vector<int32_t>& xs) const {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline P::P(int32_t n) : n(n) {}
 
 // def __init__(self, factor: int32) -> None:
+//     self.factor = factor
 inline Scaler::Scaler(int32_t factor) : factor(factor) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Tagger::Tagger(std::string_view name) : name(name) {}
 
 // def __init__(self, step: int32) -> None:
+//     self.step = step
 inline Adder::Adder(int32_t step) : step(step) {}
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Summer::Summer(int32_t base) : base(base) {}
 
 // def __init__(self, prefix: str) -> None:
+//     self.prefix = prefix
 inline Outer::Outer(std::string_view prefix) : prefix(prefix) {}
 // def count_view(it: Iterator[str]) -> int32:
+//     n = 0
+//     for v in it:
+//         n += len(v)
+//     return n
 template<::tpystd::typing::Iterator<std::string> T_it>
 int32_t count_view(T_it& it) {
-    // n = 0
     int32_t n = 0;
-    // for v in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        // n += len(v)
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(v));
     }
-    // return n
     return n;
 }
 // def total(it: Iterator[int32]) -> int32:
+//     n = 0
+//     for v in it:
+//         n += v
+//     return n
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t total(T_it& it) {
-    // n = 0
     int32_t n = 0;
-    // for v in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // n += v
         n = ::tpy::add_check<int32_t>(n, v);
     }
-    // return n
     return n;
 }
 

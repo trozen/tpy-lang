@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def create_point(x: int32, y: int32) -> Own[Point]:
+//     p: Point = Point()
+//     p.x = x
+//     p.y = y
+//     return copy(p)  # tpyc: warning(/unnecessary copy/)
 Point create_point(int32_t x, int32_t y) {
-    // p: Point = Point()
     Point p = Point();
-    // p.x = x
     p.x = x;
-    // p.y = y
     p.y = y;
-    // return copy(p)  # tpyc: warning(/unnecessary copy/)
     return Point(p);
 }
 
 // def main():
+//     pt: Point = create_point(10, 20)
+//     print(pt.x)
+//     print(pt.y)
 void main() {
-    // pt: Point = create_point(10, 20)
     Point pt = create_point(10, 20);
-    // print(pt.x)
     std::cout << pt.x << "\n";
-    // print(pt.y)
     std::cout << pt.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

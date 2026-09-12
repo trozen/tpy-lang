@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag({"label": "ready"})
+//     x = b.label
+//     if isinstance(x, str):
+//         print(x.upper())
 void main() {
-    // b = Bag({"label": "ready"})
     Bag b = Bag(::tpy::ordered_map<std::string, ::tpy::Any>({{"label", ::tpy::make_any(std::string("ready"))}}));
-    // x = b.label
     ::tpy::Any x = b.__getattr__("label");
-    // if isinstance(x, str):
     if ((x.value.has_value() && x.value.type() == typeid(std::string))) {
         const std::string& __x = std::any_cast<const std::string&>(x.value);
-        // print(x.upper())
         std::cout << ::tpy::str_upper(__x) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

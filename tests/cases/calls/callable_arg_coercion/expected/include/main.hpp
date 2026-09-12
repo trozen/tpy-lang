@@ -9,42 +9,49 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def cb(x: int32) -> None:
 void cb(int32_t x);
+// def take_list(xs: list[int32]) -> None:
 void take_list(const std::vector<int32_t>& xs);
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      __fn(__a0);
-  }
-void use_fn(__F0&& f);
-void use_callable(const std::function<void(int32_t)>& f);
-template<typename __F0>
-  requires requires(__F0& __fn, std::vector<int32_t>& __a0) {
-      __fn(__a0);
-  }
-void use_list_fn(__F0&& f);
-void use_local();
-void main();
-
 // def use_fn(f: Fn[[int32], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);
   }
-void use_fn(__F0&& f) {
-    // n: int = 42
-    ::tpy::BigInt n = ::tpy::BigInt(42);
-    // f(n)
-    f((n).to_fixed_check<int32_t>());
-}
+void use_fn(__F0&& f);
+// def use_callable(f: Callable[[int32], None]) -> None:
+void use_callable(const std::function<void(int32_t)>& f);
 // def use_list_fn(f: Fn[[list[int32]], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, std::vector<int32_t>& __a0) {
       __fn(__a0);
   }
+void use_list_fn(__F0&& f);
+// def use_local() -> None:
+void use_local();
+// def main() -> None:
+void main();
+
+// def use_fn(f: Fn[[int32], None]) -> None:
+//     n: int = 42
+//     f(n)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      __fn(__a0);
+  }
+void use_fn(__F0&& f) {
+    ::tpy::BigInt n = ::tpy::BigInt(42);
+    f((n).to_fixed_check<int32_t>());
+}
+// def use_list_fn(f: Fn[[list[int32]], None]) -> None:
+//     xs = [1, 2, 3]
+//     f(xs)
+template<typename __F0>
+  requires requires(__F0& __fn, std::vector<int32_t>& __a0) {
+      __fn(__a0);
+  }
 void use_list_fn(__F0&& f) {
-    // xs = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // f(xs)
     f(xs);
 }
 

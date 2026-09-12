@@ -6,27 +6,27 @@ namespace tpyapp::main {
 
 // @error_return(ParseError)
 // def parse_digit(s: str) -> int32:
+//     if s == "0":
+//         return 0
+//     if s == "1":
+//         return 1
+//     raise ParseError
 std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
-    // if s == "0":
     if ((s == "0")) {
-        // return 0
         return 0;
     }
-    // if s == "1":
     if ((s == "1")) {
-        // return 1
         return 1;
     }
-    // raise ParseError
     return ::tpy::make_unexpected(ParseError{});
 }
 
 // @error_return(ParseError)
 // def validate(s: str) -> None:
+//     if s == "":
+//         raise ParseError
 std::expected<void, ParseError> validate(std::string_view s) {
-    // if s == "":
     if ((s == "")) {
-        // raise ParseError
         return ::tpy::make_unexpected(ParseError{});
     }
     return {};
@@ -34,78 +34,83 @@ std::expected<void, ParseError> validate(std::string_view s) {
 
 // @error_return(ParseError)
 // def parse_two_digits(a: str, b: str) -> int32:
+//     validate(a)  # ExprStmt propagation (void call, result discarded)
+//     x = parse_digit(a)
+//     y = parse_digit(b)
+//     return x * 10 + y
 std::expected<int32_t, ParseError> parse_two_digits(std::string_view a, std::string_view b) {
-    // validate(a)  # ExprStmt propagation (void call, result discarded)
     {
         auto __try_tmp_1 = validate(a);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
     }
-    // x = parse_digit(a)
     int32_t x;
     {
         auto __try_tmp_2 = parse_digit(a);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
         x = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
-    // y = parse_digit(b)
     int32_t y;
     {
         auto __try_tmp_3 = parse_digit(b);
         if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
         y = ::tpy::unwrap_ref_move(*__try_tmp_3);
     }
-    // return x * 10 + y
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 10)), y));
 }
 
 // def main() -> None:
+//     try:
+//         v = parse_two_digits("1", "0")
+//     except ParseError:
+//         print("error")
+//     else:
+//         print(v)
+//
+//     try:
+//         v2 = parse_two_digits("x", "0")
+//     except ParseError:
+//         print("error")
+//     else:
+//         print(v2)
 void main() {
-    // try:
     int32_t v;
     {
-        // v = parse_two_digits("1", "0")
         {
             auto __try_tmp_5 = parse_two_digits("1", "0");
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_4;
         // except ParseError:
         __except_4:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_4:;
     }
-    // try:
     int32_t v2;
     {
-        // v2 = parse_two_digits("x", "0")
         {
             auto __try_tmp_7 = parse_two_digits("x", "0");
             if (!__try_tmp_7.has_value()) goto __except_6;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_6;
         // except ParseError:
         __except_6:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_6:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

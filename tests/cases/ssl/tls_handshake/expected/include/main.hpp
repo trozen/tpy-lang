@@ -12,17 +12,44 @@ namespace tpyapp::main {
 using ::tpystd::ssl::SSLSocket;
 
 inline constexpr std::string_view __name__ = "__main__";
+// CERT_PEM: Final[str] = """-----BEGIN CERTIFICATE-----
+// MIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw
+// FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1
+// MTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO
+// PQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE
+// tP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN
+// WGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD
+// VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID
+// SAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW
+// Ddslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==
+// -----END CERTIFICATE-----
+// """
 inline constexpr std::string_view CERT_PEM = "-----BEGIN CERTIFICATE-----\nMIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw\nFDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1\nMTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO\nPQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE\ntP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN\nWGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD\nVR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID\nSAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW\nDdslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==\n-----END CERTIFICATE-----\n";
+// KEY_PEM: Final[str] = """-----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg2kn/USvpv4Ilspd2
+// xfLz4BM0UjqqhFJndB7QYY+ijAihRANCAATi4r8fZOEM8tz66TgRALGG7z33xtTC
+// AHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq
+// -----END PRIVATE KEY-----
+// """
 inline constexpr std::string_view KEY_PEM = "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg2kn/USvpv4Ilspd2\nxfLz4BM0UjqqhFJndB7QYY+ijAihRANCAATi4r8fZOEM8tz66TgRALGG7z33xtTC\nAHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq\n-----END PRIVATE KEY-----\n";
+// CERT_PATH: Final[str] = "tpy_test_ssl_cert.pem"
 inline constexpr std::string_view CERT_PATH = "tpy_test_ssl_cert.pem";
+// KEY_PATH: Final[str] = "tpy_test_ssl_key.pem"
 inline constexpr std::string_view KEY_PATH = "tpy_test_ssl_key.pem";
 
+// def tls_ver(v: str) -> str:
 std::string tls_ver(std::string_view v);
+// def write_fixtures() -> None:
 void write_fixtures();
+// def drive(cli: SSLSocket, srv: SSLSocket) -> bool:
 bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv);
+// def handshake_ok() -> None:
 void handshake_ok();
+// def hostname_mismatch() -> None:
 void hostname_mismatch();
+// def cert_none() -> None:
 void cert_none();
+// def main() -> None:
 void main();
 
 void __tpy_init();

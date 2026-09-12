@@ -38,7 +38,9 @@ struct __gen_Cell_rebound_steps;
 struct __gen_Cell_readonly_steps;
 struct __coro_Cell_update;
 
+// def ordinary_aliases(a: Cell, b: Cell) -> None:
 void ordinary_aliases(Cell& a, Cell& b);
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -64,14 +66,14 @@ struct Cell {
     void nested();
 
     // def generic[T](self, value: T) -> T:
+    //     # Generic method and its concrete twin keep a receiver reference.
+    //     me = self  # tpyc: ok
+    //     me.n += 1
+    //     return value
     template<typename T>
     ::tpy::val_or_ref_t<T> generic(::tpy::param_val_or_ref_t<T> value) {
-        // # Generic method and its concrete twin keep a receiver reference.
-        // me = self  # tpyc: ok
         Cell& me = (*this);
-        // me.n += 1
         me.n = ::tpy::add_check<int32_t>(me.n, 1);
-        // return value
         return ::tpy::param_to_return<T>(value);
     }
 
@@ -168,7 +170,7 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 
 namespace tpyapp::main {
 
-// Async coroutine: Cell.update
+// async def update(self) -> int32:
 struct __coro_Cell_update {
     int32_t __state;
     bool __cancel_pending;
@@ -197,7 +199,7 @@ inline __coro_Cell_update Cell::update() {
     return __coro_Cell_update(*this);
 }
 
-// Generator: Cell.steps
+// def steps(self) -> Iterator[int32]:
 struct __gen_Cell_steps : public ::tpy::next_iter_mixin<__gen_Cell_steps, int32_t> {
     int32_t __state;
     Cell& __self;
@@ -225,7 +227,7 @@ inline __gen_Cell_steps Cell::steps() {
     return __gen_Cell_steps(*this);
 }
 
-// Generator: Cell.rebound_steps
+// def rebound_steps(self) -> Iterator[int32]:
 struct __gen_Cell_rebound_steps : public ::tpy::next_iter_mixin<__gen_Cell_rebound_steps, int32_t> {
     int32_t __state;
     Cell& __self;
@@ -254,7 +256,7 @@ inline __gen_Cell_rebound_steps Cell::rebound_steps() {
     return __gen_Cell_rebound_steps(*this);
 }
 
-// Generator: Cell.readonly_steps
+// def readonly_steps(self) -> Iterator[int32]:
 struct __gen_Cell_readonly_steps : public ::tpy::next_iter_mixin<__gen_Cell_readonly_steps, int32_t> {
     int32_t __state;
     const Cell& __self;
@@ -284,140 +286,142 @@ inline __gen_Cell_readonly_steps Cell::readonly_steps() const {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
+//     # Constructor: the alias observes the initialized receiver.
+//     me = self  # tpyc: ok
+//     me.n += 1
 inline Cell::Cell(int32_t n) : n(n) {
-    // # Constructor: the alias observes the initialized receiver.
-    // me = self  # tpyc: ok
     Cell& me = (*this);
-    // me.n += 1
     me.n = ::tpy::add_check<int32_t>(me.n, 1);
 }
 
 // def mutate(self) -> None:
+//     # Method: reads and writes share the same instance in both directions.
+//     me = self  # tpyc: ok
+//     me.n += 2
+//     self.n += 3
+//     print("method", self.n, me.n)
 inline void Cell::mutate() {
-    // # Method: reads and writes share the same instance in both directions.
-    // me = self  # tpyc: ok
     Cell& me = (*this);
-    // me.n += 2
     me.n = ::tpy::add_check<int32_t>(me.n, 2);
-    // self.n += 3
     this->n = ::tpy::add_check<int32_t>(this->n, 3);
-    // print("method", self.n, me.n)
     std::cout << "method" << " " << this->n << " " << me.n << "\n";
 }
 
 // @readonly
 // def read(self) -> int32:
+//     # Explicit readonly receiver produces a const reference alias.
+//     me = self  # tpyc: ok
+//     return me.n
 inline int32_t Cell::read() const {
-    // # Explicit readonly receiver produces a const reference alias.
-    // me = self  # tpyc: ok
     const Cell& me = (*this);
-    // return me.n
     return me.n;
 }
 
 // def inferred_read(self) -> int32:
+//     # Inferred readonly receiver has the same alias representation.
+//     me = self  # tpyc: ok
+//     return me.n
 inline int32_t Cell::inferred_read() const {
-    // # Inferred readonly receiver has the same alias representation.
-    // me = self  # tpyc: ok
     const Cell& me = (*this);
-    // return me.n
     return me.n;
 }
 
 // def nested(self) -> None:
+//     def inner() -> None:
+//         # Non-escaping closure: the alias still denotes the receiver.
+//         me = self  # tpyc: ok
+//         me.n += 4
+//
+//     inner()
+//     try:
+//         # A distinct name avoids the separate nested-scope prescan collision.
+//         guarded = self  # tpyc: ok
+//         guarded.n += 5
+//     finally:
+//         print("closure_try", self.n)
 inline void Cell::nested() {
-    // def inner() -> None:
     auto inner = [this]() {
-        // # Non-escaping closure: the alias still denotes the receiver.
-        // me = self  # tpyc: ok
         Cell& me = (*this);
-        // me.n += 4
         me.n = ::tpy::add_check<int32_t>(me.n, 4);
     };
-    // inner()
     inner();
-    // try:
     Cell* guarded;
     {
         try {
-            // # A distinct name avoids the separate nested-scope prescan collision.
-            // guarded = self  # tpyc: ok
             guarded = &((*this));
-            // guarded.n += 5
             guarded->n = ::tpy::add_check<int32_t>(guarded->n, 5);
         } catch (...) {
-            // print("closure_try", self.n)
             std::cout << "closure_try" << " " << this->n << "\n";
             throw;
         }
-        // print("closure_try", self.n)
         std::cout << "closure_try" << " " << this->n << "\n";
     }
-    // # A distinct name avoids the separate nested-scope prescan collision.
 }
 
 // def concrete(self, value: int32) -> int32:
+//     me = self  # tpyc: ok
+//     me.n += 1
+//     return value
 inline int32_t Cell::concrete(int32_t value) {
-    // me = self  # tpyc: ok
     Cell& me = (*this);
-    // me.n += 1
     me.n = ::tpy::add_check<int32_t>(me.n, 1);
-    // return value
     return value;
 }
 
 // def reassign(self, other: Cell) -> None:
+//     # A later rebind requires a pointer alias from its initial self source.
+//     me = self  # tpyc: ok
+//     me.n += 1
+//     me = other
+//     me.n += 2
+//     # Rebinding back to self preserves the existing address conversion.
+//     me = self  # tpyc: ok
+//     me.n += 3
+//     print("reassign", self.n, other.n)
 inline void Cell::reassign(Cell& other) {
-    // # A later rebind requires a pointer alias from its initial self source.
-    // me = self  # tpyc: ok
     Cell* me = &((*this));
-    // me.n += 1
     me->n = ::tpy::add_check<int32_t>(me->n, 1);
-    // me = other
     me = &(other);
-    // me.n += 2
     me->n = ::tpy::add_check<int32_t>(me->n, 2);
-    // # Rebinding back to self preserves the existing address conversion.
-    // me = self  # tpyc: ok
     me = &((*this));
-    // me.n += 3
     me->n = ::tpy::add_check<int32_t>(me->n, 3);
-    // print("reassign", self.n, other.n)
     std::cout << "reassign" << " " << this->n << " " << other.n << "\n";
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Consumed::Consumed(int32_t n) : n(n) {}
 
 // def finish(self: Own[Self]) -> Own[Self]:
+//     # Consuming receiver: aliasing borrows; only the final return moves.
+//     me = self  # tpyc: ok
+//     me.n += 1
+//     print("consuming", self.n, me.n)
+//     return self
 inline Consumed Consumed::finish() && {
-    // # Consuming receiver: aliasing borrows; only the final return moves.
-    // me = self  # tpyc: ok
     Consumed& me = (*this);
-    // me.n += 1
     me.n = ::tpy::add_check<int32_t>(me.n, 1);
-    // print("consuming", self.n, me.n)
     std::cout << "consuming" << " " << this->n << " " << me.n << "\n";
-    // return self
     return std::move((*this));
 }
 
 // def narrowed(self) -> None:
+//     if isinstance(self, Derived):
+//         # Narrowed self already has a named lvalue; preserve that path.
+//         me = self  # tpyc: ok
+//         me.n += 1
+//         print("narrowed", self.n, me.n)
 inline void Base::narrowed() {
-    // if isinstance(self, Derived):
     if (Derived* __self_ptr = dynamic_cast<Derived*>(this); (__self_ptr != nullptr)) {
-        // # Narrowed self already has a named lvalue; preserve that path.
-        // me = self  # tpyc: ok
         Derived& me = (*__self_ptr);
-        // me.n += 1
         me.n = ::tpy::add_check<int32_t>(me.n, 1);
-        // print("narrowed", self.n, me.n)
         std::cout << "narrowed" << " " << (*__self_ptr).n << " " << me.n << "\n";
     }
-    // # Narrowed self already has a named lvalue; preserve that path.
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Derived::Derived(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

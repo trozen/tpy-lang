@@ -3,6 +3,26 @@
 
 namespace tpyapp::main {
 
+std::vector<::tpy::BigInt>* log{};
+
+// def main():
+//     ps = [P()] * 3
+//     print(len(ps), len(log))
+//     pair = [10, 20] * 3
+//     print(len(pair), pair[0], pair[1], pair[3], pair[5])
+void main() {
+    std::array<P, 3> ps = ({
+        P __rep_0 = P();
+        ::tpy::array_from_index<P, 3>([&](std::size_t) -> P { return __rep_0; });
+    });
+    std::cout << ::tpy::__len__(ps) << " " << ::tpy::__len__((*log)) << "\n";
+    std::array<int32_t, 6> pair = ({
+        std::array<int32_t, 2> __rep_1{10, 20};
+        ::tpy::array_from_index<int32_t, 6>([&](std::size_t __i_1) -> int32_t { return __rep_1[__i_1 % 2]; });
+    });
+    std::cout << ::tpy::__len__(pair) << " " << ::tpy::__getitem__(pair, 0) << " " << ::tpy::__getitem__(pair, 1) << " " << ::tpy::__getitem__(pair, 3) << " " << ::tpy::__getitem__(pair, 5) << "\n";
+}
+
 // # A fixed-count repeat into a stack Array evaluates the element once and
 // # copies each slot in place -- no buffer default-construction running element
 // # ctor side effects N extra times. Multi-element repeats interleave. Copy
@@ -10,41 +30,15 @@ namespace tpyapp::main {
 // # the documented repeat divergence), so this test only reads, never mutates
 // # through an alias.
 // log: list[int] = []
-std::vector<::tpy::BigInt>* log{};
-
-// def main():
-void main() {
-    // ps = [P()] * 3
-    std::array<P, 3> ps = ({
-        P __rep_0 = P();
-        ::tpy::array_from_index<P, 3>([&](std::size_t) -> P { return __rep_0; });
-    });
-    // print(len(ps), len(log))
-    std::cout << ::tpy::__len__(ps) << " " << ::tpy::__len__((*log)) << "\n";
-    // pair = [10, 20] * 3
-    std::array<int32_t, 6> pair = ({
-        std::array<int32_t, 2> __rep_1{10, 20};
-        ::tpy::array_from_index<int32_t, 6>([&](std::size_t __i_1) -> int32_t { return __rep_1[__i_1 % 2]; });
-    });
-    // print(len(pair), pair[0], pair[1], pair[3], pair[5])
-    std::cout << ::tpy::__len__(pair) << " " << ::tpy::__getitem__(pair, 0) << " " << ::tpy::__getitem__(pair, 1) << " " << ::tpy::__getitem__(pair, 3) << " " << ::tpy::__getitem__(pair, 5) << "\n";
-}
-
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A fixed-count repeat into a stack Array evaluates the element once and
-    // # copies each slot in place -- no buffer default-construction running element
-    // # ctor side effects N extra times. Multi-element repeats interleave. Copy
-    // # semantics per slot are intended (CPython aliases the same object instead --
-    // # the documented repeat divergence), so this test only reads, never mutates
-    // # through an alias.
-    // log: list[int] = []
     static std::vector<::tpy::BigInt> __global_slot_1 = std::vector<::tpy::BigInt>{};
     log = &__global_slot_1;
-    // main()
     main();
 }
 

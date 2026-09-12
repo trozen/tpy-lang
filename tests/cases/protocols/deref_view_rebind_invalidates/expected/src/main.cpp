@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def f() -> str:
+//     b: Box[Pet] = Box(Dog())
+//     if isinstance(b, Dog):
+//         b = Box(Cat())           # rebind drops the deref-view narrowing
+//         return b.name()          # resolves against Cat, not stale Dog
+//     return "unreachable"
 std::string f() {
     std::optional<::tpystd::tplib::box::Box<Pet>> __slot_2;
-    // b: Box[Pet] = Box(Dog())
     ::tpystd::tplib::box::Box<Pet> __slot_1 = ::tpystd::tplib::box::Box<Dog>(Dog());
     ::tpystd::tplib::box::Box<Pet>* b = &__slot_1;
-    // if isinstance(b, Dog):
     if (Dog* __b_ptr = dynamic_cast<Dog*>(&((*b).__deref__())); (__b_ptr != nullptr)) {
-        // b = Box(Cat())           # rebind drops the deref-view narrowing
         b = &*(__slot_2 = ::tpystd::tplib::box::Box<Cat>(Cat()));
-        // return b.name()          # resolves against Cat, not stale Dog
         return b->__deref__().name();
     }
-    // return "unreachable"
     return "unreachable";
 }
 
 // def main() -> None:
+//     print(f())
 void main() {
-    // print(f())
     std::cout << f() << "\n";
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

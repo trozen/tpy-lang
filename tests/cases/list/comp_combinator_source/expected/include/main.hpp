@@ -11,10 +11,15 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def dbl(v: int32) -> int32:
 int32_t dbl(int32_t v);
+// def odd(v: int32) -> bool:
 bool odd(int32_t v);
+// def node_pos(n: Node) -> bool:
 bool node_pos(const Node& n);
+// def make_nodes() -> Own[list[Node]]:
 std::vector<Node> make_nodes();
+// def main() -> None:
 void main();
 
 // class Node:
@@ -38,13 +43,14 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def bump(self, d: int32) -> int32:
+//     self.v += d
+//     return self.v
 inline int32_t Node::bump(int32_t d) {
-    // self.v += d
     this->v = ::tpy::add_check<int32_t>(this->v, d);
-    // return self.v
     return this->v;
 }
 void __tpy_init();

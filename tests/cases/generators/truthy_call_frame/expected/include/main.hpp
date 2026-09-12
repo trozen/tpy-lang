@@ -15,9 +15,13 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_while;
 struct __gen_gen_branch;
 
+// def make() -> Own[Rec]:
 Rec make();
+// def gen_while(n: int) -> Iterator[int]:
 __gen_gen_while gen_while(::tpy::BigInt n);
+// def gen_branch(n: int) -> Iterator[int]:
 __gen_gen_branch gen_branch(::tpy::BigInt n);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -36,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
     return os;
 }
 
-// Generator: gen_while
+// def gen_while(n: int) -> Iterator[int]:
 struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt n;
@@ -61,7 +65,7 @@ struct __gen_gen_while : public ::tpy::next_iter_mixin<__gen_gen_while, ::tpy::B
     }
 };
 
-// Generator: gen_branch
+// def gen_branch(n: int) -> Iterator[int]:
 struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt n;
@@ -88,6 +92,7 @@ struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, ::tpy:
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline Rec::Rec(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

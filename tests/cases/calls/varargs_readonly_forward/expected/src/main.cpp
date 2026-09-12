@@ -5,54 +5,54 @@ namespace tpyapp::main {
 
 
 // def take_ro(*items: readonly[Box]) -> int32:
+//     total: int32 = 0
+//     for b in items:
+//         total += b.val
+//     return total
 int32_t take_ro(::tpy::varargs<const Box> items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // total += b.val
         total = ::tpy::add_check<int32_t>(total, b.val);
     }
-    // return total
     return total;
 }
 
 // def forward_mutable(*xs: Box) -> int32:
+//     return take_ro(*xs)
 int32_t forward_mutable(::tpy::varargs<const Box> xs) {
-    // return take_ro(*xs)
     return take_ro(::tpy::varargs<const Box>(xs));
 }
 
 // def forward_readonly(*xs: readonly[Box]) -> int32:
+//     return take_ro(*xs)
 int32_t forward_readonly(::tpy::varargs<const Box> xs) {
-    // return take_ro(*xs)
     return take_ro(::tpy::varargs<const Box>(xs));
 }
 
 // def main() -> None:
+//     a = Box(5)
+//     b = Box(6)
+//     print(forward_mutable(a, b))
+//     print(forward_readonly(a, b))
 void main() {
-    // a = Box(5)
     Box a = Box(5);
-    // b = Box(6)
     Box b = Box(6);
-    // print(forward_mutable(a, b))
     std::array<const Box*, 2> __tmp_1{&a, &b};
     std::cout << forward_mutable(::tpy::varargs<const Box>(__tmp_1)) << "\n";
-    // print(forward_readonly(a, b))
     std::array<const Box*, 2> __tmp_2{&a, &b};
     std::cout << forward_readonly(::tpy::varargs<const Box>(__tmp_2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

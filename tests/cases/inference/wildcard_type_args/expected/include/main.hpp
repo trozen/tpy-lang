@@ -14,13 +14,18 @@ template<typename T> struct Mapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity[T](x: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
+// def pair_func[T, U](a: T, b: U) -> T:
 template<typename T, typename U>
 ::tpy::val_or_ref_t<T> pair_func(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
+// def triple[A, B, C](a: A, b: B, c: C) -> B:
 template<typename A, typename B, typename C>
 ::tpy::val_or_ref_t<B> triple(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b, ::tpy::param_val_or_ref_t<C> c);
+// def take_box(b: Box[int32]) -> None:
 void take_box(Box<int32_t>& b);
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -30,12 +35,13 @@ struct Box {
     T val;
 
     // def __init__(self, val: T) -> None:
+    //     self.val = val
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def get(self) -> T:
+    //     return self.val
     ::tpy::val_or_ref_t<T> get() {
-        // return self.val
         return this->val;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -56,6 +62,8 @@ struct Pair {
     U b;
 
     // def __init__(self, a: T, b: U) -> None:
+    //     self.a = a
+    //     self.b = b
     Pair() = default;
     explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<U> b) : a(a), b(b) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -74,19 +82,19 @@ struct Container {
     T val;
 
     // def __init__(self) -> None:
+    //     pass
     Container() {
-        // pass
     }
 
     // def set(self, val: T) -> None:
+    //     self.val = val
     void set(::tpy::param_val_or_ref_t<T> val) {
-        // self.val = val
         this->val = ::tpy::param_to_storage<T>(val);
     }
 
     // def get(self) -> T:
+    //     return self.val
     ::tpy::val_or_ref_t<T> get() {
-        // return self.val
         return this->val;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -105,13 +113,14 @@ struct Mapper {
     T val;
 
     // def __init__(self, val: T) -> None:
+    //     self.val = val
     Mapper() = default;
     explicit Mapper(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def transform[U, V](self, u: U, v: V) -> V:
+    //     return v
     template<typename U, typename V>
     ::tpy::val_or_cref_t<V> transform(::tpy::readonly_form_t<U> u, ::tpy::readonly_form_t<V> v) const {
-        // return v
         return ::tpy::param_to_return<V>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Mapper";
@@ -124,21 +133,21 @@ inline std::ostream& operator<<(std::ostream& os, const Mapper<T>& obj) {
 }
 
 // def identity[T](x: T) -> T:
+//     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    // return x
     return ::tpy::param_to_return<T>(x);
 }
 // def pair_func[T, U](a: T, b: U) -> T:
+//     return a
 template<typename T, typename U>
 ::tpy::val_or_ref_t<T> pair_func(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-    // return a
     return ::tpy::param_to_return<T>(a);
 }
 // def triple[A, B, C](a: A, b: B, c: C) -> B:
+//     return b
 template<typename A, typename B, typename C>
 ::tpy::val_or_ref_t<B> triple(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b, ::tpy::param_val_or_ref_t<C> c) {
-    // return b
     return ::tpy::param_to_return<B>(b);
 }
 

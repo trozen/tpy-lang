@@ -12,7 +12,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show_request(method: str, url: str, body: bytes | None,
+//                  headers: dict[str, str]) -> None:
 void show_request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>& headers);
+// def main() -> None:
 void main();
 
 void __tpy_init();

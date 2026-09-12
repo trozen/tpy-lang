@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     g = Grid()
+//     print(g.n, g.cells[0], g.cells[1])
+//     # Mutating through the field proves the element is stored in place.
+//     g.boxes[0].v = 9
+//     print(g.boxes[0].v)
 void main() {
-    // g = Grid()
     Grid g = Grid();
-    // print(g.n, g.cells[0], g.cells[1])
     std::cout << g.n << " " << ::tpy::__getitem__(g.cells, 0) << " " << ::tpy::__getitem__(g.cells, 1) << "\n";
-    // # Mutating through the field proves the element is stored in place.
-    // g.boxes[0].v = 9
     ::tpy::__getitem__(g.boxes, 0).v = 9;
-    // print(g.boxes[0].v)
     std::cout << ::tpy::__getitem__(g.boxes, 0).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

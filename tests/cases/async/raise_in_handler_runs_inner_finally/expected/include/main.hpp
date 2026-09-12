@@ -14,11 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_fail_value;
 struct __coro_go;
 
+// async def fail_value() -> int32:
 __coro_fail_value fail_value();
+// async def go() -> int32:
 __coro_go go();
+// def main() -> None:
 void main();
 
-// Async coroutine: fail_value
+// async def fail_value() -> int32:
 struct __coro_fail_value {
     int32_t __state;
     bool __cancel_pending;
@@ -39,7 +42,7 @@ struct __coro_fail_value {
     }
 };
 
-// Async coroutine: go
+// async def go() -> int32:
 struct __coro_go {
     ::tpy::frame_state __state;
     bool __cancel_pending;

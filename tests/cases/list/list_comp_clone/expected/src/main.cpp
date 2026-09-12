@@ -5,14 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     originals: list[Rc[Node]] = [
+//         Rc.new(Node(10)),
+//         Rc.new(Node(20)),
+//         Rc.new(Node(30)),
+//     ]
+//     clones: list[Rc[Node]] = [x.clone() for x in originals]
+//     for c in clones:
+//         print(c.get().value)
 void main() {
-    // originals: list[Rc[Node]] = [
-    // Rc.new(Node(10)),
-    // Rc.new(Node(20)),
-    // Rc.new(Node(30)),
-    // ]
     std::vector<::tpystd::tplib::rc::Rc<Node>> originals = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Node>>(Rc<Node>::new_<Node>(Node(10)), Rc<Node>::new_<Node>(Node(20)), Rc<Node>::new_<Node>(Node(30)));
-    // clones: list[Rc[Node]] = [x.clone() for x in originals]
     std::vector<::tpystd::tplib::rc::Rc<Node>> clones = ({
         std::vector<::tpystd::tplib::rc::Rc<Node>> __result;
         auto& __obj_0 = originals;
@@ -25,25 +27,24 @@ void main() {
         }
         std::move(__result);
     });
-    // for c in clones:
     auto& __obj_1 = clones;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& c = *__beg_1;
-        // print(c.get().value)
         std::cout << c.get().value << "\n";
     }
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

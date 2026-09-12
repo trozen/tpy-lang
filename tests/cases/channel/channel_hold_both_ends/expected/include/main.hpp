@@ -16,10 +16,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_roundtrip;
 
+// async def roundtrip() -> int:
 __coro_roundtrip roundtrip();
+// def main() -> None:
 void main();
 
-// Async coroutine: roundtrip
+// async def roundtrip() -> int:
 struct __coro_roundtrip {
     int32_t __state;
     bool __cancel_pending;

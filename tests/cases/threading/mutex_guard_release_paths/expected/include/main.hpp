@@ -10,8 +10,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def append_then_return(m: Mutex[list[int32]]) -> None:
 void append_then_return(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& m);
+// def append_then_raise(m: Mutex[list[int32]]) -> None:
 void append_then_raise(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& m);
+// def main() -> None:
 void main();
 
 void __tpy_init();

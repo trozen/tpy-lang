@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     setattr(b, "name", "alice")
+//     print(cast(str, b.name))
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // setattr(b, "name", "alice")
     b.__setattr__("name", ::tpy::make_any(std::string("alice")));
-    // print(cast(str, b.name))
     std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("name")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

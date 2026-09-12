@@ -5,14 +5,19 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     srv = create_server(("127.0.0.1", 0))
+//     srv.setblocking(False)
+//     loop = asyncio.get_running_loop()
+//     try:
+//         await asyncio.wait_for(loop.sock_accept(srv), 0.01)
+//         print("not reached")
+//     except TimeoutError:
+//         print("accept timed out")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // srv = create_server(("127.0.0.1", 0))
         srv.emplace(::tpystd::socket::create_server(std::tuple<std::string, int32_t>{"127.0.0.1", 0}));
-        // srv.setblocking(False)
         (*srv).setblocking(false);
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __state = S_JOIN_1;
         continue;
@@ -23,13 +28,11 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("not reached")
             std::cout << "not reached" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
             __sub_0.reset();
-            // print("accept timed out")
             std::cout << "accept timed out" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -44,12 +47,10 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.wait_for(loop.sock_accept(srv), 0.01)
             __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>>>((*loop).sock_accept((*srv))), 0.01);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
-            // print("accept timed out")
             std::cout << "accept timed out" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -69,25 +70,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio epoll reactor (v2): cancelling a parked _SockAccept. A listening
+// # socket with no incoming connection parks sock_accept on EPOLLIN; wait_for's
+// # timeout cancels it (cancel -> _reactor_unregister_fd -> CancelledError ->
+// # TimeoutError). The accept-side analog of the recv/sendall cancel coverage.
+// import asyncio
+// from socket import create_server
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio epoll reactor (v2): cancelling a parked _SockAccept. A listening
-    // # socket with no incoming connection parks sock_accept on EPOLLIN; wait_for's
-    // # timeout cancels it (cancel -> _reactor_unregister_fd -> CancelledError ->
-    // # TimeoutError). The accept-side analog of the recv/sendall cancel coverage.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import create_server
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

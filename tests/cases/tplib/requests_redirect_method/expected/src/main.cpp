@@ -5,101 +5,102 @@ namespace tpyapp::main {
 
 
 // def run_redirect(status_line: bytes) -> tuple[bytes, bool, bool]:
+//     a, b = socket.socketpair()
+//     c, d = socket.socketpair()
+//     b.sendall(status_line + b"\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n")
+//     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+//     s = requests.Session()
+//     h0 = HTTPConnection("api.test", 80)
+//     h0.sock = a
+//     s._connection = Box(h0)
+//     h1 = HTTPConnection("api.test", 80)
+//     h1.sock = c
+//     s._redirect_connections = [Box(h1)]
+//     r = s.post("http://api.test/submit", b'{"x":1}', None, None,
+//                {"Content-Type": "text/plain"})
+//     print(r.status_code, r.url)
+//     b.recv(65536)                         # drain hop-0 request
+//     second = d.recv(65536)
+//     b.close()
+//     d.close()
+//     request_line = second.split(b"\r\n")[0]
+//     has_body = b'{"x":1}' in second
+//     has_content_type = b"text/plain" in second
+//     return (request_line, has_body, has_content_type)
 std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // c, d = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    // b.sendall(status_line + b"\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n")
     b.sendall((::tpy::bytes_concat(status_line, ::tpy::bytes_literal_owned("\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n", 40))));
-    // d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // h0 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h0.sock = a
     h0.sock = std::move(a);
-    // s._connection = Box(h0)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h0));
-    // h1 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h1.sock = c
     h1.sock = std::move(c);
-    // s._redirect_connections = [Box(h1)]
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
-    // r = s.post("http://api.test/submit", b'{"x":1}', None, None,
-    // {"Content-Type": "text/plain"})
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("{\"x\":1}", 7);
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, nullptr, &(__tmp_2));
-    // print(r.status_code, r.url)
     std::cout << r.status_code << " " << r.url << "\n";
-    // b.recv(65536)                         # drain hop-0 request
     b.recv(65536);
-    // second = d.recv(65536)
     ::tpy::Bytes second = d.recv(65536);
-    // b.close()
     b.close();
-    // d.close()
     d.close();
-    // request_line = second.split(b"\r\n")[0]
     ::tpy::Bytes request_line = ::tpy::__getitem__(::tpy::bytes_split(second, ::tpy::bytes_literal("\r\n", 2)), 0);
-    // has_body = b'{"x":1}' in second
     bool has_body = (::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("{\"x\":1}", 7)));
-    // has_content_type = b"text/plain" in second
     bool has_content_type = (::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("text/plain", 10)));
-    // return (request_line, has_body, has_content_type)
     return std::tuple<::tpy::Bytes, bool, bool>{request_line, has_body, has_content_type};
 }
 
 // def report(status_line: bytes) -> None:
+//     line, has_body, has_ct = run_redirect(status_line)
+//     print(line, has_body, has_ct)
 void report(::tpy::BytesView status_line) {
-    // line, has_body, has_ct = run_redirect(status_line)
     auto __tup_1 = run_redirect(status_line);
     ::tpy::BytesView line = std::get<0>(__tup_1);
     bool has_body = std::get<1>(__tup_1);
     bool has_ct = std::get<2>(__tup_1);
-    // print(line, has_body, has_ct)
     std::cout << ::tpy::BytesPrinter(line) << " " << ::tpy::print_bool(has_body) << " " << ::tpy::print_bool(has_ct) << "\n";
 }
 
 // def main() -> None:
+//     report(b"HTTP/1.1 301 Moved Permanently")   # POST -> GET, body + CT dropped
+//     report(b"HTTP/1.1 303 See Other")           # POST -> GET, body + CT dropped
+//     report(b"HTTP/1.1 307 Temporary Redirect")  # POST kept, body + CT preserved
+//     report(b"HTTP/1.1 308 Permanent Redirect")  # POST kept, body + CT preserved
 void main() {
-    // report(b"HTTP/1.1 301 Moved Permanently")   # POST -> GET, body + CT dropped
     report(::tpy::bytes_literal("HTTP/1.1 301 Moved Permanently", 30));
-    // report(b"HTTP/1.1 303 See Other")           # POST -> GET, body + CT dropped
     report(::tpy::bytes_literal("HTTP/1.1 303 See Other", 22));
-    // report(b"HTTP/1.1 307 Temporary Redirect")  # POST kept, body + CT preserved
     report(::tpy::bytes_literal("HTTP/1.1 307 Temporary Redirect", 31));
-    // report(b"HTTP/1.1 308 Permanent Redirect")  # POST kept, body + CT preserved
     report(::tpy::bytes_literal("HTTP/1.1 308 Permanent Redirect", 31));
 }
 
+// # Method/body rewrite on redirect, mirroring requests.Session.rebuild_method:
+// # 301 and 303 coerce POST to GET and drop the body plus its Content-Type header;
+// # 307 and 308 preserve method, body, and headers. (no_cpython -- the socket-
+// # injection seam isn't real-requests API; parity is against requests' documented
+// # rules, not a live run.) Each flow inspects the bytes the second hop sends.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Method/body rewrite on redirect, mirroring requests.Session.rebuild_method:
-    // # 301 and 303 coerce POST to GET and drop the body plus its Content-Type header;
-    // # 307 and 308 preserve method, body, and headers. (no_cpython -- the socket-
-    // # injection seam isn't real-requests API; parity is against requests' documented
-    // # rules, not a live run.) Each flow inspects the bytes the second hop sends.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

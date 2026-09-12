@@ -18,6 +18,7 @@ struct __gen_Box_gen_local_bind;
 struct __gen_Box_gen_try_body;
 struct __gen_Box_gen_local_bind_loop;
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -48,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Generator: Box.gen_field
+// def gen_field(self) -> Iterator[int32]:
 struct __gen_Box_gen_field : public ::tpy::next_iter_mixin<__gen_Box_gen_field, int32_t> {
     int32_t __state;
     const Box& __self;
@@ -76,7 +77,7 @@ inline __gen_Box_gen_field Box::gen_field() const {
     return __gen_Box_gen_field(*this);
 }
 
-// Generator: Box.gen_reassign
+// def gen_reassign(self) -> Iterator[int32]:
 struct __gen_Box_gen_reassign : public ::tpy::next_iter_mixin<__gen_Box_gen_reassign, int32_t> {
     int32_t __state;
     const Box& __self;
@@ -104,7 +105,7 @@ inline __gen_Box_gen_reassign Box::gen_reassign() const {
     return __gen_Box_gen_reassign(*this);
 }
 
-// Generator: Box.gen_reguard
+// def gen_reguard(self) -> Iterator[int32]:
 struct __gen_Box_gen_reguard : public ::tpy::next_iter_mixin<__gen_Box_gen_reguard, int32_t> {
     int32_t __state;
     const Box& __self;
@@ -134,7 +135,7 @@ inline __gen_Box_gen_reguard Box::gen_reguard() const {
     return __gen_Box_gen_reguard(*this);
 }
 
-// Generator: Box.gen_local_bind
+// def gen_local_bind(self) -> Iterator[int32]:
 struct __gen_Box_gen_local_bind : public ::tpy::next_iter_mixin<__gen_Box_gen_local_bind, int32_t> {
     int32_t __state;
     const Box& __self;
@@ -164,7 +165,7 @@ inline __gen_Box_gen_local_bind Box::gen_local_bind() const {
     return __gen_Box_gen_local_bind(*this);
 }
 
-// Generator: Box.gen_try_body
+// def gen_try_body(self) -> Iterator[int32]:
 struct __gen_Box_gen_try_body : public ::tpy::next_iter_mixin<__gen_Box_gen_try_body, int32_t> {
     int32_t __state;
     const Box& __self;
@@ -195,7 +196,7 @@ inline __gen_Box_gen_try_body Box::gen_try_body() const {
     return __gen_Box_gen_try_body(*this);
 }
 
-// Generator: Box.gen_local_bind_loop
+// def gen_local_bind_loop(self) -> Iterator[int32]:
 struct __gen_Box_gen_local_bind_loop : public ::tpy::next_iter_mixin<__gen_Box_gen_local_bind_loop, int32_t> {
     int32_t __state;
     const Box& __self;
@@ -230,6 +231,7 @@ inline __gen_Box_gen_local_bind_loop Box::gen_local_bind_loop() const {
 
 
 // def __init__(self, v: int32 | None) -> None:
+//     self.f = v
 inline Box::Box(std::optional<int32_t> v) : f(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

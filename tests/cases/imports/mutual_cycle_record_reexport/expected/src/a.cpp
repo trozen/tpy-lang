@@ -7,16 +7,16 @@ namespace tpyapp::a {
 
 
 // def make_b(self) -> Own[BType]:
+//     return BType()
 ::tpyapp::b::BType AType::make_b() const {
-    // return BType()
     return ::tpyapp::b::BType();
 }
+// from b import BType
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from b import BType
     ::tpyapp::b::__tpy_init();
 }
 

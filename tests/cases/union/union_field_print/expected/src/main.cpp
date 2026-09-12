@@ -5,56 +5,58 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog("Rex")
+//     pet: Dog | Cat = d
+//     z = Zoo(pet, "test")
+//     # Print the union field components directly (narrowing required for union)
+//     p = z.pet
+//     if isinstance(p, Dog):
+//         print(f"Zoo(pet={repr(p)}, tag='{z.tag}')")
+//     else:
+//         print(f"Zoo(pet={repr(p)}, tag='{z.tag}')")
+//
+//     c = Cat("Whiskers")
+//     pet2: Dog | Cat = c
+//     z2 = Zoo(pet2, "cats")
+//     p2 = z2.pet
+//     if isinstance(p2, Cat):
+//         print(f"Zoo(pet={repr(p2)}, tag='{z2.tag}')")
+//     else:
+//         print(f"Zoo(pet={repr(p2)}, tag='{z2.tag}')")
 void main() {
-    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    // pet: Dog | Cat = d
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
-    // z = Zoo(pet, "test")
     Zoo z = Zoo(pet.as_const(), "test");
-    // # Print the union field components directly (narrowing required for union)
-    // p = z.pet
     ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
-    // if isinstance(p, Dog):
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
-        // print(f"Zoo(pet={repr(p)}, tag='{z.tag}')")
         std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p), z.tag) << "\n";
-    // else:
     } else {
         auto& __p = *std::get<Cat*>(p);
-        // print(f"Zoo(pet={repr(p)}, tag='{z.tag}')")
         std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p), z.tag) << "\n";
     }
-    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    // pet2: Dog | Cat = c
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
-    // z2 = Zoo(pet2, "cats")
     Zoo z2 = Zoo(pet2.as_const(), "cats");
-    // p2 = z2.pet
     ::tpy::Union<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z2.pet);
-    // if isinstance(p2, Cat):
     if (std::holds_alternative<Cat*>(p2)) {
         auto& __p2 = *std::get<Cat*>(p2);
-        // print(f"Zoo(pet={repr(p2)}, tag='{z2.tag}')")
         std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p2), z2.tag) << "\n";
-    // else:
     } else {
         auto& __p2 = *std::get<Dog*>(p2);
-        // print(f"Zoo(pet={repr(p2)}, tag='{z2.tag}')")
         std::cout << std::format("Zoo(pet={}, tag='{}')", ::tpy::repr_of(__p2), z2.tag) << "\n";
     }
 }
 
+// # Printing records with non-value union fields via __repr__ with isinstance dispatch
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Printing records with non-value union fields via __repr__ with isinstance dispatch
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

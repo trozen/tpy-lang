@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(int32(10))
+//     print(c.total(int32(1)))
+//     print(c.total(int32(1), int32(2), int32(3)))
+//     print(c.total(int32(1), int32(2), int32(3), multiplier=int32(10)))
 void main() {
-    // c = Counter(int32(10))
     Counter c = Counter(10);
-    // print(c.total(int32(1)))
     std::cout << c.total(1, ::tpy::varargs<const int32_t>(), 1) << "\n";
-    // print(c.total(int32(1), int32(2), int32(3)))
     std::array<const int32_t, 2> __tmp_1{2, 3};
     std::cout << c.total(1, ::tpy::varargs<const int32_t>(__tmp_1), 1) << "\n";
-    // print(c.total(int32(1), int32(2), int32(3), multiplier=int32(10)))
     std::array<const int32_t, 2> __tmp_2{2, 3};
     std::cout << c.total(1, ::tpy::varargs<const int32_t>(__tmp_2), 10) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

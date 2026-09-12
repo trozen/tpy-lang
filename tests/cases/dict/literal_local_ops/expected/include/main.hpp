@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def dict_ops() -> int32:
 int32_t dict_ops();
+// def empty_dict(k: int32, v: int32) -> int32:
 int32_t empty_dict(int32_t k, int32_t v);
+// def set_ops() -> int32:
 int32_t set_ops();
+// def main() -> None:
 void main();
 
 void __tpy_init();

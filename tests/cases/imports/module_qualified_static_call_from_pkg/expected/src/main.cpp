@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = models.Widget.make(21)  # tpyc: ok
+//     print(w.value)
+//     print(models.Widget.SIZE)  # tpyc: ok
 void main() {
-    // w = models.Widget.make(21)  # tpyc: ok
     ::tpyapp::pkg::models::Widget w = ::tpyapp::pkg::models::Widget::make(21);
-    // print(w.value)
     std::cout << w.value << "\n";
-    // print(models.Widget.SIZE)  # tpyc: ok
     std::cout << ::tpyapp::pkg::models::Widget::SIZE << "\n";
 }
 
+// # Regression: `from pkg import sub` binds the submodule as a namespace, then
+// # `sub.Class.method()` and `sub.Class.CONST` resolve through it. The binding
+// # has a dotted `import_source` (e.g. ("pkg.models", "pkg.models")), different
+// # from `import m` and `import m as alias`; covers a separate _resolve_module_name
+// # code path.
+// from pkg import models
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `from pkg import sub` binds the submodule as a namespace, then
-    // # `sub.Class.method()` and `sub.Class.CONST` resolve through it. The binding
-    // # has a dotted `import_source` (e.g. ("pkg.models", "pkg.models")), different
-    // # from `import m` and `import m as alias`; covers a separate _resolve_module_name
-    // # code path.
-    // from pkg import models
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::models::__tpy_init();
-    // main()
     main();
 }
 

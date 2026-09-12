@@ -7,72 +7,72 @@ namespace tpyapp::main {
 // # A value-repr Optional[str]/Optional[bytes] local (None-init, reassigned in a
 // # branch): the `is None` test and the narrowed deref into an owned slot.
 // def pick_str(argv: list[str]) -> str:
+//     acc: str | None = None
+//     for tok in argv:
+//         if tok == "cmd":
+//             acc = tok
+//             break
+//     if acc is None:
+//         return "<none>"
+//     chosen: str = acc
+//     return chosen
 std::string pick_str(const std::vector<std::string>& argv) {
-    // acc: str | None = None
     std::optional<std::string> acc = std::nullopt;
-    // for tok in argv:
     auto& __obj_0 = argv;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view tok = *__beg_0;
-        // if tok == "cmd":
         if ((tok == "cmd")) {
-            // acc = tok
             acc = tok;
-            // break
             break;
         }
     }
-    // if acc is None:
     if ((!acc.has_value())) {
-        // return "<none>"
         return "<none>";
     }
-    // chosen: str = acc
     std::string chosen = (*acc);
-    // return chosen
     return chosen;
 }
 
 // def pick_bytes(n: int) -> int:
+//     # Owned bytes literal source: reassigning a bytes VIEW into an owned
+//     # optional<vector> is a separate pre-existing AST bug, not this test's
+//     # subject -- here we exercise the None-test + narrowed deref of the local.
+//     acc: bytes | None = None
+//     if n > 0:
+//         acc = b"hello"
+//     assert acc is not None
+//     head: bytes = acc
+//     return len(head)
 ::tpy::BigInt pick_bytes(const ::tpy::BigInt& n) {
-    // # Owned bytes literal source: reassigning a bytes VIEW into an owned
-    // # optional<vector> is a separate pre-existing AST bug, not this test's
-    // # subject -- here we exercise the None-test + narrowed deref of the local.
-    // acc: bytes | None = None
     std::optional<::tpy::Bytes> acc = std::nullopt;
-    // if n > 0:
     if ((n > 0)) {
-        // acc = b"hello"
         acc = ::tpy::bytes_literal_owned("hello", 5);
     }
-    // assert acc is not None
     if (!((acc.has_value()))) ::tpy::raise_assertion_error();
-    // head: bytes = acc
     ::tpy::Bytes head = (*acc);
-    // return len(head)
     return ::tpy::BigInt(::tpy::__len__(head));
 }
 
 // def main():
+//     print(pick_str(["a", "cmd", "b"]))
+//     print(pick_str(["x", "y"]))
+//     print(pick_bytes(1))
 void main() {
-    // print(pick_str(["a", "cmd", "b"]))
     std::vector<std::string> __tmp_1 = {"a", "cmd", "b"};
     std::cout << pick_str(__tmp_1) << "\n";
-    // print(pick_str(["x", "y"]))
     std::vector<std::string> __tmp_2 = {"x", "y"};
     std::cout << pick_str(__tmp_2) << "\n";
-    // print(pick_bytes(1))
     std::cout << pick_bytes(::tpy::BigInt(1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

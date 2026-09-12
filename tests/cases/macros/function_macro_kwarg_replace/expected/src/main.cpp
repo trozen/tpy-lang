@@ -5,39 +5,40 @@ namespace tpyapp::main {
 
 
 // def takes(flag: bool) -> int32:
+//     return 1 if flag else 0
 int32_t takes(bool flag) {
-    // return 1 if flag else 0
     return ((flag) ? (1) : (0));
 }
 
 // @kwarg_bool
 // def run() -> int32:
+//     x = takes(flag="true")
+//     y = takes(flag="false")
+//     return x + y
 int32_t run() {
-    // x = takes(flag="true")
     int32_t x = takes(true);
-    // y = takes(flag="false")
     int32_t y = takes(false);
-    // return x + y
     return (::tpy::add_check<int32_t>(x, y));
 }
 
 // def main() -> None:
+//     print(run())
 void main() {
-    // print(run())
     std::cout << run() << "\n";
 }
 
+// # A function macro replaces string-literal bool kwargs (`flag="true"`) with
+// # bool literals via replace_expr. The kwarg expr lives in a dict field, so this
+// # only compiles if replace_expr descends into dict-valued fields. Without the
+// # replacement, `flag="true"` would be a str passed to a bool param (error).
+// from kwargmod import kwarg_bool
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A function macro replaces string-literal bool kwargs (`flag="true"`) with
-    // # bool literals via replace_expr. The kwarg expr lives in a dict field, so this
-    // # only compiles if replace_expr descends into dict-valued fields. Without the
-    // # replacement, `flag="true"` would be a str passed to a bool param (error).
-    // from kwargmod import kwarg_bool
-    // main()
     main();
 }
 

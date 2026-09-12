@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_str(s: str) -> int:
 ::tpy::BigInt take_str(std::string_view s);
+// def use_default(s: str = "\x00null") -> int:
 ::tpy::BigInt use_default(std::string_view s = std::string_view{"\000null", 5});
+// def main() -> None:
 void main();
 
 void __tpy_init();

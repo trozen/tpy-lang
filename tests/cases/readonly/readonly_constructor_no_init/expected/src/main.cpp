@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // @readonly
 // def ok() -> int:
+//     Logger()  # tpyc: ok
+//     return 0
 ::tpy::BigInt ok() {
-    // Logger()  # tpyc: ok
     Logger();
-    // return 0
     return ::tpy::BigInt(0);
 }
 
+// print(ok())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(ok())
     std::cout << ok() << "\n";
 }
 

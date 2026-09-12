@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(int32(7))
+//     print(c.x)
+//     print(c.hello())
+//
+//     g = GrandChild(int32(13))
+//     print(g.x)
+//     print(g.hello())
 void main() {
-    // c = Child(int32(7))
     Child c = Child(7);
-    // print(c.x)
     std::cout << c.x << "\n";
-    // print(c.hello())
     std::cout << c.hello() << "\n";
-    // g = GrandChild(int32(13))
     GrandChild g = GrandChild(13);
-    // print(g.x)
     std::cout << g.x << "\n";
-    // print(g.hello())
     std::cout << g.hello() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

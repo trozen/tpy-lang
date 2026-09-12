@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // def gen(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
+//     total = 0
+//     for a, b in pairs:
+//         total += a
+//         yield a + b
+//         total += b      # `b` must survive the yield above
+//     yield total
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_it_0.emplace((pairs).begin());
         __for_end_0.emplace((pairs).end());
@@ -16,7 +21,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // total += b      # `b` must survive the yield above
         total = ::tpy::add_check<int32_t>(total, b);
         __state = S_JOIN_0;
         continue;
@@ -27,18 +31,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield total
             __state = S_RESUME_1;
             return total;
         }
         __for_tup_0 = *((*__for_it_0))++;
-        // for a, b in pairs:
         const auto& __tup_1 = __for_tup_0;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
-        // total += a
         total = ::tpy::add_check<int32_t>(total, a);
-        // yield a + b
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(a, b));
     }
@@ -54,8 +54,9 @@ __gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 }
 
 // def main() -> None:
+//     for v in gen([(1, 2), (3, 4)]):
+//         print(v)
 void main() {
-    // for v in gen([(1, 2), (3, 4)]):
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
         auto __src_0 = gen(__tmp_1);
@@ -64,18 +65,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

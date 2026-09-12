@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def get_r() -> Literal["r"]:
+//     return "r"
 std::string_view get_r() {
-    // return "r"
     return "r";
 }
 
 // def main() -> None:
+//     m: Literal["r", "w", "rb", "wb"] = "r"
+//     print(m)
+//     m = get_r()
+//     print(m)
 void main() {
-    // m: Literal["r", "w", "rb", "wb"] = "r"
     std::string_view m = "r";
-    // print(m)
     std::cout << m << "\n";
-    // m = get_r()
     m = get_r();
-    // print(m)
     std::cout << m << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

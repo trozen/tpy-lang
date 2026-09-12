@@ -5,32 +5,33 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p = pick(1, 2)
+//     x = 3
+//     y = 4
+//     print(p, pick(x, y))
+//     print(Util.smax(x, y))
+//     print(genmod.gf(x, y))
 void main() {
-    // p = pick(1, 2)
     int32_t p = pick<int32_t>(1, 2);
-    // x = 3
     int32_t x = 3;
-    // y = 4
     int32_t y = 4;
-    // print(p, pick(x, y))
     std::cout << p << " " << pick<int32_t>(x, y) << "\n";
-    // print(Util.smax(x, y))
     std::cout << Util::smax<int32_t>(x, y) << "\n";
-    // print(genmod.gf(x, y))
     std::cout << ::tpyapp::genmod::gf<int32_t>(x, y) << "\n";
 }
 
+// # Explicit template-arg spelling at generic call sites: a plain f[T] call
+// # with literal args (ref-slot temps) and with name args, a same-module
+// # generic static, and a module-qualified generic call.
+// import genmod
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Explicit template-arg spelling at generic call sites: a plain f[T] call
-    // # with literal args (ref-slot temps) and with name args, a same-module
-    // # generic static, and a module-qualified generic call.
-    // import genmod
     ::tpyapp::genmod::__tpy_init();
-    // main()
     main();
 }
 

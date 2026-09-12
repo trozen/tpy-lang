@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def use_all(*args: Resource) -> None:
+//     for r in args:
+//         print("use", r.id)
 void use_all(::tpy::varargs<const Resource> args) {
-    // for r in args:
     auto& __obj_0 = args;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& r = *__beg_0;
-        // print("use", r.id)
         std::cout << "use" << " " << r.id << "\n";
     }
 }
 
 // def main() -> None:
+//     a = Resource(1)
+//     b = Resource(2)
+//     use_all(a, b)
+//     print("after use_all")
 void main() {
-    // a = Resource(1)
     Resource a = Resource(1);
-    // b = Resource(2)
     Resource b = Resource(2);
-    // use_all(a, b)
     std::array<const Resource*, 2> __tmp_1{&a, &b};
     use_all(::tpy::varargs<const Resource>(__tmp_1));
-    // print("after use_all")
     std::cout << "after use_all" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

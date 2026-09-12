@@ -5,80 +5,80 @@ namespace tpyapp::main {
 
 
 // def make_mixed(b: Box) -> tuple[Own[Box], Box | None]:
+//     return (Box(1), b)
 std::tuple<Box, Box*> make_mixed(Box& b) {
-    // return (Box(1), b)
     return std::tuple<Box, Box*>{Box(1), &(b)};
 }
 
 // def make_none() -> tuple[Own[Box], Box | None]:
+//     return (Box(2), None)
 std::tuple<Box, Box*> make_none() {
-    // return (Box(2), None)
     return std::tuple<Box, Box*>{Box(2), nullptr};
 }
 
 // def write_through(b: Box) -> int32:
+//     p = make_mixed(b)
+//     e = p[1]
+//     if e is not None:
+//         e.val = 42
+//     return p[0].val
 int32_t write_through(Box& b) {
-    // p = make_mixed(b)
     auto p = make_mixed(b);
-    // e = p[1]
     Box* e = std::get<1>(p);
-    // if e is not None:
     if ((e != nullptr)) {
-        // e.val = 42
         e->val = 42;
     }
-    // return p[0].val
     return std::get<0>(p).val;
 }
 
 // def read_direct(b: Box) -> int32:
+//     # No intermediate local. Narrowing does not track a subscript path, so the
+//     # read keeps its runtime null check -- unrelated to the element's form.
+//     p = make_mixed(b)
+//     if p[1] is not None:
+//         return p[1].val  # tpyc: warning(/Potential None access/)
+//     return -1
 int32_t read_direct(Box& b) {
-    // # No intermediate local. Narrowing does not track a subscript path, so the
-    // # read keeps its runtime null check -- unrelated to the element's form.
-    // p = make_mixed(b)
     auto p = make_mixed(b);
-    // if p[1] is not None:
     if ((std::get<1>(p) != nullptr)) {
-        // return p[1].val  # tpyc: warning(/Potential None access/)
         return ::tpy::deref_check(std::get<1>(p)).val;
     }
-    // return -1
     return -1;
 }
 
 // def none_element() -> int32:
+//     p = make_none()
+//     e = p[1]
+//     if e is None:
+//         return p[0].val
+//     return -1
 int32_t none_element() {
-    // p = make_none()
     auto p = make_none();
-    // e = p[1]
     Box* e = std::get<1>(p);
-    // if e is None:
     if ((e == nullptr)) {
-        // return p[0].val
         return std::get<0>(p).val;
     }
-    // return -1
     return -1;
 }
 
 // def main() -> None:
+//     b = Box(7)
+//     print("write:", write_through(b), b.val)
+//     print("read:", read_direct(b))
+//     print("none:", none_element())
 void main() {
-    // b = Box(7)
     Box b = Box(7);
-    // print("write:", write_through(b), b.val)
     std::cout << "write:" << " " << write_through(b) << " " << b.val << "\n";
-    // print("read:", read_direct(b))
     std::cout << "read:" << " " << read_direct(b) << "\n";
-    // print("none:", none_element())
     std::cout << "none:" << " " << none_element() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,48 +5,49 @@ namespace tpyapp::main {
 
 
 // def get_dict() -> Own[dict[str, Cell] | int]:
+//     d: dict[str, Cell] = {}
+//     d["a"] = Cell(1)
+//     return d
 ::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> get_dict() {
-    // d: dict[str, Cell] = {}
     ::tpy::ordered_map<std::string, Cell> d = ::tpy::ordered_map<std::string, Cell>();
-    // d["a"] = Cell(1)
     ::tpy::__setitem__(d, "a", Cell(::tpy::BigInt(1)));
-    // return d
     return d;
 }
 
 // def main() -> None:
+//     v = get_dict()
+//     if isinstance(v, dict):
+//         try:
+//             print(v["missing"].n)  # tpyc: ok
+//         except KeyError:
+//             print("KeyError caught")
+//         inner = v["a"]
+//         inner.n = 99               # mutate through the borrowed element
+//         print(v["a"].n)            # 99 -- proves the read aliases, not a copy
 void main() {
-    // v = get_dict()
     ::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> __slot_1 = get_dict();
     ::tpy::Union<::tpy::ordered_map<std::string, Cell>*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
-    // if isinstance(v, dict):
     if (std::holds_alternative<::tpy::ordered_map<std::string, Cell>*>(v)) {
         auto& __v = *std::get<::tpy::ordered_map<std::string, Cell>*>(v);
-        // try:
         {
             try {
-                // print(v["missing"].n)  # tpyc: ok
                 std::cout << ::tpy::__getitem__(__v, "missing").n << "\n";
             } catch (const ::tpy::KeyError&) {
-                // print("KeyError caught")
                 std::cout << "KeyError caught" << "\n";
             }
         }
-        // inner = v["a"]
         Cell& inner = ::tpy::__getitem__(__v, "a");
-        // inner.n = 99               # mutate through the borrowed element
         inner.n = ::tpy::BigInt(99);
-        // print(v["a"].n)            # 99 -- proves the read aliases, not a copy
         std::cout << ::tpy::__getitem__(__v, "a").n << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

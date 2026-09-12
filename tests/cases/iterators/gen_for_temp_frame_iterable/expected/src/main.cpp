@@ -5,16 +5,18 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[Holder]:
+//     return Holder()
 Holder make() {
-    // return Holder()
     return Holder();
 }
 
 // def g_resumable() -> Iterator[int32]:
+//     yield 0
+//     for x in make():
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -35,7 +37,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -51,8 +52,9 @@ __gen_g_resumable g_resumable() {
 }
 
 // def main() -> None:
+//     for v in g_resumable():
+//         print(v)
 void main() {
-    // for v in g_resumable():
     {
         auto __src_0 = g_resumable();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -60,13 +62,15 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def __iter__(self) -> Iterator[int32]:
+//     for x in self.items:
+//         yield x
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -76,7 +80,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder___iter__::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -90,7 +93,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder___iter__::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -100,12 +102,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder___iter__::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

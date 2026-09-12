@@ -5,144 +5,149 @@ namespace tpyapp::main {
 
 
 // def depth(t: Tree) -> int:
+//     if isinstance(t, int):
+//         return 0
+//     else:
+//         result = 0
+//         for child in t:
+//             d = depth(child)
+//             if d > result:
+//                 result = d
+//         return result + 1
 ::tpy::BigInt depth(const Tree& t) {
-    // if isinstance(t, int):
     if (std::holds_alternative<::tpy::BigInt>(t.value)) {
         const auto& __t = std::get<::tpy::BigInt>(t.value);
-        // return 0
         return ::tpy::BigInt(0);
-    // else:
     } else {
         const auto& __t = std::get<std::vector<Tree>>(t.value);
-        // result = 0
         ::tpy::BigInt result = ::tpy::BigInt(0);
-        // for child in t:
         auto& __src_0 = __t;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            // d = depth(child)
             ::tpy::BigInt d = depth(child);
-            // if d > result:
             if ((d > result)) {
-                // result = d
                 result = d;
             }
         }
-        // return result + 1
         return ((result) + (::tpy::BigInt(1)));
     }
 }
 
 // def maybe_depth(t: Tree | None) -> int:
+//     if t is None:
+//         return -1
+//     return depth(t)
 ::tpy::BigInt maybe_depth(const Tree* t) {
-    // if t is None:
     if ((t == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // return depth(t)
     return depth((*t));
 }
 
 // def show(t: Tree | None) -> None:
+//     if t is not None:
+//         print(depth(t))
+//     else:
+//         print("none")
 void show(const Tree* t) {
-    // if t is not None:
     if ((t != nullptr)) {
-        // print(depth(t))
         std::cout << depth((*t)) << "\n";
-    // else:
     } else {
-        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
 // def first_or_none(items: list[Tree]) -> Tree | None:
+//     if len(items) == 0:
+//         return None
+//     return items[0]
 Tree* first_or_none(std::vector<Tree>& items) {
-    // if len(items) == 0:
     if ((::tpy::__len__(items) == 0)) {
-        // return None
         return nullptr;
     }
-    // return items[0]
     return &(::tpy::__getitem__(items, 0));
 }
 
 // def get_depth_or_default(t: Tree | None, default: int) -> int:
+//     if t is None:
+//         return default
+//     result = depth(t)
+//     return result
 ::tpy::BigInt get_depth_or_default(const Tree* t, const ::tpy::BigInt& default_) {
-    // if t is None:
     if ((t == nullptr)) {
-        // return default
         return default_;
     }
-    // result = depth(t)
     ::tpy::BigInt result = depth((*t));
-    // return result
     return result;
 }
 
 // def describe(t: Tree | None) -> str:
+//     if t is None:
+//         return "nothing"
+//     if isinstance(t, int):
+//         return "leaf"
+//     return "branch"
 std::string describe(const Tree* t) {
-    // if t is None:
     if ((t == nullptr)) {
-        // return "nothing"
         return "nothing";
     }
-    // if isinstance(t, int):
     if (std::holds_alternative<::tpy::BigInt>((*t).value)) {
-        // return "leaf"
         return "leaf";
     }
-    // return "branch"
     return "branch";
 }
 
 // def main() -> None:
+//     leaf: Tree = 42
+//     branch: Tree = [1, [2, 3]]
+//
+//     print(maybe_depth(leaf))
+//     print(maybe_depth(branch))
+//     print(maybe_depth(None))
+//
+//     show(leaf)
+//     show(None)
+//
+//     print(get_depth_or_default(branch, 99))
+//     print(get_depth_or_default(None, 99))
+//
+//     print(describe(leaf))
+//     print(describe(branch))
+//     print(describe(None))
+//
+//     items: list[Tree] = [branch, leaf]
+//     r = first_or_none(items)
+//     print(maybe_depth(r))
+//     print(maybe_depth(first_or_none([])))
 void main() {
-    // leaf: Tree = 42
     Tree leaf = 42;
-    // branch: Tree = [1, [2, 3]]
     Tree branch = std::vector<Tree>{1, std::vector<Tree>{2, 3}};
-    // print(maybe_depth(leaf))
     std::cout << maybe_depth(&(leaf)) << "\n";
-    // print(maybe_depth(branch))
     std::cout << maybe_depth(&(branch)) << "\n";
-    // print(maybe_depth(None))
     std::cout << maybe_depth(nullptr) << "\n";
-    // show(leaf)
     show(&(leaf));
-    // show(None)
     show(nullptr);
-    // print(get_depth_or_default(branch, 99))
     std::cout << get_depth_or_default(&(branch), ::tpy::BigInt(99)) << "\n";
-    // print(get_depth_or_default(None, 99))
     std::cout << get_depth_or_default(nullptr, ::tpy::BigInt(99)) << "\n";
-    // print(describe(leaf))
     std::cout << describe(&(leaf)) << "\n";
-    // print(describe(branch))
     std::cout << describe(&(branch)) << "\n";
-    // print(describe(None))
     std::cout << describe(nullptr) << "\n";
-    // items: list[Tree] = [branch, leaf]
     std::vector<Tree> items = ::tpy::make_vector<Tree>(std::move(branch), std::move(leaf));
-    // r = first_or_none(items)
     Tree* r = first_or_none(items);
-    // print(maybe_depth(r))
     std::cout << maybe_depth(r) << "\n";
-    // print(maybe_depth(first_or_none([])))
     std::vector<Tree> __tmp_1 = std::vector<Tree>{};
     std::cout << maybe_depth(first_or_none(__tmp_1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

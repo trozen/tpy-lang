@@ -16,6 +16,7 @@ extern T* g_anchor;
 extern std::tuple<std::optional<T>, std::optional<T>> g_pair;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class T:
@@ -91,40 +92,45 @@ inline std::ostream& operator<<(std::ostream& os, const SubscriptCtor& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline T::T(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.pair = (None, None)
 inline Holder::Holder() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt})) {}
 
 // def update(self, p: tuple[T | None, T | None]) -> None:
+//     self.pair = p  # tpyc: warning(/copies/) warning(/copies/)
 inline void Holder::update(const std::tuple<const T*, const T*>& p) {
-    // self.pair = p  # tpyc: warning(/copies/) warning(/copies/)
     this->pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(p);
 }
 
 // def copy_from_subscript(self, items: list[tuple[T | None, T | None]]) -> None:
+//     # Source is a subscript -- already storage-form, so the field-write
+//     # is a direct copy (no redundant tuple_to_storage wrap).
+//     self.pair = items[0]  # tpyc: warning(/copies/) warning(/copies/)
 inline void Holder::copy_from_subscript(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items) {
-    // # Source is a subscript -- already storage-form, so the field-write
-    // # is a direct copy (no redundant tuple_to_storage wrap).
-    // self.pair = items[0]  # tpyc: warning(/copies/) warning(/copies/)
     this->pair = ::tpy::__getitem__(items, 0);
 }
 
 // def copy_from_field(self, other: 'Holder') -> None:
+//     # Source is a field -- already storage-form, direct copy.
+//     self.pair = other.pair  # tpyc: warning(/copies/) warning(/copies/)
 inline void Holder::copy_from_field(const Holder& other) {
-    // # Source is a field -- already storage-form, direct copy.
-    // self.pair = other.pair  # tpyc: warning(/copies/) warning(/copies/)
     this->pair = other.pair;
 }
 
 // def __init__(self) -> None:
+//     # Source is a value global -- already storage-form, direct copy.
+//     self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
 inline GlobalCopier::GlobalCopier() {
-    // # Source is a value global -- already storage-form, direct copy.
-    // self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
     this->pair = g_pair;
 }
 
 // def __init__(self, items: list[tuple[T | None, T | None]]) -> None:
+//     # Constructor MIL path: subscript source is already storage-form,
+//     # the field-init should be a direct copy (no redundant wrap).
+//     self.pair = items[0]  # tpyc: warning(/copies/) warning(/copies/)
 inline SubscriptCtor::SubscriptCtor(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items) : pair(::tpy::__getitem__(items, 0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

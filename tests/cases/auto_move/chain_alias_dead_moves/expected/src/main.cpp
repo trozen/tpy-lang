@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def take(o: Own[Outer]) -> int32:
+//     store: list[Outer] = []
+//     store.append(o)
+//     return len(store)
 int32_t take(Outer&& o) {
-    // store: list[Outer] = []
     std::vector<Outer> store = std::vector<Outer>{};
-    // store.append(o)
     store.push_back(std::move(o));
-    // return len(store)
     return ::tpy::__len__(store);
 }
 
 // def main():
+//     o = Outer()
+//     a = o.inner
+//     print(len(a.vals))
+//     print(take(o))  # tpyc: ok
 void main() {
-    // o = Outer()
     Outer o = Outer();
-    // a = o.inner
     Inner& a = o.inner;
-    // print(len(a.vals))
     std::cout << ::tpy::__len__(a.vals) << "\n";
-    // print(take(o))  # tpyc: ok
     std::cout << take(std::move(o)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

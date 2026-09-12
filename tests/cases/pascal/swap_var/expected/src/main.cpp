@@ -3,36 +3,40 @@
 
 namespace tpyapp::main {
 
-// x, y: integer;
 int32_t x{};
-// x, y: integer;
 int32_t y{};
 
+// procedure swap(var a, b: integer);
+// var
+//   tmp: integer;
+// begin
+//   tmp := a;
+//   a := b;
+//   b := tmp;
+// end;
 void swap(int32_t* a, int32_t* b) {
-    // tmp: integer;
     int32_t tmp = 0;
-    // tmp := a;
     tmp = ::tpy::deref_check(a);
-    // a := b;
     a[0] = ::tpy::deref_check(b);
-    // b := tmp;
     b[0] = tmp;
 }
 
+// x, y: integer;
+//
+// x := 1;
+// y := 2;
+// swap(x, y);
+// writeln(x);
+// writeln(y);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x := 1;
     x = 1;
-    // y := 2;
     y = 2;
-    // swap(x, y);
     swap(&x, &y);
-    // writeln(x);
     std::cout << x << "\n";
-    // writeln(y);
     std::cout << y << "\n";
 }
 

@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # bytes field assigned in `__init__` AFTER a side-effecting body
@@ -38,12 +39,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, data: bytes, tag: str) -> None:
+//     print("constructing", tag)
+//     self.data = data
+//     self.tag = tag
 inline Holder::Holder(::tpy::BytesView data, std::string_view tag) {
-    // print("constructing", tag)
     std::cout << "constructing" << " " << tag << "\n";
-    // self.data = data
     this->data = ::tpy::Bytes(data);
-    // self.tag = tag
     this->tag = tag;
 }
 void __tpy_init();

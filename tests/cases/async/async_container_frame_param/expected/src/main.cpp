@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // async def fill_buf(b: bytearray) -> int32:  # tpyc: ok
+//     await asyncio.sleep(0)
+//     b.append(66)
+//     return len(b)
 ::tpystd::tpy::Poll<int32_t> __coro_fill_buf::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,9 +20,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // b.append(66)
         b.push_back(66);
-        // return len(b)
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(b);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -37,10 +37,12 @@ __coro_fill_buf fill_buf(::tpy::ByteArray& b) {
 }
 
 // async def bump_arr(a: Array[int32, 2]) -> int32:  # tpyc: ok
+//     await asyncio.sleep(0)
+//     a[0] = a[0] + 5
+//     return a[0]
 ::tpystd::tpy::Poll<int32_t> __coro_bump_arr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -50,9 +52,7 @@ __coro_fill_buf fill_buf(::tpy::ByteArray& b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // a[0] = a[0] + 5
         ::tpy::__setitem__(a, 0, (::tpy::add_check<int32_t>(::tpy::__getitem__(a, 0), 5)));
-        // return a[0]
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__getitem__(a, 0);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -69,10 +69,12 @@ __coro_bump_arr bump_arr(std::array<int32_t, 2>& a) {
 }
 
 // async def push_list(xs: list[int32]) -> int32:
+//     await asyncio.sleep(0)
+//     xs.append(9)
+//     return len(xs)
 ::tpystd::tpy::Poll<int32_t> __coro_push_list::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -82,9 +84,7 @@ __coro_bump_arr bump_arr(std::array<int32_t, 2>& a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // xs.append(9)
         xs.push_back(9);
-        // return len(xs)
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(xs);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -101,14 +101,20 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
 }
 
 // async def drive() -> None:
+//     # The coroutine mutates through its captured param; the caller's own
+//     # object must show the change, which a by-value frame capture would hide.
+//     b = bytearray(b"a")
+//     print(await fill_buf(b), len(b))
+//
+//     a = Array[int32, 2]()
+//     print(await bump_arr(a), a[0])
+//
+//     xs = [1]
+//     print(await push_list(xs), len(xs))
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The coroutine mutates through its captured param; the caller's own
-        // # object must show the change, which a by-value frame capture would hide.
-        // b = bytearray(b"a")
         b.emplace(::tpy::ByteArray(::tpy::bytes_literal("a", 1)));
-        // print(await fill_buf(b), len(b))
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
@@ -118,11 +124,8 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await fill_buf(b), len(b))
         std::cout << __await_lift_0 << " " << ::tpy::__len__((*b)) << "\n";
-        // a = Array[int32, 2]()
         a.emplace(std::array<int32_t, 2>());
-        // print(await bump_arr(a), a[0])
         __sub_1.emplace((*a));
         __state = S_RESUME_1;
         continue;
@@ -132,11 +135,8 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await bump_arr(a), a[0])
         std::cout << __await_lift_1 << " " << ::tpy::__getitem__((*a), 0) << "\n";
-        // xs = [1]
         xs.emplace(std::vector<int32_t>{1});
-        // print(await push_list(xs), len(xs))
         __sub_2.emplace((*xs));
         __state = S_RESUME_2;
         continue;
@@ -146,7 +146,6 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await push_list(xs), len(xs))
         std::cout << __await_lift_2 << " " << ::tpy::__len__((*xs)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -162,17 +161,18 @@ __coro_drive drive() {
     return __coro_drive();
 }
 
+// # The coroutine flavour of the container frame param: an async fn's frame is a
+// # Poll state machine rather than a generator lambda, but its param families
+// # read the same reference axis, so bytearray and Array capture like list does.
+// import asyncio
+//
+// asyncio.run(drive())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The coroutine flavour of the container frame param: an async fn's frame is a
-    // # Poll state machine rather than a generator lambda, but its param families
-    // # read the same reference axis, so bytearray and Array capture like list does.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(drive())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(drive()));
 }
 

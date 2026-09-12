@@ -12,6 +12,7 @@ struct Owner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: a field-access manager (`with self.mgr:`) and the `as`-binding
@@ -61,35 +62,38 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Mgr::Mgr() : n(::tpy::BigInt(0)) {}
 
 // def __enter__(self) -> "Mgr":
+//     self.n += 1
+//     return self
 inline Mgr& Mgr::__enter__() {
-    // self.n += 1
     this->n = (this->n) + (::tpy::BigInt(1));
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
+//     self.n += 100
 inline void Mgr::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) {
-    // self.n += 100
     this->n = (this->n) + (::tpy::BigInt(100));
 }
 
 // def __init__(self) -> None:
+//     self.mgr = Mgr()
 inline Owner::Owner() : mgr(Mgr()) {}
 
 // def work(self) -> None:
+//     # Field-access manager + as-binding that aliases the same object.
+//     with self.mgr as bound:
+//         bound.n += 1000
+//         print("inside:", self.mgr.n)
+//     print("after:", self.mgr.n)
 inline void Owner::work() {
-    // # Field-access manager + as-binding that aliases the same object.
-    // with self.mgr as bound:
     auto& __ctx_1 = this->mgr;
     auto& bound = __ctx_1.__enter__();
     try {
-        // bound.n += 1000
         bound.n = (bound.n) + (::tpy::BigInt(1000));
-        // print("inside:", self.mgr.n)
         std::cout << "inside:" << " " << this->mgr.n << "\n";
         goto __with_exit_1;
     } catch (...) {
@@ -98,27 +102,27 @@ inline void Owner::work() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    // print("after:", self.mgr.n)
     std::cout << "after:" << " " << this->mgr.n << "\n";
 }
 
 // def work_raises(self) -> None:
+//     try:
+//         with self.mgr:
+//             raise ValueError("boom")
+//     except ValueError:
+//         print("caught, n:", self.mgr.n)
 inline void Owner::work_raises() {
-    // try:
     {
         try {
-            // with self.mgr:
             auto& __ctx_2 = this->mgr;
             __ctx_2.__enter__();
             try {
-                // raise ValueError("boom")
                 throw ::tpy::ValueError("boom");
             } catch (...) {
                 __ctx_2.__exit__({}, {}, {});
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
-            // print("caught, n:", self.mgr.n)
             std::cout << "caught, n:" << " " << this->mgr.n << "\n";
         }
     }

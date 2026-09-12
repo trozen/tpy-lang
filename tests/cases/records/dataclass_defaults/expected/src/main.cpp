@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     red = Color(255, 0, 0)
+//     print(red)
+//     semi = Color(255, 0, 0, 128)
+//     print(semi)
+//     named = Color(r=0, g=128, b=255)
+//     print(named)
 void main() {
-    // red = Color(255, 0, 0)
     Color red = Color(255, 0, 0);
-    // print(red)
     std::cout << red << "\n";
-    // semi = Color(255, 0, 0, 128)
     Color semi = Color(255, 0, 0, 128);
-    // print(semi)
     std::cout << semi << "\n";
-    // named = Color(r=0, g=128, b=255)
     Color named = Color(0, 128, 255);
-    // print(named)
     std::cout << named << "\n";
 }
 
+// # @dataclass with field default values
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass with field default values
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

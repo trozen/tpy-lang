@@ -36,25 +36,45 @@ struct Builder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_list() -> Own[list[int32]]:
 std::vector<int32_t> make_list();
+// def for_record() -> None:
 void for_record();
+// def for_list() -> None:
 void for_list();
+// def for_own_call(flag: bool) -> None:
 void for_own_call(bool flag);
+// def while_one_arm() -> None:
 void while_one_arm();
+// def nested_if(a: bool, b: bool) -> None:
 void nested_if(bool a, bool b);
+// def sibling_decl(a: bool) -> None:
 void sibling_decl(bool a);
+// def post_loop_redecl() -> None:
 void post_loop_redecl();
+// def dyn_protocol() -> None:
 void dyn_protocol();
+// def optional_both_arms() -> None:
 void optional_both_arms();
+// def optional_slot_loop() -> None:
 void optional_slot_loop();
+// def optional_rvalue_init() -> None:
 void optional_rvalue_init();
+// def optional_list_init() -> None:
 void optional_list_init();
+// def optional_redecl_post_loop() -> None:
 void optional_redecl_post_loop();
+// def with_body() -> None:
 void with_body();
+// def try_body() -> None:
 void try_body();
+// def match_arm(k: int32) -> None:
 void match_arm(int32_t k);
+// def closure() -> None:
 void closure();
+// def error_return_body(i: int32) -> int32:
 std::expected<int32_t, MyErr> error_return_body(int32_t i);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -215,86 +235,93 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Flat::Flat(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Pic::Pic(int32_t n) : n(n) {}
 
 // def __init__(self, s: int32) -> None:
+//     self.s = s
 inline Sq::Sq(int32_t s) : s(s) {}
 
 // def area(self) -> int32:
+//     return self.s * self.s
 inline int32_t Sq::area() const {
-    // return self.s * self.s
     return (::tpy::mul_check<int32_t>(this->s, this->s));
 }
 
 // def __init__(self, w: int32, h: int32) -> None:
+//     self.w = w
+//     self.h = h
 inline Rect::Rect(int32_t w, int32_t h) : w(w), h(h) {}
 
 // def area(self) -> int32:
+//     return self.w * self.h
 inline int32_t Rect::area() const {
-    // return self.w * self.h
     return (::tpy::mul_check<int32_t>(this->w, this->h));
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline CM::CM(int32_t n) : n(n) {}
 
 // def __enter__(self) -> int32:
+//     return self.n
 inline int32_t CM::__enter__() const {
-    // return self.n
     return this->n;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("with_body exit", self.n)
 inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("with_body exit", self.n)
     std::cout << "with_body exit" << " " << this->n << "\n";
 }
 
 // # Constructor position.
 // def __init__(self, k: int32) -> None:
+//     self.total = 0
+//     for i in range(2):
+//         if i == 0:
+//             f = Flat(k)  # tpyc: ok
+//         else:
+//             f = Flat(k + i)
+//         f.n += 1
+//         self.total += f.n
 inline Builder::Builder(int32_t k) : total(0) {
     std::optional<Flat> __slot_1;
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // if i == 0:
         Flat* f;
         if ((i == 0)) {
-            // f = Flat(k)  # tpyc: ok
             f = &*(__slot_1 = Flat(k));
-        // else:
         } else {
-            // f = Flat(k + i)
             f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(k, i))));
         }
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // self.total += f.n
         this->total = ::tpy::add_check<int32_t>(this->total, f->n);
     }
 }
 
 // # Method position.
 // def add(self, k: int32) -> None:
+//     for i in range(2):
+//         if i == 0:
+//             f = Flat(k)  # tpyc: ok
+//         else:
+//             f = Flat(k * 2)
+//         f.n += 1
+//         self.total += f.n
 inline void Builder::add(int32_t k) {
     std::optional<Flat> __slot_1;
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // if i == 0:
         Flat* f;
         if ((i == 0)) {
-            // f = Flat(k)  # tpyc: ok
             f = &*(__slot_1 = Flat(k));
-        // else:
         } else {
-            // f = Flat(k * 2)
             f = &*(__slot_1 = Flat((::tpy::mul_check<int32_t>(k, 2))));
         }
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // self.total += f.n
         this->total = ::tpy::add_check<int32_t>(this->total, f->n);
     }
 }

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def background() -> None:
+//     print("background ran")
 ::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("background ran")
         std::cout << "background ran" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,12 +26,13 @@ __coro_background background() {
 }
 
 // async def main_coro() -> None:
+//     t: Task[None] = asyncio.create_task(background())
+//     await t
+//     print("awaited")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t: Task[None] = asyncio.create_task(background())
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(background())));
-        // await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -41,7 +42,6 @@ __coro_background background() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        // print("awaited")
         std::cout << "awaited" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -58,24 +58,25 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # await t where t: Task[None] -- exercises Task<std::monostate>'s
+// # poll consumption path. With the position-aware-None fix the synth
+// # coroutine's __poll__ returns Poll<std::monostate> and the surrounding
+// # Task<std::monostate> consumes it; pre-fix this path used Task<void> /
+// # Poll<void> exclusively.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # await t where t: Task[None] -- exercises Task<std::monostate>'s
-    // # poll consumption path. With the position-aware-None fix the synth
-    // # coroutine's __poll__ returns Poll<std::monostate> and the surrounding
-    // # Task<std::monostate> consumes it; pre-fix this path used Task<void> /
-    // # Poll<void> exclusively.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

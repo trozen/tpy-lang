@@ -5,60 +5,63 @@ namespace tpyapp::main {
 
 
 // def consume(b: Own[Box]) -> int32:
+//     return b.value
 int32_t consume(Box&& b) {
-    // return b.value
     return b.value;
 }
 
 // def use_int(x: Own[int32]) -> int32:
+//     return x
 int32_t use_int(int32_t x) {
-    // return x
     return x;
 }
 
 // def main() -> None:
+//     # Last use of b -- auto-moved into consume (Box&& param, std::move at call site)
+//     b = Box(42)
+//     print(consume(b))
+//
+//     # Non-last use -- copy-temp inserted (sema warns about the copy)
+//     b2 = Box(99)
+//     print(consume(copy(b2)))
+//     print(b2.value)
+//
+//     # Value type Own[int32] -- passed by value (no T&&), std::move is harmless
+//     n: int32 = 7
+//     print(use_int(n))
+//
+//     # Generic Own[T] -- uses std::type_identity_t<T>&& in C++
+//     c: Container[Box] = Container()
+//     b3 = Box(10)
+//     b4 = Box(20)
+//     c.push(b3)
+//     c.push(b4)
+//     print(c.items[0].value)
+//     print(c.items[1].value)
 void main() {
-    // # Last use of b -- auto-moved into consume (Box&& param, std::move at call site)
-    // b = Box(42)
     Box b = Box(42);
-    // print(consume(b))
     std::cout << consume(std::move(b)) << "\n";
-    // # Non-last use -- copy-temp inserted (sema warns about the copy)
-    // b2 = Box(99)
     Box b2 = Box(99);
-    // print(consume(copy(b2)))
     std::cout << consume(Box(b2)) << "\n";
-    // print(b2.value)
     std::cout << b2.value << "\n";
-    // # Value type Own[int32] -- passed by value (no T&&), std::move is harmless
-    // n: int32 = 7
     int32_t n = 7;
-    // print(use_int(n))
     int32_t __tmp_1 = n;
     std::cout << use_int(std::move(__tmp_1)) << "\n";
-    // # Generic Own[T] -- uses std::type_identity_t<T>&& in C++
-    // c: Container[Box] = Container()
     Container<Box> c = Container<Box>();
-    // b3 = Box(10)
     Box b3 = Box(10);
-    // b4 = Box(20)
     Box b4 = Box(20);
-    // c.push(b3)
     c.push(std::move(b3));
-    // c.push(b4)
     c.push(std::move(b4));
-    // print(c.items[0].value)
     std::cout << ::tpy::__getitem__(c.items, 0).value << "\n";
-    // print(c.items[1].value)
     std::cout << ::tpy::__getitem__(c.items, 1).value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = fac.Counter.make(11)  # tpyc: ok
+//     print(c.value)
+//     print(fac.Counter.LIMIT)  # tpyc: ok
 void main() {
-    // c = fac.Counter.make(11)  # tpyc: ok
     ::tpyapp::factory::Counter c = ::tpyapp::factory::Counter::make(11);
-    // print(c.value)
     std::cout << c.value << "\n";
-    // print(fac.Counter.LIMIT)  # tpyc: ok
     std::cout << ::tpyapp::factory::Counter::LIMIT << "\n";
 }
 
+// # Regression: `import m as alias` followed by `alias.Cls.method()` and
+// # `alias.Cls.CONST` works. The alias binds the module under a new local name;
+// # the module-qualified class member dispatch must follow `import_source` to
+// # the real module name when resolving the record.
+// import factory as fac
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `import m as alias` followed by `alias.Cls.method()` and
-    // # `alias.Cls.CONST` works. The alias binds the module under a new local name;
-    // # the module-qualified class member dispatch must follow `import_source` to
-    // # the real module name when resolving the record.
-    // import factory as fac
     ::tpyapp::factory::__tpy_init();
-    // main()
     main();
 }
 

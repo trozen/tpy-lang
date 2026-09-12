@@ -17,8 +17,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_relay;
 struct __coro_driver;
 
+// async def relay(b: Own[Box]) -> Own[Box]:
 __coro_relay relay(Box b);
+// async def driver() -> int32:
 __coro_driver driver();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -43,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: relay
+// async def relay(b: Own[Box]) -> Own[Box]:
 struct __coro_relay {
     int32_t __state;
     bool __cancel_pending;
@@ -67,7 +70,7 @@ struct __coro_relay {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> int32:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -93,6 +96,7 @@ struct __coro_driver {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Box::Box(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

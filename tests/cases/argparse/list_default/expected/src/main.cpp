@@ -5,34 +5,40 @@ namespace tpyapp::main {
 
 
 // def absent_case() -> None:
+//     parser = ArgumentParser(description="Test list-literal defaults.")
+//     parser.add_argument("--tag", action="append", default=["alpha", "beta"])
+//     parser.add_argument("--count", type=int, nargs="+", default=[1, 2, 3])
+//     args = parser.parse_args([])
+//     print(args.tag)
+//     print(args.count)
 void absent_case() {
-    // args = parser.parse_args([])
     std::vector<std::string> __tmp_1 = std::vector<std::string>{};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.tag)
     std::cout << ::tpy::ListPrinter(args.tag) << "\n";
-    // print(args.count)
     std::cout << ::tpy::ListPrinter(args.count) << "\n";
 }
 
 // def present_case() -> None:
+//     parser = ArgumentParser(description="Test list-literal defaults.")
+//     parser.add_argument("--tag", action="append", default=["alpha", "beta"])
+//     parser.add_argument("--count", type=int, nargs="+", default=[1, 2, 3])
+//     args = parser.parse_args(["--tag", "gamma", "--count", "10", "20"])
+//     print(args.tag)
+//     print(args.count)
 void present_case() {
-    // args = parser.parse_args(["--tag", "gamma", "--count", "10", "20"])
     std::vector<std::string> __tmp_2 = {"--tag", "gamma", "--count", "10", "20"};
     __tpy_builder_argparse_args_2 args = __tpy_builder_argparse_parse_2(__tmp_2);
-    // print(args.tag)
     std::cout << ::tpy::ListPrinter(args.tag) << "\n";
-    // print(args.count)
     std::cout << ::tpy::ListPrinter(args.count) << "\n";
 }
 
 // def main() -> int32:
+//     absent_case()
+//     present_case()
+//     return 0
 int32_t main() {
-    // absent_case()
     absent_case();
-    // present_case()
     present_case();
-    // return 0
     return 0;
 }
 
@@ -136,14 +142,15 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
     return __tpy_builder_argparse_args_2(std::move(tag), std::move((*count)));
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

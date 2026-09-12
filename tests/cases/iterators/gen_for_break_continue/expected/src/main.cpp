@@ -5,10 +5,16 @@ namespace tpyapp::main {
 
 
 // def filtered(items: list[int32], limit: int32) -> Iterator[int32]:
+//     yield -1
+//     for x in items:
+//         if x < 0:
+//             continue
+//         if x >= limit:
+//             break
+//         yield x * 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
@@ -36,7 +42,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
                 __state = S_JOIN_1;
                 continue;
             } else {
-                // yield x * 2
                 __state = S_RESUME_1;
                 return (::tpy::mul_check<int32_t>(x, 2));
             }
@@ -58,8 +63,9 @@ __gen_filtered filtered(std::vector<int32_t>& items, int32_t limit) {
 }
 
 // def main():
+//     for v in filtered([3, -1, 5, 7, 2, 10, 1], 8):
+//         print(v)
 void main() {
-    // for v in filtered([3, -1, 5, 7, 2, 10, 1], 8):
     {
         std::vector<int32_t> __tmp_1 = {3, -1, 5, 7, 2, 10, 1};
         auto __src_0 = filtered(__tmp_1, 8);
@@ -68,18 +74,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

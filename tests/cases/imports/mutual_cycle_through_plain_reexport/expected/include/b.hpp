@@ -13,6 +13,7 @@ using ::tpyapp::c::cee;
 
 inline constexpr std::string_view __name__ = "b";
 
+// def bee_uses_a() -> int32:
 int32_t bee_uses_a();
 
 void __tpy_init();

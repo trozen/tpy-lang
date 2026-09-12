@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def read_only(o: Outer) -> int:   # o inferred `const Outer&`; free-function param face
+//     r = o.inner
+//     return r.x
 ::tpy::BigInt read_only(const Outer& o) {
-    // r = o.inner
     const Inner& r = o.inner;
-    // return r.x
     return r.x;
 }
 
 // def main() -> None:
+//     o = Outer(5)
+//     print(o.peek_x())      # 5
+//     print(read_only(o))    # 5
+//     o.tags.append(9)
+//     print(o.tag_count())   # 1
+//     o.bump()               # mutate the shared Inner through the mutable borrow-local
+//     print(o.peek_x())      # 6 -- the readonly reader aliases the shared object, not a copy
 void main() {
-    // o = Outer(5)
     Outer o = Outer(::tpy::BigInt(5));
-    // print(o.peek_x())      # 5
     std::cout << o.peek_x() << "\n";
-    // print(read_only(o))    # 5
     std::cout << read_only(o) << "\n";
-    // o.tags.append(9)
     o.tags.push_back(9);
-    // print(o.tag_count())   # 1
     std::cout << o.tag_count() << "\n";
-    // o.bump()               # mutate the shared Inner through the mutable borrow-local
     o.bump();
-    // print(o.peek_x())      # 6 -- the readonly reader aliases the shared object, not a copy
     std::cout << o.peek_x() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

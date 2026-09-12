@@ -6,54 +6,57 @@ namespace tpyapp::main {
 
 // @error_return(NotFound)
 // def find(items: list[int32], target: int32) -> int32:
+//     for i in range(len(items)):
+//         if items[i] == target:
+//             return i
+//     raise NotFound
 std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t target) {
-    // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if items[i] == target:
         if ((items[static_cast<std::size_t>(i)] == target)) {
-            // return i
             return i;
         }
     }
-    // raise NotFound
     return ::tpy::make_unexpected(NotFound{});
 }
 
 // def main() -> None:
+//     items: list[int32] = [10, 20, 30]
+//
+//     try:
+//         idx = find(items, 20)
+//         doubled = idx * 2
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(doubled)
 void main() {
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // try:
     int32_t doubled;
     int32_t idx;
     {
-        // idx = find(items, 20)
         {
             auto __try_tmp_2 = find(items, 20);
             if (!__try_tmp_2.has_value()) goto __except_1;
             idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        // doubled = idx * 2
         doubled = (::tpy::mul_check<int32_t>(idx, 2));
         // else:
-        // print(doubled)
         std::cout << doubled << "\n";
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_1:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

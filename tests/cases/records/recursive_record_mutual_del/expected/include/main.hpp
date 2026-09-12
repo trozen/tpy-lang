@@ -12,6 +12,7 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class A:
@@ -66,6 +67,8 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
+//     self.bs = []
 inline A::A(int32_t val) : val(val), bs(std::vector<B>{}) {}
 
 inline A::A(A&& other) noexcept : val(std::move(other.val)), bs(std::move(other.bs)) {
@@ -80,13 +83,15 @@ inline A& A::operator=(A&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("del A", self.val)
 inline A::~A() {
     if (!this->__tpy_owned_) return;
-    // print("del A", self.val)
     std::cout << "del A" << " " << this->val << "\n";
 }
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
+//     self.as_ = []
 inline B::B(int32_t val) : val(val), as_(std::vector<A>{}) {}
 
 inline B::B(B&& other) noexcept : val(std::move(other.val)), as_(std::move(other.as_)) {
@@ -101,9 +106,9 @@ inline B& B::operator=(B&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("del B", self.val)
 inline B::~B() {
     if (!this->__tpy_owned_) return;
-    // print("del B", self.val)
     std::cout << "del B" << " " << this->val << "\n";
 }
 void __tpy_init();

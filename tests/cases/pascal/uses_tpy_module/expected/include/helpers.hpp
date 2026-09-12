@@ -9,7 +9,9 @@ namespace tpyapp::helpers {
 
 inline constexpr std::string_view __name__ = "helpers";
 
+// def double(n: int32) -> int32:
 int32_t double_(int32_t n);
+// def triple(n: int32) -> int32:
 int32_t triple(int32_t n);
 
 void __tpy_init();

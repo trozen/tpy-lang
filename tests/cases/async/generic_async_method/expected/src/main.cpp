@@ -5,12 +5,18 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     c = Container("hi")
+//     a = await c.echo(int32(7))  # tpyc: type(int32)
+//     print(a)
+//     b = await c.echo("world")  # tpyc: type(str)
+//     print(b)
+//     p = await c.labeled(int32(42))  # tpyc: type(/tuple\[str, int32\]/)
+//     print(p[0])
+//     print(p[1])
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Container("hi")
         c.emplace(Container("hi"));
-        // a = await c.echo(int32(7))  # tpyc: type(int32)
         __sub_0.emplace((*c), 7);
         __state = S_RESUME_0;
         continue;
@@ -20,10 +26,8 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
         __sub_0.reset();
-        // print(a)
         std::cout << a << "\n";
         __coro_arg_0 = "world";
-        // b = await c.echo("world")  # tpyc: type(str)
         __sub_1.emplace((*c), __coro_arg_0);
         __state = S_RESUME_1;
         continue;
@@ -33,9 +37,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
         __sub_1.reset();
-        // print(b)
         std::cout << b << "\n";
-        // p = await c.labeled(int32(42))  # tpyc: type(/tuple\[str, int32\]/)
         __sub_2.emplace((*c), 42);
         __state = S_RESUME_2;
         continue;
@@ -45,9 +47,7 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p = std::move(__r2).value();
         __sub_2.reset();
-        // print(p[0])
         std::cout << std::get<0>(p) << "\n";
-        // print(p[1])
         std::cout << std::get<1>(p) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -64,27 +64,28 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Generic async method on a non-generic class: covers the method-side
+// # of the M7 invariant. Same propagation as generic free functions, but
+// # the operand is `obj.method(args)` rather than `f(args)` -- so the
+// # substituted FunctionInfo is reached via sema's method-call analysis
+// # and `_analyze_generic_method_call`. Pre-M7 this failed with
+// # "await operand must be a direct call to an async def ..." because
+// # `substitute_method_type_params` dropped `is_async` from the
+// # reconstructed FunctionInfo.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Generic async method on a non-generic class: covers the method-side
-    // # of the M7 invariant. Same propagation as generic free functions, but
-    // # the operand is `obj.method(args)` rather than `f(args)` -- so the
-    // # substituted FunctionInfo is reached via sema's method-call analysis
-    // # and `_analyze_generic_method_call`. Pre-M7 this failed with
-    // # "await operand must be a direct call to an async def ..." because
-    // # `substitute_method_type_params` dropped `is_async` from the
-    // # reconstructed FunctionInfo.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

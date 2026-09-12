@@ -5,19 +5,20 @@ namespace tpyapp::main {
 
 
 // def fall_through(do_raise: bool) -> None:
+//     print(f"-- do_raise={do_raise} --")
+//     with Suppressor():
+//         if do_raise:
+//             raise ValueError("boom")
+//         print("body fall-through")
+//     print("after with")
 void fall_through(bool do_raise) {
-    // print(f"-- do_raise={do_raise} --")
     std::cout << std::format("-- do_raise={} --", ::tpy::bool_to_str(do_raise)) << "\n";
-    // with Suppressor():
     auto __ctx_1 = Suppressor();
     __ctx_1.__enter__();
     try {
-        // if do_raise:
         if (do_raise) {
-            // raise ValueError("boom")
             throw ::tpy::ValueError("boom");
         }
-        // print("body fall-through")
         std::cout << "body fall-through" << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -30,24 +31,23 @@ void fall_through(bool do_raise) {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     __with_after_1:;
-    // print("after with")
     std::cout << "after with" << "\n";
 }
 
 // def main() -> None:
+//     fall_through(False)
+//     fall_through(True)
 void main() {
-    // fall_through(False)
     fall_through(false);
-    // fall_through(True)
     fall_through(true);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def doubled_range(r: NumberRange) -> Iterator[int32]:
+//     yield -1
+//     for x in r:
+//         yield x * 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
@@ -28,7 +30,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x * 2
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 2));
     }
@@ -44,10 +45,11 @@ __gen_doubled_range doubled_range(NumberRange& r) {
 }
 
 // def main():
+//     nr = NumberRange(1, 5)
+//     for x in doubled_range(nr):
+//         print(x)
 void main() {
-    // nr = NumberRange(1, 5)
     NumberRange nr = NumberRange(1, 5);
-    // for x in doubled_range(nr):
     {
         auto __src_0 = doubled_range(nr);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -55,18 +57,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

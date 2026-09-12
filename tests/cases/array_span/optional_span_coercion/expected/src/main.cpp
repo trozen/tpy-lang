@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def has_values(values: Span[readonly[int32]] | None) -> bool:
+//     return values is not None
 bool has_values(std::optional<std::span<const int32_t>> values) {
-    // return values is not None
     return (values.has_value());
 }
 
 // def main() -> None:
+//     arr: list[int32] = [10, 20, 30]
+//     print(has_values(arr))
+//     print(has_values(None))
+//     print(has_values([42, 99]))
 void main() {
-    // arr: list[int32] = [10, 20, 30]
     std::vector<int32_t> arr = {10, 20, 30};
-    // print(has_values(arr))
     std::cout << ::tpy::print_bool(has_values(::tpy::as_span(arr))) << "\n";
-    // print(has_values(None))
     std::cout << ::tpy::print_bool(has_values(std::nullopt)) << "\n";
-    // print(has_values([42, 99]))
     std::cout << ::tpy::print_bool(has_values(::tpy::as_span(std::array<int32_t, 2>{42, 99}))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

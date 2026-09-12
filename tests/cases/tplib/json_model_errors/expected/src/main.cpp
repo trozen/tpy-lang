@@ -43,13 +43,15 @@ namespace tpyapp::main {
 
 
 // def test_missing_field() -> None:
+//     data = '{"name": "x"}'
+//     try:
+//         Item.try_from_json(data)
+//     except JsonError as e:
+//         print(e.message)
 void test_missing_field() {
-    // data = '{"name": "x"}'
     std::string_view data = "{\"name\": \"x\"}";
-    // try:
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
-        // Item.try_from_json(data)
         {
             auto __try_tmp_4 = Item::try_from_json(data);
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
@@ -59,7 +61,6 @@ void test_missing_field() {
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            // print(e.message)
             std::cout << e.message << "\n";
         }
         __after_try_3:;
@@ -67,13 +68,15 @@ void test_missing_field() {
 }
 
 // def test_invalid_enum() -> None:
+//     data = '{"name": "x", "color": "Purple"}'
+//     try:
+//         Item.try_from_json(data)
+//     except JsonError as e:
+//         print(e.message)
 void test_invalid_enum() {
-    // data = '{"name": "x", "color": "Purple"}'
     std::string_view data = "{\"name\": \"x\", \"color\": \"Purple\"}";
-    // try:
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_5;
-        // Item.try_from_json(data)
         {
             auto __try_tmp_6 = Item::try_from_json(data);
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
@@ -83,7 +86,6 @@ void test_invalid_enum() {
         __except_5:;
         {
             auto& e = *__err_opt_5;
-            // print(e.message)
             std::cout << e.message << "\n";
         }
         __after_try_5:;
@@ -91,13 +93,15 @@ void test_invalid_enum() {
 }
 
 // def test_malformed_with_describe() -> None:
+//     data = '{"name": "x", "color"  123}'
+//     try:
+//         Item.try_from_json(data)
+//     except JsonError as e:
+//         print(e.describe(data))
 void test_malformed_with_describe() {
-    // data = '{"name": "x", "color"  123}'
     std::string_view data = "{\"name\": \"x\", \"color\"  123}";
-    // try:
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
-        // Item.try_from_json(data)
         {
             auto __try_tmp_8 = Item::try_from_json(data);
             if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
@@ -107,7 +111,6 @@ void test_malformed_with_describe() {
         __except_7:;
         {
             auto& e = *__err_opt_7;
-            // print(e.describe(data))
             std::cout << e.describe(data) << "\n";
         }
         __after_try_7:;
@@ -115,12 +118,12 @@ void test_malformed_with_describe() {
 }
 
 // def main() -> None:
+//     test_missing_field()
+//     test_invalid_enum()
+//     test_malformed_with_describe()
 void main() {
-    // test_missing_field()
     test_missing_field();
-    // test_invalid_enum()
     test_invalid_enum();
-    // test_malformed_with_describe()
     test_malformed_with_describe();
 }
 
@@ -177,6 +180,12 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
     }
     return Item(name, (*color));
 }
+// # Test @model error messages via try_from_json: missing field, invalid enum, describe().
+// from enum import Enum
+// from tplib.json import JsonError
+// from tplib.json.model import model
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -186,11 +195,6 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
-    // from enum import Enum
-    // from tplib.json import JsonError
-    // from tplib.json.model import model
-    // main()
     main();
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: Any = "hello"
+//     s = cast(str, x)
+//     print(s.upper())
 void main() {
-    // x: Any = "hello"
     ::tpy::Any x = ::tpy::make_any(std::string("hello"));
-    // s = cast(str, x)
     std::string s = ::tpy::any_cast_or_panic<std::string>(x);
-    // print(s.upper())
     std::cout << ::tpy::str_upper(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

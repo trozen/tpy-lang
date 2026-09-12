@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def depth(t: treelib.Tree[int]) -> int:
+//     match t:
+//         case list() as branches:
+//             best = 0
+//             for child in branches:
+//                 d = depth(child)
+//                 if d > best:
+//                     best = d
+//             return best + 1
+//         case _:
+//             return 0
 ::tpy::BigInt depth(const ::tpyapp::treelib::Tree<::tpy::BigInt>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // best = 0
         ::tpy::BigInt best = ::tpy::BigInt(0);
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            // d = depth(child)
             ::tpy::BigInt d = depth(child);
-            // if d > best:
             if ((d > best)) {
-                // best = d
                 best = d;
             }
         }
-        // return best + 1
         return ((best) + (::tpy::BigInt(1)));
         break;
     }
-    // case _:
     default: {
-        // return 0
         return ::tpy::BigInt(0);
         break;
     }
@@ -43,29 +43,30 @@ namespace tpyapp::main {
 }
 
 // def main() -> None:
+//     t: treelib.Tree[int] = [1, [2, 3], 4]  # tpyc: type(/Tree/)
+//     print(treelib.leaf_count(t))
+//     print(depth(t))
 void main() {
-    // t: treelib.Tree[int] = [1, [2, 3], 4]  # tpyc: type(/Tree/)
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
-    // print(treelib.leaf_count(t))
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n";
-    // print(depth(t))
     std::cout << depth(t) << "\n";
 }
 
+// # Qualified cross-module use of a generic recursive alias: `import treelib`
+// # then `treelib.Tree[int]` at a local annotation AND a main-side function
+// # parameter (exercises the finalize pass over use-site annotations and
+// # function signatures). Read-only traversal is intentional: runtime semantics
+// # are identical to the `from treelib import Tree` form, so this case targets
+// # the qualified-name *resolution*, not value-vs-reference behavior.
+// import treelib
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Qualified cross-module use of a generic recursive alias: `import treelib`
-    // # then `treelib.Tree[int]` at a local annotation AND a main-side function
-    // # parameter (exercises the finalize pass over use-site annotations and
-    // # function signatures). Read-only traversal is intentional: runtime semantics
-    // # are identical to the `from treelib import Tree` form, so this case targets
-    // # the qualified-name *resolution*, not value-vs-reference behavior.
-    // import treelib
     ::tpyapp::treelib::__tpy_init();
-    // main()
     main();
 }
 

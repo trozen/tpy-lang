@@ -9,19 +9,33 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_strip() -> None:
 void test_strip();
+// def test_replace() -> None:
 void test_replace();
+// def test_find() -> None:
 void test_find();
+// def test_index() -> None:
 void test_index();
+// def test_startswith_endswith() -> None:
 void test_startswith_endswith();
+// def test_upper_lower() -> None:
 void test_upper_lower();
+// def test_count() -> None:
 void test_count();
+// def test_is_methods() -> None:
 void test_is_methods();
+// def test_isupper_islower() -> None:
 void test_isupper_islower();
+// def test_capitalize_title_swapcase() -> None:
 void test_capitalize_title_swapcase();
+// def test_removeprefix_removesuffix() -> None:
 void test_removeprefix_removesuffix();
+// def test_rindex() -> None:
 void test_rindex();
+// def test_splitlines() -> None:
 void test_splitlines();
+// def test_chaining() -> None:
 void test_chaining();
 
 void __tpy_init();

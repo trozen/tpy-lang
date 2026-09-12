@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def value_only(p: readonly[tuple[int32, int32]]) -> int32:
+//     return p[0] + p[1]
 int32_t value_only(const std::tuple<int32_t, int32_t>& p) {
-    // return p[0] + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p), std::get<1>(p)));
 }
 
 // def mixed(p: readonly[tuple[int32, Counter]]) -> int32:
+//     a = p[0]  # tpyc: type(int32)
+//     b = p[1]  # tpyc: type(/readonly/)
+//     return a + b.n
 int32_t mixed(const std::tuple<int32_t, const Counter*>& p) {
-    // a = p[0]  # tpyc: type(int32)
     int32_t a = std::get<0>(p);
-    // b = p[1]  # tpyc: type(/readonly/)
     const Counter& b = (*std::get<1>(p));
-    // return a + b.n
     return (::tpy::add_check<int32_t>(a, b.n));
 }
 
 // def main() -> None:
+//     print("value_only:", value_only((3, 4)))
+//     c = Counter(5)
+//     print("mixed:", mixed((10, c)))
 void main() {
-    // print("value_only:", value_only((3, 4)))
     std::cout << "value_only:" << " " << value_only(std::tuple<int32_t, int32_t>{3, 4}) << "\n";
-    // c = Counter(5)
     Counter c = Counter(5);
-    // print("mixed:", mixed((10, c)))
     std::cout << "mixed:" << " " << mixed(std::tuple<int32_t, const Counter*>{10, &(c)}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

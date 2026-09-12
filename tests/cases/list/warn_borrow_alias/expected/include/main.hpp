@@ -11,13 +11,21 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mutate_list(items: list[Point]) -> None:
 void mutate_list(std::vector<Point>& items);
+// def test_alias_append() -> None:
 void test_alias_append();
+// def test_alias_subscript_assign() -> None:
 void test_alias_subscript_assign();
+// def test_alias_del() -> None:
 void test_alias_del();
+// def test_alias_pass_to_func() -> None:
 void test_alias_pass_to_func();
+// def test_alias_aug_assign() -> None:
 void test_alias_aug_assign();
+// def test_alias_no_element_borrow() -> None:
 void test_alias_no_element_borrow();
+// def test_direct_still_works() -> None:
 void test_direct_still_works();
 
 // class Point:
@@ -40,6 +48,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

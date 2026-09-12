@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def invert(x: bool | None) -> bool:
 bool invert(std::optional<bool> x);
 
 void __tpy_init();

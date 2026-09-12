@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_make;
 struct __coro_main;
 
+// async def make(v: int) -> Own[Box2]:
 __coro_make make(::tpy::BigInt v);
+// async def main() -> None:
 __coro_main main();
 
 // class Box2:
@@ -37,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box2& obj) {
     return os;
 }
 
-// Async coroutine: make
+// async def make(v: int) -> Own[Box2]:
 struct __coro_make {
     int32_t __state;
     bool __cancel_pending;
@@ -61,7 +63,7 @@ struct __coro_make {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -91,6 +93,7 @@ struct __coro_main {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Box2::Box2(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

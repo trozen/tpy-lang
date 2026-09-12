@@ -5,87 +5,87 @@ namespace tpyapp::main {
 
 
 // def nested(a: Cat, flag: bool) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             if flag:
+//                 v = a.lives + 100  # tpyc: ok
+//             return v               # 109 when flag -- the inner rebind is seen
+//     return -1
 ::tpy::BigInt nested(const Cat& a, bool flag) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // if flag:
         if (flag) {
-            // v = a.lives + 100  # tpyc: ok
             v = ((a.lives) + (::tpy::BigInt(100)));
         }
-        // return v               # 109 when flag -- the inner rebind is seen
         return v;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def top_level(a: Cat) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             v = a.lives + 1        # tpyc: ok
+//             return v               # 10
+//     return -1
 ::tpy::BigInt top_level(const Cat& a) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // v = a.lives + 1        # tpyc: ok
         v = ((a.lives) + (::tpy::BigInt(1)));
-        // return v               # 10
         return v;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def walrus(a: Cat) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             total = 0
+//             while (v := v - 1) > 0:  # tpyc: ok
+//                 total = total + v
+//             return total             # 3+2+1 = 6
+//     return -1
 ::tpy::BigInt walrus(const Cat& a) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // total = 0
         ::tpy::BigInt total = ::tpy::BigInt(0);
-        // while (v := v - 1) > 0:  # tpyc: ok
         while (((v = ((v) - (::tpy::BigInt(1)))) > 0)) {
-            // total = total + v
             total = ((::tpy::BigInt(total)) + (v));
         }
-        // return total             # 3+2+1 = 6
         return total;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     c = Cat(9)
+//     print(nested(c, True), nested(c, False), c.lives)  # 109 9 9
+//     print(top_level(Cat(9)))                           # 10
+//     print(walrus(Cat(4)))                              # 6
 void main() {
-    // c = Cat(9)
     Cat c = Cat(::tpy::BigInt(9));
-    // print(nested(c, True), nested(c, False), c.lives)  # 109 9 9
     std::cout << nested(c, true) << " " << nested(c, false) << " " << c.lives << "\n";
-    // print(top_level(Cat(9)))                           # 10
     Cat __tmp_1 = Cat(::tpy::BigInt(9));
     std::cout << top_level(__tmp_1) << "\n";
-    // print(walrus(Cat(4)))                              # 6
     Cat __tmp_2 = Cat(::tpy::BigInt(4));
     std::cout << walrus(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -15,6 +15,7 @@ using ::tpyapp::b::b_func_via_a;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

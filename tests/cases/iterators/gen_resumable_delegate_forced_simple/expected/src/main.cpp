@@ -5,6 +5,8 @@ namespace tpyapp::main {
 
 
 // def src() -> Iterator[int32]:
+//     for i in range(3):
+//         yield i + 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -23,7 +25,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        // yield i + 1
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(i, 1));
     }
@@ -39,10 +40,12 @@ __gen_src src() {
 }
 
 // def gen() -> Iterator[int32]:
+//     yield 0
+//     for x in src():  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -62,7 +65,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -78,8 +80,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for v in gen():
+//         print(v)
 void main() {
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -87,18 +90,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

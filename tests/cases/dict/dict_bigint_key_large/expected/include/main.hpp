@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(d: dict[int, int], k: int) -> None:
 void bump(::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>& d, const ::tpy::BigInt& k);
+// def main():
 void main();
 
 void __tpy_init();

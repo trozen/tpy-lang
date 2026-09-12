@@ -3,52 +3,54 @@
 
 namespace tpyapp::main {
 
-// calls = 0
 int32_t calls{};
 
 // def make() -> Own[TD]:
+//     global calls
+//     calls += 1
+//     return TD(a=1)
 TD make() {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return TD(a=1)
     return TD(::tpy::BigInt(1));
 }
 
 // def main() -> None:
+//     if "a" in make():
+//         print("in:", calls)
+//
+//     if "a" not in make():
+//         print("unreachable")
+//     print("not in:", calls)
+//
+//     # A name operand folds its value the same way and still evaluates.
+//     td = TD(a=3)
+//     if "a" in td:
+//         print("name operand ok")
+//     print("total:", calls)
 void main() {
-    // if "a" in make():
     if ((static_cast<void>(make()), true)) {
-        // print("in:", calls)
         std::cout << "in:" << " " << calls << "\n";
     }
-    // if "a" not in make():
     if ((static_cast<void>(make()), false)) {
-        // print("unreachable")
         std::cout << "unreachable" << "\n";
     }
-    // print("not in:", calls)
     std::cout << "not in:" << " " << calls << "\n";
-    // # A name operand folds its value the same way and still evaluates.
-    // td = TD(a=3)
     TD td = TD(::tpy::BigInt(3));
-    // if "a" in td:
     if ((static_cast<void>(td), true)) {
-        // print("name operand ok")
         std::cout << "name operand ok" << "\n";
     }
-    // print("total:", calls)
     std::cout << "total:" << " " << calls << "\n";
 }
 
+// calls = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // calls = 0
     calls = 0;
-    // main()
     main();
 }
 

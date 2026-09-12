@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def take_all(*items: Box) -> int32:
+//     n: int32 = 0
+//     for b in items:
+//         n += b.val
+//     return n
 int32_t take_all(::tpy::varargs<const Box> items) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // n += b.val
         n = ::tpy::add_check<int32_t>(n, b.val);
     }
-    // return n
     return n;
 }
 
 // def use(xs: Span[Box]) -> int32:
+//     return take_all(*xs)
 int32_t use(std::span<Box> xs) {
-    // return take_all(*xs)
     return take_all(::tpy::varargs<const Box>(xs));
 }
 
 // def main() -> None:
+//     items: list[Box] = []
+//     items.append(Box(1))
+//     items.append(Box(2))
+//     print(use(items))
 void main() {
-    // items: list[Box] = []
     std::vector<Box> items = std::vector<Box>{};
-    // items.append(Box(1))
     items.push_back(Box(1));
-    // items.append(Box(2))
     items.push_back(Box(2));
-    // print(use(items))
     std::cout << use(::tpy::as_mut_span(items)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

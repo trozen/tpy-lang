@@ -15,6 +15,7 @@ template<typename T> struct Pool;
 
 inline constexpr std::string_view __name__ = "pool";
 
+// def make_pool[T](items: Own[list[T]]) -> Own[Pool[T]]:
 template<typename T>
 Pool<T> make_pool(std::vector<T>&& items);
 
@@ -25,6 +26,7 @@ struct Pool {
     ::tpystd::tplib::array_list::ArrayList<T, 8> _items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
+    //     self._items = ArrayList[T, 8](items)
     Pool() = default;
     explicit Pool(std::vector<T>&& items) : _items(::tpystd::tplib::array_list::ArrayList<T, 8>(&(items))) {}
 
@@ -34,8 +36,8 @@ struct Pool {
     auto end() const { return this->__span__().end(); }
 
     // def __span__(self) -> Span[readonly[T]]:
+    //     return span(self._items)
     std::span<const T> __span__() const {
-        // return span(self._items)
         return ::tpy::as_span(this->_items);
     }
     static constexpr std::string_view __tpy_class_name__ = "pool.Pool";
@@ -48,9 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pool<T>& obj) {
 }
 
 // def make_pool[T](items: Own[list[T]]) -> Own[Pool[T]]:
+//     return Pool[T](items)
 template<typename T>
 Pool<T> make_pool(std::vector<T>&& items) {
-    // return Pool[T](items)
     return Pool<T>(std::move(items));
 }
 

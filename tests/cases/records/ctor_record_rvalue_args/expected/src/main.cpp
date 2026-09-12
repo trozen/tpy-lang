@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def make_inner(v: int32) -> Own[Inner]:
+//     return Inner(v)
 Inner make_inner(int32_t v) {
-    // return Inner(v)
     return Inner(v);
 }
 
 // def main() -> None:
+//     a = HolderConst(Inner(1))
+//     b = HolderMut(Inner(2))
+//     c = HolderConst(make_inner(3))
+//     d = HolderMut(make_inner(4))
+//     e = Outer(HolderConst(Inner(5)))
+//     print(a.x, b.x, c.x, d.x, e.y)
 void main() {
-    // a = HolderConst(Inner(1))
     HolderConst a = HolderConst(Inner(1));
-    // b = HolderMut(Inner(2))
     Inner __tmp_1 = Inner(2);
     HolderMut b = HolderMut(__tmp_1);
-    // c = HolderConst(make_inner(3))
     HolderConst c = HolderConst(make_inner(3));
-    // d = HolderMut(make_inner(4))
     Inner __tmp_2 = make_inner(4);
     HolderMut d = HolderMut(__tmp_2);
-    // e = Outer(HolderConst(Inner(5)))
     Outer e = Outer(HolderConst(Inner(5)));
-    // print(a.x, b.x, c.x, d.x, e.y)
     std::cout << a.x << " " << b.x << " " << c.x << " " << d.x << " " << e.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

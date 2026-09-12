@@ -5,8 +5,8 @@ namespace tpyapp::shapes {
 
 
 // def make_circle(r: int32) -> Own[Circle]:
+//     return Circle(r)
 Circle make_circle(int32_t r) {
-    // return Circle(r)
     return Circle(r);
 }
 

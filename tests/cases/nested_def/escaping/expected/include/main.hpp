@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_adder(n: int32) -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> make_adder(int32_t n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

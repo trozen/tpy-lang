@@ -5,19 +5,27 @@ namespace tpyapp::main {
 
 
 // def mk() -> Own[list[int32]]:
+//     return [1, 2]
 std::vector<int32_t> mk() {
-    // return [1, 2]
     return {1, 2};
 }
 
 // def main() -> None:
+//     xs = mk()
+//     xs.append(3)
+//     # A list slot: the element name lands bare and the slot init copies.
+//     ls: list[list[int32]] = [xs for i in range(2)]  # tpyc: warning(/copies list/)
+//     # ... the dict VALUE slot takes the same bare read.
+//     dv: dict[int32, list[int32]] = {i: xs for i in range(2)}  # tpyc: warning(/copies list/)
+//     # ... and an Array-demoted comp over a literal-proven range warns too.
+//     arr = [xs for i in range(3)]  # tpyc: warning(/copies list/)
+//     print(len(ls), len(ls[0]), len(dv), len(dv[0]), len(arr), len(arr[2]))
+//     print(ls[1][2], dv[1][0], arr[0][1])
+//     # Reading xs here is what keeps the three reads above off their last use.
+//     print(len(xs))
 void main() {
-    // xs = mk()
     std::vector<int32_t> xs = mk();
-    // xs.append(3)
     xs.push_back(3);
-    // # A list slot: the element name lands bare and the slot init copies.
-    // ls: list[list[int32]] = [xs for i in range(2)]  # tpyc: warning(/copies list/)
     std::vector<std::vector<int32_t>> ls = ({
         std::vector<std::vector<int32_t>> __result;
         const int32_t __stop_0 = 2;
@@ -27,8 +35,6 @@ void main() {
         }
         std::move(__result);
     });
-    // # ... the dict VALUE slot takes the same bare read.
-    // dv: dict[int32, list[int32]] = {i: xs for i in range(2)}  # tpyc: warning(/copies list/)
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> dv = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
         const int32_t __stop_1 = 2;
@@ -37,27 +43,21 @@ void main() {
         }
         std::move(__result);
     });
-    // # ... and an Array-demoted comp over a literal-proven range warns too.
-    // arr = [xs for i in range(3)]  # tpyc: warning(/copies list/)
     std::array<std::vector<int32_t>, 3> arr = ::tpy::array_from_index<std::vector<int32_t>, 3>([&](std::size_t __i_2) -> std::vector<int32_t> {
         int32_t i = int32_t(__i_2);
         return xs;
     });
-    // print(len(ls), len(ls[0]), len(dv), len(dv[0]), len(arr), len(arr[2]))
     std::cout << ::tpy::__len__(ls) << " " << ::tpy::__len__(::tpy::__getitem__(ls, 0)) << " " << ::tpy::__len__(dv) << " " << ::tpy::__len__(::tpy::__getitem__(dv, 0)) << " " << ::tpy::__len__(arr) << " " << ::tpy::__len__(::tpy::__getitem__(arr, 2)) << "\n";
-    // print(ls[1][2], dv[1][0], arr[0][1])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(ls, 1), 2) << " " << ::tpy::__getitem__(::tpy::__getitem__(dv, 1), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(arr, 0), 1) << "\n";
-    // # Reading xs here is what keeps the three reads above off their last use.
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -13,12 +13,19 @@ struct Partial;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_in_total_true() -> None:
 void test_in_total_true();
+// def test_in_nullable_field() -> None:
 void test_in_nullable_field();
+// def test_in_total_false() -> None:
 void test_in_total_false();
+// def test_get_total_true() -> None:
 void test_get_total_true();
+// def test_get_nullable_field() -> None:
 void test_get_nullable_field();
+// def test_get_total_false() -> None:
 void test_get_total_false();
+// def test_get_str_param_default(s: str) -> None:
 void test_get_str_param_default(std::string_view s);
 
 // class Required(TypedDict):

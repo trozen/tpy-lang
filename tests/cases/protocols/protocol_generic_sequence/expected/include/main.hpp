@@ -13,34 +13,38 @@ using ::tpystd::tplib::array_list::ArrayList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first(items: Sequence[int32]) -> int32:
 template<::tpystd::typing::Sequence<int32_t> T_items>
 int32_t first(const T_items& items);
+// def sum_all(items: Sequence[int32]) -> int32:
 template<::tpystd::typing::Sequence<int32_t> T_items>
 int32_t sum_all(const T_items& items);
+// def use_span(s: Span[int32]) -> int32:
 int32_t use_span(std::span<int32_t> s);
+// def main() -> None:
 void main();
 
 // def first(items: Sequence[int32]) -> int32:
+//     return items[0]
 template<::tpystd::typing::Sequence<int32_t> T_items>
 int32_t first(const T_items& items) {
-    // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 // def sum_all(items: Sequence[int32]) -> int32:
+//     total: int32 = 0
+//     i: int32 = 0
+//     while i < len(items):
+//         total += items[i]
+//         i += 1
+//     return total
 template<::tpystd::typing::Sequence<int32_t> T_items>
 int32_t sum_all(const T_items& items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < len(items):
     while ((i < ::tpy::__len__(items))) {
-        // total += items[i]
         total = ::tpy::add_check<int32_t>(total, items[static_cast<std::size_t>(i)]);
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return total
     return total;
 }
 

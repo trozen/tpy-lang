@@ -6,28 +6,28 @@ namespace tpyapp::main {
 
 // # --- Optional subject with union field guard ---
 // def opt_wrapper(w: Wrapper | None) -> str:
+//     match w:
+//         case None:
+//             return "none"
+//         case Wrapper(pet=Cat() as c):
+//             return "cat: " + c.name
+//         case Wrapper(pet=Dog() as d):
+//             return "dog: " + d.name
+//         case _:
+//             return "unknown"
 std::string opt_wrapper(const Wrapper* w) {
-    // match w:
     auto& __match_subject_1 = w;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // return "none"
         return "none";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case Wrapper(pet=Cat() as c):
         if (std::holds_alternative<Cat>(__match_inner_1.pet)) {
             auto& c = std::get<Cat>(__match_inner_1.pet);
-            // return "cat: " + c.name
             return (::tpy::str_concat("cat: ", c.name));
-        // case Wrapper(pet=Dog() as d):
         } else if (std::holds_alternative<Dog>(__match_inner_1.pet)) {
             auto& d = std::get<Dog>(__match_inner_1.pet);
-            // return "dog: " + d.name
             return (::tpy::str_concat("dog: ", d.name));
-        // case _:
         } else {
-            // return "unknown"
             return "unknown";
         }
     }
@@ -35,37 +35,36 @@ std::string opt_wrapper(const Wrapper* w) {
 }
 
 // def or_nested(x: Wrapper | Tag) -> str:
+//     match x:
+//         case Wrapper(pet=Cat(name=n)) | Wrapper(pet=Dog(name=n)):
+//             return "pet: " + n
+//         case Tag(label=l):
+//             return "tag: " + l
+//     return ""  # unreachable in practice; sema flags the match as non-exhaustive
 std::string or_nested(::tpy::Union<const Tag*, const Wrapper*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // case Tag(label=l):
         auto& l = __case_0.label;
-        // return "tag: " + l
         return (::tpy::str_concat("tag: ", l));
         goto __match_end_2;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Wrapper(pet=Cat(name=n)) | Wrapper(pet=Dog(name=n)):
         {
             if (std::holds_alternative<Cat>(__case_1.pet)) {
                 auto& __field_case_1_pet = std::get<Cat>(__case_1.pet);
                 auto& n = __field_case_1_pet.name;
-                // return "pet: " + n
                 return (::tpy::str_concat("pet: ", n));
                 goto __match_end_2;
             }
         }
-        // case Wrapper(pet=Cat(name=n)) | Wrapper(pet=Dog(name=n)):
         {
             if (std::holds_alternative<Dog>(__case_1.pet)) {
                 auto& __field_case_1_pet = std::get<Dog>(__case_1.pet);
                 auto& n = __field_case_1_pet.name;
-                // return "pet: " + n
                 return (::tpy::str_concat("pet: ", n));
                 goto __match_end_2;
             }
@@ -74,29 +73,28 @@ std::string or_nested(::tpy::Union<const Tag*, const Wrapper*> x) {
     }
     }
 __match_end_2:;
-    // return ""  # unreachable in practice; sema flags the match as non-exhaustive
     return "";
 }
 
 // # --- 3 levels deep (type-param disambiguation) ---
 // def deep3(x: Box[Box[Box[str]]] | Box[Box[Box[int32]]]) -> str:
+//     match x:
+//         case Box(value=Box(value=Box(value=str() as v))):
+//             return "string: " + v
+//         case Box(value=Box(value=Box(value=int32() as n))):
+//             return "number: " + str(n)
 std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<std::string>>>*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case Box(value=Box(value=Box(value=str() as v))):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value.value.value;
-        // return "string: " + v
         return (::tpy::str_concat("string: ", v));
         break;
     }
-    // case Box(value=Box(value=Box(value=int32() as n))):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value.value.value;
-        // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;
     }
@@ -106,23 +104,23 @@ std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<
 
 // # --- Positional nested patterns ---
 // def positional_nested(x: Box[str] | Box[int32]) -> str:
+//     match x:
+//         case Box(str() as v):
+//             return "string: " + v
+//         case Box(int32() as n):
+//             return "number: " + str(n)
 std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case Box(str() as v):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value;
-        // return "string: " + v
         return (::tpy::str_concat("string: ", v));
         break;
     }
-    // case Box(int32() as n):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value;
-        // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;
     }
@@ -132,24 +130,24 @@ std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::s
 
 // # --- Nested positional field extraction on union field ---
 // def nested_pos_extract(w: Wrapper) -> str:
+//     match w:
+//         case Wrapper(pet=Cat(n)):
+//             return "cat: " + n
+//         case Wrapper(pet=Dog(n)):
+//             return "dog: " + n
+//         case _:
+//             return "other"
 std::string nested_pos_extract(const Wrapper& w) {
-    // match w:
     auto& __match_subject_1 = w;
-    // case Wrapper(pet=Cat(n)):
     if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Cat>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
-        // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
-    // case Wrapper(pet=Dog(n)):
     } else if (std::holds_alternative<Dog>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Dog>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
-        // return "dog: " + n
         return (::tpy::str_concat("dog: ", n));
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
@@ -157,38 +155,38 @@ std::string nested_pos_extract(const Wrapper& w) {
 
 // # --- Guard clause + union field guard ---
 // def guard_combo(w: Wrapper) -> str:
+//     match w:
+//         case Wrapper(pet=Cat(name=n)) if n == "Luna":
+//             return "special cat"
+//         case Wrapper(pet=Cat(name=n)):
+//             return "cat: " + n
+//         case Wrapper(pet=Dog(name=n)):
+//             return "dog: " + n
+//         case _:
+//             return "other"
 std::string guard_combo(const Wrapper& w) {
-    // match w:
     auto& __match_subject_1 = w;
-    // case Wrapper(pet=Cat(name=n)) if n == "Luna":
     if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Cat>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
         if ((n == "Luna")) {
-            // return "special cat"
             return "special cat";
             goto __match_end_2;
         }
     }
-    // case Wrapper(pet=Cat(name=n)):
     if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Cat>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
-        // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
         goto __match_end_2;
     }
-    // case Wrapper(pet=Dog(name=n)):
     if (std::holds_alternative<Dog>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Dog>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
-        // return "dog: " + n
         return (::tpy::str_concat("dog: ", n));
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -197,165 +195,172 @@ std::string guard_combo(const Wrapper& w) {
 }
 
 // def check_float(h: FloatHolder) -> str:
+//     match h:
+//         case FloatHolder(value=float() as f):
+//             return "float: " + str(f)
+//         case FloatHolder(value=str() as s):
+//             return "str: " + s
+//         case _:
+//             return "other"
 std::string check_float(const FloatHolder& h) {
-    // match h:
     auto& __match_subject_1 = h;
-    // case FloatHolder(value=float() as f):
     if (std::holds_alternative<double>(__match_subject_1.value)) {
         auto f = std::get<double>(__match_subject_1.value);
-        // return "float: " + str(f)
         return (::tpy::str_concat("float: ", ::tpy::float_to_str(f)));
-    // case FloatHolder(value=str() as s):
     } else if (std::holds_alternative<std::string>(__match_subject_1.value)) {
         auto& s = std::get<std::string>(__match_subject_1.value);
-        // return "str: " + s
         return (::tpy::str_concat("str: ", s));
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
 }
 
 // def check_bool(h: BoolHolder) -> str:
+//     match h:
+//         case BoolHolder(value=bool() as b):
+//             if b:
+//                 return "true"
+//             return "false"
+//         case BoolHolder(value=str() as s):
+//             return "str: " + s
+//         case _:
+//             return "other"
 std::string check_bool(const BoolHolder& h) {
-    // match h:
     auto& __match_subject_1 = h;
-    // case BoolHolder(value=bool() as b):
     if (std::holds_alternative<bool>(__match_subject_1.value)) {
         auto b = std::get<bool>(__match_subject_1.value);
-        // if b:
         if (b) {
-            // return "true"
             return "true";
         }
-        // return "false"
         return "false";
-    // case BoolHolder(value=str() as s):
     } else if (std::holds_alternative<std::string>(__match_subject_1.value)) {
         auto& s = std::get<std::string>(__match_subject_1.value);
-        // return "str: " + s
         return (::tpy::str_concat("str: ", s));
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     # Optional
+//     a: Wrapper | None = Wrapper(Cat("Luna"))
+//     b: Wrapper | None = Wrapper(Dog("Rex"))
+//     c: Wrapper | None = None
+//     print(opt_wrapper(a))
+//     print(opt_wrapper(b))
+//     print(opt_wrapper(c))
+//
+//     # Or-pattern
+//     d: Wrapper | Tag = Wrapper(Cat("Luna"))
+//     e: Wrapper | Tag = Wrapper(Dog("Rex"))
+//     f: Wrapper | Tag = Tag("hello")
+//     print(or_nested(d))
+//     print(or_nested(e))
+//     print(or_nested(f))
+//
+//     # 3-deep
+//     g: Box[Box[Box[str]]] | Box[Box[Box[int32]]] = Box(Box(Box("abc")))
+//     h: Box[Box[Box[str]]] | Box[Box[Box[int32]]] = Box(Box(Box(int32(99))))
+//     print(deep3(g))
+//     print(deep3(h))
+//
+//     # Positional
+//     i: Box[str] | Box[int32] = Box("pos")
+//     j: Box[str] | Box[int32] = Box(int32(7))
+//     print(positional_nested(i))
+//     print(positional_nested(j))
+//
+//     # Nested positional extraction
+//     print(nested_pos_extract(Wrapper(Cat("Nala"))))
+//     print(nested_pos_extract(Wrapper(Dog("Buddy"))))
+//
+//     # Guard + union field
+//     print(guard_combo(Wrapper(Cat("Luna"))))
+//     print(guard_combo(Wrapper(Cat("Nala"))))
+//     print(guard_combo(Wrapper(Dog("Rex"))))
+//
+//     # Primitive types: float, bool
+//     print(check_float(FloatHolder(3.14)))
+//     print(check_float(FloatHolder("pi")))
+//     print(check_bool(BoolHolder(True)))
+//     print(check_bool(BoolHolder(False)))
+//     print(check_bool(BoolHolder("yes")))
 void main() {
-    // # Optional
-    // a: Wrapper | None = Wrapper(Cat("Luna"))
     Cat __tmp_1 = Cat("Luna");
     Wrapper __slot_1 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     Wrapper* a = &__slot_1;
-    // b: Wrapper | None = Wrapper(Dog("Rex"))
     Dog __tmp_2 = Dog("Rex");
     Wrapper __slot_2 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
     Wrapper* b = &__slot_2;
-    // c: Wrapper | None = None
     Wrapper* c = nullptr;
-    // print(opt_wrapper(a))
     std::cout << opt_wrapper(a) << "\n";
-    // print(opt_wrapper(b))
     std::cout << opt_wrapper(b) << "\n";
-    // print(opt_wrapper(c))
     std::cout << opt_wrapper(c) << "\n";
-    // # Or-pattern
-    // d: Wrapper | Tag = Wrapper(Cat("Luna"))
     Cat __tmp_3 = Cat("Luna");
     ::tpy::Union<Tag, Wrapper> __slot_3 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
     ::tpy::Union<Tag*, Wrapper*> d = ::tpy::to_ptr_variant(__slot_3);
-    // e: Wrapper | Tag = Wrapper(Dog("Rex"))
     Dog __tmp_4 = Dog("Rex");
     ::tpy::Union<Tag, Wrapper> __slot_4 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_4});
     ::tpy::Union<Tag*, Wrapper*> e = ::tpy::to_ptr_variant(__slot_4);
-    // f: Wrapper | Tag = Tag("hello")
     ::tpy::Union<Tag, Wrapper> __slot_5 = Tag("hello");
     ::tpy::Union<Tag*, Wrapper*> f = ::tpy::to_ptr_variant(__slot_5);
-    // print(or_nested(d))
     std::cout << or_nested(d.as_const()) << "\n";
-    // print(or_nested(e))
     std::cout << or_nested(e.as_const()) << "\n";
-    // print(or_nested(f))
     std::cout << or_nested(f.as_const()) << "\n";
-    // # 3-deep
-    // g: Box[Box[Box[str]]] | Box[Box[Box[int32]]] = Box(Box(Box("abc")))
     ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_6 = Box<Box<Box<std::string>>>(Box<Box<std::string>>(Box<std::string>("abc")));
     ::tpy::Union<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> g = ::tpy::to_ptr_variant(__slot_6);
-    // h: Box[Box[Box[str]]] | Box[Box[Box[int32]]] = Box(Box(Box(int32(99))))
     ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_7 = Box<Box<Box<int32_t>>>(Box<Box<int32_t>>(Box<int32_t>(99)));
     ::tpy::Union<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> h = ::tpy::to_ptr_variant(__slot_7);
-    // print(deep3(g))
     std::cout << deep3(g.as_const()) << "\n";
-    // print(deep3(h))
     std::cout << deep3(h.as_const()) << "\n";
-    // # Positional
-    // i: Box[str] | Box[int32] = Box("pos")
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_8 = Box<std::string>("pos");
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> i = ::tpy::to_ptr_variant(__slot_8);
-    // j: Box[str] | Box[int32] = Box(int32(7))
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_9 = Box<int32_t>(7);
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> j = ::tpy::to_ptr_variant(__slot_9);
-    // print(positional_nested(i))
     std::cout << positional_nested(i.as_const()) << "\n";
-    // print(positional_nested(j))
     std::cout << positional_nested(j.as_const()) << "\n";
-    // # Nested positional extraction
-    // print(nested_pos_extract(Wrapper(Cat("Nala"))))
     Cat __tmp_5 = Cat("Nala");
     Wrapper __tmp_6 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_5});
     std::cout << nested_pos_extract(__tmp_6) << "\n";
-    // print(nested_pos_extract(Wrapper(Dog("Buddy"))))
     Dog __tmp_7 = Dog("Buddy");
     Wrapper __tmp_8 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_7});
     std::cout << nested_pos_extract(__tmp_8) << "\n";
-    // # Guard + union field
-    // print(guard_combo(Wrapper(Cat("Luna"))))
     Cat __tmp_9 = Cat("Luna");
     Wrapper __tmp_10 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_9});
     std::cout << guard_combo(__tmp_10) << "\n";
-    // print(guard_combo(Wrapper(Cat("Nala"))))
     Cat __tmp_11 = Cat("Nala");
     Wrapper __tmp_12 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_11});
     std::cout << guard_combo(__tmp_12) << "\n";
-    // print(guard_combo(Wrapper(Dog("Rex"))))
     Dog __tmp_13 = Dog("Rex");
     Wrapper __tmp_14 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_13});
     std::cout << guard_combo(__tmp_14) << "\n";
-    // # Primitive types: float, bool
-    // print(check_float(FloatHolder(3.14)))
     ::tpy::Union<double, std::string> __tmp_15 = 3.14;
     FloatHolder __tmp_16 = FloatHolder(__tmp_15);
     std::cout << check_float(__tmp_16) << "\n";
-    // print(check_float(FloatHolder("pi")))
     ::tpy::Union<double, std::string> __tmp_17 = "pi";
     FloatHolder __tmp_18 = FloatHolder(__tmp_17);
     std::cout << check_float(__tmp_18) << "\n";
-    // print(check_bool(BoolHolder(True)))
     ::tpy::Union<bool, std::string> __tmp_19 = true;
     BoolHolder __tmp_20 = BoolHolder(__tmp_19);
     std::cout << check_bool(__tmp_20) << "\n";
-    // print(check_bool(BoolHolder(False)))
     ::tpy::Union<bool, std::string> __tmp_21 = false;
     BoolHolder __tmp_22 = BoolHolder(__tmp_21);
     std::cout << check_bool(__tmp_22) << "\n";
-    // print(check_bool(BoolHolder("yes")))
     ::tpy::Union<bool, std::string> __tmp_23 = "yes";
     BoolHolder __tmp_24 = BoolHolder(__tmp_23);
     std::cout << check_bool(__tmp_24) << "\n";
 }
 
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

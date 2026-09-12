@@ -3,51 +3,37 @@
 
 namespace tpyapp::main {
 
-// Origin: Point = (x: 0; y: 0);
 point* origin{};
-// Hot: Color = (r: 255; g: 64; b: 32);
 color* hot{};
 
+// Origin: Point = (x: 0; y: 0);
+// Hot: Color = (r: 255; g: 64; b: 32);
+//
+// writeln('origin=', Origin.x, ',', Origin.y);
+// writeln('hot=', Hot.r, ',', Hot.g, ',', Hot.b);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // Origin: Point = (x: 0; y: 0);
     static point __global_slot_1 = point();
     origin = &__global_slot_1;
-    // Origin: Point = (x: 0; y: 0);
     origin->x = 0;
-    // Origin: Point = (x: 0; y: 0);
     origin->y = 0;
-    // Hot: Color = (r: 255; g: 64; b: 32);
     static color __global_slot_2 = color();
     hot = &__global_slot_2;
-    // Hot: Color = (r: 255; g: 64; b: 32);
     hot->r = 255;
-    // Hot: Color = (r: 255; g: 64; b: 32);
     hot->g = 64;
-    // Hot: Color = (r: 255; g: 64; b: 32);
     hot->b = 32;
-    // writeln('origin=', Origin.x, ',', Origin.y);
     std::cout << "origin=";
-    // writeln('origin=', Origin.x, ',', Origin.y);
     std::cout << origin->x;
-    // writeln('origin=', Origin.x, ',', Origin.y);
     std::cout << ",";
-    // writeln('origin=', Origin.x, ',', Origin.y);
     std::cout << origin->y << "\n";
-    // writeln('hot=', Hot.r, ',', Hot.g, ',', Hot.b);
     std::cout << "hot=";
-    // writeln('hot=', Hot.r, ',', Hot.g, ',', Hot.b);
     std::cout << hot->r;
-    // writeln('hot=', Hot.r, ',', Hot.g, ',', Hot.b);
     std::cout << ",";
-    // writeln('hot=', Hot.r, ',', Hot.g, ',', Hot.b);
     std::cout << hot->g;
-    // writeln('hot=', Hot.r, ',', Hot.g, ',', Hot.b);
     std::cout << ",";
-    // writeln('hot=', Hot.r, ',', Hot.g, ',', Hot.b);
     std::cout << hot->b << "\n";
 }
 

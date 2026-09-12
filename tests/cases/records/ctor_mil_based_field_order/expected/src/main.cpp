@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Derived()
+//     print(d.tag, d.a, d.b)
 void main() {
-    // d = Derived()
     Derived d = Derived();
-    // print(d.tag, d.a, d.b)
     std::cout << d.tag << " " << d.a << " " << d.b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

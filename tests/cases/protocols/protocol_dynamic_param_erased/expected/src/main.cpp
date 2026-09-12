@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def greet(pet: Pet) -> None:
+//     print(pet.make_noise())
 void greet(Pet& pet) {
-    // print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
 
 // def main() -> None:
+//     pet: Pet = Dog()
+//     greet(pet)
 void main() {
-    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // greet(pet)
     greet((*pet));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

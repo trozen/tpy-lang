@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main():
+//     inner = Inner()
+//     inner.value = 99
+//     # inner is at last use -- auto-moved into Outer constructor
+//     outer = Outer(inner)
+//     print(outer.get_value())
 void main() {
-    // inner = Inner()
     Inner inner = Inner();
-    // inner.value = 99
     inner.value = 99;
-    // # inner is at last use -- auto-moved into Outer constructor
-    // outer = Outer(inner)
     Outer outer = Outer(std::move(inner));
-    // print(outer.get_value())
     std::cout << outer.get_value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

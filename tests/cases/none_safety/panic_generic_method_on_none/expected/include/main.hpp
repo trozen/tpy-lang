@@ -11,7 +11,9 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def generic_on_optional(b: Bag | None) -> int32:
 int32_t generic_on_optional(Bag* b);
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -24,9 +26,9 @@ struct Bag {
     explicit Bag(int32_t n);
 
     // def conv[T](self, x: T) -> T:
+    //     return x
     template<typename T>
     ::tpy::val_or_cref_t<T> conv(::tpy::readonly_form_t<T> x) const {
-        // return x
         return ::tpy::param_to_return<T>(x);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
@@ -39,6 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Bag::Bag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

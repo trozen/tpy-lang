@@ -7,40 +7,40 @@ namespace tpyapp::main {
 // # bytes sibling: a bytes tuple-unpack target reassigned in a loop owns its
 // # element (a span into the per-iteration tuple temp would dangle).
 // def split_b(b: bytes) -> tuple[bytes, bytes]:
+//     n = len(b) // 2
+//     return (b[:n], b[n:])
 std::tuple<::tpy::Bytes, ::tpy::Bytes> split_b(::tpy::BytesView b) {
-    // n = len(b) // 2
     int32_t n = (::tpy::div_floor<int32_t>(::tpy::__len__(b), 2));
-    // return (b[:n], b[n:])
     return std::tuple<::tpy::Bytes, ::tpy::Bytes>{::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{std::nullopt, n})), ::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{n, std::nullopt}))};
 }
 
 // def main() -> None:
+//     head = b"abcdefghijklmnop"
+//     acc = 0
+//     while len(head) > 1:
+//         head, tail = split_b(head)
+//         acc = acc + len(tail)
+//     print(acc)
+//     print(len(head))
 void main() {
-    // head = b"abcdefghijklmnop"
     ::tpy::Bytes head = ::tpy::bytes_literal_owned("abcdefghijklmnop", 16);
-    // acc = 0
     int32_t acc = 0;
-    // while len(head) > 1:
     while ((::tpy::__len__(head) > 1)) {
-        // head, tail = split_b(head)
         auto __tup_1 = split_b(head);
         head = std::get<0>(__tup_1);
         ::tpy::BytesView tail = std::get<1>(__tup_1);
-        // acc = acc + len(tail)
         acc = (::tpy::add_check<int32_t>(acc, ::tpy::__len__(tail)));
     }
-    // print(acc)
     std::cout << acc << "\n";
-    // print(len(head))
     std::cout << ::tpy::__len__(head) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

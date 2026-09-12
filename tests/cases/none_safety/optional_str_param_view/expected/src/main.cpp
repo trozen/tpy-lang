@@ -5,91 +5,93 @@ namespace tpyapp::main {
 
 
 // def pass_through(s: Optional[str]) -> Optional[str]:
+//     return s
 std::optional<std::string> pass_through(std::optional<std::string_view> s) {
-    // return s
     return s ? std::make_optional(std::string(*s)) : std::nullopt;
 }
 
 // def assign_local(s: Optional[str]) -> None:
+//     local: Optional[str] = s
+//     if local is not None:
+//         print(local)
+//     else:
+//         print("none")
 void assign_local(std::optional<std::string_view> s) {
-    // local: Optional[str] = s
     std::optional<std::string> local = s ? std::make_optional(std::string(*s)) : std::nullopt;
-    // if local is not None:
     if ((local.has_value())) {
-        // print(local)
         std::cout << ::tpy::print_optional_val(local) << "\n";
-    // else:
     } else {
-        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
 // def unwrap(s: Optional[str]) -> str:
+//     if s is not None:
+//         return s
+//     return "default"
 std::string unwrap(std::optional<std::string_view> s) {
-    // if s is not None:
     if ((s.has_value())) {
-        // return s
         return std::string((*s));
     }
-    // return "default"
     return "default";
 }
 
 // def append_to_list(items: list[Optional[str]], s: Optional[str]) -> None:
+//     items.append(s)
 void append_to_list(std::vector<std::optional<std::string>>& items, std::optional<std::string_view> s) {
-    // items.append(s)
     items.push_back(std::move(s ? std::make_optional(std::string(*s)) : std::nullopt));
 }
 
 // def normalize(s: Optional[str]) -> Optional[str]:
+//     if s is None:
+//         s = "default"
+//     return s
 std::optional<std::string> normalize(std::optional<std::string_view> __param_s) {
     std::optional<std::string> s = __param_s ? std::make_optional(std::string(*__param_s)) : std::nullopt;
-    // if s is None:
     if ((!s.has_value())) {
-        // s = "default"
         s = "default";
     }
-    // return s
     return s ? std::make_optional(std::string(*s)) : std::nullopt;
 }
 
 // def main() -> None:
+//     print(pass_through("hello"))
+//     print(pass_through(None))
+//     assign_local("world")
+//     assign_local(None)
+//     print(unwrap("value"))
+//     print(unwrap(None))
+//
+//     items: list[Optional[str]] = []
+//     append_to_list(items, "a")
+//     append_to_list(items, None)
+//     append_to_list(items, "b")
+//     print(len(items))
+//
+//     print(normalize("hello"))
+//     print(normalize(None))
 void main() {
-    // print(pass_through("hello"))
     std::cout << ::tpy::print_optional_val(pass_through("hello")) << "\n";
-    // print(pass_through(None))
     std::cout << ::tpy::print_optional_val(pass_through(std::nullopt)) << "\n";
-    // assign_local("world")
     assign_local("world");
-    // assign_local(None)
     assign_local(std::nullopt);
-    // print(unwrap("value"))
     std::cout << unwrap("value") << "\n";
-    // print(unwrap(None))
     std::cout << unwrap(std::nullopt) << "\n";
-    // items: list[Optional[str]] = []
     std::vector<std::optional<std::string>> items = std::vector<std::optional<std::string>>{};
-    // append_to_list(items, "a")
     append_to_list(items, "a");
-    // append_to_list(items, None)
     append_to_list(items, std::nullopt);
-    // append_to_list(items, "b")
     append_to_list(items, "b");
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    // print(normalize("hello"))
     std::cout << ::tpy::print_optional_val(normalize("hello")) << "\n";
-    // print(normalize(None))
     std::cout << ::tpy::print_optional_val(normalize(std::nullopt)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

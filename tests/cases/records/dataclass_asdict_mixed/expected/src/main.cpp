@@ -5,23 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Mixed types: dict[str, str|int32]
+//     p = Person("Alice", int32(30))
+//     print(asdict(p))
+//     print(astuple(p))
+//
+//     # Mixed with nested dataclass
+//     np = NamedPoint("origin", Point(int32(0), int32(0)))
+//     print(asdict(np))
+//
+//     # List of dataclasses: recursed into list of dicts
+//     g = Group("pts", [Point(int32(1), int32(2)), Point(int32(3), int32(4))])
+//     print(asdict(g))
 void main() {
-    // # Mixed types: dict[str, str|int32]
-    // p = Person("Alice", int32(30))
     Person p = Person("Alice", 30);
-    // print(asdict(p))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", p.name}, {"age", p.age}}))) << "\n";
-    // print(astuple(p))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{p.name, p.age}) << "\n";
-    // # Mixed with nested dataclass
-    // np = NamedPoint("origin", Point(int32(0), int32(0)))
     NamedPoint np = NamedPoint("origin", Point(0, 0));
-    // print(asdict(np))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
-    // # List of dataclasses: recursed into list of dicts
-    // g = Group("pts", [Point(int32(1), int32(2)), Point(int32(3), int32(4))])
     Group g = Group("pts", {Point(1, 2), Point(3, 4)});
-    // print(asdict(g))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"label", g.label}, {"members", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_0 = g.members;
@@ -36,14 +38,15 @@ void main() {
     })}}))) << "\n";
 }
 
+// # Test asdict()/astuple() with mixed types, nested dataclass, and list recursion
+// from dataclasses import dataclass, asdict, astuple
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test asdict()/astuple() with mixed types, nested dataclass, and list recursion
-    // from dataclasses import dataclass, asdict, astuple
-    // main()
     main();
 }
 

@@ -17,9 +17,12 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_add(x: typing.Optional[int32], y: int32) -> int32:
 int32_t maybe_add(std::optional<int32_t> x, int32_t y);
+// def show(item: Printable) -> None:
 template<Printable T_item>
 void show(T_item& item);
+// def main():
 void main();
 
 // class Wrapper:
@@ -43,17 +46,18 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.val = v
 inline Wrapper::Wrapper(int32_t v) : val(v) {}
 
 // def get_val(self) -> int32:
+//     return self.val
 inline int32_t Wrapper::get_val() const {
-    // return self.val
     return this->val;
 }
 // def show(item: Printable) -> None:
+//     print(item.get_val())
 template<Printable T_item>
 void show(T_item& item) {
-    // print(item.get_val())
     std::cout << item.get_val() << "\n";
 }
 

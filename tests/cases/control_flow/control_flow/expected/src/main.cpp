@@ -5,118 +5,118 @@ namespace tpyapp::main {
 
 
 // def classify(x: int32) -> int32:
+//     # Test elif
+//     if x < 0:
+//         return -1
+//     elif x == 0:
+//         return 0
+//     else:
+//         return 1
 int32_t classify(int32_t x) {
-    // # Test elif
-    // if x < 0:
     if ((x < 0)) {
-        // return -1
         return -1;
-    // elif x == 0:
     } else if ((x == 0)) {
-        // return 0
         return 0;
-    // else:
     } else {
-        // return 1
         return 1;
     }
 }
 
 // def check_range(x: int32) -> int32:
+//     # Test and/or
+//     if x >= 0 and x <= 10:
+//         return 1
+//     return 0
 int32_t check_range(int32_t x) {
-    // # Test and/or
-    // if x >= 0 and x <= 10:
     if (((x >= 0) && (x <= 10))) {
-        // return 1
         return 1;
     }
-    // return 0
     return 0;
 }
 
 // def check_bounds(x: int32) -> int32:
+//     # Test or
+//     if x < 0 or x > 100:
+//         return 1
+//     return 0
 int32_t check_bounds(int32_t x) {
-    // # Test or
-    // if x < 0 or x > 100:
     if (((x < 0) || (x > 100))) {
-        // return 1
         return 1;
     }
-    // return 0
     return 0;
 }
 
 // def complex_condition(a: int32, b: int32) -> int32:
+//     # Test combined and/or with elif
+//     if a > 0 and b > 0:
+//         return 1
+//     elif a < 0 or b < 0:
+//         return -1
+//     else:
+//         return 0
 int32_t complex_condition(int32_t a, int32_t b) {
-    // # Test combined and/or with elif
-    // if a > 0 and b > 0:
     if (((a > 0) && (b > 0))) {
-        // return 1
         return 1;
-    // elif a < 0 or b < 0:
     } else if (((a < 0) || (b < 0))) {
-        // return -1
         return -1;
-    // else:
     } else {
-        // return 0
         return 0;
     }
 }
 
 // def nested_else_if(x: int32, y: int32) -> int32:
+//     # Test that genuine else: if stays nested (not flattened like elif)
+//     if x > 0:
+//         return 1
+//     else:
+//         if y > 0:
+//             return 2
+//         else:
+//             return 3
 int32_t nested_else_if(int32_t x, int32_t y) {
-    // # Test that genuine else: if stays nested (not flattened like elif)
-    // if x > 0:
     if ((x > 0)) {
-        // return 1
         return 1;
-    // else:
     } else {
-        // if y > 0:
         if ((y > 0)) {
-            // return 2
             return 2;
-        // else:
         } else {
-            // return 3
             return 3;
         }
     }
 }
 
+// print(classify(-5))
+// print(classify(0))
+// print(classify(5))
+// print(check_range(5))
+// print(check_range(15))
+// print(check_bounds(-1))
+// print(check_bounds(50))
+// print(check_bounds(101))
+// print(complex_condition(1, 1))
+// print(complex_condition(-1, 1))
+// print(complex_condition(0, 0))
+// print(nested_else_if(1, 0))
+// print(nested_else_if(-1, 1))
+// print(nested_else_if(-1, -1))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(classify(-5))
     std::cout << classify(-5) << "\n";
-    // print(classify(0))
     std::cout << classify(0) << "\n";
-    // print(classify(5))
     std::cout << classify(5) << "\n";
-    // print(check_range(5))
     std::cout << check_range(5) << "\n";
-    // print(check_range(15))
     std::cout << check_range(15) << "\n";
-    // print(check_bounds(-1))
     std::cout << check_bounds(-1) << "\n";
-    // print(check_bounds(50))
     std::cout << check_bounds(50) << "\n";
-    // print(check_bounds(101))
     std::cout << check_bounds(101) << "\n";
-    // print(complex_condition(1, 1))
     std::cout << complex_condition(1, 1) << "\n";
-    // print(complex_condition(-1, 1))
     std::cout << complex_condition(-1, 1) << "\n";
-    // print(complex_condition(0, 0))
     std::cout << complex_condition(0, 0) << "\n";
-    // print(nested_else_if(1, 0))
     std::cout << nested_else_if(1, 0) << "\n";
-    // print(nested_else_if(-1, 1))
     std::cout << nested_else_if(-1, 1) << "\n";
-    // print(nested_else_if(-1, -1))
     std::cout << nested_else_if(-1, -1) << "\n";
 }
 

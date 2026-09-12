@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main():
+//     # sys.argv should at least contain the program name
+//     if len(sys.argv) >= 1:
+//         print("ok")
+//     else:
+//         print("error: sys.argv is empty")
 void main() {
-    // # sys.argv should at least contain the program name
-    // if len(sys.argv) >= 1:
     if ((::tpy::__len__((*::tpystd::sys::argv)) >= 1)) {
-        // print("ok")
         std::cout << "ok" << "\n";
-    // else:
     } else {
-        // print("error: sys.argv is empty")
         std::cout << "error: sys.argv is empty" << "\n";
     }
 }
 
+// import sys
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // main()
     main();
 }
 

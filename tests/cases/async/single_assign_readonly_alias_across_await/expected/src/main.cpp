@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // async def peek(o: readonly[Outer]) -> int:
+//     a = o.inner
+//     await asyncio.sleep(0)
+//     return a.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_peek::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = o.inner
         a = &(o.inner);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +21,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return a.n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = a->n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -37,11 +37,11 @@ __coro_peek peek(const Outer& o) {
 }
 
 // async def amain() -> None:
+//     print(await peek(Outer(9)))
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0.emplace(Outer(::tpy::BigInt(9)));
-        // print(await peek(Outer(9)))
         __sub_0.emplace((*__coro_arg_0));
         __state = S_RESUME_0;
         continue;
@@ -51,7 +51,6 @@ __coro_peek peek(const Outer& o) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await peek(Outer(9)))
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -67,17 +66,18 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # A borrow alias of a readonly source held across an await must be a `const T*`
+// # frame field, not a mutable `T*` (else the C++ build fails on const-correctness).
+// # Guards the const-alias arm of the across-suspension frame hoist.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A borrow alias of a readonly source held across an await must be a `const T*`
-    // # frame field, not a mutable `T*` (else the C++ build fails on const-correctness).
-    // # Guards the const-alias arm of the across-suspension frame hoist.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

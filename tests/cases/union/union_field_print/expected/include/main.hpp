@@ -13,6 +13,7 @@ struct Zoo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass
@@ -102,6 +103,8 @@ inline std::string Cat::__repr__() const {
 }
 
 // def __init__(self, pet: Dog | Cat, tag: str) -> None:
+//     self.pet = pet
+//     self.tag = tag
 inline Zoo::Zoo(::tpy::Union<const Cat*, const Dog*> pet, std::string_view tag) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

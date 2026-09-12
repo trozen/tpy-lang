@@ -5,75 +5,78 @@ namespace tpyapp::main {
 
 
 // def take_u8(x: uint8) -> uint8:
+//     return x
 uint8_t take_u8(uint8_t x) {
-    // return x
     return x;
 }
 
 // def take_u16(x: uint16) -> uint16:
+//     return x
 uint16_t take_u16(uint16_t x) {
-    // return x
     return x;
 }
 
 // def take_u32(x: uint32) -> uint32:
+//     return x
 uint32_t take_u32(uint32_t x) {
-    // return x
     return x;
 }
 
 // def take_u64(x: uint64) -> uint64:
+//     return x
 uint64_t take_u64(uint64_t x) {
-    // return x
     return x;
 }
 
 // def take_pair(a: uint64, b: uint32) -> uint64:
+//     return a
 uint64_t take_pair(uint64_t a, uint32_t b) {
-    // return a
     return a;
 }
 
 // def main() -> None:
+//     # zero literal at every fixed-unsigned width
+//     print(take_u8(0))
+//     print(take_u16(0))
+//     print(take_u32(0))
+//     print(take_u64(0))
+//
+//     # positive literals at boundary values that fit
+//     print(take_u8(255))
+//     print(take_u16(65535))
+//     print(take_u32(4294967295))
+//     print(take_u64(255))
+//
+//     # multi-arg
+//     print(take_pair(0, 0))
+//     print(take_pair(42, 7))
+//
+//     # method receiver
+//     c = Counter()
+//     print(c.bump(1))
+//     print(c.bump(2))
 void main() {
-    // # zero literal at every fixed-unsigned width
-    // print(take_u8(0))
     std::cout << static_cast<int>(take_u8(0)) << "\n";
-    // print(take_u16(0))
     std::cout << take_u16(0) << "\n";
-    // print(take_u32(0))
     std::cout << take_u32(0) << "\n";
-    // print(take_u64(0))
     std::cout << take_u64(0) << "\n";
-    // # positive literals at boundary values that fit
-    // print(take_u8(255))
     std::cout << static_cast<int>(take_u8(255)) << "\n";
-    // print(take_u16(65535))
     std::cout << take_u16(65535) << "\n";
-    // print(take_u32(4294967295))
     std::cout << take_u32(static_cast<uint32_t>(4294967295)) << "\n";
-    // print(take_u64(255))
     std::cout << take_u64(255) << "\n";
-    // # multi-arg
-    // print(take_pair(0, 0))
     std::cout << take_pair(0, 0) << "\n";
-    // print(take_pair(42, 7))
     std::cout << take_pair(42, 7) << "\n";
-    // # method receiver
-    // c = Counter()
     Counter c = Counter();
-    // print(c.bump(1))
     std::cout << c.bump(1) << "\n";
-    // print(c.bump(2))
     std::cout << c.bump(2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

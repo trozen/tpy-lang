@@ -5,23 +5,25 @@ namespace tpyapp::main {
 
 
 // def voices(a: Dog | Cat) -> Iterator[str]:
+//     match a:
+//         case Dog():
+//             yield "is-dog"
+//             yield a.sound()
+//         case Cat():
+//             yield a.sound()
 std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case Dog():
         case 1: {
             auto& __case_0 = *std::get<1>(__match_subject_1);
-            // yield "is-dog"
             __state = S_RESUME_0;
             return "is-dog";
             break;
         }
-        // case Cat():
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
-            // yield a.sound()
             __state = S_RESUME_2;
             return __case_1.sound();
             break;
@@ -32,7 +34,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
     }
     case S_RESUME_0: {
         auto& __a = *std::get<Dog*>(a);
-        // yield a.sound()
         __state = S_RESUME_1;
         return __a.sound();
     }
@@ -62,24 +63,26 @@ __gen_voices voices(::tpy::Union<Cat*, Dog*> a) {
 }
 
 // def capture(a: Dog | Cat) -> Iterator[str]:
+//     match a:
+//         case Dog() as d:
+//             yield "got-dog"
+//             yield d.sound()
+//         case Cat():
+//             yield a.sound()
 std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case Dog() as d:
         case 1: {
             auto& __case_0 = *std::get<1>(__match_subject_1);
             d.emplace(__case_0);
-            // yield "got-dog"
             __state = S_RESUME_0;
             return "got-dog";
             break;
         }
-        // case Cat():
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
-            // yield a.sound()
             __state = S_RESUME_2;
             return __case_1.sound();
             break;
@@ -90,7 +93,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
     }
     case S_RESUME_0: {
         auto& __a = *std::get<Dog*>(a);
-        // yield d.sound()
         __state = S_RESUME_1;
         return (*d).sound();
     }
@@ -120,6 +122,12 @@ __gen_capture capture(::tpy::Union<Cat*, Dog*> a) {
 }
 
 // def guarded(a: int | str, allow: bool) -> Iterator[str]:
+//     match a:
+//         case int() if allow:
+//             yield "big"
+//             yield str(a + 1)
+//         case _:
+//             yield "other"
 std::expected<std::string, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -127,18 +135,14 @@ std::expected<std::string, ::tpy::StopIteration> __gen_guarded::__next__() {
         switch (__match_subject_1.index()) {
         case 0: {
             auto& __case_0 = std::get<0>(__match_subject_1);
-            // case int() if allow:
             {
                 if (allow) {
-                    // yield "big"
                     __state = S_RESUME_0;
                     return "big";
                     goto __match_end_2;
                 }
             }
-            // case _:
             {
-                // yield "other"
                 __state = S_RESUME_2;
                 return "other";
                 goto __match_end_2;
@@ -146,8 +150,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_guarded::__next__() {
             break;
         }
         default: {
-            // case _:
-            // yield "other"
             __state = S_RESUME_2;
             return "other";
             goto __match_end_2;
@@ -160,7 +162,6 @@ __match_end_2:;
     }
     case S_RESUME_0: {
         const auto& __a = std::get<::tpy::BigInt>(a);
-        // yield str(a + 1)
         __state = S_RESUME_1;
         return (((__a) + (::tpy::BigInt(1)))).to_string();
     }
@@ -189,28 +190,36 @@ __gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow) {
 }
 
 // def remake() -> int | str:
+//     return "z"
 ::tpy::Union<::tpy::BigInt, std::string> remake() {
-    // return "z"
     return "z";
 }
 
 // def kill(a: int | str) -> Iterator[str]:
+//     match a:
+//         case int():
+//             yield "int:" + str(a + 1)
+//             a = remake()
+//             yield "rebound"
+//             match a:
+//                 case str():
+//                     yield "str:" + a
+//                 case _:
+//                     yield "still-int"
+//         case _:
+//             yield "not-int"
 std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case int():
         case 0: {
             auto& __case_0 = std::get<0>(__match_subject_1);
-            // yield "int:" + str(a + 1)
             __state = S_RESUME_0;
             return (::tpy::str_concat("int:", (((__case_0) + (::tpy::BigInt(1)))).to_string()));
             break;
         }
-        // case _:
         default: {
-            // yield "not-int"
             __state = S_RESUME_4;
             return "not-int";
             break;
@@ -221,26 +230,20 @@ std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
     }
     case S_RESUME_0: {
         const auto& __a = std::get<::tpy::BigInt>(a);
-        // a = remake()
         a = remake();
-        // yield "rebound"
         __state = S_RESUME_1;
         return "rebound";
     }
     case S_RESUME_1: {
         auto& __match_subject_2 = a;
         switch (__match_subject_2.index()) {
-        // case str():
         case 1: {
             auto& __case_0 = std::get<1>(__match_subject_2);
-            // yield "str:" + a
             __state = S_RESUME_2;
             return (::tpy::str_concat("str:", __case_0));
             break;
         }
-        // case _:
         default: {
-            // yield "still-int"
             __state = S_RESUME_3;
             return "still-int";
             break;
@@ -282,8 +285,19 @@ __gen_kill kill(::tpy::Union<::tpy::BigInt, std::string> a) {
 }
 
 // def main() -> None:
+//     for s in voices(Dog()):
+//         print(s)
+//     for s in voices(Cat()):
+//         print(s)
+//     for s in capture(Dog()):
+//         print(s)
+//     for s in guarded(42, True):
+//         print(s)
+//     for s in guarded(3, False):
+//         print(s)
+//     for s in kill(5):
+//         print(s)
 void main() {
-    // for s in voices(Dog()):
     {
         Dog __tmp_1 = Dog();
         auto __src_0 = voices(::tpy::Union<Cat*, Dog*>{&__tmp_1});
@@ -292,11 +306,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in voices(Cat()):
     {
         Cat __tmp_2 = Cat();
         auto __src_2 = voices(::tpy::Union<Cat*, Dog*>{&__tmp_2});
@@ -305,11 +317,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in capture(Dog()):
     {
         Dog __tmp_3 = Dog();
         auto __src_4 = capture(::tpy::Union<Cat*, Dog*>{&__tmp_3});
@@ -318,11 +328,9 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_5);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in guarded(42, True):
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_4 = 42;
         auto __src_6 = guarded(__tmp_4, true);
@@ -331,11 +339,9 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_7);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in guarded(3, False):
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_5 = 3;
         auto __src_8 = guarded(__tmp_5, false);
@@ -344,11 +350,9 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_9);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in kill(5):
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_6 = 5;
         auto __src_10 = kill(__tmp_6);
@@ -357,18 +361,17 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_11);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

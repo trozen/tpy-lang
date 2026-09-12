@@ -19,10 +19,15 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def _cookie_line(sent: bytes) -> None:
 void _cookie_line(::tpy::BytesView sent);
+// def redirect_cookie(set_cookies: bytes, location: bytes) -> None:
 void redirect_cookie(::tpy::BytesView set_cookies, ::tpy::BytesView location);
+// def cookies_arg_crosses_host() -> None:
 void cookies_arg_crosses_host();
+// def path_scoping() -> None:
 void path_scoping();
+// def main() -> None:
 void main();
 
 void __tpy_init();

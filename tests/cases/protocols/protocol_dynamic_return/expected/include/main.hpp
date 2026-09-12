@@ -32,8 +32,11 @@ struct Cat;
 extern Pet* global_pet;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def echo(pet: Pet) -> Pet:
 Pet& echo(Pet& pet);
+// def get_global() -> Pet:
 Pet& get_global();
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -85,14 +88,14 @@ namespace tpyapp::main {
 
 
 // def name(self) -> str:
+//     return "Rex"
 inline std::string Dog::name() {
-    // return "Rex"
     return "Rex";
 }
 
 // def name(self) -> str:
+//     return "Whiskers"
 inline std::string Cat::name() {
-    // return "Whiskers"
     return "Whiskers";
 }
 void __tpy_init();

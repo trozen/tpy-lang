@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     try:
+//         v = b.host
+//         print(v)
+//         v = b.missing
+//         print("never:", v)
+//     except AttributeError as e:
+//         print("caught:", str(e))
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // try:
     {
         try {
-            // v = b.host
             std::string v = b.__getattr__("host");
-            // print(v)
             std::cout << v << "\n";
-            // v = b.missing
             v = b.__getattr__("missing");
-            // print("never:", v)
             std::cout << "never:" << " " << v << "\n";
         } catch (const ::tpy::AttributeError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

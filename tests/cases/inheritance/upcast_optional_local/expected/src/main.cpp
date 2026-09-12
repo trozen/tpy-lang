@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def upcast(d: Dog) -> None:
+//     p: Pet | None = d  # the base handle aliases `d`, it does not copy it
+//     if p is not None:
+//         p.rename("via-base")  # ... so this write is visible through `d`
+//     print(d.name)
 void upcast(Dog& d) {
-    // p: Pet | None = d  # the base handle aliases `d`, it does not copy it
     Pet* p = &(d);
-    // if p is not None:
     if ((p != nullptr)) {
-        // p.rename("via-base")  # ... so this write is visible through `d`
         p->rename("via-base");
     }
-    // print(d.name)
     std::cout << d.name << "\n";
 }
 
 // def main() -> None:
+//     d = Dog("rex")
+//     upcast(d)
+//     print(d.name)
 void main() {
-    // d = Dog("rex")
     Dog d = Dog("rex");
-    // upcast(d)
     upcast(d);
-    // print(d.name)
     std::cout << d.name << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

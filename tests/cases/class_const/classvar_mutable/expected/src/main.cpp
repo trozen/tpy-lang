@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Counter.instances)
+//     a = Counter()
+//     b = Counter()
+//     c = Counter()
+//     print(Counter.instances)
+//     Counter.instances = 0
+//     print(Counter.instances)
 void main() {
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
-    // a = Counter()
     Counter a = Counter();
-    // b = Counter()
     Counter b = Counter();
-    // c = Counter()
     Counter c = Counter();
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
-    // Counter.instances = 0
     Counter::instances = 0;
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

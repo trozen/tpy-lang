@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Test that unhandled FileNotFoundError from open() terminates the program
 // def main() -> None:
+//     f = open("/nonexistent/path/file.txt")
+//     f.close()
 void main() {
-    // f = open("/nonexistent/path/file.txt")
     ::tpy::TextFile f = ::tpy::builtin_open("/nonexistent/path/file.txt");
-    // f.close()
     f.close();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -17,6 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_amain;
 struct __coro_Holder_borrow;
 
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Payload:
@@ -53,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: Holder.borrow
+// async def borrow(self) -> Payload:
 struct __coro_Holder_borrow {
     int32_t __state;
     bool __cancel_pending;
@@ -79,7 +80,7 @@ inline __coro_Holder_borrow Holder::borrow() {
     return __coro_Holder_borrow(*this);
 }
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -107,9 +108,11 @@ struct __coro_amain {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.p = Payload(v)
 inline Holder::Holder(int32_t v) : p(Payload(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

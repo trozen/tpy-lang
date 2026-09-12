@@ -5,55 +5,60 @@ namespace tpyapp::main {
 
 
 // def throw_value_error() -> None:
+//     raise ValueError("val")
 void throw_value_error() {
-    // raise ValueError("val")
     throw ::tpy::ValueError("val");
 }
 
 // def throw_my_error() -> None:
+//     raise MyError
 void throw_my_error() {
-    // raise MyError
     throw MyError{};
 }
 
 // def main() -> None:
+//     # First handler matches
+//     try:
+//         throw_value_error()
+//     except ValueError:
+//         print("caught ValueError")
+//     except MyError:
+//         print("caught MyError")
+//
+//     # Second handler matches
+//     try:
+//         throw_my_error()
+//     except ValueError:
+//         print("caught ValueError")
+//     except MyError:
+//         print("caught MyError")
 void main() {
-    // # First handler matches
-    // try:
     {
         try {
-            // throw_value_error()
             throw_value_error();
         } catch (const ::tpy::ValueError&) {
-            // print("caught ValueError")
             std::cout << "caught ValueError" << "\n";
         } catch (const MyError&) {
-            // print("caught MyError")
             std::cout << "caught MyError" << "\n";
         }
     }
-    // # Second handler matches
-    // try:
     {
         try {
-            // throw_my_error()
             throw_my_error();
         } catch (const ::tpy::ValueError&) {
-            // print("caught ValueError")
             std::cout << "caught ValueError" << "\n";
         } catch (const MyError&) {
-            // print("caught MyError")
             std::cout << "caught MyError" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

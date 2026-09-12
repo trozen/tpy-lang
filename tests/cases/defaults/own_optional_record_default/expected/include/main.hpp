@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def store(r: Own[Rec | None] = None) -> Own[Holder]:
 Holder store(std::optional<Rec>&& r);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -52,20 +54,22 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int64) -> None:
+//     self.v = v
 inline Rec::Rec(int64_t v) : v(v) {}
 
 // # A ctor is a member, so this Own default keeps its C++ spelling.
 // def __init__(self, r: Own[Rec | None] = None) -> None:
+//     self.slot = r
 inline Holder::Holder(std::optional<Rec>&& r) : slot(std::move(r)) {}
 
 // def value(self) -> int64:
+//     if self.slot is None:
+//         return -1
+//     return self.slot.v
 inline int64_t Holder::value() const {
-    // if self.slot is None:
     if ((!this->slot.has_value())) {
-        // return -1
         return -1;
     }
-    // return self.slot.v
     return (*this->slot).v;
 }
 void __tpy_init();

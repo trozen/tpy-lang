@@ -15,12 +15,15 @@ template <typename T>
 struct __coro_ident;
 struct __coro_main_coro;
 
+// async def ident[T](x: T) -> T:
 template <typename T>
 __coro_ident<T> ident(::tpy::param_val_or_ref_t<T> x);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: ident
+// async def ident[T](x: T) -> T:
 template <typename T>
 struct __coro_ident {
     int32_t __state;
@@ -43,12 +46,12 @@ struct __coro_ident {
     }
 };
 // async def ident[T](x: T) -> T:
+//     return x
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_ident<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return x
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -65,7 +68,7 @@ __coro_ident<T> ident(::tpy::param_val_or_ref_t<T> x) {
     return __coro_ident<T>(x);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

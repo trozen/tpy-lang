@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(h: Holder, c: bool) -> tuple[int32, Box]:
 std::tuple<int32_t, Box*> pick(Holder& h, bool c);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -50,9 +52,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self) -> None:
+//     self.a = (1, Box(5))
+//     self.b = (2, Box(7))
 inline Holder::Holder() : a(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)})), b(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)})) {}
 void __tpy_init();
 } // namespace tpyapp::main

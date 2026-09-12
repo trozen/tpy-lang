@@ -32,11 +32,17 @@ struct Parrot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def branch_init(cond: bool) -> None:
 void branch_init(bool cond);
+// def branch_reassign(cond: bool) -> None:
 void branch_reassign(bool cond);
+// def nested_branches(a: bool, b: bool) -> None:
 void nested_branches(bool a, bool b);
+// def loop_reassign(n: int32) -> None:
 void loop_reassign(int32_t n);
+// def branch_in_loop(n: int32) -> None:
 void branch_in_loop(int32_t n);
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -102,20 +108,20 @@ namespace tpyapp::main {
 
 
 // def name(self) -> str:
+//     return "Rex"
 inline std::string Dog::name() {
-    // return "Rex"
     return "Rex";
 }
 
 // def name(self) -> str:
+//     return "Whiskers"
 inline std::string Cat::name() const {
-    // return "Whiskers"
     return "Whiskers";
 }
 
 // def name(self) -> str:
+//     return "Polly"
 inline std::string Parrot::name() const {
-    // return "Polly"
     return "Polly";
 }
 void __tpy_init();

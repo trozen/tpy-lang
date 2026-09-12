@@ -10,15 +10,25 @@ namespace tpyapp::main {
 extern std::vector<::tpy::BigInt>* result;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_append() -> None:
 void test_append();
+// def test_list_ctor() -> None:
 void test_list_ctor();
+// def test_insert() -> None:
 void test_insert();
+// def test_multiple_append() -> None:
 void test_multiple_append();
+// def test_numeric_widen() -> None:
 void test_numeric_widen();
+// def test_return_context() -> Own[list[int]]:
 std::vector<::tpy::BigInt> test_return_context();
+// def takes_list(items: list[int]) -> None:
 void takes_list(const std::vector<::tpy::BigInt>& items);
+// def test_param_context() -> None:
 void test_param_context();
+// def test_param_overrides_inferred() -> None:
 void test_param_overrides_inferred();
+// def test_alias_inference() -> None:
 void test_alias_inference();
 
 void __tpy_init();

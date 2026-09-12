@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def kind(v: int | float | str) -> str:
 std::string kind(const ::tpy::Union<double, ::tpy::BigInt, std::string>& v);
+// def main() -> None:
 void main();
 
 void __tpy_init();

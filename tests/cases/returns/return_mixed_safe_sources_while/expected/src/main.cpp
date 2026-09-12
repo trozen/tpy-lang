@@ -5,92 +5,92 @@ namespace tpyapp::main {
 
 
 // def trusted(p: Point) -> Point:
+//     return p
 Point& trusted(Point& p) {
-    // return p
     return p;
 }
 
 // def pick_view(s: StrView) -> StrView:
+//     return s
 std::string_view pick_view(std::string_view s) {
-    // return s
     return s;
 }
 
 // def param_then_trusted(seed: Point, n: int32) -> Point:
+//     result = seed                    # param-derived
+//     i: int32 = 0
+//     while i < n:
+//         result = trusted(seed)       # trusted call return
+//         i += 1
+//     return result  # tpyc: ok
 Point& param_then_trusted(Point& seed, int32_t n) {
-    // result = seed                    # param-derived
     Point* result = &(seed);
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // result = trusted(seed)       # trusted call return
         result = &(trusted(seed));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return result  # tpyc: ok
     return (*result);
 }
 
 // def trusted_then_param(seed: Point, n: int32) -> Point:
+//     result = trusted(seed)           # trusted call return
+//     i: int32 = 0
+//     while i < n:
+//         result = seed                # param-derived
+//         i += 1
+//     return result  # tpyc: ok
 Point& trusted_then_param(Point& seed, int32_t n) {
-    // result = trusted(seed)           # trusted call return
     Point* result = &(trusted(seed));
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // result = seed                # param-derived
         result = &(seed);
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return result  # tpyc: ok
     return (*result);
 }
 
 // def strview_param_then_trusted(p: str, n: int32) -> StrView:
+//     sv: StrView = p                            # param-derived
+//     i: int32 = 0
+//     while i < n:
+//         sv = pick_view(StrView("x"))           # trusted call return
+//         i += 1
+//     return sv  # tpyc: ok
 std::string_view strview_param_then_trusted(std::string_view p, int32_t n) {
-    // sv: StrView = p                            # param-derived
     std::string_view sv = p;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // sv = pick_view(StrView("x"))           # trusted call return
         sv = pick_view("x");
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return sv  # tpyc: ok
     return sv;
 }
 
 // def main():
+//     seed = Point(11)
+//     print(param_then_trusted(seed, 0).x)
+//     print(param_then_trusted(seed, 3).x)
+//     print(trusted_then_param(seed, 0).x)
+//     print(trusted_then_param(seed, 3).x)
+//     print(strview_param_then_trusted("hello", 0))
+//     print(strview_param_then_trusted("hello", 3))
 void main() {
-    // seed = Point(11)
     Point seed = Point(11);
-    // print(param_then_trusted(seed, 0).x)
     std::cout << param_then_trusted(seed, 0).x << "\n";
-    // print(param_then_trusted(seed, 3).x)
     std::cout << param_then_trusted(seed, 3).x << "\n";
-    // print(trusted_then_param(seed, 0).x)
     std::cout << trusted_then_param(seed, 0).x << "\n";
-    // print(trusted_then_param(seed, 3).x)
     std::cout << trusted_then_param(seed, 3).x << "\n";
-    // print(strview_param_then_trusted("hello", 0))
     std::cout << strview_param_then_trusted("hello", 0) << "\n";
-    // print(strview_param_then_trusted("hello", 3))
     std::cout << strview_param_then_trusted("hello", 3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

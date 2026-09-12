@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def amain() -> None:
+//     r = Runner()
+//     print(await r.go())
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // r = Runner()
         r.emplace(Runner());
-        // print(await r.go())
         __sub_0.emplace((*r));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +20,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await r.go())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,11 +36,13 @@ __coro_amain amain() {
 }
 
 // async def go(self) -> int32:
+//     async with Gate(7) as v:
+//         self.total += v
+//     return self.total
 ::tpystd::tpy::Poll<int32_t> __coro_Runner_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(Gate(7));
-        // async with Gate(7) as v:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -68,20 +69,17 @@ __coro_amain amain() {
         continue;
     }
     case S_JOIN_0: {
-        // async with Gate(7) as v:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_1: {
-        // return self.total
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.total;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_2: {
         try {
-            // self.total += v
             __self.total = ::tpy::add_check<int32_t>(__self.total, v);
             __state = S_JOIN_0;
             continue;
@@ -98,10 +96,11 @@ __coro_amain amain() {
 
 
 // async def __aenter__(self) -> int32:
+//     await asyncio.sleep(0)
+//     return self.n
 ::tpystd::tpy::Poll<int32_t> __coro_Gate___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -111,7 +110,6 @@ __coro_amain amain() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self.n
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -123,10 +121,10 @@ __coro_amain amain() {
 
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
+//     await asyncio.sleep(0)
 ::tpystd::tpy::Poll<::std::monostate> __coro_Gate___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -145,18 +143,19 @@ __coro_amain amain() {
 }
 
 
+// # An `async with` embeds the manager's __aenter__/__aexit__ coro structs by
+// # value, so they must be emitted first. The awaiter here is an async METHOD on a
+// # record declared BEFORE the manager, which is the order the method-first seed
+// # cannot satisfy on its own -- a free-function awaiter is always already ordered.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An `async with` embeds the manager's __aenter__/__aexit__ coro structs by
-    // # value, so they must be emitted first. The awaiter here is an async METHOD on a
-    // # record declared BEFORE the manager, which is the order the method-first seed
-    // # cannot satisfy on its own -- a free-function awaiter is always already ordered.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

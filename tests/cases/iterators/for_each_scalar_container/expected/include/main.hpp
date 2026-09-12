@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def total(items: list[int32]) -> int32:
 int32_t total(const std::vector<int32_t>& items);
+// def count_pos(xs: list[int32]) -> int32:
 int32_t count_pos(const std::vector<int32_t>& xs);
+// def keysum(d: dict[int32, int32]) -> int32:
 int32_t keysum(const ::tpy::ordered_map<int32_t, int32_t>& d);
+// def main() -> None:
 void main();
 
 void __tpy_init();

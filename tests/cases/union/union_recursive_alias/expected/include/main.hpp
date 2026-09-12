@@ -11,7 +11,9 @@ struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def depth(t: Tree) -> int:
 ::tpy::BigInt depth(const Tree& t);
+// def main() -> None:
 void main();
 
 struct Tree {

@@ -8,51 +8,52 @@ namespace tpyapp::main {
 // # The select must alias the chosen container, not copy it, so each read is
 // # repeated after mutating the container the condition picks.
 // def main() -> None:
+//     a = [1, 2]
+//     b = [3, 4]
+//     a.append(9)
+//     b.append(9)
+//     c = True
+//     print((a if c else b)[0])  # tpyc: ok
+//     a[0] = 42
+//     # Reads 42 only if the ternary selected the live `a`.
+//     print((a if c else b)[0])  # tpyc: ok
+//     c = False
+//     b[1] = 77
+//     print((a if c else b)[1])  # tpyc: ok
+//
+//     d1 = {"k": 1}
+//     d2 = {"k": 2}
+//     flag = False
+//     # The same receiver row over a dict, and a non-literal index.
+//     print((d1 if flag else d2)["k"])  # tpyc: ok
+//     d2["k"] = 8
+//     print((d1 if flag else d2)["k"])  # tpyc: ok
 void main() {
-    // a = [1, 2]
     std::vector<int32_t> a = {1, 2};
-    // b = [3, 4]
     std::vector<int32_t> b = {3, 4};
-    // a.append(9)
     a.push_back(9);
-    // b.append(9)
     b.push_back(9);
-    // c = True
     bool c = true;
-    // print((a if c else b)[0])  # tpyc: ok
     std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 0) << "\n";
-    // a[0] = 42
     ::tpy::__setitem__(a, 0, 42);
-    // # Reads 42 only if the ternary selected the live `a`.
-    // print((a if c else b)[0])  # tpyc: ok
     std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 0) << "\n";
-    // c = False
     c = false;
-    // b[1] = 77
     ::tpy::__setitem__(b, 1, 77);
-    // print((a if c else b)[1])  # tpyc: ok
     std::cout << ::tpy::__getitem__(((c) ? (a) : (b)), 1) << "\n";
-    // d1 = {"k": 1}
     ::tpy::ordered_map<std::string, int32_t> d1 = ::tpy::ordered_map<std::string, int32_t>({{"k", 1}});
-    // d2 = {"k": 2}
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"k", 2}});
-    // flag = False
     bool flag = false;
-    // # The same receiver row over a dict, and a non-literal index.
-    // print((d1 if flag else d2)["k"])  # tpyc: ok
     std::cout << ::tpy::__getitem__(((flag) ? (d1) : (d2)), "k") << "\n";
-    // d2["k"] = 8
     ::tpy::__setitem__(d2, "k", 8);
-    // print((d1 if flag else d2)["k"])  # tpyc: ok
     std::cout << ::tpy::__getitem__(((flag) ? (d1) : (d2)), "k") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

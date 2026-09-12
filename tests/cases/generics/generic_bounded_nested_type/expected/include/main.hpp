@@ -18,6 +18,7 @@ template<ItemsProvider<int32_t> V> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class IntListHolder:
@@ -47,12 +48,13 @@ struct Wrapper {
     V holder;
 
     // def __init__(self, holder: V) -> None:
+    //     self.holder = holder
     Wrapper() = default;
     explicit Wrapper(::tpy::readonly_form_t<V> holder) : holder(holder) {}
 
     // def get_holder(self) -> V:
+    //     return self.holder
     ::tpy::val_or_ref_t<V> get_holder() {
-        // return self.holder
         return this->holder;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
@@ -66,11 +68,12 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<V>& obj) {
 
 
 // def __init__(self, data: list[int32]) -> None:
+//     self.data = data
 inline IntListHolder::IntListHolder(const std::vector<int32_t>& data) : data(data) {}
 
 // def items(self) -> list[int32]:
+//     return self.data
 inline std::vector<int32_t>& IntListHolder::items() {
-    // return self.data
     return this->data;
 }
 void __tpy_init();

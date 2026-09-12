@@ -11,6 +11,7 @@ struct Calculator;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Calculator:
@@ -26,14 +27,12 @@ struct Calculator {
     // def scale(self, x: int) -> int: ...  # tpyc: ok
     ::tpy::BigInt scale(const ::tpy::BigInt& x) {
         ::tpy::BigInt factor = ::tpy::BigInt(1);
-        // return (x * factor) + self.offset
         return ((((x) * (factor))) + (this->offset));
     }
 
     // @overload
     // def scale(self, x: int, factor: int) -> int: ...  # tpyc: ok
     ::tpy::BigInt scale(const ::tpy::BigInt& x, const ::tpy::BigInt& factor) {
-        // return (x * factor) + self.offset
         return ((((x) * (factor))) + (this->offset));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Calculator";
@@ -46,6 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Calculator& obj) {
 
 
 // def __init__(self, offset: int) -> None:
+//     self.offset = offset
 inline Calculator::Calculator(const ::tpy::BigInt& offset) : offset(offset) {}
 void __tpy_init();
 } // namespace tpyapp::main

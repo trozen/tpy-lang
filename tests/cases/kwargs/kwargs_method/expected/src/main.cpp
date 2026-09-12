@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     fmt = Formatter()
+//     print(fmt.format("hello"))
+//     print(fmt.format("hello", fill="*"))
+//     print(fmt.format(text="world", width=10))
 void main() {
-    // fmt = Formatter()
     Formatter fmt = Formatter();
-    // print(fmt.format("hello"))
     std::cout << fmt.format("hello") << "\n";
-    // print(fmt.format("hello", fill="*"))
     std::cout << fmt.format("hello", 0, "*") << "\n";
-    // print(fmt.format(text="world", width=10))
     std::cout << fmt.format("world", 10) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

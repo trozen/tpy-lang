@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_int32_plus_bigint():
 void test_int32_plus_bigint();
+// def test_bigint_plus_int32():
 void test_bigint_plus_int32();
+// def test_mixed_arithmetic():
 void test_mixed_arithmetic();
+// def test_large_bigint():
 void test_large_bigint();
+// def test_augmented_assign_mixed():
 void test_augmented_assign_mixed();
+// def test_nested_literal_binop():
 void test_nested_literal_binop();
 
 void __tpy_init();

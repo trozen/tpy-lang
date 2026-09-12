@@ -38,7 +38,9 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use(s: Box[Sink], d: dict[str, int32]) -> int32:
 int32_t use(::tpystd::tplib::box::Box<Sink>& s, ::tpy::ordered_map<std::string, int32_t>& d);
+// def main() -> None:
 void main();
 
 // class Counter(Sink):
@@ -91,48 +93,49 @@ namespace tpyapp::main {
 
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Counter::Counter(int32_t base) : base(base) {}
 
 // def total(self, items: dict[str, int32] | None = None) -> int32:
+//     n = self.base
+//     if items is not None:
+//         for v in items.values():
+//             n += v
+//     return n
 inline int32_t Counter::total(::tpy::ordered_map<std::string, int32_t>* items) {
-    // n = self.base
     int32_t n = this->base;
-    // if items is not None:
     if ((items != nullptr)) {
-        // for v in items.values():
         auto __obj_0 = ::tpy::dict_values((*items));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t v = *__beg_0;
-            // n += v
             n = ::tpy::add_check<int32_t>(n, v);
         }
     }
-    // return n
     return n;
 }
 
 // def bump(self, items: dict[str, int32]) -> None:
+//     items["seen"] = self.base
 inline void Counter::bump(::tpy::ordered_map<std::string, int32_t>& items) {
-    // items["seen"] = self.base
     ::tpy::__setitem__(items, "seen", this->base);
 }
 
 // def width(self, tags: list[str]) -> int32:
+//     n = 0
+//     for t in tags:
+//         n += len(t)
+//     return int32(n)
 inline int32_t Counter::width(std::vector<std::string>& tags) {
-    // n = 0
     int32_t n = 0;
-    // for t in tags:
     auto& __obj_0 = tags;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view t = *__beg_0;
-        // n += len(t)
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(t));
     }
-    // return int32(n)
     return n;
 }
 void __tpy_init();

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = IntBag()
+//     b.add(5)
+//     b.resize(3)
+//     print(b.get(0), b.get(1), b.get(2))
+//     b.resize(1)
+//     print(len(b.items))
 void main() {
-    // b = IntBag()
     IntBag b = IntBag();
-    // b.add(5)
     b.add(5);
-    // b.resize(3)
     b.resize(3);
-    // print(b.get(0), b.get(1), b.get(2))
     std::cout << b.get(0) << " " << b.get(1) << " " << b.get(2) << "\n";
-    // b.resize(1)
     b.resize(1);
-    // print(len(b.items))
     std::cout << ::tpy::__len__(b.items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

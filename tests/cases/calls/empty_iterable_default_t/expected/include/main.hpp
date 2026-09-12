@@ -9,47 +9,51 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def tag[T](xs: Iterable[T]) -> str:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 std::string tag(const T_xs& xs);
+// def pick_or[T](xs: Iterable[T], fallback: T) -> T:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 ::tpy::val_or_ref_t<T> pick_or(T_xs& xs, ::tpy::param_val_or_ref_t<T> fallback);
+// def pair[T](xs: Iterable[T], ys: Iterable[T]) -> str:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs, ::tpystd::typing::Iterable<T> T_ys>
 std::string pair(const T_xs& xs, const T_ys& ys);
+// def main() -> None:
 void main();
 
 // # Single-arg generic: only signal is the empty list, so T must default.
 // @type_param_default(T=DefaultInt)
 // def tag[T](xs: Iterable[T]) -> str:
+//     return "ok"
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 std::string tag(const T_xs& xs) {
-    // return "ok"
     return "ok";
 }
 // # Multi-arg generic: empty xs gives UnknownElement; `fallback` then pins
 // # T from the int literal. No @type_param_default needed.
 // def pick_or[T](xs: Iterable[T], fallback: T) -> T:
+//     for x in xs:
+//         return x
+//     return fallback
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 ::tpy::val_or_ref_t<T> pick_or(T_xs& xs, ::tpy::param_val_or_ref_t<T> fallback) {
-    // for x in xs:
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        // return x
         return x;
     }
-    // return fallback
     return ::tpy::param_to_return<T>(fallback);
 }
 // # Two iterables of the same T -- exercises both directions of the
 // # UnknownElementType placeholder rule in match_type_with_inference. Either
 // # arg position carrying [] must defer to the concrete one.
 // def pair[T](xs: Iterable[T], ys: Iterable[T]) -> str:
+//     return "ok"
 template<typename T, ::tpystd::typing::Iterable<T> T_xs, ::tpystd::typing::Iterable<T> T_ys>
 std::string pair(const T_xs& xs, const T_ys& ys) {
-    // return "ok"
     return "ok";
 }
 

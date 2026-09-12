@@ -12,6 +12,7 @@ struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class E(Exception, ReturnException):
@@ -54,18 +55,19 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2]
 inline H::H() : items(std::vector<int32_t>{1, 2}) {}
 
 // def view(self) -> list[int32]:
+//     return self.items
 inline std::vector<int32_t>& H::view() {
-    // return self.items
     return this->items;
 }
 
 // @error_return(E)
 // def poke(self) -> int32:
+//     return 1
 inline std::expected<int32_t, E> H::poke() const {
-    // return 1
     return 1;
 }
 void __tpy_init();

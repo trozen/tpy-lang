@@ -10,32 +10,39 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def stringio_read_size() -> None:
 void stringio_read_size();
+// def bytesio_read_size() -> None:
 void bytesio_read_size();
+// def via_protocol(fp: Readable) -> str:
 template<::tpystd::tpy::Readable T_fp>
 std::string via_protocol(T_fp& fp);
+// def via_binary_protocol(fp: BinaryReadable) -> bytes:
 template<::tpystd::tpy::BinaryReadable T_fp>
 ::tpy::Bytes via_binary_protocol(T_fp& fp);
+// def protocol_params() -> None:
 void protocol_params();
+// def file_read_size() -> None:
 void file_read_size();
+// def main() -> None:
 void main();
 
 // def via_protocol(fp: Readable) -> str:
+//     # Sequential reads, not `read(4) + read()`: TPy evaluates a single binary
+//     # op's operands right-to-left, so the inline form would reorder the reads.
+//     head = fp.read(4)
+//     rest = fp.read()
+//     return head + "|" + rest
 template<::tpystd::tpy::Readable T_fp>
 std::string via_protocol(T_fp& fp) {
-    // # Sequential reads, not `read(4) + read()`: TPy evaluates a single binary
-    // # op's operands right-to-left, so the inline form would reorder the reads.
-    // head = fp.read(4)
     std::string head = fp.read(4);
-    // rest = fp.read()
     std::string rest = fp.read();
-    // return head + "|" + rest
     return (::tpy::str_concat((::tpy::str_concat(head, "|")), rest));
 }
 // def via_binary_protocol(fp: BinaryReadable) -> bytes:
+//     return fp.read(2)
 template<::tpystd::tpy::BinaryReadable T_fp>
 ::tpy::Bytes via_binary_protocol(T_fp& fp) {
-    // return fp.read(2)
     return fp.read(2);
 }
 

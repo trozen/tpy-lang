@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     ba = bytearray()
+//     xs: list[int32] = [100, 500]
+//     ba.extend(xs)
 void main() {
-    // ba = bytearray()
     ::tpy::ByteArray ba = ::tpy::ByteArray();
-    // xs: list[int32] = [100, 500]
     std::vector<int32_t> xs = {100, 500};
-    // ba.extend(xs)
     ::tpy::bytes_extend_int_iterable(ba, xs);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

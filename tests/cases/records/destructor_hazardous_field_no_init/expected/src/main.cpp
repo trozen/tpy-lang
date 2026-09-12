@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Safe()  # tpyc: ok
+//     print("safe name empty:", s.name == "")
 void main() {
-    // s = Safe()  # tpyc: ok
     Safe s = Safe();
-    // print("safe name empty:", s.name == "")
     std::cout << "safe name empty:" << " " << ::tpy::print_bool((s.name == "")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

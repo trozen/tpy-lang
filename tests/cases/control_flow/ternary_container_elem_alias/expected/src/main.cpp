@@ -9,42 +9,42 @@ namespace tpyapp::main {
 // # The plain element read (`x = d["a"]`) is still rejected at this element
 // # family, so the ternary is the only admitted spelling for it today.
 // def pick(d: dict[str, bytearray], cond: bool) -> None:
+//     # The subject: an element-subscript arm pair binds the element by
+//     # reference, so the write below lands in the dict, not in a copy.
+//     x = d["a"] if cond else d["b"]  # tpyc: ok
+//     x[0] = 90
+//     # A second alias of the same element observes the write.
+//     y = d["a"] if cond else d["b"]
+//     print(len(y), y[0])
 void pick(::tpy::ordered_map<std::string, ::tpy::ByteArray>& d, bool cond) {
-    // # The subject: an element-subscript arm pair binds the element by
-    // # reference, so the write below lands in the dict, not in a copy.
-    // x = d["a"] if cond else d["b"]  # tpyc: ok
     ::tpy::ByteArray& x = ((cond) ? (::tpy::__getitem__(d, "a")) : (::tpy::__getitem__(d, "b")));
-    // x[0] = 90
     ::tpy::bytearray_setitem(x, 0, 90);
-    // # A second alias of the same element observes the write.
-    // y = d["a"] if cond else d["b"]
     ::tpy::ByteArray& y = ((cond) ? (::tpy::__getitem__(d, "a")) : (::tpy::__getitem__(d, "b")));
-    // print(len(y), y[0])
     std::cout << ::tpy::__len__(y) << " " << static_cast<int>(::tpy::bytes_getitem(y, 0)) << "\n";
 }
 
 // def main() -> None:
+//     d: dict[str, bytearray] = {}
+//     d["a"] = bytearray(b"ab")
+//     d["b"] = bytearray(b"cde")
+//     pick(d, True)
+//     pick(d, False)
+//     pick(d, True)
 void main() {
-    // d: dict[str, bytearray] = {}
     ::tpy::ordered_map<std::string, ::tpy::ByteArray> d = ::tpy::ordered_map<std::string, ::tpy::ByteArray>();
-    // d["a"] = bytearray(b"ab")
     ::tpy::__setitem__(d, "a", ::tpy::ByteArray(::tpy::bytes_literal("ab", 2)));
-    // d["b"] = bytearray(b"cde")
     ::tpy::__setitem__(d, "b", ::tpy::ByteArray(::tpy::bytes_literal("cde", 3)));
-    // pick(d, True)
     pick(d, true);
-    // pick(d, False)
     pick(d, false);
-    // pick(d, True)
     pick(d, true);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

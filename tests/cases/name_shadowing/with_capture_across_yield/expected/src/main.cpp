@@ -5,11 +5,15 @@ namespace tpyapp::main {
 
 
 // def steps(limit: int32) -> Iterator[int32]:
+//     c = Counter(limit)
+//     with c as guard:
+//         yield guard.n
+//         guard.n += 1
+//         yield guard.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counter(limit)
         c.emplace(Counter(limit));
         __with_ctx_0 = &((*c));
         guard.emplace((*__with_ctx_0).__enter__());
@@ -18,9 +22,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     }
     case S_RESUME_0: {
         try {
-            // guard.n += 1
             (*guard).n = ::tpy::add_check<int32_t>((*guard).n, 1);
-            // yield guard.n
             __state = S_RESUME_1;
             return (*guard).n;
         } catch (::tpy::BaseException& __exc_0) {
@@ -54,7 +56,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     }
     case S_JOIN_1: {
         try {
-            // yield guard.n
             __state = S_RESUME_0;
             return (*guard).n;
         } catch (::tpy::BaseException& __exc_0) {
@@ -81,10 +82,12 @@ __gen_steps steps(int32_t limit) {
 }
 
 // def main() -> None:
+//     total = 0
+//     for v in steps(5):
+//         total += v
+//     print(total)
 void main() {
-    // total = 0
     int32_t total = 0;
-    // for v in steps(5):
     {
         auto __src_0 = steps(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -92,20 +95,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
         }
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

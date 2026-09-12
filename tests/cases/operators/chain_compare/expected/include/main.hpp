@@ -10,21 +10,37 @@ namespace tpyapp::main {
 extern int32_t call_count;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_basic() -> None:
 void test_basic();
+// def test_variables() -> None:
 void test_variables();
+// def test_mixed_ops() -> None:
 void test_mixed_ops();
+// def test_equality() -> None:
 void test_equality();
+// def test_triple() -> None:
 void test_triple();
+// def test_descending() -> None:
 void test_descending();
+// def test_short_circuit() -> None:
 void test_short_circuit();
+// def test_float() -> None:
 void test_float();
+// def test_in_condition() -> None:
 void test_in_condition();
+// def test_as_expression() -> None:
 void test_as_expression();
+// def get_mid() -> int32:
 int32_t get_mid();
+// def get_high() -> int32:
 int32_t get_high();
+// def get_top() -> int32:
 int32_t get_top();
+// def test_single_eval() -> None:
 void test_single_eval();
+// def test_short_circuit_operands() -> None:
 void test_short_circuit_operands();
+// def test_triple_short_circuit() -> None:
 void test_triple_short_circuit();
 
 void __tpy_init();

@@ -5,40 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Child(1, 2, 3)
+//     b = Child(1, 2, 4)
+//     c = Child(2, 0, 0)
+//     # z differs: 3 < 4
+//     print(a < b)
+//     print(b < a)
+//     # x differs: 1 < 2
+//     print(a < c)
+//     print(c < a)
+//     # Equal
+//     print(a <= Child(1, 2, 3))
+//     print(a >= Child(1, 2, 3))
+//     print(a)
 void main() {
-    // a = Child(1, 2, 3)
     Child a = Child(1, 2, 3);
-    // b = Child(1, 2, 4)
     Child b = Child(1, 2, 4);
-    // c = Child(2, 0, 0)
     Child c = Child(2, 0, 0);
-    // # z differs: 3 < 4
-    // print(a < b)
     std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
-    // print(b < a)
     std::cout << ::tpy::print_bool(((b) < (a))) << "\n";
-    // # x differs: 1 < 2
-    // print(a < c)
     std::cout << ::tpy::print_bool(((a) < (c))) << "\n";
-    // print(c < a)
     std::cout << ::tpy::print_bool(((c) < (a))) << "\n";
-    // # Equal
-    // print(a <= Child(1, 2, 3))
     std::cout << ::tpy::print_bool(((a) <= (Child(1, 2, 3)))) << "\n";
-    // print(a >= Child(1, 2, 3))
     std::cout << ::tpy::print_bool(((a) >= (Child(1, 2, 3)))) << "\n";
-    // print(a)
     std::cout << a << "\n";
 }
 
+// # @dataclass(order=True) inheritance: comparison uses parent + child fields
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass(order=True) inheritance: comparison uses parent + child fields
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

@@ -13,12 +13,19 @@ struct __tpy_builder_argparse_args_2;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def parse_a() -> int32:
 int32_t parse_a();
+// def parse_b() -> int32:
 int32_t parse_b();
+// def main() -> int32:
 int32_t main();
+// args = parser.parse_args(["alice"])
 void __tpy_builder_argparse_help_1();
+// args = parser.parse_args(["alice"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
+// args = parser.parse_args(["--count", "7"])
 void __tpy_builder_argparse_help_2();
+// args = parser.parse_args(["--count", "7"])
 __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<std::string>& argv);
 
 // args = parser.parse_args(["alice"])

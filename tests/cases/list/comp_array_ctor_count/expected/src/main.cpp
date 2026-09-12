@@ -3,44 +3,40 @@
 
 namespace tpyapp::main {
 
+std::vector<::tpy::BigInt>* log{};
+
+// def main():
+//     pts = [P() for i in range(4)]  # tpyc: type(/Array\[P, 4\]/)
+//     print(len(pts), len(log))
+//     outs = [Outer() for i in range(3)]  # tpyc: type(/Array\[Outer, 3\]/)
+//     print(len(outs), len(log))
+void main() {
+    std::array<P, 4> pts = ::tpy::array_from_index<P, 4>([&](std::size_t __i_0) -> P {
+        int32_t i = int32_t(__i_0);
+        return P();
+    });
+    std::cout << ::tpy::__len__(pts) << " " << ::tpy::__len__((*log)) << "\n";
+    std::array<Outer, 3> outs = ::tpy::array_from_index<Outer, 3>([&](std::size_t __i_1) -> Outer {
+        int32_t i = int32_t(__i_1);
+        return Outer();
+    });
+    std::cout << ::tpy::__len__(outs) << " " << ::tpy::__len__((*log)) << "\n";
+}
+
 // # The Array comprehension build constructs each element in place exactly once:
 // # a side-effectful __init__ (direct, or reached via a field constructed in the
 // # element's ctor) ran 2N times under the old default-construct-then-assign
 // # build vs CPython's N.
 // log: list[int] = []
-std::vector<::tpy::BigInt>* log{};
-
-// def main():
-void main() {
-    // pts = [P() for i in range(4)]  # tpyc: type(/Array\[P, 4\]/)
-    std::array<P, 4> pts = ::tpy::array_from_index<P, 4>([&](std::size_t __i_0) -> P {
-        int32_t i = int32_t(__i_0);
-        return P();
-    });
-    // print(len(pts), len(log))
-    std::cout << ::tpy::__len__(pts) << " " << ::tpy::__len__((*log)) << "\n";
-    // outs = [Outer() for i in range(3)]  # tpyc: type(/Array\[Outer, 3\]/)
-    std::array<Outer, 3> outs = ::tpy::array_from_index<Outer, 3>([&](std::size_t __i_1) -> Outer {
-        int32_t i = int32_t(__i_1);
-        return Outer();
-    });
-    // print(len(outs), len(log))
-    std::cout << ::tpy::__len__(outs) << " " << ::tpy::__len__((*log)) << "\n";
-}
-
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The Array comprehension build constructs each element in place exactly once:
-    // # a side-effectful __init__ (direct, or reached via a field constructed in the
-    // # element's ctor) ran 2N times under the old default-construct-then-assign
-    // # build vs CPython's N.
-    // log: list[int] = []
     static std::vector<::tpy::BigInt> __global_slot_1 = std::vector<::tpy::BigInt>{};
     log = &__global_slot_1;
-    // main()
     main();
 }
 

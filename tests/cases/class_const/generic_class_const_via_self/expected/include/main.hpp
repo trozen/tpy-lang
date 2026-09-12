@@ -11,6 +11,7 @@ template<typename T> struct Bounded;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bounded[T]:
@@ -20,13 +21,13 @@ struct Bounded {
     static constexpr int32_t LIMIT = 7;
 
     // def __init__(self) -> None:
+    //     pass
     Bounded() {
-        // pass
     }
 
     // def at_limit(self, n: int32) -> bool:
+    //     return n >= self.LIMIT
     bool at_limit(int32_t n) const {
-        // return n >= self.LIMIT
         return (n >= Bounded<T>::LIMIT);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bounded";

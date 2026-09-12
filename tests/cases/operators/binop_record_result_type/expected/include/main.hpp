@@ -13,6 +13,7 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Frac(ValueType):
@@ -29,14 +30,12 @@ struct Frac {
     // @overload
     // def __truediv__(self, other: Frac) -> float: ...
     double __truediv__(Frac other) const {
-        // return (self.num * other.den) / (self.den * other.num)
         return (::tpy::truediv(((this->num) * (other.den)), ((this->den) * (other.num))));
     }
 
     // @overload
     // def __truediv__(self, other: int) -> Frac: ...
     Frac __truediv__(const ::tpy::BigInt& other) const {
-        // return Frac(self.num, self.den * other)
         return Frac(this->num, ((this->den) * (other)));
     }
 
@@ -139,47 +138,52 @@ namespace tpyapp::main {
 
 
 // def __init__(self, num: int, den: int) -> None:
+//     self.num = num
+//     self.den = den
 inline Frac::Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den) : num(num), den(den) {}
 
 // def __str__(self) -> str:
+//     return str(self.num) + "/" + str(self.den)
 inline std::string Frac::__str__() const {
-    // return str(self.num) + "/" + str(self.den)
     return (::tpy::str_concat((::tpy::str_concat((this->num).to_string(), "/")), (this->den).to_string()));
 }
 
 // def __init__(self, x: float, y: float) -> None:
+//     self.x = x
+//     self.y = y
 inline Vec::Vec(double x, double y) : x(x), y(y) {}
 
 // def __mul__(self, k: float) -> Vec:
+//     return Vec(self.x * k, self.y * k)
 inline Vec Vec::__mul__(double k) const {
-    // return Vec(self.x * k, self.y * k)
     return Vec(((this->x) * (k)), ((this->y) * (k)));
 }
 
 // def __rmul__(self, k: float) -> Vec:
+//     return Vec(self.x * k, self.y * k)
 inline Vec Vec::__rmul__(double k) const {
-    // return Vec(self.x * k, self.y * k)
     return Vec(((this->x) * (k)), ((this->y) * (k)));
 }
 
 // def __str__(self) -> str:
+//     return "Vec(" + str(self.x) + ", " + str(self.y) + ")"
 inline std::string Vec::__str__() const {
-    // return "Vec(" + str(self.x) + ", " + str(self.y) + ")"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Vec(", ::tpy::float_to_str(this->x))), ", ")), ::tpy::float_to_str(this->y))), ")"));
 }
 
 // def __init__(self, total: int) -> None:
+//     self.total = total
 inline Acc::Acc(const ::tpy::BigInt& total) : total(total) {}
 
 // def __add__(self, n: int) -> Acc:
+//     return Acc(self.total + n)
 inline Acc Acc::__add__(const ::tpy::BigInt& n) const {
-    // return Acc(self.total + n)
     return Acc(((this->total) + (n)));
 }
 
 // def __str__(self) -> str:
+//     return "Acc(" + str(self.total) + ")"
 inline std::string Acc::__str__() const {
-    // return "Acc(" + str(self.total) + ")"
     return (::tpy::str_concat((::tpy::str_concat("Acc(", (this->total).to_string())), ")"));
 }
 void __tpy_init();

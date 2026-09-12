@@ -43,40 +43,41 @@ namespace tpyapp::main {
 
 
 // def make_inner(v: int32) -> Own[Container.Inner]:
+//     return Container.Inner(v)
 Container::Inner make_inner(int32_t v) {
-    // return Container.Inner(v)
     return Container::Inner(v);
 }
 
 // def take_inner(i: Container.Inner) -> int32:
+//     return i.val
 int32_t take_inner(const Container::Inner& i) {
-    // return i.val
     return i.val;
 }
 
 // def get_kind() -> Container.Kind:
+//     return Container.Kind.A
 Container::Kind get_kind() {
-    // return Container.Kind.A
     return Container::Kind::A;
 }
 
 // def main() -> None:
+//     i = make_inner(42)
+//     print(take_inner(i))
+//     print(get_kind())
 void main() {
-    // i = make_inner(42)
     Container::Inner i = make_inner(42);
-    // print(take_inner(i))
     std::cout << take_inner(i) << "\n";
-    // print(get_kind())
     std::cout << get_kind() << "\n";
 }
 
+// from enum import Enum, auto
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum, auto
-    // main()
     main();
 }
 

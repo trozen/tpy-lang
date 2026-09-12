@@ -11,6 +11,7 @@ struct Clamped;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Clamped:
@@ -39,29 +40,30 @@ inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self._value = value
 inline Clamped::Clamped(int32_t value) : _value(value) {}
 
 // @property
 // def value(self) -> int32:
+//     return self._value
 inline int32_t Clamped::value() const {
-    // return self._value
     return this->_value;
 }
 
 // @value.setter
 // def value(self, v: int32) -> None:
+//     if v < 0:
+//         self._value = 0
+//     elif v > 100:
+//         self._value = 100
+//     else:
+//         self._value = v
 inline void Clamped::set_value(int32_t v) {
-    // if v < 0:
     if ((v < 0)) {
-        // self._value = 0
         this->_value = 0;
-    // elif v > 100:
     } else if ((v > 100)) {
-        // self._value = 100
         this->_value = 100;
-    // else:
     } else {
-        // self._value = v
         this->_value = v;
     }
 }

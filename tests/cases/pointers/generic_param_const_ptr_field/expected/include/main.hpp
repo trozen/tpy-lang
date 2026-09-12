@@ -19,6 +19,7 @@ template<Reads W> struct ROView;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter(Reads):
@@ -51,12 +52,13 @@ struct RWView {
     const W* _src;
 
     // def __init__(self, src: W) -> None:
+    //     self._src = src
     RWView() = default;
     explicit RWView(::tpy::readonly_form_t<W> src) : _src(&src) {}
 
     // def read(self) -> int32:
+    //     return self._src.value()
     int32_t read() const {
-        // return self._src.value()
         return ::tpy::deref_check(this->_src).value();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.RWView";
@@ -77,12 +79,13 @@ struct ROView {
     const W* _src;
 
     // def __init__(self, src: readonly[W]) -> None:
+    //     self._src = src
     ROView() = default;
     explicit ROView(::tpy::readonly_form_t<W> src) : _src(&src) {}
 
     // def read(self) -> int32:
+    //     return self._src.value()
     int32_t read() const {
-        // return self._src.value()
         return ::tpy::deref_check(this->_src).value();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.ROView";
@@ -96,12 +99,13 @@ inline std::ostream& operator<<(std::ostream& os, const ROView<W>& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // @readonly
 // def value(self) -> int32:
+//     return self.n
 inline int32_t Counter::value() const {
-    // return self.n
     return this->n;
 }
 void __tpy_init();

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog()
+//     speak(d)
 void main() {
-    // d = Dog()
     Dog d = Dog();
-    // speak(d)
     speak<Dog>(d);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

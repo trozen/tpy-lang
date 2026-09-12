@@ -5,6 +5,10 @@ namespace tpyapp::main {
 
 
 // def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
+//     for t in xs:  # tpyc: ok
+//         yield t[0]
+//         t[1].v += 100
+//         yield t[1].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -14,9 +18,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // t[1].v += 100
         std::get<1>((*t)).v = ::tpy::add_check<int32_t>(std::get<1>((*t)).v, 100);
-        // yield t[1].v
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
@@ -30,7 +32,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         t = &(*((*__for_it_0))++);
-        // yield t[0]
         __state = S_RESUME_0;
         return std::get<0>((*t));
     }
@@ -46,6 +47,9 @@ __gen_walk_free walk_free(std::vector<std::tuple<int32_t, A>>& xs) {
 }
 
 // def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
+//     for t in xs:  # tpyc: ok
+//         yield t[0]
+//         yield t[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -55,7 +59,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield t[1]
         __state = S_RESUME_1;
         return std::get<1>((*t));
     }
@@ -69,7 +72,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         t = &(*((*__for_it_0))++);
-        // yield t[0]
         __state = S_RESUME_0;
         return std::get<0>((*t));
     }
@@ -85,10 +87,16 @@ __gen_walk_value walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs) {
 }
 
 // async def walk_async(xs: list[tuple[int32, A]]) -> int32:
+//     total = 0
+//     for t in xs:  # tpyc: ok
+//         total += t[0]
+//         await asyncio.sleep(0)
+//         t[1].v += 100
+//         total += t[1].v
+//     return total
 ::tpystd::tpy::Poll<int32_t> __coro_walk_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
@@ -100,24 +108,19 @@ __gen_walk_value walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // t[1].v += 100
         std::get<1>((*t)).v = ::tpy::add_check<int32_t>(std::get<1>((*t)).v, 100);
-        // total += t[1].v
         total = ::tpy::add_check<int32_t>(total, std::get<1>((*t)).v);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // return total
             __state = S_DONE;
             int32_t __tpy_async_ret = total;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         t = &(*((*__for_it_0))++);
-        // total += t[0]
         total = ::tpy::add_check<int32_t>(total, std::get<0>((*t)));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -134,6 +137,10 @@ __coro_walk_async walk_async(std::vector<std::tuple<int32_t, A>>& xs) {
 }
 
 // def walk_items(d: dict[int32, A]) -> Iterator[int32]:
+//     for kv in d.items():  # tpyc: ok
+//         yield kv[0]
+//         kv[1].v += 100
+//         yield kv[1].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -144,9 +151,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // kv[1].v += 100
         std::get<1>(kv)->v = ::tpy::add_check<int32_t>(std::get<1>(kv)->v, 100);
-        // yield kv[1].v
         __state = S_RESUME_1;
         return std::get<1>(kv)->v;
     }
@@ -160,7 +165,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         kv = ::tpy::tuple_to_pointer<std::tuple<int32_t, A*>>(*((*__for_it_0))++);
-        // yield kv[0]
         __state = S_RESUME_0;
         return std::get<0>(kv);
     }
@@ -176,10 +180,14 @@ __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
 }
 
 // async def sum_items(d: dict[int32, int32]) -> int32:
+//     total = 0
+//     for kv in d.items():  # tpyc: ok
+//         await asyncio.sleep(0)
+//         total += kv[0] + kv[1]
+//     return total
 ::tpystd::tpy::Poll<int32_t> __coro_sum_items::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -192,20 +200,17 @@ __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // total += kv[0] + kv[1]
         total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(std::get<0>(kv), std::get<1>(kv))));
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // return total
             __state = S_DONE;
             int32_t __tpy_async_ret = total;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         kv = *((*__for_it_0))++;
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -222,12 +227,14 @@ __coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d) {
 }
 
 // async def async_section() -> None:
+//     ays = [(5, A(50))]
+//     print("async", await walk_async(ays))
+//     print("async src", ays[0][1].v)
+//     print("async items", await sum_items({1: 2}))
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // ays = [(5, A(50))]
         ays.emplace(std::vector<std::tuple<int32_t, A>>{std::tuple<int32_t, A>{5, A(50)}});
-        // print("async", await walk_async(ays))
         __sub_0.emplace((*ays));
         __state = S_RESUME_0;
         continue;
@@ -237,12 +244,9 @@ __coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print("async", await walk_async(ays))
         std::cout << "async" << " " << __await_lift_0 << "\n";
-        // print("async src", ays[0][1].v)
         std::cout << "async src" << " " << std::get<1>(::tpy::__getitem__((*ays), 0)).v << "\n";
         __coro_arg_0.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 2}}));
-        // print("async items", await sum_items({1: 2}))
         __sub_1.emplace((*__coro_arg_0));
         __state = S_RESUME_1;
         continue;
@@ -252,7 +256,6 @@ __coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print("async items", await sum_items({1: 2}))
         std::cout << "async items" << " " << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -269,10 +272,31 @@ __coro_async_section async_section() {
 }
 
 // def main() -> None:
+//     xs = [(1, A(10)), (2, A(20))]
+//     for n in walk_free(xs):
+//         print("free", n)
+//     print("free src", xs[0][1].v, xs[1][1].v)
+//
+//     vs = [(1, 10), (2, 20)]
+//     for n in walk_value(vs):
+//         print("value", n)
+//
+//     h = Holder([(3, A(30))])
+//     for n in h.walk():
+//         print("method", n)
+//     print("method src", h.xs[0][1].v)
+//
+//     for n in h.peek():
+//         print("readonly", n)
+//
+//     asyncio.run(async_section())
+//
+//     d = {7: A(70)}
+//     for n in walk_items(d):
+//         print("items", n)
+//     print("items src", d[7].v)
 void main() {
-    // xs = [(1, A(10)), (2, A(20))]
     std::vector<std::tuple<int32_t, A>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{1, A(10)}), ::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{2, A(20)})};
-    // for n in walk_free(xs):
     {
         auto __src_0 = walk_free(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -280,15 +304,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        // print("free", n)
         std::cout << "free" << " " << n << "\n";
         }
     }
-    // print("free src", xs[0][1].v, xs[1][1].v)
     std::cout << "free src" << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << " " << std::get<1>(::tpy::__getitem__(xs, 1)).v << "\n";
-    // vs = [(1, 10), (2, 20)]
     std::vector<std::tuple<int32_t, int32_t>> vs = {std::tuple<int32_t, int32_t>{1, 10}, std::tuple<int32_t, int32_t>{2, 20}};
-    // for n in walk_value(vs):
     {
         auto __src_2 = walk_value(vs);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -296,13 +316,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-        // print("value", n)
         std::cout << "value" << " " << n << "\n";
         }
     }
-    // h = Holder([(3, A(30))])
     Holder h = Holder({::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{3, A(30)})});
-    // for n in h.walk():
     {
         auto __src_4 = h.walk();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -310,13 +327,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-        // print("method", n)
         std::cout << "method" << " " << n << "\n";
         }
     }
-    // print("method src", h.xs[0][1].v)
     std::cout << "method src" << " " << std::get<1>(::tpy::__getitem__(h.xs, 0)).v << "\n";
-    // for n in h.peek():
     {
         auto __src_6 = h.peek();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -324,15 +338,11 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_7);
-        // print("readonly", n)
         std::cout << "readonly" << " " << n << "\n";
         }
     }
-    // asyncio.run(async_section())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_section()));
-    // d = {7: A(70)}
     ::tpy::ordered_map<int32_t, A> d = ::tpy::ordered_map<int32_t, A>({{7, A(70)}});
-    // for n in walk_items(d):
     {
         auto __src_8 = walk_items(d);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -340,15 +350,17 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_9);
-        // print("items", n)
         std::cout << "items" << " " << n << "\n";
         }
     }
-    // print("items src", d[7].v)
     std::cout << "items src" << " " << ::tpy::__getitem__(d, 7).v << "\n";
 }
 
 // def walk(self) -> Iterator[int32]:
+//     for t in self.xs:  # tpyc: ok
+//         yield t[0]
+//         t[1].v += 100
+//         yield t[1].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -358,9 +370,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // t[1].v += 100
         std::get<1>((*t)).v = ::tpy::add_check<int32_t>(std::get<1>((*t)).v, 100);
-        // yield t[1].v
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
@@ -374,7 +384,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         t = &(*((*__for_it_0))++);
-        // yield t[0]
         __state = S_RESUME_0;
         return std::get<0>((*t));
     }
@@ -385,6 +394,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
 
 
 // def peek(self) -> Iterator[int32]:
+//     for t in self.xs:  # tpyc: ok
+//         yield t[0]
+//         yield t[1].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -394,7 +406,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield t[1].v
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
@@ -408,7 +419,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         t = &(*((*__for_it_0))++);
-        // yield t[0]
         __state = S_RESUME_0;
         return std::get<0>((*t));
     }
@@ -418,19 +428,20 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
 }
 
 
+// # A NON-unpack tuple loop variable in a resumable frame: `for t in xs` over a
+// # tuple whose element is a reference type. The frame field points at the source
+// # element tuple, so a mutation through the loop var after a suspension is
+// # visible at the source (CPython aliasing); the all-value and dict-items
+// # sections pin the two neighbouring field forms as unchanged.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A NON-unpack tuple loop variable in a resumable frame: `for t in xs` over a
-    // # tuple whose element is a reference type. The frame field points at the source
-    // # element tuple, so a mutation through the loop var after a suspension is
-    // # visible at the source (CPython aliasing); the all-value and dict-items
-    // # sections pin the two neighbouring field forms as unchanged.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

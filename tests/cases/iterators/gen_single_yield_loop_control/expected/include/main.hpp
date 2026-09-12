@@ -20,13 +20,21 @@ struct __gen_iter_post_break;
 struct __gen_post_continue;
 struct __gen_Limiter_first_positives;
 
+// def take(items: list[int32], n: int32) -> Iterator[int32]:
 __gen_take take(std::vector<int32_t>& items, int32_t n);
+// def evens(items: list[int32]) -> Iterator[int32]:
 __gen_evens evens(std::vector<int32_t>& items);
+// def stride() -> Iterator[int32]:
 __gen_stride stride();
+// def upto_range(n: int32) -> Iterator[int32]:
 __gen_upto_range upto_range(int32_t n);
+// def upto_while() -> Iterator[int32]:
 __gen_upto_while upto_while();
+// def iter_post_break(items: list[int32]) -> Iterator[int32]:
 __gen_iter_post_break iter_post_break(std::vector<int32_t>& items);
+// def post_continue(items: list[int32]) -> Iterator[int32]:
 __gen_post_continue post_continue(std::vector<int32_t>& items);
+// def main() -> None:
 void main();
 
 // class Limiter:
@@ -47,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Limiter& obj) {
     return os;
 }
 
-// Generator: take
+// def take(items: list[int32], n: int32) -> Iterator[int32]:
 struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
@@ -76,7 +84,7 @@ struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
     }
 };
 
-// Generator: evens
+// def evens(items: list[int32]) -> Iterator[int32]:
 struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
@@ -102,7 +110,7 @@ struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
     }
 };
 
-// Generator: stride
+// def stride() -> Iterator[int32]:
 struct __gen_stride : public ::tpy::next_iter_mixin<__gen_stride, int32_t> {
     int32_t __state;
     int32_t i;
@@ -129,7 +137,7 @@ struct __gen_stride : public ::tpy::next_iter_mixin<__gen_stride, int32_t> {
     }
 };
 
-// Generator: upto_range
+// def upto_range(n: int32) -> Iterator[int32]:
 struct __gen_upto_range : public ::tpy::next_iter_mixin<__gen_upto_range, int32_t> {
     int32_t __state;
     int32_t n;
@@ -156,7 +164,7 @@ struct __gen_upto_range : public ::tpy::next_iter_mixin<__gen_upto_range, int32_
     }
 };
 
-// Generator: upto_while
+// def upto_while() -> Iterator[int32]:
 struct __gen_upto_while : public ::tpy::next_iter_mixin<__gen_upto_while, int32_t> {
     int32_t __state;
     int32_t n;
@@ -180,7 +188,7 @@ struct __gen_upto_while : public ::tpy::next_iter_mixin<__gen_upto_while, int32_
     }
 };
 
-// Generator: iter_post_break
+// def iter_post_break(items: list[int32]) -> Iterator[int32]:
 struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_break, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
@@ -207,7 +215,7 @@ struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_bre
     }
 };
 
-// Generator: post_continue
+// def post_continue(items: list[int32]) -> Iterator[int32]:
 struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
@@ -233,7 +241,7 @@ struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, 
     }
 };
 
-// Generator: Limiter.first_positives
+// def first_positives(self, items: list[int32]) -> Iterator[int32]:
 struct __gen_Limiter_first_positives : public ::tpy::next_iter_mixin<__gen_Limiter_first_positives, int32_t> {
     int32_t __state;
     const Limiter& __self;
@@ -268,6 +276,7 @@ inline __gen_Limiter_first_positives Limiter::first_positives(std::vector<int32_
 
 
 // def __init__(self, limit: int32) -> None:
+//     self.limit = limit
 inline Limiter::Limiter(int32_t limit) : limit(limit) {}
 void __tpy_init();
 } // namespace tpyapp::main

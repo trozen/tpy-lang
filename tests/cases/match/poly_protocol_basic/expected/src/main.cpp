@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def describe(p: Pet) -> str:
+//     match p:  # tpyc: ok
+//         case Dog(name=n):
+//             return "dog:" + n + ":" + p.speak()
+//         case Cat() | Hamster():
+//             return "small:" + p.speak()
+//         case _:
+//             return "?"
 std::string describe(Pet& p) {
-    // match p:  # tpyc: ok
     auto& __match_subject_1 = p;
-    // case Dog(name=n):
     if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&__match_subject_1)) {
         Dog& __case_0 = *__mpoly_0;
         auto& n = __case_0.name;
-        // return "dog:" + n + ":" + p.speak()
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog:", n)), ":")), __case_0.speak()));
-    // case Cat() | Hamster():
     } else if ((dynamic_cast<Cat*>(&__match_subject_1) != nullptr) || (dynamic_cast<Hamster*>(&__match_subject_1) != nullptr)) {
-        // return "small:" + p.speak()
         return (::tpy::str_concat("small:", p.speak()));
-    // case _:
     } else {
-        // return "?"
         return "?";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(describe(Dog("Rex")))
+//     print(describe(Cat()))
+//     print(describe(Hamster()))
 void main() {
-    // print(describe(Dog("Rex")))
     Dog __tmp_1{Dog("Rex")};
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Cat()))
     Cat __tmp_2{Cat()};
     std::cout << describe(__tmp_2) << "\n";
-    // print(describe(Hamster()))
     Hamster __tmp_3{Hamster()};
     std::cout << describe(__tmp_3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

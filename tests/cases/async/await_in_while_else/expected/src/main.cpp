@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def tick(label: str) -> None:
+//     print(label)
 ::tpystd::tpy::Poll<::std::monostate> __coro_tick::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print(label)
         std::cout << label << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,10 +26,17 @@ __coro_tick tick(std::string_view label) {
 }
 
 // async def drive(brk: int32) -> None:
+//     i = 0
+//     while i < 3:
+//         if i == brk:
+//             break
+//         await tick("body")
+//         i += 1
+//     else:
+//         await tick("else")
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -39,7 +46,6 @@ __coro_tick tick(std::string_view label) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -59,14 +65,12 @@ __coro_tick tick(std::string_view label) {
                 continue;
             } else {
                 __coro_arg_0 = "body";
-                // await tick("body")
                 __sub_0.emplace(__coro_arg_0);
                 __state = S_RESUME_0;
                 continue;
             }
         } else {
             __coro_arg_1 = "else";
-            // await tick("else")
             __sub_1.emplace(__coro_arg_1);
             __state = S_RESUME_1;
             continue;
@@ -88,12 +92,14 @@ __coro_drive drive(int32_t brk) {
 }
 
 // async def caller() -> None:
+//     print("no break:")
+//     await drive(99)
+//     print("break:")
+//     await drive(1)
 ::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print("no break:")
         std::cout << "no break:" << "\n";
-        // await drive(99)
         __sub_0.emplace(99);
         __state = S_RESUME_0;
         continue;
@@ -103,9 +109,7 @@ __coro_drive drive(int32_t brk) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("break:")
         std::cout << "break:" << "\n";
-        // await drive(1)
         __sub_1.emplace(1);
         __state = S_RESUME_1;
         continue;
@@ -130,21 +134,22 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     asyncio.run(caller())
 void main() {
-    // asyncio.run(caller())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(caller()));
 }
 
+// # `await` inside a `while ... else:` clause (Phase D3). The else runs on
+// # normal loop exit and is skipped by `break`; both arms are exercised.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` inside a `while ... else:` clause (Phase D3). The else runs on
-    // # normal loop exit and is skipped by `break`; both arms are exercised.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

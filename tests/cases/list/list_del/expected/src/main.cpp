@@ -5,49 +5,49 @@ namespace tpyapp::main {
 
 
 // def test_basic() -> None:
+//     items: list[int32] = [10, 20, 30, 40, 50]
+//     print(items)
+//     del items[1]
+//     print(items)
+//     print(len(items))
 void test_basic() {
-    // items: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
-    // del items[1]
     ::tpy::__delitem__(items, 1);
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_negative_index() -> None:
+//     items: list[int32] = [1, 2, 3, 4]
+//     del items[-1]
+//     print(items)
 void test_negative_index() {
-    // items: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> items = {1, 2, 3, 4};
-    // del items[-1]
     ::tpy::__delitem__(items, -1);
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
 // def test_first_element() -> None:
+//     items: list[int32] = [10, 20, 30]
+//     del items[0]
+//     print(items)
 void test_first_element() {
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // del items[0]
     ::tpy::__delitem__(items, 0);
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
+// test_basic()
+// test_negative_index()
+// test_first_element()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_basic()
     test_basic();
-    // test_negative_index()
     test_negative_index();
-    // test_first_element()
     test_first_element();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     Counter.instances = 0
+//     Counter()
+//     Counter()
+//     Counter()
+//     Counter.instances += 7
+//     print(Counter.instances)
 void main() {
-    // Counter.instances = 0
     Counter::instances = 0;
-    // Counter()
     Counter();
-    // Counter()
     Counter();
-    // Counter()
     Counter();
-    // Counter.instances += 7
     Counter::instances = ::tpy::add_check<int32_t>(Counter::instances, 7);
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

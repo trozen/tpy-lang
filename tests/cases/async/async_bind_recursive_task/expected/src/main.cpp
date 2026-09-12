@@ -5,20 +5,21 @@ namespace tpyapp::main {
 
 
 // async def fact(n: int) -> int:
+//     if n <= 1:
+//         return 1
+//     t = asyncio.create_task(fact(n - 1))
+//     r = await t
+//     return n * r
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_fact::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if n <= 1:
         if ((n <= 1)) {
-            // return 1
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 1;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         __coro_arg_0 = ((n) - (::tpy::BigInt(1)));
-        // t = asyncio.create_task(fact(n - 1))
         t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(fact(__coro_arg_0))));
-        // r = await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -28,7 +29,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         r = std::move(__r0).value();
         __sub_0 = nullptr;
-        // return n * r
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) * (r));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -45,22 +45,23 @@ __coro_fact fact(::tpy::BigInt n) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(fact(5)))
 void main() {
-    // print(asyncio.run(fact(5)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(fact(::tpy::BigInt(5)))) << "\n";
 }
 
+// # Recursion through create_task works: the Task is the heap indirection
+// # that breaks the by-value frame-embedding cycle (the escape the
+// # recursive-embedding diagnostic names).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Recursion through create_task works: the Task is the heap indirection
-    // # that breaks the by-value frame-embedding cycle (the escape the
-    // # recursive-embedding diagnostic names).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

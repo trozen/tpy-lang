@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(a: Animal) -> str:
 std::string describe(Animal& a);
+// def main() -> None:
 void main();
 
 // # Defining a method that hides a parent method emits a warning at the child
@@ -58,20 +60,23 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def speak(self) -> str:
+//     return "..."
 inline std::string Animal::speak() const {
-    // return "..."
     return "...";
 }
 
 // def __init__(self, name: str, breed: str) -> None:
+//     super().__init__(name)
+//     self.breed = breed
 inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
 // def speak(self) -> str:
+//     return "Woof!"
 inline std::string Dog::speak() const {
-    // return "Woof!"
     return "Woof!";
 }
 void __tpy_init();

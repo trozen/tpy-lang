@@ -12,10 +12,15 @@ struct Expr;
 extern Expr g;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def leaf_count(e: readonly[Expr]) -> int:
 ::tpy::BigInt leaf_count(const Expr& e);
+// def get_global() -> Expr:
 Expr& get_global();
+// def first_view(e: Expr) -> readonly[Expr]:
 const Expr& first_view(Expr& e);
+// def build() -> Own[Expr]:
 Expr build();
+// def main() -> None:
 void main();
 
 struct Expr {

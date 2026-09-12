@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_sign_stream;
 
+// def sign_stream(n: int32) -> Iterator[int32]:
 __gen_sign_stream sign_stream(int32_t n);
+// def main() -> None:
 void main();
 
-// Generator: sign_stream
+// def sign_stream(n: int32) -> Iterator[int32]:
 struct __gen_sign_stream : public ::tpy::next_iter_mixin<__gen_sign_stream, int32_t> {
     int32_t __state;
     int32_t n;

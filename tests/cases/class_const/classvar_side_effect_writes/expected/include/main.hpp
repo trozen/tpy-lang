@@ -11,7 +11,9 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_c() -> Own[Counter]:
 Counter make_c();
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -31,8 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Counter::Counter() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

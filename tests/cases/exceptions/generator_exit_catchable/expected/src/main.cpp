@@ -8,49 +8,53 @@ namespace tpyapp::main {
 // # BaseException directly (not Exception), so `except Exception` must not
 // # swallow it.
 // def boom() -> None:
+//     raise GeneratorExit("closing")
 void boom() {
-    // raise GeneratorExit("closing")
     throw ::tpy::GeneratorExit("closing");
 }
 
 // def main() -> None:
+//     try:
+//         boom()
+//     except GeneratorExit as e:
+//         print("caught:", e)
+//
+//     try:
+//         try:
+//             boom()
+//         except Exception:
+//             print("wrong: Exception caught GeneratorExit")
+//     except BaseException:
+//         print("BaseException caught it")
 void main() {
-    // try:
     {
         try {
-            // boom()
             boom();
         } catch (const ::tpy::GeneratorExit& e) {
-            // print("caught:", e)
             std::cout << "caught:" << " " << e << "\n";
         }
     }
-    // try:
     {
         try {
-            // try:
             {
                 try {
-                    // boom()
                     boom();
                 } catch (const ::tpy::Exception&) {
-                    // print("wrong: Exception caught GeneratorExit")
                     std::cout << "wrong: Exception caught GeneratorExit" << "\n";
                 }
             }
         } catch (const ::tpy::BaseException&) {
-            // print("BaseException caught it")
             std::cout << "BaseException caught it" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

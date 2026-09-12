@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def sink(n: int32) -> None:
+//     print(n)
 void sink(int32_t n) {
-    // print(n)
     std::cout << n << "\n";
 }
 
 // def main() -> None:
+//     b = Box(3)
+//     b.emit()  # expands to sink(b.v)
 void main() {
-    // b = Box(3)
     Box b = Box(3);
-    // b.emit()  # expands to sink(b.v)
     sink(b.v);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

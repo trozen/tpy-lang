@@ -5,98 +5,98 @@ namespace tpyapp::main {
 
 
 // def then_side(u: A | B, flag: bool) -> int32:
+//     # A negated OR chain: the THEN branch knows u is B.
+//     if not (isinstance(u, A) or flag):
+//         return u.m
+//     return 0
 int32_t then_side(const ::tpy::Union<A, B>& u, bool flag) {
-    // # A negated OR chain: the THEN branch knows u is B.
-    // if not (isinstance(u, A) or flag):
     if ((!((std::holds_alternative<A>(u) || flag)))) {
         const auto& __u = std::get<B>(u);
-        // return u.m
         return __u.m;
     }
-    // return 0
     return 0;
 }
 
 // def else_side(u: A | B, flag: bool) -> int32:
+//     # The complement lands on the ELSE branch, which knows u is A.
+//     if not isinstance(u, A) or flag:
+//         return 5
+//     else:
+//         return u.n
 int32_t else_side(const ::tpy::Union<A, B>& u, bool flag) {
-    // # The complement lands on the ELSE branch, which knows u is A.
-    // if not isinstance(u, A) or flag:
     if (((!(std::holds_alternative<A>(u))) || flag)) {
-        // return 5
         return 5;
-    // else:
     } else {
         const auto& __u = std::get<A>(u);
-        // return u.n
         return __u.n;
     }
 }
 
 // def unread_subject(u: A | B, flag: bool) -> int32:
+//     # The narrowed branch never reads the subject, so its alias goes unused --
+//     # the build must stay warning-clean.
+//     if not isinstance(u, A) or flag:
+//         return 0
+//     else:
+//         return 1
 int32_t unread_subject(const ::tpy::Union<A, B>& u, bool flag) {
-    // # The narrowed branch never reads the subject, so its alias goes unused --
-    // # the build must stay warning-clean.
-    // if not isinstance(u, A) or flag:
     if (((!(std::holds_alternative<A>(u))) || flag)) {
-        // return 0
         return 0;
-    // else:
     } else {
         const auto& __u = std::get<A>(u);
-        // return 1
         return 1;
     }
 }
 
 // def ref_union(u: Node | Leaf, flag: bool) -> int32:
+//     # The reference-union twin: the alias borrows the pointer variant, so the
+//     # mutation is visible on the caller`s object afterwards.
+//     if not isinstance(u, Node) or flag:
+//         return -1
+//     else:
+//         u.v += 5
+//         return u.v
 int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag) {
-    // # The reference-union twin: the alias borrows the pointer variant, so the
-    // # mutation is visible on the caller`s object afterwards.
-    // if not isinstance(u, Node) or flag:
     if (((!(std::holds_alternative<Node*>(u))) || flag)) {
-        // return -1
         return -1;
-    // else:
     } else {
         auto& __u = *std::get<Node*>(u);
-        // u.v += 5
         __u.v = ::tpy::add_check<int32_t>(__u.v, 5);
-        // return u.v
         return __u.v;
     }
 }
 
 // def main() -> None:
+//     print(then_side(B(3), False))
+//     print(then_side(A(3), False))
+//     print(else_side(A(4), False))
+//     print(else_side(A(4), True))
+//     print(unread_subject(A(1), False))
+//     n = Node(1)
+//     print(ref_union(n, False))
+//     print(n.v)
 void main() {
-    // print(then_side(B(3), False))
     ::tpy::Union<A, B> __tmp_1 = B(3);
     std::cout << then_side(__tmp_1, false) << "\n";
-    // print(then_side(A(3), False))
     ::tpy::Union<A, B> __tmp_2 = A(3);
     std::cout << then_side(__tmp_2, false) << "\n";
-    // print(else_side(A(4), False))
     ::tpy::Union<A, B> __tmp_3 = A(4);
     std::cout << else_side(__tmp_3, false) << "\n";
-    // print(else_side(A(4), True))
     ::tpy::Union<A, B> __tmp_4 = A(4);
     std::cout << else_side(__tmp_4, true) << "\n";
-    // print(unread_subject(A(1), False))
     ::tpy::Union<A, B> __tmp_5 = A(1);
     std::cout << unread_subject(__tmp_5, false) << "\n";
-    // n = Node(1)
     Node n = Node(1);
-    // print(ref_union(n, False))
     std::cout << ref_union(::tpy::Union<Leaf*, Node*>{&(n)}, false) << "\n";
-    // print(n.v)
     std::cout << n.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

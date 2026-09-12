@@ -11,6 +11,7 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -20,13 +21,14 @@ struct Box {
     T val;
 
     // def __init__(self, val: T):
+    //     self.val = val
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def transform[U](self, other: U) -> U:
+    //     return other
     template<typename U>
     ::tpy::val_or_cref_t<U> transform(::tpy::readonly_form_t<U> other) const {
-        // return other
         return ::tpy::param_to_return<U>(other);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def consume(h: Own[Handle]) -> int32:
+//     return h.fd
 int32_t consume(Handle&& h) {
-    // return h.fd
     return h.fd;
 }
 
 // def main() -> None:
+//     h = Handle.opened(7)
+//     print(h.fd)
+//     print(consume(h))
 void main() {
-    // h = Handle.opened(7)
     Handle h = Handle::opened(7);
-    // print(h.fd)
     std::cout << h.fd << "\n";
-    // print(consume(h))
     std::cout << consume(std::move(h)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

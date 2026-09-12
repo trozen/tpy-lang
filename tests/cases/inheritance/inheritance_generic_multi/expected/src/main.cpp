@@ -3,35 +3,47 @@
 
 namespace tpyapp::main {
 
-// # Test with Leaf[str]
-// leaf: Leaf[str] = Leaf[str]("hello", int32(42), "bonus")
 Leaf<std::string>* leaf{};
 
+// """Test comprehensive generic inheritance edge cases.
+//
+// Covers:
+// - Partial type substitution: Child[T](Parent[T, int32])
+// - Multi-level inheritance: Base -> Middle -> Leaf
+// - Inherited field access with type params
+// - Inherited method with type param in parameters
+// """
+//
+// # Test with Leaf[str]
+// leaf: Leaf[str] = Leaf[str]("hello", int32(42), "bonus")
+//
+// # Inherited method with type param in parameter (from Base)
+// leaf.set_first("world")
+//
+// # Inherited method with forwarded type param return (from Base, through Middle)
+// print(leaf.get_first())
+//
+// # Inherited method with concrete type param return (U=int32 from Middle)
+// print(leaf.get_second())
+//
+// # Own method
+// print(leaf.get_extra())
+//
+// # Direct field access on inherited field
+// print(leaf.first)
+// print(leaf.second)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test with Leaf[str]
-    // leaf: Leaf[str] = Leaf[str]("hello", int32(42), "bonus")
     static Leaf<std::string> __global_slot_1 = Leaf<std::string>("hello", 42, "bonus");
     leaf = &__global_slot_1;
-    // # Inherited method with type param in parameter (from Base)
-    // leaf.set_first("world")
     leaf->set_first("world");
-    // # Inherited method with forwarded type param return (from Base, through Middle)
-    // print(leaf.get_first())
     std::cout << leaf->get_first() << "\n";
-    // # Inherited method with concrete type param return (U=int32 from Middle)
-    // print(leaf.get_second())
     std::cout << leaf->get_second() << "\n";
-    // # Own method
-    // print(leaf.get_extra())
     std::cout << leaf->get_extra() << "\n";
-    // # Direct field access on inherited field
-    // print(leaf.first)
     std::cout << leaf->first << "\n";
-    // print(leaf.second)
     std::cout << leaf->second << "\n";
 }
 

@@ -11,6 +11,7 @@ struct Tok;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -37,15 +38,19 @@ inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Tok::Tok(int32_t v) : v(v) {}
+// def toks_while(n: int32) -> Iterator[Own[Tok]]:
+//     i: int32 = 0
+//     while i < n:
+//         yield Tok(i * 2)
+//         i += 1
 inline auto toks_while(int32_t n) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<Tok>(
         [n, i]() mutable -> std::optional<Tok> {
             while ((i < n)) {
                 auto __val = Tok((::tpy::mul_check<int32_t>(i, 2)));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<Tok>(std::move(__val));
             }
@@ -54,6 +59,9 @@ inline auto toks_while(int32_t n) {
     );
 }
 
+// def toks_for(n: int32) -> Iterator[Own[Tok]]:
+//     for i in range(n):
+//         yield Tok(i * 2)
 inline auto toks_for(int32_t n) {
     return ::tpy::make_generator<Tok>(
         [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<Tok> {

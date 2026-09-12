@@ -5,54 +5,54 @@ namespace tpyapp::main {
 
 
 // def make_pair(n: int32) -> Own[tuple[int32, Box]]:
+//     return (n, Box(n))
 std::tuple<int32_t, Box> make_pair(int32_t n) {
-    // return (n, Box(n))
     return std::tuple<int32_t, Box>{n, Box(n)};
 }
 
 // def use(h: Holder, c: bool) -> int32:
+//     if c:
+//         if (t := make_pair(9))[0] > 0:  # tpyc: ok
+//             return t[1].val
+//     else:
+//         t = h.pair
+//         t[1].val = 77   # mutate through the alias -- visible on h.pair
+//         return t[0]
+//     return 0
 int32_t use(Holder& h, bool c) {
     std::optional<std::tuple<int32_t, Box>> __slot_1;
-    // if c:
     std::tuple<int32_t, Box*> t;
     if (c) {
-        // if (t := make_pair(9))[0] > 0:  # tpyc: ok
         if ((std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(9))), t)) > 0)) {
-            // return t[1].val
             return std::get<1>(t)->val;
         }
-    // else:
     } else {
-        // t = h.pair
         t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
-        // t[1].val = 77   # mutate through the alias -- visible on h.pair
         std::get<1>(t)->val = 77;
-        // return t[0]
         return std::get<0>(t);
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     print(use(Holder(Box(5)), True))    # 9 (owning slot)
+//     h = Holder(Box(5))
+//     print(use(h, False))                # 1
+//     print(h.pair[1].val)                # 77 (aliased, not copied)
 void main() {
-    // print(use(Holder(Box(5)), True))    # 9 (owning slot)
     Holder __tmp_1 = Holder(Box(5));
     std::cout << use(__tmp_1, true) << "\n";
-    // h = Holder(Box(5))
     Holder h = Holder(Box(5));
-    // print(use(h, False))                # 1
     std::cout << use(h, false) << "\n";
-    // print(h.pair[1].val)                # 77 (aliased, not copied)
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

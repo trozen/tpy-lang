@@ -3,31 +3,28 @@
 
 namespace tpyapp::main {
 
-// # Basic float operations
-// x = 3.5
 double x{};
-// y = 2.0
 double y{};
 
+// # Basic float operations
+// x = 3.5
+// y = 2.0
+// print(x + y)
+// print(x - y)
+// print(x * y)
+// print(x / y)
+// print(-x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Basic float operations
-    // x = 3.5
     x = 3.5;
-    // y = 2.0
     y = 2.0;
-    // print(x + y)
     std::cout << ::tpy::print_float(((x) + (y))) << "\n";
-    // print(x - y)
     std::cout << ::tpy::print_float(((x) - (y))) << "\n";
-    // print(x * y)
     std::cout << ::tpy::print_float(((x) * (y))) << "\n";
-    // print(x / y)
     std::cout << ::tpy::print_float((::tpy::truediv(x, y))) << "\n";
-    // print(-x)
     std::cout << ::tpy::print_float(-(x)) << "\n";
 }
 

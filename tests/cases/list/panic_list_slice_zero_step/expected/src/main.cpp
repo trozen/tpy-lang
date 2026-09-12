@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Panic: slice step cannot be zero.
 // def main() -> None:
+//     items = [1, 2, 3]
+//     print(items[::0])
 void main() {
-    // items = [1, 2, 3]
     std::array<int32_t, 3> items = {1, 2, 3};
-    // print(items[::0])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

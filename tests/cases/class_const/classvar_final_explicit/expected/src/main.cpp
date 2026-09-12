@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(HttpClient.TIMEOUT)
+//     print(HttpClient.MAX_RETRIES)
 void main() {
-    // print(HttpClient.TIMEOUT)
     std::cout << HttpClient::TIMEOUT << "\n";
-    // print(HttpClient.MAX_RETRIES)
     std::cout << HttpClient::MAX_RETRIES << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

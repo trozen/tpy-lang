@@ -6,30 +6,30 @@ namespace tpyapp::main {
 
 // # bytes-in-bytes substring containment
 // def main() -> None:
+//     data = b"hello world"
+//     print(b"world" in data)   # True
+//     print(b"xyz" in data)     # False
+//     print(b"" in data)        # True (empty always matches)
+//     print(b"hello world" in data)  # True (exact match)
+//     # Single byte via int still works
+//     print(104 in data)  # True ('h' = 104)
+//     print(0 in data)    # False
 void main() {
-    // data = b"hello world"
     ::tpy::BytesView data = ::tpy::bytes_literal("hello world", 11);
-    // print(b"world" in data)   # True
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("world", 5)))) << "\n";
-    // print(b"xyz" in data)     # False
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("xyz", 3)))) << "\n";
-    // print(b"" in data)        # True (empty always matches)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::Bytes{}))) << "\n";
-    // print(b"hello world" in data)  # True (exact match)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("hello world", 11)))) << "\n";
-    // # Single byte via int still works
-    // print(104 in data)  # True ('h' = 104)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 104))) << "\n";
-    // print(0 in data)    # False
     std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 0))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

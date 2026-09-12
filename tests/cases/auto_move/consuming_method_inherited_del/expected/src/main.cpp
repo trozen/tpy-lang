@@ -5,26 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(int32(42))
+//     val: int32 = c.take()
+//     print("got", val)
+//
+//     val2: int32 = Child(int32(99)).take()
+//     print("got", val2)
 void main() {
-    // c = Child(int32(42))
     Child c = Child(42);
-    // val: int32 = c.take()
     int32_t val = std::move(c).take();
-    // print("got", val)
     std::cout << "got" << " " << val << "\n";
-    // val2: int32 = Child(int32(99)).take()
     int32_t val2 = Child(99).take();
-    // print("got", val2)
     std::cout << "got" << " " << val2 << "\n";
 }
 
+// from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
-    // main()
     main();
 }
 

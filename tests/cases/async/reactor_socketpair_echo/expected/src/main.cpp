@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // async def server(sock: socket) -> None:
+//     loop = asyncio.get_running_loop()
+//     while True:
+//         data = await loop.sock_recv(sock, 1024)
+//         if len(data) == 0:
+//             break
+//         await loop.sock_sendall(sock, data)
 ::tpystd::tpy::Poll<::std::monostate> __coro_server::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __state = S_JOIN_0;
         continue;
@@ -22,7 +27,6 @@ namespace tpyapp::main {
             __state = S_JOIN_1;
             continue;
         } else {
-            // await loop.sock_sendall(sock, data)
             __sub_1.emplace(std::move((*loop).sock_sendall(sock, data)));
             __state = S_RESUME_1;
             continue;
@@ -38,7 +42,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         if (true) {
-            // data = await loop.sock_recv(sock, 1024)
             __sub_0.emplace(std::move((*loop).sock_recv(sock, 1024)));
             __state = S_RESUME_0;
             continue;
@@ -63,12 +66,15 @@ __coro_server server(::tpystd::socket::socket& sock) {
 }
 
 // async def client(sock: socket) -> None:
+//     loop = asyncio.get_running_loop()
+//     await loop.sock_sendall(sock, b"ping")
+//     reply = await loop.sock_recv(sock, 1024)
+//     print(reply)
+//     sock.shutdown(1)  # SHUT_WR -> server's next recv sees EOF
 ::tpystd::tpy::Poll<::std::monostate> __coro_client::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // await loop.sock_sendall(sock, b"ping")
         __sub_0.emplace(std::move((*loop).sock_sendall(sock, ::tpy::bytes_literal("ping", 4))));
         __state = S_RESUME_0;
         continue;
@@ -78,7 +84,6 @@ __coro_server server(::tpystd::socket::socket& sock) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // reply = await loop.sock_recv(sock, 1024)
         __sub_1.emplace(std::move((*loop).sock_recv(sock, 1024)));
         __state = S_RESUME_1;
         continue;
@@ -88,9 +93,7 @@ __coro_server server(::tpystd::socket::socket& sock) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         reply = std::move(__r1).value();
         __sub_1.reset();
-        // print(reply)
         std::cout << ::tpy::BytesPrinter(reply) << "\n";
-        // sock.shutdown(1)  # SHUT_WR -> server's next recv sees EOF
         sock.shutdown(1);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -107,20 +110,22 @@ __coro_client client(::tpystd::socket::socket& sock) {
 }
 
 // async def main_coro() -> None:
+//     a, b = socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     srv = asyncio.create_task(server(a))
+//     await client(b)
+//     await srv
+//     print("done")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = socketpair()
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
-        // a.setblocking(False)
         (*a).setblocking(false);
-        // b.setblocking(False)
         (*b).setblocking(false);
-        // srv = asyncio.create_task(server(a))
         srv.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(server((*a)))));
-        // await client(b)
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
@@ -130,7 +135,6 @@ __coro_client client(::tpystd::socket::socket& sock) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // await srv
         __sub_1 = &((*srv));
         __state = S_RESUME_1;
         continue;
@@ -140,7 +144,6 @@ __coro_client client(::tpystd::socket::socket& sock) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1 = nullptr;
-        // print("done")
         std::cout << "done" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -157,25 +160,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio epoll reactor (v2): two concurrent coroutines on one executor
+// # echo bytes over a non-blocking socketpair. The server task parks in the
+// # reactor (real epoll would-block) until the client sends; the round-tripped
+// # bytes confirm data actually moved through the fd-backed awaitables.
+// import asyncio
+// from socket import socketpair, socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio epoll reactor (v2): two concurrent coroutines on one executor
-    // # echo bytes over a non-blocking socketpair. The server task parks in the
-    // # reactor (real epoll would-block) until the client sends; the round-tripped
-    // # bytes confirm data actually moved through the fd-backed awaitables.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socketpair, socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,10 +5,11 @@ namespace tpyapp::defmod {
 
 
 // async def scaled(a: int32, b: int32 = BUMP) -> int32:
+//     await asyncio.sleep(0)
+//     return a + b
 ::tpystd::tpy::Poll<int32_t> __coro_scaled::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::defmod {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return a + b
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(a, b));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -34,15 +34,17 @@ __coro_scaled scaled(int32_t a, int32_t b) {
     return __coro_scaled(a, b);
 }
 
+// import asyncio
+//
+// # The default names THIS module's Final -- a caller in another module must not
+// # resolve it in its own scope.
+// BUMP: Final[int32] = 30
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // # The default names THIS module's Final -- a caller in another module must not
-    // # resolve it in its own scope.
 }
 
 } // namespace tpyapp::defmod

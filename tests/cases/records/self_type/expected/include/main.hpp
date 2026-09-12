@@ -12,7 +12,9 @@ template<typename T> struct Stack;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_builder() -> None:
 void test_builder();
+// def test_generic() -> None:
 void test_generic();
 
 // class Builder:
@@ -59,21 +61,23 @@ struct Stack {
     std::string label;
 
     // def __init__(self, label: str) -> None:
+    //     self.items = []
+    //     self.label = label
     Stack() = default;
     explicit Stack(std::string_view label) : items(std::vector<T>{}), label(label) {}
 
     // def push(self, item: T) -> Self:
+    //     self.items.append(item)
+    //     return self
     Stack<T>& push(::tpy::param_val_or_ref_t<T> item) {
-        // self.items.append(item)
         this->items.push_back(::tpy::param_to_storage<T>(item));
-        // return self
         return (*this);
     }
 
     // @readonly
     // def describe(self) -> str:
+    //     return self.label
     std::string describe() const {
-        // return self.label
         return this->label;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
@@ -87,51 +91,53 @@ inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
 
 
 // def __init__(self, name: str, value: int32) -> None:
+//     self.name = name
+//     self.value = value
 inline Builder::Builder(std::string_view name, int32_t value) : name(name), value(value) {}
 
 // def set_name(self, name: str) -> Self:
+//     self.name = name
+//     return self
 inline Builder& Builder::set_name(std::string_view name) {
-    // self.name = name
     this->name = name;
-    // return self
     return (*this);
 }
 
 // def set_value(self, value: int32) -> Self:
+//     self.value = value
+//     return self
 inline Builder& Builder::set_value(int32_t value) {
-    // self.value = value
     this->value = value;
-    // return self
     return (*this);
 }
 
 // def with_offset(self, other: Self) -> int32:
+//     return self.value + other.value
 inline int32_t Builder::with_offset(const Builder& other) const {
-    // return self.value + other.value
     return (::tpy::add_check<int32_t>(this->value, other.value));
 }
 
 // @auto_readonly
 // def find_match(self, target: int32) -> Optional[Self]:
+//     if self.value == target:
+//         return self
+//     return None
 inline Builder* Builder::find_match(int32_t target) {
-    // if self.value == target:
     if ((this->value == target)) {
-        // return self
         return this;
     }
-    // return None
     return nullptr;
 }
 
 // @auto_readonly
 // def find_match(self, target: int32) -> Optional[Self]:
+//     if self.value == target:
+//         return self
+//     return None
 inline const Builder* Builder::find_match(int32_t target) const {
-    // if self.value == target:
     if ((this->value == target)) {
-        // return self
         return this;
     }
-    // return None
     return nullptr;
 }
 void __tpy_init();

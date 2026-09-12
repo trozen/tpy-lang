@@ -43,74 +43,75 @@ namespace tpyapp::main {
 
 
 // def owned_return(c: Color) -> str:
+//     return c.name  # tpyc: ok
 std::string owned_return(Color c) {
-    // return c.name  # tpyc: ok
     return std::string(::tpy::EnumUtil<Color>::name(c));
 }
 
 // def owned_local(c: Color) -> str:
+//     label: str = c.name  # tpyc: ok
+//     label += "!"
+//     return label
 std::string owned_local(Color c) {
-    // label: str = c.name  # tpyc: ok
     std::string label = std::string(::tpy::EnumUtil<Color>::name(c));
-    // label += "!"
     label += "!";
-    // return label
     return label;
 }
 
 // def view_positions(c: Color) -> None:
+//     v = c.name  # tpyc: type(StrView)
+//     print(v, len(v))
+//     print(c.name == "RED")
+//     print(f"<{c.name}>")
+//     # Annotated but never mutated: resolves as a view of the static member
+//     # name -- the annotation's coerce is stale and renders bare (no copy).
+//     label: str = c.name  # tpyc: ok
+//     print(label)
 void view_positions(Color c) {
-    // v = c.name  # tpyc: type(StrView)
     std::string_view v = ::tpy::EnumUtil<Color>::name(c);
-    // print(v, len(v))
     std::cout << v << " " << ::tpy::__len__(v) << "\n";
-    // print(c.name == "RED")
     std::cout << ::tpy::print_bool((::tpy::EnumUtil<Color>::name(c) == "RED")) << "\n";
-    // print(f"<{c.name}>")
     std::cout << std::format("<{}>", ::tpy::EnumUtil<Color>::name(c)) << "\n";
-    // # Annotated but never mutated: resolves as a view of the static member
-    // # name -- the annotation's coerce is stale and renders bare (no copy).
-    // label: str = c.name  # tpyc: ok
     std::string_view label = ::tpy::EnumUtil<Color>::name(c);
-    // print(label)
     std::cout << label << "\n";
 }
 
 // def owned_slot(c: Color) -> None:
+//     xs: list[str] = []
+//     # The element slot's view->owned convert renders inline -- the source is
+//     # a view read, so there is nothing to move out of and no temp to hoist.
+//     xs.append(c.name)  # tpyc: ok
+//     print(xs)
 void owned_slot(Color c) {
-    // xs: list[str] = []
     std::vector<std::string> xs = std::vector<std::string>{};
-    // # The element slot's view->owned convert renders inline -- the source is
-    // # a view read, so there is nothing to move out of and no temp to hoist.
-    // xs.append(c.name)  # tpyc: ok
     xs.push_back(std::string(::tpy::EnumUtil<Color>::name(c)));
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def main() -> None:
+//     print(owned_return(Color.RED))
+//     print(owned_local(Color.GREEN))
+//     view_positions(Color.RED)
+//     owned_slot(Color.GREEN)
 void main() {
-    // print(owned_return(Color.RED))
     std::cout << owned_return(Color::RED) << "\n";
-    // print(owned_local(Color.GREEN))
     std::cout << owned_local(Color::GREEN) << "\n";
-    // view_positions(Color.RED)
     view_positions(Color::RED);
-    // owned_slot(Color.GREEN)
     owned_slot(Color::GREEN);
 }
 
+// # Enum .name feeding owned-str sinks: sema types .name as StrView (the value
+// # is a static-storage string_view), so owned sinks copy via the standard
+// # view->owned machinery (previously ill-formed C++ -- a bare view render
+// # into std::string). View-consuming positions stay copy-free.
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum .name feeding owned-str sinks: sema types .name as StrView (the value
-    // # is a static-storage string_view), so owned sinks copy via the standard
-    // # view->owned machinery (previously ill-formed C++ -- a bare view render
-    // # into std::string). View-consuming positions stay copy-free.
-    // from enum import Enum
-    // main()
     main();
 }
 

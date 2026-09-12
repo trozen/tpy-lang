@@ -11,7 +11,9 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get(flag: bool) -> Own[Bag | int]:
 ::tpy::Union<Bag, ::tpy::BigInt> get(bool flag);
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -38,11 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self) -> None:
+//     self.xs = [10, 20]
 inline Bag::Bag() : xs(std::vector<::tpy::BigInt>{10, 20}) {}
 
 // def __getitem__(self, i: int) -> int:
+//     return self.xs[i]
 inline ::tpy::BigInt Bag::__getitem__(const ::tpy::BigInt& i) const {
-    // return self.xs[i]
     return ::tpy::__getitem__(this->xs, i.to_fixed_check<int32_t>());
 }
 void __tpy_init();

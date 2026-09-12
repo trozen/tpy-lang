@@ -11,16 +11,27 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_first(items: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& items);
+// def get_list(items: list[Point]) -> list[Point]:
 std::vector<Point>& get_list(std::vector<Point>& items);
+// def test_reassign_then_mutate_warns() -> None:
 void test_reassign_then_mutate_warns();
+// def test_reassign_no_mutation_ok() -> None:
 void test_reassign_no_mutation_ok();
+// def test_reassign_overwrite_clears_borrow() -> None:
 void test_reassign_overwrite_clears_borrow();
+// def test_for_call_iterable_warns() -> None:
 void test_for_call_iterable_warns();
+// def test_for_call_iterable_readonly_ok() -> None:
 void test_for_call_iterable_readonly_ok();
+// def get_first_wrapper(items: list[Point]) -> Point:
 Point& get_first_wrapper(std::vector<Point>& items);
+// def test_transitive_return_warns() -> None:
 void test_transitive_return_warns();
+// def test_transitive_return_no_mutation_ok() -> None:
 void test_transitive_return_no_mutation_ok();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -43,6 +54,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

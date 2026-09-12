@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     total = 0
+//     for v in byte_vals(b"ABC"):
+//         total += v
+//     print(total)
 void main() {
-    // total = 0
     int32_t total = 0;
-    // for v in byte_vals(b"ABC"):
     {
         ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("ABC", 3);
         auto __src_0 = byte_vals(__tmp_1);
@@ -17,20 +19,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, (v).to_fixed_check<int32_t>());
         }
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

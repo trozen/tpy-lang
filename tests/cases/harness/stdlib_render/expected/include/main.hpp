@@ -72,6 +72,7 @@ struct _Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def _pin_cycle_copy() -> int32:
 int32_t _pin_cycle_copy();
 
 // class _Cell:
@@ -92,6 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const _Cell& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline _Cell::_Cell(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

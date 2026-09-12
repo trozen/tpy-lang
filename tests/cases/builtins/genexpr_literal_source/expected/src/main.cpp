@@ -5,8 +5,10 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(sum(x * x for x in [1, 2, 3, 4]))
+//     print(all(x > 0 for x in [1, 2, 3]))
+//     print(any(x > 5 for x in [1, 2, 3]))
 void main() {
-    // print(sum(x * x for x in [1, 2, 3, 4]))
     std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
         [__src = std::array<int32_t, 4>({1, 2, 3, 4}), __started = false, __beg = std::array<int32_t, 4>::iterator(), __end = std::array<int32_t, 4>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
@@ -17,7 +19,6 @@ void main() {
             return std::nullopt;
         }
     )) << "\n";
-    // print(all(x > 0 for x in [1, 2, 3]))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpy::make_generator<bool>(
         [__src = std::array<int32_t, 3>({1, 2, 3}), __started = false, __beg = std::array<int32_t, 3>::iterator(), __end = std::array<int32_t, 3>::iterator()]() mutable -> std::optional<bool> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
@@ -28,7 +29,6 @@ void main() {
             return std::nullopt;
         }
     ))) << "\n";
-    // print(any(x > 5 for x in [1, 2, 3]))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(::tpy::make_generator<bool>(
         [__src = std::array<int32_t, 3>({1, 2, 3}), __started = false, __beg = std::array<int32_t, 3>::iterator(), __end = std::array<int32_t, 3>::iterator()]() mutable -> std::optional<bool> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
@@ -41,12 +41,12 @@ void main() {
     ))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,83 +5,91 @@ namespace tpyapp::main {
 
 
 // def add(a: int32, b: int32) -> int32:
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3, 4, 5]
+//
+//     # Named function
+//     print(reduce(add, xs, int32(0)))       # 15
+//     print(reduce(add, xs, int32(100)))     # 115
+//
+//     # Lambda
+//     print(reduce(lambda a, b: a * b, xs, int32(1)))   # 120
+//     print(reduce(lambda a, b: max(a, b), xs, int32(0)))  # 5
+//
+//     # Empty list + initial returns the seed unchanged
+//     empty: list[int32] = []
+//     print(reduce(add, empty, int32(42)))   # 42
+//
+//     # Cross-type T != U: U=int32 accumulator, T=str element
+//     words: list[str] = ["hi", "hello", "world"]
+//     total_len = reduce(lambda acc, w: acc + int32(len(w)), words, int32(0))
+//     print(total_len)   # 12
+//
+//     # Reference-type accumulator: reduce must copy(initial) so the caller's
+//     # seed is not aliased into the return value.
+//     init: list[int32] = [100]
+//     nums: list[int32] = [1, 2, 3]
+//     built = reduce(lambda acc, x: acc + [x], nums, init)
+//     print(built)   # [100, 1, 2, 3]
+//     print(init)    # [100] -- seed untouched
+//
+//     # Iterable[T] inputs -- list literal and range() pass directly without
+//     # needing to bind to a typed local first.
+//     print(reduce(add, [1, 2, 3], 0))  # 6
+//     print(reduce(add, range(1, 5), 0))  # 10 (range(1,5) = 1+2+3+4)
+//
+//     # str accumulator (U=str). Used to dangle silently because U was
+//     # auto-downgraded to StrView and the lambda's owned-string return
+//     # converted to a view of a temporary.
+//     parts: list[str] = ["foo", "bar", "baz"]
+//     print(reduce(lambda a, b: a + b, parts, ""))   # foobarbaz
 void main() {
-    // xs: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
-    // # Named function
-    // print(reduce(add, xs, int32(0)))       # 15
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 0) << "\n";
-    // print(reduce(add, xs, int32(100)))     # 115
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 100) << "\n";
-    // # Lambda
-    // print(reduce(lambda a, b: a * b, xs, int32(1)))   # 120
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs, 1) << "\n";
-    // print(reduce(lambda a, b: max(a, b), xs, int32(0)))  # 5
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max(a, b); }, xs, 0) << "\n";
-    // # Empty list + initial returns the seed unchanged
-    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    // print(reduce(add, empty, int32(42)))   # 42
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, empty, 42) << "\n";
-    // # Cross-type T != U: U=int32 accumulator, T=str element
-    // words: list[str] = ["hi", "hello", "world"]
     std::vector<std::string> words = {"hi", "hello", "world"};
-    // total_len = reduce(lambda acc, w: acc + int32(len(w)), words, int32(0))
     int32_t total_len = ::tpystd::functools::reduce<std::string, int32_t>([](int32_t acc, std::string_view w) -> int32_t { return (::tpy::add_check<int32_t>(acc, ::tpy::__len__(w))); }, words, 0);
-    // print(total_len)   # 12
     std::cout << total_len << "\n";
-    // # Reference-type accumulator: reduce must copy(initial) so the caller's
-    // # seed is not aliased into the return value.
-    // init: list[int32] = [100]
     std::vector<int32_t> init = {100};
-    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // built = reduce(lambda acc, x: acc + [x], nums, init)
     std::vector<int32_t> built = ::tpystd::functools::reduce<int32_t, std::vector<int32_t>>([](std::vector<int32_t>& acc, int32_t x) -> std::vector<int32_t> { return (::tpy::list_concat(acc, std::vector<int32_t>{x})); }, nums, init);
-    // print(built)   # [100, 1, 2, 3]
     std::cout << ::tpy::ListPrinter(built) << "\n";
-    // print(init)    # [100] -- seed untouched
     std::cout << ::tpy::ListPrinter(init) << "\n";
-    // # Iterable[T] inputs -- list literal and range() pass directly without
-    // # needing to bind to a typed local first.
-    // print(reduce(add, [1, 2, 3], 0))  # 6
     auto __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_1, 0) << "\n";
-    // print(reduce(add, range(1, 5), 0))  # 10 (range(1,5) = 1+2+3+4)
     auto __tmp_2 = ::tpy::Range<int32_t>(1, 5);
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, __tmp_2, 0) << "\n";
-    // # str accumulator (U=str). Used to dangle silently because U was
-    // # auto-downgraded to StrView and the lambda's owned-string return
-    // # converted to a view of a temporary.
-    // parts: list[str] = ["foo", "bar", "baz"]
     std::vector<std::string> parts = {"foo", "bar", "baz"};
-    // print(reduce(lambda a, b: a + b, parts, ""))   # foobarbaz
     std::cout << ::tpystd::functools::reduce<std::string, std::string>([](std::string_view a, std::string_view b) -> std::string { return (::tpy::str_concat(a, b)); }, parts, "") << "\n";
 }
 
+// # functools.reduce -- 3-arg form. Covers lambda and named-function callables,
+// # cross-type T/U (summing str lengths into int32), the empty-input + initial
+// # case that just returns the seed, and a reference-type accumulator
+// # (list[int32]) that verifies copy(initial) actually copies rather than
+// # aliasing the caller's seed. Also exercises non-list iterables: literal
+// # list, range(), empty list literal -- unblocked by the
+// # list-literal-vs-Iterable[T] conformance work and the
+// # post-overload-resolution element-type coercion. The 2-arg form is in
+// # functools_reduce_2arg.
+// from functools import reduce
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # functools.reduce -- 3-arg form. Covers lambda and named-function callables,
-    // # cross-type T/U (summing str lengths into int32), the empty-input + initial
-    // # case that just returns the seed, and a reference-type accumulator
-    // # (list[int32]) that verifies copy(initial) actually copies rather than
-    // # aliasing the caller's seed. Also exercises non-list iterables: literal
-    // # list, range(), empty list literal -- unblocked by the
-    // # list-literal-vs-Iterable[T] conformance work and the
-    // # post-overload-resolution element-type coercion. The 2-arg form is in
-    // # functools_reduce_2arg.
-    // from functools import reduce
     ::tpystd::functools::__tpy_init();
-    // main()
     main();
 }
 

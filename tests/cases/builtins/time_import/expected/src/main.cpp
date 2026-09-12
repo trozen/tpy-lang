@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main():
+//     t = time()
+//     # Verify timestamp is reasonable (after 2024: 1704067200)
+//     # This avoids exact output comparison that would fail due to timing
+//     if t > 1704067200:
+//         print("ok")
+//     else:
+//         print("error: timestamp too small")
 void main() {
-    // t = time()
     double t = ::tpy::time_time();
-    // # Verify timestamp is reasonable (after 2024: 1704067200)
-    // # This avoids exact output comparison that would fail due to timing
-    // if t > 1704067200:
     if ((t > 1704067200)) {
-        // print("ok")
         std::cout << "ok" << "\n";
-    // else:
     } else {
-        // print("error: timestamp too small")
         std::cout << "error: timestamp too small" << "\n";
     }
 }
 
+// from time import time
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from time import time
-    // main()
     main();
 }
 

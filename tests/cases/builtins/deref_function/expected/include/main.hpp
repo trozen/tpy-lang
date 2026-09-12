@@ -11,8 +11,10 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def deref_protocol(p: Deref[int32]) -> int32:
 template<::tpystd::tpy::Deref<int32_t> T_p>
 int32_t deref_protocol(const T_p& p);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -40,17 +42,18 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self._val = v
 inline Box::Box(int32_t v) : _val(v) {}
 
 // def __deref__(self) -> int32:
+//     return self._val
 inline int32_t Box::__deref__() const {
-    // return self._val
     return this->_val;
 }
 // def deref_protocol(p: Deref[int32]) -> int32:
+//     return deref(p)
 template<::tpystd::tpy::Deref<int32_t> T_p>
 int32_t deref_protocol(const T_p& p) {
-    // return deref(p)
     return ::tpy::deref_check(p);
 }
 

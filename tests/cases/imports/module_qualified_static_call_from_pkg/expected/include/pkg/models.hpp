@@ -35,12 +35,13 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Widget::Widget(int32_t v) : value(v) {}
 
 // @staticmethod
 // def make(v: int32) -> Own["Widget"]:
+//     return Widget(v)
 inline Widget Widget::make(int32_t v) {
-    // return Widget(v)
     return Widget(v);
 }
 void __tpy_init();

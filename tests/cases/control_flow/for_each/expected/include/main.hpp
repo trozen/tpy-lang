@@ -13,8 +13,11 @@ extern std::array<int32_t, 3>* arr;
 extern std::string text;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_array() -> int32:
 int32_t sum_array();
+// def print_span(data: Span[int32]) -> None:
 void print_span(std::span<int32_t> data);
+// def nested_sum() -> int32:
 int32_t nested_sum();
 
 void __tpy_init();

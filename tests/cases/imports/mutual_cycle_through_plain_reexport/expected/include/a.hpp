@@ -13,6 +13,7 @@ using ::tpyapp::c::cee;
 
 inline constexpr std::string_view __name__ = "a";
 
+// def aye() -> int32:
 int32_t aye();
 
 void __tpy_init();

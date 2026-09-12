@@ -5,19 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # iter() returns an iterator from an iterable
+//     c = Counter(4)
+//     it = iter(c)
+//
+//     # Advance iterator with try/except
+//     while True:
+//         try:
+//             v = it.__next__()
+//         except StopIteration:
+//             break
+//         print(v)
+//
+//     # Exhausted iterator raises StopIteration
+//     exhausted = False
+//     try:
+//         it.__next__()
+//     except StopIteration:
+//         exhausted = True
+//     if exhausted:
+//         print("exhausted")
 void main() {
-    // # iter() returns an iterator from an iterable
-    // c = Counter(4)
     Counter c = Counter(4);
-    // it = iter(c)
     auto it = ::tpy::__iter__(c);
-    // # Advance iterator with try/except
-    // while True:
     while (true) {
-        // try:
         int32_t v;
         {
-            // v = it.__next__()
             {
                 auto __try_tmp_2 = it.__next__();
                 if (!__try_tmp_2.has_value()) goto __except_1;
@@ -26,19 +39,13 @@ void main() {
             goto __after_try_1;
             // except StopIteration:
             __except_1:;
-            // break
             break;
             __after_try_1:;
         }
-        // print(v)
         std::cout << v << "\n";
     }
-    // # Exhausted iterator raises StopIteration
-    // exhausted = False
     bool exhausted = false;
-    // try:
     {
-        // it.__next__()
         {
             auto __try_tmp_4 = it.__next__();
             if (!__try_tmp_4.has_value()) goto __except_3;
@@ -46,23 +53,20 @@ void main() {
         goto __after_try_3;
         // except StopIteration:
         __except_3:;
-        // exhausted = True
         exhausted = true;
         __after_try_3:;
     }
-    // if exhausted:
     if (exhausted) {
-        // print("exhausted")
         std::cout << "exhausted" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,15 +12,25 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def via_list_literal(c: P) -> int32:
 int32_t via_list_literal(const P& c);
+// def via_inner_lvalue(c: P) -> int32:
 int32_t via_inner_lvalue(P& c);
+// def via_append(c: P) -> int32:
 int32_t via_append(const P& c);
+// def via_field(h: Holder, c: P) -> int32:
 int32_t via_field(Holder& h, const P& c);
+// def via_setitem(c: P) -> int32:
 int32_t via_setitem(const P& c);
+// def three_levels(c: P) -> int32:
 int32_t three_levels(const P& c);
+// def acknowledged(c: P) -> int32:
 int32_t acknowledged(const P& c);
+// def fresh_member() -> int32:
 int32_t fresh_member();
+// def no_reference_member() -> int32:
 int32_t no_reference_member();
+// def main() -> None:
 void main();
 
 // class P:
@@ -57,9 +67,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline P::P(int32_t n) : n(n) {}
 
 // def __init__(self, c: P) -> None:
+//     self.q = (1, (2, c))  # tpyc: warning(/copies P into field \(tuple element 1.1\)/)
 inline Holder::Holder(const P& c) : q(std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{2, &(c)})}) {}
 void __tpy_init();
 } // namespace tpyapp::main

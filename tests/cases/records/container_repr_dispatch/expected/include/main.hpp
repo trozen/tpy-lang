@@ -15,7 +15,9 @@ struct ChildOfRepr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def matches_default_repr(s: str, cls: str) -> bool:
 bool matches_default_repr(std::string_view s, std::string_view cls);
+// def main() -> None:
 void main();
 
 // class Both:
@@ -108,39 +110,43 @@ inline std::ostream& operator<<(std::ostream& os, const ChildOfRepr& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Both::Both(int32_t n) : n(n) {}
 
 // def __str__(self) -> str:
+//     return f"Both_str({self.n})"
 inline std::string Both::__str__() const {
-    // return f"Both_str({self.n})"
     return std::format("Both_str({})", this->n);
 }
 
 // def __repr__(self) -> str:
+//     return f"Both_repr({self.n})"
 inline std::string Both::__repr__() const {
-    // return f"Both_repr({self.n})"
     return std::format("Both_repr({})", this->n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline StrOnly::StrOnly(int32_t n) : n(n) {}
 
 // def __str__(self) -> str:
+//     return f"StrOnly_str({self.n})"
 inline std::string StrOnly::__str__() const {
-    // return f"StrOnly_str({self.n})"
     return std::format("StrOnly_str({})", this->n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline ReprOnly::ReprOnly(int32_t n) : n(n) {}
 
 // def __repr__(self) -> str:
+//     return f"ReprOnly_repr({self.n})"
 inline std::string ReprOnly::__repr__() const {
-    // return f"ReprOnly_repr({self.n})"
     return std::format("ReprOnly_repr({})", this->n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Neither::Neither(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

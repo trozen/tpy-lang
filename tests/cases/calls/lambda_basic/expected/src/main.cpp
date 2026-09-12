@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(apply(lambda x: x + 1, 10))
+//     print(apply(lambda x: x * 2, 5))
+//     print(apply(lambda x: x, 0))
 void main() {
-    // print(apply(lambda x: x + 1, 10))
     std::cout << apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, 10) << "\n";
-    // print(apply(lambda x: x * 2, 5))
     std::cout << apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); }, 5) << "\n";
-    // print(apply(lambda x: x, 0))
     std::cout << apply([](int32_t x) -> int32_t { return x; }, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

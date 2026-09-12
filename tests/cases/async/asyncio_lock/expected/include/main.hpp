@@ -20,9 +20,13 @@ struct __coro_worker;
 struct __coro_raise_holding;
 struct __coro_main_coro;
 
+// async def worker(lock: Lock, box: Box) -> None:
 __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box);
+// async def raise_holding(lock: Lock) -> None:
 __coro_raise_holding raise_holding(::tpystd::asyncio::Lock& lock);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -40,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: worker
+// async def worker(lock: Lock, box: Box) -> None:
 struct __coro_worker {
     int32_t __state;
     bool __cancel_pending;
@@ -75,7 +79,7 @@ struct __coro_worker {
     }
 };
 
-// Async coroutine: raise_holding
+// async def raise_holding(lock: Lock) -> None:
 struct __coro_raise_holding {
     int32_t __state;
     bool __cancel_pending;
@@ -108,7 +112,7 @@ struct __coro_raise_holding {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -141,6 +145,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Box::Box() : n(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

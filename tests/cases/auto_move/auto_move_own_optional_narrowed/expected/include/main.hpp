@@ -11,7 +11,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_optional(p: Own[Point] | None) -> int32:
 int32_t use_optional(std::optional<Point> p);
+// def main():
 void main();
 
 // class Point:

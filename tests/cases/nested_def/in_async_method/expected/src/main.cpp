@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter()
+//     print(asyncio.run(c.bump_twice()))
+//     for v in c.steps():
+//         print(v)
+//     print(c.n)
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // print(asyncio.run(c.bump_twice()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(c.bump_twice())) << "\n";
-    // for v in c.steps():
     {
         auto __src_0 = c.steps();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -18,25 +20,30 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // async def bump_twice(self) -> int32:
+//     delta = 0
+//
+//     def bump() -> None:
+//         nonlocal delta
+//         delta += 1
+//         self.n += delta
+//
+//     bump()
+//     await asyncio.sleep(0)
+//     bump()
+//     return self.n
 ::tpystd::tpy::Poll<int32_t> __coro_Counter_bump_twice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // delta = 0
         delta = 0;
-        // def bump() -> None:
         // def bump: frame member
-        // bump()
         bump();
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -46,9 +53,7 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // bump()
         bump();
-        // return self.n
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -59,27 +64,29 @@ void main() {
 }
 
 void __coro_Counter_bump_twice::bump() {
-    // nonlocal delta
-    // delta += 1
     delta = ::tpy::add_check<int32_t>(delta, 1);
-    // self.n += delta
     __self.n = ::tpy::add_check<int32_t>(__self.n, delta);
 }
 
 // def steps(self) -> Iterator[int32]:
+//     step = 100
+//
+//     def next_offset() -> int32:
+//         nonlocal step
+//         step += self.n
+//         return step
+//
+//     yield next_offset()
+//     yield next_offset()
 std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // step = 100
         step = 100;
-        // def next_offset() -> int32:
         // def next_offset: frame member
-        // yield next_offset()
         __state = S_RESUME_0;
         return next_offset();
     }
     case S_RESUME_0: {
-        // yield next_offset()
         __state = S_RESUME_1;
         return next_offset();
     }
@@ -93,24 +100,22 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_steps::__next__() {
 }
 
 int32_t __gen_Counter_steps::next_offset() {
-    // nonlocal step
-    // step += self.n
     step = ::tpy::add_check<int32_t>(step, __self.n);
-    // return step
     return step;
 }
 
+// # Nested defs inside async and generator METHODS (record-owned frames).
+// # The defs capture locals AND self: the async one mutates self.n from the
+// # closure (visible on the caller's object), the generator one reads self.n.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Nested defs inside async and generator METHODS (record-owned frames).
-    // # The defs capture locals AND self: the async one mutates self.n from the
-    // # closure (visible on the caller's object), the generator one reads self.n.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = b"hi"
+//     print(a)
 void main() {
-    // a: Any = b"hi"
     ::tpy::Any a = ::tpy::make_any(::tpy::bytes_literal_owned("hi", 2));
-    // print(a)
     std::cout << a << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

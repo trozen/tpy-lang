@@ -13,10 +13,15 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mk(tag: str, n: int) -> Fixed:
 Fixed mk(std::string_view tag, const ::tpy::BigInt& n);
+// def take(pair: tuple[Box, int32]) -> int:
 ::tpy::BigInt take(const std::tuple<const Box*, int32_t>& pair);
+// def take2(pair: tuple[Box, Box]) -> int:
 ::tpy::BigInt take2(const std::tuple<const Box*, const Box*>& pair);
+// def take_opt(pair: tuple[Box | None, int32]) -> int:
 ::tpy::BigInt take_opt(const std::tuple<const Box*, int32_t>& pair);
+// def main() -> None:
 void main();
 
 // @dataclass(frozen=True)
@@ -150,20 +155,20 @@ inline uint64_t Zone::__hash__() const {
 }
 
 // def __init__(self, tz: Fixed | Zone | None = None) -> None:
+//     if tz is None:
+//         self.v = 0
+//     elif isinstance(tz, Fixed):
+//         self.v = int(tz.off)
+//     else:
+//         self.v = int(tz.zid)
 inline Box::Box(const ::tpy::Union<std::monostate, Fixed, Zone>& tz) {
-    // if tz is None:
     if ((std::holds_alternative<std::monostate>(tz))) {
-        // self.v = 0
         this->v = 0;
-    // elif isinstance(tz, Fixed):
     } else if (std::holds_alternative<Fixed>(tz)) {
         const auto& __tz = std::get<Fixed>(tz);
-        // self.v = int(tz.off)
         this->v = (::tpy::BigInt(static_cast<int64_t>(__tz.off))).to_fixed_check<int32_t>();
-    // else:
     } else {
         const auto& __tz = std::get<Zone>(tz);
-        // self.v = int(tz.zid)
         this->v = (::tpy::BigInt(static_cast<int64_t>(__tz.zid))).to_fixed_check<int32_t>();
     }
 }

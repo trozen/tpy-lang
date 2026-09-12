@@ -12,8 +12,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet_dog(d: Dog) -> None:
 void greet_dog(const Dog& d);
+// def greet_cat(c: Cat) -> None:
 void greet_cat(const Cat& c);
+// def main() -> None:
 void main();
 
 // # Pass narrowed union var to function expecting the member type
@@ -51,9 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

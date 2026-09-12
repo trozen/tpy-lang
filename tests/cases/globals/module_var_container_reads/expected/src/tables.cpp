@@ -3,17 +3,15 @@
 
 namespace tpyapp::tables {
 
-// # Companion module: `main` reads these globals as `tables.X`.
-// NAMES: list[str] = ["alpha", "beta"]
 std::vector<std::string>* NAMES{};
 
+// # Companion module: `main` reads these globals as `tables.X`.
+// NAMES: list[str] = ["alpha", "beta"]
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Companion module: `main` reads these globals as `tables.X`.
-    // NAMES: list[str] = ["alpha", "beta"]
     static std::vector<std::string> __global_slot_1 = {"alpha", "beta"};
     NAMES = &__global_slot_1;
 }

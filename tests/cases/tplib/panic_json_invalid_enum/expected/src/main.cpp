@@ -43,8 +43,8 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     Item.from_json('{"name": "x", "color": "Purple"}')
 void main() {
-    // Item.from_json('{"name": "x", "color": "Purple"}')
     Item::from_json("{\"name\": \"x\", \"color\": \"Purple\"}");
 }
 
@@ -101,6 +101,10 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
     }
     return Item(name, (*color));
 }
+// from enum import Enum
+// from tplib.json.model import model
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -110,9 +114,6 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // from enum import Enum
-    // from tplib.json.model import model
-    // main()
     main();
 }
 

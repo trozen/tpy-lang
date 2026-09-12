@@ -13,9 +13,13 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def value_downcast(a: Animal) -> bool:
 bool value_downcast(const Animal& a);
+// def ptr_downcast(a: Ptr[Animal]) -> bool:
 bool ptr_downcast(Animal* a);
+// def multi_downcast_tuple(a: Animal) -> bool:
 bool multi_downcast_tuple(const Animal& a);
+// def main() -> None:
 void main();
 
 // class Animal:
@@ -68,12 +72,17 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str, breed: str) -> None:
+//     super().__init__(name)
+//     self.breed = breed
 inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
 // def __init__(self, name: str) -> None:
+//     super().__init__(name)
+//     self.whiskers = 6
 inline Cat::Cat(std::string_view name) : Animal(name), whiskers(::tpy::BigInt(6)) {}
 void __tpy_init();
 } // namespace tpyapp::main

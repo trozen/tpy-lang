@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     c = Counter()
+//     print(await c.bump(3))
+//     print(await c.bump(4))
+//     print(c.count)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counter()
         c.emplace(Counter());
-        // print(await c.bump(3))
         __sub_0.emplace((*c), 3);
         __state = S_RESUME_0;
         continue;
@@ -20,9 +22,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await c.bump(3))
         std::cout << __await_lift_0 << "\n";
-        // print(await c.bump(4))
         __sub_1.emplace((*c), 4);
         __state = S_RESUME_1;
         continue;
@@ -32,9 +32,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await c.bump(4))
         std::cout << __await_lift_1 << "\n";
-        // print(c.count)
         std::cout << (*c).count << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -51,13 +49,13 @@ __coro_main_coro main_coro() {
 }
 
 // async def bump(self, by: int32) -> int32:
+//     self.count += by
+//     return self.count
 ::tpystd::tpy::Poll<int32_t> __coro_Counter_bump::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // self.count += by
         __self.count = ::tpy::add_check<int32_t>(__self.count, by);
-        // return self.count
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.count;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -68,19 +66,20 @@ __coro_main_coro main_coro() {
 }
 
 
+// # Mutating-self in an async method body. Auto-readonly inference
+// # detects the assignment to self.count and leaves the method
+// # non-readonly, so __self is captured as the mutable reference
+// # `Class&` (not `const Class&`). Exercises the non-const __self
+// # branch in AsyncCoroCodegen._classify_params.
+// import asyncio
+//
+// asyncio.run(main_coro())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Mutating-self in an async method body. Auto-readonly inference
-    // # detects the assignment to self.count and leaves the method
-    // # non-readonly, so __self is captured as the mutable reference
-    // # `Class&` (not `const Class&`). Exercises the non-const __self
-    // # branch in AsyncCoroCodegen._classify_params.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 

@@ -31,7 +31,9 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(s: Shape) -> str:
 std::string classify(Shape& s);
+// def main() -> None:
 void main();
 
 // class Square:
@@ -95,20 +97,23 @@ namespace tpyapp::main {
 
 
 // def __init__(self, side: int) -> None:
+//     self.side = side
 inline Square::Square(const ::tpy::BigInt& side) : side(side) {}
 
 // def area(self) -> int:
+//     return self.side * self.side
 inline ::tpy::BigInt Square::area() const {
-    // return self.side * self.side
     return ((this->side) * (this->side));
 }
 
 // def __init__(self, w: int, h: int) -> None:
+//     self.w = w
+//     self.h = h
 inline Rect::Rect(const ::tpy::BigInt& w, const ::tpy::BigInt& h) : w(w), h(h) {}
 
 // def area(self) -> int:
+//     return self.w * self.h
 inline ::tpy::BigInt Rect::area() const {
-    // return self.w * self.h
     return ((this->w) * (this->h));
 }
 void __tpy_init();

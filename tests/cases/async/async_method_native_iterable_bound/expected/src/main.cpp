@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3, 4, 5]
+//     w = Wrap(xs)
+//     print(asyncio.run(w.total()))
 void main() {
-    // xs: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
-    // w = Wrap(xs)
     Wrap<std::vector<int32_t>> w = Wrap<std::vector<int32_t>>(xs);
-    // print(asyncio.run(w.total()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(w.total())) << "\n";
 }
 
+// # Async method on a class with a `NativeIterable`-bounded type param.
+// # Guards Fix B (record_type_param_bounds threaded to setup_body_scope):
+// # a non-suspending for-loop over `self.items: T` reads
+// # `current_type_param_bounds` from `_gen_for_each` and picks the
+// # begin/end peephole when the bound is NativeIterable. Without bounds,
+// # falls back to the universal `::tpy::__iter__` shape.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async method on a class with a `NativeIterable`-bounded type param.
-    // # Guards Fix B (record_type_param_bounds threaded to setup_body_scope):
-    // # a non-suspending for-loop over `self.items: T` reads
-    // # `current_type_param_bounds` from `_gen_for_each` and picks the
-    // # begin/end peephole when the bound is NativeIterable. Without bounds,
-    // # falls back to the universal `::tpy::__iter__` shape.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

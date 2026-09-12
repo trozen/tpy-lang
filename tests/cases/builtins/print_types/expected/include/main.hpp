@@ -21,6 +21,7 @@ extern std::optional<bool> y;
 extern std::optional<double> z;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_range() -> None:
 void print_range();
 
 void __tpy_init();

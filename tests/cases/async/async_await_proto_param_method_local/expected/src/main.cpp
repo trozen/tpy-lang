@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     r = Runner()
+//     data: list[int32] = [9]
+//     await r.go(data)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // r = Runner()
         r.emplace(Runner());
-        // data: list[int32] = [9]
         data.emplace(std::vector<int32_t>{9});
-        // await r.go(data)
         __sub_0.emplace((*r), (*data));
         __state = S_RESUME_0;
         continue;
@@ -37,24 +37,25 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Both field-type rewrites exercised together inside an async method body: a
+// # templated method (protocol param `extra`, so its coro struct orders correctly
+// # vs the awaited free coro) that awaits a hoisted-local iterable (`local`, a
+// # frame_slot -> deref rewrite) and then a param. Guards that the body-context
+// # spelling applies inside a method, not just a free function.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Both field-type rewrites exercised together inside an async method body: a
-    // # templated method (protocol param `extra`, so its coro struct orders correctly
-    // # vs the awaited free coro) that awaits a hoisted-local iterable (`local`, a
-    // # frame_slot -> deref rewrite) and then a param. Guards that the body-context
-    // # spelling applies inside a method, not just a free function.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

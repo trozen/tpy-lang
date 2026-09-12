@@ -3,65 +3,61 @@
 
 namespace tpyapp::main {
 
-// # module-level statement: globals use pointer slots, so the copy is spelled
-// # against a different variable model than the function sections above.
-// TOP_SRC = Holder(Cell(1))
 Holder* TOP_SRC{};
-// TOP = bump(copy(peek(TOP_SRC)))  # tpyc: ok
 Cell* TOP{};
 
 // def bump(c: Own[Cell]) -> Own[Cell]:
+//     c.n = c.n + 100
+//     return c
 Cell bump(Cell&& c) {
-    // c.n = c.n + 100
     c.n = (::tpy::add_check<int32_t>(c.n, 100));
-    // return c
     return c;
 }
 
 // # free function: a readonly param reaches an Own[Cell] param.
 // def sec_free(c: readonly[Cell]) -> None:
+//     d = bump(copy(c))  # tpyc: ok
+//     print("free:", c.n, d.n)
 void sec_free(const Cell& c) {
-    // d = bump(copy(c))  # tpyc: ok
     Cell d = bump(Cell(c));
-    // print("free:", c.n, d.n)
     std::cout << "free:" << " " << c.n << " " << d.n << "\n";
 }
 
 // # constructor: the copy is the ctor's Own[Cell] argument.
 // def sec_ctor(c: readonly[Cell]) -> None:
+//     h = Holder(copy(c))  # tpyc: ok
+//     h.cell.n = 7
+//     print("ctor:", c.n, h.cell.n)
 void sec_ctor(const Cell& c) {
-    // h = Holder(copy(c))  # tpyc: ok
     Holder h = Holder(Cell(c));
-    // h.cell.n = 7
     h.cell.n = 7;
-    // print("ctor:", c.n, h.cell.n)
     std::cout << "ctor:" << " " << c.n << " " << h.cell.n << "\n";
 }
 
 // def sec_generic(c: readonly[Cell]) -> None:
+//     g = GHolder[Cell](Cell(c.n))
+//     g2 = g.cloned()
+//     g2.get().n = 7
+//     print("generic:", g.get().n, g2.get().n)
 void sec_generic(const Cell& c) {
-    // g = GHolder[Cell](Cell(c.n))
     GHolder<Cell> g = GHolder<Cell>(Cell(c.n));
-    // g2 = g.cloned()
     GHolder<Cell> g2 = g.cloned();
-    // g2.get().n = 7
     g2.get().n = 7;
-    // print("generic:", g.get().n, g2.get().n)
     std::cout << "generic:" << " " << g.get().n << " " << g2.get().n << "\n";
 }
 
 // def gen_copies(c: readonly[Cell]) -> Iterator[int32]:
+//     d = bump(copy(c))  # tpyc: ok
+//     yield d.n
+//     yield c.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_copies::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // d = bump(copy(c))  # tpyc: ok
         d.emplace(bump(Cell(c)));
-        // yield d.n
         __state = S_RESUME_0;
         return (*d).n;
     }
     case S_RESUME_0: {
-        // yield c.n
         __state = S_RESUME_1;
         return c.n;
     }
@@ -81,10 +77,12 @@ __gen_gen_copies gen_copies(const Cell& c) {
 }
 
 // def sec_generator(c: readonly[Cell]) -> None:
+//     out: list[int32] = []
+//     for n in gen_copies(c):
+//         out.append(n)
+//     print("generator:", out[1], out[0])
 void sec_generator(const Cell& c) {
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for n in gen_copies(c):
     {
         auto __src_0 = gen_copies(c);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -92,22 +90,20 @@ void sec_generator(const Cell& c) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        // out.append(n)
         out.push_back(n);
         }
     }
-    // print("generator:", out[1], out[0])
     std::cout << "generator:" << " " << ::tpy::__getitem__(out, 1) << " " << ::tpy::__getitem__(out, 0) << "\n";
 }
 
 // async def copy_in_task(c: readonly[Cell]) -> int32:
+//     d = bump(copy(c))  # tpyc: ok
+//     return d.n
 ::tpystd::tpy::Poll<int32_t> __coro_copy_in_task::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // d = bump(copy(c))  # tpyc: ok
         d.emplace(bump(Cell(c)));
-        // return d.n
         __state = S_DONE;
         int32_t __tpy_async_ret = (*d).n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -124,15 +120,16 @@ __coro_copy_in_task copy_in_task(const Cell& c) {
 }
 
 // def sec_async(c: readonly[Cell]) -> None:
+//     print("async:", c.n, asyncio.run(copy_in_task(c)))
 void sec_async(const Cell& c) {
-    // print("async:", c.n, asyncio.run(copy_in_task(c)))
     std::cout << "async:" << " " << c.n << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(copy_in_task(c))) << "\n";
 }
 
 // # comprehension: the loop variable over a readonly list is readonly.
 // def sec_comprehension(cs: readonly[list[Cell]]) -> None:
+//     ns = [bump(copy(c)).n for c in cs]  # tpyc: ok
+//     print("comprehension:", cs[0].n, ns[0])
 void sec_comprehension(const std::vector<Cell>& cs) {
-    // ns = [bump(copy(c)).n for c in cs]  # tpyc: ok
     std::vector<int32_t> ns = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = cs;
@@ -145,33 +142,32 @@ void sec_comprehension(const std::vector<Cell>& cs) {
         }
         std::move(__result);
     });
-    // print("comprehension:", cs[0].n, ns[0])
     std::cout << "comprehension:" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(ns, 0) << "\n";
 }
 
 // # closure: the copy is inside a nested function.
 // def sec_closure(c: readonly[Cell]) -> None:
+//     def inner() -> int32:
+//         return bump(copy(c)).n  # tpyc: ok
+//     print("closure:", c.n, inner())
 void sec_closure(const Cell& c) {
-    // def inner() -> int32:
     auto inner = [&c]() -> int32_t {
-        // return bump(copy(c)).n  # tpyc: ok
         return bump(Cell(c)).n;
     };
-    // print("closure:", c.n, inner())
     std::cout << "closure:" << " " << c.n << " " << inner() << "\n";
 }
 
 // # context-manager body.
 // def sec_with(c: readonly[Cell]) -> None:
+//     with Guard():
+//         d = bump(copy(c))  # tpyc: ok
+//         print("with:", c.n, d.n)
 void sec_with(const Cell& c) {
-    // with Guard():
     std::optional<Cell> d;
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
-        // d = bump(copy(c))  # tpyc: ok
         d = bump(Cell(c));
-        // print("with:", c.n, d.n)
         std::cout << "with:" << " " << c.n << " " << d->n << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -187,43 +183,44 @@ void sec_with(const Cell& c) {
 
 // # try/finally body.
 // def sec_try_finally(c: readonly[Cell]) -> None:
+//     try:
+//         d = bump(copy(c))  # tpyc: ok
+//         print("try-finally:", c.n, d.n)
+//     finally:
+//         pass
 void sec_try_finally(const Cell& c) {
-    // try:
     std::optional<Cell> d;
     {
         try {
-            // d = bump(copy(c))  # tpyc: ok
             d = bump(Cell(c));
-            // print("try-finally:", c.n, d.n)
             std::cout << "try-finally:" << " " << c.n << " " << d->n << "\n";
         } catch (...) {
-            // pass
             throw;
         }
-        // pass
     }
 }
 
 // # @error_return body.
 // @error_return(Missing)
 // def ret_copy(c: readonly[Cell]) -> int32:
+//     d = bump(copy(c))  # tpyc: ok
+//     return d.n
 std::expected<int32_t, Missing> ret_copy(const Cell& c) {
-    // d = bump(copy(c))  # tpyc: ok
     Cell d = bump(Cell(c));
-    // return d.n
     return d.n;
 }
 
 // def sec_error_return(c: readonly[Cell]) -> None:
+//     try:
+//         print("error-return:", c.n, ret_copy(c))
+//     except Missing:
+//         print("error-return: missing")
 void sec_error_return(const Cell& c) {
-    // try:
     {
-        // print("error-return:", c.n, ret_copy(c))
         std::cout << "error-return:" << " " << c.n << " " << ({ auto __er_2 = ret_copy(c); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except Missing:
         __except_1:;
-        // print("error-return: missing")
         std::cout << "error-return: missing" << "\n";
         __after_try_1:;
     }
@@ -231,21 +228,21 @@ void sec_error_return(const Cell& c) {
 
 // # match arm.
 // def sec_match(c: readonly[Cell], k: int32) -> None:
+//     match k:
+//         case 1:
+//             d = bump(copy(c))  # tpyc: ok
+//             print("match:", c.n, d.n)
+//         case _:
+//             print("match: none")
 void sec_match(const Cell& c, int32_t k) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1:
     case 1: {
-        // d = bump(copy(c))  # tpyc: ok
         Cell d = bump(Cell(c));
-        // print("match:", c.n, d.n)
         std::cout << "match:" << " " << c.n << " " << d.n << "\n";
         break;
     }
-    // case _:
     default: {
-        // print("match: none")
         std::cout << "match: none" << "\n";
         break;
     }
@@ -253,63 +250,65 @@ void sec_match(const Cell& c, int32_t k) {
 }
 
 // def peek(h: readonly[Holder]) -> readonly[Cell]:
+//     return h.cell
 const Cell& peek(const Holder& h) {
-    // return h.cell
     return h.cell;
 }
 
 // def main() -> None:
+//     print("module-level:", TOP_SRC.cell.n, TOP.n)
+//     c = Cell(1)
+//     sec_free(c)
+//     Holder(Cell(1)).sec_method()
+//     Holder(Cell(1)).sec_borrow_ret()
+//     sec_ctor(c)
+//     sec_generic(c)
+//     sec_generator(c)
+//     sec_async(c)
+//     cs: list[Cell] = [Cell(1)]
+//     sec_comprehension(cs)
+//     sec_closure(c)
+//     sec_with(c)
+//     sec_try_finally(c)
+//     sec_error_return(c)
+//     sec_match(c, 1)
 void main() {
-    // print("module-level:", TOP_SRC.cell.n, TOP.n)
     std::cout << "module-level:" << " " << TOP_SRC->cell.n << " " << TOP->n << "\n";
-    // c = Cell(1)
     Cell c = Cell(1);
-    // sec_free(c)
     sec_free(c);
-    // Holder(Cell(1)).sec_method()
     Holder(Cell(1)).sec_method();
-    // Holder(Cell(1)).sec_borrow_ret()
     Holder(Cell(1)).sec_borrow_ret();
-    // sec_ctor(c)
     sec_ctor(c);
-    // sec_generic(c)
     sec_generic(c);
-    // sec_generator(c)
     sec_generator(c);
-    // sec_async(c)
     sec_async(c);
-    // cs: list[Cell] = [Cell(1)]
     std::vector<Cell> cs = {Cell(1)};
-    // sec_comprehension(cs)
     sec_comprehension(cs);
-    // sec_closure(c)
     sec_closure(c);
-    // sec_with(c)
     sec_with(c);
-    // sec_try_finally(c)
     sec_try_finally(c);
-    // sec_error_return(c)
     sec_error_return(c);
-    // sec_match(c, 1)
     sec_match(c, 1);
 }
 
+// import asyncio
+//
+// # module-level statement: globals use pointer slots, so the copy is spelled
+// # against a different variable model than the function sections above.
+// TOP_SRC = Holder(Cell(1))
+// TOP = bump(copy(peek(TOP_SRC)))  # tpyc: ok
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // # module-level statement: globals use pointer slots, so the copy is spelled
-    // # against a different variable model than the function sections above.
-    // TOP_SRC = Holder(Cell(1))
     static Holder __global_slot_1 = Holder(Cell(1));
     TOP_SRC = &__global_slot_1;
-    // TOP = bump(copy(peek(TOP_SRC)))  # tpyc: ok
     static Cell __global_slot_2 = bump(Cell(peek((*TOP_SRC))));
     TOP = &__global_slot_2;
-    // main()
     main();
 }
 

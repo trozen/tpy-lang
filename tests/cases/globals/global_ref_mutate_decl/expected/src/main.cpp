@@ -3,34 +3,31 @@
 
 namespace tpyapp::main {
 
+std::vector<int32_t>* log{};
+
+// def main():
+//     Writer().add(2)
+//     Writer().add(3)
+//     print(len(log), log[0], log[2])
+void main() {
+    Writer().add(2);
+    Writer().add(3);
+    std::cout << ::tpy::__len__((*log)) << " " << ::tpy::__getitem__((*log), 0) << " " << ::tpy::__getitem__((*log), 2) << "\n";
+}
+
 // # `global` of a bare reference-type module global from a method: the method
 // # mutates the shared list (not a copy), and the mutation is visible at module
 // # level afterward -- forcing the value-vs-reference distinction.
 // log = [1]
-std::vector<int32_t>* log{};
-
-// def main():
-void main() {
-    // Writer().add(2)
-    Writer().add(2);
-    // Writer().add(3)
-    Writer().add(3);
-    // print(len(log), log[0], log[2])
-    std::cout << ::tpy::__len__((*log)) << " " << ::tpy::__getitem__((*log), 0) << " " << ::tpy::__getitem__((*log), 2) << "\n";
-}
-
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `global` of a bare reference-type module global from a method: the method
-    // # mutates the shared list (not a copy), and the mutation is visible at module
-    // # level afterward -- forcing the value-vs-reference distinction.
-    // log = [1]
     static std::vector<int32_t> __global_slot_1 = {1};
     log = &__global_slot_1;
-    // main()
     main();
 }
 

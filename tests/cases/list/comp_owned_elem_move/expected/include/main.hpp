@@ -13,13 +13,21 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def is_small(b: Box[int32]) -> bool:
 bool is_small(const ::tpystd::tplib::box::Box<int32_t>& b);
+// def score(b: Box[int32]) -> int32:
 int32_t score(const ::tpystd::tplib::box::Box<int32_t>& b);
+// def array_comp() -> None:
 void array_comp();
+// def list_comp(n: int32) -> None:
 void list_comp(int32_t n);
+// def genexpr(n: int32) -> None:
 void genexpr(int32_t n);
+// def filtered(n: int32) -> None:
 void filtered(int32_t n);
+// def walrus_owned(n: int32) -> None:
 void walrus_owned(int32_t n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

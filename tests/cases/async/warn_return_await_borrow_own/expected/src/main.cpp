@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // async def take(h: Holder) -> Own[Payload]:
+//     return await h.borrow()  # tpyc: warning(/copies Payload into owned storage/)
 ::tpystd::tpy::Poll<Payload> __coro_take::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await h.borrow()  # tpyc: warning(/copies Payload into owned storage/)
         __sub_0.emplace(h);
         __state = S_RESUME_0;
         continue;
@@ -33,10 +33,10 @@ __coro_take take(Holder& h) {
 }
 
 // async def take_copy(h: Holder) -> Own[Payload]:
+//     return copy(await h.borrow())  # tpyc: ok
 ::tpystd::tpy::Poll<Payload> __coro_take_copy::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return copy(await h.borrow())  # tpyc: ok
         __sub_0.emplace(h);
         __state = S_RESUME_0;
         continue;
@@ -46,7 +46,6 @@ __coro_take take(Holder& h) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Payload>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // return copy(await h.borrow())  # tpyc: ok
         __state = S_DONE;
         Payload __tpy_async_ret = Payload((*__await_lift_0));
         return ::tpystd::tpy::Poll<Payload>::ready(std::move(__tpy_async_ret));
@@ -63,12 +62,14 @@ __coro_take_copy take_copy(Holder& h) {
 }
 
 // async def amain() -> None:
+//     h = Holder(1)
+//     p = await take(h)
+//     q = await take_copy(h)
+//     print(p.v, q.v, h.p.v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // h = Holder(1)
         h.emplace(Holder(1));
-        // p = await take(h)
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
@@ -78,7 +79,6 @@ __coro_take_copy take_copy(Holder& h) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // q = await take_copy(h)
         __sub_1.emplace((*h));
         __state = S_RESUME_1;
         continue;
@@ -88,7 +88,6 @@ __coro_take_copy take_copy(Holder& h) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         q.emplace(std::move(__r1).value());
         __sub_1.reset();
-        // print(p.v, q.v, h.p.v)
         std::cout << (*p).v << " " << (*q).v << " " << (*h).p.v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -105,11 +104,11 @@ __coro_amain amain() {
 }
 
 // async def borrow(self) -> Payload:
+//     return self.p
 ::tpystd::tpy::Poll<Payload*> __coro_Holder_borrow::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return self.p
         __state = S_DONE;
         Payload* __tpy_async_ret = &(__self.p);
         return ::tpystd::tpy::Poll<Payload*>::ready(std::move(__tpy_async_ret));
@@ -120,22 +119,23 @@ __coro_amain amain() {
 }
 
 
+// # An AWAITED borrow at an `Own[T]` return is the async spelling of
+// # warn_return_record_borrow_method_own: awaiting a coroutine whose declared
+// # return is a bare reference type hands back a pointer into the awaitee's
+// # storage, so the owning slot copies and warns. Before sema read the await as
+// # a borrowed source this emitted ill-formed C++ with no location (a `Payload*`
+// # into `own_param_t<Payload>`). The copy is the ACKNOWLEDGED CPython
+// # divergence, so the case prints only what both agree on and the WARNING is
+// # the pin; `take_copy` is the spelling that silences it.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An AWAITED borrow at an `Own[T]` return is the async spelling of
-    // # warn_return_record_borrow_method_own: awaiting a coroutine whose declared
-    // # return is a bare reference type hands back a pointer into the awaitee's
-    // # storage, so the owning slot copies and warns. Before sema read the await as
-    // # a borrowed source this emitted ill-formed C++ with no location (a `Payload*`
-    // # into `own_param_t<Payload>`). The copy is the ACKNOWLEDGED CPython
-    // # divergence, so the case prints only what both agree on and the WARNING is
-    // # the pin; `take_copy` is the spelling that silences it.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

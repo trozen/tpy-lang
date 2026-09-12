@@ -12,7 +12,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def poke(xs: list[Dog | Cat]) -> None:
 void poke(std::vector<::tpy::Union<Cat, Dog>>& xs);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -49,9 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, age: int32) -> None:
+//     self.age = age
 inline Cat::Cat(int32_t age) : age(age) {}
 void __tpy_init();
 } // namespace tpyapp::main

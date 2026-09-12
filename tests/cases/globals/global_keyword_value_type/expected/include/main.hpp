@@ -11,6 +11,7 @@ extern int32_t counter;
 extern bool flag;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump() -> None:
 void bump();
 
 void __tpy_init();

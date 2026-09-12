@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def make_pair(v: int32) -> Own[tuple[int32, Box]]:
+//     return (v, Box(v))
 std::tuple<int32_t, Box> make_pair(int32_t v) {
-    // return (v, Box(v))
     return std::tuple<int32_t, Box>{v, Box(v)};
 }
 
 // def main() -> None:
+//     h = H()
+//     print(h.t[0])
+//     print(h.t[1].val)
 void main() {
-    // h = H()
     H h = H();
-    // print(h.t[0])
     std::cout << std::get<0>(h.t) << "\n";
-    // print(h.t[1].val)
     std::cout << std::get<1>(h.t).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

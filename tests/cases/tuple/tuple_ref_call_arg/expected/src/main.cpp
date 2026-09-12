@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def show(pair: tuple[Point, int32]) -> None:
+//     print(pair[0].x, pair[0].y, pair[1])
 void show(const std::tuple<const Point*, int32_t>& pair) {
-    // print(pair[0].x, pair[0].y, pair[1])
     std::cout << std::get<0>(pair)->x << " " << std::get<0>(pair)->y << " " << std::get<1>(pair) << "\n";
 }
 
 // def main() -> None:
+//     p = Point(int32(10), int32(20))
+//     show((p, int32(42)))
+//     # Mutation visible through reference
+//     p.x = int32(99)
+//     show((p, int32(7)))
 void main() {
-    // p = Point(int32(10), int32(20))
     Point p = Point(10, 20);
-    // show((p, int32(42)))
     show(std::tuple<Point*, int32_t>{&(p), 42});
-    // # Mutation visible through reference
-    // p.x = int32(99)
     p.x = 99;
-    // show((p, int32(7)))
     show(std::tuple<Point*, int32_t>{&(p), 7});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

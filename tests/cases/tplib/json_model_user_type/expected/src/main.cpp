@@ -5,74 +5,75 @@ namespace tpyapp::main {
 
 
 // def test_roundtrip() -> None:
+//     e = Event("deploy", Seconds(3600))
+//     s = e.to_json()
+//     print(s)
+//     e2 = Event.from_json(s)
+//     print(e2.name)
+//     print(e2.when._value)
+//     print(e == e2)
 void test_roundtrip() {
-    // e = Event("deploy", Seconds(3600))
     Event e = Event("deploy", Seconds(3600));
-    // s = e.to_json()
     std::string s = e.to_json();
-    // print(s)
     std::cout << s << "\n";
-    // e2 = Event.from_json(s)
     Event e2 = Event::from_json(s);
-    // print(e2.name)
     std::cout << e2.name << "\n";
-    // print(e2.when._value)
     std::cout << e2.when._value << "\n";
-    // print(e == e2)
     std::cout << ::tpy::print_bool(((e) == (e2))) << "\n";
 }
 
 // def test_nested() -> None:
+//     sc = Schedule(
+//         [Event("a", Seconds(10)), Event("b", Seconds(20))],
+//         Seconds(60),
+//     )
+//     s = sc.to_json()
+//     print(s)
+//     sc2 = Schedule.from_json(s)
+//     print(len(sc2.events))
+//     print(sc2.events[0].when._value)
+//     print(sc2.default_duration._value)
 void test_nested() {
-    // sc = Schedule(
-    // [Event("a", Seconds(10)), Event("b", Seconds(20))],
-    // Seconds(60),
-    // )
     Schedule sc = Schedule({Event("a", Seconds(10)), Event("b", Seconds(20))}, Seconds(60));
-    // s = sc.to_json()
     std::string s = sc.to_json();
-    // print(s)
     std::cout << s << "\n";
-    // sc2 = Schedule.from_json(s)
     Schedule sc2 = Schedule::from_json(s);
-    // print(len(sc2.events))
     std::cout << ::tpy::__len__(sc2.events) << "\n";
-    // print(sc2.events[0].when._value)
     std::cout << ::tpy::__getitem__(sc2.events, 0).when._value << "\n";
-    // print(sc2.default_duration._value)
     std::cout << sc2.default_duration._value << "\n";
 }
 
 // def test_optional() -> None:
+//     sc = Schedule(
+//         [Event("x", Seconds(1))],
+//         Seconds(30),
+//         Seconds(99),
+//     )
+//     s = sc.to_json()
+//     print(s)
+//     sc2 = Schedule.from_json(s)
+//     d = sc2.deadline
+//     if d is not None:
+//         print(d._value)
+//
+//     sc3 = Schedule([Event("y", Seconds(2))], Seconds(30))
+//     s3 = sc3.to_json()
+//     print(s3)
+//     sc4 = Schedule.from_json(s3)
+//     print(sc4.deadline is None)
 void test_optional() {
-    // sc = Schedule(
-    // [Event("x", Seconds(1))],
-    // Seconds(30),
-    // Seconds(99),
-    // )
     Schedule sc = Schedule({Event("x", Seconds(1))}, Seconds(30), Seconds(99));
-    // s = sc.to_json()
     std::string s = sc.to_json();
-    // print(s)
     std::cout << s << "\n";
-    // sc2 = Schedule.from_json(s)
     Schedule sc2 = Schedule::from_json(s);
-    // d = sc2.deadline
     Seconds* d = ::tpy::optional_to_ptr(sc2.deadline);
-    // if d is not None:
     if ((d != nullptr)) {
-        // print(d._value)
         std::cout << d->_value << "\n";
     }
-    // sc3 = Schedule([Event("y", Seconds(2))], Seconds(30))
     Schedule sc3 = Schedule({Event("y", Seconds(2))}, Seconds(30));
-    // s3 = sc3.to_json()
     std::string s3 = sc3.to_json();
-    // print(s3)
     std::cout << s3 << "\n";
-    // sc4 = Schedule.from_json(s3)
     Schedule sc4 = Schedule::from_json(s3);
-    // print(sc4.deadline is None)
     std::cout << ::tpy::print_bool((!sc4.deadline.has_value())) << "\n";
 }
 
@@ -220,6 +221,12 @@ void Schedule::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writ
     }
     __writer.object_end();
 }
+// from tplib.json import JsonReader, JsonWriter, JsonError
+// from tplib.json.model import model
+//
+// test_roundtrip()
+// test_nested()
+// test_optional()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -229,13 +236,8 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // from tplib.json import JsonReader, JsonWriter, JsonError
-    // from tplib.json.model import model
-    // test_roundtrip()
     test_roundtrip();
-    // test_nested()
     test_nested();
-    // test_optional()
     test_optional();
 }
 

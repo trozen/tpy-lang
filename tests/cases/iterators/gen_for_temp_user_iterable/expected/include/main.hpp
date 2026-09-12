@@ -13,8 +13,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_g_resumable;
 
+// def make() -> Own[Holder]:
 Holder make();
+// def g_resumable() -> Iterator[int32]:
 __gen_g_resumable g_resumable();
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -26,6 +29,8 @@ struct Holder {
     Holder();
 
     // def __iter__(self) -> Iterator[int32]:
+    //     for x in self.items:
+    //         yield x
     auto __iter__() const {
         return ::tpy::make_generator<int32_t>(
             [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<int32_t> {
@@ -47,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: g_resumable
+// def g_resumable() -> Iterator[int32]:
 struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int32_t> {
     int32_t __state;
     int32_t x;
@@ -76,7 +81,11 @@ struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int3
 
 
 // def __init__(self) -> None:
+//     self.items = [5, 6, 7]
 inline Holder::Holder() : items(std::vector<int32_t>{5, 6, 7}) {}
+// def g_simple() -> Iterator[int32]:
+//     for x in make():  # tpyc: ok
+//         yield x
 inline auto g_simple() {
     return ::tpy::make_generator<int32_t>(
         [__src = std::optional<std::decay_t<decltype(make())>>(), __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(make()))>>()]() mutable -> std::optional<int32_t> {

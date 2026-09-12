@@ -5,18 +5,25 @@ namespace tpyapp::main {
 
 
 // def run(flag: bool) -> int32:
+//     if flag:
+//         with Owner(5) as it:
+//             pass
+//     else:
+//         with Owner(9) as it:
+//             pass
+//     # The read that forces the manager to be kept; CPython has already printed
+//     # "owner dropped" by this point, TPy prints it when `run` returns.
+//     print("reading:", it.n)
+//     return it.n
 int32_t run(bool flag) {
     std::optional<Owner> __slot_2;
     std::optional<Owner> __slot_3;
-    // if flag:
     Item* it;
     if (flag) {
-        // with Owner(5) as it:
         __slot_2.emplace(Owner(5));
         auto& __ctx_1 = (*__slot_2);
         it = &(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -27,14 +34,11 @@ int32_t run(bool flag) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-    // else:
     } else {
-        // with Owner(9) as it:
         __slot_3.emplace(Owner(9));
         auto& __ctx_2 = (*__slot_3);
         it = &(__ctx_2.__enter__());
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -46,26 +50,22 @@ int32_t run(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // # The read that forces the manager to be kept; CPython has already printed
-    // # "owner dropped" by this point, TPy prints it when `run` returns.
-    // print("reading:", it.n)
     std::cout << "reading:" << " " << it->n << "\n";
-    // return it.n
     return it->n;
 }
 
 // def main() -> None:
+//     print(run(True))
 void main() {
-    // print(run(True))
     std::cout << run(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,37 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Cell(7)
+//     m = Maker()
+//
+//     p = m.pair(c)
+//     print("pair:", p[0].val, p[1].val)
+//
+//     d = m.declared_pair(c)
+//     print("declared:", d[1].val)
+//
+//     x = m.mixed(c)
+//     print("mixed:", x[0].val, x[1].val)
+//
+//     b = m.bump_pair(c)
+//     b[1].val = 42
+//     print("bump:", b[1].val, c.val, m.n)
 void main() {
-    // c = Cell(7)
     Cell c = Cell(7);
-    // m = Maker()
     Maker m = Maker();
-    // p = m.pair(c)
     auto p = m.pair(c);
-    // print("pair:", p[0].val, p[1].val)
     std::cout << "pair:" << " " << std::get<0>(p)->val << " " << std::get<1>(p)->val << "\n";
-    // d = m.declared_pair(c)
     auto d = m.declared_pair(c);
-    // print("declared:", d[1].val)
     std::cout << "declared:" << " " << std::get<1>(d)->val << "\n";
-    // x = m.mixed(c)
     auto x = m.mixed(c);
-    // print("mixed:", x[0].val, x[1].val)
     std::cout << "mixed:" << " " << std::get<0>(x).val << " " << std::get<1>(x)->val << "\n";
-    // b = m.bump_pair(c)
     auto b = m.bump_pair(c);
-    // b[1].val = 42
     std::get<1>(b)->val = 42;
-    // print("bump:", b[1].val, c.val, m.n)
     std::cout << "bump:" << " " << std::get<1>(b)->val << " " << c.val << " " << m.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

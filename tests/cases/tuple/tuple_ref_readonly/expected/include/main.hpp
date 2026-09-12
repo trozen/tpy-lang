@@ -12,6 +12,7 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container:
@@ -55,21 +56,23 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Container::Container(int32_t value) : value(value) {}
 
 // def __repr__(self) -> str:
+//     return "Container(value=" + str(self.value) + ")"
 inline std::string Container::__repr__() const {
-    // return "Container(value=" + str(self.value) + ")"
     return (::tpy::str_concat((::tpy::str_concat("Container(value=", ::tpy::fixed_to_str<int32_t>(this->value))), ")"));
 }
 
 // def __init__(self, inner: Container) -> None:
+//     self.inner = inner
 inline Wrapper::Wrapper(const Container& inner) : inner(inner) {}
 
 // @readonly
 // def get_pair(self) -> tuple[Container, int32]:
+//     return (self.inner, self.inner.value)
 inline std::tuple<const Container*, int32_t> Wrapper::get_pair() const {
-    // return (self.inner, self.inner.value)
     return std::tuple<const Container*, int32_t>{&(this->inner), this->inner.value};
 }
 void __tpy_init();

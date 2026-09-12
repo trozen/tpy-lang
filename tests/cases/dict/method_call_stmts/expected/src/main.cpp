@@ -5,57 +5,57 @@ namespace tpyapp::main {
 
 
 // def drop(d: dict[int32, int32], k: int32) -> None:
+//     d.pop(k)
 void drop(::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
-    // d.pop(k)
     ::tpy::dict_pop(d, k);
 }
 
 // def take(d: dict[int32, int32], k: int32) -> int32:
+//     v = d.pop(k)
+//     return v + d.pop(k, 0)
 int32_t take(::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
-    // v = d.pop(k)
     int32_t v = ::tpy::dict_pop(d, k);
-    // return v + d.pop(k, 0)
     return (::tpy::add_check<int32_t>(v, ::tpy::dict_pop_default(d, k, 0)));
 }
 
 // def peek(d: dict[int32, int32], k: int32) -> int32:
+//     return d.get(k, 0)
 int32_t peek(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
-    // return d.get(k, 0)
     return ::tpy::dict_get_default(d, k, 0);
 }
 
 // def wipe(d: dict[int32, int32]) -> None:
+//     d.clear()
 void wipe(::tpy::ordered_map<int32_t, int32_t>& d) {
-    // d.clear()
     d.clear();
 }
 
 // def main() -> None:
+//     scores = {1: 100, 2: 200, 3: 300, 4: 400}
+//     drop(scores, 1)
+//     print(len(scores))
+//     print(take(scores, 2))
+//     print(peek(scores, 3))
+//     print(peek(scores, 9))
+//     wipe(scores)
+//     print(len(scores))
 void main() {
-    // scores = {1: 100, 2: 200, 3: 300, 4: 400}
     ::tpy::ordered_map<int32_t, int32_t> scores = ::tpy::ordered_map<int32_t, int32_t>({{1, 100}, {2, 200}, {3, 300}, {4, 400}});
-    // drop(scores, 1)
     drop(scores, 1);
-    // print(len(scores))
     std::cout << ::tpy::__len__(scores) << "\n";
-    // print(take(scores, 2))
     std::cout << take(scores, 2) << "\n";
-    // print(peek(scores, 3))
     std::cout << peek(scores, 3) << "\n";
-    // print(peek(scores, 9))
     std::cout << peek(scores, 9) << "\n";
-    // wipe(scores)
     wipe(scores);
-    // print(len(scores))
     std::cout << ::tpy::__len__(scores) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

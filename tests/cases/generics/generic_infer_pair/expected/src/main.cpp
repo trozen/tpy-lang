@@ -3,22 +3,22 @@
 
 namespace tpyapp::main {
 
-// # Inference from int, str -> Pair[int, str]
-// pair = Pair(1, "hello")
 Pair<int32_t, std::string>* pair{};
 
+// """Test type inference with multiple type parameters."""
+//
+// # Inference from int, str -> Pair[int, str]
+// pair = Pair(1, "hello")
+// print(pair.first)
+// print(pair.second)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Inference from int, str -> Pair[int, str]
-    // pair = Pair(1, "hello")
     static Pair<int32_t, std::string> __global_slot_1 = Pair<int32_t, std::string>(1, "hello");
     pair = &__global_slot_1;
-    // print(pair.first)
     std::cout << pair->first << "\n";
-    // print(pair.second)
     std::cout << pair->second << "\n";
 }
 

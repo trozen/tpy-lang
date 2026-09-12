@@ -17,8 +17,10 @@ struct Nothing;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drain[T](aw: Awaitable[T]) -> T:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpy::val_or_ref_t<T> drain(T_aw& aw);
+// def main() -> None:
 void main();
 
 // class Int32One:
@@ -51,20 +53,20 @@ inline std::ostream& operator<<(std::ostream& os, const Nothing& obj) {
 
 
 // def __poll__(self, w: Waker) -> Own[Poll[int32]]:
+//     return poll_ready(int32(1))
 inline ::tpystd::tpy::Poll<int32_t> Int32One::__poll__(::tpystd::coro::Waker w) const {
-    // return poll_ready(int32(1))
     return ::tpystd::coro::poll_ready<int32_t>(1);
 }
 
 // def __poll__(self, w: Waker) -> Own[Poll[None]]:
+//     return poll_ready_none()
 inline ::tpystd::tpy::Poll<std::monostate> Nothing::__poll__(::tpystd::coro::Waker w) const {
-    // return poll_ready_none()
     return ::tpystd::coro::poll_ready_none();
 }
 // def drain[T](aw: Awaitable[T]) -> T:
+//     return poll_once(aw).value()
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpy::val_or_ref_t<T> drain(T_aw& aw) {
-    // return poll_once(aw).value()
     return ::tpystd::coro::poll_once<T>(aw).value();
 }
 

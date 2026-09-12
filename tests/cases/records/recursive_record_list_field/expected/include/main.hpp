@@ -11,7 +11,9 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add(parent: Node, child: Node) -> None:
 void add(Node& parent, const Node& child);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -34,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
+//     self.children = []
 inline Node::Node(int32_t val) : val(val), children(std::vector<Node>{}) {}
 void __tpy_init();
 } // namespace tpyapp::main

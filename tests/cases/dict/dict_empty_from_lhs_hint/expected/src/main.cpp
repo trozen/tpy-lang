@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def take(d: dict[str, int]) -> int:
+//     return len(d)
 ::tpy::BigInt take(const ::tpy::ordered_map<std::string, ::tpy::BigInt>& d) {
-    // return len(d)
     return ::tpy::BigInt(::tpy::__len__(d));
 }
 
 // def make() -> Own[dict[str, int]]:
+//     return {}
 ::tpy::ordered_map<std::string, ::tpy::BigInt> make() {
-    // return {}
     return ::tpy::ordered_map<std::string, ::tpy::BigInt>();
 }
 
 // def main() -> None:
+//     b = Box()
+//     b.by_name["x"] = 1
+//     print(b.by_name["x"], len(b.by_pair), len(b.by_pair["first"]))
+//     print(take({}))
+//     fresh = make()
+//     fresh["y"] = 2
+//     print(fresh["y"])
 void main() {
-    // b = Box()
     Box b = Box();
-    // b.by_name["x"] = 1
     ::tpy::__setitem__(b.by_name, "x", ::tpy::BigInt(1));
-    // print(b.by_name["x"], len(b.by_pair), len(b.by_pair["first"]))
     std::cout << ::tpy::__getitem__(b.by_name, "x") << " " << ::tpy::__len__(b.by_pair) << " " << ::tpy::__len__(::tpy::__getitem__(b.by_pair, "first")) << "\n";
-    // print(take({}))
     ::tpy::ordered_map<std::string, ::tpy::BigInt> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::BigInt>();
     std::cout << take(__tmp_1) << "\n";
-    // fresh = make()
     ::tpy::ordered_map<std::string, ::tpy::BigInt> fresh = make();
-    // fresh["y"] = 2
     ::tpy::__setitem__(fresh, "y", ::tpy::BigInt(2));
-    // print(fresh["y"])
     std::cout << ::tpy::__getitem__(fresh, "y") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

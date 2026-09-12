@@ -43,28 +43,29 @@ namespace tpyapp::main {
 
 
 // def bounded(limit: int32 = 2) -> Iterator[int32]:
+//     yield 0
+//     i: int32 = 1
+//     while i <= limit:
+//         yield i
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bounded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
-        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i <= limit)) {
-            // yield i
             __state = S_RESUME_1;
             return i;
         } else {
@@ -84,8 +85,76 @@ __gen_bounded bounded(int32_t limit) {
 }
 
 // def main() -> None:
+//     for v in upto():
+//         print(v)
+//     print("--")
+//     for v in upto(5):
+//         print(v)
+//     print("--")
+//     for v in upto(6, 2):
+//         print(v)
+//     print("--")
+//     for v in upto_final():
+//         print(v)
+//     print("--")
+//     for v in bounded():
+//         print(v)
+//     print("--")
+//     for v in bounded(1):
+//         print(v)
+//     print("--")
+//     nums: list[int32] = [10, 20, 30, 40]
+//     for v in head(nums):
+//         print(v)
+//     print("--")
+//     for v in head(nums, 3):
+//         print(v)
+//     print("--")
+//     b = Box()
+//     for v in b.upto_m():
+//         print(v)
+//     print("--")
+//     for v in b.upto_m(3):
+//         print(v)
+//
+//     # resumable generator METHOD, default omitted
+//     print("--")
+//     for v in b.bounded_m():                      # tpyc: ok
+//         print("meth", v)
+//     # resumable generator METHOD, explicit argument beats the default
+//     for v in b.bounded_m(1):                     # tpyc: ok
+//         print("meth-explicit", v)
+//
+//     # resumable generator method on a generic class, default omitted
+//     g = Box2([10, 20, 30, 40])
+//     for v in g.take():                           # tpyc: ok
+//         print("gmeth", v)
+//     # generic-class method, explicit argument beats the default
+//     for v in g.take(3):                          # tpyc: ok
+//         print("gmeth-explicit", v)
+//
+//     # default shapes on a resumable method, all omitted
+//     for v in b.shapes():                         # tpyc: ok
+//         print("shapes-v", v)
+//     # each shape overridden one at a time
+//     for v in b.shapes("z"):                      # tpyc: ok
+//         print("shapes-v", v)
+//     for v in b.shapes(flag=False):               # tpyc: ok
+//         print("shapes-v", v)
+//     for v in b.shapes(ratio=1.5):                # tpyc: ok
+//         print("shapes-v", v)
+//     for v in b.shapes(m=Mode.A):                 # tpyc: ok
+//         print("shapes-v", v)
+//     rec = Rec(9)
+//     for v in b.shapes(r=rec):                    # tpyc: ok
+//         print("shapes-v", v)
+//     for v in b.shapes(w=8):                      # tpyc: ok
+//         print("shapes-v", v)
+//     for v in b.shapes(neg=-5):                   # tpyc: ok
+//         print("shapes-v", v)
+//     for v in b.shapes(f=99):                     # tpyc: ok
+//         print("shapes-v", v)
 void main() {
-    // for v in upto():
     {
         auto __src_0 = upto();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -93,13 +162,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in upto(5):
     {
         auto __src_2 = upto(5);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -107,13 +173,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in upto(6, 2):
     {
         auto __src_4 = upto(6, 2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -121,13 +184,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in upto_final():
     {
         auto __src_6 = upto_final();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -135,13 +195,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in bounded():
     {
         auto __src_8 = bounded();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -149,13 +206,10 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in bounded(1):
     {
         auto __src_10 = bounded(1);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
@@ -163,15 +217,11 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // nums: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
-    // for v in head(nums):
     {
         auto __src_12 = head<int32_t>(nums);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -179,13 +229,10 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in head(nums, 3):
     {
         auto __src_14 = head<int32_t>(nums, 3);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
@@ -193,15 +240,11 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // b = Box()
     Box b = Box();
-    // for v in b.upto_m():
     {
         auto __src_16 = b.upto_m();
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
@@ -209,13 +252,10 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in b.upto_m(3):
     {
         auto __src_18 = b.upto_m(3);
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
@@ -223,14 +263,10 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // # resumable generator METHOD, default omitted
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in b.bounded_m():                      # tpyc: ok
     {
         auto __src_20 = b.bounded_m();
         auto&& __itr_20 = ::tpy::__iter__(__src_20);
@@ -238,12 +274,9 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-        // print("meth", v)
         std::cout << "meth" << " " << v << "\n";
         }
     }
-    // # resumable generator METHOD, explicit argument beats the default
-    // for v in b.bounded_m(1):                     # tpyc: ok
     {
         auto __src_22 = b.bounded_m(1);
         auto&& __itr_22 = ::tpy::__iter__(__src_22);
@@ -251,14 +284,10 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_23);
-        // print("meth-explicit", v)
         std::cout << "meth-explicit" << " " << v << "\n";
         }
     }
-    // # resumable generator method on a generic class, default omitted
-    // g = Box2([10, 20, 30, 40])
     Box2<int32_t> g = Box2<int32_t>({10, 20, 30, 40});
-    // for v in g.take():                           # tpyc: ok
     {
         auto __src_24 = g.take();
         auto&& __itr_24 = ::tpy::__iter__(__src_24);
@@ -266,12 +295,9 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_25);
-        // print("gmeth", v)
         std::cout << "gmeth" << " " << v << "\n";
         }
     }
-    // # generic-class method, explicit argument beats the default
-    // for v in g.take(3):                          # tpyc: ok
     {
         auto __src_26 = g.take(3);
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
@@ -279,12 +305,9 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_27);
-        // print("gmeth-explicit", v)
         std::cout << "gmeth-explicit" << " " << v << "\n";
         }
     }
-    // # default shapes on a resumable method, all omitted
-    // for v in b.shapes():                         # tpyc: ok
     {
         auto __src_28 = b.shapes();
         auto&& __itr_28 = ::tpy::__iter__(__src_28);
@@ -292,12 +315,9 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_29);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
-    // # each shape overridden one at a time
-    // for v in b.shapes("z"):                      # tpyc: ok
     {
         std::string __tmp_1 = "z";
         auto __src_30 = b.shapes(__tmp_1);
@@ -306,11 +326,9 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_31);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
-    // for v in b.shapes(flag=False):               # tpyc: ok
     {
         std::string __tmp_2 = "t";
         auto __src_32 = b.shapes(__tmp_2, false);
@@ -319,11 +337,9 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_33);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
-    // for v in b.shapes(ratio=1.5):                # tpyc: ok
     {
         std::string __tmp_3 = "t";
         auto __src_34 = b.shapes(__tmp_3, true, 1.5);
@@ -332,11 +348,9 @@ void main() {
             auto __r_35 = __itr_34.__next__();
             if (!__r_35.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_35);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
-    // for v in b.shapes(m=Mode.A):                 # tpyc: ok
     {
         std::string __tmp_4 = "t";
         auto __src_36 = b.shapes(__tmp_4, true, 0.5, Mode::A);
@@ -345,13 +359,10 @@ void main() {
             auto __r_37 = __itr_36.__next__();
             if (!__r_37.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_37);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
-    // rec = Rec(9)
     Rec rec = Rec(9);
-    // for v in b.shapes(r=rec):                    # tpyc: ok
     {
         std::string __tmp_5 = "t";
         auto __src_38 = b.shapes(__tmp_5, true, 0.5, Mode::B, &(rec));
@@ -360,11 +371,9 @@ void main() {
             auto __r_39 = __itr_38.__next__();
             if (!__r_39.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_39);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
-    // for v in b.shapes(w=8):                      # tpyc: ok
     {
         std::string __tmp_6 = "t";
         auto __src_40 = b.shapes(__tmp_6, true, 0.5, Mode::B, nullptr, 8);
@@ -373,11 +382,9 @@ void main() {
             auto __r_41 = __itr_40.__next__();
             if (!__r_41.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_41);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
-    // for v in b.shapes(neg=-5):                   # tpyc: ok
     {
         std::string __tmp_7 = "t";
         auto __src_42 = b.shapes(__tmp_7, true, 0.5, Mode::B, nullptr, 3, -5);
@@ -386,11 +393,9 @@ void main() {
             auto __r_43 = __itr_42.__next__();
             if (!__r_43.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_43);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
-    // for v in b.shapes(f=99):                     # tpyc: ok
     {
         std::string __tmp_8 = "t";
         auto __src_44 = b.shapes(__tmp_8, true, 0.5, Mode::B, nullptr, 3, -1, 99);
@@ -399,35 +404,35 @@ void main() {
             auto __r_45 = __itr_44.__next__();
             if (!__r_45.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_45);
-        // print("shapes-v", v)
         std::cout << "shapes-v" << " " << v << "\n";
         }
     }
 }
 
 // def bounded_m(self, limit: int32 = 2) -> Iterator[int32]:
+//     yield self.base
+//     i: int32 = 1
+//     while i <= limit:
+//         yield self.base + i
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.base
         __state = S_RESUME_0;
         return __self.base;
     }
     case S_RESUME_0: {
-        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i <= limit)) {
-            // yield self.base + i
             __state = S_RESUME_1;
             return (::tpy::add_check<int32_t>(__self.base, i));
         } else {
@@ -442,20 +447,20 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next__() {
 
 
 // def shapes(self, tag: str = "t", flag: bool = True, ratio: float = 0.5,
-// m: Mode = Mode.B, r: Rec | None = None, w: int32 = int32(3),
-// neg: int32 = -1, f: int32 = WIDTH) -> Iterator[int32]:
+//            m: Mode = Mode.B, r: Rec | None = None, w: int32 = int32(3),
+//            neg: int32 = -1, f: int32 = WIDTH) -> Iterator[int32]:
+//     yield self.base
+//     print("shapes", tag, flag, ratio, m == Mode.B,
+//           -1 if r is None else r.v, w, neg, f)
+//     yield self.base + 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_shapes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.base
         __state = S_RESUME_0;
         return __self.base;
     }
     case S_RESUME_0: {
-        // print("shapes", tag, flag, ratio, m == Mode.B,
-        // -1 if r is None else r.v, w, neg, f)
         std::cout << "shapes" << " " << tag << " " << ::tpy::print_bool(flag) << " " << ::tpy::print_float(ratio) << " " << ::tpy::print_bool((m == Mode::B)) << " " << (((r == nullptr)) ? (-1) : (r->v)) << " " << w << " " << neg << " " << f << "\n";
-        // yield self.base + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(__self.base, 1));
     }
@@ -469,13 +474,17 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_shapes::__next__() {
 }
 
 
+// from enum import Enum
+//
+// DEFAULT_STOP: Final[int32] = 4
+// WIDTH: Final[int32] = 7
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
-    // main()
     main();
 }
 

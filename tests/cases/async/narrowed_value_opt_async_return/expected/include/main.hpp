@@ -16,11 +16,14 @@ struct __coro_pick;
 struct __coro_pick_whole;
 struct __coro_drive;
 
+// async def pick(p: int32 | None) -> int32:
 __coro_pick pick(std::optional<int32_t> p);
+// async def pick_whole(p: int32 | None) -> int32 | None:
 __coro_pick_whole pick_whole(std::optional<int32_t> p);
+// async def drive() -> None:
 __coro_drive drive();
 
-// Async coroutine: pick
+// async def pick(p: int32 | None) -> int32:
 struct __coro_pick {
     int32_t __state;
     bool __cancel_pending;
@@ -44,7 +47,7 @@ struct __coro_pick {
     }
 };
 
-// Async coroutine: pick_whole
+// async def pick_whole(p: int32 | None) -> int32 | None:
 struct __coro_pick_whole {
     int32_t __state;
     bool __cancel_pending;
@@ -68,7 +71,7 @@ struct __coro_pick_whole {
     }
 };
 
-// Async coroutine: drive
+// async def drive() -> None:
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;

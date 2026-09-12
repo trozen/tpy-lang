@@ -3,55 +3,55 @@
 
 namespace tpyapp::main {
 
-// pts: list[Point] = list()
 std::vector<Point>* pts{};
-// h = Holder()
 Holder* h{};
 
 // def find(items: list[Point], target: int32) -> Point | None:
+//     for p in items:
+//         if p.x == target:
+//             return p
+//     return None
 Point* find(std::vector<Point>& items, int32_t target) {
-    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // if p.x == target:
         if ((p.x == target)) {
-            // return p
             return &(p);
         }
     }
-    // return None
     return nullptr;
 }
 
+// pts: list[Point] = list()
+// pts.append(Point(1, 10))
+// pts.append(Point(2, 20))
+//
+// h = Holder()
+// h.value = copy(find(pts, 2))
+// print(h.value is None)
+// print(h.value.x)
+// print(h.value.y)
+//
+// h.value = copy(find(pts, 99))
+// print(h.value is None)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // pts: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     pts = &__global_slot_1;
-    // pts.append(Point(1, 10))
     pts->push_back(Point(1, 10));
-    // pts.append(Point(2, 20))
     pts->push_back(Point(2, 20));
-    // h = Holder()
     static Holder __global_slot_2 = Holder();
     h = &__global_slot_2;
-    // h.value = copy(find(pts, 2))
     h->value = ::tpy::ptr_to_optional(find((*pts), 2));
-    // print(h.value is None)
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
-    // print(h.value.x)
     std::cout << ::tpy::deref_optional_check(h->value).x << "\n";
-    // print(h.value.y)
     std::cout << ::tpy::deref_optional_check(h->value).y << "\n";
-    // h.value = copy(find(pts, 99))
     h->value = ::tpy::ptr_to_optional(find((*pts), 99));
-    // print(h.value is None)
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
 }
 

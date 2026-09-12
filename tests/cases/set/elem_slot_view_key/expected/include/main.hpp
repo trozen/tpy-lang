@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def discard_param(s: set[str], k: str) -> None:
 void discard_param(::tpy::ordered_set<std::string>& s, std::string_view k);
+// def discard_literal(s: set[str]) -> None:
 void discard_literal(::tpy::ordered_set<std::string>& s);
+// def remove_param(s: set[str], k: str) -> None:
 void remove_param(::tpy::ordered_set<std::string>& s, std::string_view k);
+// def remove_literal(s: set[str]) -> None:
 void remove_literal(::tpy::ordered_set<std::string>& s);
+// def has(s: set[str], k: str) -> bool:
 bool has(const ::tpy::ordered_set<std::string>& s, std::string_view k);
+// def empty_key(s: set[str], k: str) -> None:
 void empty_key(::tpy::ordered_set<std::string>& s, std::string_view k);
+// def main() -> None:
 void main();
 
 void __tpy_init();

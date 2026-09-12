@@ -19,6 +19,7 @@ struct __coro_amain;
 struct __coro_Collector_run;
 struct __coro_Countdown___anext__;
 
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Collector:
@@ -59,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Countdown& obj) {
     return os;
 }
 
-// Async coroutine: Countdown.__anext__
+// async def __anext__(self) -> int32:
 struct __coro_Countdown___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -87,7 +88,7 @@ inline __coro_Countdown___anext__ Countdown::__anext__() {
     return __coro_Countdown___anext__(*this);
 }
 
-// Async coroutine: Collector.run
+// async def run(self) -> int32:
 struct __coro_Collector_run {
     int32_t __state;
     bool __cancel_pending;
@@ -120,7 +121,7 @@ inline __coro_Collector_run Collector::run() {
     return __coro_Collector_run(*this);
 }
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -147,14 +148,16 @@ struct __coro_amain {
 
 
 // def __init__(self) -> None:
+//     self.total = 0
 inline Collector::Collector() : total(0) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Countdown::Countdown(int32_t n) : n(n) {}
 
 // def __aiter__(self) -> "Countdown":
+//     return self
 inline Countdown& Countdown::__aiter__() {
-    // return self
     return (*this);
 }
 void __tpy_init();

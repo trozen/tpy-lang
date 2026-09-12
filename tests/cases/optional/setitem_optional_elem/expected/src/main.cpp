@@ -5,78 +5,81 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32 | None] = [None, None]
+//     xs[0] = 5  # a bare scalar into the value-repr optional slot
+//     n = 3
+//     xs[1] = n  # tpyc: ok
+//     a = xs[0]
+//     b = xs[1]
+//     if a is not None and b is not None:
+//         print(a + b)
+//     xs[1] = None  # tpyc: ok
+//     print(xs[1] is None)
+//
+//     nodes: list[Node | None] = [Node(1), Node(2)]
+//     # A live alias of THIS element would not be invalidated by the write
+//     # (BUGS.md#setitem-write-under-live-element-borrow), so `kept` below
+//     # deliberately aliases a DIFFERENT element.
+//     nodes[1] = None  # clearing a pointer-repr optional element
+//     kept = nodes[0]
+//     if kept is not None:
+//         # The surviving element is ALIASED, not copied: the mutation here
+//         # must be visible when the element is read back below.
+//         kept.n = 42
+//     head = nodes[0]
+//     if head is not None:
+//         print(head.n, nodes[1] is None)
+//
+//     d: dict[str, int32 | None] = {}
+//     d["a"] = 5  # tpyc: ok
+//     d["b"] = None  # tpyc: ok
+//     got = d["a"]
+//     if got is not None:
+//         print(got + 1, d["b"] is None)
+//
+//     recs: dict[str, Node | None] = {}
+//     recs["r"] = None  # tpyc: ok
+//     print(recs["r"] is None)
 void main() {
-    // xs: list[int32 | None] = [None, None]
     std::vector<std::optional<int32_t>> xs = {std::nullopt, std::nullopt};
-    // xs[0] = 5  # a bare scalar into the value-repr optional slot
     ::tpy::__setitem__(xs, 0, 5);
-    // n = 3
     int32_t n = 3;
-    // xs[1] = n  # tpyc: ok
     ::tpy::__setitem__(xs, 1, n);
-    // a = xs[0]
     std::optional<int32_t> a = ::tpy::__getitem__(xs, 0);
-    // b = xs[1]
     std::optional<int32_t> b = ::tpy::__getitem__(xs, 1);
-    // if a is not None and b is not None:
     if (((a.has_value()) && (b.has_value()))) {
-        // print(a + b)
         std::cout << (::tpy::add_check<int32_t>((*a), (*b))) << "\n";
     }
-    // xs[1] = None  # tpyc: ok
     ::tpy::__setitem__(xs, 1, std::nullopt);
-    // print(xs[1] is None)
     std::cout << ::tpy::print_bool((!::tpy::__getitem__(xs, 1).has_value())) << "\n";
-    // nodes: list[Node | None] = [Node(1), Node(2)]
     std::vector<std::optional<Node>> nodes = {Node(1), Node(2)};
-    // # A live alias of THIS element would not be invalidated by the write
-    // # (BUGS.md#setitem-write-under-live-element-borrow), so `kept` below
-    // # deliberately aliases a DIFFERENT element.
-    // nodes[1] = None  # clearing a pointer-repr optional element
     ::tpy::__setitem__(nodes, 1, std::nullopt);
-    // kept = nodes[0]
     Node* kept = ::tpy::optional_to_ptr(::tpy::__getitem__(nodes, 0));
-    // if kept is not None:
     if ((kept != nullptr)) {
-        // # The surviving element is ALIASED, not copied: the mutation here
-        // # must be visible when the element is read back below.
-        // kept.n = 42
         kept->n = 42;
     }
-    // head = nodes[0]
     Node* head = ::tpy::optional_to_ptr(::tpy::__getitem__(nodes, 0));
-    // if head is not None:
     if ((head != nullptr)) {
-        // print(head.n, nodes[1] is None)
         std::cout << head->n << " " << ::tpy::print_bool((!::tpy::__getitem__(nodes, 1).has_value())) << "\n";
     }
-    // d: dict[str, int32 | None] = {}
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>();
-    // d["a"] = 5  # tpyc: ok
     ::tpy::__setitem__(d, "a", 5);
-    // d["b"] = None  # tpyc: ok
     ::tpy::__setitem__(d, "b", std::nullopt);
-    // got = d["a"]
     std::optional<int32_t> got = ::tpy::__getitem__(d, "a");
-    // if got is not None:
     if ((got.has_value())) {
-        // print(got + 1, d["b"] is None)
         std::cout << (::tpy::add_check<int32_t>((*got), 1)) << " " << ::tpy::print_bool((!::tpy::__getitem__(d, "b").has_value())) << "\n";
     }
-    // recs: dict[str, Node | None] = {}
     ::tpy::ordered_map<std::string, std::optional<Node>> recs = ::tpy::ordered_map<std::string, std::optional<Node>>();
-    // recs["r"] = None  # tpyc: ok
     ::tpy::__setitem__(recs, "r", std::nullopt);
-    // print(recs["r"] is None)
     std::cout << ::tpy::print_bool((!::tpy::__getitem__(recs, "r").has_value())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

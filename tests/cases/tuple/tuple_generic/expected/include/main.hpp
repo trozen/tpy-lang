@@ -11,10 +11,13 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first_of_pair[T](p: tuple[T, T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first_of_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& p);
+// def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
 template<typename A, typename B>
 std::tuple<::tpy::val_or_ptr_t<B>, ::tpy::val_or_ptr_t<A>> swap(const std::tuple<::tpy::val_or_ptr_t<A>, ::tpy::val_or_ptr_t<B>>& p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -40,23 +43,25 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
+//     return "Point(" + str(self.x) + ", " + str(self.y) + ")"
 inline std::string Point::__repr__() const {
-    // return "Point(" + str(self.x) + ", " + str(self.y) + ")"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Point(", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
 }
 // def first_of_pair[T](p: tuple[T, T]) -> T:
+//     return p[0]
 template<typename T>
 ::tpy::val_or_ref_t<T> first_of_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& p) {
-    // return p[0]
     return ::tpy::tuple_elem_ref(std::get<0>(p));
 }
 // def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
+//     return (p[1], p[0])
 template<typename A, typename B>
 std::tuple<::tpy::val_or_ptr_t<B>, ::tpy::val_or_ptr_t<A>> swap(const std::tuple<::tpy::val_or_ptr_t<A>, ::tpy::val_or_ptr_t<B>>& p) {
-    // return (p[1], p[0])
     return std::tuple<::tpy::val_or_ptr_t<B>, ::tpy::val_or_ptr_t<A>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<B>>(::tpy::tuple_elem_ref(std::get<1>(p))), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<A>>(::tpy::tuple_elem_ref(std::get<0>(p)))};
 }
 

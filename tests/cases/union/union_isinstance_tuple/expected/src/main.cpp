@@ -5,82 +5,82 @@ namespace tpyapp::main {
 
 
 // def basic(v: A | B | C) -> str:
+//     if isinstance(v, (A, B)):
+//         return "ab"
+//     return "c"
 std::string basic(::tpy::Union<const A*, const B*, const C*> v) {
-    // if isinstance(v, (A, B)):
     if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
-        // return "ab"
         return "ab";
     }
     auto& __v = *std::get<const C*>(v);
-    // return "c"
     return "c";
 }
 
 // def negate(v: A | B | C) -> int:
+//     if not isinstance(v, (A, B)):
+//         return v.z
+//     return -1
 ::tpy::BigInt negate(::tpy::Union<const A*, const B*, const C*> v) {
-    // if not isinstance(v, (A, B)):
     if ((!((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))))) {
         auto& __v = *std::get<const C*>(v);
-        // return v.z
         return __v.z;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def and_rhs(v: A | B | C, flag: bool) -> str:
+//     if isinstance(v, (A, B)) and flag:
+//         return "ab-flag"
+//     return "other"
 std::string and_rhs(::tpy::Union<const A*, const B*, const C*> v, bool flag) {
-    // if isinstance(v, (A, B)) and flag:
     if (((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v)) && flag)) {
-        // return "ab-flag"
         return "ab-flag";
     }
-    // return "other"
     return "other";
 }
 
 // def or_lhs(v: A | B | C, flag: bool) -> str:
+//     if isinstance(v, (A, B)) or flag:
+//         return "maybe"
+//     return "c-no-flag"
 std::string or_lhs(::tpy::Union<const A*, const B*, const C*> v, bool flag) {
-    // if isinstance(v, (A, B)) or flag:
     if (((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v)) || flag)) {
-        // return "maybe"
         return "maybe";
     }
     auto& __v = *std::get<const C*>(v);
-    // return "c-no-flag"
     return "c-no-flag";
 }
 
 // def single_member_tuple(v: A | B | C) -> str:
+//     # Tuple form with one element: same as the non-tuple form.
+//     if isinstance(v, (A,)):
+//         return "a"
+//     return "not-a"
 std::string single_member_tuple(::tpy::Union<const A*, const B*, const C*> v) {
-    // # Tuple form with one element: same as the non-tuple form.
-    // if isinstance(v, (A,)):
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        // return "a"
         return "a";
     }
-    // return "not-a"
     return "not-a";
 }
 
 // def match_guard(v: A | B | C) -> str:
+//     match v:
+//         case _ if isinstance(v, (A, B)):
+//             return "ab"
+//         case _:
+//             return "c"
 std::string match_guard(::tpy::Union<const A*, const B*, const C*> v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
     default: {
-        // case _ if isinstance(v, (A, B)):
         {
             if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
-                // return "ab"
                 return "ab";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // return "c"
             return "c";
             goto __match_end_2;
         }
@@ -92,63 +92,68 @@ __match_end_2:;
 }
 
 // def main() -> None:
+//     print(basic(A(1)))
+//     print(basic(B(2)))
+//     print(basic(C(3)))
+//
+//     print(negate(A(1)))
+//     print(negate(C(30)))
+//
+//     print(and_rhs(A(1), True))
+//     print(and_rhs(B(2), False))
+//     print(and_rhs(C(3), True))
+//
+//     print(or_lhs(A(1), False))
+//     print(or_lhs(C(3), True))
+//     print(or_lhs(C(3), False))
+//
+//     print(single_member_tuple(A(1)))
+//     print(single_member_tuple(B(2)))
+//
+//     print(match_guard(A(1)))
+//     print(match_guard(B(2)))
+//     print(match_guard(C(3)))
 void main() {
-    // print(basic(A(1)))
     A __tmp_1 = A(::tpy::BigInt(1));
     std::cout << basic(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
-    // print(basic(B(2)))
     B __tmp_2 = B(::tpy::BigInt(2));
     std::cout << basic(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
-    // print(basic(C(3)))
     C __tmp_3 = C(::tpy::BigInt(3));
     std::cout << basic(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
-    // print(negate(A(1)))
     A __tmp_4 = A(::tpy::BigInt(1));
     std::cout << negate(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n";
-    // print(negate(C(30)))
     C __tmp_5 = C(::tpy::BigInt(30));
     std::cout << negate(::tpy::Union<const A*, const B*, const C*>{&__tmp_5}) << "\n";
-    // print(and_rhs(A(1), True))
     A __tmp_6 = A(::tpy::BigInt(1));
     std::cout << and_rhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_6}, true) << "\n";
-    // print(and_rhs(B(2), False))
     B __tmp_7 = B(::tpy::BigInt(2));
     std::cout << and_rhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_7}, false) << "\n";
-    // print(and_rhs(C(3), True))
     C __tmp_8 = C(::tpy::BigInt(3));
     std::cout << and_rhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_8}, true) << "\n";
-    // print(or_lhs(A(1), False))
     A __tmp_9 = A(::tpy::BigInt(1));
     std::cout << or_lhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_9}, false) << "\n";
-    // print(or_lhs(C(3), True))
     C __tmp_10 = C(::tpy::BigInt(3));
     std::cout << or_lhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_10}, true) << "\n";
-    // print(or_lhs(C(3), False))
     C __tmp_11 = C(::tpy::BigInt(3));
     std::cout << or_lhs(::tpy::Union<const A*, const B*, const C*>{&__tmp_11}, false) << "\n";
-    // print(single_member_tuple(A(1)))
     A __tmp_12 = A(::tpy::BigInt(1));
     std::cout << single_member_tuple(::tpy::Union<const A*, const B*, const C*>{&__tmp_12}) << "\n";
-    // print(single_member_tuple(B(2)))
     B __tmp_13 = B(::tpy::BigInt(2));
     std::cout << single_member_tuple(::tpy::Union<const A*, const B*, const C*>{&__tmp_13}) << "\n";
-    // print(match_guard(A(1)))
     A __tmp_14 = A(::tpy::BigInt(1));
     std::cout << match_guard(::tpy::Union<const A*, const B*, const C*>{&__tmp_14}) << "\n";
-    // print(match_guard(B(2)))
     B __tmp_15 = B(::tpy::BigInt(2));
     std::cout << match_guard(::tpy::Union<const A*, const B*, const C*>{&__tmp_15}) << "\n";
-    // print(match_guard(C(3)))
     C __tmp_16 = C(::tpy::BigInt(3));
     std::cout << match_guard(::tpy::Union<const A*, const B*, const C*>{&__tmp_16}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

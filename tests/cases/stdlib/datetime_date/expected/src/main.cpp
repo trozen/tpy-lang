@@ -5,120 +5,126 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = date(2021, 3, 5)
+//     print(d.isoformat())            # 2021-03-05
+//     print(str(d))                   # 2021-03-05
+//     print(repr(d))                  # datetime.date(2021, 3, 5)
+//     print(d.year, d.month, d.day)   # 2021 3 5
+//     print(d.weekday())              # 4
+//     print(d.isoweekday())           # 5
+//     print(d.toordinal())            # 737854
+//     print(date.fromordinal(737854).isoformat())    # 2021-03-05
+//     print(date(2020, 2, 29).isoformat())            # 2020-02-29
+//     print(d < date(2021, 3, 8))     # True
+//     print(d == date(2021, 3, 5))    # True
+//     seen = {date(2021, 3, 5): "a"}                  # frozen -> hashable dict key
+//     print(seen[date(2021, 3, 5)])   # a
+//     print(d in {date(2020, 1, 1), date(2021, 3, 5)})  # True (set membership)
+//     print(date(2021, 3, 8) - d)     # 3 days, 0:00:00
+//     print((d + timedelta(days=10)).isoformat())     # 2021-03-15
+//     print((d - timedelta(days=10)).isoformat())     # 2021-02-23
+//     print((date(2021, 12, 31) + timedelta(days=1)).isoformat())  # 2022-01-01
+//     print(date(2000, 2, 29).isoformat())            # 2000-02-29 (leap century)
+//     try:
+//         bad = date(2021, 2, 30)                     # day out of range
+//         print("no error")
+//     except ValueError:
+//         print("caught day")
+//     try:
+//         bad2 = date(10000, 1, 1)                    # year out of range
+//         print("no error")
+//     except ValueError:
+//         print("caught year")
+//     try:
+//         bad3 = date(2021, 13, 1)                    # month out of range
+//         print("no error")
+//     except ValueError:
+//         print("caught month")
+//     try:
+//         bad4 = date(1900, 2, 29)                    # 1900 is NOT a leap year
+//         print("no error")
+//     except ValueError:
+//         print("caught non-leap-century")
+//     try:
+//         bad5 = date(9999, 12, 31) + timedelta(days=1)   # ordinal overflow
+//         print("no error")
+//     except OverflowError:
+//         print("caught OverflowError")
 void main() {
-    // d = date(2021, 3, 5)
     ::tpystd::datetime::date d = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5));
-    // print(d.isoformat())            # 2021-03-05
     std::cout << d.isoformat() << "\n";
-    // print(str(d))                   # 2021-03-05
     std::cout << std::string(::tpy::__str__(d)) << "\n";
-    // print(repr(d))                  # datetime.date(2021, 3, 5)
     std::cout << ::tpy::repr_of(d) << "\n";
-    // print(d.year, d.month, d.day)   # 2021 3 5
     std::cout << d.year() << " " << d.month() << " " << d.day() << "\n";
-    // print(d.weekday())              # 4
     std::cout << d.weekday() << "\n";
-    // print(d.isoweekday())           # 5
     std::cout << d.isoweekday() << "\n";
-    // print(d.toordinal())            # 737854
     std::cout << d.toordinal() << "\n";
-    // print(date.fromordinal(737854).isoformat())    # 2021-03-05
     std::cout << date::fromordinal(::tpy::BigInt(737854)).isoformat() << "\n";
-    // print(date(2020, 2, 29).isoformat())            # 2020-02-29
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(2), ::tpy::BigInt(29)).isoformat() << "\n";
-    // print(d < date(2021, 3, 8))     # True
     std::cout << ::tpy::print_bool(((d) < (::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(8))))) << "\n";
-    // print(d == date(2021, 3, 5))    # True
     std::cout << ::tpy::print_bool(((d) == (::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))))) << "\n";
-    // seen = {date(2021, 3, 5): "a"}                  # frozen -> hashable dict key
     ::tpy::ordered_map<::tpystd::datetime::date, std::string> seen = ::tpy::ordered_map<::tpystd::datetime::date, std::string>({{::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), "a"}});
-    // print(seen[date(2021, 3, 5)])   # a
     std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))) << "\n";
-    // print(d in {date(2020, 1, 1), date(2021, 3, 5)})  # True (set membership)
     std::cout << ::tpy::print_bool((::tpy::ordered_set<::tpystd::datetime::date>({::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(1), ::tpy::BigInt(1)), ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5))}).contains(d))) << "\n";
-    // print(date(2021, 3, 8) - d)     # 3 days, 0:00:00
     std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(8))) - (d)) << "\n";
-    // print((d + timedelta(days=10)).isoformat())     # 2021-03-15
     std::cout << ((d) + (::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n";
-    // print((d - timedelta(days=10)).isoformat())     # 2021-02-23
     std::cout << ((d) - (::tpystd::datetime::timedelta(::tpy::BigInt(10)))).isoformat() << "\n";
-    // print((date(2021, 12, 31) + timedelta(days=1)).isoformat())  # 2022-01-01
     std::cout << ((::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(12), ::tpy::BigInt(31))) + (::tpystd::datetime::timedelta(::tpy::BigInt(1)))).isoformat() << "\n";
-    // print(date(2000, 2, 29).isoformat())            # 2000-02-29 (leap century)
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2000), ::tpy::BigInt(2), ::tpy::BigInt(29)).isoformat() << "\n";
-    // try:
     {
         try {
-            // bad = date(2021, 2, 30)                     # day out of range
             ::tpystd::datetime::date bad = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(2), ::tpy::BigInt(30));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught day")
             std::cout << "caught day" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad2 = date(10000, 1, 1)                    # year out of range
             ::tpystd::datetime::date bad2 = ::tpystd::datetime::date(::tpy::BigInt(10000), ::tpy::BigInt(1), ::tpy::BigInt(1));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught year")
             std::cout << "caught year" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad3 = date(2021, 13, 1)                    # month out of range
             ::tpystd::datetime::date bad3 = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(13), ::tpy::BigInt(1));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught month")
             std::cout << "caught month" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad4 = date(1900, 2, 29)                    # 1900 is NOT a leap year
             ::tpystd::datetime::date bad4 = ::tpystd::datetime::date(::tpy::BigInt(1900), ::tpy::BigInt(2), ::tpy::BigInt(29));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught non-leap-century")
             std::cout << "caught non-leap-century" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad5 = date(9999, 12, 31) + timedelta(days=1)   # ordinal overflow
             ::tpystd::datetime::date bad5 = ((::tpystd::datetime::date(::tpy::BigInt(9999), ::tpy::BigInt(12), ::tpy::BigInt(31))) + (::tpystd::datetime::timedelta(::tpy::BigInt(1))));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::OverflowError&) {
-            // print("caught OverflowError")
             std::cout << "caught OverflowError" << "\n";
         }
     }
 }
 
+// # datetime.date v1: construction/validation, attributes, weekday/isoweekday,
+// # toordinal/fromordinal, isoformat/str/repr, comparisons, date +/- timedelta,
+// # date - date. Byte-compared against real CPython datetime.
+// from datetime import date, timedelta
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime.date v1: construction/validation, attributes, weekday/isoweekday,
-    // # toordinal/fromordinal, isoformat/str/repr, comparisons, date +/- timedelta,
-    // # date - date. Byte-compared against real CPython datetime.
-    // from datetime import date, timedelta
     ::tpystd::datetime::__tpy_init();
-    // main()
     main();
 }
 

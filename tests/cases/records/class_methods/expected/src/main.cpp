@@ -3,48 +3,48 @@
 
 namespace tpyapp::main {
 
-// # Test __init__ with parameter
-// c = Counter(100)
 Counter* c{};
-// # Test multiple print arguments
-// a: int32 = 42
 int32_t a{};
-// b: int32 = 99
 int32_t b{};
 
+// # Test __init__ with parameter
+// c = Counter(100)
+// print(c.get())
+//
+// # Test methods
+// c.increment()
+// print(c.get())
+//
+// c.add(5)
+// print(c.get())
+//
+// c.reset()
+// print(c.get())
+//
+// # Test multiple print arguments
+// a: int32 = 42
+// b: int32 = 99
+// print(a, b)
+//
+// # Test string printing
+// print("done")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test __init__ with parameter
-    // c = Counter(100)
     static Counter __global_slot_1 = Counter(100);
     c = &__global_slot_1;
-    // print(c.get())
     std::cout << c->get() << "\n";
-    // # Test methods
-    // c.increment()
     c->increment();
-    // print(c.get())
     std::cout << c->get() << "\n";
-    // c.add(5)
     c->add(5);
-    // print(c.get())
     std::cout << c->get() << "\n";
-    // c.reset()
     c->reset();
-    // print(c.get())
     std::cout << c->get() << "\n";
-    // # Test multiple print arguments
-    // a: int32 = 42
     a = 42;
-    // b: int32 = 99
     b = 99;
-    // print(a, b)
     std::cout << a << " " << b << "\n";
-    // # Test string printing
-    // print("done")
     std::cout << "done" << "\n";
 }
 

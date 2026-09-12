@@ -13,6 +13,7 @@ struct Factory;
 extern Product* x;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_factory() -> Own[Factory]:
 Factory get_factory();
 
 // class Product:
@@ -47,11 +48,12 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Product::Product(int32_t value) : value(value) {}
 
 // def create(self) -> Own[Product]:
+//     return Product(int32(9))
 inline Product Factory::create() const {
-    // return Product(int32(9))
     return Product(9);
 }
 void __tpy_init();

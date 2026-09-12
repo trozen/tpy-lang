@@ -5,68 +5,69 @@ namespace tpyapp::main {
 
 
 // def send(url: str, data: bytes | dict[str, str] | None) -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.post(url, data)
+//     print(r.status_code)
+//     print(b.recv(65536))
+//     b.close()
 void send(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data) {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.post(url, data)
     ::tpystd::tplib::requests::Response r = s.post(url, data);
-    // print(r.status_code)
     std::cout << r.status_code << "\n";
-    // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // b.close()
     b.close();
 }
 
 // def main() -> None:
+//     send("http://api.test/login", {"user": "ann", "pw": "s3cret"})
+//     empty: dict[str, str] = {}   # empty literal can't be inferred against the union
+//     send("http://api.test/empty", empty)
+//     send("http://api.test/raw", b"raw-bytes")
 void main() {
-    // send("http://api.test/login", {"user": "ann", "pw": "s3cret"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"user", "ann"}, {"pw", "s3cret"}});
     send("http://api.test/login", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1});
-    // empty: dict[str, str] = {}   # empty literal can't be inferred against the union
     ::tpy::ordered_map<std::string, std::string> empty = ::tpy::ordered_map<std::string, std::string>();
-    // send("http://api.test/empty", empty)
     send("http://api.test/empty", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(empty)});
-    // send("http://api.test/raw", b"raw-bytes")
     ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("raw-bytes", 9);
     send("http://api.test/raw", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
 }
 
+// # tplib.requests: a dict data= body is urlencoded (application/x-www-form-
+// # urlencoded, with a matching Content-Length); an empty dict is falsy so it is
+// # treated as no body at all (no Content-Type, no body -- matching requests'
+// # `elif data:` truthiness, not an empty form); a bytes data= body is still sent
+// # verbatim with no implied Content-Type. Sent bytes inspected via a socketpair
+// # seam.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests: a dict data= body is urlencoded (application/x-www-form-
-    // # urlencoded, with a matching Content-Length); an empty dict is falsy so it is
-    // # treated as no body at all (no Content-Type, no body -- matching requests'
-    // # `elif data:` truthiness, not an empty form); a bytes data= body is still sent
-    // # verbatim with no implied Content-Type. Sent bytes inspected via a socketpair
-    // # seam.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,49 +5,49 @@ namespace tpyapp::main {
 
 
 // def upcast_in_branch(x: Dog | Cat) -> bool:
+//     # Dog is an Animal -- folds to True, no warning.
+//     if isinstance(x, Dog):
+//         return isinstance(x, Animal)
+//     return False
 bool upcast_in_branch(::tpy::Union<const Cat*, const Dog*> x) {
-    // # Dog is an Animal -- folds to True, no warning.
-    // if isinstance(x, Dog):
     if (std::holds_alternative<const Dog*>(x)) {
         auto& __x = *std::get<const Dog*>(x);
-        // return isinstance(x, Animal)
         return true;
     }
     auto& __x = *std::get<const Cat*>(x);
-    // return False
     return false;
 }
 
 // def downcast_in_branch(x: Dog | Cat) -> bool:
+//     # Puppy is a descendant of narrowed Dog -- folds to False + warning.
+//     if isinstance(x, Dog):
+//         return isinstance(x, Puppy)  # tpyc: warning(/descendant type 'Puppy'/)
+//     return False
 bool downcast_in_branch(::tpy::Union<const Cat*, const Dog*> x) {
-    // # Puppy is a descendant of narrowed Dog -- folds to False + warning.
-    // if isinstance(x, Dog):
     if (std::holds_alternative<const Dog*>(x)) {
         auto& __x = *std::get<const Dog*>(x);
-        // return isinstance(x, Puppy)  # tpyc: warning(/descendant type 'Puppy'/)
         return false;
     }
     auto& __x = *std::get<const Cat*>(x);
-    // return False
     return false;
 }
 
 // def main() -> None:
+//     print(upcast_in_branch(Dog("Rex", "lab")))
+//     print(downcast_in_branch(Dog("Rex", "lab")))
 void main() {
-    // print(upcast_in_branch(Dog("Rex", "lab")))
     Dog __tmp_1 = Dog("Rex", "lab");
     std::cout << ::tpy::print_bool(upcast_in_branch(::tpy::Union<const Cat*, const Dog*>{&__tmp_1})) << "\n";
-    // print(downcast_in_branch(Dog("Rex", "lab")))
     Dog __tmp_2 = Dog("Rex", "lab");
     std::cout << ::tpy::print_bool(downcast_in_branch(::tpy::Union<const Cat*, const Dog*>{&__tmp_2})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

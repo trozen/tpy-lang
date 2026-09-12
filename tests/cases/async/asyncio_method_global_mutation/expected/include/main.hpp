@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_Worker_add;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Worker:
@@ -34,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Worker& obj) {
     return os;
 }
 
-// Async coroutine: Worker.add
+// async def add(self, n: int32) -> None:
 struct __coro_Worker_add {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +65,7 @@ inline __coro_Worker_add Worker::add(int32_t n) const {
     return __coro_Worker_add(*this, n);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

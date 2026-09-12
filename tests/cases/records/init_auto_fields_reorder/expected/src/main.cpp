@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Rect(int32(5), int32(10))
+//     print(r.width)
+//     print(r.height)
 void main() {
-    // r = Rect(int32(5), int32(10))
     Rect r = Rect(5, 10);
-    // print(r.width)
     std::cout << r.width << "\n";
-    // print(r.height)
     std::cout << r.height << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

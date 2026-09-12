@@ -6,29 +6,29 @@ namespace tpyapp::main {
 
 // # Test returning a view local from a str-returning function
 // def make_greeting(name: str) -> str:
+//     result = "hello " + name  # tpyc: type(String)
+//     return result
 std::string make_greeting(std::string_view name) {
-    // result = "hello " + name  # tpyc: type(String)
     ::tpy::String result = (::tpy::str_concat("hello ", name));
-    // return result
     return result;
 }
 
 // def echo(msg: str) -> str:
+//     s = msg  # tpyc: type(StrView)
+//     return s
 std::string echo(std::string_view msg) {
-    // s = msg  # tpyc: type(StrView)
     std::string_view s = msg;
-    // return s
     return std::string(s);
 }
 
+// print(make_greeting("world"))
+// print(echo("test"))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(make_greeting("world"))
     std::cout << make_greeting("world") << "\n";
-    // print(echo("test"))
     std::cout << echo("test") << "\n";
 }
 

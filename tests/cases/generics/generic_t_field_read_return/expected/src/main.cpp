@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Cell[int32](1, 2)
+//     print(c.get(), c.pick(), c.echo(7))
+//     c.store(9)
+//     print(c.get())
 void main() {
-    // c = Cell[int32](1, 2)
     Cell<int32_t> c = Cell<int32_t>(1, 2);
-    // print(c.get(), c.pick(), c.echo(7))
     std::cout << c.get() << " " << c.pick() << " " << c.echo(7) << "\n";
-    // c.store(9)
     c.store(9);
-    // print(c.get())
     std::cout << c.get() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

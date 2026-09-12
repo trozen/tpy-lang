@@ -47,42 +47,45 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Value 0 is falsy
+//     if Status.Off:
+//         print("off is truthy")
+//     else:
+//         print("off is falsy")
+//
+//     # Non-zero is truthy
+//     if Status.On:
+//         print("on is truthy")
+//     else:
+//         print("on is falsy")
+//
+//     # not operator
+//     print(not Status.Off)
+//     print(not Status.On)
 void main() {
-    // # Value 0 is falsy
-    // if Status.Off:
     if ((static_cast<int32_t>(Status::Off) != 0)) {
-        // print("off is truthy")
         std::cout << "off is truthy" << "\n";
-    // else:
     } else {
-        // print("off is falsy")
         std::cout << "off is falsy" << "\n";
     }
-    // # Non-zero is truthy
-    // if Status.On:
     if ((static_cast<int32_t>(Status::On) != 0)) {
-        // print("on is truthy")
         std::cout << "on is truthy" << "\n";
-    // else:
     } else {
-        // print("on is falsy")
         std::cout << "on is falsy" << "\n";
     }
-    // # not operator
-    // print(not Status.Off)
     std::cout << ::tpy::print_bool((!((static_cast<int32_t>(Status::Off) != 0)))) << "\n";
-    // print(not Status.On)
     std::cout << ::tpy::print_bool((!((static_cast<int32_t>(Status::On) != 0)))) << "\n";
 }
 
+// # IntEnum truthiness: value 0 is falsy, non-zero is truthy
+// from enum import IntEnum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # IntEnum truthiness: value 0 is falsy, non-zero is truthy
-    // from enum import IntEnum
-    // main()
     main();
 }
 

@@ -13,6 +13,7 @@ struct Combined;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -60,20 +61,20 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 
 
 // def __init__(self, n: int32, label: str) -> None:
+//     Counter.value = n  # tpyc: ok
+//     Tag.value = label  # tpyc: ok
 inline Combined::Combined(int32_t n, std::string_view label) {
-    // Counter.value = n  # tpyc: ok
     this->Counter::value = n;
-    // Tag.value = label  # tpyc: ok
     this->Tag::value = label;
 }
 
 // def summary(self) -> str:
+//     n = Counter.value
+//     label = Tag.value
+//     return label + "=" + str(n)
 inline std::string Combined::summary() const {
-    // n = Counter.value
     int32_t n = this->Counter::value;
-    // label = Tag.value
     std::string_view label = this->Tag::value;
-    // return label + "=" + str(n)
     return (::tpy::str_concat((::tpy::str_concat(label, "=")), ::tpy::fixed_to_str<int32_t>(n)));
 }
 void __tpy_init();

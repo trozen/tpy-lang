@@ -9,17 +9,29 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_construction() -> None:
 void test_construction();
+// def test_literal_coercion() -> None:
 void test_literal_coercion();
+// def test_arithmetic() -> None:
 void test_arithmetic();
+// def test_negation() -> None:
 void test_negation();
+// def test_mixed_with_float() -> None:
 void test_mixed_with_float();
+// def test_mixed_with_int() -> None:
 void test_mixed_with_int();
+// def test_augmented_assignment() -> None:
 void test_augmented_assignment();
+// def test_conversions() -> None:
 void test_conversions();
+// def test_comparison() -> None:
 void test_comparison();
+// def test_fstring() -> None:
 void test_fstring();
+// def test_float64_alias() -> None:
 void test_float64_alias();
+// def main() -> None:
 void main();
 
 void __tpy_init();

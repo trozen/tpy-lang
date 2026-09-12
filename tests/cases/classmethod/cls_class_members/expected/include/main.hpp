@@ -12,6 +12,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -61,33 +62,33 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // @classmethod
 // def bump(cls) -> int32:
+//     cls.calls += 1
+//     return cls.calls
 inline int32_t Counter::bump() {
-    // cls.calls += 1
     Counter::calls = ::tpy::add_check<int32_t>(Counter::calls, 1);
-    // return cls.calls
     return Counter::calls;
 }
 
 // @classmethod
 // def scaled_start(cls) -> int32:
+//     # Inherited class constant, plus a sibling staticmethod through cls.
+//     return cls.double(cls.START * cls.SCALE)
 inline int32_t Counter::scaled_start() {
-    // # Inherited class constant, plus a sibling staticmethod through cls.
-    // return cls.double(cls.START * cls.SCALE)
     return Counter::double_((::tpy::mul_check<int32_t>(Counter::START, Base::SCALE)));
 }
 
 // @classmethod
 // def twice(cls) -> int32:
+//     # A classmethod calling another classmethod through cls.
+//     return cls.bump() + cls.bump()
 inline int32_t Counter::twice() {
-    // # A classmethod calling another classmethod through cls.
-    // return cls.bump() + cls.bump()
     return (::tpy::add_check<int32_t>(Counter::bump(), Counter::bump()));
 }
 
 // @staticmethod
 // def double(n: int32) -> int32:
+//     return n * 2
 inline int32_t Counter::double_(int32_t n) {
-    // return n * 2
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 void __tpy_init();

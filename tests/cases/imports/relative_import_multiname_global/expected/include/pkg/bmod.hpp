@@ -10,6 +10,7 @@ namespace tpyapp::pkg::bmod {
 extern ::tpy::Bytes _B;
 inline constexpr std::string_view __name__ = "pkg.bmod";
 
+// def b_first() -> int32:
 int32_t b_first();
 
 void __tpy_init();

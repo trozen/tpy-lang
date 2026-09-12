@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def make(b: Box) -> tuple[int32, Box]:
+//     t = (1, b)
+//     return t
 std::tuple<int32_t, Box*> make(Box& b) {
-    // t = (1, b)
     auto t = std::tuple<int32_t, Box*>{1, &(b)};
-    // return t
     return t;
 }
 
 // def main() -> None:
+//     b = Box(7)
+//     pair = make(b)
+//     pair[1].val = 99
+//     print(b.val)
 void main() {
-    // b = Box(7)
     Box b = Box(7);
-    // pair = make(b)
     auto pair = make(b);
-    // pair[1].val = 99
     std::get<1>(pair)->val = 99;
-    // print(b.val)
     std::cout << b.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -22,14 +22,24 @@ extern std::vector<std::string>* _MONTH_ABBR;
 extern std::vector<std::string>* _MONTH_FULL;
 inline constexpr std::string_view __name__ = "_datetime_cal";
 
+// def _is_leap(year: int) -> bool:
 bool _is_leap(const ::tpy::BigInt& year);
+// def _days_in_month(year: int, month: int) -> int:
 ::tpy::BigInt _days_in_month(const ::tpy::BigInt& year, const ::tpy::BigInt& month);
+// def _days_before_year(year: int) -> int:
 ::tpy::BigInt _days_before_year(const ::tpy::BigInt& year);
+// def _days_before_month(year: int, month: int) -> int:
 ::tpy::BigInt _days_before_month(const ::tpy::BigInt& year, const ::tpy::BigInt& month);
+// def _ymd2ord(year: int, month: int, day: int) -> int:
 ::tpy::BigInt _ymd2ord(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day);
+// def _ord2ymd(n: int) -> tuple[int, int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _ord2ymd(const ::tpy::BigInt& __param_n);
+// def _isoweek1monday(year: int) -> int:
 ::tpy::BigInt _isoweek1monday(const ::tpy::BigInt& year);
+// def _iso_calendar(y: int, mo: int, d: int) -> tuple[int, int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _iso_calendar(const ::tpy::BigInt& __param_y, const ::tpy::BigInt& mo, const ::tpy::BigInt& d);
+// def _isoweek_to_gregorian(year: int, week: int,
+//                           day: int) -> tuple[int, int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _isoweek_to_gregorian(const ::tpy::BigInt& year, const ::tpy::BigInt& week, const ::tpy::BigInt& day);
 
 void __tpy_init();

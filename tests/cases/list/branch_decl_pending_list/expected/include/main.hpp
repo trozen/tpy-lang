@@ -11,12 +11,19 @@ struct Mgr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick_list(c: bool) -> int:
 ::tpy::BigInt pick_list(bool c);
+// def pick_dict(c: bool) -> int:
 ::tpy::BigInt pick_dict(bool c);
+// def pick_set(c: bool) -> int:
 ::tpy::BigInt pick_set(bool c);
+// def pick_try(c: bool) -> int:
 ::tpy::BigInt pick_try(bool c);
+// def pick_with() -> int:
 ::tpy::BigInt pick_with();
+// def pick_loop() -> int:
 ::tpy::BigInt pick_loop();
+// def main() -> None:
 void main();
 
 // class Mgr:
@@ -38,13 +45,13 @@ inline std::ostream& operator<<(std::ostream& os, const Mgr& obj) {
 
 
 // def __enter__(self) -> None:
+//     pass
 inline void Mgr::__enter__() const {
-    // pass
 }
 
 // def __exit__(self, a: None, b: None, c: None) -> None:
+//     pass
 inline void Mgr::__exit__(std::monostate a, std::monostate b, std::monostate c) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

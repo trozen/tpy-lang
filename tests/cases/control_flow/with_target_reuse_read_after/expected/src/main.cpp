@@ -5,13 +5,17 @@ namespace tpyapp::main {
 
 
 // def probe(flag: bool) -> int32:
+//     with Reg(11) as view:
+//         pass
+//     if flag:
+//         with Reg(22) as view:
+//             pass
+//     return view.n
 int32_t probe(bool flag) {
     std::optional<Reg> __slot_1;
-    // with Reg(11) as view:
     auto __ctx_1 = Reg(11);
     Reg* view = &(__ctx_1.__enter__());
     try {
-        // pass
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -22,14 +26,11 @@ int32_t probe(bool flag) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // if flag:
     if (flag) {
-        // with Reg(22) as view:
         __slot_1.emplace(Reg(22));
         auto& __ctx_2 = (*__slot_1);
         view = &(__ctx_2.__enter__());
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -41,18 +42,20 @@ int32_t probe(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // return view.n
     return view->n;
 }
 
 // def rebound_needs_no_hoist() -> int32:
+//     with Reg(33) as v:
+//         pass
+//     with Reg(44) as v:
+//         pass
+//     return v.n
 int32_t rebound_needs_no_hoist() {
     std::optional<Reg> __slot_1;
-    // with Reg(33) as v:
     auto __ctx_3 = Reg(33);
     Reg* v = &(__ctx_3.__enter__());
     try {
-        // pass
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -63,12 +66,10 @@ int32_t rebound_needs_no_hoist() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // with Reg(44) as v:
     __slot_1.emplace(Reg(44));
     auto& __ctx_4 = (*__slot_1);
     v = &(__ctx_4.__enter__());
     try {
-        // pass
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});
@@ -79,26 +80,25 @@ int32_t rebound_needs_no_hoist() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    // return v.n
     return v->n;
 }
 
 // def main() -> None:
+//     print(probe(True))
+//     print(probe(False))
+//     print(rebound_needs_no_hoist())
 void main() {
-    // print(probe(True))
     std::cout << probe(true) << "\n";
-    // print(probe(False))
     std::cout << probe(false) << "\n";
-    // print(rebound_needs_no_hoist())
     std::cout << rebound_needs_no_hoist() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     print(b.missing)
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // print(b.missing)
     std::cout << b.__getattr__("missing") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Bar;
 
 inline constexpr std::string_view __name__ = "pkg_b";
 
+// def name_of_b() -> str:
 std::string name_of_b();
 
 // class Foo:
@@ -48,9 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Bar& obj) {
 
 
 // def __init__(self, c: int32) -> None:
+//     self.count = c
 inline Foo::Foo(int32_t c) : count(c) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Bar::Bar(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::pkg_b

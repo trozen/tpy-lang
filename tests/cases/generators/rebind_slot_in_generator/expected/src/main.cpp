@@ -5,8 +5,15 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     for got in decl_inside_while(3):
+//         print("while:", got)
+//
+//     for got in decl_inside_for([1, 2, 3]):
+//         print("for:", got)
+//
+//     for got in alias_holds_across_rebind(2):
+//         print("alias:", got)
 void main() {
-    // for got in decl_inside_while(3):
     {
         auto __src_0 = decl_inside_while(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -14,11 +21,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-        // print("while:", got)
         std::cout << "while:" << " " << got << "\n";
         }
     }
-    // for got in decl_inside_for([1, 2, 3]):
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3};
         auto __src_2 = decl_inside_for(__tmp_1);
@@ -27,11 +32,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_3);
-        // print("for:", got)
         std::cout << "for:" << " " << got << "\n";
         }
     }
-    // for got in alias_holds_across_rebind(2):
     {
         auto __src_4 = alias_holds_across_rebind(2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -39,18 +42,17 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_5);
-        // print("alias:", got)
         std::cout << "alias:" << " " << got << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

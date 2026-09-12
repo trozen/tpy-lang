@@ -5,47 +5,50 @@ namespace tpyapp::main {
 
 
 // def load_from_stringio() -> None:
+//     src = io.StringIO('{"name": "tpy", "nums": [1, 2, 3], "ok": true}')
+//     v = json.load(src)
+//     print("roundtrip:", json.dumps(v, sort_keys=True))
 void load_from_stringio() {
-    // src = io.StringIO('{"name": "tpy", "nums": [1, 2, 3], "ok": true}')
     ::tpystd::io::StringIO src = ::tpystd::io::StringIO("{\"name\": \"tpy\", \"nums\": [1, 2, 3], \"ok\": true}");
-    // v = json.load(src)
     ::tpystd::json::JsonValue v = ::tpystd::json::load(src);
-    // print("roundtrip:", json.dumps(v, sort_keys=True))
     std::cout << "roundtrip:" << " " << ::tpystd::json::dumps(v, 0, true) << "\n";
 }
 
 // def dump_to_stringio() -> None:
+//     v = json.loads('{"b": 2, "a": 1, "c": [3, 4]}')
+//     out = io.StringIO()
+//     json.dump(v, out, sort_keys=True)
+//     print("dumped:", out.getvalue())
+//     # dump with indent
+//     out2 = io.StringIO()
+//     json.dump(v, out2, indent=2, sort_keys=True)
+//     print("indented:")
+//     print(out2.getvalue())
 void dump_to_stringio() {
-    // v = json.loads('{"b": 2, "a": 1, "c": [3, 4]}')
     ::tpystd::json::JsonValue v = ::tpystd::json::loads("{\"b\": 2, \"a\": 1, \"c\": [3, 4]}");
-    // out = io.StringIO()
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    // json.dump(v, out, sort_keys=True)
     ::tpystd::json::dump(v, out, 0, true);
-    // print("dumped:", out.getvalue())
     std::cout << "dumped:" << " " << out.getvalue() << "\n";
-    // # dump with indent
-    // out2 = io.StringIO()
     ::tpystd::io::StringIO out2 = ::tpystd::io::StringIO();
-    // json.dump(v, out2, indent=2, sort_keys=True)
     ::tpystd::json::dump(v, out2, 2, true);
-    // print("indented:")
     std::cout << "indented:" << "\n";
-    // print(out2.getvalue())
     std::cout << out2.getvalue() << "\n";
 }
 
 // def file_roundtrip() -> None:
+//     v = json.loads('{"list": [10, 20], "flag": false, "label": "x"}')
+//     path = "tpy_test_json_load_dump.json"
+//     with open(path, "w") as f:
+//         json.dump(v, f, sort_keys=True)
+//     with open(path) as f:
+//         v2 = json.load(f)
+//     print("file:", json.dumps(v2, sort_keys=True))
 void file_roundtrip() {
-    // v = json.loads('{"list": [10, 20], "flag": false, "label": "x"}')
     ::tpystd::json::JsonValue v = ::tpystd::json::loads("{\"list\": [10, 20], \"flag\": false, \"label\": \"x\"}");
-    // path = "tpy_test_json_load_dump.json"
     std::string_view path = "tpy_test_json_load_dump.json";
-    // with open(path, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(path, "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // json.dump(v, f, sort_keys=True)
         ::tpystd::json::dump(v, (*f), 0, true);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -57,12 +60,10 @@ void file_roundtrip() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(path) as f:
     std::optional<::tpystd::json::JsonValue> v2;
     auto __ctx_2 = ::tpy::builtin_open(path);
     f = &(__ctx_2.__enter__());
     try {
-        // v2 = json.load(f)
         v2 = ::tpystd::json::load((*f));
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -74,59 +75,60 @@ void file_roundtrip() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // print("file:", json.dumps(v2, sort_keys=True))
     std::cout << "file:" << " " << ::tpystd::json::dumps((*v2), 0, true) << "\n";
 }
 
 // def load_malformed() -> None:
+//     # load(fp) propagates JSONDecodeError from the underlying loads(fp.read()).
+//     # Print lineno/colno (not msg -- CPython words messages differently).
+//     try:
+//         json.load(io.StringIO("{not valid"))
+//         print("FAIL: expected JSONDecodeError")
+//     except json.JSONDecodeError as e:
+//         print("decode error at:", e.lineno, e.colno)
 void load_malformed() {
-    // # load(fp) propagates JSONDecodeError from the underlying loads(fp.read()).
-    // # Print lineno/colno (not msg -- CPython words messages differently).
-    // try:
     {
         try {
-            // json.load(io.StringIO("{not valid"))
             auto __tmp_1 = ::tpystd::io::StringIO("{not valid");
             ::tpystd::json::load(__tmp_1);
-            // print("FAIL: expected JSONDecodeError")
             std::cout << "FAIL: expected JSONDecodeError" << "\n";
         } catch (const ::tpystd::json::JSONDecodeError& e) {
-            // print("decode error at:", e.lineno, e.colno)
             std::cout << "decode error at:" << " " << e.lineno << " " << e.colno << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     load_from_stringio()
+//     print("---")
+//     dump_to_stringio()
+//     print("---")
+//     file_roundtrip()
+//     print("---")
+//     load_malformed()
 void main() {
-    // load_from_stringio()
     load_from_stringio();
-    // print("---")
     std::cout << "---" << "\n";
-    // dump_to_stringio()
     dump_to_stringio();
-    // print("---")
     std::cout << "---" << "\n";
-    // file_roundtrip()
     file_roundtrip();
-    // print("---")
     std::cout << "---" << "\n";
-    // load_malformed()
     load_malformed();
 }
 
+// # json.load / json.dump over io text file objects (StringIO and open()'s
+// # TextIO). load(fp) == loads(fp.read()); dump(obj, fp) == fp.write(dumps(...)).
+// import io
+// import json
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # json.load / json.dump over io text file objects (StringIO and open()'s
-    // # TextIO). load(fp) == loads(fp.read()); dump(obj, fp) == fp.write(dumps(...)).
-    // import io
     ::tpystd::io::__tpy_init();
-    // import json
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

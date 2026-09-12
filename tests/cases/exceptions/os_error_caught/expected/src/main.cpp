@@ -12,15 +12,37 @@ namespace tpyapp::main {
 // # a documented divergence from CPython). Messages are TPy-specific (longer than
 // # CPython's terse "not readable"/"not writable"); test carries no_cpython.txt.
 // def main() -> None:
+//     path = "tpy_test_os_error_caught.tmp"
+//
+//     # Seed the file with some content for read-mode tests.
+//     with open(path, "w") as f:
+//         f.write("seed content\n")
+//
+//     # File opened write-only; read() should raise OSError.
+//     with open(path, "w") as f:
+//         try:
+//             f.read()
+//         except OSError as e:
+//             print("read on write-only:", str(e))
+//
+//     # File opened read-only; write() should raise OSError.
+//     with open(path, "r") as f:
+//         try:
+//             f.write("xyz")
+//         except OSError as e:
+//             print("write on read-only:", str(e))
+//
+//     # readline() on write-only file.
+//     with open(path, "w") as f:
+//         try:
+//             f.readline()
+//         except OSError as e:
+//             print("readline on write-only:", str(e))
 void main() {
-    // path = "tpy_test_os_error_caught.tmp"
     std::string_view path = "tpy_test_os_error_caught.tmp";
-    // # Seed the file with some content for read-mode tests.
-    // with open(path, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(path, "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // f.write("seed content\n")
         f->write("seed content\n");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -32,18 +54,13 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # File opened write-only; read() should raise OSError.
-    // with open(path, "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode(path, "w");
     f = &(__ctx_2.__enter__());
     try {
-        // try:
         {
             try {
-                // f.read()
                 f->read();
             } catch (const ::tpy::OSError& e) {
-                // print("read on write-only:", str(e))
                 std::cout << "read on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
             }
         }
@@ -57,18 +74,13 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // # File opened read-only; write() should raise OSError.
-    // with open(path, "r") as f:
     auto __ctx_3 = ::tpy::builtin_open_mode(path, "r");
     f = &(__ctx_3.__enter__());
     try {
-        // try:
         {
             try {
-                // f.write("xyz")
                 f->write("xyz");
             } catch (const ::tpy::OSError& e) {
-                // print("write on read-only:", str(e))
                 std::cout << "write on read-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
             }
         }
@@ -82,18 +94,13 @@ void main() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // # readline() on write-only file.
-    // with open(path, "w") as f:
     auto __ctx_4 = ::tpy::builtin_open_mode(path, "w");
     f = &(__ctx_4.__enter__());
     try {
-        // try:
         {
             try {
-                // f.readline()
                 f->readline();
             } catch (const ::tpy::OSError& e) {
-                // print("readline on write-only:", str(e))
                 std::cout << "readline on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n";
             }
         }
@@ -109,12 +116,12 @@ void main() {
     __ctx_4.__exit__({}, nullptr, {});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p: IntPair = (int32(3), int32(7))  # tpyc: type(/tuple\[int32, int32\]/)
+//     print(p)
 void main() {
-    // p: IntPair = (int32(3), int32(7))  # tpyc: type(/tuple\[int32, int32\]/)
     std::tuple<int32_t, int32_t> p = std::tuple<int32_t, int32_t>{3, 7};
-    // print(p)
     std::cout << ::tpy::TuplePrinter(p) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

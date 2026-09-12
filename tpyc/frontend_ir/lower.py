@@ -980,6 +980,7 @@ def _lower_function(
         is_stub = True
     return TpyFunction(
         name=fn.name,
+        loc=_to_source_loc(fn.loc),
         params=params,
         # Empty when no param has a default; else parallel to `params` with
         # None in the no-default slots -- downstream keys on empty-vs-populated.
@@ -1368,6 +1369,7 @@ def _to_source_loc(loc: Loc | None) -> SourceLocation | None:
         line=loc.line,
         column=max(0, loc.col - 1),  # parser uses 0-based columns
         file=str(loc.file),
+        end_line=loc.end_line,
     )
 
 

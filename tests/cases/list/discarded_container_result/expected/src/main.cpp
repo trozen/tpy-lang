@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs = [3, 1]
+//     ss = {1, 2}
+//     other = {2, 3}
+//     ba = bytearray(b" ab ")
+//     xs.copy()  # tpyc: ok
+//     ss.copy()  # tpyc: ok
+//     ss.union(other)  # tpyc: ok
+//     ss.difference(other)  # tpyc: ok
+//     ba.strip()  # tpyc: ok
+//     ba.upper()  # tpyc: ok
+//     # Each receiver is mutated AFTER the discarded call and read back, so a
+//     # discarded result that had consumed or reseated its receiver would show.
+//     xs.append(4)
+//     ss.add(9)
+//     ba.append(120)
+//     print(xs)
+//     print(len(ss))
+//     print(2 in ss)
+//     print(9 in ss)
+//     print(ba)
 void main() {
-    // xs = [3, 1]
     std::vector<int32_t> xs = {3, 1};
-    // ss = {1, 2}
     ::tpy::ordered_set<int32_t> ss = ::tpy::ordered_set<int32_t>({1, 2});
-    // other = {2, 3}
     ::tpy::ordered_set<int32_t> other = ::tpy::ordered_set<int32_t>({2, 3});
-    // ba = bytearray(b" ab ")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal(" ab ", 4));
-    // xs.copy()  # tpyc: ok
     ::tpy::list_copy(xs);
-    // ss.copy()  # tpyc: ok
     ::tpy::set_copy(ss);
-    // ss.union(other)  # tpyc: ok
     ::tpy::set_union(ss, other);
-    // ss.difference(other)  # tpyc: ok
     ::tpy::set_difference(ss, other);
-    // ba.strip()  # tpyc: ok
     ::tpy::bytes_strip(ba);
-    // ba.upper()  # tpyc: ok
     ::tpy::bytearray_upper(ba);
-    // # Each receiver is mutated AFTER the discarded call and read back, so a
-    // # discarded result that had consumed or reseated its receiver would show.
-    // xs.append(4)
     xs.push_back(4);
-    // ss.add(9)
     ss.insert(9);
-    // ba.append(120)
     ba.push_back(120);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // print(len(ss))
     std::cout << ::tpy::__len__(ss) << "\n";
-    // print(2 in ss)
     std::cout << ::tpy::print_bool((ss.contains(2))) << "\n";
-    // print(9 in ss)
     std::cout << ::tpy::print_bool((ss.contains(9))) << "\n";
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

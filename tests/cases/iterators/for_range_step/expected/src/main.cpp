@@ -3,69 +3,72 @@
 
 namespace tpyapp::main {
 
-// # range with unannotated default-int args
-// n = 5
 int32_t n{};
 
 // # range with int32 variables
 // def sum_range_step(start: int32, stop: int32, step: int32) -> int32:
+//     total: int32 = 0
+//     for i in range(start, stop, step):
+//         total += i
+//     return total
 int32_t sum_range_step(int32_t start, int32_t stop, int32_t step) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for i in range(start, stop, step):
     int32_t __start_0 = start;
     int32_t __stop_0 = stop;
     int32_t __step_0 = step;
     ::tpy::range_check_step_nonzero(__step_0);
     ::tpy::range_check_overflow<int32_t>(__start_0, __stop_0, __step_0);
     for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i += __step_0) {
-        // total += i
         total = ::tpy::add_check<int32_t>(total, i);
     }
-    // return total
     return total;
 }
 
+// # range(stop) - basic
+// for i in range(5):
+//     print(i)
+//
+// # range(start, stop)
+// for i in range(2, 6):
+//     print(i)
+//
+// # range(start, stop, step) - step of 2
+// for i in range(0, 10, 2):
+//     print(i)
+//
+// # range(start, stop, step) - negative step (countdown)
+// for i in range(10, 0, -2):
+//     print(i)
+//
+// print(sum_range_step(0, 10, 3))  # 0 + 3 + 6 + 9 = 18
+//
+// # range with unannotated default-int args
+// n = 5
+// for i in range(n):
+//     print(i)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # range(stop) - basic
-    // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // # range(start, stop)
-    // for i in range(2, 6):
     for (int32_t i = 2; i < 6; ++i) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // # range(start, stop, step) - step of 2
-    // for i in range(0, 10, 2):
     ::tpy::range_check_overflow<int32_t>(0, 10, 2);
     for (int32_t i = 0; i < 10; i += 2) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // # range(start, stop, step) - negative step (countdown)
-    // for i in range(10, 0, -2):
     ::tpy::range_check_overflow<int32_t>(10, 0, -2);
     for (int32_t i = 10; i > 0; i += -2) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // print(sum_range_step(0, 10, 3))  # 0 + 3 + 6 + 9 = 18
     std::cout << sum_range_step(0, 10, 3) << "\n";
-    // # range with unannotated default-int args
-    // n = 5
     n = 5;
-    // for i in range(n):
     int32_t __stop_4 = n;
     for (int32_t i = 0; i < __stop_4; ++i) {
-        // print(i)
         std::cout << i << "\n";
     }
 }

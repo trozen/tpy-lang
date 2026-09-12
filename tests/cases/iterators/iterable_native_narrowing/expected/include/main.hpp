@@ -9,143 +9,147 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T_it>
-  requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_fast(T_it& it);
-template<typename T_it>
-  requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_nested(T_it& it, bool flag);
-template<typename T_it>
-  requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
-int32_t sum_elif(int32_t kind, T_it& it);
-void main();
-
 // def sum_fast(it: Iterable[int32] | NativeIterable[int32]) -> int32:
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
+int32_t sum_fast(T_it& it);
+// def sum_nested(it: Iterable[int32] | NativeIterable[int32], flag: bool) -> int32:
+template<typename T_it>
+  requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
+int32_t sum_nested(T_it& it, bool flag);
+// def sum_elif(kind: int32, it: Iterable[int32] | NativeIterable[int32]) -> int32:
+template<typename T_it>
+  requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
+int32_t sum_elif(int32_t kind, T_it& it);
+// def main() -> None:
+void main();
+
+// def sum_fast(it: Iterable[int32] | NativeIterable[int32]) -> int32:
+//     total: int32 = 0
+//     if isinstance(it, NativeIterable):
+//         # Narrowed to NativeIterable[int32] -- emitted as begin/end range-for.
+//         for x in it:
+//             total += x
+//     else:
+//         # Still Iterable[int32] -- emitted as universal __iter__/__next__.
+//         for x in it:
+//             total += x
+//     return total
+template<typename T_it>
+  requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
 int32_t sum_fast(T_it& it) {
-    // total: int32 = 0
     int32_t total = 0;
-    // if isinstance(it, NativeIterable):
     if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
-        // # Narrowed to NativeIterable[int32] -- emitted as begin/end range-for.
-        // for x in it:
         auto& __obj_0 = it;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
-    // else:
     } else {
-        // # Still Iterable[int32] -- emitted as universal __iter__/__next__.
-        // for x in it:
         auto& __src_1 = it;
         auto&& __itr_1 = ::tpy::__iter__(__src_1);
         for (;;) {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_2);
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
     }
-    // return total
     return total;
 }
 // def sum_nested(it: Iterable[int32] | NativeIterable[int32], flag: bool) -> int32:
+//     # Exercise the protocol_narrowings save/restore across nested branches:
+//     # an inner if-block inside the narrowing branch must not leak its own
+//     # narrowing out, and the narrowing must still be visible after the
+//     # inner block re-exits.
+//     total: int32 = 0
+//     if isinstance(it, NativeIterable):
+//         if flag:
+//             for x in it:
+//                 total += x
+//         # Narrowing still in effect here -- this loop should also be range-for.
+//         for x in it:
+//             total += x * 10
+//     else:
+//         for x in it:
+//             total += x
+//     return total
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
 int32_t sum_nested(T_it& it, bool flag) {
-    // # Exercise the protocol_narrowings save/restore across nested branches:
-    // # an inner if-block inside the narrowing branch must not leak its own
-    // # narrowing out, and the narrowing must still be visible after the
-    // # inner block re-exits.
-    // total: int32 = 0
     int32_t total = 0;
-    // if isinstance(it, NativeIterable):
     if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
-        // if flag:
         if (flag) {
-            // for x in it:
             auto& __obj_0 = it;
             auto __beg_0 = __obj_0.begin();
             auto __end_0 = __obj_0.end();
             for (; __beg_0 != __end_0; ++__beg_0) {
                 int32_t x = *__beg_0;
-                // total += x
                 total = ::tpy::add_check<int32_t>(total, x);
             }
         }
-        // # Narrowing still in effect here -- this loop should also be range-for.
-        // for x in it:
         auto& __obj_1 = it;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t x = *__beg_1;
-            // total += x * 10
             total = ::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(x, 10)));
         }
-    // else:
     } else {
-        // for x in it:
         auto& __src_2 = it;
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
     }
-    // return total
     return total;
 }
 // def sum_elif(kind: int32, it: Iterable[int32] | NativeIterable[int32]) -> int32:
+//     # Exercise elif-branch save/restore: the narrowing must be local to the
+//     # isinstance branch and not leak across elif/else.
+//     total: int32 = 0
+//     if kind == 0:
+//         total = 1
+//     elif isinstance(it, NativeIterable):
+//         for x in it:
+//             total += x
+//     elif kind == 1:
+//         total = 99
+//     else:
+//         for x in it:
+//             total += x
+//     return total
 template<typename T_it>
   requires (::tpystd::typing::Iterable<T_it, int32_t> || ::tpy::NativeIterable<T_it, int32_t>)
 int32_t sum_elif(int32_t kind, T_it& it) {
-    // # Exercise elif-branch save/restore: the narrowing must be local to the
-    // # isinstance branch and not leak across elif/else.
-    // total: int32 = 0
     int32_t total = 0;
-    // if kind == 0:
     if ((kind == 0)) {
-        // total = 1
         total = 1;
-    // elif isinstance(it, NativeIterable):
     } else if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
-        // for x in it:
         auto& __obj_0 = it;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
-    // elif kind == 1:
     } else if ((kind == 1)) {
-        // total = 99
         total = 99;
-    // else:
     } else {
-        // for x in it:
         auto& __src_1 = it;
         auto&& __itr_1 = ::tpy::__iter__(__src_1);
         for (;;) {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_2);
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
     }
-    // return total
     return total;
 }
 

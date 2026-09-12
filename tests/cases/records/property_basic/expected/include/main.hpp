@@ -11,6 +11,7 @@ struct Circle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Circle:
@@ -39,19 +40,20 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 
 // def __init__(self, radius: int32) -> None:
+//     self._radius = radius
 inline Circle::Circle(int32_t radius) : _radius(radius) {}
 
 // @property
 // def radius(self) -> int32:
+//     return self._radius
 inline int32_t Circle::radius() const {
-    // return self._radius
     return this->_radius;
 }
 
 // @property
 // def diameter(self) -> int32:
+//     return self._radius * 2
 inline int32_t Circle::diameter() const {
-    // return self._radius * 2
     return (::tpy::mul_check<int32_t>(this->_radius, 2));
 }
 void __tpy_init();

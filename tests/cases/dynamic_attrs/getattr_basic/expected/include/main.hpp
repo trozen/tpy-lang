@@ -11,6 +11,7 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Config:
@@ -34,11 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, data: dict[str, Any]) -> None:
+//     self._data = data
 inline Config::Config(const ::tpy::ordered_map<std::string, ::tpy::Any>& data) : _data(data) {}
 
 // def __getattr__(self, name: str) -> Any:
+//     return self._data[name]
 inline ::tpy::Any Config::__getattr__(std::string_view name) const {
-    // return self._data[name]
     return ::tpy::__getitem__(this->_data, name);
 }
 void __tpy_init();

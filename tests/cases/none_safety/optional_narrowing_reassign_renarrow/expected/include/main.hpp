@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_reassign_renarrows(x: int32 | None) -> int32:
 int32_t test_reassign_renarrows(std::optional<int32_t> x);
+// def test_truthiness_short_circuit(a: int32 | None, b: int32 | None) -> int32:
 int32_t test_truthiness_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b);
+// def test_is_not_none_short_circuit(a: int32 | None, b: int32 | None) -> int32:
 int32_t test_is_not_none_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b);
 
 void __tpy_init();

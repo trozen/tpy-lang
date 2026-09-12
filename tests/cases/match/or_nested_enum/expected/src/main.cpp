@@ -51,51 +51,52 @@ namespace tpyapp::main {
 
 
 // def classify(c: Color) -> str:
+//     match c:
+//         # Same labels as the flat `case Color.Red | Color.Green | Color.Blue:`.
+//         case (Color.Red | Color.Green) | Color.Blue:
+//             return "primary"
+//         case Color.Cyan:
+//             return "mixed"
 std::string classify(Color c) {
-    // match c:
     auto& __match_subject_1 = c;
     switch (__match_subject_1) {
-    // case (Color.Red | Color.Green) | Color.Blue:
     case Color::Red:
     case Color::Green:
     case Color::Blue:
     {
-        // return "primary"
         return "primary";
         break;
     }
-    // case Color.Cyan:
     case Color::Cyan: {
-        // return "mixed"
         return "mixed";
         break;
     }
     }
     ::std::unreachable();
-    // # Same labels as the flat `case Color.Red | Color.Green | Color.Blue:`.
 }
 
 // def main() -> None:
+//     print(classify(Color.Red))
+//     print(classify(Color.Green))
+//     print(classify(Color.Blue))
+//     print(classify(Color.Cyan))
 void main() {
-    // print(classify(Color.Red))
     std::cout << classify(Color::Red) << "\n";
-    // print(classify(Color.Green))
     std::cout << classify(Color::Green) << "\n";
-    // print(classify(Color.Blue))
     std::cout << classify(Color::Blue) << "\n";
-    // print(classify(Color.Cyan))
     std::cout << classify(Color::Cyan) << "\n";
 }
 
+// # Parenthesized or-pattern groups on an enum subject (the enum switch
+// # strategy): the group flattens into one set of switch labels.
+// from enum import Enum, auto
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Parenthesized or-pattern groups on an enum subject (the enum switch
-    // # strategy): the group flattens into one set of switch labels.
-    // from enum import Enum, auto
-    // main()
     main();
 }
 

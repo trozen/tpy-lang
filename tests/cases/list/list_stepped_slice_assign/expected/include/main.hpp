@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen3;
 
+// def gen3() -> Iterator[int32]:
 __gen_gen3 gen3();
+// def main() -> None:
 void main();
 
-// Generator: gen3
+// def gen3() -> Iterator[int32]:
 struct __gen_gen3 : public ::tpy::next_iter_mixin<__gen_gen3, int32_t> {
     int32_t __state;
 

@@ -11,7 +11,9 @@ struct T;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(t: tuple[T | None, T | None]) -> int32:
 int32_t f(const std::tuple<const T*, const T*>& t);
+// def main() -> None:
 void main();
 
 // class T:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const T& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline T::T(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_or_default(x: int32, default: int32) -> int32:
 int32_t get_or_default(int32_t x, int32_t default_);
+// def test_local_keywords() -> None:
 void test_local_keywords();
+// def test_for_loop_keyword() -> None:
 void test_for_loop_keyword();
+// def delete(x: int32) -> int32:
 int32_t delete_(int32_t x);
+// def main() -> None:
 void main();
 
 void __tpy_init();

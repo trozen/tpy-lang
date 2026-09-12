@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def apply(f: Callable[[int32], int32], v: int32) -> int32:
+//     return f(v)
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
-    // return f(v)
     return f(v);
 }
 
 // def cell() -> Iterator[int32]:
+//     step = 1
+//     f: Callable[[int32], int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
+//     step = 100
+//     yield apply(f, 1)
+//     yield apply(f, 2)
 std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // step = 1
         step = 1;
-        // f: Callable[[int32], int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
         f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
-        // step = 100
         step = 100;
-        // yield apply(f, 1)
         __state = S_RESUME_0;
         return apply(f, 1);
     }
     case S_RESUME_0: {
-        // yield apply(f, 2)
         __state = S_RESUME_1;
         return apply(f, 2);
     }
@@ -45,19 +45,19 @@ __gen_cell cell() {
 }
 
 // def copied(xs: list[int32]) -> Iterator[int32]:
+//     f: Callable[[int32], int32] = lambda i: xs[i]
+//     yield apply(f, 0)
+//     xs[0] = 99
+//     yield apply(f, 0)
 std::expected<int32_t, ::tpy::StopIteration> __gen_copied::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // f: Callable[[int32], int32] = lambda i: xs[i]
         f = [xs = xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); };
-        // yield apply(f, 0)
         __state = S_RESUME_0;
         return apply(f, 0);
     }
     case S_RESUME_0: {
-        // xs[0] = 99
         ::tpy::__setitem__(xs, 0, 99);
-        // yield apply(f, 0)
         __state = S_RESUME_1;
         return apply(f, 0);
     }
@@ -77,8 +77,14 @@ __gen_copied copied(std::vector<int32_t>& xs) {
 }
 
 // def main() -> None:
+//     for v in cell():
+//         print("cell", v)
+//
+//     src = [1, 2]
+//     for v2 in copied(src):
+//         print("copied", v2)
+//     print("copied after", src)
 void main() {
-    // for v in cell():
     {
         auto __src_0 = cell();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -86,13 +92,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print("cell", v)
         std::cout << "cell" << " " << v << "\n";
         }
     }
-    // src = [1, 2]
     std::vector<int32_t> src = {1, 2};
-    // for v2 in copied(src):
     {
         auto __src_2 = copied(src);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -100,20 +103,18 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v2 = ::tpy::unwrap_ref(*__r_3);
-        // print("copied", v2)
         std::cout << "copied" << " " << v2 << "\n";
         }
     }
-    // print("copied after", src)
     std::cout << "copied after" << " " << ::tpy::ListPrinter(src) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

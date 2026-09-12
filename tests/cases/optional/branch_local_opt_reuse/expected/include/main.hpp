@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def cond(n: int) -> bool:
 bool cond(const ::tpy::BigInt& n);
+// def maybe(n: int) -> int | None:
 std::optional<::tpy::BigInt> maybe(const ::tpy::BigInt& n);
+// def maybe_s(n: int) -> str | None:
 std::optional<std::string> maybe_s(const ::tpy::BigInt& n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

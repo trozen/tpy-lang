@@ -5,93 +5,95 @@ namespace tpyapp::main {
 
 
 // def consume(p: tuple[T | None, T | None]) -> None:
+//     a, b = p
+//     if a is not None:
+//         print(a.x)
+//     else:
+//         print("None")
 void consume(const std::tuple<const T*, const T*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
 }
 
 // def main() -> None:
+//     t1 = T(1)
+//     t2 = T(2)
+//     items: list[tuple[T | None, T | None]] = [(t1, t2), (t1, None), (None, None)]
+//
+//     # Subscript read from a list of storage-form tuples flows through
+//     # tuple_to_pointer to match the pointer-form param of consume().
+//     consume(items[0])
+//     consume(items[1])
+//     consume(items[2])
+//
+//     # Destructuring directly from a subscript also works.
+//     a, b = items[0]
+//     if a is not None:
+//         print(a.x)
+//
+//     # for-loop over a storage-form container: the loop var binds to the
+//     # storage-form element, but flows through tuple_to_pointer at the call.
+//     for it in items:
+//         consume(it)
+//
+//     # Local initialised from a storage-form source: same conversion at
+//     # the boundary as if the source were used directly.
+//     snap = items[0]
+//     consume(snap)
+//
+//     # for-loop with destructuring directly: the synthetic loop tuple is
+//     # storage-form, the destructure target slots are pointer-form.
+//     for x, y in items:
+//         if x is not None:
+//             print(x.x)
 void main() {
-    // t1 = T(1)
     T t1 = T(1);
-    // t2 = T(2)
     T t2 = T(2);
-    // items: list[tuple[T | None, T | None]] = [(t1, t2), (t1, None), (None, None)]
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), &(t2)}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr})};
-    // # Subscript read from a list of storage-form tuples flows through
-    // # tuple_to_pointer to match the pointer-form param of consume().
-    // consume(items[0])
     consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 0)));
-    // consume(items[1])
     consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 1)));
-    // consume(items[2])
     consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 2)));
-    // # Destructuring directly from a subscript also works.
-    // a, b = items[0]
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 0));
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
     }
-    // # for-loop over a storage-form container: the loop var binds to the
-    // # storage-form element, but flows through tuple_to_pointer at the call.
-    // for it in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        // consume(it)
         consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
     }
-    // # Local initialised from a storage-form source: same conversion at
-    // # the boundary as if the source were used directly.
-    // snap = items[0]
     auto&& snap = ::tpy::__getitem__(items, 0);
-    // consume(snap)
     consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(snap));
-    // # for-loop with destructuring directly: the synthetic loop tuple is
-    // # storage-form, the destructure target slots are pointer-form.
-    // for x, y in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        // # for-loop with destructuring directly: the synthetic loop tuple is
-        // # storage-form, the destructure target slots are pointer-form.
-        // for x, y in items:
         auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(__for_tup_0);
         T* x = std::get<0>(__tup_2);
         T* y = std::get<1>(__tup_2);
-        // if x is not None:
         if ((x != nullptr)) {
-            // print(x.x)
             std::cout << x->x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

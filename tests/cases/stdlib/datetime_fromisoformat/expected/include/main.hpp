@@ -16,9 +16,13 @@ using ::tpystd::datetime::timezone;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sd(s: str) -> None:
 void sd(std::string_view s);
+// def st(s: str) -> None:
 void st(std::string_view s);
+// def sdt(s: str) -> None:
 void sdt(std::string_view s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

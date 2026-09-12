@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Words(["hello", "world", "!"])
+//     c = Container(w)
+//     print(c.count)
+//     n = Numbers([10, 20])
+//     c.update(n)
+//     print(c.count)
+//     print(c.combined_len(w))
 void main() {
-    // w = Words(["hello", "world", "!"])
     Words w = Words({"hello", "world", "!"});
-    // c = Container(w)
     Container c = Container(w);
-    // print(c.count)
     std::cout << c.count << "\n";
-    // n = Numbers([10, 20])
     Numbers n = Numbers({10, 20});
-    // c.update(n)
     c.update(n);
-    // print(c.count)
     std::cout << c.count << "\n";
-    // print(c.combined_len(w))
     std::cout << c.combined_len(w) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

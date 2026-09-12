@@ -13,6 +13,7 @@ struct Both;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # BaseN.method(self, ...) disambiguates calls to a specific ancestor's method.
@@ -63,26 +64,26 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
 
 
 // def describe(self) -> str:
+//     return "left"
 inline std::string Left::describe() const {
-    // return "left"
     return "left";
 }
 
 // def describe(self) -> str:
+//     return "right"
 inline std::string Right::describe() const {
-    // return "right"
     return "right";
 }
 
 // def describe(self) -> str:
+//     # Override required by the cross-base conflict check; delegate to
+//     # each base explicitly via the unbound-self form.
+//     left = Left.describe(self)
+//     right = Right.describe(self)
+//     return left + "+" + right
 inline std::string Both::describe() const {
-    // # Override required by the cross-base conflict check; delegate to
-    // # each base explicitly via the unbound-self form.
-    // left = Left.describe(self)
     std::string left = this->Left::describe();
-    // right = Right.describe(self)
     std::string right = this->Right::describe();
-    // return left + "+" + right
     return (::tpy::str_concat((::tpy::str_concat(left, "+")), right));
 }
 void __tpy_init();

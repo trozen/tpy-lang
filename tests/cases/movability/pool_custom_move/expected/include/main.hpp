@@ -13,7 +13,9 @@ struct Tagged;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[Pool[Item, 4]]:
 Pool<Item, 4> make();
+// def main() -> None:
 void main();
 
 // class Item:
@@ -42,18 +44,17 @@ struct Pool {
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
+    //     self._storage = UninitArrayStorage[T, N]()
+    //     self._size = uint32(0)
     Pool() : _storage(::tpy::UninitArrayStorage<T, N>()), _size(0) {}
     // non-copyable (field '_storage')
     Pool(const Pool&) = delete;
     Pool& operator=(const Pool&) = delete;
     Pool(Pool&& other) noexcept : _storage(), _size() {
-        // for ui in range(other._size):
         uint32_t __stop_0 = other._size;
         for (uint32_t ui = 0; ui < __stop_0; ++ui) {
-            // self._storage.init(ui, other._storage.take(ui))
             this->_storage.init(ui, other._storage.take(ui));
         }
-        // self._size = other._size
         this->_size = other._size;
         other.__tpy_owned_ = false;
     }
@@ -66,24 +67,24 @@ struct Pool {
     }
 
     // def __del__(self) -> None:
+    //     self._storage.drop_n(uint32(0), self._size)
     ~Pool() {
         if (!this->__tpy_owned_) return;
-        // self._storage.drop_n(uint32(0), self._size)
         this->_storage.drop_n(0, this->_size);
     }
 
     // def push(self, value: Own[T]) -> None:
+    //     self._storage.init(self._size, value)
+    //     self._size += 1
     void push(::tpy::own_param_t<T> value) {
-        // self._storage.init(self._size, value)
         this->_storage.init(this->_size, std::move(value));
-        // self._size += 1
         this->_size = ::tpy::add_check<uint32_t>(this->_size, 1);
     }
 
     // @readonly
     // def get(self, i: int32) -> readonly[T]:
+    //     return self._storage.load(uint32.trunc(i))
     ::tpy::val_or_cref_t<T> get(int32_t i) const {
-        // return self._storage.load(uint32.trunc(i))
         return this->_storage.load(static_cast<uint32_t>(i));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pool";
@@ -120,24 +121,20 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Item::Item(std::string_view name) : name(name) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tagged::Tagged(int32_t n) : n(n) {}
 
 inline Tagged::Tagged(Tagged&& other) noexcept : n() {
-    // # `__move__` is inlined into a noexcept move ctor, so sema rejects a
-    // # raise that could escape it -- one a local handler catches cannot.
-    // try:
     {
         try {
-            // raise ValueError("guarded")  # tpyc: ok
             throw ::tpy::ValueError("guarded");
         } catch (const ::tpy::ValueError&) {
-            // pass
         }
     }
-    // self.n = other.n
     this->n = other.n;
     other.__tpy_owned_ = false;
 }
@@ -150,9 +147,9 @@ inline Tagged& Tagged::operator=(Tagged&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     pass
 inline Tagged::~Tagged() {
     if (!this->__tpy_owned_) return;
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

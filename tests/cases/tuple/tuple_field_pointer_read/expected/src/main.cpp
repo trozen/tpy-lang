@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def bump(t: tuple[int32, Box]) -> None:
+//     t[1].val = t[1].val + 10
 void bump(const std::tuple<int32_t, Box*>& t) {
-    // t[1].val = t[1].val + 10
     std::get<1>(t)->val = (::tpy::add_check<int32_t>(std::get<1>(t)->val, 10));
 }
 
 // def main() -> None:
+//     h = Holder(Box(5))
+//     bump(h.pair)
+//     print(h.pair[1].val)
+//     bump(h.pair)
+//     print(h.pair[1].val)
 void main() {
-    // h = Holder(Box(5))
     Holder h = Holder(Box(5));
-    // bump(h.pair)
     bump(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
-    // print(h.pair[1].val)
     std::cout << std::get<1>(h.pair).val << "\n";
-    // bump(h.pair)
     bump(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
-    // print(h.pair[1].val)
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     print(h.first_nonnull())
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(h.first_nonnull())
     std::cout << h.first_nonnull() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

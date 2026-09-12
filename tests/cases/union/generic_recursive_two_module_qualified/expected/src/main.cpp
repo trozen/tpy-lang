@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: treea.Tree[int] = [1, [2, 3]]
+//     b: treeb.Tree[int] = [4, [5, [6, 7]]]
+//     print(treea.leaf_count(a))
+//     print(treeb.leaf_count(b))
 void main() {
-    // a: treea.Tree[int] = [1, [2, 3]]
     ::tpyapp::treea::Tree<::tpy::BigInt> a = std::vector<::tpyapp::treea::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treea::Tree<::tpy::BigInt>>{2, 3}};
-    // b: treeb.Tree[int] = [4, [5, [6, 7]]]
     ::tpyapp::treeb::Tree<::tpy::BigInt> b = std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{4, std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{5, std::vector<::tpyapp::treeb::Tree<::tpy::BigInt>>{6, 7}}};
-    // print(treea.leaf_count(a))
     std::cout << ::tpyapp::treea::leaf_count<::tpy::BigInt>(a) << "\n";
-    // print(treeb.leaf_count(b))
     std::cout << ::tpyapp::treeb::leaf_count<::tpy::BigInt>(b) << "\n";
 }
 
+// # Two different modules each export a generic recursive `Tree[T]`, both used
+// # qualified in one file. The purest exercise of qname-keyed wrapper rendering:
+// # `treea.Tree` and `treeb.Tree` are distinct C++ types
+// # (`::tpyapp::treea::Tree` vs `::tpyapp::treeb::Tree`) registered in one
+// # compilation under the same short name, kept apart by canonical qname.
+// # Read-only traversal is intentional (targets distinct resolution + rendering).
+// import treea
+// import treeb
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two different modules each export a generic recursive `Tree[T]`, both used
-    // # qualified in one file. The purest exercise of qname-keyed wrapper rendering:
-    // # `treea.Tree` and `treeb.Tree` are distinct C++ types
-    // # (`::tpyapp::treea::Tree` vs `::tpyapp::treeb::Tree`) registered in one
-    // # compilation under the same short name, kept apart by canonical qname.
-    // # Read-only traversal is intentional (targets distinct resolution + rendering).
-    // import treea
     ::tpyapp::treea::__tpy_init();
-    // import treeb
     ::tpyapp::treeb::__tpy_init();
-    // main()
     main();
 }
 

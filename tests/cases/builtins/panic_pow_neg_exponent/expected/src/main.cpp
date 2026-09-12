@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: int32 = int32(2)
+//     b: int32 = int32(-1)
+//     print(pow(a, b))
 void main() {
-    // a: int32 = int32(2)
     int32_t a = 2;
-    // b: int32 = int32(-1)
     int32_t b = -1;
-    // print(pow(a, b))
     std::cout << ::tpy::pow_check<int32_t>(a, b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

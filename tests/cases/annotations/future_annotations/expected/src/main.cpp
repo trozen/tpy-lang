@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def first(items: list[int32]) -> int32:
+//     return items[0]
 int32_t first(const std::vector<int32_t>& items) {
-    // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 
 // def take(f: Apple | Banana) -> None:
+//     if isinstance(f, Apple):
+//         print("apple")
+//     else:
+//         print("banana")
 void take(::tpy::Union<const Apple*, const Banana*> f) {
-    // if isinstance(f, Apple):
     if (std::holds_alternative<const Apple*>(f)) {
         auto& __f = *std::get<const Apple*>(f);
-        // print("apple")
         std::cout << "apple" << "\n";
-    // else:
     } else {
         auto& __f = *std::get<const Banana*>(f);
-        // print("banana")
         std::cout << "banana" << "\n";
     }
 }
 
 // def main() -> None:
+//     print(first([int32(11), int32(12), int32(13)]))
+//     take(Apple())
+//     take(Banana())
 void main() {
-    // print(first([int32(11), int32(12), int32(13)]))
     std::vector<int32_t> __tmp_1 = {11, 12, 13};
     std::cout << first(__tmp_1) << "\n";
-    // take(Apple())
     Apple __tmp_2 = Apple();
     take(::tpy::Union<const Apple*, const Banana*>{&__tmp_2});
-    // take(Banana())
     Banana __tmp_3 = Banana();
     take(::tpy::Union<const Apple*, const Banana*>{&__tmp_3});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

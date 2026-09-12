@@ -11,7 +11,9 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def free_text(b: bytes) -> str:       # free function, owned return
 std::string free_text(::tpy::BytesView b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -55,45 +57,47 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, payload: bytes, label: str) -> None:
+//     self.payload = payload
+//     self.label = label
 inline Box::Box(::tpy::BytesView payload, std::string_view label) : payload(::tpy::Bytes(payload)), label(label) {}
 
 // def m_text(self) -> str:          # method, owned return
+//     return self.payload.decode()
 inline std::string Box::m_text() const {
-    // return self.payload.decode()
     return ::tpy::bytes_decode(this->payload);
 }
 
 // def m_name(self) -> StrView:      # method, borrow of the stable field
+//     return self.label
 inline std::string_view Box::m_name() const {
-    // return self.label
     return this->label;
 }
 
 // @property
 // def text(self) -> str:            # property, owned return
+//     return self.payload.decode()
 inline std::string Box::text() const {
-    // return self.payload.decode()
     return ::tpy::bytes_decode(this->payload);
 }
 
 // @property
 // def tagged(self) -> str:          # property, owned concatenation
+//     return self.label + "!"
 inline std::string Box::tagged() const {
-    // return self.label + "!"
     return (::tpy::str_concat(this->label, "!"));
 }
 
 // @property
 // def name(self) -> StrView:        # property, borrow of the stable field
+//     return self.label
 inline std::string_view Box::name() const {
-    // return self.label
     return this->label;
 }
 
 // @property
 // def raw(self) -> bytes:           # property, owned bytes (decode round-trip)
+//     return self.text.encode()
 inline ::tpy::Bytes Box::raw() const {
-    // return self.text.encode()
     return ::tpy::bytes_from_str(this->text());
 }
 void __tpy_init();

@@ -12,6 +12,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Point:
@@ -47,14 +48,14 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def take(self, p: Own[Point] | None) -> None:
+//     if p is not None:
+//         self.val = int32(1)
+//     else:
+//         self.val = int32(0)
 inline void Container::take(std::optional<Point> p) {
-    // if p is not None:
     if ((p.has_value())) {
-        // self.val = int32(1)
         this->val = 1;
-    // else:
     } else {
-        // self.val = int32(0)
         this->val = 0;
     }
 }

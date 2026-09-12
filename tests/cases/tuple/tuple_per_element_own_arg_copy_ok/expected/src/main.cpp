@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def sink(p: tuple[Own[Box], int32]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+//     return p[0].val + p[1]
 int32_t sink(std::tuple<Box, int32_t>&& p) {
-    // return p[0].val + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p).val, std::get<1>(p)));
 }
 
 // def f(b: Box) -> int32:
+//     pair = (copy(b), 0)
+//     return sink(pair)
 int32_t f(const Box& b) {
-    // pair = (copy(b), 0)
     auto pair = std::tuple<Box, int32_t>{Box(b), 0};
-    // return sink(pair)
     return sink(std::move(pair));
 }
 
 // def main() -> None:
+//     print(f(Box(5)))  # 5
 void main() {
-    // print(f(Box(5)))  # 5
     Box __tmp_1 = Box(5);
     std::cout << f(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

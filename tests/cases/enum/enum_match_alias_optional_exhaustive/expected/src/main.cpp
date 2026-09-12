@@ -5,52 +5,53 @@ namespace tpyapp::main {
 
 
 // def label(c: C | None) -> str:
+//     match c:
+//         case C.RED:
+//             return "r"
+//         case C.GREEN:
+//             return "g"
+//         case C.BLUE:
+//             return "b"
+//         case None:
+//             return "none"
 std::string label(std::optional<::tpyapp::palette::Color> c) {
-    // match c:
     auto& __match_subject_1 = c;
-    // case C.RED:
     if (__match_subject_1.has_value() && (*__match_subject_1) == ::tpyapp::palette::Color::RED) {
-        // return "r"
         return "r";
-    // case C.GREEN:
     } else if (__match_subject_1.has_value() && (*__match_subject_1) == ::tpyapp::palette::Color::GREEN) {
-        // return "g"
         return "g";
-    // case C.BLUE:
     } else if (__match_subject_1.has_value() && (*__match_subject_1) == ::tpyapp::palette::Color::BLUE) {
-        // return "b"
         return "b";
-    // case None:
     } else if (!__match_subject_1.has_value()) {
-        // return "none"
         return "none";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(label(C.RED))
+//     print(label(C.GREEN))
+//     print(label(C.BLUE))
+//     print(label(None))
 void main() {
-    // print(label(C.RED))
     std::cout << label(::tpyapp::palette::Color::RED) << "\n";
-    // print(label(C.GREEN))
     std::cout << label(::tpyapp::palette::Color::GREEN) << "\n";
-    // print(label(C.BLUE))
     std::cout << label(::tpyapp::palette::Color::BLUE) << "\n";
-    // print(label(None))
     std::cout << label(std::nullopt) << "\n";
 }
 
+// # Regression: an exhaustive match over an Optional alias-imported enum
+// # (every member plus None) must be accepted -- covers the Optional subject
+// # path, the second call site the canonical-key fix touches.
+// from palette import Color as C
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: an exhaustive match over an Optional alias-imported enum
-    // # (every member plus None) must be accepted -- covers the Optional subject
-    // # path, the second call site the canonical-key fix touches.
-    // from palette import Color as C
     ::tpyapp::palette::__tpy_init();
-    // main()
     main();
 }
 

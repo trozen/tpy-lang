@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // @export
 // def pick(d: dict[str, int64]) -> dict[str, int64]:  # tpyc: warning(/dict parameter 'd' is copied in/)
+//     return d  # tpyc: warning(/function 'pick': returns a dict by reference.*copied across the CPython boundary.*return Own/)
 ::tpy::ordered_map<std::string, int64_t>& pick(::tpy::ordered_map<std::string, int64_t>& d) {
-    // return d  # tpyc: warning(/function 'pick': returns a dict by reference.*copied across the CPython boundary.*return Own/)
     return d;
 }
 
+// from tpy.extern import export
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import export
 }
 
 } // namespace tpyapp::main

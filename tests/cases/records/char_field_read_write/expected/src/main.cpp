@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def swap(p: P, z: char) -> char:
+//     x = p.c
+//     # The field write aliases the caller's record.
+//     p.c = z
+//     return x
 char swap(P& p, char z) {
-    // x = p.c
     char x = p.c;
-    // # The field write aliases the caller's record.
-    // p.c = z
     p.c = z;
-    // return x
     return x;
 }
 
 // def show(p: P) -> None:
+//     # A char field compared against a string literal.
+//     if p.c == "x":
+//         print(p.c)
 void show(const P& p) {
-    // # A char field compared against a string literal.
-    // if p.c == "x":
     if ((p.c == 'x')) {
-        // print(p.c)
         std::cout << p.c << "\n";
     }
 }
 
 // def main() -> None:
+//     z: char = "z"
+//     x: char = "x"
+//     p = P(x)
+//     show(p)
+//     print(swap(p, z))
+//     print(p.get())
+//     p.put(x)
+//     show(p)
 void main() {
-    // z: char = "z"
     char z = 'z';
-    // x: char = "x"
     char x = 'x';
-    // p = P(x)
     P p = P(x);
-    // show(p)
     show(p);
-    // print(swap(p, z))
     std::cout << swap(p, z) << "\n";
-    // print(p.get())
     std::cout << p.get() << "\n";
-    // p.put(x)
     p.put(x);
-    // show(p)
     show(p);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

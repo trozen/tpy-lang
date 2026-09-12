@@ -12,6 +12,7 @@ struct IntBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Store:
@@ -74,63 +75,66 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 
 
 // def __init__(self) -> None:
+//     self._a = 0
+//     self._b = 0
 inline Store::Store() : _a(0), _b(0) {}
 
 // def __getitem__(self, key: str) -> int32:
+//     if key == "a":
+//         return self._a
+//     return self._b
 inline int32_t Store::__getitem__(std::string_view key) const {
-    // if key == "a":
     if ((key == "a")) {
-        // return self._a
         return this->_a;
     }
-    // return self._b
     return this->_b;
 }
 
 // def __setitem__(self, key: str, value: int32) -> None:
+//     if key == "a":
+//         self._a = value
+//     else:
+//         self._b = value
 inline void Store::__setitem__(std::string_view key, int32_t value) {
-    // if key == "a":
     if ((key == "a")) {
-        // self._a = value
         this->_a = value;
-    // else:
     } else {
-        // self._b = value
         this->_b = value;
     }
 }
 
 // def __delitem__(self, key: str) -> None:
+//     if key == "a":
+//         self._a = -1
+//     else:
+//         self._b = -1
 inline void Store::__delitem__(std::string_view key) {
-    // if key == "a":
     if ((key == "a")) {
-        // self._a = -1
         this->_a = -1;
-    // else:
     } else {
-        // self._b = -1
         this->_b = -1;
     }
 }
 
 // def __init__(self) -> None:
+//     self.v = 0
 inline IntBox::IntBox() : v(0) {}
 
 // def __getitem__(self, i: int32) -> int32:
+//     return self.v
 inline int32_t IntBox::__getitem__(int32_t i) const {
-    // return self.v
     return this->v;
 }
 
 // def __setitem__(self, i: int32, value: int32) -> None:
+//     self.v = i + value
 inline void IntBox::__setitem__(int32_t i, int32_t value) {
-    // self.v = i + value
     this->v = (::tpy::add_check<int32_t>(i, value));
 }
 
 // def __delitem__(self, i: int32) -> None:
+//     self.v = -i
 inline void IntBox::__delitem__(int32_t i) {
-    // self.v = -i
     this->v = ::tpy::neg_check<int32_t>(i);
 }
 void __tpy_init();

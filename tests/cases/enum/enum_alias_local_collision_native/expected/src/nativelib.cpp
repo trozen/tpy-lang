@@ -42,15 +42,15 @@ std::optional<::lib::Color> EnumUtil<::lib::Color>::try_parse(std::string_view _
 namespace tpyapp::nativelib {
 
 
+// # Declares the @native binding for lib::Color.
+// # tpy: include("native_types.hpp")
+// from enum import Enum, auto
+// from tpy.extern import native
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Declares the @native binding for lib::Color.
-    // # tpy: include("native_types.hpp")
-    // from enum import Enum, auto
-    // from tpy.extern import native
 }
 
 } // namespace tpyapp::nativelib

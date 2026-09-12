@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def cb(x: int32) -> None:
+//     print(x)
 void cb(int32_t x) {
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def take_list(xs: list[int32]) -> None:
+//     print(len(xs))
 void take_list(const std::vector<int32_t>& xs) {
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def use_callable(f: Callable[[int32], None]) -> None:
+//     n: int = 7
+//     f(n)
 void use_callable(const std::function<void(int32_t)>& f) {
-    // n: int = 7
     ::tpy::BigInt n = ::tpy::BigInt(7);
-    // f(n)
     f((n).to_fixed_check<int32_t>());
 }
 
 // def use_local() -> None:
+//     f: Callable[[int32], None] = cb
+//     n: int = 99
+//     f(n)
 void use_local() {
-    // f: Callable[[int32], None] = cb
     std::function<void(int32_t)> f = cb;
-    // n: int = 99
     ::tpy::BigInt n = ::tpy::BigInt(99);
-    // f(n)
     f((n).to_fixed_check<int32_t>());
 }
 
 // def main() -> None:
+//     use_fn(cb)
+//     use_callable(cb)
+//     use_list_fn(take_list)
+//     use_local()
 void main() {
-    // use_fn(cb)
     use_fn(cb);
-    // use_callable(cb)
     use_callable(cb);
-    // use_list_fn(take_list)
     use_list_fn(take_list);
-    // use_local()
     use_local();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

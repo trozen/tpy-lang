@@ -1,0 +1,11 @@
+module 3
+shaped 3
+quoted first
+    second
+        third
+method 8
+simple-gen [0, 1, 2]
+resumable-gen [1, 2]
+async 8
+helper 2
+decorated 3

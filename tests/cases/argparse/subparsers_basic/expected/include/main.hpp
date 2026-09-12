@@ -14,10 +14,15 @@ struct __tpy_builder_argparse_args_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> int32:
 int32_t main();
+// args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
 __tpy_builder_argparse_show_args_1 __tpy_builder_argparse_show_parse_1(const std::vector<std::string>& argv);
+// args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
 __tpy_builder_argparse_set_args_1 __tpy_builder_argparse_set_parse_1(const std::vector<std::string>& argv);
+// args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
 void __tpy_builder_argparse_help_1();
+// args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
 
 // args = parser.parse_args(["set", "--key", "color", "--value", "blue"])

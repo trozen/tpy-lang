@@ -5,57 +5,58 @@ namespace tpyapp::main {
 
 
 // def inner(which: int) -> None:
+//     try:
+//         if which == 0:
+//             raise AErr()
+//         raise BErr()
+//     except (AErr, BErr):  # tpyc: ok
+//         print("inner saw it, re-raising")
+//         raise
 void inner(const ::tpy::BigInt& which) {
-    // try:
     {
         try {
-            // if which == 0:
             if ((which == 0)) {
-                // raise AErr()
                 throw AErr{};
             }
-            // raise BErr()
             throw BErr{};
         } catch (const AErr&) {
-            // print("inner saw it, re-raising")
             std::cout << "inner saw it, re-raising" << "\n";
-            // raise
             throw;
         } catch (const BErr&) {
-            // print("inner saw it, re-raising")
             std::cout << "inner saw it, re-raising" << "\n";
-            // raise
             throw;
         }
     }
 }
 
 // def main() -> None:
+//     for i in range(2):
+//         try:
+//             inner(i)
+//         except AErr:
+//             print("outer: AErr")
+//         except BErr:
+//             print("outer: BErr")
 void main() {
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // try:
         {
             try {
-                // inner(i)
                 inner(::tpy::BigInt(i));
             } catch (const AErr&) {
-                // print("outer: AErr")
                 std::cout << "outer: AErr" << "\n";
             } catch (const BErr&) {
-                // print("outer: BErr")
                 std::cout << "outer: BErr" << "\n";
             }
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

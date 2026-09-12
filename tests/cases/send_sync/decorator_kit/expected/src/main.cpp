@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
+//     return len(xs)
 ::tpystd::tpy::Poll<int32_t> __coro_forced::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return len(xs)
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(xs);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,38 +26,39 @@ __coro_forced forced(std::vector<int32_t>& xs) {
 }
 
 // def main() -> None:
+//     t = Trade(1, 2)         # tpyc: is_send(yes) is_sync(yes)
+//     h = NativeHandle(take_ptr(t.sym))  # tpyc: is_send(yes)
+//     a = ArenaBuffer()       # tpyc: is_send(no) is_sync(no)
+//     s = SharedTable()       # tpyc: is_send(yes) is_sync(yes)
+//     print(t.qty, len(a.data), len(s.data))
+//     xs = [1, 2, 3]
+//     print(asyncio.run(forced(xs)))
+//     print(list(gen_forced(3)))
 void main() {
-    // t = Trade(1, 2)         # tpyc: is_send(yes) is_sync(yes)
     Trade t = Trade(1, 2);
-    // h = NativeHandle(take_ptr(t.sym))  # tpyc: is_send(yes)
     NativeHandle h = NativeHandle(&t.sym);
-    // a = ArenaBuffer()       # tpyc: is_send(no) is_sync(no)
     ArenaBuffer a = ArenaBuffer();
-    // s = SharedTable()       # tpyc: is_send(yes) is_sync(yes)
     SharedTable s = SharedTable();
-    // print(t.qty, len(a.data), len(s.data))
     std::cout << t.qty << " " << ::tpy::__len__(a.data) << " " << ::tpy::__len__(s.data) << "\n";
-    // xs = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // print(asyncio.run(forced(xs)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(forced(xs))) << "\n";
-    // print(list(gen_forced(3)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_forced(3))) << "\n";
 }
 
+// # Send/Sync opt-in / opt-out kit: class Foo(Send) verified opt-in,
+// # @unsafe_send forcing a Ptr-holding record Send, @nosend/@nosync opt-out
+// # on a structurally-Send record, and function-level overrides steering the
+// # FrameType answer (@unsafe_send on a borrowing async def, @nosend making
+// # a free function unusable as Send[Callable]).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Send/Sync opt-in / opt-out kit: class Foo(Send) verified opt-in,
-    // # @unsafe_send forcing a Ptr-holding record Send, @nosend/@nosync opt-out
-    // # on a structurally-Send record, and function-level overrides steering the
-    // # FrameType answer (@unsafe_send on a borrowing async def, @nosend making
-    // # a free function unusable as Send[Callable]).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

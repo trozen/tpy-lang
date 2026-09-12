@@ -12,7 +12,9 @@ struct Summary;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count_leaves(t: Tree[int32]) -> int32:
 int32_t count_leaves(const Tree<int32_t>& t);
+// def main() -> None:
 void main();
 
 template<typename T>
@@ -51,6 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Summary& obj) {
 
 
 // def __init__(self, t: Tree[int32]) -> None:
+//     self.n = count_leaves(t)
 inline Summary::Summary(const Tree<int32_t>& t) : n(count_leaves(t)) {}
 void __tpy_init();
 } // namespace tpyapp::main

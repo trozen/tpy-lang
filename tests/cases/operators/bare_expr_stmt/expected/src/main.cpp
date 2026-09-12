@@ -5,70 +5,71 @@ namespace tpyapp::main {
 
 
 // def peek(n: int32) -> int32:
+//     print("peeked")
+//     return n
 int32_t peek(int32_t n) {
-    // print("peeked")
     std::cout << "peeked" << "\n";
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     n = 1
+//     ok = True
+//     p = Point(7)
+//     n + 1  # tpyc: ok
+//     -n  # tpyc: ok
+//     # The pure forms carry no effect of their own -- they exist to prove the
+//     # statement builds under the strict warning set.
+//     n < 2  # tpyc: ok
+//     0 < n < 5  # tpyc: ok
+//     p.x  # tpyc: ok
+//     # The sibling rows -- a bare literal (which the REPL appends to every
+//     # compile) and a bare name. Both take the same cast for the same reason.
+//     7  # tpyc: ok
+//     n  # tpyc: ok
+//     # The operand is still EVALUATED -- `peek` prints, so a dropped
+//     # statement would be visible in the output.
+//     ok and peek(n) > 0  # tpyc: ok
+//     peek(n) if ok else 0  # tpyc: ok
+//     z = 0
+//     try:
+//         # ... and the discarded division still raises.
+//         n // z  # tpyc: ok
+//         print("not reached")
+//     except ZeroDivisionError:
+//         print("divided by zero")
+//     print(n, p.x)
 void main() {
-    // n = 1
     int32_t n = 1;
-    // ok = True
     bool ok = true;
-    // p = Point(7)
     Point p = Point(7);
-    // n + 1  # tpyc: ok
     (void)((::tpy::add_check<int32_t>(n, 1)));
-    // -n  # tpyc: ok
     (void)(::tpy::neg_check<int32_t>(n));
-    // # The pure forms carry no effect of their own -- they exist to prove the
-    // # statement builds under the strict warning set.
-    // n < 2  # tpyc: ok
     (void)((n < 2));
-    // 0 < n < 5  # tpyc: ok
     (void)(((0 < n) && (n < 5)));
-    // p.x  # tpyc: ok
     (void)(p.x);
-    // # The sibling rows -- a bare literal (which the REPL appends to every
-    // # compile) and a bare name. Both take the same cast for the same reason.
-    // 7  # tpyc: ok
     (void)(7);
-    // n  # tpyc: ok
     (void)(n);
-    // # The operand is still EVALUATED -- `peek` prints, so a dropped
-    // # statement would be visible in the output.
-    // ok and peek(n) > 0  # tpyc: ok
     (void)((ok && (peek(n) > 0)));
-    // peek(n) if ok else 0  # tpyc: ok
     (void)(((ok) ? (peek(n)) : (0)));
-    // z = 0
     int32_t z = 0;
-    // try:
     {
         try {
-            // # ... and the discarded division still raises.
-            // n // z  # tpyc: ok
             (void)((::tpy::div_check<int32_t>(n, z)));
-            // print("not reached")
             std::cout << "not reached" << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("divided by zero")
             std::cout << "divided by zero" << "\n";
         }
     }
-    // print(n, p.x)
     std::cout << n << " " << p.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def grown() -> int32:
 int32_t grown();
+// def fixed() -> int32:
 int32_t fixed();
+// def from_empty(n: int32) -> int32:
 int32_t from_empty(int32_t n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

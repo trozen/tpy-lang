@@ -3,53 +3,51 @@
 
 namespace tpyapp::main {
 
-// points: list[Point] = list()
 std::vector<Point>* points{};
-// result = find(points, 2)
 Point* result{};
 
 // def find(points: list[Point], target: int32) -> Point | None:
+//     for p in points:
+//         if p.x == target:
+//             return p
+//     return None
 Point* find(std::vector<Point>& points, int32_t target) {
-    // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // if p.x == target:
         if ((p.x == target)) {
-            // return p
             return &(p);
         }
     }
-    // return None
     return nullptr;
 }
 
+// points: list[Point] = list()
+// points.append(Point(1, 10))
+// points.append(Point(2, 20))
+// points.append(Point(3, 30))
+// result = find(points, 2)
+// if result is not None:
+//     print(result.y)
+// result = find(points, 99)
+// print(result is None)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // points: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
-    // points.append(Point(1, 10))
     points->push_back(Point(1, 10));
-    // points.append(Point(2, 20))
     points->push_back(Point(2, 20));
-    // points.append(Point(3, 30))
     points->push_back(Point(3, 30));
-    // result = find(points, 2)
     result = find((*points), 2);
-    // if result is not None:
     if ((result != nullptr)) {
-        // print(result.y)
         std::cout << result->y << "\n";
     }
-    // result = find(points, 99)
     result = find((*points), 99);
-    // print(result is None)
     std::cout << ::tpy::print_bool((result == nullptr)) << "\n";
 }
 

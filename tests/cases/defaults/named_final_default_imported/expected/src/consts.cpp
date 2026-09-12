@@ -4,6 +4,8 @@
 namespace tpyapp::consts {
 
 
+// NOFLAG: Final[uint32] = uint32(0)
+// CASELESS: Final[uint32] = uint32(8)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

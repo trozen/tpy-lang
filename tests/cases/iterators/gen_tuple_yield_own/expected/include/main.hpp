@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -31,7 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int):
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
+// def g(n: int) -> Iterator[tuple[int, Own[Box]]]:
+//     for i in range(n):
+//         yield (i, Box(i * 10))
 inline auto g(const ::tpy::BigInt& n) {
     return ::tpy::make_generator<std::tuple<::tpy::BigInt, Box>>(
         [n, __i = ::tpy::BigInt(0), __stop = static_cast<::tpy::BigInt>(n)]() mutable -> std::optional<std::tuple<::tpy::BigInt, Box>> {

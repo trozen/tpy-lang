@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def greet(a: Animal) -> None:
+//     print(a.name)
 void greet(const Animal& a) {
-    // print(a.name)
     std::cout << a.name << "\n";
 }
 
 // def main() -> None:
+//     # Rvalue child argument -- temp must preserve the Dog type, not slice.
+//     greet(Dog("Max", "Beagle"))
 void main() {
-    // # Rvalue child argument -- temp must preserve the Dog type, not slice.
-    // greet(Dog("Max", "Beagle"))
     Dog __tmp_1 = Dog("Max", "Beagle");
     greet(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

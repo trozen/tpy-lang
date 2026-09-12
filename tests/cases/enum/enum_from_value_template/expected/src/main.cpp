@@ -77,62 +77,63 @@ namespace tpyapp::main {
 
 
 // def pick(c: Color) -> Color:
+//     x = Color.GREEN
+//     if c == Color.RED:
+//         return x
+//     return c
 Color pick(Color c) {
-    // x = Color.GREEN
     Color x = Color::GREEN;
-    // if c == Color.RED:
     if ((c == Color::RED)) {
-        // return x
         return x;
     }
-    // return c
     return c;
 }
 
 // def prios(p: Prio, n: int32) -> bool:
+//     ok = p >= Prio.HIGH
+//     m = Prio(n)  # the from-value template
+//     if p == m:
+//         return True
+//     return ok
 bool prios(Prio p, int32_t n) {
-    // ok = p >= Prio.HIGH
     bool ok = (static_cast<int32_t>(p) >= static_cast<int32_t>(Prio::HIGH));
-    // m = Prio(n)  # the from-value template
     Prio m = ::tpy::EnumUtil<Prio>::from_value(n);
-    // if p == m:
     if ((p == m)) {
-        // return True
         return true;
     }
-    // return ok
     return ok;
 }
 
 // def flip(h: Holder) -> Color:
+//     h.c = Color.GREEN
+//     r = pick(h.c)
+//     return r
 Color flip(Holder& h) {
-    // h.c = Color.GREEN
     h.c = Color::GREEN;
-    // r = pick(h.c)
     Color r = pick(h.c);
-    // return r
     return r;
 }
 
 // def main() -> None:
+//     h = Holder()
+//     print(flip(h), prios(Prio.LOW, 5))
+//     print(f"p={Prio.HIGH}")
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(flip(h), prios(Prio.LOW, 5))
     std::cout << flip(h) << " " << ::tpy::print_bool(prios(Prio::LOW, 5)) << "\n";
-    // print(f"p={Prio.HIGH}")
     std::cout << std::format("p={}", static_cast<int>(Prio::HIGH)) << "\n";
 }
 
+// # `Prio(n)` on an IntEnum resolves the from-value template, alongside the
+// # ordinary member reads, comparisons and the enum field write.
+// from enum import Enum, IntEnum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `Prio(n)` on an IntEnum resolves the from-value template, alongside the
-    // # ordinary member reads, comparisons and the enum field write.
-    // from enum import Enum, IntEnum
-    // main()
     main();
 }
 

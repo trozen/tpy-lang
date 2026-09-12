@@ -11,27 +11,27 @@ namespace tpyapp::main {
 // # Mutating the innermost list after construction must be observed (the element
 // # is a real vector stored in the array, not a copy).
 // def main() -> None:
+//     xs = [[[1, 2], [3, 4]], [[5, 6], [7, 8, 9]]]  # tpyc: ok
+//     print(xs)
+//     xs[1][1].append(99)  # innermost is a real vector -> grows; change observed
+//     print(xs)
+//     xs[0][0].append(77)  # the equal-size sibling demoted too, so it grows as well
+//     print(xs)
 void main() {
-    // xs = [[[1, 2], [3, 4]], [[5, 6], [7, 8, 9]]]  # tpyc: ok
     std::array<std::array<std::vector<int32_t>, 2>, 2> xs = {{{{{1, 2}, {3, 4}}}, {{{5, 6}, {7, 8, 9}}}}};
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // xs[1][1].append(99)  # innermost is a real vector -> grows; change observed
     ::tpy::__getitem__(::tpy::__getitem__(xs, 1), 1).push_back(99);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // xs[0][0].append(77)  # the equal-size sibling demoted too, so it grows as well
     ::tpy::__getitem__(::tpy::__getitem__(xs, 0), 0).push_back(77);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

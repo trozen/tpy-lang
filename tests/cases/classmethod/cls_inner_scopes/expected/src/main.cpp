@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Totals.plain_nested())
+//     print(Totals.shadowing_nested())
 void main() {
-    // print(Totals.plain_nested())
     std::cout << Totals::plain_nested() << "\n";
-    // print(Totals.shadowing_nested())
     std::cout << Totals::shadowing_nested() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

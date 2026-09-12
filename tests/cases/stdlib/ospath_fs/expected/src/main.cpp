@@ -5,16 +5,31 @@ namespace tpyapp::main {
 
 
 // def main():
+//     tmp = os.getcwd()
+//     f = tmp + "/tpy_ospath_fs.txt"
+//     with open(f, "w") as fh:
+//         fh.write("abcde")
+//
+//     print(exists(f), exists(tmp + "/tpy_ospath_fs_missing"))
+//     print(isfile(f), isfile(tmp))
+//     print(isdir(f), isdir(tmp))
+//     print(islink(f), islink(tmp))
+//     print(lexists(f), lexists(tmp + "/tpy_ospath_fs_missing"))
+//     print(getsize(f))
+//     # getsize on a directory returns st_size (does not raise, like CPython);
+//     # the value varies by filesystem, so only its non-negativity is checked.
+//     print(getsize(tmp) >= 0)
+//
+//     os.chdir(tmp)
+//     print(abspath("sub/x") == tmp + "/sub/x")
+//     print(abspath("/a/b/../c"))
+//     print(abspath(".") == tmp)
 void main() {
-    // tmp = os.getcwd()
     std::string tmp = ::tpy::stdlib::os::getcwd();
-    // f = tmp + "/tpy_ospath_fs.txt"
     ::tpy::String f = (::tpy::str_concat(tmp, "/tpy_ospath_fs.txt"));
-    // with open(f, "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode(f, "w");
     auto& fh = __ctx_1.__enter__();
     try {
-        // fh.write("abcde")
         fh.write("abcde");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -26,46 +41,34 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // print(exists(f), exists(tmp + "/tpy_ospath_fs_missing"))
     std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_exists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n";
-    // print(isfile(f), isfile(tmp))
     std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(tmp)) << "\n";
-    // print(isdir(f), isdir(tmp))
     std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(tmp)) << "\n";
-    // print(islink(f), islink(tmp))
     std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_islink(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink(tmp)) << "\n";
-    // print(lexists(f), lexists(tmp + "/tpy_ospath_fs_missing"))
     std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_lexists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n";
-    // print(getsize(f))
     std::cout << ::tpy::stdlib::os::path_getsize(f) << "\n";
-    // # getsize on a directory returns st_size (does not raise, like CPython);
-    // # the value varies by filesystem, so only its non-negativity is checked.
-    // print(getsize(tmp) >= 0)
     std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_getsize(tmp) >= 0)) << "\n";
-    // os.chdir(tmp)
     ::tpy::stdlib::os::chdir(tmp);
-    // print(abspath("sub/x") == tmp + "/sub/x")
     std::cout << ::tpy::print_bool((::tpystd::os::path::abspath("sub/x") == (::tpy::str_concat(tmp, "/sub/x")))) << "\n";
-    // print(abspath("/a/b/../c"))
     std::cout << ::tpystd::os::path::abspath("/a/b/../c") << "\n";
-    // print(abspath(".") == tmp)
     std::cout << ::tpy::print_bool((::tpystd::os::path::abspath(".") == tmp)) << "\n";
 }
 
+// # os.path filesystem predicates + abspath, over fixtures in the run's scratch
+// # cwd. Paths are built from getcwd() (already canonical, no symlink component)
+// # so the predicates and abspath stay host-independent: islink(dir) is False,
+// # and cwd-relative abspath is compared against the dir rather than printed.
+// import os
+// from os.path import exists, lexists, isfile, isdir, islink, getsize, abspath
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.path filesystem predicates + abspath, over fixtures in the run's scratch
-    // # cwd. Paths are built from getcwd() (already canonical, no symlink component)
-    // # so the predicates and abspath stay host-independent: islink(dir) is False,
-    // # and cwd-relative abspath is compared against the dir rather than printed.
-    // import os
     ::tpystd::os::__tpy_init();
-    // from os.path import exists, lexists, isfile, isdir, islink, getsize, abspath
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

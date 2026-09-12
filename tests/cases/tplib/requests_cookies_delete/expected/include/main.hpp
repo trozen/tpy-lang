@@ -19,7 +19,9 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def _hop(s: requests.Session, response: bytes) -> None:
 void _hop(::tpystd::tplib::requests::Session& s, ::tpy::BytesView response);
+// def main() -> None:
 void main();
 
 void __tpy_init();

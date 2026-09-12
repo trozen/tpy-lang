@@ -12,10 +12,15 @@ struct Token;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(b: Own[Bag]) -> Own[Bag]:
 Bag take(Bag&& b);
+// def call_source() -> None:
 void call_source();
+// def ternary_source(flag: bool) -> None:
 void ternary_source(bool flag);
+// def sink(t: Own[Token]) -> Own[Token]:
 Token sink(Token&& t);
+// def owned_still_moves() -> None:
 void owned_still_moves();
 
 // class Bag:
@@ -60,15 +65,17 @@ inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
 
 
 // def __init__(self) -> None:
+//     self.xs = [1, 2, 3]
 inline Bag::Bag() : xs(std::vector<::tpy::BigInt>{1, 2, 3}) {}
 
 // def itself(self) -> "Bag":
+//     return self
 inline Bag& Bag::itself() {
-    // return self
     return (*this);
 }
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Token::Token(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

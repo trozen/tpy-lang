@@ -97,20 +97,20 @@ namespace tpyapp::main {
 
 
 // def name(self) -> str:
+//     return "Rex"
 inline std::string Dog::name() {
-    // return "Rex"
     return "Rex";
 }
 
 // def name(self) -> str:
+//     return "Whiskers"
 inline std::string Cat::name() const {
-    // return "Whiskers"
     return "Whiskers";
 }
 
 // def name(self) -> str:
+//     return "Polly"
 inline std::string Parrot::name() const {
-    // return "Polly"
     return "Polly";
 }
 void __tpy_init();

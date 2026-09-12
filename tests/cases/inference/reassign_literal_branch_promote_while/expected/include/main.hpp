@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_big() -> int:
 ::tpy::BigInt get_big();
+// def test_augassign_in_while() -> None:
 void test_augassign_in_while();
+// def test_binop_in_while() -> None:
 void test_binop_in_while();
 
 void __tpy_init();

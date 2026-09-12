@@ -9,6 +9,7 @@ namespace tpyapp::dialer {
 
 inline constexpr std::string_view __name__ = "dialer";
 
+// def dial(host: str, timeout: float | None) -> int32:
 int32_t dial(std::string_view host, std::optional<double> timeout);
 
 void __tpy_init();

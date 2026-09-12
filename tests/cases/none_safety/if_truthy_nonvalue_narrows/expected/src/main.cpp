@@ -3,31 +3,30 @@
 
 namespace tpyapp::main {
 
-// pt: Point = Point(2)
 Point* pt{};
 
 // def score(p: Point | None) -> int32:
+//     if p:  # tpyc: ok
+//         return p.x + 1  # tpyc: ok
+//     return 0
 int32_t score(const Point* p) {
-    // if p:  # tpyc: ok
     if (p) {
-        // return p.x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>(p->x, 1));
     }
-    // return 0
     return 0;
 }
 
+// pt: Point = Point(2)
+// print(score(pt))
+// print(score(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // pt: Point = Point(2)
     static Point __global_slot_1 = Point(2);
     pt = &__global_slot_1;
-    // print(score(pt))
     std::cout << score(pt) << "\n";
-    // print(score(None))
     std::cout << score(nullptr) << "\n";
 }
 

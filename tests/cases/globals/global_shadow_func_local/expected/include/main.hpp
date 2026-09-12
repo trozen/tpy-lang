@@ -13,6 +13,7 @@ struct Picker;
 extern Point* p;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def foo(cond: bool) -> None:
 void foo(bool cond);
 
 // class Point:
@@ -55,25 +56,28 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, val: int32):
+//     self.val = val
 inline Picker::Picker(int32_t val) : val(val) {}
 
 // def pick(self, cond: bool) -> None:
+//     if cond:
+//         p = Point(self.val, self.val)
+//     else:
+//         p = Point(0, 0)
+//     print(p.x, p.y)
 inline void Picker::pick(bool cond) const {
     std::optional<Point> __slot_1;
-    // if cond:
     Point* p;
     if (cond) {
-        // p = Point(self.val, self.val)
         p = &*(__slot_1 = Point(this->val, this->val));
-    // else:
     } else {
-        // p = Point(0, 0)
         p = &*(__slot_1 = Point(0, 0));
     }
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 void __tpy_init();

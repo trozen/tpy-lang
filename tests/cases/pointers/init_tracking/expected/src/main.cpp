@@ -6,174 +6,174 @@ namespace tpyapp::main {
 
 // # Direct assignment then use — OK
 // def direct_assign() -> None:
+//     x: Point = Point(7, 8)
+//     print(x.x, x.y)  # tpyc: ok
 void direct_assign() {
-    // x: Point = Point(7, 8)
     Point x = Point(7, 8);
-    // print(x.x, x.y)  # tpyc: ok
     std::cout << x.x << " " << x.y << "\n";
 }
 
 // # Param usage — OK
 // def param_use(p: Point) -> None:
+//     print(p.x, p.y)  # tpyc: ok
 void param_use(const Point& p) {
-    // print(p.x, p.y)  # tpyc: ok
     std::cout << p.x << " " << p.y << "\n";
 }
 
 // # Value type with init — OK
 // def value_init() -> None:
+//     x: int32 = 42
+//     print(x)  # tpyc: ok
 void value_init() {
-    // x: int32 = 42
     int32_t x = 42;
-    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Assign before if, use after — OK
 // def assign_before_if(cond: bool) -> None:
+//     x: Point = Point(1, 2)
+//     if cond:
+//         x = Point(3, 4)
+//     print(x.x, x.y)  # tpyc: ok
 void assign_before_if(bool cond) {
     std::optional<Point> __slot_2;
-    // x: Point = Point(1, 2)
     Point __slot_1 = Point(1, 2);
     Point* x = &__slot_1;
-    // if cond:
     if (cond) {
-        // x = Point(3, 4)
         x = &*(__slot_2 = Point(3, 4));
     }
-    // print(x.x, x.y)  # tpyc: ok
     std::cout << x->x << " " << x->y << "\n";
 }
 
 // # Then-branch returns — code after if only reachable from else
 // def then_returns(cond: bool) -> None:
+//     if cond:
+//         return
+//     x: Point = Point(5, 6)
+//     print(x.x, x.y)  # tpyc: ok
 void then_returns(bool cond) {
-    // if cond:
     if (cond) {
-        // return
         return;
     }
-    // x: Point = Point(5, 6)
     Point x = Point(5, 6);
-    // print(x.x, x.y)  # tpyc: ok
     std::cout << x.x << " " << x.y << "\n";
 }
 
 // # Both branches return — dead code after is fine
 // def both_return(cond: bool) -> int32:
+//     if cond:
+//         x: int32 = 1
+//         return x
+//     else:
+//         return 0
 int32_t both_return(bool cond) {
-    // if cond:
     if (cond) {
-        // x: int32 = 1
         int32_t x = 1;
-        // return x
         return x;
-    // else:
     } else {
-        // return 0
         return 0;
     }
 }
 
 // # Both branches assign (value type) — OK after if
 // def both_branches_assign(cond: bool) -> None:
+//     x: int32
+//     if cond:
+//         x = 1
+//     else:
+//         x = 2
+//     print(x)  # tpyc: ok
 void both_branches_assign(bool cond) {
-    // x: int32
     int32_t x;
-    // if cond:
     if (cond) {
-        // x = 1
         x = 1;
-    // else:
     } else {
-        // x = 2
         x = 2;
     }
-    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Else-branch returns, then assigns — OK after if
 // def else_returns(cond: bool) -> None:
+//     x: int32
+//     if cond:
+//         x = 10
+//     else:
+//         return
+//     print(x)  # tpyc: ok
 void else_returns(bool cond) {
-    // x: int32
     int32_t x;
-    // if cond:
     if (cond) {
-        // x = 10
         x = 10;
-    // else:
     } else {
-        // return
         return;
     }
-    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Bare decl then unconditional assign — OK
 // def decl_then_assign() -> None:
+//     x: int32
+//     x = 42
+//     print(x)  # tpyc: ok
 void decl_then_assign() {
-    // x: int32
     int32_t x;
-    // x = 42
     x = 42;
-    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Loop var shadows assigned outer var — outer stays assigned after loop
 // def loop_shadow_outer() -> None:
+//     items: list[int32] = [10, 20, 30]
+//     x: int32 = 99
+//     for x in items:
+//         pass
+//     print(x)  # tpyc: ok
 void loop_shadow_outer() {
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // x: int32 = 99
     int32_t x = 99;
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         x = *__beg_0;
-        // pass
     }
-    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
+// direct_assign()
+// param_use(Point(11, 12))
+// value_init()
+// assign_before_if(True)
+// assign_before_if(False)
+// then_returns(True)
+// then_returns(False)
+// print(both_return(True))
+// print(both_return(False))
+// both_branches_assign(True)
+// both_branches_assign(False)
+// else_returns(True)
+// else_returns(False)
+// decl_then_assign()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // direct_assign()
     direct_assign();
-    // param_use(Point(11, 12))
     Point __tmp_1 = Point(11, 12);
     param_use(__tmp_1);
-    // value_init()
     value_init();
-    // assign_before_if(True)
     assign_before_if(true);
-    // assign_before_if(False)
     assign_before_if(false);
-    // then_returns(True)
     then_returns(true);
-    // then_returns(False)
     then_returns(false);
-    // print(both_return(True))
     std::cout << both_return(true) << "\n";
-    // print(both_return(False))
     std::cout << both_return(false) << "\n";
-    // both_branches_assign(True)
     both_branches_assign(true);
-    // both_branches_assign(False)
     both_branches_assign(false);
-    // else_returns(True)
     else_returns(true);
-    // else_returns(False)
     else_returns(false);
-    // decl_then_assign()
     decl_then_assign();
 }
 

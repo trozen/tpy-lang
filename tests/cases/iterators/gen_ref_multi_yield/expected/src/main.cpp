@@ -5,6 +5,9 @@ namespace tpyapp::main {
 
 
 // def twice(xs: list[Box]) -> Iterator[Box]:
+//     for b in xs:
+//         yield b
+//         yield b
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -14,7 +17,6 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_twice::__next_
         continue;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return (*b);
     }
@@ -28,7 +30,6 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_twice::__next_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         b = &(*((*__for_it_0))++);
-        // yield b
         __state = S_RESUME_0;
         return (*b);
     }
@@ -44,13 +45,16 @@ __gen_twice twice(std::vector<Box>& xs) {
 }
 
 // def main() -> None:
+//     data = [Box(1), Box(2)]
+//     # Borrow yield: mutation through the yielded `b` propagates to the source
+//     # element. Each element is yielded twice, so both yields alias the same Box
+//     # and the +10 applies twice per element.
+//     for b in twice(data):
+//         b.val = b.val + 10
+//     for d in data:
+//         print(d.val)
 void main() {
-    // data = [Box(1), Box(2)]
     std::vector<Box> data = {Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2))};
-    // # Borrow yield: mutation through the yielded `b` propagates to the source
-    // # element. Each element is yielded twice, so both yields alias the same Box
-    // # and the +10 applies twice per element.
-    // for b in twice(data):
     {
         auto __src_0 = twice(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -58,27 +62,24 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& b = ::tpy::unwrap_ref(*__r_1);
-        // b.val = b.val + 10
         b.val = ((b.val) + (::tpy::BigInt(10)));
         }
     }
-    // for d in data:
     auto& __obj_2 = data;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& d = *__beg_2;
-        // print(d.val)
         std::cout << d.val << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

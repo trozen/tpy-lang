@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass(frozen=True)
@@ -85,11 +86,12 @@ inline uint64_t Key::__hash__() const {
 }
 
 // def __init__(self) -> None:
+//     self.k = Key(7)
 inline Holder::Holder() : k(Key(7)) {}
 
 // def borrow(self) -> Key:
+//     return self.k
 inline Key& Holder::borrow() {
-    // return self.k
     return this->k;
 }
 void __tpy_init();

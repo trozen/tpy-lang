@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def test(cond: bool) -> Own[Handle]:
+//     h = Handle()
+//     h.fd = 1
+//     if cond:
+//         return h  # tpyc: ok
+//     print(h.fd)
+//     return h      # tpyc: ok
 Handle test(bool cond) {
-    // h = Handle()
     Handle h = Handle();
-    // h.fd = 1
     h.fd = 1;
-    // if cond:
     if (cond) {
-        // return h  # tpyc: ok
         return h;
     }
-    // print(h.fd)
     std::cout << h.fd << "\n";
-    // return h      # tpyc: ok
     return h;
 }
 
 // def main():
+//     h1 = test(True)
+//     print(h1.fd)
+//     h2 = test(False)
+//     print(h2.fd)
 void main() {
-    // h1 = test(True)
     Handle h1 = test(true);
-    // print(h1.fd)
     std::cout << h1.fd << "\n";
-    // h2 = test(False)
     Handle h2 = test(false);
-    // print(h2.fd)
     std::cout << h2.fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

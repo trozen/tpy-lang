@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Handler(10)
+//     print(h.callback(5))
+//     h2 = Handler(100)
+//     print(h2.callback(42))
 void main() {
-    // h = Handler(10)
     Handler h = Handler(10);
-    // print(h.callback(5))
     std::cout << h.callback(5) << "\n";
-    // h2 = Handler(100)
     Handler h2 = Handler(100);
-    // print(h2.callback(42))
     std::cout << h2.callback(42) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

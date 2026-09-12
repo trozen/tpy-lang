@@ -43,6 +43,8 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     super().__init__()  # Valid: calls implicit default constructor
+//     self.value = value
 inline Child::Child(const ::tpy::BigInt& value) : Base(), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

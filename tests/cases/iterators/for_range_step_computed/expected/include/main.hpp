@@ -11,9 +11,13 @@ struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def stride(n: int32) -> int32:
 int32_t stride(int32_t n);
+// def fixed_steps(end: int32) -> int32:
 int32_t fixed_steps(int32_t end);
+// def bigint_step(end: int) -> int:
 ::tpy::BigInt bigint_step(const ::tpy::BigInt& end);
+// def main():
 void main();
 
 // class Grid:
@@ -34,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self, step: int32):
+//     self.step = step
 inline Grid::Grid(int32_t step) : step(step) {}
 void __tpy_init();
 } // namespace tpyapp::main

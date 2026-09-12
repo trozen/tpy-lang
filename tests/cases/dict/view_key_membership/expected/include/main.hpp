@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def dict_has(k: str, d: dict[str, str]) -> bool:
 bool dict_has(std::string_view k, const ::tpy::ordered_map<std::string, std::string>& d);
+// def dict_missing(k: str, d: dict[str, str]) -> bool:
 bool dict_missing(std::string_view k, const ::tpy::ordered_map<std::string, std::string>& d);
+// def set_has(k: str, s: set[str]) -> bool:
 bool set_has(std::string_view k, const ::tpy::ordered_set<std::string>& s);
+// def set_missing(k: str, s: set[str]) -> bool:
 bool set_missing(std::string_view k, const ::tpy::ordered_set<std::string>& s);
+// def main():
 void main();
 
 void __tpy_init();

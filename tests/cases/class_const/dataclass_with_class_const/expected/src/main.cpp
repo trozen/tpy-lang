@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(count=int32(0), label="hits")
+//     print(c.count)
+//     print(c.label)
+//     print(Counter.DEFAULT_STEP)
 void main() {
-    // c = Counter(count=int32(0), label="hits")
     Counter c = Counter(0, "hits");
-    // print(c.count)
     std::cout << c.count << "\n";
-    // print(c.label)
     std::cout << c.label << "\n";
-    // print(Counter.DEFAULT_STEP)
     std::cout << Counter::DEFAULT_STEP << "\n";
 }
 
+// # Class constants live separately from instance fields, so @dataclass-style
+// # synthesized __init__ does not include them.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Class constants live separately from instance fields, so @dataclass-style
-    // # synthesized __init__ does not include them.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

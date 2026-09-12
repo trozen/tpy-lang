@@ -5,77 +5,78 @@ namespace tpyapp::main {
 
 
 // def send(method: str, url: str, data: bytes | dict[str, str] | None,
-// body_json: JsonValue | None,
-// auth: tuple[str, str] | None) -> None:
+//          body_json: JsonValue | None,
+//          auth: tuple[str, str] | None) -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
+//     s = requests.Session()
+//     # Pin the User-Agent so the sent-bytes snapshot doesn't churn on a compiler
+//     # version bump (default is covered in requests_default_user_agent).
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.request(method, url, None, data, body_json, None, auth)
+//     print(r.status_code, r.ok)
+//     print(b.recv(65536))
+//     b.close()
 void send(std::string_view method, std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* body_json, std::optional<std::tuple<std::string, std::string>> auth) {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok", 45));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // # Pin the User-Agent so the sent-bytes snapshot doesn't churn on a compiler
-    // # version bump (default is covered in requests_default_user_agent).
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.request(method, url, None, data, body_json, None, auth)
     ::tpystd::tplib::requests::Response r = s.request(method, url, nullptr, data, body_json, nullptr, auth);
-    // print(r.status_code, r.ok)
     std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << "\n";
-    // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // b.close()
     b.close();
 }
 
 // def main() -> None:
+//     payload: JsonValue = {"name": "x", "count": 5}
+//     send("POST", "http://api.test/v1/items", None, payload, None)
+//     send("PUT", "http://api.test/v1/items/1", b"raw-bytes", None, None)
+//     send("POST", "http://api.test/secure", None, None, ("user", "pw"))
+//     # data=b"" is falsy, so a json= body still fires (json Content-Type + body)
+//     send("POST", "http://api.test/empty-data", b"", payload, None)
 void main() {
-    // payload: JsonValue = {"name": "x", "count": 5}
     ::tpystd::json::JsonValue payload = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"name", "x"}, {"count", 5}});
-    // send("POST", "http://api.test/v1/items", None, payload, None)
     send("POST", "http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, &(payload), std::nullopt);
-    // send("PUT", "http://api.test/v1/items/1", b"raw-bytes", None, None)
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("raw-bytes", 9);
     send("PUT", "http://api.test/v1/items/1", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, std::nullopt);
-    // send("POST", "http://api.test/secure", None, None, ("user", "pw"))
     send("POST", "http://api.test/secure", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, std::tuple<std::string, std::string>{"user", "pw"});
-    // # data=b"" is falsy, so a json= body still fires (json Content-Type + body)
-    // send("POST", "http://api.test/empty-data", b"", payload, None)
     ::tpy::Bytes __tmp_2 = ::tpy::Bytes{};
     send("POST", "http://api.test/empty-data", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2}, &(payload), std::nullopt);
 }
 
+// # tplib.requests POST: a json= body (bound to a JsonValue local first, as the
+// # compiler requires) sets Content-Type and Content-Length; a raw data= body is
+// # sent verbatim; auth=(user, pass) emits an Authorization: Basic header. The
+// # request bytes are inspected to confirm each. socketpair injection with a
+// # pre-buffered response (the @nocopy socket move makes a silent copy a compile
+// # error).
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+// from json import JsonValue
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests POST: a json= body (bound to a JsonValue local first, as the
-    // # compiler requires) sets Content-Type and Content-Length; a raw data= body is
-    // # sent verbatim; auth=(user, pass) emits an Authorization: Basic header. The
-    // # request bytes are inspected to confirm each. socketpair injection with a
-    // # pre-buffered response (the @nocopy socket move makes a silent copy a compile
-    // # error).
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // from json import JsonValue
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

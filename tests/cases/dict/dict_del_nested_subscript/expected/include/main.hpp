@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drop(d: dict[str, dict[str, int32]]) -> int32:
 int32_t drop(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>& d);
+// def drop_list(rows: list[dict[str, int32]]) -> int32:
 int32_t drop_list(std::vector<::tpy::ordered_map<std::string, int32_t>>& rows);
+// def main() -> None:
 void main();
 
 void __tpy_init();

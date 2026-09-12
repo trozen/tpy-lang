@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def bump(x: Box | Other) -> None:
+//     if isinstance(x, Other):
+//         return
+//     x.n += 1            # x is Box; write through the narrowed alias
 void bump(::tpy::Union<Box*, Other*> x) {
-    // if isinstance(x, Other):
     if (std::holds_alternative<Other*>(x)) {
         auto& __x = *std::get<Other*>(x);
-        // return
         return;
     }
     auto& __x = *std::get<Box*>(x);
-    // x.n += 1            # x is Box; write through the narrowed alias
     __x.n = (__x.n) + (::tpy::BigInt(1));
 }
 
 // def main() -> None:
+//     b = Box(5)
+//     bump(b)
+//     print(b.n)          # 6 -> the narrowed access aliased, did not copy
 void main() {
-    // b = Box(5)
     Box b = Box(::tpy::BigInt(5));
-    // bump(b)
     bump(::tpy::Union<Box*, Other*>{&(b)});
-    // print(b.n)          # 6 -> the narrowed access aliased, did not copy
     std::cout << b.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

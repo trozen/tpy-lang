@@ -11,6 +11,7 @@ struct Rows;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Rows:
@@ -30,6 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [i for i in range(3)]  # spelled into the init list
 inline Rows::Rows() : items(({
     std::vector<int32_t> __result;
     const int32_t __stop_0 = 3;

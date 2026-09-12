@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def cb(x: int32 | None) -> None:
+//     if x is None:
+//         print("none")
+//     else:
+//         print("got", x)
 void cb(std::optional<int32_t> x) {
-    // if x is None:
     if ((!x.has_value())) {
-        // print("none")
         std::cout << "none" << "\n";
-    // else:
     } else {
-        // print("got", x)
         std::cout << "got" << " " << ::tpy::print_optional_val(x) << "\n";
     }
 }
 
 // def main() -> None:
+//     g: Callable[[int32 | None], None] = cb
+//     use(g)
 void main() {
-    // g: Callable[[int32 | None], None] = cb
     std::function<void(std::optional<int32_t>)> g = cb;
-    // use(g)
     use(g);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

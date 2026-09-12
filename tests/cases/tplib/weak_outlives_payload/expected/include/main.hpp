@@ -16,7 +16,9 @@ struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_weaks() -> Own[tuple[Weak[Cell], Weak[Cell], Weak[Cell]]]:
 std::tuple<::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>> make_weaks();
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -44,6 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Cell::Cell(int32_t v) : val(v) {}
 
 inline Cell::Cell(Cell&& other) noexcept : val(std::move(other.val)) {
@@ -58,9 +61,9 @@ inline Cell& Cell::operator=(Cell&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("payload destruct")
 inline Cell::~Cell() {
     if (!this->__tpy_owned_) return;
-    // print("payload destruct")
     std::cout << "payload destruct" << "\n";
 }
 void __tpy_init();

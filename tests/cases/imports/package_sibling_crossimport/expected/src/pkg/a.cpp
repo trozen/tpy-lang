@@ -5,17 +5,17 @@ namespace tpyapp::pkg::a {
 
 
 // def f(n: int32) -> int32:
+//     return n * int32(2)
 int32_t f(int32_t n) {
-    // return n * int32(2)
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 
+// from pkg.b import B
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pkg.b import B
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::b::__tpy_init();
 }

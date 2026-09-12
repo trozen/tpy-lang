@@ -17,8 +17,10 @@ struct Converter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pair[T](a: T, b: T) -> None:
 template<typename T>
 void pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
 // class Converter:
@@ -26,9 +28,9 @@ struct Converter {
 
 
     // def identity[U](self, val: U) -> U:
+    //     return val
     template<typename U>
     ::tpy::val_or_cref_t<U> identity(::tpy::readonly_form_t<U> val) const {
-        // return val
         return ::tpy::param_to_return<U>(val);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Converter";
@@ -40,9 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const Converter& obj) {
 }
 
 // def pair[T](a: T, b: T) -> None:
+//     pass
 template<typename T>
 void pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // pass
 }
 
 void __tpy_init();

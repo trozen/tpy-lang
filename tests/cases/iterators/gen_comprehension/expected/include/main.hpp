@@ -19,11 +19,16 @@ struct __gen_pairs;
 struct __gen_make_nodes;
 struct __gen_Counter_around;
 
+// def two_then(n: int32) -> Iterator[int32]:
 __gen_two_then two_then(int32_t n);
+// def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_head<T, T_it> head(T_it&& it, int32_t n);
+// def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
 __gen_pairs pairs(int32_t n);
+// def make_nodes(n: int32) -> Iterator[Own[Node]]:
 __gen_make_nodes make_nodes(int32_t n);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -60,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Generator: two_then
+// def two_then(n: int32) -> Iterator[int32]:
 struct __gen_two_then : public ::tpy::next_iter_mixin<__gen_two_then, int32_t> {
     int32_t __state;
     int32_t n;
@@ -85,7 +90,7 @@ struct __gen_two_then : public ::tpy::next_iter_mixin<__gen_two_then, int32_t> {
     }
 };
 
-// Generator: head
+// def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
     int32_t __state;
@@ -115,18 +120,22 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
     }
 };
 // def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
+//     c: int32 = 0
+//     for x in it:
+//         if c >= n:
+//             break
+//         yield x
+//         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: int32 = 0
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // c += 1
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
@@ -142,7 +151,6 @@ std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         }
@@ -163,7 +171,7 @@ __gen_head<T, T_it> head(T_it&& it, int32_t n) {
     return __gen_head<T, T_it>(std::forward<T_it>(it), n);
 }
 
-// Generator: pairs
+// def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<int32_t, int32_t>> {
     int32_t __state;
     int32_t n;
@@ -188,7 +196,7 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, std::tuple<int32
     }
 };
 
-// Generator: make_nodes
+// def make_nodes(n: int32) -> Iterator[Own[Node]]:
 struct __gen_make_nodes : public ::tpy::next_iter_mixin<__gen_make_nodes, Node> {
     int32_t __state;
     int32_t n;
@@ -213,7 +221,7 @@ struct __gen_make_nodes : public ::tpy::next_iter_mixin<__gen_make_nodes, Node> 
     }
 };
 
-// Generator: Counter.around
+// def around(self) -> Iterator[int32]:
 struct __gen_Counter_around : public ::tpy::next_iter_mixin<__gen_Counter_around, int32_t> {
     int32_t __state;
     const Counter& __self;
@@ -243,18 +251,23 @@ inline __gen_Counter_around Counter::around() const {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Counter::Counter(int32_t base) : base(base) {}
+// def simple(n: int32) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < n:
+//         yield i
+//         i += 1
 inline auto simple(int32_t n) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {
             while ((i < n)) {
                 auto __val = i;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }

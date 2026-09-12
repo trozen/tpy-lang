@@ -5,42 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = H()
+//     try:
+//         v = h.view()
+//         n = h.poke()
+//         v.append(9)
+//         print(h.items)
+//         print(n)
+//     except E:
+//         print("error")
 void main() {
-    // h = H()
     H h = H();
-    // try:
     int32_t n;
     std::vector<int32_t>* v;
     {
-        // v = h.view()
         v = &(h.view());
-        // n = h.poke()
         {
             auto __try_tmp_2 = h.poke();
             if (!__try_tmp_2.has_value()) goto __except_1;
             n = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        // v.append(9)
         v->push_back(9);
-        // print(h.items)
         std::cout << ::tpy::ListPrinter(h.items) << "\n";
-        // print(n)
         std::cout << n << "\n";
         goto __after_try_1;
         // except E:
         __except_1:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_1:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

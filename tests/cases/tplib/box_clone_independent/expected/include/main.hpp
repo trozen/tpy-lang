@@ -16,10 +16,15 @@ struct PtrHolder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sec_value() -> None:
 void sec_value();
+// def sec_reference() -> None:
 void sec_reference();
+// def bump(p: Ptr[Cell]) -> None:
 void bump(Cell* p);
+// def sec_ptr_field() -> None:
 void sec_ptr_field();
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -56,9 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const PtrHolder& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, p: Ptr[Cell]) -> None:
+//     self.p = p
 inline PtrHolder::PtrHolder(Cell* p) : p(p) {}
 void __tpy_init();
 } // namespace tpyapp::main

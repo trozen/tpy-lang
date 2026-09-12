@@ -37,9 +37,13 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(r: Own[Rc[Box[Box[Pet]]]]) -> str:
 std::string take(::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>&& r);
+// def make() -> Own[Rc[Box[Box[Pet]]]]:
 ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>> make();
+// def collect() -> Own[list[Rc[Box[Pet]]]]:
 std::vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>> collect();
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -104,15 +108,17 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Dog::Dog(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Dog::name() const {
-    // return self.label
     return this->label;
 }
 
 // def __init__(self, r: Own[Rc[Box[Box[Pet]]]]) -> None:
+//     self.r = r
 inline Holder::Holder(::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>&& r) : r(std::move(r)) {}
 void __tpy_init();
 } // namespace tpyapp::main

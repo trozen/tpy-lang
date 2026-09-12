@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def invert(x: int32 | None) -> bool:
+//     result: bool = not x  # tpyc: ok
+//     return result
 bool invert(std::optional<int32_t> x) {
-    // result: bool = not x  # tpyc: ok
     bool result = (!(::tpy::is_truthy(x)));
-    // return result
     return result;
 }
 
+// print(invert(2))
+// print(invert(0))
+// print(invert(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(invert(2))
     std::cout << ::tpy::print_bool(invert(2)) << "\n";
-    // print(invert(0))
     std::cout << ::tpy::print_bool(invert(0)) << "\n";
-    // print(invert(None))
     std::cout << ::tpy::print_bool(invert(std::nullopt)) << "\n";
 }
 

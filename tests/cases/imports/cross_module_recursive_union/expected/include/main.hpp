@@ -14,8 +14,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 using ::tpyapp::pkg_v::V;
 
+// def is_null(v: V) -> bool:
 bool is_null(const ::tpyapp::pkg_v::V& v);
+// def wrap(v: V) -> V:
 ::tpyapp::pkg_v::V& wrap(::tpyapp::pkg_v::V& v);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -36,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, value: Own[V]) -> None:
+//     self.value = value
 inline Holder::Holder(::tpyapp::pkg_v::V&& value) : value(std::move(value)) {}
 void __tpy_init();
 } // namespace tpyapp::main

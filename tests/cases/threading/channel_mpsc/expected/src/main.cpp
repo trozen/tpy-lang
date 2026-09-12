@@ -5,52 +5,53 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     tx, rx = channel[Item](2)
+//     h2 = spawn(Producer(tx.clone(), 100))
+//     h1 = spawn(Producer(tx, 0))
+//     total = 0
+//     count = 0
+//     for item in rx:
+//         total += item.v
+//         count += 1
+//     h1.join()
+//     h2.join()
+//     print(count)
+//     print(total)
 void main() {
-    // tx, rx = channel[Item](2)
     auto __tup_1 = ::tpystd::tplib::channel::channel<Item>(2);
     ::tpystd::tplib::channel::Sender<Item> tx = std::move(std::get<0>(__tup_1));
     ::tpystd::tplib::channel::Receiver<Item> rx = std::move(std::get<1>(__tup_1));
-    // h2 = spawn(Producer(tx.clone(), 100))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h2 = ::tpystd::tpy::thread::spawn<std::monostate, Producer>(Producer(tx.clone(), 100));
-    // h1 = spawn(Producer(tx, 0))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h1 = ::tpystd::tpy::thread::spawn<std::monostate, Producer>(Producer(std::move(tx), 0));
-    // total = 0
     int32_t total = 0;
-    // count = 0
     int32_t count = 0;
-    // for item in rx:
     auto& __src_0 = rx;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& item = ::tpy::unwrap_ref(*__r_1);
-        // total += item.v
         total = ::tpy::add_check<int32_t>(total, item.v);
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    // h1.join()
     h1.join();
-    // h2.join()
     h2.join();
-    // print(count)
     std::cout << count << "\n";
-    // print(total)
     std::cout << total << "\n";
 }
 
+// from tpy.thread import spawn
+// from tplib.channel import channel, Sender, Receiver
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // from tplib.channel import channel, Sender, Receiver
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::channel::__tpy_init();
-    // main()
     main();
 }
 

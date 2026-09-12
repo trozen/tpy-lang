@@ -15,10 +15,12 @@ inline constexpr std::string_view __name__ = "asyncmod";
 struct __coro_ping;
 struct __coro_add;
 
+// async def ping() -> int32:
 __coro_ping ping();
+// async def add(a: int32, b: int32) -> int32:
 __coro_add add(int32_t a, int32_t b);
 
-// Async coroutine: ping
+// async def ping() -> int32:
 struct __coro_ping {
     int32_t __state;
     bool __cancel_pending;
@@ -41,7 +43,7 @@ struct __coro_ping {
     }
 };
 
-// Async coroutine: add
+// async def add(a: int32, b: int32) -> int32:
 struct __coro_add {
     int32_t __state;
     bool __cancel_pending;

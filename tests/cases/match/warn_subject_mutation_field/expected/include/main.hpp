@@ -13,7 +13,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def poke(h: Holder) -> None:
 void poke(Holder& h);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -65,12 +67,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, age: int32) -> None:
+//     self.age = age
 inline Cat::Cat(int32_t age) : age(age) {}
 
 // def __init__(self) -> None:
+//     self.pet = Cat(3)
 inline Holder::Holder() : pet(Cat(3)) {}
 void __tpy_init();
 } // namespace tpyapp::main

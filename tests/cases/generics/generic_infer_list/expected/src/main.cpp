@@ -3,22 +3,22 @@
 
 namespace tpyapp::main {
 
-// # Inference from list literal -> Box[list[int]]
-// box = Box([1, 2, 3])
 Box<std::vector<int32_t>>* box{};
 
+// """Test type inference with list argument."""
+//
+// # Inference from list literal -> Box[list[int]]
+// box = Box([1, 2, 3])
+// print(box.value[0])
+// print(len(box.value))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Inference from list literal -> Box[list[int]]
-    // box = Box([1, 2, 3])
     static Box<std::vector<int32_t>> __global_slot_1 = Box<std::vector<int32_t>>({1, 2, 3});
     box = &__global_slot_1;
-    // print(box.value[0])
     std::cout << ::tpy::__getitem__(box->value, 0) << "\n";
-    // print(len(box.value))
     std::cout << ::tpy::__len__(box->value) << "\n";
 }
 

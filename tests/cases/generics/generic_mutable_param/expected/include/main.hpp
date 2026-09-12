@@ -11,7 +11,9 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def modify_list(items: list[int32]) -> None:
 void modify_list(std::vector<int32_t>& items);
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -21,18 +23,19 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get(self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> get() {
-        // return self.value
         return this->value;
     }
 
     // def set(self, value: T) -> None:
+    //     self.value = value
     void set(::tpy::param_val_or_ref_t<T> value) {
-        // self.value = value
         this->value = ::tpy::param_to_storage<T>(value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

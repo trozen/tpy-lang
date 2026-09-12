@@ -5,69 +5,69 @@ namespace tpyapp::main {
 
 
 // def read_ref(h: H | None) -> int:      # h inferred const H*; REF_ALIAS off narrowed h
+//     if h is None:
+//         return -1
+//     g = h.g
+//     return g.v
 ::tpy::BigInt read_ref(const H* h) {
-    // if h is None:
     if ((h == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // g = h.g
     const A& g = h->g;
-    // return g.v
     return g.v;
 }
 
 // def read_opt(h: H | None) -> int:      # OPTIONAL_TO_PTR lift off narrowed h
+//     if h is None:
+//         return -1
+//     q = h.f
+//     if q is not None:
+//         return q.v
+//     return -1
 ::tpy::BigInt read_opt(const H* h) {
-    // if h is None:
     if ((h == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // q = h.f
     const A* q = ::tpy::optional_to_ptr(h->f);
-    // if q is not None:
     if ((q != nullptr)) {
-        // return q.v
         return q->v;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def bump(h: H | None) -> None:         # inverse: mutates through the borrow-local -> non-const
+//     if h is None:
+//         return
+//     g = h.g
+//     g.v += 10
 void bump(H* h) {
-    // if h is None:
     if ((h == nullptr)) {
-        // return
         return;
     }
-    // g = h.g
     A& g = h->g;
-    // g.v += 10
     g.v = (g.v) + (::tpy::BigInt(10));
 }
 
 // def main() -> None:
+//     h = H()
+//     print(read_ref(h))     # 1
+//     print(read_opt(h))     # 2
+//     bump(h)                # mutate the shared A through the mutable borrow-local
+//     print(read_ref(h))     # 11 -- the readonly reader aliases the shared object, not a copy
 void main() {
-    // h = H()
     H h = H();
-    // print(read_ref(h))     # 1
     std::cout << read_ref(&(h)) << "\n";
-    // print(read_opt(h))     # 2
     std::cout << read_opt(&(h)) << "\n";
-    // bump(h)                # mutate the shared A through the mutable borrow-local
     bump(&(h));
-    // print(read_ref(h))     # 11 -- the readonly reader aliases the shared object, not a copy
     std::cout << read_ref(&(h)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,72 +5,75 @@ namespace tpyapp::main {
 
 
 // def observe(r: readonly[Rc[Counter]]) -> int32:
+//     shared = r.clone()  # tpyc: type(/readonly\[Counter\]/)
+//     return shared.get().n
 int32_t observe(const ::tpystd::tplib::rc::Rc<Counter>& r) {
-    // shared = r.clone()  # tpyc: type(/readonly\[Counter\]/)
     ::tpystd::tplib::rc::Rc<Counter> shared = r.clone();
-    // return shared.get().n
     return shared.get().n;
 }
 
 // def via_readonly_weak(w: readonly[Weak[Counter]]) -> int32:
+//     w2 = w.clone()      # Weak.clone on a readonly receiver
+//     a2 = w2.upgrade()
+//     b2 = w.upgrade()    # Weak.upgrade on a readonly receiver
+//     if a2 is None or b2 is None:
+//         return -1
+//     return a2.get().n
 int32_t via_readonly_weak(const ::tpystd::tplib::rc::Weak<Counter>& w) {
-    // w2 = w.clone()      # Weak.clone on a readonly receiver
     ::tpystd::tplib::rc::Weak<Counter> w2 = w.clone();
-    // a2 = w2.upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Counter>> a2 = w2.upgrade();
-    // b2 = w.upgrade()    # Weak.upgrade on a readonly receiver
     std::optional<::tpystd::tplib::rc::Rc<Counter>> b2 = w.upgrade();
-    // if a2 is None or b2 is None:
     if (((!a2.has_value()) || (!b2.has_value()))) {
-        // return -1
         return -1;
     }
-    // return a2.get().n
     return (*a2).get().n;
 }
 
 // def downgrade_readonly(r: readonly[Rc[Counter]]) -> int32:
+//     w = r.downgrade()
+//     up = w.upgrade()
+//     return up.get().n if up is not None else -1
 int32_t downgrade_readonly(const ::tpystd::tplib::rc::Rc<Counter>& r) {
-    // w = r.downgrade()
     ::tpystd::tplib::rc::Weak<Counter> w = r.downgrade();
-    // up = w.upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Counter>> up = w.upgrade();
-    // return up.get().n if up is not None else -1
     return (((up.has_value())) ? ((*up).get().n) : (-1));
 }
 
 // def main() -> None:
+//     a = Rc.new(Counter(1))
+//     b = a.clone()
+//     b.get().n = 42
+//     print(observe(a))
+//     print(downgrade_readonly(a))
+//
+//     wk = a.downgrade()
+//     print(via_readonly_weak(wk))
+//
+//     reg = Registry(a.clone())
+//     print(reg.handle().get().n)
 void main() {
-    // a = Rc.new(Counter(1))
     ::tpystd::tplib::rc::Rc<Counter> a = Rc<Counter>::new_<Counter>(Counter(1));
-    // b = a.clone()
     ::tpystd::tplib::rc::Rc<Counter> b = a.clone();
-    // b.get().n = 42
     b.get().n = 42;
-    // print(observe(a))
     std::cout << observe(a) << "\n";
-    // print(downgrade_readonly(a))
     std::cout << downgrade_readonly(a) << "\n";
-    // wk = a.downgrade()
     ::tpystd::tplib::rc::Weak<Counter> wk = a.downgrade();
-    // print(via_readonly_weak(wk))
     std::cout << via_readonly_weak(wk) << "\n";
-    // reg = Registry(a.clone())
     Registry reg = Registry(a.clone());
-    // print(reg.handle().get().n)
     std::cout << reg.handle().get().n << "\n";
 }
 
+// from tplib import Rc
+// from tplib.rc import Weak
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // from tplib.rc import Weak
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

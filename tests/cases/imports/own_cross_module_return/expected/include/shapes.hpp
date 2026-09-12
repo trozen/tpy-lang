@@ -11,6 +11,7 @@ struct Circle;
 
 inline constexpr std::string_view __name__ = "shapes";
 
+// def make_circle(r: int32) -> Own[Circle]:
 Circle make_circle(int32_t r);
 
 // class Circle:
@@ -31,6 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 
 // def __init__(self, radius: int32) -> None:
+//     self.radius = radius
 inline Circle::Circle(int32_t radius) : radius(radius) {}
 void __tpy_init();
 } // namespace tpyapp::shapes

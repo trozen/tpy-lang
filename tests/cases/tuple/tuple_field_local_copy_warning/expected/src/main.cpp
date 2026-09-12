@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     m = Mixed()
+//     print(m.pp[0].x)
+//     print(m.pp[1].x)
 void main() {
-    // m = Mixed()
     Mixed m = Mixed();
-    // print(m.pp[0].x)
     std::cout << std::get<0>(m.pp).x << "\n";
-    // print(m.pp[1].x)
     std::cout << std::get<1>(m.pp).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -18,6 +18,7 @@ template<Addable T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class MyNumber:
@@ -46,12 +47,13 @@ struct Holder {
     T item;
 
     // def __init__(self, item: T):
+    //     self.item = item
     Holder() = default;
     explicit Holder(::tpy::readonly_form_t<T> item) : item(item) {}
 
     // def get_item(self) -> T:
+    //     return self.item
     ::tpy::val_or_ref_t<T> get_item() {
-        // return self.item
         return this->item;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -65,11 +67,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline MyNumber::MyNumber(int32_t v) : value(v) {}
 
 // def add(self, x: int32) -> int32:
+//     return self.value + x
 inline int32_t MyNumber::add(int32_t x) const {
-    // return self.value + x
     return (::tpy::add_check<int32_t>(this->value, x));
 }
 void __tpy_init();

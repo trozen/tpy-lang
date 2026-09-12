@@ -9,22 +9,25 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first_char(s: Sequence[char]) -> char:
 template<::tpystd::typing::Sequence<char> T_s>
 char first_char(const T_s& s);
+// def count_chars(s: Sequence[char]) -> int32:
 template<::tpystd::typing::Sequence<char> T_s>
 int32_t count_chars(const T_s& s);
+// def main() -> None:
 void main();
 
 // def first_char(s: Sequence[char]) -> char:
+//     return s[0]
 template<::tpystd::typing::Sequence<char> T_s>
 char first_char(const T_s& s) {
-    // return s[0]
     return ::tpy::__getitem__(s, 0);
 }
 // def count_chars(s: Sequence[char]) -> int32:
+//     return len(s)
 template<::tpystd::typing::Sequence<char> T_s>
 int32_t count_chars(const T_s& s) {
-    // return len(s)
     return ::tpy::__len__(s);
 }
 

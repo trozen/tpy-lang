@@ -12,7 +12,9 @@ struct FrozenCounter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(c: readonly[Counter]) -> None:
 void bump(const Counter& c);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -70,8 +72,8 @@ namespace tpyapp::main {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Counter::Counter() {
-    // pass
 }
 
 inline FrozenCounter::FrozenCounter(std::string_view name) : name(name) {}

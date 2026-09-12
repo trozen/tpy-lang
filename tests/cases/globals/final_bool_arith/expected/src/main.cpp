@@ -5,17 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(AND_, OR_, EQ, NE)
 void main() {
-    // print(AND_, OR_, EQ, NE)
     std::cout << ::tpy::print_bool(AND_) << " " << ::tpy::print_bool(OR_) << " " << ::tpy::print_bool(EQ) << " " << ::tpy::print_bool(NE) << "\n";
 }
 
+// T: Final[bool] = True
+// F: Final[bool] = False
+// AND_: Final[bool] = T and F
+// OR_: Final[bool] = T or F
+// EQ: Final[bool] = T == F
+// NE: Final[bool] = T != F
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

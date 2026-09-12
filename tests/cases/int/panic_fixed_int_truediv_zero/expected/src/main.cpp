@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: int32 = int32(5)
+//     b: int32 = int32(0)
+//     print(a / b)
 void main() {
-    // a: int32 = int32(5)
     int32_t a = 5;
-    // b: int32 = int32(0)
     int32_t b = 0;
-    // print(a / b)
     std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(a), static_cast<int64_t>(b)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

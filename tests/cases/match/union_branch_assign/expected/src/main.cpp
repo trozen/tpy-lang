@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> int32:
+//     match a:
+//         case Dog(age=x):
+//             result: int32 = x
+//         case _:
+//             result = 0
+//     return result
 int32_t describe(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     int32_t result;
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog(age=x):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto x = __case_0.age;
-        // result: int32 = x
         result = x;
         break;
     }
-    // case _:
     default: {
-        // result = 0
         result = 0;
         break;
     }
     }
-    // return result
     return result;
 }
 
 // def main() -> None:
+//     d: Dog | Cat = Dog(5)
+//     c: Dog | Cat = Cat(3)
+//     print(describe(d))
+//     print(describe(c))
 void main() {
-    // d: Dog | Cat = Dog(5)
     ::tpy::Union<Cat, Dog> __slot_1 = Dog(5);
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat = Cat(3)
     ::tpy::Union<Cat, Dog> __slot_2 = Cat(3);
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // print(describe(d))
     std::cout << describe(d.as_const()) << "\n";
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

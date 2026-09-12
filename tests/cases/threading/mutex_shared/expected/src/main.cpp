@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     data = Arc.new(Mutex.new([0]))   # tpyc: is_send(yes) is_sync(yes)
+//     h1 = spawn(Appender(data.clone(), 1, 100))
+//     h2 = spawn(Appender(data.clone(), 2, 100))
+//     h3 = spawn(Appender(data.clone(), 3, 100))
+//     h1.join()
+//     h2.join()
+//     h3.join()
+//     with data.get().lock() as g:
+//         total = 0
+//         n = 0
+//         for v in g.get():
+//             total += v
+//             n += 1
+//         print(n, total)              # 301 elements; 0 + 100*(1+2+3) = 600
 void main() {
-    // data = Arc.new(Mutex.new([0]))   # tpyc: is_send(yes) is_sync(yes)
     ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>(::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({0}));
-    // h1 = spawn(Appender(data.clone(), 1, 100))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h1 = ::tpystd::tpy::thread::spawn<std::monostate, Appender>(Appender(data.clone(), 1, 100));
-    // h2 = spawn(Appender(data.clone(), 2, 100))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h2 = ::tpystd::tpy::thread::spawn<std::monostate, Appender>(Appender(data.clone(), 2, 100));
-    // h3 = spawn(Appender(data.clone(), 3, 100))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h3 = ::tpystd::tpy::thread::spawn<std::monostate, Appender>(Appender(data.clone(), 3, 100));
-    // h1.join()
     h1.join();
-    // h2.join()
     h2.join();
-    // h3.join()
     h3.join();
-    // with data.get().lock() as g:
     int32_t n;
     int32_t total;
     auto __ctx_2 = data.get().lock();
     auto& g = __ctx_2.__enter__();
     try {
-        // total = 0
         total = 0;
-        // n = 0
         n = 0;
-        // for v in g.get():
         auto& __obj_0 = g.get();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t v = *__beg_0;
-            // total += v
             total = ::tpy::add_check<int32_t>(total, v);
-            // n += 1
             n = ::tpy::add_check<int32_t>(n, 1);
         }
-        // print(n, total)              # 301 elements; 0 + 100*(1+2+3) = 600
         std::cout << n << " " << total << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -55,19 +55,20 @@ void main() {
     __ctx_2.__exit__({}, nullptr, {});
 }
 
+// from tplib.arc import Arc
+// from tpy.thread import spawn
+// from tpy.sync import Mutex
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // from tpy.sync import Mutex
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

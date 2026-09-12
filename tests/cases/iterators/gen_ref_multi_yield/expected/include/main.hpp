@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_twice;
 
+// def twice(xs: list[Box]) -> Iterator[Box]:
 __gen_twice twice(std::vector<Box>& xs);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -32,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Generator: twice
+// def twice(xs: list[Box]) -> Iterator[Box]:
 struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, ::tpy::val_or_ref<Box>> {
     int32_t __state;
     std::vector<Box>& xs;
@@ -61,6 +63,7 @@ struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, ::tpy::val_or_re
 
 
 // def __init__(self, v: int) -> None:
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

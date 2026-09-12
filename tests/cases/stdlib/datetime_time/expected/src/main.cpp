@@ -5,120 +5,126 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = time(14, 30, 5)
+//     print(t.isoformat())            # 14:30:05
+//     print(str(t))                   # 14:30:05
+//     print(repr(t))                  # datetime.time(14, 30, 5)
+//     print(t.hour, t.minute, t.second, t.microsecond)  # 14 30 5 0
+//     print(time())                   # 00:00:00 (all defaults)
+//     print(repr(time()))             # datetime.time(0, 0)
+//     print(repr(time(7)))            # datetime.time(7, 0)
+//     print(repr(time(7, 8)))         # datetime.time(7, 8)
+//     print(repr(time(7, 8, 0, 9)))   # datetime.time(7, 8, 0, 9) (us keeps zero s)
+//     print(time(1, 2, 3, 400000))    # 01:02:03.400000
+//     print(time(23, 59, 59, 999999)) # 23:59:59.999999
+//     print(time(1, 2) < time(1, 3))  # True
+//     print(time(1, 2) < time(1, 2, 0, 1))  # True (microsecond tiebreak)
+//     print(time(5) == time(5, 0, 0, 0))    # True
+//     print(time(5) != time(5))       # False
+//     print(time(9, 30) >= time(9, 29, 59, 999999))  # True
+//     seen = {time(14, 30): "a"}      # frozen -> hashable dict key
+//     print(seen[time(14, 30)])       # a
+//     print(time(0) in {time(0), time(1)})  # True (set membership)
+//     try:
+//         bad = time(24)              # hour out of range
+//         print("no error")
+//     except ValueError:
+//         print("caught hour")
+//     try:
+//         bad2 = time(0, 60)          # minute out of range
+//         print("no error")
+//     except ValueError:
+//         print("caught minute")
+//     try:
+//         bad3 = time(0, 0, 60)       # second out of range
+//         print("no error")
+//     except ValueError:
+//         print("caught second")
+//     try:
+//         bad4 = time(0, 0, 0, 1000000)   # microsecond out of range
+//         print("no error")
+//     except ValueError:
+//         print("caught microsecond")
+//     try:
+//         bad5 = time(-1)             # negative hour
+//         print("no error")
+//     except ValueError:
+//         print("caught negative")
 void main() {
-    // t = time(14, 30, 5)
     ::tpystd::datetime::time t = ::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(5));
-    // print(t.isoformat())            # 14:30:05
     std::cout << t.isoformat() << "\n";
-    // print(str(t))                   # 14:30:05
     std::cout << std::string(::tpy::__str__(t)) << "\n";
-    // print(repr(t))                  # datetime.time(14, 30, 5)
     std::cout << ::tpy::repr_of(t) << "\n";
-    // print(t.hour, t.minute, t.second, t.microsecond)  # 14 30 5 0
     std::cout << t.hour() << " " << t.minute() << " " << t.second() << " " << t.microsecond() << "\n";
-    // print(time())                   # 00:00:00 (all defaults)
     std::cout << ::tpystd::datetime::time() << "\n";
-    // print(repr(time()))             # datetime.time(0, 0)
     std::cout << ::tpy::repr_of(::tpystd::datetime::time()) << "\n";
-    // print(repr(time(7)))            # datetime.time(7, 0)
     std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7))) << "\n";
-    // print(repr(time(7, 8)))         # datetime.time(7, 8)
     std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8))) << "\n";
-    // print(repr(time(7, 8, 0, 9)))   # datetime.time(7, 8, 0, 9) (us keeps zero s)
     std::cout << ::tpy::repr_of(::tpystd::datetime::time(::tpy::BigInt(7), ::tpy::BigInt(8), ::tpy::BigInt(0), ::tpy::BigInt(9))) << "\n";
-    // print(time(1, 2, 3, 400000))    # 01:02:03.400000
     std::cout << ::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(400000)) << "\n";
-    // print(time(23, 59, 59, 999999)) # 23:59:59.999999
     std::cout << ::tpystd::datetime::time(::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999)) << "\n";
-    // print(time(1, 2) < time(1, 3))  # True
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(3))))) << "\n";
-    // print(time(1, 2) < time(1, 2, 0, 1))  # True (microsecond tiebreak)
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(1))))) << "\n";
-    // print(time(5) == time(5, 0, 0, 0))    # True
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(5))) == (::tpystd::datetime::time(::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0))))) << "\n";
-    // print(time(5) != time(5))       # False
     std::cout << ::tpy::print_bool((::tpystd::datetime::time(::tpy::BigInt(5)) != ::tpystd::datetime::time(::tpy::BigInt(5)))) << "\n";
-    // print(time(9, 30) >= time(9, 29, 59, 999999))  # True
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(30))) >= (::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(29), ::tpy::BigInt(59), ::tpy::BigInt(999999))))) << "\n";
-    // seen = {time(14, 30): "a"}      # frozen -> hashable dict key
     ::tpy::ordered_map<::tpystd::datetime::time, std::string> seen = ::tpy::ordered_map<::tpystd::datetime::time, std::string>({{::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30)), "a"}});
-    // print(seen[time(14, 30)])       # a
     std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30))) << "\n";
-    // print(time(0) in {time(0), time(1)})  # True (set membership)
     std::cout << ::tpy::print_bool((::tpy::ordered_set<::tpystd::datetime::time>({::tpystd::datetime::time(::tpy::BigInt(0)), ::tpystd::datetime::time(::tpy::BigInt(1))}).contains(::tpystd::datetime::time(::tpy::BigInt(0))))) << "\n";
-    // try:
     {
         try {
-            // bad = time(24)              # hour out of range
             ::tpystd::datetime::time bad = ::tpystd::datetime::time(::tpy::BigInt(24));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught hour")
             std::cout << "caught hour" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad2 = time(0, 60)          # minute out of range
             ::tpystd::datetime::time bad2 = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(60));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught minute")
             std::cout << "caught minute" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad3 = time(0, 0, 60)       # second out of range
             ::tpystd::datetime::time bad3 = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(60));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught second")
             std::cout << "caught second" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad4 = time(0, 0, 0, 1000000)   # microsecond out of range
             ::tpystd::datetime::time bad4 = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1000000));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught microsecond")
             std::cout << "caught microsecond" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad5 = time(-1)             # negative hour
             ::tpystd::datetime::time bad5 = ::tpystd::datetime::time(::tpy::BigInt(-1));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught negative")
             std::cout << "caught negative" << "\n";
         }
     }
 }
 
+// # datetime.time v2: construction/validation, attributes, isoformat/str/repr
+// # (CPython's trailing-zero trimming), comparisons, hashability. Byte-compared
+// # against real CPython datetime.
+// from datetime import time
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime.time v2: construction/validation, attributes, isoformat/str/repr
-    // # (CPython's trailing-zero trimming), comparisons, hashability. Byte-compared
-    // # against real CPython datetime.
-    // from datetime import time
     ::tpystd::datetime::__tpy_init();
-    // main()
     main();
 }
 

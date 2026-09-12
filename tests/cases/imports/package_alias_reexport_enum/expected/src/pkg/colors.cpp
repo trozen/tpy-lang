@@ -46,12 +46,12 @@ std::optional<::tpyapp::pkg::colors::Color> EnumUtil<::tpyapp::pkg::colors::Colo
 namespace tpyapp::pkg::colors {
 
 
+// from enum import Enum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
 }
 
 } // namespace tpyapp::pkg::colors

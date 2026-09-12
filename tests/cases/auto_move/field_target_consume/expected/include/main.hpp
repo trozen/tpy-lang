@@ -12,6 +12,7 @@ struct K;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Blob:
@@ -51,16 +52,19 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 
 
 // def __init__(self):
+//     self.items = [10, 20, 30]
+//     self.n = 0
 inline Blob::Blob() : items(std::vector<int32_t>{10, 20, 30}), n(0) {}
 
 // def __init__(self):
+//     self.stored = []
 inline K::K() : stored(std::vector<Blob>{}) {}
 
 // def take(self, b: Own[Blob]) -> int32:
+//     self.stored.append(b)
+//     return 99
 inline int32_t K::take(Blob&& b) {
-    // self.stored.append(b)
     this->stored.push_back(std::move(b));
-    // return 99
     return 99;
 }
 void __tpy_init();

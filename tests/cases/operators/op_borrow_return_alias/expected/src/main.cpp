@@ -5,77 +5,77 @@ namespace tpyapp::main {
 
 
 // def test_binary_alias():
+//     a = Acc(3)
+//     b = Acc(1)
+//     c = a + b
+//     print(c.n)
+//     a.n = 99  # tpyc: warning(/while borrowed/)
+//     print(c.n)
 void test_binary_alias() {
-    // a = Acc(3)
     Acc a = Acc(3);
-    // b = Acc(1)
     Acc b = Acc(1);
-    // c = a + b
     const Acc& c = ((a) + (b));
-    // print(c.n)
     std::cout << c.n << "\n";
-    // a.n = 99  # tpyc: warning(/while borrowed/)
     a.n = 99;
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def test_binary_operand_alias():
+//     a = Acc(1)
+//     b = Acc(5)
+//     c = a + b
+//     b.n = 42  # tpyc: warning(/while borrowed/)
+//     print(c.n)
 void test_binary_operand_alias() {
-    // a = Acc(1)
     Acc a = Acc(1);
-    // b = Acc(5)
     Acc b = Acc(5);
-    // c = a + b
     const Acc& c = ((a) + (b));
-    // b.n = 42  # tpyc: warning(/while borrowed/)
     b.n = 42;
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def test_reflected_alias():
+//     a = Acc(4)
+//     c = 7 + a
+//     a.n = 11  # tpyc: warning(/while borrowed/)
+//     print(c.n)
 void test_reflected_alias() {
-    // a = Acc(4)
     Acc a = Acc(4);
-    // c = 7 + a
     const Acc& c = ((7) + (a));
-    // a.n = 11  # tpyc: warning(/while borrowed/)
     a.n = 11;
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def test_unary_alias():
+//     a = Acc(6)
+//     c = -a
+//     a.n = 8  # tpyc: warning(/while borrowed/)
+//     print(c.n)
 void test_unary_alias() {
-    // a = Acc(6)
     Acc a = Acc(6);
-    // c = -a
     const Acc& c = -(a);
-    // a.n = 8  # tpyc: warning(/while borrowed/)
     a.n = 8;
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def main():
+//     test_binary_alias()
+//     test_binary_operand_alias()
+//     test_reflected_alias()
+//     test_unary_alias()
 void main() {
-    // test_binary_alias()
     test_binary_alias();
-    // test_binary_operand_alias()
     test_binary_operand_alias();
-    // test_reflected_alias()
     test_reflected_alias();
-    // test_unary_alias()
     test_unary_alias();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,7 +12,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(a: Cat) -> int:
 ::tpy::BigInt f(const Cat& a);
+// def main():
 void main();
 
 // # Over-trigger guard: a comprehension loop var reusing a reference-typed
@@ -55,9 +57,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, h: int) -> None:
+//     self.hp = h
 inline Pet::Pet(const ::tpy::BigInt& h) : hp(h) {}
 
 // def __init__(self, x: Pet) -> None:
+//     self.pet = x
 inline Cat::Cat(const Pet& x) : pet(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

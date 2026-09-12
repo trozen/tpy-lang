@@ -12,6 +12,7 @@ struct Resource;
 extern Resource* g;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // # Tests __del__ destructor: cleanup is called deterministically at end of scope (C++ RAII),
@@ -41,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 
 // def __init__(self, name: str):
+//     self.name = name
 inline Resource::Resource(std::string_view name) : name(name) {}
 
 inline Resource::Resource(Resource&& other) noexcept : name(std::move(other.name)) {
@@ -55,9 +57,9 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("destroying", self.name)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    // print("destroying", self.name)
     std::cout << "destroying" << " " << this->name << "\n";
 }
 void __tpy_init();

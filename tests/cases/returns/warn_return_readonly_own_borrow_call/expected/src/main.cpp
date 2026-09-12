@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def bump(p: Point) -> readonly[Own[Point]]:
+//     return p.updated()  # tpyc: warning(/copies Point into owned storage/)
 Point bump(Point& p) {
-    // return p.updated()  # tpyc: warning(/copies Point into owned storage/)
     return p.updated();
 }
 
 // def bump_copy(p: Point) -> readonly[Own[Point]]:
+//     return copy(p.updated())  # tpyc: ok
 Point bump_copy(Point& p) {
-    // return copy(p.updated())  # tpyc: ok
     return Point(p.updated());
 }
 
 // def main() -> None:
+//     p = Point(1)
+//     print(bump(p).x, p.x)
+//     print(bump_copy(p).x, p.x)
 void main() {
-    // p = Point(1)
     Point p = Point(1);
-    // print(bump(p).x, p.x)
     std::cout << bump(p).x << " " << p.x << "\n";
-    // print(bump_copy(p).x, p.x)
     std::cout << bump_copy(p).x << " " << p.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -7,22 +7,24 @@ namespace tpyapp::main {
 // # print(..., file=opened_textio) goes through the as_ostream(TextFile&)
 // # direct-ostream path (no streambuf adapter).
 // def main() -> None:
+//     path = "tpy_test_print_file_textio.txt"
+//
+//     f = open(path, "w")
+//     print("hello", "file", 42, file=f)
+//     print("line 2", file=f, sep="-", end="!\n")
+//     f.close()
+//
+//     with open(path) as r:
+//         print(r.read(), end="")
 void main() {
-    // path = "tpy_test_print_file_textio.txt"
     std::string_view path = "tpy_test_print_file_textio.txt";
-    // f = open(path, "w")
     ::tpy::TextFile f = ::tpy::builtin_open_mode(path, "w");
-    // print("hello", "file", 42, file=f)
     ::tpy::as_ostream(f) << "hello" << " " << "file" << " " << 42 << "\n";
-    // print("line 2", file=f, sep="-", end="!\n")
     ::tpy::as_ostream(f) << "line 2" << "!\n";
-    // f.close()
     f.close();
-    // with open(path) as r:
     auto __ctx_1 = ::tpy::builtin_open(path);
     auto& r = __ctx_1.__enter__();
     try {
-        // print(r.read(), end="")
         std::cout << r.read();
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -36,12 +38,12 @@ void main() {
     __ctx_1.__exit__({}, nullptr, {});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

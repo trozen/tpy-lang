@@ -11,6 +11,7 @@ struct Utils;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Utils:
@@ -21,9 +22,9 @@ struct Utils {
 
     // @staticmethod
     // def identity[U](val: U) -> U:
+    //     return val
     template<typename U>
     static ::tpy::val_or_ref_t<U> identity(::tpy::param_val_or_ref_t<U> val) {
-        // return val
         return ::tpy::param_to_return<U>(val);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Utils";
@@ -36,8 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const Utils& obj) {
 
 
 // def __init__(self):
+//     pass
 inline Utils::Utils() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

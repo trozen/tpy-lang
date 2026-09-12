@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     tx, rx = channel[int32](0)
 void main() {
-    // tx, rx = channel[int32](0)
     auto __tup_1 = ::tpystd::tpy::channel::channel<int32_t>(0);
     ::tpystd::tpy::channel::Sender<int32_t> tx = std::move(std::get<0>(__tup_1));
     ::tpystd::tpy::channel::Receiver<int32_t> rx = std::move(std::get<1>(__tup_1));
 }
 
+// from tpy.channel import channel
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.channel import channel
     ::tpystd::tpy::channel::__tpy_init();
-    // main()
     main();
 }
 

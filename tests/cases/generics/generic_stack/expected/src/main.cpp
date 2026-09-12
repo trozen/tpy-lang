@@ -5,35 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     stack: Stack[int32] = Stack[int32]()
+//     print(stack.is_empty())  # True
+//
+//     stack.push(10)
+//     stack.push(20)
+//     stack.push(30)
+//     print(stack.is_empty())  # False
+//
+//     print(stack.pop())  # 30
+//     print(stack.pop())  # 20
+//     print(stack.pop())  # 10
+//     print(stack.is_empty())  # True
 void main() {
-    // stack: Stack[int32] = Stack[int32]()
     Stack<int32_t> stack = Stack<int32_t>();
-    // print(stack.is_empty())  # True
     std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
-    // stack.push(10)
     stack.push(10);
-    // stack.push(20)
     stack.push(20);
-    // stack.push(30)
     stack.push(30);
-    // print(stack.is_empty())  # False
     std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
-    // print(stack.pop())  # 30
     std::cout << stack.pop() << "\n";
-    // print(stack.pop())  # 20
     std::cout << stack.pop() << "\n";
-    // print(stack.pop())  # 10
     std::cout << stack.pop() << "\n";
-    // print(stack.is_empty())  # True
     std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

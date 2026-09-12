@@ -5,57 +5,57 @@ namespace tpyapp::main {
 
 
 // def log() -> None:
+//     print("log")
 void log() {
-    // print("log")
     std::cout << "log" << "\n";
 }
 
 // def main():
+//     p: Point | None = Point(1)
+//     if p is None:
+//         return
+//     i = 0
+//     while i < 2:
+//         print(p.x)  # tpyc: ok
+//         i += 1
+//     log()
+//     print(p.x)  # tpyc: ok
+//     try:
+//         print("try")
+//     finally:
+//         print("fin")
+//     print(p.x)  # tpyc: ok
 void main() {
-    // p: Point | None = Point(1)
     Point __slot_1 = Point(1);
     Point* p = &__slot_1;
-    // if p is None:
     if ((p == nullptr)) {
-        // return
         return;
     }
-    // i = 0
     int32_t i = 0;
-    // while i < 2:
     while ((i < 2)) {
-        // print(p.x)  # tpyc: ok
         std::cout << p->x << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // log()
     log();
-    // print(p.x)  # tpyc: ok
     std::cout << p->x << "\n";
-    // try:
     {
         try {
-            // print("try")
             std::cout << "try" << "\n";
         } catch (...) {
-            // print("fin")
             std::cout << "fin" << "\n";
             throw;
         }
-        // print("fin")
         std::cout << "fin" << "\n";
     }
-    // print(p.x)  # tpyc: ok
     std::cout << p->x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

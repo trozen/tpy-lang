@@ -9,15 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
+// def bump(d: dict[str, list[int32]]) -> Iterator[int32]:
+//     for v in d.values():
+//         v.append(9)
+//         yield len(v)
 inline auto bump(::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
     return ::tpy::make_generator<int32_t>(
         [&d, __src = std::optional<std::decay_t<decltype(::tpy::dict_values(d))>>(), __beg = decltype((::tpy::dict_values(d)).begin())(), __end = decltype((::tpy::dict_values(d)).begin())(), __init = false]() mutable -> std::optional<int32_t> {
             if (!__init) { __src.emplace(::tpy::dict_values(d)); __beg = (*__src).begin(); __end = (*__src).end(); __init = true; }
             if (__beg != __end) {
                 auto&& v = *__beg++;
-                // v.append(9)
                 v.push_back(9);
                 auto __val = ::tpy::__len__(v);
                 return std::optional<int32_t>(__val);

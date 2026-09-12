@@ -5,29 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f = Foo(x=int32(1))
+//     print(f.items)
+//     print(f.x)
+//
+//     f2 = Foo([int32(10), int32(20)], int32(5))
+//     print(f2.items)
+//     print(f2.x)
 void main() {
-    // f = Foo(x=int32(1))
     Foo f = Foo(std::vector<int32_t>(), 1);
-    // print(f.items)
     std::cout << ::tpy::ListPrinter(f.items) << "\n";
-    // print(f.x)
     std::cout << f.x << "\n";
-    // f2 = Foo([int32(10), int32(20)], int32(5))
     Foo f2 = Foo({10, 20}, 5);
-    // print(f2.items)
     std::cout << ::tpy::ListPrinter(f2.items) << "\n";
-    // print(f2.x)
     std::cout << f2.x << "\n";
 }
 
+// # Test qualified dataclasses.field() form
+// import dataclasses
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test qualified dataclasses.field() form
-    // import dataclasses
-    // main()
     main();
 }
 

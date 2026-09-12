@@ -15,8 +15,11 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(p: Point | Other) -> int:
 ::tpy::BigInt pick(::tpy::Union<const Other*, const Point*> p);
+// def use_foreign(p: Foreign) -> int:
 ::tpy::BigInt use_foreign(const ::tpyapp::shapes::Point& p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -53,9 +56,11 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& y) : y(y) {}
 
 // def __init__(self, z: int) -> None:
+//     self.z = z
 inline Other::Other(const ::tpy::BigInt& z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def describe(p: Pet) -> str:
+//     if isinstance(p, Dog):
+//         return "dog"
+//     assert isinstance(p, Cat)
+//     return "cat"
 std::string describe(::tpy::Union<const Cat*, const Dog*> p) {
-    // if isinstance(p, Dog):
     if (std::holds_alternative<const Dog*>(p)) {
         auto& __p = *std::get<const Dog*>(p);
-        // return "dog"
         return "dog";
     }
     auto& __p = *std::get<const Cat*>(p);
-    // assert isinstance(p, Cat)
     if (!(true)) ::tpy::raise_assertion_error();
     auto& __p_2 = *std::get<const Cat*>(p);
-    // return "cat"
     return "cat";
 }
 
 // def main() -> None:
+//     d: Pet = Dog(int32(3))
+//     c: Pet = Cat(int32(5))
+//     print(describe(d))
+//     print(describe(c))
 void main() {
-    // d: Pet = Dog(int32(3))
     Pet __slot_1 = Dog(3);
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Pet = Cat(int32(5))
     Pet __slot_2 = Cat(5);
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // print(describe(d))
     std::cout << describe(d.as_const()) << "\n";
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

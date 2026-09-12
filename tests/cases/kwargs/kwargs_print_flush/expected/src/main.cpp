@@ -5,33 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print("flush via stdout", flush=True)
+//     print("no-flush via stdout")
+//
+//     s = CountingSink()
+//     print("a", file=s)
+//     print("flushes after no-flush:", s.flushes)
+//
+//     print("b", file=s, flush=True)
+//     print("flushes after flush=True:", s.flushes)
+//
+//     print("c", file=s, flush=False)
+//     print("flushes after flush=False:", s.flushes)
 void main() {
-    // print("flush via stdout", flush=True)
     std::cout << "flush via stdout" << "\n" << std::flush;
-    // print("no-flush via stdout")
     std::cout << "no-flush via stdout" << "\n";
-    // s = CountingSink()
     CountingSink s = CountingSink();
-    // print("a", file=s)
     ::tpy::as_ostream(s) << "a" << "\n";
-    // print("flushes after no-flush:", s.flushes)
     std::cout << "flushes after no-flush:" << " " << s.flushes << "\n";
-    // print("b", file=s, flush=True)
     ::tpy::as_ostream(s) << "b" << "\n" << std::flush;
-    // print("flushes after flush=True:", s.flushes)
     std::cout << "flushes after flush=True:" << " " << s.flushes << "\n";
-    // print("c", file=s, flush=False)
     ::tpy::as_ostream(s) << "c" << "\n";
-    // print("flushes after flush=False:", s.flushes)
     std::cout << "flushes after flush=False:" << " " << s.flushes << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

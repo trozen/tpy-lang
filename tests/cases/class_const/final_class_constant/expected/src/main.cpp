@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(HttpClient.TIMEOUT)
+//     print(HttpClient.MAX_RETRIES)
+//     print(HttpClient.DEFAULT_RATIO)
+//     print(HttpClient.ENABLED)
 void main() {
-    // print(HttpClient.TIMEOUT)
     std::cout << HttpClient::TIMEOUT << "\n";
-    // print(HttpClient.MAX_RETRIES)
     std::cout << HttpClient::MAX_RETRIES << "\n";
-    // print(HttpClient.DEFAULT_RATIO)
     std::cout << ::tpy::print_float(HttpClient::DEFAULT_RATIO) << "\n";
-    // print(HttpClient.ENABLED)
     std::cout << ::tpy::print_bool(HttpClient::ENABLED) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

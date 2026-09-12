@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Box(5).v)
+//     print(Box("hi").v)
 void main() {
-    // print(Box(5).v)
     std::cout << Box<int32_t>(5).v << "\n";
-    // print(Box("hi").v)
     std::cout << Box<std::string>("hi").v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

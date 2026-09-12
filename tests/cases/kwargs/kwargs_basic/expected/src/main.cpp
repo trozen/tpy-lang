@@ -6,33 +6,33 @@ namespace tpyapp::main {
 
 // # Keyword arguments for free functions: basic usage
 // def greet(name: str, greeting: str = "Hello") -> None:
+//     print(f"{greeting}, {name}!")
 void greet(std::string_view name, std::string_view greeting) {
-    // print(f"{greeting}, {name}!")
     std::cout << std::format("{}, {}!", greeting, name) << "\n";
 }
 
 // def add(a: int, b: int) -> int:
+//     return a + b
 ::tpy::BigInt add(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    // return a + b
     return ((a) + (b));
 }
 
 // def main() -> None:
+//     greet(name="World")
+//     greet(greeting="Hi", name="Alice")
+//     print(add(a=3, b=4))
 void main() {
-    // greet(name="World")
     greet("World");
-    // greet(greeting="Hi", name="Alice")
     greet("Alice", "Hi");
-    // print(add(a=3, b=4))
     std::cout << add(::tpy::BigInt(3), ::tpy::BigInt(4)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder(int32(0))
+//     items: list[P] = [P(1), P(2), P(3)]
+//     for a, b in h.pairs(items):
+//         if a is not None:
+//             print(a.x)
 void main() {
-    // h = Holder(int32(0))
     Holder h = Holder(0);
-    // items: list[P] = [P(1), P(2), P(3)]
     std::vector<P> items = {P(1), P(2), P(3)};
-    // for a, b in h.pairs(items):
     {
         auto __src_0 = h.pairs(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -18,25 +20,22 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for a, b in h.pairs(items):
         auto& __tup_1 = __for_tup_0;
         P* a = std::get<0>(__tup_1);
         P* b = std::get<1>(__tup_1);
-        // if a is not None:
         if ((a != nullptr)) {
-            // print(a.x)
             std::cout << a->x << "\n";
         }
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

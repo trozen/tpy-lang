@@ -23,10 +23,13 @@ struct Impl;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_callable(c: Callable) -> None:
 template<Callable T_c>
 void use_callable(T_c& c);
+// def use_one_arg(p: OneArg) -> None:
 template<OneArg T_p>
 void use_one_arg(T_p& p);
+// def main() -> None:
 void main();
 
 // class Impl:
@@ -53,29 +56,30 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Impl::Impl(int32_t value) : value(value) {}
 
 // def call(self, extra: int32 = int32(0)) -> int32:
+//     return self.value + extra
 inline int32_t Impl::call(int32_t extra) const {
-    // return self.value + extra
     return (::tpy::add_check<int32_t>(this->value, extra));
 }
 
 // def process(self, x: int32, scale: int32 = int32(1)) -> int32:
+//     return x * scale + self.value
 inline int32_t Impl::process(int32_t x, int32_t scale) const {
-    // return x * scale + self.value
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, scale)), this->value));
 }
 // def use_callable(c: Callable) -> None:
+//     print(c.call())
 template<Callable T_c>
 void use_callable(T_c& c) {
-    // print(c.call())
     std::cout << c.call() << "\n";
 }
 // def use_one_arg(p: OneArg) -> None:
+//     print(p.process(int32(10)))
 template<OneArg T_p>
 void use_one_arg(T_p& p) {
-    // print(p.process(int32(10)))
     std::cout << p.process(10) << "\n";
 }
 

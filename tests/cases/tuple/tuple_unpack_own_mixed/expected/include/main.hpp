@@ -11,8 +11,11 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> tuple[Own[Counter], int32]:
 std::tuple<Counter, int32_t> make();
+// def consume(c: Own[Counter]) -> None:
 void consume(Counter&& c);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -39,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

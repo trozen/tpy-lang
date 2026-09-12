@@ -44,37 +44,39 @@ namespace tpyapp::main {
 
 // @lookup_typed_locals
 // def check(gate: Gate, lamp: Lamp) -> bool:
+//     armed = "true"
+//     return armed and gate.flag and lamp.lit
 bool check(const Gate& gate, const ::tpyapp::lampmod::Lamp& lamp) {
-    // armed = "true"
     bool armed = true;
-    // return armed and gate.flag and lamp.lit
     return ((armed && gate.flag) && lamp.lit);
 }
 
 // def main() -> None:
+//     print(1 if check(Gate(True), Lamp(True)) else 0)
+//     print(1 if check(Gate(True), Lamp(False)) else 0)
 void main() {
-    // print(1 if check(Gate(True), Lamp(True)) else 0)
     Gate __tmp_1 = Gate(true);
     ::tpyapp::lampmod::Lamp __tmp_2 = ::tpyapp::lampmod::Lamp(true);
     std::cout << ((check(__tmp_1, __tmp_2)) ? (1) : (0)) << "\n";
-    // print(1 if check(Gate(True), Lamp(False)) else 0)
     Gate __tmp_3 = Gate(true);
     ::tpyapp::lampmod::Lamp __tmp_4 = ::tpyapp::lampmod::Lamp(false);
     std::cout << ((check(__tmp_3, __tmp_4)) ? (1) : (0)) << "\n";
 }
 
+// # A @function_macro resolves module-visible names (local record, imported
+// # record, enum) via ctx.lookup_imported_name and retypes a string-bool local.
+// from enum import Enum
+//
+// from lampmod import Lamp
+// from lookmod import lookup_typed_locals
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @function_macro resolves module-visible names (local record, imported
-    // # record, enum) via ctx.lookup_imported_name and retypes a string-bool local.
-    // from enum import Enum
-    // from lampmod import Lamp
     ::tpyapp::lampmod::__tpy_init();
-    // from lookmod import lookup_typed_locals
-    // main()
     main();
 }
 

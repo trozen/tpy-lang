@@ -11,7 +11,9 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(h: Own[Handle]) -> int32:
 int32_t consume(Handle&& h);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -42,12 +44,13 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 
 // def __init__(self, fd: int32):
+//     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 
 // @classmethod
 // def opened(cls, fd: int32) -> Own[Self]:
+//     return cls(fd)
 inline Handle Handle::opened(int32_t fd) {
-    // return cls(fd)
     return Handle(fd);
 }
 void __tpy_init();

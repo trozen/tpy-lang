@@ -10,9 +10,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_vec(v: Ptr[Vec2]) -> int32:
 int32_t use_vec(::mypkg::Vec2* v);
+// def use_add(a: Vec2, b: Vec2) -> Own[Vec2]:
 ::mypkg::Vec2 use_add(::mypkg::Vec2& a, ::mypkg::Vec2& b);
+// def use_thing(t: Ptr[Thing]) -> None:
 void use_thing(::other::Thing* t);
+// def main() -> None:
 void main();
 
 void __tpy_init();

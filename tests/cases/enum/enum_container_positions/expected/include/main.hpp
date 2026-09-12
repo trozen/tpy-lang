@@ -33,9 +33,13 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def weight(m: dict[Color, int64], c: Color) -> int64:
 int64_t weight(const ::tpy::ordered_map<Color, int64_t>& m, Color c);
+// def dedup(cs: list[Color]) -> int64:
 int64_t dedup(const std::vector<Color>& cs);
+// def tag_value(t: tuple[Color, int64]) -> int64:
 int64_t tag_value(const std::tuple<Color, int64_t>& t);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,8 +5,8 @@ namespace tpyapp::c {
 
 
 // def cee() -> int32:
+//     return int32(99)
 int32_t cee() {
-    // return int32(99)
     return 99;
 }
 

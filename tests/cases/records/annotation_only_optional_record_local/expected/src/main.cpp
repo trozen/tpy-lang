@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def build(x: int32) -> int32:
+//     r: R | None  # declared with no initializer -- a non-value no-init slot
+//     r = R(x)
+//     if r is not None:
+//         r.x = r.x + 1  # the record is aliased, not copied
+//         return r.x
+//     return 0
 int32_t build(int32_t x) {
-    // r: R | None  # declared with no initializer -- a non-value no-init slot
     R* r = nullptr;
-    // r = R(x)
     R __slot_1 = R(x);
     r = &__slot_1;
-    // if r is not None:
     if ((r != nullptr)) {
-        // r.x = r.x + 1  # the record is aliased, not copied
         r->x = (::tpy::add_check<int32_t>(r->x, 1));
-        // return r.x
         return r->x;
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     print(build(4))
 void main() {
-    // print(build(4))
     std::cout << build(4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

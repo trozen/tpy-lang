@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def describe(s: Child | Other) -> None:
+//     match s:
+//         case Child(a, b, c):
+//             print(a + b + c)
+//         case Other(v):
+//             print(v)
 void describe(::tpy::Union<const Child*, const Other*> s) {
-    // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.index()) {
-    // case Child(a, b, c):
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto a = __case_0.x;
         auto b = __case_0.y;
         auto c = __case_0.z;
-        // print(a + b + c)
         std::cout << ::tpy::print_float(((((a) + (b))) + (c))) << "\n";
         break;
     }
-    // case Other(v):
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto v = __case_1.v;
-        // print(v)
         std::cout << ::tpy::print_float(v) << "\n";
         break;
     }
@@ -31,27 +31,28 @@ void describe(::tpy::Union<const Child*, const Other*> s) {
 }
 
 // def main() -> None:
+//     obj: Child | Other = Child(1.0, 2.0, 3.0)
+//     describe(obj)
+//     o: Child | Other = Other(9.0)
+//     describe(o)
 void main() {
-    // obj: Child | Other = Child(1.0, 2.0, 3.0)
     ::tpy::Union<Child, Other> __slot_1 = Child(1.0, 2.0, 3.0);
     ::tpy::Union<Child*, Other*> obj = ::tpy::to_ptr_variant(__slot_1);
-    // describe(obj)
     describe(obj.as_const());
-    // o: Child | Other = Other(9.0)
     ::tpy::Union<Child, Other> __slot_2 = Other(9.0);
     ::tpy::Union<Child*, Other*> o = ::tpy::to_ptr_variant(__slot_2);
-    // describe(o)
     describe(o.as_const());
 }
 
+// # positional patterns on inherited @dataclass (parent + own fields)
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # positional patterns on inherited @dataclass (parent + own fields)
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

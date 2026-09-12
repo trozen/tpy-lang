@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[tuple[int32, Box]]:
+//     items: list[tuple[int32, Box]] = [(1, Box(5))]
+//     for _ in range(2):
+//         yield items[0]
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items: list[tuple[int32, Box]] = [(1, Box(5))]
         items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
@@ -25,7 +27,6 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         _ = ((*__for_i_0))++;
-        // yield items[0]
         __state = S_RESUME_0;
         return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*items), 0));
     }
@@ -41,6 +42,9 @@ __gen_gen gen() {
 }
 
 // def relay_twice() -> Iterator[tuple[int32, Box]]:
+//     for p in gen():  # tpyc: ok
+//         yield p
+//         yield p
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -49,7 +53,6 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay_twice
         continue;
     }
     case S_RESUME_0: {
-        // yield p
         __state = S_RESUME_1;
         return p;
     }
@@ -64,7 +67,6 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay_twice
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         p = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield p
         __state = S_RESUME_0;
         return p;
     }
@@ -80,10 +82,35 @@ __gen_relay_twice relay_twice() {
 }
 
 // def main() -> None:
+//     first = True
+//     for q in relay():
+//         if first:
+//             q[1].val = 99
+//             first = False
+//         else:
+//             print(q[1].val)
+//
+//     # Mutate through the first relayed tuple; the next yield of the same
+//     # element sees it, so the relay aliases rather than copying.
+//     seen: list[int32] = []
+//     n = 0
+//     for q2 in relay_twice():
+//         if n == 0:
+//             q2[1].val = 77
+//         seen.append(q2[1].val)
+//         n += 1
+//     print("free", seen)
+//
+//     seen_m: list[int32] = []
+//     m = 0
+//     for q3 in Hub().relay():
+//         if m == 0:
+//             q3[1].val = 88
+//         seen_m.append(q3[1].val)
+//         m += 1
+//     print("method", seen_m)
 void main() {
-    // first = True
     bool first = true;
-    // for q in relay():
     {
         auto __src_0 = relay();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -91,26 +118,16 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& q = ::tpy::unwrap_ref(*__r_1);
-        // if first:
         if (first) {
-            // q[1].val = 99
             std::get<1>(q)->val = 99;
-            // first = False
             first = false;
-        // else:
         } else {
-            // print(q[1].val)
             std::cout << std::get<1>(q)->val << "\n";
         }
         }
     }
-    // # Mutate through the first relayed tuple; the next yield of the same
-    // # element sees it, so the relay aliases rather than copying.
-    // seen: list[int32] = []
     std::vector<int32_t> seen = std::vector<int32_t>{};
-    // n = 0
     int32_t n = 0;
-    // for q2 in relay_twice():
     {
         auto __src_2 = relay_twice();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -118,24 +135,16 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& q2 = ::tpy::unwrap_ref(*__r_3);
-        // if n == 0:
         if ((n == 0)) {
-            // q2[1].val = 77
             std::get<1>(q2)->val = 77;
         }
-        // seen.append(q2[1].val)
         seen.push_back(std::get<1>(q2)->val);
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    // print("free", seen)
     std::cout << "free" << " " << ::tpy::ListPrinter(seen) << "\n";
-    // seen_m: list[int32] = []
     std::vector<int32_t> seen_m = std::vector<int32_t>{};
-    // m = 0
     int32_t m = 0;
-    // for q3 in Hub().relay():
     {
         Hub __tmp_1 = Hub();
         auto __src_4 = __tmp_1.relay();
@@ -144,22 +153,20 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& q3 = ::tpy::unwrap_ref(*__r_5);
-        // if m == 0:
         if ((m == 0)) {
-            // q3[1].val = 88
             std::get<1>(q3)->val = 88;
         }
-        // seen_m.append(q3[1].val)
         seen_m.push_back(std::get<1>(q3)->val);
-        // m += 1
         m = ::tpy::add_check<int32_t>(m, 1);
         }
     }
-    // print("method", seen_m)
     std::cout << "method" << " " << ::tpy::ListPrinter(seen_m) << "\n";
 }
 
 // def relay(self) -> Iterator[tuple[int32, Box]]:
+//     for p in gen():  # tpyc: ok
+//         yield p
+//         yield p
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_Hub_relay::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -168,7 +175,6 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_Hub_relay::
         continue;
     }
     case S_RESUME_0: {
-        // yield p
         __state = S_RESUME_1;
         return p;
     }
@@ -183,7 +189,6 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_Hub_relay::
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         p = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield p
         __state = S_RESUME_0;
         return p;
     }
@@ -193,12 +198,12 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_Hub_relay::
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

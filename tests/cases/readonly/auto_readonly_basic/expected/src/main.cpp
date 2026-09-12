@@ -5,37 +5,39 @@ namespace tpyapp::main {
 
 
 // def read_buf(b: readonly[Buffer]) -> None:
+//     # Calling @auto_readonly method on readonly receiver -> Span[readonly[T]]
+//     s = b.as_span()  # tpyc: type(Span[readonly[int32]])
+//     print(s[int32(0)])
+//     print(s[int32(1)])
 void read_buf(const Buffer& b) {
-    // # Calling @auto_readonly method on readonly receiver -> Span[readonly[T]]
-    // s = b.as_span()  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = b.as_span();
-    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // print(s[int32(1)])
     std::cout << ::tpy::__getitem__(s, 1) << "\n";
 }
 
 // def main() -> None:
+//     b = Buffer()
+//
+//     # Mutable receiver -> Span[int32]
+//     s = b.as_span()  # tpyc: type(Span[int32])
+//     print(s[int32(2)])
+//
+//     read_buf(b)
+//     print(b[int32(0)])
 void main() {
-    // b = Buffer()
     Buffer b = Buffer();
-    // # Mutable receiver -> Span[int32]
-    // s = b.as_span()  # tpyc: type(Span[int32])
     std::span<int32_t> s = b.as_span();
-    // print(s[int32(2)])
     std::cout << ::tpy::__getitem__(s, 2) << "\n";
-    // read_buf(b)
     read_buf(b);
-    // print(b[int32(0)])
     std::cout << b[0] << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

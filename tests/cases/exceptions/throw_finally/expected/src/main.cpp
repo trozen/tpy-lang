@@ -5,76 +5,80 @@ namespace tpyapp::main {
 
 
 // def fail(do_raise: bool) -> None:
+//     if do_raise:
+//         raise ValueError("fail")
 void fail(bool do_raise) {
-    // if do_raise:
     if (do_raise) {
-        // raise ValueError("fail")
         throw ::tpy::ValueError("fail");
     }
 }
 
 // def main() -> None:
+//     # Success path: finally runs after try body
+//     try:
+//         fail(False)
+//     except ValueError:
+//         print("caught")
+//     finally:
+//         print("finally 1")
+//
+//     # Error path: finally runs after except body
+//     try:
+//         fail(True)
+//     except ValueError:
+//         print("caught")
+//     finally:
+//         print("finally 2")
+//
+//     # try/finally only (no except)
+//     try:
+//         print("try body")
+//     finally:
+//         print("finally 3")
 void main() {
-    // # Success path: finally runs after try body
-    // try:
     {
         try {
             try {
-                // fail(False)
                 fail(false);
             } catch (const ::tpy::ValueError&) {
-                // print("caught")
                 std::cout << "caught" << "\n";
             }
         } catch (...) {
-            // print("finally 1")
             std::cout << "finally 1" << "\n";
             throw;
         }
-        // print("finally 1")
         std::cout << "finally 1" << "\n";
     }
-    // # Error path: finally runs after except body
-    // try:
     {
         try {
             try {
-                // fail(True)
                 fail(true);
             } catch (const ::tpy::ValueError&) {
-                // print("caught")
                 std::cout << "caught" << "\n";
             }
         } catch (...) {
-            // print("finally 2")
             std::cout << "finally 2" << "\n";
             throw;
         }
-        // print("finally 2")
         std::cout << "finally 2" << "\n";
     }
-    // # try/finally only (no except)
-    // try:
     {
         try {
-            // print("try body")
             std::cout << "try body" << "\n";
         } catch (...) {
-            // print("finally 3")
             std::cout << "finally 3" << "\n";
             throw;
         }
-        // print("finally 3")
         std::cout << "finally 3" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

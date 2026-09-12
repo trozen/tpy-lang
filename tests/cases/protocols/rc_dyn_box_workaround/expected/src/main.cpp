@@ -5,33 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b1: Box[Pet] = Box(Parrot("Polly"))
+//     r1: Rc[Box[Pet]] = Rc.new(b1)
+//     r1_share = r1.clone()
+//
+//     b2: Box[Pet] = Box(Dog("Rex"))
+//     r2: Rc[Box[Pet]] = Rc.new(b2)
+//
+//     print(r1.get().get().name())
+//     print(r1_share.get().get().name())
+//     print(r2.get().get().name())
 void main() {
-    // b1: Box[Pet] = Box(Parrot("Polly"))
     ::tpystd::tplib::box::Box<Pet> b1 = ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly"));
-    // r1: Rc[Box[Pet]] = Rc.new(b1)
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r1 = Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(std::move(b1));
-    // r1_share = r1.clone()
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r1_share = r1.clone();
-    // b2: Box[Pet] = Box(Dog("Rex"))
     ::tpystd::tplib::box::Box<Pet> b2 = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex")));
-    // r2: Rc[Box[Pet]] = Rc.new(b2)
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r2 = Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(std::move(b2));
-    // print(r1.get().get().name())
     std::cout << r1.get().get().name() << "\n";
-    // print(r1_share.get().get().name())
     std::cout << r1_share.get().get().name() << "\n";
-    // print(r2.get().get().name())
     std::cout << r2.get().get().name() << "\n";
 }
 
+// from tplib import Box, Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box, Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

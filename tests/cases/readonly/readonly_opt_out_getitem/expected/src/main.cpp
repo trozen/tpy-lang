@@ -3,20 +3,19 @@
 
 namespace tpyapp::main {
 
-// c = CachedList()
 CachedList* c{};
 
+// c = CachedList()
+// print(c[0])
+// print(c[1])
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // c = CachedList()
     static CachedList __global_slot_1 = CachedList();
     c = &__global_slot_1;
-    // print(c[0])
     std::cout << (*c)[0] << "\n";
-    // print(c[1])
     std::cout << (*c)[1] << "\n";
 }
 

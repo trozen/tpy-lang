@@ -12,9 +12,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def keepalive_cycles() -> None:
 void keepalive_cycles();
+// def will_close_response(response: bytes) -> bool:
 bool will_close_response(::tpy::BytesView response);
+// def will_close_variants() -> None:
 void will_close_variants();
+// def main() -> None:
 void main();
 
 void __tpy_init();

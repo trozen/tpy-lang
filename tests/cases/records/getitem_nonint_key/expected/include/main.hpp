@@ -11,7 +11,9 @@ struct Scores;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def lookup(s: Scores, key: str) -> int32:
 int32_t lookup(const Scores& s, std::string_view key);
+// def main() -> None:
 void main();
 
 // class Scores:
@@ -40,16 +42,18 @@ inline std::ostream& operator<<(std::ostream& os, const Scores& obj) {
 
 
 // def __init__(self) -> None:
+//     self._a = 10
+//     self._b = 20
 inline Scores::Scores() : _a(10), _b(20) {}
 
 // def __getitem__(self, key: str) -> int32:
+//     if key == "a":
+//         return self._a
+//     return self._b
 inline int32_t Scores::__getitem__(std::string_view key) const {
-    // if key == "a":
     if ((key == "a")) {
-        // return self._a
         return this->_a;
     }
-    // return self._b
     return this->_b;
 }
 void __tpy_init();

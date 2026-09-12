@@ -3,44 +3,46 @@
 
 namespace tpyapp::main {
 
-// h = Holder()
 Holder* h{};
 
 // def test(h: Holder) -> None:
+//     p: Point | None = h.value
+//     print(p is None)
+//
+//     h.value = copy(Point(1, 2))
+//     p = h.value
+//     print(p is None)
+//     print(p.x)
+//
+//     p = None
+//     print(p is None)
+//
+//     h.value = copy(Point(3, 4))
+//     p = h.value
+//     print(p.y)
 void test(Holder& h) {
-    // p: Point | None = h.value
     Point* p = ::tpy::optional_to_ptr(h.value);
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // h.value = copy(Point(1, 2))
     h.value = Point(1, 2);
-    // p = h.value
     p = ::tpy::optional_to_ptr(h.value);
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    // p = None
     p = nullptr;
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // h.value = copy(Point(3, 4))
     h.value = Point(3, 4);
-    // p = h.value
     p = ::tpy::optional_to_ptr(h.value);
-    // print(p.y)
     std::cout << ::tpy::deref_check(p).y << "\n";
 }
 
+// h = Holder()
+// test(h)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // h = Holder()
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    // test(h)
     test((*h));
 }
 

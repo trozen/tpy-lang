@@ -5,37 +5,41 @@ namespace tpyapp::main {
 
 
 // def main():
+//     d: dict[str, dict[str, int32]] = {"a": {"x": 1, "y": 2}, "b": {"z": 3}}
+//     print(d)
+//
+//     nested: dict[str, dict[str, dict[str, int32]]] = {
+//         "outer": {"mid": {"inner": 42}}
+//     }
+//     print(nested)
+//
+//     with_set: dict[str, set[int32]] = {"evens": {2, 4}, "odds": {1, 3}}
+//     print(with_set)
+//
+//     rows: list[dict[str, int32]] = [{"a": 1}, {"b": 2}]
+//     print(rows)
+//
+//     t: tuple[dict[str, int32], int32] = ({"a": 1}, 42)
+//     print(t)
 void main() {
-    // d: dict[str, dict[str, int32]] = {"a": {"x": 1, "y": 2}, "b": {"z": 3}}
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> d = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"a", ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}})}, {"b", ::tpy::ordered_map<std::string, int32_t>({{"z", 3}})}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // nested: dict[str, dict[str, dict[str, int32]]] = {
-    // "outer": {"mid": {"inner": 42}}
-    // }
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>> nested = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"outer", ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"mid", ::tpy::ordered_map<std::string, int32_t>({{"inner", 42}})}})}});
-    // print(nested)
     std::cout << ::tpy::DictPrinter(nested) << "\n";
-    // with_set: dict[str, set[int32]] = {"evens": {2, 4}, "odds": {1, 3}}
     ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> with_set = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>({{"evens", ::tpy::ordered_set<int32_t>({2, 4})}, {"odds", ::tpy::ordered_set<int32_t>({1, 3})}});
-    // print(with_set)
     std::cout << ::tpy::DictPrinter(with_set) << "\n";
-    // rows: list[dict[str, int32]] = [{"a": 1}, {"b": 2}]
     std::vector<::tpy::ordered_map<std::string, int32_t>> rows = {::tpy::ordered_map<std::string, int32_t>({{"a", 1}}), ::tpy::ordered_map<std::string, int32_t>({{"b", 2}})};
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
-    // t: tuple[dict[str, int32], int32] = ({"a": 1}, 42)
     auto t = std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"a", 1}}), 42};
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

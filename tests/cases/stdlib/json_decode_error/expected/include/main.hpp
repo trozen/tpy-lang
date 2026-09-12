@@ -12,7 +12,9 @@ using ::tpystd::json::JSONDecodeError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def expect_error(s: str) -> None:
 void expect_error(std::string_view s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

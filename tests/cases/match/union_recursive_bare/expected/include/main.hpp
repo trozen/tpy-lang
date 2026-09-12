@@ -12,7 +12,9 @@ struct Leaf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def head(t: Tree) -> int32:
 int32_t head(const Tree& t);
+// def main() -> None:
 void main();
 
 // class Leaf:
@@ -33,6 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Leaf::Leaf(int32_t v) : v(v) {}
 struct Tree {
     using variant_type = ::tpy::Union<Leaf, std::vector<Tree>>;

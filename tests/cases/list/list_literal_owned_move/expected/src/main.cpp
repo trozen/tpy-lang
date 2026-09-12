@@ -5,60 +5,61 @@ namespace tpyapp::main {
 
 
 // def array_lit() -> None:
+//     p = Box(1)
+//     xs = [p]
+//     print(len(xs), xs[0].get())
 void array_lit() {
-    // p = Box(1)
     ::tpystd::tplib::box::Box<int32_t> p = ::tpystd::tplib::box::Box<int32_t>(1);
-    // xs = [p]
     std::array<::tpystd::tplib::box::Box<int32_t>, 1> xs = {std::move(p)};
-    // print(len(xs), xs[0].get())
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << "\n";
 }
 
 // def vector_lit() -> None:
+//     p = Box(2)
+//     q = Box(3)
+//     # annotated list[...] forces the std::vector (not fixed-size Array) path
+//     xs: list[Box[int32]] = [p, q]
+//     print(len(xs), xs[0].get(), xs[1].get())
 void vector_lit() {
-    // p = Box(2)
     ::tpystd::tplib::box::Box<int32_t> p = ::tpystd::tplib::box::Box<int32_t>(2);
-    // q = Box(3)
     ::tpystd::tplib::box::Box<int32_t> q = ::tpystd::tplib::box::Box<int32_t>(3);
-    // # annotated list[...] forces the std::vector (not fixed-size Array) path
-    // xs: list[Box[int32]] = [p, q]
     std::vector<::tpystd::tplib::box::Box<int32_t>> xs = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(std::move(p), std::move(q));
-    // print(len(xs), xs[0].get(), xs[1].get())
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << " " << ::tpy::__getitem__(xs, 1).get() << "\n";
 }
 
 // def not_last_use() -> None:
+//     inner = [1, 2]
+//     # inner read after -> copied, not moved (asserts the over-trigger guard)
+//     xs = [inner]  # tpyc: warning(/copies .* into owned storage/)
+//     inner.append(3)
+//     print(len(inner), len(xs))  # 3 1 -- inner intact (would be 0 if wrongly moved)
 void not_last_use() {
-    // inner = [1, 2]
     std::vector<int32_t> inner = {1, 2};
-    // # inner read after -> copied, not moved (asserts the over-trigger guard)
-    // xs = [inner]  # tpyc: warning(/copies .* into owned storage/)
     std::array<std::vector<int32_t>, 1> xs = {{inner}};
-    // inner.append(3)
     inner.push_back(3);
-    // print(len(inner), len(xs))  # 3 1 -- inner intact (would be 0 if wrongly moved)
     std::cout << ::tpy::__len__(inner) << " " << ::tpy::__len__(xs) << "\n";
 }
 
 // def main() -> None:
+//     array_lit()
+//     vector_lit()
+//     not_last_use()
 void main() {
-    // array_lit()
     array_lit();
-    // vector_lit()
     vector_lit();
-    // not_last_use()
     not_last_use();
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

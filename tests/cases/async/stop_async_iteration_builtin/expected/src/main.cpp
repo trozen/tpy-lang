@@ -8,31 +8,32 @@ namespace tpyapp::main {
 // # StopIteration. Verifies it round-trips through `raise` / `except`
 // # outside of any async context (the loop itself is M6's main consumer).
 // def caught() -> str:
+//     try:
+//         raise StopAsyncIteration("done")
+//     except StopAsyncIteration as e:
+//         return str(e)
 std::string caught() {
-    // try:
     {
         try {
-            // raise StopAsyncIteration("done")
             throw ::tpy::StopAsyncIteration("done");
         } catch (const ::tpy::StopAsyncIteration& e) {
-            // return str(e)
             return std::string(::tpy::__str__(e));
         }
     }
 }
 
 // def main() -> None:
+//     print(caught())
 void main() {
-    // print(caught())
     std::cout << caught() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

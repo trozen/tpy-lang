@@ -12,8 +12,10 @@ template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make[T, U: T, V: U](value: Own[V]) -> Own[Holder[T]]:
 template<typename T, typename U, typename V>
 Holder<T> make(::tpy::own_param_t<V> value);
+// def main() -> None:
 void main();
 
 // class Leaf:
@@ -43,6 +45,7 @@ struct Holder {
     bool __tpy_owned_ = true;
 
     // def __init__(self, payload: Ptr[T]) -> None:
+    //     self._payload = payload
     explicit Holder(T* payload) : _payload(payload) {}
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -58,15 +61,15 @@ struct Holder {
     }
 
     // def __del__(self) -> None:
+    //     unsafe_release(self._payload)
     ~Holder() {
         if (!this->__tpy_owned_) return;
-        // unsafe_release(self._payload)
         ::tpy::heap_release(this->_payload);
     }
 
     // def get(self) -> T:
+    //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -80,19 +83,20 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Leaf::Leaf(std::string_view label) : label(label) {}
 
 // def kind(self) -> str:
+//     return "Leaf:" + self.label
 inline std::string Leaf::kind() const {
-    // return "Leaf:" + self.label
     return (::tpy::str_concat("Leaf:", this->label));
 }
 // def make[T, U: T, V: U](value: Own[V]) -> Own[Holder[T]]:
+//     # Body coerces Ptr[V] -> Ptr[T] transitively across U; the bound chain
+//     # is live during sema body analysis.
+//     return Holder[T](unsafe_take(value))
 template<typename T, typename U, typename V>
 Holder<T> make(::tpy::own_param_t<V> value) {
-    // # Body coerces Ptr[V] -> Ptr[T] transitively across U; the bound chain
-    // # is live during sema body analysis.
-    // return Holder[T](unsafe_take(value))
     return Holder<T>(::tpy::heap_take(std::move(value)));
 }
 

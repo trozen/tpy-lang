@@ -3,47 +3,47 @@
 
 namespace tpyapp::main {
 
-// points: list[Point] = list()
 std::vector<Point>* points{};
 
 // # Accessing fields/methods on Optional without None check.
 // # Compiles with warning and inserts a runtime null check.
 // def use_without_check(p: Point | None) -> int32:
+//     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
 int32_t use_without_check(Point* p) {
-    // return p.mag()  # tpyc: warning(/Potential None access on optional value/)
     return ::tpy::deref_check(p).mag();
 }
 
 // def find(pts: list[Point], target: int32) -> Point | None:
+//     for pt in pts:
+//         if pt.x == target:
+//             return pt
+//     return None
 Point* find(std::vector<Point>& pts, int32_t target) {
-    // for pt in pts:
     auto& __obj_0 = pts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& pt = *__beg_0;
-        // if pt.x == target:
         if ((pt.x == target)) {
-            // return pt
             return &(pt);
         }
     }
-    // return None
     return nullptr;
 }
 
+// points: list[Point] = list()
+// points.append(Point(3, 4))
+//
+// # Safe at runtime because we know the value exists
+// print(use_without_check(find(points, 3)))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // points: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
-    // points.append(Point(3, 4))
     points->push_back(Point(3, 4));
-    // # Safe at runtime because we know the value exists
-    // print(use_without_check(find(points, 3)))
     std::cout << use_without_check(find((*points), 3)) << "\n";
 }
 

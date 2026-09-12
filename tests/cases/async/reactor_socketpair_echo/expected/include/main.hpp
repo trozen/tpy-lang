@@ -21,12 +21,16 @@ struct __coro_server;
 struct __coro_client;
 struct __coro_main_coro;
 
+// async def server(sock: socket) -> None:
 __coro_server server(::tpystd::socket::socket& sock);
+// async def client(sock: socket) -> None:
 __coro_client client(::tpystd::socket::socket& sock);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: server
+// async def server(sock: socket) -> None:
 struct __coro_server {
     int32_t __state;
     bool __cancel_pending;
@@ -56,7 +60,7 @@ struct __coro_server {
     }
 };
 
-// Async coroutine: client
+// async def client(sock: socket) -> None:
 struct __coro_client {
     int32_t __state;
     bool __cancel_pending;
@@ -84,7 +88,7 @@ struct __coro_client {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

@@ -6,39 +6,40 @@ namespace tpyapp::main {
 
 // # list[str] operations with owned strings
 // def main() -> None:
+//     words: list[str] = ["hello", "world", "foo"]
+//     print(len(words))
+//     print(words[0])
+//     print(words[1])
+//     words.append("bar")
+//     print(len(words))
+//     print(words[3])
+//
+//     # Iterate over list of strings
+//     for w in words:
+//         print(w)
 void main() {
-    // words: list[str] = ["hello", "world", "foo"]
     std::vector<std::string> words = {"hello", "world", "foo"};
-    // print(len(words))
     std::cout << ::tpy::__len__(words) << "\n";
-    // print(words[0])
     std::cout << ::tpy::__getitem__(words, 0) << "\n";
-    // print(words[1])
     std::cout << ::tpy::__getitem__(words, 1) << "\n";
-    // words.append("bar")
     words.push_back("bar");
-    // print(len(words))
     std::cout << ::tpy::__len__(words) << "\n";
-    // print(words[3])
     std::cout << ::tpy::__getitem__(words, 3) << "\n";
-    // # Iterate over list of strings
-    // for w in words:
     auto& __obj_0 = words;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view w = *__beg_0;
-        // print(w)
         std::cout << w << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

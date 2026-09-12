@@ -3,9 +3,19 @@
 
 namespace tpyapp::main {
 
-// p: Point;
 point* p{};
 
+// p: Point;
+//
+// p.x := 0;
+// p.y := 0;
+//
+// x := 3;
+// y := 4;
+// name := 'origin-offset';
+//
+// writeln(p.x, ',', p.y);
+// writeln(p.name);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -14,26 +24,16 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::strings::__tpy_init();
-    // p: Point;
     static point __global_slot_1 = point();
     p = &__global_slot_1;
-    // p.x := 0;
     p->x = 0;
-    // p.y := 0;
     p->y = 0;
-    // x := 3;
     p->x = 3;
-    // y := 4;
     p->y = 4;
-    // name := 'origin-offset';
     p->name.assign("origin-offset");
-    // writeln(p.x, ',', p.y);
     std::cout << p->x;
-    // writeln(p.x, ',', p.y);
     std::cout << ",";
-    // writeln(p.x, ',', p.y);
     std::cout << p->y << "\n";
-    // writeln(p.name);
     std::cout << std::string(::tpy::__str__(p->name)) << "\n";
 }
 

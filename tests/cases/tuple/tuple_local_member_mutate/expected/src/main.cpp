@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def mutate_param_member(b: Box) -> None:
+//     t = (1, b)
+//     t[1].val = 99
 void mutate_param_member(Box& b) {
-    // t = (1, b)
     auto t = std::tuple<int32_t, Box*>{1, &(b)};
-    // t[1].val = 99
     std::get<1>(t)->val = 99;
 }
 
 // def local_member() -> int32:
+//     b = Box(5)
+//     t = (1, b)
+//     t[1].val = 77
+//     return b.val
 int32_t local_member() {
-    // b = Box(5)
     Box b = Box(5);
-    // t = (1, b)
     auto t = std::tuple<int32_t, Box*>{1, &(b)};
-    // t[1].val = 77
     std::get<1>(t)->val = 77;
-    // return b.val
     return b.val;
 }
 
 // def main() -> None:
+//     b = Box(5)
+//     mutate_param_member(b)
+//     print(b.val)
+//     print(local_member())
 void main() {
-    // b = Box(5)
     Box b = Box(5);
-    // mutate_param_member(b)
     mutate_param_member(b);
-    // print(b.val)
     std::cout << b.val << "\n";
-    // print(local_member())
     std::cout << local_member() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

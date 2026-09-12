@@ -15,6 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Box_describe;
 
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -60,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Generator: Box.describe
+// def describe(self) -> Iterator[str]:
 struct __gen_Box_describe : public ::tpy::next_iter_mixin<__gen_Box_describe, std::string> {
     int32_t __state;
     const Box& __self;
@@ -91,16 +92,17 @@ inline __gen_Box_describe Box::describe() const {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Dog::Dog() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Cat::Cat() {
-    // pass
 }
 
 // def __init__(self, p: Dog | Cat) -> None:
+//     self.payload = p
 inline Box::Box(::tpy::Union<const Cat*, const Dog*> p) : payload(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

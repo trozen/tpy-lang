@@ -5,44 +5,59 @@ namespace tpyapp::main {
 
 
 // def main():
+//     try:
+//         getsize("tpy_nope_missing_ospath")
+//     except FileNotFoundError:
+//         print("getsize: FileNotFoundError")
+//
+//     try:
+//         os.listdir("tpy_nope_missing_dir_xyz")
+//     except FileNotFoundError:
+//         print("listdir: FileNotFoundError")
+//
+//     try:
+//         os.chdir("tpy_nope_missing_dir_xyz")
+//     except FileNotFoundError:
+//         print("chdir: FileNotFoundError")
+//
+//     # listdir through a non-directory: ENOTDIR. CPython raises
+//     # NotADirectoryError (an OSError); TPy raises OSError -- caught by both.
+//     with open("tpy_fs_errors_file.txt", "w") as fh:
+//         fh.write("x")
+//     try:
+//         os.listdir("tpy_fs_errors_file.txt")
+//     except OSError:
+//         print("listdir-on-file: OSError")
+//
+//     try:
+//         getsize("tpy_nope_missing_ospath")
+//     except OSError:
+//         print("getsize: OSError base")
 void main() {
-    // try:
     {
         try {
-            // getsize("tpy_nope_missing_ospath")
             ::tpy::stdlib::os::path_getsize("tpy_nope_missing_ospath");
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("getsize: FileNotFoundError")
             std::cout << "getsize: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.listdir("tpy_nope_missing_dir_xyz")
             ::tpystd::os::listdir("tpy_nope_missing_dir_xyz");
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("listdir: FileNotFoundError")
             std::cout << "listdir: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.chdir("tpy_nope_missing_dir_xyz")
             ::tpy::stdlib::os::chdir("tpy_nope_missing_dir_xyz");
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("chdir: FileNotFoundError")
             std::cout << "chdir: FileNotFoundError" << "\n";
         }
     }
-    // # listdir through a non-directory: ENOTDIR. CPython raises
-    // # NotADirectoryError (an OSError); TPy raises OSError -- caught by both.
-    // with open("tpy_fs_errors_file.txt", "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode("tpy_fs_errors_file.txt", "w");
     auto& fh = __ctx_1.__enter__();
     try {
-        // fh.write("x")
         fh.write("x");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -54,41 +69,36 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // try:
     {
         try {
-            // os.listdir("tpy_fs_errors_file.txt")
             ::tpystd::os::listdir("tpy_fs_errors_file.txt");
         } catch (const ::tpy::OSError&) {
-            // print("listdir-on-file: OSError")
             std::cout << "listdir-on-file: OSError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // getsize("tpy_nope_missing_ospath")
             ::tpy::stdlib::os::path_getsize("tpy_nope_missing_ospath");
         } catch (const ::tpy::OSError&) {
-            // print("getsize: OSError base")
             std::cout << "getsize: OSError base" << "\n";
         }
     }
 }
 
+// # os filesystem error mapping: getsize / listdir / chdir on a missing path
+// # raise FileNotFoundError (an OSError subclass), matching CPython. Only the
+// # exception TYPE is observed; message text differs from CPython.
+// import os
+// from os.path import getsize
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os filesystem error mapping: getsize / listdir / chdir on a missing path
-    // # raise FileNotFoundError (an OSError subclass), matching CPython. Only the
-    // # exception TYPE is observed; message text differs from CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // from os.path import getsize
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

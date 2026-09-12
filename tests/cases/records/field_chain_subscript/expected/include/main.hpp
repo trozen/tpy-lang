@@ -12,7 +12,9 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def put(nodes: list[Outer]) -> None:
 void put(std::vector<Outer>& nodes);
+// def main() -> None:
 void main();
 
 // class Inner:
@@ -54,21 +56,23 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2, 3]
 inline Inner::Inner() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __init__(self, inner: Own[Inner]) -> None:
+//     self.inner = inner
 inline Outer::Outer(Inner&& inner) : inner(std::move(inner)) {}
 
 // def at(self, i: int32) -> int32:
+//     # The subject inside a method (a `this->` rooted chain).
+//     return self.inner.items[i]  # tpyc: ok
 inline int32_t Outer::at(int32_t i) const {
-    // # The subject inside a method (a `this->` rooted chain).
-    // return self.inner.items[i]  # tpyc: ok
     return ::tpy::__getitem__(this->inner.items, i);
 }
 
 // def bump(self, i: int32) -> None:
+//     self.inner.items[i] += 10  # tpyc: ok
 inline void Outer::bump(int32_t i) {
-    // self.inner.items[i] += 10  # tpyc: ok
     ::tpy::__setitem__(this->inner.items, i, ::tpy::add_check<int32_t>(::tpy::__getitem__(this->inner.items, i), 10));
 }
 void __tpy_init();

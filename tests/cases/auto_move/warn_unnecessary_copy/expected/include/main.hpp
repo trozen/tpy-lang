@@ -11,8 +11,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(b: Own[Box]) -> int32:
 int32_t consume(Box&& b);
+// def make_box(v: int32) -> Own[Box]:
 Box make_box(int32_t v);
+// def main():
 void main();
 
 // class Box:

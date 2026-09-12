@@ -60,6 +60,7 @@ concept BarUser = requires(T& t) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Record with the bound protocol as a type parameter bound
@@ -70,12 +71,13 @@ struct Bar {
     T factory;
 
     // def __init__(self, factory: T) -> None:
+    //     self.factory = factory
     Bar() = default;
     explicit Bar(::tpy::readonly_form_t<T> factory) : factory(factory) {}
 
     // def create_foo(self) -> Own[Foo]:
+    //     return self.factory.make()
     Foo create_foo() {
-        // return self.factory.make()
         return this->factory.make();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bar";
@@ -89,11 +91,12 @@ inline std::ostream& operator<<(std::ostream& os, const Bar<T>& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Foo::Foo(int32_t value) : value(value) {}
 
 // def make(self) -> Own[Foo]:
+//     return Foo(int32(42))
 inline Foo DefaultFooMaker::make() const {
-    // return Foo(int32(42))
     return Foo(42);
 }
 void __tpy_init();

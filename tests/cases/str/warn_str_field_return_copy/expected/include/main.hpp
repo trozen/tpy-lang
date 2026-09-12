@@ -11,6 +11,7 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Item:
@@ -51,33 +52,36 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 
 // def __init__(self, name: str, desc: str, label: str):
+//     self.name = name
+//     self.desc = desc
+//     self.label = label
 inline Item::Item(std::string_view name, std::string_view desc, std::string_view label) : name(name), desc(desc), label(label) {}
 
 // # Warning: -> str copies the field
 // def get_name(self) -> str:
+//     return self.name  # tpyc: warning(/returns a copy of str field/)
 inline std::string Item::get_name() const {
-    // return self.name  # tpyc: warning(/returns a copy of str field/)
     return this->name;
 }
 
 // # No warning: -> StrView is zero-copy
 // def get_desc(self) -> StrView:
+//     return self.desc
 inline std::string_view Item::get_desc() const {
-    // return self.desc
     return this->desc;
 }
 
 // # No warning: -> String is explicit owned
 // def get_label(self) -> String:
+//     return self.label
 inline ::tpy::String Item::get_label() const {
-    // return self.label
     return this->label;
 }
 
 // # No warning: dunder method
 // def __str__(self) -> str:
+//     return self.name
 inline std::string Item::__str__() const {
-    // return self.name
     return this->name;
 }
 void __tpy_init();

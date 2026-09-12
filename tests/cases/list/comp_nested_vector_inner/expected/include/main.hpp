@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def jagged() -> None:
 void jagged();
+// def annotated_growable() -> None:
 void annotated_growable();
 
 void __tpy_init();

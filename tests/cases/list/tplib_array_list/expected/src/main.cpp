@@ -5,146 +5,158 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # -- basics: empty, append, len, getitem --
+//     a = ArrayList[int32, 8]()
+//     print(len(a))               # 0
+//     a.append(10)
+//     a.append(20)
+//     a.append(30)
+//     print(len(a))               # 3
+//     print(a[0])                 # 10
+//     print(a[2])                 # 30
+//
+//     # -- setitem --
+//     a[1] = 99
+//     print(a[1])                 # 99
+//
+//     # -- pop --
+//     print(a.pop())              # 30
+//     print(len(a))               # 2
+//
+//     # -- insert --
+//     a.insert(0, 5)
+//     print(a[0])                 # 5
+//     print(a[1])                 # 10
+//     print(len(a))               # 3
+//
+//     # -- pop(index) --
+//     print(a.pop(1))             # 10
+//     print(len(a))               # 2
+//
+//     # -- index, count --
+//     a.append(5)
+//     print(a.index(5))           # 0
+//     print(a.count(5))           # 2
+//     print(a.index(99))          # 1
+//
+//     # -- remove --
+//     a.remove(99)
+//     print(len(a))               # 2
+//     print(a[0])                 # 5
+//     print(a[1])                 # 5
+//
+//     # -- reverse --
+//     a[1] = 7
+//     a.reverse()
+//     print(a[0])                 # 7
+//     print(a[1])                 # 5
+//
+//     # -- copy --
+//     b = copy(a)
+//     b[0] = 100
+//     print(a[0])                 # 7 (original unchanged)
+//     print(b[0])                 # 100
+//
+//     # -- iter --
+//     c = ArrayList[int32, 4]()
+//     c.append(1)
+//     c.append(2)
+//     c.append(3)
+//     for x in c:
+//         print(x)
+//     # iterate again (fresh iterator each time)
+//     for x in c:
+//         print(x)
+//
+//     # -- clear --
+//     a.clear()
+//     print(len(a))               # 0
+//
+//     # -- construct from Span --
+//     arr: Array[int32, 3] = [10, 20, 30]
+//     s: Span[int32] = arr
+//     d = ArrayList[int32, 8](s)
+//     print(len(d))               # 3
+//     print(d[0])                 # 10
+//     print(d[2])                 # 30
+//     d.append(40)
+//     print(len(d))               # 4
 void main() {
-    // # -- basics: empty, append, len, getitem --
-    // a = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    // print(len(a))               # 0
     std::cout << ::tpy::__len__(a) << "\n";
-    // a.append(10)
     a.append(10);
-    // a.append(20)
     a.append(20);
-    // a.append(30)
     a.append(30);
-    // print(len(a))               # 3
     std::cout << ::tpy::__len__(a) << "\n";
-    // print(a[0])                 # 10
     std::cout << a[0] << "\n";
-    // print(a[2])                 # 30
     std::cout << a[2] << "\n";
-    // # -- setitem --
-    // a[1] = 99
     ::tpy::__setitem__(a, 1, 99);
-    // print(a[1])                 # 99
     std::cout << a[1] << "\n";
-    // # -- pop --
-    // print(a.pop())              # 30
     std::cout << a.pop() << "\n";
-    // print(len(a))               # 2
     std::cout << ::tpy::__len__(a) << "\n";
-    // # -- insert --
-    // a.insert(0, 5)
     a.insert(0, 5);
-    // print(a[0])                 # 5
     std::cout << a[0] << "\n";
-    // print(a[1])                 # 10
     std::cout << a[1] << "\n";
-    // print(len(a))               # 3
     std::cout << ::tpy::__len__(a) << "\n";
-    // # -- pop(index) --
-    // print(a.pop(1))             # 10
     std::cout << a.pop(1) << "\n";
-    // print(len(a))               # 2
     std::cout << ::tpy::__len__(a) << "\n";
-    // # -- index, count --
-    // a.append(5)
     a.append(5);
-    // print(a.index(5))           # 0
     std::cout << a.index(5) << "\n";
-    // print(a.count(5))           # 2
     std::cout << a.count(5) << "\n";
-    // print(a.index(99))          # 1
     std::cout << a.index(99) << "\n";
-    // # -- remove --
-    // a.remove(99)
     a.remove(99);
-    // print(len(a))               # 2
     std::cout << ::tpy::__len__(a) << "\n";
-    // print(a[0])                 # 5
     std::cout << a[0] << "\n";
-    // print(a[1])                 # 5
     std::cout << a[1] << "\n";
-    // # -- reverse --
-    // a[1] = 7
     ::tpy::__setitem__(a, 1, 7);
-    // a.reverse()
     a.reverse();
-    // print(a[0])                 # 7
     std::cout << a[0] << "\n";
-    // print(a[1])                 # 5
     std::cout << a[1] << "\n";
-    // # -- copy --
-    // b = copy(a)
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(a);
-    // b[0] = 100
     ::tpy::__setitem__(b, 0, 100);
-    // print(a[0])                 # 7 (original unchanged)
     std::cout << a[0] << "\n";
-    // print(b[0])                 # 100
     std::cout << b[0] << "\n";
-    // # -- iter --
-    // c = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
-    // c.append(1)
     c.append(1);
-    // c.append(2)
     c.append(2);
-    // c.append(3)
     c.append(3);
-    // for x in c:
     auto& __src_0 = c;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
-    // # iterate again (fresh iterator each time)
-    // for x in c:
     auto& __src_2 = c;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
     }
-    // # -- clear --
-    // a.clear()
     a.clear();
-    // print(len(a))               # 0
     std::cout << ::tpy::__len__(a) << "\n";
-    // # -- construct from Span --
-    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // s: Span[int32] = arr
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
-    // d = ArrayList[int32, 8](s)
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> d = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(s));
-    // print(len(d))               # 3
     std::cout << ::tpy::__len__(d) << "\n";
-    // print(d[0])                 # 10
     std::cout << d[0] << "\n";
-    // print(d[2])                 # 30
     std::cout << d[2] << "\n";
-    // d.append(40)
     d.append(40);
-    // print(len(d))               # 4
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

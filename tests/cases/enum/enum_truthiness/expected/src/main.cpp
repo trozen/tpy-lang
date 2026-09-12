@@ -43,34 +43,35 @@ namespace tpyapp::main {
 
 
 // def check(s: Signal) -> None:
+//     if s:
+//         print("truthy")
+//     else:
+//         print("falsy")
 void check(Signal s) {
-    // if s:
     if ((static_cast<void>(s), true)) {
-        // print("truthy")
         std::cout << "truthy" << "\n";
-    // else:
     } else {
-        // print("falsy")
         std::cout << "falsy" << "\n";
     }
 }
 
 // def main() -> None:
+//     check(Signal.Off)
+//     check(Signal.On)
 void main() {
-    // check(Signal.Off)
     check(Signal::Off);
-    // check(Signal.On)
     check(Signal::On);
 }
 
+// # All enum values are truthy (even value 0)
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # All enum values are truthy (even value 0)
-    // from enum import Enum
-    // main()
     main();
 }
 

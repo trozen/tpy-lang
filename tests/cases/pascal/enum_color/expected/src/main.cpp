@@ -45,34 +45,33 @@ std::optional<::tpyapp::main::color> EnumUtil<::tpyapp::main::color>::try_parse(
 
 namespace tpyapp::main {
 
-// c: Color;
 color c;
 
+// c: Color;
+//
+// c := Green;
+// case c of
+//   Red: writeln('red');
+//   Green: writeln('green');
+//   Blue: writeln('blue');
+// end;
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // c := Green;
     c = color::green;
-    // case c of
     auto& __match_subject_1 = c;
     switch (__match_subject_1) {
-    // Red: writeln('red');
     case color::red: {
-        // Red: writeln('red');
         std::cout << "red" << "\n";
         break;
     }
-    // Green: writeln('green');
     case color::green: {
-        // Green: writeln('green');
         std::cout << "green" << "\n";
         break;
     }
-    // Blue: writeln('blue');
     case color::blue: {
-        // Blue: writeln('blue');
         std::cout << "blue" << "\n";
         break;
     }

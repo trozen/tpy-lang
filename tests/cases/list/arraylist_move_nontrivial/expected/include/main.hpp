@@ -15,9 +15,13 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[ArrayList[Item, 4]]:
 ::tpystd::tplib::array_list::ArrayList<Item, 4> make();
+// def make_full() -> Own[ArrayList[Item, 4]]:
 ::tpystd::tplib::array_list::ArrayList<Item, 4> make_full();
+// def make_empty() -> Own[ArrayList[Item, 4]]:
 ::tpystd::tplib::array_list::ArrayList<Item, 4> make_empty();
+// def main() -> None:
 void main();
 
 // class Item:
@@ -40,6 +44,8 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 
 // def __init__(self, name: str, n: int) -> None:
+//     self.name = name
+//     self.n = n
 inline Item::Item(std::string_view name, const ::tpy::BigInt& n) : name(name), n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -7,31 +7,31 @@ namespace tpyapp::main {
 // # `+=` on a str ELEMENT target: a read-modify-write pair over the resolved str
 // # concat, not the in-place append a str NAME target takes.
 // def bump(ys: list[str], t: dict[str, str], k: str) -> None:
+//     ys[0] += "a"  # element target -> read, concat, write back
+//     t["x"] += k
 void bump(std::vector<std::string>& ys, ::tpy::ordered_map<std::string, std::string>& t, std::string_view k) {
-    // ys[0] += "a"  # element target -> read, concat, write back
     ::tpy::__setitem__(ys, 0, ::tpy::str_concat(::tpy::__getitem__(ys, 0), "a"));
-    // t["x"] += k
     ::tpy::__setitem__(t, "x", ::tpy::str_concat(::tpy::__getitem__(t, "x"), k));
 }
 
 // def main() -> None:
+//     ys = ["q"]
+//     t = {"x": "y"}
+//     bump(ys, t, "z")
+//     print(ys[0], t["x"])
 void main() {
-    // ys = ["q"]
     std::vector<std::string> ys = {"q"};
-    // t = {"x": "y"}
     ::tpy::ordered_map<std::string, std::string> t = ::tpy::ordered_map<std::string, std::string>({{"x", "y"}});
-    // bump(ys, t, "z")
     bump(ys, t, "z");
-    // print(ys[0], t["x"])
     std::cout << ::tpy::__getitem__(ys, 0) << " " << ::tpy::__getitem__(t, "x") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

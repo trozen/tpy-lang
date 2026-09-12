@@ -12,7 +12,9 @@ struct Point;
 extern Point* q;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_x(p: Point | None) -> int32:
 int32_t get_x(const Point* p);
+// def get_mag(p: Point | None) -> int32:
 int32_t get_mag(Point* p);
 
 // class Point:
@@ -36,11 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def mag(self) -> int32:
+//     return self.x
 inline int32_t Point::mag() const {
-    // return self.x
     return this->x;
 }
 void __tpy_init();

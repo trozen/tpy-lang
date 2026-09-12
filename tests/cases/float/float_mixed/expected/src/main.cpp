@@ -3,31 +3,27 @@
 
 namespace tpyapp::main {
 
-// # Mixed int/float operations (auto-promotion to float)
-// a = 1 + 2.0
 double a{};
-// b = 3.14 * 2
 double b{};
-// c = 10 - 1.5
 double c{};
 
+// # Mixed int/float operations (auto-promotion to float)
+// a = 1 + 2.0
+// b = 3.14 * 2
+// c = 10 - 1.5
+// print(a)
+// print(b)
+// print(c)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Mixed int/float operations (auto-promotion to float)
-    // a = 1 + 2.0
     a = ((1) + (2.0));
-    // b = 3.14 * 2
     b = ((3.14) * (2));
-    // c = 10 - 1.5
     c = ((10) - (1.5));
-    // print(a)
     std::cout << ::tpy::print_float(a) << "\n";
-    // print(b)
     std::cout << ::tpy::print_float(b) << "\n";
-    // print(c)
     std::cout << ::tpy::print_float(c) << "\n";
 }
 

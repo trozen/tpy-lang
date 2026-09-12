@@ -9,16 +9,27 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_range_var() -> None:
 void test_range_var();
+// def test_body_var() -> None:
 void test_body_var();
+// def test_list_iteration() -> None:
 void test_list_iteration();
+// def test_break() -> None:
 void test_break();
+// def test_nested() -> None:
 void test_nested();
+// def test_record_in_body() -> None:
 void test_record_in_body();
+// def test_sequential_same_var() -> None:
 void test_sequential_same_var();
+// def test_str_loop_var() -> None:
 void test_str_loop_var();
+// def test_tuple_unpack() -> None:
 void test_tuple_unpack();
+// def test_tuple_unpack_partial() -> None:
 void test_tuple_unpack_partial();
+// def test_tuple_unpack_second_func() -> None:
 void test_tuple_unpack_second_func();
 
 void __tpy_init();

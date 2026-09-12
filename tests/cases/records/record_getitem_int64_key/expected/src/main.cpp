@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p = WidePages()
+//     k: int = 17592186044416  # 2**44
+//     p[k] = 9
+//     print(p[k])
+//     print(p[k + 1])
 void main() {
-    // p = WidePages()
     WidePages p = WidePages();
-    // k: int = 17592186044416  # 2**44
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(17592186044416LL));
-    // p[k] = 9
     ::tpy::__setitem__(p, k.to_fixed_check<int64_t>(), 9);
-    // print(p[k])
     std::cout << p[k.to_fixed_check<int64_t>()] << "\n";
-    // print(p[k + 1])
     std::cout << p[((k) + (::tpy::BigInt(1))).to_fixed_check<int64_t>()] << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

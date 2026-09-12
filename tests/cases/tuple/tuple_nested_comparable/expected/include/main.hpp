@@ -9,14 +9,16 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def less[T: Comparable](a: T, b: T) -> bool:
 template<::tpystd::tpy::Comparable T>
 bool less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
 // def less[T: Comparable](a: T, b: T) -> bool:
+//     return a < b
 template<::tpystd::tpy::Comparable T>
 bool less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // return a < b
     return (a < b);
 }
 

@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def f(a: int32, /, b: int32 = 5) -> int32:
+//     return a * 100 + b
 int32_t f(int32_t a, int32_t b) {
-    // return a * 100 + b
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(a, 100)), b));
 }
 
 // def g(a: int32, b: int32, /, c: int32 = 7) -> int32:
+//     return a + b + c
 int32_t g(int32_t a, int32_t b, int32_t c) {
-    // return a + b + c
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a, b)), c));
 }
 
 // def main() -> None:
+//     print(f(7))
+//     print(f(7, 1))
+//     print(g(1, 2))
+//     print(g(1, 2, 3))
+//     print(Calc().scale(4))
+//     print(Calc().scale(4, k=3))
 void main() {
-    // print(f(7))
     std::cout << f(7) << "\n";
-    // print(f(7, 1))
     std::cout << f(7, 1) << "\n";
-    // print(g(1, 2))
     std::cout << g(1, 2) << "\n";
-    // print(g(1, 2, 3))
     std::cout << g(1, 2, 3) << "\n";
-    // print(Calc().scale(4))
     std::cout << Calc().scale(4) << "\n";
-    // print(Calc().scale(4, k=3))
     std::cout << Calc().scale(4, 3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

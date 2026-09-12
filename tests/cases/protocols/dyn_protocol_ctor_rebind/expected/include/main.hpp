@@ -32,6 +32,7 @@ struct Announcer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -96,29 +97,29 @@ namespace tpyapp::main {
 
 
 // def name(self) -> str:
+//     return "Rex"
 inline std::string Dog::name() {
-    // return "Rex"
     return "Rex";
 }
 
 // def name(self) -> str:
+//     return "Meow"
 inline std::string Cat::name() {
-    // return "Meow"
     return "Meow";
 }
 
 // def __init__(self) -> None:
+//     pet: Pet = Dog()
+//     print(pet.name())
+//     pet = Cat()
+//     print(pet.name())
 inline Announcer::Announcer() {
     std::optional<Cat> __slot_2;
-    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // print(pet.name())
     std::cout << pet->name() << "\n";
-    // pet = Cat()
     __slot_2.emplace(Cat());
     pet = &*__slot_2;
-    // print(pet.name())
     std::cout << pet->name() << "\n";
 }
 void __tpy_init();

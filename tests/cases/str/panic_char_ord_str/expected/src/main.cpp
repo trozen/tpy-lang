@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # ord(str) panics when string length != 1.
 // def main():
+//     s = "hello"
+//     print(ord(s))
 void main() {
-    // s = "hello"
     std::string_view s = "hello";
-    // print(ord(s))
     std::cout << ::tpy::ord_str(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

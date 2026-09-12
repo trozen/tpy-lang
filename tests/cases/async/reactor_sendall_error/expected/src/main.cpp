@@ -5,18 +5,23 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     a, b = socketpair()
+//     a.setblocking(False)
+//     a.close()  # fd is now -1; send -> EBADF
+//     loop = asyncio.get_running_loop()
+//     try:
+//         await loop.sock_sendall(a, b"data")
+//         print("no error")
+//     except OSError:
+//         print("OSError caught")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = socketpair()
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
-        // a.setblocking(False)
         (*a).setblocking(false);
-        // a.close()  # fd is now -1; send -> EBADF
         (*a).close();
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __state = S_JOIN_1;
         continue;
@@ -27,13 +32,11 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("no error")
             std::cout << "no error" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::OSError&) {
             __sub_0.reset();
-            // print("OSError caught")
             std::cout << "OSError caught" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -48,12 +51,10 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // await loop.sock_sendall(a, b"data")
             __sub_0.emplace(std::move((*loop).sock_sendall((*a), ::tpy::bytes_literal("data", 4))));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::OSError&) {
-            // print("OSError caught")
             std::cout << "OSError caught" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -73,26 +74,27 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio epoll reactor (v2): a non-EAGAIN sendall error surfaces as an
+// # OSError through the fd awaitable (sendall on a closed fd -> EBADF), not
+// # silently swallowed or treated as would-block. The write-path mirror of
+// # reactor_recv_error; runs under the cpy phase since TPy's SocketError (and
+// # CPython's socket) both raise OSError here.
+// import asyncio
+// from socket import socketpair
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio epoll reactor (v2): a non-EAGAIN sendall error surfaces as an
-    // # OSError through the fd awaitable (sendall on a closed fd -> EBADF), not
-    // # silently swallowed or treated as would-block. The write-path mirror of
-    // # reactor_recv_error; runs under the cpy phase since TPy's SocketError (and
-    // # CPython's socket) both raise OSError here.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socketpair
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

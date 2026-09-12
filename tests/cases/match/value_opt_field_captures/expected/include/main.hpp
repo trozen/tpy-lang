@@ -13,7 +13,9 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(u: WithScalar | WithStr | Other) -> None:
 void show(::tpy::Union<const Other*, const WithScalar*, const WithStr*> u);
+// def main() -> None:
 void main();
 
 // class WithScalar:
@@ -66,12 +68,15 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 
 
 // def __init__(self, n: Optional[int32]) -> None:
+//     self.n = n
 inline WithScalar::WithScalar(std::optional<int32_t> n) : n(n) {}
 
 // def __init__(self, s: Optional[str]) -> None:
+//     self.s = s
 inline WithStr::WithStr(std::optional<std::string_view> s) : s(s ? std::make_optional(std::string(*s)) : std::nullopt) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Other::Other(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

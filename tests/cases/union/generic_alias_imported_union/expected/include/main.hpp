@@ -13,7 +13,9 @@ using ::tpyapp::lib::B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(e: Either[int32]) -> str:
 std::string describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*> e);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,49 +5,49 @@ namespace tpyapp::main {
 
 
 // def scalars(x: int32 | None) -> int32:
+//     xs = [x]                # tpyc: ok -- an `int32 | None` element
+//     return len(xs)
 int32_t scalars(std::optional<int32_t> x) {
-    // xs = [x]                # tpyc: ok -- an `int32 | None` element
     std::array<std::optional<int32_t>, 1> xs = {x};
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 
 // def spans(sp: Span[int32] | None) -> int32:
+//     xs = [sp]               # tpyc: ok -- a `Span[int32] | None` element
+//     return len(xs)
 int32_t spans(std::optional<std::span<int32_t>> sp) {
-    // xs = [sp]               # tpyc: ok -- a `Span[int32] | None` element
     std::array<std::optional<std::span<int32_t>>, 1> xs = {sp};
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 
 // def pairs(tp: tuple[int32, int32] | None) -> int32:
+//     xs = [tp]               # tpyc: ok -- a value-tuple Optional element
+//     return len(xs)
 int32_t pairs(std::optional<std::tuple<int32_t, int32_t>> tp) {
-    // xs = [tp]               # tpyc: ok -- a value-tuple Optional element
     std::array<std::optional<std::tuple<int32_t, int32_t>>, 1> xs = {tp};
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 
 // def main() -> None:
+//     data: list[int32] = [1, 2, 3]
+//     sp: Span[int32] = data
+//     print(scalars(7), scalars(None))
+//     print(spans(sp), spans(None))
+//     print(pairs((1, 2)), pairs(None))
 void main() {
-    // data: list[int32] = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
-    // sp: Span[int32] = data
     std::span<int32_t> sp = ::tpy::as_mut_span(data);
-    // print(scalars(7), scalars(None))
     std::cout << scalars(7) << " " << scalars(std::nullopt) << "\n";
-    // print(spans(sp), spans(None))
     std::cout << spans(sp) << " " << spans(std::nullopt) << "\n";
-    // print(pairs((1, 2)), pairs(None))
     std::cout << pairs(std::tuple<int32_t, int32_t>{1, 2}) << " " << pairs(std::nullopt) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

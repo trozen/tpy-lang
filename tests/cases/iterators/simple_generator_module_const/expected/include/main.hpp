@@ -10,21 +10,25 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
+// def upto_while(n: int32) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < n:
+//         if i == caps.CAP:
+//             break
+//         yield i
+//         i += 1
 inline auto upto_while(int32_t n) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {
             while ((i < n)) {
-                // if i == caps.CAP:
                 if ((i == ::tpyapp::caps::CAP)) {
-                    // break
                     break;
                 }
                 auto __val = i;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }
@@ -33,14 +37,17 @@ inline auto upto_while(int32_t n) {
     );
 }
 
+// def upto_for(n: int32) -> Iterator[int32]:
+//     for i in range(n):
+//         if i == caps.CAP:
+//             break
+//         yield i
 inline auto upto_for(int32_t n) {
     return ::tpy::make_generator<int32_t>(
         [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t i = __i++;
-                // if i == caps.CAP:
                 if ((i == ::tpyapp::caps::CAP)) {
-                    // break
                     break;
                 }
                 auto __val = i;

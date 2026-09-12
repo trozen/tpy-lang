@@ -12,6 +12,7 @@ struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -52,18 +53,19 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Cell::Cell(int32_t v) : v(v) {}
 
 // def __init__(self, xs: list[int32]) -> None:
+//     m = len(xs) + 1  # breaks the chain: everything below runs in the body
+//     self.n = m
+//     # The subject: both read `self.n`, written by the body init above.
+//     self.cells = [self.n, int32(1)]  # tpyc: ok
+//     self.boxes = [Cell(self.n)]  # tpyc: ok
 inline Grid::Grid(const std::vector<int32_t>& xs) {
-    // m = len(xs) + 1  # breaks the chain: everything below runs in the body
     int32_t m = (::tpy::add_check<int32_t>(::tpy::__len__(xs), 1));
-    // self.n = m
     this->n = m;
-    // # The subject: both read `self.n`, written by the body init above.
-    // self.cells = [self.n, int32(1)]  # tpyc: ok
     this->cells = {this->n, 1};
-    // self.boxes = [Cell(self.n)]  # tpyc: ok
     this->boxes = {Cell(this->n)};
 }
 void __tpy_init();

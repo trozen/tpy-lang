@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(pick[int32, IntBox](IntBox(42)))       # tpyc: ok
+//     print(pick[StrView, StrBox](StrBox("hi")))   # tpyc: ok
 void main() {
-    // print(pick[int32, IntBox](IntBox(42)))       # tpyc: ok
     IntBox __tmp_1 = IntBox(42);
     std::cout << pick<int32_t, IntBox>(__tmp_1) << "\n";
-    // print(pick[StrView, StrBox](StrBox("hi")))   # tpyc: ok
     StrBox __tmp_2 = StrBox("hi");
     std::cout << pick<std::string_view, StrBox>(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

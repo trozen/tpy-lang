@@ -5,27 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: Array[Item, 3] = [Heavy(1), Light(2), Heavy(3)]
+//     print(len(items))
+//
+//     uniform: Array[Heavy, 2] = [Heavy(10), Heavy(20)]
+//     print(len(uniform))
 void main() {
-    // items: Array[Item, 3] = [Heavy(1), Light(2), Heavy(3)]
     std::array<Item, 3> items = {Heavy(1), Light(2), Heavy(3)};
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    // uniform: Array[Heavy, 2] = [Heavy(10), Heavy(20)]
     std::array<Heavy, 2> uniform = {Heavy(10), Heavy(20)};
-    // print(len(uniform))
     std::cout << ::tpy::__len__(uniform) << "\n";
 }
 
+// # Array literal with non-copyable union elements.
+// # std::array uses aggregate init (no initializer_list), so move-only
+// # types should work with plain brace-init -- no make_vector needed.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Array literal with non-copyable union elements.
-    // # std::array uses aggregate init (no initializer_list), so move-only
-    // # types should work with plain brace-init -- no make_vector needed.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

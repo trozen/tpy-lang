@@ -5,52 +5,55 @@ namespace tpyapp::main {
 
 
 // def takes_list(x: list[int]) -> None:
+//     x.append(42)
+//     print(len(x))
 void takes_list(std::vector<::tpy::BigInt>& x) {
-    // x.append(42)
     x.push_back(42);
-    // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
 }
 
 // def takes_list_int32(x: list[int32]) -> None:
+//     x.append(int32(99))
+//     print(len(x))
 void takes_list_int32(std::vector<int32_t>& x) {
-    // x.append(int32(99))
     x.push_back(99);
-    // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
 }
 
 // def takes_array(x: Array[int32, 3]) -> None:
+//     print(x[0])
 void takes_array(const std::array<int32_t, 3>& x) {
-    // print(x[0])
     std::cout << ::tpy::__getitem__(x, 0) << "\n";
 }
 
+// # Empty list literals
+// takes_list([])
+// takes_list_int32([])
+//
+// # Empty list constructors
+// takes_list(list())
+// takes_list_int32(list())
+//
+// # Non-empty list literals
+// takes_list([1, 2, 3])
+//
+// # Array literals
+// takes_array([int32(10), int32(20), int32(30)])
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Empty list literals
-    // takes_list([])
     std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{};
     takes_list(__tmp_1);
-    // takes_list_int32([])
     std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
     takes_list_int32(__tmp_2);
-    // # Empty list constructors
-    // takes_list(list())
     std::vector<::tpy::BigInt> __tmp_3 = std::vector<::tpy::BigInt>();
     takes_list(__tmp_3);
-    // takes_list_int32(list())
     std::vector<int32_t> __tmp_4 = std::vector<int32_t>();
     takes_list_int32(__tmp_4);
-    // # Non-empty list literals
-    // takes_list([1, 2, 3])
     std::vector<::tpy::BigInt> __tmp_5 = {1, 2, 3};
     takes_list(__tmp_5);
-    // # Array literals
-    // takes_array([int32(10), int32(20), int32(30)])
     std::array<int32_t, 3> __tmp_6 = {10, 20, 30};
     takes_array(__tmp_6);
 }

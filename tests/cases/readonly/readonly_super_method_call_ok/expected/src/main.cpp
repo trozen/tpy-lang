@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
+// print(Child().value_plus_one())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(Child().value_plus_one())
     std::cout << Child().value_plus_one() << "\n";
 }
 

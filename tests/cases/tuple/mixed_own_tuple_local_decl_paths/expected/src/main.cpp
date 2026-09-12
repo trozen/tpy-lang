@@ -5,123 +5,125 @@ namespace tpyapp::main {
 
 
 // def make_mixed(b: Box) -> tuple[Own[Box], Box]:
+//     return (Box(1), b)
 std::tuple<Box, Box*> make_mixed(Box& b) {
-    // return (Box(1), b)
     return std::tuple<Box, Box*>{Box(1), &(b)};
 }
 
 // def rebind(b: Box, c: Box) -> int32:
+//     p = make_mixed(b)
+//     p[1].val = 11
+//     p = make_mixed(c)  # tpyc: ok
+//     p[1].val = 22
+//     return p[0].val
 int32_t rebind(Box& b, Box& c) {
-    // p = make_mixed(b)
     std::tuple<Box, Box*> p = make_mixed(b);
-    // p[1].val = 11
     std::get<1>(p)->val = 11;
-    // p = make_mixed(c)  # tpyc: ok
     p = make_mixed(c);
-    // p[1].val = 22
     std::get<1>(p)->val = 22;
-    // return p[0].val
     return std::get<0>(p).val;
 }
 
 // def branch_hoisted(b: Box, c: Box, pick: bool) -> int32:
+//     if pick:
+//         p = make_mixed(b)
+//     else:
+//         p = make_mixed(c)
+//     p[1].val = 33
+//     return p[0].val
 int32_t branch_hoisted(Box& b, Box& c, bool pick) {
-    // if pick:
     std::tuple<Box, Box*> p;
     if (pick) {
-        // p = make_mixed(b)
         p = make_mixed(b);
-    // else:
     } else {
-        // p = make_mixed(c)
         p = make_mixed(c);
     }
-    // p[1].val = 33
     std::get<1>(p)->val = 33;
-    // return p[0].val
     return std::get<0>(p).val;
 }
 
 // def loop_carried(b: Box, c: Box) -> int32:
+//     total = 0
+//     for i in range(2):
+//         if i == 0:
+//             p = make_mixed(b)
+//         else:
+//             p = make_mixed(c)
+//         p[1].val = 44 + i
+//         total = total + p[0].val
+//     return total
 int32_t loop_carried(Box& b, Box& c) {
-    // total = 0
     int32_t total = 0;
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // if i == 0:
         std::tuple<Box, Box*> p;
         if ((i == 0)) {
-            // p = make_mixed(b)
             p = make_mixed(b);
-        // else:
         } else {
-            // p = make_mixed(c)
             p = make_mixed(c);
         }
-        // p[1].val = 44 + i
         std::get<1>(p)->val = (::tpy::add_check<int32_t>(44, i));
-        // total = total + p[0].val
         total = (::tpy::add_check<int32_t>(total, std::get<0>(p).val));
     }
-    // return total
     return total;
 }
 
 // def try_hoisted(b: Box) -> int32:
+//     try:
+//         p = make_mixed(b)
+//     except ValueError:
+//         p = make_mixed(b)
+//     p[1].val = 66
+//     return p[0].val
 int32_t try_hoisted(Box& b) {
-    // try:
     std::tuple<Box, Box*> p;
     {
         try {
-            // p = make_mixed(b)
             p = make_mixed(b);
         } catch (const ::tpy::ValueError&) {
-            // p = make_mixed(b)
             p = make_mixed(b);
         }
     }
-    // p[1].val = 66
     std::get<1>(p)->val = 66;
-    // return p[0].val
     return std::get<0>(p).val;
 }
 
 // def walrus(b: Box) -> int32:
+//     if (p := make_mixed(b))[0].val > 0:  # tpyc: ok
+//         p[1].val = 77
+//     return p[0].val
 int32_t walrus(Box& b) {
-    // if (p := make_mixed(b))[0].val > 0:  # tpyc: ok
     std::tuple<Box, Box*> p;
     if ((std::get<0>((p = make_mixed(b))).val > 0)) {
-        // p[1].val = 77
         std::get<1>(p)->val = 77;
     }
-    // return p[0].val
     return std::get<0>(p).val;
 }
 
 // def main() -> None:
+//     b = Box(7)
+//     c = Box(8)
+//
+//     print("rebind:", rebind(b, c), b.val, c.val)
+//     print("branch:", branch_hoisted(b, c, True), b.val, c.val)
+//     print("loop:", loop_carried(b, c), b.val, c.val)
+//     print("try:", try_hoisted(b), b.val)
+//     print("walrus:", walrus(b), b.val)
 void main() {
-    // b = Box(7)
     Box b = Box(7);
-    // c = Box(8)
     Box c = Box(8);
-    // print("rebind:", rebind(b, c), b.val, c.val)
     std::cout << "rebind:" << " " << rebind(b, c) << " " << b.val << " " << c.val << "\n";
-    // print("branch:", branch_hoisted(b, c, True), b.val, c.val)
     std::cout << "branch:" << " " << branch_hoisted(b, c, true) << " " << b.val << " " << c.val << "\n";
-    // print("loop:", loop_carried(b, c), b.val, c.val)
     std::cout << "loop:" << " " << loop_carried(b, c) << " " << b.val << " " << c.val << "\n";
-    // print("try:", try_hoisted(b), b.val)
     std::cout << "try:" << " " << try_hoisted(b) << " " << b.val << "\n";
-    // print("walrus:", walrus(b), b.val)
     std::cout << "walrus:" << " " << walrus(b) << " " << b.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def take(b: Own[Box]) -> Own[Box]:
+//     b.val += 1
+//     return b
 Box take(Box&& b) {
-    // b.val += 1
     b.val = (b.val) + (::tpy::BigInt(1));
-    // return b
     return b;
 }
 
 // def main() -> None:
+//     a = Box(10)
+//     other = Box(20)
+//     flag = True
+//     r = take(a if flag else other)   # tpyc: warning(/copies Box into owned storage/)
+//     print(r.val)                     # 11 (owned value, bumped)
 void main() {
-    // a = Box(10)
     Box a = Box(::tpy::BigInt(10));
-    // other = Box(20)
     Box other = Box(::tpy::BigInt(20));
-    // flag = True
     bool flag = true;
-    // r = take(a if flag else other)   # tpyc: warning(/copies Box into owned storage/)
     Box __tmp_1 = ((flag) ? (a) : (other));
     Box r = take(std::move(__tmp_1));
-    // print(r.val)                     # 11 (owned value, bumped)
     std::cout << r.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

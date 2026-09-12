@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def optional_target() -> None:
+//     saved: Point | None = None
+//     for i in range(3):
+//         p: Point = Point(i)
+//         saved = p  # tpyc: warning(/will not keep the object it was given/)
+//     if saved is not None:
+//         print(saved.x)
 void optional_target() {
     std::optional<Point> __slot_1;
-    // saved: Point | None = None
     Point* saved = nullptr;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p: Point = Point(i)
         Point* p = &*(__slot_1 = Point(i));
-        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
-    // if saved is not None:
     if ((saved != nullptr)) {
-        // print(saved.x)
         std::cout << saved->x << "\n";
     }
 }
 
+// optional_target()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // optional_target()
     optional_target();
 }
 

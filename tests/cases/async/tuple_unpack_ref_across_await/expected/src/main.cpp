@@ -5,20 +5,23 @@ namespace tpyapp::main {
 
 
 // def first_two(items: list[Box]) -> tuple[Box, Box]:
+//     return (items[0], items[1])
 std::tuple<Box*, Box*> first_two(std::vector<Box>& items) {
-    // return (items[0], items[1])
     return std::tuple<Box*, Box*>{&(::tpy::__getitem__(items, 0)), &(::tpy::__getitem__(items, 1))};
 }
 
 // async def bump(items: list[Box]) -> int:
+//     a, b = first_two(items)
+//     await asyncio.sleep(0)
+//     a.n += 10
+//     b.n += 20
+//     return a.n + b.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = first_two(items)
         auto __tup_1 = first_two(items);
         a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -28,11 +31,8 @@ std::tuple<Box*, Box*> first_two(std::vector<Box>& items) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // a.n += 10
         a->n = (a->n) + (::tpy::BigInt(10));
-        // b.n += 20
         b->n = (b->n) + (::tpy::BigInt(20));
-        // return a.n + b.n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((a->n) + (b->n));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -49,12 +49,13 @@ __coro_bump bump(std::vector<Box>& items) {
 }
 
 // async def amain() -> None:
+//     items = [Box(1), Box(2)]
+//     print(await bump(items))
+//     print(items[0].n, items[1].n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items = [Box(1), Box(2)]
         items.emplace(std::vector<Box>{Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2))});
-        // print(await bump(items))
         __sub_0.emplace((*items));
         __state = S_RESUME_0;
         continue;
@@ -64,9 +65,7 @@ __coro_bump bump(std::vector<Box>& items) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await bump(items))
         std::cout << __await_lift_0 << "\n";
-        // print(items[0].n, items[1].n)
         std::cout << ::tpy::__getitem__((*items), 0).n << " " << ::tpy::__getitem__((*items), 1).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -82,17 +81,18 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # Reference-type tuple-unpack targets held across an await: a, b must survive
+// # as `T*` aliases of the live list elements (not stale copies), so mutating
+// # them after the suspension is visible through the source list.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Reference-type tuple-unpack targets held across an await: a, b must survive
-    // # as `T*` aliases of the live list elements (not stale copies), so mutating
-    // # them after the suspension is visible through the source list.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

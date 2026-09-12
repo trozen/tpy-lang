@@ -5,81 +5,98 @@ namespace tpyapp::main {
 
 
 // def test_binary_ops():
+//     """Test binary arithmetic operations."""
+//     a: int32 = 20
+//     b: int32 = 7
+//
+//     # Addition
+//     print(a + b)  # 27
+//
+//     # Subtraction
+//     print(a - b)  # 13
+//
+//     # Multiplication
+//     print(a * b)  # 140
+//
+//     # Division (floor)
+//     print(a // b)  # 2
+//
+//     # Modulo
+//     print(a % b)  # 6
 void test_binary_ops() {
-    // a: int32 = 20
     int32_t a = 20;
-    // b: int32 = 7
     int32_t b = 7;
-    // # Addition
-    // print(a + b)  # 27
     std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
-    // # Subtraction
-    // print(a - b)  # 13
     std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
-    // # Multiplication
-    // print(a * b)  # 140
     std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
-    // # Division (floor)
-    // print(a // b)  # 2
     std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
-    // # Modulo
-    // print(a % b)  # 6
     std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
 // def test_unary_neg():
+//     """Test unary negation."""
+//     x: int32 = 42
+//     print(-x)  # -42
+//
+//     y: int32 = -100
+//     print(-y)  # 100
 void test_unary_neg() {
-    // x: int32 = 42
     int32_t x = 42;
-    // print(-x)  # -42
     std::cout << ::tpy::neg_check<int32_t>(x) << "\n";
-    // y: int32 = -100
     int32_t y = -100;
-    // print(-y)  # 100
     std::cout << ::tpy::neg_check<int32_t>(y) << "\n";
 }
 
 // def test_mixed_literals():
+//     """Test int32 with literal operands."""
+//     x: int32 = 10
+//
+//     # int32 + literal
+//     print(x + 5)  # 15
+//
+//     # literal + int32 (less common but should work)
+//     print(5 + x)  # 15
+//
+//     # Chained operations
+//     print(x * 2 + 3)  # 23
 void test_mixed_literals() {
-    // x: int32 = 10
     int32_t x = 10;
-    // # int32 + literal
-    // print(x + 5)  # 15
     std::cout << (::tpy::add_check<int32_t>(x, 5)) << "\n";
-    // # literal + int32 (less common but should work)
-    // print(5 + x)  # 15
     std::cout << (::tpy::add_check<int32_t>(5, x)) << "\n";
-    // # Chained operations
-    // print(x * 2 + 3)  # 23
     std::cout << (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 2)), 3)) << "\n";
 }
 
 // def test_negative_division():
+//     """Test division with negative numbers (Python floor semantics)."""
+//     a: int32 = -17
+//     b: int32 = 5
+//
+//     # Python floor division: -17 // 5 = -4 (not -3)
+//     print(a // b)  # -4
+//
+//     # Python modulo: -17 % 5 = 3 (not -2)
+//     print(a % b)  # 3
 void test_negative_division() {
-    // a: int32 = -17
     int32_t a = -17;
-    // b: int32 = 5
     int32_t b = 5;
-    // # Python floor division: -17 // 5 = -4 (not -3)
-    // print(a // b)  # -4
     std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
-    // # Python modulo: -17 % 5 = 3 (not -2)
-    // print(a % b)  # 3
     std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
+// """Test int32 arithmetic operations with overflow checks."""
+//
+// test_binary_ops()
+// test_unary_neg()
+// test_mixed_literals()
+// test_negative_division()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_binary_ops()
     test_binary_ops();
-    // test_unary_neg()
     test_unary_neg();
-    // test_mixed_literals()
     test_mixed_literals();
-    // test_negative_division()
     test_negative_division();
 }
 

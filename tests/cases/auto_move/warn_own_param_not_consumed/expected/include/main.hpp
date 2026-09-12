@@ -12,18 +12,30 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def borrow_only(b: Own[Box]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t borrow_only(Box&& b);
+// def forward(b: Own[Box]) -> int32:
 int32_t forward(Box&& b);
+// def passthrough(b: Own[Box]) -> Own[Box]:
 Box passthrough(Box&& b);
+// def copy_store(b: Own[Box]) -> int32:
 int32_t copy_store(Box&& b);
+// def value_type_borrow[T: ValueType](x: Own[T]) -> T:  # tpyc: ok
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> value_type_borrow(::tpy::own_param_t<T> x);
+// def partial_consume(b: Own[Box], cond: bool) -> int32:  # tpyc: warning(/never consumed/)
 int32_t partial_consume(Box&& b, bool cond);
+// def both_branches(b: Own[Box], cond: bool) -> int32:
 int32_t both_branches(Box&& b, bool cond);
+// def early_return(b: Own[Box], cond: bool) -> int32:
 int32_t early_return(Box&& b, bool cond);
+// def loop_consume(b: Own[Box], items: list[int32]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t loop_consume(Box&& b, const std::vector<int32_t>& items);
+// def match_partial_arm(b: Own[Box], x: int32) -> int32:  # tpyc: warning(/never consumed/)
 int32_t match_partial_arm(Box&& b, int32_t x);
+// def match_all_arms(b: Own[Box], x: int32) -> int32:  # tpyc: ok
 int32_t match_all_arms(Box&& b, int32_t x);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -60,15 +72,17 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Box::Box(int32_t value) : value(value) {}
 
 // def __init__(self, item: Own[Box]) -> None:
+//     self.item = item  # consumed: stored in field
 inline Holder::Holder(Box&& item) : item(std::move(item)) {}
 // # No warning: ValueType bound -- copy == move, no semantic difference
 // def value_type_borrow[T: ValueType](x: Own[T]) -> T:  # tpyc: ok
+//     return x
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> value_type_borrow(::tpy::own_param_t<T> x) {
-    // return x
     return x;
 }
 

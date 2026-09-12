@@ -45,50 +45,51 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self, n: int64):
+//     self.n = n
 inline Sink::Sink(int64_t n) : n(n) {}
 
 // def push(self, xs: list[int64]) -> None:  # tpyc: warning(/method 'push': list parameter 'xs' is copied in.*not visible to the caller/)
+//     xs.append(self.n)
 inline void Sink::push(std::vector<int64_t>& xs) const {
-    // xs.append(self.n)
     xs.push_back(this->n);
 }
 
 // def fill(self, d: dict[str, int64]) -> None:  # tpyc: warning(/method 'fill': dict parameter 'd' is copied in.*not visible to the caller/)
+//     d["k"] = self.n
 inline void Sink::fill(::tpy::ordered_map<std::string, int64_t>& d) const {
-    // d["k"] = self.n
     ::tpy::__setitem__(d, "k", this->n);
 }
 
 // def toggle(self, s: set[int64]) -> None:  # tpyc: warning(/method 'toggle': set parameter 's' is copied in.*not visible to the caller/)
+//     s.add(self.n)
 inline void Sink::toggle(::tpy::ordered_set<int64_t>& s) const {
-    // s.add(self.n)
     s.insert(this->n);
 }
 
 // def scale(self, xs: Span[int64]) -> None:  # tpyc: warning(/method 'scale': Span parameter 'xs' is copied in.*not visible to the caller/)
+//     for i in range(len(xs)):
+//         xs[i] = xs[i] * 2
 inline void Sink::scale(std::span<int64_t> xs) const {
-    // for i in range(len(xs)):
     int32_t __stop_0 = ::tpy::__len__(xs);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // xs[i] = xs[i] * 2
         xs[static_cast<std::size_t>(i)] = (::tpy::mul_check<int64_t>(xs[static_cast<std::size_t>(i)], 2));
     }
 }
 
 // def read_only(self, xs: list[int64]) -> int64:  # tpyc: ok
+//     s: int64 = 0
+//     for x in xs:
+//         s += x
+//     return s
 inline int64_t Sink::read_only(const std::vector<int64_t>& xs) const {
-    // s: int64 = 0
     int64_t s = 0;
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int64_t x = *__beg_0;
-        // s += x
         s = ::tpy::add_check<int64_t>(s, x);
     }
-    // return s
     return s;
 }
 void __tpy_init();

@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // async def bump(items: list[Box]) -> int:
+//     a = items[0]
+//     await asyncio.sleep(0)
+//     a.n += 10
+//     return a.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = items[0]
         a = &(::tpy::__getitem__(items, 0));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -20,9 +22,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // a.n += 10
         a->n = (a->n) + (::tpy::BigInt(10));
-        // return a.n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = a->n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -39,12 +39,13 @@ __coro_bump bump(std::vector<Box>& items) {
 }
 
 // async def amain() -> None:
+//     items = [Box(1)]
+//     print(await bump(items))
+//     print(items[0].n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items = [Box(1)]
         items.emplace(std::vector<Box>{Box(::tpy::BigInt(1))});
-        // print(await bump(items))
         __sub_0.emplace((*items));
         __state = S_RESUME_0;
         continue;
@@ -54,9 +55,7 @@ __coro_bump bump(std::vector<Box>& items) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await bump(items))
         std::cout << __await_lift_0 << "\n";
-        // print(items[0].n)
         std::cout << ::tpy::__getitem__((*items), 0).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -72,17 +71,18 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # Single-assign reference alias held across an await: `a` must stay a `T*`
+// # alias of the live list element (not a value copy), so mutating it after the
+// # suspension is visible through the source list.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Single-assign reference alias held across an await: `a` must stay a `T*`
-    // # alias of the live list element (not a value copy), so mutating it after the
-    // # suspension is visible through the source list.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

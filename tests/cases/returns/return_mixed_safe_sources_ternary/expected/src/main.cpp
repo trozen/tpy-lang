@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def trusted(p: Point) -> Point:
+//     return p
 Point& trusted(Point& p) {
-    // return p
     return p;
 }
 
 // def pick_view(s: StrView) -> StrView:
+//     return s
 std::string_view pick_view(std::string_view s) {
-    // return s
     return s;
 }
 
 // def ternary_record(seed: Point, flag: bool) -> Point:
+//     result = seed if flag else trusted(seed)
+//     return result  # tpyc: ok
 Point& ternary_record(Point& seed, bool flag) {
-    // result = seed if flag else trusted(seed)
     Point& result = ((flag) ? (seed) : (trusted(seed)));
-    // return result  # tpyc: ok
     return result;
 }
 
 // def ternary_strview(p: str, flag: bool) -> StrView:
+//     sv = StrView(p) if flag else pick_view(StrView("x"))
+//     return sv  # tpyc: ok
 std::string_view ternary_strview(std::string_view p, bool flag) {
-    // sv = StrView(p) if flag else pick_view(StrView("x"))
     std::string_view sv = ((flag) ? (p) : (pick_view("x")));
-    // return sv  # tpyc: ok
     return sv;
 }
 
 // def main():
+//     seed = Point(13)
+//     print(ternary_record(seed, True).x)
+//     print(ternary_record(seed, False).x)
+//     print(ternary_strview("hello", True))
+//     print(ternary_strview("hello", False))
 void main() {
-    // seed = Point(13)
     Point seed = Point(13);
-    // print(ternary_record(seed, True).x)
     std::cout << ternary_record(seed, true).x << "\n";
-    // print(ternary_record(seed, False).x)
     std::cout << ternary_record(seed, false).x << "\n";
-    // print(ternary_strview("hello", True))
     std::cout << ternary_strview("hello", true) << "\n";
-    // print(ternary_strview("hello", False))
     std::cout << ternary_strview("hello", false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

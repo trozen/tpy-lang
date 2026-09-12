@@ -74,20 +74,35 @@ namespace tpystd::tpy::atomic {
 
 
 // def fence(order: MemoryOrder = MemoryOrder.SEQ_CST) -> None:
+//     _atomic_fence(order)
 void fence(::std::memory_order order) {
-    // _atomic_fence(order)
     ::tpy::atomic_fence(order);
 }
 
 
+// # tpy: include("<tpy/atomic.hpp>")
+// """Lock-free atomic scalars -- `Atomic[T]` over the fixed-width integer types.
+//
+// `Atomic[T: AnyFixedInt]` is a `@nocopy` (copying a shared counter would silently
+// fork it) but movable, `Send + Sync` wrapper over `std::atomic<T>`.
+//
+// Every operation takes a `MemoryOrder`, but it **defaults to `SEQ_CST`** -- the
+// intuitive "as if sequential" order -- so casual use needs no ordering
+// boilerplate; pass an explicit weaker order only on hot paths:
+//
+//     counter.fetch_add(1)                    # seq_cst
+//     counter.fetch_add(1, MemoryOrder.RELAXED)
+//     counter += 1                            # atomic RMW, seq_cst
+//     print(counter.load())
+// """
+// from enum import Enum
+//
+// from tpy.extern import native, native_member
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: include("<tpy/atomic.hpp>")
-    // from enum import Enum
-    // from tpy.extern import native, native_member
 }
 
 } // namespace tpystd::tpy::atomic

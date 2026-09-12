@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def test_readonly() -> None:
+//     items: list[Point] = [Point(1, 2), Point(3, 4)]
+//     # Loop var is read-only -- borrows even at last use
+//     for p in items:
+//         print(p.x, p.y)
 void test_readonly() {
-    // items: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // # Loop var is read-only -- borrows even at last use
-    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // print(p.x, p.y)
         std::cout << p.x << " " << p.y << "\n";
     }
 }
 
 // def test_mutated() -> None:
+//     items: list[Point] = [Point(10, 20), Point(30, 40)]
+//     # Loop var is mutated + non-value element -- consumes
+//     for p in items:
+//         p.x = 0
+//         print(p.x, p.y)
 void test_mutated() {
-    // items: list[Point] = [Point(10, 20), Point(30, 40)]
     std::vector<Point> items = {Point(10, 20), Point(30, 40)};
-    // # Loop var is mutated + non-value element -- consumes
-    // for p in items:
     auto __obj_0 = ::tpy::own_iter(std::move(items));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // p.x = 0
         p.x = 0;
-        // print(p.x, p.y)
         std::cout << p.x << " " << p.y << "\n";
     }
 }
 
 // def main() -> None:
+//     test_readonly()
+//     test_mutated()
 void main() {
-    // test_readonly()
     test_readonly();
-    // test_mutated()
     test_mutated();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

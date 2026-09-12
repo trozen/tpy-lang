@@ -17,15 +17,25 @@ using ::tpystd::tplib::json::parser::JsonToken;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_basic_object() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_basic_object();
+// def test_nested() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_nested();
+// def test_null_and_escape() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_null_and_escape();
+// def test_float() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_float();
+// def test_skip() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_skip();
+// def test_empty_containers() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_empty_containers();
+// def test_negative_int() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_negative_int();
+// def test_raw_methods() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_raw_methods();
+// def test_describe() -> None:
 void test_describe();
+// def main() -> None:
 void main();
 
 void __tpy_init();

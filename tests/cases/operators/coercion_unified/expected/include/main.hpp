@@ -15,22 +15,39 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_int32(n: int32) -> int32:
 int32_t take_int32(int32_t n);
+// def take_ptr(p: Ptr[Point]) -> None:
 void take_ptr(Point* p);
+// def take_const_ptr(p: Ptr[readonly[Point]]) -> int32:
 int32_t take_const_ptr(const Point* p);
+// def take_point(p: Point) -> int32:
 int32_t take_point(const Point& p);
+// def take_span(s: Span[int32]) -> int32:
 int32_t take_span(std::span<int32_t> s);
+// def return_bigint_as_int32() -> int32:
 int32_t return_bigint_as_int32();
+// def test_bigint_to_int32() -> None:
 void test_bigint_to_int32();
+// def test_record_to_ptr() -> None:
 void test_record_to_ptr();
+// def test_record_to_const_ptr() -> None:
 void test_record_to_const_ptr();
+// def return_record_from_ptr(p: Ptr[Point]) -> Point:
 Point& return_record_from_ptr(Point* p);
+// def test_ptr_to_record() -> None:
 void test_ptr_to_record();
+// def take_const_ptr_val(p: Ptr[readonly[Point]]) -> int32:
 int32_t take_const_ptr_val(const Point* p);
+// def test_ptr_to_const_ptr() -> None:
 void test_ptr_to_const_ptr();
+// def test_arraylist_to_span() -> None:
 void test_arraylist_to_span();
+// def test_array_to_span() -> None:
 void test_array_to_span();
+// def test_list_to_span() -> None:
 void test_list_to_span();
+// def test_subscript_to_ptr() -> None:
 void test_subscript_to_ptr();
 
 // # --- Records for pointer coercion tests ---
@@ -54,6 +71,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

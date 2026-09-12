@@ -8,39 +8,41 @@ namespace tpyapp::main {
 // # the embedded pending element types must be finalized in the binding. Also
 // # covers a nested composite: a list of tuples of lists.
 // def main() -> None:
+//     t = ([1, 2], [3, 4])  # tpyc: ok
+//     print(t)
+//     t[0][0] = 9
+//     print(t)
+//
+//     xs = [([1, 2], [3, 4])]  # tpyc: ok  (list[tuple[list, list]])
+//     print(xs)
+//     xs[0][1][0] = 8
+//     print(xs)
+//
+//     # Alias the nested composite and mutate through the alias: the change must
+//     # be visible on the original (reference semantics, not a silent copy).
+//     ys = xs
+//     ys[0][0][0] = 7
+//     print(xs)
 void main() {
-    // t = ([1, 2], [3, 4])  # tpyc: ok
     auto t = std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>{{1, 2}, {3, 4}};
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
-    // t[0][0] = 9
     ::tpy::__setitem__(std::get<0>(t), 0, 9);
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
-    // xs = [([1, 2], [3, 4])]  # tpyc: ok  (list[tuple[list, list]])
     std::array<std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>, 1> xs = {::tpy::tuple_to_storage<std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>>(std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>{{1, 2}, {3, 4}})};
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // xs[0][1][0] = 8
     ::tpy::__setitem__(std::get<1>(::tpy::__getitem__(xs, 0)), 0, 8);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // # Alias the nested composite and mutate through the alias: the change must
-    // # be visible on the original (reference semantics, not a silent copy).
-    // ys = xs
     std::array<std::tuple<std::array<int32_t, 2>, std::array<int32_t, 2>>, 1>& ys = xs;
-    // ys[0][0][0] = 7
     ::tpy::__setitem__(std::get<0>(::tpy::__getitem__(ys, 0)), 0, 7);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -10,6 +10,7 @@ namespace sibling_submod::pkg::leaf_a {
 extern int32_t VAL_A;
 inline constexpr std::string_view __name__ = "pkg.leaf_a";
 
+// def _seed_a() -> int32:
 int32_t _seed_a();
 
 void __tpy_init();

@@ -3,29 +3,24 @@
 
 namespace tpyapp::main {
 
+int32_t x{};
+int32_t y{};
+int32_t z{};
+
 // # Unannotated literals default to int32 -- adding two values that
 // # individually fit but overflow together should panic at runtime.
 // x = 2000000000
-int32_t x{};
 // y = 2000000000
-int32_t y{};
 // z = x + y
-int32_t z{};
-
+// print(z)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Unannotated literals default to int32 -- adding two values that
-    // # individually fit but overflow together should panic at runtime.
-    // x = 2000000000
     x = 2000000000;
-    // y = 2000000000
     y = 2000000000;
-    // z = x + y
     z = (::tpy::add_check<int32_t>(x, y));
-    // print(z)
     std::cout << z << "\n";
 }
 

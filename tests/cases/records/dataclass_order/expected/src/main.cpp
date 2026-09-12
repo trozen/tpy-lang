@@ -5,45 +5,46 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Point(1, 2)
+//     b = Point(3, 4)
+//     c = Point(1, 3)
+//     # Lexicographic ordering by fields
+//     print(a < b)
+//     print(b < a)
+//     print(a < c)
+//     # <= and >=
+//     print(a <= Point(1, 2))
+//     print(a >= a)
+//     # > operator
+//     print(b > a)
+//     print(a > c)
+//     # Equality still works
+//     print(a == Point(1, 2))
+//     print(a != b)
 void main() {
-    // a = Point(1, 2)
     Point a = Point(1, 2);
-    // b = Point(3, 4)
     Point b = Point(3, 4);
-    // c = Point(1, 3)
     Point c = Point(1, 3);
-    // # Lexicographic ordering by fields
-    // print(a < b)
     std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
-    // print(b < a)
     std::cout << ::tpy::print_bool(((b) < (a))) << "\n";
-    // print(a < c)
     std::cout << ::tpy::print_bool(((a) < (c))) << "\n";
-    // # <= and >=
-    // print(a <= Point(1, 2))
     std::cout << ::tpy::print_bool(((a) <= (Point(1, 2)))) << "\n";
-    // print(a >= a)
     std::cout << ::tpy::print_bool(((a) >= (a))) << "\n";
-    // # > operator
-    // print(b > a)
     std::cout << ::tpy::print_bool(((b) > (a))) << "\n";
-    // print(a > c)
     std::cout << ::tpy::print_bool(((a) > (c))) << "\n";
-    // # Equality still works
-    // print(a == Point(1, 2))
     std::cout << ::tpy::print_bool(((a) == (Point(1, 2)))) << "\n";
-    // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
 }
 
+// # @dataclass(order=True) generates comparison operators via operator<=>
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass(order=True) generates comparison operators via operator<=>
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

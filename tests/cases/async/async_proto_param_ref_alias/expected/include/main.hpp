@@ -18,8 +18,10 @@ template <::tpystd::typing::Iterable<Point> T_items>
 struct __coro_bump;
 struct __coro_amain;
 
+// async def bump(items: Iterable[Point]) -> int32:
 template <::tpystd::typing::Iterable<Point> T_items>
 __coro_bump<T_items> bump(T_items&& items);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Point:
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// Async coroutine: bump
+// async def bump(items: Iterable[Point]) -> int32:
 template <::tpystd::typing::Iterable<Point> T_items>
 struct __coro_bump {
     int32_t __state;
@@ -68,11 +70,16 @@ struct __coro_bump {
     }
 };
 // async def bump(items: Iterable[Point]) -> int32:
+//     total = 0
+//     for p in items:
+//         p.x += 100
+//         await asyncio.sleep(0)
+//         total += p.x
+//     return total
 template <::tpystd::typing::Iterable<Point> T_items>
 ::tpystd::tpy::Poll<int32_t> __coro_bump<T_items>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
@@ -83,7 +90,6 @@ template <::tpystd::typing::Iterable<Point> T_items>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // total += p.x
         total = ::tpy::add_check<int32_t>(total, (*p).x);
         __state = S_JOIN_0;
         continue;
@@ -91,15 +97,12 @@ template <::tpystd::typing::Iterable<Point> T_items>
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, items));
         if (!(*__for_r_0).has_value()) {
-            // return total
             __state = S_DONE;
             int32_t __tpy_async_ret = total;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         p.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        // p.x += 100
         (*p).x = ::tpy::add_check<int32_t>((*p).x, 100);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -116,7 +119,7 @@ __coro_bump<T_items> bump(T_items&& items) {
     return __coro_bump<T_items>(std::forward<T_items>(items));
 }
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -143,6 +146,7 @@ struct __coro_amain {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

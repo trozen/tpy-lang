@@ -5,11 +5,13 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     p = await make_pair(int32(7), "x")  # tpyc: type(/tuple\[int32, str\]/)
+//     print(p[0])
+//     print(p[1])
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = "x";
-        // p = await make_pair(int32(7), "x")  # tpyc: type(/tuple\[int32, str\]/)
         __sub_0.emplace(7, __coro_arg_0);
         __state = S_RESUME_0;
         continue;
@@ -19,9 +21,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p = std::move(__r0).value();
         __sub_0.reset();
-        // print(p[0])
         std::cout << std::get<0>(p) << "\n";
-        // print(p[1])
         std::cout << std::get<1>(p) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -38,21 +38,22 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Two-type-param generic async free function: codegen must emit both
+// # inferred type args on the sub-coro frame field (`__coro_pair<K, V>`).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two-type-param generic async free function: codegen must emit both
-    // # inferred type args on the sub-coro frame field (`__coro_pair<K, V>`).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -3,14 +3,14 @@
 
 namespace tpyapp::main {
 
-// # Module-level statement.
-// top = Pic()
 Pic* top{};
 
 // # Free function: the dict and set comprehensions, and the Optional field.
 // def fill_free(p: Pic, n: int32) -> None:
+//     p.d = {str(j): j for j in range(n)}  # tpyc: ok
+//     p.s = {j * 2 for j in range(n)}  # tpyc: ok
+//     p.opt = [j for j in range(n)]  # tpyc: ok
 void fill_free(Pic& p, int32_t n) {
-    // p.d = {str(j): j for j in range(n)}  # tpyc: ok
     p.d = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         const int32_t __stop_0 = n;
@@ -19,7 +19,6 @@ void fill_free(Pic& p, int32_t n) {
         }
         std::move(__result);
     });
-    // p.s = {j * 2 for j in range(n)}  # tpyc: ok
     p.s = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_1 = n;
@@ -28,7 +27,6 @@ void fill_free(Pic& p, int32_t n) {
         }
         std::move(__result);
     });
-    // p.opt = [j for j in range(n)]  # tpyc: ok
     p.opt = ({
         std::vector<int32_t> __result;
         const int32_t __stop_2 = n;
@@ -42,10 +40,13 @@ void fill_free(Pic& p, int32_t n) {
 
 // # The Optional field reseated: None, then a second comprehension.
 // def reseat_opt(p: Pic) -> None:
+//     p.opt = None
+//     p.opt = [j * 2 for j in range(2)]  # tpyc: ok
+//     if p.opt is not None:
+//         p.opt.append(6)
+//         print("optional_reseat", p.opt)
 void reseat_opt(Pic& p) {
-    // p.opt = None
     p.opt = std::nullopt;
-    // p.opt = [j * 2 for j in range(2)]  # tpyc: ok
     p.opt = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 2;
@@ -55,21 +56,32 @@ void reseat_opt(Pic& p) {
         }
         std::move(__result);
     });
-    // if p.opt is not None:
     if ((p.opt.has_value())) {
-        // p.opt.append(6)
         (*p.opt).push_back(6);
-        // print("optional_reseat", p.opt)
         std::cout << "optional_reseat" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(p.opt) << "\n";
     }
 }
 
 // # Element setitems: a local list, a dict, and a field container.
 // def setitems(p: Pic, n: int32) -> None:
+//     rows: list[list[int32]] = [[], []]
+//     rows[0] = [j for j in range(n)]  # tpyc: ok
+//     rows[0].append(7)
+//     print("setitem_list", rows)
+//     # The bounds-proven index takes the direct element assign.
+//     for i in range(len(rows)):
+//         rows[i] = [j + i for j in range(2)]  # tpyc: ok bounds_safe(rows)
+//         rows[i].append(8)
+//     print("setitem_list_safe", rows)
+//     d: dict[str, list[int32]] = {}
+//     d["a"] = [j for j in range(n)]  # tpyc: ok
+//     d["a"].append(7)
+//     print("setitem_dict", d)
+//     p.data[1] = [j + 10 for j in range(n)]  # tpyc: ok
+//     p.data[1].append(7)
+//     print("setitem_field", p.data[1])
 void setitems(Pic& p, int32_t n) {
-    // rows: list[list[int32]] = [[], []]
     std::vector<std::vector<int32_t>> rows = {{}, {}};
-    // rows[0] = [j for j in range(n)]  # tpyc: ok
     ::tpy::__setitem__(rows, 0, ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = n;
@@ -79,15 +91,10 @@ void setitems(Pic& p, int32_t n) {
         }
         std::move(__result);
     }));
-    // rows[0].append(7)
     ::tpy::__getitem__(rows, 0).push_back(7);
-    // print("setitem_list", rows)
     std::cout << "setitem_list" << " " << ::tpy::ListPrinter(rows) << "\n";
-    // # The bounds-proven index takes the direct element assign.
-    // for i in range(len(rows)):
     int32_t __stop_1 = ::tpy::__len__(rows);
     for (int32_t i = 0; i < __stop_1; ++i) {
-        // rows[i] = [j + i for j in range(2)]  # tpyc: ok bounds_safe(rows)
         rows[static_cast<std::size_t>(i)] = ({
             std::vector<int32_t> __result;
             const int32_t __stop_2 = 2;
@@ -97,14 +104,10 @@ void setitems(Pic& p, int32_t n) {
             }
             std::move(__result);
         });
-        // rows[i].append(8)
         rows[static_cast<std::size_t>(i)].push_back(8);
     }
-    // print("setitem_list_safe", rows)
     std::cout << "setitem_list_safe" << " " << ::tpy::ListPrinter(rows) << "\n";
-    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // d["a"] = [j for j in range(n)]  # tpyc: ok
     ::tpy::__setitem__(d, "a", ({
         std::vector<int32_t> __result;
         const int32_t __stop_3 = n;
@@ -114,11 +117,8 @@ void setitems(Pic& p, int32_t n) {
         }
         std::move(__result);
     }));
-    // d["a"].append(7)
     ::tpy::__getitem__(d, "a").push_back(7);
-    // print("setitem_dict", d)
     std::cout << "setitem_dict" << " " << ::tpy::DictPrinter(d) << "\n";
-    // p.data[1] = [j + 10 for j in range(n)]  # tpyc: ok
     ::tpy::__setitem__(p.data, 1, ({
         std::vector<int32_t> __result;
         const int32_t __stop_4 = n;
@@ -128,18 +128,20 @@ void setitems(Pic& p, int32_t n) {
         }
         std::move(__result);
     }));
-    // p.data[1].append(7)
     ::tpy::__getitem__(p.data, 1).push_back(7);
-    // print("setitem_field", p.data[1])
     std::cout << "setitem_field" << " " << ::tpy::ListPrinter(::tpy::__getitem__(p.data, 1)) << "\n";
 }
 
 // # Closure body.
 // def closure(p: Pic) -> None:
+//     def inner(n: int32) -> int32:
+//         p.flat = [j for j in range(n)]  # tpyc: ok
+//         p.flat.append(1)
+//         return len(p.flat)
+//
+//     print("closure", inner(4), p.flat)
 void closure(Pic& p) {
-    // def inner(n: int32) -> int32:
     auto inner = [&p](int32_t n) -> int32_t {
-        // p.flat = [j for j in range(n)]  # tpyc: ok
         p.flat = ({
             std::vector<int32_t> __result;
             const int32_t __stop_0 = n;
@@ -149,51 +151,51 @@ void closure(Pic& p) {
             }
             std::move(__result);
         });
-        // p.flat.append(1)
         p.flat.push_back(1);
-        // return len(p.flat)
         return ::tpy::__len__(p.flat);
     };
-    // print("closure", inner(4), p.flat)
     std::cout << "closure" << " " << inner(4) << " " << ::tpy::ListPrinter(p.flat) << "\n";
 }
 
 // def main() -> None:
+//     p = Pic()
+//     p.fill(3, 2)
+//     p.data[1].append(7)
+//     print("method", len(p.data), p.data[1])
+//     g = Grid([3, 2])
+//     g.data[2].append(8)
+//     print("ctor_body", g.data)
+//     fill_free(p, 3)
+//     p.d["z"] = 9
+//     p.s.add(9)
+//     print("free_dict", len(p.d), "free_set", len(p.s))
+//     if p.opt is not None:
+//         p.opt.append(5)
+//         print("optional_field", p.opt)
+//     reseat_opt(p)
+//     setitems(p, 3)
+//     for v in gen(p, 2):
+//         print("generator", v)
+//     print("generator", p.flat)
+//     closure(p)
 void main() {
-    // p = Pic()
     Pic p = Pic();
-    // p.fill(3, 2)
     p.fill(3, 2);
-    // p.data[1].append(7)
     ::tpy::__getitem__(p.data, 1).push_back(7);
-    // print("method", len(p.data), p.data[1])
     std::cout << "method" << " " << ::tpy::__len__(p.data) << " " << ::tpy::ListPrinter(::tpy::__getitem__(p.data, 1)) << "\n";
-    // g = Grid([3, 2])
     Grid g = Grid({3, 2});
-    // g.data[2].append(8)
     ::tpy::__getitem__(g.data, 2).push_back(8);
-    // print("ctor_body", g.data)
     std::cout << "ctor_body" << " " << ::tpy::ListPrinter(g.data) << "\n";
-    // fill_free(p, 3)
     fill_free(p, 3);
-    // p.d["z"] = 9
     ::tpy::__setitem__(p.d, "z", 9);
-    // p.s.add(9)
     p.s.insert(9);
-    // print("free_dict", len(p.d), "free_set", len(p.s))
     std::cout << "free_dict" << " " << ::tpy::__len__(p.d) << " " << "free_set" << " " << ::tpy::__len__(p.s) << "\n";
-    // if p.opt is not None:
     if ((p.opt.has_value())) {
-        // p.opt.append(5)
         (*p.opt).push_back(5);
-        // print("optional_field", p.opt)
         std::cout << "optional_field" << " " << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(p.opt) << "\n";
     }
-    // reseat_opt(p)
     reseat_opt(p);
-    // setitems(p, 3)
     setitems(p, 3);
-    // for v in gen(p, 2):
     {
         auto __src_0 = gen(p, 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -201,28 +203,28 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print("generator", v)
         std::cout << "generator" << " " << v << "\n";
         }
     }
-    // print("generator", p.flat)
     std::cout << "generator" << " " << ::tpy::ListPrinter(p.flat) << "\n";
-    // closure(p)
     closure(p);
 }
 
+// main()
+//
+// # Module-level statement.
+// top = Pic()
+// top.flat = [j * 3 for j in range(3)]  # tpyc: ok
+// top.flat.append(1)
+// print("module_level", top.flat)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
-    // # Module-level statement.
-    // top = Pic()
     static Pic __global_slot_1 = Pic();
     top = &__global_slot_1;
-    // top.flat = [j * 3 for j in range(3)]  # tpyc: ok
     top->flat = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -232,9 +234,7 @@ void __tpy_init() {
         }
         std::move(__result);
     });
-    // top.flat.append(1)
     top->flat.push_back(1);
-    // print("module_level", top.flat)
     std::cout << "module_level" << " " << ::tpy::ListPrinter(top->flat) << "\n";
 }
 

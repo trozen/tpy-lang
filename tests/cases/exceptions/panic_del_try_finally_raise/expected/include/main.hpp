@@ -11,6 +11,7 @@ struct Fussy;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Fussy:
@@ -38,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fussy& obj) {
 
 
 // def __init__(self, id: int32):
+//     self._id = id
 inline Fussy::Fussy(int32_t id) : _id(id) {}
 
 inline Fussy::Fussy(Fussy&& other) noexcept : _id(std::move(other._id)) {
@@ -52,28 +54,28 @@ inline Fussy& Fussy::operator=(Fussy&& other) noexcept {
 }
 
 // def __del__(self):
+//     try:
+//         print("del try", self._id)
+//     except ValueError:
+//         print("del handler")
+//     finally:
+//         print("del finally", self._id)
+//         raise ValueError("cleanup failed")
 inline Fussy::~Fussy() {
     if (!this->__tpy_owned_) return;
     try {
-        // try:
         {
             try {
                 try {
-                    // print("del try", self._id)
                     std::cout << "del try" << " " << this->_id << "\n";
                 } catch (const ::tpy::ValueError&) {
-                    // print("del handler")
                     std::cout << "del handler" << "\n";
                 }
             } catch (...) {
-                // print("del finally", self._id)
                 std::cout << "del finally" << " " << this->_id << "\n";
-                // raise ValueError("cleanup failed")
                 throw ::tpy::ValueError("cleanup failed");
             }
-            // print("del finally", self._id)
             std::cout << "del finally" << " " << this->_id << "\n";
-            // raise ValueError("cleanup failed")
             throw ::tpy::ValueError("cleanup failed");
         }
     } catch (const std::exception& __del_exc) {

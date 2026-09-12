@@ -5,20 +5,21 @@ namespace tpyapp::main {
 
 
 // def get_names() -> Own[list[str]]:
+//     return ["alice", "bob"]
 std::vector<std::string> get_names() {
-    // return ["alice", "bob"]
     return {"alice", "bob"};
 }
 
 // def get_scores() -> Own[list[int32]]:
+//     return [100, 200]
 std::vector<int32_t> get_scores() {
-    // return [100, 200]
     return {100, 200};
 }
 
 // def main() -> None:
+//     for name, score in zip(get_names(), get_scores()):
+//         print(name, score)
 void main() {
-    // for name, score in zip(get_names(), get_scores()):
     {
         auto __src_0 = ::tpy::builtin_zip<std::string, int32_t>(get_names(), get_scores());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -26,22 +27,20 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for name, score in zip(get_names(), get_scores()):
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
         int32_t score = std::get<1>(__tup_1);
-        // print(name, score)
         std::cout << name << " " << score << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

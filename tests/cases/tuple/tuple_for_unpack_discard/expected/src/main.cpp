@@ -5,29 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
+//     for _, name in items:
+//         print(name)
 void main() {
-    // items: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> items = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
-    // for _, name in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        // for _, name in items:
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<1>(__tup_1);
-        // print(name)
         std::cout << name << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

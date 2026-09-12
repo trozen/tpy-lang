@@ -5,55 +5,56 @@ namespace tpyapp::main {
 
 
 // def make_box(kind: int) -> Own[Box[Animal]]:
+//     if kind == 0:
+//         return Box(Dog())
+//     return Box(Snake())
 ::tpystd::tplib::box::Box<Animal> make_box(const ::tpy::BigInt& kind) {
-    // if kind == 0:
     if ((kind == 0)) {
-        // return Box(Dog())
         return ::tpystd::tplib::box::Box<Dog>(Dog());
     }
-    // return Box(Snake())
     return ::tpystd::tplib::box::Box<Snake>(Snake());
 }
 
 // def describe(kind: int) -> str:
+//     match make_box(kind):  # tpyc: ok
+//         case Dog():
+//             return "dog"
+//         case Snake() as s:
+//             return "snake legs=" + str(s.legs)
+//         case _:
+//             return "?"
 std::string describe(const ::tpy::BigInt& kind) {
-    // match make_box(kind):  # tpyc: ok
     auto __match_subject_1 = make_box(kind);
-    // case Dog():
     if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(__match_subject_1.__deref__()))) {
         Dog& __case_0 = *__mpoly_0;
-        // return "dog"
         return "dog";
-    // case Snake() as s:
     } else if (Snake* __mpoly_1 = dynamic_cast<Snake*>(&(__match_subject_1.__deref__()))) {
         Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
-        // return "snake legs=" + str(s.legs)
         return (::tpy::str_concat("snake legs=", (s.legs).to_string()));
-    // case _:
     } else {
-        // return "?"
         return "?";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(describe(0))
+//     print(describe(1))
 void main() {
-    // print(describe(0))
     std::cout << describe(::tpy::BigInt(0)) << "\n";
-    // print(describe(1))
     std::cout << describe(::tpy::BigInt(1)) << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

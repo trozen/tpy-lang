@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bytes_or_bytearray(u: bytes | bytearray) -> int32:
 int32_t bytes_or_bytearray(::tpy::Union<const ::tpy::ByteArray*, const ::tpy::Bytes*> u);
+// def str_or_string_slot(u: str | String) -> int32:
 int32_t str_or_string_slot(const ::tpy::Union<::tpy::String, std::string>& u);
+// def list_or_bytes(u: list[uint8] | bytes) -> int32:
 int32_t list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*> u);
+// def span_or_bytesview(u: Span[readonly[uint8]] | BytesView) -> int32:
 int32_t span_or_bytesview(const ::tpy::Union<::tpy::BytesView, std::span<const uint8_t>>& u);
+// def own_union_return(n: int32) -> Own[bytes | bytearray]:
 ::tpy::Union<::tpy::ByteArray, ::tpy::Bytes> own_union_return(int32_t n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,41 +5,42 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder(Box(1))
+//     if (t := h.opt) is not None:
+//         t.val = 99               # writes through the alias
+//     if h.opt is not None:
+//         print(h.opt.val)         # 99 -- mutation visible on the field
+//
+//     empty = Holder(None)
+//     if (u := empty.opt) is not None:
+//         print("unexpected", u.val)
+//     else:
+//         print("none ok")
 void main() {
-    // h = Holder(Box(1))
     Box __tmp_1 = Box(::tpy::BigInt(1));
     Holder h = Holder(&(__tmp_1));
-    // if (t := h.opt) is not None:
     Box* t = nullptr;
     if (((t = ::tpy::optional_to_ptr(h.opt)) != nullptr)) {
-        // t.val = 99               # writes through the alias
         t->val = ::tpy::BigInt(99);
     }
-    // if h.opt is not None:
     if ((h.opt.has_value())) {
-        // print(h.opt.val)         # 99 -- mutation visible on the field
         std::cout << (*h.opt).val << "\n";
     }
-    // empty = Holder(None)
     Holder empty = Holder(nullptr);
-    // if (u := empty.opt) is not None:
     Box* u = nullptr;
     if (((u = ::tpy::optional_to_ptr(empty.opt)) != nullptr)) {
-        // print("unexpected", u.val)
         std::cout << "unexpected" << " " << u->val << "\n";
-    // else:
     } else {
-        // print("none ok")
         std::cout << "none ok" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

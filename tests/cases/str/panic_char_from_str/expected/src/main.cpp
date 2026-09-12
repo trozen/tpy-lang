@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main():
+//     s = "hello"
+//     c = char(s)
+//     print(c)
 void main() {
-    // s = "hello"
     std::string_view s = "hello";
-    // c = char(s)
     char c = ::tpy::char_from_str(s);
-    // print(c)
     std::cout << c << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

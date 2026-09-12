@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Circle(5.0)
+//     print(c.name())
+//     print(c.area())
+//     c.scale(2.0)
+//     print(c.area())
 void main() {
-    // c = Circle(5.0)
     Circle c = Circle(5.0);
-    // print(c.name())
     std::cout << c.name() << "\n";
-    // print(c.area())
     std::cout << ::tpy::print_float(c.area()) << "\n";
-    // c.scale(2.0)
     c.scale(2.0);
-    // print(c.area())
     std::cout << ::tpy::print_float(c.area()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

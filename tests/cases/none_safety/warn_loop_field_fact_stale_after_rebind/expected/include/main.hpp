@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def stale_after_rebind(b: Box, other: Box) -> int32:
 int32_t stale_after_rebind(Box& b, Box& other);
 
 // class Box:
@@ -31,6 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, value: int32):
+//     self.value = value
 inline Box::Box(int32_t value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

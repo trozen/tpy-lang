@@ -3,67 +3,67 @@
 
 namespace tpyapp::main {
 
-// MAKERS: list[Maker] = []
 std::vector<Maker>* MAKERS{};
 
 // def make_row(n: float) -> Own[list[float]]:
+//     return [n, n + 1.0]
 std::vector<double> make_row(double n) {
-    // return [n, n + 1.0]
     return {n, ((n) + (1.0))};
 }
 
 // def build() -> Own[list[list[float]]]:
+//     # `table` is literal-seeded, so its element resolves to `Own[list[float]]`
+//     # and the append slot arrives doubly Own-wrapped.
+//     table = []
+//     for m in MAKERS:
+//         table.append(m.create_vector())  # tpyc: ok
+//     return table
 std::vector<std::vector<double>> build() {
-    // # `table` is literal-seeded, so its element resolves to `Own[list[float]]`
-    // # and the append slot arrives doubly Own-wrapped.
-    // table = []
     std::vector<std::vector<double>> table = std::vector<std::vector<double>>{};
-    // for m in MAKERS:
     auto& __obj_0 = (*MAKERS);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& m = *__beg_0;
-        // table.append(m.create_vector())  # tpyc: ok
         table.push_back(m.create_vector());
     }
-    // return table
     return table;
 }
 
 // def main() -> None:
+//     MAKERS.append(Maker(3.0))
+//     MAKERS.append(Maker(5.0))
+//     rows = build()
+//     print(len(rows), rows[0][0], rows[1][1])
+//     annotated: list[list[float]] = []
+//     annotated.append(make_row(1.0))  # tpyc: ok
+//     annotated.append(make_row(10.0))  # tpyc: ok
+//     # The inserted rows are the list's own storage: mutating one through the
+//     # container is visible on a later read.
+//     annotated[0].append(99.0)
+//     print(len(annotated), len(annotated[0]), annotated[0][2], annotated[1][0])
 void main() {
-    // MAKERS.append(Maker(3.0))
     MAKERS->push_back(Maker(3.0));
-    // MAKERS.append(Maker(5.0))
     MAKERS->push_back(Maker(5.0));
-    // rows = build()
     std::vector<std::vector<double>> rows = build();
-    // print(len(rows), rows[0][0], rows[1][1])
     std::cout << ::tpy::__len__(rows) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 1), 1)) << "\n";
-    // annotated: list[list[float]] = []
     std::vector<std::vector<double>> annotated = std::vector<std::vector<double>>{};
-    // annotated.append(make_row(1.0))  # tpyc: ok
     annotated.push_back(make_row(1.0));
-    // annotated.append(make_row(10.0))  # tpyc: ok
     annotated.push_back(make_row(10.0));
-    // # The inserted rows are the list's own storage: mutating one through the
-    // # container is visible on a later read.
-    // annotated[0].append(99.0)
     ::tpy::__getitem__(annotated, 0).push_back(99.0);
-    // print(len(annotated), len(annotated[0]), annotated[0][2], annotated[1][0])
     std::cout << ::tpy::__len__(annotated) << " " << ::tpy::__len__(::tpy::__getitem__(annotated, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(annotated, 0), 2)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(annotated, 1), 0)) << "\n";
 }
 
+// MAKERS: list[Maker] = []
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // MAKERS: list[Maker] = []
     static std::vector<Maker> __global_slot_1 = std::vector<Maker>{};
     MAKERS = &__global_slot_1;
-    // main()
     main();
 }
 

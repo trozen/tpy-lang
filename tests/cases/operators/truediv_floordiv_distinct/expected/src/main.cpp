@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Meters(12)
+//     b = Meters(4)
+//     print(a / b)          # 3.0  (true division -> float ratio)
+//     print((a // b).v)     # 3    (floor division -> Meters, distinct from /)
+//     print((13 // b).v)    # 3    (reflected floor division -> __rfloordiv__)
 void main() {
-    // a = Meters(12)
     Meters a = Meters(12);
-    // b = Meters(4)
     Meters b = Meters(4);
-    // print(a / b)          # 3.0  (true division -> float ratio)
     std::cout << ::tpy::print_float(((a) / (b))) << "\n";
-    // print((a // b).v)     # 3    (floor division -> Meters, distinct from /)
     std::cout << ((a).__floordiv__(b)).v << "\n";
-    // print((13 // b).v)    # 3    (reflected floor division -> __rfloordiv__)
     std::cout << ((b).__rfloordiv__(13)).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

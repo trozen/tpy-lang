@@ -19,6 +19,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Vec(ValueType):
@@ -75,16 +76,16 @@ struct Holder {
     // # `Vec | None` is value-form over a record, the shape whose default is
     // # suppressed on a FREE function. As a member it must keep its C++ default.
     // def method(self, d: Drawable, v: Vec | None = None) -> int64:
+    //     got = self.base + d.draw()
+    //     if v is None:
+    //         return got
+    //     return got + v.x
     template<Drawable T_d>
     int64_t method(const T_d& d, std::optional<Vec> v = std::nullopt) const {
-        // got = self.base + d.draw()
         int64_t got = (::tpy::add_check<int64_t>(this->base, d.draw()));
-        // if v is None:
         if ((!v.has_value())) {
-            // return got
             return got;
         }
-        // return got + v.x
         return (::tpy::add_check<int64_t>(got, (*v).x));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -97,18 +98,21 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int64) -> None:
+//     self.x = x
 inline Vec::Vec(int64_t x) : x(x) {}
 
 // def __init__(self, r: int64) -> None:
+//     self.r = r
 inline Circle::Circle(int64_t r) : r(r) {}
 
 // def draw(self) -> int64:
+//     return self.r
 inline int64_t Circle::draw() const {
-    // return self.r
     return this->r;
 }
 
 // def __init__(self, base: int64) -> None:
+//     self.base = base
 inline Holder::Holder(int64_t base) : base(base) {}
 void __tpy_init();
 } // namespace tpyapp::main

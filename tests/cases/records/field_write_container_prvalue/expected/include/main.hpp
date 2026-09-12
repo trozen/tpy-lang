@@ -11,6 +11,7 @@ struct Canvas;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Canvas:
@@ -43,23 +44,26 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
 
 
 // def __init__(self) -> None:
+//     self.pixels = []
+//     self.lines = []
+//     self.tags = set()
 inline Canvas::Canvas() : pixels(std::vector<int32_t>{}), lines(std::vector<std::string>{}), tags(::tpy::ordered_set<int32_t>()) {}
 
 // def fill(self, n: int32, v: int32) -> None:
+//     self.pixels = [v] * n  # tpyc: ok -- the repeat materializes the list
 inline void Canvas::fill(int32_t n, int32_t v) {
-    // self.pixels = [v] * n  # tpyc: ok -- the repeat materializes the list
     this->pixels = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(n, {v}));
 }
 
 // def slurp(self, data: str) -> None:
+//     self.lines = data.splitlines()  # tpyc: ok -- a method-call rvalue
 inline void Canvas::slurp(std::string_view data) {
-    // self.lines = data.splitlines()  # tpyc: ok -- a method-call rvalue
     this->lines = ::tpy::str_splitlines(data);
 }
 
 // def merge(self, a: set[int32], b: set[int32]) -> None:
+//     self.tags = a.union(b)  # tpyc: ok -- the same row on a set field
 inline void Canvas::merge(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b) {
-    // self.tags = a.union(b)  # tpyc: ok -- the same row on a set field
     this->tags = ::tpy::set_union(a, b);
 }
 void __tpy_init();

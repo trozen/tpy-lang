@@ -5,89 +5,98 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//
+//     print("default:", a.gettimeout() is None, a.getblocking())
+//     a.settimeout(0.0)
+//     print("zero:", a.gettimeout() == 0.0, a.getblocking())
+//     a.settimeout(2.5)
+//     print("pos:", a.gettimeout() == 2.5, a.getblocking())
+//     a.settimeout(None)
+//     print("none:", a.gettimeout() is None, a.getblocking())
+//
+//     # setblocking(False) == settimeout(0.0); setblocking(True) == settimeout(None).
+//     a.setblocking(False)
+//     print("nb:", a.gettimeout() == 0.0, a.getblocking())
+//     a.setblocking(True)
+//     print("blk:", a.gettimeout() is None, a.getblocking())
+//
+//     try:
+//         a.settimeout(-1.0)
+//         print("NO ERROR")
+//     except ValueError as e:
+//         print("neg:", str(e))
+//
+//     # Non-finite timeouts: NaN -> ValueError, inf -> OverflowError (CPython).
+//     try:
+//         a.settimeout(float("nan"))
+//         print("NO ERROR")
+//     except ValueError as e:
+//         print("nan:", str(e))
+//     try:
+//         a.settimeout(float("inf"))
+//         print("NO ERROR")
+//     except OverflowError as e:
+//         print("inf:", str(e))
+//
+//     a.close()
+//     b.close()
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // print("default:", a.gettimeout() is None, a.getblocking())
     std::cout << "default:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
-    // a.settimeout(0.0)
     a.settimeout(0.0);
-    // print("zero:", a.gettimeout() == 0.0, a.getblocking())
     std::cout << "zero:" << " " << ::tpy::print_bool((a.gettimeout() == 0.0)) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
-    // a.settimeout(2.5)
     a.settimeout(2.5);
-    // print("pos:", a.gettimeout() == 2.5, a.getblocking())
     std::cout << "pos:" << " " << ::tpy::print_bool((a.gettimeout() == 2.5)) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
-    // a.settimeout(None)
     a.settimeout(std::nullopt);
-    // print("none:", a.gettimeout() is None, a.getblocking())
     std::cout << "none:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
-    // # setblocking(False) == settimeout(0.0); setblocking(True) == settimeout(None).
-    // a.setblocking(False)
     a.setblocking(false);
-    // print("nb:", a.gettimeout() == 0.0, a.getblocking())
     std::cout << "nb:" << " " << ::tpy::print_bool((a.gettimeout() == 0.0)) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
-    // a.setblocking(True)
     a.setblocking(true);
-    // print("blk:", a.gettimeout() is None, a.getblocking())
     std::cout << "blk:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n";
-    // try:
     {
         try {
-            // a.settimeout(-1.0)
             a.settimeout(-(1.0));
-            // print("NO ERROR")
             std::cout << "NO ERROR" << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("neg:", str(e))
             std::cout << "neg:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # Non-finite timeouts: NaN -> ValueError, inf -> OverflowError (CPython).
-    // try:
     {
         try {
-            // a.settimeout(float("nan"))
             a.settimeout(std::numeric_limits<double>::quiet_NaN());
-            // print("NO ERROR")
             std::cout << "NO ERROR" << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("nan:", str(e))
             std::cout << "nan:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // a.settimeout(float("inf"))
             a.settimeout(std::numeric_limits<double>::infinity());
-            // print("NO ERROR")
             std::cout << "NO ERROR" << "\n";
         } catch (const ::tpy::OverflowError& e) {
-            // print("inf:", str(e))
             std::cout << "inf:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // a.close()
     a.close();
-    // b.close()
     b.close();
 }
 
+// # socket timeout-mode introspection: gettimeout (None / 0.0 / positive),
+// # getblocking, the setblocking<->settimeout equivalence, and the negative-value
+// # ValueError. Prints comparisons/booleans (not raw floats) so the snapshot does
+// # not depend on float formatting.
+// import socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # socket timeout-mode introspection: gettimeout (None / 0.0 / positive),
-    // # getblocking, the setblocking<->settimeout equivalence, and the negative-value
-    // # ValueError. Prints comparisons/booleans (not raw floats) so the snapshot does
-    // # not depend on float formatting.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

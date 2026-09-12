@@ -22,14 +22,23 @@ struct __coro_in_a_loop;
 struct __coro_from_return;
 struct __coro_main_coro;
 
+// async def make(n: int32) -> Own[Payload]:
 __coro_make make(int32_t n);
+// def take(p: Own[Payload]) -> int32:
 int32_t take(Payload&& p);
+// async def into_container() -> int32:
 __coro_into_container into_container();
+// async def into_call_arg() -> int32:
 __coro_into_call_arg into_call_arg();
+// async def into_field() -> int32:
 __coro_into_field into_field();
+// async def in_a_loop() -> int32:
 __coro_in_a_loop in_a_loop();
+// async def from_return() -> Own[Payload]:
 __coro_from_return from_return();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -75,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: make
+// async def make(n: int32) -> Own[Payload]:
 struct __coro_make {
     int32_t __state;
     bool __cancel_pending;
@@ -97,7 +106,7 @@ struct __coro_make {
     }
 };
 
-// Async coroutine: into_container
+// async def into_container() -> int32:
 struct __coro_into_container {
     int32_t __state;
     bool __cancel_pending;
@@ -122,7 +131,7 @@ struct __coro_into_container {
     }
 };
 
-// Async coroutine: into_call_arg
+// async def into_call_arg() -> int32:
 struct __coro_into_call_arg {
     int32_t __state;
     bool __cancel_pending;
@@ -146,7 +155,7 @@ struct __coro_into_call_arg {
     }
 };
 
-// Async coroutine: into_field
+// async def into_field() -> int32:
 struct __coro_into_field {
     int32_t __state;
     bool __cancel_pending;
@@ -171,7 +180,7 @@ struct __coro_into_field {
     }
 };
 
-// Async coroutine: in_a_loop
+// async def in_a_loop() -> int32:
 struct __coro_in_a_loop {
     int32_t __state;
     bool __cancel_pending;
@@ -198,7 +207,7 @@ struct __coro_in_a_loop {
     }
 };
 
-// Async coroutine: from_return
+// async def from_return() -> Own[Payload]:
 struct __coro_from_return {
     int32_t __state;
     bool __cancel_pending;
@@ -222,7 +231,7 @@ struct __coro_from_return {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -260,9 +269,11 @@ struct __coro_main_coro {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Payload::Payload(int32_t n) : n(n) {}
 
 // def __init__(self, item: Own[Payload]) -> None:
+//     self.item = item
 inline Holder::Holder(Payload&& item) : item(std::move(item)) {}
 void __tpy_init();
 } // namespace tpyapp::main

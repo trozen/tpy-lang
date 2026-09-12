@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def test_list_ptr() -> None:
+//     items: list[int32] = [int32(10), int32(20), int32(30)]
+//     p: Ptr[int32] = unsafe_ptr(items)
+//     print(unsafe_load(p, uint32(0)))
+//     print(unsafe_load(p, uint32(1)))
+//     print(unsafe_load(p, uint32(2)))
 void test_list_ptr() {
-    // items: list[int32] = [int32(10), int32(20), int32(30)]
     std::vector<int32_t> items = {10, 20, 30};
-    // p: Ptr[int32] = unsafe_ptr(items)
     int32_t* p = items.data();
-    // print(unsafe_load(p, uint32(0)))
     std::cout << p[0] << "\n";
-    // print(unsafe_load(p, uint32(1)))
     std::cout << p[1] << "\n";
-    // print(unsafe_load(p, uint32(2)))
     std::cout << p[2] << "\n";
 }
 
+// from tpy.unsafe import unsafe_ptr, unsafe_load
+//
+// test_list_ptr()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_ptr, unsafe_load
-    // test_list_ptr()
     test_list_ptr();
 }
 

@@ -14,14 +14,20 @@ struct __gen_dict_keys;
 struct __gen_blob_slices;
 struct __gen_static_sources;
 
+// def pair(n: int32) -> tuple[str, str]:
 std::tuple<std::string, std::string> pair(int32_t n);
+// def unpack_across_yield() -> Iterator[int32]:
 __gen_unpack_across_yield unpack_across_yield();
+// def dict_keys(d: dict[str, int32]) -> Iterator[str]:
 __gen_dict_keys dict_keys(::tpy::ordered_map<std::string, int32_t>& d);
+// def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
 __gen_blob_slices blob_slices(std::vector<::tpy::Bytes>& blobs);
+// def static_sources() -> Iterator[int32]:
 __gen_static_sources static_sources();
+// def main() -> None:
 void main();
 
-// Generator: unpack_across_yield
+// def unpack_across_yield() -> Iterator[int32]:
 struct __gen_unpack_across_yield : public ::tpy::next_iter_mixin<__gen_unpack_across_yield, int32_t> {
     int32_t __state;
     std::string host;
@@ -45,7 +51,7 @@ struct __gen_unpack_across_yield : public ::tpy::next_iter_mixin<__gen_unpack_ac
     }
 };
 
-// Generator: dict_keys
+// def dict_keys(d: dict[str, int32]) -> Iterator[str]:
 struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::string> {
     int32_t __state;
     ::tpy::ordered_map<std::string, int32_t>& d;
@@ -72,7 +78,7 @@ struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::str
     }
 };
 
-// Generator: blob_slices
+// def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
 struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int32_t> {
     int32_t __state;
     std::vector<::tpy::Bytes>& blobs;
@@ -101,7 +107,7 @@ struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int3
     }
 };
 
-// Generator: static_sources
+// def static_sources() -> Iterator[int32]:
 struct __gen_static_sources : public ::tpy::next_iter_mixin<__gen_static_sources, int32_t> {
     int32_t __state;
     std::string_view lit;

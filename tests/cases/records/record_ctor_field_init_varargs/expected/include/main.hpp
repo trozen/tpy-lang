@@ -14,6 +14,7 @@ struct Triangle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Seg:
@@ -70,23 +71,24 @@ inline std::ostream& operator<<(std::ostream& os, const Triangle& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.length = math.hypot(float(x), float(y))
 inline Seg::Seg(const ::tpy::BigInt& x, const ::tpy::BigInt& y) {
-    // self.length = math.hypot(float(x), float(y))
     std::array<const double, 2> __tmp_1{static_cast<double>(x), static_cast<double>(y)};
     this->length = ::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_1));
 }
 
 // def __init__(self, w: int) -> None:
+//     self.width = w
 inline Picture::Picture(const ::tpy::BigInt& w) : width(w) {}
 
 // def __init__(self, p1x: int, p1y: int, p2x: int, p2y: int, name: str) -> None:
+//     self.a = math.hypot(float(p1x), float(p1y))
+//     self.label = name
+//     self.b = math.hypot(float(p2x), float(p2y))
 inline Triangle::Triangle(const ::tpy::BigInt& p1x, const ::tpy::BigInt& p1y, const ::tpy::BigInt& p2x, const ::tpy::BigInt& p2y, std::string_view name) {
-    // self.a = math.hypot(float(p1x), float(p1y))
     std::array<const double, 2> __tmp_2{static_cast<double>(p1x), static_cast<double>(p1y)};
     this->a = ::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_2));
-    // self.label = name
     this->label = name;
-    // self.b = math.hypot(float(p2x), float(p2y))
     std::array<const double, 2> __tmp_3{static_cast<double>(p2x), static_cast<double>(p2y)};
     this->b = ::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_3));
 }

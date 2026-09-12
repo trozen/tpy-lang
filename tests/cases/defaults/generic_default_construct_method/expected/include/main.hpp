@@ -11,6 +11,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T]:
@@ -20,12 +21,13 @@ struct Container {
     T val;
 
     // def __init__(self, val: T) -> None:
+    //     self.val = copy(val)
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def get_or_default(self, fallback: T = T()) -> T:
+    //     return fallback
     ::tpy::val_or_cref_t<T> get_or_default(::tpy::readonly_form_t<T> fallback = T{}) const {
-        // return fallback
         return ::tpy::param_to_return<T>(fallback);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

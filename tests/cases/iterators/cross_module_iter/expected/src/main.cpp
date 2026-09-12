@@ -5,39 +5,40 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = make_bag([10, 20, 30])
+//     total = 0
+//     for v in b:
+//         total += v
+//     print(total)
 void main() {
-    // b = make_bag([10, 20, 30])
     ::tpyapp::bag::Bag<int32_t> b = ::tpyapp::bag::make_bag<int32_t>({10, 20, 30});
-    // total = 0
     int32_t total = 0;
-    // for v in b:
     auto& __src_0 = b;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// # Iterate a cross-module generic iterable WITHOUT importing its type -- only
+// # the factory is imported. The element type of Bag[int32].__iter__() ->
+// # Iterator[T] must still bind T=int32, which requires resolving Bag's
+// # RecordInfo by qname (it is absent from this module's local records dict).
+// # Regression guard: this raised "Cannot iterate over type Bag[int32]" before
+// # the qname-first lookup fix.
+// from bag import make_bag
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Iterate a cross-module generic iterable WITHOUT importing its type -- only
-    // # the factory is imported. The element type of Bag[int32].__iter__() ->
-    // # Iterator[T] must still bind T=int32, which requires resolving Bag's
-    // # RecordInfo by qname (it is absent from this module's local records dict).
-    // # Regression guard: this raised "Cannot iterate over type Bag[int32]" before
-    // # the qname-first lookup fix.
-    // from bag import make_bag
     ::tpyapp::bag::__tpy_init();
-    // main()
     main();
 }
 

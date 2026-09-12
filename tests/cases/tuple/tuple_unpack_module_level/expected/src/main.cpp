@@ -3,105 +3,92 @@
 
 namespace tpyapp::main {
 
-// # Unpack from function call
-// a, b = get_pair()
 int32_t a{};
-// # Unpack from function call
-// a, b = get_pair()
 int32_t b{};
-// # Unpack from tuple literal
-// x, y = int32(100), int32(200)
 int32_t x{};
-// # Unpack from tuple literal
-// x, y = int32(100), int32(200)
 int32_t y{};
-// first, _, last = get_triple()
 int32_t first{};
-// first, _, last = get_triple()
 int32_t last{};
-// # Globals referenced from a function body
-// lo, hi = int32(0), int32(99)
 int32_t lo{};
-// # Globals referenced from a function body
-// lo, hi = int32(0), int32(99)
 int32_t hi{};
-// # ALL_CAPS triggers Final warning
-// LO, HI = int32(0), int32(99)  # tpyc: warning(/ALL_CAPS/)
 int32_t LO{};
-// # ALL_CAPS triggers Final warning
-// LO, HI = int32(0), int32(99)  # tpyc: warning(/ALL_CAPS/)
 int32_t HI{};
 
 // def get_pair() -> tuple[int32, int32]:
+//     return (int32(10), int32(20))
 std::tuple<int32_t, int32_t> get_pair() {
-    // return (int32(10), int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
 // # Unpack with discard
 // def get_triple() -> tuple[int32, int32, int32]:
+//     return (int32(1), int32(2), int32(3))
 std::tuple<int32_t, int32_t, int32_t> get_triple() {
-    // return (int32(1), int32(2), int32(3))
     return std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
 }
 
 // def use_globals() -> None:
+//     print(lo)
+//     print(hi)
 void use_globals() {
-    // print(lo)
     std::cout << lo << "\n";
-    // print(hi)
     std::cout << hi << "\n";
 }
 
+// # Unpack from function call
+// a, b = get_pair()
+// print(a)
+// print(b)
+//
+// # Unpack from tuple literal
+// x, y = int32(100), int32(200)
+// print(x)
+// print(y)
+//
+// first, _, last = get_triple()
+// print(first)
+// print(last)
+//
+// # Globals referenced from a function body
+// lo, hi = int32(0), int32(99)
+//
+// use_globals()
+//
+// # ALL_CAPS triggers Final warning
+// LO, HI = int32(0), int32(99)  # tpyc: warning(/ALL_CAPS/)
+// print(LO)
+// print(HI)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Unpack from function call
-    // a, b = get_pair()
     auto __tup_1 = get_pair();
     a = std::get<0>(__tup_1);
     b = std::get<1>(__tup_1);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
-    // # Unpack from tuple literal
-    // x, y = int32(100), int32(200)
     int32_t __unpack_0_0 = 100;
     int32_t __unpack_0_1 = 200;
     x = __unpack_0_0;
     y = __unpack_0_1;
-    // print(x)
     std::cout << x << "\n";
-    // print(y)
     std::cout << y << "\n";
-    // first, _, last = get_triple()
     auto __tup_2 = get_triple();
     first = std::get<0>(__tup_2);
     last = std::get<2>(__tup_2);
-    // print(first)
     std::cout << first << "\n";
-    // print(last)
     std::cout << last << "\n";
-    // # Globals referenced from a function body
-    // lo, hi = int32(0), int32(99)
     int32_t __unpack_1_0 = 0;
     int32_t __unpack_1_1 = 99;
     lo = __unpack_1_0;
     hi = __unpack_1_1;
-    // use_globals()
     use_globals();
-    // # ALL_CAPS triggers Final warning
-    // LO, HI = int32(0), int32(99)  # tpyc: warning(/ALL_CAPS/)
     int32_t __unpack_2_0 = 0;
     int32_t __unpack_2_1 = 99;
     LO = __unpack_2_0;
     HI = __unpack_2_1;
-    // print(LO)
     std::cout << LO << "\n";
-    // print(HI)
     std::cout << HI << "\n";
 }
 

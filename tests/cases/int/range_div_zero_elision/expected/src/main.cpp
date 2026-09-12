@@ -5,162 +5,171 @@ namespace tpyapp::main {
 
 
 // def test_if_not_zero_floordiv() -> None:
+//     """if b != 0: a // b -- divisor proven non-zero."""
+//     a: int32 = 10
+//     b: int32 = 3
+//     if b != 0:
+//         x = a // b  # tpyc: div_safe(b)
+//         print(x)
 void test_if_not_zero_floordiv() {
-    // a: int32 = 10
     int32_t a = 10;
-    // b: int32 = 3
     int32_t b = 3;
-    // if b != 0:
     if ((b != 0)) {
-        // x = a // b  # tpyc: div_safe(b)
         int32_t x = (::tpy::div_floor<int32_t>(a, b));
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_if_not_zero_mod() -> None:
+//     """if b != 0: a % b -- same for modulo."""
+//     a: int32 = 10
+//     b: int32 = 3
+//     if b != 0:
+//         x = a % b  # tpyc: div_safe(b)
+//         print(x)
 void test_if_not_zero_mod() {
-    // a: int32 = 10
     int32_t a = 10;
-    // b: int32 = 3
     int32_t b = 3;
-    // if b != 0:
     if ((b != 0)) {
-        // x = a % b  # tpyc: div_safe(b)
         int32_t x = (::tpy::mod_floor<int32_t>(a, b));
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_no_elision_unchecked() -> None:
+//     """No guard -- division check remains when divisor is not a literal."""
+//     a: int32 = 10
+//     b: int32 = int32(3)
+//     x = a // b  # tpyc: div_checked(b)
+//     print(x)
 void test_no_elision_unchecked() {
-    // a: int32 = 10
     int32_t a = 10;
-    // b: int32 = int32(3)
     int32_t b = 3;
-    // x = a // b  # tpyc: div_checked(b)
     int32_t x = (::tpy::div_check<int32_t>(a, b));
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_assert_not_zero() -> None:
+//     """assert b != 0 proves non-zero for subsequent code."""
+//     a: int32 = 17
+//     b: int32 = 5
+//     assert b != 0
+//     x = a // b  # tpyc: div_safe(b)
+//     y = a % b  # tpyc: div_safe(b)
+//     print(x)
+//     print(y)
 void test_assert_not_zero() {
-    // a: int32 = 17
     int32_t a = 17;
-    // b: int32 = 5
     int32_t b = 5;
-    // assert b != 0
     if (!((b != 0))) ::tpy::raise_assertion_error();
-    // x = a // b  # tpyc: div_safe(b)
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
-    // y = a % b  # tpyc: div_safe(b)
     int32_t y = (::tpy::mod_floor<int32_t>(a, b));
-    // print(x)
     std::cout << x << "\n";
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_assert_positive() -> None:
+//     """assert b > 0 proves non-zero (since > 0 implies != 0)."""
+//     a: int32 = 20
+//     b: int32 = 7
+//     assert b > 0
+//     x = a // b  # tpyc: div_safe(b)
+//     print(x)
 void test_assert_positive() {
-    // a: int32 = 20
     int32_t a = 20;
-    // b: int32 = 7
     int32_t b = 7;
-    // assert b > 0
     if (!((b > 0))) ::tpy::raise_assertion_error();
-    // x = a // b  # tpyc: div_safe(b)
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_no_elision_after_reassign() -> None:
+//     """Reassignment clears non-zero fact."""
+//     a: int32 = 10
+//     b: int32 = 3
+//     assert b != 0
+//     b = a  # reassignment clears range fact
+//     x = a // b  # tpyc: div_checked(b)
+//     print(x)
 void test_no_elision_after_reassign() {
-    // a: int32 = 10
     int32_t a = 10;
-    // b: int32 = 3
     int32_t b = 3;
-    // assert b != 0
     if (!((b != 0))) ::tpy::raise_assertion_error();
-    // b = a  # reassignment clears range fact
     b = a;
-    // x = a // b  # tpyc: div_checked(b)
     int32_t x = (::tpy::div_check<int32_t>(a, b));
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_else_of_eq_zero() -> None:
+//     """else branch of 'if b == 0' proves b != 0."""
+//     a: int32 = 10
+//     b: int32 = 3
+//     if b == 0:
+//         print("zero")
+//     else:
+//         x = a // b  # tpyc: div_safe(b)
+//         print(x)
 void test_else_of_eq_zero() {
-    // a: int32 = 10
     int32_t a = 10;
-    // b: int32 = 3
     int32_t b = 3;
-    // if b == 0:
     if ((b == 0)) {
-        // print("zero")
         std::cout << "zero" << "\n";
-    // else:
     } else {
-        // x = a // b  # tpyc: div_safe(b)
         int32_t x = (::tpy::div_floor<int32_t>(a, b));
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_literal_divisor() -> None:
+//     """Literal non-zero divisor is always safe."""
+//     a: int32 = 10
+//     x = a // 3
+//     y = a % 5
+//     print(x)
+//     print(y)
 void test_literal_divisor() {
-    // a: int32 = 10
     int32_t a = 10;
-    // x = a // 3
     int32_t x = (::tpy::div_floor<int32_t>(a, 3));
-    // y = a % 5
     int32_t y = (::tpy::mod_floor<int32_t>(a, 5));
-    // print(x)
     std::cout << x << "\n";
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_literal_named_divisor() -> None:
+//     """Literal-initialized non-zero divisor is automatically proven safe."""
+//     a: int32 = 10
+//     b: int32 = 3
+//     x = a // b  # tpyc: div_safe(b)
+//     print(x)
 void test_literal_named_divisor() {
-    // a: int32 = 10
     int32_t a = 10;
-    // b: int32 = 3
     int32_t b = 3;
-    // x = a // b  # tpyc: div_safe(b)
     int32_t x = (::tpy::div_floor<int32_t>(a, b));
-    // print(x)
     std::cout << x << "\n";
 }
 
+// test_if_not_zero_floordiv()
+// test_if_not_zero_mod()
+// test_no_elision_unchecked()
+// test_assert_not_zero()
+// test_assert_positive()
+// test_no_elision_after_reassign()
+// test_else_of_eq_zero()
+// test_literal_divisor()
+// test_literal_named_divisor()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_if_not_zero_floordiv()
     test_if_not_zero_floordiv();
-    // test_if_not_zero_mod()
     test_if_not_zero_mod();
-    // test_no_elision_unchecked()
     test_no_elision_unchecked();
-    // test_assert_not_zero()
     test_assert_not_zero();
-    // test_assert_positive()
     test_assert_positive();
-    // test_no_elision_after_reassign()
     test_no_elision_after_reassign();
-    // test_else_of_eq_zero()
     test_else_of_eq_zero();
-    // test_literal_divisor()
     test_literal_divisor();
-    // test_literal_named_divisor()
     test_literal_named_divisor();
 }
 

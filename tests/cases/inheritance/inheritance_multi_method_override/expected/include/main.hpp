@@ -13,6 +13,7 @@ struct Both;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Speaker:
@@ -59,20 +60,20 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
 
 
 // def greet(self) -> str:
+//     return "hello"
 inline std::string Speaker::greet() const {
-    // return "hello"
     return "hello";
 }
 
 // def greet(self) -> str:
+//     return "hi"
 inline std::string Greeter::greet() const {
-    // return "hi"
     return "hi";
 }
 
 // def greet(self) -> str:
+//     return "greetings"
 inline std::string Both::greet() const {
-    // return "greetings"
     return "greetings";
 }
 void __tpy_init();

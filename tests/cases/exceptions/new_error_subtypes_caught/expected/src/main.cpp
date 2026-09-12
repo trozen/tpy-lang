@@ -7,76 +7,87 @@ namespace tpyapp::main {
 // # PermissionError / FloatingPointError / RecursionError / EOFError exist
 // # and slot into CPython's hierarchy: each is caught via its base class.
 // def main() -> None:
+//     try:
+//         raise PermissionError("denied")
+//     except OSError as e:
+//         print("via OSError:", str(e))
+//
+//     try:
+//         raise FloatingPointError("bad fp")
+//     except ArithmeticError as e:
+//         print("via ArithmeticError:", str(e))
+//
+//     try:
+//         raise RecursionError("too deep")
+//     except RuntimeError as e:
+//         print("via RuntimeError:", str(e))
+//
+//     try:
+//         raise EOFError("no more input")
+//     except EOFError as e:
+//         print("exact EOFError:", str(e))
+//
+//     # Each new leaf is also reachable through the common Exception base.
+//     try:
+//         raise EOFError("eof again")
+//     except Exception as e:
+//         print("eof via Exception:", str(e))
+//
+//     try:
+//         raise PermissionError("perm again")
+//     except Exception as e:
+//         print("perm via Exception:", str(e))
 void main() {
-    // try:
     {
         try {
-            // raise PermissionError("denied")
             throw ::tpy::PermissionError("denied");
         } catch (const ::tpy::OSError& e) {
-            // print("via OSError:", str(e))
             std::cout << "via OSError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise FloatingPointError("bad fp")
             throw ::tpy::FloatingPointError("bad fp");
         } catch (const ::tpy::ArithmeticError& e) {
-            // print("via ArithmeticError:", str(e))
             std::cout << "via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise RecursionError("too deep")
             throw ::tpy::RecursionError("too deep");
         } catch (const ::tpy::RuntimeError& e) {
-            // print("via RuntimeError:", str(e))
             std::cout << "via RuntimeError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise EOFError("no more input")
             throw ::tpy::EOFError("no more input");
         } catch (const ::tpy::EOFError& e) {
-            // print("exact EOFError:", str(e))
             std::cout << "exact EOFError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # Each new leaf is also reachable through the common Exception base.
-    // try:
     {
         try {
-            // raise EOFError("eof again")
             throw ::tpy::EOFError("eof again");
         } catch (const ::tpy::Exception& e) {
-            // print("eof via Exception:", str(e))
             std::cout << "eof via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise PermissionError("perm again")
             throw ::tpy::PermissionError("perm again");
         } catch (const ::tpy::Exception& e) {
-            // print("perm via Exception:", str(e))
             std::cout << "perm via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

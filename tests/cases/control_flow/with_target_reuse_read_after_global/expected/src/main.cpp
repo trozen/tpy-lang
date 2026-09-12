@@ -4,17 +4,23 @@
 namespace tpyapp::main {
 
 
+// with Reg(11) as view:
+//     pass
+//
+// # The reuse whose manager is kept alive by the read below.
+// with Reg(22) as view:
+//     pass
+//
+// print(view.n)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     static std::optional<Reg> __global_slot_1;
-    // with Reg(11) as view:
     auto __ctx_1 = Reg(11);
     Reg* view = &(__ctx_1.__enter__());
     try {
-        // pass
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -25,13 +31,10 @@ void __tpy_init() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # The reuse whose manager is kept alive by the read below.
-    // with Reg(22) as view:
     __global_slot_1.emplace(Reg(22));
     auto& __ctx_2 = (*__global_slot_1);
     view = &(__ctx_2.__enter__());
     try {
-        // pass
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -42,7 +45,6 @@ void __tpy_init() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // print(view.n)
     std::cout << view->n << "\n";
 }
 

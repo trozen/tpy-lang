@@ -5,92 +5,93 @@ namespace tpyapp::main {
 
 
 // def show_list_param(lst: list[int] | None) -> None:
+//     print(lst)
 void show_list_param(const std::vector<::tpy::BigInt>* lst) {
-    // print(lst)
     std::cout << ::tpy::print_optional<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(lst) << "\n";
 }
 
 // def show_dict_param(d: dict[str, int32] | None) -> None:
+//     print(d)
 void show_dict_param(const ::tpy::ordered_map<std::string, int32_t>* d) {
-    // print(d)
     std::cout << ::tpy::print_optional<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(d) << "\n";
 }
 
 // def show_set_param(s: set[int32] | None) -> None:
+//     print(s)
 void show_set_param(const ::tpy::ordered_set<int32_t>* s) {
-    // print(s)
     std::cout << ::tpy::print_optional<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(s) << "\n";
 }
 
 // def show_bytes_param(b: bytes | None) -> None:
+//     print(b)
 void show_bytes_param(std::optional<::tpy::BytesView> b) {
-    // print(b)
     std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::BytesView>(b) << "\n";
 }
 
 // def show_bytearray_param(b: bytearray | None) -> None:
+//     print(b)
 void show_bytearray_param(const ::tpy::ByteArray* b) {
-    // print(b)
     std::cout << ::tpy::print_optional<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(b) << "\n";
 }
 
 // def main() -> None:
+//     # Bind container literals to named locals first (Bag's Optional[container]
+//     # params take pointers; passing rvalue literals trips the same pre-existing
+//     # rvalue-address-of issue worked around in the param-call section below).
+//     init_items: list[int] = [1, 2]
+//     init_by_key: dict[str, int32] = {"a": 1}
+//     init_elems: set[int32] = {3, 4}
+//     init_buf = bytearray(b"yo")
+//     Bag(init_items, init_by_key, init_elems, b"hi", init_buf).show_fields()
+//     # None on all five inners
+//     Bag(None, None, None, None, None).show_fields()
+//
+//     # Bind container rvalues to named locals first -- passing the literal
+//     # directly as an `Optional[container]` param hits a pre-existing
+//     # rvalue-address-of bug in container-literal -> pointer-param coercion.
+//     lst: list[int] = [10, 20]
+//     show_list_param(lst)
+//     show_list_param(None)
+//     d: dict[str, int32] = {"k": 7}
+//     show_dict_param(d)
+//     show_dict_param(None)
+//     s: set[int32] = {9}
+//     show_set_param(s)
+//     show_set_param(None)
+//     show_bytes_param(b"abc")
+//     show_bytes_param(None)
+//     buf = bytearray(b"ok")
+//     show_bytearray_param(buf)
+//     show_bytearray_param(None)
 void main() {
-    // # Bind container literals to named locals first (Bag's Optional[container]
-    // # params take pointers; passing rvalue literals trips the same pre-existing
-    // # rvalue-address-of issue worked around in the param-call section below).
-    // init_items: list[int] = [1, 2]
     std::vector<::tpy::BigInt> init_items = {1, 2};
-    // init_by_key: dict[str, int32] = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> init_by_key = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // init_elems: set[int32] = {3, 4}
     ::tpy::ordered_set<int32_t> init_elems = ::tpy::ordered_set<int32_t>({3, 4});
-    // init_buf = bytearray(b"yo")
     ::tpy::ByteArray init_buf = ::tpy::ByteArray(::tpy::bytes_literal("yo", 2));
-    // Bag(init_items, init_by_key, init_elems, b"hi", init_buf).show_fields()
     Bag(&(init_items), &(init_by_key), &(init_elems), ::tpy::bytes_literal_owned("hi", 2), &(init_buf)).show_fields();
-    // # None on all five inners
-    // Bag(None, None, None, None, None).show_fields()
     Bag(nullptr, nullptr, nullptr, std::nullopt, nullptr).show_fields();
-    // # Bind container rvalues to named locals first -- passing the literal
-    // # directly as an `Optional[container]` param hits a pre-existing
-    // # rvalue-address-of bug in container-literal -> pointer-param coercion.
-    // lst: list[int] = [10, 20]
     std::vector<::tpy::BigInt> lst = {10, 20};
-    // show_list_param(lst)
     show_list_param(&(lst));
-    // show_list_param(None)
     show_list_param(nullptr);
-    // d: dict[str, int32] = {"k": 7}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"k", 7}});
-    // show_dict_param(d)
     show_dict_param(&(d));
-    // show_dict_param(None)
     show_dict_param(nullptr);
-    // s: set[int32] = {9}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({9});
-    // show_set_param(s)
     show_set_param(&(s));
-    // show_set_param(None)
     show_set_param(nullptr);
-    // show_bytes_param(b"abc")
     show_bytes_param(::tpy::bytes_literal_owned("abc", 3));
-    // show_bytes_param(None)
     show_bytes_param(std::nullopt);
-    // buf = bytearray(b"ok")
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("ok", 2));
-    // show_bytearray_param(buf)
     show_bytearray_param(&(buf));
-    // show_bytearray_param(None)
     show_bytearray_param(nullptr);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

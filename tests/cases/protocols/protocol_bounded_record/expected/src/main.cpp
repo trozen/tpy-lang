@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     factory = DefaultPairFactory()
+//     pair = create_pair(factory, 30, 10)
+//     print(pair.first)
+//     print(pair.second)
 void main() {
-    // factory = DefaultPairFactory()
     DefaultPairFactory factory = DefaultPairFactory();
-    // pair = create_pair(factory, 30, 10)
     SortedPair<int32_t> pair = create_pair<DefaultPairFactory>(factory, 30, 10);
-    // print(pair.first)
     std::cout << pair.first << "\n";
-    // print(pair.second)
     std::cout << pair.second << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

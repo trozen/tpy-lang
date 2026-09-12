@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pt: Point = Point(10, 20)
+//     b: Box = Box(Ref(pt))
+//     # Multi-hop deref chain: Box -> Ref -> Point
+//     print(b.x)
+//     print(b.y)
+//     print(b.sum())
 void main() {
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // b: Box = Box(Ref(pt))
     Box b = Box(Ref(pt));
-    // # Multi-hop deref chain: Box -> Ref -> Point
-    // print(b.x)
     std::cout << b.__deref__().__deref__().x << "\n";
-    // print(b.y)
     std::cout << b.__deref__().__deref__().y << "\n";
-    // print(b.sum())
     std::cout << b.__deref__().__deref__().sum() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,12 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Pet("rex")
+//     d = Dog("fido")
+//     for s in p.ro_names():
+//         print(s)
+//     for s in d.ro_names():
+//         print(s)
+//     for v in p.counts():
+//         print(v)
+//     for v in d.counts():
+//         print(v)
 void main() {
-    // p = Pet("rex")
     Pet p = Pet("rex");
-    // d = Dog("fido")
     Dog d = Dog("fido");
-    // for s in p.ro_names():
     {
         auto __src_0 = p.ro_names();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -18,11 +25,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in d.ro_names():
     {
         auto __src_2 = d.ro_names();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -30,11 +35,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for v in p.counts():
     {
         auto __src_4 = p.counts();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -42,11 +45,9 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_5);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in d.counts():
     {
         auto __src_6 = d.counts();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -54,23 +55,24 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_7);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def ro_names(self) -> Iterator[str]:
+//     if isinstance(self, Dog):  # tpyc: ok
+//         yield "ro-dog:" + self._name
+//     else:
+//         yield "ro-pet:" + self._name
 std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((dynamic_cast<const Dog*>(&__self) != nullptr)) {
             const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
-            // yield "ro-dog:" + self._name
             __state = S_RESUME_0;
             return (::tpy::str_concat("ro-dog:", __self_narrowed._name));
         } else {
-            // yield "ro-pet:" + self._name
             __state = S_RESUME_1;
             return (::tpy::str_concat("ro-pet:", __self._name));
         }
@@ -95,27 +97,29 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__next__() 
 
 
 // def counts(self) -> Iterator[int]:
+//     if isinstance(self, Dog):  # tpyc: ok
+//         self._n += 1
+//         yield self._n
+//         self._n += 10
+//         yield self._n
+//     else:
+//         yield -1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Pet_counts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((dynamic_cast<Dog*>(&__self) != nullptr)) {
             Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
-            // self._n += 1
             __self_narrowed._n = (__self_narrowed._n) + (::tpy::BigInt(1));
-            // yield self._n
             __state = S_RESUME_0;
             return __self_narrowed._n;
         } else {
-            // yield -1
             __state = S_RESUME_2;
             return ::tpy::BigInt(-1);
         }
     }
     case S_RESUME_0: {
         Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
-        // self._n += 10
         __self_narrowed._n = (__self_narrowed._n) + (::tpy::BigInt(10));
-        // yield self._n
         __state = S_RESUME_1;
         return __self_narrowed._n;
     }
@@ -138,12 +142,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Pet_counts::__next__() 
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

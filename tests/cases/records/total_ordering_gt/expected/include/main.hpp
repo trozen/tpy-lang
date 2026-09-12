@@ -65,17 +65,18 @@ inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.n = v
 inline Rank::Rank(int32_t v) : n(v) {}
 
 // def __eq__(self, other: "Rank") -> bool:
+//     return self.n == other.n
 inline bool Rank::__eq__(const Rank& other) const {
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __gt__(self, other: "Rank") -> bool:
+//     return self.n > other.n
 inline bool Rank::__gt__(const Rank& other) const {
-    // return self.n > other.n
     return (this->n > other.n);
 }
 

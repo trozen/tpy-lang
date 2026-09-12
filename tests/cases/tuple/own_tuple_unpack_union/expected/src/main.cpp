@@ -5,48 +5,48 @@ namespace tpyapp::main {
 
 
 // def pair() -> tuple[Own[A | B], int32]:
+//     return (A(42), int32(99))
 std::tuple<::tpy::Union<A, B>, int32_t> pair() {
-    // return (A(42), int32(99))
     return std::tuple<::tpy::Union<A, B>, int32_t>{A(42), 99};
 }
 
 // def borrow(u: A | B) -> int32:
+//     if isinstance(u, A):
+//         return u.x
+//     if isinstance(u, B):
+//         return u.y
+//     return int32(0)
 int32_t borrow(::tpy::Union<const A*, const B*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<const A*>(u)) {
         auto& __u = *std::get<const A*>(u);
-        // return u.x
         return __u.x;
     }
     auto& __u = *std::get<const B*>(u);
-    // if isinstance(u, B):
     if (true) {
         auto& __u = *std::get<const B*>(u);
-        // return u.y
         return __u.y;
     }
-    // return int32(0)
     return 0;
 }
 
 // def main() -> None:
+//     p, n = pair()
+//     print(borrow(p))
+//     print(n)
 void main() {
-    // p, n = pair()
     auto __tup_1 = pair();
     ::tpy::Union<A*, B*> p = ::tpy::to_ptr_variant(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // print(borrow(p))
     std::cout << borrow(p.as_const()) << "\n";
-    // print(n)
     std::cout << n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

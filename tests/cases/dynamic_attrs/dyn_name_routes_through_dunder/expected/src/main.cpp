@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Hybrid("field-value")
+//     # Direct access reads the declared field.
+//     print(h.declared)
+//     # Runtime-name access goes through __getattr__ even though "declared"
+//     # is a real field. CPython would print "field-value" here; TPy prints
+//     # "dunder:declared".
+//     name = "declared"
+//     print(getattr(h, name, "fallback"))
 void main() {
-    // h = Hybrid("field-value")
     Hybrid h = Hybrid("field-value");
-    // # Direct access reads the declared field.
-    // print(h.declared)
     std::cout << h.declared << "\n";
-    // # Runtime-name access goes through __getattr__ even though "declared"
-    // # is a real field. CPython would print "field-value" here; TPy prints
-    // # "dunder:declared".
-    // name = "declared"
     std::string_view name = "declared";
-    // print(getattr(h, name, "fallback"))
     std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__(name)); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

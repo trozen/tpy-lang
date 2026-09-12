@@ -11,8 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f1(p: readonly[Point | None]) -> int32:
 int32_t f1(const Point* p);
+// def f2(p: readonly[Point] | None) -> int32:
 int32_t f2(const Point* p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

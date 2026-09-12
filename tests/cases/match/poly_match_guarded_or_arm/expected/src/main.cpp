@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def size_of(p: Pet, flag: bool) -> str:
+//     match p:
+//         case Cat() | Hamster() if flag:  # guarded or-arm
+//             return "small"
+//         case _ if not flag:  # guarded wildcard
+//             return "unflagged"
+//         case _:
+//             return "?"
 std::string size_of(const Pet& p, bool flag) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Cat() | Hamster() if flag:  # guarded or-arm
     if (((dynamic_cast<const Cat*>(&__match_subject_1) != nullptr) || (dynamic_cast<const Hamster*>(&__match_subject_1) != nullptr)) && flag) {
-        // return "small"
         return "small";
         goto __match_end_2;
     }
-    // case _ if not flag:  # guarded wildcard
     if ((!(flag))) {
-        // return "unflagged"
         return "unflagged";
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "?"
         return "?";
     }
     __match_end_2:;
@@ -30,24 +30,24 @@ std::string size_of(const Pet& p, bool flag) {
 }
 
 // def main() -> None:
+//     print(size_of(Cat(), True))
+//     print(size_of(Dog("d"), False))
+//     print(size_of(Dog("d"), True))
 void main() {
-    // print(size_of(Cat(), True))
     Cat __tmp_1{Cat()};
     std::cout << size_of(__tmp_1, true) << "\n";
-    // print(size_of(Dog("d"), False))
     Dog __tmp_2{Dog("d")};
     std::cout << size_of(__tmp_2, false) << "\n";
-    // print(size_of(Dog("d"), True))
     Dog __tmp_3{Dog("d")};
     std::cout << size_of(__tmp_3, true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

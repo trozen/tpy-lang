@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(42)
+//     print(asyncio.run(b.peek()))
+//     s = Box("hi")
+//     print(asyncio.run(s.peek()))
 void main() {
-    // b = Box(42)
     Box<int32_t> b = Box<int32_t>(42);
-    // print(asyncio.run(b.peek()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(b.peek())) << "\n";
-    // s = Box("hi")
     Box<std::string> s = Box<std::string>("hi");
-    // print(asyncio.run(s.peek()))
     std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(s.peek())) << "\n";
 }
 
+// # @readonly async method on a generic class. Exercises the
+// # `const Box<T>&` self-capture branch in the resumable frame.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @readonly async method on a generic class. Exercises the
-    // # `const Box<T>&` self-capture branch in the resumable frame.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

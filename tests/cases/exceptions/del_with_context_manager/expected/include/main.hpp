@@ -12,6 +12,7 @@ struct Resource;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Guard:
@@ -61,23 +62,25 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 
 // def __init__(self, tag: int32):
+//     self._tag = tag
 inline Guard::Guard(int32_t tag) : _tag(tag) {}
 
 // def __enter__(self) -> int32:
+//     print("enter", self._tag)
+//     return self._tag
 inline int32_t Guard::__enter__() const {
-    // print("enter", self._tag)
     std::cout << "enter" << " " << this->_tag << "\n";
-    // return self._tag
     return this->_tag;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("exit", self._tag)
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("exit", self._tag)
     std::cout << "exit" << " " << this->_tag << "\n";
 }
 
 // def __init__(self, id: int32):
+//     self._id = id
 inline Resource::Resource(int32_t id) : _id(id) {}
 
 inline Resource::Resource(Resource&& other) noexcept : _id(std::move(other._id)) {
@@ -92,14 +95,14 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self):
+//     with Guard(self._id) as t:
+//         print("cleanup", t)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
     try {
-        // with Guard(self._id) as t:
         auto __ctx_1 = Guard(this->_id);
         auto t = __ctx_1.__enter__();
         try {
-            // print("cleanup", t)
             std::cout << "cleanup" << " " << t << "\n";
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {

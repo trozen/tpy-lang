@@ -15,11 +15,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_fetch;
 struct __coro_main_coro;
 
+// async def fetch(n: int32) -> int32:
 __coro_fetch fetch(int32_t n);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: fetch
+// async def fetch(n: int32) -> int32:
 struct __coro_fetch {
     int32_t __state;
     bool __cancel_pending;
@@ -43,7 +46,7 @@ struct __coro_fetch {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

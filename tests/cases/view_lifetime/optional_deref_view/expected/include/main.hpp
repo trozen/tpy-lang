@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def str_single(a: str | None) -> None:
 void str_single(std::optional<std::string_view> a);
+// def str_compound(a: str | None, b: str) -> None:
 void str_compound(std::optional<std::string_view> a, std::string_view b);
+// def bytes_compound(a: bytes | None, b: bytes) -> None:
 void bytes_compound(std::optional<::tpy::BytesView> a, ::tpy::BytesView b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

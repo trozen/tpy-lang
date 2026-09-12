@@ -12,14 +12,23 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_container(h: Holder) -> Own[list[int32]]:
 std::vector<int32_t> take_container(Holder& h);
+// def first(rows: list[list[int32]]) -> list[int32]:
 std::vector<int32_t>& first(std::vector<std::vector<int32_t>>& rows);
+// def frec(h: Holder) -> Payload:
 Payload& frec(Holder& h);
+// def take_free(rows: list[list[int32]]) -> Own[list[int32]]:
 std::vector<int32_t> take_free(std::vector<std::vector<int32_t>>& rows);
+// def take_record(h: Holder) -> Own[Payload]:
 Payload take_record(Holder& h);
+// def take_record_free(h: Holder) -> Own[Payload]:
 Payload take_record_free(Holder& h);
+// def take_record_field(h: Holder) -> Own[Payload]:
 Payload take_record_field(const Holder& h);
+// def take_record_ifexpr(h: Holder, pick: bool) -> Own[Payload]:
 Payload take_record_ifexpr(Holder& h, bool pick);
+// def main() -> None:
 void main();
 
 // class Payload:
@@ -63,20 +72,23 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Payload::Payload(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.items = [1, 2]
+//     self.p = Payload(1)
 inline Holder::Holder() : items(std::vector<int32_t>{1, 2}), p(Payload(1)) {}
 
 // def bctr(self) -> list[int32]:
+//     return self.items
 inline std::vector<int32_t>& Holder::bctr() {
-    // return self.items
     return this->items;
 }
 
 // def brec(self) -> Payload:
+//     return self.p
 inline Payload& Holder::brec() {
-    // return self.p
     return this->p;
 }
 void __tpy_init();

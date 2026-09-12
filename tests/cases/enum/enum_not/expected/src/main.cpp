@@ -47,27 +47,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Color = Color.Red
+//     print(not c)
+//     print(not Color.Green)
+//     x: bool = not Color.Blue
+//     print(x)
 void main() {
-    // c: Color = Color.Red
     Color c = Color::Red;
-    // print(not c)
     std::cout << ::tpy::print_bool((!((static_cast<void>(c), true)))) << "\n";
-    // print(not Color.Green)
     std::cout << ::tpy::print_bool((!((static_cast<void>(Color::Green), true)))) << "\n";
-    // x: bool = not Color.Blue
     bool x = (!((static_cast<void>(Color::Blue), true)));
-    // print(x)
     std::cout << ::tpy::print_bool(x) << "\n";
 }
 
+// # not operator on enum values (all enums are truthy, so not is always False)
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # not operator on enum values (all enums are truthy, so not is always False)
-    // from enum import Enum
-    // main()
     main();
 }
 

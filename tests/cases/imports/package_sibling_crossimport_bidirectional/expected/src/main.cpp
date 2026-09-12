@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = A()
+//     b = B()
+//     print(a.kind() + b.kind())
+//     print(with_b())
 void main() {
-    // a = A()
     ::tpyapp::pkg::a::A a = ::tpyapp::pkg::a::A();
-    // b = B()
     ::tpyapp::pkg::b::B b = ::tpyapp::pkg::b::B();
-    // print(a.kind() + b.kind())
     std::cout << (::tpy::add_check<int32_t>(a.kind(), b.kind())) << "\n";
-    // print(with_b())
     std::cout << ::tpyapp::pkg::a::with_b() << "\n";
 }
 
+// from pkg import A, B, with_b
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pkg import A, B, with_b
     ::tpyapp::pkg::__tpy_init();
-    // main()
     main();
 }
 

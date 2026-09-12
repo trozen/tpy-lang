@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def use(x: DynBase) -> str:
+//     return x.base_method()
 std::string use(DynBase& x) {
-    // return x.base_method()
     return x.base_method();
 }
 
 // def main() -> None:
+//     obj = Impl()
+//     print(use(obj))
 void main() {
-    // obj = Impl()
     Impl obj = Impl();
-    // print(use(obj))
     ::tpy::RefAdapter<DynBase, Impl> __tmp_1{obj};
     std::cout << use(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

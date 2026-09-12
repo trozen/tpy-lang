@@ -5,46 +5,47 @@ namespace tpyapp::main {
 
 
 // def get_pair() -> tuple[int32, str]:
+//     return (int32(42), "hello")
 std::tuple<int32_t, std::string> get_pair() {
-    // return (int32(42), "hello")
     return std::tuple<int32_t, std::string>{42, "hello"};
 }
 
 // def get_triple() -> tuple[bool, int32, str]:
+//     return (True, int32(7), "world")
 std::tuple<bool, int32_t, std::string> get_triple() {
-    // return (True, int32(7), "world")
     return std::tuple<bool, int32_t, std::string>{true, 7, "world"};
 }
 
 // def main() -> None:
+//     a, b = get_pair()
+//     print(a)
+//     print(b)
+//
+//     x, y, z = get_triple()
+//     print(x)
+//     print(y)
+//     print(z)
 void main() {
-    // a, b = get_pair()
     auto __tup_1 = get_pair();
     int32_t a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
-    // x, y, z = get_triple()
     auto __tup_2 = get_triple();
     bool x = std::get<0>(__tup_2);
     int32_t y = std::get<1>(__tup_2);
     std::string_view z = std::get<2>(__tup_2);
-    // print(x)
     std::cout << ::tpy::print_bool(x) << "\n";
-    // print(y)
     std::cout << y << "\n";
-    // print(z)
     std::cout << z << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

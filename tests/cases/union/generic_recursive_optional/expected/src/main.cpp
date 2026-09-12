@@ -5,40 +5,41 @@ namespace tpyapp::main {
 
 
 // def maybe_count(t: Tree[int] | None) -> int:
+//     if t is None:
+//         return -1
+//     return leaf_count(t)
 ::tpy::BigInt maybe_count(const ::tpyapp::treelib::Tree<::tpy::BigInt>* t) {
-    // if t is None:
     if ((t == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // return leaf_count(t)
     return ::tpy::BigInt(::tpyapp::treelib::leaf_count<::tpy::BigInt>((*t)));
 }
 
 // def main() -> None:
+//     t: Tree[int] = [1, [2, 3], 4]
+//     print(maybe_count(t))
+//     print(maybe_count(None))
 void main() {
-    // t: Tree[int] = [1, [2, 3], 4]
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
-    // print(maybe_count(t))
     std::cout << maybe_count(&(t)) << "\n";
-    // print(maybe_count(None))
     std::cout << maybe_count(nullptr) << "\n";
 }
 
+// # Optional narrowing of a generic recursive alias instance: a `Tree[int] | None`
+// # parameter narrowed via `is None`. Confirms the RecursiveAliasInstanceType is
+// # recognized by the Optional/None narrowing path (the non-generic analogue is
+// # union_recursive_optional) and that a `Tree[int]` widens into the optional
+// # param. Read-only traversal is intentional -- targets narrowing, not
+// # value-vs-reference.
+// from treelib import Tree, leaf_count
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Optional narrowing of a generic recursive alias instance: a `Tree[int] | None`
-    // # parameter narrowed via `is None`. Confirms the RecursiveAliasInstanceType is
-    // # recognized by the Optional/None narrowing path (the non-generic analogue is
-    // # union_recursive_optional) and that a `Tree[int]` widens into the optional
-    // # param. Read-only traversal is intentional -- targets narrowing, not
-    // # value-vs-reference.
-    // from treelib import Tree, leaf_count
     ::tpyapp::treelib::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,14 +11,22 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def collect_for(xs: list[int32]) -> Own[list[int32]]:
 std::vector<int32_t> collect_for(const std::vector<int32_t>& xs);
+// def widen_collect(xs: list[int32]) -> Own[list[int64]]:
 std::vector<int64_t> widen_collect(const std::vector<int32_t>& xs);
+// def collect_while(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> collect_while(int32_t n);
+// def collect_cond(xs: list[int32]) -> Own[list[int32]]:
 std::vector<int32_t> collect_cond(const std::vector<int32_t>& xs);
+// def generic_collect[T](xs: list[T]) -> Own[list[T]]:
 template<typename T>
 std::vector<T> generic_collect(const std::vector<T>& xs);
+// def total(ys: list[int32]) -> int32:
 int32_t total(const std::vector<int32_t>& ys);
+// def collect_refs(src: list[Counter]) -> Own[list[Counter]]:
 std::vector<Counter> collect_refs(const std::vector<Counter>& src);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -39,22 +47,23 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 // def generic_collect[T](xs: list[T]) -> Own[list[T]]:
+//     out = []
+//     for x in xs:
+//         out.append(x)
+//     return out
 template<typename T>
 std::vector<T> generic_collect(const std::vector<T>& xs) {
-    // out = []
     std::vector<T> out = std::vector<T>{};
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // out.append(x)
         out.push_back(x);
     }
-    // return out
     return out;
 }
 

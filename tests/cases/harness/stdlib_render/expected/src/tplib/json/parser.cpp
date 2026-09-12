@@ -102,416 +102,432 @@ namespace tpystd::tplib::json::parser {
 
 
 // def describe(self, data: str) -> str:
+//     """Format error with context from the input string.
+//
+//     Returns e.g.: ..."key",^---<expected ':'> 123}...
+//     """
+//     msg = self.message
+//     if self.pos < 0:
+//         if len(msg) > 0:
+//             return msg
+//         return "json error"
+//     ctx: int32 = 20
+//     dlen = len(data)
+//     # before
+//     bstart = self.pos - ctx
+//     prefix = ""
+//     if bstart < 0:
+//         bstart = 0
+//     else:
+//         prefix = "..."
+//     before = data[bstart:self.pos]
+//     # after
+//     aend = self.pos + ctx
+//     suffix = ""
+//     if aend > dlen:
+//         aend = dlen
+//     else:
+//         suffix = "..."
+//     after = data[self.pos:aend]
+//     if len(msg) == 0:
+//         msg = "error"
+//     gap = " " if len(after) > 0 else ""
+//     return prefix + before + "^---<" + msg + ">" + gap + after + suffix
 std::string JsonError::describe(std::string_view data) const {
-    // msg = self.message
     std::string_view msg = this->message;
-    // if self.pos < 0:
     if ((this->pos < 0)) {
-        // if len(msg) > 0:
         if ((::tpy::__len__(msg) > 0)) {
-            // return msg
             return std::string(msg);
         }
-        // return "json error"
         return "json error";
     }
-    // ctx: int32 = 20
     int32_t ctx = 20;
-    // dlen = len(data)
     int32_t dlen = ::tpy::__len__(data);
-    // # before
-    // bstart = self.pos - ctx
     int32_t bstart = (::tpy::sub_check<int32_t>(this->pos, ctx));
-    // prefix = ""
     std::string_view prefix = "";
-    // if bstart < 0:
     if ((bstart < 0)) {
-        // bstart = 0
         bstart = 0;
-    // else:
     } else {
-        // prefix = "..."
         prefix = "...";
     }
-    // before = data[bstart:self.pos]
     std::string_view before = ::tpy::str_slice(data, ::tpy::BasicSlice{bstart, this->pos});
-    // # after
-    // aend = self.pos + ctx
     int32_t aend = (::tpy::add_check<int32_t>(this->pos, ctx));
-    // suffix = ""
     std::string_view suffix = "";
-    // if aend > dlen:
     if ((aend > dlen)) {
-        // aend = dlen
         aend = dlen;
-    // else:
     } else {
-        // suffix = "..."
         suffix = "...";
     }
-    // after = data[self.pos:aend]
     std::string_view after = ::tpy::str_slice(data, ::tpy::BasicSlice{this->pos, aend});
-    // if len(msg) == 0:
     if ((::tpy::__len__(msg) == 0)) {
-        // msg = "error"
         msg = "error";
     }
-    // gap = " " if len(after) > 0 else ""
     std::string_view gap = (((::tpy::__len__(after) > 0)) ? (" ") : (""));
-    // return prefix + before + "^---<" + msg + ">" + gap + after + suffix
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(prefix, before)), "^---<")), msg)), ">")), gap)), after)), suffix));
 }
 
 // def peek(self) -> JsonToken:
+//     self._skip_ws()
+//     if self._pos >= self._len:
+//         return JsonToken.END
+//     c = self._data[self._pos]
+//     if c == "{":
+//         return JsonToken.OBJECT_START
+//     if c == "}":
+//         return JsonToken.OBJECT_END
+//     if c == "[":
+//         return JsonToken.ARRAY_START
+//     if c == "]":
+//         return JsonToken.ARRAY_END
+//     if c == "\"":
+//         return JsonToken.STRING
+//     if c == "t":
+//         return JsonToken.TRUE
+//     if c == "f":
+//         return JsonToken.FALSE
+//     if c == "n":
+//         return JsonToken.NONE
+//     return JsonToken.NUMBER
 JsonToken JsonReader::peek() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if self._pos >= self._len:
     if ((this->_pos >= this->_len)) {
-        // return JsonToken.END
         return JsonToken::END;
     }
-    // c = self._data[self._pos]
     char c = ::tpy::__getitem__(this->_data, this->_pos);
-    // if c == "{":
     if ((c == '{')) {
-        // return JsonToken.OBJECT_START
         return JsonToken::OBJECT_START;
     }
-    // if c == "}":
     if ((c == '}')) {
-        // return JsonToken.OBJECT_END
         return JsonToken::OBJECT_END;
     }
-    // if c == "[":
     if ((c == '[')) {
-        // return JsonToken.ARRAY_START
         return JsonToken::ARRAY_START;
     }
-    // if c == "]":
     if ((c == ']')) {
-        // return JsonToken.ARRAY_END
         return JsonToken::ARRAY_END;
     }
-    // if c == "\"":
     if ((c == '"')) {
-        // return JsonToken.STRING
         return JsonToken::STRING;
     }
-    // if c == "t":
     if ((c == 't')) {
-        // return JsonToken.TRUE
         return JsonToken::TRUE;
     }
-    // if c == "f":
     if ((c == 'f')) {
-        // return JsonToken.FALSE
         return JsonToken::FALSE;
     }
-    // if c == "n":
     if ((c == 'n')) {
-        // return JsonToken.NONE
         return JsonToken::NONE;
     }
-    // return JsonToken.NUMBER
     return JsonToken::NUMBER;
 }
 
 // def has_next(self) -> bool:
+//     self._skip_ws()
+//     if self._pos >= self._len:
+//         return False
+//     c = self._data[self._pos]
+//     if c == "}" or c == "]":
+//         return False
+//     if c == ",":
+//         self._pos += 1
+//         self._skip_ws()
+//     return True
 bool JsonReader::has_next() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if self._pos >= self._len:
     if ((this->_pos >= this->_len)) {
-        // return False
         return false;
     }
-    // c = self._data[self._pos]
     char c = ::tpy::__getitem__(this->_data, this->_pos);
-    // if c == "}" or c == "]":
     if (((c == '}') || (c == ']'))) {
-        // return False
         return false;
     }
-    // if c == ",":
     if ((c == ',')) {
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-        // self._skip_ws()
         this->_skip_ws();
     }
-    // return True
     return true;
 }
 
 // @error_return(JsonError)
 // def read_key_raw(self) -> StrView:
+//     """Read an object key without processing escape sequences.
+//
+//     Returns a view into the input data. Faster than read_key()
+//     for keys that are plain identifiers (no allocation).
+//     """
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == "\""):
+//         raise JsonError("expected '\"'", self._pos)
+//     self._pos += 1
+//     start = self._pos
+//     while self._pos < self._len and self._data[self._pos] != "\"":
+//         self._pos += 1
+//     if not (self._pos < self._len):
+//         raise JsonError("unterminated string", start - 1)
+//     end = self._pos
+//     self._pos += 1
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == ":"):
+//         raise JsonError("expected ':'", self._pos)
+//     self._pos += 1
+//     return self._data[start:end]
 std::expected<std::string_view, JsonError> JsonReader::read_key_raw() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == "\""):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '"'))))) {
-        // raise JsonError("expected '\"'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected '\"'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // start = self._pos
     int32_t start = this->_pos;
-    // while self._pos < self._len and self._data[self._pos] != "\"":
     while (((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) != '"'))) {
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     }
-    // if not (self._pos < self._len):
     if ((!((this->_pos < this->_len)))) {
-        // raise JsonError("unterminated string", start - 1)
         return ::tpy::make_unexpected(JsonError("unterminated string", (::tpy::sub_check<int32_t>(start, 1))));
     }
-    // end = self._pos
     int32_t end = this->_pos;
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == ":"):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == ':'))))) {
-        // raise JsonError("expected ':'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected ':'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // return self._data[start:end]
     return ::tpy::str_slice(this->_data, ::tpy::BasicSlice{start, end});
 }
 
 // @error_return(JsonError)
 // def read_str_raw(self) -> StrView:
+//     """Read a string value without processing escape sequences.
+//
+//     Returns a view into the input data. Use for values known to
+//     be plain text (no allocation).
+//     """
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == "\""):
+//         raise JsonError("expected '\"'", self._pos)
+//     self._pos += 1
+//     start = self._pos
+//     while self._pos < self._len and self._data[self._pos] != "\"":
+//         self._pos += 1
+//     if not (self._pos < self._len):
+//         raise JsonError("unterminated string", start - 1)
+//     end = self._pos
+//     self._pos += 1
+//     return self._data[start:end]
 std::expected<std::string_view, JsonError> JsonReader::read_str_raw() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == "\""):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '"'))))) {
-        // raise JsonError("expected '\"'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected '\"'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // start = self._pos
     int32_t start = this->_pos;
-    // while self._pos < self._len and self._data[self._pos] != "\"":
     while (((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) != '"'))) {
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     }
-    // if not (self._pos < self._len):
     if ((!((this->_pos < this->_len)))) {
-        // raise JsonError("unterminated string", start - 1)
         return ::tpy::make_unexpected(JsonError("unterminated string", (::tpy::sub_check<int32_t>(start, 1))));
     }
-    // end = self._pos
     int32_t end = this->_pos;
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // return self._data[start:end]
     return ::tpy::str_slice(this->_data, ::tpy::BasicSlice{start, end});
 }
 
 // @error_return(JsonError)
 // def read_int(self) -> int64:
+//     self._skip_ws()
+//     neg = False
+//     if self._pos < self._len and self._data[self._pos] == "-":
+//         neg = True
+//         self._pos += 1
+//     result: int64 = 0
+//     start = self._pos
+//     while self._pos < self._len:
+//         c = self._data[self._pos]
+//         if c < "0" or c > "9":
+//             break
+//         result = result * 10 + int64(ord(c) - ord("0"))
+//         self._pos += 1
+//     if not (self._pos > start):
+//         raise JsonError("expected digit", self._pos)
+//     if neg:
+//         result = -result
+//     return result
 std::expected<int64_t, JsonError> JsonReader::read_int() {
-    // self._skip_ws()
     this->_skip_ws();
-    // neg = False
     bool neg = false;
-    // if self._pos < self._len and self._data[self._pos] == "-":
     if (((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '-'))) {
-        // neg = True
         neg = true;
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     }
-    // result: int64 = 0
     int64_t result = 0;
-    // start = self._pos
     int32_t start = this->_pos;
-    // while self._pos < self._len:
     while ((this->_pos < this->_len)) {
-        // c = self._data[self._pos]
         char c = ::tpy::__getitem__(this->_data, this->_pos);
-        // if c < "0" or c > "9":
         if (((c < '0') || (c > '9'))) {
-            // break
             break;
         }
-        // result = result * 10 + int64(ord(c) - ord("0"))
         result = (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(result, 10)), ::tpy::int_cast_check<int64_t>((::tpy::sub_check<int32_t>(static_cast<int32_t>(static_cast<unsigned char>(c)), 48)))));
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     }
-    // if not (self._pos > start):
     if ((!((this->_pos > start)))) {
-        // raise JsonError("expected digit", self._pos)
         return ::tpy::make_unexpected(JsonError("expected digit", this->_pos));
     }
-    // if neg:
     if (neg) {
-        // result = -result
         result = ::tpy::neg_check<int64_t>(result);
     }
-    // return result
     return result;
 }
 
 // @error_return(JsonError)
 // def read_bool(self) -> bool:
+//     self._skip_ws()
+//     if self._pos + 4 <= self._len and self._data[self._pos:self._pos + 4] == "true":
+//         self._pos += 4
+//         return True
+//     if self._pos + 5 <= self._len and self._data[self._pos:self._pos + 5] == "false":
+//         self._pos += 5
+//         return False
+//     raise JsonError("expected 'true' or 'false'", self._pos)
 std::expected<bool, JsonError> JsonReader::read_bool() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if self._pos + 4 <= self._len and self._data[self._pos:self._pos + 4] == "true":
     if ((((::tpy::add_check<int32_t>(this->_pos, 4)) <= this->_len) && (::tpy::str_slice(this->_data, ::tpy::BasicSlice{this->_pos, (::tpy::add_check<int32_t>(this->_pos, 4))}) == "true"))) {
-        // self._pos += 4
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 4);
-        // return True
         return true;
     }
-    // if self._pos + 5 <= self._len and self._data[self._pos:self._pos + 5] == "false":
     if ((((::tpy::add_check<int32_t>(this->_pos, 5)) <= this->_len) && (::tpy::str_slice(this->_data, ::tpy::BasicSlice{this->_pos, (::tpy::add_check<int32_t>(this->_pos, 5))}) == "false"))) {
-        // self._pos += 5
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 5);
-        // return False
         return false;
     }
-    // raise JsonError("expected 'true' or 'false'", self._pos)
     return ::tpy::make_unexpected(JsonError("expected 'true' or 'false'", this->_pos));
 }
 
 // @error_return(JsonError)
 // def skip_value(self) -> None:
+//     self._skip_ws()
+//     if self._pos >= self._len:
+//         return
+//     c = self._data[self._pos]
+//     if c == "\"":
+//         self._skip_str_no_ws()
+//     elif c == "{":
+//         self._pos += 1
+//         while self.has_next():
+//             self._skip_key()
+//             self.skip_value()
+//         self._pos += 1
+//     elif c == "[":
+//         self._pos += 1
+//         while self.has_next():
+//             self.skip_value()
+//         self._pos += 1
+//     elif c == "t":
+//         self._pos += 4
+//     elif c == "f":
+//         self._pos += 5
+//     elif c == "n":
+//         self._pos += 4
+//     else:
+//         self._skip_number()
 std::expected<void, JsonError> JsonReader::skip_value() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if self._pos >= self._len:
     if ((this->_pos >= this->_len)) {
-        // return
         return {};
     }
-    // c = self._data[self._pos]
     char c = ::tpy::__getitem__(this->_data, this->_pos);
-    // if c == "\"":
     if ((c == '"')) {
-        // self._skip_str_no_ws()
         this->_skip_str_no_ws();
-    // elif c == "{":
     } else if ((c == '{')) {
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-        // while self.has_next():
         while (this->has_next()) {
-            // self._skip_key()
             {
                 auto __try_tmp_3 = this->_skip_key();
                 if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
             }
-            // self.skip_value()
             {
                 auto __try_tmp_4 = this->skip_value();
                 if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
             }
         }
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // elif c == "[":
     } else if ((c == '[')) {
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-        // while self.has_next():
         while (this->has_next()) {
-            // self.skip_value()
             {
                 auto __try_tmp_5 = this->skip_value();
                 if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
             }
         }
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // elif c == "t":
     } else if ((c == 't')) {
-        // self._pos += 4
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 4);
-    // elif c == "f":
     } else if ((c == 'f')) {
-        // self._pos += 5
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 5);
-    // elif c == "n":
     } else if ((c == 'n')) {
-        // self._pos += 4
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 4);
-    // else:
     } else {
-        // self._skip_number()
         this->_skip_number();
     }
     return {};
 }
 
 // def _skip_str_no_ws(self) -> None:
+//     """Advance past a JSON string, assuming _pos is on the opening quote."""
+//     self._pos += 1
+//     while self._pos < self._len:
+//         c = self._data[self._pos]
+//         if c == "\\":
+//             self._pos += 2
+//         elif c == "\"":
+//             self._pos += 1
+//             return
+//         else:
+//             self._pos += 1
 void JsonReader::_skip_str_no_ws() {
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // while self._pos < self._len:
     while ((this->_pos < this->_len)) {
-        // c = self._data[self._pos]
         char c = ::tpy::__getitem__(this->_data, this->_pos);
-        // if c == "\\":
         if ((c == '\\')) {
-            // self._pos += 2
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 2);
-        // elif c == "\"":
         } else if ((c == '"')) {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-            // return
             return;
-        // else:
         } else {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
         }
     }
 }
 
 // def _skip_number(self) -> None:
+//     """Advance past a JSON number. No allocation, no return value."""
+//     if self._pos < self._len and self._data[self._pos] == "-":
+//         self._pos += 1
+//     while self._pos < self._len:
+//         c = self._data[self._pos]
+//         if c >= "0" and c <= "9":
+//             self._pos += 1
+//         elif c == ".":
+//             self._pos += 1
+//         elif c == "e" or c == "E":
+//             self._pos += 1
+//             if self._pos < self._len and (self._data[self._pos] == "+" or self._data[self._pos] == "-"):
+//                 self._pos += 1
+//         else:
+//             return
 void JsonReader::_skip_number() {
-    // if self._pos < self._len and self._data[self._pos] == "-":
     if (((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '-'))) {
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     }
-    // while self._pos < self._len:
     while ((this->_pos < this->_len)) {
-        // c = self._data[self._pos]
         char c = ::tpy::__getitem__(this->_data, this->_pos);
-        // if c >= "0" and c <= "9":
         if (((c >= '0') && (c <= '9'))) {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-        // elif c == ".":
         } else if ((c == '.')) {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-        // elif c == "e" or c == "E":
         } else if (((c == 'e') || (c == 'E'))) {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-            // if self._pos < self._len and (self._data[self._pos] == "+" or self._data[self._pos] == "-"):
             if (((this->_pos < this->_len) && ((::tpy::__getitem__(this->_data, this->_pos) == '+') || (::tpy::__getitem__(this->_data, this->_pos) == '-')))) {
-                // self._pos += 1
                 this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
             }
-        // else:
         } else {
-            // return
             return;
         }
     }
@@ -519,193 +535,193 @@ void JsonReader::_skip_number() {
 
 // @error_return(JsonError)
 // def _read_raw_str(self) -> str:
+//     self._skip_ws()
+//     if not (self._pos < self._len and self._data[self._pos] == "\""):
+//         raise JsonError("expected '\"'", self._pos)
+//     self._pos += 1
+//     start = self._pos
+//     has_escape = False
+//     while self._pos < self._len:
+//         c = self._data[self._pos]
+//         if c == "\\":
+//             has_escape = True
+//             self._pos += 2
+//         elif c == "\"":
+//             break
+//         else:
+//             self._pos += 1
+//     if not (self._pos < self._len):
+//         raise JsonError("unterminated string", start - 1)
+//     end = self._pos
+//     self._pos += 1
+//     if not has_escape:
+//         return self._data[start:end]
+//     return self._unescape(start, end)
 std::expected<std::string, JsonError> JsonReader::_read_raw_str() {
-    // self._skip_ws()
     this->_skip_ws();
-    // if not (self._pos < self._len and self._data[self._pos] == "\""):
     if ((!(((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '"'))))) {
-        // raise JsonError("expected '\"'", self._pos)
         return ::tpy::make_unexpected(JsonError("expected '\"'", this->_pos));
     }
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // start = self._pos
     int32_t start = this->_pos;
-    // has_escape = False
     bool has_escape = false;
-    // while self._pos < self._len:
     while ((this->_pos < this->_len)) {
-        // c = self._data[self._pos]
         char c = ::tpy::__getitem__(this->_data, this->_pos);
-        // if c == "\\":
         if ((c == '\\')) {
-            // has_escape = True
             has_escape = true;
-            // self._pos += 2
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 2);
-        // elif c == "\"":
         } else if ((c == '"')) {
-            // break
             break;
-        // else:
         } else {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
         }
     }
-    // if not (self._pos < self._len):
     if ((!((this->_pos < this->_len)))) {
-        // raise JsonError("unterminated string", start - 1)
         return ::tpy::make_unexpected(JsonError("unterminated string", (::tpy::sub_check<int32_t>(start, 1))));
     }
-    // end = self._pos
     int32_t end = this->_pos;
-    // self._pos += 1
     this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-    // if not has_escape:
     if ((!(has_escape))) {
-        // return self._data[start:end]
         return std::string(::tpy::str_slice(this->_data, ::tpy::BasicSlice{start, end}));
     }
-    // return self._unescape(start, end)
     return this->_unescape(start, end);
 }
 
 // def _unescape(self, start: int32, end: int32) -> str:
+//     result = ""
+//     i = start
+//     chunk_start = start
+//     while i < end:
+//         if self._data[i] == "\\":
+//             if i > chunk_start:
+//                 result = result + self._data[chunk_start:i]
+//             i += 1
+//             esc = self._data[i]
+//             if esc == "\"":
+//                 result = result + "\""
+//             elif esc == "\\":
+//                 result = result + "\\"
+//             elif esc == "/":
+//                 result = result + "/"
+//             elif esc == "n":
+//                 result = result + "\n"
+//             elif esc == "r":
+//                 result = result + "\r"
+//             elif esc == "t":
+//                 result = result + "\t"
+//             elif esc == "b":
+//                 result = result + chr(8)
+//             elif esc == "f":
+//                 result = result + chr(12)
+//             elif esc == "u":
+//                 # \uXXXX: parse 4 hex digits
+//                 if not (i + 4 < end):
+//                     # Incomplete escape -- just skip
+//                     i += 1
+//                     chunk_start = i
+//                     continue
+//                 code = self._parse_hex4(i + 1)
+//                 # TODO: chr(code) truncates to 1 byte; codepoints > 0xFF
+//                 # silently lose their high bits. Need a chr that emits
+//                 # multi-byte UTF-8 for the BMP, plus surrogate-pair
+//                 # handling for codepoints > 0xFFFF.
+//                 result = result + chr(code)
+//                 i += 4
+//             else:
+//                 result = result + "\\"
+//                 result = result + esc
+//             i += 1
+//             chunk_start = i
+//         else:
+//             i += 1
+//     if chunk_start < end:
+//         result = result + self._data[chunk_start:end]
+//     return result
 std::string JsonReader::_unescape(int32_t start, int32_t end) const {
-    // result = ""
     std::string result = "";
-    // i = start
     int32_t i = start;
-    // chunk_start = start
     int32_t chunk_start = start;
-    // while i < end:
     while ((i < end)) {
-        // if self._data[i] == "\\":
         if ((::tpy::__getitem__(this->_data, i) == '\\')) {
-            // if i > chunk_start:
             if ((i > chunk_start)) {
-                // result = result + self._data[chunk_start:i]
                 result += ::tpy::str_slice(this->_data, ::tpy::BasicSlice{chunk_start, i});
             }
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
-            // esc = self._data[i]
             char esc = ::tpy::__getitem__(this->_data, i);
-            // if esc == "\"":
             if ((esc == '"')) {
-                // result = result + "\""
                 result += "\"";
-            // elif esc == "\\":
             } else if ((esc == '\\')) {
-                // result = result + "\\"
                 result += "\\";
-            // elif esc == "/":
             } else if ((esc == '/')) {
-                // result = result + "/"
                 result += "/";
-            // elif esc == "n":
             } else if ((esc == 'n')) {
-                // result = result + "\n"
                 result += "\n";
-            // elif esc == "r":
             } else if ((esc == 'r')) {
-                // result = result + "\r"
                 result += "\r";
-            // elif esc == "t":
             } else if ((esc == 't')) {
-                // result = result + "\t"
                 result += "\t";
-            // elif esc == "b":
             } else if ((esc == 'b')) {
-                // result = result + chr(8)
                 result += static_cast<char>(8);
-            // elif esc == "f":
             } else if ((esc == 'f')) {
-                // result = result + chr(12)
                 result += static_cast<char>(12);
-            // elif esc == "u":
             } else if ((esc == 'u')) {
-                // # \uXXXX: parse 4 hex digits
-                // if not (i + 4 < end):
                 if ((!(((::tpy::add_check<int32_t>(i, 4)) < end)))) {
-                    // # Incomplete escape -- just skip
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // chunk_start = i
                     chunk_start = i;
-                    // continue
                     continue;
                 }
-                // code = self._parse_hex4(i + 1)
                 int32_t code = this->_parse_hex4((::tpy::add_check<int32_t>(i, 1)));
-                // # TODO: chr(code) truncates to 1 byte; codepoints > 0xFF
-                // # silently lose their high bits. Need a chr that emits
-                // # multi-byte UTF-8 for the BMP, plus surrogate-pair
-                // # handling for codepoints > 0xFFFF.
-                // result = result + chr(code)
                 result += static_cast<char>(code);
-                // i += 4
                 i = ::tpy::add_check<int32_t>(i, 4);
-            // else:
             } else {
-                // result = result + "\\"
                 result += "\\";
-                // result = result + esc
                 result += esc;
             }
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
-            // chunk_start = i
             chunk_start = i;
-        // else:
         } else {
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         }
     }
-    // if chunk_start < end:
     if ((chunk_start < end)) {
-        // result = result + self._data[chunk_start:end]
         result += ::tpy::str_slice(this->_data, ::tpy::BasicSlice{chunk_start, end});
     }
-    // return result
     return result;
 }
 
 // def _parse_hex4(self, pos: int32) -> int32:
+//     # TODO: invalid hex digits silently contribute 0 instead of raising
+//     # JsonError. CPython rejects with `Invalid \uXXXX escape`.
+//     result: int32 = 0
+//     i: int32 = 0
+//     while i < 4:
+//         c = self._data[pos + i]
+//         if c >= "0" and c <= "9":
+//             result = result * 16 + (ord(c) - ord("0"))
+//         elif c >= "a" and c <= "f":
+//             result = result * 16 + (ord(c) - ord("a") + 10)
+//         elif c >= "A" and c <= "F":
+//             result = result * 16 + (ord(c) - ord("A") + 10)
+//         else:
+//             result = result * 16
+//         i += 1
+//     return result
 int32_t JsonReader::_parse_hex4(int32_t pos) const {
-    // # TODO: invalid hex digits silently contribute 0 instead of raising
-    // # JsonError. CPython rejects with `Invalid \uXXXX escape`.
-    // result: int32 = 0
     int32_t result = 0;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 4:
     while ((i < 4)) {
-        // c = self._data[pos + i]
         char c = ::tpy::__getitem__(this->_data, (::tpy::add_check<int32_t>(pos, i)));
-        // if c >= "0" and c <= "9":
         if (((c >= '0') && (c <= '9'))) {
-            // result = result * 16 + (ord(c) - ord("0"))
             result = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(result, 16)), (::tpy::sub_check<int32_t>(static_cast<int32_t>(static_cast<unsigned char>(c)), 48))));
-        // elif c >= "a" and c <= "f":
         } else if (((c >= 'a') && (c <= 'f'))) {
-            // result = result * 16 + (ord(c) - ord("a") + 10)
             result = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(result, 16)), (::tpy::add_check<int32_t>((::tpy::sub_check<int32_t>(static_cast<int32_t>(static_cast<unsigned char>(c)), 97)), 10))));
-        // elif c >= "A" and c <= "F":
         } else if (((c >= 'A') && (c <= 'F'))) {
-            // result = result * 16 + (ord(c) - ord("A") + 10)
             result = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(result, 16)), (::tpy::add_check<int32_t>((::tpy::sub_check<int32_t>(static_cast<int32_t>(static_cast<unsigned char>(c)), 65)), 10))));
-        // else:
         } else {
-            // result = result * 16
             result = (::tpy::mul_check<int32_t>(result, 16));
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return result
     return result;
 }
 
@@ -714,67 +730,67 @@ int32_t JsonReader::_parse_hex4(int32_t pos) const {
 // # Tighten when the BigInt/float parsers stop being lenient.
 // @error_return(JsonError)
 // def _read_number_raw(self) -> StrView:
+//     self._skip_ws()
+//     start = self._pos
+//     # Optional leading minus
+//     if self._pos < self._len and self._data[self._pos] == "-":
+//         self._pos += 1
+//     # Must have at least one leading digit
+//     if not (self._pos < self._len and self._data[self._pos] >= "0" and self._data[self._pos] <= "9"):
+//         raise JsonError("expected number", start)
+//     # Digits, decimal point, exponent
+//     while self._pos < self._len:
+//         c = self._data[self._pos]
+//         if c >= "0" and c <= "9":
+//             self._pos += 1
+//         elif c == ".":
+//             self._pos += 1
+//         elif c == "e" or c == "E":
+//             self._pos += 1
+//             # Optional +/- after exponent
+//             if self._pos < self._len and (self._data[self._pos] == "+" or self._data[self._pos] == "-"):
+//                 self._pos += 1
+//         else:
+//             break
+//     return self._data[start:self._pos]
 std::expected<std::string_view, JsonError> JsonReader::_read_number_raw() {
-    // self._skip_ws()
     this->_skip_ws();
-    // start = self._pos
     int32_t start = this->_pos;
-    // # Optional leading minus
-    // if self._pos < self._len and self._data[self._pos] == "-":
     if (((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) == '-'))) {
-        // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     }
-    // # Must have at least one leading digit
-    // if not (self._pos < self._len and self._data[self._pos] >= "0" and self._data[self._pos] <= "9"):
     if ((!((((this->_pos < this->_len) && (::tpy::__getitem__(this->_data, this->_pos) >= '0')) && (::tpy::__getitem__(this->_data, this->_pos) <= '9'))))) {
-        // raise JsonError("expected number", start)
         return ::tpy::make_unexpected(JsonError("expected number", start));
     }
-    // # Digits, decimal point, exponent
-    // while self._pos < self._len:
     while ((this->_pos < this->_len)) {
-        // c = self._data[self._pos]
         char c = ::tpy::__getitem__(this->_data, this->_pos);
-        // if c >= "0" and c <= "9":
         if (((c >= '0') && (c <= '9'))) {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-        // elif c == ".":
         } else if ((c == '.')) {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-        // elif c == "e" or c == "E":
         } else if (((c == 'e') || (c == 'E'))) {
-            // self._pos += 1
             this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
-            // # Optional +/- after exponent
-            // if self._pos < self._len and (self._data[self._pos] == "+" or self._data[self._pos] == "-"):
             if (((this->_pos < this->_len) && ((::tpy::__getitem__(this->_data, this->_pos) == '+') || (::tpy::__getitem__(this->_data, this->_pos) == '-')))) {
-                // self._pos += 1
                 this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
             }
-        // else:
         } else {
-            // break
             break;
         }
     }
-    // return self._data[start:self._pos]
     return ::tpy::str_slice(this->_data, ::tpy::BasicSlice{start, this->_pos});
 }
+// # JSON pull-parser: JsonToken enum and JsonReader class.
+// #
+// # TODO(perf): _read_raw_str() scans the string twice (once for escape detection,
+// #   once in _unescape); merge into a single pass
+// # TODO(perf): redundant _skip_ws() calls -- every read_* method calls it, even
+// #   when whitespace was already consumed by the previous call
+// from enum import Enum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # JSON pull-parser: JsonToken enum and JsonReader class.
-    // #
-    // # TODO(perf): _read_raw_str() scans the string twice (once for escape detection,
-    // #   once in _unescape); merge into a single pass
-    // # TODO(perf): redundant _skip_ws() calls -- every read_* method calls it, even
-    // #   when whitespace was already consumed by the previous call
-    // from enum import Enum
 }
 
 } // namespace tpystd::tplib::json::parser

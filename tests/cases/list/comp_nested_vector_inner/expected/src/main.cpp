@@ -9,8 +9,13 @@ namespace tpyapp::main {
 // # list[list[int]] lets an inner row grow via append -- the growable counterpart
 // # to the array-inner cases (comp_nested_list_literal / comp_nested_list_cond).
 // def jagged() -> None:
+//     rows = [[k for k in range(i)] for i in range(4)]  # lengths 0,1,2,3
+//     print(rows)
+//     # Inner is a real vector: grow one row through the outer subscript and
+//     # observe it (a fixed array would reject push_back at the C++ level).
+//     rows[2].append(99)
+//     print(rows)
 void jagged() {
-    // rows = [[k for k in range(i)] for i in range(4)]  # lengths 0,1,2,3
     std::array<std::vector<int32_t>, 4> rows = ::tpy::array_from_index<std::vector<int32_t>, 4>([&](std::size_t __i_0) -> std::vector<int32_t> {
         int32_t i = int32_t(__i_0);
         return ({
@@ -23,19 +28,16 @@ void jagged() {
         std::move(__result);
     });
     });
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
-    // # Inner is a real vector: grow one row through the outer subscript and
-    // # observe it (a fixed array would reject push_back at the C++ level).
-    // rows[2].append(99)
     ::tpy::__getitem__(rows, 2).push_back(99);
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
 }
 
 // def annotated_growable() -> None:
+//     rows: list[list[int]] = [[i, i + 1] for i in range(3)]
+//     rows[0].append(99)
+//     print(rows)
 void annotated_growable() {
-    // rows: list[list[int]] = [[i, i + 1] for i in range(3)]
     std::vector<std::vector<::tpy::BigInt>> rows = ({
         std::vector<std::vector<::tpy::BigInt>> __result;
         const int32_t __stop_0 = 3;
@@ -45,20 +47,18 @@ void annotated_growable() {
         }
         std::move(__result);
     });
-    // rows[0].append(99)
     ::tpy::__getitem__(rows, 0).push_back(99);
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
 }
 
+// jagged()
+// annotated_growable()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // jagged()
     jagged();
-    // annotated_growable()
     annotated_growable();
 }
 

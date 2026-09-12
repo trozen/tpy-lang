@@ -5,140 +5,140 @@ namespace tpyapp::main {
 
 
 // def bool_if(c: Flag | None) -> int:
+//     if c is None:
+//         return -1
+//     if c:  # narrowed to Flag -> Flag.__bool__
+//         return 1
+//     return 0
 ::tpy::BigInt bool_if(const Flag* c) {
-    // if c is None:
     if ((c == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // if c:  # narrowed to Flag -> Flag.__bool__
     if (::tpy::__bool__((*c))) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def bool_not(c: Flag | None) -> int:
+//     if c is None:
+//         return -1
+//     if not c:
+//         return 10
+//     return 11
 ::tpy::BigInt bool_not(const Flag* c) {
-    // if c is None:
     if ((c == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // if not c:
     if ((!(::tpy::__bool__((*c))))) {
-        // return 10
         return ::tpy::BigInt(10);
     }
-    // return 11
     return ::tpy::BigInt(11);
 }
 
 // def bool_while(c: Flag | None) -> int:
+//     if c is None:
+//         return -1
+//     n = 0
+//     while c:
+//         n += 1
+//         break
+//     return n
 ::tpy::BigInt bool_while(const Flag* c) {
-    // if c is None:
     if ((c == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // n = 0
     int32_t n = 0;
-    // while c:
     while (::tpy::__bool__((*c))) {
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
-        // break
         break;
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def bool_and(c: Flag | None, d: Flag | None) -> int:
+//     if c is None or d is None:
+//         return -1
+//     if c and d:
+//         return 20
+//     return 21
 ::tpy::BigInt bool_and(const Flag* c, const Flag* d) {
-    // if c is None or d is None:
     if (((c == nullptr) || (d == nullptr))) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // if c and d:
     if ((::tpy::__bool__((*c)) && ::tpy::__bool__((*d)))) {
-        // return 20
         return ::tpy::BigInt(20);
     }
-    // return 21
     return ::tpy::BigInt(21);
 }
 
 // def len_if(b: Bag | None) -> int:
+//     if b is None:
+//         return -1
+//     if b:  # narrowed to Bag -> Bag.__len__
+//         return 1
+//     return 0
 ::tpy::BigInt len_if(const Bag* b) {
-    // if b is None:
     if ((b == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // if b:  # narrowed to Bag -> Bag.__len__
     if ((::tpy::__len__((*b)) != 0)) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def plain_if(p: Plain | None) -> int:
+//     if p is None:
+//         return -1
+//     if p:  # plain record -> always truthy
+//         return 1
+//     return 0
 ::tpy::BigInt plain_if(const Plain* p) {
-    // if p is None:
     if ((p == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // if p:  # plain record -> always truthy
     if ((static_cast<void>(p), true)) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def main():
+//     print(bool_if(None), bool_if(Flag(False)), bool_if(Flag(True)))
+//     print(bool_not(Flag(False)), bool_not(Flag(True)))
+//     print(bool_while(Flag(False)), bool_while(Flag(True)))
+//     print(bool_and(Flag(False), Flag(True)), bool_and(Flag(True), Flag(True)))
+//     print(len_if(Bag(0)), len_if(Bag(3)))
+//     print(plain_if(Plain(0)))
 void main() {
-    // print(bool_if(None), bool_if(Flag(False)), bool_if(Flag(True)))
     Flag __tmp_1 = Flag(false);
     Flag __tmp_2 = Flag(true);
     std::cout << bool_if(nullptr) << " " << bool_if(&(__tmp_1)) << " " << bool_if(&(__tmp_2)) << "\n";
-    // print(bool_not(Flag(False)), bool_not(Flag(True)))
     Flag __tmp_3 = Flag(false);
     Flag __tmp_4 = Flag(true);
     std::cout << bool_not(&(__tmp_3)) << " " << bool_not(&(__tmp_4)) << "\n";
-    // print(bool_while(Flag(False)), bool_while(Flag(True)))
     Flag __tmp_5 = Flag(false);
     Flag __tmp_6 = Flag(true);
     std::cout << bool_while(&(__tmp_5)) << " " << bool_while(&(__tmp_6)) << "\n";
-    // print(bool_and(Flag(False), Flag(True)), bool_and(Flag(True), Flag(True)))
     Flag __tmp_7 = Flag(false);
     Flag __tmp_8 = Flag(true);
     Flag __tmp_9 = Flag(true);
     Flag __tmp_10 = Flag(true);
     std::cout << bool_and(&(__tmp_7), &(__tmp_8)) << " " << bool_and(&(__tmp_9), &(__tmp_10)) << "\n";
-    // print(len_if(Bag(0)), len_if(Bag(3)))
     Bag __tmp_11 = Bag(::tpy::BigInt(0));
     Bag __tmp_12 = Bag(::tpy::BigInt(3));
     std::cout << len_if(&(__tmp_11)) << " " << len_if(&(__tmp_12)) << "\n";
-    // print(plain_if(Plain(0)))
     Plain __tmp_13 = Plain(::tpy::BigInt(0));
     std::cout << plain_if(&(__tmp_13)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

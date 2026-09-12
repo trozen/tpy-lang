@@ -43,24 +43,43 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_body;
 struct __coro_async_body;
 
+// def free_union(a: Cat | Dog) -> None:
 void free_union(::tpy::Union<Cat*, Dog*> a);
+// def free_record(b: Counter) -> None:
 void free_record(Counter& b);
+// def or_sub_capture(a: Cat | Dog) -> None:
 void or_sub_capture(::tpy::Union<Cat*, Dog*> a);
+// def optional_subject(x: Counter | None) -> None:
 void optional_subject(Counter* x);
+// def add_one(c: Counter) -> None:
 void add_one(Counter& c);
+// def via_callee(u: Counter | Cat) -> None:
 void via_callee(::tpy::Union<Cat*, Counter*> u);
+// def reseated(h: Bag, g: Bag) -> None:
 void reseated(Bag& h, Bag& g);
+// def reseated_callee(h: Bag, g: Bag) -> None:
 void reseated_callee(Bag& h, Bag& g);
+// def subscript_subject(xs: list[Counter], i: int32) -> None:
 void subscript_subject(std::vector<Counter>& xs, int32_t i);
+// def positional_sub_capture(p: Pair) -> None:
 void positional_sub_capture(Pair& p);
+// def poly_subject(p: Pet) -> None:
 void poly_subject(Pet& p);
+// def gen_body(a: Counter | Cat) -> Iterator[int32]:
 __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a);
+// async def async_body(a: Counter | Cat) -> int32:
 __coro_async_body async_body(::tpy::Union<Cat*, Counter*> a);
+// def read_only(a: Counter | Cat) -> int32:
 int32_t read_only(::tpy::Union<const Cat*, const Counter*> a);
+// def clone_of(c: Counter) -> Own[Counter]:
 Counter clone_of(const Counter& c);
+// def rvalue_subject(c: Counter) -> int32:
 int32_t rvalue_subject(const Counter& c);
+// def scalar_capture(n: int32) -> int32:
 int32_t scalar_capture(int32_t n);
+// def local_subject() -> int32:
 int32_t local_subject();
+// def main() -> None:
 void main();
 
 // class Cat:
@@ -279,7 +298,7 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 
 namespace tpyapp::main {
 
-// Async coroutine: async_body
+// async def async_body(a: Counter | Cat) -> int32:
 struct __coro_async_body {
     int32_t __state;
     bool __cancel_pending;
@@ -301,7 +320,7 @@ struct __coro_async_body {
     }
 };
 
-// Generator: gen_body
+// def gen_body(a: Counter | Cat) -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     int32_t __state;
     ::tpy::Union<Cat*, Counter*> a;
@@ -325,39 +344,46 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 
 
 // def __init__(self, hunger: int32) -> None:
+//     self.hunger = hunger
+//     self.tags = []
 inline Cat::Cat(int32_t hunger) : hunger(hunger), tags(std::vector<std::string>{}) {}
 
 // def __init__(self, bones: int32) -> None:
+//     self.bones = bones
+//     self.tags = []
 inline Dog::Dog(int32_t bones) : bones(bones), tags(std::vector<std::string>{}) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.c = Counter(n)
 inline Bag::Bag(int32_t n) : c(Counter(n)) {}
 
 // # method, `self.field` subject: the write is the method's only mutation,
 // # so nothing else can demote its inferred readonly
 // def bump(self) -> None:
+//     match self.c:
+//         case Counter() as q:
+//             q.n += 1  # tpyc: ok
 inline void Bag::bump() {
-    // match self.c:
     Counter* q;
     auto& __match_subject_1 = this->c;
-    // case Counter() as q:
     {
         q = &(__match_subject_1);
-        // q.n += 1  # tpyc: ok
         q->n = ::tpy::add_check<int32_t>(q->n, 1);
     }
 }
 
 // def value(self) -> int32:
+//     return self.c.n
 inline int32_t Bag::value() const {
-    // return self.c.n
     return this->c.n;
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.mine = Bag(n)
 inline Owner::Owner(int32_t n) : mine(Bag(n)) {}
 
 // # the capture is re-seated between a `self.field` subject and a PARAM
@@ -367,27 +393,27 @@ inline Owner::Owner(int32_t n) : mine(Bag(n)) {}
 // # as a vararg does not build at all
 // # (BUGS.md#vararg-of-pointer-capture-takes-address).
 // def touch(self, other: Bag) -> None:
+//     match self.mine:
+//         case Bag(c=q):
+//             match other:
+//                 case Bag(c=q):
+//                     q.n += 4  # tpyc: ok
 inline void Owner::touch(Bag& other) {
-    // match self.mine:
     Counter* q;
     auto& __match_subject_1 = this->mine;
-    // case Bag(c=q):
     {
         q = &(__match_subject_1.c);
-        // match other:
         auto& __match_subject_2 = other;
-        // case Bag(c=q):
         {
             q = &(__match_subject_2.c);
-            // q.n += 4  # tpyc: ok
             q->n = ::tpy::add_check<int32_t>(q->n, 4);
         }
     }
 }
 
 // def value(self) -> int32:
+//     return self.mine.c.n
 inline int32_t Owner::value() const {
-    // return self.mine.c.n
     return this->mine.c.n;
 }
 
@@ -412,27 +438,28 @@ inline std::string Pair::__repr__() const {
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.payload = Counter(n)
 inline UnionHolder::UnionHolder(int32_t n) : payload(Counter(n)) {}
 
 // # the literal BUGS shape: a UNION-typed `self.field` matched with an
 // # `as`-capture whose write is the method's only mutation, so it alone
 // # decides the method's const qualifier
 // def bump(self, v: int32) -> None:
+//     match self.payload:
+//         case Counter() as c:
+//             c.n = v  # tpyc: ok
+//         case Cat() as k:
+//             k.hunger = v
 inline void UnionHolder::bump(int32_t v) {
-    // match self.payload:
     auto& __match_subject_1 = this->payload;
     switch (__match_subject_1.index()) {
-    // case Counter() as c:
     case 1: {
         auto& c = std::get<1>(__match_subject_1);
-        // c.n = v  # tpyc: ok
         c.n = v;
         break;
     }
-    // case Cat() as k:
     case 0: {
         auto& k = std::get<0>(__match_subject_1);
-        // k.hunger = v
         k.hunger = v;
         break;
     }
@@ -440,21 +467,21 @@ inline void UnionHolder::bump(int32_t v) {
 }
 
 // def value(self) -> int32:
+//     match self.payload:
+//         case Counter() as c:
+//             return c.n
+//         case Cat() as k:
+//             return k.hunger
 inline int32_t UnionHolder::value() const {
-    // match self.payload:
     auto& __match_subject_1 = this->payload;
     switch (__match_subject_1.index()) {
-    // case Counter() as c:
     case 1: {
         auto& c = std::get<1>(__match_subject_1);
-        // return c.n
         return c.n;
         break;
     }
-    // case Cat() as k:
     case 0: {
         auto& k = std::get<0>(__match_subject_1);
-        // return k.hunger
         return k.hunger;
         break;
     }
@@ -463,11 +490,12 @@ inline int32_t UnionHolder::value() const {
 }
 
 // def __init__(self, lives: int32) -> None:
+//     self.lives = lives
 inline Kitty::Kitty(int32_t lives) : lives(lives) {}
 
 // def bump(self) -> None:
+//     self.lives += 1
 inline void Kitty::bump() {
-    // self.lives += 1
     this->lives = ::tpy::add_check<int32_t>(this->lives, 1);
 }
 void __tpy_init();

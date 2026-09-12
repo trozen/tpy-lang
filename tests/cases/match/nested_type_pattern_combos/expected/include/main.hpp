@@ -14,10 +14,15 @@ struct Tagged;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def nested_param(x: Box[Box[str]] | Box[Box[int32]]) -> str:
 std::string nested_param(::tpy::Union<const Box<Box<int32_t>>*, const Box<Box<std::string>>*> x);
+// def union_subj_union_field(x: int32 | Container) -> str:
 std::string union_subj_union_field(::tpy::Union<const Container*, const int32_t*> x);
+// def union_field_param(o: Outer) -> str:
 std::string union_field_param(const Outer& o);
+// def double_union(items: list[Tagged]) -> None:
 void double_union(const std::vector<Tagged>& items);
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -27,6 +32,7 @@ struct Box {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
+    //     self.value = value
     Box() = default;
     explicit Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -90,12 +96,16 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 
 
 // def __init__(self, value: str | int32) -> None:
+//     self.value = value
 inline Container::Container(const ::tpy::Union<int32_t, std::string>& value) : value(value) {}
 
 // def __init__(self, item: Box[str] | Box[int32]) -> None:
+//     self.item = item
 inline Outer::Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> item) : item(::tpy::to_value_variant<::tpy::Union<Box<int32_t>, Box<std::string>>>(item)) {}
 
 // def __init__(self, label: str, inner: str | int32) -> None:
+//     self.label = label
+//     self.inner = inner
 inline Tagged::Tagged(std::string_view label, const ::tpy::Union<int32_t, std::string>& inner) : label(label), inner(inner) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,6 +12,7 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -74,38 +75,40 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self, ident: int32) -> None:
+//     self.ident = ident
 inline Tag::Tag(int32_t ident) : ident(ident) {}
 
 // def __eq__(self, other: 'Tag') -> bool:
+//     return self.ident == other.ident
 inline bool Tag::__eq__(const Tag& other) const {
-    // return self.ident == other.ident
     return (this->ident == other.ident);
 }
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Sink::Sink() : n(::tpy::BigInt(0)) {}
 
 // def store_name(self, s: Own[str]) -> None:
+//     self.n = len(s)
 inline void Sink::store_name(std::string s) {
-    // self.n = len(s)
     this->n = ::tpy::BigInt(::tpy::__len__(s));
 }
 
 // def store_width(self, w: Own[int32]) -> None:
+//     self.n = int(w)
 inline void Sink::store_width(int32_t w) {
-    // self.n = int(w)
     this->n = ::tpy::BigInt(static_cast<int64_t>(w));
 }
 
 // def store_blob(self, b: Own[bytes]) -> None:
+//     self.n = len(b)
 inline void Sink::store_blob(::tpy::Bytes b) {
-    // self.n = len(b)
     this->n = ::tpy::BigInt(::tpy::__len__(b));
 }
 
 // def soak(self, row: readonly[list[float]]) -> None:
+//     self.n = len(row)
 inline void Sink::soak(const std::vector<double>& row) {
-    // self.n = len(row)
     this->n = ::tpy::BigInt(::tpy::__len__(row));
 }
 void __tpy_init();

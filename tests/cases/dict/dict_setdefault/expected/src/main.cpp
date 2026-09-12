@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d: dict[str, int32] = {"a": 1, "b": 2}
+//     print(d.setdefault("a", 99))   # 1 (exists)
+//     print(d.setdefault("c", 42))   # 42 (inserted)
+//     print(d["c"])                    # 42
+//     print(len(d))                    # 3
 void main() {
-    // d: dict[str, int32] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // print(d.setdefault("a", 99))   # 1 (exists)
     std::cout << ::tpy::dict_setdefault(d, "a", 99) << "\n";
-    // print(d.setdefault("c", 42))   # 42 (inserted)
     std::cout << ::tpy::dict_setdefault(d, "c", 42) << "\n";
-    // print(d["c"])                    # 42
     std::cout << ::tpy::__getitem__(d, "c") << "\n";
-    // print(len(d))                    # 3
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

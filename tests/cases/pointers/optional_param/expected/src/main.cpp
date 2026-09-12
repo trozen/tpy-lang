@@ -3,64 +3,64 @@
 
 namespace tpyapp::main {
 
-// points: list[Point] = list()
 std::vector<Point>* points{};
-// result = find(points, 3)
 Point* result{};
 
 // def describe(p: Point | None) -> int32:
+//     if p is not None:
+//         return p.mag()
+//     return -1
 int32_t describe(Point* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.mag()
         return p->mag();
     }
-    // return -1
     return -1;
 }
 
 // def find(points: list[Point], target: int32) -> Point | None:
+//     for p in points:
+//         if p.x == target:
+//             return p
+//     return None
 Point* find(std::vector<Point>& points, int32_t target) {
-    // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // if p.x == target:
         if ((p.x == target)) {
-            // return p
             return &(p);
         }
     }
-    // return None
     return nullptr;
 }
 
+// points: list[Point] = list()
+// points.append(Point(3, 4))
+// points.append(Point(5, 6))
+//
+// result = find(points, 3)
+// print(describe(result))
+// print(describe(None))
+// print(describe(find(points, 99)))
+//
+// # Inline field/method access on Optional-returning expression
+// print(find(points, 5).x)      # tpyc: warning(/Potential None access on optional value/)
+// print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // points: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
-    // points.append(Point(3, 4))
     points->push_back(Point(3, 4));
-    // points.append(Point(5, 6))
     points->push_back(Point(5, 6));
-    // result = find(points, 3)
     result = find((*points), 3);
-    // print(describe(result))
     std::cout << describe(result) << "\n";
-    // print(describe(None))
     std::cout << describe(nullptr) << "\n";
-    // print(describe(find(points, 99)))
     std::cout << describe(find((*points), 99)) << "\n";
-    // # Inline field/method access on Optional-returning expression
-    // print(find(points, 5).x)      # tpyc: warning(/Potential None access on optional value/)
     std::cout << ::tpy::deref_check(find((*points), 5)).x << "\n";
-    // print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)
     std::cout << ::tpy::deref_check(find((*points), 5)).mag() << "\n";
 }
 

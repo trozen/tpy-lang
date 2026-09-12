@@ -10,7 +10,9 @@ namespace tpyapp::main {
 extern std::function<void(int32_t)> action;
 inline constexpr std::string_view __name__ = "__main__";
 
+// procedure shout(n: integer);
 void shout(int32_t n);
+// procedure whisper(n: integer);
 void whisper(int32_t n);
 
 void __tpy_init();

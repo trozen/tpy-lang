@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
 __gen_gen gen(std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs);
+// def main() -> None:
 void main();
 
 // class P:
@@ -32,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs;
@@ -65,6 +67,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -16,11 +16,14 @@ struct __coro_step;
 struct __coro_other;
 struct __coro_amain;
 
+// async def step() -> int32:
 __coro_step step();
+// async def other() -> int32:
 __coro_other other();
+// async def amain() -> None:
 __coro_amain amain();
 
-// Async coroutine: step
+// async def step() -> int32:
 struct __coro_step {
     int32_t __state;
     bool __cancel_pending;
@@ -43,7 +46,7 @@ struct __coro_step {
     }
 };
 
-// Async coroutine: other
+// async def other() -> int32:
 struct __coro_other {
     int32_t __state;
     bool __cancel_pending;
@@ -66,7 +69,7 @@ struct __coro_other {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;

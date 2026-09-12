@@ -11,6 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass
@@ -44,8 +45,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
+//     return f"Point[{self.x},{self.y}]"
 inline std::string Point::__repr__() const {
-    // return f"Point[{self.x},{self.y}]"
     return std::format("Point[{},{}]", this->x, this->y);
 }
 

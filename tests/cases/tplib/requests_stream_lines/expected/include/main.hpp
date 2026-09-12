@@ -19,9 +19,13 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def lines_chunked() -> None:
 void lines_chunked();
+// def lines_trailing_newline() -> None:
 void lines_trailing_newline();
+// def lines_crlf() -> None:
 void lines_crlf();
+// def main() -> None:
 void main();
 
 void __tpy_init();

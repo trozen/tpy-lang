@@ -5,28 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Cross-module generic ref: identity[T] from helper
+//     print(apply(identity, 42))               # 42
+//
+//     # Cross-module multi-param generic ref: swap[T, U] from helper
+//     print(apply_swap(swap, 1, 2))            # (2, 1)
+//
+//     # Cross-module generic ref as Callable local
+//     f: Callable[[int32], int32] = identity
+//     print(f(7))                               # 7
 void main() {
-    // # Cross-module generic ref: identity[T] from helper
-    // print(apply(identity, 42))               # 42
     std::cout << apply(::tpyapp::helper::identity<int32_t>, 42) << "\n";
-    // # Cross-module multi-param generic ref: swap[T, U] from helper
-    // print(apply_swap(swap, 1, 2))            # (2, 1)
     std::cout << ::tpy::TuplePrinter(apply_swap(::tpyapp::helper::swap<int32_t, int32_t>, 1, 2)) << "\n";
-    // # Cross-module generic ref as Callable local
-    // f: Callable[[int32], int32] = identity
     std::function<int32_t(int32_t)> f = ::tpyapp::helper::identity<int32_t>;
-    // print(f(7))                               # 7
     std::cout << f(7) << "\n";
 }
 
+// from helper import identity, swap
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from helper import identity, swap
     ::tpyapp::helper::__tpy_init();
-    // main()
     main();
 }
 

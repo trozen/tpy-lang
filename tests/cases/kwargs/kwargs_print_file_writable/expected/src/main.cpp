@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Sink()
+//     print("hello", "world", 1, file=s)
+//     print("sep test", "x", file=s, sep="::", end="$\n")
+//     # Combined: file= sink with runtime sep / end (exercises the
+//     # WritableOstream adapter alongside the runtime-token codegen path).
+//     sep = "|"
+//     end = "?\n"
+//     print("a", "b", "c", file=s, sep=sep, end=end)
+//     # No-args print to the adapter -- creates and immediately destroys a
+//     # WritableOstream that emits just the end token.
+//     print(file=s)
+//     # Avoid repr() on strings -- newline-escape repr is currently buggy.
+//     print("captured", len(s.parts), "pieces:")
+//     for p in s.parts:
+//         print("  len=", len(p), sep="")
 void main() {
-    // s = Sink()
     Sink s = Sink();
-    // print("hello", "world", 1, file=s)
     ::tpy::as_ostream(s) << "hello" << " " << "world" << " " << 1 << "\n";
-    // print("sep test", "x", file=s, sep="::", end="$\n")
     ::tpy::as_ostream(s) << "sep test" << "::" << "x" << "$\n";
-    // # Combined: file= sink with runtime sep / end (exercises the
-    // # WritableOstream adapter alongside the runtime-token codegen path).
-    // sep = "|"
     std::string_view sep = "|";
-    // end = "?\n"
     std::string_view end = "?\n";
-    // print("a", "b", "c", file=s, sep=sep, end=end)
     ::tpy::as_ostream(s) << "a" << sep << "b" << sep << "c" << end;
-    // # No-args print to the adapter -- creates and immediately destroys a
-    // # WritableOstream that emits just the end token.
-    // print(file=s)
     ::tpy::as_ostream(s) << "\n";
-    // # Avoid repr() on strings -- newline-escape repr is currently buggy.
-    // print("captured", len(s.parts), "pieces:")
     std::cout << "captured" << " " << ::tpy::__len__(s.parts) << " " << "pieces:" << "\n";
-    // for p in s.parts:
     auto& __obj_0 = s.parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
-        // print("  len=", len(p), sep="")
         std::cout << "  len=" << ::tpy::__len__(p) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

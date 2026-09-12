@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Combined()
+//     print(c.total_int_len())
+//     print(c.first_str())
 void main() {
-    // c = Combined()
     Combined c = Combined();
-    // print(c.total_int_len())
     std::cout << c.total_int_len() << "\n";
-    // print(c.first_str())
     std::cout << c.first_str() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check_all(xs: list[bool]) -> bool:
 bool check_all(const std::vector<bool>& xs);
+// def check_any(xs: list[bool]) -> bool:
 bool check_any(const std::vector<bool>& xs);
+// def total(xs: list[int32]) -> int32:
 int32_t total(const std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

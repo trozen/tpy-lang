@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main():
+//     b = Box(5)
+//     print((q := b).v)       # 5
+//     q.v = 99
+//     print(b.v)              # 99 -- q aliased b
 void main() {
-    // b = Box(5)
     Box b = Box(::tpy::BigInt(5));
-    // print((q := b).v)       # 5
     Box* q = nullptr;
     std::cout << (q = &(b), *q).v << "\n";
-    // q.v = 99
     q->v = ::tpy::BigInt(99);
-    // print(b.v)              # 99 -- q aliased b
     std::cout << b.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

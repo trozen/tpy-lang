@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def consume(s: Own[Storage]) -> int32:
+//     return s.get()
 int32_t consume(Storage&& s) {
-    // return s.get()
     return s.get();
 }
 
 // def main():
+//     s = Storage()
+//     print(consume(s))  # tpyc: ok
 void main() {
-    // s = Storage()
     Storage s = Storage();
-    // print(consume(s))  # tpyc: ok
     std::cout << consume(std::move(s)) << "\n";
 }
 
+// from tpy.mem import UninitHeapStorage
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitHeapStorage
-    // main()
     main();
 }
 

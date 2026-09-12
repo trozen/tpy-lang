@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Walrus binding from a storage-form Optional field lifts via
@@ -52,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 
 // def __init__(self, b: Box | None) -> None:
+//     self.opt = b
 inline Holder::Holder(const Box* b) : opt(::tpy::ptr_to_optional(b)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: int64 = int64(1) << int64(63)
+//     print(x)
 void main() {
-    // x: int64 = int64(1) << int64(63)
     int64_t x = (::tpy::lshift_check<int64_t>(1, 63));
-    // print(x)
     std::cout << x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

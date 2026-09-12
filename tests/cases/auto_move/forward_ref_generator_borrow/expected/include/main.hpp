@@ -9,9 +9,14 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
+// def drop(xs: Own[list[int32]]) -> int32:
 int32_t drop(std::vector<int32_t>&& xs);
 
+// def gen(xs: list[int32]) -> Iterator[int32]:
+//     for x in xs:
+//         yield x
 inline auto gen(std::vector<int32_t>& xs) {
     return ::tpy::make_generator<int32_t>(
         [&xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<int32_t> {

@@ -5,113 +5,122 @@ namespace tpyapp::main {
 
 
 // def teardown(base: str) -> None:
+//     if os.path.exists(base + "/d"):
+//         os.rmdir(base + "/d")
+//     if os.path.exists(base):
+//         os.rmdir(base)
 void teardown(std::string_view base) {
-    // if os.path.exists(base + "/d"):
     if (::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/d")))) {
-        // os.rmdir(base + "/d")
         ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/d")));
     }
-    // if os.path.exists(base):
     if (::tpy::stdlib::os::path_exists(base)) {
-        // os.rmdir(base)
         ::tpy::stdlib::os::rmdir(base);
     }
 }
 
 // def main():
+//     base = "tpy_os_error_exact"
+//     teardown(base)
+//     os.mkdir(base)
+//     os.mkdir(base + "/d")
+//
+//     try:
+//         open("definitely_missing_tpy_xyz.txt")
+//     except FileNotFoundError as e:
+//         print(e)
+//         print(e.errno == errno.ENOENT, e.strerror, e.filename)
+//     try:
+//         os.stat("also_missing_tpy_xyz")
+//     except FileNotFoundError as e:
+//         print(e)
+//     try:
+//         os.mkdir(base + "/d")
+//     except FileExistsError as e:
+//         print(e)
+//         print(e.errno == errno.EEXIST, e.filename)
+//     try:
+//         os.rename("missing_src_tpy_xyz", "missing_dst_tpy_xyz")
+//     except FileNotFoundError as e:
+//         print(e)
+//         print(e.filename, e.filename2)
+//     try:
+//         os.close(999999)
+//     except OSError as e:
+//         print(e)
+//         # No filename on an fd op: TPy "" / CPython None, both falsy.
+//         print(e.errno == errno.EBADF, not e.filename)
+//
+//     # Constant bindings resolve and carry host-correct values (EPERM/EACCES/
+//     # EISDIR/ENOTDIR are identical on Linux and macOS; ETIMEDOUT diverges,
+//     # so only its positivity is pinned).
+//     print(errno.EPERM == 1, errno.EACCES == 13, errno.EISDIR == 21,
+//           errno.ENOTDIR == 20, errno.ETIMEDOUT > 0)
+//
+//     teardown(base)
 void main() {
-    // base = "tpy_os_error_exact"
     std::string_view base = "tpy_os_error_exact";
-    // teardown(base)
     teardown(base);
-    // os.mkdir(base)
     ::tpystd::os::mkdir(base);
-    // os.mkdir(base + "/d")
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/d")));
-    // try:
     {
         try {
-            // open("definitely_missing_tpy_xyz.txt")
             ::tpy::builtin_open("definitely_missing_tpy_xyz.txt");
         } catch (const ::tpy::FileNotFoundError& e) {
-            // print(e)
             std::cout << e << "\n";
-            // print(e.errno == errno.ENOENT, e.strerror, e.filename)
             std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_enoent)) << " " << e.strerror_text << " " << e.filename << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.stat("also_missing_tpy_xyz")
             ::tpystd::os::stat("also_missing_tpy_xyz");
         } catch (const ::tpy::FileNotFoundError& e) {
-            // print(e)
             std::cout << e << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.mkdir(base + "/d")
             ::tpystd::os::mkdir((::tpy::str_concat(base, "/d")));
         } catch (const ::tpy::FileExistsError& e) {
-            // print(e)
             std::cout << e << "\n";
-            // print(e.errno == errno.EEXIST, e.filename)
             std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_eexist)) << " " << e.filename << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.rename("missing_src_tpy_xyz", "missing_dst_tpy_xyz")
             ::tpy::stdlib::os::rename("missing_src_tpy_xyz", "missing_dst_tpy_xyz");
         } catch (const ::tpy::FileNotFoundError& e) {
-            // print(e)
             std::cout << e << "\n";
-            // print(e.filename, e.filename2)
             std::cout << e.filename << " " << e.filename2 << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.close(999999)
             ::tpystd::os::close(999999);
         } catch (const ::tpy::OSError& e) {
-            // print(e)
             std::cout << e << "\n";
-            // # No filename on an fd op: TPy "" / CPython None, both falsy.
-            // print(e.errno == errno.EBADF, not e.filename)
             std::cout << ::tpy::print_bool((e.error_number == ::tpy_const_ebadf)) << " " << ::tpy::print_bool((!((!e.filename.empty())))) << "\n";
         }
     }
-    // # Constant bindings resolve and carry host-correct values (EPERM/EACCES/
-    // # EISDIR/ENOTDIR are identical on Linux and macOS; ETIMEDOUT diverges,
-    // # so only its positivity is pinned).
-    // print(errno.EPERM == 1, errno.EACCES == 13, errno.EISDIR == 21,
-    // errno.ENOTDIR == 20, errno.ETIMEDOUT > 0)
     std::cout << ::tpy::print_bool((::tpy_const_eperm == 1)) << " " << ::tpy::print_bool((::tpy_const_eacces == 13)) << " " << ::tpy::print_bool((::tpy_const_eisdir == 21)) << " " << ::tpy::print_bool((::tpy_const_enotdir == 20)) << " " << ::tpy::print_bool((::tpy_const_etimedout > 0)) << "\n";
-    // teardown(base)
     teardown(base);
 }
 
+// # CPython-exact OSError text and attributes from real os/file failures:
+// # str(e) is "[Errno N] strerror[: 'filename'[ -> 'filename2']]", .errno
+// # compares against the errno module's constants, .filename/.filename2 echo
+// # the arguments as given. Paths passed as literals echo verbatim in the
+// # message (no realpath), so relative names are host-stable.
+// import errno
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # CPython-exact OSError text and attributes from real os/file failures:
-    // # str(e) is "[Errno N] strerror[: 'filename'[ -> 'filename2']]", .errno
-    // # compares against the errno module's constants, .filename/.filename2 echo
-    // # the arguments as given. Paths passed as literals echo verbatim in the
-    // # message (no realpath), so relative names are host-stable.
-    // import errno
     ::tpystd::errno_mod::__tpy_init();
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

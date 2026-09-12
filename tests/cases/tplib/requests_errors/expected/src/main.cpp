@@ -5,117 +5,125 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 404 Not Found\r\nContent-Length: 3\r\n\r\nno!")
+//     s = requests.Session()
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.get("http://api.test/missing")
+//     print(r.status_code, r.ok, r.text)
+//     try:
+//         r.raise_for_status()
+//         print("no-raise")
+//     except HTTPError:
+//         print("HTTPError")
+//     b.close()
+//
+//     try:
+//         requests.get("http:///no-host")
+//         print("no-raise")
+//     except ConnectionError:
+//         print("ConnectionError")
+//
+//     # RequestException roots at OSError (CPython requests: IOError/OSError),
+//     # so a handler written for the builtin hierarchy catches a requests error.
+//     try:
+//         requests.get("http:///no-host")
+//         print("no-raise")
+//     except OSError:
+//         print("OSError")
+//
+//     # A hung-up peer mid-request: the socket BrokenPipeError is re-wrapped as
+//     # requests.ConnectionError. Catch the specific subclass to pin the wrap
+//     # target, not just the RequestException base.
+//     p, q = socket.socketpair()
+//     q.close()
+//     s2 = requests.Session()
+//     conn2 = HTTPConnection("api.test", 80)
+//     conn2.sock = p
+//     s2._connection = Box(conn2)
+//     try:
+//         s2.get("http://api.test/x")
+//         print("no-raise")
+//     except ConnectionError:
+//         print("ConnectionError")
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 404 Not Found\r\nContent-Length: 3\r\n\r\nno!")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 404 Not Found\r\nContent-Length: 3\r\n\r\nno!", 48));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.get("http://api.test/missing")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/missing");
-    // print(r.status_code, r.ok, r.text)
     std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.text() << "\n";
-    // try:
     {
         try {
-            // r.raise_for_status()
             r.raise_for_status();
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpystd::tplib::requests::HTTPError&) {
-            // print("HTTPError")
             std::cout << "HTTPError" << "\n";
         }
     }
-    // b.close()
     b.close();
-    // try:
     {
         try {
-            // requests.get("http:///no-host")
             ::tpystd::tplib::requests::get("http:///no-host");
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpystd::tplib::requests::ConnectionError&) {
-            // print("ConnectionError")
             std::cout << "ConnectionError" << "\n";
         }
     }
-    // # RequestException roots at OSError (CPython requests: IOError/OSError),
-    // # so a handler written for the builtin hierarchy catches a requests error.
-    // try:
     {
         try {
-            // requests.get("http:///no-host")
             ::tpystd::tplib::requests::get("http:///no-host");
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::OSError&) {
-            // print("OSError")
             std::cout << "OSError" << "\n";
         }
     }
-    // # A hung-up peer mid-request: the socket BrokenPipeError is re-wrapped as
-    // # requests.ConnectionError. Catch the specific subclass to pin the wrap
-    // # target, not just the RequestException base.
-    // p, q = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket p = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket q = std::move(std::get<1>(__tup_2));
-    // q.close()
     q.close();
-    // s2 = requests.Session()
     ::tpystd::tplib::requests::Session s2 = ::tpystd::tplib::requests::Session();
-    // conn2 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn2.sock = p
     conn2.sock = std::move(p);
-    // s2._connection = Box(conn2)
     s2._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn2));
-    // try:
     {
         try {
-            // s2.get("http://api.test/x")
             s2.get("http://api.test/x");
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpystd::tplib::requests::ConnectionError&) {
-            // print("ConnectionError")
             std::cout << "ConnectionError" << "\n";
         }
     }
 }
 
+// # tplib.requests error surface: a 4xx makes .ok False and .raise_for_status()
+// # raise HTTPError; a URL with no host raises ConnectionError before any socket
+// # work; a socket-level failure mid-request (here, a hung-up peer) is re-wrapped
+// # from the OSError family into requests.ConnectionError. All are caught by the
+// # documented exception tree (the RequestException base), which roots at
+// # OSError like CPython requests -- a plain `except OSError` catches them too.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests error surface: a 4xx makes .ok False and .raise_for_status()
-    // # raise HTTPError; a URL with no host raises ConnectionError before any socket
-    // # work; a socket-level failure mid-request (here, a hung-up peer) is re-wrapped
-    // # from the OSError family into requests.ConnectionError. All are caught by the
-    // # documented exception tree (the RequestException base), which roots at
-    // # OSError like CPython requests -- a plain `except OSError` catches them too.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

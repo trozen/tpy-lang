@@ -11,8 +11,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_hash(x: Hashable) -> uint64:
 template<::tpystd::tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -48,17 +50,19 @@ namespace tpyapp::main {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def __hash__(self) -> uint64:
+//     return hash(self.x) ^ hash(self.y)
 inline uint64_t Point::__hash__() const {
-    // return hash(self.x) ^ hash(self.y)
     return (static_cast<uint64_t>(::tpy::__hash__(this->x) ^ ::tpy::__hash__(this->y)));
 }
 // def get_hash(x: Hashable) -> uint64:
+//     return hash(x)
 template<::tpystd::tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x) {
-    // return hash(x)
     return ::tpy::__hash__(x);
 }
 

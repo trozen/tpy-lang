@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_u32(x: uint32) -> uint32:
 uint32_t take_u32(uint32_t x);
+// def take_u64(x: uint64) -> uint64:
 uint64_t take_u64(uint64_t x);
+// def loop_shape(limit: uint64) -> uint64:
 uint64_t loop_shape(uint64_t limit);
+// def repeated_use() -> None:
 void repeated_use();
+// def literal_only_branch() -> None:
 void literal_only_branch();
+// def main() -> None:
 void main();
 
 void __tpy_init();

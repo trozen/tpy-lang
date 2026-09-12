@@ -5,19 +5,22 @@ namespace tpyapp::main {
 
 
 // def eat(xs: list[int]) -> int:
+//     n = len(xs)
+//     if n > 0:
+//         xs.pop()
+//     return n
 ::tpy::BigInt eat(std::vector<::tpy::BigInt>& xs) {
-    // n = len(xs)
     int32_t n = ::tpy::__len__(xs);
-    // if n > 0:
     if ((n > 0)) {
-        // xs.pop()
         ::tpy::pop_back(xs);
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def fresh_each_pull_framed() -> Iterator[int]:
+//     while eat([1, 2]) > 1:  # tpyc: ok
+//         yield 1
+//         yield 2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_framed::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -25,7 +28,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_framed:
         continue;
     }
     case S_RESUME_0: {
-        // yield 2
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
@@ -36,7 +38,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_framed:
     case S_JOIN_0: {
         std::vector<::tpy::BigInt> __tmp_2 = {1, 2};
         if ((eat(__tmp_2) > 1)) {
-            // yield 1
             __state = S_RESUME_0;
             return ::tpy::BigInt(1);
         } else {
@@ -56,6 +57,10 @@ __gen_fresh_each_pull_framed fresh_each_pull_framed() {
 }
 
 // def if_cond_temp(n: int) -> Iterator[int]:
+//     for i in range(n):
+//         if eat([1, 2, 3]) > 2:  # tpyc: ok
+//             yield i
+//         yield -i
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -80,7 +85,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__(
         i = ((*__for_i_0))++;
         std::vector<::tpy::BigInt> __tmp_3 = {1, 2, 3};
         if ((eat(__tmp_3) > 2)) {
-            // yield i
             __state = S_RESUME_0;
             return i;
         } else {
@@ -89,7 +93,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__(
         }
     }
     case S_JOIN_1: {
-        // yield -i
         __state = S_RESUME_1;
         return -(i);
     }
@@ -105,10 +108,25 @@ __gen_if_cond_temp if_cond_temp(::tpy::BigInt n) {
 }
 
 // def main():
+//     pulls = 0
+//     for _ in fresh_each_pull():
+//         pulls += 1
+//         if pulls >= 5:
+//             break
+//     print(pulls)
+//     for v in walrus_gen(3):
+//         print(v)
+//
+//     framed = 0
+//     for _ in fresh_each_pull_framed():
+//         framed += 1
+//         if framed >= 5:
+//             break
+//     print("framed", framed)
+//
+//     print("if_cond", list(if_cond_temp(2)))
 void main() {
-    // pulls = 0
     int32_t pulls = 0;
-    // for _ in fresh_each_pull():
     {
         auto __src_0 = fresh_each_pull();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -116,18 +134,13 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& _ = ::tpy::unwrap_ref(*__r_1);
-        // pulls += 1
         pulls = ::tpy::add_check<int32_t>(pulls, 1);
-        // if pulls >= 5:
         if ((pulls >= 5)) {
-            // break
             break;
         }
         }
     }
-    // print(pulls)
     std::cout << pulls << "\n";
-    // for v in walrus_gen(3):
     {
         auto __src_2 = walrus_gen(::tpy::BigInt(3));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -135,13 +148,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // framed = 0
     int32_t framed = 0;
-    // for _ in fresh_each_pull_framed():
     {
         auto __src_4 = fresh_each_pull_framed();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -149,27 +159,22 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const ::tpy::BigInt& _ = ::tpy::unwrap_ref(*__r_5);
-        // framed += 1
         framed = ::tpy::add_check<int32_t>(framed, 1);
-        // if framed >= 5:
         if ((framed >= 5)) {
-            // break
             break;
         }
         }
     }
-    // print("framed", framed)
     std::cout << "framed" << " " << framed << "\n";
-    // print("if_cond", list(if_cond_temp(2)))
     std::cout << "if_cond" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(if_cond_temp(::tpy::BigInt(2)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

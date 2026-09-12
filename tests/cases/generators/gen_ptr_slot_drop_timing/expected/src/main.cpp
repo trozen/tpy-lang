@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int32]:
+//     # Two distinct write sites: Resource(1)'s slot is never revisited, so
+//     # its payload drops only at frame destruction, after Resource(2)'s.
+//     saved: Optional[Resource] = Resource(1)
+//     yield 1
+//     saved = Resource(2)
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # Two distinct write sites: Resource(1)'s slot is never revisited, so
-        // # its payload drops only at frame destruction, after Resource(2)'s.
-        // saved: Optional[Resource] = Resource(1)
         saved = &*(__ptr_slot_f0 = Resource(1));
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // saved = Resource(2)
         saved = &*(__ptr_slot_f1 = Resource(2));
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -39,8 +39,10 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for v in gen():
+//         print(v)
+//     print("done")
 void main() {
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -48,20 +50,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

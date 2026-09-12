@@ -11,9 +11,13 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_ro(*items: readonly[Box]) -> int32:
 int32_t take_ro(::tpy::varargs<const Box> items);
+// def from_ro_span(xs: Span[readonly[Box]]) -> int32:
 int32_t from_ro_span(std::span<const Box> xs);
+// def from_mut_span(xs: Span[Box]) -> int32:
 int32_t from_mut_span(std::span<Box> xs);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -40,6 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

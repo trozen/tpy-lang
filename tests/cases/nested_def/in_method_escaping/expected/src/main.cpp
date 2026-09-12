@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def apply(f: Callable[[int32], int32], v: int32) -> int32:
+//     return f(v)
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
-    // return f(v)
     return f(v);
 }
 
 // def main() -> None:
+//     s = Src()
+//     f = s.reader()
+//     s.n = 100
+//     print(f(1))
+//     print(s.offset(10))
 void main() {
-    // s = Src()
     Src s = Src();
-    // f = s.reader()
     std::function<int32_t(int32_t)> f = s.reader();
-    // s.n = 100
     s.n = 100;
-    // print(f(1))
     std::cout << f(1) << "\n";
-    // print(s.offset(10))
     std::cout << s.offset(10) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

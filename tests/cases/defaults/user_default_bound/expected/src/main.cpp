@@ -5,36 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x = create_default[int32]()
+//     print(x)
+//
+//     s = create_default[str]()
+//     print(len(s))
+//
+//     nums = fill[int32](3)
+//     print(len(nums))
+//     for v in nums:
+//         print(v)
 void main() {
-    // x = create_default[int32]()
     int32_t x = create_default<int32_t>();
-    // print(x)
     std::cout << x << "\n";
-    // s = create_default[str]()
     std::string s = create_default<std::string>();
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // nums = fill[int32](3)
     std::vector<int32_t> nums = fill<int32_t>(3);
-    // print(len(nums))
     std::cout << ::tpy::__len__(nums) << "\n";
-    // for v in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

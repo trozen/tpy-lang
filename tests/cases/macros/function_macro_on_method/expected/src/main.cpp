@@ -6,36 +6,37 @@ namespace tpyapp::main {
 
 // @probe
 // def free(x: int32) -> int32:  # tpyc: warning(/macro on free: no self \(is_method=False\)/)
+//     return x + 1
 int32_t free(int32_t x) {
-    // return x + 1
     return (::tpy::add_check<int32_t>(x, 1));
 }
 
 // def main() -> None:
+//     c = Counter()
+//     c.n = Counter.seed()
+//     print(c.bump())
+//     print(c.n)
+//     print(free(10))
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // c.n = Counter.seed()
     c.n = Counter::seed();
-    // print(c.bump())
     std::cout << c.bump() << "\n";
-    // print(c.n)
     std::cout << c.n << "\n";
-    // print(free(10))
     std::cout << free(10) << "\n";
 }
 
+// # A @function_macro on record methods: pass 5.5 runs it before the method
+// # body is type-checked, exposing is_method/self_type so the macro can read
+// # the enclosing record's field types and annotate body locals. On a
+// # @staticmethod self_type is None; free functions keep the old behavior.
+// from methmod import probe
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @function_macro on record methods: pass 5.5 runs it before the method
-    // # body is type-checked, exposing is_method/self_type so the macro can read
-    // # the enclosing record's field types and annotate body locals. On a
-    // # @staticmethod self_type is None; free functions keep the old behavior.
-    // from methmod import probe
-    // main()
     main();
 }
 

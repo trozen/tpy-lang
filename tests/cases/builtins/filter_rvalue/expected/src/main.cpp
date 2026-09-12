@@ -5,21 +5,26 @@ namespace tpyapp::main {
 
 
 // def make_nums() -> Own[list[int32]]:
+//     return [1, 2, 3, 4, 5, 6]
 std::vector<int32_t> make_nums() {
-    // return [1, 2, 3, 4, 5, 6]
     return {1, 2, 3, 4, 5, 6};
 }
 
 // def is_even(x: int32) -> bool:
+//     return x % 2 == 0
 bool is_even(int32_t x) {
-    // return x % 2 == 0
     return ((::tpy::mod_floor<int32_t>(x, 2)) == 0);
 }
 
 // def main() -> None:
+//     # rvalue: filter over a temporary
+//     for x in filter(is_even, make_nums()):
+//         print(x)
+//
+//     # rvalue: filter with lambda, collect to list
+//     result = list(filter(lambda x: x > 3, make_nums()))
+//     print(result)
 void main() {
-    // # rvalue: filter over a temporary
-    // for x in filter(is_even, make_nums()):
     {
         auto __src_0 = ::tpy::builtin_filter<int32_t>(is_even, make_nums());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -27,23 +32,19 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // # rvalue: filter with lambda, collect to list
-    // result = list(filter(lambda x: x > 3, make_nums()))
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 3); }, make_nums()));
-    // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

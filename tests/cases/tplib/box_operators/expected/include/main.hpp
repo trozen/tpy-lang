@@ -13,9 +13,13 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_eq() -> None:
 void test_eq();
+// def test_comparisons() -> None:
 void test_comparisons();
+// def test_hash() -> None:
 void test_hash();
+// def main() -> None:
 void main();
 
 void __tpy_init();

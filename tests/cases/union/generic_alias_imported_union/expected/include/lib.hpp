@@ -46,9 +46,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32) -> None:
+//     self.y = y
 inline B::B(int32_t y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::lib

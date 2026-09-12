@@ -5,79 +5,80 @@ namespace tpyapp::main {
 
 
 // def from_list() -> None:
+//     data: list[int32] = [1, 2, 3]
+//     s = data.__span__()
+//     print(len(s), s[0], s[1], s[2])
 void from_list() {
-    // data: list[int32] = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
-    // s = data.__span__()
     std::span<const int32_t> s = ::tpy::as_span(data);
-    // print(len(s), s[0], s[1], s[2])
     std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 // def from_array() -> None:
+//     a: Array[int32, 3] = [10, 20, 30]
+//     s = a.__span__()
+//     print(len(s), s[0], s[1], s[2])
 void from_array() {
-    // a: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
-    // s = a.__span__()
     std::span<const int32_t> s = ::tpy::as_span(a);
-    // print(len(s), s[0], s[1], s[2])
     std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 // def from_span() -> None:
+//     a: Array[int32, 3] = [4, 5, 6]
+//     sp: Span[int32] = a
+//     s = sp.__span__()
+//     print(len(s), s[0], s[1], s[2])
 void from_span() {
-    // a: Array[int32, 3] = [4, 5, 6]
     std::array<int32_t, 3> a = {4, 5, 6};
-    // sp: Span[int32] = a
     std::span<int32_t> sp = ::tpy::as_mut_span(a);
-    // s = sp.__span__()
     std::span<const int32_t> s = ::tpy::as_span(sp);
-    // print(len(s), s[0], s[1], s[2])
     std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 // def from_readonly_span() -> None:
+//     a: Array[int32, 3] = [7, 8, 9]
+//     ro: Span[readonly[int32]] = a
+//     s = ro.__span__()
+//     print(len(s), s[0], s[1], s[2])
 void from_readonly_span() {
-    // a: Array[int32, 3] = [7, 8, 9]
     std::array<int32_t, 3> a = {7, 8, 9};
-    // ro: Span[readonly[int32]] = a
     std::span<const int32_t> ro = ::tpy::as_span(a);
-    // s = ro.__span__()
     std::span<const int32_t> s = ::tpy::as_span(ro);
-    // print(len(s), s[0], s[1], s[2])
     std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 // def from_arraylist() -> None:
+//     al = ArrayList[int32, 4]()
+//     al.append(100)
+//     al.append(200)
+//     s = al.__span__()
+//     print(len(s), s[0], s[1])
 void from_arraylist() {
-    // al = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
-    // al.append(100)
     al.append(100);
-    // al.append(200)
     al.append(200);
-    // s = al.__span__()
     std::span<int32_t> s = al.__span__();
-    // print(len(s), s[0], s[1])
     std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << "\n";
 }
 
+// from tplib import ArrayList
+//
+// from_list()
+// from_array()
+// from_span()
+// from_readonly_span()
+// from_arraylist()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // from_list()
     from_list();
-    // from_array()
     from_array();
-    // from_span()
     from_span();
-    // from_readonly_span()
     from_readonly_span();
-    // from_arraylist()
     from_arraylist();
 }
 

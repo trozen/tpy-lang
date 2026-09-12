@@ -5,26 +5,32 @@ namespace tpyapp::main {
 
 
 // def test_setitem_mutation():
+//     # Function-local: should resolve to list (not Array) because __setitem__ mutates
+//     items = [int32(1), int32(2), int32(3)]
+//     items.__setitem__(int32(0), int32(99))
+//     print(items[int32(0)])  # 99
+//     print(items[int32(1)])  # 2
+//     print(items[int32(2)])  # 3
 void test_setitem_mutation() {
-    // # Function-local: should resolve to list (not Array) because __setitem__ mutates
-    // items = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // items.__setitem__(int32(0), int32(99))
     ::tpy::__setitem__(items, 0, 99);
-    // print(items[int32(0)])  # 99
     std::cout << ::tpy::__getitem__(items, 0) << "\n";
-    // print(items[int32(1)])  # 2
     std::cout << ::tpy::__getitem__(items, 1) << "\n";
-    // print(items[int32(2)])  # 3
     std::cout << ::tpy::__getitem__(items, 2) << "\n";
 }
 
+// """Test that __setitem__ marks a pending list as mutated.
+//
+// Without this fix, a function-local pending list like [1, 2, 3] would resolve
+// to Array (not list) when only __setitem__ is called, leading to invalid C++.
+// """
+//
+// test_setitem_mutation()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_setitem_mutation()
     test_setitem_mutation();
 }
 

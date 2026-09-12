@@ -12,7 +12,9 @@ struct Builder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sink(x: Own[Inner]) -> int32:
 int32_t sink(Inner&& x);
+// def run() -> None:
 void run();
 
 // @nocopy
@@ -61,20 +63,22 @@ inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Inner::Inner(int32_t v) : v(v) {}
 
 // def bump(self) -> None:
+//     self.v += 1
 inline void Inner::bump() {
-    // self.v += 1
     this->v = ::tpy::add_check<int32_t>(this->v, 1);
 }
 
 // def __init__(self, seed: int32) -> None:
+//     self.seed = seed
 inline Builder::Builder(int32_t seed) : seed(seed) {}
 
 // def build(self) -> Own[Inner]:
+//     return Inner(self.seed)
 inline Inner Builder::build() const {
-    // return Inner(self.seed)
     return Inner(this->seed);
 }
 void __tpy_init();

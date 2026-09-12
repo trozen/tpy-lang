@@ -5,19 +5,20 @@ namespace tpyapp::main {
 
 
 // async def pick(n: int) -> int:
+//     if n > 2:
+//         xs = [1, 2]
+//     else:
+//         xs = [3]
+//     await asyncio.sleep(0)
+//     return xs[0] + len(xs)
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if n > 2:
         if ((n > 2)) {
-            // xs = [1, 2]
             xs.emplace(std::vector<int32_t>{1, 2});
-        // else:
         } else {
-            // xs = [3]
             xs.emplace(std::vector<int32_t>{3});
         }
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -27,7 +28,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return xs[0] + len(xs)
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -44,10 +44,11 @@ __coro_pick pick(::tpy::BigInt n) {
 }
 
 // async def drive() -> None:
+//     print(await pick(3))
+//     print(await pick(1))
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await pick(3))
         __sub_0.emplace(::tpy::BigInt(3));
         __state = S_RESUME_0;
         continue;
@@ -57,9 +58,7 @@ __coro_pick pick(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await pick(3))
         std::cout << __await_lift_0 << "\n";
-        // print(await pick(1))
         __sub_1.emplace(::tpy::BigInt(1));
         __state = S_RESUME_1;
         continue;
@@ -69,7 +68,6 @@ __coro_pick pick(::tpy::BigInt n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await pick(1))
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -85,16 +83,17 @@ __coro_drive drive() {
     return __coro_drive();
 }
 
+// # A list literal first declared inside an if/else branch of an async
+// # body resolves in the hoisted frame field and survives the suspension.
+// import asyncio
+//
+// asyncio.run(drive())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A list literal first declared inside an if/else branch of an async
-    // # body resolves in the hoisted frame field and survives the suspension.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(drive())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(drive()));
 }
 

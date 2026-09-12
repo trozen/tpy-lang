@@ -11,6 +11,7 @@ template<typename K, typename V> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pair[K, V]:
@@ -22,18 +23,22 @@ struct Pair {
     V v;
 
     // def __init__(self, k: K, v: V) -> None:
+    //     self.k = k
+    //     self.v = v
     Pair() = default;
     explicit Pair(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : k(k), v(v) {}
 
     // def stream(self, n: int) -> Iterator[V]:  # tpyc: ok
+    //     i = 0
+    //     while i < n:
+    //         yield self.v
+    //         i += 1
     auto stream(const ::tpy::BigInt& n) {
-        // i = 0
         int32_t i = 0;
         return ::tpy::make_generator<V>(
             [this, n, i]() mutable -> std::optional<V> {
                 while ((::tpy::BigInt(i) < n)) {
                     auto __val = (*this).v;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
                     return std::optional<V>(__val);
                 }

@@ -11,6 +11,7 @@ struct Resource;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Resource:
@@ -42,8 +43,9 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 
 // def __init__(self, id: int32):
+//     self.id = id
+//     print("alloc", id)
 inline Resource::Resource(int32_t id) : id(id) {
-    // print("alloc", id)
     std::cout << "alloc" << " " << id << "\n";
 }
 
@@ -65,15 +67,15 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("free", self.id)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    // print("free", self.id)
     std::cout << "free" << " " << this->id << "\n";
 }
 
 // def __copy__(self) -> Own[Resource]:
+//     return Resource(self.id + 100)
 inline Resource Resource::__copy__() const {
-    // return Resource(self.id + 100)
     return Resource((::tpy::add_check<int32_t>(this->id, 100)));
 }
 void __tpy_init();

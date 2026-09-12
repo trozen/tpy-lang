@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def pick(rows: list[list[int32]], k: int32) -> list[int32]:
+//     # The same element lvalue off a plain container parameter.
+//     return rows[k]  # tpyc: ok
 std::vector<int32_t>& pick(std::vector<std::vector<int32_t>>& rows, int32_t k) {
-    // # The same element lvalue off a plain container parameter.
-    // return rows[k]  # tpyc: ok
     return ::tpy::__getitem__(rows, k);
 }
 
 // def main() -> None:
+//     f = Flat([[1, 2], [3, 4]])
+//     row = f.get_data(1)
+//     row[0] = 99
+//     # The borrow return aliases the field's element -- a copy would print 3.
+//     print(f.data[1][0])
+//     rows: list[list[int32]] = [[5, 6], [7, 8]]
+//     got = pick(rows, 0)
+//     got[1] = 60
+//     print(rows[0][1])
 void main() {
-    // f = Flat([[1, 2], [3, 4]])
     Flat f = Flat({{1, 2}, {3, 4}});
-    // row = f.get_data(1)
     std::vector<int32_t>& row = f.get_data(1);
-    // row[0] = 99
     ::tpy::__setitem__(row, 0, 99);
-    // # The borrow return aliases the field's element -- a copy would print 3.
-    // print(f.data[1][0])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(f.data, 1), 0) << "\n";
-    // rows: list[list[int32]] = [[5, 6], [7, 8]]
     std::vector<std::vector<int32_t>> rows = {{5, 6}, {7, 8}};
-    // got = pick(rows, 0)
     std::vector<int32_t>& got = pick(rows, 0);
-    // got[1] = 60
     ::tpy::__setitem__(got, 1, 60);
-    // print(rows[0][1])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

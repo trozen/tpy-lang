@@ -5,38 +5,40 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = (1, 2)
+//     b = (1, 3)
+//     c = (1, 2)
+//
+//     print(less(a, b))
+//     print(less(b, a))
+//     print(eq(a, c))
+//     print(eq(a, b))
+//
+//     # Mixed element types, still all-Comparable
+//     p = (1, "apple")
+//     q = (1, "banana")
+//     print(less(p, q))
+//     print(eq(p, p))
 void main() {
-    // a = (1, 2)
     std::tuple<int32_t, int32_t> a = std::tuple<int32_t, int32_t>{1, 2};
-    // b = (1, 3)
     std::tuple<int32_t, int32_t> b = std::tuple<int32_t, int32_t>{1, 3};
-    // c = (1, 2)
     std::tuple<int32_t, int32_t> c = std::tuple<int32_t, int32_t>{1, 2};
-    // print(less(a, b))
     std::cout << ::tpy::print_bool(less<std::tuple<int32_t, int32_t>>(a, b)) << "\n";
-    // print(less(b, a))
     std::cout << ::tpy::print_bool(less<std::tuple<int32_t, int32_t>>(b, a)) << "\n";
-    // print(eq(a, c))
     std::cout << ::tpy::print_bool(eq<std::tuple<int32_t, int32_t>>(a, c)) << "\n";
-    // print(eq(a, b))
     std::cout << ::tpy::print_bool(eq<std::tuple<int32_t, int32_t>>(a, b)) << "\n";
-    // # Mixed element types, still all-Comparable
-    // p = (1, "apple")
     std::tuple<int32_t, std::string> p = std::tuple<int32_t, std::string>{1, "apple"};
-    // q = (1, "banana")
     std::tuple<int32_t, std::string> q = std::tuple<int32_t, std::string>{1, "banana"};
-    // print(less(p, q))
     std::cout << ::tpy::print_bool(less<std::tuple<int32_t, std::string>>(p, q)) << "\n";
-    // print(eq(p, p))
     std::cout << ::tpy::print_bool(eq<std::tuple<int32_t, std::string>>(p, p)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

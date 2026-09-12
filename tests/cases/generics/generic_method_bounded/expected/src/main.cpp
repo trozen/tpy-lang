@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper[int32](int32(5))
+//     print(w.is_less(1, 2))
+//     print(w.is_less(10, 3))
 void main() {
-    // w = Wrapper[int32](int32(5))
     Wrapper<int32_t> w = Wrapper<int32_t>(5);
-    // print(w.is_less(1, 2))
     std::cout << ::tpy::print_bool(w.is_less<int32_t>(1, 2)) << "\n";
-    // print(w.is_less(10, 3))
     std::cout << ::tpy::print_bool(w.is_less<int32_t>(10, 3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

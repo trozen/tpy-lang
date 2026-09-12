@@ -84,37 +84,41 @@ inline std::ostream& operator<<(std::ostream& os, const Car& obj) {
 
 
 // def __init__(self, brand: str, year: int32) -> None:
+//     self.brand = brand
+//     self.year = year
 inline Vehicle::Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
 
 // def get_brand(self) -> str:
+//     return self.brand
 inline std::string Vehicle::get_brand() const {
-    // return self.brand
     return this->brand;
 }
 
 // def __init__(self, brand: str, year: int32, model: str, car_weight: int32) -> None:
+//     self.brand = brand
+//     self.year = year
+//     self.model = model
+//     self.car_weight = car_weight
 inline Car::Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
-    // self.brand = brand
     this->brand = brand;
-    // self.year = year
     this->year = year;
 }
 
 // def __str__(self) -> str:
+//     return self.model
 inline std::string Car::__str__() const {
-    // return self.model
     return this->model;
 }
 
 // def weight(self) -> int32:
+//     return self.car_weight
 inline int32_t Car::weight() const {
-    // return self.car_weight
     return this->car_weight;
 }
 
 // def describe(self) -> str:
+//     return "A car"
 inline std::string Car::describe() const {
-    // return "A car"
     return "A car";
 }
 void __tpy_init();

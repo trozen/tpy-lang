@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Item] = [Item(1), Item(2), Item(3)]
+//     first: list[Item] = []
+//     second: list[Item] = []
+//     for x in items:
+//         first.append(x)  # tpyc: warning(/copies Item into owned storage/)
+//         second.append(x)  # tpyc: ok
+//     for r in second:
+//         print(r.value)
 void main() {
-    // items: list[Item] = [Item(1), Item(2), Item(3)]
     std::vector<Item> items = {Item(1), Item(2), Item(3)};
-    // first: list[Item] = []
     std::vector<Item> first = std::vector<Item>{};
-    // second: list[Item] = []
     std::vector<Item> second = std::vector<Item>{};
-    // for x in items:
     auto __obj_0 = ::tpy::own_iter(std::move(items));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // first.append(x)  # tpyc: warning(/copies Item into owned storage/)
         first.push_back(x);
-        // second.append(x)  # tpyc: ok
         second.push_back(std::move(x));
     }
-    // for r in second:
     auto& __obj_1 = second;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& r = *__beg_1;
-        // print(r.value)
         std::cout << r.value << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

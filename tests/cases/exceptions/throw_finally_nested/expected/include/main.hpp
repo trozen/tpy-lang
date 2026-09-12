@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def nested_return() -> int32:
 int32_t nested_return();
+// def nested_raise() -> None:
 void nested_raise();
+// def main() -> None:
 void main();
 
 void __tpy_init();

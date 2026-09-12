@@ -5,8 +5,9 @@ namespace tpyapp::main {
 
 
 // def main(n: int32) -> None:
+//     d = {i: Box(i * 10) for i in range(n)}
+//     print(len(d), d[0].get(), d[2].get())
 void main(int32_t n) {
-    // d = {i: Box(i * 10) for i in range(n)}
     ::tpy::ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>> d = ({
         ::tpy::ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>> __result;
         const int32_t __stop_0 = n;
@@ -15,19 +16,19 @@ void main(int32_t n) {
         }
         std::move(__result);
     });
-    // print(len(d), d[0].get(), d[2].get())
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__getitem__(d, 0).get() << " " << ::tpy::__getitem__(d, 2).get() << "\n";
 }
 
+// from tplib.box import Box
+//
+// main(3)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main(3)
     main(3);
 }
 

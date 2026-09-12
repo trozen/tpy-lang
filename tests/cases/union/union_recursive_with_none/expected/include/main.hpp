@@ -11,12 +11,19 @@ struct V;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def kind(v: V) -> str:
 std::string kind(const V& v);
+// def make_dict() -> Own[V]:
 V make_dict();
+// def is_null(v: V) -> bool:
 bool is_null(const V& v);
+// def kind_after_null_guard(v: V) -> str:
 std::string kind_after_null_guard(const V& v);
+// def flat_kind(v: W) -> str:
 std::string flat_kind(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v);
+// def kind_guarded(v: V) -> str:
 std::string kind_guarded(const V& v);
+// def main() -> None:
 void main();
 
 struct V {

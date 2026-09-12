@@ -12,6 +12,7 @@ struct DerivedCM;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: sync `with` over a subclass must resolve __enter__/__exit__
@@ -51,19 +52,20 @@ inline std::ostream& operator<<(std::ostream& os, const DerivedCM& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline BaseCM::BaseCM() : n(::tpy::BigInt(0)) {}
 
 // def __enter__(self) -> "BaseCM":
+//     self.n += 1
+//     return self
 inline BaseCM& BaseCM::__enter__() {
-    // self.n += 1
     this->n = (this->n) + (::tpy::BigInt(1));
-    // return self
     return (*this);
 }
 
 // def __exit__(self, et: None, ev: None, tb: None) -> None:
+//     self.n += 100
 inline void BaseCM::__exit__(std::monostate et, std::monostate ev, std::monostate tb) {
-    // self.n += 100
     this->n = (this->n) + (::tpy::BigInt(100));
 }
 void __tpy_init();

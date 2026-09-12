@@ -12,9 +12,13 @@ struct Probe;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_ready(tag: int) -> Own[Poll[Probe]]:
 ::tpystd::tpy::Poll<Probe> make_ready(const ::tpy::BigInt& tag);
+// def drop_path() -> None:
 void drop_path();
+// def consume_path() -> None:
 void consume_path();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -44,8 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
 
 
 // def __init__(self, tag: int) -> None:
+//     self.tag = tag
+//     print(f"Probe({tag}) init")
 inline Probe::Probe(const ::tpy::BigInt& tag) : tag(tag) {
-    // print(f"Probe({tag}) init")
     std::cout << std::format("Probe({}) init", (tag).to_string()) << "\n";
 }
 
@@ -61,9 +66,9 @@ inline Probe& Probe::operator=(Probe&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print(f"Probe({self.tag}) drop")
 inline Probe::~Probe() {
     if (!this->__tpy_owned_) return;
-    // print(f"Probe({self.tag}) drop")
     std::cout << std::format("Probe({}) drop", (this->tag).to_string()) << "\n";
 }
 void __tpy_init();

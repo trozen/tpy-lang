@@ -5,21 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Local should shadow the native global
+//     score: int32 = int32(42)
+//     print(score)
 void main() {
-    // # Local should shadow the native global
-    // score: int32 = int32(42)
     int32_t score = 42;
-    // print(score)
     std::cout << score << "\n";
 }
 
+// from tpy.extern import native_global
+//
+// score: int32 = native_global("engine::score")
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native_global
-    // main()
     main();
 }
 

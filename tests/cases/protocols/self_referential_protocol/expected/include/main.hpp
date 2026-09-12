@@ -41,12 +41,16 @@ struct Pong;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def combine(a: Addable, b: Addable) -> None:
 template<Addable T_a, Addable T_b>
 void combine(const T_a& a, const T_b& b);
+// def chain(c: Chainable) -> None:
 template<Chainable T_c>
 void chain(T_c& c);
+// def bounce(a: AProto) -> None:
 template<AProto T_a>
 void bounce(T_a& a);
+// def main() -> None:
 void main();
 
 // class Meters(ValueType):
@@ -158,80 +162,82 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Meters::Meters(const ::tpy::BigInt& v) : v(v) {}
 
 // def __add__(self, other: Meters) -> Meters:
+//     return Meters(self.v + other.v)
 inline Meters Meters::__add__(Meters other) const {
-    // return Meters(self.v + other.v)
     return Meters(((this->v) + (other.v)));
 }
 
 // def value(self) -> int:
+//     return self.v
 inline ::tpy::BigInt Meters::value() const {
-    // return self.v
     return this->v;
 }
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Num::Num(const ::tpy::BigInt& v) : v(v) {}
 
 // def half(self) -> Num:
+//     return Num(self.v // 2)
 inline Num Num::half() const {
-    // return Num(self.v // 2)
     return Num(((this->v) / (::tpy::BigInt(2))));
 }
 
 // def value(self) -> int:
+//     return self.v
 inline ::tpy::BigInt Num::value() const {
-    // return self.v
     return this->v;
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Ping::Ping() {
-    // pass
 }
 
 // def to_b(self) -> Pong:
+//     return Pong()
 inline Pong Ping::to_b() const {
-    // return Pong()
     return Pong();
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Pong::Pong() {
-    // pass
 }
 
 // def tag(self) -> str:
+//     return "pong"
 inline std::string Pong::tag() const {
-    // return "pong"
     return "pong";
 }
 
 // def to_a(self) -> Ping:
+//     return Ping()
 inline Ping Pong::to_a() const {
-    // return Ping()
     return Ping();
 }
 // def combine(a: Addable, b: Addable) -> None:
+//     c = a + b
+//     print(c.value())
 template<Addable T_a, Addable T_b>
 void combine(const T_a& a, const T_b& b) {
-    // c = a + b
     auto c = (a + b);
-    // print(c.value())
     std::cout << c.value() << "\n";
 }
 // def chain(c: Chainable) -> None:
+//     print(c.half().value())
 template<Chainable T_c>
 void chain(T_c& c) {
-    // print(c.half().value())
     std::cout << c.half().value() << "\n";
 }
 // def bounce(a: AProto) -> None:
+//     print(a.to_b().tag())
 template<AProto T_a>
 void bounce(T_a& a) {
-    // print(a.to_b().tag())
     std::cout << a.to_b().tag() << "\n";
 }
 

@@ -13,6 +13,7 @@ template<typename T, std::size_t N> struct GrandChild;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base[T, N: int]:
@@ -22,6 +23,7 @@ struct Base {
     T value;
 
     // def __init__(self, v: T) -> None:
+    //     self.value = v
     Base() = default;
     explicit Base(::tpy::readonly_form_t<T> v) : value(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
@@ -40,9 +42,10 @@ struct Child : Base<T, N> {
     int32_t extra;
 
     // def __init__(self, v: T, e: int32) -> None:
+    //     self.value = v
+    //     self.extra = e
     Child() = default;
     explicit Child(::tpy::readonly_form_t<T> v, int32_t e) : extra(e) {
-        // self.value = v
         this->value = ::tpy::param_to_storage<T>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
@@ -61,11 +64,12 @@ struct GrandChild : Child<T, N> {
     std::string name;
 
     // def __init__(self, v: T, e: int32, n: str) -> None:
+    //     self.value = v
+    //     self.extra = e
+    //     self.name = n
     GrandChild() = default;
     explicit GrandChild(::tpy::readonly_form_t<T> v, int32_t e, std::string_view n) : name(n) {
-        // self.value = v
         this->value = ::tpy::param_to_storage<T>(v);
-        // self.extra = e
         this->extra = e;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GrandChild";

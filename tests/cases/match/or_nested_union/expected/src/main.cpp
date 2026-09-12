@@ -5,133 +5,133 @@ namespace tpyapp::main {
 
 
 // def known(a: Dog | Cat | Bird) -> str:
+//     match a:
+//         # A group with no bindings must select the same arm as the flat
+//         # `case Dog() | Cat() | Bird():`.
+//         case (Dog() | Cat()) | Bird():
+//             return "known"
+//     return "other"
 std::string known(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case (Dog() | Cat()) | Bird():
     case 2:
     case 1:
     case 0:
     {
-        // return "known"
         return "known";
         break;
     }
     }
     ::std::unreachable();
-    // return "other"
     return "other";
 }
 
 // def tag(a: Dog | Cat | Bird, t: str) -> int32:
+//     match a:
+//         # Binding alternatives duplicate the arm body per member; `ts` must
+//         # ALIAS the matched member's list, so this append is visible to the
+//         # caller (a silent copy would lose it).
+//         case (Dog(tags=ts) | Cat(tags=ts)) | Bird(tags=ts):
+//             ts.append(t)
+//             return 1
+//     return 0
 int32_t tag(::tpy::Union<Bird*, Cat*, Dog*> a, std::string_view t) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case (Dog(tags=ts) | Cat(tags=ts)) | Bird(tags=ts):
     case 2: {
         auto& __case_0_0 = *std::get<2>(__match_subject_1);
         auto& ts = __case_0_0.tags;
-        // ts.append(t)
         ts.push_back(std::string(t));
-        // return 1
         return 1;
         break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& ts = __case_0_1.tags;
-        // ts.append(t)
         ts.push_back(std::string(t));
-        // return 1
         return 1;
         break;
     }
     case 0: {
         auto& __case_0_2 = *std::get<0>(__match_subject_1);
         auto& ts = __case_0_2.tags;
-        // ts.append(t)
         ts.push_back(std::string(t));
-        // return 1
         return 1;
         break;
     }
     }
     ::std::unreachable();
-    // return 0
     return 0;
 }
 
 // def read(a: Dog | Cat | Bird) -> str:
+//     match a:
+//         case (Dog(tags=ts) | Cat(tags=ts)) | Bird(tags=ts):
+//             return ",".join(ts)
+//     return ""
 std::string read(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case (Dog(tags=ts) | Cat(tags=ts)) | Bird(tags=ts):
     case 2: {
         auto& __case_0_0 = *std::get<2>(__match_subject_1);
         auto& ts = __case_0_0.tags;
-        // return ",".join(ts)
         return ::tpy::str_join(",", ts);
         break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& ts = __case_0_1.tags;
-        // return ",".join(ts)
         return ::tpy::str_join(",", ts);
         break;
     }
     case 0: {
         auto& __case_0_2 = *std::get<0>(__match_subject_1);
         auto& ts = __case_0_2.tags;
-        // return ",".join(ts)
         return ::tpy::str_join(",", ts);
         break;
     }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     d: Dog | Cat | Bird = Dog(["x"])
+//     print(known(d))
+//     print(tag(d, "y"))
+//     print(read(d))
+//     c: Dog | Cat | Bird = Cat(["p"])
+//     print(tag(c, "q"))
+//     print(read(c))
+//     b: Dog | Cat | Bird = Bird(["m"])
+//     print(tag(b, "n"))
+//     print(read(b))
 void main() {
-    // d: Dog | Cat | Bird = Dog(["x"])
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog({"x"});
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // print(known(d))
     std::cout << known(d.as_const()) << "\n";
-    // print(tag(d, "y"))
     std::cout << tag(d, "y") << "\n";
-    // print(read(d))
     std::cout << read(d.as_const()) << "\n";
-    // c: Dog | Cat | Bird = Cat(["p"])
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat({"p"});
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // print(tag(c, "q"))
     std::cout << tag(c, "q") << "\n";
-    // print(read(c))
     std::cout << read(c.as_const()) << "\n";
-    // b: Dog | Cat | Bird = Bird(["m"])
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird({"m"});
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    // print(tag(b, "n"))
     std::cout << tag(b, "n") << "\n";
-    // print(read(b))
     std::cout << read(b.as_const()) << "\n";
 }
 
+// # Parenthesized (nested) or-pattern groups on a union subject: the group is
+// # flattened at parse time, so the arm behaves exactly like the flat spelling.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Parenthesized (nested) or-pattern groups on a union subject: the group is
-    // # flattened at parse time, so the arm behaves exactly like the flat spelling.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

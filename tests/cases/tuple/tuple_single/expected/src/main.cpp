@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     single = (int32(42),)
+//     print(single)
+//     print(single[0])
+//
+//     single_str = ("only",)
+//     print(single_str)
 void main() {
-    // single = (int32(42),)
     std::tuple<int32_t> single = std::tuple<int32_t>(42);
-    // print(single)
     std::cout << ::tpy::TuplePrinter(single) << "\n";
-    // print(single[0])
     std::cout << std::get<0>(single) << "\n";
-    // single_str = ("only",)
     std::tuple<std::string> single_str = std::tuple<std::string>("only");
-    // print(single_str)
     std::cout << ::tpy::TuplePrinter(single_str) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

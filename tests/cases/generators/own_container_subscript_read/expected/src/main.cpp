@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def dicts() -> Iterator[Own[dict[str, str]]]:
+//     a: dict[str, str] = {}
+//     a["k"] = "v1"
+//     yield a
+//     b: dict[str, str] = {}
+//     b["k"] = "v2"
+//     yield b
 std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration> __gen_dicts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a: dict[str, str] = {}
         a.emplace(::tpy::ordered_map<std::string, std::string>());
-        // a["k"] = "v1"
         ::tpy::__setitem__((*a), "k", "v1");
-        // yield a
         __state = S_RESUME_0;
         return (*a);
     }
     case S_RESUME_0: {
-        // b: dict[str, str] = {}
         b.emplace(::tpy::ordered_map<std::string, std::string>());
-        // b["k"] = "v2"
         ::tpy::__setitem__((*b), "k", "v2");
-        // yield b
         __state = S_RESUME_1;
         return (*b);
     }
@@ -41,12 +41,12 @@ __gen_dicts dicts() {
 }
 
 // def lists() -> Iterator[Own[list[int]]]:
+//     a: list[int] = [10, 20, 30]
+//     yield a
 std::expected<std::vector<::tpy::BigInt>, ::tpy::StopIteration> __gen_lists::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a: list[int] = [10, 20, 30]
         a.emplace(std::vector<::tpy::BigInt>{10, 20, 30});
-        // yield a
         __state = S_RESUME_0;
         return (*a);
     }
@@ -66,8 +66,9 @@ __gen_lists lists() {
 }
 
 // def read_dicts() -> None:
+//     for d in dicts():
+//         print(d["k"])
 void read_dicts() {
-    // for d in dicts():
     {
         auto __src_0 = dicts();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -75,15 +76,16 @@ void read_dicts() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& d = ::tpy::unwrap_ref(*__r_1);
-        // print(d["k"])
         std::cout << ::tpy::__getitem__(d, "k") << "\n";
         }
     }
 }
 
 // def read_list_normalized() -> None:
+//     for xs in lists():
+//         print(xs[-1])    # negative index must normalize -> 30
+//         print(xs[0])     # 10
 void read_list_normalized() {
-    // for xs in lists():
     {
         auto __src_0 = lists();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -91,25 +93,28 @@ void read_list_normalized() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& xs = ::tpy::unwrap_ref(*__r_1);
-        // print(xs[-1])    # negative index must normalize -> 30
         std::cout << ::tpy::__getitem__(xs, -1) << "\n";
-        // print(xs[0])     # 10
         std::cout << ::tpy::__getitem__(xs, 0) << "\n";
         }
     }
 }
 
 // def read_ro_dict(d: readonly[dict[str, str]]) -> str:
+//     # Inverse: a readonly dict param read must keep working.
+//     return d["k"]
 std::string read_ro_dict(const ::tpy::ordered_map<std::string, std::string>& d) {
-    // # Inverse: a readonly dict param read must keep working.
-    // return d["k"]
     return ::tpy::__getitem__(d, "k");
 }
 
 // def list_oob_raises() -> None:
+//     # The __getitem__ route bounds-checks; raw operator[] was UB.
+//     for xs in lists():
+//         try:
+//             print(xs[99])
+//             print("FAIL: no IndexError")
+//         except IndexError:
+//             print("got IndexError")
 void list_oob_raises() {
-    // # The __getitem__ route bounds-checks; raw operator[] was UB.
-    // for xs in lists():
     {
         auto __src_0 = lists();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -117,15 +122,11 @@ void list_oob_raises() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& xs = ::tpy::unwrap_ref(*__r_1);
-        // try:
         {
             try {
-                // print(xs[99])
                 std::cout << ::tpy::__getitem__(xs, 99) << "\n";
-                // print("FAIL: no IndexError")
                 std::cout << "FAIL: no IndexError" << "\n";
             } catch (const ::tpy::IndexError&) {
-                // print("got IndexError")
                 std::cout << "got IndexError" << "\n";
             }
         }
@@ -134,9 +135,15 @@ void list_oob_raises() {
 }
 
 // def dict_missing_raises() -> None:
+//     # The __getitem__ route raises KeyError; raw operator[] would default-insert.
+//     for d in dicts():
+//         try:
+//             print(d["absent"])
+//             print("FAIL: no KeyError")
+//         except KeyError:
+//             print("got KeyError")
+//         break
 void dict_missing_raises() {
-    // # The __getitem__ route raises KeyError; raw operator[] would default-insert.
-    // for d in dicts():
     {
         auto __src_0 = dicts();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -144,56 +151,51 @@ void dict_missing_raises() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& d = ::tpy::unwrap_ref(*__r_1);
-        // try:
         {
             try {
-                // print(d["absent"])
                 std::cout << ::tpy::__getitem__(d, "absent") << "\n";
-                // print("FAIL: no KeyError")
                 std::cout << "FAIL: no KeyError" << "\n";
             } catch (const ::tpy::KeyError&) {
-                // print("got KeyError")
                 std::cout << "got KeyError" << "\n";
             }
         }
-        // break
         break;
         }
     }
 }
 
 // def main() -> None:
+//     read_dicts()
+//     print("---")
+//     read_list_normalized()
+//     print("---")
+//     m: dict[str, str] = {}
+//     m["k"] = "ro"
+//     print(read_ro_dict(m))
+//     print("---")
+//     list_oob_raises()
+//     print("---")
+//     dict_missing_raises()
 void main() {
-    // read_dicts()
     read_dicts();
-    // print("---")
     std::cout << "---" << "\n";
-    // read_list_normalized()
     read_list_normalized();
-    // print("---")
     std::cout << "---" << "\n";
-    // m: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> m = ::tpy::ordered_map<std::string, std::string>();
-    // m["k"] = "ro"
     ::tpy::__setitem__(m, "k", "ro");
-    // print(read_ro_dict(m))
     std::cout << read_ro_dict(m) << "\n";
-    // print("---")
     std::cout << "---" << "\n";
-    // list_oob_raises()
     list_oob_raises();
-    // print("---")
     std::cout << "---" << "\n";
-    // dict_missing_raises()
     dict_missing_raises();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

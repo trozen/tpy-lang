@@ -11,12 +11,19 @@ extern std::optional<int32_t> GO;
 extern int32_t GP;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def enable() -> None:
 void enable();
+// def read_ret() -> int32:
 int32_t read_ret();
+// def read_sink() -> int32:
 int32_t read_sink();
+// def read_aug() -> int32:
 int32_t read_aug();
+// def write_from(p: int32 | None) -> None:
 void write_from(std::optional<int32_t> p);
+// def write_plain(p: int32 | None) -> None:
 void write_plain(std::optional<int32_t> p);
+// def main() -> None:
 void main();
 
 void __tpy_init();

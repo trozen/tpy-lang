@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[int32] = [1, 2, 3]
+//     for x in own_iter(items):  # tpyc: warning(/own_iter\(\) consumes/)
+//         print(x)
+//     print(len(items))
 void main() {
-    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // for x in own_iter(items):  # tpyc: warning(/own_iter\(\) consumes/)
     auto __obj_0 = ::tpy::own_iter(std::move(items));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

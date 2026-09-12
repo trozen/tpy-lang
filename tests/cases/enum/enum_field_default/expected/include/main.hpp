@@ -42,6 +42,7 @@ struct Pinned;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Shape:
@@ -90,8 +91,8 @@ inline std::ostream& operator<<(std::ostream& os, const Pinned& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Tagged::Tagged() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

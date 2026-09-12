@@ -19,9 +19,13 @@ struct __coro_get;
 struct __coro_make;
 struct __coro_main_coro;
 
+// async def get(h: H) -> Box | None:
 __coro_get get(H& h);
+// async def make(present: bool) -> Own[Box] | None:
 __coro_make make(bool present);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -56,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
     return os;
 }
 
-// Async coroutine: get
+// async def get(h: H) -> Box | None:
 struct __coro_get {
     int32_t __state;
     bool __cancel_pending;
@@ -80,7 +84,7 @@ struct __coro_get {
     }
 };
 
-// Async coroutine: make
+// async def make(present: bool) -> Own[Box] | None:
 struct __coro_make {
     int32_t __state;
     bool __cancel_pending;
@@ -104,7 +108,7 @@ struct __coro_make {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -138,9 +142,11 @@ struct __coro_main_coro {
 
 
 // def __init__(self, v: int) -> None:
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 
 // def __init__(self, b: Box | None) -> None:
+//     self.opt = b
 inline H::H(const Box* b) : opt(::tpy::ptr_to_optional(b)) {}
 void __tpy_init();
 } // namespace tpyapp::main

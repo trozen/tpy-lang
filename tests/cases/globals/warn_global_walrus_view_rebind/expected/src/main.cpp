@@ -3,53 +3,53 @@
 
 namespace tpyapp::main {
 
-// label = "hello world"
 std::string label;
 
 // def plain() -> int:
+//     global label
+//     sv: StrView = label
+//     n = len(sv)
+//     label = "a much longer replacement string"  # tpyc: warning(/Mutation of 'label' while borrowed/)
+//     return n
 ::tpy::BigInt plain() {
-    // global label
-    // sv: StrView = label
     std::string_view sv = label;
-    // n = len(sv)
     int32_t n = ::tpy::__len__(sv);
-    // label = "a much longer replacement string"  # tpyc: warning(/Mutation of 'label' while borrowed/)
     label = "a much longer replacement string";
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def via_walrus() -> int:
+//     global label
+//     sv: StrView = label
+//     n = len(sv)
+//     m = len(label := "another replacement string")  # tpyc: warning(/Mutation of 'label' while borrowed/)
+//     return n + m
 ::tpy::BigInt via_walrus() {
-    // global label
-    // sv: StrView = label
     std::string_view sv = label;
-    // n = len(sv)
     int32_t n = ::tpy::__len__(sv);
-    // m = len(label := "another replacement string")  # tpyc: warning(/Mutation of 'label' while borrowed/)
     int32_t m = ::tpy::__len__((label = "another replacement string"));
-    // return n + m
     return ::tpy::BigInt((::tpy::add_check<int32_t>(n, m)));
 }
 
 // def main() -> None:
+//     print("plain:", plain())
+//     print("walrus:", via_walrus())
+//     print("label:", label)
 void main() {
-    // print("plain:", plain())
     std::cout << "plain:" << " " << plain() << "\n";
-    // print("walrus:", via_walrus())
     std::cout << "walrus:" << " " << via_walrus() << "\n";
-    // print("label:", label)
     std::cout << "label:" << " " << label << "\n";
 }
 
+// label = "hello world"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // label = "hello world"
     label = "hello world";
-    // main()
     main();
 }
 

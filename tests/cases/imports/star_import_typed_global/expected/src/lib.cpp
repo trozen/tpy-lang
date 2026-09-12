@@ -3,19 +3,17 @@
 
 namespace tpyapp::lib {
 
-// PUBLIC_VAL: int32 = 7
 int32_t PUBLIC_VAL{};
-// HIDDEN_VAL: int32 = 99
 int32_t HIDDEN_VAL{};
 
+// PUBLIC_VAL: int32 = 7
+// HIDDEN_VAL: int32 = 99
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // PUBLIC_VAL: int32 = 7
     PUBLIC_VAL = 7;
-    // HIDDEN_VAL: int32 = 99
     HIDDEN_VAL = 99;
 }
 

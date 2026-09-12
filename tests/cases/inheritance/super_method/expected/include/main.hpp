@@ -59,35 +59,38 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def speak(self) -> str:
+//     return "Animal says: ..."
 inline std::string Animal::speak() const {
-    // return "Animal says: ..."
     return "Animal says: ...";
 }
 
 // def describe(self) -> str:
+//     return self.name
 inline std::string Animal::describe() const {
-    // return self.name
     return this->name;
 }
 
 // def __init__(self, name: str, breed: str) -> None:
+//     super().__init__(name)
+//     self.breed = breed
 inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
 // def speak(self) -> str:
+//     return "Woof!"
 inline std::string Dog::speak() const {
-    // return "Woof!"
     return "Woof!";
 }
 
 // def full_speak(self) -> str:
+//     # Call overridden parent method via super()
+//     parent_speak = super().speak()
+//     return parent_speak
 inline std::string Dog::full_speak() const {
-    // # Call overridden parent method via super()
-    // parent_speak = super().speak()
     std::string parent_speak = this->Animal::speak();
-    // return parent_speak
     return parent_speak;
 }
 void __tpy_init();

@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_set() -> Own[set[str]]:
 ::tpy::ordered_set<std::string> in_set();
+// def in_set_comp() -> Own[set[str]]:
 ::tpy::ordered_set<std::string> in_set_comp();
 
 void __tpy_init();

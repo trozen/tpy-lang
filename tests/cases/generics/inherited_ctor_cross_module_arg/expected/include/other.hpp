@@ -41,11 +41,12 @@ namespace tpyapp::other {
 
 
 // def __init__(self, x: int32 = 0):
+//     self.x = x
 inline Key::Key(int32_t x) : x(x) {}
 
 // def __eq__(self, other: "Key") -> bool:
+//     return self.x == other.x
 inline bool Key::__eq__(Key other) const {
-    // return self.x == other.x
     return (this->x == other.x);
 }
 void __tpy_init();

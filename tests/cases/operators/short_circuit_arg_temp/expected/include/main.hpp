@@ -12,17 +12,29 @@ struct Probe;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(p: Probe | None) -> bool:
 bool take(const Probe* p);
+// def and_skips_rhs(c: Counter) -> bool:
 bool and_skips_rhs(Counter& c);
+// def and_runs_rhs(c: Counter) -> bool:
 bool and_runs_rhs(Counter& c);
+// def or_skips_rhs(c: Counter) -> bool:
 bool or_skips_rhs(Counter& c);
+// def or_runs_rhs(c: Counter) -> bool:
 bool or_runs_rhs(Counter& c);
+// def ternary_skips_else(c: Counter) -> bool:
 bool ternary_skips_else(Counter& c);
+// def ternary_skips_then(c: Counter, cond: bool) -> bool:
 bool ternary_skips_then(Counter& c, bool cond);
+// def nested_and(c: Counter, inner: bool) -> bool:
 bool nested_and(Counter& c, bool inner);
+// def nested_mixed(c: Counter, first: bool, deep: bool) -> bool:
 bool nested_mixed(Counter& c, bool first, bool deep);
+// def nested_ternary(c: Counter, inner: bool) -> bool:
 bool nested_ternary(Counter& c, bool inner);
+// def unconditional(c: Counter) -> bool:
 bool unconditional(Counter& c);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -58,15 +70,16 @@ inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Counter::Counter() : n(0) {}
 
 // def __init__(self, c: Counter, tag: int32) -> None:
+//     # Counted mutation through a shared reference: proves whether this
+//     # operand was evaluated at all.
+//     c.n += 1
+//     self.tag = tag
 inline Probe::Probe(Counter& c, int32_t tag) {
-    // # Counted mutation through a shared reference: proves whether this
-    // # operand was evaluated at all.
-    // c.n += 1
     c.n = ::tpy::add_check<int32_t>(c.n, 1);
-    // self.tag = tag
     this->tag = tag;
 }
 void __tpy_init();

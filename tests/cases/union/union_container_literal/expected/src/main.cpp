@@ -5,240 +5,258 @@ namespace tpyapp::main {
 
 
 // def process_dict(d: dict[str, int32 | str]) -> None:
+//     v = d["a"]
+//     if isinstance(v, str):
+//         print("str:", v)
 void process_dict(const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>& d) {
-    // v = d["a"]
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(d, "a");
-    // if isinstance(v, str):
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
-        // print("str:", v)
         std::cout << "str:" << " " << ::tpy::__str__(__v) << "\n";
     }
 }
 
 // def process_list(items: list[int32 | str]) -> None:
+//     for item in items:
+//         if isinstance(item, str):
+//             print("str:", item)
 void process_list(const std::vector<::tpy::Union<int32_t, std::string>>& items) {
-    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& item = *__beg_0;
-        // if isinstance(item, str):
         if (std::holds_alternative<std::string>(item)) {
             auto& __item = std::get<std::string>(item);
-            // print("str:", item)
             std::cout << "str:" << " " << ::tpy::__str__(__item) << "\n";
         }
     }
 }
 
 // def consume_dict(d: Own[dict[str, int32 | str]]) -> None:
+//     v = d["a"]
+//     if isinstance(v, str):
+//         print("own str:", v)
 void consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>&& d) {
-    // v = d["a"]
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(d, "a");
-    // if isinstance(v, str):
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
-        // print("own str:", v)
         std::cout << "own str:" << " " << ::tpy::__str__(__v) << "\n";
     }
 }
 
 // def consume_list(items: Own[list[int32 | str]]) -> None:
+//     v = items[0]
+//     if isinstance(v, str):
+//         print("own list:", v)
 void consume_list(std::vector<::tpy::Union<int32_t, std::string>>&& items) {
-    // v = items[0]
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(items, 0);
-    // if isinstance(v, str):
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
-        // print("own list:", v)
         std::cout << "own list:" << " " << ::tpy::__str__(__v) << "\n";
     }
 }
 
 // def make_dict() -> Own[dict[str, int32 | str]]:
+//     return {"a": 1, "b": "hello"}
 ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> make_dict() {
-    // return {"a": 1, "b": "hello"}
     return ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "hello"}});
 }
 
 // def make_list() -> Own[list[int32 | str]]:
+//     return [1, "hello", 2]
 std::vector<::tpy::Union<int32_t, std::string>> make_list() {
-    // return [1, "hello", 2]
     return {1, "hello", 2};
 }
 
 // def main() -> None:
+//     # Dict with union values (builtin types)
+//     d: dict[str, int | str] = {"a": 1, "b": "hello"}
+//     v = d["a"]  # tpyc: type(int | str)
+//     if isinstance(v, int):
+//         print(v + 1)
+//
+//     # Dict with optional values
+//     d2: dict[str, int | None] = {"x": 42, "y": None}
+//
+//     # List with union elements (builtin types)
+//     lst: list[int | str] = [1, "hello", 2, "world"]
+//
+//     # Dict with union values (user types)
+//     pets: dict[str, Dog | Cat] = {"rex": Dog("Rex"), "whiskers": Cat("Whiskers")}
+//     pet = pets["rex"]
+//     if isinstance(pet, Dog):
+//         print(pet.name)
+//
+//     # List with union elements (user types)
+//     animals: list[Dog | Cat] = [Dog("Buddy"), Cat("Mimi")]
+//     for a in animals:
+//         if isinstance(a, Dog):
+//             print("dog:", a.name)
+//         elif isinstance(a, Cat):
+//             print("cat:", a.name)
+//
+//     # Pass union dict as argument (by reference)
+//     d3: dict[str, int32 | str] = {"a": 1, "b": "world"}
+//     process_dict(d3)
+//
+//     # Pass union dict literal as argument
+//     process_dict({"a": "direct"})
+//
+//     # Pass union list as argument (variable)
+//     items: list[int32 | str] = ["hello", 1, "world"]
+//     process_list(items)
+//
+//     # Pass union list literal as argument
+//     process_list(["direct", 99])
+//
+//     # Pass union dict as Own argument
+//     consume_dict({"a": "owned", "b": 1})
+//
+//     # Pass union list as Own argument
+//     consume_list(["own-hello", 1])
+//
+//     # Return union dict from function
+//     d4 = make_dict()
+//     v2 = d4["b"]
+//     if isinstance(v2, str):
+//         print(v2)
+//
+//     # Return union list from function
+//     items2 = make_list()
+//     for item in items2:
+//         if isinstance(item, str):
+//             print(item)
+//
+//     # Container literal inside union value (brace-init needs explicit type)
+//     d5: dict[str, list[int] | str] = {"nums": [1, 2, 3], "label": "test"}
+//     v3 = d5["label"]
+//     if isinstance(v3, str):
+//         print(v3)
+//
+//     # List of lists|str
+//     mixed: list[list[int32] | str] = [[10, 20], "hi"]
+//     v4 = mixed[1]
+//     if isinstance(v4, str):
+//         print(v4)
+//
+//     # Constructor from list of tuples with union values
+//     d7 = dict[str, int32 | str]([("x", "hello"), ("y", 1)])
+//     v5 = d7["x"]
+//     if isinstance(v5, str):
+//         print(v5)
+//
+//     # Constructor from dict literal with union values
+//     d8 = dict[str, int32 | str]({"p": "hi", "q": 99})
+//     v6 = d8["p"]
+//     if isinstance(v6, str):
+//         print(v6)
+//
+//     # Constructor from list of tuples with optional values
+//     d9 = dict[str, int32 | None]([("a", 42), ("b", None)])
+//     print(d9)
+//
+//     # Printing containers with union elements
+//     print(d)
+//     print(lst)
+//     d6: dict[str, int32 | None] = {"x": 42, "y": None}
+//     print(d6)
 void main() {
-    // # Dict with union values (builtin types)
-    // d: dict[str, int | str] = {"a": 1, "b": "hello"}
     ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::BigInt, std::string>> d = ::tpy::ordered_map<std::string, ::tpy::Union<::tpy::BigInt, std::string>>({{"a", 1}, {"b", "hello"}});
-    // v = d["a"]  # tpyc: type(int | str)
     ::tpy::Union<::tpy::BigInt, std::string> v = ::tpy::__getitem__(d, "a");
-    // if isinstance(v, int):
     if (std::holds_alternative<::tpy::BigInt>(v)) {
         auto& __v = std::get<::tpy::BigInt>(v);
-        // print(v + 1)
         std::cout << ((__v) + (::tpy::BigInt(1))) << "\n";
     }
-    // # Dict with optional values
-    // d2: dict[str, int | None] = {"x": 42, "y": None}
     ::tpy::ordered_map<std::string, std::optional<::tpy::BigInt>> d2 = ::tpy::ordered_map<std::string, std::optional<::tpy::BigInt>>({{"x", 42}, {"y", std::nullopt}});
-    // # List with union elements (builtin types)
-    // lst: list[int | str] = [1, "hello", 2, "world"]
     std::vector<::tpy::Union<::tpy::BigInt, std::string>> lst = {1, "hello", 2, "world"};
-    // # Dict with union values (user types)
-    // pets: dict[str, Dog | Cat] = {"rex": Dog("Rex"), "whiskers": Cat("Whiskers")}
     ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>> pets = ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>>({{"rex", Dog("Rex")}, {"whiskers", Cat("Whiskers")}});
-    // pet = pets["rex"]
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(::tpy::__getitem__(pets, "rex"));
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
-    // # List with union elements (user types)
-    // animals: list[Dog | Cat] = [Dog("Buddy"), Cat("Mimi")]
     std::vector<::tpy::Union<Cat, Dog>> animals = {Dog("Buddy"), Cat("Mimi")};
-    // for a in animals:
     auto& __obj_0 = animals;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& a = *__beg_0;
-        // if isinstance(a, Dog):
         if (std::holds_alternative<Dog>(a)) {
             auto& __a = std::get<Dog>(a);
-            // print("dog:", a.name)
             std::cout << "dog:" << " " << __a.name << "\n";
         } else {
-            // elif isinstance(a, Cat):
             if (true) {
                 auto& __a = std::get<Cat>(a);
-                // print("cat:", a.name)
                 std::cout << "cat:" << " " << __a.name << "\n";
             }
         }
     }
-    // # Pass union dict as argument (by reference)
-    // d3: dict[str, int32 | str] = {"a": 1, "b": "world"}
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d3 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "world"}});
-    // process_dict(d3)
     process_dict(d3);
-    // # Pass union dict literal as argument
-    // process_dict({"a": "direct"})
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "direct"}});
     process_dict(__tmp_1);
-    // # Pass union list as argument (variable)
-    // items: list[int32 | str] = ["hello", 1, "world"]
     std::vector<::tpy::Union<int32_t, std::string>> items = {"hello", 1, "world"};
-    // process_list(items)
     process_list(items);
-    // # Pass union list literal as argument
-    // process_list(["direct", 99])
     std::vector<::tpy::Union<int32_t, std::string>> __tmp_2 = {"direct", 99};
     process_list(__tmp_2);
-    // # Pass union dict as Own argument
-    // consume_dict({"a": "owned", "b": 1})
     consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "owned"}, {"b", 1}}));
-    // # Pass union list as Own argument
-    // consume_list(["own-hello", 1])
     consume_list({"own-hello", 1});
-    // # Return union dict from function
-    // d4 = make_dict()
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d4 = make_dict();
-    // v2 = d4["b"]
     ::tpy::Union<int32_t, std::string> v2 = ::tpy::__getitem__(d4, "b");
-    // if isinstance(v2, str):
     if (std::holds_alternative<std::string>(v2)) {
         auto& __v2 = std::get<std::string>(v2);
-        // print(v2)
         std::cout << ::tpy::__str__(__v2) << "\n";
     }
-    // # Return union list from function
-    // items2 = make_list()
     std::vector<::tpy::Union<int32_t, std::string>> items2 = make_list();
-    // for item in items2:
     auto& __obj_1 = items2;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& item = *__beg_1;
-        // if isinstance(item, str):
         if (std::holds_alternative<std::string>(item)) {
             auto& __item = std::get<std::string>(item);
-            // print(item)
             std::cout << ::tpy::__str__(__item) << "\n";
         }
     }
-    // # Container literal inside union value (brace-init needs explicit type)
-    // d5: dict[str, list[int] | str] = {"nums": [1, 2, 3], "label": "test"}
     ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>> d5 = ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2, 3}}, {"label", "test"}});
-    // v3 = d5["label"]
     ::tpy::Union<std::vector<::tpy::BigInt>*, std::string*> v3 = ::tpy::to_ptr_variant(::tpy::__getitem__(d5, "label"));
-    // if isinstance(v3, str):
     if (std::holds_alternative<std::string*>(v3)) {
         auto& __v3 = *std::get<std::string*>(v3);
-        // print(v3)
         std::cout << ::tpy::__str__(__v3) << "\n";
     }
-    // # List of lists|str
-    // mixed: list[list[int32] | str] = [[10, 20], "hi"]
     std::vector<::tpy::Union<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, "hi"};
-    // v4 = mixed[1]
     ::tpy::Union<std::vector<int32_t>*, std::string*> v4 = ::tpy::to_ptr_variant(::tpy::__getitem__(mixed, 1));
-    // if isinstance(v4, str):
     if (std::holds_alternative<std::string*>(v4)) {
         auto& __v4 = *std::get<std::string*>(v4);
-        // print(v4)
         std::cout << ::tpy::__str__(__v4) << "\n";
     }
-    // # Constructor from list of tuples with union values
-    // d7 = dict[str, int32 | str]([("x", "hello"), ("y", 1)])
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d7 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"x", "hello"}, std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"y", 1}});
-    // v5 = d7["x"]
     ::tpy::Union<int32_t, std::string> v5 = ::tpy::__getitem__(d7, "x");
-    // if isinstance(v5, str):
     if (std::holds_alternative<std::string>(v5)) {
         auto& __v5 = std::get<std::string>(v5);
-        // print(v5)
         std::cout << ::tpy::__str__(__v5) << "\n";
     }
-    // # Constructor from dict literal with union values
-    // d8 = dict[str, int32 | str]({"p": "hi", "q": 99})
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d8 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"p", "hi"}, {"q", 99}}));
-    // v6 = d8["p"]
     ::tpy::Union<int32_t, std::string> v6 = ::tpy::__getitem__(d8, "p");
-    // if isinstance(v6, str):
     if (std::holds_alternative<std::string>(v6)) {
         auto& __v6 = std::get<std::string>(v6);
-        // print(v6)
         std::cout << ::tpy::__str__(__v6) << "\n";
     }
-    // # Constructor from list of tuples with optional values
-    // d9 = dict[str, int32 | None]([("a", 42), ("b", None)])
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d9 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({std::tuple<std::string, std::optional<int32_t>>{"a", 42}, std::tuple<std::string, std::optional<int32_t>>{"b", std::nullopt}});
-    // print(d9)
     std::cout << ::tpy::DictPrinter(d9) << "\n";
-    // # Printing containers with union elements
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(lst)
     std::cout << ::tpy::ListPrinter(lst) << "\n";
-    // d6: dict[str, int32 | None] = {"x": 42, "y": None}
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d6 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"x", 42}, {"y", std::nullopt}});
-    // print(d6)
     std::cout << ::tpy::DictPrinter(d6) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

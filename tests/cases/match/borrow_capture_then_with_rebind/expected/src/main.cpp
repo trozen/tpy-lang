@@ -5,27 +5,29 @@ namespace tpyapp::main {
 
 
 // def main():
+//     b = Box(1)
+//     match b:
+//         case q:
+//             q.v = 99          # q aliases b -- mutation visible
+//     print(b.v)                # 99
+//
+//     with Box(5) as q:         # same name, owned with-as binding (fresh object)
+//         q.v = 7               # mutates the with object, not b
+//         print(q.v)            # 7
+//     print(b.v)                # 99 -- b untouched by the with block
 void main() {
-    // b = Box(1)
     Box b = Box(::tpy::BigInt(1));
-    // match b:
     Box* q;
     auto& __match_subject_1 = b;
-    // case q:
     {
         q = &(__match_subject_1);
-        // q.v = 99          # q aliases b -- mutation visible
         q->v = ::tpy::BigInt(99);
     }
-    // print(b.v)                # 99
     std::cout << b.v << "\n";
-    // with Box(5) as q:         # same name, owned with-as binding (fresh object)
     auto __ctx_1 = Box(::tpy::BigInt(5));
     q = &(__ctx_1.__enter__());
     try {
-        // q.v = 7               # mutates the with object, not b
         q->v = ::tpy::BigInt(7);
-        // print(q.v)            # 7
         std::cout << q->v << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -37,16 +39,15 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // print(b.v)                # 99 -- b untouched by the with block
     std::cout << b.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,38 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Name reference path (`from native_stub import X`)
+//     print(score)
+//     print(lives)
+//     print(frame_count)
+//     print(tick)
+//     # module.var access path (`import native_stub; native_stub.X`)
+//     print(native_stub.score)
+//     print(native_stub.lives)
+//     print(native_stub.frame_count)
+//     print(native_stub.tick)
 void main() {
-    // # Name reference path (`from native_stub import X`)
-    // print(score)
     std::cout << ::engine::score << "\n";
-    // print(lives)
     std::cout << ::lives << "\n";
-    // print(frame_count)
     std::cout << ::DG_FrameCount << "\n";
-    // print(tick)
     std::cout << ::tick << "\n";
-    // # module.var access path (`import native_stub; native_stub.X`)
-    // print(native_stub.score)
     std::cout << ::engine::score << "\n";
-    // print(native_stub.lives)
     std::cout << ::lives << "\n";
-    // print(native_stub.frame_count)
     std::cout << ::DG_FrameCount << "\n";
-    // print(native_stub.tick)
     std::cout << ::tick << "\n";
 }
 
+// # Cross-module native_global import: the use site must emit the rename/binding
+// # stored on the source module's declaration, not `<consumer_ns>::<python_name>`.
+// # Covers both `from m import X` (Name reference path in codegen) and
+// # `import m; m.X` (module.var attribute access path).
+// import native_stub
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module native_global import: the use site must emit the rename/binding
-    // # stored on the source module's declaration, not `<consumer_ns>::<python_name>`.
-    // # Covers both `from m import X` (Name reference path in codegen) and
-    // # `import m; m.X` (module.var attribute access path).
-    // import native_stub
-    // main()
     main();
 }
 

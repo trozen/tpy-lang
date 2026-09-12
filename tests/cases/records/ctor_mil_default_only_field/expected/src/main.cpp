@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     g = Grid()
+//     g.cells.append(9)
+//     print(g.n, len(g.cells), g.cells[4])
 void main() {
-    // g = Grid()
     Grid g = Grid();
-    // g.cells.append(9)
     g.cells.push_back(9);
-    // print(g.n, len(g.cells), g.cells[4])
     std::cout << g.n << " " << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Sub(1, 2)
+//     print(s.a)
+//     print(s.b)
 void main() {
-    // s = Sub(1, 2)
     Sub s = Sub(1, 2);
-    // print(s.a)
     std::cout << s.a << "\n";
-    // print(s.b)
     std::cout << s.b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

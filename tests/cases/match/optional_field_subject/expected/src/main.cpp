@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     match h.opt:
+//         case None:
+//             print("none")
+//         case Box() as bb:
+//             bb.val = 99
+//     if h.opt is not None:
+//         print(h.opt.val)
+//     h.opt = None
+//     match h.opt:
+//         case None:
+//             print("none2")
+//         case Box():
+//             print("box2")
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // match h.opt:
     auto __match_subject_1 = ::tpy::optional_to_ptr(h.opt);
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // print("none")
         std::cout << "none" << "\n";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case Box() as bb:
         {
             auto& bb = __match_inner_1;
-            // bb.val = 99
             bb.val = 99;
         }
     }
-    // if h.opt is not None:
     if ((h.opt.has_value())) {
-        // print(h.opt.val)
         std::cout << (*h.opt).val << "\n";
     }
-    // h.opt = None
     h.opt = std::nullopt;
-    // match h.opt:
     auto __match_subject_2 = ::tpy::optional_to_ptr(h.opt);
-    // case None:
     if (__match_subject_2 == nullptr) {
-        // print("none2")
         std::cout << "none2" << "\n";
     } else {
         auto& __match_inner_2 = (*__match_subject_2);
-        // case Box():
         {
-            // print("box2")
             std::cout << "box2" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

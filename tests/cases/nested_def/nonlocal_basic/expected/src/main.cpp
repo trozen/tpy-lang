@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     total: int32 = 0
+//     def accumulate(x: int32) -> None:
+//         nonlocal total
+//         total += x
+//     accumulate(10)
+//     accumulate(20)
+//     accumulate(30)
+//     print(total)
 void main() {
-    // total: int32 = 0
     int32_t total = 0;
-    // def accumulate(x: int32) -> None:
     auto accumulate = [&total](int32_t x) {
-        // nonlocal total
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     };
-    // accumulate(10)
     accumulate(10);
-    // accumulate(20)
     accumulate(20);
-    // accumulate(30)
     accumulate(30);
-    // print(total)
     std::cout << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def make_pair() -> tuple[Own[Counter], Own[Counter]]:
+//     return (Counter(1), Counter(2))
 std::tuple<Counter, Counter> make_pair() {
-    // return (Counter(1), Counter(2))
     return std::tuple<Counter, Counter>{Counter(1), Counter(2)};
 }
 
 // def consume(c: Own[Counter]) -> None:
+//     c.n += 10
+//     print(c.n)
 void consume(Counter&& c) {
-    // c.n += 10
     c.n = ::tpy::add_check<int32_t>(c.n, 10);
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def main() -> None:
+//     t = make_pair()
+//     a, b = t  # tpyc: ok
+//     consume(a)
+//     consume(b)
 void main() {
-    // t = make_pair()
     std::tuple<Counter, Counter> t = make_pair();
-    // a, b = t  # tpyc: ok
     auto&& __tup_1 = std::move(t);
     Counter a = std::move(std::get<0>(__tup_1));
     Counter b = std::move(std::get<1>(__tup_1));
-    // consume(a)
     consume(std::move(a));
-    // consume(b)
     consume(std::move(b));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

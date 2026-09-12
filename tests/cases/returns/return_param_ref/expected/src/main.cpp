@@ -5,110 +5,115 @@ namespace tpyapp::main {
 
 
 // def find_max(points: list[Point]) -> Point:
+//     best = points[0]
+//     for p in points:
+//         if p.x > best.x:
+//             best = p
+//     return best  # tpyc: ok (best derives from param)
 Point& find_max(std::vector<Point>& points) {
-    // best = points[0]
     Point* best = &(::tpy::__getitem__(points, 0));
-    // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // if p.x > best.x:
         if ((p.x > best->x)) {
-            // best = p
             best = &(p);
         }
     }
-    // return best  # tpyc: ok (best derives from param)
     return (*best);
 }
 
 // def get_first(points: list[Point]) -> Point:
+//     return points[0]  # tpyc: ok (param subscript)
 Point& get_first(std::vector<Point>& points) {
-    // return points[0]  # tpyc: ok (param subscript)
     return ::tpy::__getitem__(points, 0);
 }
 
 // def get_x(p: Point) -> Point:
+//     return p  # tpyc: ok (param directly)
 Point& get_x(Point& p) {
-    // return p  # tpyc: ok (param directly)
     return p;
 }
 
 // def get_field_ref(p: Point) -> Point:
+//     r = p
+//     return r  # tpyc: ok (r derives from param)
 Point& get_field_ref(Point& p) {
-    // r = p
     Point& r = p;
-    // return r  # tpyc: ok (r derives from param)
     return r;
 }
 
 // def chained(points: list[Point]) -> Point:
+//     a = points[0]
+//     b = a
+//     return b  # tpyc: ok (chained provenance)
 Point& chained(std::vector<Point>& points) {
-    // a = points[0]
     Point& a = ::tpy::__getitem__(points, 0);
-    // b = a
     Point& b = a;
-    // return b  # tpyc: ok (chained provenance)
     return b;
 }
 
 // def both_branches(points: list[Point], flag: bool) -> Point:
+//     if flag:
+//         result = points[1]
+//     else:
+//         result = points[2]
+//     return result  # tpyc: ok (both branches from param)
 Point& both_branches(std::vector<Point>& points, bool flag) {
-    // if flag:
     Point* result;
     if (flag) {
-        // result = points[1]
         result = &(::tpy::__getitem__(points, 1));
-    // else:
     } else {
-        // result = points[2]
         result = &(::tpy::__getitem__(points, 2));
     }
-    // return result  # tpyc: ok (both branches from param)
     return (*result);
 }
 
 // def main():
+//     pts: list[Point] = [Point(), Point(), Point()]
+//     pts[0].x = 10
+//     pts[1].x = 30
+//     pts[2].x = 20
+//
+//     best: Point = find_max(pts)
+//     print(best.x)
+//
+//     # Mutation through returned reference is visible
+//     best.x = 99
+//     print(pts[1].x)
+//
+//     first: Point = get_first(pts)
+//     print(first.x)
+//
+//     c: Point = chained(pts)
+//     print(c.x)
+//
+//     b: Point = both_branches(pts, True)
+//     print(b.x)
 void main() {
-    // pts: list[Point] = [Point(), Point(), Point()]
     std::vector<Point> pts = {Point(), Point(), Point()};
-    // pts[0].x = 10
     ::tpy::__getitem__(pts, 0).x = 10;
-    // pts[1].x = 30
     ::tpy::__getitem__(pts, 1).x = 30;
-    // pts[2].x = 20
     ::tpy::__getitem__(pts, 2).x = 20;
-    // best: Point = find_max(pts)
     Point& best = find_max(pts);
-    // print(best.x)
     std::cout << best.x << "\n";
-    // # Mutation through returned reference is visible
-    // best.x = 99
     best.x = 99;
-    // print(pts[1].x)
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
-    // first: Point = get_first(pts)
     Point& first = get_first(pts);
-    // print(first.x)
     std::cout << first.x << "\n";
-    // c: Point = chained(pts)
     Point& c = chained(pts);
-    // print(c.x)
     std::cout << c.x << "\n";
-    // b: Point = both_branches(pts, True)
     Point& b = both_branches(pts, true);
-    // print(b.x)
     std::cout << b.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

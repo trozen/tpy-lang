@@ -18,8 +18,8 @@ struct Box {
     static constexpr int32_t CAPACITY = 16;
 
     // def __init__(self) -> None:
+    //     pass
     Box() {
-        // pass
     }
     static constexpr std::string_view __tpy_class_name__ = "box.Box";
 };

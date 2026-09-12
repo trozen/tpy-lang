@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper(42)
+//     r1 = w.take()
+//     w = Wrapper(99)
+//     r2 = w.take()
+//     print(r1)
+//     print(r2)
 void main() {
     std::optional<Wrapper> __slot_2;
-    // w = Wrapper(42)
     Wrapper __slot_1 = Wrapper(::tpy::BigInt(42));
     Wrapper* w = &__slot_1;
-    // r1 = w.take()
     ::tpy::BigInt r1 = std::move(*w).take();
-    // w = Wrapper(99)
     w = &*(__slot_2 = Wrapper(::tpy::BigInt(99)));
-    // r2 = w.take()
     ::tpy::BigInt r2 = std::move(*w).take();
-    // print(r1)
     std::cout << r1 << "\n";
-    // print(r2)
     std::cout << r2 << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

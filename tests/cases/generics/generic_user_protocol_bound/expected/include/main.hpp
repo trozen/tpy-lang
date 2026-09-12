@@ -19,12 +19,16 @@ struct StrBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def extract[C: Container[int32]](c: C) -> int32:
 template<Container<int32_t> C>
 int32_t extract(::tpy::param_val_or_ref_t<C> c);
+// def update[C: Container[int32]](c: C, v: int32) -> None:
 template<Container<int32_t> C>
 void update(::tpy::param_val_or_ref_t<C> c, int32_t v);
+// def extract_str[C: Container[str]](c: C) -> str:
 template<Container<std::string> C>
 std::string extract_str(::tpy::param_val_or_ref_t<C> c);
+// def main() -> None:
 void main();
 
 // class IntBox:
@@ -73,50 +77,52 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.value = v
 inline IntBox::IntBox(int32_t v) : value(v) {}
 
 // def get(self) -> int32:
+//     return self.value
 inline int32_t IntBox::get() const {
-    // return self.value
     return this->value;
 }
 
 // def set(self, value: int32) -> None:
+//     self.value = value
 inline void IntBox::set(int32_t value) {
-    // self.value = value
     this->value = value;
 }
 
 // def __init__(self, v: str):
+//     self.value = v
 inline StrBox::StrBox(std::string_view v) : value(v) {}
 
 // def get(self) -> str:
+//     return self.value
 inline std::string StrBox::get() const {
-    // return self.value
     return this->value;
 }
 
 // def set(self, value: str) -> None:
+//     self.value = value
 inline void StrBox::set(std::string_view value) {
-    // self.value = value
     this->value = value;
 }
 // def extract[C: Container[int32]](c: C) -> int32:
+//     return c.get()
 template<Container<int32_t> C>
 int32_t extract(::tpy::param_val_or_ref_t<C> c) {
-    // return c.get()
     return c.get();
 }
 // def update[C: Container[int32]](c: C, v: int32) -> None:
+//     c.set(v)
 template<Container<int32_t> C>
 void update(::tpy::param_val_or_ref_t<C> c, int32_t v) {
-    // c.set(v)
     c.set(v);
 }
 // def extract_str[C: Container[str]](c: C) -> str:
+//     return c.get()
 template<Container<std::string> C>
 std::string extract_str(::tpy::param_val_or_ref_t<C> c) {
-    // return c.get()
     return c.get();
 }
 

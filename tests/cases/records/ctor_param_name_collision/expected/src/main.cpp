@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // def g(v: A | B) -> Iterator[bool]:
+//     yield isinstance(v, A)
 std::expected<bool, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield isinstance(v, A)
         __state = S_RESUME_0;
         return std::holds_alternative<const A*>(v);
     }
@@ -28,8 +28,14 @@ __gen_g g(::tpy::Union<const A*, const B*> v) {
 }
 
 // def main() -> None:
+//     for b in g(A(1)):
+//         print(b)
+//     h = H(B(7))
+//     print(h.n)
+//     u = h.u
+//     if isinstance(u, B):
+//         print(u.y)
 void main() {
-    // for b in g(A(1)):
     {
         A __tmp_1 = A(1);
         auto __src_0 = g(::tpy::Union<const A*, const B*>{&__tmp_1});
@@ -38,30 +44,24 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool b = ::tpy::unwrap_ref(*__r_1);
-        // print(b)
         std::cout << ::tpy::print_bool(b) << "\n";
         }
     }
-    // h = H(B(7))
     H h = H(B(7));
-    // print(h.n)
     std::cout << h.n << "\n";
-    // u = h.u
     ::tpy::Union<A*, B*> u = ::tpy::to_ptr_variant(h.u);
-    // if isinstance(u, B):
     if (std::holds_alternative<B*>(u)) {
         auto& __u = *std::get<B*>(u);
-        // print(u.y)
         std::cout << __u.y << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

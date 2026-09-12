@@ -6,8 +6,13 @@
 namespace tpystd::tpy::version {
 
 inline constexpr std::string_view __name__ = "tpy.version";
+// __version__: Final[str] = _version()
 inline constexpr std::string_view __version__ = "0.6.0.dev0";
+// # int32 components rather than `int` (BigInt): version numbers are small
+// # and BigInt would waste heap allocations on every access.
+// version_info: Final[tuple[int32, int32, int32, str, int32]] = _version_info()
 extern const std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t> version_info;
+// is_compiled: Final[bool] = True
 inline constexpr bool is_compiled = true;
 
 void __tpy_init();

@@ -12,7 +12,9 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_mut(p: Ptr[Node]) -> None:
 void take_mut(Node* p);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -49,19 +51,20 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.value = v
 inline Node::Node(const ::tpy::BigInt& v) : value(v) {}
 
 // def __init__(self, n: Node) -> None:
+//     # Mutating use of the param. Two effects:
+//     # (1) the param const-infers to `Node&` (was `const Node&`), so the
+//     #     call site must synthesize a temp to bind the rvalue Node(1).
+//     # (2) `self.captured = n.value` AFTER the side-effecting call must
+//     #     read the post-mutation value (99) -- the MIL hoist must stop
+//     #     at `take_mut(n)`, not pull the field assign ahead of it.
+//     take_mut(n)
+//     self.captured = n.value
 inline Sink::Sink(Node& n) {
-    // # Mutating use of the param. Two effects:
-    // # (1) the param const-infers to `Node&` (was `const Node&`), so the
-    // #     call site must synthesize a temp to bind the rvalue Node(1).
-    // # (2) `self.captured = n.value` AFTER the side-effecting call must
-    // #     read the post-mutation value (99) -- the MIL hoist must stop
-    // #     at `take_mut(n)`, not pull the field assign ahead of it.
-    // take_mut(n)
     take_mut(&n);
-    // self.captured = n.value
     this->captured = n.value;
 }
 void __tpy_init();

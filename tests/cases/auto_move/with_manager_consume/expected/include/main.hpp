@@ -12,6 +12,7 @@ struct K;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Guard:
@@ -55,25 +56,27 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 
 
 // def __init__(self):
+//     self.vals = [1, 2]
 inline Guard::Guard() : vals(std::vector<int32_t>{1, 2}) {}
 
 // def __enter__(self) -> None:
+//     pass
 inline void Guard::__enter__() const {
-    // pass
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("exit sees", len(self.vals))
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("exit sees", len(self.vals))
     std::cout << "exit sees" << " " << ::tpy::__len__(this->vals) << "\n";
 }
 
 // def __init__(self):
+//     self.stored = []
 inline K::K() : stored(std::vector<Guard>{}) {}
 
 // def take(self, g: Own[Guard]):
+//     self.stored.append(g)
 inline void K::take(Guard&& g) {
-    // self.stored.append(g)
     this->stored.push_back(std::move(g));
 }
 void __tpy_init();

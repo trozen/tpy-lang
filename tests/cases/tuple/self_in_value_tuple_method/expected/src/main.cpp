@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(5)
+//     print(b.bump())
+//     # The write through the tuple element is visible on the receiver.
+//     print(b.val)
 void main() {
-    // b = Box(5)
     Box b = Box(5);
-    // print(b.bump())
     std::cout << b.bump() << "\n";
-    // # The write through the tuple element is visible on the receiver.
-    // print(b.val)
     std::cout << b.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

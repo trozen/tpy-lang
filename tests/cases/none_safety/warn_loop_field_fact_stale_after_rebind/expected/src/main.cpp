@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def stale_after_rebind(b: Box, other: Box) -> int32:
+//     local: Box = b
+//     while local.value is not None:
+//         local = other
+//         if 0 == 1:
+//             return local.value + 1  # tpyc: warning(/Potential None access/)
+//         break
+//     return 0
 int32_t stale_after_rebind(Box& b, Box& other) {
-    // local: Box = b
     Box* local = &(b);
-    // while local.value is not None:
     while ((local->value.has_value())) {
-        // local = other
         local = &(other);
-        // if 0 == 1:
         if ((0 == 1)) {
-            // return local.value + 1  # tpyc: warning(/Potential None access/)
             return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(local->value), 1));
         }
-        // break
         break;
     }
-    // return 0
     return 0;
 }
 
+// print(stale_after_rebind(Box(5), Box(3)))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(stale_after_rebind(Box(5), Box(3)))
     Box __tmp_1 = Box(5);
     Box __tmp_2 = Box(3);
     std::cout << stale_after_rebind(__tmp_1, __tmp_2) << "\n";

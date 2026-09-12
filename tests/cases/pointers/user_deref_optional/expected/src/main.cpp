@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Narrowed Optional — flow analysis proves non-None
+//     r: Ref | None = Ref(Point(10, 20))
+//     print(r.x)
+//     print(r.sum())
 void main() {
-    // # Narrowed Optional — flow analysis proves non-None
-    // r: Ref | None = Ref(Point(10, 20))
     Ref __slot_1 = Ref(Point(10, 20));
     Ref* r = &__slot_1;
-    // print(r.x)
     std::cout << r->__deref__().x << "\n";
-    // print(r.sum())
     std::cout << r->__deref__().sum() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

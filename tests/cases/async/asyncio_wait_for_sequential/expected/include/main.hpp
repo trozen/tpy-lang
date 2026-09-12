@@ -16,12 +16,16 @@ struct __coro_first;
 struct __coro_second;
 struct __coro_main_coro;
 
+// async def first() -> int:
 __coro_first first();
+// async def second() -> int:
 __coro_second second();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: first
+// async def first() -> int:
 struct __coro_first {
     int32_t __state;
     bool __cancel_pending;
@@ -44,7 +48,7 @@ struct __coro_first {
     }
 };
 
-// Async coroutine: second
+// async def second() -> int:
 struct __coro_second {
     int32_t __state;
     bool __cancel_pending;
@@ -67,7 +71,7 @@ struct __coro_second {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

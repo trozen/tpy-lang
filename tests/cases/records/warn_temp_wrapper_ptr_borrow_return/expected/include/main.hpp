@@ -14,9 +14,13 @@ struct Wrapper;
 extern Obj* G;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_field(h: Holder) -> Own[Obj]:
 Obj take_field(Holder& h);
+// def take_global() -> Own[Obj]:
 Obj take_global();
+// def take_field_copy(h: Holder) -> Own[Obj]:
 Obj take_field_copy(Holder& h);
+// def main() -> None:
 void main();
 
 // class Obj:
@@ -71,18 +75,21 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Obj::Obj(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.o = Obj(1)
 inline Holder::Holder() : o(Obj(1)) {}
 
 // def __init__(self, p: Ptr[Obj]) -> None:
+//     self.p = p
 inline Wrapper::Wrapper(Obj* p) : p(p) {}
 
 // def get(self) -> Obj:
+//     # Borrows through the pointer field, not from the Wrapper.
+//     return self.p.__deref__()
 inline const Obj& Wrapper::get() const {
-    // # Borrows through the pointer field, not from the Wrapper.
-    // return self.p.__deref__()
     return ::tpy::deref_check(this->p);
 }
 void __tpy_init();

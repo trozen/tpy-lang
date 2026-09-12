@@ -15,11 +15,14 @@ struct __coro_msg;
 struct __coro_go;
 struct __coro_main_coro;
 
+// async def msg(tag: str) -> str:
 __coro_msg msg(std::string_view tag);
+// async def go(x: int32) -> None:
 __coro_go go(int32_t x);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
 
-// Async coroutine: msg
+// async def msg(tag: str) -> str:
 struct __coro_msg {
     int32_t __state;
     bool __cancel_pending;
@@ -41,7 +44,7 @@ struct __coro_msg {
     }
 };
 
-// Async coroutine: go
+// async def go(x: int32) -> None:
 struct __coro_go {
     int32_t __state;
     bool __cancel_pending;
@@ -68,7 +71,7 @@ struct __coro_go {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

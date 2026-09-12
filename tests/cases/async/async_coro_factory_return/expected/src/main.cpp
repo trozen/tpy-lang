@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def add_one(n: int) -> int:
+//     return n + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_add_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,20 +26,20 @@ __coro_add_one add_one(::tpy::BigInt n) {
 }
 
 // def make(n: int) -> Own[Cancellable[int]]:
+//     return add_one(n)
 std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> make(const ::tpy::BigInt& n) {
-    // return add_one(n)
     return ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(add_one(n));
 }
 
 // async def spawn_via(factory: Callable[[int], Own[Cancellable[int]]], n: int) -> int:
+//     coro = factory(n)
+//     t = asyncio.create_task(coro)
+//     return await t
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_spawn_via::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // coro = factory(n)
         coro = factory(n);
-        // t = asyncio.create_task(coro)
         t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(std::move(coro)));
-        // return await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -64,25 +64,27 @@ __coro_spawn_via spawn_via(std::function<std::unique_ptr<::tpystd::coro::Cancell
 }
 
 // def main() -> None:
+//     c = make(41)
+//     print(asyncio.run(c))
+//     print(asyncio.run(spawn_via(make, 20)))
 void main() {
-    // c = make(41)
     std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> c = make(::tpy::BigInt(41));
-    // print(asyncio.run(c))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::move(c)) << "\n";
-    // print(asyncio.run(spawn_via(make, 20)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(spawn_via(make, ::tpy::BigInt(20)))) << "\n";
 }
 
+// import asyncio
+//
+// from tpy.coro import Cancellable
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Cancellable
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

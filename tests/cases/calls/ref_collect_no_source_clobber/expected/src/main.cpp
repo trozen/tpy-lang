@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def identity(n: Named) -> Named:
+//     return n
 Named& identity(Named& n) {
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     src: list[Named] = [Named("alice"), Named("bob")]
+//
+//     result = list(copy_iter(map(identity, src)))
+//     # Source must be intact
+//     print(src[0].name)
+//     print(src[1].name)
+//     # Result must have copies
+//     print(result[0].name)
+//     print(result[1].name)
 void main() {
-    // src: list[Named] = [Named("alice"), Named("bob")]
     std::vector<Named> src = {Named("alice"), Named("bob")};
-    // result = list(copy_iter(map(identity, src)))
     std::vector<Named> result = ::tpy::construct<std::vector<Named>>(::tpy::copy_iter<Named>(::tpy::builtin_map<Named, ::tpy::val_or_ref<Named>>(identity, src)));
-    // # Source must be intact
-    // print(src[0].name)
     std::cout << ::tpy::__getitem__(src, 0).name << "\n";
-    // print(src[1].name)
     std::cout << ::tpy::__getitem__(src, 1).name << "\n";
-    // # Result must have copies
-    // print(result[0].name)
     std::cout << ::tpy::__getitem__(result, 0).name << "\n";
-    // print(result[1].name)
     std::cout << ::tpy::__getitem__(result, 1).name << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

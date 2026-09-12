@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = ReadyAwaitable(int32(123))
+//     print(poll_once(a).value())
 void main() {
-    // a = ReadyAwaitable(int32(123))
     ReadyAwaitable a = ReadyAwaitable(123);
-    // print(poll_once(a).value())
     std::cout << ::tpystd::coro::poll_once<int32_t>(a).value() << "\n";
 }
 
+// from tpy.coro import Poll, Waker, Awaitable, poll_ready, poll_once
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import Poll, Waker, Awaitable, poll_ready, poll_once
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

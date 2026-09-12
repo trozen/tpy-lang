@@ -5,79 +5,79 @@ namespace tpyapp::main {
 
 
 // def bytes_or_bytearray(u: bytes | bytearray) -> int32:
+//     # bytes and bytearray: the pair that could not be told apart at all. Not
+//     # CALLED: BUGS.md#bytes-member-arg-not-lifted-into-union
+//     if isinstance(u, bytearray):  # tpyc: ok
+//         return 10 + len(u)
+//     return 20 + len(u)
 int32_t bytes_or_bytearray(::tpy::Union<const ::tpy::ByteArray*, const ::tpy::Bytes*> u) {
-    // # bytes and bytearray: the pair that could not be told apart at all. Not
-    // # CALLED: BUGS.md#bytes-member-arg-not-lifted-into-union
-    // if isinstance(u, bytearray):  # tpyc: ok
     if (std::holds_alternative<const ::tpy::ByteArray*>(u)) {
         auto& __u = *std::get<const ::tpy::ByteArray*>(u);
-        // return 10 + len(u)
         return (::tpy::add_check<int32_t>(10, ::tpy::__len__(__u)));
     }
     auto& __u = *std::get<const ::tpy::Bytes*>(u);
-    // return 20 + len(u)
     return (::tpy::add_check<int32_t>(20, ::tpy::__len__(__u)));
 }
 
 // def str_or_string_slot(u: str | String) -> int32:
+//     # the str-family pair, unspellable for the same reason. Not CALLED:
+//     # BUGS.md#bytes-member-arg-not-lifted-into-union
+//     return 7  # tpyc: ok
 int32_t str_or_string_slot(const ::tpy::Union<::tpy::String, std::string>& u) {
-    // # the str-family pair, unspellable for the same reason. Not CALLED:
-    // # BUGS.md#bytes-member-arg-not-lifted-into-union
-    // return 7  # tpyc: ok
     return 7;
 }
 
 // def list_or_bytes(u: list[uint8] | bytes) -> int32:
+//     # list[uint8] keeps the plain buffer spelling, so it is distinct too
+//     if isinstance(u, bytes):  # tpyc: ok
+//         return 50 + len(u)
+//     return 60 + len(u)
 int32_t list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*> u) {
-    // # list[uint8] keeps the plain buffer spelling, so it is distinct too
-    // if isinstance(u, bytes):  # tpyc: ok
     if (std::holds_alternative<const ::tpy::Bytes*>(u)) {
         auto& __u = *std::get<const ::tpy::Bytes*>(u);
-        // return 50 + len(u)
         return (::tpy::add_check<int32_t>(50, ::tpy::__len__(__u)));
     }
     auto& __u = *std::get<const std::vector<uint8_t>*>(u);
-    // return 60 + len(u)
     return (::tpy::add_check<int32_t>(60, ::tpy::__len__(__u)));
 }
 
 // def span_or_bytesview(u: Span[readonly[uint8]] | BytesView) -> int32:
+//     # the VIEW pair, the last to get its own C++ type (`::tpy::BytesView` over
+//     # the bare span), pinned by its signature like the str-family pair: not
+//     # CALLED (same gap as above), and its isinstance arm is the widened
+//     # member class's own gap, BUGS.md#bytesview-union-member-rejects
+//     return 8  # tpyc: ok
 int32_t span_or_bytesview(const ::tpy::Union<::tpy::BytesView, std::span<const uint8_t>>& u) {
-    // # the VIEW pair, the last to get its own C++ type (`::tpy::BytesView` over
-    // # the bare span), pinned by its signature like the str-family pair: not
-    // # CALLED (same gap as above), and its isinstance arm is the widened
-    // # member class's own gap, BUGS.md#bytesview-union-member-rejects
-    // return 8  # tpyc: ok
     return 8;
 }
 
 // def own_union_return(n: int32) -> Own[bytes | bytearray]:
+//     # the Own[union] STORAGE slot, the second consumer of the member class.
+//     # Not CALLED: reading a member back out is the same gap,
+//     # BUGS.md#bytes-member-arg-not-lifted-into-union
+//     b = bytearray(n)
+//     return b  # tpyc: ok
 ::tpy::Union<::tpy::ByteArray, ::tpy::Bytes> own_union_return(int32_t n) {
-    // # the Own[union] STORAGE slot, the second consumer of the member class.
-    // # Not CALLED: reading a member back out is the same gap,
-    // # BUGS.md#bytes-member-arg-not-lifted-into-union
-    // b = bytearray(n)
     ::tpy::ByteArray b = ::tpy::bytearray_from_size(n);
-    // return b  # tpyc: ok
     return b;
 }
 
 // def main() -> None:
+//     xs: list[uint8] = [uint8(1), uint8(2)]
+//     # the subject that runs: each member reaches its own arm
+//     print("union", list_or_bytes(xs), list_or_bytes(b"ijk"))
 void main() {
-    // xs: list[uint8] = [uint8(1), uint8(2)]
     std::vector<uint8_t> xs = {1, 2};
-    // # the subject that runs: each member reaches its own arm
-    // print("union", list_or_bytes(xs), list_or_bytes(b"ijk"))
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("ijk", 3);
     std::cout << "union" << " " << list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*>{&(xs)}) << " " << list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*>{&__tmp_1}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

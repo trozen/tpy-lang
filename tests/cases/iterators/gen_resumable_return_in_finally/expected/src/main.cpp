@@ -5,6 +5,10 @@ namespace tpyapp::main {
 
 
 // def gen_return_normal() -> Iterator[int]:
+//     try:
+//         yield 1
+//     finally:
+//         return
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__next__() {
     try {
     while (true) switch (__state) {
@@ -39,7 +43,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__ne
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -53,7 +56,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__ne
 }
 
 void __gen_gen_return_normal::__finally_0() {
-    // return
     this->__finally_stop = true;
     return;
 }
@@ -64,6 +66,11 @@ __gen_gen_return_normal gen_return_normal() {
 }
 
 // def gen_return_suppresses_exc() -> Iterator[int]:
+//     try:
+//         yield 1
+//         raise ValueError("suppressed")
+//     finally:
+//         return
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_suppresses_exc::__next__() {
     try {
     while (true) switch (__state) {
@@ -73,7 +80,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_suppresses_e
     }
     case S_RESUME_0: {
         try {
-            // raise ValueError("suppressed")
             throw ::tpy::ValueError("suppressed");
         } catch (...) {
             this->__finally_0();
@@ -85,7 +91,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_suppresses_e
         }
     }
     case S_JOIN_0: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -99,7 +104,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_suppresses_e
 }
 
 void __gen_gen_return_suppresses_exc::__finally_0() {
-    // return
     this->__finally_stop = true;
     return;
 }
@@ -110,6 +114,12 @@ __gen_gen_return_suppresses_exc gen_return_suppresses_exc() {
 }
 
 // def gen_return_in_loop() -> Iterator[int]:
+//     for i in range(5):
+//         try:
+//             yield i
+//         finally:
+//             if i == 2:
+//                 return
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__next__() {
     try {
     while (true) switch (__state) {
@@ -155,7 +165,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__n
         continue;
     }
     case S_JOIN_2: {
-        // yield i
         __state = S_RESUME_0;
         return ::tpy::BigInt(i);
     }
@@ -169,9 +178,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__n
 }
 
 void __gen_gen_return_in_loop::__finally_0() {
-    // if i == 2:
     if ((i == 2)) {
-        // return
         this->__finally_stop = true;
         return;
     }
@@ -183,21 +190,21 @@ __gen_gen_return_in_loop gen_return_in_loop() {
 }
 
 // def main():
+//     print(list(gen_return_normal()))
+//     print(list(gen_return_suppresses_exc()))
+//     print(list(gen_return_in_loop()))
 void main() {
-    // print(list(gen_return_normal()))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_return_normal())) << "\n";
-    // print(list(gen_return_suppresses_exc()))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_return_suppresses_exc())) << "\n";
-    // print(list(gen_return_in_loop()))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(gen_return_in_loop())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

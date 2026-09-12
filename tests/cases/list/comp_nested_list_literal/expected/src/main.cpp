@@ -8,30 +8,30 @@ namespace tpyapp::main {
 // # list-literal's pending element type must be finalized so the outer
 // # container's C++ element type resolves (was an internal-error crash).
 // def main() -> None:
+//     rows = [[i, i + 1] for i in range(3)]  # tpyc: ok
+//     print(rows)
+//     # Mutate through the nested subscript to force a real mutable container
+//     # (reference-type distinction): a silent copy would not be observed here.
+//     rows[0][0] = 99
+//     print(rows)
+//     print(rows[1][1])
 void main() {
-    // rows = [[i, i + 1] for i in range(3)]  # tpyc: ok
     std::array<std::array<int32_t, 2>, 3> rows = ::tpy::array_from_index<std::array<int32_t, 2>, 3>([&](std::size_t __i_0) -> std::array<int32_t, 2> {
         int32_t i = int32_t(__i_0);
         return {i, (::tpy::add_check<int32_t>(i, 1))};
     });
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
-    // # Mutate through the nested subscript to force a real mutable container
-    // # (reference-type distinction): a silent copy would not be observed here.
-    // rows[0][0] = 99
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 99);
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
-    // print(rows[1][1])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(rows, 1), 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,20 +3,19 @@
 
 namespace tpyapp::main {
 
-// f: Finder = Finder()
 Finder* f{};
 
+// f: Finder = Finder()
+// f.find_last(4)
+// print(f.result.x, f.result.y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // f: Finder = Finder()
     static Finder __global_slot_1 = Finder();
     f = &__global_slot_1;
-    // f.find_last(4)
     f->find_last(4);
-    // print(f.result.x, f.result.y)
     std::cout << f->result.x << " " << f->result.y << "\n";
 }
 

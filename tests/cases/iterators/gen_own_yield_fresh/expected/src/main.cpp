@@ -5,18 +5,21 @@ namespace tpyapp::main {
 
 
 // def mk(v: int32) -> Own[Node]:
+//     return Node(v)
 Node mk(int32_t v) {
-    // return Node(v)
     return Node(::tpy::BigInt(v));
 }
 
 // def mk_row(v: int32) -> Own[list[int32]]:
+//     return [v]
 std::vector<int32_t> mk_row(int32_t v) {
-    // return [v]
     return {v};
 }
 
 // def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
+//     for p in src:
+//         yield copy(p)  # tpyc: ok
+//         yield mk(p.val * 10)  # tpyc: ok
 std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -26,7 +29,6 @@ std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield mk(p.val * 10)  # tpyc: ok
         __state = S_RESUME_1;
         return mk((((p->val) * (::tpy::BigInt(10)))).to_fixed_check<int32_t>());
     }
@@ -40,7 +42,6 @@ std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         p = &(*((*__for_it_0))++);
-        // yield copy(p)  # tpyc: ok
         __state = S_RESUME_0;
         return Node((*p));
     }
@@ -56,6 +57,9 @@ __gen_fresh_records fresh_records(std::vector<Node>& src) {
 }
 
 // def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
+//     for r in src:
+//         yield copy(r)  # tpyc: ok
+//         yield mk_row(len(r))  # tpyc: ok
 std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -65,7 +69,6 @@ std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__ne
         continue;
     }
     case S_RESUME_0: {
-        // yield mk_row(len(r))  # tpyc: ok
         __state = S_RESUME_1;
         return mk_row(::tpy::__len__((*r)));
     }
@@ -79,7 +82,6 @@ std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__ne
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         r = &(*((*__for_it_0))++);
-        // yield copy(r)  # tpyc: ok
         __state = S_RESUME_0;
         return std::vector<int32_t>((*r));
     }
@@ -95,10 +97,35 @@ __gen_fresh_rows fresh_rows(std::vector<std::vector<int32_t>>& src) {
 }
 
 // def main() -> None:
+//     total = 0
+//     for b in boxes(4):
+//         total = total + b.val
+//     print("boxes", total)
+//
+//     # free: the yielded value is a COPY -- mutating the source afterwards
+//     # leaves it alone.
+//     src = [Node(3)]
+//     kept = []
+//     for b2 in fresh_records(src):
+//         kept.append(b2.val)
+//     src[0].val = 100
+//     print("free", kept, src[0].val)
+//
+//     rows: list[list[int32]] = [[1, 2]]
+//     kept_rows = []
+//     for r in fresh_rows(rows):
+//         kept_rows.append(len(r))
+//     rows[0].append(9)
+//     print("container", kept_rows, len(rows[0]))
+//
+//     bag = Bag()
+//     kept_m = []
+//     for b3 in bag.drain():
+//         kept_m.append(b3.val)
+//     bag.items[0].val = 55
+//     print("method", kept_m, bag.items[0].val)
 void main() {
-    // total = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
-    // for b in boxes(4):
     {
         auto __src_0 = boxes(::tpy::BigInt(4));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -106,19 +133,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& b = ::tpy::unwrap_ref(*__r_1);
-        // total = total + b.val
         total = ((::tpy::BigInt(total)) + (b.val));
         }
     }
-    // print("boxes", total)
     std::cout << "boxes" << " " << total << "\n";
-    // # free: the yielded value is a COPY -- mutating the source afterwards
-    // # leaves it alone.
-    // src = [Node(3)]
     std::vector<Node> src = {Node(::tpy::BigInt(3))};
-    // kept = []
     std::vector<::tpy::BigInt> kept = std::vector<::tpy::BigInt>{};
-    // for b2 in fresh_records(src):
     {
         auto __src_2 = fresh_records(src);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -126,19 +146,13 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& b2 = ::tpy::unwrap_ref(*__r_3);
-        // kept.append(b2.val)
         kept.push_back(b2.val);
         }
     }
-    // src[0].val = 100
     ::tpy::__getitem__(src, 0).val = ::tpy::BigInt(100);
-    // print("free", kept, src[0].val)
     std::cout << "free" << " " << ::tpy::ListPrinter(kept) << " " << ::tpy::__getitem__(src, 0).val << "\n";
-    // rows: list[list[int32]] = [[1, 2]]
     std::vector<std::vector<int32_t>> rows = {{1, 2}};
-    // kept_rows = []
     std::vector<int32_t> kept_rows = std::vector<int32_t>{};
-    // for r in fresh_rows(rows):
     {
         auto __src_4 = fresh_rows(rows);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -146,19 +160,13 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& r = ::tpy::unwrap_ref(*__r_5);
-        // kept_rows.append(len(r))
         kept_rows.push_back(::tpy::__len__(r));
         }
     }
-    // rows[0].append(9)
     ::tpy::__getitem__(rows, 0).push_back(9);
-    // print("container", kept_rows, len(rows[0]))
     std::cout << "container" << " " << ::tpy::ListPrinter(kept_rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << "\n";
-    // bag = Bag()
     Bag bag = Bag();
-    // kept_m = []
     std::vector<::tpy::BigInt> kept_m = std::vector<::tpy::BigInt>{};
-    // for b3 in bag.drain():
     {
         auto __src_6 = bag.drain();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -166,17 +174,17 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             const auto& b3 = ::tpy::unwrap_ref(*__r_7);
-        // kept_m.append(b3.val)
         kept_m.push_back(b3.val);
         }
     }
-    // bag.items[0].val = 55
     ::tpy::__getitem__(bag.items, 0).val = ::tpy::BigInt(55);
-    // print("method", kept_m, bag.items[0].val)
     std::cout << "method" << " " << ::tpy::ListPrinter(kept_m) << " " << ::tpy::__getitem__(bag.items, 0).val << "\n";
 }
 
 // def drain(self) -> Iterator[Own[Node]]:
+//     for p in self.items:
+//         yield copy(p)  # tpyc: ok
+//         yield mk(p.val + 1)  # tpyc: ok
 std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -186,7 +194,6 @@ std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield mk(p.val + 1)  # tpyc: ok
         __state = S_RESUME_1;
         return mk((((p->val) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>());
     }
@@ -200,7 +207,6 @@ std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         p = &(*((*__for_it_0))++);
-        // yield copy(p)  # tpyc: ok
         __state = S_RESUME_0;
         return Node((*p));
     }
@@ -210,12 +216,12 @@ std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

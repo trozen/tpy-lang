@@ -5,55 +5,55 @@ namespace tpyapp::main {
 
 
 // def build_dict(xs: list[int32]) -> Own[dict[int32, int32]]:
+//     d = {}  # tpyc: type(/dict\[int32, int32\]/)
+//     for x in xs:
+//         d[x] = x * x
+//     return d
 ::tpy::ordered_map<int32_t, int32_t> build_dict(const std::vector<int32_t>& xs) {
-    // d = {}  # tpyc: type(/dict\[int32, int32\]/)
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>();
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // d[x] = x * x
         ::tpy::__setitem__(d, x, (::tpy::mul_check<int32_t>(x, x)));
     }
-    // return d
     return d;
 }
 
 // def build_set(xs: list[int32]) -> Own[set[int32]]:
+//     s = set()  # tpyc: type(/set\[int32\]/)
+//     for x in xs:
+//         s.add(x)
+//     return s
 ::tpy::ordered_set<int32_t> build_set(const std::vector<int32_t>& xs) {
-    // s = set()  # tpyc: type(/set\[int32\]/)
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s.add(x)
         s.insert(x);
     }
-    // return s
     return s;
 }
 
 // def main() -> None:
+//     print(len(build_dict([1, 2, 3])))
+//     print(len(build_set([1, 1, 2])))
 void main() {
-    // print(len(build_dict([1, 2, 3])))
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::cout << ::tpy::__len__(build_dict(__tmp_1)) << "\n";
-    // print(len(build_set([1, 1, 2])))
     std::vector<int32_t> __tmp_2 = {1, 1, 2};
     std::cout << ::tpy::__len__(build_set(__tmp_2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

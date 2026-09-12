@@ -13,7 +13,9 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(a: Dog | Cat | Bird) -> str:
 std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // @dataclass

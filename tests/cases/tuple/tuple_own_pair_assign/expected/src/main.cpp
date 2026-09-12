@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Handle(int32(7))
+//     b = Handle(int32(8))
+//     pair: tuple[Handle, Handle] = (a, b)  # tpyc: ok
+//     print(pair[0].fd)
+//     print(pair[1].fd)
 void main() {
-    // a = Handle(int32(7))
     Handle a = Handle(7);
-    // b = Handle(int32(8))
     Handle b = Handle(8);
-    // pair: tuple[Handle, Handle] = (a, b)  # tpyc: ok
     auto pair = std::tuple<Handle, Handle>{std::move(a), std::move(b)};
-    // print(pair[0].fd)
     std::cout << std::get<0>(pair).fd << "\n";
-    // print(pair[1].fd)
     std::cout << std::get<1>(pair).fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

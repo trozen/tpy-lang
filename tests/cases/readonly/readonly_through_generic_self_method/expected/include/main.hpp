@@ -12,6 +12,7 @@ template<typename T> struct SubHolder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder[T]:
@@ -21,19 +22,20 @@ struct Holder {
     T val;
 
     // def __init__(self, val: T) -> None:
+    //     self.val = val
     Holder() = default;
     explicit Holder(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def identity[U](self, key: U) -> U:
+    //     return key
     template<typename U>
     ::tpy::val_or_cref_t<U> identity(::tpy::readonly_form_t<U> key) const {
-        // return key
         return ::tpy::param_to_return<U>(key);
     }
 
     // def lookup(self, x: int32) -> int32:
+    //     return self.identity(x)
     int32_t lookup(int32_t x) const {
-        // return self.identity(x)
         return this->identity<int32_t>(x);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -50,12 +52,13 @@ template<typename T>
 struct SubHolder : Holder<T> {
 
     // def __init__(self, val: T) -> None:
+    //     super().__init__(val)
     SubHolder() = default;
     explicit SubHolder(::tpy::readonly_form_t<T> val) : Holder<T>(val) {}
 
     // def super_lookup(self, x: int32) -> int32:
+    //     return super().identity(x)
     int32_t super_lookup(int32_t x) const {
-        // return super().identity(x)
         return this->Holder<T>::template identity<int32_t>(x);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.SubHolder";

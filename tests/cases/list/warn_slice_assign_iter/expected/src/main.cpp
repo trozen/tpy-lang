@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: list[int32] = [1, 2, 3, 4, 5]
+//     for x in a:
+//         a[0:1] = [99]  # tpyc: warning(/Mutation of 'a'.*while borrowed/)
+//         break
 void main() {
-    // a: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
-    // for x in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // a[0:1] = [99]  # tpyc: warning(/Mutation of 'a'.*while borrowed/)
         ::tpy::list_set_slice(a, ::tpy::BasicSlice{0, 1}, std::vector<int32_t>{99});
-        // break
         break;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

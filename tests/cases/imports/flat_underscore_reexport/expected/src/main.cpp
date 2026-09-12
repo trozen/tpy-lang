@@ -4,17 +4,18 @@
 namespace tpyapp::main {
 
 
+// # Explicit `from M import _x` works for underscore-prefixed names.
+// # `__all__` / underscore convention only filters star imports;
+// # explicit imports see private names.
+// from c import _secret_value
+//
+// print(_secret_value)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Explicit `from M import _x` works for underscore-prefixed names.
-    // # `__all__` / underscore convention only filters star imports;
-    // # explicit imports see private names.
-    // from c import _secret_value
     ::tpyapp::c::__tpy_init();
-    // print(_secret_value)
     std::cout << ::tpyapp::c::_secret_value << "\n";
 }
 

@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = Tally()
+//     n = Notifier()
+//     n.aim(t)  # tpyc: ok  -- record -> Ptr[cross-module Counter] upcast
+//     n.trigger(5)
+//     n.trigger(7)
+//     print(t.value())
 void main() {
-    // t = Tally()
     Tally t = Tally();
-    // n = Notifier()
     Notifier n = Notifier();
-    // n.aim(t)  # tpyc: ok  -- record -> Ptr[cross-module Counter] upcast
     n.aim(&t);
-    // n.trigger(5)
     n.trigger(5);
-    // n.trigger(7)
     n.trigger(7);
-    // print(t.value())
     std::cout << t.value() << "\n";
 }
 
+// from pet import Counter
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pet import Counter
     ::tpyapp::pet::__tpy_init();
-    // main()
     main();
 }
 

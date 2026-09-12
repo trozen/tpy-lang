@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def reading(p: Ptr[Awaker]) -> int32:
+//     if isinstance(p, Loud):      # tpyc: ok
+//         return p.shout()         # subclass-only method, narrowed
+//     return p.mark()              # virtual protocol dispatch
 int32_t reading(Awaker* p) {
-    // if isinstance(p, Loud):      # tpyc: ok
     if (Loud* __p_ptr = dynamic_cast<Loud*>(p); (__p_ptr != nullptr)) {
-        // return p.shout()         # subclass-only method, narrowed
         return (*__p_ptr).shout();
     }
-    // return p.mark()              # virtual protocol dispatch
     return ::tpy::deref_check(p).mark();
 }
 
 // def main() -> None:
+//     loud = Loud(3)
+//     quiet = Quiet(7)
+//     print(reading(loud))         # record -> Ptr[Awaker] upcast at arg site
+//     print(reading(quiet))
 void main() {
-    // loud = Loud(3)
     Loud loud = Loud(3);
-    // quiet = Quiet(7)
     Quiet quiet = Quiet(7);
-    // print(reading(loud))         # record -> Ptr[Awaker] upcast at arg site
     std::cout << reading(&loud) << "\n";
-    // print(reading(quiet))
     std::cout << reading(&quiet) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

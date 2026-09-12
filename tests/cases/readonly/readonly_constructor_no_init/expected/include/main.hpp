@@ -11,6 +11,7 @@ struct Logger;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ok() -> int:
 ::tpy::BigInt ok();
 
 // class Logger:
@@ -30,8 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
 
 // @readonly(False)
 // def __init__(self) -> None:
+//     pass
 inline Logger::Logger() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

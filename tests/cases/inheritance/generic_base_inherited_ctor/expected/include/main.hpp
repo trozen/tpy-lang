@@ -16,6 +16,7 @@ template<typename M> struct TypedM;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base[N: int](ValueType):
@@ -25,6 +26,7 @@ struct Base {
     int32_t _v;
 
     // def __init__(self, x: int32 = 0) -> None:
+    //     self._v = x
     explicit Base(int32_t x = 0) : _v(x) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -48,6 +50,7 @@ struct Typed {
     T val;
 
     // def __init__(self, x: T) -> None:
+    //     self.val = x  # tpyc: warning(/may copy/)
     Typed() = default;
     explicit Typed(::tpy::readonly_form_t<T> x) : val(x) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Typed";

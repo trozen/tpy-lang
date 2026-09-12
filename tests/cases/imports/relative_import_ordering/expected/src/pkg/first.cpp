@@ -4,12 +4,12 @@
 namespace tpyapp::pkg::first {
 
 
+// print("init: first")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print("init: first")
     std::cout << "init: first" << "\n";
 }
 

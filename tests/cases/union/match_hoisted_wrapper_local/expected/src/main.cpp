@@ -5,68 +5,68 @@ namespace tpyapp::main {
 
 
 // def grow(src: Tree[int32]) -> None:
+//     flag = True
+//     if flag:
+//         v = src
+//     else:
+//         v = src
+//     match v:               # v lowers to a hoisted pointer-local Tree<int32>*
+//         case list() as b:
+//             b.append(9)    # mutate through the arm -- must reach src
+//         case _:
+//             pass
 void grow(Tree<int32_t>& src) {
-    // flag = True
     bool flag = true;
-    // if flag:
     Tree<int32_t>* v;
     if (flag) {
-        // v = src
         v = &(src);
-    // else:
     } else {
-        // v = src
         v = &(src);
     }
-    // match v:               # v lowers to a hoisted pointer-local Tree<int32>*
     auto& __match_subject_1 = (*v);
     switch (__match_subject_1.value.index()) {
-    // case list() as b:
     case 1: {
         auto& b = std::get<1>(__match_subject_1.value);
-        // b.append(9)    # mutate through the arm -- must reach src
         b.push_back(9);
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
 }
 
 // def main() -> None:
+//     tree: Tree[int32] = [1, 2, 3]
+//     grow(tree)
+//     match tree:            # aliasing: tree grew to [1, 2, 3, 9]
+//         case list() as t:
+//             print(len(t))
+//         case _:
+//             print(0)
 void main() {
-    // tree: Tree[int32] = [1, 2, 3]
     Tree<int32_t> tree = std::vector<Tree<int32_t>>{1, 2, 3};
-    // grow(tree)
     grow(tree);
-    // match tree:            # aliasing: tree grew to [1, 2, 3, 9]
     auto& __match_subject_1 = tree;
     switch (__match_subject_1.value.index()) {
-    // case list() as t:
     case 1: {
         auto& t = std::get<1>(__match_subject_1.value);
-        // print(len(t))
         std::cout << ::tpy::__len__(t) << "\n";
         break;
     }
-    // case _:
     default: {
-        // print(0)
         std::cout << 0 << "\n";
         break;
     }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

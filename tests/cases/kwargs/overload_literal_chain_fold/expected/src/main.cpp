@@ -6,33 +6,33 @@ namespace tpyapp::main {
 
 
 
+// def isrw(m: str) -> bool:
+//     return m == "r" or m == "w"  # folded per stub
 // @overload
 // def isrw(m: Literal["r", "w"]) -> bool: ...
 bool isrw__lit_r__w(std::string_view m) {
-    // return m == "r" or m == "w"  # folded per stub
     return true;
 }
 
 // @overload
 // def isrw(m: Literal["x", "y"]) -> bool: ...
 bool isrw__lit_x__y(std::string_view m) {
-    // return m == "r" or m == "w"  # folded per stub
     return false;
 }
 
 
 // def main() -> None:
+//     print(isrw("r"), isrw("x"))
 void main() {
-    // print(isrw("r"), isrw("x"))
     std::cout << ::tpy::print_bool(isrw__lit_r__w("r")) << " " << ::tpy::print_bool(isrw__lit_x__y("x")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

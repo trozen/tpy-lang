@@ -20,12 +20,13 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get(self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> get() {
-        // return self.value
         return this->value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -58,11 +59,13 @@ inline std::ostream& operator<<(std::ostream& os, const LabeledContainer& obj) {
 
 
 // def __init__(self, label: str, value: int32) -> None:
+//     super().__init__(value)
+//     self.label = label
 inline LabeledContainer::LabeledContainer(std::string_view label, int32_t value) : Container<int32_t>(value), label(label) {}
 
 // def describe(self) -> str:
+//     return self.label
 inline std::string LabeledContainer::describe() const {
-    // return self.label
     return this->label;
 }
 void __tpy_init();

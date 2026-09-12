@@ -11,7 +11,9 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(flag: bool) -> Own[tuple[str, int] | Rec]:
 ::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> pick(bool flag);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Rec::Rec(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

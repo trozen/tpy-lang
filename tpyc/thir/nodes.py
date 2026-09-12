@@ -79,13 +79,7 @@ class THIRExpr(THIRNode):
 
 @dataclass(frozen=True)
 class THIRStmt(THIRNode):
-    """Base statement.
-
-    `no_source_comment` marks a multi-statement desugar (e.g. a tuple-unpack
-    expanding to several assigns that share one source line): its non-first
-    statements set the flag so the shared source comment is emitted once. Set
-    at lowering from the Tpy stmt; honored by `_emit_stmts`."""
-    no_source_comment: bool = field(default=False, kw_only=True)
+    """Base statement."""
 
 
 # --- Expressions ---
@@ -2113,57 +2107,33 @@ class THIRNoOpStmt(THIRStmt):
     """A statement that emits no C++ code -- a `pass` or a docstring in a
     constructor body (M3c-trivia). It carries no payload; its only effect is to
     make `THIRConstructor.body` non-empty so the emitter writes ` {\n    }`
-    instead of ` {}`. The inherited `loc` drives the source
-    comment: a `pass` keeps its `loc` (so `_emit_stmts`
-    emits its `// pass` source line), while a docstring lowers with `loc=None`
-    -- a None loc suppresses the source line. A docstring
-    still carries `trivia_loc`, because suppressing the source line does not
-    suppress the leading comments (see below).
-
-    `trivia_loc` is the SKIPPED statement's loc when its leading
-    `#`-comment trivia must still emit without the statement's own source
-    line (a compile-time assert: leading comments emit before dispatch,
-    then the None loc suppresses the source comment)."""
-    trivia_loc: 'object | None' = None
+    instead of ` {}`."""
 
 
 @dataclass(frozen=True)
 class THIRFoldedBlock(THIRStmt):
     """The surviving statements of a per-@overload-stub dead-branch fold,
-    spliced flat at the enclosing block's indent (no brace scope). An
-    if-chain fold carries
-    `no_source_comment=True` (the fold flattens with no `// if` line);
-    a match fold keeps the match stmt's `loc` so its `// match ...` source
-    comment emits before the spliced bindings. Inner statements carry their
-    own locs/comments. May be empty (an all-dead chain with no else).
+    spliced flat at the enclosing block's indent (no brace scope). May be
+    empty (an all-dead chain with no else).
 
     `burns_match_counter` marks a folded MATCH: `ctx.match_counter` bumps
     before the fold dispatch, so a later match in the
     same body numbers its `__match_subject_N` past the folded one -- the
-    emit arm must consume one counter slot without emitting a subject.
-
-    `trivia_loc` (an if-chain fold): the chain head's line, whose PRECEDING
-    `#` comments emit before the fold dispatch (`emit_preceding_comments`
-    runs before the chain) -- even when every branch
-    folds dead and the block emits nothing else."""
+    emit arm must consume one counter slot without emitting a subject."""
     stmts: tuple[THIRStmt, ...] = ()
     burns_match_counter: bool = False
-    trivia_loc: 'SourceLocation | None' = None
 
 
 @dataclass(frozen=True)
 class THIRFoldedIfChain(THIRStmt):
     """A PARTIALLY-folded per-@overload-stub if-chain: the surviving dynamic
-    branches emit as a clean `if / else if` chain with NO condition source
-    comments, the else
-    body coming from the last ORIGINAL chain node. `trivia_loc` carries the
-    chain head's preceding `#` comments, like THIRFoldedBlock. The lowering
+    branches emit as a clean `if / else if` chain, the else body coming from
+    the last ORIGINAL chain node. The lowering
     admits only temp-free conditions past the first branch and no
     branch-decl / concrete-extraction carriers; every other shape
     rejects."""
     branches: tuple[tuple[THIRExpr, tuple[THIRStmt, ...]], ...] = ()
     else_body: tuple[THIRStmt, ...] = ()
-    trivia_loc: 'SourceLocation | None' = None
 
 
 @dataclass(frozen=True)
@@ -3311,11 +3281,6 @@ class THIRFunction:
     body: tuple[THIRStmt, ...]
     layout: THIRFunctionLayout
     error_return_cpp: 'str | None' = None
-    # A per-@overload-stub body whose dead-branch fold ended in a terminating
-    # True branch: the function-level trailing-comment scan is suppressed
-    # (the emitted stmts come from a then_body, so scanning forward from the
-    # TpyIf's line would pick up comments from inside the dead branches).
-    suppress_trailing_comments: bool = False
 
 
 @dataclass(frozen=True)

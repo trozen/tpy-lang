@@ -5,27 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     dynamic = "world"
+//     # Literal -> static
+//     # NAME (local Final[str]) -> static
+//     # VERSION (imported Final[str]) -> static
+//     # dynamic (non-final) -> dynamic
+//     label(f"hello {NAME} v{VERSION} ({dynamic})")
 void main() {
-    // dynamic = "world"
     std::string_view dynamic = "world";
-    // # Literal -> static
-    // # NAME (local Final[str]) -> static
-    // # VERSION (imported Final[str]) -> static
-    // # dynamic (non-final) -> dynamic
-    // label(f"hello {NAME} v{VERSION} ({dynamic})")
     ::tpyapp::label_infra::emit("hello {} v{} ({})", {::tpyapp::label_infra::tag("static", NAME), ::tpyapp::label_infra::tag("static", ::tpyapp::const_mod::VERSION), ::tpyapp::label_infra::tag("dynamic", dynamic)});
 }
 
+// from label_macro import label
+// from const_mod import VERSION
+//
+// NAME: Final[str] = "tpy"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::label_infra::__tpy_init();
-    // from label_macro import label
-    // from const_mod import VERSION
     ::tpyapp::const_mod::__tpy_init();
-    // main()
     main();
 }
 

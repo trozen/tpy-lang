@@ -47,8 +47,10 @@ struct DefaultFactory;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 template<ContainerFactory F>
 Container<Message> create_container(::tpy::param_val_or_ref_t<F> factory, std::string_view text);
+// def main() -> None:
 void main();
 
 // # Record with user-defined protocol bound
@@ -59,12 +61,13 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def print_value(self) -> None:
+    //     print(self.value.to_str())
     void print_value() {
-        // print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -93,24 +96,25 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
 
 
 // def __init__(self, text: str) -> None:
+//     self.text = text
 inline Message::Message(std::string_view text) : text(text) {}
 
 // def to_str(self) -> str:
+//     return self.text
 inline std::string Message::to_str() const {
-    // return self.text
     return this->text;
 }
 
 // def make(self, text: str) -> Own[Container[Message]]:
+//     return Container(Message(text))
 inline Container<Message> DefaultFactory::make(std::string_view text) const {
-    // return Container(Message(text))
     return Container<Message>(Message(text));
 }
 // # Generic function using the factory protocol
 // def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
+//     return factory.make(text)
 template<ContainerFactory F>
 Container<Message> create_container(::tpy::param_val_or_ref_t<F> factory, std::string_view text) {
-    // return factory.make(text)
     return factory.make(text);
 }
 

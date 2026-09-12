@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int32) -> int32:
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,11 @@ __coro_value value(int32_t n) {
 }
 
 // async def fail() -> int32:
+//     raise ValueError("oops")
 ::tpystd::tpy::Poll<int32_t> __coro_fail::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // raise ValueError("oops")
         throw ::tpy::ValueError("oops");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -45,11 +45,25 @@ __coro_fail fail() {
 }
 
 // async def go(should_fail: bool) -> int32:
+//     result = int32(0)
+//     try:
+//         a = await value(int32(1))
+//         result = a
+//         if should_fail:
+//             b = await fail()
+//             result = result + b
+//         else:
+//             b = await value(int32(2))
+//             result = result + b
+//     except ValueError:
+//         result = int32(99)
+//     finally:
+//         print("cleanup")
+//     return result
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // result = int32(0)
         result = 0;
         __state = S_JOIN_2;
         continue;
@@ -60,15 +74,12 @@ __coro_fail fail() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             a = std::move(__r0).value();
             __sub_0.reset();
-            // result = a
             result = a;
             if (should_fail) {
-                // b = await fail()
                 __sub_1.emplace();
                 __state = S_RESUME_1;
                 continue;
             } else {
-                // b = await value(int32(2))
                 __sub_2.emplace(2);
                 __state = S_RESUME_2;
                 continue;
@@ -77,7 +88,6 @@ __coro_fail fail() {
             __sub_0.reset();
             bool __fin_ran_2 = false;
             try {
-                // result = int32(99)
                 result = 99;
                 __fin_ran_2 = true;
                 this->__finally_0();
@@ -101,7 +111,6 @@ __coro_fail fail() {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             b = std::move(__r1).value();
             __sub_1.reset();
-            // result = result + b
             result = (::tpy::add_check<int32_t>(result, b));
             __state = S_JOIN_1;
             continue;
@@ -109,7 +118,6 @@ __coro_fail fail() {
             __sub_1.reset();
             bool __fin_ran_4 = false;
             try {
-                // result = int32(99)
                 result = 99;
                 __fin_ran_4 = true;
                 this->__finally_0();
@@ -133,7 +141,6 @@ __coro_fail fail() {
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             b = std::move(__r2).value();
             __sub_2.reset();
-            // result = result + b
             result = (::tpy::add_check<int32_t>(result, b));
             __state = S_JOIN_1;
             continue;
@@ -141,7 +148,6 @@ __coro_fail fail() {
             __sub_2.reset();
             bool __fin_ran_6 = false;
             try {
-                // result = int32(99)
                 result = 99;
                 __fin_ran_6 = true;
                 this->__finally_0();
@@ -160,7 +166,6 @@ __coro_fail fail() {
         }
     }
     case S_JOIN_0: {
-        // return result
         __state = S_DONE;
         int32_t __tpy_async_ret = result;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -175,7 +180,6 @@ __coro_fail fail() {
         } catch (const ::tpy::ValueError&) {
             bool __fin_ran_8 = false;
             try {
-                // result = int32(99)
                 result = 99;
                 __fin_ran_8 = true;
                 this->__finally_0();
@@ -196,14 +200,12 @@ __coro_fail fail() {
     }
     case S_JOIN_2: {
         try {
-            // a = await value(int32(1))
             __sub_0.emplace(1);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             bool __fin_ran_10 = false;
             try {
-                // result = int32(99)
                 result = 99;
                 __fin_ran_10 = true;
                 this->__finally_0();
@@ -230,7 +232,6 @@ __coro_fail fail() {
 }
 
 void __coro_go::__finally_0() {
-    // print("cleanup")
     std::cout << "cleanup" << "\n";
 }
 
@@ -240,23 +241,24 @@ __coro_go go(bool should_fail) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(go(False)))
+//     print(asyncio.run(go(True)))
 void main() {
-    // print(asyncio.run(go(False)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(go(false))) << "\n";
-    // print(asyncio.run(go(True)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(go(true))) << "\n";
 }
 
+// # try/except/finally with awaits in both try and except bodies.
+// # Finally runs after both normal exit and after the except handler.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # try/except/finally with awaits in both try and except bodies.
-    // # Finally runs after both normal exit and after the except handler.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

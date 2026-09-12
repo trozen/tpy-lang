@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def pick(n: int32) -> int32:
+//     return n + int32(1)
 int32_t pick(int32_t n) {
-    // return n + int32(1)
     return (::tpy::add_check<int32_t>(n, 1));
 }
 
 // def main() -> None:
+//     f = Foo(int32(10))
+//     print(f._x.v)
 void main() {
-    // f = Foo(int32(10))
     Foo f = Foo(10);
-    // print(f._x.v)
     std::cout << f._x.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

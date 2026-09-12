@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def f(x: int32 | None) -> int32:
+//     if not (x is None):
+//         return x + 1
+//     return 0
 int32_t f(std::optional<int32_t> x) {
-    // if not (x is None):
     if ((!((!x.has_value())))) {
-        // return x + 1
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    // return 0
     return 0;
 }
 
+// print(f(3))
+// print(f(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(f(3))
     std::cout << f(3) << "\n";
-    // print(f(None))
     std::cout << f(std::nullopt) << "\n";
 }
 

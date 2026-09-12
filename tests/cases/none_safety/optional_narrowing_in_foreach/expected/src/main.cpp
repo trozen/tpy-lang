@@ -5,68 +5,69 @@ namespace tpyapp::main {
 
 
 // def sum_items(items: list[int32], bonus: int32 | None) -> int32:
+//     total: int32 = 0
+//     if bonus is not None:
+//         # bonus narrowed to int32 here
+//         for item in items:
+//             total = total + item + bonus
+//         return total
+//     for item in items:
+//         total = total + item
+//     return total
 int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonus) {
-    // total: int32 = 0
     int32_t total = 0;
-    // if bonus is not None:
     if ((bonus.has_value())) {
-        // # bonus narrowed to int32 here
-        // for item in items:
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t item = *__beg_0;
-            // total = total + item + bonus
             total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, item)), (*bonus)));
         }
-        // return total
         return total;
     }
-    // for item in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t item = *__beg_1;
-        // total = total + item
         total = (::tpy::add_check<int32_t>(total, item));
     }
-    // return total
     return total;
 }
 
 // def assert_then_loop(x: int32 | None, items: list[int32]) -> int32:
+//     assert x is not None
+//     total: int32 = 0
+//     for item in items:
+//         total = total + item + x
+//     return total
 int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& items) {
-    // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
-    // total: int32 = 0
     int32_t total = 0;
-    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t item = *__beg_0;
-        // total = total + item + x
         total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, item)), (*x)));
     }
-    // return total
     return total;
 }
 
+// print(sum_items([1, 2, 3], 10))
+// print(sum_items([1, 2, 3], None))
+//
+// print(assert_then_loop(5, [1, 2, 3]))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(sum_items([1, 2, 3], 10))
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::cout << sum_items(__tmp_1, 10) << "\n";
-    // print(sum_items([1, 2, 3], None))
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
     std::cout << sum_items(__tmp_2, std::nullopt) << "\n";
-    // print(assert_then_loop(5, [1, 2, 3]))
     std::vector<int32_t> __tmp_3 = {1, 2, 3};
     std::cout << assert_then_loop(5, __tmp_3) << "\n";
 }

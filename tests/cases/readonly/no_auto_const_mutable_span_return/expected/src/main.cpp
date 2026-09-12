@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Buffer()
+//     s = b.items()
+//     s[int32(0)] = int32(99)
+//     print(b._items[0])
 void main() {
-    // b = Buffer()
     Buffer b = Buffer();
-    // s = b.items()
     std::span<int32_t> s = b.items();
-    // s[int32(0)] = int32(99)
     ::tpy::__setitem__(s, 0, 99);
-    // print(b._items[0])
     std::cout << ::tpy::__getitem__(b._items, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

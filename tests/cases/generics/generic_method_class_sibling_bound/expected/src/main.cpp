@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Runner[int32]().pick[IntBox](IntBox(42)))   # tpyc: ok
 void main() {
-    // print(Runner[int32]().pick[IntBox](IntBox(42)))   # tpyc: ok
     IntBox __tmp_1 = IntBox(42);
     std::cout << Runner<int32_t>().pick<IntBox>(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

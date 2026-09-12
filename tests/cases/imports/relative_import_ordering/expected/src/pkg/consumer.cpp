@@ -4,19 +4,21 @@
 namespace tpyapp::pkg::consumer {
 
 
+// print("before first import")
+//
+// print("after first, before second")
+//
+// print("after second")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print("before first import")
     std::cout << "before first import" << "\n";
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::first::__tpy_init();
-    // print("after first, before second")
     std::cout << "after first, before second" << "\n";
     ::tpyapp::pkg::second::__tpy_init();
-    // print("after second")
     std::cout << "after second" << "\n";
 }
 

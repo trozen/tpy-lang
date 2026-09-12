@@ -11,6 +11,7 @@ struct Field;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Field:
@@ -35,14 +36,16 @@ inline std::ostream& operator<<(std::ostream& os, const Field& obj) {
 
 
 // def __init__(self) -> None:
+//     self.slot = None
+//     self.n = 0
 inline Field::Field() : slot(std::monostate{}), n(0) {}
 
 // def reset(self) -> None:
+//     # The same write as the constructor's, but in a method body.
+//     self.slot = None
+//     self.n += 1
 inline void Field::reset() {
-    // # The same write as the constructor's, but in a method body.
-    // self.slot = None
     this->slot = std::monostate{};
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 void __tpy_init();

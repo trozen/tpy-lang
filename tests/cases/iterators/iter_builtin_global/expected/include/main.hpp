@@ -14,6 +14,7 @@ extern decltype(::tpy::__iter__((*nums)))* it2;
 extern ::tpy::ordered_map<std::string, int32_t>* d2;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_global_iter() -> None:
 void use_global_iter();
 
 void __tpy_init();

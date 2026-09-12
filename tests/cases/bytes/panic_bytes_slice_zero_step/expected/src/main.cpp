@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Panic: slice step cannot be zero.
 // def main() -> None:
+//     data: bytes = b"hello"
+//     print(data[::0])
 void main() {
-    // data: bytes = b"hello"
     ::tpy::BytesView data = ::tpy::bytes_literal("hello", 5);
-    // print(data[::0])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def triple() -> Iterator[int32]:
+//     yield 10
+//     yield 20
+//     yield 30
 std::expected<int32_t, ::tpy::StopIteration> __gen_triple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 10
         __state = S_RESUME_0;
         return 10;
     }
     case S_RESUME_0: {
-        // yield 20
         __state = S_RESUME_1;
         return 20;
     }
     case S_RESUME_1: {
-        // yield 30
         __state = S_RESUME_2;
         return 30;
     }
@@ -38,8 +38,9 @@ __gen_triple triple() {
 }
 
 // def main():
+//     for x in triple():
+//         print(x)
 void main() {
-    // for x in triple():
     {
         auto __src_0 = triple();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -47,18 +48,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

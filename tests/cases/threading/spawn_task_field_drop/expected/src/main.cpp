@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     cv = Condvar()
+//     shared = Arc.new(Shared(Mutex.new(State()), cv))
+//     h = spawn(Task(Notifier(shared.clone())))
+//     s = shared.get()
+//     with s.m.lock() as g:
+//         while g.get().done == 0:
+//             s.cv.wait(g)
+//         print(g.get().done)
+//     h.join()
 void main() {
-    // cv = Condvar()
     ::tpystd::tpy::sync::Condvar cv = ::tpystd::tpy::sync::Condvar();
-    // shared = Arc.new(Shared(Mutex.new(State()), cv))
     ::tpystd::tplib::arc::Arc<Shared> shared = Arc<Shared>::new_<Shared>(Shared(::tpystd::tpy::sync::Mutex<State>::new_(State()), std::move(cv)));
-    // h = spawn(Task(Notifier(shared.clone())))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h = ::tpystd::tpy::thread::spawn<std::monostate, Task>(Task(Notifier(shared.clone())));
-    // s = shared.get()
     Shared& s = shared.get();
-    // with s.m.lock() as g:
     auto __ctx_2 = s.m.lock();
     auto& g = __ctx_2.__enter__();
     try {
-        // while g.get().done == 0:
         while ((g.get().done == 0)) {
-            // s.cv.wait(g)
             s.cv.wait(g);
         }
-        // print(g.get().done)
         std::cout << g.get().done << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -35,23 +36,23 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // h.join()
     h.join();
 }
 
+// from tplib.arc import Arc
+// from tpy.thread import spawn
+// from tpy.sync import Mutex, Condvar
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // from tpy.sync import Mutex, Condvar
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

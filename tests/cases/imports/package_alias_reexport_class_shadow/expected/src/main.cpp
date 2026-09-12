@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f = Foo()
+//     print(f.tag)
 void main() {
-    // f = Foo()
     ::tpyapp::pkg::Foo f = ::tpyapp::pkg::Foo();
-    // print(f.tag)
     std::cout << f.tag << "\n";
 }
 
+// # When `from pkg import Foo` resolves, it should pick up pkg.__init__.py's
+// # local `class Foo` (tag="from_init"), not pkg.sub.Foo (tag="from_sub").
+// from pkg import Foo
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # When `from pkg import Foo` resolves, it should pick up pkg.__init__.py's
-    // # local `class Foo` (tag="from_init"), not pkg.sub.Foo (tag="from_sub").
-    // from pkg import Foo
     ::tpyapp::pkg::__tpy_init();
-    // main()
     main();
 }
 

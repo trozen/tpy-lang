@@ -9,38 +9,41 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_native(xs: NativeIterable[int32]) -> int32:
 template<::tpy::NativeIterable<int32_t> T_xs>
 int32_t sum_native(T_xs& xs);
+// def maybe_sum(xs: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t maybe_sum(T_xs& xs);
+// def main() -> None:
 void main();
 
 // def sum_native(xs: NativeIterable[int32]) -> int32:
+//     total: int32 = 0
+//     for x in xs:
+//         total += x
+//     return total
 template<::tpy::NativeIterable<int32_t> T_xs>
 int32_t sum_native(T_xs& xs) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 // def maybe_sum(xs: Iterable[int32]) -> int32:
+//     if isinstance(xs, NativeIterable):
+//         return sum_native(xs)
+//     return -1
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t maybe_sum(T_xs& xs) {
-    // if isinstance(xs, NativeIterable):
     if constexpr (::tpy::NativeIterable<T_xs, int32_t>) {
-        // return sum_native(xs)
         return sum_native(xs);
     }
-    // return -1
     return -1;
 }
 

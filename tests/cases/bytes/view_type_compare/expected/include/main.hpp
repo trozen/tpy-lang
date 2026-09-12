@@ -15,15 +15,24 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_matching;
 
+// def compare_pairs(a: bytes, v: BytesView, ba: bytearray) -> None:
 void compare_pairs(::tpy::BytesView a, ::tpy::BytesView v, ::tpy::ByteArray& ba);
+// def membership(name: bytes, xs: list[bytes], s: set[bytes], d: dict[bytes, int32]) -> None:
 void membership(::tpy::BytesView name, const std::vector<::tpy::Bytes>& xs, const ::tpy::ordered_set<::tpy::Bytes>& s, const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d);
+// def view_local(data: bytes) -> None:
 void view_local(::tpy::BytesView data);
+// def sort_bytes(xs: list[bytes]) -> None:
 void sort_bytes(std::vector<::tpy::Bytes>& xs);
+// def hashes(a: bytes) -> None:
 void hashes(::tpy::BytesView a);
+// def matching(names: list[bytes], want: bytes) -> Iterator[bytes]:
 __gen_matching matching(std::vector<::tpy::Bytes>& names, ::tpy::BytesView want);
+// def first_is[T: Comparable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Comparable T>
 bool first_is(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+// def filtered(names: list[bytes]) -> None:
 void filtered(const std::vector<::tpy::Bytes>& names);
+// def main() -> None:
 void main();
 
 // class Entry:
@@ -81,12 +90,13 @@ struct Box {
     T item;
 
     // def __init__(self, item: Own[T]) -> None:
+    //     self.item = item
     Box() = default;
     explicit Box(::tpy::own_param_t<T> item) : item(std::move(item)) {}
 
     // def __contains__(self, needle: T) -> bool:
+    //     return needle == self.item  # tpyc: ok
     bool __contains__(::tpy::readonly_form_t<T> needle) const {
-        // return needle == self.item  # tpyc: ok
         return ::tpy::eq(needle, this->item);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -98,7 +108,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// Generator: matching
+// def matching(names: list[bytes], want: bytes) -> Iterator[bytes]:
 struct __gen_matching : public ::tpy::next_iter_mixin<__gen_matching, ::tpy::Bytes> {
     int32_t __state;
     std::vector<::tpy::Bytes>& names;
@@ -128,43 +138,45 @@ struct __gen_matching : public ::tpy::next_iter_mixin<__gen_matching, ::tpy::Byt
 
 
 // def __init__(self, name: bytes) -> None:
+//     self.name = name
+//     self.tags = {b"a", b"b"}
 inline Entry::Entry(::tpy::BytesView name) : name(::tpy::Bytes(name)), tags(::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)})) {}
 
 // # method: a bytes field against a bytes param and a literal
 // def is_named(self, other: bytes) -> bool:
+//     return self.name == other or self.name == b"default"  # tpyc: ok
 inline bool Entry::is_named(::tpy::BytesView other) const {
-    // return self.name == other or self.name == b"default"  # tpyc: ok
     return ((this->name == other) || (this->name == ::tpy::bytes_literal("default", 7)));
 }
 
 // # method: a bytes needle against a set field
 // def has_tag(self, tag: bytes) -> bool:
+//     return tag in self.tags  # tpyc: ok
 inline bool Entry::has_tag(::tpy::BytesView tag) const {
-    // return tag in self.tags  # tpyc: ok
     return (this->tags.contains(tag));
 }
 
 // # user __contains__ with a bytes parameter: a literal needle renders the
 // # static span into its `::tpy::BytesView` slot
 // def __contains__(self, tag: bytes) -> bool:
+//     return tag in self.tags or tag == self.name  # tpyc: ok
 inline bool Entry::__contains__(::tpy::BytesView tag) const {
-    // return tag in self.tags or tag == self.name  # tpyc: ok
     return (std::ranges::contains(this->tags, tag) || (tag == this->name));
 }
 
 // # user __contains__ whose slot OWNS the argument: a literal needle keeps
 // # the owned render, since the view does not convert to the owner
 // def __contains__(self, value: Own[bytes]) -> bool:
+//     return len(value) == 3  # tpyc: ok
 inline bool Bag::__contains__(::tpy::Bytes value) const {
-    // return len(value) == 3  # tpyc: ok
     return (::tpy::__len__(value) == 3);
 }
 // # generic: an open-T compare and ordering instantiated at bytes, where the
 // # parameter form (the view) meets the element's storage form (the owner)
 // def first_is[T: Comparable](xs: list[T], v: T) -> bool:
+//     return xs[0] == v or xs[0] < v  # tpyc: ok
 template<::tpystd::tpy::Comparable T>
 bool first_is(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
-    // return xs[0] == v or xs[0] < v  # tpyc: ok
     return (::tpy::eq(::tpy::__getitem__(xs, 0), v) || (::tpy::__getitem__(xs, 0) < v));
 }
 

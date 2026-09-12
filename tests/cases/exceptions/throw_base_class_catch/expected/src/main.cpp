@@ -6,25 +6,26 @@ namespace tpyapp::main {
 
 // # except Exception catches any derived exception type (C++ polymorphic catch)
 // def main() -> None:
+//     try:
+//         raise ValueError("test")
+//     except Exception:
+//         print("caught as Exception")
 void main() {
-    // try:
     {
         try {
-            // raise ValueError("test")
             throw ::tpy::ValueError("test");
         } catch (const ::tpy::Exception&) {
-            // print("caught as Exception")
             std::cout << "caught as Exception" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

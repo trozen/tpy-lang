@@ -8,29 +8,28 @@ namespace tpyapp::b {
 
 // def __init__(self) -> None: pass
 Helper::Helper() {
-    // def __init__(self) -> None: pass
 }
 
 // def work(self) -> int32:
+//     return 5
 int32_t Helper::work() const {
-    // return 5
     return 5;
 }
 
 // def caller(self, x: Other) -> int32:
+//     # Uses the cycle-peer record under its alias and dispatches
+//     # a method call on it -- exercises both alias resolution and
+//     # cross-peer method dispatch through the aliased name.
+//     return x.go() + self.work()
 int32_t Helper::caller(const ::tpyapp::a::A& x) const {
-    // # Uses the cycle-peer record under its alias and dispatches
-    // # a method call on it -- exercises both alias resolution and
-    // # cross-peer method dispatch through the aliased name.
-    // return x.go() + self.work()
     return (::tpy::add_check<int32_t>(x.go(), this->work()));
 }
+// from a import A as Other
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import A as Other
     ::tpyapp::a::__tpy_init();
 }
 

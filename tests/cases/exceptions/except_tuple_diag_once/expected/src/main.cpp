@@ -5,62 +5,59 @@ namespace tpyapp::main {
 
 
 // def boom(which: int) -> None:
+//     if which == 0:
+//         raise AErr()
+//     raise BErr()
 void boom(const ::tpy::BigInt& which) {
-    // if which == 0:
     if ((which == 0)) {
-        // raise AErr()
         throw AErr{};
     }
-    // raise BErr()
     throw BErr{};
 }
 
 // def caught(which: int, p: Plain) -> None:
+//     try:
+//         boom(which)
+//     except (AErr, BErr):
+//         # Folds to False in both clones -> one warning, not two.
+//         if isinstance(p, PSub):  # tpyc: warning(/folds to False/)
+//             print("unreachable")
+//         print("caught", which)
 void caught(const ::tpy::BigInt& which, const Plain& p) {
-    // try:
     {
         try {
-            // boom(which)
             boom(which);
         } catch (const AErr&) {
-            // # Folds to False in both clones -> one warning, not two.
-            // if isinstance(p, PSub):  # tpyc: warning(/folds to False/)
             if (false) {
-                // print("unreachable")
                 std::cout << "unreachable" << "\n";
             }
-            // print("caught", which)
             std::cout << "caught" << " " << which << "\n";
         } catch (const BErr&) {
-            // # Folds to False in both clones -> one warning, not two.
-            // if isinstance(p, PSub):  # tpyc: warning(/folds to False/)
             if (false) {
-                // print("unreachable")
                 std::cout << "unreachable" << "\n";
             }
-            // print("caught", which)
             std::cout << "caught" << " " << which << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     p = Plain()
+//     for i in range(2):
+//         caught(i, p)
 void main() {
-    // p = Plain()
     Plain p = Plain();
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // caught(i, p)
         caught(::tpy::BigInt(i), p);
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def abs_val(x: int32) -> int32:
 int32_t abs_val(int32_t x);
+// def max_val(a: int32, b: int32) -> int32:
 int32_t max_val(int32_t a, int32_t b);
+// def clamp(x: int32, lo: int32, hi: int32) -> int32:
 int32_t clamp(int32_t x, int32_t lo, int32_t hi);
+// def greet(formal: bool) -> str:
 std::string greet(bool formal);
+// def describe(x: int32) -> str:
 std::string describe(int32_t x);
+// def main() -> None:
 void main();
 
 void __tpy_init();

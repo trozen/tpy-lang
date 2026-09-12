@@ -5,117 +5,123 @@ namespace tpyapp::main {
 
 
 // def mutate_list(items: list[Point]) -> None:
+//     items.append(Point(int32(9), int32(9)))
 void mutate_list(std::vector<Point>& items) {
-    // items.append(Point(int32(9), int32(9)))
     items.push_back(Point(9, 9));
 }
 
 // @readonly
 // def read_list(items: list[Point]) -> int32:
+//     return int32(len(items))
 int32_t read_list(const std::vector<Point>& items) {
-    // return int32(len(items))
     return ::tpy::__len__(items);
 }
 
 // @pure
 // def count_list(items: list[Point]) -> int32:
+//     return int32(len(items))
 int32_t count_list(const std::vector<Point>& items) {
-    // return int32(len(items))
     return ::tpy::__len__(items);
 }
 
 // def safe_read(items: readonly[list[Point]]) -> int32:
+//     return int32(len(items))
 int32_t safe_read(const std::vector<Point>& items) {
-    // return int32(len(items))
     return ::tpy::__len__(items);
 }
 
 // def test_pass_borrowed_to_mutating_func() -> None:
+//     """Borrowed container + non-pure function = warn."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     v = items[int32(0)]
+//     mutate_list(items)  # tpyc: warning(/Passing borrowed container 'items'/)
+//     print(len(items))
 void test_pass_borrowed_to_mutating_func() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    // mutate_list(items)  # tpyc: warning(/Passing borrowed container 'items'/)
     mutate_list(items);
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_pass_borrowed_to_readonly_func() -> None:
+//     """Borrowed container + @readonly function = no warn."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     v = items[int32(0)]
+//     read_list(items)  # tpyc: ok
+//     print(v.x)
 void test_pass_borrowed_to_readonly_func() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    // read_list(items)  # tpyc: ok
     read_list(items);
-    // print(v.x)
     std::cout << v.x << "\n";
 }
 
 // def test_pass_borrowed_to_pure_func() -> None:
+//     """Borrowed container + @pure function = no warn."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     v = items[int32(0)]
+//     count_list(items)  # tpyc: ok
+//     print(v.x)
 void test_pass_borrowed_to_pure_func() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    // count_list(items)  # tpyc: ok
     count_list(items);
-    // print(v.x)
     std::cout << v.x << "\n";
 }
 
 // def test_pass_borrowed_to_readonly_param() -> None:
+//     """Borrowed container + readonly[T] param = no warn."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     v = items[int32(0)]
+//     safe_read(items)  # tpyc: ok
+//     print(v.x)
 void test_pass_borrowed_to_readonly_param() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    // safe_read(items)  # tpyc: ok
     safe_read(items);
-    // print(v.x)
     std::cout << v.x << "\n";
 }
 
 // def test_no_borrow_no_warn() -> None:
+//     """No active borrow = no warn."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     mutate_list(items)  # tpyc: ok
+//     print(len(items))
 void test_no_borrow_no_warn() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // mutate_list(items)  # tpyc: ok
     mutate_list(items);
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_builtin_pure_no_warn() -> None:
+//     """Builtins like len() are readonly = no warn."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     v = items[int32(0)]
+//     print(len(items))  # tpyc: ok
+//     print(v.x)
 void test_builtin_pure_no_warn() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    // print(len(items))  # tpyc: ok
     std::cout << ::tpy::__len__(items) << "\n";
-    // print(v.x)
     std::cout << v.x << "\n";
 }
 
+// test_pass_borrowed_to_mutating_func()
+// test_pass_borrowed_to_readonly_func()
+// test_pass_borrowed_to_pure_func()
+// test_pass_borrowed_to_readonly_param()
+// test_no_borrow_no_warn()
+// test_builtin_pure_no_warn()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_pass_borrowed_to_mutating_func()
     test_pass_borrowed_to_mutating_func();
-    // test_pass_borrowed_to_readonly_func()
     test_pass_borrowed_to_readonly_func();
-    // test_pass_borrowed_to_pure_func()
     test_pass_borrowed_to_pure_func();
-    // test_pass_borrowed_to_readonly_param()
     test_pass_borrowed_to_readonly_param();
-    // test_no_borrow_no_warn()
     test_no_borrow_no_warn();
-    // test_builtin_pure_no_warn()
     test_builtin_pure_no_warn();
 }
 

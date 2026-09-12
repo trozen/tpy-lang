@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def run(c: Counter) -> int32:
+//     t: Tree[int] = [1, [2, 3], 4]
+//     return c.count(t)
 int32_t run(Counter& c) {
-    // t: Tree[int] = [1, [2, 3], 4]
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
-    // return c.count(t)
     return c.count(t);
 }
 
 // def main() -> None:
+//     print(run(LeafCounter()))
 void main() {
-    // print(run(LeafCounter()))
     ::tpy::Adapter<Counter, LeafCounter> __tmp_1{LeafCounter()};
     std::cout << run(__tmp_1) << "\n";
 }
 
+// from treelib import Tree, leaf_count
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from treelib import Tree, leaf_count
     ::tpyapp::treelib::__tpy_init();
-    // main()
     main();
 }
 

@@ -22,40 +22,75 @@ extern ::tpy::ordered_set<std::string>* _USES_RELATIVE;
 extern ::tpy::ordered_set<std::string>* _USES_PARAMS;
 inline constexpr std::string_view __name__ = "urllib.parse";
 
+// def _scheme_uses_netloc(scheme: str) -> bool:
 bool _scheme_uses_netloc(std::string_view scheme);
+// def _scheme_uses_relative(scheme: str) -> bool:
 bool _scheme_uses_relative(std::string_view scheme);
+// def _scheme_uses_params(scheme: str) -> bool:
 bool _scheme_uses_params(std::string_view scheme);
+// def _is_alpha(c: char) -> bool:
 bool _is_alpha(char c);
+// def _is_alnum(c: char) -> bool:
 bool _is_alnum(char c);
+// def _byte_unreserved(c: int32) -> bool:
 bool _byte_unreserved(int32_t c);
+// def _byte_in(c: int32, chars: str) -> bool:
 bool _byte_in(int32_t c, std::string_view chars);
+// def _hex_val(c: int32) -> int32:
 int32_t _hex_val(int32_t c);
+// def _quote_impl(s: str, safe: str, plus: bool) -> str:
 std::string _quote_impl(std::string_view s, std::string_view safe, bool plus);
+// def quote(s: str, safe: str = "/") -> str:
 std::string quote(std::string_view s, std::string_view safe = "/");
+// def quote_plus(s: str, safe: str = "") -> str:
 std::string quote_plus(std::string_view s, std::string_view safe = "");
+// def _unquote_impl(s: str, plus: bool) -> str:
 std::string _unquote_impl(std::string_view s, bool plus);
+// def unquote(s: str) -> str:
 std::string unquote(std::string_view s);
+// def unquote_plus(s: str) -> str:
 std::string unquote_plus(std::string_view s);
+// def urlencode(query: dict[str, str]) -> str:
 std::string urlencode(const ::tpy::ordered_map<std::string, std::string>& query);
+// def parse_qsl(qs: str, keep_blank_values: bool = False) -> Own[list[tuple[str, str]]]:
 std::vector<std::tuple<std::string, std::string>> parse_qsl(std::string_view qs, bool keep_blank_values = false);
+// def _netloc_hostinfo(netloc: str) -> str:
 std::string _netloc_hostinfo(std::string_view netloc);
+// def _hostinfo_host(hostinfo: str) -> str:
 std::string _hostinfo_host(std::string_view hostinfo);
+// def _hostinfo_port(hostinfo: str) -> str:
 std::string _hostinfo_port(std::string_view hostinfo);
+// def _netloc_hostname(netloc: str) -> str | None:
 std::optional<std::string> _netloc_hostname(std::string_view netloc);
+// def _all_ascii_digits(s: str) -> bool:
 bool _all_ascii_digits(std::string_view s);
+// def _netloc_port(netloc: str) -> int | None:
 std::optional<::tpy::BigInt> _netloc_port(std::string_view netloc);
+// def _netloc_username(netloc: str) -> str | None:
 std::optional<std::string> _netloc_username(std::string_view netloc);
+// def _netloc_password(netloc: str) -> str | None:
 std::optional<std::string> _netloc_password(std::string_view netloc);
+// def _is_scheme(s: str) -> bool:
 bool _is_scheme(std::string_view s);
+// def _clean(url: str) -> str:
 std::string _clean(std::string_view url);
+// def _netloc_end(s: str) -> int32:
 int32_t _netloc_end(std::string_view s);
+// def urlsplit(url: str) -> Own[SplitResult]:
 SplitResult urlsplit(std::string_view url);
+// def _split_params(path: str) -> tuple[str, str]:
 std::tuple<std::string, std::string> _split_params(std::string_view path);
+// def urlparse(url: str) -> Own[ParseResult]:
 ParseResult urlparse(std::string_view url);
+// def urlunsplit(components: tuple[str, str, str, str, str]) -> str:
 std::string urlunsplit(const std::tuple<std::string, std::string, std::string, std::string, std::string>& components);
+// def urlunparse(components: tuple[str, str, str, str, str, str]) -> str:
 std::string urlunparse(const std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>& components);
+// def urljoin(base: str, url: str) -> str:
 std::string urljoin(std::string_view base, std::string_view url);
+// def url_split_path_only(path: str) -> Own[list[str]]:
 std::vector<std::string> url_split_path_only(std::string_view path);
+// def _drop_inner_empties(segments: list[str]) -> Own[list[str]]:
 std::vector<std::string> _drop_inner_empties(const std::vector<std::string>& segments);
 
 // # ---------- result records ----------
@@ -73,7 +108,7 @@ struct SplitResult {
     std::string fragment;
 
     // def __init__(self, scheme: str, netloc: str, path: str, query: str,
-    // fragment: str) -> None:
+    //              fragment: str) -> None:
     SplitResult() = default;
     explicit SplitResult(std::string_view scheme, std::string_view netloc, std::string_view path, std::string_view query, std::string_view fragment);
 
@@ -119,7 +154,7 @@ struct ParseResult {
     std::string fragment;
 
     // def __init__(self, scheme: str, netloc: str, path: str, params: str,
-    // query: str, fragment: str) -> None:
+    //              query: str, fragment: str) -> None:
     ParseResult() = default;
     explicit ParseResult(std::string_view scheme, std::string_view netloc, std::string_view path, std::string_view params, std::string_view query, std::string_view fragment);
 
@@ -151,80 +186,91 @@ inline std::ostream& operator<<(std::ostream& os, const ParseResult& obj) {
 
 
 // def __init__(self, scheme: str, netloc: str, path: str, query: str,
-// fragment: str) -> None:
+//              fragment: str) -> None:
+//     self.scheme = scheme
+//     self.netloc = netloc
+//     self.path = path
+//     self.query = query
+//     self.fragment = fragment
 inline SplitResult::SplitResult(std::string_view scheme, std::string_view netloc, std::string_view path, std::string_view query, std::string_view fragment) : scheme(scheme), netloc(netloc), path(path), query(query), fragment(fragment) {}
 
 // @property
 // def hostname(self) -> str | None:
+//     return _netloc_hostname(self.netloc)
 inline std::optional<std::string> SplitResult::hostname() const {
-    // return _netloc_hostname(self.netloc)
     return _netloc_hostname(this->netloc);
 }
 
 // @property
 // def port(self) -> int | None:
+//     return _netloc_port(self.netloc)
 inline std::optional<::tpy::BigInt> SplitResult::port() const {
-    // return _netloc_port(self.netloc)
     return _netloc_port(this->netloc);
 }
 
 // @property
 // def username(self) -> str | None:
+//     return _netloc_username(self.netloc)
 inline std::optional<std::string> SplitResult::username() const {
-    // return _netloc_username(self.netloc)
     return _netloc_username(this->netloc);
 }
 
 // @property
 // def password(self) -> str | None:
+//     return _netloc_password(self.netloc)
 inline std::optional<std::string> SplitResult::password() const {
-    // return _netloc_password(self.netloc)
     return _netloc_password(this->netloc);
 }
 
 // def geturl(self) -> str:
+//     return urlunsplit((self.scheme, self.netloc, self.path, self.query,
+//                        self.fragment))
 inline std::string SplitResult::geturl() const {
-    // return urlunsplit((self.scheme, self.netloc, self.path, self.query,
-    // self.fragment))
     return urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{this->scheme, this->netloc, this->path, this->query, this->fragment});
 }
 
 // def __init__(self, scheme: str, netloc: str, path: str, params: str,
-// query: str, fragment: str) -> None:
+//              query: str, fragment: str) -> None:
+//     self.scheme = scheme
+//     self.netloc = netloc
+//     self.path = path
+//     self.params = params
+//     self.query = query
+//     self.fragment = fragment
 inline ParseResult::ParseResult(std::string_view scheme, std::string_view netloc, std::string_view path, std::string_view params, std::string_view query, std::string_view fragment) : scheme(scheme), netloc(netloc), path(path), params(params), query(query), fragment(fragment) {}
 
 // @property
 // def hostname(self) -> str | None:
+//     return _netloc_hostname(self.netloc)
 inline std::optional<std::string> ParseResult::hostname() const {
-    // return _netloc_hostname(self.netloc)
     return _netloc_hostname(this->netloc);
 }
 
 // @property
 // def port(self) -> int | None:
+//     return _netloc_port(self.netloc)
 inline std::optional<::tpy::BigInt> ParseResult::port() const {
-    // return _netloc_port(self.netloc)
     return _netloc_port(this->netloc);
 }
 
 // @property
 // def username(self) -> str | None:
+//     return _netloc_username(self.netloc)
 inline std::optional<std::string> ParseResult::username() const {
-    // return _netloc_username(self.netloc)
     return _netloc_username(this->netloc);
 }
 
 // @property
 // def password(self) -> str | None:
+//     return _netloc_password(self.netloc)
 inline std::optional<std::string> ParseResult::password() const {
-    // return _netloc_password(self.netloc)
     return _netloc_password(this->netloc);
 }
 
 // def geturl(self) -> str:
+//     return urlunparse((self.scheme, self.netloc, self.path, self.params,
+//                        self.query, self.fragment))
 inline std::string ParseResult::geturl() const {
-    // return urlunparse((self.scheme, self.netloc, self.path, self.params,
-    // self.query, self.fragment))
     return urlunparse(std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>{this->scheme, this->netloc, this->path, this->params, this->query, this->fragment});
 }
 void __tpy_init();

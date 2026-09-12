@@ -5,28 +5,30 @@ namespace tpyapp::main {
 
 
 // def names(a: readonly[Dog | Cat]) -> Iterator[str]:
+//     yield "a"
+//     match a:
+//         case Dog():
+//             yield a.name
+//         case Cat():
+//             yield a.name
+//     yield "b"
 std::expected<std::string, ::tpy::StopIteration> __gen_names::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield "a"
         __state = S_RESUME_0;
         return "a";
     }
     case S_RESUME_0: {
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case Dog():
         case 1: {
             auto& __case_0 = *std::get<1>(__match_subject_1);
-            // yield a.name
             __state = S_RESUME_1;
             return __case_0.name;
             break;
         }
-        // case Cat():
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
-            // yield a.name
             __state = S_RESUME_2;
             return __case_1.name;
             break;
@@ -50,7 +52,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_names::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield "b"
         __state = S_RESUME_3;
         return "b";
     }
@@ -66,8 +67,9 @@ __gen_names names(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // def main() -> None:
+//     for s in names(Dog("rex")):
+//         print(s)
 void main() {
-    // for s in names(Dog("rex")):
     {
         Dog __tmp_1 = Dog("rex");
         auto __src_0 = names(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
@@ -76,18 +78,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

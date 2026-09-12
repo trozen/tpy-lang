@@ -5,10 +5,31 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     # Owned-element unpack: move the @nocopy Counter out, then mutate it.
+//     c, tag = await _OwnPair()
+//     c.bump()
+//     c.bump()
+//     print(c.n, tag)
+//
+//     # Re-await in a loop: the frame_slot must re-emplace each iteration.
+//     i: int32 = 0
+//     while i < 3:
+//         d, k = await _OwnPair()
+//         d.bump()
+//         print(d.n, k)
+//         i += 1
+//
+//     # Inverse: value tuple still unpacks.
+//     a, b = await _ValPair()
+//     print(a, b)
+//
+//     # Reference-element tuple: the list is moved out, then mutated.
+//     lst, m = await _RefPair()
+//     lst.append(30)
+//     print(len(lst), lst[2], m)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c, tag = await _OwnPair()
         __sub_0.emplace(std::move(_OwnPair()));
         __state = S_RESUME_0;
         continue;
@@ -18,19 +39,12 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // # Owned-element unpack: move the @nocopy Counter out, then mutate it.
-        // c, tag = await _OwnPair()
         auto&& __tup_1 = (*__await_lift_0);
         c.emplace(std::move(std::get<0>(__tup_1)));
         tag = std::get<1>(__tup_1);
-        // c.bump()
         (*c).bump();
-        // c.bump()
         (*c).bump();
-        // print(c.n, tag)
         std::cout << (*c).n << " " << tag << "\n";
-        // # Re-await in a loop: the frame_slot must re-emplace each iteration.
-        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -40,15 +54,11 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1.emplace(std::move(__r1).value());
         __sub_1.reset();
-        // d, k = await _OwnPair()
         auto&& __tup_2 = (*__await_lift_1);
         d.emplace(std::move(std::get<0>(__tup_2)));
         k = std::get<1>(__tup_2);
-        // d.bump()
         (*d).bump();
-        // print(d.n, k)
         std::cout << (*d).n << " " << k << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -58,14 +68,10 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // # Inverse: value tuple still unpacks.
-        // a, b = await _ValPair()
         const auto& __tup_3 = __await_lift_2;
         a = std::get<0>(__tup_3);
         b = std::get<1>(__tup_3);
-        // print(a, b)
         std::cout << a << " " << b << "\n";
-        // lst, m = await _RefPair()
         __sub_3.emplace(std::move(_RefPair()));
         __state = S_RESUME_3;
         continue;
@@ -75,26 +81,20 @@ namespace tpyapp::main {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3.emplace(std::move(__r3).value());
         __sub_3.reset();
-        // # Reference-element tuple: the list is moved out, then mutated.
-        // lst, m = await _RefPair()
         auto __tup_4 = ::tpy::tuple_to_pointer<std::tuple<std::vector<int32_t>*, int32_t>>((*__await_lift_3));
         lst = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4))));
         m = std::get<1>(__tup_4);
-        // lst.append(30)
         lst->push_back(30);
-        // print(len(lst), lst[2], m)
         std::cout << ::tpy::__len__((*lst)) << " " << ::tpy::__getitem__((*lst), 2) << " " << m << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_0: {
         if ((i < 3)) {
-            // d, k = await _OwnPair()
             __sub_1.emplace(std::move(_OwnPair()));
             __state = S_RESUME_1;
             continue;
         } else {
-            // a, b = await _ValPair()
             __sub_2.emplace(std::move(_ValPair()));
             __state = S_RESUME_2;
             continue;
@@ -112,24 +112,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # An await-result tuple with a @nocopy/Own (or reference) element is moved out
+// # at unpack, not copied -- mutate-after-boundary proves the move (a copy of a
+// # @nocopy element would be a compile error).
+// import asyncio
+//
+// from tpy.coro import Poll, Waker, poll_ready
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An await-result tuple with a @nocopy/Own (or reference) element is moved out
-    // # at unpack, not copied -- mutate-after-boundary proves the move (a copy of a
-    // # @nocopy element would be a compile error).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Poll, Waker, poll_ready
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

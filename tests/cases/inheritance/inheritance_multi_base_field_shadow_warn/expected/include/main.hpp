@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Parent:
@@ -48,14 +49,15 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.token = n
+//     Parent.token = n + 1
 inline Child::Child(int32_t n) : token(n) {
-    // Parent.token = n + 1
     this->Parent::token = (::tpy::add_check<int32_t>(n, 1));
 }
 
 // def as_pair(self) -> str:
+//     return str(self.token) + "/" + str(Parent.token)
 inline std::string Child::as_pair() const {
-    // return str(self.token) + "/" + str(Parent.token)
     return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->token), "/")), ::tpy::fixed_to_str<int32_t>(this->Parent::token)));
 }
 void __tpy_init();

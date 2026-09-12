@@ -880,6 +880,7 @@ class AsyncCoroCodegen:
         return True
 
     def gen_factory_forward_decl(self, out: "TextIO", func: TpyFunction) -> bool:
+        self.ctx.emit_source_comment(out, func.loc)
         return_type_name = self._struct_name_templated(func)
         self._emit_template_header(out, func)
         # Default arg values live on this forward decl (the canonical first
@@ -1758,9 +1759,7 @@ class AsyncCoroCodegen:
         cfg = self._build_resumable_cfg(func, record_name)
         yields = cfg.yield_sites
 
-        label = f"{record_name}.{func.name}" if record_name else func.name
-        kind = "Generator" if self._is_generator_shape() else "Async coroutine"
-        out.write(f"// {kind}: {label}\n")
+        self.ctx.emit_source_comment(out, func.loc)
         self._emit_template_header(out, func, record_name=record_name)
         # Async coroutines are awaited, not iterated, so this is "" for them;
         # generator frames gain begin()/end() (see _generator_iter_base).
@@ -2480,7 +2479,7 @@ class AsyncCoroCodegen:
         has_yields = bool(cfg.yield_sites)
         leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
 
-        self.ctx.emit_source_comment(out, func.loc)
+        self.ctx.emit_definition_source_block(out, func.loc)
         self._emit_template_header(out, func, record_name=record_name)
         out.write(f"{self._resumable_body_method_decl(func, struct_name)} {{\n")
         self._emit_resumable_body_prelude(out, has_yields)
@@ -2542,7 +2541,7 @@ class AsyncCoroCodegen:
                                      cfg: 'rcfg.CFG'):
         """The body's leaf renderer bound to the live ctx sinks."""
         rb = self._thir_resumable_attempt(func, record_name, cfg)
-        from ..thir.emit import (CommentSink, ModuleCounter, CtxIterCounter,
+        from ..thir.emit import (ModuleCounter, CtxIterCounter,
                                  TempSink, ResumableLeafEmitter)
 
         def _return_hook(stmt: TpyReturn, indent_level: int) -> str:
@@ -2553,7 +2552,6 @@ class AsyncCoroCodegen:
 
         return ResumableLeafEmitter(
             rb,
-            comments=CommentSink(self.ctx),
             temps=TempSink(self.ctx),
             with_counter=ModuleCounter(self.ctx, "with_counter"),
             try_counter=ModuleCounter(self.ctx, "try_except_counter"),
@@ -4905,12 +4903,7 @@ class AsyncCoroCodegen:
                 # minus its top-level line tracking, which is module-init
                 # state and module init never emits a resumable frame.
                 stmt_indent = self.ctx.indent()
-                comment_loc = (
-                    None if getattr(t.return_stmt, "no_source_comment", False)
-                    else t.return_stmt.loc)
-                self.ctx.emit_inline_comments(out, comment_loc, stmt_indent)
                 code = self._resumable_return_code(t.return_stmt, stmt_indent)
-                self.ctx.emit_source_comment(out, comment_loc, stmt_indent)
                 # The maker's renders can queue temps; they belong ahead of
                 # the code that reads them, so flush only after it is built.
                 self.ctx.temps.flush(out, stmt_indent)
@@ -5598,8 +5591,6 @@ class AsyncCoroCodegen:
         ys = payload.yield_stmt
         assert ys is not None, \
             "YieldPayload built from a generator body always carries yield_stmt"
-        if ys.loc is not None:
-            self.ctx.emit_source_comment(out, ys.loc, indent)
         yield_expr = self._leaf.render_yield_value(ys)
         self.ctx.temps.flush(out, indent)
         resume = _StateLabel(_StateKind.RESUME, t.suspension_index).cpp_name()
@@ -5616,8 +5607,6 @@ class AsyncCoroCodegen:
         Erased mode: move the operand value into the optional field.
         Borrowed mode: store the operand's address in the pointer field.
         """
-        if payload.host_stmt is not None and payload.host_stmt.loc is not None:
-            self.ctx.emit_source_comment(out, payload.host_stmt.loc, indent)
         sub = self._sub_slot_name(payload, suspension_index)
         if payload.prebuilt_slot is not None:
             # Bound-coroutine await: the handle's frame slot is already

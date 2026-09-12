@@ -55,20 +55,23 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
+//     self.item = None
 inline Box::Box() : item(std::nullopt) {}
 
 // def get_item(self) -> Point | None:
+//     return self.item
 inline Point* Box::get_item() {
-    // return self.item
     return ::tpy::optional_to_ptr(this->item);
 }
 
 // def has_item(self) -> bool:
+//     return self.item is not None
 inline bool Box::has_item() const {
-    // return self.item is not None
     return (this->item.has_value());
 }
 void __tpy_init();

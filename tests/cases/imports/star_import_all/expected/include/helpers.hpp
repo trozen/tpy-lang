@@ -11,7 +11,9 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "helpers";
 
+// def public_add(a: int32, b: int32) -> int32:
 int32_t public_add(int32_t a, int32_t b);
+// def not_exported(x: int32) -> int32:
 int32_t not_exported(int32_t x);
 
 // class Pair:
@@ -34,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 
 
 // def __init__(self, a: int32, b: int32):
+//     self.a = a
+//     self.b = b
 inline Pair::Pair(int32_t a, int32_t b) : a(a), b(b) {}
 void __tpy_init();
 } // namespace tpyapp::helpers

@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // async def relay(b: Box2) -> Box2:
+//     return await b.me()
 ::tpystd::tpy::Poll<Box2*> __coro_relay::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await b.me()
         __sub_0.emplace(b);
         __state = S_RESUME_0;
         continue;
@@ -33,12 +33,14 @@ __coro_relay relay(Box2& b) {
 }
 
 // async def main() -> None:
+//     b = Box2(2)
+//     r = await relay(b)
+//     r.v = 77
+//     print(b.v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = Box2(2)
         b.emplace(Box2(::tpy::BigInt(2)));
-        // r = await relay(b)
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
@@ -48,9 +50,7 @@ __coro_relay relay(Box2& b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        // r.v = 77
         r->v = ::tpy::BigInt(77);
-        // print(b.v)
         std::cout << (*b).v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -67,10 +67,11 @@ __coro_main main() {
 }
 
 // async def me(self) -> "Box2":
+//     await asyncio.sleep(0)
+//     return self
 ::tpystd::tpy::Poll<Box2*> __coro_Box2_me::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -80,7 +81,6 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box2*>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self
         __state = S_DONE;
         Box2* __tpy_async_ret = &(__self);
         return ::tpystd::tpy::Poll<Box2*>::ready(std::move(__tpy_async_ret));
@@ -91,17 +91,18 @@ __coro_main main() {
 }
 
 
+// # `return await inner()` under a borrow contract: a borrow-returning
+// # await may be re-returned (the pointer payload chains through the outer
+// # frame); the final result still aliases the original receiver.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `return await inner()` under a borrow contract: a borrow-returning
-    // # await may be re-returned (the pointer payload chains through the outer
-    // # frame); the final result still aliases the original receiver.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

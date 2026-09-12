@@ -3,21 +3,21 @@
 
 namespace tpyapp::main {
 
-// x: int32 = 2147483647  # INT32_MAX
 int32_t x{};
-// y: int32 = x * 2       # Should panic
 int32_t y{};
 
+// """Test int32 multiplication overflow panic at runtime."""
+//
+// x: int32 = 2147483647  # INT32_MAX
+// y: int32 = x * 2       # Should panic
+// print(y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 = 2147483647  # INT32_MAX
     x = 2147483647;
-    // y: int32 = x * 2       # Should panic
     y = (::tpy::mul_check<int32_t>(x, 2));
-    // print(y)
     std::cout << y << "\n";
 }
 

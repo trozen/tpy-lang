@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_steps;
 
+// def steps(limit: int32) -> Iterator[int32]:
 __gen_steps steps(int32_t limit);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Generator: steps
+// def steps(limit: int32) -> Iterator[int32]:
 struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     int32_t __state;
     int32_t limit;
@@ -65,17 +67,18 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 
 
 // def __init__(self, start: int32):
+//     self.n = start
 inline Counter::Counter(int32_t start) : n(start) {}
 
 // def __enter__(self) -> "Counter":
+//     return self
 inline Counter& Counter::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("exit sees", self.n)
 inline void Counter::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("exit sees", self.n)
     std::cout << "exit sees" << " " << this->n << "\n";
 }
 void __tpy_init();

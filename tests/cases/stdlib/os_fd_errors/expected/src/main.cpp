@@ -3,81 +3,92 @@
 
 namespace tpyapp::main {
 
-// _MISSING = "tpy_nope_missing_xyz"
 std::string _MISSING;
 
 // def main():
+//     if os.path.exists(_MISSING):
+//         os.remove(_MISSING)
+//
+//     try:
+//         os.open(_MISSING, os.O_RDONLY)
+//     except FileNotFoundError:
+//         print("open: FileNotFoundError")
+//
+//     try:
+//         os.read(99999, 4)            # bad fd
+//     except OSError:
+//         print("read: OSError")
+//
+//     try:
+//         os.fstat(99999)
+//     except OSError:
+//         print("fstat: OSError")
+//
+//     try:
+//         os.chmod(_MISSING, 0o600)
+//     except FileNotFoundError:
+//         print("chmod: FileNotFoundError")
+//
+//     try:
+//         os.utime(_MISSING, (1.0, 1.0))
+//     except FileNotFoundError:
+//         print("utime: FileNotFoundError")
 void main() {
-    // if os.path.exists(_MISSING):
     if (::tpy::stdlib::os::path_exists(_MISSING)) {
-        // os.remove(_MISSING)
         ::tpy::stdlib::os::remove(_MISSING);
     }
-    // try:
     {
         try {
-            // os.open(_MISSING, os.O_RDONLY)
             ::tpystd::os::open(_MISSING, ::tpy::stdlib::os::kc_o_rdonly);
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("open: FileNotFoundError")
             std::cout << "open: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.read(99999, 4)            # bad fd
             ::tpystd::os::read(99999, 4);
         } catch (const ::tpy::OSError&) {
-            // print("read: OSError")
             std::cout << "read: OSError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.fstat(99999)
             ::tpystd::os::fstat(99999);
         } catch (const ::tpy::OSError&) {
-            // print("fstat: OSError")
             std::cout << "fstat: OSError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.chmod(_MISSING, 0o600)
             ::tpystd::os::chmod(_MISSING, 384);
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("chmod: FileNotFoundError")
             std::cout << "chmod: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.utime(_MISSING, (1.0, 1.0))
             ::tpystd::os::utime(_MISSING, std::tuple<double, double>{1.0, 1.0});
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("utime: FileNotFoundError")
             std::cout << "utime: FileNotFoundError" << "\n";
         }
     }
 }
 
+// # Error paths for fd I/O + metadata: open a missing path, read/fstat a bad fd,
+// # chmod/utime a missing path -- each raises the expected OSError subclass
+// # (caught, so output is deterministic). Byte-compared against CPython.
+// import os
+//
+// _MISSING = "tpy_nope_missing_xyz"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Error paths for fd I/O + metadata: open a missing path, read/fstat a bad fd,
-    // # chmod/utime a missing path -- each raises the expected OSError subclass
-    // # (caught, so output is deterministic). Byte-compared against CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // _MISSING = "tpy_nope_missing_xyz"
     _MISSING = "tpy_nope_missing_xyz";
-    // main()
     main();
 }
 

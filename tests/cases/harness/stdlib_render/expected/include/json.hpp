@@ -28,12 +28,18 @@ struct JSONDecodeError;
 
 inline constexpr std::string_view __name__ = "json";
 
+// def _read_value(reader: JsonReader) -> Own[JsonValue]:
 std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(::tpystd::tplib::json::parser::JsonReader& reader);
+// def loads(s: str) -> Own[JsonValue]:
 JsonValue loads(std::string_view s);
+// def _write_value(v: JsonValue, w: JsonWriter, sort_keys: bool) -> None:
 void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter& w, bool sort_keys);
+// def dumps(obj: JsonValue, *, indent: int32 = 0, sort_keys: bool = False) -> str:
 std::string dumps(const JsonValue& obj, int32_t indent = 0, bool sort_keys = false);
+// def load(fp: Readable) -> Own[JsonValue]:
 template<::tpystd::tpy::Readable T_fp>
 JsonValue load(T_fp& fp);
+// def dump(obj: JsonValue, fp: Writable, *, indent: int32 = 0, sort_keys: bool = False) -> None:
 template<::tpystd::tpy::Writable T_fp>
 void dump(const JsonValue& obj, T_fp& fp, int32_t indent = 0, bool sort_keys = false);
 
@@ -86,15 +92,25 @@ struct JsonValue {
 // # load / dump -- file-object variants over the io Readable/Writable protocols
 // # ----------------------------------------------------------------------
 // def load(fp: Readable) -> Own[JsonValue]:
+//     """Deserialize a JSON document from a text file object into a JsonValue.
+//
+//     `fp` is any object with a `read() -> str` method (e.g. io.StringIO or
+//     open()'s TextIO). Equivalent to loads(fp.read()).
+//     """
+//     return loads(fp.read())
 template<::tpystd::tpy::Readable T_fp>
 JsonValue load(T_fp& fp) {
-    // return loads(fp.read())
     return loads(fp.read());
 }
 // def dump(obj: JsonValue, fp: Writable, *, indent: int32 = 0, sort_keys: bool = False) -> None:
+//     """Serialize a JsonValue as JSON to a text file object.
+//
+//     `fp` is any object with a `write(str) -> int32` method (e.g. io.StringIO
+//     or open()'s TextIO). Equivalent to fp.write(dumps(obj, ...)).
+//     """
+//     fp.write(dumps(obj, indent=indent, sort_keys=sort_keys))
 template<::tpystd::tpy::Writable T_fp>
 void dump(const JsonValue& obj, T_fp& fp, int32_t indent, bool sort_keys) {
-    // fp.write(dumps(obj, indent=indent, sort_keys=sort_keys))
     fp.write(dumps(obj, indent, sort_keys));
 }
 

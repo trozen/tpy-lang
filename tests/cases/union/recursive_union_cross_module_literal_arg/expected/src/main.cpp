@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(int_leaves([1, "a", [2, 3], 4]))
 void main() {
-    // print(int_leaves([1, "a", [2, 3], 4]))
     ::tpyapp::shapes::Shape __tmp_1 = std::vector<::tpyapp::shapes::Shape>{1, "a", std::vector<::tpyapp::shapes::Shape>{2, 3}, 4};
     std::cout << ::tpyapp::shapes::int_leaves(__tmp_1) << "\n";
 }
 
+// # A non-generic recursive union (Shape) defined in another module, consumed via
+// # a cross-module function called with a container *literal* -- WITHOUT importing
+// # the Shape alias. Exercises cross-module recursive-union literal coercion
+// # (the general, non-json form). Read-only traversal.
+// from shapes import int_leaves
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A non-generic recursive union (Shape) defined in another module, consumed via
-    // # a cross-module function called with a container *literal* -- WITHOUT importing
-    // # the Shape alias. Exercises cross-module recursive-union literal coercion
-    // # (the general, non-json form). Read-only traversal.
-    // from shapes import int_leaves
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

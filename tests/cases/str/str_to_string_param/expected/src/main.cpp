@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def take_string(s: String) -> String:
+//     return s
 ::tpy::String take_string(const ::tpy::String& s) {
-    // return s
     return s;
 }
 
 // def forward(s: str) -> String:
+//     # s is a str param (C++: std::string_view). take_string expects String
+//     # (C++: const std::string&). Requires materialization.
+//     return take_string(s)
 ::tpy::String forward(std::string_view s) {
-    // # s is a str param (C++: std::string_view). take_string expects String
-    // # (C++: const std::string&). Requires materialization.
-    // return take_string(s)
     return take_string(::tpy::String(s));
 }
 
 // def main() -> None:
+//     out = forward("hello from str")
+//     print(out)
 void main() {
-    // out = forward("hello from str")
     ::tpy::String out = forward("hello from str");
-    // print(out)
     std::cout << out << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

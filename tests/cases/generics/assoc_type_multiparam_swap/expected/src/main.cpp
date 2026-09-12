@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = IntStr(42, "swapped")
+//     print(get_k(p))            # K = str (protocol's second param)
+//     print(get_v(p) + 1)        # V = int (protocol's first param)
 void main() {
-    // p = IntStr(42, "swapped")
     IntStr p = IntStr(::tpy::BigInt(42), "swapped");
-    // print(get_k(p))            # K = str (protocol's second param)
     std::cout << get_k<std::string, ::tpy::BigInt, IntStr>(p) << "\n";
-    // print(get_v(p) + 1)        # V = int (protocol's first param)
     std::cout << ((get_v<std::string, ::tpy::BigInt, IntStr>(p)) + (::tpy::BigInt(1))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

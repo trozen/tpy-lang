@@ -11,11 +11,17 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box | None]:
 std::tuple<Box, Box*> make_mixed(Box& b);
+// def make_none() -> tuple[Own[Box], Box | None]:
 std::tuple<Box, Box*> make_none();
+// def write_through(b: Box) -> int32:
 int32_t write_through(Box& b);
+// def read_direct(b: Box) -> int32:
 int32_t read_direct(Box& b);
+// def none_element() -> int32:
 int32_t none_element();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Box::Box(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

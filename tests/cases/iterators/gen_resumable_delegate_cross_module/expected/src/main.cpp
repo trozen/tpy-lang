@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def free_import() -> Iterator[int32]:
+//     yield 0
+//     for x in walk():  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_import::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -28,7 +30,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_free_import::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -44,10 +45,12 @@ __gen_free_import free_import() {
 }
 
 // def module_call() -> Iterator[int32]:
+//     yield 10
+//     for x in gensrc.walk():  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_module_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 10
         __state = S_RESUME_0;
         return 10;
     }
@@ -67,7 +70,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_module_call::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -83,10 +85,12 @@ __gen_module_call module_call() {
 }
 
 // def imported_method(s: Src) -> Iterator[int32]:
+//     yield 20
+//     for x in s.steps():  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 20
         __state = S_RESUME_0;
         return 20;
     }
@@ -106,7 +110,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -122,10 +125,12 @@ __gen_imported_method imported_method(::tpyapp::gensrc::Src& s) {
 }
 
 // def generic_callee() -> Iterator[int32]:
+//     yield 30
+//     for x in pair(1, 2):  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 30
         __state = S_RESUME_0;
         return 30;
     }
@@ -147,7 +152,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -163,10 +167,12 @@ __gen_generic_callee generic_callee() {
 }
 
 // def generic_owner_imported(b: Box[int32]) -> Iterator[int32]:
+//     yield 40
+//     for v in b.two():  # tpyc: ok
+//         yield v
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_imported::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 40
         __state = S_RESUME_0;
         return 40;
     }
@@ -186,7 +192,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_imported::__nex
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield v
         __state = S_RESUME_1;
         return v;
     }
@@ -202,10 +207,12 @@ __gen_generic_owner_imported generic_owner_imported(::tpyapp::gensrc::Box<int32_
 }
 
 // def generic_owner_local(b: LocalBox[int32]) -> Iterator[int32]:
+//     yield 50
+//     for v in b.two():  # tpyc: ok
+//         yield v
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 50
         __state = S_RESUME_0;
         return 50;
     }
@@ -225,7 +232,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_local::__next__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield v
         __state = S_RESUME_1;
         return v;
     }
@@ -241,10 +247,13 @@ __gen_generic_owner_local generic_owner_local(LocalBox<int32_t>& b) {
 }
 
 // def mutate_receiver(b: Bag) -> Iterator[int32]:
+//     yield 60
+//     for v in b.readings():  # tpyc: ok
+//         b.bump()
+//         yield v
 std::expected<int32_t, ::tpy::StopIteration> __gen_mutate_receiver::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 60
         __state = S_RESUME_0;
         return 60;
     }
@@ -264,9 +273,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_mutate_receiver::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // b.bump()
         b.bump();
-        // yield v
         __state = S_RESUME_1;
         return v;
     }
@@ -282,10 +289,12 @@ __gen_mutate_receiver mutate_receiver(::tpyapp::gensrc::Bag& b) {
 }
 
 // def lazy_interleave() -> Iterator[int32]:
+//     yield 70
+//     for x in chatty():  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_lazy_interleave::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 70
         __state = S_RESUME_0;
         return 70;
     }
@@ -305,7 +314,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_lazy_interleave::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -321,10 +329,12 @@ __gen_lazy_interleave lazy_interleave() {
 }
 
 // def abandoned() -> Iterator[int32]:
+//     yield 80
+//     for x in guarded():  # tpyc: ok
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 80
         __state = S_RESUME_0;
         return 80;
     }
@@ -344,7 +354,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -360,10 +369,14 @@ __gen_abandoned abandoned() {
 }
 
 // async def async_position() -> int32:
+//     total: int32 = 0
+//     for x in walk():  # tpyc: ok
+//         await asyncio.sleep(0)
+//         total += x
+//     return total
 ::tpystd::tpy::Poll<int32_t> __coro_async_position::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total: int32 = 0
         total = 0;
         __for_src_0.emplace(::tpyapp::gensrc::walk());
         __state = S_JOIN_0;
@@ -374,7 +387,6 @@ __gen_abandoned abandoned() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
         __state = S_JOIN_0;
         continue;
@@ -382,13 +394,11 @@ __gen_abandoned abandoned() {
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
-            // return total
             __state = S_DONE;
             int32_t __tpy_async_ret = total;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -405,8 +415,32 @@ __coro_async_position async_position() {
 }
 
 // def main() -> None:
+//     for v in free_import():
+//         print("free:", v)
+//     for v in module_call():
+//         print("modcall:", v)
+//     for v in imported_method(Src(7)):
+//         print("method:", v)
+//     for v in generic_callee():
+//         print("generic:", v)
+//     for v in generic_owner_imported(Box([5, 6])):
+//         print("genowner-imported:", v)
+//     for v in generic_owner_local(LocalBox([8, 9])):
+//         print("genowner-local:", v)
+//     bag = Bag()
+//     for v in mutate_receiver(bag):
+//         print("mutate:", v)
+//     print("mutate: after", bag.n)
+//     for v in lazy_interleave():
+//         print("lazy:", v)
+//         print("lazy: consumer pulled")
+//     for v in abandoned():
+//         print("abandon:", v)
+//         if v == 1:
+//             break
+//     print("abandon: after break")
+//     print("async:", asyncio.run(async_position()))
 void main() {
-    // for v in free_import():
     {
         auto __src_0 = free_import();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -414,11 +448,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print("free:", v)
         std::cout << "free:" << " " << v << "\n";
         }
     }
-    // for v in module_call():
     {
         auto __src_2 = module_call();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -426,11 +458,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print("modcall:", v)
         std::cout << "modcall:" << " " << v << "\n";
         }
     }
-    // for v in imported_method(Src(7)):
     {
         ::tpyapp::gensrc::Src __tmp_3 = ::tpyapp::gensrc::Src(7);
         auto __src_4 = imported_method(__tmp_3);
@@ -439,11 +469,9 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print("method:", v)
         std::cout << "method:" << " " << v << "\n";
         }
     }
-    // for v in generic_callee():
     {
         auto __src_6 = generic_callee();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -451,11 +479,9 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        // print("generic:", v)
         std::cout << "generic:" << " " << v << "\n";
         }
     }
-    // for v in generic_owner_imported(Box([5, 6])):
     {
         ::tpyapp::gensrc::Box<int32_t> __tmp_4 = ::tpyapp::gensrc::Box<int32_t>({5, 6});
         auto __src_8 = generic_owner_imported(__tmp_4);
@@ -464,11 +490,9 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        // print("genowner-imported:", v)
         std::cout << "genowner-imported:" << " " << v << "\n";
         }
     }
-    // for v in generic_owner_local(LocalBox([8, 9])):
     {
         LocalBox<int32_t> __tmp_5 = LocalBox<int32_t>({8, 9});
         auto __src_10 = generic_owner_local(__tmp_5);
@@ -477,13 +501,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        // print("genowner-local:", v)
         std::cout << "genowner-local:" << " " << v << "\n";
         }
     }
-    // bag = Bag()
     ::tpyapp::gensrc::Bag bag = ::tpyapp::gensrc::Bag();
-    // for v in mutate_receiver(bag):
     {
         auto __src_12 = mutate_receiver(bag);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -491,13 +512,10 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        // print("mutate:", v)
         std::cout << "mutate:" << " " << v << "\n";
         }
     }
-    // print("mutate: after", bag.n)
     std::cout << "mutate: after" << " " << bag.n << "\n";
-    // for v in lazy_interleave():
     {
         auto __src_14 = lazy_interleave();
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
@@ -505,13 +523,10 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        // print("lazy:", v)
         std::cout << "lazy:" << " " << v << "\n";
-        // print("lazy: consumer pulled")
         std::cout << "lazy: consumer pulled" << "\n";
         }
     }
-    // for v in abandoned():
     {
         auto __src_16 = abandoned();
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
@@ -519,33 +534,30 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-        // print("abandon:", v)
         std::cout << "abandon:" << " " << v << "\n";
-        // if v == 1:
         if ((v == 1)) {
-            // break
             break;
         }
         }
     }
-    // print("abandon: after break")
     std::cout << "abandon: after break" << "\n";
-    // print("async:", asyncio.run(async_position()))
     std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_position())) << "\n";
 }
 
+// # A resumable frame delegating to a generator defined in ANOTHER module: the
+// # `__for_src` field spells the callee's frame struct through its namespace.
+// import asyncio
+//
+// import gensrc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A resumable frame delegating to a generator defined in ANOTHER module: the
-    // # `__for_src` field spells the callee's frame struct through its namespace.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // import gensrc
     ::tpyapp::gensrc::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,55 +5,59 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     cfg: dict[str, Any] = {
+//         "host": "localhost",
+//         "port": 8080,
+//         "debug": True,
+//         "timeout": 1.5,
+//     }
+//
+//     # isinstance narrowing: borrow into the Any cell, outer survives.
+//     debug = cfg["debug"]
+//     if isinstance(debug, bool):
+//         if debug:
+//             print("debug on")
+//         else:
+//             print("debug off")
+//
+//     # Auto-coerce: annotated assignment runs any_cast_or_panic.
+//     host: str = cfg["host"]
+//     port: int = cfg["port"]
+//     print(host)
+//     print(port)
+//
+//     # Explicit typing.cast: same runtime check, user-driven.
+//     timeout = cast(float, cfg["timeout"])
+//     print(timeout)
+//
+//     # Print on raw Any -- universal op via the str slot.
+//     print(cfg["host"])
 void main() {
-    // cfg: dict[str, Any] = {
-    // "host": "localhost",
-    // "port": 8080,
-    // "debug": True,
-    // "timeout": 1.5,
-    // }
     ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(::tpy::BigInt(8080))}, {"debug", ::tpy::make_any(true)}, {"timeout", ::tpy::make_any(static_cast<double>(1.5))}});
-    // # isinstance narrowing: borrow into the Any cell, outer survives.
-    // debug = cfg["debug"]
     ::tpy::Any debug = ::tpy::__getitem__(cfg, "debug");
-    // if isinstance(debug, bool):
     if ((debug.value.has_value() && debug.value.type() == typeid(bool))) {
         const bool& __debug = std::any_cast<const bool&>(debug.value);
-        // if debug:
         if (::tpy::to_bool(__debug)) {
-            // print("debug on")
             std::cout << "debug on" << "\n";
-        // else:
         } else {
-            // print("debug off")
             std::cout << "debug off" << "\n";
         }
     }
-    // # Auto-coerce: annotated assignment runs any_cast_or_panic.
-    // host: str = cfg["host"]
     std::string host = ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(cfg, "host"));
-    // port: int = cfg["port"]
     ::tpy::BigInt port = ::tpy::any_cast_or_panic<::tpy::BigInt>(::tpy::__getitem__(cfg, "port"));
-    // print(host)
     std::cout << host << "\n";
-    // print(port)
     std::cout << port << "\n";
-    // # Explicit typing.cast: same runtime check, user-driven.
-    // timeout = cast(float, cfg["timeout"])
     double timeout = ::tpy::any_cast_or_panic<double>(::tpy::__getitem__(cfg, "timeout"));
-    // print(timeout)
     std::cout << ::tpy::print_float(timeout) << "\n";
-    // # Print on raw Any -- universal op via the str slot.
-    // print(cfg["host"])
     std::cout << ::tpy::__getitem__(cfg, "host") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -8,49 +8,49 @@ namespace tpyapp::main {
 // # range store/load/delete/aug-assign exactly as in CPython (the map's key
 // # type IS BigInt).
 // def bump(d: dict[int, int], k: int) -> None:
+//     d[k] += 5
 void bump(::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>& d, const ::tpy::BigInt& k) {
-    // d[k] += 5
     ::tpy::__setitem__(d, k, (::tpy::__getitem__(d, k)) + (::tpy::BigInt(5)));
 }
 
 // def main():
+//     d: dict[int, str] = {}
+//     k: int = 1099511627776  # 2**40
+//     d[k] = "big"
+//     print(d[k])
+//     print(k in d)
+//     del d[k]
+//     print(len(d))
+//     d[1125899906842624] = "lit"  # 2**50: a literal key beyond int32
+//     print(d[1125899906842624])
+//     counts: dict[int, int] = {}
+//     counts[k] = 1
+//     bump(counts, k)
+//     print(counts[k])
+//     print(counts.pop(k))
 void main() {
-    // d: dict[int, str] = {}
     ::tpy::ordered_map<::tpy::BigInt, std::string> d = ::tpy::ordered_map<::tpy::BigInt, std::string>();
-    // k: int = 1099511627776  # 2**40
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
-    // d[k] = "big"
     ::tpy::__setitem__(d, k, "big");
-    // print(d[k])
     std::cout << ::tpy::__getitem__(d, k) << "\n";
-    // print(k in d)
     std::cout << ::tpy::print_bool((d.contains(k))) << "\n";
-    // del d[k]
     ::tpy::__delitem__(d, k);
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // d[1125899906842624] = "lit"  # 2**50: a literal key beyond int32
     ::tpy::__setitem__(d, static_cast<int64_t>(1125899906842624), "lit");
-    // print(d[1125899906842624])
     std::cout << ::tpy::__getitem__(d, static_cast<int64_t>(1125899906842624)) << "\n";
-    // counts: dict[int, int] = {}
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> counts = ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>();
-    // counts[k] = 1
     ::tpy::__setitem__(counts, k, ::tpy::BigInt(1));
-    // bump(counts, k)
     bump(counts, k);
-    // print(counts[k])
     std::cout << ::tpy::__getitem__(counts, k) << "\n";
-    // print(counts.pop(k))
     std::cout << ::tpy::dict_pop(counts, k) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

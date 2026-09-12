@@ -3,28 +3,26 @@
 
 namespace tpyapp::main {
 
-// # Test multiple protocol implementation
-// b = Box(5, 3)
 Box* b{};
 
+// # Test multiple protocol implementation
+// b = Box(5, 3)
+// print(b.__str__())
+// print(b.describe())
+// print(b.size())
+// print(b.width)
+// print(b.height)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test multiple protocol implementation
-    // b = Box(5, 3)
     static Box __global_slot_1 = Box(5, 3);
     b = &__global_slot_1;
-    // print(b.__str__())
     std::cout << b->__str__() << "\n";
-    // print(b.describe())
     std::cout << b->describe() << "\n";
-    // print(b.size())
     std::cout << b->size() << "\n";
-    // print(b.width)
     std::cout << b->width << "\n";
-    // print(b.height)
     std::cout << b->height << "\n";
 }
 

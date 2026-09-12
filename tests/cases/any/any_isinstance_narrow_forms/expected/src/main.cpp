@@ -5,71 +5,71 @@ namespace tpyapp::main {
 
 
 // def dispatch(v: Any) -> None:
+//     if isinstance(v, int):
+//         print("int", v)
+//     elif isinstance(v, str):
+//         print("str", v)
+//     else:
+//         print("other")
 void dispatch(::tpy::Any v) {
-    // if isinstance(v, int):
     if ((v.value.has_value() && v.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __v = std::any_cast<const ::tpy::BigInt&>(v.value);
-        // print("int", v)
         std::cout << "int" << " " << __v << "\n";
-    // elif isinstance(v, str):
     } else if ((v.value.has_value() && v.value.type() == typeid(std::string))) {
         const std::string& __v = std::any_cast<const std::string&>(v.value);
-        // print("str", v)
         std::cout << "str" << " " << __v << "\n";
-    // else:
     } else {
-        // print("other")
         std::cout << "other" << "\n";
     }
 }
 
 // def tuple_form(v: Any) -> bool:
+//     if isinstance(v, (int, float)):
+//         return True
+//     return False
 bool tuple_form(::tpy::Any v) {
-    // if isinstance(v, (int, float)):
     if ((v.value.has_value() && (v.value.type() == typeid(double) || v.value.type() == typeid(::tpy::BigInt)))) {
-        // return True
         return true;
     }
-    // return False
     return false;
 }
 
 // def negated(v: Any) -> bool:
+//     # The negated test lowers to the inverted check.
+//     if not isinstance(v, str):
+//         return False
+//     return True
 bool negated(::tpy::Any v) {
-    // # The negated test lowers to the inverted check.
-    // if not isinstance(v, str):
     if ((!((v.value.has_value() && v.value.type() == typeid(std::string))))) {
-        // return False
         return false;
     }
-    // return True
     return true;
 }
 
 // def main() -> None:
+//     dispatch(1)
+//     dispatch("s")
+//     dispatch(1.5)
+//     print(tuple_form(1))
+//     print(tuple_form("s"))
+//     print(negated("s"))
+//     print(negated(1))
 void main() {
-    // dispatch(1)
     dispatch(::tpy::make_any(::tpy::BigInt(1)));
-    // dispatch("s")
     dispatch(::tpy::make_any(std::string("s")));
-    // dispatch(1.5)
     dispatch(::tpy::make_any(static_cast<double>(1.5)));
-    // print(tuple_form(1))
     std::cout << ::tpy::print_bool(tuple_form(::tpy::make_any(::tpy::BigInt(1)))) << "\n";
-    // print(tuple_form("s"))
     std::cout << ::tpy::print_bool(tuple_form(::tpy::make_any(std::string("s")))) << "\n";
-    // print(negated("s"))
     std::cout << ::tpy::print_bool(negated(::tpy::make_any(std::string("s")))) << "\n";
-    // print(negated(1))
     std::cout << ::tpy::print_bool(negated(::tpy::make_any(::tpy::BigInt(1)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

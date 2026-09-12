@@ -6,51 +6,64 @@ namespace tpyapp::main {
 
 // # Test open() builtin: write, read, readlines, readline, with statement
 // def main() -> None:
+//     path = "tpy_test_open_basic.txt"
+//
+//     # Write to file
+//     w = open(path, "w")
+//     w.write("alpha\nbeta\ngamma")
+//     w.close()
+//
+//     # Read entire file
+//     r = open(path)
+//     print(r.read())
+//     r.close()
+//
+//     # Readlines count
+//     r2 = open(path)
+//     lines = r2.readlines()
+//     print(len(lines))
+//     r2.close()
+//
+//     # Readline lengths (alpha\n=6, beta\n=5, gamma=5)
+//     r3 = open(path)
+//     first = r3.readline()
+//     second = r3.readline()
+//     third = r3.readline()
+//     print(len(first), len(second), len(third))
+//     r3.close()
+//
+//     # With statement (context manager)
+//     with open(path) as f1:
+//         print(f1.read())
+//
+//     # Append mode
+//     a = open(path, "a")
+//     a.write("\ndelta")
+//     a.close()
+//
+//     with open(path) as f2:
+//         print(f2.read())
 void main() {
-    // path = "tpy_test_open_basic.txt"
     std::string_view path = "tpy_test_open_basic.txt";
-    // # Write to file
-    // w = open(path, "w")
     ::tpy::TextFile w = ::tpy::builtin_open_mode(path, "w");
-    // w.write("alpha\nbeta\ngamma")
     w.write("alpha\nbeta\ngamma");
-    // w.close()
     w.close();
-    // # Read entire file
-    // r = open(path)
     ::tpy::TextFile r = ::tpy::builtin_open(path);
-    // print(r.read())
     std::cout << r.read() << "\n";
-    // r.close()
     r.close();
-    // # Readlines count
-    // r2 = open(path)
     ::tpy::TextFile r2 = ::tpy::builtin_open(path);
-    // lines = r2.readlines()
     std::vector<std::string> lines = r2.readlines();
-    // print(len(lines))
     std::cout << ::tpy::__len__(lines) << "\n";
-    // r2.close()
     r2.close();
-    // # Readline lengths (alpha\n=6, beta\n=5, gamma=5)
-    // r3 = open(path)
     ::tpy::TextFile r3 = ::tpy::builtin_open(path);
-    // first = r3.readline()
     std::string first = r3.readline();
-    // second = r3.readline()
     std::string second = r3.readline();
-    // third = r3.readline()
     std::string third = r3.readline();
-    // print(len(first), len(second), len(third))
     std::cout << ::tpy::__len__(first) << " " << ::tpy::__len__(second) << " " << ::tpy::__len__(third) << "\n";
-    // r3.close()
     r3.close();
-    // # With statement (context manager)
-    // with open(path) as f1:
     auto __ctx_1 = ::tpy::builtin_open(path);
     auto& f1 = __ctx_1.__enter__();
     try {
-        // print(f1.read())
         std::cout << f1.read() << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -62,18 +75,12 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # Append mode
-    // a = open(path, "a")
     ::tpy::TextFile a = ::tpy::builtin_open_mode(path, "a");
-    // a.write("\ndelta")
     a.write("\ndelta");
-    // a.close()
     a.close();
-    // with open(path) as f2:
     auto __ctx_2 = ::tpy::builtin_open(path);
     auto& f2 = __ctx_2.__enter__();
     try {
-        // print(f2.read())
         std::cout << f2.read() << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -87,12 +94,12 @@ void main() {
     __ctx_2.__exit__({}, nullptr, {});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

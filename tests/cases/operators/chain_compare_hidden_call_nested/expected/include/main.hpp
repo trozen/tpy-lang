@@ -13,6 +13,7 @@ struct P;
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Inner:
@@ -56,28 +57,30 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Inner::Inner(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.small = int8(5)
 inline P::P() : small(5) {}
 
 // @property
 // def narrow(self) -> int8:
+//     global calls
+//     calls += 1
+//     return self.small
 inline int8_t P::narrow() const {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return self.small
     return this->small;
 }
 
 // @property
 // def deep(self) -> Own[Inner]:
+//     global calls
+//     calls += 1
+//     return Inner(5)
 inline Inner P::deep() const {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return Inner(5)
     return Inner(::tpy::BigInt(5));
 }
 void __tpy_init();

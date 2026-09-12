@@ -5,8 +5,8 @@ namespace tpyapp::pkg::user {
 
 
 // def use_pkg() -> int32:
+//     return 100
 int32_t use_pkg() {
-    // return 100
     return 100;
 }
 

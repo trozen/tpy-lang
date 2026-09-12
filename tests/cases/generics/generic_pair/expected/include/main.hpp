@@ -11,6 +11,7 @@ template<typename A, typename B> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pair[A, B]:
@@ -22,18 +23,20 @@ struct Pair {
     B second;
 
     // def __init__(self, first: A, second: B) -> None:
+    //     self.first = first
+    //     self.second = second
     Pair() = default;
     explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second) : first(first), second(second) {}
 
     // def get_first(self) -> A:
+    //     return self.first
     ::tpy::val_or_ref_t<A> get_first() {
-        // return self.first
         return this->first;
     }
 
     // def get_second(self) -> B:
+    //     return self.second
     ::tpy::val_or_ref_t<B> get_second() {
-        // return self.second
         return this->second;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";

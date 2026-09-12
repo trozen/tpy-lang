@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def literal_array() -> None:
+//     xs = [1, 2]           # unmutated size, so the literal resolves to Array
+//     ys = copy(xs)         # the flipped row: an Array-resolved copy source
+//     ys[0] = 9
+//     print(xs[0], ys[0])
 void literal_array() {
-    // xs = [1, 2]           # unmutated size, so the literal resolves to Array
     std::array<int32_t, 2> xs = {1, 2};
-    // ys = copy(xs)         # the flipped row: an Array-resolved copy source
     std::array<int32_t, 2> ys = std::array<int32_t, 2>(xs);
-    // ys[0] = 9
     ::tpy::__setitem__(ys, 0, 9);
-    // print(xs[0], ys[0])
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(ys, 0) << "\n";
 }
 
 // def annotated_array() -> None:
+//     xs = Array[int32, 2]([3, 4])  # the spelled-out inverse of the leg above
+//     ys = copy(xs)
+//     ys[1] = 9
+//     print(xs[1], ys[1])
 void annotated_array() {
-    // xs = Array[int32, 2]([3, 4])  # the spelled-out inverse of the leg above
     std::array<int32_t, 2> xs = std::array<int32_t, 2>({3, 4});
-    // ys = copy(xs)
     std::array<int32_t, 2> ys = std::array<int32_t, 2>(xs);
-    // ys[1] = 9
     ::tpy::__setitem__(ys, 1, 9);
-    // print(xs[1], ys[1])
     std::cout << ::tpy::__getitem__(xs, 1) << " " << ::tpy::__getitem__(ys, 1) << "\n";
 }
 
 // def nested_array() -> None:
+//     # An Array of Arrays: the copy is deep, so writing into the copy's own
+//     # element leaves the source element alone.
+//     xs = [[1, 2], [3, 4]]
+//     ys = copy(xs)
+//     ys[0][0] = 9
+//     print(xs[0][0], ys[0][0])
 void nested_array() {
-    // # An Array of Arrays: the copy is deep, so writing into the copy's own
-    // # element leaves the source element alone.
-    // xs = [[1, 2], [3, 4]]
     std::array<std::array<int32_t, 2>, 2> xs = {{{1, 2}, {3, 4}}};
-    // ys = copy(xs)
     std::array<std::array<int32_t, 2>, 2> ys = std::array<std::array<int32_t, 2>, 2>(xs);
-    // ys[0][0] = 9
     ::tpy::__setitem__(::tpy::__getitem__(ys, 0), 0, 9);
-    // print(xs[0][0], ys[0][0])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(xs, 0), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(ys, 0), 0) << "\n";
 }
 
 // def main() -> None:
+//     literal_array()
+//     annotated_array()
+//     nested_array()
 void main() {
-    // literal_array()
     literal_array();
-    // annotated_array()
     annotated_array();
-    // nested_array()
     nested_array();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

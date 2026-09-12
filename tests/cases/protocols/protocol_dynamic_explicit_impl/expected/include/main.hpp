@@ -32,6 +32,7 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Item(Describable):
@@ -81,17 +82,19 @@ namespace tpyapp::main {
 
 
 // def __init__(self, name: str, id: int32) -> None:
+//     self._name = name
+//     self._id = id
 inline Item::Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
 
 // def describe(self) -> str:
+//     return self._name
 inline std::string Item::describe() {
-    // return self._name
     return this->_name;
 }
 
 // def id(self) -> int32:
+//     return self._id
 inline int32_t Item::id() {
-    // return self._id
     return this->_id;
 }
 void __tpy_init();

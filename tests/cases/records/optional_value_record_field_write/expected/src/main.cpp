@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Slot()
+//     print(s.o is None)
+//     s.put(Point(5))
+//     if s.o is not None:
+//         print(s.o.x)
 void main() {
-    // s = Slot()
     Slot s = Slot();
-    // print(s.o is None)
     std::cout << ::tpy::print_bool((!s.o.has_value())) << "\n";
-    // s.put(Point(5))
     s.put(Point(5));
-    // if s.o is not None:
     if ((s.o.has_value())) {
-        // print(s.o.x)
         std::cout << (*s.o).x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

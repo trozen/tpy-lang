@@ -3,88 +3,87 @@
 
 namespace tpyapp::main {
 
-// # module-level statement: the same inline rvalue at file scope.
-// top_flag = anyslot("module", 5)  # tpyc: ok
 bool top_flag{};
 
 // def anyslot_i32(name: str, v: int32) -> bool:
+//     # The monomorphic twin: its slot is `int32_t` by value, and it has always
+//     # taken the rvalue inline.
+//     return name != ""
 bool anyslot_i32(std::string_view name, int32_t v) {
-    // # The monomorphic twin: its slot is `int32_t` by value, and it has always
-    // # taken the rvalue inline.
-    // return name != ""
     return (name != "");
 }
 
 // def mk_cell() -> Own[Cell]:
+//     return Cell(7)
 Cell mk_cell() {
-    // return Cell(7)
     return Cell(7);
 }
 
 // def free_positions() -> None:
+//     # The four value-typed instantiations: each renders its rvalue inline.
+//     a = anyslot("free", 42)  # tpyc: ok
+//     b = anyslot("free", float32(2.25))  # tpyc: ok
+//     c = anyslot("free", "lit")  # tpyc: ok
+//     d = anyslot("free", None)  # tpyc: ok
+//     print("free", a, b, c, d)
 void free_positions() {
-    // # The four value-typed instantiations: each renders its rvalue inline.
-    // a = anyslot("free", 42)  # tpyc: ok
     bool a = anyslot<int32_t>("free", 42);
-    // b = anyslot("free", float32(2.25))  # tpyc: ok
     bool b = anyslot<float>("free", 2.25f);
-    // c = anyslot("free", "lit")  # tpyc: ok
     bool c = anyslot<std::string>("free", "lit");
-    // d = anyslot("free", None)  # tpyc: ok
     bool d = anyslot<std::monostate>("free", std::monostate{});
-    // print("free", a, b, c, d)
     std::cout << "free" << " " << ::tpy::print_bool(a) << " " << ::tpy::print_bool(b) << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << "\n";
 }
 
 // def view_source(k: str) -> None:
+//     # A `str` PARAM reads as a view, and the generic slot resolves to that same
+//     # view (`param_val_or_ref_t<std::string>`), so it binds bare -- no temp,
+//     # exactly as the monomorphic twin's slot does.
+//     print("view", anyslot("view", k))  # tpyc: ok
 void view_source(std::string_view k) {
-    // # A `str` PARAM reads as a view, and the generic slot resolves to that same
-    // # view (`param_val_or_ref_t<std::string>`), so it binds bare -- no temp,
-    // # exactly as the monomorphic twin's slot does.
-    // print("view", anyslot("view", k))  # tpyc: ok
     std::cout << "view" << " " << ::tpy::print_bool(anyslot<std::string>("view", k)) << "\n";
 }
 
 // def ref_rvalue() -> None:
+//     # A reference-typed instantiation: the slot is `T&`, which binds no rvalue,
+//     # so the temp stays. `Cell` is @nocopy, so a copy at that boundary would be
+//     # a compile error instead of a silent one -- the rvalue source has no second
+//     # handle to observe a mutation through, which is why this leg takes the
+//     # other half of the reference-type rule (the alias is observed in
+//     # `ref_lvalue`, whose source is a name).
+//     print("ref_rvalue", anyslot("ref", mk_cell()))  # tpyc: ok
 void ref_rvalue() {
-    // # A reference-typed instantiation: the slot is `T&`, which binds no rvalue,
-    // # so the temp stays. `Cell` is @nocopy, so a copy at that boundary would be
-    // # a compile error instead of a silent one -- the rvalue source has no second
-    // # handle to observe a mutation through, which is why this leg takes the
-    // # other half of the reference-type rule (the alias is observed in
-    // # `ref_lvalue`, whose source is a name).
-    // print("ref_rvalue", anyslot("ref", mk_cell()))  # tpyc: ok
     Cell __tmp_1 = mk_cell();
     std::cout << "ref_rvalue" << " " << ::tpy::print_bool(anyslot<Cell>("ref", __tmp_1)) << "\n";
 }
 
 // def ref_lvalue() -> None:
+//     # The reference semantics the slot carries: what comes back out of the
+//     # generic ALIASES the caller's object, so the later mutation is visible on
+//     # both. A copy would print `1 2` -- and, `Cell` being @nocopy, not compile.
+//     c = Cell(1)
+//     seen = pass_through(c)  # tpyc: ok
+//     seen.n += 1
+//     print("ref_lvalue", c.n, seen.n)
 void ref_lvalue() {
-    // # The reference semantics the slot carries: what comes back out of the
-    // # generic ALIASES the caller's object, so the later mutation is visible on
-    // # both. A copy would print `1 2` -- and, `Cell` being @nocopy, not compile.
-    // c = Cell(1)
     Cell c = Cell(1);
-    // seen = pass_through(c)  # tpyc: ok
     Cell& seen = pass_through<Cell>(c);
-    // seen.n += 1
     seen.n = ::tpy::add_check<int32_t>(seen.n, 1);
-    // print("ref_lvalue", c.n, seen.n)
     std::cout << "ref_lvalue" << " " << c.n << " " << seen.n << "\n";
 }
 
 // def method_and_ctor() -> None:
+//     # Record ctor and record method, both at a value-typed T.
+//     b = Boxed[int32](3)  # tpyc: ok
+//     print("method_ctor", b.v, b.holds(4))  # tpyc: ok
 void method_and_ctor() {
-    // # Record ctor and record method, both at a value-typed T.
-    // b = Boxed[int32](3)  # tpyc: ok
     Boxed<int32_t> b = Boxed<int32_t>(3);
-    // print("method_ctor", b.v, b.holds(4))  # tpyc: ok
     std::cout << "method_ctor" << " " << b.v << " " << ::tpy::print_bool(b.holds(4)) << "\n";
 }
 
 // def comprehension() -> None:
+//     xs = [i for i in range(3) if anyslot("comp", i)]  # tpyc: ok
+//     print("comprehension", len(xs))
 void comprehension() {
-    // xs = [i for i in range(3) if anyslot("comp", i)]  # tpyc: ok
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -96,58 +95,57 @@ void comprehension() {
         }
         std::move(__result);
     });
-    // print("comprehension", len(xs))
     std::cout << "comprehension" << " " << ::tpy::__len__(xs) << "\n";
 }
 
 // def closure() -> None:
+//     def inner() -> bool:
+//         return anyslot("closure", 11)  # tpyc: ok
+//     print("closure", inner())
 void closure() {
-    // def inner() -> bool:
     auto inner = []() -> bool {
-        // return anyslot("closure", 11)  # tpyc: ok
         return anyslot<int32_t>("closure", 11);
     };
-    // print("closure", inner())
     std::cout << "closure" << " " << ::tpy::print_bool(inner()) << "\n";
 }
 
 // def cond_operand(flag: bool) -> bool:
+//     # The conditional operand: with no temp there is no `std::optional` slot
+//     # and no deferred emplace either.
+//     return flag or anyslot("cond", 42)  # tpyc: ok
 bool cond_operand(bool flag) {
-    // # The conditional operand: with no temp there is no `std::optional` slot
-    // # and no deferred emplace either.
-    // return flag or anyslot("cond", 42)  # tpyc: ok
     return (flag || anyslot<int32_t>("cond", 42));
 }
 
 // def while_condition() -> int32:
+//     # A COMPOUND while condition is not a flush position; the inline render
+//     # needs none.
+//     n = 0
+//     while anyslot("while", n) and n < 3:  # tpyc: ok
+//         n += 1
+//     return n
 int32_t while_condition() {
-    // # A COMPOUND while condition is not a flush position; the inline render
-    // # needs none.
-    // n = 0
     int32_t n = 0;
-    // while anyslot("while", n) and n < 3:  # tpyc: ok
     while ((anyslot<int32_t>("while", n) && (n < 3))) {
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // return n
     return n;
 }
 
 // def match_arm(tag: int32) -> bool:
+//     match tag:
+//         case 1:
+//             return anyslot("match", 1)  # tpyc: ok
+//         case _:
+//             return False
 bool match_arm(int32_t tag) {
-    // match tag:
     auto& __match_subject_1 = tag;
     switch (__match_subject_1) {
-    // case 1:
     case 1: {
-        // return anyslot("match", 1)  # tpyc: ok
         return anyslot<int32_t>("match", 1);
         break;
     }
-    // case _:
     default: {
-        // return False
         return false;
         break;
     }
@@ -156,31 +154,31 @@ bool match_arm(int32_t tag) {
 }
 
 // def try_finally() -> None:
+//     seen = False
+//     try:
+//         seen = anyslot("try", 8)  # tpyc: ok
+//     finally:
+//         print("try_finally", seen)
 void try_finally() {
-    // seen = False
     bool seen = false;
-    // try:
     {
         try {
-            // seen = anyslot("try", 8)  # tpyc: ok
             seen = anyslot<int32_t>("try", 8);
         } catch (...) {
-            // print("try_finally", seen)
             std::cout << "try_finally" << " " << ::tpy::print_bool(seen) << "\n";
             throw;
         }
-        // print("try_finally", seen)
         std::cout << "try_finally" << " " << ::tpy::print_bool(seen) << "\n";
     }
 }
 
 // def with_body() -> None:
+//     with Guard("g") as label:
+//         print("with_body", label, anyslot("with", 9))  # tpyc: ok
 void with_body() {
-    // with Guard("g") as label:
     auto __ctx_1 = Guard("g");
     auto label = __ctx_1.__enter__();
     try {
-        // print("with_body", label, anyslot("with", 9))  # tpyc: ok
         std::cout << "with_body" << " " << label << " " << ::tpy::print_bool(anyslot<int32_t>("with", 9)) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -195,12 +193,16 @@ void with_body() {
 }
 
 // def gen_body() -> Iterator[int32]:
+//     # GENERATOR body (resumable -- the yield is not a direct loop child), where
+//     # the call renders inline inside the frame's switch.
+//     n = 0
+//     while n < 2:
+//         if anyslot("genbody", n) and anyslot_i32("genbody", n):  # tpyc: ok
+//             yield n
+//         n += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # GENERATOR body (resumable -- the yield is not a direct loop child), where
-        // # the call renders inline inside the frame's switch.
-        // n = 0
         n = 0;
         __state = S_JOIN_0;
         continue;
@@ -212,7 +214,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     case S_JOIN_0: {
         if ((n < 2)) {
             if ((anyslot<int32_t>("genbody", n) && anyslot_i32("genbody", n))) {
-                // yield n
                 __state = S_RESUME_0;
                 return n;
             } else {
@@ -225,7 +226,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
         }
     }
     case S_JOIN_1: {
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_JOIN_0;
         continue;
@@ -243,45 +243,49 @@ __gen_gen_body gen_body() {
 
 // @error_return(Missing)
 // def er_body(n: int32) -> int32:
+//     # @error_return body: the same inline render under the expected-return tier.
+//     if not (anyslot("erbody", n) and anyslot_i32("erbody", n)):  # tpyc: ok
+//         raise Missing
+//     return n + 1
 std::expected<int32_t, Missing> er_body(int32_t n) {
-    // # @error_return body: the same inline render under the expected-return tier.
-    // if not (anyslot("erbody", n) and anyslot_i32("erbody", n)):  # tpyc: ok
     if ((!((anyslot<int32_t>("erbody", n) && anyslot_i32("erbody", n))))) {
-        // raise Missing
         return ::tpy::make_unexpected(Missing{});
     }
-    // return n + 1
     return (::tpy::add_check<int32_t>(n, 1));
 }
 
 // def error_return_body() -> None:
+//     try:
+//         got = er_body(6)
+//     except Missing:
+//         print("error_return_body", "missing")
+//     else:
+//         print("error_return_body", got)
 void error_return_body() {
-    // try:
     int32_t got;
     {
-        // got = er_body(6)
         {
             auto __try_tmp_2 = er_body(6);
             if (!__try_tmp_2.has_value()) goto __except_1;
             got = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        // print("error_return_body", got)
         std::cout << "error_return_body" << " " << got << "\n";
         goto __after_try_1;
         // except Missing:
         __except_1:;
-        // print("error_return_body", "missing")
         std::cout << "error_return_body" << " " << "missing" << "\n";
         __after_try_1:;
     }
 }
 
 // def generator_body() -> None:
+//     out = 0
+//     for v in gen_body():
+//         out += v
+//     print("generator_body", out)
 void generator_body() {
-    // out = 0
     int32_t out = 0;
-    // for v in gen_body():
     {
         auto __src_0 = gen_body();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -289,21 +293,21 @@ void generator_body() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // out += v
         out = ::tpy::add_check<int32_t>(out, v);
         }
     }
-    // print("generator_body", out)
     std::cout << "generator_body" << " " << out << "\n";
 }
 
 // def generator_factory() -> None:
+//     # The factory's frame borrows its slot past the statement, so the argument
+//     # keeps its temp even at a value-typed instantiation.
+//     out = 0
+//     for v in repeat(42, 2):  # tpyc: ok
+//         out += v
+//     print("generator", out)
 void generator_factory() {
-    // # The factory's frame borrows its slot past the statement, so the argument
-    // # keeps its temp even at a value-typed instantiation.
-    // out = 0
     int32_t out = 0;
-    // for v in repeat(42, 2):  # tpyc: ok
     {
         int32_t __tmp_2 = 42;
         auto __src_0 = repeat<int32_t>(__tmp_2, 2);
@@ -312,19 +316,18 @@ void generator_factory() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // out += v
         out = ::tpy::add_check<int32_t>(out, v);
         }
     }
-    // print("generator", out)
     std::cout << "generator" << " " << out << "\n";
 }
 
 // async def async_main() -> int32:
+//     # The coroutine factory takes the same row as the generator's.
+//     return await echo(21)  # tpyc: ok
 ::tpystd::tpy::Poll<int32_t> __coro_async_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await echo(21)  # tpyc: ok
         __sub_0.emplace(21);
         __state = S_RESUME_0;
         continue;
@@ -349,56 +352,58 @@ __coro_async_main async_main() {
 }
 
 // def main() -> None:
+//     print("module", top_flag)
+//     free_positions()
+//     view_source("k")
+//     ref_rvalue()
+//     ref_lvalue()
+//     method_and_ctor()
+//     comprehension()
+//     closure()
+//     print("cond_operand", cond_operand(False))
+//     print("while_condition", while_condition())
+//     print("match_arm", match_arm(1))
+//     try_finally()
+//     with_body()
+//     generator_body()
+//     error_return_body()
+//     generator_factory()
+//     print("async", asyncio.run(async_main()))
 void main() {
-    // print("module", top_flag)
     std::cout << "module" << " " << ::tpy::print_bool(top_flag) << "\n";
-    // free_positions()
     free_positions();
-    // view_source("k")
     view_source("k");
-    // ref_rvalue()
     ref_rvalue();
-    // ref_lvalue()
     ref_lvalue();
-    // method_and_ctor()
     method_and_ctor();
-    // comprehension()
     comprehension();
-    // closure()
     closure();
-    // print("cond_operand", cond_operand(False))
     std::cout << "cond_operand" << " " << ::tpy::print_bool(cond_operand(false)) << "\n";
-    // print("while_condition", while_condition())
     std::cout << "while_condition" << " " << while_condition() << "\n";
-    // print("match_arm", match_arm(1))
     std::cout << "match_arm" << " " << ::tpy::print_bool(match_arm(1)) << "\n";
-    // try_finally()
     try_finally();
-    // with_body()
     with_body();
-    // generator_body()
     generator_body();
-    // error_return_body()
     error_return_body();
-    // generator_factory()
     generator_factory();
-    // print("async", asyncio.run(async_main()))
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_main())) << "\n";
 }
 
+// # An rvalue at a generic `T` parameter hoists the `__tmp_N` temp only where the
+// # INSTANTIATED slot cannot bind it -- one section per position, twins beside.
+// import asyncio
+//
+// # module-level statement: the same inline rvalue at file scope.
+// top_flag = anyslot("module", 5)  # tpyc: ok
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An rvalue at a generic `T` parameter hoists the `__tmp_N` temp only where the
-    // # INSTANTIATED slot cannot bind it -- one section per position, twins beside.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // # module-level statement: the same inline rvalue at file scope.
-    // top_flag = anyslot("module", 5)  # tpyc: ok
     top_flag = anyslot<int32_t>("module", 5);
-    // main()
     main();
 }
 

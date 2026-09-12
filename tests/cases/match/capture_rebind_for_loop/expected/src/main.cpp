@@ -5,69 +5,69 @@ namespace tpyapp::main {
 
 
 // def use_for(a: Cat) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             before = v            # read the capture before the rebind
+//             xs: list[int] = [1, 2, 3]
+//             for v in xs:
+//                 pass
+//             return before + v     # 9 + 3
+//     return -1
 ::tpy::BigInt use_for(const Cat& a) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // before = v            # read the capture before the rebind
         ::tpy::BigInt before = v;
-        // xs: list[int] = [1, 2, 3]
         std::vector<::tpy::BigInt> xs = {1, 2, 3};
-        // for v in xs:
         auto& __obj_0 = xs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             v = *__beg_0;
-            // pass
         }
-        // return before + v     # 9 + 3
         return ((before) + (v));
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def use_aug(a: Cat) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             v += 100
+//             return v              # 9 + 100
+//     return -1
 ::tpy::BigInt use_aug(const Cat& a) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // v += 100
         v = (v) + (::tpy::BigInt(100));
-        // return v              # 9 + 100
         return v;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main():
+//     c = Cat(9)
+//     print(use_for(c), c.lives)      # 12 9 -- field untouched by the loop rebind
+//     d = Cat(9)
+//     print(use_aug(d), d.lives)      # 109 9
 void main() {
-    // c = Cat(9)
     Cat c = Cat(::tpy::BigInt(9));
-    // print(use_for(c), c.lives)      # 12 9 -- field untouched by the loop rebind
     std::cout << use_for(c) << " " << c.lives << "\n";
-    // d = Cat(9)
     Cat d = Cat(::tpy::BigInt(9));
-    // print(use_aug(d), d.lives)      # 109 9
     std::cout << use_aug(d) << " " << d.lives << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

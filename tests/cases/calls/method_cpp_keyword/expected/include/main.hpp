@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -37,17 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Box::Box(int32_t n) : n(n) {}
 
 // def double(self) -> int32:
+//     return self.n * 2
 inline int32_t Box::double_() const {
-    // return self.n * 2
     return (::tpy::mul_check<int32_t>(this->n, 2));
 }
 
 // def delete(self) -> None:
+//     self.n = 0
 inline void Box::delete_() {
-    // self.n = 0
     this->n = 0;
 }
 void __tpy_init();

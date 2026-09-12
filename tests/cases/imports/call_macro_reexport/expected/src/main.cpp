@@ -3,25 +3,25 @@
 
 namespace tpyapp::main {
 
-// p = Pair(int32(3), int32(4))
 Pair* p{};
 
+// # Call-macro re-export through a plain module. utils.py does
+// # `from dataclasses import dataclass, asdict`; main consumes both
+// # via utils. Phase 6 originally wired the chain only for class
+// # decorators; this test guards the call-macro and builder-macro
+// # paths after the post-Phase-8 review fix.
+// from utils import dataclass, asdict
+//
+// p = Pair(int32(3), int32(4))
+// print(asdict(p))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Call-macro re-export through a plain module. utils.py does
-    // # `from dataclasses import dataclass, asdict`; main consumes both
-    // # via utils. Phase 6 originally wired the chain only for class
-    // # decorators; this test guards the call-macro and builder-macro
-    // # paths after the post-Phase-8 review fix.
-    // from utils import dataclass, asdict
     ::tpyapp::utils::__tpy_init();
-    // p = Pair(int32(3), int32(4))
     static Pair __global_slot_1 = Pair(3, 4);
     p = &__global_slot_1;
-    // print(asdict(p))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, int32_t>({{"x", p->x}, {"y", p->y}})) << "\n";
 }
 

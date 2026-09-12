@@ -5,62 +5,65 @@ namespace tpyapp::main {
 
 
 // def greet(name: str, greeting: str = "Hello") -> None:
+//     print(f"{greeting}, {name}!")
 void greet(std::string_view name, std::string_view greeting) {
-    // print(f"{greeting}, {name}!")
     std::cout << std::format("{}, {}!", greeting, name) << "\n";
 }
 
 // def add(a: int32, b: int32 = int32(0)) -> int32:
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def scale(value: float, factor: float = 1.0) -> float:
+//     return value * factor
 double scale(double value, double factor) {
-    // return value * factor
     return ((value) * (factor));
 }
 
 // def log(msg: str, verbose: bool = False) -> None:
+//     if verbose:
+//         print(f"[V] {msg}")
+//     else:
+//         print(msg)
 void log(std::string_view msg, bool verbose) {
-    // if verbose:
     if (verbose) {
-        // print(f"[V] {msg}")
         std::cout << std::format("[V] {}", msg) << "\n";
-    // else:
     } else {
-        // print(msg)
         std::cout << msg << "\n";
     }
 }
 
 // def main() -> None:
+//     greet("World")
+//     greet("World", "Hi")
+//
+//     print(add(int32(5)))
+//     print(add(int32(5), int32(3)))
+//
+//     print(scale(2.5))
+//     print(scale(2.5, 3.0))
+//
+//     log("info")
+//     log("debug", True)
 void main() {
-    // greet("World")
     greet("World");
-    // greet("World", "Hi")
     greet("World", "Hi");
-    // print(add(int32(5)))
     std::cout << add(5) << "\n";
-    // print(add(int32(5), int32(3)))
     std::cout << add(5, 3) << "\n";
-    // print(scale(2.5))
     std::cout << ::tpy::print_float(scale(2.5)) << "\n";
-    // print(scale(2.5, 3.0))
     std::cout << ::tpy::print_float(scale(2.5, 3.0)) << "\n";
-    // log("info")
     log("info");
-    // log("debug", True)
     log("debug", true);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

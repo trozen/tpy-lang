@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // # Print dict views directly
 // def main() -> None:
+//     d = {"a": 1, "b": 2}
+//     print(d.keys())
+//     print(d.values())
+//     print(d.items())
 void main() {
-    // d = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // print(d.keys())
     std::cout << ::tpy::dict_keys(d) << "\n";
-    // print(d.values())
     std::cout << ::tpy::dict_values(d) << "\n";
-    // print(d.items())
     std::cout << ::tpy::dict_items(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

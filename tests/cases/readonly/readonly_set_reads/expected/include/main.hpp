@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def has(s: readonly[set[int32]], x: int32) -> bool:
 bool has(const ::tpy::ordered_set<int32_t>& s, int32_t x);
+// def count(s: readonly[set[int32]]) -> int32:
 int32_t count(const ::tpy::ordered_set<int32_t>& s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

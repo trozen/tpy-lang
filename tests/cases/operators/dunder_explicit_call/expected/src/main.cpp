@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def probe(t: Tag, s: str) -> bool:
+//     return t.__ne__(s)  # tpyc: ok -- ... and on a record PARAM receiver
 bool probe(const Tag& t, std::string_view s) {
-    // return t.__ne__(s)  # tpyc: ok -- ... and on a record PARAM receiver
     return (t) != (s);
 }
 
 // def main() -> None:
+//     t = Tag(3)
+//     three = "abc"
+//     two = "xy"
+//     # `__ne__` must be the run-time negation of `__eq__` on the same input.
+//     print(t.__eq__(three), t.__eq__(two))
+//     print(t.__ne__(three), probe(t, two))
 void main() {
-    // t = Tag(3)
     Tag t = Tag(3);
-    // three = "abc"
     std::string_view three = "abc";
-    // two = "xy"
     std::string_view two = "xy";
-    // # `__ne__` must be the run-time negation of `__eq__` on the same input.
-    // print(t.__eq__(three), t.__eq__(two))
     std::cout << ::tpy::print_bool((t) == (three)) << " " << ::tpy::print_bool((t) == (two)) << "\n";
-    // print(t.__ne__(three), probe(t, two))
     std::cout << ::tpy::print_bool((t) != (three)) << " " << ::tpy::print_bool(probe(t, two)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

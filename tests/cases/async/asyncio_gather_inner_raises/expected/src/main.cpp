@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // async def good() -> int32:
+//     await asyncio.sleep(0.001)
+//     print("good finished")
+//     return int32(99)
 ::tpystd::tpy::Poll<int32_t> __coro_good::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,9 +20,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("good finished")
         std::cout << "good finished" << "\n";
-        // return int32(99)
         __state = S_DONE;
         int32_t __tpy_async_ret = 99;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -37,13 +37,13 @@ __coro_good good() {
 }
 
 // async def bad() -> int32:
+//     print("bad raising")
+//     raise ValueError("bad")
 ::tpystd::tpy::Poll<int32_t> __coro_bad::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("bad raising")
         std::cout << "bad raising" << "\n";
-        // raise ValueError("bad")
         throw ::tpy::ValueError("bad");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -58,14 +58,19 @@ __coro_bad bad() {
 }
 
 // async def main_coro() -> None:
+//     tasks: list[asyncio.Task[int32]] = []
+//     tasks.append(asyncio.create_task(bad()))
+//     tasks.append(asyncio.create_task(good()))
+//     try:
+//         results = await asyncio.gather_list(tasks)
+//         print("got", len(results))
+//     except ValueError as e:
+//         print("caught ValueError:", e)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // tasks.append(asyncio.create_task(bad()))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bad())));
-        // tasks.append(asyncio.create_task(good()))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(good())));
         __state = S_JOIN_1;
         continue;
@@ -76,13 +81,11 @@ __coro_bad bad() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             results.emplace(std::move(__r0).value());
             __sub_0.reset();
-            // print("got", len(results))
             std::cout << "got" << " " << ::tpy::__len__((*results)) << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
             __sub_0.reset();
-            // print("caught ValueError:", e)
             std::cout << "caught ValueError:" << " " << e << "\n";
             __state = S_JOIN_0;
             continue;
@@ -97,12 +100,10 @@ __coro_bad bad() {
     }
     case S_JOIN_1: {
         try {
-            // results = await asyncio.gather_list(tasks)
             __sub_0.emplace((*tasks));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
-            // print("caught ValueError:", e)
             std::cout << "caught ValueError:" << " " << e << "\n";
             __state = S_JOIN_0;
             continue;
@@ -122,36 +123,37 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.gather_list: one sub-task raises mid-flight. gather_list
+// # propagates `cancel()` to the still-pending siblings, waits for them
+// # to settle, then re-raises the first exception observed.
+// #
+// # Deterministic structure (no timing race):
+// #   - `bad` (input idx 0) raises ValueError on its FIRST poll -- no
+// #     suspension, just `print + raise`. The executor pops bad before
+// #     good (FIFO spawn order), so bad runs to its raise before any
+// #     other progress.
+// #   - `good` (input idx 1) suspends on a short sleep. The sleep
+// #     duration doesn't gate ordering -- bad has already finished by
+// #     the time good is polled. The sleep exists purely as a
+// #     suspension hook so that when gather_list propagates `cancel()`
+// #     into good, the resume cancel-check observes the flag on the
+// #     next executor poll (sleep wake) and good exits via
+// #     CancelledError instead of completing normally. "good finished"
+// #     must NOT print.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.gather_list: one sub-task raises mid-flight. gather_list
-    // # propagates `cancel()` to the still-pending siblings, waits for them
-    // # to settle, then re-raises the first exception observed.
-    // #
-    // # Deterministic structure (no timing race):
-    // #   - `bad` (input idx 0) raises ValueError on its FIRST poll -- no
-    // #     suspension, just `print + raise`. The executor pops bad before
-    // #     good (FIFO spawn order), so bad runs to its raise before any
-    // #     other progress.
-    // #   - `good` (input idx 1) suspends on a short sleep. The sleep
-    // #     duration doesn't gate ordering -- bad has already finished by
-    // #     the time good is polled. The sleep exists purely as a
-    // #     suspension hook so that when gather_list propagates `cancel()`
-    // #     into good, the resume cancel-check observes the flag on the
-    // #     next executor poll (sleep wake) and good exits via
-    // #     CancelledError instead of completing normally. "good finished"
-    // #     must NOT print.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

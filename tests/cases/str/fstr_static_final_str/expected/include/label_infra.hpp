@@ -9,7 +9,9 @@ namespace tpyapp::label_infra {
 
 inline constexpr std::string_view __name__ = "label_infra";
 
+// def tag(kind: str, value: str) -> str:
 std::string tag(std::string_view kind, std::string_view value);
+// def emit(fmt: str, parts: list[str]) -> None:
 void emit(std::string_view fmt, const std::vector<std::string>& parts);
 
 void __tpy_init();

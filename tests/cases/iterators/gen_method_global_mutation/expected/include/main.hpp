@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Source_values;
 
+// def main() -> None:
 void main();
 
 // class Source:
@@ -29,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     return os;
 }
 
-// Generator: Source.values
+// def values(self) -> Iterator[int32]:
 struct __gen_Source_values : public ::tpy::next_iter_mixin<__gen_Source_values, int32_t> {
     int32_t __state;
     const Source& __self;

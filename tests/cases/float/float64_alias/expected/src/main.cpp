@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def test_star_import() -> None:
+//     x: float64 = 3.14
+//     y = float64(2.0)
+//     print(x + y)
+//     # Constructor from fixed-width int types
+//     print(float64(int32(42)))
+//     print(float64(int64(100)))
+//     print(float64(uint32(7)))
 void test_star_import() {
-    // x: float64 = 3.14
     double x = 3.14;
-    // y = float64(2.0)
     double y = 2.0;
-    // print(x + y)
     std::cout << ::tpy::print_float(((x) + (y))) << "\n";
-    // # Constructor from fixed-width int types
-    // print(float64(int32(42)))
     std::cout << ::tpy::print_float(static_cast<double>(42)) << "\n";
-    // print(float64(int64(100)))
     std::cout << ::tpy::print_float(static_cast<double>(100)) << "\n";
-    // print(float64(uint32(7)))
     std::cout << ::tpy::print_float(static_cast<double>(7)) << "\n";
 }
 
 // def main() -> None:
+//     test_star_import()
 void main() {
-    // test_star_import()
     test_star_import();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

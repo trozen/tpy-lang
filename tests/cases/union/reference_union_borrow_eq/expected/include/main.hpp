@@ -28,30 +28,55 @@ struct __gen_gen_eq;
 struct __coro_in_async;
 struct __coro_amain;
 
+// def eq(a: Pet, b: Pet) -> bool:  # free function param
 bool eq(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def ne(a: Pet, b: Pet) -> bool:  # free function param
 bool ne(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def order(a: Pet, b: Pet) -> str:  # free function param
 std::string order(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def dunder_ne(a: Labelled, b: Labelled) -> bool:  # a declared `__ne__`
 bool dunder_ne(::tpy::Union<const Mark*, const Tag*> a, ::tpy::Union<const Mark*, const Tag*> b);
+// def only_ne(a: Lopsided, b: Lopsided) -> bool:  # `__ne__` without `__eq__`
 bool only_ne(::tpy::Union<const OnlyNe*, const Other*> a, ::tpy::Union<const OnlyNe*, const Other*> b);
+// def only_ne_eq(a: Lopsided, b: Lopsided) -> bool:  # the same pair's `==`
 bool only_ne_eq(::tpy::Union<const OnlyNe*, const Other*> a, ::tpy::Union<const OnlyNe*, const Other*> b);
+// def opt_ne(a: Pet | None, b: Pet | None) -> bool:  # a None alternative
 bool opt_ne(::tpy::Union<std::monostate, const Cat*, const Dog*> a, ::tpy::Union<std::monostate, const Cat*, const Dog*> b);
+// def readonly_mixed(a: readonly[Pet], b: Pet) -> bool:  # readonly vs inferred
 bool readonly_mixed(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def local_vs_param(xs: list[Pet], u: Pet) -> bool:  # const local vs param
 bool local_vs_param(const std::vector<::tpy::Union<Cat, Dog>>& xs, ::tpy::Union<const Cat*, const Dog*> u);
+// def anon_eq(a: Anon, b: Anon) -> bool:  # identity fallback
 bool anon_eq(::tpy::Union<const Other*, const Plain*> a, ::tpy::Union<const Other*, const Plain*> b);
+// def anon_ne(a: Anon, b: Anon) -> bool:  # identity fallback, negated
 bool anon_ne(::tpy::Union<const Other*, const Plain*> a, ::tpy::Union<const Other*, const Plain*> b);
+// def held_eq(a: Held, b: Held) -> bool:  # @nocopy alternatives
 bool held_eq(::tpy::Union<const Locked*, const Sealed*> a, ::tpy::Union<const Locked*, const Sealed*> b);
+// def mixed_eq(xs: list[Mixed]) -> None:  # borrowed value members
 void mixed_eq(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs);
+// def elem_eq(xs: list[Pet]) -> bool:  # local lifted out of a container
 bool elem_eq(const std::vector<::tpy::Union<Cat, Dog>>& xs);
+// def count_eq(a: Pet, b: Pet) -> int32:  # comprehension
 int32_t count_eq(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def gen_eq(a: Pet, b: Pet) -> Iterator[bool]:  # generator frame
 __gen_gen_eq gen_eq(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def in_closure(a: Pet, b: Pet) -> bool:  # closure
 bool in_closure(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// async def in_async(a: Pet, b: Pet) -> bool:  # async
 __coro_in_async in_async(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def in_with(a: Pet, b: Pet) -> bool:  # with body
 bool in_with(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def in_try(a: Pet, b: Pet) -> bool:  # try/finally
 bool in_try(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def in_error_return(a: Pet, b: Pet) -> bool:  # @error_return
 std::expected<bool, Boom> in_error_return(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def in_match(a: Pet, b: Pet) -> bool:  # match arm
 bool in_match(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def bump(u: Pet) -> None:
 void bump(::tpy::Union<Cat*, Dog*> u);
+// async def amain(a: Pet, b: Pet) -> None:
 __coro_amain amain(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// def main() -> None:
 void main();
 
 // class Boom(Exception, ReturnException):
@@ -387,7 +412,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
     return os;
 }
 
-// Async coroutine: in_async
+// async def in_async(a: Pet, b: Pet) -> bool:  # async
 struct __coro_in_async {
     int32_t __state;
     bool __cancel_pending;
@@ -410,7 +435,7 @@ struct __coro_in_async {
     }
 };
 
-// Async coroutine: amain
+// async def amain(a: Pet, b: Pet) -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -436,7 +461,7 @@ struct __coro_amain {
     }
 };
 
-// Generator: gen_eq
+// def gen_eq(a: Pet, b: Pet) -> Iterator[bool]:  # generator frame
 struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
     int32_t __state;
     ::tpy::Union<const Cat*, const Dog*> a;
@@ -461,195 +486,206 @@ struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
 
 
 // def __enter__(self) -> "Guard":
+//     return self
 inline Guard& Guard::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Dog::Dog(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Dog") -> bool:
+//     # Folds to True under TPy (`other` is typed Dog) and is a real check
+//     # under CPython, which routes the cross-alternative pair here where
+//     # TPy answers False without calling the dunder.
+//     if not isinstance(other, Dog):
+//         return False
+//     return self.n == other.n
 inline bool Dog::__eq__(const Dog& other) const {
-    // # Folds to True under TPy (`other` is typed Dog) and is a real check
-    // # under CPython, which routes the cross-alternative pair here where
-    // # TPy answers False without calling the dunder.
-    // if not isinstance(other, Dog):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __lt__(self, other: "Dog") -> bool:
+//     return self.n < other.n
 inline bool Dog::__lt__(const Dog& other) const {
-    // return self.n < other.n
     return (this->n < other.n);
 }
 
 // def __le__(self, other: "Dog") -> bool:
+//     return self.n <= other.n
 inline bool Dog::__le__(const Dog& other) const {
-    // return self.n <= other.n
     return (this->n <= other.n);
 }
 
 // def __gt__(self, other: "Dog") -> bool:
+//     return self.n > other.n
 inline bool Dog::__gt__(const Dog& other) const {
-    // return self.n > other.n
     return (this->n > other.n);
 }
 
 // def __ge__(self, other: "Dog") -> bool:
+//     return self.n >= other.n
 inline bool Dog::__ge__(const Dog& other) const {
-    // return self.n >= other.n
     return (this->n >= other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cat::Cat(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Cat") -> bool:
+//     if not isinstance(other, Cat):
+//         return False
+//     return self.n == other.n
 inline bool Cat::__eq__(const Cat& other) const {
-    // if not isinstance(other, Cat):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __lt__(self, other: "Cat") -> bool:
+//     return self.n < other.n
 inline bool Cat::__lt__(const Cat& other) const {
-    // return self.n < other.n
     return (this->n < other.n);
 }
 
 // def __le__(self, other: "Cat") -> bool:
+//     return self.n <= other.n
 inline bool Cat::__le__(const Cat& other) const {
-    // return self.n <= other.n
     return (this->n <= other.n);
 }
 
 // def __gt__(self, other: "Cat") -> bool:
+//     return self.n > other.n
 inline bool Cat::__gt__(const Cat& other) const {
-    // return self.n > other.n
     return (this->n > other.n);
 }
 
 // def __ge__(self, other: "Cat") -> bool:
+//     return self.n >= other.n
 inline bool Cat::__ge__(const Cat& other) const {
-    // return self.n >= other.n
     return (this->n >= other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tag::Tag(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Tag") -> bool:
+//     if not isinstance(other, Tag):
+//         return False
+//     return self.n == other.n
 inline bool Tag::__eq__(const Tag& other) const {
-    // if not isinstance(other, Tag):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __ne__(self, other: "Tag") -> bool:
+//     if not isinstance(other, Tag):
+//         return True
+//     return self.n == other.n
 inline bool Tag::__ne__(const Tag& other) const {
-    // if not isinstance(other, Tag):
     if ((!(true))) {
-        // return True
         return true;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Mark::Mark(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Mark") -> bool:
+//     if not isinstance(other, Mark):
+//         return False
+//     return self.n == other.n
 inline bool Mark::__eq__(const Mark& other) const {
-    // if not isinstance(other, Mark):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline OnlyNe::OnlyNe(int32_t n) : n(n) {}
 
 // def __ne__(self, other: "OnlyNe") -> bool:
+//     if not isinstance(other, OnlyNe):
+//         return True
+//     return self.n != other.n
 inline bool OnlyNe::__ne__(const OnlyNe& other) const {
-    // if not isinstance(other, OnlyNe):
     if ((!(true))) {
-        // return True
         return true;
     }
-    // return self.n != other.n
     return (this->n != other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Plain::Plain(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Other::Other(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Locked::Locked(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Locked") -> bool:
+//     if not isinstance(other, Locked):
+//         return False
+//     return self.n == other.n
 inline bool Locked::__eq__(const Locked& other) const {
-    // if not isinstance(other, Locked):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Sealed::Sealed(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Sealed") -> bool:
+//     if not isinstance(other, Sealed):
+//         return False
+//     return self.n == other.n
 inline bool Sealed::__eq__(const Sealed& other) const {
-    // if not isinstance(other, Sealed):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __init__(self, tag: int32, a: Pet, b: Pet) -> None:  # constructor
+//     self.tag = tag
+//     self.flag = a == b  # tpyc: ok
 inline Shelter::Shelter(int32_t tag, ::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b) : tag(tag), flag((a == b)) {}
 
 // def same(self, a: Pet, b: Pet) -> bool:  # method param
+//     return a == b  # tpyc: ok
 inline bool Shelter::same(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b) const {
-    // return a == b  # tpyc: ok
     return (a == b);
 }
 
 // @readonly
 // def same_ro(self, a: Pet, b: Pet) -> bool:  # @readonly method param
+//     return a == b  # tpyc: ok
 inline bool Shelter::same_ro(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b) const {
-    // return a == b  # tpyc: ok
     return (a == b);
 }
 using Anon = ::tpy::Union<Other, Plain>;

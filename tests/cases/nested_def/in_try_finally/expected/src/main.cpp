@@ -8,53 +8,55 @@ namespace tpyapp::main {
 // # enclosing try's finally body, and its own return type (not the outer
 // # function's) drives return lowering (Optional case).
 // def main() -> None:
+//     try:
+//         def g() -> int:
+//             return 5
+//
+//         def h(flag: bool) -> int | None:
+//             if flag:
+//                 return 7
+//             return None
+//
+//         print(g())
+//         print(g())
+//         r = h(True)
+//         if r is not None:
+//             print(r)
+//     finally:
+//         print("done")
 void main() {
-    // try:
     std::optional<::tpy::BigInt> r;
     {
         try {
-            // def g() -> int:
             auto g = []() -> ::tpy::BigInt {
-                // return 5
                 return ::tpy::BigInt(5);
             };
-            // def h(flag: bool) -> int | None:
             auto h = [](bool flag) -> std::optional<::tpy::BigInt> {
-                // if flag:
                 if (flag) {
-                    // return 7
                     return 7;
                 }
-                // return None
                 return std::nullopt;
             };
-            // print(g())
             std::cout << g() << "\n";
-            // print(g())
             std::cout << g() << "\n";
-            // r = h(True)
             r = h(true);
-            // if r is not None:
             if ((r.has_value())) {
-                // print(r)
                 std::cout << ::tpy::print_optional_val(r) << "\n";
             }
         } catch (...) {
-            // print("done")
             std::cout << "done" << "\n";
             throw;
         }
-        // print("done")
         std::cout << "done" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

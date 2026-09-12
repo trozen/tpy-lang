@@ -12,7 +12,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(p: Pet) -> str:
 std::string describe(::tpy::Union<const Cat*, const Dog*> p);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -49,9 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, age: int32) -> None:
+//     self.age = age
 inline Dog::Dog(int32_t age) : age(age) {}
 
 // def __init__(self, age: int32) -> None:
+//     self.age = age
 inline Cat::Cat(int32_t age) : age(age) {}
 using Pet = ::tpy::Union<Cat, Dog>;
 

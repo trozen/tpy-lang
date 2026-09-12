@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     wp: Wrapper[Pair] = Wrapper(Pair(1, 2))
+//     print(str(wp))
+//     print(repr(wp))
+//     print(wp)
+//     print(f"val = {wp}")
+//     print(f"debug: {wp!r}")
 void main() {
-    // wp: Wrapper[Pair] = Wrapper(Pair(1, 2))
     Wrapper<Pair> wp = Wrapper<Pair>(Pair(1, 2));
-    // print(str(wp))
     std::cout << std::string(::tpy::__str__(wp)) << "\n";
-    // print(repr(wp))
     std::cout << ::tpy::repr_of(wp) << "\n";
-    // print(wp)
     std::cout << wp << "\n";
-    // print(f"val = {wp}")
     std::cout << std::format("val = {}", ::tpy::__str__(wp)) << "\n";
-    // print(f"debug: {wp!r}")
     std::cout << std::format("debug: {}", ::tpy::repr_of(wp)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,17 +5,17 @@ namespace tpyapp::mypackage::consumer {
 
 
 // def compute() -> int32:
+//     return add(int32(10), int32(32))
 int32_t compute() {
-    // return add(int32(10), int32(32))
     return ::tpyapp::mypackage::utils::add(10, 32);
 }
 
+// from .utils import add
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from .utils import add
     ::tpyapp::mypackage::__tpy_init();
     ::tpyapp::mypackage::utils::__tpy_init();
 }

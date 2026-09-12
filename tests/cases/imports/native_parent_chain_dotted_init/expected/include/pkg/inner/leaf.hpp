@@ -10,6 +10,7 @@ namespace dotted_init::pkg::inner::leaf {
 extern int32_t COUNTER;
 inline constexpr std::string_view __name__ = "pkg.inner.leaf";
 
+// def _seed() -> int32:
 int32_t _seed();
 
 void __tpy_init();

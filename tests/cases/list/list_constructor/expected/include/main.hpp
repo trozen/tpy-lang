@@ -20,6 +20,7 @@ extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* from_arr;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_local_list() -> None:
 void test_local_list();
 
 // class Point:
@@ -41,6 +42,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32 = 0, y: int32 = 0):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

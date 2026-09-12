@@ -6,40 +6,40 @@ namespace tpyapp::main {
 
 // @dispatch
 // def pick(x: int32, *, tag: str = "") -> str:
+//     return tag + ":" + str(x)
 std::string pick(int32_t x, std::string_view tag) {
-    // return tag + ":" + str(x)
     return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>(x)));
 }
 
 // @dispatch
 // def pick(x: int32, *, tag: int32 = 0) -> int32:
+//     return x + tag
 int32_t pick(int32_t x, int32_t tag) {
-    // return x + tag
     return (::tpy::add_check<int32_t>(x, tag));
 }
 
 // def main() -> None:
+//     # Positional arg alone is ambiguous (int32 matches both overloads at the
+//     # same tier); the kwarg's type picks the winner. Before the fix,
+//     # resolve_overload didn't see kwargs -- both calls raised "Ambiguous
+//     # overload" since the positional signatures are identical.
+//     a: str = pick(int32(10), tag="label")
+//     print(a)                                # label:10
+//     b: int32 = pick(int32(10), tag=int32(5))
+//     print(b)                                # 15
 void main() {
-    // # Positional arg alone is ambiguous (int32 matches both overloads at the
-    // # same tier); the kwarg's type picks the winner. Before the fix,
-    // # resolve_overload didn't see kwargs -- both calls raised "Ambiguous
-    // # overload" since the positional signatures are identical.
-    // a: str = pick(int32(10), tag="label")
     std::string a = pick(10, std::string_view("label"));
-    // print(a)                                # label:10
     std::cout << a << "\n";
-    // b: int32 = pick(int32(10), tag=int32(5))
     int32_t b = pick(10, 5);
-    // print(b)                                # 15
     std::cout << b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

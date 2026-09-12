@@ -14,9 +14,10 @@ inline constexpr std::string_view __name__ = "definer";
 
 struct __coro_deep;
 
+// async def deep() -> int32:
 __coro_deep deep();
 
-// Async coroutine: deep
+// async def deep() -> int32:
 struct __coro_deep {
     int32_t __state;
     bool __cancel_pending;

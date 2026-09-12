@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def take(b: Own[bytes]) -> int32:
+//     return len(b)
 int32_t take(::tpy::Bytes b) {
-    // return len(b)
     return ::tpy::__len__(b);
 }
 
 // def f(v: bytes) -> None:
+//     # A bytes method result at an owning parameter.
+//     print(take(v.strip()))
 void f(::tpy::BytesView v) {
-    // # A bytes method result at an owning parameter.
-    // print(take(v.strip()))
     std::cout << take(::tpy::Bytes(::tpy::bytes_strip_view(v))) << "\n";
 }
 
 // def main() -> None:
+//     f(b"  hi  ")
 void main() {
-    // f(b"  hi  ")
     f(::tpy::bytes_literal("  hi  ", 6));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

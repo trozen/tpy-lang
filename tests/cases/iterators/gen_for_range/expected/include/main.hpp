@@ -9,8 +9,12 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
+// def squares(n: int32) -> Iterator[int32]:
+//     for i in range(n):
+//         yield i * i
 inline auto squares(int32_t n) {
     return ::tpy::make_generator<int32_t>(
         [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<int32_t> {

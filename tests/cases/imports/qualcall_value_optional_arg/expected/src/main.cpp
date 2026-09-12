@@ -5,56 +5,57 @@ namespace tpyapp::main {
 
 
 // def split_user(raw: str) -> tuple[str, str]:
+//     idx = raw.find(":")
+//     if idx < 0:
+//         return (raw, "")
+//     return (raw[:idx], raw[idx + 1:])
 std::tuple<std::string, std::string> split_user(std::string_view raw) {
-    // idx = raw.find(":")
     int32_t idx = ::tpy::str_find(raw, ":");
-    // if idx < 0:
     if ((idx < 0)) {
-        // return (raw, "")
         return std::tuple<std::string, std::string>{std::string(raw), ""};
     }
-    // return (raw[:idx], raw[idx + 1:])
     return std::tuple<std::string, std::string>{std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{std::nullopt, idx})), std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(idx, 1)), std::nullopt}))};
 }
 
 // def call(user: str, secs: float) -> int:
+//     auth: tuple[str, str] | None = None
+//     timeout: float | None = None
+//     if user != "":
+//         auth = split_user(user)
+//     if secs > 0.0:
+//         timeout = secs
+//     # Un-narrowed on both paths: the value-TUPLE and the SCALAR inner both
+//     # pass the whole optional bare into the qualified callee's slot.
+//     return net.request("http://x", auth, timeout)  # tpyc: ok
 ::tpy::BigInt call(std::string_view user, double secs) {
-    // auth: tuple[str, str] | None = None
     std::optional<std::tuple<std::string, std::string>> auth = std::nullopt;
-    // timeout: float | None = None
     std::optional<double> timeout = std::nullopt;
-    // if user != "":
     if ((user != "")) {
-        // auth = split_user(user)
         auth = split_user(user);
     }
-    // if secs > 0.0:
     if ((secs > 0.0)) {
-        // timeout = secs
         timeout = secs;
     }
-    // # Un-narrowed on both paths: the value-TUPLE and the SCALAR inner both
-    // # pass the whole optional bare into the qualified callee's slot.
-    // return net.request("http://x", auth, timeout)  # tpyc: ok
     return ::tpyapp::net::request("http://x", auth, timeout);
 }
 
 // def main():
+//     print(call("user:pw", 2.5), call("", 0.0))
 void main() {
-    // print(call("user:pw", 2.5), call("", 0.0))
     std::cout << call("user:pw", 2.5) << " " << call("", 0.0) << "\n";
 }
 
+// # A whole value-repr Optional local passed to a MODULE-QUALIFIED call: the
+// # binding already is the `std::optional<T>` the slot takes, so it binds bare.
+// import net
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A whole value-repr Optional local passed to a MODULE-QUALIFIED call: the
-    // # binding already is the `std::optional<T>` the slot takes, so it binds bare.
-    // import net
     ::tpyapp::net::__tpy_init();
-    // main()
     main();
 }
 

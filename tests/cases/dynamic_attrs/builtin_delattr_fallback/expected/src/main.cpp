@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     b.x = "hello"
+//     delattr(b, "x")
+//     print(len(b._data))
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // b.x = "hello"
     b.__setattr__("x", ::tpy::make_any(std::string("hello")));
-    // delattr(b, "x")
     b.__delattr__("x");
-    // print(len(b._data))
     std::cout << ::tpy::__len__(b._data) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,79 +9,78 @@ namespace tpyapp::main {
 // # the try statement, per Python function scoping. Covers the finally-only
 // # tier and the throw tier (try/except/finally).
 // def finally_only() -> None:
+//     try:
+//         print("body")
+//     finally:
+//         tmp = "x" + "y"
+//         print(tmp)
+//     print(tmp)
 void finally_only() {
-    // try:
     ::tpy::String tmp;
     {
         try {
-            // print("body")
             std::cout << "body" << "\n";
         } catch (...) {
-            // tmp = "x" + "y"
             tmp = (::tpy::str_concat("x", "y"));
-            // print(tmp)
             std::cout << tmp << "\n";
             throw;
         }
-        // tmp = "x" + "y"
         tmp = (::tpy::str_concat("x", "y"));
-        // print(tmp)
         std::cout << tmp << "\n";
     }
-    // print(tmp)
     std::cout << tmp << "\n";
 }
 
 // def throw_tier(trigger: bool) -> None:
+//     try:
+//         if trigger:
+//             raise ValueError("boom")
+//         print("ok")
+//     except ValueError:
+//         print("caught")
+//     finally:
+//         note = "done" + ("!" if trigger else ".")
+//         print(note)
+//     print(note)
 void throw_tier(bool trigger) {
-    // try:
     ::tpy::String note;
     {
         try {
             try {
-                // if trigger:
                 if (trigger) {
-                    // raise ValueError("boom")
                     throw ::tpy::ValueError("boom");
                 }
-                // print("ok")
                 std::cout << "ok" << "\n";
             } catch (const ::tpy::ValueError&) {
-                // print("caught")
                 std::cout << "caught" << "\n";
             }
         } catch (...) {
-            // note = "done" + ("!" if trigger else ".")
             note = (::tpy::str_concat("done", ((trigger) ? ("!") : ("."))));
-            // print(note)
             std::cout << note << "\n";
             throw;
         }
-        // note = "done" + ("!" if trigger else ".")
         note = (::tpy::str_concat("done", ((trigger) ? ("!") : ("."))));
-        // print(note)
         std::cout << note << "\n";
     }
-    // print(note)
     std::cout << note << "\n";
 }
 
 // def main() -> None:
+//     finally_only()
+//     throw_tier(False)
+//     throw_tier(True)
 void main() {
-    // finally_only()
     finally_only();
-    // throw_tier(False)
     throw_tier(false);
-    // throw_tier(True)
     throw_tier(true);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

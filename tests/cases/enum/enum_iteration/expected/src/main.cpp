@@ -85,51 +85,52 @@ namespace tpyapp::main {
 
 
 // def print_colors() -> None:
+//     for c in Color:
+//         print(c)
 void print_colors() {
-    // for c in Color:
     auto& __obj_0 = ::tpy::EnumUtil<Color>::members;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        // print(c)
         std::cout << c << "\n";
     }
 }
 
 // def count_members() -> None:
+//     count: int32 = 0
+//     for s in Status:
+//         count += 1
+//     print(count)
 void count_members() {
-    // count: int32 = 0
     int32_t count = 0;
-    // for s in Status:
     auto& __obj_0 = ::tpy::EnumUtil<Status>::members;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Status s = *__beg_0;
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    // print(count)
     std::cout << count << "\n";
 }
 
 // def main() -> None:
+//     print_colors()
+//     count_members()
 void main() {
-    // print_colors()
     print_colors();
-    // count_members()
     count_members();
 }
 
+// # Test enum iteration with for-each loop
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test enum iteration with for-each loop
-    // from enum import Enum
-    // main()
     main();
 }
 

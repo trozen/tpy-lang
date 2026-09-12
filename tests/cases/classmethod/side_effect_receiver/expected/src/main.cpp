@@ -3,34 +3,34 @@
 
 namespace tpyapp::main {
 
-// built: int32 = 0
 int32_t built{};
 
 // def source() -> Own[Widget]:
+//     global built
+//     built += 1
+//     return Widget(5)
 Widget source() {
-    // global built
-    // built += 1
     built = ::tpy::add_check<int32_t>(built, 1);
-    // return Widget(5)
     return Widget(5);
 }
 
 // def main() -> None:
+//     w = source().blank()
+//     print(w.n, built)
 void main() {
-    // w = source().blank()
     Widget w = source().blank();
-    // print(w.n, built)
     std::cout << w.n << " " << built << "\n";
 }
 
+// built: int32 = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // built: int32 = 0
     built = 0;
-    // main()
     main();
 }
 

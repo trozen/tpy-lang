@@ -5,29 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pts: list[Point] = [Point(1, 2), Point(3, 4)]
+//     print(str(pts))
+//     print(f"{pts}")
+//
+//     t: tuple[Point, int] = (Point(5, 6), 7)
+//     print(str(t))
+//
+//     d: dict[str, Point] = {"origin": Point(0, 0)}
+//     print(str(d))
 void main() {
-    // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(::tpy::BigInt(1), ::tpy::BigInt(2)), Point(::tpy::BigInt(3), ::tpy::BigInt(4))};
-    // print(str(pts))
     std::cout << ::tpy::list_to_str(pts) << "\n";
-    // print(f"{pts}")
     std::cout << std::format("{}", ::tpy::list_to_str(pts)) << "\n";
-    // t: tuple[Point, int] = (Point(5, 6), 7)
     auto t = std::tuple<Point, ::tpy::BigInt>{Point(::tpy::BigInt(5), ::tpy::BigInt(6)), ::tpy::BigInt(7)};
-    // print(str(t))
     std::cout << ::tpy::tuple_to_str(::tpy::tuple_to_pointer<std::tuple<Point*, ::tpy::BigInt>>(t)) << "\n";
-    // d: dict[str, Point] = {"origin": Point(0, 0)}
     ::tpy::ordered_map<std::string, Point> d = ::tpy::ordered_map<std::string, Point>({{"origin", Point(::tpy::BigInt(0), ::tpy::BigInt(0))}});
-    // print(str(d))
     std::cout << ::tpy::dict_to_str(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_out_of_bounds() -> None:
 void test_out_of_bounds();
 
 void __tpy_init();

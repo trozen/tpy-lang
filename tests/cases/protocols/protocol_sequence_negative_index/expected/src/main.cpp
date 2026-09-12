@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Array[int32, 3] = [int32(10), int32(20), int32(30)]
+//     print(seq_at(a, int32(-1)))
+//     print(seq_at(a, int32(0)))
+//
+//     sp: Span[int32] = a
+//     print(seq_at(sp, int32(-1)))
+//     print(seq_at(sp, int32(-2)))
 void main() {
-    // a: Array[int32, 3] = [int32(10), int32(20), int32(30)]
     std::array<int32_t, 3> a = {10, 20, 30};
-    // print(seq_at(a, int32(-1)))
     std::cout << seq_at(a, -1) << "\n";
-    // print(seq_at(a, int32(0)))
     std::cout << seq_at(a, 0) << "\n";
-    // sp: Span[int32] = a
     std::span<int32_t> sp = ::tpy::as_mut_span(a);
-    // print(seq_at(sp, int32(-1)))
     std::cout << seq_at(sp, -1) << "\n";
-    // print(seq_at(sp, int32(-2)))
     std::cout << seq_at(sp, -2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

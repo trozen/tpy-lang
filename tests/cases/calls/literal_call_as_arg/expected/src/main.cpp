@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def get_r() -> Literal["r"]:
+//     return "r"
 std::string_view get_r() {
-    // return "r"
     return "r";
 }
 
 
 
+// def pick(v: str) -> int32:
+//     return int32(99)
 // @overload
 // def pick(v: Literal["r", "w"]) -> int32: ...
 int32_t pick__lit_r__w(std::string_view v) {
-    // return int32(99)
     return 99;
 }
 
 // @overload
 // def pick(v: str) -> int32: ...
 int32_t pick(std::string_view v) {
-    // return int32(99)
     return 99;
 }
 
 
 // def main() -> None:
+//     print(pick(get_r()))
 void main() {
-    // print(pick(get_r()))
     std::cout << pick__lit_r__w(get_r()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,49 +5,50 @@ namespace tpyapp::main {
 
 
 // def make_weak_after_rc_dies() -> Own[Weak[Cell]]:
+//     rc = Rc.new(Cell(int32(7)))
+//     w = rc.downgrade()
+//     # rc drops at function return -- payload destructed, but `w` keeps the
+//     # cell memory alive (strong=0, weak=1).
+//     return w
 ::tpystd::tplib::rc::Weak<Cell> make_weak_after_rc_dies() {
-    // rc = Rc.new(Cell(int32(7)))
     ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(7));
-    // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
-    // # rc drops at function return -- payload destructed, but `w` keeps the
-    // # cell memory alive (strong=0, weak=1).
-    // return w
     return w;
 }
 
 // def main() -> None:
+//     print("--- pre ---")
+//     w = make_weak_after_rc_dies()
+//     print("--- post ---")
+//     upgraded = w.upgrade()
+//     if upgraded is None:
+//         print("upgrade returned None")
+//     else:
+//         print("unexpected upgrade:", upgraded.get().val)
+//     print("--- done ---")
 void main() {
-    // print("--- pre ---")
     std::cout << "--- pre ---" << "\n";
-    // w = make_weak_after_rc_dies()
     ::tpystd::tplib::rc::Weak<Cell> w = make_weak_after_rc_dies();
-    // print("--- post ---")
     std::cout << "--- post ---" << "\n";
-    // upgraded = w.upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Cell>> upgraded = w.upgrade();
-    // if upgraded is None:
     if ((!upgraded.has_value())) {
-        // print("upgrade returned None")
         std::cout << "upgrade returned None" << "\n";
-    // else:
     } else {
-        // print("unexpected upgrade:", upgraded.get().val)
         std::cout << "unexpected upgrade:" << " " << (*upgraded).get().val << "\n";
     }
-    // print("--- done ---")
     std::cout << "--- done ---" << "\n";
 }
 
+// from tplib.rc import Rc, Weak
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

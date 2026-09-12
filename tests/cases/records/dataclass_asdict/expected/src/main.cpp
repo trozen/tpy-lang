@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(int32(1), int32(2))
+//     d = asdict(p)
+//     print(d)
+//     print(d["x"])
+//     print(d["y"])
 void main() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // d = asdict(p)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", p.x}, {"y", p.y}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(d["x"])
     std::cout << ::tpy::__getitem__(d, "x") << "\n";
-    // print(d["y"])
     std::cout << ::tpy::__getitem__(d, "y") << "\n";
 }
 
+// # Test asdict() on a flat dataclass
+// from dataclasses import dataclass, asdict
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test asdict() on a flat dataclass
-    // from dataclasses import dataclass, asdict
-    // main()
     main();
 }
 

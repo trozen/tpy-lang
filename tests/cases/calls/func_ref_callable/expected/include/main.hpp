@@ -11,10 +11,15 @@ struct Handler;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x);
+// def greet(name: str) -> str:
 std::string greet(std::string_view name);
+// def apply(f: Callable[[int32], int32], x: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t x);
+// def printer(x: int32) -> None:
 void printer(int32_t x);
+// def main() -> None:
 void main();
 
 // class Handler:
@@ -40,17 +45,18 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 
 
 // def __init__(self, cb: Callable[[int32], None]) -> None:
+//     self.callback = cb
 inline Handler::Handler(std::function<void(int32_t)> cb) : callback(cb) {}
 
 // def run(self, x: int32) -> None:
+//     self.callback(x)
 inline void Handler::run(int32_t x) const {
-    // self.callback(x)
     (*this).callback(x);
 }
 
 // def __str__(self) -> str:
+//     return "Handler(...)"
 inline std::string Handler::__str__() const {
-    // return "Handler(...)"
     return "Handler(...)";
 }
 void __tpy_init();

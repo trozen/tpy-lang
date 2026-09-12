@@ -11,6 +11,7 @@ struct Res;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Res:
@@ -42,6 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Res::Res(int32_t v) : v(v) {}
 
 inline Res::Res(const Res& other) : Res(other.__copy__()) {}
@@ -62,14 +64,14 @@ inline Res& Res::operator=(Res&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     pass
 inline Res::~Res() {
     if (!this->__tpy_owned_) return;
-    // pass
 }
 
 // def __copy__(self) -> Own['Res']:
+//     return Res(self.v)
 inline Res Res::__copy__() const {
-    // return Res(self.v)
     return Res(this->v);
 }
 void __tpy_init();

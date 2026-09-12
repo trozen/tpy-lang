@@ -5,29 +5,31 @@ namespace tpyapp::main {
 
 
 // def main():
+//     s = Sink()
+//     p = Point()
+//
+//     def show():
+//         print(len(p.items))
+//
+//     s.consume(p)  # tpyc: warning(/copies/)
+//     show()
 void main() {
-    // s = Sink()
     Sink s = Sink();
-    // p = Point()
     Point p = Point();
-    // def show():
     auto show = [&p]() {
-        // print(len(p.items))
         std::cout << ::tpy::__len__(p.items) << "\n";
     };
-    // s.consume(p)  # tpyc: warning(/copies/)
     Point __tmp_1 = p;
     s.consume(std::move(__tmp_1));
-    // show()
     show();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,52 +3,54 @@
 
 namespace tpyapp::main {
 
-// # Big integers that exceed int32 range -- forces BigInt path
-// base = 1 << 100  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt base;
 
+// # Big integers that exceed int32 range -- forces BigInt path
+// base = 1 << 100  # tpyc: warning(/outside default int32 range/)
+//
+// # 1. BigInt range with start/stop
+// for i in range(base, base + 5):
+//     print(i)
+//
+// # 2. BigInt range with step
+// for i in range(base, base + 10, 3):
+//     print(i)
+//
+// # 3. Negative BigInt step
+// for i in range(base + 4, base - 1, -1):
+//     print(i)
+//
+// # 4. Empty BigInt range
+// for i in range(base + 5, base):
+//     print(i)
+// print("done")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Big integers that exceed int32 range -- forces BigInt path
-    // base = 1 << 100  # tpyc: warning(/outside default int32 range/)
     base = ((::tpy::BigInt(1)) << (::tpy::BigInt(100)));
-    // # 1. BigInt range with start/stop
-    // for i in range(base, base + 5):
     ::tpy::BigInt __start_0 = base;
     ::tpy::BigInt __stop_0 = ((base) + (::tpy::BigInt(5)));
     for (::tpy::BigInt i = __start_0; i < __stop_0; ++i) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // # 2. BigInt range with step
-    // for i in range(base, base + 10, 3):
     ::tpy::BigInt __start_1 = base;
     ::tpy::BigInt __stop_1 = ((base) + (::tpy::BigInt(10)));
     ::tpy::BigInt __step_1 = ::tpy::BigInt(3);
     for (::tpy::BigInt i = __start_1; i < __stop_1; i += __step_1) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // # 3. Negative BigInt step
-    // for i in range(base + 4, base - 1, -1):
     ::tpy::BigInt __start_2 = ((base) + (::tpy::BigInt(4)));
     ::tpy::BigInt __stop_2 = ((base) - (::tpy::BigInt(1)));
     for (::tpy::BigInt i = __start_2; i > __stop_2; --i) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // # 4. Empty BigInt range
-    // for i in range(base + 5, base):
     ::tpy::BigInt __start_3 = ((base) + (::tpy::BigInt(5)));
     ::tpy::BigInt __stop_3 = base;
     for (::tpy::BigInt i = __start_3; i < __stop_3; ++i) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // print("done")
     std::cout << "done" << "\n";
 }
 

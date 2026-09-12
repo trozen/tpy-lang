@@ -11,8 +11,11 @@ struct Tag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fmt(value: int) -> str: ...  # tpyc: ok
 std::string fmt(const ::tpy::BigInt& value);
+// def fmt(value: int, tag: Tag) -> str: ...  # tpyc: ok
 std::string fmt(const ::tpy::BigInt& value, const Tag& tag);
+// def main() -> None:
 void main();
 
 // class Tag:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Tag::Tag(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

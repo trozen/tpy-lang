@@ -5,66 +5,68 @@ namespace tpyapp::main {
 
 
 // def peek(b: readonly[Box]) -> None:
+//     p = b[1]
+//     if p is not None:
+//         print(p.x)
 void peek(const Box& b) {
-    // p = b[1]
     const Rec* p = b[1];
-    // if p is not None:
     if ((p != nullptr)) {
-        // print(p.x)
         std::cout << p->x << "\n";
     }
 }
 
 // def main() -> None:
+//     b = Box(Rec(7))
+//     p = b[1]
+//     if p is not None:
+//         p.x = 8           # aliasing: mutate through the subscript result
+//     print(b._v.x)
+//     m = b[0]              # miss arm
+//     if m is None:
+//         print("miss")
+//     peek(b)               # const twin through a readonly receiver
+//
+//     g = GenBox(1, Rec(20))
+//     q = g[1]
+//     if q is not None:
+//         print(q.x)
+//
+//     s = SubBox(2, Rec(30))
+//     r = s[1]
+//     if r is not None:
+//         r.x = 31
+//     print(s._v.x)
 void main() {
-    // b = Box(Rec(7))
     Box b = Box(Rec(7));
-    // p = b[1]
     Rec* p = b[1];
-    // if p is not None:
     if ((p != nullptr)) {
-        // p.x = 8           # aliasing: mutate through the subscript result
         p->x = 8;
     }
-    // print(b._v.x)
     std::cout << b._v.x << "\n";
-    // m = b[0]              # miss arm
     Rec* m = b[0];
-    // if m is None:
     if ((m == nullptr)) {
-        // print("miss")
         std::cout << "miss" << "\n";
     }
-    // peek(b)               # const twin through a readonly receiver
     peek(b);
-    // g = GenBox(1, Rec(20))
     GenBox<int32_t, Rec> g = GenBox<int32_t, Rec>(1, Rec(20));
-    // q = g[1]
     Rec* q = g[1];
-    // if q is not None:
     if ((q != nullptr)) {
-        // print(q.x)
         std::cout << q->x << "\n";
     }
-    // s = SubBox(2, Rec(30))
     SubBox s = SubBox(2, Rec(30));
-    // r = s[1]
     Rec* r = s[1];
-    // if r is not None:
     if ((r != nullptr)) {
-        // r.x = 31
         r->x = 31;
     }
-    // print(s._v.x)
     std::cout << s._v.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

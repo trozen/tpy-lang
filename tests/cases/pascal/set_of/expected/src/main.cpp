@@ -3,80 +3,72 @@
 
 namespace tpyapp::main {
 
-// a, b, c: IntSet;
 ::tpy::ordered_set<int32_t>* a{};
-// a, b, c: IntSet;
 ::tpy::ordered_set<int32_t>* b{};
-// a, b, c: IntSet;
 ::tpy::ordered_set<int32_t>* c{};
-// x: integer;
 int32_t x{};
 
+// a, b, c: IntSet;
+// x: integer;
+//
+// a := [1, 2, 3];
+// b := [3, 4, 5];
+// c := a + b;            (* union: 1..5 *)
+// for x := 1 to 6 do
+//   if x in c then writeln(x);
+// writeln('---');
+// c := a * b;            (* intersection: 3 *)
+// for x := 1 to 6 do
+//   if x in c then writeln(x);
+// writeln('---');
+// c := a - b;            (* difference: 1, 2 *)
+// for x := 1 to 6 do
+//   if x in c then writeln(x);
+// writeln('---');
+// c := [1..3, 7];        (* range + scalar in one literal *)
+// for x := 1 to 8 do
+//   if x in c then writeln(x);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // a, b, c: IntSet;
     static ::tpy::ordered_set<int32_t> __global_slot_1 = ::tpy::ordered_set<int32_t>();
     a = &__global_slot_1;
-    // a, b, c: IntSet;
     static ::tpy::ordered_set<int32_t> __global_slot_2 = ::tpy::ordered_set<int32_t>();
     b = &__global_slot_2;
-    // a, b, c: IntSet;
     static ::tpy::ordered_set<int32_t> __global_slot_3 = ::tpy::ordered_set<int32_t>();
     c = &__global_slot_3;
-    // a := [1, 2, 3];
     a = &(__global_slot_1 = ::tpy::ordered_set<int32_t>({1, 2, 3}));
-    // b := [3, 4, 5];
     b = &(__global_slot_2 = ::tpy::ordered_set<int32_t>({3, 4, 5}));
-    // c := a + b;            (* union: 1..5 *)
     c = &(__global_slot_3 = (::tpy::set_union((*a), (*b))));
-    // for x := 1 to 6 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_0; ++x) {
-        // if x in c then writeln(x);
         if (((*c).contains(x))) {
-            // if x in c then writeln(x);
             std::cout << x << "\n";
         }
     }
-    // writeln('---');
     std::cout << "---" << "\n";
-    // c := a * b;            (* intersection: 3 *)
     c = &(__global_slot_3 = (::tpy::set_intersection((*a), (*b))));
-    // for x := 1 to 6 do
     int32_t __stop_1 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_1; ++x) {
-        // if x in c then writeln(x);
         if (((*c).contains(x))) {
-            // if x in c then writeln(x);
             std::cout << x << "\n";
         }
     }
-    // writeln('---');
     std::cout << "---" << "\n";
-    // c := a - b;            (* difference: 1, 2 *)
     c = &(__global_slot_3 = (::tpy::set_difference((*a), (*b))));
-    // for x := 1 to 6 do
     int32_t __stop_2 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_2; ++x) {
-        // if x in c then writeln(x);
         if (((*c).contains(x))) {
-            // if x in c then writeln(x);
             std::cout << x << "\n";
         }
     }
-    // writeln('---');
     std::cout << "---" << "\n";
-    // c := [1..3, 7];        (* range + scalar in one literal *)
     c = &(__global_slot_3 = (::tpy::set_union(::tpy::set_construct<int32_t>(::tpy::Range<int32_t>(1, ::tpy::add_check<int32_t>(3, 1))), ::tpy::ordered_set<int32_t>({7}))));
-    // for x := 1 to 8 do
     int32_t __stop_3 = ::tpy::add_check<int32_t>(8, 1);
     for (int32_t x = 1; x < __stop_3; ++x) {
-        // if x in c then writeln(x);
         if (((*c).contains(x))) {
-            // if x in c then writeln(x);
             std::cout << x << "\n";
         }
     }

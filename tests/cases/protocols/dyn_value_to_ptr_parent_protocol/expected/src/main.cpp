@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def takes_pet_ptr(p: Ptr[Pet]) -> int32:
+//     return p.name()
 int32_t takes_pet_ptr(Pet* p) {
-    // return p.name()
     return ::tpy::deref_check(p).name();
 }
 
 // def forward(np: NamedPet) -> int32:
+//     return takes_pet_ptr(np)
 int32_t forward(NamedPet& np) {
-    // return takes_pet_ptr(np)
     return takes_pet_ptr(&np);
 }
 
 // def main() -> None:
+//     c = Cat(7)
+//     print(forward(c))
 void main() {
-    // c = Cat(7)
     Cat c = Cat(7);
-    // print(forward(c))
     std::cout << forward(c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

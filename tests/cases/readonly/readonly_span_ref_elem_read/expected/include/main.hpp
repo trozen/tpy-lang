@@ -11,8 +11,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first(xs: Span[readonly[Box]]) -> int:
 ::tpy::BigInt first(std::span<const Box> xs);
+// def total(xs: Span[readonly[Box]]) -> int:
 ::tpy::BigInt total(std::span<const Box> xs);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -39,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

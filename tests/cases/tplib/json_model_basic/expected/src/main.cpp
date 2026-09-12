@@ -5,80 +5,80 @@ namespace tpyapp::main {
 
 
 // def test_deserialize() -> None:
+//     user = User.from_json('{"name": "Alice", "age": 30, "active": true, "email": "a@b.com"}')
+//     print(user.name)
+//     print(user.age)
+//     print(user.active)
+//     print(user.email)
 void test_deserialize() {
-    // user = User.from_json('{"name": "Alice", "age": 30, "active": true, "email": "a@b.com"}')
     User user = User::from_json("{\"name\": \"Alice\", \"age\": 30, \"active\": true, \"email\": \"a@b.com\"}");
-    // print(user.name)
     std::cout << user.name << "\n";
-    // print(user.age)
     std::cout << user.age << "\n";
-    // print(user.active)
     std::cout << ::tpy::print_bool(user.active) << "\n";
-    // print(user.email)
     std::cout << ::tpy::print_optional_val(user.email) << "\n";
 }
 
 // def test_optional_missing() -> None:
+//     user = User.from_json('{"name": "Bob", "age": 25, "active": false}')
+//     print(user.name)
+//     print(user.email)
 void test_optional_missing() {
-    // user = User.from_json('{"name": "Bob", "age": 25, "active": false}')
     User user = User::from_json("{\"name\": \"Bob\", \"age\": 25, \"active\": false}");
-    // print(user.name)
     std::cout << user.name << "\n";
-    // print(user.email)
     std::cout << ::tpy::print_optional_val(user.email) << "\n";
 }
 
 // def test_optional_null() -> None:
+//     user = User.from_json('{"name": "Eve", "age": 40, "active": true, "email": null}')
+//     print(user.email)
 void test_optional_null() {
-    // user = User.from_json('{"name": "Eve", "age": 40, "active": true, "email": null}')
     User user = User::from_json("{\"name\": \"Eve\", \"age\": 40, \"active\": true, \"email\": null}");
-    // print(user.email)
     std::cout << ::tpy::print_optional_val(user.email) << "\n";
 }
 
 // def test_serialize() -> None:
+//     user = User("Alice", 30, True, "a@b.com")
+//     print(user.to_json())
 void test_serialize() {
-    // user = User("Alice", 30, True, "a@b.com")
     User user = User("Alice", 30, true, "a@b.com");
-    // print(user.to_json())
     std::cout << user.to_json() << "\n";
 }
 
 // def test_serialize_null() -> None:
+//     user = User("Bob", 25, False, None)
+//     print(user.to_json())
 void test_serialize_null() {
-    // user = User("Bob", 25, False, None)
     User user = User("Bob", 25, false, std::nullopt);
-    // print(user.to_json())
     std::cout << user.to_json() << "\n";
 }
 
 // def test_roundtrip() -> None:
+//     json = '{"name": "Eve", "age": 40, "active": true, "email": null}'
+//     user = User.from_json(json)
+//     user2 = User.from_json(user.to_json())
+//     print(user == user2)
 void test_roundtrip() {
-    // json = '{"name": "Eve", "age": 40, "active": true, "email": null}'
     std::string_view json = "{\"name\": \"Eve\", \"age\": 40, \"active\": true, \"email\": null}";
-    // user = User.from_json(json)
     User user = User::from_json(json);
-    // user2 = User.from_json(user.to_json())
     User user2 = User::from_json(user.to_json());
-    // print(user == user2)
     std::cout << ::tpy::print_bool(((user) == (user2))) << "\n";
 }
 
 // def test_skip_unknown() -> None:
+//     user = User.from_json('{"name": "X", "extra": 999, "age": 1, "active": false}')
+//     print(user.name)
+//     print(user.age)
 void test_skip_unknown() {
-    // user = User.from_json('{"name": "X", "extra": 999, "age": 1, "active": false}')
     User user = User::from_json("{\"name\": \"X\", \"extra\": 999, \"age\": 1, \"active\": false}");
-    // print(user.name)
     std::cout << user.name << "\n";
-    // print(user.age)
     std::cout << user.age << "\n";
 }
 
 // def test_pretty() -> None:
+//     user = User("Alice", 30, True, "a@b.com")
+//     print(user.to_json(indent=2))
 void test_pretty() {
-    // user = User("Alice", 30, True, "a@b.com")
     User user = User("Alice", 30, true, "a@b.com");
-    // print(user.to_json(indent=2))
     std::cout << user.to_json(2) << "\n";
 }
 
@@ -172,6 +172,16 @@ void User::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) 
     }
     __writer.object_end();
 }
+// from tplib.json.model import model
+//
+// test_deserialize()
+// test_optional_missing()
+// test_optional_null()
+// test_serialize()
+// test_serialize_null()
+// test_roundtrip()
+// test_skip_unknown()
+// test_pretty()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -181,22 +191,13 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // from tplib.json.model import model
-    // test_deserialize()
     test_deserialize();
-    // test_optional_missing()
     test_optional_missing();
-    // test_optional_null()
     test_optional_null();
-    // test_serialize()
     test_serialize();
-    // test_serialize_null()
     test_serialize_null();
-    // test_roundtrip()
     test_roundtrip();
-    // test_skip_unknown()
     test_skip_unknown();
-    // test_pretty()
     test_pretty();
 }
 

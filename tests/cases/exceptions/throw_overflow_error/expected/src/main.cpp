@@ -8,41 +8,44 @@ namespace tpyapp::main {
 // # catch it the same way as runtime-thrown OverflowError. Inherits from
 // # ArithmeticError so `except ArithmeticError` also catches it.
 // def fail() -> None:
+//     raise OverflowError("custom: value too large")
 void fail() {
-    // raise OverflowError("custom: value too large")
     throw ::tpy::OverflowError("custom: value too large");
 }
 
 // def main() -> None:
+//     try:
+//         fail()
+//     except OverflowError as e:
+//         print("caught OverflowError:", str(e))
+//
+//     try:
+//         fail()
+//     except ArithmeticError as e:
+//         print("caught via ArithmeticError:", str(e))
 void main() {
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (const ::tpy::OverflowError& e) {
-            // print("caught OverflowError:", str(e))
             std::cout << "caught OverflowError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (const ::tpy::ArithmeticError& e) {
-            // print("caught via ArithmeticError:", str(e))
             std::cout << "caught via ArithmeticError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,33 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point.origin()
+//     print(p.x, p.y, Point.created)
+//
+//     q = Point.diagonal(3)
+//     print(q.x, q.y, Point.created)
+//
+//     # The ClassVar counter is class-level state shared across calls.
+//     r = Point.origin()
+//     print(r.x, Point.created)
+//
+//     # The returned object is owned, so mutating it is visible here.
+//     r.x = 9
+//     print(r.x)
 void main() {
-    // p = Point.origin()
     Point p = Point::origin();
-    // print(p.x, p.y, Point.created)
     std::cout << p.x << " " << p.y << " " << Point::created << "\n";
-    // q = Point.diagonal(3)
     Point q = Point::diagonal(3);
-    // print(q.x, q.y, Point.created)
     std::cout << q.x << " " << q.y << " " << Point::created << "\n";
-    // # The ClassVar counter is class-level state shared across calls.
-    // r = Point.origin()
     Point r = Point::origin();
-    // print(r.x, Point.created)
     std::cout << r.x << " " << Point::created << "\n";
-    // # The returned object is owned, so mutating it is visible here.
-    // r.x = 9
     r.x = 9;
-    // print(r.x)
     std::cout << r.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

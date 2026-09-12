@@ -12,12 +12,19 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_pair(v: int) -> tuple[int, Own[Box]]:
 std::tuple<::tpy::BigInt, Box> make_pair(const ::tpy::BigInt& v);
+// def alias_storage() -> int:
 ::tpy::BigInt alias_storage();
+// def alias_after_owning_call(h: Holder) -> None:
 void alias_after_owning_call(Holder& h);
+// def conditional(h: Holder, flag: bool) -> int:
 ::tpy::BigInt conditional(Holder& h, bool flag);
+// def branch_declared(h: Holder, flag: bool) -> int:
 ::tpy::BigInt branch_declared(Holder& h, bool flag);
+// def reowned(v: int) -> int:
 ::tpy::BigInt reowned(const ::tpy::BigInt& v);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -54,9 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int):
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 
 // def __init__(self, b: Box):
+//     self.pair = (1, b)  # tpyc: warning(/copies Box into field/)
 inline Holder::Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Box>>(std::tuple<::tpy::BigInt, Box>{::tpy::BigInt(1), b})) {}
 void __tpy_init();
 } // namespace tpyapp::main

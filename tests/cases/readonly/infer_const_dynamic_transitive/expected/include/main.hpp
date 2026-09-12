@@ -31,7 +31,9 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(v: HasValue) -> None:
 void show(HasValue& v);
+// def main() -> None:
 void main();
 
 // class Parent(HasValue):
@@ -91,20 +93,22 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: int32) -> None:
+//     self._n = n
 inline Parent::Parent(int32_t n) : _n(n) {}
 
 // def value(self) -> int32:           # direct override -- must NOT be const
+//     return self._n
 inline int32_t Parent::value() {
-    // return self._n
     return this->_n;
 }
 
 // def __init__(self, n: int32) -> None:
+//     Parent.__init__(self, n)
 inline Child::Child(int32_t n) : Parent(n) {}
 
 // def value(self) -> int32:           # transitive override -- must NOT be const
+//     return self._n * 2
 inline int32_t Child::value() {
-    // return self._n * 2
     return (::tpy::mul_check<int32_t>(this->_n, 2));
 }
 void __tpy_init();

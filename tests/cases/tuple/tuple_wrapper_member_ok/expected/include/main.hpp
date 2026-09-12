@@ -11,9 +11,13 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def keep_param(t: Tree[int32]) -> tuple[Tree[int32], int32]:
 std::tuple<Tree<int32_t>&, int32_t> keep_param(Tree<int32_t>& t);
+// def own_escape() -> tuple[Own[Tree[int32]], int32]:
 std::tuple<Tree<int32_t>, int32_t> own_escape();
+// def count(t: Tree[int32]) -> int32:
 int32_t count(const Tree<int32_t>& t);
+// def main() -> None:
 void main();
 
 template<typename T>

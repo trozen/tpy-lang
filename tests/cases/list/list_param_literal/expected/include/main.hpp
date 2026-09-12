@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def takes_list(x: list[int]) -> None:
 void takes_list(std::vector<::tpy::BigInt>& x);
+// def takes_list_int32(x: list[int32]) -> None:
 void takes_list_int32(std::vector<int32_t>& x);
+// def takes_array(x: Array[int32, 3]) -> None:
 void takes_array(const std::array<int32_t, 3>& x);
 
 void __tpy_init();

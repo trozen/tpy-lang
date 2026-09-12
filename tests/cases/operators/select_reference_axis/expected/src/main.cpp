@@ -5,99 +5,103 @@ namespace tpyapp::main {
 
 
 // def pick_list(a: list[Tag], b: list[Tag]) -> int32:
+//     v = a or b  # tpyc: ok
+//     return len(v)
 int32_t pick_list(std::vector<Tag>& a, std::vector<Tag>& b) {
-    // v = a or b  # tpyc: ok
     std::vector<Tag>& v = ((::tpy::__len__(a) != 0) ? a : b);
-    // return len(v)
     return ::tpy::__len__(v);
 }
 
 // def pick_dict(a: dict[str, Tag], b: dict[str, Tag]) -> int32:
+//     v = a or b  # tpyc: ok
+//     return len(v)
 int32_t pick_dict(::tpy::ordered_map<std::string, Tag>& a, ::tpy::ordered_map<std::string, Tag>& b) {
-    // v = a or b  # tpyc: ok
     ::tpy::ordered_map<std::string, Tag>& v = ((::tpy::__len__(a) != 0) ? a : b);
-    // return len(v)
     return ::tpy::__len__(v);
 }
 
 // def pick_set(a: set[int32], b: set[int32]) -> int32:
+//     v = a or b  # tpyc: ok
+//     v.add(5)
+//     return len(v)
 int32_t pick_set(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
-    // v = a or b  # tpyc: ok
     ::tpy::ordered_set<int32_t>& v = ((::tpy::__len__(a) != 0) ? a : b);
-    // v.add(5)
     v.insert(5);
-    // return len(v)
     return ::tpy::__len__(v);
 }
 
 // def pick_bytearray(a: bytearray, b: bytearray) -> int32:
+//     v = a or b  # tpyc: ok
+//     v.append(90)
+//     return len(v)
 int32_t pick_bytearray(::tpy::ByteArray& a, ::tpy::ByteArray& b) {
-    // v = a or b  # tpyc: ok
     ::tpy::ByteArray& v = ((!a.empty()) ? a : b);
-    // v.append(90)
     v.push_back(90);
-    // return len(v)
     return ::tpy::__len__(v);
 }
 
 // def pick_array(a: Array[int32, 2], b: Array[int32, 2]) -> int32:
+//     # An Array is never empty, so `or` always yields the left operand; the
+//     # write through the result is what proves which one it aliases.
+//     v = a or b  # tpyc: ok
+//     v[0] = 42
+//     return v[0]
 int32_t pick_array(std::array<int32_t, 2>& a, std::array<int32_t, 2>& b) {
-    // # An Array is never empty, so `or` always yields the left operand; the
-    // # write through the result is what proves which one it aliases.
-    // v = a or b  # tpyc: ok
     std::array<int32_t, 2>& v = ((::tpy::__len__(a) != 0) ? a : b);
-    // v[0] = 42
     ::tpy::__setitem__(v, 0, 42);
-    // return v[0]
     return ::tpy::__getitem__(v, 0);
 }
 
 // def main() -> None:
+//     e1: list[Tag] = []
+//     l1: list[Tag] = [Tag(1)]
+//     print(pick_list(e1, l1))
+//
+//     de: dict[str, Tag] = {}
+//     d1: dict[str, Tag] = {"a": Tag(1)}
+//     print(pick_dict(de, d1))
+//
+//     se: set[int32] = set()
+//     s1 = {1, 2}
+//     print(pick_set(se, s1))
+//     print(len(s1), len(se))          # the add landed on s1, not on se
+//
+//     be = bytearray(b"")
+//     b1 = bytearray(b"xyz")
+//     print(pick_bytearray(be, b1))
+//     print(len(b1), len(be))
+//
+//     a1 = Array[int32, 2]([7, 8])
+//     a2 = Array[int32, 2]([1, 2])
+//     print(pick_array(a1, a2))
+//     print(a1[0], a2[0])              # the write landed on a1, not on a2
 void main() {
-    // e1: list[Tag] = []
     std::vector<Tag> e1 = std::vector<Tag>{};
-    // l1: list[Tag] = [Tag(1)]
     std::vector<Tag> l1 = ::tpy::make_vector<Tag>(Tag(1));
-    // print(pick_list(e1, l1))
     std::cout << pick_list(e1, l1) << "\n";
-    // de: dict[str, Tag] = {}
     ::tpy::ordered_map<std::string, Tag> de = ::tpy::ordered_map<std::string, Tag>();
-    // d1: dict[str, Tag] = {"a": Tag(1)}
     ::tpy::ordered_map<std::string, Tag> d1 = ::tpy::make_ordered_map<std::string, Tag>("a", Tag(1));
-    // print(pick_dict(de, d1))
     std::cout << pick_dict(de, d1) << "\n";
-    // se: set[int32] = set()
     ::tpy::ordered_set<int32_t> se = ::tpy::ordered_set<int32_t>();
-    // s1 = {1, 2}
     ::tpy::ordered_set<int32_t> s1 = ::tpy::ordered_set<int32_t>({1, 2});
-    // print(pick_set(se, s1))
     std::cout << pick_set(se, s1) << "\n";
-    // print(len(s1), len(se))          # the add landed on s1, not on se
     std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(se) << "\n";
-    // be = bytearray(b"")
     ::tpy::ByteArray be = ::tpy::ByteArray(::tpy::BytesView{});
-    // b1 = bytearray(b"xyz")
     ::tpy::ByteArray b1 = ::tpy::ByteArray(::tpy::bytes_literal("xyz", 3));
-    // print(pick_bytearray(be, b1))
     std::cout << pick_bytearray(be, b1) << "\n";
-    // print(len(b1), len(be))
     std::cout << ::tpy::__len__(b1) << " " << ::tpy::__len__(be) << "\n";
-    // a1 = Array[int32, 2]([7, 8])
     std::array<int32_t, 2> a1 = std::array<int32_t, 2>({7, 8});
-    // a2 = Array[int32, 2]([1, 2])
     std::array<int32_t, 2> a2 = std::array<int32_t, 2>({1, 2});
-    // print(pick_array(a1, a2))
     std::cout << pick_array(a1, a2) << "\n";
-    // print(a1[0], a2[0])              # the write landed on a1, not on a2
     std::cout << ::tpy::__getitem__(a1, 0) << " " << ::tpy::__getitem__(a2, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

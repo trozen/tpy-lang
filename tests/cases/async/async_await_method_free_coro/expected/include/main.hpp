@@ -18,8 +18,11 @@ struct __coro_helper;
 struct __coro_main_coro;
 struct __coro_Runner_run;
 
+// async def helper() -> int32:
 __coro_helper helper();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Runner:
@@ -35,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
     return os;
 }
 
-// Async coroutine: helper
+// async def helper() -> int32:
 struct __coro_helper {
     int32_t __state;
     bool __cancel_pending;
@@ -58,7 +61,7 @@ struct __coro_helper {
     }
 };
 
-// Async coroutine: Runner.run
+// async def run(self) -> None:
 struct __coro_Runner_run {
     int32_t __state;
     bool __cancel_pending;
@@ -87,7 +90,7 @@ inline __coro_Runner_run Runner::run() const {
     return __coro_Runner_run(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

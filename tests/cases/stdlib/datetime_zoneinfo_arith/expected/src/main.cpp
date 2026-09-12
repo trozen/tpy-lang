@@ -5,114 +5,123 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     waw = ZoneInfo("Europe/Warsaw")
+//     ny = ZoneInfo("America/New_York")
+//
+//     # Across the spring-forward edge: wall +2h, elapsed only 1h.
+//     before = datetime(2023, 3, 26, 1, 30, tzinfo=waw)
+//     after = before + timedelta(hours=2)
+//     print(after, after.utcoffset(), after.fold)
+//     print((after - before), (after.timestamp() - before.timestamp()))
+//
+//     # Arithmetic keeps the zone; the result re-resolves its offset.
+//     day_later = before + timedelta(days=1)
+//     print(day_later, day_later.utcoffset())
+//     print(day_later - timedelta(days=1) == before)
+//
+//     # Arithmetic from a fold=1 value drops fold to 0 on the result
+//     # (CPython constructs the sum without propagating fold).
+//     folded = datetime(2023, 10, 29, 2, 30, fold=1, tzinfo=waw)
+//     moved = folded + timedelta(hours=1)
+//     print(moved, moved.fold)
+//     print((folded - timedelta(0)).fold)
+//
+//     # Cross-zone subtraction and equality are instant-based.
+//     w = datetime(2023, 7, 15, 12, 0, tzinfo=waw)
+//     n = datetime(2023, 7, 15, 12, 0, tzinfo=ny)
+//     print(w - n)
+//     print(w == n, w < n)
+//     print(w == datetime(2023, 7, 15, 6, 0, tzinfo=ny))
+//
+//     # Fixed-offset vs ZoneInfo mixing: same instant compares equal.
+//     rey = ZoneInfo("Atlantic/Reykjavik")
+//     print(datetime(2023, 7, 15, 12, 0, tzinfo=UTC)
+//           == datetime(2023, 7, 15, 12, 0, tzinfo=rey))
+//     fixed2 = timezone(timedelta(hours=2))
+//     print(datetime(2023, 7, 15, 12, 0, tzinfo=fixed2)
+//           == datetime(2023, 7, 15, 12, 0, tzinfo=waw))
+//     print(datetime(2023, 7, 15, 12, 0, tzinfo=fixed2) - w)
+//
+//     # Naive/aware mixing stays a runtime TypeError for ordering/subtraction
+//     # and False for ==, with the zoneinfo kind too.
+//     naive = datetime(2023, 7, 15, 12, 0)
+//     print(naive == w)
+//     try:
+//         print(naive < w)
+//     except TypeError:
+//         print("TypeError-order")
+//     try:
+//         print(naive - w)
+//     except TypeError:
+//         print("TypeError-sub")
 void main() {
-    // waw = ZoneInfo("Europe/Warsaw")
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    // ny = ZoneInfo("America/New_York")
     ::tpystd::datetime::ZoneInfo ny = ::tpystd::datetime::ZoneInfo("America/New_York");
-    // # Across the spring-forward edge: wall +2h, elapsed only 1h.
-    // before = datetime(2023, 3, 26, 1, 30, tzinfo=waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime before = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(3), ::tpy::BigInt(26), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
-    // after = before + timedelta(hours=2)
     ::tpystd::datetime::datetime after = ((before) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2))));
-    // print(after, after.utcoffset(), after.fold)
     std::cout << after << " " << ::tpy::print_optional_val(after.utcoffset()) << " " << after.fold() << "\n";
-    // print((after - before), (after.timestamp() - before.timestamp()))
     std::cout << ((after) - (before)) << " " << ::tpy::print_float(((after.timestamp()) - (before.timestamp()))) << "\n";
-    // # Arithmetic keeps the zone; the result re-resolves its offset.
-    // day_later = before + timedelta(days=1)
     ::tpystd::datetime::datetime day_later = ((before) + (::tpystd::datetime::timedelta(::tpy::BigInt(1))));
-    // print(day_later, day_later.utcoffset())
     std::cout << day_later << " " << ::tpy::print_optional_val(day_later.utcoffset()) << "\n";
-    // print(day_later - timedelta(days=1) == before)
     std::cout << ::tpy::print_bool(((((day_later) - (::tpystd::datetime::timedelta(::tpy::BigInt(1))))) == (before))) << "\n";
-    // # Arithmetic from a fold=1 value drops fold to 0 on the result
-    // # (CPython constructs the sum without propagating fold).
-    // folded = datetime(2023, 10, 29, 2, 30, fold=1, tzinfo=waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
     ::tpystd::datetime::datetime folded = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2, ::tpy::BigInt(1));
-    // moved = folded + timedelta(hours=1)
     ::tpystd::datetime::datetime moved = ((folded) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
-    // print(moved, moved.fold)
     std::cout << moved << " " << moved.fold() << "\n";
-    // print((folded - timedelta(0)).fold)
     std::cout << ((folded) - (::tpystd::datetime::timedelta(::tpy::BigInt(0)))).fold() << "\n";
-    // # Cross-zone subtraction and equality are instant-based.
-    // w = datetime(2023, 7, 15, 12, 0, tzinfo=waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime w = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3);
-    // n = datetime(2023, 7, 15, 12, 0, tzinfo=ny)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ny;
     ::tpystd::datetime::datetime n = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4);
-    // print(w - n)
     std::cout << ((w) - (n)) << "\n";
-    // print(w == n, w < n)
     std::cout << ::tpy::print_bool(((w) == (n))) << " " << ::tpy::print_bool(((w) < (n))) << "\n";
-    // print(w == datetime(2023, 7, 15, 6, 0, tzinfo=ny))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ny;
     std::cout << ::tpy::print_bool(((w) == (::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(6), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_5)))) << "\n";
-    // # Fixed-offset vs ZoneInfo mixing: same instant compares equal.
-    // rey = ZoneInfo("Atlantic/Reykjavik")
     ::tpystd::datetime::ZoneInfo rey = ::tpystd::datetime::ZoneInfo("Atlantic/Reykjavik");
-    // print(datetime(2023, 7, 15, 12, 0, tzinfo=UTC)
-    // == datetime(2023, 7, 15, 12, 0, tzinfo=rey))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::UTC;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = rey;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_6)) == (::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_7)))) << "\n";
-    // fixed2 = timezone(timedelta(hours=2))
     ::tpystd::datetime::timezone fixed2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
-    // print(datetime(2023, 7, 15, 12, 0, tzinfo=fixed2)
-    // == datetime(2023, 7, 15, 12, 0, tzinfo=waw))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = fixed2;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = waw;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_8)) == (::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_9)))) << "\n";
-    // print(datetime(2023, 7, 15, 12, 0, tzinfo=fixed2) - w)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = fixed2;
     std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_10)) - (w)) << "\n";
-    // # Naive/aware mixing stays a runtime TypeError for ordering/subtraction
-    // # and False for ==, with the zoneinfo kind too.
-    // naive = datetime(2023, 7, 15, 12, 0)
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0));
-    // print(naive == w)
     std::cout << ::tpy::print_bool(((naive) == (w))) << "\n";
-    // try:
     {
         try {
-            // print(naive < w)
             std::cout << ::tpy::print_bool(((naive) < (w))) << "\n";
         } catch (const ::tpy::TypeError&) {
-            // print("TypeError-order")
             std::cout << "TypeError-order" << "\n";
         }
     }
-    // try:
     {
         try {
-            // print(naive - w)
             std::cout << ((naive) - (w)) << "\n";
         } catch (const ::tpy::TypeError&) {
-            // print("TypeError-sub")
             std::cout << "TypeError-sub" << "\n";
         }
     }
 }
 
+// # datetime v4 aware arithmetic and cross-zone comparison: adding a
+// # timedelta is WALL-CLOCK arithmetic (components shift, the offset is
+// # re-derived per instant, real elapsed time differs across a DST edge),
+// # subtraction and == reduce through real UTC instants, and a fixed-offset
+// # aware value mixes with a ZoneInfo aware value by instant.
+// from datetime import datetime, timedelta, timezone, UTC
+// from zoneinfo import ZoneInfo
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime v4 aware arithmetic and cross-zone comparison: adding a
-    // # timedelta is WALL-CLOCK arithmetic (components shift, the offset is
-    // # re-derived per instant, real elapsed time differs across a DST edge),
-    // # subtraction and == reduce through real UTC instants, and a fixed-offset
-    // # aware value mixes with a ZoneInfo aware value by instant.
-    // from datetime import datetime, timedelta, timezone, UTC
     ::tpystd::datetime::__tpy_init();
-    // from zoneinfo import ZoneInfo
     ::tpystd::zoneinfo::__tpy_init();
-    // main()
     main();
 }
 

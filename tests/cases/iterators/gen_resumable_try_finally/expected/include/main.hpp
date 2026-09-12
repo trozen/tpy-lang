@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_counted;
 
+// def counted(xs: list[int]) -> Iterator[int]:
 __gen_counted counted(std::vector<::tpy::BigInt>& xs);
+// def main():
 void main();
 
-// Generator: counted
+// def counted(xs: list[int]) -> Iterator[int]:
 struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     std::vector<::tpy::BigInt>& xs;

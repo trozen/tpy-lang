@@ -5,93 +5,94 @@ namespace tpyapp::main {
 
 
 // def read_bound(s: Slot) -> int32:
+//     # The READ side of the same slot: the storage-form optional field
+//     # lifts through `optional_to_ptr` into a plain local, so the narrowed
+//     # binding ALIASES the field and `grow()` is visible through it.
+//     d = s.b  # tpyc: ok
+//     if d is None:
+//         return -1
+//     s.grow()
+//     return len(d)
 int32_t read_bound(Slot& s) {
-    // # The READ side of the same slot: the storage-form optional field
-    // # lifts through `optional_to_ptr` into a plain local, so the narrowed
-    // # binding ALIASES the field and `grow()` is visible through it.
-    // d = s.b  # tpyc: ok
     ::tpy::ByteArray* d = ::tpy::optional_to_ptr(s.b);
-    // if d is None:
     if ((d == nullptr)) {
-        // return -1
         return -1;
     }
-    // s.grow()
     s.grow();
-    // return len(d)
     return ::tpy::__len__((*d));
 }
 
 // def local_source(s: Slot) -> None:
+//     v = bytearray(b"ab")
+//     s.b = v  # tpyc: ok
 void local_source(Slot& s) {
-    // v = bytearray(b"ab")
     ::tpy::ByteArray v = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    // s.b = v  # tpyc: ok
     s.b = std::move(v);
 }
 
 // def main() -> None:
+//     s = Slot()
+//     print(s.size())
+//     local_source(s)
+//     print(s.size())
+//     # The moved-in buffer is the field's own and is still mutable through it.
+//     s.grow()
+//     print(s.size())
+//     owned = bytearray(b"xyz")
+//     s.take(owned)
+//     print(s.size())
+//     s.grow()
+//     print(s.size())
+//     borrowed = bytearray(b"q")
+//     s.copy_in(borrowed)
+//     print(s.size())
+//     print(read_bound(s))
+//     nums = [1, 2, 3]
+//     s.take_list(nums)
+//     if s.xs is not None:
+//         print(len(s.xs))
+//     boxes: list[Box[int32]] = [Box(4), Box(5)]
+//     s.take_boxes(boxes)
+//     if s.boxes is not None:
+//         print(len(s.boxes))
 void main() {
-    // s = Slot()
     Slot s = Slot();
-    // print(s.size())
     std::cout << s.size() << "\n";
-    // local_source(s)
     local_source(s);
-    // print(s.size())
     std::cout << s.size() << "\n";
-    // # The moved-in buffer is the field's own and is still mutable through it.
-    // s.grow()
     s.grow();
-    // print(s.size())
     std::cout << s.size() << "\n";
-    // owned = bytearray(b"xyz")
     ::tpy::ByteArray owned = ::tpy::ByteArray(::tpy::bytes_literal("xyz", 3));
-    // s.take(owned)
     s.take(std::move(owned));
-    // print(s.size())
     std::cout << s.size() << "\n";
-    // s.grow()
     s.grow();
-    // print(s.size())
     std::cout << s.size() << "\n";
-    // borrowed = bytearray(b"q")
     ::tpy::ByteArray borrowed = ::tpy::ByteArray(::tpy::bytes_literal("q", 1));
-    // s.copy_in(borrowed)
     s.copy_in(borrowed);
-    // print(s.size())
     std::cout << s.size() << "\n";
-    // print(read_bound(s))
     std::cout << read_bound(s) << "\n";
-    // nums = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // s.take_list(nums)
     s.take_list(std::move(nums));
-    // if s.xs is not None:
     if ((s.xs.has_value())) {
-        // print(len(s.xs))
         std::cout << ::tpy::__len__((*s.xs)) << "\n";
     }
-    // boxes: list[Box[int32]] = [Box(4), Box(5)]
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(4), ::tpystd::tplib::box::Box<int32_t>(5));
-    // s.take_boxes(boxes)
     s.take_boxes(std::move(boxes));
-    // if s.boxes is not None:
     if ((s.boxes.has_value())) {
-        // print(len(s.boxes))
         std::cout << ::tpy::__len__((*s.boxes)) << "\n";
     }
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,48 +5,48 @@ namespace tpyapp::main {
 
 
 // def add(parent: Node, child: Node) -> None:
+//     parent.children.append(child)  # tpyc: warning(/copies Node into owned storage/)
 void add(Node& parent, const Node& child) {
-    // parent.children.append(child)  # tpyc: warning(/copies Node into owned storage/)
     parent.children.push_back(child);
 }
 
 // def main() -> None:
+//     root = Node(1)
+//     leaf = Node(2)
+//     add(root, leaf)
+//     add(root, Node(3))
+//     root.children[0].val = 20
+//     root.children[0].children.append(Node(99))
+//     total: int = root.val
+//     for c in root.children:
+//         total += c.val
+//     print(root.val, root.children[0].val, len(root.children),
+//           len(root.children[0].children), total)
 void main() {
-    // root = Node(1)
     Node root = Node(1);
-    // leaf = Node(2)
     Node leaf = Node(2);
-    // add(root, leaf)
     add(root, leaf);
-    // add(root, Node(3))
     Node __tmp_1 = Node(3);
     add(root, __tmp_1);
-    // root.children[0].val = 20
     ::tpy::__getitem__(root.children, 0).val = 20;
-    // root.children[0].children.append(Node(99))
     ::tpy::__getitem__(root.children, 0).children.push_back(Node(99));
-    // total: int = root.val
     ::tpy::BigInt total = ::tpy::BigInt(root.val);
-    // for c in root.children:
     auto& __obj_0 = root.children;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& c = *__beg_0;
-        // total += c.val
         total = (total) + (::tpy::BigInt(c.val));
     }
-    // print(root.val, root.children[0].val, len(root.children),
-    // len(root.children[0].children), total)
     std::cout << root.val << " " << ::tpy::__getitem__(root.children, 0).val << " " << ::tpy::__len__(root.children) << " " << ::tpy::__len__(::tpy::__getitem__(root.children, 0).children) << " " << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

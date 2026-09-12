@@ -5,65 +5,72 @@ namespace tpyapp::main {
 
 
 // def take_str(s: str) -> None:
+//     print(s)
 void take_str(std::string_view s) {
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def take_string(s: String) -> None:
+//     print(s)
 void take_string(const ::tpy::String& s) {
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def take_strview(s: StrView) -> None:
+//     print(s)
 void take_strview(std::string_view s) {
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def main() -> None:
+//     # String -> str (identity, both std::string)
+//     s1: String = String("hello")
+//     take_str(s1)  # hello
+//
+//     # str -> String (identity)
+//     s2: str = "world"
+//     take_string(s2)  # world
+//
+//     # String -> StrView (safe implicit)
+//     take_strview(s1)  # hello
+//
+//     # str -> StrView (safe implicit)
+//     take_strview(s2)  # world
+//
+//     # StrView -> String (allocates)
+//     sv: StrView = StrView("view")
+//     take_string(sv)  # view
+//
+//     # StrView -> str (allocates)
+//     take_str(sv)  # view
+//
+//     # char -> str
+//     c: char = "X"
+//     take_str(c)  # X
+//
+//     # char -> String
+//     take_string(c)  # X
 void main() {
-    // # String -> str (identity, both std::string)
-    // s1: String = String("hello")
     ::tpy::String s1 = ::tpy::String("hello");
-    // take_str(s1)  # hello
     take_str(s1);
-    // # str -> String (identity)
-    // s2: str = "world"
     std::string s2 = "world";
-    // take_string(s2)  # world
     take_string(s2);
-    // # String -> StrView (safe implicit)
-    // take_strview(s1)  # hello
     take_strview(s1);
-    // # str -> StrView (safe implicit)
-    // take_strview(s2)  # world
     take_strview(s2);
-    // # StrView -> String (allocates)
-    // sv: StrView = StrView("view")
     std::string_view sv = "view";
-    // take_string(sv)  # view
     take_string(::tpy::String(sv));
-    // # StrView -> str (allocates)
-    // take_str(sv)  # view
     take_str(sv);
-    // # char -> str
-    // c: char = "X"
     char c = 'X';
-    // take_str(c)  # X
     take_str(std::string(::tpy::char_to_str(c)));
-    // # char -> String
-    // take_string(c)  # X
     take_string(std::string(1, c));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

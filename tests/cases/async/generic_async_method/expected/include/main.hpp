@@ -19,7 +19,9 @@ struct __coro_Container_echo;
 template <typename T>
 struct __coro_Container_labeled;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Container:
@@ -44,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// Async coroutine: Container.echo
+// async def echo[T](self, x: T) -> T:
 template <typename T>
 struct __coro_Container_echo {
     int32_t __state;
@@ -69,12 +71,12 @@ struct __coro_Container_echo {
 };
 
 // async def echo[T](self, x: T) -> T:
+//     return x
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Container_echo<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return x
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -90,7 +92,7 @@ inline __coro_Container_echo<T> Container::echo(::tpy::param_val_or_ref_t<T> x) 
     return __coro_Container_echo<T>(*this, x);
 }
 
-// Async coroutine: Container.labeled
+// async def labeled[T](self, x: T) -> tuple[str, T]:
 template <typename T>
 struct __coro_Container_labeled {
     int32_t __state;
@@ -115,12 +117,12 @@ struct __coro_Container_labeled {
 };
 
 // async def labeled[T](self, x: T) -> tuple[str, T]:
+//     return (self.label, x)
 template <typename T>
 ::tpystd::tpy::Poll<std::tuple<std::string, T>> __coro_Container_labeled<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return (self.label, x)
         __state = S_DONE;
         std::tuple<std::string, T> __tpy_async_ret = std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{__self.label, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
         return ::tpystd::tpy::Poll<std::tuple<std::string, T>>::ready(std::move(__tpy_async_ret));
@@ -136,7 +138,7 @@ inline __coro_Container_labeled<T> Container::labeled(::tpy::param_val_or_ref_t<
     return __coro_Container_labeled<T>(*this, x);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -170,6 +172,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self, label: str):
+//     self.label = label
 inline Container::Container(std::string_view label) : label(label) {}
 void __tpy_init();
 } // namespace tpyapp::main

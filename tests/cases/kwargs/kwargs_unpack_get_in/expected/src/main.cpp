@@ -5,67 +5,67 @@ namespace tpyapp::main {
 
 
 // def connect(**kwargs: Unpack[Config]) -> None:
+//     # "key" in kwargs
+//     host = kwargs.get("host", "localhost")
+//     port = kwargs.get("port", int32(3000))
+//     if "verbose" in kwargs:
+//         print("verbose mode")
+//     print(host)
+//     print(port)
 void connect(const Config& kwargs) {
-    // # "key" in kwargs
-    // host = kwargs.get("host", "localhost")
     std::string host = kwargs.host.value_or(std::string("localhost"));
-    // port = kwargs.get("port", int32(3000))
     int32_t port = kwargs.port.value_or(3000);
-    // if "verbose" in kwargs:
     if (kwargs.verbose.has_value()) {
-        // print("verbose mode")
         std::cout << "verbose mode" << "\n";
     }
-    // print(host)
     std::cout << host << "\n";
-    // print(port)
     std::cout << port << "\n";
 }
 
 // def show_config(**kwargs: Unpack[Config]) -> None:
+//     # get without default -> Optional[T]
+//     h = kwargs.get("host")
+//     if h is not None:
+//         print(h)
+//     else:
+//         print("no host")
+//     # not in
+//     if "port" not in kwargs:
+//         print("no port")
 void show_config(const Config& kwargs) {
-    // # get without default -> Optional[T]
-    // h = kwargs.get("host")
     std::optional<std::string> h = kwargs.host;
-    // if h is not None:
     if ((h.has_value())) {
-        // print(h)
         std::cout << ::tpy::print_optional_val(h) << "\n";
-    // else:
     } else {
-        // print("no host")
         std::cout << "no host" << "\n";
     }
-    // # not in
-    // if "port" not in kwargs:
     if ((!kwargs.port.has_value())) {
-        // print("no port")
         std::cout << "no port" << "\n";
     }
 }
 
 // def main() -> None:
+//     connect(host="example.com", port=int32(8080), verbose=True)
+//     connect()
+//     show_config(host="myhost")
+//     show_config()
 void main() {
-    // connect(host="example.com", port=int32(8080), verbose=True)
     Config __tmp_1 = Config("example.com", 8080, true);
     connect(__tmp_1);
-    // connect()
     Config __tmp_2 = Config(std::nullopt, std::nullopt, std::nullopt);
     connect(__tmp_2);
-    // show_config(host="myhost")
     Config __tmp_3 = Config("myhost", std::nullopt, std::nullopt);
     show_config(__tmp_3);
-    // show_config()
     Config __tmp_4 = Config(std::nullopt, std::nullopt, std::nullopt);
     show_config(__tmp_4);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

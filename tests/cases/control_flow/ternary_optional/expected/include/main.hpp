@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def safe_len(s: Optional[str]) -> int:
 ::tpy::BigInt safe_len(std::optional<std::string_view> s);
+// def value_or_none(flag: bool) -> Optional[str]:
 std::optional<std::string> value_or_none(bool flag);
+// def none_or_value(flag: bool) -> Optional[str]:
 std::optional<std::string> none_or_value(bool flag);
+// def with_default(val: Optional[str]) -> str:
 std::string with_default(std::optional<std::string_view> val);
+// def truthy_narrowing(s: Optional[str]) -> str:
 std::string truthy_narrowing(std::optional<std::string_view> s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # module.func[T](args) syntax on user-defined generic
+//     y = helpers.identity[int32](int32(7))
+//     print(y)
+//     print("done")
 void main() {
-    // # module.func[T](args) syntax on user-defined generic
-    // y = helpers.identity[int32](int32(7))
     int32_t y = ::tpyapp::helpers::identity<int32_t>(7);
-    // print(y)
     std::cout << y << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// import helpers
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import helpers
     ::tpyapp::helpers::__tpy_init();
-    // main()
     main();
 }
 

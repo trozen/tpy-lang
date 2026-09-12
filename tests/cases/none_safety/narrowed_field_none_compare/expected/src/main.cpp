@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = T()
+//     t.o = Pod()
+//     assert t.o is not None       # un-narrowed baseline: .has_value()
+//     t.o.x = 123
+//     assert t.o is not None       # tpyc: ok
+//     print(t.o.x)
+//     t.o = None
+//     if t.o is None:              # narrowed-to-None compare, storage render
+//         print("nil")
+//     t.v = 7
+//     assert t.v is not None       # un-narrowed baseline (value payload)
+//     print(t.v)
+//     assert t.v is not None       # tpyc: ok
+//     print(t.v)
 void main() {
-    // t = T()
     T t = T();
-    // t.o = Pod()
     t.o = Pod();
-    // assert t.o is not None       # un-narrowed baseline: .has_value()
     if (!((t.o.has_value()))) ::tpy::raise_assertion_error();
-    // t.o.x = 123
     (*t.o).x = ::tpy::BigInt(123);
-    // assert t.o is not None       # tpyc: ok
     if (!((t.o.has_value()))) ::tpy::raise_assertion_error();
-    // print(t.o.x)
     std::cout << (*t.o).x << "\n";
-    // t.o = None
     t.o = std::nullopt;
-    // if t.o is None:              # narrowed-to-None compare, storage render
     if ((!t.o.has_value())) {
-        // print("nil")
         std::cout << "nil" << "\n";
     }
-    // t.v = 7
     t.v = 7;
-    // assert t.v is not None       # un-narrowed baseline (value payload)
     if (!((t.v.has_value()))) ::tpy::raise_assertion_error();
-    // print(t.v)
     std::cout << (*t.v) << "\n";
-    // assert t.v is not None       # tpyc: ok
     if (!((t.v.has_value()))) ::tpy::raise_assertion_error();
-    // print(t.v)
     std::cout << (*t.v) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

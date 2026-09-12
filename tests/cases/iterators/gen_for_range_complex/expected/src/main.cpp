@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def squares_plus(n: int32) -> Iterator[int32]:
+//     yield -1
+//     for i in range(n):
+//         yield i * i
 std::expected<int32_t, ::tpy::StopIteration> __gen_squares_plus::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
@@ -28,7 +30,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_squares_plus::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        // yield i * i
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(i, i));
     }
@@ -44,8 +45,9 @@ __gen_squares_plus squares_plus(int32_t n) {
 }
 
 // def main():
+//     for x in squares_plus(5):
+//         print(x)
 void main() {
-    // for x in squares_plus(5):
     {
         auto __src_0 = squares_plus(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -53,18 +55,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

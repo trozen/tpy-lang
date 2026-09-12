@@ -9,6 +9,7 @@ namespace tpyapp::utils {
 
 inline constexpr std::string_view __name__ = "utils";
 
+// def root_func() -> int32:
 int32_t root_func();
 
 void __tpy_init();

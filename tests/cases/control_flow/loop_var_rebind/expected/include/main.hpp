@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def scalar() -> None:
 void scalar();
+// def param_rebind(x: int32) -> None:
 void param_rebind(int32_t x);
+// def fresh_stays_scoped() -> None:
 void fresh_stays_scoped();
+// def main() -> None:
 void main();
 
 void __tpy_init();

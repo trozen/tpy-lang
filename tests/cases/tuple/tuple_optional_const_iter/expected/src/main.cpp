@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def consume(p: tuple[T | None, T | None]) -> None:
+//     a, b = p
+//     if a is not None:
+//         print(a.x)
 void consume(const std::tuple<const T*, const T*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
     }
 }
 
 // def main() -> None:
+//     t1 = T(1)
+//     t2 = T(2)
+//     h = Holder()
+//     h.pairs.append((copy(t1), copy(t2)))
+//     h.pairs.append((t1, None))
+//     h.pairs.append((None, None))
+//     h.show_all_iter()
+//     h.show_all_unpack()
 void main() {
-    // t1 = T(1)
     T t1 = T(1);
-    // t2 = T(2)
     T t2 = T(2);
-    // h = Holder()
     Holder h = Holder();
-    // h.pairs.append((copy(t1), copy(t2)))
     h.pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(t1), T(t2)})));
-    // h.pairs.append((t1, None))
     h.pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{std::move(&(t1)), nullptr}));
-    // h.pairs.append((None, None))
     h.pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr}));
-    // h.show_all_iter()
     h.show_all_iter();
-    // h.show_all_unpack()
     h.show_all_unpack();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

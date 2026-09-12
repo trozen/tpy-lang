@@ -40,6 +40,7 @@ extern int32_t i;
 extern day d;
 inline constexpr std::string_view __name__ = "__main__";
 
+// procedure classify(d: Day);
 void classify(day d);
 
 void __tpy_init();

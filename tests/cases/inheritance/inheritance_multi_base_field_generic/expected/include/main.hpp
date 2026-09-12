@@ -13,6 +13,7 @@ struct Combined;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -65,24 +66,24 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 
 
 // def __init__(self, n: int32, s: str) -> None:
+//     Box.value = n  # Box[int32].value inferred from MRO: int32
+//     Label.value = s
 inline Combined::Combined(int32_t n, std::string_view s) {
-    // Box.value = n  # Box[int32].value inferred from MRO: int32
     this->Box<int32_t>::value = n;
-    // Label.value = s
     this->Label::value = s;
 }
 
 // def n_plus(self, delta: int32) -> int32:
+//     v = Box.value  # tpyc: type(int32)
+//     return v + delta
 inline int32_t Combined::n_plus(int32_t delta) const {
-    // v = Box.value  # tpyc: type(int32)
     int32_t v = this->Box<int32_t>::value;
-    // return v + delta
     return (::tpy::add_check<int32_t>(v, delta));
 }
 
 // def combined(self) -> str:
+//     return Label.value + "=" + str(Box.value)
 inline std::string Combined::combined() const {
-    // return Label.value + "=" + str(Box.value)
     return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), ::tpy::fixed_to_str<int32_t>(this->Box<int32_t>::value)));
 }
 void __tpy_init();

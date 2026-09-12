@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def bump_all(hs: Array[Handle, 4]) -> None:
+//     for h in hs:
+//         h.v += 10
 void bump_all(std::array<Handle, 4>& hs) {
-    // for h in hs:
     auto& __obj_0 = hs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& h = *__beg_0;
-        // h.v += 10
         h.v = ::tpy::add_check<int32_t>(h.v, 10);
     }
 }
 
 // def doubled(hs: Array[Handle, 4]) -> None:
+//     ys = [Handle(h.v * 2) for h in hs]  # tpyc: type(/Array\[Handle, 4\]/)
+//     print(ys[0].v, ys[3].v)
 void doubled(const std::array<Handle, 4>& hs) {
-    // ys = [Handle(h.v * 2) for h in hs]  # tpyc: type(/Array\[Handle, 4\]/)
     std::array<Handle, 4> ys = ({
         auto& __obj_0 = hs;
         ::tpy::array_from_index<Handle, 4>([&](std::size_t __i_0) -> Handle {
@@ -27,44 +28,43 @@ void doubled(const std::array<Handle, 4>& hs) {
             return Handle((::tpy::mul_check<int32_t>(h.v, 2)));
         });
     });
-    // print(ys[0].v, ys[3].v)
     std::cout << ::tpy::__getitem__(ys, 0).v << " " << ::tpy::__getitem__(ys, 3).v << "\n";
 }
 
 // def main() -> None:
+//     xs = [Handle(i) for i in range(4)]  # tpyc: type(/Array\[Handle, 4\]/)
+//     total = 0
+//     for h in xs:
+//         total += h.v
+//     print(total)
+//     bump_all(xs)
+//     print(xs[0].v, xs[3].v)
+//     doubled(xs)
 void main() {
-    // xs = [Handle(i) for i in range(4)]  # tpyc: type(/Array\[Handle, 4\]/)
     std::array<Handle, 4> xs = ::tpy::array_from_index<Handle, 4>([&](std::size_t __i_0) -> Handle {
         int32_t i = int32_t(__i_0);
         return Handle(i);
     });
-    // total = 0
     int32_t total = 0;
-    // for h in xs:
     auto& __obj_1 = xs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& h = *__beg_1;
-        // total += h.v
         total = ::tpy::add_check<int32_t>(total, h.v);
     }
-    // print(total)
     std::cout << total << "\n";
-    // bump_all(xs)
     bump_all(xs);
-    // print(xs[0].v, xs[3].v)
     std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 3).v << "\n";
-    // doubled(xs)
     doubled(xs);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

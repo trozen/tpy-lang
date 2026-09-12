@@ -4,28 +4,30 @@
 namespace tpyapp::main {
 
 
+// # Pass Counter objects (which satisfy Iterator[int32])
+// print(sum_iter(Counter(0, 5)))          # 0+1+2+3+4 = 10
+// print(sum_iter(Counter(1, 6)))          # 1+2+3+4+5 = 15
+//
+// print(count_iter(Counter(0, 7)))        # 7
+// print(count_iter(Counter(0, 0)))        # 0 (empty iterator)
+//
+// print(first_or_fallback(Counter(0, 3), -1))   # 0
+// print(first_or_fallback(Counter(0, 0), -1))   # -1 (empty, returns fallback)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Pass Counter objects (which satisfy Iterator[int32])
-    // print(sum_iter(Counter(0, 5)))          # 0+1+2+3+4 = 10
     auto __tmp_1 = Counter(0, 5);
     std::cout << sum_iter(__tmp_1) << "\n";
-    // print(sum_iter(Counter(1, 6)))          # 1+2+3+4+5 = 15
     auto __tmp_2 = Counter(1, 6);
     std::cout << sum_iter(__tmp_2) << "\n";
-    // print(count_iter(Counter(0, 7)))        # 7
     auto __tmp_3 = Counter(0, 7);
     std::cout << count_iter(__tmp_3) << "\n";
-    // print(count_iter(Counter(0, 0)))        # 0 (empty iterator)
     auto __tmp_4 = Counter(0, 0);
     std::cout << count_iter(__tmp_4) << "\n";
-    // print(first_or_fallback(Counter(0, 3), -1))   # 0
     auto __tmp_5 = Counter(0, 3);
     std::cout << first_or_fallback(__tmp_5, -1) << "\n";
-    // print(first_or_fallback(Counter(0, 0), -1))   # -1 (empty, returns fallback)
     auto __tmp_6 = Counter(0, 0);
     std::cout << first_or_fallback(__tmp_6, -1) << "\n";
 }

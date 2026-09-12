@@ -11,6 +11,7 @@ struct IntList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class IntList:
@@ -37,17 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
 
 
 // def __init__(self, vals: list[int32]) -> None:
+//     self.items = vals
 inline IntList::IntList(const std::vector<int32_t>& vals) : items(vals) {}
 
 // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[int32]]:
+//     return iter(self.items)
 inline auto IntList::__iter__() const & {
-    // return iter(self.items)
     return ::tpy::__iter__(this->items);
 }
 
 // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[int32]]:
+//     return iter(self.items)
 inline auto IntList::__iter__() const && {
-    // return iter(self.items)
     return ::tpy::__iter__(this->items);
 }
 void __tpy_init();

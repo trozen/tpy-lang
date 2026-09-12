@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(int32(42))
+//     print(b.measure())
 void main() {
-    // b = Box(int32(42))
     Box b = Box(42);
-    // print(b.measure())
     std::cout << b.measure() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

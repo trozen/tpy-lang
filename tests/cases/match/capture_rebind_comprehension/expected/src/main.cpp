@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def f(a: Cat) -> int:
+//     match a:
+//         case Cat(pet=p):
+//             squares = [p * p for p in range(3)]   # comprehension `p`: fresh scope
+//             return len(squares) + p.hp            # `p` still aliases a.pet (Pet)
+//     return -1
 ::tpy::BigInt f(const Cat& a) {
-    // match a:
     auto& __match_subject_1 = a;
-    // case Cat(pet=p):
     {
         auto& p = __match_subject_1.pet;
-        // squares = [p * p for p in range(3)]   # comprehension `p`: fresh scope
         std::array<int32_t, 3> squares = ::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_0) -> int32_t {
             int32_t p = int32_t(__i_0);
             return (::tpy::mul_check<int32_t>(p, p));
         });
-        // return len(squares) + p.hp            # `p` still aliases a.pet (Pet)
         return ((::tpy::BigInt(::tpy::__len__(squares))) + (p.hp));
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main():
+//     print(f(Cat(Pet(5))))   # 3 + 5 = 8
 void main() {
-    // print(f(Cat(Pet(5))))   # 3 + 5 = 8
     Cat __tmp_1 = Cat(Pet(::tpy::BigInt(5)));
     std::cout << f(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

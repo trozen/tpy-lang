@@ -12,7 +12,9 @@ struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_list(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> make_list(int32_t n);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -66,20 +68,25 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = []
 inline Holder::Holder() : items(std::vector<int32_t>{}) {}
 
 // def peek(self) -> list[int32]:
+//     return self.items
 inline std::vector<int32_t>& Holder::peek() {
-    // return self.items
     return this->items;
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.cells = [0] * 8  # a repeat materializes the field's own container
+//     self.tags = [n] * 4  # ... and threads the field type for its element
+//     self.data = []
+//     self.mirror = []
 inline Grid::Grid(int32_t n) : cells(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(8, {0}))), tags(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(4, {n}))), data(std::vector<int32_t>{}), mirror(std::vector<int32_t>{}) {}
 
 // def fill_own(self, n: int32) -> None:
+//     self.data = make_list(n)  # the Own return lands by value, no copy
 inline void Grid::fill_own(int32_t n) {
-    // self.data = make_list(n)  # the Own return lands by value, no copy
     this->data = make_list(n);
 }
 
@@ -87,8 +94,8 @@ inline void Grid::fill_own(int32_t n) {
 // # the divergence is declared rather than silent. Nothing mutates `h.items`
 // # afterwards, which is what keeps the printed output identical.
 // def fill_borrow(self, h: Holder) -> None:
+//     self.mirror = h.peek()  # tpyc: warning(/copies list\[int32\] into field/)
 inline void Grid::fill_borrow(Holder& h) {
-    // self.mirror = h.peek()  # tpyc: warning(/copies list\[int32\] into field/)
     this->mirror = h.peek();
 }
 void __tpy_init();

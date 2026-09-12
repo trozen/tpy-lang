@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def consume(h: Own[Holder[Handle]]) -> int32:
+//     return h.item.fd
 int32_t consume(Holder<Handle>&& h) {
-    // return h.item.fd
     return h.item.fd;
 }
 
 // def main():
+//     h = Holder[Handle](Handle(42))
+//     result = consume(h)  # tpyc: ok
+//     print(result)
 void main() {
-    // h = Holder[Handle](Handle(42))
     Holder<Handle> h = Holder<Handle>(Handle(42));
-    // result = consume(h)  # tpyc: ok
     int32_t result = consume(std::move(h));
-    // print(result)
     std::cout << result << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

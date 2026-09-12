@@ -36,8 +36,11 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_foreign(cs: list[ForeignColor]) -> int:
 ::tpy::BigInt sum_foreign(const std::vector<::tpyapp::colors::Color>& cs);
+// def sum_local(cs: list[Color]) -> int:
 ::tpy::BigInt sum_local(const std::vector<Color>& cs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

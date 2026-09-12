@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n = Node(5)
+//     try:
+//         raise MyErr(n)
+//     except MyErr as e:
+//         if e.node is not None:
+//             print(e.node.v)
 void main() {
-    // n = Node(5)
     Node n = Node(::tpy::BigInt(5));
-    // try:
     {
         try {
-            // raise MyErr(n)
             throw MyErr(&(n));
         } catch (const MyErr& e) {
-            // if e.node is not None:
             if ((e.node.has_value())) {
-                // print(e.node.v)
                 std::cout << (*e.node).v << "\n";
             }
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

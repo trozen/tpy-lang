@@ -3,21 +3,20 @@
 
 namespace tpyapp::utils {
 
-// MAX_VALUE: int32 = int32(100)
 int32_t MAX_VALUE{};
 
 // def add(a: int32, b: int32) -> int32:
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
+// MAX_VALUE: int32 = int32(100)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // MAX_VALUE: int32 = int32(100)
     MAX_VALUE = 100;
 }
 

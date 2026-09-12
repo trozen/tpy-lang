@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> str:
+//     match a:
+//         case Dog(name=n):
+//             return "dog: " + n
+//         case _:
+//             return "other"
 std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog(name=n):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& n = __case_0.name;
-        // return "dog: " + n
         return (::tpy::str_concat("dog: ", n));
         break;
     }
-    // case _:
     default: {
-        // return "other"
         return "other";
         break;
     }
@@ -28,21 +28,21 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // def classify(a: Dog | Cat) -> str:
+//     match a:
+//         case Dog():
+//             return "is dog"
+//         case x:
+//             return "not dog"
 std::string classify(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog():
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
-        // return "is dog"
         return "is dog";
         break;
     }
-    // case x:
     default: {
         auto& x = __match_subject_1;
-        // return "not dog"
         return "not dog";
         break;
     }
@@ -51,29 +51,29 @@ std::string classify(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // def main() -> None:
+//     d: Dog | Cat = Dog("Rex")
+//     c: Dog | Cat = Cat("Whiskers")
+//     print(describe(d))
+//     print(describe(c))
+//     print(classify(d))
+//     print(classify(c))
 void main() {
-    // d: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat = Cat("Whiskers")
     ::tpy::Union<Cat, Dog> __slot_2 = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // print(describe(d))
     std::cout << describe(d.as_const()) << "\n";
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
-    // print(classify(d))
     std::cout << classify(d.as_const()) << "\n";
-    // print(classify(c))
     std::cout << classify(c.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

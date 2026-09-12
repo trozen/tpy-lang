@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p: Ptr[Point] = Ptr[Point]()
+//     print(p.x)  # tpyc: nullable(p)
 void main() {
-    // p: Ptr[Point] = Ptr[Point]()
     Point* p = static_cast<Point*>(nullptr);
-    // print(p.x)  # tpyc: nullable(p)
     std::cout << ::tpy::deref_check(p).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

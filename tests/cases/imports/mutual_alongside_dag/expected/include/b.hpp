@@ -13,8 +13,11 @@ using ::tpyapp::util::boost;
 
 inline constexpr std::string_view __name__ = "b";
 
+// def b_func() -> int32:
 int32_t b_func();
+// def b_helper() -> int32:
 int32_t b_helper();
+// def b_func_via_a() -> int32:
 int32_t b_func_via_a();
 
 void __tpy_init();

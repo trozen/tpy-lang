@@ -9,70 +9,79 @@ namespace tpyapp::main {
 // # subtype. The KeyError leg prints a fixed marker because TPy's dict-miss
 // # message diverges from CPython's repr-of-key format (see key_error_caught).
 // def main() -> None:
+//     xs: list[int] = [10, 20, 30]
+//     try:
+//         print(xs[5])
+//     except LookupError as e:
+//         print("caught lookup:", str(e))
+//
+//     d: dict[str, int] = {"a": 1}
+//     try:
+//         print(d["missing"])
+//     except LookupError:
+//         print("caught lookup: dict miss")
+//
+//     try:
+//         raise LookupError("by hand")
+//     except Exception as e:
+//         print("caught exception:", str(e))
+//
+//     # Full two-hop chain: IndexError -> LookupError -> Exception.
+//     try:
+//         print(xs[9])
+//     except Exception as e:
+//         print("index via Exception:", str(e))
+//
+//     try:
+//         print(d["gone"])
+//     except Exception:
+//         print("key via Exception")
 void main() {
-    // xs: list[int] = [10, 20, 30]
     std::vector<::tpy::BigInt> xs = {10, 20, 30};
-    // try:
     {
         try {
-            // print(xs[5])
             std::cout << ::tpy::__getitem__(xs, 5) << "\n";
         } catch (const ::tpy::LookupError& e) {
-            // print("caught lookup:", str(e))
             std::cout << "caught lookup:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // d: dict[str, int] = {"a": 1}
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}});
-    // try:
     {
         try {
-            // print(d["missing"])
             std::cout << ::tpy::__getitem__(d, "missing") << "\n";
         } catch (const ::tpy::LookupError&) {
-            // print("caught lookup: dict miss")
             std::cout << "caught lookup: dict miss" << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise LookupError("by hand")
             throw ::tpy::LookupError("by hand");
         } catch (const ::tpy::Exception& e) {
-            // print("caught exception:", str(e))
             std::cout << "caught exception:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # Full two-hop chain: IndexError -> LookupError -> Exception.
-    // try:
     {
         try {
-            // print(xs[9])
             std::cout << ::tpy::__getitem__(xs, 9) << "\n";
         } catch (const ::tpy::Exception& e) {
-            // print("index via Exception:", str(e))
             std::cout << "index via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // print(d["gone"])
             std::cout << ::tpy::__getitem__(d, "gone") << "\n";
         } catch (const ::tpy::Exception&) {
-            // print("key via Exception")
             std::cout << "key via Exception" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,98 +5,98 @@ namespace tpyapp::main {
 
 
 // def take_list(lst: list[int] | None) -> None:
+//     if lst is not None:
+//         print(lst[0])
+//     else:
+//         print("None list")
 void take_list(const std::vector<::tpy::BigInt>* lst) {
-    // if lst is not None:
     if ((lst != nullptr)) {
-        // print(lst[0])
         std::cout << ::tpy::__getitem__((*lst), 0) << "\n";
-    // else:
     } else {
-        // print("None list")
         std::cout << "None list" << "\n";
     }
 }
 
 // def take_dict(d: dict[str, int32] | None) -> None:
+//     if d is not None:
+//         print(len(d))
+//     else:
+//         print("None dict")
 void take_dict(const ::tpy::ordered_map<std::string, int32_t>* d) {
-    // if d is not None:
     if ((d != nullptr)) {
-        // print(len(d))
         std::cout << ::tpy::__len__((*d)) << "\n";
-    // else:
     } else {
-        // print("None dict")
         std::cout << "None dict" << "\n";
     }
 }
 
 // def take_set(s: set[int32] | None) -> None:
+//     if s is not None:
+//         print(len(s))
+//     else:
+//         print("None set")
 void take_set(const ::tpy::ordered_set<int32_t>* s) {
-    // if s is not None:
     if ((s != nullptr)) {
-        // print(len(s))
         std::cout << ::tpy::__len__((*s)) << "\n";
-    // else:
     } else {
-        // print("None set")
         std::cout << "None set" << "\n";
     }
 }
 
 // def local_init() -> None:
+//     lst: list[int] | None = [1, 2, 3]
+//     d: dict[str, int32] | None = {"a": 7}
+//     s: set[int32] | None = {1}
+//     if lst is not None and d is not None and s is not None:
+//         print(lst[0], len(d), len(s))
 void local_init() {
-    // lst: list[int] | None = [1, 2, 3]
     std::vector<::tpy::BigInt> __slot_1 = std::vector<::tpy::BigInt>{1, 2, 3};
     std::vector<::tpy::BigInt>* lst = &__slot_1;
-    // d: dict[str, int32] | None = {"a": 7}
     ::tpy::ordered_map<std::string, int32_t> __slot_2 = ::tpy::ordered_map<std::string, int32_t>({{"a", 7}});
     ::tpy::ordered_map<std::string, int32_t>* d = &__slot_2;
-    // s: set[int32] | None = {1}
     ::tpy::ordered_set<int32_t> __slot_3 = ::tpy::ordered_set<int32_t>({1});
     ::tpy::ordered_set<int32_t>* s = &__slot_3;
-    // if lst is not None and d is not None and s is not None:
     if ((((lst != nullptr) && (d != nullptr)) && (s != nullptr))) {
-        // print(lst[0], len(d), len(s))
         std::cout << ::tpy::__getitem__((*lst), 0) << " " << ::tpy::__len__((*d)) << " " << ::tpy::__len__((*s)) << "\n";
     }
 }
 
 // def main() -> None:
+//     take_list([1, 2, 3])
+//     take_dict({"a": 42})
+//     take_set({1})
+//     take_list(None)
+//     take_dict(None)
+//     take_set(None)
+//     local_init()
+//     bag = Bag()
+//     bag.fill()
+//     if bag.items is not None and bag.by_key is not None:
+//         print(bag.items[0], bag.by_key["x"])
 void main() {
-    // take_list([1, 2, 3])
     std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{1, 2, 3};
     take_list(&(__tmp_1));
-    // take_dict({"a": 42})
     ::tpy::ordered_map<std::string, int32_t> __tmp_2 = ::tpy::ordered_map<std::string, int32_t>({{"a", 42}});
     take_dict(&(__tmp_2));
-    // take_set({1})
     ::tpy::ordered_set<int32_t> __tmp_3 = ::tpy::ordered_set<int32_t>({1});
     take_set(&(__tmp_3));
-    // take_list(None)
     take_list(nullptr);
-    // take_dict(None)
     take_dict(nullptr);
-    // take_set(None)
     take_set(nullptr);
-    // local_init()
     local_init();
-    // bag = Bag()
     Bag bag = Bag();
-    // bag.fill()
     bag.fill();
-    // if bag.items is not None and bag.by_key is not None:
     if (((bag.items.has_value()) && (bag.by_key.has_value()))) {
-        // print(bag.items[0], bag.by_key["x"])
         std::cout << ::tpy::__getitem__((*bag.items), 0) << " " << ::tpy::__getitem__((*bag.by_key), "x") << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

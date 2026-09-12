@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_list_view() -> None:
 void test_list_view();
+// def test_list_mutation_fallback() -> None:
 void test_list_mutation_fallback();
+// def test_list_reassign_fallback() -> None:
 void test_list_reassign_fallback();
+// def test_list_subscript_write_fallback() -> None:
 void test_list_subscript_write_fallback();
+// def test_list_pop_fallback() -> None:
 void test_list_pop_fallback();
 
 void __tpy_init();

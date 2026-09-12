@@ -11,6 +11,7 @@ struct Sized;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Sized:  # tpyc: warning(/shadows import from 'typing'/)
@@ -31,6 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sized& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.val = v
 inline Sized::Sized(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,83 +5,86 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pairs: list[tuple[P | None, P | None]] = []
+//
+//     # Append six pair shapes covering the per-element ownership paths
+//     # (last-use lvalue, fresh rvalue, None, explicit copy()). Kept inline
+//     # because passing `pairs` through helpers borrows it as const, which
+//     # the storage-form subscript reads below cannot route through
+//     # tuple_to_pointer<tuple<P*, P*>>.
+//     a = P(1)
+//     b = P(2)
+//     pairs.append((a, b))                    # last-use lvalue pair
+//     c = P(3)
+//     pairs.append((c, P(4)))                 # last-use lvalue + fresh rvalue
+//     pairs.append((P(5), None))              # fresh rvalue + None
+//     pairs.append((None, None))              # both None
+//     keep = P(6)
+//     pairs.append((copy(keep), None))        # explicit copy() preserves keep
+//     pairs.append((copy(keep), None))
+//     print(len(pairs))
+//
+//     # Storage-form source (subscript) into another list's append.
+//     pairs2: list[tuple[P | None, P | None]] = []
+//     pairs2.append(pairs[0])
+//     pairs2.append(pairs[1])
+//     print(len(pairs2))
+//
+//     # Read back through pointer-form destructure to verify the storage
+//     # round-trip.
+//     a0, b0 = pairs[0]
+//     if a0 is not None:
+//         print(a0.x)
+//     if b0 is not None:
+//         print(b0.x)
+//     a1, b1 = pairs[1]
+//     if a1 is not None:
+//         print(a1.x)
+//     if b1 is not None:
+//         print(b1.x)
 void main() {
-    // pairs: list[tuple[P | None, P | None]] = []
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = std::vector<std::tuple<std::optional<P>, std::optional<P>>>{};
-    // # Append six pair shapes covering the per-element ownership paths
-    // # (last-use lvalue, fresh rvalue, None, explicit copy()). Kept inline
-    // # because passing `pairs` through helpers borrows it as const, which
-    // # the storage-form subscript reads below cannot route through
-    // # tuple_to_pointer<tuple<P*, P*>>.
-    // a = P(1)
     P a = P(1);
-    // b = P(2)
     P b = P(2);
-    // pairs.append((a, b))                    # last-use lvalue pair
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{std::move(&(a)), std::move(&(b))}));
-    // c = P(3)
     P c = P(3);
-    // pairs.append((c, P(4)))                 # last-use lvalue + fresh rvalue
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P*, P>{std::move(&(c)), P(4)})));
-    // pairs.append((P(5), None))              # fresh rvalue + None
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(5), nullptr})));
-    // pairs.append((None, None))              # both None
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{nullptr, nullptr}));
-    // keep = P(6)
     P keep = P(6);
-    // pairs.append((copy(keep), None))        # explicit copy() preserves keep
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(keep), nullptr})));
-    // pairs.append((copy(keep), None))
     pairs.push_back(::tpy::tuple_to_storage_move<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(keep), nullptr})));
-    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
-    // # Storage-form source (subscript) into another list's append.
-    // pairs2: list[tuple[P | None, P | None]] = []
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs2 = std::vector<std::tuple<std::optional<P>, std::optional<P>>>{};
-    // pairs2.append(pairs[0])
     pairs2.push_back(::tpy::__getitem__(pairs, 0));
-    // pairs2.append(pairs[1])
     pairs2.push_back(::tpy::__getitem__(pairs, 1));
-    // print(len(pairs2))
     std::cout << ::tpy::__len__(pairs2) << "\n";
-    // # Read back through pointer-form destructure to verify the storage
-    // # round-trip.
-    // a0, b0 = pairs[0]
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(pairs, 0));
     P* a0 = std::get<0>(__tup_1);
     P* b0 = std::get<1>(__tup_1);
-    // if a0 is not None:
     if ((a0 != nullptr)) {
-        // print(a0.x)
         std::cout << a0->x << "\n";
     }
-    // if b0 is not None:
     if ((b0 != nullptr)) {
-        // print(b0.x)
         std::cout << b0->x << "\n";
     }
-    // a1, b1 = pairs[1]
     auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(pairs, 1));
     P* a1 = std::get<0>(__tup_2);
     P* b1 = std::get<1>(__tup_2);
-    // if a1 is not None:
     if ((a1 != nullptr)) {
-        // print(a1.x)
         std::cout << a1->x << "\n";
     }
-    // if b1 is not None:
     if ((b1 != nullptr)) {
-        // print(b1.x)
         std::cout << b1->x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

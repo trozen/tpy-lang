@@ -43,96 +43,100 @@ namespace tpyapp::main {
 
 
 // def widen(n: int64 = 5) -> int64:
+//     return n
 int64_t widen(int64_t n) {
-    // return n
     return n;
 }
 
 // def as_float(x: float = 1) -> float:
+//     # Returned with a fractional part added: TPy widens the int literal to a
+//     # double at the boundary and CPython leaves it an int, so printing `x`
+//     # raw would render `1.0` vs `1` -- a representation difference, not a
+//     # value one.
+//     return x + 0.5
 double as_float(double x) {
-    // # Returned with a fractional part added: TPy widens the int literal to a
-    // # double at the boundary and CPython leaves it an int, so printing `x`
-    // # raw would render `1.0` vs `1` -- a representation difference, not a
-    // # value one.
-    // return x + 0.5
     return ((x) + (0.5));
 }
 
 // def negative(n: int8 = -5) -> int8:
+//     return n
 int8_t negative(int8_t n) {
-    // return n
     return n;
 }
 
 // def bracket(ch: char = "[") -> str:
+//     return str(ch)
 std::string bracket(char ch) {
-    // return str(ch)
     return std::string(::tpy::char_to_str(ch));
 }
 
 // def raw(b: bytes = b"ab") -> int32:
+//     return len(b)
 int32_t raw(::tpy::BytesView b) {
-    // return len(b)
     return ::tpy::__len__(b);
 }
 
 // def view(s: StrView = "hi") -> int32:
+//     return len(s)
 int32_t view(std::string_view s) {
-    // return len(s)
     return ::tpy::__len__(s);
 }
 
 // def flagged(on: bool = True) -> bool:
+//     return on
 bool flagged(bool on) {
-    // return on
     return on;
 }
 
 // def optional(n: int32 | None = None) -> int32:
+//     return n if n is not None else -1
 int32_t optional(std::optional<int32_t> n) {
-    // return n if n is not None else -1
     return (((n.has_value())) ? ((*n)) : (-1));
 }
 
 // def from_final(n: int64 = STEP) -> int64:
+//     return n
 int64_t from_final(int64_t n) {
-    // return n
     return n;
 }
 
 // def shade(c: Color = Color.BLUE) -> int32:
+//     return 100 if c == Color.BLUE else 200
 int32_t shade(Color c) {
-    // return 100 if c == Color.BLUE else 200
     return (((c == Color::BLUE)) ? (100) : (200));
 }
 
 // def wrapped(n: int32 = int32(7)) -> int32:
+//     return n
 int32_t wrapped(int32_t n) {
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     print(widen(), as_float(), negative(), bracket())
+//     print(raw(), view(), flagged(), optional())
+//     print(from_final(), shade(), wrapped())
+//
+//     b = Box()
+//     print(b.n, b.label, b.scale(), b.stepped())
 void main() {
-    // print(widen(), as_float(), negative(), bracket())
     std::cout << widen() << " " << ::tpy::print_float(as_float()) << " " << static_cast<int>(negative()) << " " << bracket() << "\n";
-    // print(raw(), view(), flagged(), optional())
     std::cout << raw() << " " << view() << " " << ::tpy::print_bool(flagged()) << " " << optional() << "\n";
-    // print(from_final(), shade(), wrapped())
     std::cout << from_final() << " " << shade() << " " << wrapped() << "\n";
-    // b = Box()
     Box b = Box();
-    // print(b.n, b.label, b.scale(), b.stepped())
     std::cout << b.n << " " << b.label << " " << b.scale() << " " << b.stepped() << "\n";
 }
 
+// from enum import IntEnum
+//
+// STEP: Final[int64] = 7
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import IntEnum
-    // main()
     main();
 }
 

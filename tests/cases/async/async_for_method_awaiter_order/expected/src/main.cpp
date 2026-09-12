@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def amain() -> None:
+//     c = Collector()
+//     print(await c.run())
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Collector()
         c.emplace(Collector());
-        // print(await c.run())
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +20,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await c.run())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,6 +36,9 @@ __coro_amain amain() {
 }
 
 // async def run(self) -> int32:
+//     async for v in Countdown(3):
+//         self.total += v
+//     return self.total
 ::tpystd::tpy::Poll<int32_t> __coro_Collector_run::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -62,19 +64,16 @@ __coro_amain amain() {
         }
     }
     case S_JOIN_0: {
-        // async for v in Countdown(3):
         __sub_0.emplace(*__for_itr_0);
         __state = S_RESUME_0;
         continue;
     }
     case S_JOIN_1: {
-        // self.total += v
         __self.total = ::tpy::add_check<int32_t>(__self.total, v);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
-        // return self.total
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.total;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -86,17 +85,18 @@ __coro_amain amain() {
 
 
 // async def __anext__(self) -> int32:
+//     if self.n <= 0:
+//         raise StopAsyncIteration()
+//     self.n -= 1
+//     await asyncio.sleep(0)
+//     return self.n
 ::tpystd::tpy::Poll<int32_t> __coro_Countdown___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if self.n <= 0:
         if ((__self.n <= 0)) {
-            // raise StopAsyncIteration()
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.n -= 1
         __self.n = ::tpy::sub_check<int32_t>(__self.n, 1);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -106,7 +106,6 @@ __coro_amain amain() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self.n
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -117,17 +116,18 @@ __coro_amain amain() {
 }
 
 
+// # Same seed-order hazard as async_with_method_awaiter_order, for `async for`:
+// # the frame embeds the async iterable's __anext__ coro struct, and the awaiter is
+// # an async method on a record declared before that iterable.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Same seed-order hazard as async_with_method_awaiter_order, for `async for`:
-    // # the frame embeds the async iterable's __anext__ coro struct, and the awaiter is
-    // # an async method on a record declared before that iterable.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

@@ -5,54 +5,58 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Array[int32, 3] = [10, 20, 30]
+//
+//     # iter() on mutable Span
+//     s: Span[int32] = a
+//     it = iter(s)
+//     for x in it:
+//         print(x)
+//
+//     # iter() on Span[readonly[T]]
+//     ro: Span[readonly[int32]] = a
+//     it2 = iter(ro)
+//     for x in it2:
+//         print(x)
+//
+//     # Pass iter(span) to Iterator[T] param
+//     consume(iter(s))
+//
+//     # print(iter(span)) -- should print <iterator>
+//     print(iter(s))
 void main() {
-    // a: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
-    // # iter() on mutable Span
-    // s: Span[int32] = a
     std::span<int32_t> s = ::tpy::as_mut_span(a);
-    // it = iter(s)
     auto it = ::tpy::__iter__(s);
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
-    // # iter() on Span[readonly[T]]
-    // ro: Span[readonly[int32]] = a
     std::span<const int32_t> ro = ::tpy::as_span(a);
-    // it2 = iter(ro)
     auto it2 = ::tpy::__iter__(ro);
-    // for x in it2:
     auto& __src_2 = it2;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Pass iter(span) to Iterator[T] param
-    // consume(iter(s))
     auto __tmp_1 = ::tpy::__iter__(s);
     consume(__tmp_1);
-    // # print(iter(span)) -- should print <iterator>
-    // print(iter(s))
     std::cout << ::tpy::__iter__(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

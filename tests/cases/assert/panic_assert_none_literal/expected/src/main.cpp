@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
+// assert None
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // assert None
     ::tpy::raise_assertion_error();
 }
 

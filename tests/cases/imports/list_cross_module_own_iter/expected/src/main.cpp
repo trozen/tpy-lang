@@ -5,32 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     out = list(points())
+//     for p in out:
+//         print(p.x)
 void main() {
-    // out = list(points())
     std::vector<::tpyapp::shapes::Point> out = ::tpy::construct<std::vector<::tpyapp::shapes::Point>>(::tpyapp::shapes::points());
-    // for p in out:
     auto& __obj_0 = out;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // print(p.x)
         std::cout << p.x << "\n";
     }
 }
 
+// # list() of a generator yielding a cross-module Own[Point]. Point is reached
+// # only via points()'s return type (never imported by name), so its C++ element
+// # name must be namespace-qualified in the construct<std::vector<...>> template
+// # the list() constructor expands -- otherwise the generated C++ fails to build.
+// from shapes import points
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # list() of a generator yielding a cross-module Own[Point]. Point is reached
-    // # only via points()'s return type (never imported by name), so its C++ element
-    // # name must be namespace-qualified in the construct<std::vector<...>> template
-    // # the list() constructor expands -- otherwise the generated C++ fails to build.
-    // from shapes import points
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

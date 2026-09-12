@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def at(xs: list[int], i: int) -> int:
 ::tpy::BigInt at(const std::vector<::tpy::BigInt>& xs, const ::tpy::BigInt& i);
+// def main() -> None:
 void main();
 
 void __tpy_init();

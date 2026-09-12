@@ -11,7 +11,9 @@ struct Tracker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(t: Own[Tracker]) -> None:
 void consume(Tracker&& t);
+// def main():
 void main();
 
 // class Tracker:
@@ -39,6 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
 
 
 // def __init__(self, name: str):
+//     self.name = name
 inline Tracker::Tracker(std::string_view name) : name(name) {}
 
 inline Tracker::Tracker(Tracker&& other) noexcept : name(std::move(other.name)) {
@@ -53,9 +56,9 @@ inline Tracker& Tracker::operator=(Tracker&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("drop", self.name)
 inline Tracker::~Tracker() {
     if (!this->__tpy_owned_) return;
-    // print("drop", self.name)
     std::cout << "drop" << " " << this->name << "\n";
 }
 void __tpy_init();

@@ -31,7 +31,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(p: Pet) -> str:
 std::string describe(Pet& p);
+// def main() -> None:
 void main();
 
 // class Dog(Pet):                  # inheritance conformer
@@ -91,23 +93,24 @@ namespace tpyapp::main {
 
 
 // def name(self) -> str:
+//     return "dog"
 inline std::string Dog::name() {
-    // return "dog"
     return "dog";
 }
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Cat::Cat(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Cat::name() const {
-    // return self.label
     return this->label;
 }
 
 // def purr(self) -> str:
+//     return self.label + "-purr"
 inline std::string Cat::purr() const {
-    // return self.label + "-purr"
     return (::tpy::str_concat(this->label, "-purr"));
 }
 void __tpy_init();

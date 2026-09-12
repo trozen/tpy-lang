@@ -11,7 +11,9 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(p: P) -> str:
 std::string describe(const P& p);
+// def main() -> None:
 void main();
 
 // class P:
@@ -34,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: Optional[int], name: Optional[str]) -> None:
+//     self.x = x
+//     self.name = name
 inline P::P(std::optional<::tpy::BigInt> x, std::optional<std::string_view> name) : x(x), name(name ? std::make_optional(std::string(*name)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

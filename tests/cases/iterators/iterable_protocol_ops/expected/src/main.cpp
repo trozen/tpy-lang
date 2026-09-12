@@ -5,34 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     arr: Array[int32, 3] = [10, 20, 30]
+//
+//     # Protocol-to-protocol passing
+//     print(process_and_sum(arr))  # 10, 20, 30, 60
+//
+//     # Nested iteration
+//     a: list[int32] = [1, 2]
+//     b: list[int32] = [10, 20]
+//     print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 90
+//
+//     # `in` operator
+//     nums: list[int32] = [1, 2, 3]
+//     print(contains_value(nums, 2))   # True
+//     print(contains_value(nums, 99))  # False
 void main() {
-    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // # Protocol-to-protocol passing
-    // print(process_and_sum(arr))  # 10, 20, 30, 60
     std::cout << process_and_sum(arr) << "\n";
-    // # Nested iteration
-    // a: list[int32] = [1, 2]
     std::vector<int32_t> a = {1, 2};
-    // b: list[int32] = [10, 20]
     std::vector<int32_t> b = {10, 20};
-    // print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 90
     std::cout << nested_iteration(a, b) << "\n";
-    // # `in` operator
-    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // print(contains_value(nums, 2))   # True
     std::cout << ::tpy::print_bool(contains_value(nums, 2)) << "\n";
-    // print(contains_value(nums, 99))  # False
     std::cout << ::tpy::print_bool(contains_value(nums, 99)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

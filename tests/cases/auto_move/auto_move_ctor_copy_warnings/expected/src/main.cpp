@@ -5,90 +5,95 @@ namespace tpyapp::main {
 
 
 // def test_nested_field_move(o: Outer, inner: Own[Inner]) -> None:
+//     o.inner = inner  # tpyc: ok (nested field assign, last use -- auto-moved)
 void test_nested_field_move(Outer& o, Inner&& inner) {
-    // o.inner = inner  # tpyc: ok (nested field assign, last use -- auto-moved)
     o.inner = std::move(inner);
 }
 
 // def test_nested_field_copy(o: Outer, inner: Own[Inner]) -> None:
+//     o.inner = inner  # tpyc: warning(/copies.*field/)
+//     print(inner.value)
 void test_nested_field_copy(Outer& o, Inner&& inner) {
-    // o.inner = inner  # tpyc: warning(/copies.*field/)
     o.inner = inner;
-    // print(inner.value)
     std::cout << inner.value << "\n";
 }
 
 // def test_subscript_move(xs: list[Inner], inner: Own[Inner]) -> None:
+//     xs[0] = inner  # tpyc: ok (subscript assign, last use -- auto-moved)
 void test_subscript_move(std::vector<Inner>& xs, Inner&& inner) {
-    // xs[0] = inner  # tpyc: ok (subscript assign, last use -- auto-moved)
     ::tpy::__setitem__(xs, 0, std::move(inner));
 }
 
 // def test_subscript_copy(xs: list[Inner], inner: Own[Inner]) -> None:
+//     xs[0] = inner  # tpyc: warning(/copies.*container/)
+//     print(inner.value)
 void test_subscript_copy(std::vector<Inner>& xs, Inner&& inner) {
-    // xs[0] = inner  # tpyc: warning(/copies.*container/)
     ::tpy::__setitem__(xs, 0, inner);
-    // print(inner.value)
     std::cout << inner.value << "\n";
 }
 
 // def main():
+//     # Ctor with rvalue
+//     h = Holder(Inner())
+//     print(h.inner.value)
+//
+//     # Method with lvalue
+//     i = Inner()
+//     i.value = 10
+//     h.set_inner(i)
+//     print(h.inner.value)
+//
+//     # Generic ctor with lvalue
+//     i2 = Inner()
+//     i2.value = 20
+//     gh = GenericHolder[Inner](i2)
+//     print(gh.item.value)
+//
+//     # Generic set_item with lvalue
+//     i3 = Inner()
+//     i3.value = 30
+//     gh.set_item(i3)
+//     print(gh.item.value)
+//
+//     # Generic set_item with rvalue
+//     gh.set_item(Inner())
+//     print(gh.item.value)
+//
+//     # A reference instantiation of the generic ctor, so the auto-move rule
+//     # this case is about is exercised at one.
+//     i4 = Inner()
+//     i4.value = 40
+//     gnl = GenericNotLastUse[Inner](i4)
+//     print(gnl.item.value)
 void main() {
-    // # Ctor with rvalue
-    // h = Holder(Inner())
     Holder h = Holder(Inner());
-    // print(h.inner.value)
     std::cout << h.inner.value << "\n";
-    // # Method with lvalue
-    // i = Inner()
     Inner i = Inner();
-    // i.value = 10
     i.value = 10;
-    // h.set_inner(i)
     h.set_inner(std::move(i));
-    // print(h.inner.value)
     std::cout << h.inner.value << "\n";
-    // # Generic ctor with lvalue
-    // i2 = Inner()
     Inner i2 = Inner();
-    // i2.value = 20
     i2.value = 20;
-    // gh = GenericHolder[Inner](i2)
     GenericHolder<Inner> gh = GenericHolder<Inner>(std::move(i2));
-    // print(gh.item.value)
     std::cout << gh.item.value << "\n";
-    // # Generic set_item with lvalue
-    // i3 = Inner()
     Inner i3 = Inner();
-    // i3.value = 30
     i3.value = 30;
-    // gh.set_item(i3)
     gh.set_item(std::move(i3));
-    // print(gh.item.value)
     std::cout << gh.item.value << "\n";
-    // # Generic set_item with rvalue
-    // gh.set_item(Inner())
     gh.set_item(Inner());
-    // print(gh.item.value)
     std::cout << gh.item.value << "\n";
-    // # A reference instantiation of the generic ctor, so the auto-move rule
-    // # this case is about is exercised at one.
-    // i4 = Inner()
     Inner i4 = Inner();
-    // i4.value = 40
     i4.value = 40;
-    // gnl = GenericNotLastUse[Inner](i4)
     GenericNotLastUse<Inner> gnl = GenericNotLastUse<Inner>(std::move(i4));
-    // print(gnl.item.value)
     std::cout << gnl.item.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

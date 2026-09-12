@@ -11,8 +11,11 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(h: Own[Handle]) -> int32:
 int32_t consume(Handle&& h);
+// def test() -> int32:
 int32_t test();
+// def main():
 void main();
 
 // class Handle:

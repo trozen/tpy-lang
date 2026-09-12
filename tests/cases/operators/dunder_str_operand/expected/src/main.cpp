@@ -5,69 +5,70 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = Tag("b")
+//     s = "b"
+//     o = "c"
+//     print(t == s)  # tpyc: ok
+//     print(t == o)  # tpyc: ok
+//     # Derived from __eq__ -- no dunder of its own on either side.
+//     print(t != o)  # tpyc: ok
+//     print(t < o)  # tpyc: ok
+//     # The reflected spelling: CPython retries through Tag.__eq__.
+//     print(s == t)  # tpyc: ok
+//     # The explicit call, which already routed -- the two spellings must agree.
+//     print(t.__eq__(s))  # tpyc: ok
+//
+//     # The remaining operand families, each against a literal its own dunder
+//     # slot accepts. The int32 legs are the ones a narrowing conversion would
+//     # have made diverge from CPython.
+//     c = Count(2)
+//     print(c == 2)  # tpyc: ok
+//     print(c != 3)  # tpyc: ok
+//     b = Blob(b"xy")
+//     print(b == b"xy")  # tpyc: ok
+//     print(b != b"ab")  # tpyc: ok
+//     # The reflected bytes spelling puts the literal LEFT; CPython retries
+//     # through Blob.__eq__ exactly as C++20's reversed candidate does.
+//     print(b"xy" == b)  # tpyc: ok
+//     # An int literal at a `float` slot is a WIDENING the gate must not refuse
+//     # (unlike the narrowing one the error case pins).
+//     r = Ratio(2.0)
+//     print(r == 2)  # tpyc: ok
+//     print(r != 3)  # tpyc: ok
+//     i = Initial(char("a"))
+//     print(i == char("a"))  # tpyc: ok
+//     print(i != char("b"))  # tpyc: ok
 void main() {
-    // t = Tag("b")
     Tag t = Tag("b");
-    // s = "b"
     std::string_view s = "b";
-    // o = "c"
     std::string_view o = "c";
-    // print(t == s)  # tpyc: ok
     std::cout << ::tpy::print_bool(((t) == (s))) << "\n";
-    // print(t == o)  # tpyc: ok
     std::cout << ::tpy::print_bool(((t) == (o))) << "\n";
-    // # Derived from __eq__ -- no dunder of its own on either side.
-    // print(t != o)  # tpyc: ok
     std::cout << ::tpy::print_bool((t != o)) << "\n";
-    // print(t < o)  # tpyc: ok
     std::cout << ::tpy::print_bool(((t) < (o))) << "\n";
-    // # The reflected spelling: CPython retries through Tag.__eq__.
-    // print(s == t)  # tpyc: ok
     std::cout << ::tpy::print_bool((s == t)) << "\n";
-    // # The explicit call, which already routed -- the two spellings must agree.
-    // print(t.__eq__(s))  # tpyc: ok
     std::cout << ::tpy::print_bool((t) == (s)) << "\n";
-    // # The remaining operand families, each against a literal its own dunder
-    // # slot accepts. The int32 legs are the ones a narrowing conversion would
-    // # have made diverge from CPython.
-    // c = Count(2)
     Count c = Count(2);
-    // print(c == 2)  # tpyc: ok
     std::cout << ::tpy::print_bool(((c) == (2))) << "\n";
-    // print(c != 3)  # tpyc: ok
     std::cout << ::tpy::print_bool((c != 3)) << "\n";
-    // b = Blob(b"xy")
     Blob b = Blob(::tpy::bytes_literal("xy", 2));
-    // print(b == b"xy")  # tpyc: ok
     std::cout << ::tpy::print_bool(((b) == (::tpy::bytes_literal("xy", 2)))) << "\n";
-    // print(b != b"ab")  # tpyc: ok
     std::cout << ::tpy::print_bool((b != ::tpy::bytes_literal("ab", 2))) << "\n";
-    // # The reflected bytes spelling puts the literal LEFT; CPython retries
-    // # through Blob.__eq__ exactly as C++20's reversed candidate does.
-    // print(b"xy" == b)  # tpyc: ok
     std::cout << ::tpy::print_bool((::tpy::bytes_literal("xy", 2) == b)) << "\n";
-    // # An int literal at a `float` slot is a WIDENING the gate must not refuse
-    // # (unlike the narrowing one the error case pins).
-    // r = Ratio(2.0)
     Ratio r = Ratio(2.0);
-    // print(r == 2)  # tpyc: ok
     std::cout << ::tpy::print_bool(((r) == (2))) << "\n";
-    // print(r != 3)  # tpyc: ok
     std::cout << ::tpy::print_bool((r != 3)) << "\n";
-    // i = Initial(char("a"))
     Initial i = Initial(::tpy::char_from_str("a"));
-    // print(i == char("a"))  # tpyc: ok
     std::cout << ::tpy::print_bool(((i) == (::tpy::char_from_str("a")))) << "\n";
-    // print(i != char("b"))  # tpyc: ok
     std::cout << ::tpy::print_bool((i != ::tpy::char_from_str("b"))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

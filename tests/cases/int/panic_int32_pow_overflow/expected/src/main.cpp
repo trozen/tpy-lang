@@ -3,21 +3,21 @@
 
 namespace tpyapp::main {
 
-// x: int32 = 2
 int32_t x{};
-// y: int32 = x ** 31  # Should panic - 2^31 overflows int32
 int32_t y{};
 
+// """Test int32 power overflow panic at runtime."""
+//
+// x: int32 = 2
+// y: int32 = x ** 31  # Should panic - 2^31 overflows int32
+// print(y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 = 2
     x = 2;
-    // y: int32 = x ** 31  # Should panic - 2^31 overflows int32
     y = (::tpy::pow_check<int32_t>(x, 31));
-    // print(y)
     std::cout << y << "\n";
 }
 

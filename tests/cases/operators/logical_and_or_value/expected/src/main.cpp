@@ -5,408 +5,420 @@ namespace tpyapp::main {
 
 
 // def test_or_int() -> None:
+//     a: int32 = 0
+//     b: int32 = 42
+//     x = a or b  # tpyc: type(int32)
+//     print(x)
+//
+//     c: int32 = 1
+//     d: int32 = 2
+//     y = c or d  # tpyc: type(int32)
+//     print(y)
 void test_or_int() {
-    // a: int32 = 0
     int32_t a = 0;
-    // b: int32 = 42
     int32_t b = 42;
-    // x = a or b  # tpyc: type(int32)
     int32_t x = (a ? a : b);
-    // print(x)
     std::cout << x << "\n";
-    // c: int32 = 1
     int32_t c = 1;
-    // d: int32 = 2
     int32_t d = 2;
-    // y = c or d  # tpyc: type(int32)
     int32_t y = (c ? c : d);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_and_int() -> None:
+//     a: int32 = 0
+//     b: int32 = 42
+//     x = a and b  # tpyc: type(int32)
+//     print(x)
+//
+//     c: int32 = 1
+//     d: int32 = 2
+//     y = c and d  # tpyc: type(int32)
+//     print(y)
 void test_and_int() {
-    // a: int32 = 0
     int32_t a = 0;
-    // b: int32 = 42
     int32_t b = 42;
-    // x = a and b  # tpyc: type(int32)
     int32_t x = (a ? b : a);
-    // print(x)
     std::cout << x << "\n";
-    // c: int32 = 1
     int32_t c = 1;
-    // d: int32 = 2
     int32_t d = 2;
-    // y = c and d  # tpyc: type(int32)
     int32_t y = (c ? d : c);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_or_str() -> None:
+//     empty: str = ""
+//     fallback: str = "default"
+//     x = empty or fallback  # tpyc: type(StrView)
+//     print(x)
+//
+//     name: str = "alice"
+//     y = name or fallback  # tpyc: type(StrView)
+//     print(y)
 void test_or_str() {
-    // empty: str = ""
     std::string_view empty = "";
-    // fallback: str = "default"
     std::string_view fallback = "default";
-    // x = empty or fallback  # tpyc: type(StrView)
     std::string_view x = ((!empty.empty()) ? empty : fallback);
-    // print(x)
     std::cout << x << "\n";
-    // name: str = "alice"
     std::string_view name = "alice";
-    // y = name or fallback  # tpyc: type(StrView)
     std::string_view y = ((!name.empty()) ? name : fallback);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_and_str() -> None:
+//     empty: str = ""
+//     fallback: str = "world"
+//     x = empty and fallback  # tpyc: type(StrView)
+//     print(x)
+//
+//     name: str = "hello"
+//     y = name and fallback  # tpyc: type(StrView)
+//     print(y)
 void test_and_str() {
-    // empty: str = ""
     std::string_view empty = "";
-    // fallback: str = "world"
     std::string_view fallback = "world";
-    // x = empty and fallback  # tpyc: type(StrView)
     std::string_view x = ((!empty.empty()) ? fallback : empty);
-    // print(x)
     std::cout << x << "\n";
-    // name: str = "hello"
     std::string_view name = "hello";
-    // y = name and fallback  # tpyc: type(StrView)
     std::string_view y = ((!name.empty()) ? fallback : name);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_or_float() -> None:
+//     a: float = 0.0
+//     b: float = 3.14
+//     x = a or b  # tpyc: type(float)
+//     print(x)
+//
+//     c: float = 1.5
+//     d: float = 2.5
+//     y = c or d  # tpyc: type(float)
+//     print(y)
 void test_or_float() {
-    // a: float = 0.0
     double a = 0.0;
-    // b: float = 3.14
     double b = 3.14;
-    // x = a or b  # tpyc: type(float)
     double x = (a ? a : b);
-    // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
-    // c: float = 1.5
     double c = 1.5;
-    // d: float = 2.5
     double d = 2.5;
-    // y = c or d  # tpyc: type(float)
     double y = (c ? c : d);
-    // print(y)
     std::cout << ::tpy::print_float(y) << "\n";
 }
 
 // def test_and_float() -> None:
+//     a: float = 0.0
+//     b: float = 3.14
+//     x = a and b  # tpyc: type(float)
+//     print(x)
+//
+//     c: float = 1.5
+//     d: float = 2.5
+//     y = c and d  # tpyc: type(float)
+//     print(y)
 void test_and_float() {
-    // a: float = 0.0
     double a = 0.0;
-    // b: float = 3.14
     double b = 3.14;
-    // x = a and b  # tpyc: type(float)
     double x = (a ? b : a);
-    // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
-    // c: float = 1.5
     double c = 1.5;
-    // d: float = 2.5
     double d = 2.5;
-    // y = c and d  # tpyc: type(float)
     double y = (c ? d : c);
-    // print(y)
     std::cout << ::tpy::print_float(y) << "\n";
 }
 
 // def test_or_bigint() -> None:
+//     a: int = 0
+//     b: int = 100
+//     x = a or b  # tpyc: type(int)
+//     print(x)
 void test_or_bigint() {
-    // a: int = 0
     ::tpy::BigInt a = ::tpy::BigInt(0);
-    // b: int = 100
     ::tpy::BigInt b = ::tpy::BigInt(100);
-    // x = a or b  # tpyc: type(int)
     ::tpy::BigInt x = (a ? a : b);
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_chained() -> None:
+//     a: int32 = 0
+//     b: int32 = 0
+//     c: int32 = 3
+//     x = a or b or c  # tpyc: type(int32)
+//     print(x)
+//
+//     d: int32 = 1
+//     e: int32 = 2
+//     f: int32 = 3
+//     y = d and e and f  # tpyc: type(int32)
+//     print(y)
 void test_chained() {
-    // a: int32 = 0
     int32_t a = 0;
-    // b: int32 = 0
     int32_t b = 0;
-    // c: int32 = 3
     int32_t c = 3;
-    // x = a or b or c  # tpyc: type(int32)
     auto&& __tmp_1 = (a ? a : b);
     int32_t x = (__tmp_1 ? __tmp_1 : c);
-    // print(x)
     std::cout << x << "\n";
-    // d: int32 = 1
     int32_t d = 1;
-    // e: int32 = 2
     int32_t e = 2;
-    // f: int32 = 3
     int32_t f = 3;
-    // y = d and e and f  # tpyc: type(int32)
     auto&& __tmp_2 = (d ? e : d);
     int32_t y = (__tmp_2 ? f : __tmp_2);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_or_with_literal() -> None:
+//     a: int32 = 0
+//     x = a or 99  # tpyc: type(int32)
+//     print(x)
 void test_or_with_literal() {
-    // a: int32 = 0
     int32_t a = 0;
-    // x = a or 99  # tpyc: type(int32)
     int32_t x = (a ? a : 99);
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def accepts_int(v: int32) -> None:
+//     print(v)
 void accepts_int(int32_t v) {
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def returns_int(a: int32, b: int32) -> int32:
+//     return a or b
 int32_t returns_int(int32_t a, int32_t b) {
-    // return a or b
     return (a ? a : b);
 }
 
 // def test_as_arg_and_return() -> None:
+//     a: int32 = 0
+//     b: int32 = 7
+//     accepts_int(a or b)
+//     print(returns_int(0, 5))
 void test_as_arg_and_return() {
-    // a: int32 = 0
     int32_t a = 0;
-    // b: int32 = 7
     int32_t b = 7;
-    // accepts_int(a or b)
     accepts_int((a ? a : b));
-    // print(returns_int(0, 5))
     std::cout << returns_int(0, 5) << "\n";
 }
 
 // def test_bool_operands(flag: bool, other: bool) -> bool:
+//     # Both operands are already bool, so the value-select result IS bool.
+//     return flag and other  # tpyc: ok
 bool test_bool_operands(bool flag, bool other) {
-    // # Both operands are already bool, so the value-select result IS bool.
-    // return flag and other  # tpyc: ok
     return (flag && other);
 }
 
 // def test_mixed_returns_bool() -> None:
+//     """Mixed types fall back to bool (condition context unaffected)."""
+//     a: int32 = 1
+//     b: float = 2.0
+//     if a and b:  # tpyc: ok
+//         print("mixed condition ok")
 void test_mixed_returns_bool() {
-    // a: int32 = 1
     int32_t a = 1;
-    // b: float = 2.0
     double b = 2.0;
-    // if a and b:  # tpyc: ok
     if ((a && b)) {
-        // print("mixed condition ok")
         std::cout << "mixed condition ok" << "\n";
     }
 }
 
 // def test_condition_context() -> None:
+//     a: int32 = 1
+//     b: int32 = 2
+//     if a and b:
+//         print("both truthy")
+//     if a or b:
+//         print("at least one truthy")
 void test_condition_context() {
-    // a: int32 = 1
     int32_t a = 1;
-    // b: int32 = 2
     int32_t b = 2;
-    // if a and b:
     if ((a && b)) {
-        // print("both truthy")
         std::cout << "both truthy" << "\n";
     }
-    // if a or b:
     if ((a || b)) {
-        // print("at least one truthy")
         std::cout << "at least one truthy" << "\n";
     }
 }
 
 // def test_record_with_bool() -> None:
+//     zero: Counter = Counter(0)
+//     five: Counter = Counter(5)
+//     x = zero or five
+//     print(x.count)
+//     y = five and zero
+//     print(y.count)
+//     # Mutation via result must affect the original (reference semantics)
+//     x.count = 99
+//     print(five.count)   # 99: x references five
+//     y.count = 77
+//     print(zero.count)   # 77: y references zero
 void test_record_with_bool() {
-    // zero: Counter = Counter(0)
     Counter zero = Counter(0);
-    // five: Counter = Counter(5)
     Counter five = Counter(5);
-    // x = zero or five
     Counter& x = (::tpy::__bool__(zero) ? zero : five);
-    // print(x.count)
     std::cout << x.count << "\n";
-    // y = five and zero
     Counter& y = (::tpy::__bool__(five) ? zero : five);
-    // print(y.count)
     std::cout << y.count << "\n";
-    // # Mutation via result must affect the original (reference semantics)
-    // x.count = 99
     x.count = 99;
-    // print(five.count)   # 99: x references five
     std::cout << five.count << "\n";
-    // y.count = 77
     y.count = 77;
-    // print(zero.count)   # 77: y references zero
     std::cout << zero.count << "\n";
 }
 
 // def test_record_without_bool() -> None:
+//     # Records without __bool__ are always truthy (Python default)
+//     a: Point = Point(1, 2)
+//     b: Point = Point(3, 4)
+//     x = a or b
+//     print(x.x)
+//     y = a and b
+//     print(y.x)
+//     # Mutation via result must affect the original (reference semantics)
+//     x.x = 99
+//     print(a.x)   # 99: x references a (always truthy)
+//     y.x = 77
+//     print(b.x)   # 77: y references b (and returns rhs when lhs truthy)
 void test_record_without_bool() {
-    // # Records without __bool__ are always truthy (Python default)
-    // a: Point = Point(1, 2)
     Point a = Point(1, 2);
-    // b: Point = Point(3, 4)
     Point b = Point(3, 4);
-    // x = a or b
     Point& x = (true ? a : b);
-    // print(x.x)
     std::cout << x.x << "\n";
-    // y = a and b
     Point& y = (true ? b : a);
-    // print(y.x)
     std::cout << y.x << "\n";
-    // # Mutation via result must affect the original (reference semantics)
-    // x.x = 99
     x.x = 99;
-    // print(a.x)   # 99: x references a (always truthy)
     std::cout << a.x << "\n";
-    // y.x = 77
     y.x = 77;
-    // print(b.x)   # 77: y references b (and returns rhs when lhs truthy)
     std::cout << b.x << "\n";
 }
 
 // def test_record_or_constructor() -> None:
+//     # Mixed lvalue/rvalue: must not create dangling reference
+//     zero: Counter = Counter(0)
+//     x = zero or Counter(5)
+//     print(x.count)
+//     five: Counter = Counter(5)
+//     y = five and Counter(0)
+//     print(y.count)
 void test_record_or_constructor() {
-    // # Mixed lvalue/rvalue: must not create dangling reference
-    // zero: Counter = Counter(0)
     Counter zero = Counter(0);
-    // x = zero or Counter(5)
     std::optional<Counter> __logical_slot_3;
     Counter& x = (*(::tpy::__bool__(zero) ? &(zero) : (__logical_slot_3.emplace(Counter(5)), &*__logical_slot_3)));
-    // print(x.count)
     std::cout << x.count << "\n";
-    // five: Counter = Counter(5)
     Counter five = Counter(5);
-    // y = five and Counter(0)
     std::optional<Counter> __logical_slot_4;
     Counter& y = (*(::tpy::__bool__(five) ? (__logical_slot_4.emplace(Counter(0)), &*__logical_slot_4) : &(five)));
-    // print(y.count)
     std::cout << y.count << "\n";
 }
 
 // def test_annotated() -> None:
+//     a: int32 = 0
+//     b: int32 = 42
+//     x: int32 = a or b  # tpyc: type(int32)
+//     print(x)
+//
+//     c: int32 = 1
+//     d: int32 = 2
+//     y: int32 = c and d  # tpyc: type(int32)
+//     print(y)
+//
+//     empty: str = ""
+//     fallback: str = "default"
+//     s: str = empty or fallback  # tpyc: type(str)
+//     print(s)
+//
+//     fa: float = 0.0
+//     fb: float = 3.14
+//     f: float = fa or fb  # tpyc: type(float)
+//     print(f)
 void test_annotated() {
-    // a: int32 = 0
     int32_t a = 0;
-    // b: int32 = 42
     int32_t b = 42;
-    // x: int32 = a or b  # tpyc: type(int32)
     int32_t x = (a ? a : b);
-    // print(x)
     std::cout << x << "\n";
-    // c: int32 = 1
     int32_t c = 1;
-    // d: int32 = 2
     int32_t d = 2;
-    // y: int32 = c and d  # tpyc: type(int32)
     int32_t y = (c ? d : c);
-    // print(y)
     std::cout << y << "\n";
-    // empty: str = ""
     std::string_view empty = "";
-    // fallback: str = "default"
     std::string_view fallback = "default";
-    // s: str = empty or fallback  # tpyc: type(str)
     std::string s = std::string(((!empty.empty()) ? empty : fallback));
-    // print(s)
     std::cout << s << "\n";
-    // fa: float = 0.0
     double fa = 0.0;
-    // fb: float = 3.14
     double fb = 3.14;
-    // f: float = fa or fb  # tpyc: type(float)
     double f = (fa ? fa : fb);
-    // print(f)
     std::cout << ::tpy::print_float(f) << "\n";
 }
 
 // def test_literal_or_literal() -> None:
+//     x = 0 or 1  # tpyc: type(int32)
+//     print(x)
+//     y = 3 and 0  # tpyc: type(int32)
+//     print(y)
+//
+//     # Annotated as int (BigInt) -- annotation drives the type
+//     xi: int = 0 or 1  # tpyc: type(int)
+//     print(xi)
+//     yi: int = 3 and 0  # tpyc: type(int)
+//     print(yi)
 void test_literal_or_literal() {
-    // x = 0 or 1  # tpyc: type(int32)
     auto&& __tmp_5 = 0;
     int32_t x = (__tmp_5 ? __tmp_5 : 1);
-    // print(x)
     std::cout << x << "\n";
-    // y = 3 and 0  # tpyc: type(int32)
     auto&& __tmp_6 = 3;
     int32_t y = (__tmp_6 ? 0 : __tmp_6);
-    // print(y)
     std::cout << y << "\n";
-    // # Annotated as int (BigInt) -- annotation drives the type
-    // xi: int = 0 or 1  # tpyc: type(int)
     auto&& __tmp_7 = 0;
     ::tpy::BigInt xi = ::tpy::BigInt((__tmp_7 ? __tmp_7 : 1));
-    // print(xi)
     std::cout << xi << "\n";
-    // yi: int = 3 and 0  # tpyc: type(int)
     auto&& __tmp_8 = 3;
     ::tpy::BigInt yi = ::tpy::BigInt((__tmp_8 ? 0 : __tmp_8));
-    // print(yi)
     std::cout << yi << "\n";
 }
 
 // def main() -> None:
+//     test_or_int()
+//     test_and_int()
+//     test_or_str()
+//     test_and_str()
+//     test_or_float()
+//     test_and_float()
+//     test_or_bigint()
+//     test_chained()
+//     test_or_with_literal()
+//     test_as_arg_and_return()
+//     print(test_bool_operands(True, False), test_bool_operands(True, True))
+//     test_mixed_returns_bool()
+//     test_condition_context()
+//     test_record_with_bool()
+//     test_record_without_bool()
+//     test_record_or_constructor()
+//     test_annotated()
+//     test_literal_or_literal()
 void main() {
-    // test_or_int()
     test_or_int();
-    // test_and_int()
     test_and_int();
-    // test_or_str()
     test_or_str();
-    // test_and_str()
     test_and_str();
-    // test_or_float()
     test_or_float();
-    // test_and_float()
     test_and_float();
-    // test_or_bigint()
     test_or_bigint();
-    // test_chained()
     test_chained();
-    // test_or_with_literal()
     test_or_with_literal();
-    // test_as_arg_and_return()
     test_as_arg_and_return();
-    // print(test_bool_operands(True, False), test_bool_operands(True, True))
     std::cout << ::tpy::print_bool(test_bool_operands(true, false)) << " " << ::tpy::print_bool(test_bool_operands(true, true)) << "\n";
-    // test_mixed_returns_bool()
     test_mixed_returns_bool();
-    // test_condition_context()
     test_condition_context();
-    // test_record_with_bool()
     test_record_with_bool();
-    // test_record_without_bool()
     test_record_without_bool();
-    // test_record_or_constructor()
     test_record_or_constructor();
-    // test_annotated()
     test_annotated();
-    // test_literal_or_literal()
     test_literal_or_literal();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

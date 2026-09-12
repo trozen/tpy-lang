@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Arc.new(Counter(7))  # tpyc: is_send(yes) is_sync(yes)
+//     h1 = spawn(Hammer(a.clone(), 1000))
+//     h2 = spawn(Hammer(a.clone(), 1000))
+//     h3 = spawn(Hammer(a.clone(), 1000))
+//     print(h1.join() + h2.join() + h3.join())  # 3 * 1000 * 7 = 21000
 void main() {
-    // a = Arc.new(Counter(7))  # tpyc: is_send(yes) is_sync(yes)
     ::tpystd::tplib::arc::Arc<Counter> a = Arc<Counter>::new_<Counter>(Counter(7));
-    // h1 = spawn(Hammer(a.clone(), 1000))
     ::tpystd::tpy::thread::JoinHandle<int32_t> h1 = ::tpystd::tpy::thread::spawn<int32_t, Hammer>(Hammer(a.clone(), 1000));
-    // h2 = spawn(Hammer(a.clone(), 1000))
     ::tpystd::tpy::thread::JoinHandle<int32_t> h2 = ::tpystd::tpy::thread::spawn<int32_t, Hammer>(Hammer(a.clone(), 1000));
-    // h3 = spawn(Hammer(a.clone(), 1000))
     ::tpystd::tpy::thread::JoinHandle<int32_t> h3 = ::tpystd::tpy::thread::spawn<int32_t, Hammer>(Hammer(a.clone(), 1000));
-    // print(h1.join() + h2.join() + h3.join())  # 3 * 1000 * 7 = 21000
     std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(h1.join(), h2.join())), h3.join())) << "\n";
 }
 
+// from tplib.arc import Arc
+// from tpy.thread import spawn
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // main()
     main();
 }
 

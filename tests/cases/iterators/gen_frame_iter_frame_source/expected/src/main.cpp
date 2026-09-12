@@ -5,6 +5,10 @@ namespace tpyapp::main {
 
 
 // def bump(bag: Bag) -> Iterator[int32]:
+//     for p in bag:
+//         p.x += 100
+//         yield p.x
+//         yield p.x
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -13,7 +17,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield p.x
         __state = S_RESUME_1;
         return (*p).x;
     }
@@ -28,9 +31,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         p.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        // p.x += 100
         (*p).x = ::tpy::add_check<int32_t>((*p).x, 100);
-        // yield p.x
         __state = S_RESUME_0;
         return (*p).x;
     }
@@ -46,10 +47,12 @@ __gen_bump bump(Bag& bag) {
 }
 
 // def main() -> None:
+//     bag = Bag([Point(1), Point(2)])
+//     for v in bump(bag):
+//         print(v)
+//     print("mutations reached the bag:", bag.items[0].x, bag.items[1].x)
 void main() {
-    // bag = Bag([Point(1), Point(2)])
     Bag bag = Bag({Point(1), Point(2)});
-    // for v in bump(bag):
     {
         auto __src_0 = bump(bag);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -57,15 +60,16 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("mutations reached the bag:", bag.items[0].x, bag.items[1].x)
     std::cout << "mutations reached the bag:" << " " << ::tpy::__getitem__(bag.items, 0).x << " " << ::tpy::__getitem__(bag.items, 1).x << "\n";
 }
 
 // def __iter__(self) -> Iterator[Point]:
+//     for p in self.items:
+//         yield p
+//         yield p
 std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -75,7 +79,6 @@ std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__
         continue;
     }
     case S_RESUME_0: {
-        // yield p
         __state = S_RESUME_1;
         return (*p);
     }
@@ -89,7 +92,6 @@ std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         p = &(*((*__for_it_0))++);
-        // yield p
         __state = S_RESUME_0;
         return (*p);
     }
@@ -99,12 +101,12 @@ std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Maker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -68,37 +69,39 @@ inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Cell::Cell(int32_t val) : val(val) {}
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Maker::Maker() : n(0) {}
 
 // # Never mutates self -- readonly is INFERRED, and with it the const return.
 // def pair(self, c: Cell) -> tuple[Cell, Cell]:
+//     return (c, c)
 inline std::tuple<const Cell*, const Cell*> Maker::pair(const Cell& c) const {
-    // return (c, c)
     return std::tuple<const Cell*, const Cell*>{&(c), &(c)};
 }
 
 // @readonly
 // def declared_pair(self, c: Cell) -> tuple[Cell, Cell]:
+//     return (c, c)
 inline std::tuple<const Cell*, const Cell*> Maker::declared_pair(const Cell& c) const {
-    // return (c, c)
     return std::tuple<const Cell*, const Cell*>{&(c), &(c)};
 }
 
 // def mixed(self, c: Cell) -> tuple[Own[Cell], Cell]:
+//     return (Cell(1), c)
 inline std::tuple<Cell, const Cell*> Maker::mixed(const Cell& c) const {
-    // return (Cell(1), c)
     return std::tuple<Cell, const Cell*>{Cell(1), &(c)};
 }
 
 // # The mutating sibling keeps the non-const render -- the inverse guard.
 // def bump_pair(self, c: Cell) -> tuple[Cell, Cell]:
+//     self.n = self.n + 1
+//     return (c, c)
 inline std::tuple<Cell*, Cell*> Maker::bump_pair(Cell& c) {
-    // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
-    // return (c, c)
     return std::tuple<Cell*, Cell*>{&(c), &(c)};
 }
 void __tpy_init();

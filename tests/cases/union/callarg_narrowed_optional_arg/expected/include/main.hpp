@@ -12,11 +12,17 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_opt(o: A | None) -> int32:
 int32_t take_opt(const A* o);
+// def bump_opt(o: A | None) -> None:
 void bump_opt(A* o);
+// def read_narrowed(u: A | B) -> int32:
 int32_t read_narrowed(::tpy::Union<A*, B*> u);
+// def mutate_narrowed(u: A | B) -> int32:
 int32_t mutate_narrowed(::tpy::Union<A*, B*> u);
+// def inline_narrowed(u: A | B) -> int32:
 int32_t inline_narrowed(::tpy::Union<A*, B*> u);
+// def main() -> None:
 void main();
 
 // class A:
@@ -53,9 +59,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32):
+//     self.y = y
 inline B::B(int32_t y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

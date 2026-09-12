@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def read_box(b: readonly[Box]) -> int32:
+//     return b.items[0]
 int32_t read_box(const Box& b) {
-    // return b.items[0]
     return ::tpy::__getitem__(b.items, 0);
 }
 
 // def main() -> None:
+//     arr: Array[int32, 3] = [10, 20, 30]
+//     b = Box(arr)
+//     print(read_box(b))  # 10
 void main() {
-    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // b = Box(arr)
     Box b = Box(::tpy::as_mut_span(arr));
-    // print(read_box(b))  # 10
     std::cout << read_box(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -6,19 +6,19 @@ namespace tpyapp::b {
 
 
 // def bee_uses_a() -> int32:
+//     return aye()
 int32_t bee_uses_a() {
-    // return aye()
     return ::tpyapp::a::aye();
 }
 
+// from a import aye
+// from c import cee
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import aye
     ::tpyapp::a::__tpy_init();
-    // from c import cee
     ::tpyapp::c::__tpy_init();
 }
 

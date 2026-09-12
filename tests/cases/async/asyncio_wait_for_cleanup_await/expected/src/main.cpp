@@ -5,6 +5,12 @@ namespace tpyapp::main {
 
 
 // async def slow() -> int:
+//     try:
+//         await asyncio.sleep(1.0)
+//         return 42
+//     finally:
+//         await asyncio.sleep(0.001)
+//         print("cleanup-ran")
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -17,7 +23,6 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // return 42
             this->__finally_ret_0 = 42;
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -34,7 +39,6 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // print("cleanup-ran")
         std::cout << "cleanup-ran" << "\n";
         __state = S_JOIN_0;
         continue;
@@ -55,7 +59,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.sleep(1.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
             __state = S_RESUME_0;
             continue;
@@ -66,7 +69,6 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_2: {
-        // await asyncio.sleep(0.001)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_1;
         continue;
@@ -83,6 +85,12 @@ __coro_slow slow() {
 }
 
 // async def main_coro() -> None:
+//     try:
+//         v = await asyncio.wait_for(slow(), 0.01)
+//         print("not reached")
+//         print(v)
+//     except TimeoutError:
+//         print("timed-out")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -95,15 +103,12 @@ __coro_slow slow() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             v = std::move(__r0).value();
             __sub_0.reset();
-            // print("not reached")
             std::cout << "not reached" << "\n";
-            // print(v)
             std::cout << v << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
             __sub_0.reset();
-            // print("timed-out")
             std::cout << "timed-out" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -118,12 +123,10 @@ __coro_slow slow() {
     }
     case S_JOIN_1: {
         try {
-            // v = await asyncio.wait_for(slow(), 0.01)
             __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(slow()), 0.01);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
-            // print("timed-out")
             std::cout << "timed-out" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -143,24 +146,25 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Cleanup-await path: the inner coroutine has an `await` inside its
+// # `finally` body. After the deadline fires and `wait_for` cancels the
+// # inner, the cleanup `await` runs to completion before the inner
+// # returns -- and `wait_for` keeps pumping until then before raising
+// # `TimeoutError`.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cleanup-await path: the inner coroutine has an `await` inside its
-    // # `finally` body. After the deadline fires and `wait_for` cancels the
-    // # inner, the cleanup `await` runs to completion before the inner
-    // # returns -- and `wait_for` keeps pumping until then before raising
-    // # `TimeoutError`.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def test_literal() -> None:
+//     s = "hello"  # tpyc: type(StrView)
+//     print(s)
+//     print(len(s))
 void test_literal() {
-    // s = "hello"  # tpyc: type(StrView)
     std::string_view s = "hello";
-    // print(s)
     std::cout << s << "\n";
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
 // def test_param(msg: str) -> None:
+//     s = msg  # tpyc: type(StrView)
+//     print(s)
 void test_param(std::string_view msg) {
-    // s = msg  # tpyc: type(StrView)
     std::string_view s = msg;
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_strview_source() -> None:
+//     sv: StrView = StrView("view")
+//     s = sv  # tpyc: type(StrView)
+//     print(s)
 void test_strview_source() {
-    // sv: StrView = StrView("view")
     std::string_view sv = "view";
-    // s = sv  # tpyc: type(StrView)
     std::string_view s = sv;
-    // print(s)
     std::cout << s << "\n";
 }
 
+// test_literal()
+// test_param("from param")
+// test_strview_source()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_literal()
     test_literal();
-    // test_param("from param")
     test_param("from param");
-    // test_strview_source()
     test_strview_source();
 }
 

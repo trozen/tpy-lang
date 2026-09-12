@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs = IntList()
+//     xs.add(10)
+//     xs.add(20)
+//     xs.add(30)
+//     print(length_of(xs))   # 3
+//     print(total(xs))       # 60
+//     # Iteration over the concrete type still works the usual way.
+//     s: int32 = 0
+//     for x in xs:
+//         s += x
+//     print(s)               # 60
 void main() {
-    // xs = IntList()
     IntList xs = IntList();
-    // xs.add(10)
     xs.add(10);
-    // xs.add(20)
     xs.add(20);
-    // xs.add(30)
     xs.add(30);
-    // print(length_of(xs))   # 3
     std::cout << length_of(xs) << "\n";
-    // print(total(xs))       # 60
     std::cout << total(xs) << "\n";
-    // # Iteration over the concrete type still works the usual way.
-    // s: int32 = 0
     int32_t s = 0;
-    // for x in xs:
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // s += x
         s = ::tpy::add_check<int32_t>(s, x);
     }
-    // print(s)               # 60
     std::cout << s << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

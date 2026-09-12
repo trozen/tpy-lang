@@ -10,6 +10,7 @@ extern "C" int32_t tpy_test_global;
 namespace tpyapp::leaf {
 
 inline constexpr std::string_view __name__ = "leaf";
+// NORMAL_VAL: Final[int32] = 7
 inline constexpr int32_t NORMAL_VAL = 7;
 
 void __tpy_init();

@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def maybe_double(x: Opt[int32]) -> int32:
+//     if x is not None:
+//         return x * int32(2)
+//     return int32(0)
 int32_t maybe_double(std::optional<int32_t> x) {
-    // if x is not None:
     if ((x.has_value())) {
-        // return x * int32(2)
         return (::tpy::mul_check<int32_t>((*x), 2));
     }
-    // return int32(0)
     return 0;
 }
 
 // def main():
+//     print(maybe_double(int32(5)))
+//     print(maybe_double(None))
 void main() {
-    // print(maybe_double(int32(5)))
     std::cout << maybe_double(5) << "\n";
-    // print(maybe_double(None))
     std::cout << maybe_double(std::nullopt) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

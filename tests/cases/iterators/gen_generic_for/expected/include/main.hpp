@@ -12,11 +12,13 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename T>
 struct __gen_doubled;
 
+// def doubled[T](xs: list[T]) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 __gen_doubled<T> doubled(std::vector<T>& xs);
+// def main() -> None:
 void main();
 
-// Generator: doubled
+// def doubled[T](xs: list[T]) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, T> {
     int32_t __state;
@@ -44,6 +46,9 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, T> {
     }
 };
 // def doubled[T](xs: list[T]) -> Iterator[T]:  # tpyc: ok
+//     for x in xs:
+//         yield x
+//         yield x
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
     while (true) switch (__state) {
@@ -54,7 +59,6 @@ std::expected<T, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield x
         __state = S_RESUME_1;
         return (*x);
     }
@@ -68,7 +72,6 @@ std::expected<T, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = &(*((*__for_it_0))++);
-        // yield x
         __state = S_RESUME_0;
         return (*x);
     }

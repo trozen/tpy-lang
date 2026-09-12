@@ -42,6 +42,7 @@ struct FromNested;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Direct:
@@ -140,15 +141,19 @@ inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
 
 
 // def __init__(self) -> None:
+//     self.e = E.A  # tpyc: ok
 inline Direct::Direct() : e(E::A) {}
 
 // def __init__(self) -> None:
+//     self.n = sys.argv.__len__()  # tpyc: ok
 inline FromModule::FromModule() : n(::tpy::BigInt(::tpy::__len__((*::tpystd::sys::argv)))) {}
 
 // def __init__(self) -> None:
+//     self.c = Color.RED  # tpyc: ok
 inline FromImport::FromImport() : c(::tpyapp::helper::Color::RED) {}
 
 // def __init__(self) -> None:
+//     self.k = Outer.Kind.P  # tpyc: ok
 inline FromNested::FromNested() : k(Outer::Kind::P) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def copied_val(a: A) -> int32:
+//     a2 = copy(a)
+//     return a2.val
 int32_t copied_val(const A& a) {
-    // a2 = copy(a)
     A a2 = A(a);
-    // return a2.val
     return a2.val;
 }
 
 // def main() -> None:
+//     a = A(1)
+//     a.bs.append(B(2))
+//     c = copied_val(a)
+//     a.bs[0].val = 20
+//     print(a.val, a.bs[0].val, c, len(a.bs))
 void main() {
-    // a = A(1)
     A a = A(1);
-    // a.bs.append(B(2))
     a.bs.push_back(B(2));
-    // c = copied_val(a)
     int32_t c = copied_val(a);
-    // a.bs[0].val = 20
     ::tpy::__getitem__(a.bs, 0).val = 20;
-    // print(a.val, a.bs[0].val, c, len(a.bs))
     std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << c << " " << ::tpy::__len__(a.bs) << "\n";
 }
 
@@ -39,31 +39,31 @@ A& A::operator=(A&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("A del begin", self.val)
+//     s = self.val
+//     s += 1
+//     s += 2
+//     s += 3
+//     s += 4
+//     s += 5
+//     print("A del end", s)
 A::~A() {
     if (!this->__tpy_owned_) return;
-    // print("A del begin", self.val)
     std::cout << "A del begin" << " " << this->val << "\n";
-    // s = self.val
     int32_t s = this->val;
-    // s += 1
     s = ::tpy::add_check<int32_t>(s, 1);
-    // s += 2
     s = ::tpy::add_check<int32_t>(s, 2);
-    // s += 3
     s = ::tpy::add_check<int32_t>(s, 3);
-    // s += 4
     s = ::tpy::add_check<int32_t>(s, 4);
-    // s += 5
     s = ::tpy::add_check<int32_t>(s, 5);
-    // print("A del end", s)
     std::cout << "A del end" << " " << s << "\n";
 }
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

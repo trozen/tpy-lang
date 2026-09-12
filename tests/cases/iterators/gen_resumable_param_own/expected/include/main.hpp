@@ -15,10 +15,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_drain;
 
+// def drain(b: Own[Box[int32]]) -> Iterator[int32]:
 __gen_drain drain(::tpystd::tplib::box::Box<int32_t> b);
+// def main() -> None:
 void main();
 
-// Generator: drain
+// def drain(b: Own[Box[int32]]) -> Iterator[int32]:
 struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
     int32_t __state;
     ::tpystd::tplib::box::Box<int32_t> b;

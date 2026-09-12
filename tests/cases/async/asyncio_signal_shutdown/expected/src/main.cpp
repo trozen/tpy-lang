@@ -5,6 +5,13 @@ namespace tpyapp::main {
 
 
 // async def serve() -> None:
+//     try:
+//         print("serving")
+//         raise_signal(SIGINT)
+//         await asyncio.sleep(10.0)
+//         print("not reached")
+//     finally:
+//         print("shutdown cleanup")
 ::tpystd::tpy::Poll<::std::monostate> __coro_serve::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -19,7 +26,6 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("not reached")
             std::cout << "not reached" << "\n";
             __fin_ran_1 = true;
             this->__finally_0();
@@ -39,11 +45,8 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // print("serving")
             std::cout << "serving" << "\n";
-            // raise_signal(SIGINT)
             ::tpystd::signal::raise_signal(::tpy_const_sigint);
-            // await asyncio.sleep(10.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(10.0)));
             __state = S_RESUME_0;
             continue;
@@ -62,7 +65,6 @@ namespace tpyapp::main {
 }
 
 void __coro_serve::__finally_0() {
-    // print("shutdown cleanup")
     std::cout << "shutdown cleanup" << "\n";
 }
 
@@ -72,36 +74,38 @@ __coro_serve serve() {
 }
 
 // def main() -> None:
+//     try:
+//         asyncio.run(serve())
+//         print("run returned normally")
+//     except KeyboardInterrupt:
+//         print("caught KeyboardInterrupt")
 void main() {
-    // try:
     {
         try {
-            // asyncio.run(serve())
             ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(serve()));
-            // print("run returned normally")
             std::cout << "run returned normally" << "\n";
         } catch (const ::tpy::KeyboardInterrupt&) {
-            // print("caught KeyboardInterrupt")
             std::cout << "caught KeyboardInterrupt" << "\n";
         }
     }
 }
 
+// # asyncio.run installs a SIGINT handler: a signal (here delivered to ourselves
+// # via raise_signal) cancels the root task so its finally cleanup runs, then
+// # asyncio.run raises KeyboardInterrupt -- matching CPython's asyncio.run. The
+// # signal is raised right before an await so the executor regains control and
+// # delivers the cancellation at the suspension point.
+// import asyncio
+// from signal import raise_signal, SIGINT
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.run installs a SIGINT handler: a signal (here delivered to ourselves
-    // # via raise_signal) cancels the root task so its finally cleanup runs, then
-    // # asyncio.run raises KeyboardInterrupt -- matching CPython's asyncio.run. The
-    // # signal is raised right before an await so the executor regains control and
-    // # delivers the cancellation at the suspension point.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from signal import raise_signal, SIGINT
     ::tpystd::signal::__tpy_init();
-    // main()
     main();
 }
 

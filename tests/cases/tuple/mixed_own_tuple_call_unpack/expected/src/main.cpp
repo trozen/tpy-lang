@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def split(p: Point) -> tuple[Point, Own[Point]]:
+//     return (p, copy(p))
 std::tuple<Point*, Point> split(Point& p) {
-    // return (p, copy(p))
     return std::tuple<Point*, Point>{&(p), Point(p)};
 }
 
 // def split3(p: Point) -> tuple[Point, Own[Point], int32, str]:
+//     return (p, copy(p), 7, "hi")
 std::tuple<Point*, Point, int32_t, std::string> split3(Point& p) {
-    // return (p, copy(p), 7, "hi")
     return std::tuple<Point*, Point, int32_t, std::string>{&(p), Point(p), 7, "hi"};
 }
 
 // def main() -> None:
+//     p = Point(1)
+//     # The borrow element aliases `p`; the Own element is its own copy. Value
+//     # scalars and strs ride alongside unchanged.
+//     ref, owned, n, s = split3(p)
+//     p.x = 9
+//     print(ref.x, owned.x, n, s)
 void main() {
-    // p = Point(1)
     Point p = Point(1);
-    // # The borrow element aliases `p`; the Own element is its own copy. Value
-    // # scalars and strs ride alongside unchanged.
-    // ref, owned, n, s = split3(p)
     auto __tup_1 = split3(p);
     auto&& ref = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     Point owned = std::move(std::get<1>(__tup_1));
     int32_t n = std::get<2>(__tup_1);
     std::string_view s = std::get<3>(__tup_1);
-    // p.x = 9
     p.x = 9;
-    // print(ref.x, owned.x, n, s)
     std::cout << ref.x << " " << owned.x << " " << n << " " << s << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

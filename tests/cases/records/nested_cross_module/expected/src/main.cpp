@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Container(Container.Kind.A)
+//     print(c.kind)
+//     i = Container.Inner(42)
+//     print(i.val)
 void main() {
-    // c = Container(Container.Kind.A)
     ::tpyapp::shapes::Container c = ::tpyapp::shapes::Container(::tpyapp::shapes::Container::Kind::A);
-    // print(c.kind)
     std::cout << c.kind << "\n";
-    // i = Container.Inner(42)
     ::tpyapp::shapes::Container::Inner i = ::tpyapp::shapes::Container::Inner(42);
-    // print(i.val)
     std::cout << i.val << "\n";
 }
 
+// # Cross-module access to nested types: constructors and enum members
+// from shapes import Container
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module access to nested types: constructors and enum members
-    // from shapes import Container
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

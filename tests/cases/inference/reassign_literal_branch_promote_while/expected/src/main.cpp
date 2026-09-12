@@ -7,72 +7,72 @@ namespace tpyapp::main {
 // # Literal-seeded variable promoted to BigInt inside an if-branch within
 // # a while loop should keep BigInt for subsequent operations in the loop body.
 // def get_big() -> int:
+//     return 42
 ::tpy::BigInt get_big() {
-    // return 42
     return ::tpy::BigInt(42);
 }
 
 // def test_augassign_in_while() -> None:
+//     ip = 0
+//     while ip < 10:
+//         c = '>'
+//         if c == '>':
+//             pass
+//         elif c == '[':
+//             if True:
+//                 ip = get_big()
+//         elif c == ']':
+//             if True:
+//                 ip = get_big()
+//         ip += 1
+//     print(ip)
 void test_augassign_in_while() {
-    // ip = 0
     ::tpy::BigInt ip = ::tpy::BigInt(0);
-    // while ip < 10:
     while ((ip < 10)) {
-        // c = '>'
         std::string_view c = ">";
-        // if c == '>':
         if ((c == ">")) {
-            // pass
-        // elif c == '[':
         } else if ((c == "[")) {
-            // if True:
             if (true) {
-                // ip = get_big()
                 ip = get_big();
             }
-        // elif c == ']':
         } else if ((c == "]")) {
-            // if True:
             if (true) {
-                // ip = get_big()
                 ip = get_big();
             }
         }
-        // ip += 1
         ip = (ip) + (::tpy::BigInt(1));
     }
-    // print(ip)
     std::cout << ip << "\n";
 }
 
 // def test_binop_in_while() -> None:
+//     x = 0
+//     while x < 5:
+//         if True:
+//             x = get_big()
+//         y: int = x + 1
+//         x = y
+//     print(x)
 void test_binop_in_while() {
-    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    // while x < 5:
     while ((x < 5)) {
-        // if True:
         if (true) {
-            // x = get_big()
             x = get_big();
         }
-        // y: int = x + 1
         ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
-        // x = y
         x = y;
     }
-    // print(x)
     std::cout << x << "\n";
 }
 
+// test_augassign_in_while()
+// test_binop_in_while()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_augassign_in_while()
     test_augassign_in_while();
-    // test_binop_in_while()
     test_binop_in_while();
 }
 

@@ -5,66 +5,72 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     tpath = "tpy_test_open_text_binary.txt"
+//     bpath = "tpy_test_open_text_binary.bin"
+//
+//     # open_text with explicit mode
+//     w = open_text(tpath, "w")
+//     w.write("hello")
+//     w.close()
+//
+//     # open_text with default mode (read)
+//     r = open_text(tpath)
+//     print(r.read())
+//     r.close()
+//
+//     # open_binary with explicit mode
+//     bw = open_binary(bpath, "wb")
+//     bw.write(b"\x01\x02\x03")
+//     bw.close()
+//
+//     # open_binary with default mode (rb)
+//     br = open_binary(bpath)
+//     data = br.read()
+//     br.close()
+//     print(len(data))
+//     print(data[0], data[1], data[2])
+//
+//     # Variable mode works (no Literal dispatch needed)
+//     mode = "w"
+//     w2 = open_text(tpath, mode)
+//     w2.write("world")
+//     w2.close()
+//
+//     r2 = open_text(tpath)
+//     print(r2.read())
+//     r2.close()
 void main() {
-    // tpath = "tpy_test_open_text_binary.txt"
     std::string_view tpath = "tpy_test_open_text_binary.txt";
-    // bpath = "tpy_test_open_text_binary.bin"
     std::string_view bpath = "tpy_test_open_text_binary.bin";
-    // # open_text with explicit mode
-    // w = open_text(tpath, "w")
     ::tpy::TextFile w = ::tpy::builtin_open_mode(tpath, "w");
-    // w.write("hello")
     w.write("hello");
-    // w.close()
     w.close();
-    // # open_text with default mode (read)
-    // r = open_text(tpath)
     ::tpy::TextFile r = ::tpy::builtin_open(tpath);
-    // print(r.read())
     std::cout << r.read() << "\n";
-    // r.close()
     r.close();
-    // # open_binary with explicit mode
-    // bw = open_binary(bpath, "wb")
     ::tpy::BinaryFile bw = ::tpy::builtin_open_binary(bpath, "wb");
-    // bw.write(b"\x01\x02\x03")
     bw.write(::tpy::bytes_literal("\x01\x02\x03", 3));
-    // bw.close()
     bw.close();
-    // # open_binary with default mode (rb)
-    // br = open_binary(bpath)
     ::tpy::BinaryFile br = ::tpy::builtin_open_binary(bpath);
-    // data = br.read()
     ::tpy::Bytes data = br.read();
-    // br.close()
     br.close();
-    // print(len(data))
     std::cout << ::tpy::__len__(data) << "\n";
-    // print(data[0], data[1], data[2])
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 2)) << "\n";
-    // # Variable mode works (no Literal dispatch needed)
-    // mode = "w"
     std::string_view mode = "w";
-    // w2 = open_text(tpath, mode)
     ::tpy::TextFile w2 = ::tpy::builtin_open_mode(tpath, mode);
-    // w2.write("world")
     w2.write("world");
-    // w2.close()
     w2.close();
-    // r2 = open_text(tpath)
     ::tpy::TextFile r2 = ::tpy::builtin_open(tpath);
-    // print(r2.read())
     std::cout << r2.read() << "\n";
-    // r2.close()
     r2.close();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

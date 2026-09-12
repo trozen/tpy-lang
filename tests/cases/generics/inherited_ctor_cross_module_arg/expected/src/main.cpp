@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Sub(Key(5), 7)
+//     print(s._k.x)
+//     print(s._v)
 void main() {
-    // s = Sub(Key(5), 7)
     Sub s = Sub(::tpyapp::other::Key(5), 7);
-    // print(s._k.x)
     std::cout << s._k.x << "\n";
-    // print(s._v)
     std::cout << s._v << "\n";
 }
 
+// from other import Key
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from other import Key
     ::tpyapp::other::__tpy_init();
-    // main()
     main();
 }
 

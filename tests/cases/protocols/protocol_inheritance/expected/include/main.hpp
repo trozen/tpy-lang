@@ -25,6 +25,7 @@ template<PrintableAndSized T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Message:
@@ -62,14 +63,15 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def describe(self) -> None:
+    //     print(self.value.to_str())
+    //     print(len(self.value))
     void describe() {
-        // print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
-        // print(len(self.value))
         std::cout << ::tpy::__len__(this->value) << "\n";
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -83,17 +85,18 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 
 // def __init__(self, text: str) -> None:
+//     self.text = text
 inline Message::Message(std::string_view text) : text(text) {}
 
 // def to_str(self) -> str:
+//     return self.text
 inline std::string Message::to_str() const {
-    // return self.text
     return this->text;
 }
 
 // def __len__(self) -> int32:
+//     return int32(5)
 inline int32_t Message::__len__() const {
-    // return int32(5)
     return 5;
 }
 void __tpy_init();

@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(call_b())
 void main() {
-    // print(call_b())
     std::cout << ::tpyapp::a::call_b() << "\n";
 }
 
+// # 3-module SCC: a -> b -> c -> a. Tarjan finds the SCC, the
+// # alphabetical ordering inside the SCC drives sub-phase iteration,
+// # and skeleton pre-registration unblocks every cross-cycle
+// # `from X import Y`. Each module emits a fwd.hpp.
+// from a import call_b
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # 3-module SCC: a -> b -> c -> a. Tarjan finds the SCC, the
-    // # alphabetical ordering inside the SCC drives sub-phase iteration,
-    // # and skeleton pre-registration unblocks every cross-cycle
-    // # `from X import Y`. Each module emits a fwd.hpp.
-    // from a import call_b
     ::tpyapp::a::__tpy_init();
-    // main()
     main();
 }
 

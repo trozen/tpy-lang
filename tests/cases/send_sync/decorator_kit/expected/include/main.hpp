@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_forced;
 
+// async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 __coro_forced forced(std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
 // class Trade(Send):
@@ -89,7 +91,7 @@ inline std::ostream& operator<<(std::ostream& os, const SharedTable& obj) {
     return os;
 }
 
-// Async coroutine: forced
+// async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 struct __coro_forced {
     int32_t __state;
     bool __cancel_pending;
@@ -113,24 +115,32 @@ struct __coro_forced {
 
 
 // def __init__(self, sym: int32, qty: int32) -> None:
+//     self.sym = sym
+//     self.qty = qty
 inline Trade::Trade(int32_t sym, int32_t qty) : sym(sym), qty(qty) {}
 
 // def __init__(self, raw: Ptr[int32]) -> None:
+//     self.raw = raw
 inline NativeHandle::NativeHandle(int32_t* raw) : raw(raw) {}
 
 // def __init__(self) -> None:
+//     self.data = []
 inline ArenaBuffer::ArenaBuffer() : data(std::vector<int32_t>{}) {}
 
 // def __init__(self) -> None:
+//     self.data = []
 inline SharedTable::SharedTable() : data(std::vector<int32_t>{}) {}
+// def gen_forced(n: int32) -> Iterator[int32]:    # tpyc: frame_send(yes) frame_sync(no)
+//     i = 0
+//     while i < n:
+//         yield i
+//         i += 1
 inline auto gen_forced(int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {
             while ((i < n)) {
                 auto __val = i;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }

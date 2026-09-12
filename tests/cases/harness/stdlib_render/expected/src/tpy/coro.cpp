@@ -7,23 +7,28 @@ namespace tpystd::coro {
 // # Separate factory because `poll_ready[T](value)` needs an `Own[T]`
 // # argument that `Own[None]` can't satisfy with no payload.
 // def poll_ready_none() -> Own[Poll[None]]:
+//     return Poll[None].ready(None)
 ::tpystd::tpy::Poll<std::monostate> poll_ready_none() {
-    // return Poll[None].ready(None)
     return ::tpystd::tpy::Poll<std::monostate>::ready(std::monostate{});
 }
 
+// # tpy: cpp_namespace("tpystd::coro")
+// """Coroutine / async runtime primitives.
+//
+// Module name borrowed from the design-doc's `Coroutine[T]` terminology
+// (see Rust `std::task` / Tokio `tokio::task` for prior art).
+// """
+// from .._typing import Protocol
+// from .._bootstrap._decorators import Own, dynamic
+// from .._bootstrap._extern import builtin_type
+// from .._builtins._exceptions import CancelledError
+// from .._core import Poll, Ptr, ValueType, int32
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: cpp_namespace("tpystd::coro")
-    // from .._typing import Protocol
     ::tpystd::typing::__tpy_init();
-    // from .._bootstrap._decorators import Own, dynamic
-    // from .._bootstrap._extern import builtin_type
-    // from .._builtins._exceptions import CancelledError
-    // from .._core import Poll, Ptr, ValueType, int32
 }
 
 } // namespace tpystd::coro

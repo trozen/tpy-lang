@@ -3,26 +3,25 @@
 
 namespace tpyapp::main {
 
-// items = get_items()
 std::vector<::tpy::BigInt>* items{};
 
 // def get_items() -> Own[list[int]]:
+//     xs = [1, 2, 3]  # tpyc: type(/list/)
+//     return xs
 std::vector<::tpy::BigInt> get_items() {
-    // xs = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<::tpy::BigInt> xs = {1, 2, 3};
-    // return xs
     return xs;
 }
 
+// items = get_items()
+// print(len(items))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // items = get_items()
     static std::vector<::tpy::BigInt> __global_slot_1 = get_items();
     items = &__global_slot_1;
-    // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
 }
 

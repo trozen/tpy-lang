@@ -34,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline MyList::MyList(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,6 +11,7 @@ template<::tpy::ValueType T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T: ValueType]:
@@ -22,23 +23,25 @@ struct Box {
     bool _has;
 
     // def __init__(self, value: T) -> None:
+    //     self._value = value
+    //     self._has = True
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> value) : _value(value), _has(true) {}
 
     // def get(self) -> T | None:
+    //     if self._has:
+    //         return self._value
+    //     return None
     std::optional<T> get() const {
-        // if self._has:
         if (this->_has) {
-            // return self._value
             return this->_value;
         }
-        // return None
         return std::nullopt;
     }
 
     // def clear(self) -> None:
+    //     self._has = False
     void clear() {
-        // self._has = False
         this->_has = false;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

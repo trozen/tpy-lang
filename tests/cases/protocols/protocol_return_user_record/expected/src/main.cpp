@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     factory = DefaultFactory()
+//     p = make_point(factory, 10, 20)
+//     print(p.x)
+//     print(p.y)
 void main() {
-    // factory = DefaultFactory()
     DefaultFactory factory = DefaultFactory();
-    // p = make_point(factory, 10, 20)
     Point p = make_point<DefaultFactory>(factory, 10, 20);
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(p.y)
     std::cout << p.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,7 +12,9 @@ struct Circle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_optional_list() -> Own[list[int32 | None]]:
 std::vector<std::optional<int32_t>> make_optional_list();
+// def main():
 void main();
 
 // class Rect:

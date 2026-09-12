@@ -35,11 +35,13 @@ inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
 
 
 // def __init__(self, width: int32, height: int32) -> None:
+//     self.width = width
+//     self.height = height
 inline Settings::Settings(int32_t width, int32_t height) : width(width), height(height) {}
 
 // def area(self) -> int32:
+//     return self.width * self.height
 inline int32_t Settings::area() const {
-    // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width, this->height));
 }
 void __tpy_init();

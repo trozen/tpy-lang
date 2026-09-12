@@ -5,120 +5,120 @@ namespace tpyapp::main {
 
 
 // def test_array_resolution() -> None:
+//     # Unmutated repeat with constant count -> Array[int32, 5]
+//     x = [0] * 5  # tpyc: type(/Array\[/)
+//     print(len(x))
+//     for v in x:
+//         print(v)
 void test_array_resolution() {
-    // # Unmutated repeat with constant count -> Array[int32, 5]
-    // x = [0] * 5  # tpyc: type(/Array\[/)
     std::array<int32_t, 5> x = ({
         int32_t __rep_0 = 0;
         ::tpy::array_from_index<int32_t, 5>([&](std::size_t) -> int32_t { return __rep_0; });
     });
-    // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
-    // for v in x:
     auto& __obj_1 = x;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t v = *__beg_1;
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
 // def test_list_promotion() -> None:
+//     # Mutated repeat -> promoted to list[int32]
+//     y = [0] * 3  # tpyc: type(/list\[/)
+//     y.append(42)
+//     print(len(y))
+//     for v in y:
+//         print(v)
 void test_list_promotion() {
-    // # Mutated repeat -> promoted to list[int32]
-    // y = [0] * 3  # tpyc: type(/list\[/)
     std::vector<int32_t> y = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(3, {0}));
-    // y.append(42)
     y.push_back(42);
-    // print(len(y))
     std::cout << ::tpy::__len__(y) << "\n";
-    // for v in y:
     auto& __obj_0 = y;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
 // def test_annotated_list() -> None:
+//     # Explicit list annotation -> list[int32]
+//     z: list[int32] = [1] * 4  # tpyc: type(/list\[/)
+//     z.append(5)
+//     print(len(z))
+//     for v in z:
+//         print(v)
 void test_annotated_list() {
-    // # Explicit list annotation -> list[int32]
-    // z: list[int32] = [1] * 4  # tpyc: type(/list\[/)
     std::vector<int32_t> z = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(4, {1}));
-    // z.append(5)
     z.push_back(5);
-    // print(len(z))
     std::cout << ::tpy::__len__(z) << "\n";
-    // for v in z:
     auto& __obj_0 = z;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
 // def test_subscript_stays_array() -> None:
+//     # Subscript on constant-count repeat -> stays Array (Array supports operator[])
+//     w = [9] * 3  # tpyc: type(/Array\[/)
+//     print(w[0])
+//     print(w[1])
+//     print(w[2])
 void test_subscript_stays_array() {
-    // # Subscript on constant-count repeat -> stays Array (Array supports operator[])
-    // w = [9] * 3  # tpyc: type(/Array\[/)
     std::array<int32_t, 3> w = ({
         int32_t __rep_0 = 9;
         ::tpy::array_from_index<int32_t, 3>([&](std::size_t) -> int32_t { return __rep_0; });
     });
-    // print(w[0])
     std::cout << ::tpy::__getitem__(w, 0) << "\n";
-    // print(w[1])
     std::cout << ::tpy::__getitem__(w, 1) << "\n";
-    // print(w[2])
     std::cout << ::tpy::__getitem__(w, 2) << "\n";
 }
 
 // def takes_span(s: Span[int32]) -> None:
+//     for v in s:
+//         print(v)
 void takes_span(std::span<int32_t> s) {
-    // for v in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
 // def test_variable_repeat_assigned_to_span() -> None:
+//     # Variable count repeat assigned to variable, then passed to Span -> list (lvalue)
+//     n: int32 = 2
+//     x = [6] * n
+//     takes_span(x)
 void test_variable_repeat_assigned_to_span() {
-    // # Variable count repeat assigned to variable, then passed to Span -> list (lvalue)
-    // n: int32 = 2
     int32_t n = 2;
-    // x = [6] * n
     std::vector<int32_t> x = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(n, {6}));
-    // takes_span(x)
     takes_span(::tpy::as_mut_span(x));
 }
 
+// test_array_resolution()
+// test_list_promotion()
+// test_annotated_list()
+// test_subscript_stays_array()
+// test_variable_repeat_assigned_to_span()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_array_resolution()
     test_array_resolution();
-    // test_list_promotion()
     test_list_promotion();
-    // test_annotated_list()
     test_annotated_list();
-    // test_subscript_stays_array()
     test_subscript_stays_array();
-    // test_variable_repeat_assigned_to_span()
     test_variable_repeat_assigned_to_span();
 }
 

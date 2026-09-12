@@ -7,39 +7,39 @@ namespace tpyapp::main {
 // # `b` is a defaulted fixed positional AHEAD of the pack, so C++ cannot spell its
 // # default (the pack that follows has none) and every call must fill it.
 // def spread(a: int64, b: int64 = 4, *rest: int64, tag: int64 = 9) -> int64:
+//     total = a * 1000 + b * 100 + tag
+//     for r in rest:
+//         total += r
+//     return total
 int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t tag) {
-    // total = a * 1000 + b * 100 + tag
     int64_t total = (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 1000)), (::tpy::mul_check<int64_t>(b, 100)))), tag));
-    // for r in rest:
     auto& __obj_0 = rest;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int64_t r = *__beg_0;
-        // total += r
         total = ::tpy::add_check<int64_t>(total, r);
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     print(spread(1))  # b omitted -> 4, not tag's 9: 1409
+//     print(spread(1, tag=99))  # kwarg present takes the other resolver branch
+//     print(spread(1, 2, 3, 4, tag=8))  # pack non-empty: no slot to fill
 void main() {
-    // print(spread(1))  # b omitted -> 4, not tag's 9: 1409
     std::cout << spread(1, 4, ::tpy::varargs<const int64_t>(), 9) << "\n";
-    // print(spread(1, tag=99))  # kwarg present takes the other resolver branch
     std::cout << spread(1, 4, ::tpy::varargs<const int64_t>(), 99) << "\n";
-    // print(spread(1, 2, 3, 4, tag=8))  # pack non-empty: no slot to fill
     std::array<const int64_t, 2> __tmp_1{3, 4};
     std::cout << spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_1), 8) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

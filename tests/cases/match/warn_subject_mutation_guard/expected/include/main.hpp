@@ -12,7 +12,9 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def poke(xs: list[Item]) -> None:
 void poke(std::vector<Item>& xs);
+// def main() -> None:
 void main();
 
 // class Tag:
@@ -51,9 +53,12 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tag::Tag(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32, v: int32) -> None:
+//     self.tag = Tag(n)
+//     self.v = v
 inline Item::Item(int32_t n, int32_t v) : tag(Tag(n)), v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

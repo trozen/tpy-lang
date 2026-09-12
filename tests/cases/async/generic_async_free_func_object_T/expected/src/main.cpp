@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     c = Counter(int32(10))
+//     _ = await increment(c)  # tpyc: type(int32)
+//     print(c.n)  # 11 if reference (correct), 10 if copy
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counter(int32(10))
         c.emplace(Counter(10));
-        // _ = await increment(c)  # tpyc: type(int32)
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +21,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         _ = std::move(__r0).value();
         __sub_0.reset();
-        // print(c.n)  # 11 if reference (correct), 10 if copy
         std::cout << (*c).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,28 +37,29 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Generic async free function called with T inferred to a non-value
+// # (reference-typed) class. Exercises the `_CoroParamKind.TYPE_PARAM`
+// # reference-semantics path: at instantiation, `val_or_ref_t<T>` resolves
+// # to `T&` and `param_val_or_ref_t<T>` resolves to `T&`. To prove the
+// # storage really is a reference (not a copy), the async function mutates
+// # x through a protocol method and the caller observes the mutation on its
+// # binding after the await. Under copy semantics, c.n would still be 10.
+// # Distinct from `generic_async_free_func_nocopy`, which passes `Box[T]`
+// # (a composed shape that lands in the `REF` kind, not `TYPE_PARAM`).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Generic async free function called with T inferred to a non-value
-    // # (reference-typed) class. Exercises the `_CoroParamKind.TYPE_PARAM`
-    // # reference-semantics path: at instantiation, `val_or_ref_t<T>` resolves
-    // # to `T&` and `param_val_or_ref_t<T>` resolves to `T&`. To prove the
-    // # storage really is a reference (not a copy), the async function mutates
-    // # x through a protocol method and the caller observes the mutation on its
-    // # binding after the await. Under copy semantics, c.n would still be 10.
-    // # Distinct from `generic_async_free_func_nocopy`, which passes `Box[T]`
-    // # (a composed shape that lands in the `REF` kind, not `TYPE_PARAM`).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

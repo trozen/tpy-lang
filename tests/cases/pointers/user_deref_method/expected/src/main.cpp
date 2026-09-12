@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pt: Point = Point(10, 20)
+//     r: Ref = Ref(pt)
+//     # Method call through user-defined __deref__
+//     print(r.sum())
 void main() {
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // r: Ref = Ref(pt)
     Ref r = Ref(pt);
-    // # Method call through user-defined __deref__
-    // print(r.sum())
     std::cout << r.__deref__().sum() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

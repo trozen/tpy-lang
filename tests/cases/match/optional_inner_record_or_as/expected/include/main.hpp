@@ -11,7 +11,9 @@ struct Leaf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(x: Leaf | None) -> int32:
 int32_t pick(const Leaf* x);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -38,6 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Leaf::Leaf(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

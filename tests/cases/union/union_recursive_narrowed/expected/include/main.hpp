@@ -12,12 +12,19 @@ struct Expr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def depth(t: Tree) -> int32:
 int32_t depth(const Tree& t);
+// def count(t: Tree) -> int32:
 int32_t count(const Tree& t);
+// def leaf_sum(t: Tree) -> int32:
 int32_t leaf_sum(const Tree& t);
+// def child_count(t: Tree) -> int32:
 int32_t child_count(const Tree& t);
+// def depth_nested(t: Tree, offset: int32) -> int32:
 int32_t depth_nested(const Tree& t, int32_t offset);
+// def eval_expr(e: Expr) -> str:
 std::string eval_expr(const Expr& e);
+// def main() -> None:
 void main();
 
 struct Expr {

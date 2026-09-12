@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def make() -> tuple[Own[Pair], int32]:
+//     return (Pair(int32(1), int32(2)), int32(99))
 std::tuple<Pair, int32_t> make() {
-    // return (Pair(int32(1), int32(2)), int32(99))
     return std::tuple<Pair, int32_t>{Pair(1, 2), 99};
 }
 
 // def main() -> None:
+//     p, n = make()
+//     print(p.x)
+//     print(p.y)
+//     print(n)
 void main() {
-    // p, n = make()
     auto __tup_1 = make();
     Pair p = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(p.y)
     std::cout << p.y << "\n";
-    // print(n)
     std::cout << n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

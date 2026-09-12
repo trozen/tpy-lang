@@ -3,13 +3,19 @@
 
 namespace tpyapp::main {
 
-// Primes: array[1..5] of integer = (2, 3, 5, 7, 11);
 std::array<int32_t, 5>* primes{};
-// Squares: array[1..4] of integer = (1, 4, 9, 16);
 std::array<int32_t, 4>* squares{};
-// i: integer;
 int32_t i{};
 
+// Primes: array[1..5] of integer = (2, 3, 5, 7, 11);
+// Squares: array[1..4] of integer = (1, 4, 9, 16);
+//
+// i: integer;
+//
+// for i := 1 to 5 do
+//   writeln(Primes[i]);
+// for i := 1 to 4 do
+//   writeln(Squares[i]);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -18,22 +24,16 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
-    // Primes: array[1..5] of integer = (2, 3, 5, 7, 11);
     static std::array<int32_t, 5> __global_slot_1 = {2, 3, 5, 7, 11};
     primes = &__global_slot_1;
-    // Squares: array[1..4] of integer = (1, 4, 9, 16);
     static std::array<int32_t, 4> __global_slot_2 = {1, 4, 9, 16};
     squares = &__global_slot_2;
-    // for i := 1 to 5 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(5, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        // writeln(Primes[i]);
         std::cout << ::tpy::__getitem__((*primes), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(i, 1, 5, "primes index"), 1))) << "\n";
     }
-    // for i := 1 to 4 do
     int32_t __stop_1 = ::tpy::add_check<int32_t>(4, 1);
     for (int32_t i = 1; i < __stop_1; ++i) {
-        // writeln(Squares[i]);
         std::cout << ::tpy::__getitem__((*squares), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(i, 1, 4, "squares index"), 1))) << "\n";
     }
 }

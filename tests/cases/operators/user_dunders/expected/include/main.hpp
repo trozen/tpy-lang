@@ -15,19 +15,33 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_unary() -> None:
 void test_unary();
+// def test_contains() -> None:
 void test_contains();
+// def test_sub_mul() -> None:
 void test_sub_mul();
+// def test_iadd() -> None:
 void test_iadd();
+// def test_isub() -> None:
 void test_isub();
+// def test_hash() -> None:
 void test_hash();
+// def test_len() -> None:
 void test_len();
+// def test_eq() -> None:
 void test_eq();
+// def test_explicit_ne() -> None:
 void test_explicit_ne();
+// def test_inherited_eq() -> None:
 void test_inherited_eq();
+// def test_comparisons() -> None:
 void test_comparisons();
+// def test_invert() -> None:
 void test_invert();
+// def test_builtin_pos() -> None:
 void test_builtin_pos();
+// def main() -> None:
 void main();
 
 // class Vec2:
@@ -241,140 +255,146 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __add__(self, other: Vec2) -> Own[Vec2]:
+//     return Vec2(self.x + other.x, self.y + other.y)
 inline Vec2 Vec2::__add__(const Vec2& other) const {
-    // return Vec2(self.x + other.x, self.y + other.y)
     return Vec2((::tpy::add_check<int32_t>(this->x, other.x)), (::tpy::add_check<int32_t>(this->y, other.y)));
 }
 
 // def __sub__(self, other: Vec2) -> Own[Vec2]:
+//     return Vec2(self.x - other.x, self.y - other.y)
 inline Vec2 Vec2::__sub__(const Vec2& other) const {
-    // return Vec2(self.x - other.x, self.y - other.y)
     return Vec2((::tpy::sub_check<int32_t>(this->x, other.x)), (::tpy::sub_check<int32_t>(this->y, other.y)));
 }
 
 // def __mul__(self, scalar: int32) -> Own[Vec2]:
+//     return Vec2(self.x * scalar, self.y * scalar)
 inline Vec2 Vec2::__mul__(int32_t scalar) const {
-    // return Vec2(self.x * scalar, self.y * scalar)
     return Vec2((::tpy::mul_check<int32_t>(this->x, scalar)), (::tpy::mul_check<int32_t>(this->y, scalar)));
 }
 
 // def __neg__(self) -> Own[Vec2]:
+//     return Vec2(-self.x, -self.y)
 inline Vec2 Vec2::__neg__() const {
-    // return Vec2(-self.x, -self.y)
     return Vec2(::tpy::neg_check<int32_t>(this->x), ::tpy::neg_check<int32_t>(this->y));
 }
 
 // def __pos__(self) -> Own[Vec2]:
+//     return Vec2(+self.x, +self.y)
 inline Vec2 Vec2::__pos__() const {
-    // return Vec2(+self.x, +self.y)
     return Vec2(+this->x, +this->y);
 }
 
 // def __eq__(self, other: Vec2) -> bool:
+//     return self.x == other.x and self.y == other.y
 inline bool Vec2::__eq__(const Vec2& other) const {
-    // return self.x == other.x and self.y == other.y
     return ((this->x == other.x) && (this->y == other.y));
 }
 
 // def __hash__(self) -> uint64:
+//     return uint64(self.x * 31 + self.y)
 inline uint64_t Vec2::__hash__() const {
-    // return uint64(self.x * 31 + self.y)
     return ::tpy::int_cast_check<uint64_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(this->x, 31)), this->y)));
 }
 
 // def __len__(self) -> int32:
+//     return int32(2)
 inline int32_t Vec2::__len__() const {
-    // return int32(2)
     return 2;
 }
 
 // def __contains__(self, value: int32) -> bool:
+//     return value == self.x or value == self.y
 inline bool Vec2::__contains__(int32_t value) const {
-    // return value == self.x or value == self.y
     return ((value == this->x) || (value == this->y));
 }
 
 // def __iadd__(self, other: Vec2) -> Vec2:
+//     self.x += other.x
+//     self.y += other.y
+//     return self
 inline Vec2& Vec2::__iadd__(const Vec2& other) {
-    // self.x += other.x
     this->x = ::tpy::add_check<int32_t>(this->x, other.x);
-    // self.y += other.y
     this->y = ::tpy::add_check<int32_t>(this->y, other.y);
-    // return self
     return (*this);
 }
 
 // def __isub__(self, other: Vec2) -> Vec2:
+//     self.x -= other.x
+//     self.y -= other.y
+//     return self
 inline Vec2& Vec2::__isub__(const Vec2& other) {
-    // self.x -= other.x
     this->x = ::tpy::sub_check<int32_t>(this->x, other.x);
-    // self.y -= other.y
     this->y = ::tpy::sub_check<int32_t>(this->y, other.y);
-    // return self
     return (*this);
 }
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Score::Score(int32_t value) : value(value) {}
 
 // def __eq__(self, other: Score) -> bool:
+//     return self.value == other.value
 inline bool Score::__eq__(const Score& other) const {
-    // return self.value == other.value
     return (this->value == other.value);
 }
 
 // def __lt__(self, other: Score) -> bool:
+//     return self.value < other.value
 inline bool Score::__lt__(const Score& other) const {
-    // return self.value < other.value
     return (this->value < other.value);
 }
 
 // def __le__(self, other: Score) -> bool:
+//     return self.value <= other.value
 inline bool Score::__le__(const Score& other) const {
-    // return self.value <= other.value
     return (this->value <= other.value);
 }
 
 // def __gt__(self, other: Score) -> bool:
+//     return self.value > other.value
 inline bool Score::__gt__(const Score& other) const {
-    // return self.value > other.value
     return (this->value > other.value);
 }
 
 // def __ge__(self, other: Score) -> bool:
+//     return self.value >= other.value
 inline bool Score::__ge__(const Score& other) const {
-    // return self.value >= other.value
     return (this->value >= other.value);
 }
 
 // def __init__(self, bits: int32) -> None:
+//     self.bits = bits
 inline Mask::Mask(int32_t bits) : bits(bits) {}
 
 // def __invert__(self) -> Own[Mask]:
+//     return Mask(~self.bits)
 inline Mask Mask::__invert__() const {
-    // return Mask(~self.bits)
     return Mask(static_cast<int32_t>(~(this->bits)));
 }
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Tag::Tag(int32_t value) : value(value) {}
 
 // def __eq__(self, other: Tag) -> bool:
+//     return self.value == other.value
 inline bool Tag::__eq__(const Tag& other) const {
-    // return self.value == other.value
     return (this->value == other.value);
 }
 
 // def __ne__(self, other: Tag) -> bool:
+//     return self.value != other.value
 inline bool Tag::__ne__(const Tag& other) const {
-    // return self.value != other.value
     return (this->value != other.value);
 }
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     super().__init__(x, y)
 inline Child::Child(int32_t x, int32_t y) : Vec2(x, y) {}
 void __tpy_init();
 } // namespace tpyapp::main

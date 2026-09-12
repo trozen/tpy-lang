@@ -6,109 +6,111 @@ namespace tpyapp::main {
 
 // # Non-mutated param: should become const Point& in codegen
 // def read_point(p: Point) -> int32:
+//     r: int32 = p.x  # tpyc: type(int32)
+//     return r
 int32_t read_point(const Point& p) {
-    // r: int32 = p.x  # tpyc: type(int32)
     int32_t r = p.x;
-    // return r
     return r;
 }
 
 // # Mutated param (field write): should stay Point&
 // def mutate_point(p: Point) -> None:
+//     p.x = int32(99)
 void mutate_point(Point& p) {
-    // p.x = int32(99)
     p.x = 99;
 }
 
 // # take_ptr(param) address-taking: must stay Point& (not const Point&)
 // def get_ptr(p: Point) -> Ptr[Point]:
+//     return take_ptr(p)
 Point* get_ptr(Point& p) {
-    // return take_ptr(p)
     return &p;
 }
 
 // # items[i] subscript address-taking: items must stay vector& (not const)
 // def get_elem_ptr(items: list[Point], i: int32) -> Ptr[Point]:
+//     return items[i]
 Point* get_elem_ptr(std::vector<Point>& items, int32_t i) {
-    // return items[i]
     return &::tpy::__getitem__(items, i);
 }
 
 // # Optional[Point] coercion: &(p) taken -- must stay Point&
 // def to_optional(p: Point) -> Optional[Point]:
+//     return p
 Point* to_optional(Point& p) {
-    // return p
     return &(p);
 }
 
 // # Non-mutated list param: should become const vector&
 // def sum_list(items: list[int32]) -> int32:
+//     total: int32 = 0
+//     for x in items:
+//         total += x
+//     return total
 int32_t sum_list(const std::vector<int32_t>& items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 
 // # Mutated list param (append): should stay vector&
 // def append_item(items: list[int32], v: int32) -> None:
+//     items.append(v)
 void append_item(std::vector<int32_t>& items, int32_t v) {
-    // items.append(v)
     items.push_back(v);
 }
 
 // # Phase 2 propagation: wrapper passes items to mutating callee -> items must stay T&
 // def append_wrapper(items: list[int32], v: int32) -> None:
+//     append_item(items, v)
 void append_wrapper(std::vector<int32_t>& items, int32_t v) {
-    // append_item(items, v)
     append_item(items, v);
 }
 
 // def main() -> None:
+//     p = Point(int32(1), int32(2))
+//     print(read_point(p))
+//     mutate_point(p)
+//     print(p.x)
+//
+//     pts: list[Point] = [Point(int32(10), int32(20)), Point(int32(30), int32(40))]
+//     ptr = get_elem_ptr(pts, int32(0))
+//     print(ptr.x)
+//
+//     nums: list[int32] = [int32(10), int32(20)]
+//     print(sum_list(nums))
+//     append_item(nums, int32(30))
+//     print(sum_list(nums))
+//     append_wrapper(nums, int32(40))
+//     print(sum_list(nums))
 void main() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // print(read_point(p))
     std::cout << read_point(p) << "\n";
-    // mutate_point(p)
     mutate_point(p);
-    // print(p.x)
     std::cout << p.x << "\n";
-    // pts: list[Point] = [Point(int32(10), int32(20)), Point(int32(30), int32(40))]
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
-    // ptr = get_elem_ptr(pts, int32(0))
     Point* ptr = get_elem_ptr(pts, 0);
-    // print(ptr.x)
     std::cout << ::tpy::deref_check(ptr).x << "\n";
-    // nums: list[int32] = [int32(10), int32(20)]
     std::vector<int32_t> nums = {10, 20};
-    // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
-    // append_item(nums, int32(30))
     append_item(nums, 30);
-    // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
-    // append_wrapper(nums, int32(40))
     append_wrapper(nums, 40);
-    // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -10,9 +10,12 @@ namespace tpyapp::main {
 struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
+// STEP: Final[int64] = 42
 inline constexpr int64_t STEP = 42;
 
+// def spaced(a: int64, b: int64 = STEP, *, c: int64) -> int64:
 int64_t spaced(int64_t a, int64_t b, int64_t c);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int64 = STEP, *, tag: int64) -> None:
+//     self.n = n * 10 + tag
 inline Holder::Holder(int64_t n, int64_t tag) : n((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(n, 10)), tag))) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -6,13 +6,43 @@ namespace tpyapp::main {
 
 // # zip() builtin over different iterables and arities
 // def main() -> None:
+//     # two lists of different types
+//     names = ["alice", "bob", "charlie"]
+//     ages = [30, 25, 35]
+//     for name, age in zip(names, ages):
+//         print(name, age)
+//
+//     # different lengths (shortest wins)
+//     long = [1, 2, 3, 4, 5]
+//     short = ["x", "y"]
+//     for n, s in zip(long, short):
+//         print(n, s)
+//
+//     # empty list
+//     empty: list[str] = []
+//     nums = [1, 2, 3]
+//     for s, n in zip(empty, nums):
+//         print(s, n)
+//
+//     # three iterables
+//     xs = [1, 2, 3]
+//     ys = ["a", "b", "c"]
+//     zs = [True, False, True]
+//     for x, y, z in zip(xs, ys, zs):
+//         print(x, y, z)
+//
+//     # four iterables
+//     ws = [0.5, 1.5]
+//     for x, y, z, w in zip(xs, ys, zs, ws):
+//         print(x, y, z, w)
+//
+//     # five iterables
+//     vs = ["p", "q"]
+//     for x, y, z, w, v in zip(xs, ys, zs, ws, vs):
+//         print(x, y, z, w, v)
 void main() {
-    // # two lists of different types
-    // names = ["alice", "bob", "charlie"]
     std::array<std::string, 3> names = {"alice", "bob", "charlie"};
-    // ages = [30, 25, 35]
     std::array<int32_t, 3> ages = {30, 25, 35};
-    // for name, age in zip(names, ages):
     {
         auto __src_0 = ::tpy::builtin_zip<std::string, int32_t>(names, ages);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -20,20 +50,14 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for name, age in zip(names, ages):
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
         int32_t age = std::get<1>(__tup_1);
-        // print(name, age)
         std::cout << name << " " << age << "\n";
         }
     }
-    // # different lengths (shortest wins)
-    // long = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> long_ = {1, 2, 3, 4, 5};
-    // short = ["x", "y"]
     std::array<std::string, 2> short_ = {"x", "y"};
-    // for n, s in zip(long, short):
     {
         auto __src_2 = ::tpy::builtin_zip<int32_t, std::string>(long_, short_);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -41,20 +65,14 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-        // for n, s in zip(long, short):
         const auto& __tup_2 = __for_tup_1;
         int32_t n = std::get<0>(__tup_2);
         std::string_view s = std::get<1>(__tup_2);
-        // print(n, s)
         std::cout << n << " " << s << "\n";
         }
     }
-    // # empty list
-    // empty: list[str] = []
     std::vector<std::string> empty = std::vector<std::string>{};
-    // nums = [1, 2, 3]
     std::array<int32_t, 3> nums = {1, 2, 3};
-    // for s, n in zip(empty, nums):
     {
         auto __src_4 = ::tpy::builtin_zip<std::string, int32_t>(empty, nums);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -62,22 +80,15 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-        // for s, n in zip(empty, nums):
         const auto& __tup_3 = __for_tup_2;
         std::string_view s = std::get<0>(__tup_3);
         int32_t n = std::get<1>(__tup_3);
-        // print(s, n)
         std::cout << s << " " << n << "\n";
         }
     }
-    // # three iterables
-    // xs = [1, 2, 3]
     std::array<int32_t, 3> xs = {1, 2, 3};
-    // ys = ["a", "b", "c"]
     std::array<std::string, 3> ys = {"a", "b", "c"};
-    // zs = [True, False, True]
     std::array<bool, 3> zs = {true, false, true};
-    // for x, y, z in zip(xs, ys, zs):
     {
         auto __src_6 = ::tpy::builtin_zip<int32_t, std::string, bool>(xs, ys, zs);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -85,19 +96,14 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             const auto& __for_tup_3 = ::tpy::unwrap_ref(*__r_7);
-        // for x, y, z in zip(xs, ys, zs):
         const auto& __tup_4 = __for_tup_3;
         int32_t x = std::get<0>(__tup_4);
         std::string_view y = std::get<1>(__tup_4);
         bool z = std::get<2>(__tup_4);
-        // print(x, y, z)
         std::cout << x << " " << y << " " << ::tpy::print_bool(z) << "\n";
         }
     }
-    // # four iterables
-    // ws = [0.5, 1.5]
     std::array<double, 2> ws = {0.5, 1.5};
-    // for x, y, z, w in zip(xs, ys, zs, ws):
     {
         auto __src_8 = ::tpy::builtin_zip<int32_t, std::string, bool, double>(xs, ys, zs, ws);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -105,20 +111,15 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             const auto& __for_tup_4 = ::tpy::unwrap_ref(*__r_9);
-        // for x, y, z, w in zip(xs, ys, zs, ws):
         const auto& __tup_5 = __for_tup_4;
         int32_t x = std::get<0>(__tup_5);
         std::string_view y = std::get<1>(__tup_5);
         bool z = std::get<2>(__tup_5);
         double w = std::get<3>(__tup_5);
-        // print(x, y, z, w)
         std::cout << x << " " << y << " " << ::tpy::print_bool(z) << " " << ::tpy::print_float(w) << "\n";
         }
     }
-    // # five iterables
-    // vs = ["p", "q"]
     std::array<std::string, 2> vs = {"p", "q"};
-    // for x, y, z, w, v in zip(xs, ys, zs, ws, vs):
     {
         auto __src_10 = ::tpy::builtin_zip<int32_t, std::string, bool, double, std::string>(xs, ys, zs, ws, vs);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
@@ -126,25 +127,23 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             const auto& __for_tup_5 = ::tpy::unwrap_ref(*__r_11);
-        // for x, y, z, w, v in zip(xs, ys, zs, ws, vs):
         const auto& __tup_6 = __for_tup_5;
         int32_t x = std::get<0>(__tup_6);
         std::string_view y = std::get<1>(__tup_6);
         bool z = std::get<2>(__tup_6);
         double w = std::get<3>(__tup_6);
         std::string_view v = std::get<4>(__tup_6);
-        // print(x, y, z, w, v)
         std::cout << x << " " << y << " " << ::tpy::print_bool(z) << " " << ::tpy::print_float(w) << " " << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

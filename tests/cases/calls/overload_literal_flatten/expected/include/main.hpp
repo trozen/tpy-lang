@@ -11,9 +11,13 @@ struct Record;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_field(name: str) -> int32 | str:
 int32_t get_field__lit_age(std::string_view name);
+// def get_field(name: str) -> int32 | str:
 std::string get_field__lit_name(std::string_view name);
+// def get_field(name: str) -> int32 | str:
 ::tpy::Union<int32_t, std::string> get_field(std::string_view name);
+// def main() -> None:
 void main();
 
 // # --- Method flattening ---
@@ -31,26 +35,21 @@ struct Record {
     // @overload
     // def get(self, key: Literal["age"]) -> int32: ...
     int32_t get__lit_age(std::string_view key) const {
-        // return self.data_age
         return this->data_age;
     }
 
     // @overload
     // def get(self, key: Literal["name"]) -> str: ...
     std::string get__lit_name(std::string_view key) const {
-        // return self.data_name
         return this->data_name;
     }
 
     // @overload
     // def get(self, key: str) -> int32 | str: ...
     ::tpy::Union<int32_t, std::string> get(std::string_view key) const {
-        // if key == "age":
         if ((key == "age")) {
-            // return self.data_age
             return this->data_age;
         }
-        // return self.data_name
         return this->data_name;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Record";
@@ -63,6 +62,8 @@ inline std::ostream& operator<<(std::ostream& os, const Record& obj) {
 
 
 // def __init__(self, age: int32, name: str) -> None:
+//     self.data_age = age
+//     self.data_name = name
 inline Record::Record(int32_t age, std::string_view name) : data_age(age), data_name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

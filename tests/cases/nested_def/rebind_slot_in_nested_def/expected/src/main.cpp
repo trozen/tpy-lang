@@ -5,63 +5,65 @@ namespace tpyapp::main {
 
 
 // def outer(flag: int32) -> int32:
+//     def inner(k: int32) -> int32:
+//         p = Point(k)
+//         if k > 0:
+//             p = Point(k * 10)
+//         return p.x
+//
+//     def inner_alias(k: int32) -> int32:
+//         p = Point(k)
+//         alias = p
+//         p = Point(k * 100)  # tpyc: ok
+//         alias.bump()
+//         return alias.x + p.x
+//
+//     p = Point(1)
+//     if flag > 0:
+//         p = Point(99)
+//     return p.x + inner(flag) + inner_alias(flag)
 int32_t outer(int32_t flag) {
     std::optional<Point> __slot_6;
-    // def inner(k: int32) -> int32:
     auto inner = [](int32_t k) -> int32_t {
         std::optional<Point> __slot_2;
-        // p = Point(k)
         Point __slot_1 = Point(k);
         Point* p = &__slot_1;
-        // if k > 0:
         if ((k > 0)) {
-            // p = Point(k * 10)
             p = &*(__slot_2 = Point((::tpy::mul_check<int32_t>(k, 10))));
         }
-        // return p.x
         return p->x;
     };
-    // def inner_alias(k: int32) -> int32:
     auto inner_alias = [](int32_t k) -> int32_t {
         std::optional<Point> __slot_4;
-        // p = Point(k)
         Point __slot_3 = Point(k);
         Point* p = &__slot_3;
-        // alias = p
         Point& alias = (*p);
-        // p = Point(k * 100)  # tpyc: ok
         p = &*(__slot_4 = Point((::tpy::mul_check<int32_t>(k, 100))));
-        // alias.bump()
         alias.bump();
-        // return alias.x + p.x
         return (::tpy::add_check<int32_t>(alias.x, p->x));
     };
-    // p = Point(1)
     Point __slot_5 = Point(1);
     Point* p = &__slot_5;
-    // if flag > 0:
     if ((flag > 0)) {
-        // p = Point(99)
         p = &*(__slot_6 = Point(99));
     }
-    // return p.x + inner(flag) + inner_alias(flag)
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(p->x, inner(flag))), inner_alias(flag)));
 }
 
 // def main() -> None:
+//     print(outer(1))
+//     print(outer(0))
 void main() {
-    // print(outer(1))
     std::cout << outer(1) << "\n";
-    // print(outer(0))
     std::cout << outer(0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

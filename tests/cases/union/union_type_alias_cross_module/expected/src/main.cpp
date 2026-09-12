@@ -5,43 +5,44 @@ namespace tpyapp::main {
 
 
 // def describe(s: Shape) -> str:
+//     if isinstance(s, Circle):
+//         return "circle"
+//     assert isinstance(s, Rect)
+//     return "rect"
 std::string describe(::tpy::Union<const ::tpyapp::shapes::Circle*, const ::tpyapp::shapes::Rect*> s) {
-    // if isinstance(s, Circle):
     if (std::holds_alternative<const ::tpyapp::shapes::Circle*>(s)) {
         auto& __s = *std::get<const ::tpyapp::shapes::Circle*>(s);
-        // return "circle"
         return "circle";
     }
     auto& __s = *std::get<const ::tpyapp::shapes::Rect*>(s);
-    // assert isinstance(s, Rect)
     if (!(true)) ::tpy::raise_assertion_error();
     auto& __s_2 = *std::get<const ::tpyapp::shapes::Rect*>(s);
-    // return "rect"
     return "rect";
 }
 
 // def main() -> None:
+//     c: Shape = Circle(int32(10))
+//     r: Shape = Rect(int32(3))
+//     print(describe(c))
+//     print(describe(r))
 void main() {
-    // c: Shape = Circle(int32(10))
     Shape __slot_1 = ::tpyapp::shapes::Circle(10);
     ::tpy::Union<::tpyapp::shapes::Circle*, ::tpyapp::shapes::Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    // r: Shape = Rect(int32(3))
     Shape __slot_2 = ::tpyapp::shapes::Rect(3);
     ::tpy::Union<::tpyapp::shapes::Circle*, ::tpyapp::shapes::Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
-    // print(describe(r))
     std::cout << describe(r.as_const()) << "\n";
 }
 
+// from shapes import Circle, Rect, Shape
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from shapes import Circle, Rect, Shape
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

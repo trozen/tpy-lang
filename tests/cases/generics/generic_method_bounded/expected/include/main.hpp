@@ -11,6 +11,7 @@ template<typename T> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Wrapper[T]:
@@ -20,13 +21,14 @@ struct Wrapper {
     T val;
 
     // def __init__(self, val: T):
+    //     self.val = val
     Wrapper() = default;
     explicit Wrapper(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def is_less[U: Comparable](self, a: U, b: U) -> bool:
+    //     return a < b
     template<::tpystd::tpy::Comparable U>
     bool is_less(::tpy::readonly_form_t<U> a, ::tpy::readonly_form_t<U> b) const {
-        // return a < b
         return (a < b);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";

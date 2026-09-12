@@ -38,6 +38,7 @@ struct IntBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class IntBox(Cloneable[int32]):
@@ -87,19 +88,20 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline IntBox::IntBox(int32_t v) : v(v) {}
 
 // @readonly
 // def replicate(self) -> Own[Cloneable[int32]]:
+//     return IntBox(self.v)
 inline std::unique_ptr<Cloneable<int32_t>> IntBox::replicate() const {
-    // return IntBox(self.v)
     return std::make_unique<IntBox>(IntBox(this->v));
 }
 
 // @readonly
 // def value(self) -> int32:
+//     return self.v
 inline int32_t IntBox::value() const {
-    // return self.v
     return this->v;
 }
 void __tpy_init();

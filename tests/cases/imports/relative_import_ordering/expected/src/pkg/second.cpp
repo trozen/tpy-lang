@@ -4,12 +4,12 @@
 namespace tpyapp::pkg::second {
 
 
+// print("init: second")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print("init: second")
     std::cout << "init: second" << "\n";
 }
 

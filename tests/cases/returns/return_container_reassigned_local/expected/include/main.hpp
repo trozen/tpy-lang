@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def gen(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> gen(int32_t n);
+// def longest(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> longest(int32_t n);
+// def tally(n: int32) -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> tally(int32_t n);
+// def uniq(n: int32) -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> uniq(int32_t n);
+// def main():
 void main();
 
 void __tpy_init();

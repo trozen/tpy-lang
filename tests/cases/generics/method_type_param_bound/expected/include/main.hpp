@@ -11,6 +11,7 @@ template<typename T> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pair[T]:
@@ -22,25 +23,27 @@ struct Pair {
     T b;
 
     // def __init__(self, a: Own[T], b: Own[T]) -> None:
+    //     self.a = a
+    //     self.b = b
     Pair() = default;
     explicit Pair(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b) : a(std::move(a)), b(std::move(b)) {}
 
     // def min_val[T: Comparable](self) -> T:
+    //     if self.a < self.b:
+    //         return self.a
+    //     return self.b
     ::tpy::val_or_ref_t<T> min_val()
       requires ::tpystd::tpy::Comparable<T> {
-        // if self.a < self.b:
         if ((this->a < this->b)) {
-            // return self.a
             return this->a;
         }
-        // return self.b
         return this->b;
     }
 
     // def with_default[T: Default](self) -> T:
+    //     return make_default()
     ::tpy::val_or_cref_t<T> with_default() const
       requires ::std::default_initializable<T> {
-        // return make_default()
         return T{};
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";

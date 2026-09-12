@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     print(h.label)
+//     print(h.pair)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(h.label)
     std::cout << h.label << "\n";
-    // print(h.pair)
     std::cout << ::tpy::TuplePrinter(h.pair) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

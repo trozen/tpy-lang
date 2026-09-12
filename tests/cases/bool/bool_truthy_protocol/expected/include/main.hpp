@@ -11,8 +11,10 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check[T: Truthy](x: T) -> bool:
 template<::tpystd::tpy::Truthy T>
 bool check(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -36,17 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Box::Box(const ::tpy::BigInt& value) : value(value) {}
 
 // def __bool__(self) -> bool:
+//     return self.value != 0
 inline bool Box::__bool__() const {
-    // return self.value != 0
     return (this->value != 0);
 }
 // def check[T: Truthy](x: T) -> bool:
+//     return bool(x)
 template<::tpystd::tpy::Truthy T>
 bool check(::tpy::param_val_or_ref_t<T> x) {
-    // return bool(x)
     return ::tpy::__bool__(x);
 }
 

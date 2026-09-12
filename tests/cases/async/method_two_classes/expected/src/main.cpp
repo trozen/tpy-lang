@@ -5,14 +5,15 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     a = A()
+//     b = B()
+//     print(await a.tag())
+//     print(await b.tag())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = A()
         a.emplace(A());
-        // b = B()
         b.emplace(B());
-        // print(await a.tag())
         __sub_0.emplace((*a));
         __state = S_RESUME_0;
         continue;
@@ -22,9 +23,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await a.tag())
         std::cout << __await_lift_0 << "\n";
-        // print(await b.tag())
         __sub_1.emplace((*b));
         __state = S_RESUME_1;
         continue;
@@ -34,7 +33,6 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await b.tag())
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -51,11 +49,11 @@ __coro_main_coro main_coro() {
 }
 
 // async def tag(self) -> str:
+//     return "from-A"
 ::tpystd::tpy::Poll<std::string> __coro_A_tag::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return "from-A"
         __state = S_DONE;
         std::string __tpy_async_ret = "from-A";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -67,11 +65,11 @@ __coro_main_coro main_coro() {
 
 
 // async def tag(self) -> str:
+//     return "from-B"
 ::tpystd::tpy::Poll<std::string> __coro_B_tag::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return "from-B"
         __state = S_DONE;
         std::string __tpy_async_ret = "from-B";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -82,17 +80,18 @@ __coro_main_coro main_coro() {
 }
 
 
+// # Two classes with same-named async method `tag`. Coro struct names
+// # disambiguate via the owning record (__coro_A_tag vs __coro_B_tag) so
+// # no collision.
+// import asyncio
+//
+// asyncio.run(main_coro())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two classes with same-named async method `tag`. Coro struct names
-    // # disambiguate via the owning record (__coro_A_tag vs __coro_B_tag) so
-    // # no collision.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 

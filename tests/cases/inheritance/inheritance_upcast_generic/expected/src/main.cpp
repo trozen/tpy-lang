@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def read_container(c: Container[int32]) -> None:
+//     print(c.value)
 void read_container(const Container<int32_t>& c) {
-    // print(c.value)
     std::cout << c.value << "\n";
 }
 
 // def main() -> None:
+//     ic: IntContainer = IntContainer(int32(42))
+//     # Value upcast to generic parent
+//     c: Container[int32] = ic  # tpyc: warning(/upcast narrows 'IntContainer' to 'Container\[int32\]'/)
+//     print(c.value)
+//     # Param passing
+//     read_container(ic)
 void main() {
-    // ic: IntContainer = IntContainer(int32(42))
     IntContainer ic = IntContainer(42);
-    // # Value upcast to generic parent
-    // c: Container[int32] = ic  # tpyc: warning(/upcast narrows 'IntContainer' to 'Container\[int32\]'/)
     Container<int32_t>& c = ic;
-    // print(c.value)
     std::cout << c.value << "\n";
-    // # Param passing
-    // read_container(ic)
     read_container(ic);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

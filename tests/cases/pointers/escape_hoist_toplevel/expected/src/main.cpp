@@ -3,30 +3,28 @@
 
 namespace tpyapp::main {
 
+Point* saved{};
+
 // # Top-level (module scope) escape: same detection should work
 // # outside of function bodies.
 // saved: Point = Point(0, 0)
-Point* saved{};
-
+// for i in range(3):
+//     p: Point = Point(i, i)
+//     saved = p  # tpyc: warning(/will not keep the object it was given/)
+//
+// print(saved.x, saved.y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     static std::optional<Point> __global_slot_2;
-    // # Top-level (module scope) escape: same detection should work
-    // # outside of function bodies.
-    // saved: Point = Point(0, 0)
     static Point __global_slot_1 = Point(0, 0);
     saved = &__global_slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p: Point = Point(i, i)
         Point* p = &*(__global_slot_2 = Point(i, i));
-        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 

@@ -34,8 +34,11 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def local_roundtrip(c: Color) -> Color:
 Color local_roundtrip(Color c);
+// def foreign_roundtrip(c: ForeignColor) -> ForeignColor:
 ::tpyapp::colors::Color foreign_roundtrip(::tpyapp::colors::Color c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

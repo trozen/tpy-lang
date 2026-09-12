@@ -11,13 +11,21 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(t: tuple[Own[P], Own[P]]) -> int32:
 int32_t take(std::tuple<P, P>&& t);
+// def take_opt(t: tuple[Own[P] | None, Own[P] | None]) -> int32:
 int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t);
+// def test_record_elements_last_use() -> None:
 void test_record_elements_last_use();
+// def test_record_elements_fresh_rvalues() -> None:
 void test_record_elements_fresh_rvalues();
+// def test_record_elements_explicit_copy() -> None:
 void test_record_elements_explicit_copy();
+// def test_optional_elements_last_use() -> None:
 void test_optional_elements_last_use();
+// def test_optional_elements_with_none() -> None:
 void test_optional_elements_with_none();
+// def main() -> None:
 void main();
 
 // class P:
@@ -38,6 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Shelter()
+//     s.admit(Parrot(label="Polly"))
+//     s.admit(Parrot(label="Mimi"))
+//     print(s.count)
 void main() {
-    // s = Shelter()
     Shelter s = Shelter();
-    // s.admit(Parrot(label="Polly"))
     s.admit(std::make_unique<Parrot>(Parrot("Polly")));
-    // s.admit(Parrot(label="Mimi"))
     s.admit(std::make_unique<Parrot>(Parrot("Mimi")));
-    // print(s.count)
     std::cout << s.count << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

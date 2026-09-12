@@ -5,29 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Iterator passed to Iterable-typed parameter (structural conformance)
+//     print(sum_iterable(Counter(5)))
+//
+//     # Iterator passed to list() constructor (single Iterable[Own[T]] overload)
+//     a = list(Counter(4))
+//     print(a)
+//
+//     # Iterator passed to set() constructor
+//     s = set(Counter(4))
+//     print(s)
 void main() {
-    // # Iterator passed to Iterable-typed parameter (structural conformance)
-    // print(sum_iterable(Counter(5)))
     auto __tmp_1 = Counter(5);
     std::cout << sum_iterable(__tmp_1) << "\n";
-    // # Iterator passed to list() constructor (single Iterable[Own[T]] overload)
-    // a = list(Counter(4))
     std::vector<int32_t> a = ::tpy::construct<std::vector<int32_t>>(Counter(4));
-    // print(a)
     std::cout << ::tpy::ListPrinter(a) << "\n";
-    // # Iterator passed to set() constructor
-    // s = set(Counter(4))
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(Counter(4));
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

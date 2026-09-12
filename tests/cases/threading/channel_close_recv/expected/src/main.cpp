@@ -5,48 +5,50 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     tx, rx = channel[int32](4)
+//     tx.send(10)
+//     tx.send(20)
+//     tx.close()
+//     total = 0
+//     total += rx.recv()
+//     total += rx.recv()
+//     print(total)
+//     try:
+//         rx.recv()
+//         print("no raise")
+//     except ChannelClosed:
+//         print("closed")
 void main() {
-    // tx, rx = channel[int32](4)
     auto __tup_1 = ::tpystd::tplib::channel::channel<int32_t>(4);
     ::tpystd::tplib::channel::Sender<int32_t> tx = std::move(std::get<0>(__tup_1));
     ::tpystd::tplib::channel::Receiver<int32_t> rx = std::move(std::get<1>(__tup_1));
-    // tx.send(10)
     tx.send(10);
-    // tx.send(20)
     tx.send(20);
-    // tx.close()
     tx.close();
-    // total = 0
     int32_t total = 0;
-    // total += rx.recv()
     total = ::tpy::add_check<int32_t>(total, rx.recv());
-    // total += rx.recv()
     total = ::tpy::add_check<int32_t>(total, rx.recv());
-    // print(total)
     std::cout << total << "\n";
-    // try:
     {
         try {
-            // rx.recv()
             rx.recv();
-            // print("no raise")
             std::cout << "no raise" << "\n";
         } catch (const ::tpystd::tplib::channel::ChannelClosed&) {
-            // print("closed")
             std::cout << "closed" << "\n";
         }
     }
 }
 
+// from tplib.channel import channel, ChannelClosed
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.channel import channel, ChannelClosed
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::channel::__tpy_init();
-    // main()
     main();
 }
 

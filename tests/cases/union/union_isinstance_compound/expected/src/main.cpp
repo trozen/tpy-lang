@@ -5,115 +5,115 @@ namespace tpyapp::main {
 
 
 // def test_and_rhs(v: A | B) -> int:
+//     if isinstance(v, A) and v.x > 0:
+//         return v.x
+//     return -1
 ::tpy::BigInt test_and_rhs(::tpy::Union<const A*, const B*> v) {
-    // if isinstance(v, A) and v.x > 0:
     if ((std::holds_alternative<const A*>(v) && ((*std::get<const A*>(v)).x > 0))) {
         auto& __v = *std::get<const A*>(v);
-        // return v.x
         return __v.x;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def test_and_true(v: A | B) -> int:
+//     if isinstance(v, A) and True:
+//         return v.x
+//     return -1
 ::tpy::BigInt test_and_true(::tpy::Union<const A*, const B*> v) {
-    // if isinstance(v, A) and True:
     if ((std::holds_alternative<const A*>(v) && true)) {
         auto& __v = *std::get<const A*>(v);
-        // return v.x
         return __v.x;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def test_or_rhs(v: A | B) -> bool:
+//     return isinstance(v, A) or v.y > 0
 bool test_or_rhs(::tpy::Union<const A*, const B*> v) {
-    // return isinstance(v, A) or v.y > 0
     return (std::holds_alternative<const A*>(v) || ((*std::get<const B*>(v)).y > 0));
 }
 
 // def test_negation(v: A | B) -> int:
+//     if not isinstance(v, A):
+//         return v.y
+//     else:
+//         return v.x
 ::tpy::BigInt test_negation(::tpy::Union<const A*, const B*> v) {
-    // if not isinstance(v, A):
     if ((!(std::holds_alternative<const A*>(v)))) {
         auto& __v = *std::get<const B*>(v);
-        // return v.y
         return __v.y;
-    // else:
     } else {
         auto& __v = *std::get<const A*>(v);
-        // return v.x
         return __v.x;
     }
 }
 
 // def test_multi_var(a: A | B, b: A | B) -> int:
+//     if isinstance(a, A) and isinstance(b, B):
+//         return a.x + b.y
+//     return 0
 ::tpy::BigInt test_multi_var(::tpy::Union<const A*, const B*> a, ::tpy::Union<const A*, const B*> b) {
-    // if isinstance(a, A) and isinstance(b, B):
     if ((std::holds_alternative<const A*>(a) && std::holds_alternative<const B*>(b))) {
         auto& __a = *std::get<const A*>(a);
         auto& __b = *std::get<const B*>(b);
-        // return a.x + b.y
         return ((__a.x) + (__b.y));
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def main() -> None:
+//     print(test_and_rhs(A(42)))
+//     print(test_and_rhs(A(-1)))
+//     print(test_and_rhs(B(99)))
+//     print(test_and_true(A(5)))
+//     print(test_and_true(B(5)))
+//     print(test_or_rhs(A(1)))
+//     print(test_or_rhs(B(5)))
+//     print(test_or_rhs(B(-1)))
+//     print(test_negation(A(1)))
+//     print(test_negation(B(2)))
+//     print(test_multi_var(A(10), B(20)))
+//     print(test_multi_var(A(10), A(5)))
+//     print(test_multi_var(B(1), B(2)))
 void main() {
-    // print(test_and_rhs(A(42)))
     A __tmp_1 = A(::tpy::BigInt(42));
     std::cout << test_and_rhs(::tpy::Union<const A*, const B*>{&__tmp_1}) << "\n";
-    // print(test_and_rhs(A(-1)))
     A __tmp_2 = A(::tpy::BigInt(-1));
     std::cout << test_and_rhs(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
-    // print(test_and_rhs(B(99)))
     B __tmp_3 = B(::tpy::BigInt(99));
     std::cout << test_and_rhs(::tpy::Union<const A*, const B*>{&__tmp_3}) << "\n";
-    // print(test_and_true(A(5)))
     A __tmp_4 = A(::tpy::BigInt(5));
     std::cout << test_and_true(::tpy::Union<const A*, const B*>{&__tmp_4}) << "\n";
-    // print(test_and_true(B(5)))
     B __tmp_5 = B(::tpy::BigInt(5));
     std::cout << test_and_true(::tpy::Union<const A*, const B*>{&__tmp_5}) << "\n";
-    // print(test_or_rhs(A(1)))
     A __tmp_6 = A(::tpy::BigInt(1));
     std::cout << ::tpy::print_bool(test_or_rhs(::tpy::Union<const A*, const B*>{&__tmp_6})) << "\n";
-    // print(test_or_rhs(B(5)))
     B __tmp_7 = B(::tpy::BigInt(5));
     std::cout << ::tpy::print_bool(test_or_rhs(::tpy::Union<const A*, const B*>{&__tmp_7})) << "\n";
-    // print(test_or_rhs(B(-1)))
     B __tmp_8 = B(::tpy::BigInt(-1));
     std::cout << ::tpy::print_bool(test_or_rhs(::tpy::Union<const A*, const B*>{&__tmp_8})) << "\n";
-    // print(test_negation(A(1)))
     A __tmp_9 = A(::tpy::BigInt(1));
     std::cout << test_negation(::tpy::Union<const A*, const B*>{&__tmp_9}) << "\n";
-    // print(test_negation(B(2)))
     B __tmp_10 = B(::tpy::BigInt(2));
     std::cout << test_negation(::tpy::Union<const A*, const B*>{&__tmp_10}) << "\n";
-    // print(test_multi_var(A(10), B(20)))
     A __tmp_11 = A(::tpy::BigInt(10));
     B __tmp_12 = B(::tpy::BigInt(20));
     std::cout << test_multi_var(::tpy::Union<const A*, const B*>{&__tmp_11}, ::tpy::Union<const A*, const B*>{&__tmp_12}) << "\n";
-    // print(test_multi_var(A(10), A(5)))
     A __tmp_13 = A(::tpy::BigInt(10));
     A __tmp_14 = A(::tpy::BigInt(5));
     std::cout << test_multi_var(::tpy::Union<const A*, const B*>{&__tmp_13}, ::tpy::Union<const A*, const B*>{&__tmp_14}) << "\n";
-    // print(test_multi_var(B(1), B(2)))
     B __tmp_15 = B(::tpy::BigInt(1));
     B __tmp_16 = B(::tpy::BigInt(2));
     std::cout << test_multi_var(::tpy::Union<const A*, const B*>{&__tmp_15}, ::tpy::Union<const A*, const B*>{&__tmp_16}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

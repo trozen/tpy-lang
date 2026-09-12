@@ -11,7 +11,9 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(row: list[float]) -> int:
 ::tpy::BigInt take(const std::vector<double>& row);
+// def main() -> None:
 void main();
 
 // class Sink:
@@ -40,34 +42,35 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self) -> None:
+//     self.total = 0.0
 inline Sink::Sink() : total(0.0) {}
 
 // def saverow(self, row: list[float]) -> Own[str]:
+//     out = ""
+//     for v in row:
+//         out += f"{v} "
+//     return out
 inline std::string Sink::saverow(const std::vector<double>& row) const {
-    // out = ""
     std::string out = "";
-    // for v in row:
     auto& __obj_0 = row;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         double v = *__beg_0;
-        // out += f"{v} "
         out += std::format("{} ", ::tpy::float_to_str(v));
     }
-    // return out
     return out;
 }
 
 // def count(self, seen: set[int]) -> int:
+//     return len(seen)
 inline ::tpy::BigInt Sink::count(const ::tpy::ordered_set<::tpy::BigInt>& seen) const {
-    // return len(seen)
     return ::tpy::BigInt(::tpy::__len__(seen));
 }
 
 // def index(self, m: dict[int, float]) -> int:
+//     return len(m)
 inline ::tpy::BigInt Sink::index(const ::tpy::ordered_map<::tpy::BigInt, double>& m) const {
-    // return len(m)
     return ::tpy::BigInt(::tpy::__len__(m));
 }
 void __tpy_init();

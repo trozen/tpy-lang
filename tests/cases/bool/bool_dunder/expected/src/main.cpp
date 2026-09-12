@@ -5,30 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Non-empty container -> True
+//     c1 = Container(3)
+//     print(bool(c1))  # True
+//
+//     # Empty container -> False
+//     c2 = Container(0)
+//     print(bool(c2))  # False
+//
+//     # Direct __bool__() call
+//     print(c1.__bool__())  # True
+//     print(c2.__bool__())  # False
 void main() {
-    // # Non-empty container -> True
-    // c1 = Container(3)
     Container c1 = Container(::tpy::BigInt(3));
-    // print(bool(c1))  # True
     std::cout << ::tpy::print_bool(::tpy::__bool__(c1)) << "\n";
-    // # Empty container -> False
-    // c2 = Container(0)
     Container c2 = Container(::tpy::BigInt(0));
-    // print(bool(c2))  # False
     std::cout << ::tpy::print_bool(::tpy::__bool__(c2)) << "\n";
-    // # Direct __bool__() call
-    // print(c1.__bool__())  # True
     std::cout << ::tpy::print_bool(c1.__bool__()) << "\n";
-    // print(c2.__bool__())  # False
     std::cout << ::tpy::print_bool(c2.__bool__()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

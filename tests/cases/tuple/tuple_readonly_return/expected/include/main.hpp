@@ -11,7 +11,9 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(items: list[P]) -> readonly[tuple[P, P]]:
 std::tuple<const P*, const P*> pick(const std::vector<P>& items);
+// def main() -> None:
 void main();
 
 // class P:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

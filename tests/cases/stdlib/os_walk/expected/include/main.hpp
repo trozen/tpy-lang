@@ -10,12 +10,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def build(root: str) -> None:
 void build(std::string_view root);
+// def teardown(root: str) -> None:
 void teardown(std::string_view root);
+// def walk_sorted(root: str) -> None:
 void walk_sorted(std::string_view root);
+// def count_dirs(root: str, follow: bool) -> int32:
 int32_t count_dirs(std::string_view root, bool follow);
+// def prune_all(root: str) -> int32:
 int32_t prune_all(std::string_view root);
+// def order_ok(root: str) -> bool:
 bool order_ok(std::string_view root);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,134 +5,134 @@ namespace tpyapp::main {
 
 
 // def reseats(h: Holder, g: Holder) -> int:
+//     match h:
+//         case Holder(inner=q):
+//             match g:
+//                 case Holder(inner=q):   # tpyc: ok
+//                     pass
+//             g.inner.n = 99              # mutate what q now aliases
+//             return q.n                  # 99 if aliased; 2 if copied
+//     return -1
 ::tpy::BigInt reseats(const Holder& h, Holder& g) {
-    // match h:
     const Inner* q;
     auto& __match_subject_1 = h;
-    // case Holder(inner=q):
     {
         q = &(__match_subject_1.inner);
-        // match g:
         auto& __match_subject_2 = g;
-        // case Holder(inner=q):   # tpyc: ok
         {
             q = &(__match_subject_2.inner);
-            // pass
         }
-        // g.inner.n = 99              # mutate what q now aliases
         g.inner.n = ::tpy::BigInt(99);
-        // return q.n                  # 99 if aliased; 2 if copied
         return q->n;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def outer_untouched(h: Holder, g: Holder) -> int:
+//     # The re-seat must not write THROUGH the outer binding: h keeps its own
+//     # object (CPython rebinds the local, leaving the matched object alone).
+//     match h:
+//         case Holder(inner=q):
+//             match g:
+//                 case Holder(inner=q):
+//                     pass
+//     return h.inner.n
 ::tpy::BigInt outer_untouched(const Holder& h, const Holder& g) {
-    // # The re-seat must not write THROUGH the outer binding: h keeps its own
-    // # object (CPython rebinds the local, leaving the matched object alone).
-    // match h:
     const Inner* q;
     auto& __match_subject_1 = h;
-    // case Holder(inner=q):
     {
         q = &(__match_subject_1.inner);
-        // match g:
         auto& __match_subject_2 = g;
-        // case Holder(inner=q):
         {
             q = &(__match_subject_2.inner);
-            // pass
         }
     }
-    // return h.inner.n
     return h.inner.n;
 }
 
 // def mixed_const(h: Holder, g: Holder) -> int:
+//     # The outer subject is mutated (so it binds mutably) while the inner one is
+//     # only read (so it binds const). Both re-seat one shared slot, so the slot
+//     # must take the const form for either bind to compile.
+//     match h:
+//         case Holder(inner=q):
+//             h.inner.n = 5
+//             match g:
+//                 case Holder(inner=q):
+//                     pass
+//             return q.n
+//     return -1
 ::tpy::BigInt mixed_const(Holder& h, const Holder& g) {
-    // # The outer subject is mutated (so it binds mutably) while the inner one is
-    // # only read (so it binds const). Both re-seat one shared slot, so the slot
-    // # must take the const form for either bind to compile.
-    // match h:
     const Inner* q;
     auto& __match_subject_1 = h;
-    // case Holder(inner=q):
     {
         q = &(__match_subject_1.inner);
-        // h.inner.n = 5
         h.inner.n = ::tpy::BigInt(5);
-        // match g:
         auto& __match_subject_2 = g;
-        // case Holder(inner=q):
         {
             q = &(__match_subject_2.inner);
-            // pass
         }
-        // return q.n
         return q->n;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def as_pattern(h: Holder, g: Holder) -> int:
+//     # `case ... as name` binds through the same capture machinery, and binds
+//     # the WHOLE object -- mutate through the re-seated target to prove it
+//     # aliased `g` rather than copying it.
+//     match h:
+//         case Holder() as w:
+//             match g:
+//                 case Holder() as w:     # tpyc: ok
+//                     pass
+//             g.inner.n = 55
+//             return w.inner.n            # 55 if aliased; 2 if copied
+//     return -1
 ::tpy::BigInt as_pattern(const Holder& h, Holder& g) {
-    // # `case ... as name` binds through the same capture machinery, and binds
-    // # the WHOLE object -- mutate through the re-seated target to prove it
-    // # aliased `g` rather than copying it.
-    // match h:
     const Holder* w;
     auto& __match_subject_1 = h;
-    // case Holder() as w:
     {
         w = &(__match_subject_1);
-        // match g:
         auto& __match_subject_2 = g;
-        // case Holder() as w:     # tpyc: ok
         {
             w = &(__match_subject_2);
-            // pass
         }
-        // g.inner.n = 55
         g.inner.n = ::tpy::BigInt(55);
-        // return w.inner.n            # 55 if aliased; 2 if copied
         return w->inner.n;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     print(reseats(Holder(Inner(1)), Holder(Inner(2))))          # 99
+//     print(outer_untouched(Holder(Inner(1)), Holder(Inner(2))))   # 1
+//     print(mixed_const(Holder(Inner(1)), Holder(Inner(2))))       # 2
+//     print(as_pattern(Holder(Inner(1)), Holder(Inner(2))))        # 55
 void main() {
-    // print(reseats(Holder(Inner(1)), Holder(Inner(2))))          # 99
     Holder __tmp_1 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_2 = Holder(Inner(::tpy::BigInt(2)));
     std::cout << reseats(__tmp_1, __tmp_2) << "\n";
-    // print(outer_untouched(Holder(Inner(1)), Holder(Inner(2))))   # 1
     Holder __tmp_3 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_4 = Holder(Inner(::tpy::BigInt(2)));
     std::cout << outer_untouched(__tmp_3, __tmp_4) << "\n";
-    // print(mixed_const(Holder(Inner(1)), Holder(Inner(2))))       # 2
     Holder __tmp_5 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_6 = Holder(Inner(::tpy::BigInt(2)));
     std::cout << mixed_const(__tmp_5, __tmp_6) << "\n";
-    // print(as_pattern(Holder(Inner(1)), Holder(Inner(2))))        # 55
     Holder __tmp_7 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_8 = Holder(Inner(::tpy::BigInt(2)));
     std::cout << as_pattern(__tmp_7, __tmp_8) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

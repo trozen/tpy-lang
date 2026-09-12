@@ -5,11 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Extract keys from list of tuples (deterministic insertion order)
+//     pairs: list[tuple[str, int32]] = [("apple", 3), ("banana", 1), ("cherry", 5)]
+//     names: set[str] = {k for k, _ in pairs}
+//     print(len(names))
+//     print("apple" in names)
+//     print("banana" in names)
+//     print("cherry" in names)
+//
+//     # Extract values with dedup
+//     pairs2: list[tuple[str, int32]] = [("a", 10), ("b", 20), ("c", 10)]
+//     vals: set[int32] = {v for _, v in pairs2}
+//     print(len(vals))
+//     for v in vals:
+//         print(v)
 void main() {
-    // # Extract keys from list of tuples (deterministic insertion order)
-    // pairs: list[tuple[str, int32]] = [("apple", 3), ("banana", 1), ("cherry", 5)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"apple", 3}, std::tuple<std::string, int32_t>{"banana", 1}, std::tuple<std::string, int32_t>{"cherry", 5}};
-    // names: set[str] = {k for k, _ in pairs}
     ::tpy::ordered_set<std::string> names = ({
         ::tpy::ordered_set<std::string> __result;
         auto& __obj_0 = pairs;
@@ -22,18 +33,11 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(names))
     std::cout << ::tpy::__len__(names) << "\n";
-    // print("apple" in names)
     std::cout << ::tpy::print_bool((names.contains("apple"))) << "\n";
-    // print("banana" in names)
     std::cout << ::tpy::print_bool((names.contains("banana"))) << "\n";
-    // print("cherry" in names)
     std::cout << ::tpy::print_bool((names.contains("cherry"))) << "\n";
-    // # Extract values with dedup
-    // pairs2: list[tuple[str, int32]] = [("a", 10), ("b", 20), ("c", 10)]
     std::vector<std::tuple<std::string, int32_t>> pairs2 = {std::tuple<std::string, int32_t>{"a", 10}, std::tuple<std::string, int32_t>{"b", 20}, std::tuple<std::string, int32_t>{"c", 10}};
-    // vals: set[int32] = {v for _, v in pairs2}
     ::tpy::ordered_set<int32_t> vals = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = pairs2;
@@ -46,25 +50,22 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(vals))
     std::cout << ::tpy::__len__(vals) << "\n";
-    // for v in vals:
     auto& __obj_2 = vals;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t v = *__beg_2;
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

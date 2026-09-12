@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Person("Alice", "NYC")
+//     print(p.name)
+//     print(p.city)
 void main() {
-    // p = Person("Alice", "NYC")
     Person p = Person("Alice", "NYC");
-    // print(p.name)
     std::cout << p.name << "\n";
-    // print(p.city)
     std::cout << p.city << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

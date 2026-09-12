@@ -5,72 +5,80 @@ namespace tpyapp::main {
 
 
 // def basic_write_read() -> None:
+//     b = io.BytesIO()
+//     n1 = b.write(b"hello ")
+//     n2 = b.write(b"world")
+//     print("wrote:", n1 + n2)
+//     print("getvalue:", b.getvalue())
+//     print("tell:", b.tell())
 void basic_write_read() {
-    // b = io.BytesIO()
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO();
-    // n1 = b.write(b"hello ")
     int32_t n1 = b.write(::tpy::bytes_literal("hello ", 6));
-    // n2 = b.write(b"world")
     int32_t n2 = b.write(::tpy::bytes_literal("world", 5));
-    // print("wrote:", n1 + n2)
     std::cout << "wrote:" << " " << (::tpy::add_check<int32_t>(n1, n2)) << "\n";
-    // print("getvalue:", b.getvalue())
     std::cout << "getvalue:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n";
-    // print("tell:", b.tell())
     std::cout << "tell:" << " " << b.tell() << "\n";
 }
 
 // def initial_value_and_overwrite() -> None:
+//     b = io.BytesIO(b"hello")
+//     print("initial pos:", b.tell())
+//     b.write(b"HE")
+//     print("after-overwrite:", b.getvalue())
+//     b.write(b"LLO WORLD")
+//     print("after-extend:", b.getvalue())
 void initial_value_and_overwrite() {
-    // b = io.BytesIO(b"hello")
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("hello", 5));
-    // print("initial pos:", b.tell())
     std::cout << "initial pos:" << " " << b.tell() << "\n";
-    // b.write(b"HE")
     b.write(::tpy::bytes_literal("HE", 2));
-    // print("after-overwrite:", b.getvalue())
     std::cout << "after-overwrite:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n";
-    // b.write(b"LLO WORLD")
     b.write(::tpy::bytes_literal("LLO WORLD", 9));
-    // print("after-extend:", b.getvalue())
     std::cout << "after-extend:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n";
 }
 
 // def seek_then_read() -> None:
+//     b = io.BytesIO(b"abcdefgh")
+//     b.seek(int32(3))
+//     print("read-from-3:", b.read())
+//     b.seek(int32(0))
+//     print("read-all:", b.read())
 void seek_then_read() {
-    // b = io.BytesIO(b"abcdefgh")
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("abcdefgh", 8));
-    // b.seek(int32(3))
     b.seek(3);
-    // print("read-from-3:", b.read())
     std::cout << "read-from-3:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
-    // b.seek(int32(0))
     b.seek(0);
-    // print("read-all:", b.read())
     std::cout << "read-all:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
 }
 
 // def readline_iteration() -> None:
+//     b = io.BytesIO(b"line1\nline2\nline3")
+//     print("readline-1:", b.readline())
+//     print("readline-2:", b.readline())
+//     print("readline-3:", b.readline())
+//     print("readline-4-eof-len:", len(b.readline()))
 void readline_iteration() {
-    // b = io.BytesIO(b"line1\nline2\nline3")
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("line1\nline2\nline3", 17));
-    // print("readline-1:", b.readline())
     std::cout << "readline-1:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n";
-    // print("readline-2:", b.readline())
     std::cout << "readline-2:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n";
-    // print("readline-3:", b.readline())
     std::cout << "readline-3:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n";
-    // print("readline-4-eof-len:", len(b.readline()))
     std::cout << "readline-4-eof-len:" << " " << ::tpy::__len__(b.readline()) << "\n";
 }
 
 // def context_manager_and_close() -> None:
+//     with io.BytesIO(b"ctx") as b:
+//         print("inside:", b.read())
+//     b2 = io.BytesIO(b"x")
+//     b2.close()
+//     print("closed:", b2.closed)
+//     try:
+//         b2.write(b"y")
+//         print("FAIL")
+//     except ValueError as e:
+//         print("got ValueError on write:", str(e))
 void context_manager_and_close() {
-    // with io.BytesIO(b"ctx") as b:
     auto __ctx_1 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("ctx", 3));
     auto& b = __ctx_1.__enter__();
     try {
-        // print("inside:", b.read())
         std::cout << "inside:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -82,57 +90,51 @@ void context_manager_and_close() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // b2 = io.BytesIO(b"x")
     ::tpystd::io::BytesIO b2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("x", 1));
-    // b2.close()
     b2.close();
-    // print("closed:", b2.closed)
     std::cout << "closed:" << " " << ::tpy::print_bool(b2.closed()) << "\n";
-    // try:
     {
         try {
-            // b2.write(b"y")
             b2.write(::tpy::bytes_literal("y", 1));
-            // print("FAIL")
             std::cout << "FAIL" << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("got ValueError on write:", str(e))
             std::cout << "got ValueError on write:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     basic_write_read()
+//     print("---")
+//     initial_value_and_overwrite()
+//     print("---")
+//     seek_then_read()
+//     print("---")
+//     readline_iteration()
+//     print("---")
+//     context_manager_and_close()
 void main() {
-    // basic_write_read()
     basic_write_read();
-    // print("---")
     std::cout << "---" << "\n";
-    // initial_value_and_overwrite()
     initial_value_and_overwrite();
-    // print("---")
     std::cout << "---" << "\n";
-    // seek_then_read()
     seek_then_read();
-    // print("---")
     std::cout << "---" << "\n";
-    // readline_iteration()
     readline_iteration();
-    // print("---")
     std::cout << "---" << "\n";
-    // context_manager_and_close()
     context_manager_and_close();
 }
 
+// # io.BytesIO -- write/read/seek/iter + context manager + closed errors.
+// import io
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # io.BytesIO -- write/read/seek/iter + context manager + closed errors.
-    // import io
     ::tpystd::io::__tpy_init();
-    // main()
     main();
 }
 

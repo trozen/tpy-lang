@@ -38,27 +38,62 @@ struct gaierror;
 struct socket;
 
 inline constexpr std::string_view __name__ = "socket";
+// # ---------- Wire constants ----------
+// # Values identical across Linux and macOS/BSD are literals; the ones that
+// # diverge (SOL_SOCKET, SO_*, AF_INET6) are sourced from the system headers
+// # via posix_socket.tpy_const_* getters so the same source builds correctly on
+// # either platform. Sourced from `<sys/socket.h>`, `<netinet/in.h>`,
+// # `<netinet/tcp.h>`.
+// AF_INET:     Final[int32] = 2
 inline constexpr int32_t AF_INET = 2;
+// AF_UNIX:     Final[int32] = 1    # Not yet usable (no sockaddr_un binding).
 inline constexpr int32_t AF_UNIX = 1;
+// SOCK_STREAM: Final[int32] = 1
 inline constexpr int32_t SOCK_STREAM = 1;
+// SOCK_DGRAM:  Final[int32] = 2
 inline constexpr int32_t SOCK_DGRAM = 2;
+// IPPROTO_TCP: Final[int32] = 6
 inline constexpr int32_t IPPROTO_TCP = 6;
+// IPPROTO_UDP: Final[int32] = 17
 inline constexpr int32_t IPPROTO_UDP = 17;
+// TCP_NODELAY: Final[int32] = 1
 inline constexpr int32_t TCP_NODELAY = 1;
+// SHUT_RD:   Final[int32] = 0
 inline constexpr int32_t SHUT_RD = 0;
+// SHUT_WR:   Final[int32] = 1
 inline constexpr int32_t SHUT_WR = 1;
+// SHUT_RDWR: Final[int32] = 2
 inline constexpr int32_t SHUT_RDWR = 2;
+// # ---------- socket class ----------
+// # Class name is lowercase `socket` to match CPython's `socket.socket`
+// # exactly, so user code (and the asyncio reactor's sock_* helpers) ports to
+// # CPython unchanged and the test cpy phase can run on CPython's real socket.
+// _SOCKADDR_IN_LEN: Final[uint32] = 16
 inline constexpr uint32_t _SOCKADDR_IN_LEN = 16;
 
+// def _strerror(err: int32) -> str:
 std::string _strerror(int32_t err);
+// def _maybe_raise_connection_error(err: int32, strerr: str) -> None:
 void _maybe_raise_connection_error(int32_t err, std::string_view strerr);
+// def _raise_errno() -> None:
 void _raise_errno();
+// def _raise_resolve_error() -> None:
 void _raise_resolve_error();
+// def gethostbyname(hostname: str) -> str:
 std::string gethostbyname(std::string_view hostname);
+// def _ipv4_to_str(addr_bytes: Ptr[uint8]) -> str:
 std::string _ipv4_to_str(uint8_t* addr_bytes);
+// def _build_sockaddr_in(host: str, port: int32) -> Own[SockaddrIn]:
 ::sockaddr_in _build_sockaddr_in(std::string_view host, int32_t port);
+// def socketpair(family: int32 = AF_UNIX, type_: int32 = SOCK_STREAM,
+//                proto: int32 = int32(0)) -> tuple[Own[socket], Own[socket]]:
 std::tuple<socket, socket> socketpair(int32_t family = AF_UNIX, int32_t type_ = SOCK_STREAM, int32_t proto = 0);
+// def create_connection(address: tuple[str, int32],
+//                       timeout: float | None = None) -> Own[socket]:
 socket create_connection(const std::tuple<std::string, int32_t>& address, std::optional<double> timeout = std::nullopt);
+// def create_server(address: tuple[str, int32],
+//                   backlog: int32 = int32(128),
+//                   reuse_addr: bool = True) -> Own[socket]:
 socket create_server(const std::tuple<std::string, int32_t>& address, int32_t backlog = 128, bool reuse_addr = true);
 
 // # ---------- SocketError ----------
@@ -116,7 +151,7 @@ struct socket {
     bool __tpy_owned_ = true;
 
     // def __init__(self, family: int32, type_: int32, proto: int32 = int32(0),
-    // fileno: int32 = int32(-1)) -> None:
+    //              fileno: int32 = int32(-1)) -> None:
     explicit socket(int32_t family, int32_t type_, int32_t proto = 0, int32_t fileno = -1);
     // non-copyable (@nocopy)
     socket(const socket&) = delete;
@@ -206,7 +241,7 @@ struct socket {
     std::tuple<std::string, int32_t> getpeername() const;
 
     // def makefile(self, mode: str = "r",
-    // buffering: int32 = -1) -> Own[BufferedReader]:
+    //              buffering: int32 = -1) -> Own[BufferedReader]:
     ::tpystd::io::BufferedReader makefile(std::string_view mode = "r", int32_t buffering = -1) const;
 
     // def __enter__(self) -> socket:
@@ -226,28 +261,34 @@ inline std::ostream& operator<<(std::ostream& os, const socket& obj) {
 // # Single (errno, strerror) __init__: user classes cannot mirror the
 // # base's message-only overload (no user-class ctor overloads; BUGS.md).
 // def __init__(self, err: int32, strerror: str) -> None:
+//     super().__init__(err, strerror)
 inline SocketError::SocketError(int32_t err, std::string_view strerror) : ::tpy::OSError(err, strerror) {}
 
 // def __init__(self, err: int32, strerror: str) -> None:
+//     super().__init__(err, strerror)
 inline gaierror::gaierror(int32_t err, std::string_view strerror) : ::tpy::OSError(err, strerror) {}
 
 // def __init__(self, family: int32, type_: int32, proto: int32 = int32(0),
-// fileno: int32 = int32(-1)) -> None:
+//              fileno: int32 = int32(-1)) -> None:
+//     """`fileno >= 0` wraps an existing fd (from accept); family/type/
+//     proto are ignored in that case. Otherwise a new socket is created
+//     and SocketError is raised on libc failure -- the constructor then
+//     throws and __del__ is not called."""
+//     if fileno >= int32(0):
+//         self.fd = fileno
+//     else:
+//         new_fd = posix_socket.socket(family, type_, proto)
+//         if new_fd < int32(0):
+//             _raise_errno()
+//         self.fd = new_fd
 inline socket::socket(int32_t family, int32_t type_, int32_t proto, int32_t fileno) {
-    // if fileno >= int32(0):
     if ((fileno >= 0)) {
-        // self.fd = fileno
         this->fd = fileno;
-    // else:
     } else {
-        // new_fd = posix_socket.socket(family, type_, proto)
         int32_t new_fd = ::socket(family, type_, proto);
-        // if new_fd < int32(0):
         if ((new_fd < 0)) {
-            // _raise_errno()
             _raise_errno();
         }
-        // self.fd = new_fd
         this->fd = new_fd;
     }
 }
@@ -264,125 +305,143 @@ inline socket& socket::operator=(socket&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     if self.fd >= int32(0):
+//         posix_socket.close(self.fd)
+//         self.fd = int32(-1)
 inline socket::~socket() {
     if (!this->__tpy_owned_) return;
-    // if self.fd >= int32(0):
     if ((this->fd >= 0)) {
-        // posix_socket.close(self.fd)
         ::close(this->fd);
-        // self.fd = int32(-1)
         this->fd = -1;
     }
 }
 
 // def fileno(self) -> int32:
+//     return self.fd
 inline int32_t socket::fileno() const {
-    // return self.fd
     return this->fd;
 }
 
 // def close(self) -> None:
+//     if self.fd >= int32(0):
+//         posix_socket.close(self.fd)
+//         self.fd = int32(-1)
 inline void socket::close() {
-    // if self.fd >= int32(0):
     if ((this->fd >= 0)) {
-        // posix_socket.close(self.fd)
         ::close(this->fd);
-        // self.fd = int32(-1)
         this->fd = -1;
     }
 }
 
 // def shutdown(self, how: int32) -> None:
+//     if posix_socket.shutdown(self.fd, how) < int32(0):
+//         _raise_errno()
 inline void socket::shutdown(int32_t how) const {
-    // if posix_socket.shutdown(self.fd, how) < int32(0):
     if ((::shutdown(this->fd, how) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
 }
 
 // def setblocking(self, flag: bool) -> None:
+//     """Set blocking (True) or non-blocking (False) mode, like CPython.
+//     Equivalent to settimeout(None) / settimeout(0.0) respectively.
+//     Non-blocking is the prerequisite for using a socket with the
+//     asyncio reactor (asyncio.get_running_loop().sock_recv/sendall)."""
+//     if flag:
+//         self.settimeout(None)
+//     else:
+//         self.settimeout(0.0)
 inline void socket::setblocking(bool flag) {
-    // if flag:
     if (flag) {
-        // self.settimeout(None)
         this->settimeout(std::nullopt);
-    // else:
     } else {
-        // self.settimeout(0.0)
         this->settimeout(0.0);
     }
 }
 
 // def getblocking(self) -> bool:
+//     """True in blocking or timeout mode, False only in non-blocking mode
+//     -- matching CPython (a positive timeout still reports blocking=True)."""
+//     return self._timeout != 0.0
 inline bool socket::getblocking() const {
-    // return self._timeout != 0.0
     return (this->_timeout != 0.0);
 }
 
 // def gettimeout(self) -> float | None:
+//     """The current timeout in seconds, or None if blocking (CPython
+//     returns 0.0 for non-blocking, a positive float for timeout mode)."""
+//     if self._timeout < 0.0:
+//         return None
+//     return self._timeout
 inline std::optional<double> socket::gettimeout() const {
-    // if self._timeout < 0.0:
     if ((this->_timeout < 0.0)) {
-        // return None
         return std::nullopt;
     }
-    // return self._timeout
     return this->_timeout;
 }
 
 // def bind(self, address: tuple[str, int32]) -> None:
+//     host, port = address
+//     addr = _build_sockaddr_in(host, port)
+//     if posix_socket.bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
+//         _raise_errno()
 inline void socket::bind(const std::tuple<std::string, int32_t>& address) const {
-    // host, port = address
     const auto& __tup_1 = address;
     std::string_view host = std::get<0>(__tup_1);
     int32_t port = std::get<1>(__tup_1);
-    // addr = _build_sockaddr_in(host, port)
     ::sockaddr_in addr = _build_sockaddr_in(host, port);
-    // if posix_socket.bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
     if ((::bind(this->fd, &addr, _SOCKADDR_IN_LEN) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
 }
 
 // # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
 // def listen(self, backlog: int32 = int32(128)) -> None:
+//     if posix_socket.listen(self.fd, backlog) < int32(0):
+//         _raise_errno()
 inline void socket::listen(int32_t backlog) const {
-    // if posix_socket.listen(self.fd, backlog) < int32(0):
     if ((::listen(this->fd, backlog) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
 }
 
 // def accept(self) -> tuple[Own[socket], tuple[str, int32]]:
+//     """Block until a client connects, return `(conn, (host, port))`
+//     matching CPython's `socket.accept()` shape."""
+//     fd, peer = self._accept_fd()
+//     return (socket(int32(0), int32(0), int32(0), fileno=fd), peer)
 inline std::tuple<socket, std::tuple<std::string, int32_t>> socket::accept() const {
-    // fd, peer = self._accept_fd()
     auto __tup_1 = this->_accept_fd();
     int32_t fd = std::get<0>(__tup_1);
     const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
-    // return (socket(int32(0), int32(0), int32(0), fileno=fd), peer)
     return std::tuple<socket, std::tuple<std::string, int32_t>>{socket(0, 0, 0, fd), peer};
 }
 
 // def _accept_nonblocking(self) -> tuple[Own[socket], tuple[str, int32]]:
+//     """`accept()` with the returned connection set non-blocking, for the
+//     asyncio reactor (accepted sockets do NOT inherit O_NONBLOCK on Linux).
+//     Underscore-private: not part of CPython's socket surface (the facade is
+//     otherwise CPython-faithful), so the reactor's `_SockAccept` calls it
+//     instead of `accept()`."""
+//     fd, peer = self._accept_fd()
+//     conn = socket(int32(0), int32(0), int32(0), fileno=fd)
+//     conn.setblocking(False)
+//     return (conn, peer)
 inline std::tuple<socket, std::tuple<std::string, int32_t>> socket::_accept_nonblocking() const {
-    // fd, peer = self._accept_fd()
     auto __tup_1 = this->_accept_fd();
     int32_t fd = std::get<0>(__tup_1);
     const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
-    // conn = socket(int32(0), int32(0), int32(0), fileno=fd)
     socket conn = socket(0, 0, 0, fd);
-    // conn.setblocking(False)
     conn.setblocking(false);
-    // return (conn, peer)
     return std::tuple<socket, std::tuple<std::string, int32_t>>{std::move(conn), peer};
 }
 
 // def send(self, data: bytes) -> int32:
+//     """Send (some of) `data`; returns bytes actually sent. Use
+//     `sendall` for full-buffer delivery. Return truncated to int32
+//     from libc's ssize_t -- see module TODO."""
+//     return self._send_from(data, 0)
 inline int32_t socket::send(::tpy::BytesView data) const {
-    // return self._send_from(data, 0)
     return this->_send_from(data, 0);
 }
 
@@ -391,113 +450,128 @@ inline int32_t socket::send(::tpy::BytesView data) const {
 // # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
 // # Underscore-private: not part of CPython's socket surface.
 // def _send_from(self, data: bytes, offset: uint64) -> int32:
+//     data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
+//     n = posix_socket.send(self.fd,
+//                           unsafe_ptr_add(data_ptr, int64.trunc(offset)),
+//                           uint64(len(data)) - offset, int32(0))
+//     if n < int64(0):
+//         self._raise_io()
+//     return int32.trunc(n)
 inline int32_t socket::_send_from(::tpy::BytesView data, uint64_t offset) const {
-    // data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
     const uint8_t* data_ptr = data.data();
-    // n = posix_socket.send(self.fd,
-    // unsafe_ptr_add(data_ptr, int64.trunc(offset)),
-    // uint64(len(data)) - offset, int32(0))
     int64_t n = ::send(this->fd, (data_ptr + static_cast<int64_t>(offset)), (::tpy::sub_check<uint64_t>(::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)), offset)), 0);
-    // if n < int64(0):
     if ((n < 0)) {
-        // self._raise_io()
         this->_raise_io();
     }
-    // return int32.trunc(n)
     return static_cast<int32_t>(n);
 }
 
 // def setsockopt_int(self, level: int32, optname: int32, value: int32) -> None:
+//     """Set an int-valued socket option. Struct options deferred."""
+//     v = value
+//     if posix_socket.setsockopt(self.fd, level, optname, take_ptr(v), 4) < int32(0):
+//         _raise_errno()
 inline void socket::setsockopt_int(int32_t level, int32_t optname, int32_t value) const {
-    // v = value
     int32_t v = value;
-    // if posix_socket.setsockopt(self.fd, level, optname, take_ptr(v), 4) < int32(0):
     if ((::setsockopt(this->fd, level, optname, &v, 4) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
 }
 
 // def getsockopt_int(self, level: int32, optname: int32) -> int32:
+//     """Read an int-valued socket option (e.g. SO_ERROR after a
+//     non-blocking connect). Struct options deferred."""
+//     out: int32 = 0
+//     optlen: uint32 = 4
+//     if posix_socket.getsockopt(self.fd, level, optname,
+//                                take_ptr(out), take_ptr(optlen)) < int32(0):
+//         _raise_errno()
+//     return out
 inline int32_t socket::getsockopt_int(int32_t level, int32_t optname) const {
-    // out: int32 = 0
     int32_t out = 0;
-    // optlen: uint32 = 4
     uint32_t optlen = 4;
-    // if posix_socket.getsockopt(self.fd, level, optname,
-    // take_ptr(out), take_ptr(optlen)) < int32(0):
     if ((::getsockopt(this->fd, level, optname, &out, &optlen) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
-    // return out
     return out;
 }
 
 // def getsockname(self) -> tuple[str, int32]:
+//     addr = SockaddrIn(0, 0, 0)
+//     addrlen: uint32 = _SOCKADDR_IN_LEN
+//     if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
+//         _raise_errno()
+//     return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
+//             int32.trunc(posix_socket.ntohs(addr.sin_port)))
 inline std::tuple<std::string, int32_t> socket::getsockname() const {
-    // addr = SockaddrIn(0, 0, 0)
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
-    // addrlen: uint32 = _SOCKADDR_IN_LEN
     uint32_t addrlen = _SOCKADDR_IN_LEN;
-    // if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
     if ((::getsockname(this->fd, &addr, &addrlen) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
-    // return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-    // int32.trunc(posix_socket.ntohs(addr.sin_port)))
     return std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
 }
 
 // def getpeername(self) -> tuple[str, int32]:
+//     addr = SockaddrIn(0, 0, 0)
+//     addrlen: uint32 = _SOCKADDR_IN_LEN
+//     if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
+//         _raise_errno()
+//     return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
+//             int32.trunc(posix_socket.ntohs(addr.sin_port)))
 inline std::tuple<std::string, int32_t> socket::getpeername() const {
-    // addr = SockaddrIn(0, 0, 0)
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
-    // addrlen: uint32 = _SOCKADDR_IN_LEN
     uint32_t addrlen = _SOCKADDR_IN_LEN;
-    // if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
     if ((::getpeername(this->fd, &addr, &addrlen) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
-    // return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-    // int32.trunc(posix_socket.ntohs(addr.sin_port)))
     return std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
 }
 
 // def makefile(self, mode: str = "r",
-// buffering: int32 = -1) -> Own[BufferedReader]:
+//              buffering: int32 = -1) -> Own[BufferedReader]:
+//     """Return a buffered binary reader over a *dup* of this socket's fd.
+//
+//     Signature mirrors CPython (default mode "r"), but v1 implements only
+//     the binary-read modes ("rb"/"br"/"b") -> io.BufferedReader. Text modes
+//     (including the bare-makefile() default), write modes, and the
+//     unbuffered buffering=0 form need io's TextIOWrapper / BufferedWriter /
+//     raw-SocketIO layers (not built) and raise ValueError -- loud, not a
+//     silent binary-for-text substitution. The reader owns its own dup of
+//     the fd, so it and the socket close independently (differs from
+//     CPython's shared-fd refcount). The dup shares the same kernel
+//     byte-stream, so do not interleave reads on the socket and the reader
+//     -- each steals bytes from the other; read via one only."""
+//     if mode != "rb" and mode != "br" and mode != "b":
+//         raise ValueError("makefile: only binary read mode ('rb'/'br'/'b')"
+//                          " supported in v1; got '" + mode + "'")
+//     if buffering == 0:
+//         raise ValueError("makefile: unbuffered (buffering=0) not supported")
+//     size = DEFAULT_BUFFER_SIZE if buffering < 0 else buffering
+//     # Propagate timeout mode so a recv-timeout on the dup'd fd (SO_RCVTIMEO
+//     # is shared across the dup) surfaces as TimeoutError, not a raw EAGAIN.
+//     return BufferedReader(FileIO(os.dup(int64(self.fd)),
+//                                  timeout_mode=self._timeout > 0.0), size)
 inline ::tpystd::io::BufferedReader socket::makefile(std::string_view mode, int32_t buffering) const {
-    // if mode != "rb" and mode != "br" and mode != "b":
     if ((((mode != "rb") && (mode != "br")) && (mode != "b"))) {
-        // raise ValueError("makefile: only binary read mode ('rb'/'br'/'b')"
-        // " supported in v1; got '" + mode + "'")
         throw ::tpy::ValueError((::tpy::str_concat((::tpy::str_concat("makefile: only binary read mode ('rb'/'br'/'b') supported in v1; got '", mode)), "'")));
     }
-    // if buffering == 0:
     if ((buffering == 0)) {
-        // raise ValueError("makefile: unbuffered (buffering=0) not supported")
         throw ::tpy::ValueError("makefile: unbuffered (buffering=0) not supported");
     }
-    // size = DEFAULT_BUFFER_SIZE if buffering < 0 else buffering
     int32_t size = (((buffering < 0)) ? (::tpystd::io::DEFAULT_BUFFER_SIZE) : (buffering));
-    // # Propagate timeout mode so a recv-timeout on the dup'd fd (SO_RCVTIMEO
-    // # is shared across the dup) surfaces as TimeoutError, not a raw EAGAIN.
-    // return BufferedReader(FileIO(os.dup(int64(self.fd)),
-    // timeout_mode=self._timeout > 0.0), size)
     return ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpystd::os::dup(::tpy::int_cast_check<int64_t>(this->fd)), true, (this->_timeout > 0.0))), size);
 }
 
 // def __enter__(self) -> socket:
+//     return self
 inline socket& socket::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.close()
 inline void socket::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.close()
     this->close();
 }
 void __tpy_init();

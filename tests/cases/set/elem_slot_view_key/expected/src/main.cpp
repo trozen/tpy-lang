@@ -16,97 +16,99 @@ namespace tpyapp::main {
 // # The discard/remove legs mutate the caller's set so the aliasing is
 // # observable; the membership leg reads.
 // def discard_param(s: set[str], k: str) -> None:
+//     s.discard(k)  # tpyc: ok -- `k` is a std::string_view param
 void discard_param(::tpy::ordered_set<std::string>& s, std::string_view k) {
-    // s.discard(k)  # tpyc: ok -- `k` is a std::string_view param
     s.erase(k);
 }
 
 // def discard_literal(s: set[str]) -> None:
+//     s.discard("b")  # tpyc: ok -- a member call's literal stays bare
 void discard_literal(::tpy::ordered_set<std::string>& s) {
-    // s.discard("b")  # tpyc: ok -- a member call's literal stays bare
     s.erase("b");
 }
 
 // def remove_param(s: set[str], k: str) -> None:
+//     s.remove(k)  # tpyc: ok
 void remove_param(::tpy::ordered_set<std::string>& s, std::string_view k) {
-    // s.remove(k)  # tpyc: ok
     ::tpy::set_remove(s, k);
 }
 
 // def remove_literal(s: set[str]) -> None:
+//     s.remove("c")  # tpyc: ok -- the free-template callee takes it bare too
 void remove_literal(::tpy::ordered_set<std::string>& s) {
-    // s.remove("c")  # tpyc: ok -- the free-template callee takes it bare too
     ::tpy::set_remove(s, "c");
 }
 
 // def has(s: set[str], k: str) -> bool:
+//     return k in s  # tpyc: ok -- the same view key at the membership read
 bool has(const ::tpy::ordered_set<std::string>& s, std::string_view k) {
-    // return k in s  # tpyc: ok -- the same view key at the membership read
     return (s.contains(k));
 }
 
 // def empty_key(s: set[str], k: str) -> None:
+//     # An empty key goes through the hash table, so it also pins that a view
+//     # and the stored owned string land in ONE hash domain.
+//     print(k in s)
+//     s.discard(k)
+//     print(k in s, len(s))
 void empty_key(::tpy::ordered_set<std::string>& s, std::string_view k) {
-    // # An empty key goes through the hash table, so it also pins that a view
-    // # and the stored owned string land in ONE hash domain.
-    // print(k in s)
     std::cout << ::tpy::print_bool((s.contains(k))) << "\n";
-    // s.discard(k)
     s.erase(k);
-    // print(k in s, len(s))
     std::cout << ::tpy::print_bool((s.contains(k))) << " " << ::tpy::__len__(s) << "\n";
 }
 
 // def main() -> None:
+//     s: set[str] = set()
+//     s.add("a")
+//     s.add("b")
+//     s.add("c")
+//     discard_param(s, "a")
+//     print(len(s))
+//     discard_literal(s)
+//     print(len(s))
+//     remove_literal(s)
+//     print(len(s))
+//
+//     t: set[str] = set()
+//     t.add("x")
+//     t.add("y")
+//     remove_param(t, "x")
+//     print(len(t))
+//     print(has(t, "y"), has(t, "x"))
+//
+//     e: set[str] = set()
+//     e.add("")
+//     e.add("a")
+//     empty_key(e, "")
 void main() {
-    // s: set[str] = set()
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
-    // s.add("a")
     s.insert("a");
-    // s.add("b")
     s.insert("b");
-    // s.add("c")
     s.insert("c");
-    // discard_param(s, "a")
     discard_param(s, "a");
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // discard_literal(s)
     discard_literal(s);
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // remove_literal(s)
     remove_literal(s);
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // t: set[str] = set()
     ::tpy::ordered_set<std::string> t = ::tpy::ordered_set<std::string>();
-    // t.add("x")
     t.insert("x");
-    // t.add("y")
     t.insert("y");
-    // remove_param(t, "x")
     remove_param(t, "x");
-    // print(len(t))
     std::cout << ::tpy::__len__(t) << "\n";
-    // print(has(t, "y"), has(t, "x"))
     std::cout << ::tpy::print_bool(has(t, "y")) << " " << ::tpy::print_bool(has(t, "x")) << "\n";
-    // e: set[str] = set()
     ::tpy::ordered_set<std::string> e = ::tpy::ordered_set<std::string>();
-    // e.add("")
     e.insert("");
-    // e.add("a")
     e.insert("a");
-    // empty_key(e, "")
     empty_key(e, "");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

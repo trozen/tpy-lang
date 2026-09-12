@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def compute() -> int:
+//     await asyncio.sleep(0.001)
+//     return 42
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_compute::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 42
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -35,22 +35,23 @@ __coro_compute compute() {
 }
 
 // def main() -> None:
+//     result = asyncio.run(compute())
+//     print(result)
 void main() {
-    // result = asyncio.run(compute())
     ::tpy::BigInt result = ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(compute()));
-    // print(result)
     std::cout << result << "\n";
 }
 
+// # asyncio.run should return the awaited coroutine value, not only drive None coros.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.run should return the awaited coroutine value, not only drive None coros.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

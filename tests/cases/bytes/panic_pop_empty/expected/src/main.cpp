@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Pop from empty bytearray panics at runtime
 // def main() -> None:
+//     ba = bytearray()
+//     ba.pop()
 void main() {
-    // ba = bytearray()
     ::tpy::ByteArray ba = ::tpy::ByteArray();
-    // ba.pop()
     ::tpy::bytearray_pop(ba);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

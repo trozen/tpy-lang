@@ -50,7 +50,9 @@ struct IntCounter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show_source(s: Source[int32]) -> None:
 void show_source(Source<int32_t>& s);
+// def main() -> None:
 void main();
 
 // class IntCounter:
@@ -112,17 +114,18 @@ namespace tpyapp::main {
 
 
 // def __init__(self):
+//     self.n = 0
 inline IntCounter::IntCounter() : n(0) {}
 
 // def get(self) -> int32:
+//     return self.n
 inline int32_t IntCounter::get() const {
-    // return self.n
     return this->n;
 }
 
 // def bump(self) -> None:
+//     self.n = self.n + 1
 inline void IntCounter::bump() {
-    // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
 }
 void __tpy_init();

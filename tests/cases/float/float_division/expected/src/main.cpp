@@ -4,22 +4,23 @@
 namespace tpyapp::main {
 
 
+// # True division (/) always returns float
+// print(10 / 4)
+// print(10 / 2)
+// print(9 / 3)
+//
+// # Floor division (//) preserves type
+// print(10 // 4)
+// print(10.0 // 4.0)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # True division (/) always returns float
-    // print(10 / 4)
     std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(10), ::tpy::BigInt(4)))) << "\n";
-    // print(10 / 2)
     std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(10), ::tpy::BigInt(2)))) << "\n";
-    // print(9 / 3)
     std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(9), ::tpy::BigInt(3)))) << "\n";
-    // # Floor division (//) preserves type
-    // print(10 // 4)
     std::cout << 2 << "\n";
-    // print(10.0 // 4.0)
     std::cout << ::tpy::print_float((::tpy::floordiv(10.0, 4.0))) << "\n";
 }
 

@@ -12,8 +12,10 @@ template<::tpystd::tpy::Comparable T> struct Entry;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def heap_sort[T: Comparable](src: list[T]) -> Own[list[T]]:
 template<::tpystd::tpy::Comparable T>
 std::vector<T> heap_sort(const std::vector<T>& src);
+// def main() -> None:
 void main();
 
 // class Entry[T: Comparable]:
@@ -25,12 +27,14 @@ struct Entry {
     ::tpy::BigInt idx;
 
     // def __init__(self, val: Own[T], idx: int) -> None:
+    //     self.val = val
+    //     self.idx = idx
     Entry() = default;
     explicit Entry(::tpy::own_param_t<T> val, const ::tpy::BigInt& idx) : val(std::move(val)), idx(idx) {}
 
     // def __lt__(self, other: "Entry[T]") -> bool:
+    //     return self.val < other.val
     bool __lt__(const Entry<T>& other) const {
-        // return self.val < other.val
         return (this->val < other.val);
     }
 
@@ -47,30 +51,30 @@ inline std::ostream& operator<<(std::ostream& os, const Entry<T>& obj) {
 }
 
 // def heap_sort[T: Comparable](src: list[T]) -> Own[list[T]]:
+//     heap: list[Entry[T]] = []
+//     i = 0
+//     while i < len(src):
+//         # T inferred for Entry/heappush must be Entry[T], not Entry[Ref[T]].
+//         heapq.heappush(heap, Entry(copy(src[i]), i))
+//         i += 1
+//     out: list[T] = []
+//     while len(heap) > 0:
+//         top = heapq.heappop(heap)  # tpyc: type(/Entry\[T\]/)
+//         out.append(copy(top.val))
+//     return out
 template<::tpystd::tpy::Comparable T>
 std::vector<T> heap_sort(const std::vector<T>& src) {
-    // heap: list[Entry[T]] = []
     std::vector<Entry<T>> heap = std::vector<Entry<T>>{};
-    // i = 0
     int32_t i = 0;
-    // while i < len(src):
     while ((i < ::tpy::__len__(src))) {
-        // # T inferred for Entry/heappush must be Entry[T], not Entry[Ref[T]].
-        // heapq.heappush(heap, Entry(copy(src[i]), i))
         ::tpystd::heapq::heappush<Entry<T>>(heap, Entry<T>(T(src[static_cast<std::size_t>(i)]), ::tpy::BigInt(i)));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // out: list[T] = []
     std::vector<T> out = std::vector<T>{};
-    // while len(heap) > 0:
     while ((::tpy::__len__(heap) > 0)) {
-        // top = heapq.heappop(heap)  # tpyc: type(/Entry\[T\]/)
         Entry<T> top = ::tpystd::heapq::heappop<Entry<T>>(heap);
-        // out.append(copy(top.val))
         out.push_back(T(top.val));
     }
-    // return out
     return out;
 }
 

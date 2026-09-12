@@ -7,25 +7,25 @@ namespace tpyapp::main {
 // # list/set built from an iterable via the ctor template (list(range(n)),
 // # list(xs), set(xs)); sources stay live afterwards (non-last-use args).
 // def main():
+//     xs = list(range(3))
+//     ys = list(xs)
+//     zs = set(xs)
+//     print(len(xs), len(ys), len(zs))
+//     print(xs[0], ys[1])
 void main() {
-    // xs = list(range(3))
     std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(3));
-    // ys = list(xs)
     std::vector<int32_t> ys = ::tpy::construct<std::vector<int32_t>>(xs);
-    // zs = set(xs)
     ::tpy::ordered_set<int32_t> zs = ::tpy::set_construct<int32_t>(xs);
-    // print(len(xs), len(ys), len(zs))
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << " " << ::tpy::__len__(zs) << "\n";
-    // print(xs[0], ys[1])
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(ys, 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

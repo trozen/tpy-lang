@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def sink(x: Own[Inner]) -> int32:
+//     x.bump()
+//     return x.v
 int32_t sink(Inner&& x) {
-    // x.bump()
     x.bump();
-    // return x.v
     return x.v;
 }
 
 // def run() -> None:
+//     b = Builder(41)
+//     r = b.build()
+//     n = sink(r)
+//     print(n)
 void run() {
-    // b = Builder(41)
     Builder b = Builder(41);
-    // r = b.build()
     Inner r = b.build();
-    // n = sink(r)
     int32_t n = sink(std::move(r));
-    // print(n)
     std::cout << n << "\n";
 }
 
+// run()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // run()
     run();
 }
 

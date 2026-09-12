@@ -11,16 +11,27 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def hold(f: Callable[[], int]) -> Callable[[], int]:
 std::function<::tpy::BigInt()> hold(const std::function<::tpy::BigInt()>& f);
+// def lambda_reassigned() -> None:
 void lambda_reassigned();
+// def nested_def_via_local() -> None:
 void nested_def_via_local();
+// def nested_def_direct_return() -> Callable[[], int]:
 std::function<::tpy::BigInt()> nested_def_direct_return();
+// def aug_assign_counter() -> None:
 void aug_assign_counter();
+// def walrus_reassigned() -> None:
 void walrus_reassigned();
+// def tuple_unpack_reassigned() -> None:
 void tuple_unpack_reassigned();
+// def clean_no_reassign() -> None:
 void clean_no_reassign();
+// def reassign_before_capture() -> None:
 void reassign_before_capture();
+// def loop_capture_no_warn() -> None:
 void loop_capture_no_warn();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -39,16 +50,16 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def make(self) -> None:
+//     k = 1
+//     f = hold(lambda: k)  # tpyc: warning(/captures local 'k' by value.*reassigned after/)
+//     print(f())
+//     k = 2
+//     print(k)
 inline void Box::make() const {
-    // k = 1
     int32_t k = 1;
-    // f = hold(lambda: k)  # tpyc: warning(/captures local 'k' by value.*reassigned after/)
     std::function<::tpy::BigInt()> f = hold([k]() -> ::tpy::BigInt { return k; });
-    // print(f())
     std::cout << f() << "\n";
-    // k = 2
     k = 2;
-    // print(k)
     std::cout << k << "\n";
 }
 void __tpy_init();

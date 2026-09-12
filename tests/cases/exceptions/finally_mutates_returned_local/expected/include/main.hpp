@@ -11,15 +11,25 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ret_record() -> Own[Box]:
 Box ret_record();
+// def ret_list() -> Own[list[int32]]:
 std::vector<int32_t> ret_list();
+// def ret_optional(flag: bool) -> Own[Box] | None:
 std::optional<Box> ret_optional(bool flag);
+// def ret_value_int() -> int32:
 int32_t ret_value_int();
+// def ret_rebound() -> Own[Box]:
 Box ret_rebound();
+// def ret_param_ref(b: Box) -> Box:
 Box& ret_param_ref(Box& b);
+// def ret_own_param(b: Own[Box]) -> Own[Box]:
 Box ret_own_param(Box&& b);
+// def ret_from_handler() -> Own[Box]:
 Box ret_from_handler();
+// def ret_finally_override() -> Own[Box]:
 Box ret_finally_override();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -39,6 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline Box::Box() : n(10) {}
 void __tpy_init();
 } // namespace tpyapp::main

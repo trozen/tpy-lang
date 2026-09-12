@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = C.Green
+//     print(c.name)
 void main() {
-    // c = C.Green
     ::tpyapp::pkg::colors::Color c = ::tpyapp::pkg::colors::Color::Green;
-    // print(c.name)
     std::cout << ::tpy::EnumUtil<::tpyapp::pkg::colors::Color>::name(c) << "\n";
 }
 
+// # Aliased enum re-exported through pkg/__init__.py (`from .colors import Color as C`).
+// # Mirror of package_alias_reexport_record for the enum path in
+// # compiler.py::_exports_to_module_info re-export dedupe.
+// from pkg import C
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Aliased enum re-exported through pkg/__init__.py (`from .colors import Color as C`).
-    // # Mirror of package_alias_reexport_record for the enum path in
-    // # compiler.py::_exports_to_module_info re-export dedupe.
-    // from pkg import C
     ::tpyapp::pkg::__tpy_init();
-    // main()
     main();
 }
 

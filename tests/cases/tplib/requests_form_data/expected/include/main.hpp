@@ -19,7 +19,9 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def send(url: str, data: bytes | dict[str, str] | None) -> None:
 void send(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data);
+// def main() -> None:
 void main();
 
 void __tpy_init();

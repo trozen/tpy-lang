@@ -11,18 +11,31 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def loop_escape_copy_ok() -> None:
 void loop_escape_copy_ok();
+// def loop_rvalue_ok() -> None:
 void loop_rvalue_ok();
+// def foreach_outer_container() -> None:
 void foreach_outer_container();
+// def value_type_ok() -> None:
 void value_type_ok();
+// def foreach_shadow_safe() -> None:
 void foreach_shadow_safe();
+// def sequential_loops_same_var() -> None:
 void sequential_loops_same_var();
+// def same_scope_ok() -> None:
 void same_scope_ok();
+// def lvalue_init_rvalue_rebind() -> None:
 void lvalue_init_rvalue_rebind();
+// def rvalue_alias_preserved() -> None:
 void rvalue_alias_preserved();
+// def if_branch_rvalue_rebind() -> None:
 void if_branch_rvalue_rebind();
+// def if_else_rvalue_rebinds() -> None:
 void if_else_rvalue_rebinds();
+// def if_alias_preserved() -> None:
 void if_alias_preserved();
+// def while_rvalue_rebind() -> None:
 void while_rvalue_rebind();
 
 // class Point:
@@ -45,6 +58,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

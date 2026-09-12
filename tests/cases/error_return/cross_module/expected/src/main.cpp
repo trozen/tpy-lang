@@ -5,11 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         idx = find([10, 20, 30], 20)
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(idx)
+//
+//     try:
+//         idx2 = find([10, 20, 30], 99)
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(idx2)
 void main() {
-    // try:
     int32_t idx;
     {
-        // idx = find([10, 20, 30], 20)
         std::vector<int32_t> __tmp_1 = {10, 20, 30};
         {
             auto __try_tmp_2 = ::tpyapp::errors::find(__tmp_1, 20);
@@ -17,19 +28,15 @@ void main() {
             idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        // print(idx)
         std::cout << idx << "\n";
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_1:;
     }
-    // try:
     int32_t idx2;
     {
-        // idx2 = find([10, 20, 30], 99)
         std::vector<int32_t> __tmp_2 = {10, 20, 30};
         {
             auto __try_tmp_4 = ::tpyapp::errors::find(__tmp_2, 99);
@@ -37,26 +44,25 @@ void main() {
             idx2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(idx2)
         std::cout << idx2 << "\n";
         goto __after_try_3;
         // except NotFound:
         __except_3:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_3:;
     }
 }
 
+// # Cross-module @error_return: call an imported error_return function and handle its error
+// from errors import NotFound, find
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module @error_return: call an imported error_return function and handle its error
-    // from errors import NotFound, find
     ::tpyapp::errors::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter.make(7)  # tpyc: ok
+//     print(c.value)
+//     z = Counter.zero()  # tpyc: ok
+//     print(z.value)
 void main() {
-    // c = Counter.make(7)  # tpyc: ok
     ::tpyapp::factory::Counter c = Counter::make(7);
-    // print(c.value)
     std::cout << c.value << "\n";
-    // z = Counter.zero()  # tpyc: ok
     ::tpyapp::factory::Counter z = Counter::zero();
-    // print(z.value)
     std::cout << z.value << "\n";
 }
 
+// # Regression: ClassName.staticmethod() works cross-module when ClassName is
+// # imported via `from m import ClassName`. The static-method dispatcher used to
+// # only look up imported classes in the builtin registry, missing user modules.
+// from factory import Counter
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: ClassName.staticmethod() works cross-module when ClassName is
-    // # imported via `from m import ClassName`. The static-method dispatcher used to
-    // # only look up imported classes in the builtin registry, missing user modules.
-    // from factory import Counter
     ::tpyapp::factory::__tpy_init();
-    // main()
     main();
 }
 

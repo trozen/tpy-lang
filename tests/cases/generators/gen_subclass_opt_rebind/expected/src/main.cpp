@@ -5,22 +5,23 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[str]:
+//     # Both writes narrow into base-typed site slots; `kind` set by each
+//     # subclass ctor survives the slice, so the reads stay CPython-equal.
+//     p: Optional[Animal] = Dog()  # tpyc: warning(/upcast narrows/)
+//     yield "start"
+//     p = Cat()
+//     if p is not None:
+//         yield p.name()
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # Both writes narrow into base-typed site slots; `kind` set by each
-        // # subclass ctor survives the slice, so the reads stay CPython-equal.
-        // p: Optional[Animal] = Dog()  # tpyc: warning(/upcast narrows/)
         p = &*(__ptr_slot_f0 = Dog());
-        // yield "start"
         __state = S_RESUME_0;
         return "start";
     }
     case S_RESUME_0: {
-        // p = Cat()
         p = &*(__ptr_slot_f1 = Cat());
         if ((p != nullptr)) {
-            // yield p.name()
             __state = S_RESUME_1;
             return p->name();
         } else {
@@ -48,8 +49,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for s in gen():
+//         print(s)
 void main() {
-    // for s in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -57,18 +59,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

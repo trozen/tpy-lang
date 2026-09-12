@@ -5,59 +5,73 @@ namespace tpyapp::main {
 
 
 // def sum_array(arr: Array[int32, 3]) -> int32:
+//     return arr[0] + arr[1] + arr[2]
 int32_t sum_array(const std::array<int32_t, 3>& arr) {
-    // return arr[0] + arr[1] + arr[2]
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__(arr, 0), ::tpy::__getitem__(arr, 1))), ::tpy::__getitem__(arr, 2)));
 }
 
 // def main():
+//     # List literal assigned to Array variable
+//     arr1: Array[int32, 3] = [1, 2, 3]
+//     print(sum_array(arr1))  # 6
+//
+//     # List literal passed directly to Array parameter
+//     print(sum_array([10, 20, 30]))  # 60
+//
+//     # List literal in variable initializer
+//     result: int32 = sum_array([100, 200, 300])
+//     print(result)  # 600
+//
+//     # List literal in condition
+//     if sum_array([1, 1, 1]) > 0:
+//         print(1)  # 1
+//     else:
+//         print(0)
+//
+//     # List literal in while condition (edge case)
+//     count: int32 = 0
+//     while sum_array([1, 0, 0]) > count:
+//         count = count + 1
+//     print(count)  # 1
 void main() {
-    // # List literal assigned to Array variable
-    // arr1: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr1 = {1, 2, 3};
-    // print(sum_array(arr1))  # 6
     std::cout << sum_array(arr1) << "\n";
-    // # List literal passed directly to Array parameter
-    // print(sum_array([10, 20, 30]))  # 60
     std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
     std::cout << sum_array(__tmp_1) << "\n";
-    // # List literal in variable initializer
-    // result: int32 = sum_array([100, 200, 300])
     std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
     int32_t result = sum_array(__tmp_2);
-    // print(result)  # 600
     std::cout << result << "\n";
-    // # List literal in condition
-    // if sum_array([1, 1, 1]) > 0:
     std::array<int32_t, 3> __tmp_3 = {1, 1, 1};
     if ((sum_array(__tmp_3) > 0)) {
-        // print(1)  # 1
         std::cout << 1 << "\n";
-    // else:
     } else {
-        // print(0)
         std::cout << 0 << "\n";
     }
-    // # List literal in while condition (edge case)
-    // count: int32 = 0
     int32_t count = 0;
-    // while sum_array([1, 0, 0]) > count:
     while (true) {
         std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
         if (!((sum_array(__tmp_4) > count))) break;
-        // count = count + 1
         count = (::tpy::add_check<int32_t>(count, 1));
     }
-    // print(count)  # 1
     std::cout << count << "\n";
 }
 
+// """Tests that list literals can be coerced to Array types.
+//
+// List *literals* have compile-time known size, so they can be:
+// - Assigned to Array[T, N] variables
+// - Passed directly to Array[T, N] parameters
+// - Used in initializers and conditions
+//
+// List *variables* cannot be coerced to Array (see errors/list_var_to_array).
+// """
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,7 +11,9 @@ extern int32_t limit;
 extern int32_t scale;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump() -> int32:
 int32_t bump();
+// def main() -> None:
 void main();
 
 void __tpy_init();

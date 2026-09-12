@@ -11,8 +11,11 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def alias_chain() -> None:
 void alias_chain();
+// def unpack_method_and_ternary() -> None:
 void unpack_method_and_ternary();
+// def reassign_to_ref() -> None:
 void reassign_to_ref();
 
 // class Counter:
@@ -39,17 +42,18 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def get(self) -> "Counter":
+//     return self
 inline Counter& Counter::get() {
-    // return self
     return (*this);
 }
 
 // def bump(self) -> None:
+//     self.n += 1
 inline void Counter::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 void __tpy_init();

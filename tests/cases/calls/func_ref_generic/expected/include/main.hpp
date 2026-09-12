@@ -9,98 +9,109 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T>
-::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
-template<typename T, typename U>
-std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
-template<::tpystd::tpy::Comparable T>
-::tpy::val_or_ref_t<T> max_val(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  }
-int32_t apply_fn(__F0&& f, int32_t x);
-int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x);
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<std::tuple<int32_t, int32_t>>;
-  }
-std::tuple<int32_t, int32_t> make_pair(__F0&& f, int32_t a, int32_t b);
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
-  }
-int32_t apply2(__F0&& f, int32_t a, int32_t b);
-void use_local();
-std::function<int32_t(int32_t)> get_identity();
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      __fn(__a0);
-  }
-void run_void(__F0&& f, int32_t x);
-void main();
-
 // def identity[T](x: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    // return x
-    return ::tpy::param_to_return<T>(x);
-}
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 // def pair[T, U](a: T, b: U) -> tuple[T, U]:
 template<typename T, typename U>
-std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-    // return (a, b)
-    return std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(a), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(b)};
-}
+std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
 // def max_val[T: Comparable](a: T, b: T) -> T:
 template<::tpystd::tpy::Comparable T>
-::tpy::val_or_ref_t<T> max_val(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // if a > b:
-    if ((a > b)) {
-        // return a
-        return ::tpy::param_to_return<T>(a);
-    }
-    // return b
-    return ::tpy::param_to_return<T>(b);
-}
-// # Fn param (zero-cost template)
+::tpy::val_or_ref_t<T> max_val(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 // def apply_fn(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
-int32_t apply_fn(__F0&& f, int32_t x) {
-    // return f(x)
-    return f(x);
-}
-// # Multi type params
+int32_t apply_fn(__F0&& f, int32_t x);
+// def apply_callable(f: Callable[[int32], int32], x: int32) -> int32:
+int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x);
 // def make_pair(f: Fn[[int32, int32], tuple[int32, int32]], a: int32, b: int32) -> tuple[int32, int32]:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<std::tuple<int32_t, int32_t>>;
   }
-std::tuple<int32_t, int32_t> make_pair(__F0&& f, int32_t a, int32_t b) {
-    // return f(a, b)
-    return f(a, b);
-}
-// # Bounded generic
+std::tuple<int32_t, int32_t> make_pair(__F0&& f, int32_t a, int32_t b);
 // def apply2(f: Fn[[int32, int32], int32], a: int32, b: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
   }
-int32_t apply2(__F0&& f, int32_t a, int32_t b) {
-    // return f(a, b)
-    return f(a, b);
-}
-// # Void hint -- generic function's return value discarded
+int32_t apply2(__F0&& f, int32_t a, int32_t b);
+// def use_local() -> None:
+void use_local();
+// def get_identity() -> Callable[[int32], int32]:
+std::function<int32_t(int32_t)> get_identity();
 // def run_void(f: Fn[[int32], None], x: int32) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);
   }
+void run_void(__F0&& f, int32_t x);
+// def main() -> None:
+void main();
+
+// def identity[T](x: T) -> T:
+//     return x
+template<typename T>
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
+    return ::tpy::param_to_return<T>(x);
+}
+// def pair[T, U](a: T, b: U) -> tuple[T, U]:
+//     return (a, b)
+template<typename T, typename U>
+std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
+    return std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(a), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(b)};
+}
+// def max_val[T: Comparable](a: T, b: T) -> T:
+//     if a > b:
+//         return a
+//     return b
+template<::tpystd::tpy::Comparable T>
+::tpy::val_or_ref_t<T> max_val(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
+    if ((a > b)) {
+        return ::tpy::param_to_return<T>(a);
+    }
+    return ::tpy::param_to_return<T>(b);
+}
+// # Fn param (zero-cost template)
+// def apply_fn(f: Fn[[int32], int32], x: int32) -> int32:
+//     return f(x)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply_fn(__F0&& f, int32_t x) {
+    return f(x);
+}
+// # Multi type params
+// def make_pair(f: Fn[[int32, int32], tuple[int32, int32]], a: int32, b: int32) -> tuple[int32, int32]:
+//     return f(a, b)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<std::tuple<int32_t, int32_t>>;
+  }
+std::tuple<int32_t, int32_t> make_pair(__F0&& f, int32_t a, int32_t b) {
+    return f(a, b);
+}
+// # Bounded generic
+// def apply2(f: Fn[[int32, int32], int32], a: int32, b: int32) -> int32:
+//     return f(a, b)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply2(__F0&& f, int32_t a, int32_t b) {
+    return f(a, b);
+}
+// # Void hint -- generic function's return value discarded
+// def run_void(f: Fn[[int32], None], x: int32) -> None:
+//     f(x)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      __fn(__a0);
+  }
 void run_void(__F0&& f, int32_t x) {
-    // f(x)
     f(x);
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Acc(1)
+//     a += Counter(4)
+//     print(a.total)
 void main() {
-    // a = Acc(1)
     Acc a = Acc(1);
-    // a += Counter(4)
     a.__iadd__(Counter(4));
-    // print(a.total)
     std::cout << a.total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

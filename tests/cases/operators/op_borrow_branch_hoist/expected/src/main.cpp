@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def pick(flag: bool):
+//     a = Acc(3)
+//     b = Acc(7)
+//     if flag:
+//         c = a + b
+//     else:
+//         c = -b
+//     print(c.n)
+//     a.n = 9
+//     b.n = 11
+//     print(c.n)
 void pick(bool flag) {
-    // a = Acc(3)
     Acc a = Acc(3);
-    // b = Acc(7)
     Acc b = Acc(7);
-    // if flag:
     const Acc* c;
     if (flag) {
-        // c = a + b
         c = &(((a) + (b)));
-    // else:
     } else {
-        // c = -b
         c = &(-(b));
     }
-    // print(c.n)
     std::cout << c->n << "\n";
-    // a.n = 9
     a.n = 9;
-    // b.n = 11
     b.n = 11;
-    // print(c.n)
     std::cout << c->n << "\n";
 }
 
 // def main():
+//     pick(True)
+//     pick(False)
 void main() {
-    // pick(True)
     pick(true);
-    // pick(False)
     pick(false);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

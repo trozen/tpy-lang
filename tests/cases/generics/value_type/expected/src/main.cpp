@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Vec2(1, 2)
+//     b = a                      # copy (value type)
+//     print(a.total())           # 3
+//     print(b.total())           # 3
+//
+//     r = Rect(Vec2(0, 0), Vec2(10, 20))
+//     print(r.pos.x)             # 0
+//     print(r.size.total())      # 30
+//     print(r.origin_sum())      # 0
 void main() {
-    // a = Vec2(1, 2)
     Vec2 a = Vec2(1, 2);
-    // b = a                      # copy (value type)
     Vec2 b = a;
-    // print(a.total())           # 3
     std::cout << a.total() << "\n";
-    // print(b.total())           # 3
     std::cout << b.total() << "\n";
-    // r = Rect(Vec2(0, 0), Vec2(10, 20))
     Rect r = Rect(Vec2(0, 0), Vec2(10, 20));
-    // print(r.pos.x)             # 0
     std::cout << r.pos.x << "\n";
-    // print(r.size.total())      # 30
     std::cout << r.size.total() << "\n";
-    // print(r.origin_sum())      # 0
     std::cout << r.origin_sum() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

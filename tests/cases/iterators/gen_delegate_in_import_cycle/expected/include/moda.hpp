@@ -17,9 +17,13 @@ struct __gen_free_delegator;
 struct __gen_method_delegator;
 struct __gen_Src_steps;
 
+// def local_walk() -> Iterator[int32]:
 __gen_local_walk local_walk();
+// def free_delegator() -> Iterator[int32]:
 __gen_free_delegator free_delegator();
+// def method_delegator(s: Src) -> Iterator[int32]:
 __gen_method_delegator method_delegator(Src& s);
+// def ping(n: int32) -> int32:
 int32_t ping(int32_t n);
 
 // class Src:
@@ -40,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
     return os;
 }
 
-// Generator: local_walk
+// def local_walk() -> Iterator[int32]:
 struct __gen_local_walk : public ::tpy::next_iter_mixin<__gen_local_walk, int32_t> {
     int32_t __state;
 
@@ -62,7 +66,7 @@ struct __gen_local_walk : public ::tpy::next_iter_mixin<__gen_local_walk, int32_
     }
 };
 
-// Generator: free_delegator
+// def free_delegator() -> Iterator[int32]:
 struct __gen_free_delegator : public ::tpy::next_iter_mixin<__gen_free_delegator, int32_t> {
     int32_t __state;
     int32_t x;
@@ -88,7 +92,7 @@ struct __gen_free_delegator : public ::tpy::next_iter_mixin<__gen_free_delegator
     }
 };
 
-// Generator: Src.steps
+// def steps(self) -> Iterator[int32]:
 struct __gen_Src_steps : public ::tpy::next_iter_mixin<__gen_Src_steps, int32_t> {
     int32_t __state;
     const Src& __self;
@@ -115,7 +119,7 @@ inline __gen_Src_steps Src::steps() const {
     return __gen_Src_steps(*this);
 }
 
-// Generator: method_delegator
+// def method_delegator(s: Src) -> Iterator[int32]:
 struct __gen_method_delegator : public ::tpy::next_iter_mixin<__gen_method_delegator, int32_t> {
     int32_t __state;
     Src& s;

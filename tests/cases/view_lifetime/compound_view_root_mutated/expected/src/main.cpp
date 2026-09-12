@@ -5,107 +5,107 @@ namespace tpyapp::main {
 
 
 // def ternary(c: list[str], d: list[str], cond: bool) -> str:
+//     x = c[0] if cond else d[0]  # tpyc: type(str)
+//     c.append("padding long enough to force the backing vector to reallocate")
+//     d.append("padding long enough to force the backing vector to reallocate")
+//     return x
 std::string ternary(std::vector<std::string>& c, std::vector<std::string>& d, bool cond) {
-    // x = c[0] if cond else d[0]  # tpyc: type(str)
     std::string x = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
-    // c.append("padding long enough to force the backing vector to reallocate")
     c.push_back("padding long enough to force the backing vector to reallocate");
-    // d.append("padding long enough to force the backing vector to reallocate")
     d.push_back("padding long enough to force the backing vector to reallocate");
-    // return x
     return x;
 }
 
 // def or_chain(c: list[str], d: list[str]) -> str:
+//     x = c[0] or d[0]  # tpyc: type(str)
+//     c.append("padding long enough to force the backing vector to reallocate")
+//     return x
 std::string or_chain(std::vector<std::string>& c, const std::vector<std::string>& d) {
-    // x = c[0] or d[0]  # tpyc: type(str)
     auto&& __tmp_1 = ::tpy::__getitem__(c, 0);
     std::string x = ((!__tmp_1.empty()) ? __tmp_1 : ::tpy::__getitem__(d, 0));
-    // c.append("padding long enough to force the backing vector to reallocate")
     c.push_back("padding long enough to force the backing vector to reallocate");
-    // return x
     return x;
 }
 
 // def and_chain(c: list[str], d: list[str]) -> str:
+//     x = c[0] and d[0]  # tpyc: type(str)
+//     c.append("padding long enough to force the backing vector to reallocate")
+//     d.append("padding long enough to force the backing vector to reallocate")
+//     return x
 std::string and_chain(std::vector<std::string>& c, std::vector<std::string>& d) {
-    // x = c[0] and d[0]  # tpyc: type(str)
     auto&& __tmp_2 = ::tpy::__getitem__(c, 0);
     std::string x = ((!__tmp_2.empty()) ? ::tpy::__getitem__(d, 0) : __tmp_2);
-    // c.append("padding long enough to force the backing vector to reallocate")
     c.push_back("padding long enough to force the backing vector to reallocate");
-    // d.append("padding long enough to force the backing vector to reallocate")
     d.push_back("padding long enough to force the backing vector to reallocate");
-    // return x
     return x;
 }
 
 // def nested(c: list[str], d: list[str], e: list[str], cond: bool) -> str:
+//     x = (c[0] if cond else d[0]) or e[0]  # tpyc: type(str)
+//     d.append("padding long enough to force the backing vector to reallocate")
+//     return x
 std::string nested(const std::vector<std::string>& c, std::vector<std::string>& d, const std::vector<std::string>& e, bool cond) {
-    // x = (c[0] if cond else d[0]) or e[0]  # tpyc: type(str)
     auto&& __tmp_3 = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
     std::string x = ((!__tmp_3.empty()) ? __tmp_3 : ::tpy::__getitem__(e, 0));
-    // d.append("padding long enough to force the backing vector to reallocate")
     d.push_back("padding long enough to force the backing vector to reallocate");
-    // return x
     return x;
 }
 
 // def field_arm(r: Rec, t: Rec, cond: bool) -> str:
+//     x = r.s if cond else t.s  # tpyc: type(str)
+//     r.s = "padding long enough to force the std::string buffer to reallocate"
+//     return x
 std::string field_arm(Rec& r, const Rec& t, bool cond) {
-    // x = r.s if cond else t.s  # tpyc: type(str)
     std::string x = ((cond) ? (r.s) : (t.s));
-    // r.s = "padding long enough to force the std::string buffer to reallocate"
     r.s = "padding long enough to force the std::string buffer to reallocate";
-    // return x
     return x;
 }
 
 // def bytes_ternary(c: list[bytes], d: list[bytes], cond: bool) -> int:
+//     x = c[0] if cond else d[0]  # tpyc: type(bytes)
+//     c.append(b"padding long enough to force the backing vector to reallocate")
+//     return len(x)
 ::tpy::BigInt bytes_ternary(std::vector<::tpy::Bytes>& c, const std::vector<::tpy::Bytes>& d, bool cond) {
-    // x = c[0] if cond else d[0]  # tpyc: type(bytes)
     ::tpy::Bytes x = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
-    // c.append(b"padding long enough to force the backing vector to reallocate")
     c.push_back(::tpy::bytes_literal_owned("padding long enough to force the backing vector to reallocate", 61));
-    // return len(x)
     return ::tpy::BigInt(::tpy::__len__(x));
 }
 
 // def main() -> None:
+//     print(ternary(["alpha"], ["beta"], True))
+//     print(or_chain(["gamma"], ["delta"]))
+//     print(and_chain(["epsilon"], ["zeta"]))
+//     print(nested(["one"], ["two"], ["three"], False))
+//     print(field_arm(Rec("eta"), Rec("theta"), True))
+//     print(bytes_ternary([b"abcd"], [b"ef"], True))
 void main() {
-    // print(ternary(["alpha"], ["beta"], True))
     std::vector<std::string> __tmp_4 = {"alpha"};
     std::vector<std::string> __tmp_5 = {"beta"};
     std::cout << ternary(__tmp_4, __tmp_5, true) << "\n";
-    // print(or_chain(["gamma"], ["delta"]))
     std::vector<std::string> __tmp_6 = {"gamma"};
     std::vector<std::string> __tmp_7 = {"delta"};
     std::cout << or_chain(__tmp_6, __tmp_7) << "\n";
-    // print(and_chain(["epsilon"], ["zeta"]))
     std::vector<std::string> __tmp_8 = {"epsilon"};
     std::vector<std::string> __tmp_9 = {"zeta"};
     std::cout << and_chain(__tmp_8, __tmp_9) << "\n";
-    // print(nested(["one"], ["two"], ["three"], False))
     std::vector<std::string> __tmp_10 = {"one"};
     std::vector<std::string> __tmp_11 = {"two"};
     std::vector<std::string> __tmp_12 = {"three"};
     std::cout << nested(__tmp_10, __tmp_11, __tmp_12, false) << "\n";
-    // print(field_arm(Rec("eta"), Rec("theta"), True))
     Rec __tmp_13 = Rec("eta");
     Rec __tmp_14 = Rec("theta");
     std::cout << field_arm(__tmp_13, __tmp_14, true) << "\n";
-    // print(bytes_ternary([b"abcd"], [b"ef"], True))
     std::vector<::tpy::Bytes> __tmp_15 = {::tpy::bytes_literal_owned("abcd", 4)};
     std::vector<::tpy::Bytes> __tmp_16 = {::tpy::bytes_literal_owned("ef", 2)};
     std::cout << bytes_ternary(__tmp_15, __tmp_16, true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

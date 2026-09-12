@@ -11,9 +11,13 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_point(p: Ptr[readonly[Point]]) -> int32:
 int32_t read_point(const Point* p);
+// def modify_via_ptr(p: Ptr[Point], new_x: int32) -> None:
 void modify_via_ptr(Point* p, int32_t new_x);
+// def test_ptr_to_const_ptr() -> None:
 void test_ptr_to_const_ptr();
+// def test_const_ptr_preserves_value() -> None:
 void test_const_ptr_preserves_value();
 
 // # Test Ptr[readonly[T]] type for read-only pointers
@@ -37,6 +41,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -20,6 +20,7 @@ struct Hammer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -66,28 +67,31 @@ inline std::ostream& operator<<(std::ostream& os, const Hammer& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def __init__(self, shared: Own[Arc[Counter]], iters: int32) -> None:
+//     self.shared = shared
+//     self.iters = iters
 inline Hammer::Hammer(::tpystd::tplib::arc::Arc<Counter>&& shared, int32_t iters) : shared(std::move(shared)), iters(iters) {}
 
 // def run(self) -> int32:
+//     total = 0
+//     i = 0
+//     while i < self.iters:
+//         c = self.shared.clone()   # concurrent atomic strong increment
+//         total += c.get().n        # read the shared payload
+//         i += 1
+//         # `c` drops here -> concurrent atomic strong decrement
+//     return total
 inline int32_t Hammer::run() {
-    // total = 0
     int32_t total = 0;
-    // i = 0
     int32_t i = 0;
-    // while i < self.iters:
     while ((i < this->iters)) {
-        // c = self.shared.clone()   # concurrent atomic strong increment
         ::tpystd::tplib::arc::Arc<Counter> c = this->shared.clone();
-        // total += c.get().n        # read the shared payload
         total = ::tpy::add_check<int32_t>(total, c.get().n);
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
-        // # `c` drops here -> concurrent atomic strong decrement
     }
-    // return total
     return total;
 }
 void __tpy_init();

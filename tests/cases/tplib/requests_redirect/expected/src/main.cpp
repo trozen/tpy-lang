@@ -5,75 +5,76 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     c, d = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /v2/tables\r\n"
+//               b"Content-Length: 0\r\n\r\n")
+//     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
+//               b"Content-Length: 5\r\n\r\nhello")
+//     s = requests.Session()
+//     h0 = HTTPConnection("api.test", 80)
+//     h0.sock = a
+//     s._connection = Box(h0)
+//     h1 = HTTPConnection("api.test", 80)
+//     h1.sock = c
+//     s._redirect_connections = [Box(h1)]
+//     r = s.get("http://api.test/v1/tables")
+//     print(r.status_code, r.ok, r.text)
+//     print(r.url)
+//     print(len(r.history), r.history[0].status_code, r.history[0].url)
+//     # The first hop's request targets /v1/tables; the second targets the
+//     # redirect Location /v2/tables.
+//     print(b.recv(65536).split(b"\r\n")[0])
+//     print(d.recv(65536).split(b"\r\n")[0])
+//     b.close()
+//     d.close()
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // c, d = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    // b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /v2/tables\r\n"
-    // b"Content-Length: 0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: /v2/tables\r\nContent-Length: 0\r\n\r\n", 63));
-    // d.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
-    // b"Content-Length: 5\r\n\r\nhello")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhello", 69));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // h0 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h0.sock = a
     h0.sock = std::move(a);
-    // s._connection = Box(h0)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h0));
-    // h1 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h1.sock = c
     h1.sock = std::move(c);
-    // s._redirect_connections = [Box(h1)]
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
-    // r = s.get("http://api.test/v1/tables")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/tables");
-    // print(r.status_code, r.ok, r.text)
     std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.text() << "\n";
-    // print(r.url)
     std::cout << r.url << "\n";
-    // print(len(r.history), r.history[0].status_code, r.history[0].url)
     std::cout << ::tpy::__len__(r.history) << " " << ::tpy::__getitem__(r.history, 0).status_code << " " << ::tpy::__getitem__(r.history, 0).url << "\n";
-    // # The first hop's request targets /v1/tables; the second targets the
-    // # redirect Location /v2/tables.
-    // print(b.recv(65536).split(b"\r\n")[0])
     std::cout << ::tpy::BytesPrinter(::tpy::__getitem__(::tpy::bytes_split(b.recv(65536), ::tpy::bytes_literal("\r\n", 2)), 0)) << "\n";
-    // print(d.recv(65536).split(b"\r\n")[0])
     std::cout << ::tpy::BytesPrinter(::tpy::__getitem__(::tpy::bytes_split(d.recv(65536), ::tpy::bytes_literal("\r\n", 2)), 0)) << "\n";
-    // b.close()
     b.close();
-    // d.close()
     d.close();
 }
 
+// # tplib.requests follows a 302 to its Location: the final Response carries the
+// # 200 (status/url/text) while .history holds the intermediate 302. Two
+// # socketpairs feed the two hops (Session._connection for hop 0, the
+// # _redirect_connections queue for hop 1 -- the offline test seam); peers stay
+// # open while the client writes so the request sends don't hit a closed peer.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests follows a 302 to its Location: the final Response carries the
-    // # 200 (status/url/text) while .history holds the intermediate 302. Two
-    // # socketpairs feed the two hops (Session._connection for hop 0, the
-    // # _redirect_connections queue for hop 1 -- the offline test seam); peers stay
-    // # open while the client writes so the request sends don't hit a closed peer.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

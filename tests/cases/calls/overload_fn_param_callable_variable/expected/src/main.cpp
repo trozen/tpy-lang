@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Typed locals holding callables -- pre-analyzed once at the
+//     # call site, then matched against each candidate's Fn shape.
+//     f1: Callable[[int32], int32] = lambda x: x + int32(1)
+//     f2: Callable[[int32, int32], int32] = lambda a, b: a + b
+//     print(apply(f1, int32(5)))   # picks 1-param overload -> 6
+//     print(apply(f2, int32(5)))   # picks 2-param overload -> 10
 void main() {
-    // # Typed locals holding callables -- pre-analyzed once at the
-    // # call site, then matched against each candidate's Fn shape.
-    // f1: Callable[[int32], int32] = lambda x: x + int32(1)
     std::function<int32_t(int32_t)> f1 = [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); };
-    // f2: Callable[[int32, int32], int32] = lambda a, b: a + b
     std::function<int32_t(int32_t, int32_t)> f2 = [](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); };
-    // print(apply(f1, int32(5)))   # picks 1-param overload -> 6
     std::cout << apply<int32_t>(f1, 5) << "\n";
-    // print(apply(f2, int32(5)))   # picks 2-param overload -> 10
     std::cout << apply<int32_t>(f2, 5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

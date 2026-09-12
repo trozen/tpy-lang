@@ -11,11 +11,17 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_extend_copy_iter_no_warn() -> None:
 void test_extend_copy_iter_no_warn();
+// def test_extend_copy_iter_value_type() -> None:
 void test_extend_copy_iter_value_type();
+// def test_iadd_copy_iter_no_warn() -> None:
 void test_iadd_copy_iter_no_warn();
+// def test_list_ctor_copy_iter_no_warn() -> None:
 void test_list_ctor_copy_iter_no_warn();
+// def test_extend_no_copy_iter_warns() -> None:
 void test_extend_no_copy_iter_warns();
+// def test_for_loop_copy_iter() -> None:
 void test_for_loop_copy_iter();
 
 // class Node:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Node::Node(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

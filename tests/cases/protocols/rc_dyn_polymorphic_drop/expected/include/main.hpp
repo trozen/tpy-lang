@@ -34,7 +34,9 @@ struct Parrot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_rc() -> None:
 void make_rc();
+// def main() -> None:
 void main();
 
 // class Parrot(Pet):
@@ -84,10 +86,10 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     print(f"Parrot({label}) ctor")
+//     self.label = label
 inline Parrot::Parrot(std::string_view label) {
-    // print(f"Parrot({label}) ctor")
     std::cout << std::format("Parrot({}) ctor", label) << "\n";
-    // self.label = label
     this->label = label;
 }
 
@@ -103,15 +105,15 @@ inline Parrot& Parrot::operator=(Parrot&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print(f"~Parrot({self.label})")
 inline Parrot::~Parrot() {
     if (!this->__tpy_owned_) return;
-    // print(f"~Parrot({self.label})")
     std::cout << std::format("~Parrot({})", this->label) << "\n";
 }
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Parrot::name() {
-    // return self.label
     return this->label;
 }
 void __tpy_init();

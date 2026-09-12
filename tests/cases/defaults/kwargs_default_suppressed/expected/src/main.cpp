@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def scaled(a: int64, b: int64 = 5, **kwargs: Unpack[Options]) -> int64:
+//     return a * 10 + b
 int64_t scaled(int64_t a, int64_t b, const Options& kwargs) {
-    // return a * 10 + b
     return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10)), b));
 }
 
 // def spanned(a: int64, b: int64 = 2, c: int64 = 3, **kwargs: Unpack[Options]) -> int64:
+//     return a * 100 + b * 10 + c
 int64_t spanned(int64_t a, int64_t b, int64_t c, const Options& kwargs) {
-    // return a * 100 + b * 10 + c
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 100)), (::tpy::mul_check<int64_t>(b, 10)))), c));
 }
 
 // def main() -> None:
+//     print(scaled(1, host="x"))
+//     print(scaled(1, 7, host="x"))
+//     print(spanned(1, host="y"))
+//     print(spanned(1, 8, host="y"))
+//     print(spanned(1, 8, 9, host="y"))
 void main() {
-    // print(scaled(1, host="x"))
     Options __tmp_1 = Options("x");
     std::cout << scaled(1, 5, __tmp_1) << "\n";
-    // print(scaled(1, 7, host="x"))
     Options __tmp_2 = Options("x");
     std::cout << scaled(1, 7, __tmp_2) << "\n";
-    // print(spanned(1, host="y"))
     Options __tmp_3 = Options("y");
     std::cout << spanned(1, 2, 3, __tmp_3) << "\n";
-    // print(spanned(1, 8, host="y"))
     Options __tmp_4 = Options("y");
     std::cout << spanned(1, 8, 3, __tmp_4) << "\n";
-    // print(spanned(1, 8, 9, host="y"))
     Options __tmp_5 = Options("y");
     std::cout << spanned(1, 8, 9, __tmp_5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

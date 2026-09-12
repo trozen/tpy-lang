@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def count_char(text: str, target: char) -> int32:
+//     """Count occurrences of target character in text."""
+//     count: int32 = 0
+//     i: int32 = 0
+//     while i < len(text):
+//         if text[i] == target:
+//             count += 1
+//         i += 1
+//     return count
 int32_t count_char(std::string_view text, char target) {
-    // count: int32 = 0
     int32_t count = 0;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < len(text):
     while ((i < ::tpy::__len__(text))) {
-        // if text[i] == target:
         if ((text[static_cast<std::size_t>(i)] == target)) {
-            // count += 1
             count = ::tpy::add_check<int32_t>(count, 1);
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return count
     return count;
 }
 
+// print(count_char("xoxox", "x"))
+// print(len("hello"))
+// print(chr(65))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(count_char("xoxox", "x"))
     std::cout << count_char("xoxox", 'x') << "\n";
-    // print(len("hello"))
     std::cout << ::tpy::__len__("hello") << "\n";
-    // print(chr(65))
     std::cout << static_cast<char>(65) << "\n";
 }
 

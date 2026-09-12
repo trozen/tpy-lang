@@ -17,10 +17,13 @@ struct Token;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_and_keep[T: Counted](item: Own[T]) -> Own[T]:
 template<Counted T>
 ::tpy::own_return_t<T> read_and_keep(::tpy::own_param_t<T> item);
+// def dispatch[T: Counted](item: Send[Own[T]]) -> Own[T]:
 template<Counted T>
 ::tpy::own_return_t<T> dispatch(::tpy::own_param_t<T> item);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -50,25 +53,26 @@ inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Token::Token(int32_t n) : n(n) {}
 
 // def value(self) -> int32:
+//     return self.n
 inline int32_t Token::value() const {
-    // return self.n
     return this->n;
 }
 // def read_and_keep[T: Counted](item: Own[T]) -> Own[T]:
+//     return item
 template<Counted T>
 ::tpy::own_return_t<T> read_and_keep(::tpy::own_param_t<T> item) {
-    // return item
     return item;
 }
 // def dispatch[T: Counted](item: Send[Own[T]]) -> Own[T]:
+//     print("dispatching:", item.value())      # borrow (not last use) -- must not move
+//     return read_and_keep[T](item)             # tpyc: ok -- last use, moves
 template<Counted T>
 ::tpy::own_return_t<T> dispatch(::tpy::own_param_t<T> item) {
-    // print("dispatching:", item.value())      # borrow (not last use) -- must not move
     std::cout << "dispatching:" << " " << item.value() << "\n";
-    // return read_and_keep[T](item)             # tpyc: ok -- last use, moves
     return read_and_keep<T>(std::move(item));
 }
 

@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def ret(h: Holder) -> Box:
+//     b = h.box
+//     return b
 Box& ret(Holder& h) {
-    // b = h.box
     Box& b = h.box;
-    // return b
     return b;
 }
 
 // def main() -> None:
+//     h = Holder(Box(5))
+//     b = ret(h)
+//     b.val = 99
+//     print(h.box.val)
 void main() {
-    // h = Holder(Box(5))
     Holder h = Holder(Box(5));
-    // b = ret(h)
     Box& b = ret(h);
-    // b.val = 99
     b.val = 99;
-    // print(h.box.val)
     std::cout << h.box.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

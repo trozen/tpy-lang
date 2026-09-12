@@ -5,42 +5,47 @@ namespace tpyapp::main {
 
 
 // def add(a: int32, b: int32) -> int32:
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3, 4, 5]
+//
+//     # Named function
+//     print(reduce(add, xs))                       # 15
+//
+//     # Lambda (max via comparison)
+//     print(reduce(lambda a, b: max(a, b), xs))    # 5
+//
+//     # Lambda (multiplication)
+//     print(reduce(lambda a, b: a * b, xs))        # 120
+//
+//     # Single-element list -- returns that element directly.
+//     one: list[int32] = [42]
+//     print(reduce(add, one))                      # 42
 void main() {
-    // xs: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
-    // # Named function
-    // print(reduce(add, xs))                       # 15
     std::cout << ::tpystd::functools::reduce<int32_t>(add, xs) << "\n";
-    // # Lambda (max via comparison)
-    // print(reduce(lambda a, b: max(a, b), xs))    # 5
     std::cout << ::tpystd::functools::reduce<int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max(a, b); }, xs) << "\n";
-    // # Lambda (multiplication)
-    // print(reduce(lambda a, b: a * b, xs))        # 120
     std::cout << ::tpystd::functools::reduce<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs) << "\n";
-    // # Single-element list -- returns that element directly.
-    // one: list[int32] = [42]
     std::vector<int32_t> one = {42};
-    // print(reduce(add, one))                      # 42
     std::cout << ::tpystd::functools::reduce<int32_t>(add, one) << "\n";
 }
 
+// # functools.reduce 2-arg form (uses a[0] as seed). Restored after the
+// # per-candidate Fn arg typing fix unblocked the multi-overload reduce
+// # resolution.
+// from functools import reduce
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # functools.reduce 2-arg form (uses a[0] as seed). Restored after the
-    // # per-candidate Fn arg typing fix unblocked the multi-overload reduce
-    // # resolution.
-    // from functools import reduce
     ::tpystd::functools::__tpy_init();
-    // main()
     main();
 }
 

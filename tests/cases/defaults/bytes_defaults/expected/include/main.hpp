@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def with_bytes(data: bytes = b"") -> int:
 ::tpy::BigInt with_bytes(::tpy::BytesView data = {});
+// def with_bytes_default(data: bytes = b"hi") -> int:
 ::tpy::BigInt with_bytes_default(::tpy::BytesView data = ::tpy::bytes_literal("hi", 2));
+// def with_view_empty(data: BytesView = b"") -> int:
 ::tpy::BigInt with_view_empty(::tpy::BytesView data = {});
+// def with_view_default(data: BytesView = b"hi") -> int:
 ::tpy::BigInt with_view_default(::tpy::BytesView data = ::tpy::bytes_literal("hi", 2));
+// def main() -> None:
 void main();
 
 void __tpy_init();

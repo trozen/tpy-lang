@@ -19,18 +19,31 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_section;
 struct __coro_async_section;
 
+// def gen_section() -> Iterator[int32]:
 __gen_gen_section gen_section();
+// async def async_section() -> int32:
 __coro_async_section async_section();
+// def sync_second_section() -> None:
 void sync_second_section();
+// def field_chain_section() -> None:
 void field_chain_section();
+// def element_section(run: bool) -> None:
 void element_section(bool run);
+// def ptr_section() -> None:
 void ptr_section();
+// def nested_def_section() -> None:
 void nested_def_section();
+// def after_branch_section(c: bool) -> None:
 void after_branch_section(bool c);
+// def after_loop_section() -> None:
 void after_loop_section();
+// def body_local_holder_section() -> None:
 void body_local_holder_section();
+// def after_while_section() -> None:
 void after_while_section();
+// def loop_carried_section() -> None:
 void loop_carried_section();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -68,7 +81,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: async_section
+// async def async_section() -> int32:
 struct __coro_async_section {
     int32_t __state;
     bool __cancel_pending;
@@ -91,7 +104,7 @@ struct __coro_async_section {
     }
 };
 
-// Generator: gen_section
+// def gen_section() -> Iterator[int32]:
 struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<Point> p;
@@ -117,15 +130,17 @@ struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int3
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def bump(self) -> None:
+//     self.x += 100
 inline void Point::bump() {
-    // self.x += 100
     this->x = ::tpy::add_check<int32_t>(this->x, 100);
 }
 
 // def __init__(self, inner: Own[Point]) -> None:
+//     self.inner = inner
 inline Holder::Holder(Point&& inner) : inner(std::move(inner)) {}
 void __tpy_init();
 } // namespace tpyapp::main

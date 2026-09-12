@@ -5,70 +5,70 @@ namespace tpyapp::main {
 
 
 // def show(lst: ArrayList[Point, 8]) -> None:
+//     for i in range(len(lst)):
+//         pt = lst[i]  # binds the element itself (const Point&), never a copy
+//         print(pt.x, pt.y)
 void show(const ::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
-    // for i in range(len(lst)):
     int32_t __stop_0 = ::tpy::__len__(lst);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // pt = lst[i]  # binds the element itself (const Point&), never a copy
         const Point& pt = lst[i];
-        // print(pt.x, pt.y)
         std::cout << pt.x << " " << pt.y << "\n";
     }
 }
 
 // def bump(lst: ArrayList[Point, 8]) -> None:
+//     p = lst[0]  # a mutable Point& alias into the list...
+//     p.x = 99  # ... so this write is visible through the list below
 void bump(::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
-    // p = lst[0]  # a mutable Point& alias into the list...
     Point& p = lst[0];
-    // p.x = 99  # ... so this write is visible through the list below
     p.x = 99;
-    // # `p` ends here; the replace_* writes below run with no borrow live.
 }
 
 // def replace_move(lst: ArrayList[Point, 8]) -> None:
+//     z = Point(7, 7)
+//     lst[1] = z  # last use of z -> moved into the Own[T] value slot
 void replace_move(::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
-    // z = Point(7, 7)
     Point z = Point(7, 7);
-    // lst[1] = z  # last use of z -> moved into the Own[T] value slot
     ::tpy::__setitem__(lst, 1, std::move(z));
 }
 
 // def replace_rvalue(lst: ArrayList[Point, 8]) -> None:
+//     lst[1] = Point(8, 8)  # a ctor prvalue binds the same slot directly
 void replace_rvalue(::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
-    // lst[1] = Point(8, 8)  # a ctor prvalue binds the same slot directly
     ::tpy::__setitem__(lst, 1, Point(8, 8));
 }
 
 // def main() -> None:
+//     lst = ArrayList[Point, 8]()
+//     lst.append(Point(1, 2))
+//     lst.append(Point(3, 4))
+//     bump(lst)
+//     show(lst)
+//     replace_move(lst)
+//     show(lst)
+//     replace_rvalue(lst)
+//     show(lst)
 void main() {
-    // lst = ArrayList[Point, 8]()
     ::tpystd::tplib::array_list::ArrayList<Point, 8> lst = ::tpystd::tplib::array_list::ArrayList<Point, 8>();
-    // lst.append(Point(1, 2))
     lst.append(Point(1, 2));
-    // lst.append(Point(3, 4))
     lst.append(Point(3, 4));
-    // bump(lst)
     bump(lst);
-    // show(lst)
     show(lst);
-    // replace_move(lst)
     replace_move(lst);
-    // show(lst)
     show(lst);
-    // replace_rvalue(lst)
     replace_rvalue(lst);
-    // show(lst)
     show(lst);
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

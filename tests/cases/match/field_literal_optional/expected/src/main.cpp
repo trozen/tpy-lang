@@ -5,52 +5,53 @@ namespace tpyapp::main {
 
 
 // def describe(p: P) -> str:
+//     match p:
+//         case P(x=3):  # tpyc: ok
+//             return "three"
+//         case P(name="hi"):  # tpyc: ok
+//             return "hi"
+//         # The `as` spelling routes the same field type through the same check.
+//         case P(x=7 as v):  # tpyc: ok
+//             return "seven" if v is not None else "unreachable"
+//         case _:
+//             return "other"
 std::string describe(const P& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case P(x=3):  # tpyc: ok
     if (__match_subject_1.x == 3) {
-        // return "three"
         return "three";
-    // case P(name="hi"):  # tpyc: ok
     } else if (__match_subject_1.name == "hi") {
-        // return "hi"
         return "hi";
-    // case P(x=7 as v):  # tpyc: ok
     } else if (__match_subject_1.x == 7) {
         auto& v = __match_subject_1.x;
-        // return "seven" if v is not None else "unreachable"
         return std::string((((v.has_value())) ? ("seven") : ("unreachable")));
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(describe(P(3, None)))
+//     print(describe(P(4, "hi")))
+//     print(describe(P(7, None)))
+//     print(describe(P(None, None)))
 void main() {
-    // print(describe(P(3, None)))
     P __tmp_1 = P(3, std::nullopt);
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(P(4, "hi")))
     P __tmp_2 = P(4, "hi");
     std::cout << describe(__tmp_2) << "\n";
-    // print(describe(P(7, None)))
     P __tmp_3 = P(7, std::nullopt);
     std::cout << describe(__tmp_3) << "\n";
-    // print(describe(P(None, None)))
     P __tmp_4 = P(std::nullopt, std::nullopt);
     std::cout << describe(__tmp_4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def setter(e: Event) -> None:
+//     e.set()
 ::tpystd::tpy::Poll<::std::monostate> __coro_setter::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // e.set()
         e.set();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,14 +26,15 @@ __coro_setter setter(::tpystd::asyncio::Event& e) {
 }
 
 // async def fast() -> None:
+//     e = Event()
+//     e.set()
+//     r = await e.wait()
+//     print("fast", r)
 ::tpystd::tpy::Poll<::std::monostate> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // e = Event()
         e.emplace(::tpystd::asyncio::Event());
-        // e.set()
         (*e).set();
-        // r = await e.wait()
         __sub_0.emplace((*e));
         __state = S_RESUME_0;
         continue;
@@ -43,7 +44,6 @@ __coro_setter setter(::tpystd::asyncio::Event& e) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        // print("fast", r)
         std::cout << "fast" << " " << ::tpy::print_bool(r) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -60,14 +60,15 @@ __coro_fast fast() {
 }
 
 // async def slow() -> None:
+//     e = Event()
+//     asyncio.create_task(setter(e))
+//     r = await e.wait()
+//     print("slow", r)
 ::tpystd::tpy::Poll<::std::monostate> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // e = Event()
         e.emplace(::tpystd::asyncio::Event());
-        // asyncio.create_task(setter(e))
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(setter((*e))));
-        // r = await e.wait()
         __sub_0.emplace((*e));
         __state = S_RESUME_0;
         continue;
@@ -77,7 +78,6 @@ __coro_fast fast() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        // print("slow", r)
         std::cout << "slow" << " " << ::tpy::print_bool(r) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -94,10 +94,11 @@ __coro_slow slow() {
 }
 
 // async def main_coro() -> None:
+//     await fast()
+//     await slow()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await fast()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -107,7 +108,6 @@ __coro_slow slow() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // await slow()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -132,21 +132,22 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.Event.wait() -- CPython-shape `await event.wait()`, fast path
+// # (already set) and slow path (suspend, then woken by a setter task).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.Event.wait() -- CPython-shape `await event.wait()`, fast path
-    // # (already set) and slow path (suspend, then woken by a setter task).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -9,10 +9,13 @@ namespace tpyapp::main {
 // # read after the loop must compile (not be rejected) and stay a zero-copy view
 // # -- the binding aliases the live `pairs` container, not a per-iteration temp.
 // def main() -> None:
+//     pairs = [("aa", "bbbb"), ("cc", "dddd")]
+//     for k, v in pairs:
+//         print(k, v)
+//     print(k)
+//     print(v)
 void main() {
-    // pairs = [("aa", "bbbb"), ("cc", "dddd")]
     std::array<std::tuple<std::string, std::string>, 2> pairs = {std::tuple<std::string, std::string>{"aa", "bbbb"}, std::tuple<std::string, std::string>{"cc", "dddd"}};
-    // for k, v in pairs:
     std::string_view k;
     std::string_view v;
     auto& __obj_0 = pairs;
@@ -20,25 +23,21 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        // for k, v in pairs:
         const auto& __tup_1 = __for_tup_0;
         k = std::get<0>(__tup_1);
         v = std::get<1>(__tup_1);
-        // print(k, v)
         std::cout << k << " " << v << "\n";
     }
-    // print(k)
     std::cout << k << "\n";
-    // print(v)
     std::cout << v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

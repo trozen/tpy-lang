@@ -11,14 +11,23 @@ struct CM;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def hoisted() -> None:
 void hoisted();
+// def ret_through(n: int) -> int:
 ::tpy::BigInt ret_through(const ::tpy::BigInt& n);
+// def bare_ret(n: int) -> None:
 void bare_ret(const ::tpy::BigInt& n);
+// def override(n: int) -> int:
 ::tpy::BigInt override(const ::tpy::BigInt& n);
+// def loop_exits(k: int) -> int:
 ::tpy::BigInt loop_exits(const ::tpy::BigInt& k);
+// def nested() -> None:
 void nested();
+// def mixed(n: int) -> int:
 ::tpy::BigInt mixed(const ::tpy::BigInt& n);
+// def term_body() -> int:
 ::tpy::BigInt term_body();
+// def main() -> None:
 void main();
 
 // # try/finally (no-handler) shapes: hoisted first-declares read after the
@@ -50,19 +59,20 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline CM::CM(const ::tpy::BigInt& n) : n(n) {}
 
 // def __enter__(self) -> int:
+//     print("enter", self.n)
+//     return self.n
 inline ::tpy::BigInt CM::__enter__() const {
-    // print("enter", self.n)
     std::cout << "enter" << " " << this->n << "\n";
-    // return self.n
     return this->n;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("exit", self.n)
 inline void CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("exit", self.n)
     std::cout << "exit" << " " << this->n << "\n";
 }
 void __tpy_init();

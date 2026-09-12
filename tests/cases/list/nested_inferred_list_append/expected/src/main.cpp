@@ -5,66 +5,66 @@ namespace tpyapp::main {
 
 
 // def rows(src: list[list[float]]) -> Own[list[list[float]]]:
+//     outer = []
+//     for row in src:
+//         inner = []
+//         for x in row:
+//             inner.append(x * 2.0)
+//         outer.append(inner)  # inner moves into the unannotated outer list
+//     return outer
 std::vector<std::vector<double>> rows(const std::vector<std::vector<double>>& src) {
-    // outer = []
     std::vector<std::vector<double>> outer = std::vector<std::vector<double>>{};
-    // for row in src:
     auto& __obj_0 = src;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& row = *__beg_0;
-        // inner = []
         std::vector<double> inner = std::vector<double>{};
-        // for x in row:
         auto& __obj_1 = row;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             double x = *__beg_1;
-            // inner.append(x * 2.0)
             inner.push_back(((x) * (2.0)));
         }
-        // outer.append(inner)  # inner moves into the unannotated outer list
         outer.push_back(std::move(inner));
     }
-    // return outer
     return outer;
 }
 
 // def main() -> None:
+//     base: list[list[float]] = []
+//     base.append([1.0, 2.0])
+//     out = rows(base)
+//     out[0].append(9.0)
+//     print(len(out), len(out[0]), out[0][2])
+//     # The same shape at a LOCAL outer list, both sides still unannotated.
+//     local = []
+//     part = []
+//     part.append(1)
+//     local.append(part)
+//     local[0].append(2)
+//     print(len(local), len(local[0]), local[0][1])
 void main() {
-    // base: list[list[float]] = []
     std::vector<std::vector<double>> base = std::vector<std::vector<double>>{};
-    // base.append([1.0, 2.0])
     base.push_back({1.0, 2.0});
-    // out = rows(base)
     std::vector<std::vector<double>> out = rows(base);
-    // out[0].append(9.0)
     ::tpy::__getitem__(out, 0).push_back(9.0);
-    // print(len(out), len(out[0]), out[0][2])
     std::cout << ::tpy::__len__(out) << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(out, 0), 2)) << "\n";
-    // # The same shape at a LOCAL outer list, both sides still unannotated.
-    // local = []
     std::vector<std::vector<int32_t>> local = std::vector<std::vector<int32_t>>{};
-    // part = []
     std::vector<int32_t> part = std::vector<int32_t>{};
-    // part.append(1)
     part.push_back(1);
-    // local.append(part)
     local.push_back(std::move(part));
-    // local[0].append(2)
     ::tpy::__getitem__(local, 0).push_back(2);
-    // print(len(local), len(local[0]), local[0][1])
     std::cout << ::tpy::__len__(local) << " " << ::tpy::__len__(::tpy::__getitem__(local, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(local, 0), 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

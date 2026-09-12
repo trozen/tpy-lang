@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b: MyBag[int32] = MyBag()
+//     b.add(1)
+//     b.add(2)
+//     b.add(3)
+//     print(int32(2) in b)
+//     print(int32(5) in b)
+//     print(int32(5) not in b)
 void main() {
-    // b: MyBag[int32] = MyBag()
     MyBag<int32_t> b = MyBag<int32_t>();
-    // b.add(1)
     b.add(1);
-    // b.add(2)
     b.add(2);
-    // b.add(3)
     b.add(3);
-    // print(int32(2) in b)
     std::cout << ::tpy::print_bool((b.__contains__(2))) << "\n";
-    // print(int32(5) in b)
     std::cout << ::tpy::print_bool((b.__contains__(5))) << "\n";
-    // print(int32(5) not in b)
     std::cout << ::tpy::print_bool((!(b.__contains__(5)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

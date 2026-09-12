@@ -6,67 +6,67 @@ namespace tpyapp::main {
 
 // @error_return(MyErr)
 // def fallible(x: int32) -> int32:
+//     if x < 0:
+//         raise MyErr
+//     return x * 2
 std::expected<int32_t, MyErr> fallible(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // raise MyErr
         return ::tpy::make_unexpected(MyErr{});
     }
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def run(x: int32) -> None:
+//     try:
+//         y = fallible(x)
+//         print(y)
+//     except MyErr:
+//         print("err")
+//     finally:
+//         note = "done" + ("!" if x < 0 else ".")
+//         print(note)
+//     print(note)
 void run(int32_t x) {
-    // try:
     ::tpy::String note;
     int32_t y;
     {
         try {
-            // y = fallible(x)
             {
                 auto __try_tmp_2 = fallible(x);
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 y = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
-            // print(y)
             std::cout << y << "\n";
             goto __after_try_1;
             // except MyErr:
             __except_1:;
-            // print("err")
             std::cout << "err" << "\n";
             __after_try_1:;
         } catch (...) {
-            // note = "done" + ("!" if x < 0 else ".")
             note = (::tpy::str_concat("done", (((x < 0)) ? ("!") : ("."))));
-            // print(note)
             std::cout << note << "\n";
             throw;
         }
-        // note = "done" + ("!" if x < 0 else ".")
         note = (::tpy::str_concat("done", (((x < 0)) ? ("!") : ("."))));
-        // print(note)
         std::cout << note << "\n";
     }
-    // print(note)
     std::cout << note << "\n";
 }
 
 // def main() -> None:
+//     run(3)
+//     run(-1)
 void main() {
-    // run(3)
     run(3);
-    // run(-1)
     run(-1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

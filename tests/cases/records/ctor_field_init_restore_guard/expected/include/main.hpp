@@ -13,6 +13,7 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Restore guard: A's all-MIL ctor (no body, so no setup_body_scope reset after
@@ -69,12 +70,15 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self, n: Node | None) -> None:
+//     self.got = n.v if n is not None else -1
 inline A::A(const Node* n) : got((((n != nullptr)) ? (n->v) : (::tpy::BigInt(-1)))) {}
 
 // def __init__(self, n: int) -> None:
+//     self.x = n
 inline B::B(const ::tpy::BigInt& n) : x(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

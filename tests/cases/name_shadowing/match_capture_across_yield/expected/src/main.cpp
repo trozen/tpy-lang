@@ -5,22 +5,24 @@ namespace tpyapp::main {
 
 
 // def classify(n: int32) -> Iterator[int32]:
+//     match n:
+//         case 5 as hit:
+//             yield hit
+//             yield hit + 1
+//         case _:
+//             yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_classify::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = n;
         switch (__match_subject_1) {
-        // case 5 as hit:
         case 5: {
             hit = __match_subject_1;
-            // yield hit
             __state = S_RESUME_0;
             return hit;
             break;
         }
-        // case _:
         default: {
-            // yield -1
             __state = S_RESUME_2;
             return -1;
             break;
@@ -30,7 +32,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_classify::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield hit + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(hit, 1));
     }
@@ -58,10 +59,12 @@ __gen_classify classify(int32_t n) {
 }
 
 // def main() -> None:
+//     total = 0
+//     for v in classify(5):
+//         total += v
+//     print(total)
 void main() {
-    // total = 0
     int32_t total = 0;
-    // for v in classify(5):
     {
         auto __src_0 = classify(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -69,20 +72,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
         }
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

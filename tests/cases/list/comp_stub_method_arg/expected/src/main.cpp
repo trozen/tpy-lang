@@ -7,11 +7,12 @@ namespace tpyapp::main {
 // # A comprehension passed to a builtin container/view method: the stmt-expr
 // # renders inline into the stub's slot, structural (Iterable) and concrete alike.
 // def extend_iterable() -> int:
+//     primes: list[int] = [2, 3]
+//     # Structural `Iterable[T]` slot: the comprehension binds the template bare.
+//     primes.extend([i for i in range(5, 12, 2) if i != 9])  # tpyc: ok
+//     return len(primes)
 ::tpy::BigInt extend_iterable() {
-    // primes: list[int] = [2, 3]
     std::vector<::tpy::BigInt> primes = {2, 3};
-    // # Structural `Iterable[T]` slot: the comprehension binds the template bare.
-    // primes.extend([i for i in range(5, 12, 2) if i != 9])  # tpyc: ok
     ::tpy::list_extend(primes, ({
         std::vector<int32_t> __result;
         auto __obj_0 = ::tpy::Range<int32_t>(5, 12, 2);
@@ -25,16 +26,15 @@ namespace tpyapp::main {
         }
         std::move(__result);
     }));
-    // return len(primes)
     return ::tpy::BigInt(::tpy::__len__(primes));
 }
 
 // def join_iterable() -> str:
+//     xs = [1, 2, 3]
+//     # The view family's slot, same inline render.
+//     return ",".join([str(x) for x in xs])  # tpyc: ok
 std::string join_iterable() {
-    // xs = [1, 2, 3]
     std::array<int32_t, 3> xs = {1, 2, 3};
-    // # The view family's slot, same inline render.
-    // return ",".join([str(x) for x in xs])  # tpyc: ok
     return ::tpy::str_join(",", ({
         std::vector<std::string> __result;
         auto& __obj_0 = xs;
@@ -50,12 +50,13 @@ std::string join_iterable() {
 }
 
 // def update_dict() -> int:
+//     d = {1: 2}
+//     # A CONCRETE container slot whose element spells `Own[V]`: the target is
+//     # the comprehension's own container, not the ownership-carrying slot.
+//     d.update({k: k for k in range(3)})  # tpyc: ok
+//     return len(d)
 ::tpy::BigInt update_dict() {
-    // d = {1: 2}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 2}});
-    // # A CONCRETE container slot whose element spells `Own[V]`: the target is
-    // # the comprehension's own container, not the ownership-carrying slot.
-    // d.update({k: k for k in range(3)})  # tpyc: ok
     ::tpy::dict_update(d, ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -64,15 +65,15 @@ std::string join_iterable() {
         }
         std::move(__result);
     }));
-    // return len(d)
     return ::tpy::BigInt(::tpy::__len__(d));
 }
 
 // def update_set() -> int:
+//     s = {1, 2}
+//     s.update({x * 2 for x in range(3)})  # tpyc: ok
+//     return len(s)
 ::tpy::BigInt update_set() {
-    // s = {1, 2}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // s.update({x * 2 for x in range(3)})  # tpyc: ok
     ::tpy::set_update(s, ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -81,22 +82,21 @@ std::string join_iterable() {
         }
         std::move(__result);
     }));
-    // return len(s)
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 
 // def main():
+//     print(extend_iterable(), join_iterable(), update_dict(), update_set())
 void main() {
-    // print(extend_iterable(), join_iterable(), update_dict(), update_set())
     std::cout << extend_iterable() << " " << join_iterable() << " " << update_dict() << " " << update_set() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

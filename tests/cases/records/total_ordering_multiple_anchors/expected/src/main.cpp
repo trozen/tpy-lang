@@ -3,40 +3,39 @@
 
 namespace tpyapp::main {
 
-// a = Score(int32(2))
 Score* a{};
-// b = Score(int32(5))
 Score* b{};
 
+// # When the user defines multiple ordering ops, @total_ordering picks
+// # the first one in the canonical order (__lt__, __le__, __gt__, __ge__)
+// # as the anchor. The user-defined ones are kept; only the truly
+// # missing ones are synthesized. Here the user provides __lt__ and
+// # __ge__; only __le__ and __gt__ are filled in. The user's __ge__
+// # is preserved -- a `q != p.n` test below would catch a regression
+// # where the macro overwrote a user-defined op.
+// from functools import total_ordering
+//
+// a = Score(int32(2))
+// b = Score(int32(5))
+// print(a < b)
+// print(a <= b)   # synthesized
+// print(a > b)    # synthesized
+// print(a >= b)   # user's
+// print(a == Score(int32(2)))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # When the user defines multiple ordering ops, @total_ordering picks
-    // # the first one in the canonical order (__lt__, __le__, __gt__, __ge__)
-    // # as the anchor. The user-defined ones are kept; only the truly
-    // # missing ones are synthesized. Here the user provides __lt__ and
-    // # __ge__; only __le__ and __gt__ are filled in. The user's __ge__
-    // # is preserved -- a `q != p.n` test below would catch a regression
-    // # where the macro overwrote a user-defined op.
-    // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Score(int32(2))
     static Score __global_slot_1 = Score(2);
     a = &__global_slot_1;
-    // b = Score(int32(5))
     static Score __global_slot_2 = Score(5);
     b = &__global_slot_2;
-    // print(a < b)
     std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n";
-    // print(a <= b)   # synthesized
     std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    // print(a > b)    # synthesized
     std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
-    // print(a >= b)   # user's
     std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
-    // print(a == Score(int32(2)))
     std::cout << ::tpy::print_bool((((*a)) == (Score(2)))) << "\n";
 }
 

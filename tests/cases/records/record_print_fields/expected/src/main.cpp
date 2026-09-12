@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Config(True, 3.14, [int32(1), int32(2)], {"a": int32(10)}, (int32(7), "ok"))
+//     print(c)
+//     empty: dict[str, int32] = {}
+//     c2 = Config(False, 1.0, [], empty, (int32(0), ""))
+//     print(c2)
 void main() {
-    // c = Config(True, 3.14, [int32(1), int32(2)], {"a": int32(10)}, (int32(7), "ok"))
     Config c = Config(true, 3.14, {1, 2}, ::tpy::ordered_map<std::string, int32_t>({{"a", 10}}), std::tuple<int32_t, std::string>{7, "ok"});
-    // print(c)
     std::cout << c << "\n";
-    // empty: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> empty = ::tpy::ordered_map<std::string, int32_t>();
-    // c2 = Config(False, 1.0, [], empty, (int32(0), ""))
     Config c2 = Config(false, 1.0, std::vector<int32_t>{}, std::move(empty), std::tuple<int32_t, std::string>{0, ""});
-    // print(c2)
     std::cout << c2 << "\n";
 }
 
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

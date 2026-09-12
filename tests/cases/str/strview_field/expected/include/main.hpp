@@ -11,6 +11,7 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Wrapper:
@@ -34,11 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, sv: str) -> None:
+//     self.sv = sv
 inline Wrapper::Wrapper(std::string_view sv) : sv(sv) {}
 
 // def get(self) -> StrView:
+//     return self.sv
 inline std::string_view Wrapper::get() const {
-    // return self.sv
     return this->sv;
 }
 void __tpy_init();

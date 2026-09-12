@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def describe(b: Box[Pet]) -> str:
+//     if isinstance(b, Dog):       # tpyc: ok
+//         return "dog:" + b.bark()
+//     return "other:" + b.name()
 std::string describe(::tpystd::tplib::box::Box<Pet>& b) {
-    // if isinstance(b, Dog):       # tpyc: ok
     if (Dog* __b_ptr = dynamic_cast<Dog*>(&(b.__deref__())); (__b_ptr != nullptr)) {
-        // return "dog:" + b.bark()
         return (::tpy::str_concat("dog:", (*__b_ptr).bark()));
     }
-    // return "other:" + b.name()
     return (::tpy::str_concat("other:", b.__deref__().name()));
 }
 
 // def main() -> None:
+//     print(describe(Box(Dog())))
+//     print(describe(Box(Cat())))
 void main() {
-    // print(describe(Box(Dog())))
     ::tpystd::tplib::box::Box<Pet> __tmp_1 = ::tpystd::tplib::box::Box<Dog>(Dog());
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Box(Cat())))
     ::tpystd::tplib::box::Box<Pet> __tmp_2 = ::tpystd::tplib::box::Box<Cat>(Cat());
     std::cout << describe(__tmp_2) << "\n";
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

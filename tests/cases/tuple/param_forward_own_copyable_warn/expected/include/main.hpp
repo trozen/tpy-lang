@@ -11,10 +11,15 @@ struct A;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sink(p: tuple[Own[A], Own[A]]) -> int32:
 int32_t sink(std::tuple<A, A>&& p);
+// def make() -> tuple[Own[A], Own[A]]:
 std::tuple<A, A> make();
+// def fwd(p: tuple[Own[A], Own[A]]) -> int32:
 int32_t fwd(std::tuple<A, A>&& p);
+// def fwd_local() -> int32:
 int32_t fwd_local();
+// def main() -> None:
 void main();
 
 // class A:
@@ -35,6 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline A::A(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

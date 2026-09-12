@@ -12,7 +12,9 @@ struct Graph;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def relay(g: Graph, n: Node | None) -> None:
 void relay(Graph& g, const Node* n);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -67,23 +69,26 @@ inline std::ostream& operator<<(std::ostream& os, const Graph& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.total = 0
+//     self.slot = None
 inline Graph::Graph() : total(0), slot(std::nullopt) {}
 
 // def link(self, n: Node | None) -> None:
+//     if n is not None:
+//         self.total += n.v
 inline void Graph::link(const Node* n) {
-    // if n is not None:
     if ((n != nullptr)) {
-        // self.total += n.v
         this->total = ::tpy::add_check<int32_t>(this->total, n->v);
     }
 }
 
 // def stash(self, n: Own[Node]) -> None:
+//     self.slot = n
 inline void Graph::stash(Node&& n) {
-    // self.slot = n
     this->slot = std::move(n);
 }
 void __tpy_init();

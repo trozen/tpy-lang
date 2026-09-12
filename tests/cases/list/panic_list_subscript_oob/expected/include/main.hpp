@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_list_subscript_oob() -> None:
 void test_list_subscript_oob();
 
 void __tpy_init();

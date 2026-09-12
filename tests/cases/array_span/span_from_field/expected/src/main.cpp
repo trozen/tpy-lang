@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     arr: Array[int32, 3] = [1, 2, 3]
+//     box: Box = Box(arr)
+//     s: Span[int32] = box.items
+//     print(s[0])
+//     print(s[2])
 void main() {
-    // arr: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    // box: Box = Box(arr)
     Box box = Box(arr);
-    // s: Span[int32] = box.items
     std::span<int32_t> s = ::tpy::as_mut_span(box.items);
-    // print(s[0])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // print(s[2])
     std::cout << ::tpy::__getitem__(s, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

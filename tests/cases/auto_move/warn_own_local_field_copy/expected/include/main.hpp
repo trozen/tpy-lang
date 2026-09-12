@@ -12,9 +12,13 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_non_last_use() -> None:
 void test_non_last_use();
+// def test_last_use() -> None:
 void test_last_use();
+// def test_container_non_last_use() -> None:
 void test_container_non_last_use();
+// def test_container_last_use() -> None:
 void test_container_last_use();
 
 // class Item:
@@ -50,9 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Item::Item(int32_t v) : value(v) {}
 
 // def __init__(self) -> None:
+//     self.item = Item(int32(0))
 inline Holder::Holder() : item(Item(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

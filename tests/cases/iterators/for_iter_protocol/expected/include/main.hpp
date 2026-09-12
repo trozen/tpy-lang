@@ -59,29 +59,33 @@ inline std::ostream& operator<<(std::ostream& os, const NumberRange& obj) {
 
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.current = start
+//     self.limit = limit
 inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
 // def __next__(self) -> int32:
+//     if self.current < self.limit:
+//         result = self.current
+//         self.current += 1
+//         return result
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // result = self.current
         int32_t result = this->current;
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return result
         return result;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.start = start
+//     self.limit = limit
 inline NumberRange::NumberRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:
+//     return RangeIter(self.start, self.limit)
 inline RangeIter NumberRange::__iter__() const {
-    // return RangeIter(self.start, self.limit)
     return RangeIter(this->start, this->limit);
 }
 void __tpy_init();

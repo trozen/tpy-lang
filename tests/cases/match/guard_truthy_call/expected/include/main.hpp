@@ -12,8 +12,11 @@ struct Rec;
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[Rec]:
 Rec make();
+// def classify(x: int) -> str:
 std::string classify(const ::tpy::BigInt& x);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -34,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline Rec::Rec(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

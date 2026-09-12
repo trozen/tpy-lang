@@ -24,28 +24,50 @@ struct __gen_values;
 struct __coro_async_root;
 struct __coro_async_position;
 
+// def unary(name: str, x: float) -> float:
 double unary(std::string_view name, double x);
+// def category(x: float) -> str:
 std::string category(double x);
+// def check_unary(name: str, x: float, expected: str) -> None:
 void check_unary(std::string_view name, double x, std::string_view expected);
+// def unary_policy() -> None:
 void unary_policy();
+// def binary(name: str, x: float, y: float) -> float:
 double binary(std::string_view name, double x, double y);
+// def binary_policy() -> None:
 void binary_policy();
+// def ulp_policy() -> None:
 void ulp_policy();
+// def values() -> Iterator[float]:
 __gen_values values();
+// async def async_root(x: float) -> float:
 __coro_async_root async_root(double x);
+// async def async_position() -> None:
 __coro_async_position async_position();
+// def closure_position(x: float) -> None:
 void closure_position(double x);
+// def error_return_root(x: float) -> float:
 std::expected<double, MarkerError> error_return_root(double x);
+// def optional_root(x: float | None) -> float:
 double optional_root(std::optional<double> x);
+// def union_root(x: float | str) -> float:
 double union_root(const ::tpy::Union<double, std::string>& x);
+// def generic_root[T](tag: T, x: float) -> float:
 template<typename T>
 double generic_root(::tpy::param_val_or_ref_t<T> tag, double x);
+// def mono_root(tag: int, x: float) -> float:
 double mono_root(const ::tpy::BigInt& tag, double x);
+// def left(x: float) -> float:
 double left(double x);
+// def right(x: float) -> float:
 double right(double x);
+// def match_position(selector: int) -> None:
 void match_position(const ::tpy::BigInt& selector);
+// def evaluation() -> None:
 void evaluation();
+// def positions() -> None:
 void positions();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -113,7 +135,7 @@ inline std::ostream& operator<<(std::ostream& os, const MarkerError& obj) {
     return os;
 }
 
-// Async coroutine: async_root
+// async def async_root(x: float) -> float:
 struct __coro_async_root {
     int32_t __state;
     bool __cancel_pending;
@@ -137,7 +159,7 @@ struct __coro_async_root {
     }
 };
 
-// Async coroutine: async_position
+// async def async_position() -> None:
 struct __coro_async_position {
     int32_t __state;
     bool __cancel_pending;
@@ -165,7 +187,7 @@ struct __coro_async_position {
     }
 };
 
-// Generator: values
+// def values() -> Iterator[float]:
 struct __gen_values : public ::tpy::next_iter_mixin<__gen_values, double> {
     int32_t __state;
 
@@ -189,39 +211,41 @@ struct __gen_values : public ::tpy::next_iter_mixin<__gen_values, double> {
 
 
 // def __init__(self, x: float) -> None:
+//     # Constructor: checked scalar result in a member initializer.
+//     self.value = sqrt(x)  # tpyc: ok
 inline Roots::Roots(double x) : value(::tpy::stdlib::math::checked_sqrt(x)) {}
 
 // def get(self) -> float:
+//     # Method: checked scalar field read and scalar return.
+//     return math.sqrt(self.value)  # tpyc: ok
 inline double Roots::get() const {
-    // # Method: checked scalar field read and scalar return.
-    // return math.sqrt(self.value)  # tpyc: ok
     return ::tpy::stdlib::math::checked_sqrt(this->value);
 }
 
 // def __enter__(self) -> int:
+//     print("context manager: enter")
+//     return 0
 inline ::tpy::BigInt Unwind::__enter__() const {
-    // print("context manager: enter")
     std::cout << "context manager: enter" << "\n";
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     assert exc_val is not None
+//     assert isinstance(exc_val, ValueError)
+//     print("context manager: exit ValueError")
+//     return False
 inline bool Unwind::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // assert exc_val is not None
     if (!((exc_val != nullptr))) ::tpy::raise_assertion_error();
-    // assert isinstance(exc_val, ValueError)
     if (!((dynamic_cast<const ::tpy::ValueError*>(exc_val) != nullptr))) ::tpy::raise_assertion_error();
     const ::tpy::ValueError& __exc_val = *dynamic_cast<const ::tpy::ValueError*>(exc_val);
-    // print("context manager: exit ValueError")
     std::cout << "context manager: exit ValueError" << "\n";
-    // return False
     return false;
 }
 // def generic_root[T](tag: T, x: float) -> float:
+//     return sqrt(x)  # tpyc: ok
 template<typename T>
 double generic_root(::tpy::param_val_or_ref_t<T> tag, double x) {
-    // return sqrt(x)  # tpyc: ok
     return ::tpy::stdlib::math::checked_sqrt(x);
 }
 

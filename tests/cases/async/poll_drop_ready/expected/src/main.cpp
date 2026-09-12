@@ -5,51 +5,52 @@ namespace tpyapp::main {
 
 
 // def make_ready(tag: int) -> Own[Poll[Probe]]:
+//     return Poll[Probe].ready(Probe(tag))
 ::tpystd::tpy::Poll<Probe> make_ready(const ::tpy::BigInt& tag) {
-    // return Poll[Probe].ready(Probe(tag))
     return ::tpystd::tpy::Poll<Probe>::ready(Probe(tag));
 }
 
 // def drop_path() -> None:
+//     p = make_ready(1)
+//     print("constructed, is_ready:", p.is_ready())
+//     print("dropping ready poll without consume")
 void drop_path() {
-    // p = make_ready(1)
     ::tpystd::tpy::Poll<Probe> p = make_ready(::tpy::BigInt(1));
-    // print("constructed, is_ready:", p.is_ready())
     std::cout << "constructed, is_ready:" << " " << ::tpy::print_bool(p.is_ready()) << "\n";
-    // print("dropping ready poll without consume")
     std::cout << "dropping ready poll without consume" << "\n";
 }
 
 // def consume_path() -> None:
+//     # After q.value() the Own[Self] receiver makes q unreachable -- the
+//     # borrow checker rejects any further access (no double-take).
+//     q = make_ready(2)
+//     v = q.value()
+//     print("consumed value tag:", v.tag)
 void consume_path() {
-    // # After q.value() the Own[Self] receiver makes q unreachable -- the
-    // # borrow checker rejects any further access (no double-take).
-    // q = make_ready(2)
     ::tpystd::tpy::Poll<Probe> q = make_ready(::tpy::BigInt(2));
-    // v = q.value()
     Probe v = std::move(q).value();
-    // print("consumed value tag:", v.tag)
     std::cout << "consumed value tag:" << " " << v.tag << "\n";
 }
 
 // def main() -> None:
+//     drop_path()
+//     print("---")
+//     consume_path()
 void main() {
-    // drop_path()
     drop_path();
-    // print("---")
     std::cout << "---" << "\n";
-    // consume_path()
     consume_path();
 }
 
+// from tpy.coro import Poll
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import Poll
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

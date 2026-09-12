@@ -13,9 +13,13 @@ using ::tpystd::socket::gaierror;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def refused() -> None:
 void refused();
+// def resolve_failure() -> None:
 void resolve_failure();
+// def unset_defaults() -> None:
 void unset_defaults();
+// def main() -> None:
 void main();
 
 void __tpy_init();

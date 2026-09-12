@@ -6,50 +6,55 @@ namespace tpyapp::main {
 
 // # bytes.strip() strips ASCII whitespace (space, tab, newline, etc.)
 // def main() -> None:
+//     padded = b"  hello  "
+//     print(padded.strip())
+//     print(padded.lstrip())
+//     print(padded.rstrip())
+//
+//     tabs = b"\thello\n"
+//     print(tabs.strip())
+//
+//     no_ws = b"hello"
+//     print(no_ws.strip())
+//
+//     empty = b""
+//     print(empty.strip())
+//
+//     only_ws = b"   "
+//     print(only_ws.strip())
+//
+//     # BytesView (from slice) -- strip/lstrip/rstrip return views
+//     bv_data: bytes = b"  hi  "
+//     v = bv_data[0:6]
+//     print(len(v.strip()))
+//     print(len(v.lstrip()))
+//     print(len(v.rstrip()))
 void main() {
-    // padded = b"  hello  "
     ::tpy::BytesView padded = ::tpy::bytes_literal("  hello  ", 9);
-    // print(padded.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(padded)) << "\n";
-    // print(padded.lstrip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_lstrip_view(padded)) << "\n";
-    // print(padded.rstrip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_view(padded)) << "\n";
-    // tabs = b"\thello\n"
     ::tpy::BytesView tabs = ::tpy::bytes_literal("\thello\n", 7);
-    // print(tabs.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(tabs)) << "\n";
-    // no_ws = b"hello"
     ::tpy::BytesView no_ws = ::tpy::bytes_literal("hello", 5);
-    // print(no_ws.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(no_ws)) << "\n";
-    // empty = b""
     ::tpy::BytesView empty = ::tpy::BytesView{};
-    // print(empty.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(empty)) << "\n";
-    // only_ws = b"   "
     ::tpy::BytesView only_ws = ::tpy::bytes_literal("   ", 3);
-    // print(only_ws.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(only_ws)) << "\n";
-    // # BytesView (from slice) -- strip/lstrip/rstrip return views
-    // bv_data: bytes = b"  hi  "
     ::tpy::BytesView bv_data = ::tpy::bytes_literal("  hi  ", 6);
-    // v = bv_data[0:6]
     ::tpy::BytesView v = ::tpy::bytes_slice(bv_data, ::tpy::BasicSlice{0, 6});
-    // print(len(v.strip()))
     std::cout << ::tpy::__len__(::tpy::bytes_strip_view(v)) << "\n";
-    // print(len(v.lstrip()))
     std::cout << ::tpy::__len__(::tpy::bytes_lstrip_view(v)) << "\n";
-    // print(len(v.rstrip()))
     std::cout << ::tpy::__len__(::tpy::bytes_rstrip_view(v)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -18,11 +18,17 @@ struct __gen_gen_ternary;
 struct __gen_gen_walrus;
 struct __gen_Source_gen;
 
+// def gen() -> Iterator[list[int32]]:
 __gen_gen gen();
+// def walk() -> Iterator[tuple[int32, list[int32]]]:
 __gen_walk walk();
+// def gen_range() -> Iterator[list[int32]]:
 __gen_gen_range gen_range();
+// def gen_ternary(flag: bool) -> Iterator[list[int32]]:
 __gen_gen_ternary gen_ternary(bool flag);
+// def gen_walrus() -> Iterator[list[int32]]:
 __gen_gen_walrus gen_walrus();
+// def main() -> None:
 void main();
 
 // # A generator METHOD yielding a loop-body local: same drain/eligibility path.
@@ -39,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[list[int32]]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<std::vector<int32_t>>> {
     int32_t __state;
     int32_t i;
@@ -63,7 +69,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::val_or_ref<st
     }
 };
 
-// Generator: walk
+// def walk() -> Iterator[tuple[int32, list[int32]]]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<int32_t, std::vector<int32_t>*>> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<int32_t>> stack;
@@ -89,7 +95,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<int32_t
     }
 };
 
-// Generator: gen_range
+// def gen_range() -> Iterator[list[int32]]:
 struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, ::tpy::val_or_ref<std::vector<int32_t>>> {
     int32_t __state;
     int32_t _;
@@ -115,7 +121,7 @@ struct __gen_gen_range : public ::tpy::next_iter_mixin<__gen_gen_range, ::tpy::v
     }
 };
 
-// Generator: gen_ternary
+// def gen_ternary(flag: bool) -> Iterator[list[int32]]:
 struct __gen_gen_ternary : public ::tpy::next_iter_mixin<__gen_gen_ternary, ::tpy::val_or_ref<std::vector<int32_t>>> {
     int32_t __state;
     bool flag;
@@ -141,7 +147,7 @@ struct __gen_gen_ternary : public ::tpy::next_iter_mixin<__gen_gen_ternary, ::tp
     }
 };
 
-// Generator: gen_walrus
+// def gen_walrus() -> Iterator[list[int32]]:
 struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus, ::tpy::val_or_ref<std::vector<int32_t>>> {
     int32_t __state;
     int32_t i;
@@ -166,7 +172,7 @@ struct __gen_gen_walrus : public ::tpy::next_iter_mixin<__gen_gen_walrus, ::tpy:
     }
 };
 
-// Generator: Source.gen
+// def gen(self) -> Iterator[list[int32]]:
 struct __gen_Source_gen : public ::tpy::next_iter_mixin<__gen_Source_gen, ::tpy::val_or_ref<std::vector<int32_t>>> {
     int32_t __state;
     const Source& __self;

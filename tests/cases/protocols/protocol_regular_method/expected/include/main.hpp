@@ -17,8 +17,10 @@ struct Value;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def double_it(d: Duplicable) -> None:
 template<Duplicable T_d>
 void double_it(T_d& d);
+// def main() -> None:
 void main();
 
 // class Value:
@@ -42,17 +44,18 @@ inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Value::Value(int32_t x) : x(x) {}
 
 // def duplicate(self) -> Own[Value]:
+//     return Value(self.x * 2)
 inline Value Value::duplicate() const {
-    // return Value(self.x * 2)
     return Value((::tpy::mul_check<int32_t>(this->x, 2)));
 }
 // def double_it(d: Duplicable) -> None:
+//     result = d.duplicate()
 template<Duplicable T_d>
 void double_it(T_d& d) {
-    // result = d.duplicate()
     auto result = d.duplicate();
 }
 

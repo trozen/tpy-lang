@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[Shape] = []
+//     xs.append(Circle(int32(1)))
+//     xs.append(Rect(int32(2)))
+//     print(len(xs))
 void main() {
-    // xs: list[Shape] = []
     std::vector<Shape> xs = std::vector<Shape>{};
-    // xs.append(Circle(int32(1)))
     xs.push_back(::tpyapp::shapes::Circle(1));
-    // xs.append(Rect(int32(2)))
     xs.push_back(::tpyapp::shapes::Rect(2));
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
+// from shapes import Circle, Rect, Shape
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from shapes import Circle, Rect, Shape
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

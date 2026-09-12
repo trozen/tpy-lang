@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
+// print(Ops.plus_one(3))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(Ops.plus_one(3))
     std::cout << Ops::plus_one(3) << "\n";
 }
 

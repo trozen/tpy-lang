@@ -7,27 +7,27 @@ namespace tpyapp::main {
 // # Regression guard: reassigning an inferred list local to a different-size list
 // # of the same element family stays valid (element-compat must not over-reject).
 // def main() -> None:
+//     xs = [1, 2]
+//     xs = [3, 4, 5]
+//     print(len(xs))
+//     xs.append(6)
+//     print(len(xs), xs[3])
 void main() {
     std::optional<std::vector<int32_t>> __slot_2;
-    // xs = [1, 2]
     std::vector<int32_t> __slot_1 = {1, 2};
     std::vector<int32_t>* xs = &__slot_1;
-    // xs = [3, 4, 5]
     xs = &*(__slot_2 = {3, 4, 5});
-    // print(len(xs))
     std::cout << ::tpy::__len__((*xs)) << "\n";
-    // xs.append(6)
     xs->push_back(6);
-    // print(len(xs), xs[3])
     std::cout << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

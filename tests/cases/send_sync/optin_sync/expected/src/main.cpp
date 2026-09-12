@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Config(1, 2)  # tpyc: is_send(yes) is_sync(yes)
+//     print(c.rate, c.depth)
 void main() {
-    // c = Config(1, 2)  # tpyc: is_send(yes) is_sync(yes)
     Config c = Config(1, 2);
-    // print(c.rate, c.depth)
     std::cout << c.rate << " " << c.depth << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

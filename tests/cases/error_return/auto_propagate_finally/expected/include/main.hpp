@@ -11,10 +11,15 @@ struct MyErr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fallible(x: int32) -> int32:
 std::expected<int32_t, MyErr> fallible(int32_t x);
+// def caller(x: int32) -> int32:
 std::expected<int32_t, MyErr> caller(int32_t x);
+// def caller_assign(x: int32) -> int32:
 std::expected<int32_t, MyErr> caller_assign(int32_t x);
+// def caller_stmt(x: int32) -> None:
 std::expected<void, MyErr> caller_stmt(int32_t x);
+// def main() -> None:
 void main();
 
 // class MyErr(Exception, ReturnException):

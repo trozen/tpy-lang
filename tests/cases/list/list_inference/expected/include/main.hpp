@@ -11,11 +11,17 @@ extern std::vector<int32_t>* global_list;
 extern std::vector<int32_t>* global_inferred;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_no_mutation() -> int32:
 int32_t test_no_mutation();
+// def test_mutation() -> int32:
 int32_t test_mutation();
+// def takes_list(x: list[int32]) -> None:
 void takes_list(std::vector<int32_t>& x);
+// def test_list_param() -> None:
 void test_list_param();
+// def takes_span(x: Span[int32]) -> int32:
 int32_t takes_span(std::span<int32_t> x);
+// def test_span_param() -> int32:
 int32_t test_span_param();
 
 void __tpy_init();

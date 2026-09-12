@@ -80,13 +80,18 @@ namespace tpystd::coro {
 
 inline constexpr std::string_view __name__ = "tpy.coro";
 
+// def poll_ready[T](value: Own[T]) -> Own[Poll[T]]:
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_ready(::tpy::own_param_t<T> value);
+// def poll_pending[T]() -> Own[Poll[T]]:
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_pending();
+// def poll_ready_none() -> Own[Poll[None]]:
 ::tpystd::tpy::Poll<std::monostate> poll_ready_none();
+// def poll_once[T](aw: Awaitable[T]) -> Own[Poll[T]]:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpystd::tpy::Poll<T> poll_once(T_aw& aw);
+// def task_poll_cancelled[T](aw: Awaitable[T]) -> bool:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 bool task_poll_cancelled(T_aw& aw);
 
@@ -101,7 +106,7 @@ struct Waker {
     int32_t generation;
 
     // def __init__(self, awaker: Ptr[Awaker] = None, task_id: int32 = 0,
-    // generation: int32 = 0) -> None:
+    //              generation: int32 = 0) -> None:
     explicit Waker(Awaker* awaker = nullptr, int32_t task_id = 0, int32_t generation = 0);
 
     // # Not @readonly: wake() doesn't mutate self, but it dispatches into
@@ -162,7 +167,10 @@ namespace tpystd::coro {
 
 
 // def __init__(self, awaker: Ptr[Awaker] = None, task_id: int32 = 0,
-// generation: int32 = 0) -> None:
+//              generation: int32 = 0) -> None:
+//     self.awaker = awaker
+//     self.task_id = task_id
+//     self.generation = generation
 inline Waker::Waker(Awaker* awaker, int32_t task_id, int32_t generation) : awaker(awaker), task_id(task_id), generation(generation) {}
 
 // # Not @readonly: wake() doesn't mutate self, but it dispatches into
@@ -170,24 +178,25 @@ inline Waker::Waker(Awaker* awaker, int32_t task_id, int32_t generation) : awake
 // # queue. Marking wake() readonly would narrow `self.awaker` to
 // # `Ptr[readonly[Awaker]]` and reject the call.
 // def wake(self) -> None:
+//     if self.awaker is None:
+//         return
+//     try:
+//         self.awaker.mark_runnable(self.task_id, self.generation)
+//     except BaseException:
+//         # Swallow: mark_runnable can raise (e.g. OOM in the
+//         # runnable-queue push) and wake() has no useful error
+//         # channel. Use-after-free against a torn-down executor is
+//         # the caller's invariant -- see `_ExecutorScope` in
+//         # `lib/tpy/asyncio/_executor.py`.
+//         pass
 inline void Waker::wake() {
-    // if self.awaker is None:
     if ((this->awaker == nullptr)) {
-        // return
         return;
     }
-    // try:
     {
         try {
-            // self.awaker.mark_runnable(self.task_id, self.generation)
             this->awaker->mark_runnable(this->task_id, this->generation);
         } catch (const ::tpy::BaseException&) {
-            // # Swallow: mark_runnable can raise (e.g. OOM in the
-            // # runnable-queue push) and wake() has no useful error
-            // # channel. Use-after-free against a torn-down executor is
-            // # the caller's invariant -- see `_ExecutorScope` in
-            // # `lib/tpy/asyncio/_executor.py`.
-            // pass
         }
     }
 }
@@ -195,41 +204,42 @@ inline void Waker::wake() {
 // # `asyncio._executor` -- it sits on tplib, which isn't reachable from
 // # this implicit-stdlib module.
 // def poll_ready[T](value: Own[T]) -> Own[Poll[T]]:
+//     return Poll[T].ready(value)
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_ready(::tpy::own_param_t<T> value) {
-    // return Poll[T].ready(value)
     return ::tpystd::tpy::Poll<T>::ready(std::move(value));
 }
 // def poll_pending[T]() -> Own[Poll[T]]:
+//     return Poll[T].pending()
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_pending() {
-    // return Poll[T].pending()
     return ::tpystd::tpy::Poll<T>::pending();
 }
 // # Synchronous one-step driver. Calls `__poll__(Waker())` once and
 // # returns the Poll[T] for the caller to inspect. Useful for tests and
 // # synchronous drivers that don't go through `asyncio.run`.
 // def poll_once[T](aw: Awaitable[T]) -> Own[Poll[T]]:
+//     return aw.__poll__(Waker())
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpystd::tpy::Poll<T> poll_once(T_aw& aw) {
-    // return aw.__poll__(Waker())
     return aw.__poll__(Waker());
 }
 // # Poll an awaitable once and report whether it raised CancelledError.
 // # Test convenience: production code should `try: await aw / except
 // # CancelledError` directly. Pure TPy body.
 // def task_poll_cancelled[T](aw: Awaitable[T]) -> bool:
+//     try:
+//         aw.__poll__(Waker())
+//         return False
+//     except CancelledError:
+//         return True
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 bool task_poll_cancelled(T_aw& aw) {
-    // try:
     {
         try {
-            // aw.__poll__(Waker())
             aw.__poll__(Waker());
-            // return False
             return false;
         } catch (const ::tpy::CancelledError&) {
-            // return True
             return true;
         }
     }

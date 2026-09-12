@@ -5,119 +5,119 @@ namespace tpyapp::main {
 
 
 // def get_ptr(n: Ptr[Node]) -> Ptr[Node]:
+//     return n
 Node* get_ptr(Node* n) {
-    // return n
     return n;
 }
 
 // # Free function: local.field narrowing
 // def read_field(c: Container) -> int32:
+//     if c.node is not None:
+//         return c.node.value  # tpyc: non_null(c.node)
+//     return int32(-1)
 int32_t read_field(const Container& c) {
-    // if c.node is not None:
     if ((c.node != nullptr)) {
-        // return c.node.value  # tpyc: non_null(c.node)
         return c.node->value;
     }
-    // return int32(-1)
     return -1;
 }
 
 // # Assert narrows field
 // def read_after_assert(c: Container) -> int32:
+//     assert c.node is not None
+//     return c.node.value  # tpyc: non_null(c.node)
 int32_t read_after_assert(const Container& c) {
-    // assert c.node is not None
     if (!((c.node != nullptr))) ::tpy::raise_assertion_error();
-    // return c.node.value  # tpyc: non_null(c.node)
     return c.node->value;
 }
 
 // # Early return narrows field
 // def read_after_early_return(c: Container) -> int32:
+//     if c.node is None:
+//         return int32(-1)
+//     return c.node.value  # tpyc: non_null(c.node)
 int32_t read_after_early_return(const Container& c) {
-    // if c.node is None:
     if ((c.node == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return c.node.value  # tpyc: non_null(c.node)
     return c.node->value;
 }
 
 // # Passing a field value (not the container) preserves narrowing
 // def read_after_field_pass(c: Container) -> int32:
+//     if c.node is not None:
+//         get_ptr(c.node)
+//         return c.node.value  # tpyc: non_null(c.node)
+//     return int32(-1)
 int32_t read_after_field_pass(const Container& c) {
-    // if c.node is not None:
     if ((c.node != nullptr)) {
-        // get_ptr(c.node)
         get_ptr(c.node);
-        // return c.node.value  # tpyc: non_null(c.node)
         return c.node->value;
     }
-    // return int32(-1)
     return -1;
 }
 
 // # Passing the container itself invalidates field narrowing
 // def mutate_container(c: Container) -> None:
+//     pass
 void mutate_container(const Container& c) {
-    // pass
 }
 
 // def read_after_container_pass(c: Container) -> int32:
+//     if c.node is not None:
+//         mutate_container(c)
+//         return c.node.value  # tpyc: nullable(c.node)
+//     return int32(-1)
 int32_t read_after_container_pass(const Container& c) {
-    // if c.node is not None:
     if ((c.node != nullptr)) {
-        // mutate_container(c)
         mutate_container(c);
-        // return c.node.value  # tpyc: nullable(c.node)
         return ::tpy::deref_check(c.node).value;
     }
-    // return int32(-1)
     return -1;
 }
 
 // def main() -> None:
+//     n = Node(int32(42))
+//     p: Ptr[Node] = n
+//     c = Container(p)
+//     print(c.read_if_present())
+//     print(c.call_if_present())
+//     print(c.read_without_check())
+//     print(c.read_after_merge())
+//     print(c.read_after_method_call())
+//     print(c.read_after_reassign(p))
+//     print(read_field(c))
+//     print(read_after_assert(c))
+//     print(read_after_early_return(c))
+//     print(read_after_field_pass(c))
+//     print(read_after_container_pass(c))
+//     w = Wrapper(c)
+//     print(w.read_after_inner_mutate())
 void main() {
-    // n = Node(int32(42))
     Node n = Node(42);
-    // p: Ptr[Node] = n
     Node* p = &n;
-    // c = Container(p)
     Container c = Container(p);
-    // print(c.read_if_present())
     std::cout << c.read_if_present() << "\n";
-    // print(c.call_if_present())
     std::cout << c.call_if_present() << "\n";
-    // print(c.read_without_check())
     std::cout << c.read_without_check() << "\n";
-    // print(c.read_after_merge())
     std::cout << c.read_after_merge() << "\n";
-    // print(c.read_after_method_call())
     std::cout << c.read_after_method_call() << "\n";
-    // print(c.read_after_reassign(p))
     std::cout << c.read_after_reassign(p) << "\n";
-    // print(read_field(c))
     std::cout << read_field(c) << "\n";
-    // print(read_after_assert(c))
     std::cout << read_after_assert(c) << "\n";
-    // print(read_after_early_return(c))
     std::cout << read_after_early_return(c) << "\n";
-    // print(read_after_field_pass(c))
     std::cout << read_after_field_pass(c) << "\n";
-    // print(read_after_container_pass(c))
     std::cout << read_after_container_pass(c) << "\n";
-    // w = Wrapper(c)
     Wrapper w = Wrapper(c);
-    // print(w.read_after_inner_mutate())
     std::cout << w.read_after_inner_mutate() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

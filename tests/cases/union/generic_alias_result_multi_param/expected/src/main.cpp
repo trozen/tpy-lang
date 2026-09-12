@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def parse_int(s: str) -> Result[int32, str]:
+//     if s == "42":
+//         return int32(42)
+//     return "bad input"
 ::tpy::Union<int32_t, std::string> parse_int(std::string_view s) {
-    // if s == "42":
     if ((s == "42")) {
-        // return int32(42)
         return 42;
     }
-    // return "bad input"
     return "bad input";
 }
 
 // def main() -> None:
+//     r = parse_int("42")  # tpyc: type(/int32 \| str/)
+//     if isinstance(r, int32):
+//         print(r)
+//     else:
+//         print(r)
+//     r2 = parse_int("oops")  # tpyc: type(/int32 \| str/)
+//     if isinstance(r2, int32):
+//         print(r2)
+//     else:
+//         print(r2)
 void main() {
-    // r = parse_int("42")  # tpyc: type(/int32 \| str/)
     ::tpy::Union<int32_t, std::string> r = parse_int("42");
-    // if isinstance(r, int32):
     if (std::holds_alternative<int32_t>(r)) {
         auto& __r = std::get<int32_t>(r);
-        // print(r)
         std::cout << ::tpy::__str__(__r) << "\n";
-    // else:
     } else {
         auto& __r = std::get<std::string>(r);
-        // print(r)
         std::cout << ::tpy::__str__(__r) << "\n";
     }
-    // r2 = parse_int("oops")  # tpyc: type(/int32 \| str/)
     ::tpy::Union<int32_t, std::string> r2 = parse_int("oops");
-    // if isinstance(r2, int32):
     if (std::holds_alternative<int32_t>(r2)) {
         auto& __r2 = std::get<int32_t>(r2);
-        // print(r2)
         std::cout << ::tpy::__str__(__r2) << "\n";
-    // else:
     } else {
         auto& __r2 = std::get<std::string>(r2);
-        // print(r2)
         std::cout << ::tpy::__str__(__r2) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

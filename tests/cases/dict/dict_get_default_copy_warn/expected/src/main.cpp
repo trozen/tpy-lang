@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def main():
+//     d: dict[str, list[int32]] = {}
+//     d["a"] = [1, 2]
+//     fallback: list[int32] = []
+//     x = d.get("a", fallback)  # tpyc: warning(/returns a copy of the stored value/)
+//     print(len(x))
+//     y = copy(d.get("a", fallback))  # tpyc: ok
+//     print(len(y))
+//     counts: dict[str, int32] = {}
+//     m = counts.get("k", 5)  # tpyc: ok
+//     print(m)
 void main() {
-    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // d["a"] = [1, 2]
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1, 2});
-    // fallback: list[int32] = []
     std::vector<int32_t> fallback = std::vector<int32_t>{};
-    // x = d.get("a", fallback)  # tpyc: warning(/returns a copy of the stored value/)
     std::vector<int32_t> x = ::tpy::dict_get_default(d, "a", fallback);
-    // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
-    // y = copy(d.get("a", fallback))  # tpyc: ok
     std::vector<int32_t> y = std::vector<int32_t>(::tpy::dict_get_default(d, "a", fallback));
-    // print(len(y))
     std::cout << ::tpy::__len__(y) << "\n";
-    // counts: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> counts = ::tpy::ordered_map<std::string, int32_t>();
-    // m = counts.get("k", 5)  # tpyc: ok
     int32_t m = ::tpy::dict_get_default(counts, "k", 5);
-    // print(m)
     std::cout << m << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

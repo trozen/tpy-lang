@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(a_func())
+//     print(b_func())
+//     print(b_func_via_a())
 void main() {
-    // print(a_func())
     std::cout << ::tpyapp::a::a_func() << "\n";
-    // print(b_func())
     std::cout << ::tpyapp::b::b_func() << "\n";
-    // print(b_func_via_a())
     std::cout << ::tpyapp::b::b_func_via_a() << "\n";
 }
 
+// # SCC of two cycle modules (a, b) plus a non-cyclic dep (util)
+// # imported by both. Tarjan partitions: util gets its own
+// # trivial SCC and runs first; the {a, b} SCC runs as one batch.
+// # fwd.hpp is emitted only for cycle members; util uses the normal
+// # .hpp path.
+// from a import a_func
+// from b import b_func, b_func_via_a
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # SCC of two cycle modules (a, b) plus a non-cyclic dep (util)
-    // # imported by both. Tarjan partitions: util gets its own
-    // # trivial SCC and runs first; the {a, b} SCC runs as one batch.
-    // # fwd.hpp is emitted only for cycle members; util uses the normal
-    // # .hpp path.
-    // from a import a_func
     ::tpyapp::a::__tpy_init();
-    // from b import b_func, b_func_via_a
     ::tpyapp::b::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def add_pair(a: int32 | None, b: int32 | None) -> int32:
+//     return a + b  # tpyc: warning(/Potential None access/)
 int32_t add_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // return a + b  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(a), ::tpy::deref_optional_check(b)));
 }
 
+// print(add_pair(1, 2))
+// print(add_pair(None, 2))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(add_pair(1, 2))
     std::cout << add_pair(1, 2) << "\n";
-    // print(add_pair(None, 2))
     std::cout << add_pair(std::nullopt, 2) << "\n";
 }
 

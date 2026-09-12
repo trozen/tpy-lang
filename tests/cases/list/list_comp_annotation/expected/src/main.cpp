@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // def make_bigints() -> Own[list[int]]:
+//     items: list[int32] = [1, 2, 3]
+//     return [x for x in items]
 std::vector<::tpy::BigInt> make_bigints() {
-    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // return [x for x in items]
     return ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = items;
@@ -24,17 +24,41 @@ std::vector<::tpy::BigInt> make_bigints() {
 }
 
 // def accept_wide(items: list[int64]) -> None:
+//     print(items)
 void accept_wide(const std::vector<int64_t>& items) {
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
 // def main() -> None:
+//     # Widen int32 -> BigInt via annotation
+//     items: list[int32] = [10, 20, 30]
+//     big: list[int] = [x for x in items]
+//     print(big)
+//
+//     # Widen int32 -> int64
+//     wide: list[int64] = [x for x in items]
+//     print(wide)
+//
+//     # Return type propagation (Own[list[int]] from int32 source)
+//     result = make_bigints()
+//     print(result)
+//
+//     # Annotation with expression (coercion applies to element expr result)
+//     doubled: list[int] = [x * 2 for x in items]
+//     print(doubled)
+//
+//     # Annotation + filter: coercion inside conditional push_back
+//     big_pos: list[int] = [x for x in items if x > 15]
+//     print(big_pos)
+//
+//     # Comprehension as function argument (temp variable for rvalue binding)
+//     accept_wide([x for x in items])
+//
+//     # No annotation: element type inferred from iterable (no coercion)
+//     same = [x + 1 for x in items]
+//     print(same)
 void main() {
-    // # Widen int32 -> BigInt via annotation
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // big: list[int] = [x for x in items]
     std::vector<::tpy::BigInt> big = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = items;
@@ -47,10 +71,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(big)
     std::cout << ::tpy::ListPrinter(big) << "\n";
-    // # Widen int32 -> int64
-    // wide: list[int64] = [x for x in items]
     std::vector<int64_t> wide = ({
         std::vector<int64_t> __result;
         auto& __obj_1 = items;
@@ -63,15 +84,9 @@ void main() {
         }
         std::move(__result);
     });
-    // print(wide)
     std::cout << ::tpy::ListPrinter(wide) << "\n";
-    // # Return type propagation (Own[list[int]] from int32 source)
-    // result = make_bigints()
     std::vector<::tpy::BigInt> result = make_bigints();
-    // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
-    // # Annotation with expression (coercion applies to element expr result)
-    // doubled: list[int] = [x * 2 for x in items]
     std::vector<::tpy::BigInt> doubled = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_2 = items;
@@ -84,10 +99,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
-    // # Annotation + filter: coercion inside conditional push_back
-    // big_pos: list[int] = [x for x in items if x > 15]
     std::vector<::tpy::BigInt> big_pos = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_3 = items;
@@ -102,10 +114,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(big_pos)
     std::cout << ::tpy::ListPrinter(big_pos) << "\n";
-    // # Comprehension as function argument (temp variable for rvalue binding)
-    // accept_wide([x for x in items])
     std::vector<int64_t> __tmp_1 = ({
         std::vector<int64_t> __result;
         auto& __obj_4 = items;
@@ -119,8 +128,6 @@ void main() {
         std::move(__result);
     });
     accept_wide(__tmp_1);
-    // # No annotation: element type inferred from iterable (no coercion)
-    // same = [x + 1 for x in items]
     std::vector<int32_t> same = ({
         std::vector<int32_t> __result;
         auto& __obj_5 = items;
@@ -133,16 +140,15 @@ void main() {
         }
         std::move(__result);
     });
-    // print(same)
     std::cout << ::tpy::ListPrinter(same) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

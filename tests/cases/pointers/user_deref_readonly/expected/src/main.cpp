@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def read_ref(r: readonly[Ref]) -> int32:
+//     # readonly receiver -> readonly __deref__ -> readonly Point
+//     # field access and readonly methods should work
+//     return r.x + r.y
 int32_t read_ref(const Ref& r) {
-    // # readonly receiver -> readonly __deref__ -> readonly Point
-    // # field access and readonly methods should work
-    // return r.x + r.y
     return (::tpy::add_check<int32_t>(r.__deref__().x, r.__deref__().y));
 }
 
 // def mutate_ref(r: Ref) -> None:
+//     # mutable receiver -> mutable __deref__ -> mutable Point
+//     r.set_x(99)
 void mutate_ref(Ref& r) {
-    // # mutable receiver -> mutable __deref__ -> mutable Point
-    // r.set_x(99)
     r.__deref__().set_x(99);
 }
 
 // def main() -> None:
+//     r = Ref(Point(10, 20))
+//     print(read_ref(r))
+//     mutate_ref(r)
+//     print(read_ref(r))
 void main() {
-    // r = Ref(Point(10, 20))
     Ref r = Ref(Point(10, 20));
-    // print(read_ref(r))
     std::cout << read_ref(r) << "\n";
-    // mutate_ref(r)
     mutate_ref(r);
-    // print(read_ref(r))
     std::cout << read_ref(r) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

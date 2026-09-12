@@ -11,6 +11,7 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -37,7 +38,11 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 
 // def __init__(self, fd: int32) -> None:
+//     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
+// def handles(items: list[Handle]) -> Iterator[Handle]:  # tpyc: ok
+//     for h in items:
+//         yield h
 inline auto handles(std::vector<Handle>& items) {
     return ::tpy::make_generator<::tpy::val_or_ref<Handle>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Handle>> {

@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def add_if_both(a: int32 | None, b: int32 | None) -> int32:
+//     if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
+//         return a + b  # tpyc: ok
+//     return 0
 int32_t add_if_both(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
     if ((::tpy::is_truthy(a) && ::tpy::is_truthy(b))) {
-        // return a + b  # tpyc: ok
         return (::tpy::add_check<int32_t>((*a), (*b)));
     }
-    // return 0
     return 0;
 }
 
+// print(add_if_both(1, 2))
+// print(add_if_both(0, 2))
+// print(add_if_both(None, 2))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(add_if_both(1, 2))
     std::cout << add_if_both(1, 2) << "\n";
-    // print(add_if_both(0, 2))
     std::cout << add_if_both(0, 2) << "\n";
-    // print(add_if_both(None, 2))
     std::cout << add_if_both(std::nullopt, 2) << "\n";
 }
 

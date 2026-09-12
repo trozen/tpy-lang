@@ -3,39 +3,38 @@
 
 namespace tpyapp::main {
 
-// counter: int32 = 0
 int32_t counter{};
-// flag: bool = False
 bool flag{};
 
 // def bump() -> None:
+//     global counter
+//     global flag
+//     counter = counter + int32(1)
+//     flag = True
 void bump() {
-    // global counter
-    // global flag
-    // counter = counter + int32(1)
     counter = (::tpy::add_check<int32_t>(counter, 1));
-    // flag = True
     flag = true;
 }
 
+// counter: int32 = 0
+// flag: bool = False
+//
+// bump()
+// bump()
+// bump()
+// print(counter)
+// print(flag)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // counter: int32 = 0
     counter = 0;
-    // flag: bool = False
     flag = false;
-    // bump()
     bump();
-    // bump()
     bump();
-    // bump()
     bump();
-    // print(counter)
     std::cout << counter << "\n";
-    // print(flag)
     std::cout << ::tpy::print_bool(flag) << "\n";
 }
 

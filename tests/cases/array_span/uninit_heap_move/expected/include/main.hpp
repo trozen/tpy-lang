@@ -10,8 +10,11 @@ namespace tpyapp::main {
 extern ::tpy::UninitHeapStorage<int32_t>* storage;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_storage() -> Own[UninitHeapStorage[int32]]:
 ::tpy::UninitHeapStorage<int32_t> make_storage();
+// def consume(s: Own[UninitHeapStorage[int32]]) -> int32:
 int32_t consume(::tpy::UninitHeapStorage<int32_t>&& s);
+// def test_pass_own() -> None:
 void test_pass_own();
 
 void __tpy_init();

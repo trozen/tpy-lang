@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // async def raise_from_finally() -> None:
+//     try:
+//         print("try body ran")
+//     except ValueError:
+//         print("unreachable handler")
+//     finally:
+//         print("finally ran")
+//         raise RuntimeError("from finally")
 ::tpystd::tpy::Poll<::std::monostate> __coro_raise_from_finally::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // try:
         {
             try {
                 try {
-                    // print("try body ran")
                     std::cout << "try body ran" << "\n";
                 } catch (const ::tpy::ValueError&) {
-                    // print("unreachable handler")
                     std::cout << "unreachable handler" << "\n";
                 }
             } catch (...) {
-                // print("finally ran")
                 std::cout << "finally ran" << "\n";
-                // raise RuntimeError("from finally")
                 throw ::tpy::RuntimeError("from finally");
             }
-            // print("finally ran")
             std::cout << "finally ran" << "\n";
-            // raise RuntimeError("from finally")
             throw ::tpy::RuntimeError("from finally");
         }
         __state = S_DONE;
@@ -45,6 +45,10 @@ __coro_raise_from_finally raise_from_finally() {
 }
 
 // async def amain() -> None:
+//     try:
+//         await raise_from_finally()
+//     except RuntimeError:
+//         print("caught from finally")
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -61,7 +65,6 @@ __coro_raise_from_finally raise_from_finally() {
             continue;
         } catch (const ::tpy::RuntimeError&) {
             __sub_0.reset();
-            // print("caught from finally")
             std::cout << "caught from finally" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -75,7 +78,6 @@ __coro_raise_from_finally raise_from_finally() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        // await raise_from_finally()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -92,22 +94,23 @@ __coro_amain amain() {
 }
 
 // def main() -> None:
+//     asyncio.run(amain())
 void main() {
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 
+// # An async try/except/finally with no suspension inside it is emitted by the
+// # sync statement path (the CFG only decomposes suspending try statements), so
+// # it shares the normal-path finally elision.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async try/except/finally with no suspension inside it is emitted by the
-    // # sync statement path (the CFG only decomposes suspending try statements), so
-    // # it shares the normal-path finally elision.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

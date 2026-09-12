@@ -3,25 +3,24 @@
 
 namespace tpyapp::main {
 
-// a, b, c: integer;
 int32_t a{};
-// a, b, c: integer;
 int32_t b{};
-// a, b, c: integer;
 int32_t c{};
 
+// a, b, c: integer;
+//
+// a := 10;
+// b := 20;
+// c := a + b * 2 - 1;
+// writeln(c);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // a := 10;
     a = 10;
-    // b := 20;
     b = 20;
-    // c := a + b * 2 - 1;
     c = (::tpy::sub_check<int32_t>((::tpy::add_check<int32_t>(a, (::tpy::mul_check<int32_t>(b, 2)))), 1));
-    // writeln(c);
     std::cout << c << "\n";
 }
 

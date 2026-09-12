@@ -5,115 +5,115 @@ namespace tpyapp::main {
 
 
 // def test_own_dunder_fresh():
+//     a = Acc(3)
+//     b = Acc(4)
+//     c = a + b
+//     print(c.n)
+//     c.n = 100
+//     print(a.n, b.n)
 void test_own_dunder_fresh() {
-    // a = Acc(3)
     Acc a = Acc(3);
-    // b = Acc(4)
     Acc b = Acc(4);
-    // c = a + b
     Acc c = ((a) + (b));
-    // print(c.n)
     std::cout << c.n << "\n";
-    // c.n = 100
     c.n = 100;
-    // print(a.n, b.n)
     std::cout << a.n << " " << b.n << "\n";
 }
 
 // def test_own_augassign_fallback():
+//     # `+=` with no __iadd__ falls back to the Own-returning __add__: a fresh
+//     # value lands in `a`, matching CPython's rebind-to-fresh-object (the
+//     # borrow-returning fallback is rejected -- error_augassign_borrow_fallback).
+//     a = Acc(1)
+//     b = Acc(2)
+//     a += b
+//     print(a.n, b.n)
 void test_own_augassign_fallback() {
-    // # `+=` with no __iadd__ falls back to the Own-returning __add__: a fresh
-    // # value lands in `a`, matching CPython's rebind-to-fresh-object (the
-    // # borrow-returning fallback is rejected -- error_augassign_borrow_fallback).
-    // a = Acc(1)
     Acc a = Acc(1);
-    // b = Acc(2)
     Acc b = Acc(2);
-    // a += b
     a = (a) + (b);
-    // print(a.n, b.n)
     std::cout << a.n << " " << b.n << "\n";
 }
 
 // def test_list_concat_fresh():
+//     xs: list[int32] = [1, 2]
+//     ys: list[int32] = [3]
+//     zs = xs.__add__(ys)
+//     zs.append(9)
+//     print(zs, xs)
+//     ws = xs + ys
+//     ws.append(7)
+//     print(ws, xs)
 void test_list_concat_fresh() {
-    // xs: list[int32] = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // ys: list[int32] = [3]
     std::vector<int32_t> ys = {3};
-    // zs = xs.__add__(ys)
     std::vector<int32_t> zs = ::tpy::list_concat(xs, ys);
-    // zs.append(9)
     zs.push_back(9);
-    // print(zs, xs)
     std::cout << ::tpy::ListPrinter(zs) << " " << ::tpy::ListPrinter(xs) << "\n";
-    // ws = xs + ys
     std::vector<int32_t> ws = (::tpy::list_concat(xs, ys));
-    // ws.append(7)
     ws.push_back(7);
-    // print(ws, xs)
     std::cout << ::tpy::ListPrinter(ws) << " " << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_bytes_concat_fresh():
+//     p = b"ab"
+//     q = p.__add__(b"cd")
+//     print(q, p)
+//     r = p * 2
+//     print(r)
+//     print(2 * p)
+//     ba = bytearray(b"xy")
+//     print(p + ba)
 void test_bytes_concat_fresh() {
-    // p = b"ab"
     ::tpy::BytesView p = ::tpy::bytes_literal("ab", 2);
-    // q = p.__add__(b"cd")
     ::tpy::Bytes q = ::tpy::bytes_concat(p, ::tpy::bytes_literal("cd", 2));
-    // print(q, p)
     std::cout << ::tpy::BytesPrinter(q) << " " << ::tpy::BytesPrinter(p) << "\n";
-    // r = p * 2
     ::tpy::Bytes r = (::tpy::bytes_repeat(p, 2));
-    // print(r)
     std::cout << ::tpy::BytesPrinter(r) << "\n";
-    // print(2 * p)
     std::cout << ::tpy::BytesPrinter((::tpy::bytes_repeat(p, 2))) << "\n";
-    // ba = bytearray(b"xy")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
-    // print(p + ba)
     std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(p, ba))) << "\n";
 }
 
 // def test_bytearray_fresh():
+//     ba = bytearray(b"ab")
+//     bb = ba + b"cd"
+//     bb.append(33)
+//     print(bb, ba)
+//     print(ba + ba)
+//     print(ba * 2)
+//     # Stepped slices compared by content: TPy types the result bytes where
+//     # CPython returns bytearray (filed divergence), so the repr can't be
+//     # printed parity-safely -- equality is content-based on both sides.
+//     print(ba[::2] == b"a", ba[::-1] == b"ba")
 void test_bytearray_fresh() {
-    // ba = bytearray(b"ab")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    // bb = ba + b"cd"
     ::tpy::ByteArray bb = (::tpy::bytearray_concat(ba, ::tpy::bytes_literal_owned("cd", 2)));
-    // bb.append(33)
     bb.push_back(33);
-    // print(bb, ba)
     std::cout << ::tpy::ByteArrayPrinter(bb) << " " << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // print(ba + ba)
     std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_concat(ba, ba))) << "\n";
-    // print(ba * 2)
     std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_repeat(ba, 2))) << "\n";
-    // # Stepped slices compared by content: TPy types the result bytes where
-    // # CPython returns bytearray (filed divergence), so the repr can't be
-    // # printed parity-safely -- equality is content-based on both sides.
-    // print(ba[::2] == b"a", ba[::-1] == b"ba")
     std::cout << ::tpy::print_bool((::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, 2}) == ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool((::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, -1}) == ::tpy::bytes_literal("ba", 2))) << "\n";
 }
 
 // def main():
+//     test_own_dunder_fresh()
+//     test_list_concat_fresh()
+//     test_bytes_concat_fresh()
+//     test_bytearray_fresh()
 void main() {
-    // test_own_dunder_fresh()
     test_own_dunder_fresh();
-    // test_list_concat_fresh()
     test_list_concat_fresh();
-    // test_bytes_concat_fresh()
     test_bytes_concat_fresh();
-    // test_bytearray_fresh()
     test_bytearray_fresh();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

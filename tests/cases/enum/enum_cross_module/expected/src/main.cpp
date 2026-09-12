@@ -5,34 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Color.Red
+//     print(c)
+//     print(c.name)
+//     print(color_value(c))
+//
+//     g = Color.Green
+//     print(c == g)
+//     print(c != g)
+//     print(c == Color.Red)
 void main() {
-    // c = Color.Red
     ::tpyapp::colors::Color c = ::tpyapp::colors::Color::Red;
-    // print(c)
     std::cout << c << "\n";
-    // print(c.name)
     std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(c) << "\n";
-    // print(color_value(c))
     std::cout << ::tpyapp::colors::color_value(c) << "\n";
-    // g = Color.Green
     ::tpyapp::colors::Color g = ::tpyapp::colors::Color::Green;
-    // print(c == g)
     std::cout << ::tpy::print_bool((c == g)) << "\n";
-    // print(c != g)
     std::cout << ::tpy::print_bool((c != g)) << "\n";
-    // print(c == Color.Red)
     std::cout << ::tpy::print_bool((c == ::tpyapp::colors::Color::Red)) << "\n";
 }
 
+// # Test importing enum from another module
+// from colors import Color, color_value
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test importing enum from another module
-    // from colors import Color, color_value
     ::tpyapp::colors::__tpy_init();
-    // main()
     main();
 }
 

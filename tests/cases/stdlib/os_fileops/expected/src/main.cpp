@@ -5,26 +5,40 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p = "tpy_os_fileops"
+//     ln = "tpy_os_fileops_ln"
+//     if os.path.exists(ln):
+//         os.remove(ln)
+//     if os.path.exists(p):
+//         os.remove(p)
+//
+//     with open(p, "w") as fh:
+//         fh.write("hello world")
+//     os.truncate(p, 5)
+//     print("truncate", os.stat(p).st_size)            # 5
+//
+//     fd = os.open(p, os.O_WRONLY)
+//     os.ftruncate(fd, 2)
+//     os.fsync(fd)
+//     os.close(fd)
+//     print("ftruncate", os.stat(p).st_size)           # 2
+//
+//     os.link(p, ln)                                   # hardlink
+//     print("link", os.path.exists(ln), os.stat(ln).st_size)   # True 2
+//     os.remove(ln)
+//     os.remove(p)
 void main() {
-    // p = "tpy_os_fileops"
     std::string_view p = "tpy_os_fileops";
-    // ln = "tpy_os_fileops_ln"
     std::string_view ln = "tpy_os_fileops_ln";
-    // if os.path.exists(ln):
     if (::tpy::stdlib::os::path_exists(ln)) {
-        // os.remove(ln)
         ::tpy::stdlib::os::remove(ln);
     }
-    // if os.path.exists(p):
     if (::tpy::stdlib::os::path_exists(p)) {
-        // os.remove(p)
         ::tpy::stdlib::os::remove(p);
     }
-    // with open(p, "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode(p, "w");
     auto& fh = __ctx_1.__enter__();
     try {
-        // fh.write("hello world")
         fh.write("hello world");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -36,40 +50,30 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // os.truncate(p, 5)
     ::tpystd::os::truncate(p, 5);
-    // print("truncate", os.stat(p).st_size)            # 5
     std::cout << "truncate" << " " << ::tpystd::os::stat(p).st_size << "\n";
-    // fd = os.open(p, os.O_WRONLY)
     int64_t fd = ::tpystd::os::open(p, ::tpy::stdlib::os::kc_o_wronly);
-    // os.ftruncate(fd, 2)
     ::tpystd::os::ftruncate(fd, 2);
-    // os.fsync(fd)
     ::tpystd::os::fsync(fd);
-    // os.close(fd)
     ::tpystd::os::close(fd);
-    // print("ftruncate", os.stat(p).st_size)           # 2
     std::cout << "ftruncate" << " " << ::tpystd::os::stat(p).st_size << "\n";
-    // os.link(p, ln)                                   # hardlink
     ::tpystd::os::link(p, ln);
-    // print("link", os.path.exists(ln), os.stat(ln).st_size)   # True 2
     std::cout << "link" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(ln)) << " " << ::tpystd::os::stat(ln).st_size << "\n";
-    // os.remove(ln)
     ::tpy::stdlib::os::remove(ln);
-    // os.remove(p)
     ::tpy::stdlib::os::remove(p);
 }
 
+// # os.link (hardlink), truncate, ftruncate, fsync. Builds + tears down
+// # a scratch file so both phases start clean. Byte-compared against CPython.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.link (hardlink), truncate, ftruncate, fsync. Builds + tears down
-    // # a scratch file so both phases start clean. Byte-compared against CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

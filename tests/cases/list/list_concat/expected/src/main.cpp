@@ -7,99 +7,99 @@ namespace tpyapp::main {
 // # Test list concatenation with + and += operators,
 // # including inferred types and literal operands.
 // def test_add() -> None:
+//     a: list[int] = [1, 2]
+//     b: list[int] = [3, 4]
+//     c: list[int] = a + b
+//     print(c)
 void test_add() {
-    // a: list[int] = [1, 2]
     std::vector<::tpy::BigInt> a = {1, 2};
-    // b: list[int] = [3, 4]
     std::vector<::tpy::BigInt> b = {3, 4};
-    // c: list[int] = a + b
     std::vector<::tpy::BigInt> c = (::tpy::list_concat(a, b));
-    // print(c)
     std::cout << ::tpy::ListPrinter(c) << "\n";
 }
 
 // def test_iadd() -> None:
+//     a: list[int] = [10, 20]
+//     b: list[int] = [30, 40]
+//     a += b
+//     print(a)
 void test_iadd() {
-    // a: list[int] = [10, 20]
     std::vector<::tpy::BigInt> a = {10, 20};
-    // b: list[int] = [30, 40]
     std::vector<::tpy::BigInt> b = {30, 40};
-    // a += b
     ::tpy::list_extend(a, b);
-    // print(a)
     std::cout << ::tpy::ListPrinter(a) << "\n";
 }
 
 // def test_empty() -> None:
+//     a: list[int] = []
+//     b: list[int] = [1, 2, 3]
+//     print(a + b)
+//     print(b + a)
 void test_empty() {
-    // a: list[int] = []
     std::vector<::tpy::BigInt> a = std::vector<::tpy::BigInt>{};
-    // b: list[int] = [1, 2, 3]
     std::vector<::tpy::BigInt> b = {1, 2, 3};
-    // print(a + b)
     std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, b))) << "\n";
-    // print(b + a)
     std::cout << ::tpy::ListPrinter((::tpy::list_concat(b, a))) << "\n";
 }
 
 // def test_inferred() -> None:
+//     a = [1, 2, 3]
+//     b = [4, 5]
+//     print(a + b)
 void test_inferred() {
-    // a = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // b = [4, 5]
     std::vector<int32_t> b = {4, 5};
-    // print(a + b)
     std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, b))) << "\n";
 }
 
 // def test_literal() -> None:
+//     print([10, 20] + [30])
 void test_literal() {
-    // print([10, 20] + [30])
     std::cout << ::tpy::ListPrinter((::tpy::list_concat(std::vector<int32_t>{10, 20}, std::vector<int32_t>{30}))) << "\n";
 }
 
 // def test_mixed_annotated_literal() -> None:
+//     a: list[int] = [1, 2]
+//     print(a + [3, 4])
 void test_mixed_annotated_literal() {
-    // a: list[int] = [1, 2]
     std::vector<::tpy::BigInt> a = {1, 2};
-    // print(a + [3, 4])
     std::cout << ::tpy::ListPrinter((::tpy::list_concat(a, std::vector<::tpy::BigInt>{3, 4}))) << "\n";
 }
 
 // def test_strings() -> None:
+//     s1 = ["a", "b"]
+//     s2 = ["c"]
+//     print(s1 + s2)
 void test_strings() {
-    // s1 = ["a", "b"]
     std::vector<std::string> s1 = {"a", "b"};
-    // s2 = ["c"]
     std::vector<std::string> s2 = {"c"};
-    // print(s1 + s2)
     std::cout << ::tpy::ListPrinter((::tpy::list_concat(s1, s2))) << "\n";
 }
 
 // def main() -> None:
+//     test_add()
+//     test_iadd()
+//     test_empty()
+//     test_inferred()
+//     test_literal()
+//     test_mixed_annotated_literal()
+//     test_strings()
 void main() {
-    // test_add()
     test_add();
-    // test_iadd()
     test_iadd();
-    // test_empty()
     test_empty();
-    // test_inferred()
     test_inferred();
-    // test_literal()
     test_literal();
-    // test_mixed_annotated_literal()
     test_mixed_annotated_literal();
-    // test_strings()
     test_strings();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

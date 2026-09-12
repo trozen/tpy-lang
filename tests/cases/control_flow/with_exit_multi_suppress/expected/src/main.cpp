@@ -5,17 +5,18 @@ namespace tpyapp::main {
 
 
 // def run() -> None:
+//     with Outer() as a, Inner() as b:
+//         print(f"body a={a} b={b}")
+//         raise ValueError("inner-only")
+//     print("after with")
 void run() {
-    // with Outer() as a, Inner() as b:
     auto __ctx_1 = Outer();
     auto a = __ctx_1.__enter__();
     auto __ctx_2 = Inner();
     auto b = __ctx_2.__enter__();
     try {
         try {
-            // print(f"body a={a} b={b}")
             std::cout << std::format("body a={} b={}", (a).to_string(), (b).to_string()) << "\n";
-            // raise ValueError("inner-only")
             throw ::tpy::ValueError("inner-only");
         } catch (::tpy::BaseException& __exc_2) {
             if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
@@ -33,22 +34,21 @@ void run() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // print("after with")
     std::cout << "after with" << "\n";
 }
 
 // def main() -> None:
+//     run()
 void main() {
-    // run()
     run();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -16,7 +16,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_takes_optional;
 struct __coro_driver;
 
+// async def takes_optional(p: P | None) -> int32:
 __coro_takes_optional takes_optional(P* p);
+// async def driver() -> None:
 __coro_driver driver();
 
 // @nocopy
@@ -41,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
-// Async coroutine: takes_optional
+// async def takes_optional(p: P | None) -> int32:
 struct __coro_takes_optional {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +65,7 @@ struct __coro_takes_optional {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -96,6 +98,7 @@ struct __coro_driver {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline P::P(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

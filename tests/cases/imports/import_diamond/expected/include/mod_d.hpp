@@ -9,6 +9,7 @@ namespace tpyapp::mod_d {
 
 inline constexpr std::string_view __name__ = "mod_d";
 
+// def d_value() -> int32:
 int32_t d_value();
 
 void __tpy_init();

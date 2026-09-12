@@ -5,17 +5,17 @@ namespace tpyapp::pkg::consumer {
 
 
 // def compute() -> int32:
+//     return get_value()
 int32_t compute() {
-    // return get_value()
     return ::tpyapp::pkg::my__helper::get_value();
 }
 
+// from .my__helper import get_value
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from .my__helper import get_value
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::my__helper::__tpy_init();
 }

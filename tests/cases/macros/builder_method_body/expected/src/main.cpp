@@ -5,12 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     c = Counter()
+//     c.add(10)
+//     c.add(20)
+//     c.add(30)
+//     res = c.build()
+//     print(res.total())
+//     return 0
 int32_t main() {
-    // res = c.build()
     __tpy_builder_counter_1 res = __tpy_builder_build_counter_1();
-    // print(res.total())
     std::cout << res.total() << "\n";
-    // return 0
     return 0;
 }
 
@@ -19,13 +23,14 @@ __tpy_builder_counter_1 __tpy_builder_build_counter_1() {
     return __tpy_builder_counter_1(10, 20, 30);
 }
 
+// from _method_builder import Counter
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from _method_builder import Counter
-    // main()
     main();
 }
 

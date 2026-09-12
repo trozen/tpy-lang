@@ -3,17 +3,17 @@
 
 namespace tpyapp::mod_c {
 
-// shared_value: int32 = int32(42)
 int32_t shared_value{};
 
+// print("mod_c init")
+//
+// shared_value: int32 = int32(42)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print("mod_c init")
     std::cout << "mod_c init" << "\n";
-    // shared_value: int32 = int32(42)
     shared_value = 42;
 }
 

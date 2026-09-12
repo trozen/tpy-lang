@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Container[int32](10)
+//     print(c.get_or_default())
+//     print(c.get_or_default(99))
 void main() {
-    // c = Container[int32](10)
     Container<int32_t> c = Container<int32_t>(10);
-    // print(c.get_or_default())
     std::cout << c.get_or_default() << "\n";
-    // print(c.get_or_default(99))
     std::cout << c.get_or_default(99) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

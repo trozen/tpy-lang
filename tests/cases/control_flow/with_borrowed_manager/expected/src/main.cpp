@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // def run(c: Counter) -> None:
+//     with c:
+//         print("inside:", c.n)
+//     print("after:", c.n)
 void run(Counter& c) {
-    // with c:
     auto& __ctx_1 = c;
     __ctx_1.__enter__();
     try {
-        // print("inside:", c.n)
         std::cout << "inside:" << " " << c.n << "\n";
         goto __with_exit_1;
     } catch (...) {
@@ -19,22 +20,22 @@ void run(Counter& c) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    // print("after:", c.n)
     std::cout << "after:" << " " << c.n << "\n";
 }
 
 // def main() -> None:
+//     c = Counter()
+//     run(c)
+//     # Same manager reused -- counts accumulate on the one shared object.
+//     with c:
+//         print("second inside:", c.n)
+//     print("second after:", c.n)
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // run(c)
     run(c);
-    // # Same manager reused -- counts accumulate on the one shared object.
-    // with c:
     auto& __ctx_2 = c;
     __ctx_2.__enter__();
     try {
-        // print("second inside:", c.n)
         std::cout << "second inside:" << " " << c.n << "\n";
         goto __with_exit_2;
     } catch (...) {
@@ -43,16 +44,15 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, {}, {});
-    // print("second after:", c.n)
     std::cout << "second after:" << " " << c.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

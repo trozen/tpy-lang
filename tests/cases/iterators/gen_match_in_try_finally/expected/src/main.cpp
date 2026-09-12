@@ -5,6 +5,16 @@ namespace tpyapp::main {
 
 
 // def gen(n: int) -> Iterator[int]:
+//     try:
+//         match n:
+//             case 0:
+//                 yield 10
+//             case _:
+//                 yield 20
+//                 yield 21
+//     finally:
+//         print("cleanup")
+//     yield 99
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
@@ -23,7 +33,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_1: {
         try {
-            // yield 21
             __state = S_RESUME_2;
             return ::tpy::BigInt(21);
         } catch (...) {
@@ -59,21 +68,16 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         }
     }
     case S_JOIN_1: {
-        // yield 99
         __state = S_RESUME_3;
         return ::tpy::BigInt(99);
     }
     case S_JOIN_2: {
         try {
             auto& __match_subject_1 = n;
-            // case 0:
             if (__match_subject_1 == 0) {
-                // yield 10
                 __state = S_RESUME_0;
                 return ::tpy::BigInt(10);
-            // case _:
             } else {
-                // yield 20
                 __state = S_RESUME_1;
                 return ::tpy::BigInt(20);
             }
@@ -94,7 +98,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 void __gen_gen::__finally_0() {
-    // print("cleanup")
     std::cout << "cleanup" << "\n";
 }
 
@@ -104,8 +107,12 @@ __gen_gen gen(::tpy::BigInt n) {
 }
 
 // def main() -> None:
+//     for v in gen(0):
+//         print(v)
+//     print("--")
+//     for v in gen(5):
+//         print(v)
 void main() {
-    // for v in gen(0):
     {
         auto __src_0 = gen(::tpy::BigInt(0));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -113,13 +120,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in gen(5):
     {
         auto __src_2 = gen(::tpy::BigInt(5));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -127,18 +131,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,46 +3,46 @@
 
 namespace tpyapp::main {
 
-// global_pt: Point = Point(1, 2)
 Point* global_pt{};
 
 // def addr_param(p: Point) -> Ptr[Point]:
+//     # Returning pointer to parameter should be allowed (safe lifetime)
+//     return p
 Point* addr_param(Point& p) {
-    // # Returning pointer to parameter should be allowed (safe lifetime)
-    // return p
     return &p;
 }
 
 // def addr_global() -> Ptr[Point]:
+//     # Returning pointer to global should be allowed
+//     return global_pt
 Point* addr_global() {
-    // # Returning pointer to global should be allowed
-    // return global_pt
     return &(*global_pt);
 }
 
 // def main() -> None:
+//     local: Point = Point(10, 20)
+//     p1: Ptr[Point] = addr_param(local)
+//     print(p1.x)  # tpyc: nullable(p1)
+//     p2: Ptr[Point] = addr_global()
+//     print(p2.y)  # tpyc: nullable(p2)
 void main() {
-    // local: Point = Point(10, 20)
     Point local = Point(10, 20);
-    // p1: Ptr[Point] = addr_param(local)
     Point* p1 = addr_param(local);
-    // print(p1.x)  # tpyc: nullable(p1)
     std::cout << ::tpy::deref_check(p1).x << "\n";
-    // p2: Ptr[Point] = addr_global()
     Point* p2 = addr_global();
-    // print(p2.y)  # tpyc: nullable(p2)
     std::cout << ::tpy::deref_check(p2).y << "\n";
 }
 
+// global_pt: Point = Point(1, 2)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // global_pt: Point = Point(1, 2)
     static Point __global_slot_1 = Point(1, 2);
     global_pt = &__global_slot_1;
-    // main()
     main();
 }
 

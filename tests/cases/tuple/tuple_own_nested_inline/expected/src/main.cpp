@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def two_pairs() -> tuple[tuple[Own[Handle], Own[Handle]], tuple[Own[Handle], Own[Handle]]]:
+//     a = Handle(int32(1))
+//     b = Handle(int32(2))
+//     c = Handle(int32(3))
+//     d = Handle(int32(4))
+//     return ((a, b), (c, d))
 std::tuple<std::tuple<Handle, Handle>, std::tuple<Handle, Handle>> two_pairs() {
-    // a = Handle(int32(1))
     Handle a = Handle(1);
-    // b = Handle(int32(2))
     Handle b = Handle(2);
-    // c = Handle(int32(3))
     Handle c = Handle(3);
-    // d = Handle(int32(4))
     Handle d = Handle(4);
-    // return ((a, b), (c, d))
     return std::tuple<std::tuple<Handle, Handle>, std::tuple<Handle, Handle>>{std::tuple<Handle, Handle>{std::move(a), std::move(b)}, std::tuple<Handle, Handle>{std::move(c), std::move(d)}};
 }
 
 // def main() -> None:
+//     pp = two_pairs()
+//     print(pp[0][0].fd)
+//     print(pp[0][1].fd)
+//     print(pp[1][0].fd)
+//     print(pp[1][1].fd)
 void main() {
-    // pp = two_pairs()
     std::tuple<std::tuple<Handle, Handle>, std::tuple<Handle, Handle>> pp = two_pairs();
-    // print(pp[0][0].fd)
     std::cout << std::get<0>(std::get<0>(pp)).fd << "\n";
-    // print(pp[0][1].fd)
     std::cout << std::get<1>(std::get<0>(pp)).fd << "\n";
-    // print(pp[1][0].fd)
     std::cout << std::get<0>(std::get<1>(pp)).fd << "\n";
-    // print(pp[1][1].fd)
     std::cout << std::get<1>(std::get<1>(pp)).fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

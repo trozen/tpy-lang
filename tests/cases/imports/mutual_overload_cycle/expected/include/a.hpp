@@ -10,7 +10,9 @@ namespace tpyapp::a {
 
 inline constexpr std::string_view __name__ = "a";
 
+// def use_g_int(n: int32) -> int32:
 int32_t use_g_int(int32_t n);
+// def use_g_str(s: str) -> int32:
 int32_t use_g_str(std::string_view s);
 
 void __tpy_init();

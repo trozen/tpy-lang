@@ -80,116 +80,107 @@ std::optional<::tpyapp::main::day> EnumUtil<::tpyapp::main::day>::try_parse(std:
 
 namespace tpyapp::main {
 
-// n: integer;
 int32_t n{};
-// i: integer;
 int32_t i{};
-// d: Day;
 day d;
 
+// procedure classify(d: Day);
+// begin
+//   case d of
+//     Mon..Fri: writeln('weekday');
+//     Sat..Sun: writeln('weekend');
+//   end;
+// end;
 void classify(day d) {
-    // case d of
     auto& __match_subject_1 = d;
     switch (__match_subject_1) {
-    // Mon..Fri: writeln('weekday');
     case day::mon: {
-        // Mon..Fri: writeln('weekday');
         std::cout << "weekday" << "\n";
         break;
     }
-    // Mon..Fri: writeln('weekday');
     case day::tue: {
-        // Mon..Fri: writeln('weekday');
         std::cout << "weekday" << "\n";
         break;
     }
-    // Mon..Fri: writeln('weekday');
     case day::wed: {
-        // Mon..Fri: writeln('weekday');
         std::cout << "weekday" << "\n";
         break;
     }
-    // Mon..Fri: writeln('weekday');
     case day::thu: {
-        // Mon..Fri: writeln('weekday');
         std::cout << "weekday" << "\n";
         break;
     }
-    // Mon..Fri: writeln('weekday');
     case day::fri: {
-        // Mon..Fri: writeln('weekday');
         std::cout << "weekday" << "\n";
         break;
     }
-    // Sat..Sun: writeln('weekend');
     case day::sat: {
-        // Sat..Sun: writeln('weekend');
         std::cout << "weekend" << "\n";
         break;
     }
-    // Sat..Sun: writeln('weekend');
     case day::sun: {
-        // Sat..Sun: writeln('weekend');
         std::cout << "weekend" << "\n";
         break;
     }
     }
 }
 
+// n: integer;
+// i: integer;
+// d: Day;
+//
+// for i := 0 to 8 do
+// begin
+//   n := i;
+//   case n of
+//     0:        writeln('zero');
+//     1..3:     writeln('low');
+//     4, 5:     writeln('mid');
+//     6..9:     writeln('high');
+//     else      writeln('out');
+//   end;
+// end;
+// d := Wed;
+// classify(d);
+// d := Sat;
+// classify(d);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // for i := 0 to 8 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(8, 1);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // n := i;
         n = i;
-        // case n of
         auto& __match_subject_1 = n;
         switch (__match_subject_1) {
-        // 0:        writeln('zero');
         case 0: {
-            // 0:        writeln('zero');
             std::cout << "zero" << "\n";
             break;
         }
-        // 4, 5:     writeln('mid');
         case 4: {
-            // 4, 5:     writeln('mid');
             std::cout << "mid" << "\n";
             break;
         }
-        // 4, 5:     writeln('mid');
         case 5: {
-            // 4, 5:     writeln('mid');
             std::cout << "mid" << "\n";
             break;
         }
-        // 1..3:     writeln('low');
         default: {
             if (((1 <= n) && (n <= 3))) {
-                // 1..3:     writeln('low');
                 std::cout << "low" << "\n";
             } else if (((6 <= n) && (n <= 9))) {
-                // 6..9:     writeln('high');
                 std::cout << "high" << "\n";
             } else {
-                // else      writeln('out');
                 std::cout << "out" << "\n";
             }
             break;
         }
         }
     }
-    // d := Wed;
     d = day::wed;
-    // classify(d);
     classify(d);
-    // d := Sat;
     d = day::sat;
-    // classify(d);
     classify(d);
 }
 

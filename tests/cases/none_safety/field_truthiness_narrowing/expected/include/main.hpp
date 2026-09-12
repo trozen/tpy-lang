@@ -11,9 +11,13 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_name(cfg: Config) -> str:
 std::string get_name(const Config& cfg);
+// def get_port(cfg: Config) -> int:
 ::tpy::BigInt get_port(const Config& cfg);
+// def test_negated(cfg: Config) -> str:
 std::string test_negated(const Config& cfg);
+// def main() -> None:
 void main();
 
 // class Config:
@@ -36,6 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, name: Optional[str], port: Optional[int]) -> None:
+//     self.name = name
+//     self.port = port
 inline Config::Config(std::optional<std::string_view> name, std::optional<::tpy::BigInt> port) : name(name ? std::make_optional(std::string(*name)) : std::nullopt), port(port) {}
 void __tpy_init();
 } // namespace tpyapp::main

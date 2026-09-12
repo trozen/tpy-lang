@@ -11,6 +11,7 @@ template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder[T]:
@@ -20,14 +21,15 @@ struct Holder {
     T* _p;
 
     // def __init__(self, p: Ptr[T]) -> None:
+    //     self._p = p
     Holder() = default;
     explicit Holder(T* p) : _p(p) {}
 
     // @staticmethod
     // def make[U: T](p: Ptr[U]) -> Own[Holder[T]]:
+    //     return Holder[T](p)  # tpyc: ok
     template<typename U>
     static Holder<T> make(U* p) {
-        // return Holder[T](p)  # tpyc: ok
         return Holder<T>(p);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";

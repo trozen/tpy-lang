@@ -5,32 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [1, 2, 3, 4]
+//
+//     # Basic narrowing.
+//     print(sum_fast(nums))                # 10
+//
+//     # Nested narrowing inside the NativeIterable branch.
+//     print(sum_nested(nums, True))        # 10 + 100 = 110
+//     print(sum_nested(nums, False))       # 100
+//
+//     # Elif-chain narrowing.
+//     print(sum_elif(0, nums))             # 1 (kind==0 short-circuit)
+//     print(sum_elif(2, nums))             # 10 (falls to NativeIterable branch)
+//     print(sum_elif(1, nums))             # 99 (kind==1 branch, skipped NativeIterable)
 void main() {
-    // nums: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> nums = {1, 2, 3, 4};
-    // # Basic narrowing.
-    // print(sum_fast(nums))                # 10
     std::cout << sum_fast(nums) << "\n";
-    // # Nested narrowing inside the NativeIterable branch.
-    // print(sum_nested(nums, True))        # 10 + 100 = 110
     std::cout << sum_nested(nums, true) << "\n";
-    // print(sum_nested(nums, False))       # 100
     std::cout << sum_nested(nums, false) << "\n";
-    // # Elif-chain narrowing.
-    // print(sum_elif(0, nums))             # 1 (kind==0 short-circuit)
     std::cout << sum_elif(0, nums) << "\n";
-    // print(sum_elif(2, nums))             # 10 (falls to NativeIterable branch)
     std::cout << sum_elif(2, nums) << "\n";
-    // print(sum_elif(1, nums))             # 99 (kind==1 branch, skipped NativeIterable)
     std::cout << sum_elif(1, nums) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_pair() -> tuple[str, str]:
 std::tuple<std::string, std::string> get_pair();
+// def main() -> None:
 void main();
 
 void __tpy_init();

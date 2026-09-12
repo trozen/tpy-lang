@@ -43,48 +43,50 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(clock(5).day().n)
+//     print(widget(0).kind() == Color.RED)
+//     print(gauge().read().n)
+//     print(sub().build().n)
+//     print(factory.day().n, factory().relabel(day(4)))
+//     print(canvas().shape(), canvas().draw(square(4)))
+//     print(meter().build().n, meter().day)
+//     print(fsub(8).build().n)
+//     print(printer().emit().n)
+//     b = holder(7).boxed()
+//     b.get().n = 99                          # mutate through the moved Box (no copy)
+//     print(b.get().n)
 void main() {
-    // print(clock(5).day().n)
     std::cout << clock(::tpy::BigInt(5)).day().n << "\n";
-    // print(widget(0).kind() == Color.RED)
     std::cout << ::tpy::print_bool((widget(::tpy::BigInt(0)).kind() == Color::RED)) << "\n";
-    // print(gauge().read().n)
     std::cout << gauge().read().n << "\n";
-    // print(sub().build().n)
     std::cout << sub().build().n << "\n";
-    // print(factory.day().n, factory().relabel(day(4)))
     std::cout << factory::day().n << " " << factory().relabel(day(::tpy::BigInt(4))) << "\n";
-    // print(canvas().shape(), canvas().draw(square(4)))
     ::tpy::Adapter<shape, square> __tmp_1{square(::tpy::BigInt(4))};
     std::cout << canvas().shape() << " " << canvas().draw(__tmp_1) << "\n";
-    // print(meter().build().n, meter().day)
     std::cout << meter().build().n << " " << meter().day() << "\n";
-    // print(fsub(8).build().n)
     std::cout << fsub(::tpy::BigInt(8)).build().n << "\n";
-    // print(printer().emit().n)
     std::cout << printer().emit().n << "\n";
-    // b = holder(7).boxed()
     ::tpystd::tplib::box::Box<day> b = holder(::tpy::BigInt(7)).boxed();
-    // b.get().n = 99                          # mutate through the moved Box (no copy)
     b.get().n = ::tpy::BigInt(99);
-    // print(b.get().n)
     std::cout << b.get().n << "\n";
 }
 
+// # A member named like a local type shadows that type in C++ record scope, so
+// # codegen qualifies the colliding reference. Covers every C++-scope member kind
+// # (method, field, property, class constant, MRO-inherited method + field, static
+// # method, param type) against a record, enum, and @dynamic protocol; `boxed()`
+// # moves a @nocopy Box across the accessor boundary and mutates it (no copy).
+// from enum import Enum
+//
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A member named like a local type shadows that type in C++ record scope, so
-    // # codegen qualifies the colliding reference. Covers every C++-scope member kind
-    // # (method, field, property, class constant, MRO-inherited method + field, static
-    // # method, param type) against a record, enum, and @dynamic protocol; `boxed()`
-    // # moves a @nocopy Box across the accessor boundary and mutates it (no copy).
-    // from enum import Enum
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

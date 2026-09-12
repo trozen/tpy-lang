@@ -21,11 +21,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_echo_client;
 struct __coro_main_coro;
 
+// async def echo_client(port: int32) -> None:
 __coro_echo_client echo_client(int32_t port);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: echo_client
+// async def echo_client(port: int32) -> None:
 struct __coro_echo_client {
     int32_t __state;
     bool __cancel_pending;
@@ -56,7 +59,7 @@ struct __coro_echo_client {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

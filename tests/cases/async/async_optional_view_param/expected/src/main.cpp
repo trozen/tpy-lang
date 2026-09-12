@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // async def first_bytes(b: bytes | None) -> int:
+//     await asyncio.sleep(0)
+//     if b is None:
+//         return -1
+//     return int(b[0]) + int(b[1]) + int(b[2])   # reads buffer content post-await
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_first_bytes::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,14 +21,11 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if b is None:
         if ((!b.has_value())) {
-            // return -1
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = -1;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
-        // return int(b[0]) + int(b[1]) + int(b[2])   # reads buffer content post-await
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((((::tpy::BigInt(static_cast<uint64_t>(::tpy::bytes_getitem((*b), 0)))) + (::tpy::BigInt(static_cast<uint64_t>(::tpy::bytes_getitem((*b), 1)))))) + (::tpy::BigInt(static_cast<uint64_t>(::tpy::bytes_getitem((*b), 2)))));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -42,10 +42,11 @@ __coro_first_bytes first_bytes(std::optional<::tpy::BytesView> b) {
 }
 
 // async def str_len(s: Optional[str]) -> int:
+//     await asyncio.sleep(0)
+//     return len(s) if s is not None else -1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_str_len::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -55,7 +56,6 @@ __coro_first_bytes first_bytes(std::optional<::tpy::BytesView> b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return len(s) if s is not None else -1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt((((s.has_value())) ? (::tpy::__len__((*s))) : (-1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -72,11 +72,14 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
 }
 
 // async def main_coro() -> None:
+//     print(await first_bytes(b"abc"))   # literal temporary, read across suspension
+//     print(await first_bytes(None))
+//     print(await str_len("hello"))
+//     print(await str_len(None))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = ::tpy::bytes_literal_owned("abc", 3);
-        // print(await first_bytes(b"abc"))   # literal temporary, read across suspension
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
@@ -86,9 +89,7 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await first_bytes(b"abc"))   # literal temporary, read across suspension
         std::cout << __await_lift_0 << "\n";
-        // print(await first_bytes(None))
         __sub_1.emplace(std::nullopt);
         __state = S_RESUME_1;
         continue;
@@ -98,10 +99,8 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await first_bytes(None))
         std::cout << __await_lift_1 << "\n";
         __coro_arg_1 = "hello";
-        // print(await str_len("hello"))
         __sub_2.emplace(__coro_arg_1);
         __state = S_RESUME_2;
         continue;
@@ -111,9 +110,7 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await str_len("hello"))
         std::cout << __await_lift_2 << "\n";
-        // print(await str_len(None))
         __sub_3.emplace(std::nullopt);
         __state = S_RESUME_3;
         continue;
@@ -123,7 +120,6 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        // print(await str_len(None))
         std::cout << __await_lift_3 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -140,22 +136,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # A `bytes | None` / `str | None` async-def param is captured OWNED in the coro
+// # frame; reading content (indexing) after the await guards against a dangling
+// # borrow of the literal arg's storage across the suspension.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A `bytes | None` / `str | None` async-def param is captured OWNED in the coro
-    // # frame; reading content (indexing) after the await guards against a dangling
-    // # borrow of the literal arg's storage across the suspension.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

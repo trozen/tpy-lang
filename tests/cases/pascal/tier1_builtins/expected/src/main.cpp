@@ -3,47 +3,43 @@
 
 namespace tpyapp::main {
 
-// i: integer;
 int32_t i{};
-// c: char;
 char c{};
 
+// i: integer;
+// c: char;
+//
+// i := 5;
+// inc(i);              writeln(i);  { 6 }
+// inc(i, 3);           writeln(i);  { 9 }
+// dec(i, 2);           writeln(i);  { 7 }
+// writeln(sqr(i));                  { 49 }
+// if odd(i) then writeln('odd') else writeln('even');
+// writeln(abs(-42));                { 42 }
+// c := 'A';
+// writeln(ord(c));                  { 65 }
+// writeln(chr(66));                 { B }
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // i := 5;
     i = 5;
-    // inc(i);              writeln(i);  { 6 }
     i = (::tpy::add_check<int32_t>(i, 1));
-    // inc(i);              writeln(i);  { 6 }
     std::cout << i << "\n";
-    // inc(i, 3);           writeln(i);  { 9 }
     i = (::tpy::add_check<int32_t>(i, 3));
-    // inc(i, 3);           writeln(i);  { 9 }
     std::cout << i << "\n";
-    // dec(i, 2);           writeln(i);  { 7 }
     i = (::tpy::sub_check<int32_t>(i, 2));
-    // dec(i, 2);           writeln(i);  { 7 }
     std::cout << i << "\n";
-    // writeln(sqr(i));                  { 49 }
     std::cout << (::tpy::mul_check<int32_t>(i, i)) << "\n";
-    // if odd(i) then writeln('odd') else writeln('even');
     if (((::tpy::mod_floor<int32_t>(i, 2)) != 0)) {
-        // if odd(i) then writeln('odd') else writeln('even');
         std::cout << "odd" << "\n";
     } else {
-        // if odd(i) then writeln('odd') else writeln('even');
         std::cout << "even" << "\n";
     }
-    // writeln(abs(-42));                { 42 }
     std::cout << ::std::abs(-42) << "\n";
-    // c := 'A';
     c = ::tpy::char_from_str("A");
-    // writeln(ord(c));                  { 65 }
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
-    // writeln(chr(66));                 { B }
     std::cout << static_cast<char>(66) << "\n";
 }
 

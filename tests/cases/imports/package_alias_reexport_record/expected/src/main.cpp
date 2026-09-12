@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pt = P(3, 4)
+//     print(pt)
 void main() {
-    // pt = P(3, 4)
     ::tpyapp::pkg::sub::Point pt = ::tpyapp::pkg::sub::Point(::tpy::BigInt(3), ::tpy::BigInt(4));
-    // print(pt)
     std::cout << pt << "\n";
 }
 
+// # Aliased record re-exported through pkg/__init__.py (`from .sub import Point as P`).
+// # Exercises the aliased-import dedupe in compiler.py::_exports_to_module_info:
+// # registry.records has both `P` (alias) and `Point` (canonical); only `P` must
+// # re-export, matching CPython's `from pkg import P` semantics.
+// from pkg import P
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Aliased record re-exported through pkg/__init__.py (`from .sub import Point as P`).
-    // # Exercises the aliased-import dedupe in compiler.py::_exports_to_module_info:
-    // # registry.records has both `P` (alias) and `Point` (canonical); only `P` must
-    // # re-export, matching CPython's `from pkg import P` semantics.
-    // from pkg import P
     ::tpyapp::pkg::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,101 +5,101 @@ namespace tpyapp::main {
 
 
 // def take(t: tuple[Own[P], Own[P]]) -> int32:
+//     a, b = t
+//     return a.x + b.x
 int32_t take(std::tuple<P, P>&& t) {
-    // a, b = t
     auto&& __tup_1 = std::move(t);
     P a = std::move(std::get<0>(__tup_1));
     P b = std::move(std::get<1>(__tup_1));
-    // return a.x + b.x
     return (::tpy::add_check<int32_t>(a.x, b.x));
 }
 
 // def take_opt(t: tuple[Own[P] | None, Own[P] | None]) -> int32:
+//     a, b = t
+//     if a is not None and b is not None:
+//         return a.x + b.x
+//     if a is not None:
+//         return a.x
+//     return int32(0)
 int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t) {
-    // a, b = t
     const auto& __tup_1 = t;
     std::optional<P> a = std::get<0>(__tup_1);
     std::optional<P> b = std::get<1>(__tup_1);
-    // if a is not None and b is not None:
     if (((a.has_value()) && (b.has_value()))) {
-        // return a.x + b.x
         return (::tpy::add_check<int32_t>((*a).x, (*b).x));
     }
-    // if a is not None:
     if ((a.has_value())) {
-        // return a.x
         return (*a).x;
     }
-    // return int32(0)
     return 0;
 }
 
 // def test_record_elements_last_use() -> None:
+//     a = P(1)
+//     b = P(2)
+//     print(take((a, b)))
 void test_record_elements_last_use() {
-    // a = P(1)
     P a = P(1);
-    // b = P(2)
     P b = P(2);
-    // print(take((a, b)))
     std::cout << take(std::tuple<P, P>{std::move(a), std::move(b)}) << "\n";
 }
 
 // def test_record_elements_fresh_rvalues() -> None:
+//     print(take((P(3), P(4))))
 void test_record_elements_fresh_rvalues() {
-    // print(take((P(3), P(4))))
     std::cout << take(std::tuple<P, P>{P(3), P(4)}) << "\n";
 }
 
 // def test_record_elements_explicit_copy() -> None:
+//     keep = P(5)
+//     print(take((copy(keep), P(6))))
+//     print(keep.x)
 void test_record_elements_explicit_copy() {
-    // keep = P(5)
     P keep = P(5);
-    // print(take((copy(keep), P(6))))
     std::cout << take(std::tuple<P, P>{P(keep), P(6)}) << "\n";
-    // print(keep.x)
     std::cout << keep.x << "\n";
 }
 
 // def test_optional_elements_last_use() -> None:
+//     a = P(7)
+//     b = P(8)
+//     print(take_opt((a, b)))
 void test_optional_elements_last_use() {
-    // a = P(7)
     P a = P(7);
-    // b = P(8)
     P b = P(8);
-    // print(take_opt((a, b)))
     std::cout << take_opt(std::tuple<std::optional<P>, std::optional<P>>{a, b}) << "\n";
 }
 
 // def test_optional_elements_with_none() -> None:
+//     a = P(9)
+//     print(take_opt((a, None)))
+//     print(take_opt((None, None)))
 void test_optional_elements_with_none() {
-    // a = P(9)
     P a = P(9);
-    // print(take_opt((a, None)))
     std::cout << take_opt(std::tuple<std::optional<P>, std::optional<P>>{a, std::nullopt}) << "\n";
-    // print(take_opt((None, None)))
     std::cout << take_opt(std::tuple<std::optional<P>, std::optional<P>>{std::nullopt, std::nullopt}) << "\n";
 }
 
 // def main() -> None:
+//     test_record_elements_last_use()
+//     test_record_elements_fresh_rvalues()
+//     test_record_elements_explicit_copy()
+//     test_optional_elements_last_use()
+//     test_optional_elements_with_none()
 void main() {
-    // test_record_elements_last_use()
     test_record_elements_last_use();
-    // test_record_elements_fresh_rvalues()
     test_record_elements_fresh_rvalues();
-    // test_record_elements_explicit_copy()
     test_record_elements_explicit_copy();
-    // test_optional_elements_last_use()
     test_optional_elements_last_use();
-    // test_optional_elements_with_none()
     test_optional_elements_with_none();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

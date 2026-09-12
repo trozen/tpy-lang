@@ -3,19 +3,17 @@
 
 namespace tpyapp::main {
 
-// # Invalid string for float parsing
-// x: float = float("not_a_number")
 double x{};
 
+// # Invalid string for float parsing
+// x: float = float("not_a_number")
+// print(x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Invalid string for float parsing
-    // x: float = float("not_a_number")
     x = ::tpy::float_from_str("not_a_number");
-    // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
 }
 

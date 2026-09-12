@@ -16,6 +16,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "pkg.a";
 
+// def f(n: int32) -> int32:
 int32_t f(int32_t n);
 
 // class A:
@@ -46,12 +47,13 @@ struct Container {
     T item;
 
     // def __init__(self, item: T) -> None:
+    //     self.item = item
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> item) : item(item) {}
 
     // def get(self) -> T:
+    //     return self.item
     ::tpy::val_or_ref_t<T> get() {
-        // return self.item
         return this->item;
     }
     static constexpr std::string_view __tpy_class_name__ = "pkg.a.Container";
@@ -65,11 +67,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 
 // def __init__(self) -> None:
+//     self.b = B()
 inline A::A() : b(::tpyapp::pkg::b::B()) {}
 
 // def value(self) -> int32:
+//     return self.b.value()
 inline int32_t A::value() const {
-    // return self.b.value()
     return this->b.value();
 }
 void __tpy_init();

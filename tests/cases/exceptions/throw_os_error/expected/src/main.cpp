@@ -8,31 +8,32 @@ namespace tpyapp::main {
 // # catch it the same way as runtime-thrown OSError. Subclasses
 // # (FileNotFoundError) inherit the throw behavior.
 // def fail() -> None:
+//     raise OSError("custom: simulated I/O failure")
 void fail() {
-    // raise OSError("custom: simulated I/O failure")
     ::tpy::OSError("custom: simulated I/O failure").__raise__();
 }
 
 // def main() -> None:
+//     try:
+//         fail()
+//     except OSError as e:
+//         print("caught:", str(e))
 void main() {
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (const ::tpy::OSError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

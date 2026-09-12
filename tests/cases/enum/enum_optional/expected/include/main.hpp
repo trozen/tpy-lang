@@ -33,7 +33,9 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_color(flag: bool) -> Color | None:
 std::optional<Color> maybe_color(bool flag);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -11,9 +11,13 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_leaf() -> Own[Tree[int32]]:
 Tree<int32_t> make_leaf();
+// def make_branch() -> Own[Tree[int32]]:
 Tree<int32_t> make_branch();
+// def leaf_count(t: Tree[int32]) -> int32:
 int32_t leaf_count(const Tree<int32_t>& t);
+// def main() -> None:
 void main();
 
 template<typename T>

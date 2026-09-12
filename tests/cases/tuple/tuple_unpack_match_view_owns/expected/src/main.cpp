@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def make(tag: str) -> tuple[str, str]:
+//     return (tag + "-alpha-long-enough-to-heap", tag + "-beta-long-enough-to-heap")
 std::tuple<std::string, std::string> make(std::string_view tag) {
-    // return (tag + "-alpha-long-enough-to-heap", tag + "-beta-long-enough-to-heap")
     return std::tuple<std::string, std::string>{(::tpy::str_concat(tag, "-alpha-long-enough-to-heap")), (::tpy::str_concat(tag, "-beta-long-enough-to-heap"))};
 }
 
 // def main() -> None:
+//     n = len("ab")
+//     match n:
+//         case 2:
+//             t1 = make("X")
+//             a, b = t1
+//         case _:
+//             t2 = make("Y")
+//             a, b = t2
+//     print(a)
+//     print(b)
 void main() {
-    // n = len("ab")
     int32_t n = ::tpy::__len__("ab");
-    // match n:
     std::string a;
     std::string b;
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case 2:
     case 2: {
-        // t1 = make("X")
         std::tuple<std::string, std::string> t1 = make("X");
-        // a, b = t1
         const auto& __tup_1 = t1;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         break;
     }
-    // case _:
     default: {
-        // t2 = make("Y")
         std::tuple<std::string, std::string> t2 = make("Y");
-        // a, b = t2
         const auto& __tup_2 = t2;
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
         break;
     }
     }
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

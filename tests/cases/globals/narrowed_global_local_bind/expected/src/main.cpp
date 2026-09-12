@@ -3,71 +3,71 @@
 
 namespace tpyapp::main {
 
-// GO: int32 | None = None
 std::optional<int32_t> GO;
 
 // def clear() -> None:
+//     global GO
+//     GO = None
 void clear() {
-    // global GO
-    // GO = None
     GO = std::nullopt;
 }
 
 // def enable() -> None:
+//     global GO
+//     GO = 5
 void enable() {
-    // global GO
-    // GO = 5
     GO = 5;
 }
 
 // def local_bind() -> int32:
+//     v = GO
+//     if v is not None:
+//         clear()
+//         return v
+//     return -1
 int32_t local_bind() {
-    // v = GO
     std::optional<int32_t> v = GO;
-    // if v is not None:
     if ((v.has_value())) {
-        // clear()
         clear();
-        // return v
         return (*v);
     }
-    // return -1
     return -1;
 }
 
 // def shadowed() -> int32:
+//     GO: int32 | None = 9
+//     if GO is not None:
+//         clear()
+//         return GO
+//     return -1
 int32_t shadowed() {
-    // GO: int32 | None = 9
     std::optional<int32_t> GO = 9;
-    // if GO is not None:
     if ((GO.has_value())) {
-        // clear()
         clear();
-        // return GO
         return (*GO);
     }
-    // return -1
     return -1;
 }
 
 // def main() -> None:
+//     enable()
+//     print(local_bind())
+//     print(shadowed())
 void main() {
-    // enable()
     enable();
-    // print(local_bind())
     std::cout << local_bind() << "\n";
-    // print(shadowed())
     std::cout << shadowed() << "\n";
 }
 
+// GO: int32 | None = None
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // GO: int32 | None = None
     GO = std::nullopt;
-    // main()
     main();
 }
 

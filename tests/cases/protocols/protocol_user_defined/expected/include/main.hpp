@@ -15,14 +15,16 @@ concept Measurable = requires(const T& t) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count(items: Measurable) -> int32:
 template<Measurable T_items>
 int32_t count(const T_items& items);
+// def main() -> None:
 void main();
 
 // def count(items: Measurable) -> int32:
+//     return len(items)
 template<Measurable T_items>
 int32_t count(const T_items& items) {
-    // return len(items)
     return ::tpy::__len__(items);
 }
 

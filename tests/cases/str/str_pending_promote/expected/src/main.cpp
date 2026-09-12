@@ -6,43 +6,43 @@ namespace tpyapp::main {
 
 // # Test PendingStrType promotes to str (std::string) for owned-requiring usage
 // def test_str_constructor() -> None:
+//     s = str(42)  # tpyc: type(str)
+//     print(s)
 void test_str_constructor() {
-    // s = str(42)  # tpyc: type(str)
     std::string s = ::tpy::fixed_to_str<int32_t>(42);
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_augassign() -> None:
+//     s = "hello"  # tpyc: type(str)
+//     s += " world"
+//     print(s)
 void test_augassign() {
-    // s = "hello"  # tpyc: type(str)
     std::string s = "hello";
-    // s += " world"
     s += " world";
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_reassign_from_owned() -> None:
+//     s = "start"  # tpyc: type(str)
+//     s = str(99)
+//     print(s)
 void test_reassign_from_owned() {
-    // s = "start"  # tpyc: type(str)
     std::string s = "start";
-    // s = str(99)
     s = ::tpy::fixed_to_str<int32_t>(99);
-    // print(s)
     std::cout << s << "\n";
 }
 
+// test_str_constructor()
+// test_augassign()
+// test_reassign_from_owned()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_str_constructor()
     test_str_constructor();
-    // test_augassign()
     test_augassign();
-    // test_reassign_from_owned()
     test_reassign_from_owned();
 }
 

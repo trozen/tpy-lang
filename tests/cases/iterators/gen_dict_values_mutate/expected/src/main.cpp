@@ -5,14 +5,16 @@ namespace tpyapp::main {
 
 
 // def main():
+//     d: dict[str, list[int32]] = {}
+//     d["a"] = [1]
+//     d["b"] = [2, 3]
+//     for n in bump(d):
+//         print(n)
+//     print(d["a"], d["b"])
 void main() {
-    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // d["a"] = [1]
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1});
-    // d["b"] = [2, 3]
     ::tpy::__setitem__(d, "b", std::vector<int32_t>{2, 3});
-    // for n in bump(d):
     {
         auto __src_0 = bump(d);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -20,20 +22,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        // print(n)
         std::cout << n << "\n";
         }
     }
-    // print(d["a"], d["b"])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "a")) << " " << ::tpy::ListPrinter(::tpy::__getitem__(d, "b")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

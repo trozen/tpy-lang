@@ -5,32 +5,35 @@ namespace tpyapp::main {
 
 
 // def factorial(n: int) -> int:
+//     if n <= 1:
+//         return 1
+//     return n * factorial(n - 1)
 ::tpy::BigInt factorial(const ::tpy::BigInt& n) {
-    // if n <= 1:
     if ((n <= 1)) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // return n * factorial(n - 1)
     return ((n) * (factorial(((n) - (::tpy::BigInt(1))))));
 }
 
+// # 20! fits in 63-bit small int
+// print(factorial(20))
+//
+// # 25! exceeds 63 bits - uses GMP
+// print(factorial(25))
+//
+// # 50! is huge - only GMP can handle
+// print(factorial(50))
+//
+// # 100! - truly arbitrary precision
+// print(factorial(100))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # 20! fits in 63-bit small int
-    // print(factorial(20))
     std::cout << factorial(::tpy::BigInt(20)) << "\n";
-    // # 25! exceeds 63 bits - uses GMP
-    // print(factorial(25))
     std::cout << factorial(::tpy::BigInt(25)) << "\n";
-    // # 50! is huge - only GMP can handle
-    // print(factorial(50))
     std::cout << factorial(::tpy::BigInt(50)) << "\n";
-    // # 100! - truly arbitrary precision
-    // print(factorial(100))
     std::cout << factorial(::tpy::BigInt(100)) << "\n";
 }
 

@@ -12,6 +12,7 @@ struct Consumer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Source:
@@ -24,14 +25,16 @@ struct Source {
     explicit Source(int32_t n);
 
     // def __iter__(self) -> Iterator[int32]:
+    //     i: int32 = 0
+    //     while i < self._n:
+    //         yield i
+    //         i += 1
     auto __iter__() const {
-        // i: int32 = 0
         int32_t i = 0;
         return ::tpy::make_generator<int32_t>(
             [this, i]() mutable -> std::optional<int32_t> {
                 while ((i < (*this)._n)) {
                     auto __val = i;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
                     return std::optional<int32_t>(__val);
                 }
@@ -68,26 +71,28 @@ inline std::ostream& operator<<(std::ostream& os, const Consumer& obj) {
 
 
 // def __init__(self, n: int32):
+//     self._n = n
 inline Source::Source(int32_t n) : _n(n) {}
 
 // def __init__(self, src: Own[Source]):
+//     self._src = src
 inline Consumer::Consumer(Source&& src) : _src(std::move(src)) {}
 
 // def sum_all(self) -> int32:
+//     acc: int32 = 0
+//     for v in self._src:
+//         acc += v
+//     return acc
 inline int32_t Consumer::sum_all() const {
-    // acc: int32 = 0
     int32_t acc = 0;
-    // for v in self._src:
     auto& __src_0 = this->_src;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // acc += v
         acc = ::tpy::add_check<int32_t>(acc, v);
     }
-    // return acc
     return acc;
 }
 void __tpy_init();

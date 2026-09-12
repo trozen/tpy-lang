@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: int32 = int32(10)
+//     b: int32 = int32(0)
+//     q, r = divmod(a, b)
+//     print(q)
 void main() {
-    // a: int32 = int32(10)
     int32_t a = 10;
-    // b: int32 = int32(0)
     int32_t b = 0;
-    // q, r = divmod(a, b)
     auto __tup_1 = ::tpy::divmod_fixed<int32_t>(a, b);
     int32_t q = std::get<0>(__tup_1);
     int32_t r = std::get<1>(__tup_1);
-    // print(q)
     std::cout << q << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,122 +3,111 @@
 
 namespace tpyapp::main {
 
-// White = 15;
 int32_t white{};
-// Yellow = 14;
 int32_t yellow{};
-// Red = 4;
 int32_t red{};
-// Green = 2;
 int32_t green{};
-// Cyan = 3;
 int32_t cyan{};
-// gd, gm, drv_ok: integer;
 int32_t gd{};
-// gd, gm, drv_ok: integer;
 int32_t gm{};
-// gd, gm, drv_ok: integer;
 int32_t drv_ok{};
 
+// White = 15;
+// Yellow = 14;
+// Red = 4;
+// Green = 2;
+// Cyan = 3;
+//
+// gd, gm, drv_ok: integer;
+//
+// gd := 0;
+// gm := 0;
+// detectgraph(gd, gm);
+// drv_ok := registerbgidriver(0) + registerbgifont(0);
+// writeln('drv_ok=', drv_ok);
+//
+// gm := 80040;
+// initgraph(gd, gm, '');
+//
+// setcolor(Red);
+// arc(40, 20, 0, 90, 10);
+// writeln('arc_east@50,20=', getpixel(50, 20));
+// writeln('arc_north@40,10=', getpixel(40, 10));
+// writeln('arc_south_blank@40,30=', getpixel(40, 30));
+// writeln('arc_west_blank@30,20=', getpixel(30, 20));
+//
+// setcolor(Yellow);
+// bar3d(5, 25, 15, 35, 3, true);
+// writeln('bar3d_body@10,30=', getpixel(10, 30));
+// writeln('bar3d_top_edge@16,24=', getpixel(16, 24));
+//
+// setcolor(Cyan);
+// rectangle(60, 5, 70, 15);
+// setcolor(Green);
+// floodfill(65, 10, Cyan);
+// writeln('flood_interior@65,10=', getpixel(65, 10));
+// writeln('flood_interior@67,12=', getpixel(67, 12));
+// writeln('flood_border@60,5=', getpixel(60, 5));
+// writeln('flood_outside@72,10=', getpixel(72, 10));
+//
+// setrgbpalette(6, 63, 63, 63);
+// putpixel(78, 2, 6);
+// writeln('rebound@78,2=', getpixel(78, 2));
+//
+// closegraph;
+// writeln('done');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::graph::__tpy_init();
-    // White = 15;
     white = 15;
-    // Yellow = 14;
     yellow = 14;
-    // Red = 4;
     red = 4;
-    // Green = 2;
     green = 2;
-    // Cyan = 3;
     cyan = 3;
-    // gd := 0;
     gd = 0;
-    // gm := 0;
     gm = 0;
-    // detectgraph(gd, gm);
     ::tpyapp::graph::detectgraph(gd, gm);
-    // drv_ok := registerbgidriver(0) + registerbgifont(0);
     drv_ok = (::tpy::add_check<int32_t>(::tpyapp::graph::registerbgidriver(0), ::tpyapp::graph::registerbgifont(0)));
-    // writeln('drv_ok=', drv_ok);
     std::cout << "drv_ok=";
-    // writeln('drv_ok=', drv_ok);
     std::cout << drv_ok << "\n";
-    // gm := 80040;
     gm = 80040;
-    // initgraph(gd, gm, '');
     ::tpyapp::graph::initgraph(gd, gm, "");
-    // setcolor(Red);
     ::tpyapp::graph::setcolor(red);
-    // arc(40, 20, 0, 90, 10);
     ::tpyapp::graph::arc(40, 20, 0, 90, 10);
-    // writeln('arc_east@50,20=', getpixel(50, 20));
     std::cout << "arc_east@50,20=";
-    // writeln('arc_east@50,20=', getpixel(50, 20));
     std::cout << ::tpyapp::graph::getpixel(50, 20) << "\n";
-    // writeln('arc_north@40,10=', getpixel(40, 10));
     std::cout << "arc_north@40,10=";
-    // writeln('arc_north@40,10=', getpixel(40, 10));
     std::cout << ::tpyapp::graph::getpixel(40, 10) << "\n";
-    // writeln('arc_south_blank@40,30=', getpixel(40, 30));
     std::cout << "arc_south_blank@40,30=";
-    // writeln('arc_south_blank@40,30=', getpixel(40, 30));
     std::cout << ::tpyapp::graph::getpixel(40, 30) << "\n";
-    // writeln('arc_west_blank@30,20=', getpixel(30, 20));
     std::cout << "arc_west_blank@30,20=";
-    // writeln('arc_west_blank@30,20=', getpixel(30, 20));
     std::cout << ::tpyapp::graph::getpixel(30, 20) << "\n";
-    // setcolor(Yellow);
     ::tpyapp::graph::setcolor(yellow);
-    // bar3d(5, 25, 15, 35, 3, true);
     ::tpyapp::graph::bar3d(5, 25, 15, 35, 3, true);
-    // writeln('bar3d_body@10,30=', getpixel(10, 30));
     std::cout << "bar3d_body@10,30=";
-    // writeln('bar3d_body@10,30=', getpixel(10, 30));
     std::cout << ::tpyapp::graph::getpixel(10, 30) << "\n";
-    // writeln('bar3d_top_edge@16,24=', getpixel(16, 24));
     std::cout << "bar3d_top_edge@16,24=";
-    // writeln('bar3d_top_edge@16,24=', getpixel(16, 24));
     std::cout << ::tpyapp::graph::getpixel(16, 24) << "\n";
-    // setcolor(Cyan);
     ::tpyapp::graph::setcolor(cyan);
-    // rectangle(60, 5, 70, 15);
     ::tpyapp::graph::rectangle(60, 5, 70, 15);
-    // setcolor(Green);
     ::tpyapp::graph::setcolor(green);
-    // floodfill(65, 10, Cyan);
     ::tpyapp::graph::floodfill(65, 10, cyan);
-    // writeln('flood_interior@65,10=', getpixel(65, 10));
     std::cout << "flood_interior@65,10=";
-    // writeln('flood_interior@65,10=', getpixel(65, 10));
     std::cout << ::tpyapp::graph::getpixel(65, 10) << "\n";
-    // writeln('flood_interior@67,12=', getpixel(67, 12));
     std::cout << "flood_interior@67,12=";
-    // writeln('flood_interior@67,12=', getpixel(67, 12));
     std::cout << ::tpyapp::graph::getpixel(67, 12) << "\n";
-    // writeln('flood_border@60,5=', getpixel(60, 5));
     std::cout << "flood_border@60,5=";
-    // writeln('flood_border@60,5=', getpixel(60, 5));
     std::cout << ::tpyapp::graph::getpixel(60, 5) << "\n";
-    // writeln('flood_outside@72,10=', getpixel(72, 10));
     std::cout << "flood_outside@72,10=";
-    // writeln('flood_outside@72,10=', getpixel(72, 10));
     std::cout << ::tpyapp::graph::getpixel(72, 10) << "\n";
-    // setrgbpalette(6, 63, 63, 63);
     ::tpyapp::graph::setrgbpalette(6, 63, 63, 63);
-    // putpixel(78, 2, 6);
     ::tpyapp::graph::putpixel(78, 2, 6);
-    // writeln('rebound@78,2=', getpixel(78, 2));
     std::cout << "rebound@78,2=";
-    // writeln('rebound@78,2=', getpixel(78, 2));
     std::cout << ::tpyapp::graph::getpixel(78, 2) << "\n";
-    // closegraph;
     ::tpyapp::graph::closegraph();
-    // writeln('done');
     std::cout << "done" << "\n";
 }
 

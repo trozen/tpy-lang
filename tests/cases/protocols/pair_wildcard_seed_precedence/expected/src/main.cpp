@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p: Pair[Box[Pet], int32] = Pair[_, int32](Box(Dog("Rex")), 5)  # tpyc: type(Pair[Box[Pet], int32])
+//     print(p.a.get().name())
+//     print(p.b)
 void main() {
-    // p: Pair[Box[Pet], int32] = Pair[_, int32](Box(Dog("Rex")), 5)  # tpyc: type(Pair[Box[Pet], int32])
     Pair<::tpystd::tplib::box::Box<Pet>, int32_t> p = Pair<::tpystd::tplib::box::Box<Pet>, int32_t>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))), 5);
-    // print(p.a.get().name())
     std::cout << p.a.get().name() << "\n";
-    // print(p.b)
     std::cout << p.b << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

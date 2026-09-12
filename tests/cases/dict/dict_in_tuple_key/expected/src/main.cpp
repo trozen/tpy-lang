@@ -5,49 +5,52 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Annotated dict/set literals with tuple-of-literals keys/elements.
+//     d: dict[tuple[int32, int32], str] = {(1, 2): "a", (3, 4): "b"}
+//     s: set[tuple[int32, int32]] = {(1, 2), (5, 6)}
+//     # Unannotated dict literal: exercises the default-int resolution path.
+//     d2 = {(1, 2): "a", (3, 4): "b"}
+//     # List literal of tuples mixing literal and concrete element types.
+//     pairs = [(1, 2), (int32(3), 4)]
+//
+//     k1: tuple[int32, int32] = (1, 2)
+//     k2: tuple[int32, int32] = (9, 9)
+//
+//     print(k1 in d, k2 in d)
+//     print(k1 not in d, k2 not in d)
+//     print(k1 in s, k2 in s)
+//     # Tuple-literal LHS (`(a, b) in d`) -- IntLiteralType elements coerce
+//     # to the dict's concrete key type at the membership-test boundary.
+//     print((1, 2) in d, (9, 9) in d)
+//     print(d2[(1, 2)])
+//     print(pairs[0][0], pairs[1][0])
+//
+//     # Tuple-literal membership still works (regression guard).
+//     x: int32 = 2
+//     print(x in (1, 2, 3), x in (4, 5, 6))
 void main() {
-    // # Annotated dict/set literals with tuple-of-literals keys/elements.
-    // d: dict[tuple[int32, int32], str] = {(1, 2): "a", (3, 4): "b"}
     ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string> d = ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string>({{std::tuple<int32_t, int32_t>{1, 2}, "a"}, {std::tuple<int32_t, int32_t>{3, 4}, "b"}});
-    // s: set[tuple[int32, int32]] = {(1, 2), (5, 6)}
     ::tpy::ordered_set<std::tuple<int32_t, int32_t>> s = ::tpy::ordered_set<std::tuple<int32_t, int32_t>>({std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{5, 6}});
-    // # Unannotated dict literal: exercises the default-int resolution path.
-    // d2 = {(1, 2): "a", (3, 4): "b"}
     ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string> d2 = ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string>({{std::tuple<int32_t, int32_t>{1, 2}, "a"}, {std::tuple<int32_t, int32_t>{3, 4}, "b"}});
-    // # List literal of tuples mixing literal and concrete element types.
-    // pairs = [(1, 2), (int32(3), 4)]
     std::array<std::tuple<int32_t, int32_t>, 2> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // k1: tuple[int32, int32] = (1, 2)
     std::tuple<int32_t, int32_t> k1 = std::tuple<int32_t, int32_t>{1, 2};
-    // k2: tuple[int32, int32] = (9, 9)
     std::tuple<int32_t, int32_t> k2 = std::tuple<int32_t, int32_t>{9, 9};
-    // print(k1 in d, k2 in d)
     std::cout << ::tpy::print_bool((d.contains(k1))) << " " << ::tpy::print_bool((d.contains(k2))) << "\n";
-    // print(k1 not in d, k2 not in d)
     std::cout << ::tpy::print_bool((!(d.contains(k1)))) << " " << ::tpy::print_bool((!(d.contains(k2)))) << "\n";
-    // print(k1 in s, k2 in s)
     std::cout << ::tpy::print_bool((s.contains(k1))) << " " << ::tpy::print_bool((s.contains(k2))) << "\n";
-    // # Tuple-literal LHS (`(a, b) in d`) -- IntLiteralType elements coerce
-    // # to the dict's concrete key type at the membership-test boundary.
-    // print((1, 2) in d, (9, 9) in d)
     std::cout << ::tpy::print_bool(std::ranges::contains(d, std::tuple<int32_t, int32_t>{1, 2})) << " " << ::tpy::print_bool(std::ranges::contains(d, std::tuple<int32_t, int32_t>{9, 9})) << "\n";
-    // print(d2[(1, 2)])
     std::cout << ::tpy::__getitem__(d2, std::tuple<int32_t, int32_t>{1, 2}) << "\n";
-    // print(pairs[0][0], pairs[1][0])
     std::cout << std::get<0>(::tpy::__getitem__(pairs, 0)) << " " << std::get<0>(::tpy::__getitem__(pairs, 1)) << "\n";
-    // # Tuple-literal membership still works (regression guard).
-    // x: int32 = 2
     int32_t x = 2;
-    // print(x in (1, 2, 3), x in (4, 5, 6))
     std::cout << ::tpy::print_bool(((x == 1) || (x == 2) || (x == 3))) << " " << ::tpy::print_bool(((x == 4) || (x == 5) || (x == 6))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

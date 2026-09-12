@@ -5,86 +5,90 @@ namespace tpyapp::main {
 
 
 // def push(xs: list[int32], v: int32) -> None:
+//     xs.append(v)
 void push(std::vector<int32_t>& xs, int32_t v) {
-    // xs.append(v)
     xs.push_back(v);
 }
 
 // def read_elements(g: dict[str, list[int32]], m: list[list[int32]]) -> int32:
+//     # The value-position element reads themselves -- kept in their own body so
+//     # this half actually ROUTES through the element gate arm (main() below
+//     # carries positions that still reject, which would fall the whole body
+//     # back and leave the arm unexercised at exec).
+//     print(len(g["a"]))
+//     print(g["a"])
+//     row = g["a"]
+//     row.append(99)
+//     g["a"].append(4)
+//     return len(g["a"]) + len(m[1])
 int32_t read_elements(::tpy::ordered_map<std::string, std::vector<int32_t>>& g, const std::vector<std::vector<int32_t>>& m) {
-    // # The value-position element reads themselves -- kept in their own body so
-    // # this half actually ROUTES through the element gate arm (main() below
-    // # carries positions that still reject, which would fall the whole body
-    // # back and leave the arm unexercised at exec).
-    // print(len(g["a"]))
     std::cout << ::tpy::__len__(::tpy::__getitem__(g, "a")) << "\n";
-    // print(g["a"])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(g, "a")) << "\n";
-    // row = g["a"]
     std::vector<int32_t>& row = ::tpy::__getitem__(g, "a");
-    // row.append(99)
     row.push_back(99);
-    // g["a"].append(4)
     ::tpy::__getitem__(g, "a").push_back(4);
-    // return len(g["a"]) + len(m[1])
     return (::tpy::add_check<int32_t>(::tpy::__len__(::tpy::__getitem__(g, "a")), ::tpy::__len__(::tpy::__getitem__(m, 1))));
 }
 
 // def main() -> None:
+//     a: list[int32] = [1, 2]
+//     b: list[int32] = [3]
+//     g: dict[str, list[int32]] = {}
+//     g["a"] = a
+//     g["b"] = b
+//
+//     # A bound local aliases the dict's storage -- the mutation is observable
+//     # through the dict, not just through the local.
+//     r0: list[int32] = [1]
+//     r1: list[int32] = [2, 3]
+//     m: list[list[int32]] = [r0, r1]
+//     print(read_elements(g, m))
+//
+//     # Same through a callee taking the element directly.
+//     push(g["b"], 7)
+//     print(g["b"])
+//
+//     # Read positions that never had a per-sink row of their own.
+//     total = 0
+//     for v in g["a"]:
+//         total += v
+//     print(total)
+//
+//     m[1].append(4)
+//     print(len(m[1]))
+//     print(m[1])
 void main() {
-    // a: list[int32] = [1, 2]
     std::vector<int32_t> a = {1, 2};
-    // b: list[int32] = [3]
     std::vector<int32_t> b = {3};
-    // g: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> g = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // g["a"] = a
     ::tpy::__setitem__(g, "a", std::move(a));
-    // g["b"] = b
     ::tpy::__setitem__(g, "b", std::move(b));
-    // # A bound local aliases the dict's storage -- the mutation is observable
-    // # through the dict, not just through the local.
-    // r0: list[int32] = [1]
     std::vector<int32_t> r0 = {1};
-    // r1: list[int32] = [2, 3]
     std::vector<int32_t> r1 = {2, 3};
-    // m: list[list[int32]] = [r0, r1]
     std::vector<std::vector<int32_t>> m = ::tpy::make_vector<std::vector<int32_t>>(std::move(r0), std::move(r1));
-    // print(read_elements(g, m))
     std::cout << read_elements(g, m) << "\n";
-    // # Same through a callee taking the element directly.
-    // push(g["b"], 7)
     push(::tpy::__getitem__(g, "b"), 7);
-    // print(g["b"])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(g, "b")) << "\n";
-    // # Read positions that never had a per-sink row of their own.
-    // total = 0
     int32_t total = 0;
-    // for v in g["a"]:
     auto& __obj_0 = ::tpy::__getitem__(g, "a");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    // print(total)
     std::cout << total << "\n";
-    // m[1].append(4)
     ::tpy::__getitem__(m, 1).push_back(4);
-    // print(len(m[1]))
     std::cout << ::tpy::__len__(::tpy::__getitem__(m, 1)) << "\n";
-    // print(m[1])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(m, 1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

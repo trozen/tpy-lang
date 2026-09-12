@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def make_leaf() -> Own[Tree[int32]]:
+//     return int32(7)
 Tree<int32_t> make_leaf() {
-    // return int32(7)
     return 7;
 }
 
 // def make_branch() -> Own[Tree[int32]]:
+//     return [int32(1), int32(2), int32(3)]
 Tree<int32_t> make_branch() {
-    // return [int32(1), int32(2), int32(3)]
     return std::vector<Tree<int32_t>>{1, 2, 3};
 }
 
 // def leaf_count(t: Tree[int32]) -> int32:
+//     match t:
+//         case list() as branches:
+//             total = 0
+//             for child in branches:
+//                 total += leaf_count(child)
+//             return total
+//         case _:
+//             return 1
 int32_t leaf_count(const Tree<int32_t>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // total = 0
         int32_t total = 0;
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            // total += leaf_count(child)
             total = ::tpy::add_check<int32_t>(total, leaf_count(child));
         }
-        // return total
         return total;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }
@@ -50,21 +50,21 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 }
 
 // def main() -> None:
+//     print(leaf_count(make_leaf()))
+//     print(leaf_count(make_branch()))
 void main() {
-    // print(leaf_count(make_leaf()))
     Tree<int32_t> __tmp_1 = make_leaf();
     std::cout << leaf_count(__tmp_1) << "\n";
-    // print(leaf_count(make_branch()))
     Tree<int32_t> __tmp_2 = make_branch();
     std::cout << leaf_count(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

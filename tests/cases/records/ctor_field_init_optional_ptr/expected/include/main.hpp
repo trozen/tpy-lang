@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # A ctor field initializer reading a narrowed optional-ptr param via member
@@ -52,9 +53,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self, n: Node | None) -> None:
+//     self.found = n.v if n is not None else -1
+//     self.present = n is not None
 inline Holder::Holder(const Node* n) : found((((n != nullptr)) ? (n->v) : (::tpy::BigInt(-1)))), present((n != nullptr)) {}
 void __tpy_init();
 } // namespace tpyapp::main

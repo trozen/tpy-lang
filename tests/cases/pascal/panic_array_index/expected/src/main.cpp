@@ -3,9 +3,12 @@
 
 namespace tpyapp::main {
 
-// data: array[1..5] of integer;
 std::array<int32_t, 5>* data{};
 
+// data: array[1..5] of integer;
+//
+// data[1] := 100;
+// data[10] := 0;
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -14,12 +17,9 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
-    // data: array[1..5] of integer;
     static std::array<int32_t, 5> __global_slot_1 = std::array<int32_t, 5>();
     data = &__global_slot_1;
-    // data[1] := 100;
     ::tpy::__setitem__((*data), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(1, 1, 5, "data index"), 1)), 100);
-    // data[10] := 0;
     ::tpy::__setitem__((*data), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(10, 1, 5, "data index"), 1)), 0);
 }
 

@@ -3,61 +3,62 @@
 
 namespace tpyapp::main {
 
-// storage = make_storage()
 ::tpy::UninitHeapStorage<int32_t>* storage{};
 
 // # Move via return (NRVO or move construction)
 // def make_storage() -> Own[UninitHeapStorage[int32]]:
+//     s = UninitHeapStorage[int32](4)
+//     s.init(0, 100)
+//     s.init(1, 200)
+//     return s
 ::tpy::UninitHeapStorage<int32_t> make_storage() {
-    // s = UninitHeapStorage[int32](4)
     ::tpy::UninitHeapStorage<int32_t> s = ::tpy::UninitHeapStorage<int32_t>(4);
-    // s.init(0, 100)
     s.init(0, 100);
-    // s.init(1, 200)
     s.init(1, 200);
-    // return s
     return s;
 }
 
 // # Move via Own parameter (auto-move at last use)
 // def consume(s: Own[UninitHeapStorage[int32]]) -> int32:
+//     val: int32 = s.load(0)
+//     s.drop(0)
+//     return val
 int32_t consume(::tpy::UninitHeapStorage<int32_t>&& s) {
-    // val: int32 = s.load(0)
     int32_t val = s.load(0);
-    // s.drop(0)
     s.drop(0);
-    // return val
     return val;
 }
 
 // def test_pass_own() -> None:
+//     s2 = UninitHeapStorage[int32](2)
+//     s2.init(0, 300)
+//     print(consume(s2))
 void test_pass_own() {
-    // s2 = UninitHeapStorage[int32](2)
     ::tpy::UninitHeapStorage<int32_t> s2 = ::tpy::UninitHeapStorage<int32_t>(2);
-    // s2.init(0, 300)
     s2.init(0, 300);
-    // print(consume(s2))
     std::cout << consume(std::move(s2)) << "\n";
 }
 
+// from tpy.mem import UninitHeapStorage
+//
+// storage = make_storage()
+// print(storage.load(0))
+// print(storage.load(1))
+// storage.drop(0)
+// storage.drop(1)
+//
+// test_pass_own()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitHeapStorage
-    // storage = make_storage()
     static ::tpy::UninitHeapStorage<int32_t> __global_slot_1 = make_storage();
     storage = &__global_slot_1;
-    // print(storage.load(0))
     std::cout << storage->load(0) << "\n";
-    // print(storage.load(1))
     std::cout << storage->load(1) << "\n";
-    // storage.drop(0)
     storage->drop(0);
-    // storage.drop(1)
     storage->drop(1);
-    // test_pass_own()
     test_pass_own();
 }
 

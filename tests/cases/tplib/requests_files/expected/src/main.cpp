@@ -5,138 +5,139 @@ namespace tpyapp::main {
 
 
 // def send(data: bytes | dict[str, str] | None,
-// files: dict[str, FileField]) -> None:
+//          files: dict[str, FileField]) -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.post("http://api.test/upload", data, files=files)
+//     print(r.status_code)
+//     print(b.recv(65536))
+//     b.close()
 void send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files) {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.post("http://api.test/upload", data, files=files)
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/upload", data, nullptr, nullptr, nullptr, std::nullopt, true, __tmp_1, nullptr, &(files));
-    // print(r.status_code)
     std::cout << r.status_code << "\n";
-    // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // b.close()
     b.close();
 }
 
 // def send_redirect(files: dict[str, FileField]) -> None:
+//     # 307 preserves method + body, so the multipart survives to the second hop.
+//     a, b = socket.socketpair()
+//     c, d = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 307 Temporary Redirect\r\n"
+//               b"Location: /next\r\nContent-Length: 0\r\n\r\n")
+//     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     h0 = HTTPConnection("api.test", 80)
+//     h0.sock = a
+//     s._connection = Box(h0)
+//     h1 = HTTPConnection("api.test", 80)
+//     h1.sock = c
+//     s._redirect_connections = [Box(h1)]
+//     r = s.post("http://api.test/submit", None, files=files)
+//     print(r.status_code, r.url)
+//     b.recv(65536)
+//     print(d.recv(65536))
+//     b.close()
+//     d.close()
 void send_redirect(::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files) {
-    // # 307 preserves method + body, so the multipart survives to the second hop.
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // c, d = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    // b.sendall(b"HTTP/1.1 307 Temporary Redirect\r\n"
-    // b"Location: /next\r\nContent-Length: 0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 307 Temporary Redirect\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n", 71));
-    // d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // h0 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h0.sock = a
     h0.sock = std::move(a);
-    // s._connection = Box(h0)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h0));
-    // h1 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h1.sock = c
     h1.sock = std::move(c);
-    // s._redirect_connections = [Box(h1)]
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
-    // r = s.post("http://api.test/submit", None, files=files)
     ::tpy::Union<bool, std::string> __tmp_2 = true;
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, &(files));
-    // print(r.status_code, r.url)
     std::cout << r.status_code << " " << r.url << "\n";
-    // b.recv(65536)
     b.recv(65536);
-    // print(d.recv(65536))
     std::cout << ::tpy::BytesPrinter(d.recv(65536)) << "\n";
-    // b.close()
     b.close();
-    // d.close()
     d.close();
 }
 
 // def main() -> None:
+//     # default content type (octet-stream)
+//     send(None, {"doc": FileField("a.txt", b"hello")})
+//     # dict data folds in as a form part; explicit content type on the file
+//     send({"caption": "hi"}, {"doc": FileField("a.txt", b"hello"),
+//                              "pic": FileField("logo.png", b"img", "image/png")})
+//     # data=bytes is ignored when files= is non-empty (only a dict data folds in)
+//     send(b"ignored-bytes", {"doc": FileField("a.txt", b"hello")})
+//     # empty files={} is falsy: no multipart, data= handling applies (urlencoded)
+//     no_files: dict[str, FileField] = {}
+//     send({"field": "v"}, no_files)
+//     # a `"` and CR/LF in name/filename are percent-escaped
+//     send(None, {"na\"me": FileField("re\r\nport.txt", b"x")})
+//     # 307 redirect forwards the multipart body to the next hop
+//     send_redirect({"doc": FileField("a.txt", b"hello")})
 void main() {
-    // # default content type (octet-stream)
-    // send(None, {"doc": FileField("a.txt", b"hello")})
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_3 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
     send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_3);
-    // # dict data folds in as a form part; explicit content type on the file
-    // send({"caption": "hi"}, {"doc": FileField("a.txt", b"hello"),
-    // "pic": FileField("logo.png", b"img", "image/png")})
     ::tpy::ordered_map<std::string, std::string> __tmp_4 = ::tpy::ordered_map<std::string, std::string>({{"caption", "hi"}});
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_5 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}, {"pic", ::tpystd::tplib::requests::FileField("logo.png", ::tpy::bytes_literal_owned("img", 3), "image/png")}});
     send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_4}, __tmp_5);
-    // # data=bytes is ignored when files= is non-empty (only a dict data folds in)
-    // send(b"ignored-bytes", {"doc": FileField("a.txt", b"hello")})
     ::tpy::Bytes __tmp_6 = ::tpy::bytes_literal_owned("ignored-bytes", 13);
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_7 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
     send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_6}, __tmp_7);
-    // # empty files={} is falsy: no multipart, data= handling applies (urlencoded)
-    // no_files: dict[str, FileField] = {}
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> no_files = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>();
-    // send({"field": "v"}, no_files)
     ::tpy::ordered_map<std::string, std::string> __tmp_8 = ::tpy::ordered_map<std::string, std::string>({{"field", "v"}});
     send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_8}, no_files);
-    // # a `"` and CR/LF in name/filename are percent-escaped
-    // send(None, {"na\"me": FileField("re\r\nport.txt", b"x")})
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_9 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"na\"me", ::tpystd::tplib::requests::FileField("re\r\nport.txt", ::tpy::bytes_literal_owned("x", 1))}});
     send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_9);
-    // # 307 redirect forwards the multipart body to the next hop
-    // send_redirect({"doc": FileField("a.txt", b"hello")})
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_10 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
     send_redirect(__tmp_10);
 }
 
+// # tplib.requests: files= builds a multipart/form-data body from FileField
+// # parts; each carries a Content-Type (application/octet-stream by default, or
+// # the one given). A dict data= folds in as plain form parts alongside the
+// # files; a data=bytes body is ignored when files= is non-empty. An empty
+// # files={} is falsy so it does NOT force a multipart body (data= handling
+// # applies). A field name / filename with a `"` or CR/LF is percent-escaped. A
+// # 307 redirect forwards the multipart body to the next hop. The fixed boundary
+// # makes the sent bytes deterministic; inspected via a socketpair seam.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests: files= builds a multipart/form-data body from FileField
-    // # parts; each carries a Content-Type (application/octet-stream by default, or
-    // # the one given). A dict data= folds in as plain form parts alongside the
-    // # files; a data=bytes body is ignored when files= is non-empty. An empty
-    // # files={} is falsy so it does NOT force a multipart body (data= handling
-    // # applies). A field name / filename with a `"` or CR/LF is percent-escaped. A
-    // # 307 redirect forwards the multipart body to the next hop. The fixed boundary
-    // # makes the sent bytes deterministic; inspected via a socketpair seam.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

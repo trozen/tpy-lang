@@ -11,8 +11,11 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def swap(p: P, z: char) -> char:
 char swap(P& p, char z);
+// def show(p: P) -> None:
 void show(const P& p);
+// def main() -> None:
 void main();
 
 // class P:
@@ -39,17 +42,18 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, c: char) -> None:
+//     self.c = c
 inline P::P(char c) : c(c) {}
 
 // def get(self) -> char:
+//     return self.c
 inline char P::get() const {
-    // return self.c
     return this->c;
 }
 
 // def put(self, c: char) -> None:
+//     self.c = c
 inline void P::put(char c) {
-    // self.c = c
     this->c = c;
 }
 void __tpy_init();

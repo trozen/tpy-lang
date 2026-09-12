@@ -17,8 +17,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_pick;
 struct __coro_driver;
 
+// def maybe_p(items: list[P], i: int32) -> P | None:
 P* maybe_p(std::vector<P>& items, int32_t i);
+// async def pick(items: list[P], i: int32, drop: bool) -> int32:
 __coro_pick pick(std::vector<P>& items, int32_t i, bool drop);
+// async def driver() -> None:
 __coro_driver driver();
 
 // @nocopy
@@ -43,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
-// Async coroutine: pick
+// async def pick(items: list[P], i: int32, drop: bool) -> int32:
 struct __coro_pick {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +73,7 @@ struct __coro_pick {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -106,6 +109,7 @@ struct __coro_driver {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

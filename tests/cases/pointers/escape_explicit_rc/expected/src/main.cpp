@@ -5,70 +5,71 @@ namespace tpyapp::main {
 
 
 // def rc_is_shared() -> None:
+//     saved = Rc.new(Point(-1))
+//     for i in range(3):
+//         p = Rc.new(Point(i))
+//         if i == 0:
+//             saved = p.clone()  # tpyc: ok
+//             p.get().x = 99
+//     # The write through `p` IS visible through `saved` -- same object.
+//     print(saved.get().x)
 void rc_is_shared() {
     std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
-    // saved = Rc.new(Point(-1))
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(-1));
     ::tpystd::tplib::rc::Rc<Point>* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p = Rc.new(Point(i))
         ::tpystd::tplib::rc::Rc<Point> p = Rc<Point>::new_<Point>(Point(i));
-        // if i == 0:
         if ((i == 0)) {
-            // saved = p.clone()  # tpyc: ok
             saved = &*(__slot_2 = p.clone());
-            // p.get().x = 99
             p.get().x = 99;
         }
     }
-    // # The write through `p` IS visible through `saved` -- same object.
-    // print(saved.get().x)
     std::cout << saved->get().x << "\n";
 }
 
 // def rc_outlives_the_loop() -> None:
+//     saved = Rc.new(Point(-1))
+//     for i in range(4):
+//         p = Rc.new(Point(i))
+//         if i == 1:
+//             saved = p.clone()  # tpyc: ok
+//     saved.get().x = 77
+//     print(saved.get().x)
 void rc_outlives_the_loop() {
     std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
-    // saved = Rc.new(Point(-1))
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(-1));
     ::tpystd::tplib::rc::Rc<Point>* saved = &__slot_1;
-    // for i in range(4):
     for (int32_t i = 0; i < 4; ++i) {
-        // p = Rc.new(Point(i))
         ::tpystd::tplib::rc::Rc<Point> p = Rc<Point>::new_<Point>(Point(i));
-        // if i == 1:
         if ((i == 1)) {
-            // saved = p.clone()  # tpyc: ok
             saved = &*(__slot_2 = p.clone());
         }
     }
-    // saved.get().x = 77
     saved->get().x = 77;
-    // print(saved.get().x)
     std::cout << saved->get().x << "\n";
 }
 
+// # `Rc` gives one object both names reach, which is what CPython's aliasing
+// # does: a write through either handle is visible through the other, and the
+// # object outlives the iteration that created it. Not what the escape
+// # warning suggests -- it names only copy() -- but the shape a user reaches
+// # for when the two names genuinely must share, so it is pinned here.
+// #
+// # Reads and writes go through `.get()` rather than TPy's transparent
+// # deref, which keeps the case runnable under CPython -- the parity check
+// # is the point of the case, and the deref sugar is not what it tests.
+// from tplib.rc import Rc
+//
+// rc_is_shared()
+// rc_outlives_the_loop()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `Rc` gives one object both names reach, which is what CPython's aliasing
-    // # does: a write through either handle is visible through the other, and the
-    // # object outlives the iteration that created it. Not what the escape
-    // # warning suggests -- it names only copy() -- but the shape a user reaches
-    // # for when the two names genuinely must share, so it is pinned here.
-    // #
-    // # Reads and writes go through `.get()` rather than TPy's transparent
-    // # deref, which keeps the case runnable under CPython -- the parity check
-    // # is the point of the case, and the deref sugar is not what it tests.
-    // from tplib.rc import Rc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // rc_is_shared()
     rc_is_shared();
-    // rc_outlives_the_loop()
     rc_outlives_the_loop();
 }
 

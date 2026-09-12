@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box()
+//     b.get_span()
+//     b.get_list()
+//     b.get_via_var()
+//     print("ok")
 void main() {
-    // b = Box()
     Box b = Box();
-    // b.get_span()
     b.get_span();
-    // b.get_list()
     b.get_list();
-    // b.get_via_var()
     b.get_via_var();
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

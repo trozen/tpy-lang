@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat | Bird) -> str:
+//     match a:
+//         case Dog() | Cat():
+//             return "mammal"
+//         case Bird():
+//             return "bird"
+//     return ""
 std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog() | Cat():
     case 2:
     case 1:
     {
-        // return "mammal"
         return "mammal";
         break;
     }
-    // case Bird():
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
-        // return "bird"
         return "bird";
         break;
     }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def with_default(a: Dog | Cat | Bird) -> str:
+//     match a:
+//         case Dog():
+//             return "dog"
+//         case _:
+//             return "other"
 std::string with_default(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog():
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject_1);
-        // return "dog"
         return "dog";
         break;
     }
-    // case _:
     default: {
-        // return "other"
         return "other";
         break;
     }
@@ -53,38 +53,39 @@ std::string with_default(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
 }
 
 // def main() -> None:
+//     d: Dog | Cat | Bird = Dog("Rex")
+//     c: Dog | Cat | Bird = Cat("Whiskers")
+//     b: Dog | Cat | Bird = Bird("Tweety")
+//     print(describe(d))
+//     print(describe(c))
+//     print(describe(b))
+//     print(with_default(d))
+//     print(with_default(c))
+//     print(with_default(b))
 void main() {
-    // d: Dog | Cat | Bird = Dog("Rex")
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat | Bird = Cat("Whiskers")
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat("Whiskers");
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // b: Dog | Cat | Bird = Bird("Tweety")
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    // print(describe(d))
     std::cout << describe(d.as_const()) << "\n";
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
-    // print(describe(b))
     std::cout << describe(b.as_const()) << "\n";
-    // print(with_default(d))
     std::cout << with_default(d.as_const()) << "\n";
-    // print(with_default(c))
     std::cout << with_default(c.as_const()) << "\n";
-    // print(with_default(b))
     std::cout << with_default(b.as_const()) << "\n";
 }
 
+// # match/case or-patterns on union subjects (no bindings)
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case or-patterns on union subjects (no bindings)
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

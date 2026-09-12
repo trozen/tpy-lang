@@ -5,12 +5,15 @@ namespace tpyapp::main {
 
 
 // def is_small(n: int32) -> bool:
+//     return n < 5
 bool is_small(int32_t n) {
-    // return n < 5
     return (n < 5);
 }
 
 // def tag(it: list[int32]) -> Iterator[int32]:
+//     for x in it:
+//         yield x
+//         yield x * 10
 std::expected<int32_t, ::tpy::StopIteration> __gen_tag::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -20,7 +23,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield x * 10
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 10));
     }
@@ -34,7 +36,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -50,8 +51,24 @@ __gen_tag tag(std::vector<int32_t>& it) {
 }
 
 // def main() -> None:
+//     for v in skip_first([1, 2, 3]):
+//         print(v)
+//     print("--")
+//     gnums: list[int32] = [1, 2, 7, 3]
+//     for v in gtakewhile(is_small, gnums):
+//         print(v)
+//     print("--")
+//     for v in tag([4, 5]):
+//         print(v)
+//     print("--")
+//     d = Doubler()
+//     mnums: list[int32] = [7, 8]
+//     for v in d.each_twice(mnums):
+//         print(v)
+//     print("--")
+//     for v in first_n([9, 8, 7, 6], 2):
+//         print(v)
 void main() {
-    // for v in skip_first([1, 2, 3]):
     {
         auto __tmp_1 = std::array<int32_t, 3>{1, 2, 3};
         auto __src_0 = skip_first<int32_t>(__tmp_1);
@@ -60,15 +77,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // gnums: list[int32] = [1, 2, 7, 3]
     std::vector<int32_t> gnums = {1, 2, 7, 3};
-    // for v in gtakewhile(is_small, gnums):
     {
         auto __src_2 = gtakewhile<int32_t>(is_small, gnums);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -76,13 +89,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in tag([4, 5]):
     {
         std::vector<int32_t> __tmp_2 = {4, 5};
         auto __src_4 = tag(__tmp_2);
@@ -91,17 +101,12 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // d = Doubler()
     Doubler d = Doubler();
-    // mnums: list[int32] = [7, 8]
     std::vector<int32_t> mnums = {7, 8};
-    // for v in d.each_twice(mnums):
     {
         auto __src_6 = d.each_twice(mnums);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -109,13 +114,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in first_n([9, 8, 7, 6], 2):
     {
         auto __tmp_3 = std::array<int32_t, 4>{9, 8, 7, 6};
         auto __src_8 = first_n<int32_t>(__tmp_3, 2);
@@ -124,13 +126,15 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def each_twice(self, it: list[int32]) -> Iterator[int32]:
+//     for x in it:
+//         yield x
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_Doubler_each_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -140,7 +144,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Doubler_each_twice::__next__(
         continue;
     }
     case S_RESUME_0: {
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -154,7 +157,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Doubler_each_twice::__next__(
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -164,12 +166,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Doubler_each_twice::__next__(
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

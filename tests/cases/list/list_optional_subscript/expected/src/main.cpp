@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pairs: list[P | None] = [P(int32(1)), None, P(int32(3))]
+//     # Subscript-then-access (narrowing path -- runtime null check inserted)
+//     if pairs[0] is not None:
+//         print(pairs[0].x)
+//     # Var-decl from subscript: P* alias of optional<P> slot
+//     first = pairs[0]
+//     if first is not None:
+//         print(first.x)
+//     second = pairs[1]
+//     if second is None:
+//         print(-1)
 void main() {
-    // pairs: list[P | None] = [P(int32(1)), None, P(int32(3))]
     std::vector<std::optional<P>> pairs = {P(1), std::nullopt, P(3)};
-    // # Subscript-then-access (narrowing path -- runtime null check inserted)
-    // if pairs[0] is not None:
     if ((::tpy::__getitem__(pairs, 0).has_value())) {
-        // print(pairs[0].x)
         std::cout << ::tpy::deref_optional_check(::tpy::__getitem__(pairs, 0)).x << "\n";
     }
-    // # Var-decl from subscript: P* alias of optional<P> slot
-    // first = pairs[0]
     P* first = ::tpy::optional_to_ptr(::tpy::__getitem__(pairs, 0));
-    // if first is not None:
     if ((first != nullptr)) {
-        // print(first.x)
         std::cout << first->x << "\n";
     }
-    // second = pairs[1]
     P* second = ::tpy::optional_to_ptr(::tpy::__getitem__(pairs, 1));
-    // if second is None:
     if ((second == nullptr)) {
-        // print(-1)
         std::cout << -1 << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

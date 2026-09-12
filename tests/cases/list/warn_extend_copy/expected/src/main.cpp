@@ -5,85 +5,90 @@ namespace tpyapp::main {
 
 
 // def make_nodes() -> Own[list[Node]]:
+//     return [Node(int32(1))]
 std::vector<Node> make_nodes() {
-    // return [Node(int32(1))]
     return {Node(1)};
 }
 
 // def test_extend_ref_type_warns() -> None:
+//     """list[Node].extend(list[Node]) should warn (b still live)."""
+//     a: list[Node] = []
+//     b: list[Node] = [Node(int32(1))]
+//     a.extend(b)  # tpyc: warning(/copies Node elements/)
+//     print(len(b))
 void test_extend_ref_type_warns() {
-    // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
-    // a.extend(b)  # tpyc: warning(/copies Node elements/)
     ::tpy::list_extend(a, b);
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_extend_value_type_no_warn() -> None:
+//     """list[int32].extend(list[int32]) should not warn."""
+//     a: list[int32] = []
+//     b: list[int32] = [int32(1)]
+//     a.extend(b)  # tpyc: ok
+//     print(len(a))
 void test_extend_value_type_no_warn() {
-    // a: list[int32] = []
     std::vector<int32_t> a = std::vector<int32_t>{};
-    // b: list[int32] = [int32(1)]
     std::vector<int32_t> b = {1};
-    // a.extend(b)  # tpyc: ok
     ::tpy::list_extend(a, ::tpy::own_iter(std::move(b)));
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_extend_copy_no_warn() -> None:
+//     """Explicit copy() suppresses the warning."""
+//     a: list[Node] = []
+//     b: list[Node] = [Node(int32(1))]
+//     a.extend(copy(b))  # tpyc: ok
+//     print(len(b))
 void test_extend_copy_no_warn() {
-    // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
-    // a.extend(copy(b))  # tpyc: ok
     ::tpy::list_extend(a, std::vector<Node>(b));
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_extend_last_use_no_warn() -> None:
+//     """Auto-move at last use suppresses the warning."""
+//     a: list[Node] = []
+//     b: list[Node] = [Node(int32(1))]
+//     a.extend(b)  # tpyc: ok -- b's last use
+//     print(len(a))
 void test_extend_last_use_no_warn() {
-    // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
-    // a.extend(b)  # tpyc: ok -- b's last use
     ::tpy::list_extend(a, ::tpy::own_iter(std::move(b)));
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_extend_rvalue_no_warn() -> None:
+//     """Rvalue source does not warn."""
+//     a: list[Node] = []
+//     a.extend(make_nodes())  # tpyc: ok
+//     a.extend([Node(int32(2))])  # tpyc: ok
+//     print(len(a))
 void test_extend_rvalue_no_warn() {
-    // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // a.extend(make_nodes())  # tpyc: ok
     ::tpy::list_extend(a, make_nodes());
-    // a.extend([Node(int32(2))])  # tpyc: ok
     ::tpy::list_extend(a, std::array<Node, 1>{Node(2)});
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 
+// test_extend_ref_type_warns()
+// test_extend_value_type_no_warn()
+// test_extend_copy_no_warn()
+// test_extend_last_use_no_warn()
+// test_extend_rvalue_no_warn()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_extend_ref_type_warns()
     test_extend_ref_type_warns();
-    // test_extend_value_type_no_warn()
     test_extend_value_type_no_warn();
-    // test_extend_copy_no_warn()
     test_extend_copy_no_warn();
-    // test_extend_last_use_no_warn()
     test_extend_last_use_no_warn();
-    // test_extend_rvalue_no_warn()
     test_extend_rvalue_no_warn();
 }
 

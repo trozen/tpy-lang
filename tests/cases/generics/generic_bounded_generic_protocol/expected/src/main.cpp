@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     box = IntBox(42)
+//     # IntBox satisfies Container[int32]
+//     h = Holder[IntBox](box)
+//     # Call get() on the concrete type after retrieval
+//     result = h.get_item()
+//     print(result.get())
 void main() {
-    // box = IntBox(42)
     IntBox box = IntBox(42);
-    // # IntBox satisfies Container[int32]
-    // h = Holder[IntBox](box)
     Holder<IntBox> h = Holder<IntBox>(box);
-    // # Call get() on the concrete type after retrieval
-    // result = h.get_item()
     IntBox& result = h.get_item();
-    // print(result.get())
     std::cout << result.get() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

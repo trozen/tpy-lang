@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def f() -> Own[Handle]:
+//     h = Handle()
+//     try:
+//         return h
+//     finally:
+//         h.n += 1
 Handle f() {
-    // h = Handle()
     Handle h = Handle();
-    // try:
     {
         bool __fin_ran_1 = false;
         try {
-            // return h
             auto* __tpy_retp_0 = &(h);
             __fin_ran_1 = true;
-            // h.n += 1
             h.n = ::tpy::add_check<int32_t>(h.n, 1);
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_1) {
-                // h.n += 1
                 h.n = ::tpy::add_check<int32_t>(h.n, 1);
             }
             throw;
@@ -29,26 +29,26 @@ Handle f() {
 }
 
 // def f_alias() -> Own[Handle]:
+//     # Alias-mediated mutation: structural deferral must move (a copy would be
+//     # a deleted-ctor build error) and the mutation must reach the result.
+//     h = Handle()
+//     a = h
+//     try:
+//         return h
+//     finally:
+//         a.n += 1
 Handle f_alias() {
-    // # Alias-mediated mutation: structural deferral must move (a copy would be
-    // # a deleted-ctor build error) and the mutation must reach the result.
-    // h = Handle()
     Handle h = Handle();
-    // a = h
     Handle& a = h;
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
-            // return h
             auto* __tpy_retp_0 = &(h);
             __fin_ran_2 = true;
-            // a.n += 1
             a.n = ::tpy::add_check<int32_t>(a.n, 1);
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_2) {
-                // a.n += 1
                 a.n = ::tpy::add_check<int32_t>(a.n, 1);
             }
             throw;
@@ -57,19 +57,19 @@ Handle f_alias() {
 }
 
 // def main() -> None:
+//     print(f().n)
+//     print(f_alias().n)
 void main() {
-    // print(f().n)
     std::cout << f().n << "\n";
-    // print(f_alias().n)
     std::cout << f_alias().n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

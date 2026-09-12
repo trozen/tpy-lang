@@ -12,6 +12,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Invalid(Exception, ReturnException):
@@ -53,18 +54,19 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // @error_return(Invalid)
 // @classmethod
 // def parse(cls, x: int32) -> Own[Self]:
+//     if x < 0:
+//         raise Invalid
+//     return cls(x)
 inline std::expected<Point, Invalid> Point::parse(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // raise Invalid
         return ::tpy::make_unexpected(Invalid{});
     }
-    // return cls(x)
     return Point(x);
 }
 void __tpy_init();

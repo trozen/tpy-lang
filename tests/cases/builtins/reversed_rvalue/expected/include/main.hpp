@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_nums() -> Own[list[int]]:
 std::vector<::tpy::BigInt> make_nums();
+// def main() -> None:
 void main();
 
 void __tpy_init();

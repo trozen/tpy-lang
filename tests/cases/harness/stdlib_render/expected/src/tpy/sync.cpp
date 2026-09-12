@@ -12,26 +12,52 @@ namespace tpystd::tpy::sync {
 // # backstop, not a static guarantee; the static tie awaits the region model
 // # (BUGS.md). It does not cover a guard outliving a dropped bare Mutex (hole 3).
 // def _require_locked(locked: bool) -> None:
+//     if not locked:
+//         raise RuntimeError(
+//             "lock guard used without holding the lock -- access the payload "
+//             "only inside the guard's `with` block")
 void _require_locked(bool locked) {
-    // if not locked:
     if ((!(locked))) {
-        // raise RuntimeError(
-        // "lock guard used without holding the lock -- access the payload "
-        // "only inside the guard's `with` block")
         throw ::tpy::RuntimeError("lock guard used without holding the lock -- access the payload only inside the guard's `with` block");
     }
 }
 
+// # tpy: include("<tpy/sync.hpp>")
+// # tpy: link("pthread")
+// """Blocking synchronization primitives -- `Mutex[T]` and `RwLock[T]`.
+//
+// The interior-mutability primitives: a `Mutex[T]` / `RwLock[T]` is `@nocopy`,
+// holds an inner `T`, and hands out scoped access to it through a guard used as
+// a context manager. `lock()` / `read()` / `write()` are `@readonly` (they acquire
+// through a *shared* handle -- you do not need exclusive ownership to lock), so
+// the canonical `Arc[Mutex[T]]` works: `arc.get()` yields a readonly `Mutex`, and
+// `.lock()` still acquires and hands out a mutable borrow of the payload.
+//
+//     data = Arc.new(Mutex.new([0]))
+//     worker = data.clone()               # share into a spawned thread
+//     with data.lock() as g:              # auto-derefs through Arc; acquires here
+//         g.append(1)                     # mutate the payload; released at block exit
+//
+// `Mutex[T]` and `RwLock[T]` are both `Send + Sync` iff `T` is `Send`. This
+// matches `Mutex`'s Rust rule; for `RwLock` it is *looser* than Rust's
+// `unsafe impl<T: Send + Sync>`, and sound on the safe surface: a safe not-`Sync`
+// `T` is always a container whose not-`Sync`-ness is shared-mutability that the
+// readonly read guard removes (TPy has no safe interior mutability, unlike Rust's
+// `Cell`, so the guard suffices for every safe payload). It is NOT sound in
+// general: a `Send`-but-not-`Sync` interior-mutable payload from the unsafe
+// `unsafe_interior_mutable` hatch (a user `Cell`-analog) gets a `Sync` the author
+// never asserted, and concurrent readonly reads race -- a latent hole, low
+// priority. See docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) and BUGS.md.
+// """
+//
+// from tpy.mem import UninitStorage
+// from tpy.unsafe import unsafe_take, unsafe_release, unsafe_store
+// from tpy.extern import native
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: include("<tpy/sync.hpp>")
-    // # tpy: link("pthread")
-    // from tpy.mem import UninitStorage
-    // from tpy.unsafe import unsafe_take, unsafe_release, unsafe_store
-    // from tpy.extern import native
 }
 
 } // namespace tpystd::tpy::sync

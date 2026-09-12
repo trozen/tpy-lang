@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Test that open() panics for unsupported mode strings
 // def main() -> None:
+//     f = open("tpy_test_badmode.txt", "z")
+//     f.close()
 void main() {
-    // f = open("tpy_test_badmode.txt", "z")
     ::tpy::TextFile f = ::tpy::builtin_open_mode("tpy_test_badmode.txt", "z");
-    // f.close()
     f.close();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

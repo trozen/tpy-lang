@@ -5,22 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x = m.sqrt(16.0)
+//     print(x)
 void main() {
-    // x = m.sqrt(16.0)
     double x = ::tpy::stdlib::math::checked_sqrt(16.0);
-    // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
 }
 
+// # Test that import X as Y works
+// import math as m
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test that import X as Y works
-    // import math as m
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

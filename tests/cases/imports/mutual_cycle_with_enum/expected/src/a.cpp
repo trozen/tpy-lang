@@ -6,17 +6,17 @@ namespace tpyapp::a {
 
 
 // def lookup() -> Color:
+//     return Color.RED
 ::tpyapp::b::Color lookup() {
-    // return Color.RED
     return ::tpyapp::b::Color::RED;
 }
 
+// from b import Color
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from b import Color
     ::tpyapp::b::__tpy_init();
 }
 

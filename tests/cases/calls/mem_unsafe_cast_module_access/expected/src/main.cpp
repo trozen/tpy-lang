@@ -3,29 +3,27 @@
 
 namespace tpyapp::main {
 
-// arr: Array[int32, 2] = [int32(1), int32(2)]
 std::array<int32_t, 2>* arr{};
-// p: Ptr[int32] = m.unsafe_ptr(arr)
 int32_t* p{};
-// q: Ptr[uint32] = m.unsafe_cast(p)
 uint32_t* q{};
 
+// import tpy.unsafe as m
+//
+// arr: Array[int32, 2] = [int32(1), int32(2)]
+// p: Ptr[int32] = m.unsafe_ptr(arr)
+// q: Ptr[uint32] = m.unsafe_cast(p)
+// print(m.unsafe_load(q, uint32(0)))
+// print(m.unsafe_load(q, uint32(1)))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import tpy.unsafe as m
-    // arr: Array[int32, 2] = [int32(1), int32(2)]
     static std::array<int32_t, 2> __global_slot_1 = {1, 2};
     arr = &__global_slot_1;
-    // p: Ptr[int32] = m.unsafe_ptr(arr)
     p = (*arr).data();
-    // q: Ptr[uint32] = m.unsafe_cast(p)
     q = reinterpret_cast<uint32_t*>(p);
-    // print(m.unsafe_load(q, uint32(0)))
     std::cout << q[0] << "\n";
-    // print(m.unsafe_load(q, uint32(1)))
     std::cout << q[1] << "\n";
 }
 

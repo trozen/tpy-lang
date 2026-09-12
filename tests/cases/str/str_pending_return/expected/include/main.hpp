@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_greeting(name: str) -> str:
 std::string make_greeting(std::string_view name);
+// def echo(msg: str) -> str:
 std::string echo(std::string_view msg);
 
 void __tpy_init();

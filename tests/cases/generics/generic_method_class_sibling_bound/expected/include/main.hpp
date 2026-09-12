@@ -18,6 +18,7 @@ template<typename R> struct Runner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class IntBox:
@@ -45,9 +46,9 @@ struct Runner {
 
 
     // def pick[T: Container[R]](self, x: T) -> R:
+    //     return x.get()
     template<Container<R> T>
     ::tpy::val_or_cref_t<R> pick(::tpy::param_val_or_ref_t<T> x) const {
-        // return x.get()
         return x.get();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Runner";
@@ -61,11 +62,12 @@ inline std::ostream& operator<<(std::ostream& os, const Runner<R>& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline IntBox::IntBox(int32_t v) : v(v) {}
 
 // def get(self) -> int32:
+//     return self.v
 inline int32_t IntBox::get() const {
-    // return self.v
     return this->v;
 }
 void __tpy_init();

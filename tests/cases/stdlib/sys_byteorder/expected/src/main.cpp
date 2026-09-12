@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     bo = sys.byteorder  # tpyc: type(StrView)
+//     print(bo)
+//     print(bo == "little")
+//     print(sys.maxunicode)
+//     print(sys.maxunicode == 0x10FFFF)
+//     print(sys.maxunicode + 1)
+//     n = 32
+//     print(n < sys.maxunicode)
 void main() {
-    // bo = sys.byteorder  # tpyc: type(StrView)
     std::string_view bo = ::tpystd::sys::byteorder;
-    // print(bo)
     std::cout << bo << "\n";
-    // print(bo == "little")
     std::cout << ::tpy::print_bool((bo == "little")) << "\n";
-    // print(sys.maxunicode)
     std::cout << ::tpystd::sys::maxunicode << "\n";
-    // print(sys.maxunicode == 0x10FFFF)
     std::cout << ::tpy::print_bool((::tpystd::sys::maxunicode == 1114111)) << "\n";
-    // print(sys.maxunicode + 1)
     std::cout << ((::tpystd::sys::maxunicode) + (::tpy::BigInt(1))) << "\n";
-    // n = 32
     int32_t n = 32;
-    // print(n < sys.maxunicode)
     std::cout << ::tpy::print_bool((::tpy::BigInt(n) < ::tpystd::sys::maxunicode)) << "\n";
 }
 
+// # sys.byteorder is the platform endianness string; sys.maxunicode is the
+// # largest Unicode code point. Both usable as ordinary str/int values.
+// import sys
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # sys.byteorder is the platform endianness string; sys.maxunicode is the
-    // # largest Unicode code point. Both usable as ordinary str/int values.
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // main()
     main();
 }
 

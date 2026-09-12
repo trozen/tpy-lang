@@ -6,29 +6,29 @@ namespace tpyapp::main {
 
 // @hotpath
 // def scale(x: int) -> int:  # tpyc: ok
+//     return x * 2
 ::tpy::BigInt scale(const ::tpy::BigInt& x) {
-    // return x * 2
     return ((x) * (::tpy::BigInt(2)));
 }
 
 // def main() -> None:
+//     c = Counter()
+//     c.bump(3)
+//     c.bump(4)
+//     print(c.count)
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // c.bump(3)
     c.bump(3);
-    // c.bump(4)
     c.bump(4);
-    // print(c.count)
     std::cout << c.count << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

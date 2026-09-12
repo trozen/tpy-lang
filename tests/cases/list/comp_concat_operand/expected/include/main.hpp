@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def head_literal(xs: list[int]) -> Own[list[int]]:
 std::vector<::tpy::BigInt> head_literal(const std::vector<::tpy::BigInt>& xs);
+// def tail_literal(xs: list[int]) -> Own[list[int]]:
 std::vector<::tpy::BigInt> tail_literal(const std::vector<::tpy::BigInt>& xs);
+// def both_comps(xs: list[int]) -> Own[list[int]]:
 std::vector<::tpy::BigInt> both_comps(const std::vector<::tpy::BigInt>& xs);
+// def set_ops() -> int:
 ::tpy::BigInt set_ops();
+// def main():
 void main();
 
 void __tpy_init();

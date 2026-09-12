@@ -5,22 +5,33 @@ namespace tpyapp::main {
 
 
 // def mk() -> str:
+//     # an rvalue SOURCE, so the argument is a temporary rather than a literal
+//     return "yo"
 std::string mk() {
-    // # an rvalue SOURCE, so the argument is a temporary rather than a literal
-    // return "yo"
     return "yo";
 }
 
 // def main():
+//     # The arguments are rvalues on purpose: the generator's frame borrows its
+//     # `T` slot past the statement, so each one has to be hoisted into a named
+//     # temp whatever route resolved the call -- an overload's per-signature fi
+//     # carries concrete params, which used to hide the slot entirely.
+//     # one-arg arm (unbounded), consumed with a manual break
+//     count = 0
+//     for x in rep("hi"):
+//         print(x)
+//         count += 1
+//         if count == 2:
+//             break
+//     # two-arg arm (bounded)
+//     for y in rep(9, 3):
+//         print(y)
+//     # ... and an rvalue that is a CALL, not a literal: the frame rule hoists it
+//     # into a named local of the loop's own block, so no dangle and no warning.
+//     for z in rep(mk(), 2):  # tpyc: ok
+//         print(z)
 void main() {
-    // # The arguments are rvalues on purpose: the generator's frame borrows its
-    // # `T` slot past the statement, so each one has to be hoisted into a named
-    // # temp whatever route resolved the call -- an overload's per-signature fi
-    // # carries concrete params, which used to hide the slot entirely.
-    // # one-arg arm (unbounded), consumed with a manual break
-    // count = 0
     int32_t count = 0;
-    // for x in rep("hi"):
     {
         std::string __tmp_1 = "hi";
         auto __src_0 = rep<std::string>(__tmp_1);
@@ -29,19 +40,13 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
-        // if count == 2:
         if ((count == 2)) {
-            // break
             break;
         }
         }
     }
-    // # two-arg arm (bounded)
-    // for y in rep(9, 3):
     {
         int32_t __tmp_2 = 9;
         auto __src_2 = rep<int32_t>(__tmp_2, 3);
@@ -50,13 +55,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_3);
-        // print(y)
         std::cout << y << "\n";
         }
     }
-    // # ... and an rvalue that is a CALL, not a literal: the frame rule hoists it
-    // # into a named local of the loop's own block, so no dangle and no warning.
-    // for z in rep(mk(), 2):  # tpyc: ok
     {
         std::string __tmp_3 = mk();
         auto __src_4 = rep<std::string>(__tmp_3, 2);
@@ -65,18 +66,17 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::string_view z = ::tpy::unwrap_ref(*__r_5);
-        // print(z)
         std::cout << z << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

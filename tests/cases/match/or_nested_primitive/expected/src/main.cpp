@@ -5,63 +5,63 @@ namespace tpyapp::main {
 
 
 // def classify(n: int32) -> str:
+//     match n:
+//         # Same labels as the flat `case 1 | 2 | 3:`.
+//         case (1 | 2) | 3:
+//             return "small"
+//         case 4 | (5 | 6):
+//             return "medium"
+//         case _:
+//             return "big"
 std::string classify(int32_t n) {
-    // match n:
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case (1 | 2) | 3:
     case 1:
     case 2:
     case 3:
     {
-        // return "small"
         return "small";
         break;
     }
-    // case 4 | (5 | 6):
     case 4:
     case 5:
     case 6:
     {
-        // return "medium"
         return "medium";
         break;
     }
-    // case _:
     default: {
-        // return "big"
         return "big";
         break;
     }
     }
     ::std::unreachable();
-    // # Same labels as the flat `case 1 | 2 | 3:`.
 }
 
 // def main() -> None:
+//     print(classify(1))
+//     print(classify(2))
+//     print(classify(3))
+//     print(classify(4))
+//     print(classify(5))
+//     print(classify(6))
+//     print(classify(7))
 void main() {
-    // print(classify(1))
     std::cout << classify(1) << "\n";
-    // print(classify(2))
     std::cout << classify(2) << "\n";
-    // print(classify(3))
     std::cout << classify(3) << "\n";
-    // print(classify(4))
     std::cout << classify(4) << "\n";
-    // print(classify(5))
     std::cout << classify(5) << "\n";
-    // print(classify(6))
     std::cout << classify(6) << "\n";
-    // print(classify(7))
     std::cout << classify(7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

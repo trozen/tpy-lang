@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Combined(int32(42), "answer")
+//     print(c.summary())
 void main() {
-    // c = Combined(int32(42), "answer")
     Combined c = Combined(42, "answer");
-    // print(c.summary())
     std::cout << c.summary() << "\n";
 }
 
+// from bases import Counter, Tag
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from bases import Counter, Tag
     ::tpyapp::bases::__tpy_init();
-    // main()
     main();
 }
 

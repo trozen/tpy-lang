@@ -52,6 +52,9 @@ extern int32_t _SEEK_SET;
 extern int32_t _SEEK_CUR;
 extern int32_t _SEEK_END;
 inline constexpr std::string_view __name__ = "io";
+// # CPython's io.DEFAULT_BUFFER_SIZE: chunk size for raw reads / the default
+// # BufferedReader buffer.
+// DEFAULT_BUFFER_SIZE: Final[int32] = 8192
 inline constexpr int32_t DEFAULT_BUFFER_SIZE = 8192;
 
 struct __gen_StringIO___iter__;
@@ -244,7 +247,7 @@ struct FileIO {
     bool __tpy_owned_ = true;
 
     // def __init__(self, fd: int64, closefd: bool = True,
-    // timeout_mode: bool = False) -> None:
+    //              timeout_mode: bool = False) -> None:
     explicit FileIO(int64_t fd, bool closefd = true, bool timeout_mode = false);
     // non-copyable (@nocopy)
     FileIO(const FileIO&) = delete;
@@ -308,7 +311,7 @@ struct BufferedReader {
     bool _closed;
 
     // def __init__(self, raw: Own[RawBinaryIO],
-    // buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
+    //              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
     explicit BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size = DEFAULT_BUFFER_SIZE);
     // non-copyable (@nocopy)
     BufferedReader(const BufferedReader&) = delete;
@@ -380,7 +383,7 @@ struct tpy::RefAdapter<tpystd::io::RawBinaryIO, T> : tpystd::io::RawBinaryIO {
 
 namespace tpystd::io {
 
-// Generator: StringIO.__iter__
+// def __iter__(self) -> Iterator[str]:
 struct __gen_StringIO___iter__ : public ::tpy::next_iter_mixin<__gen_StringIO___iter__, std::string> {
     int32_t __state;
     StringIO& __self;
@@ -408,7 +411,7 @@ inline __gen_StringIO___iter__ StringIO::__iter__() {
     return __gen_StringIO___iter__(*this);
 }
 
-// Generator: BytesIO.__iter__
+// def __iter__(self) -> Iterator[bytes]:
 struct __gen_BytesIO___iter__ : public ::tpy::next_iter_mixin<__gen_BytesIO___iter__, ::tpy::Bytes> {
     int32_t __state;
     BytesIO& __self;
@@ -436,7 +439,7 @@ inline __gen_BytesIO___iter__ BytesIO::__iter__() {
     return __gen_BytesIO___iter__(*this);
 }
 
-// Generator: BufferedReader.__iter__
+// def __iter__(self) -> Iterator[bytes]:
 struct __gen_BufferedReader___iter__ : public ::tpy::next_iter_mixin<__gen_BufferedReader___iter__, ::tpy::Bytes> {
     int32_t __state;
     BufferedReader& __self;
@@ -466,305 +469,307 @@ inline __gen_BufferedReader___iter__ BufferedReader::__iter__() {
 
 
 // def __init__(self, initial: str = "") -> None:
+//     self._chunks = []
+//     if len(initial) > 0:
+//         self._chunks.append(str(initial))
+//     self._pos = 0
+//     self._total = int32(len(initial))
+//     self._closed = False
 inline StringIO::StringIO(std::string_view initial) : _chunks(std::vector<std::string>{}) {
-    // if len(initial) > 0:
     if ((::tpy::__len__(initial) > 0)) {
-        // self._chunks.append(str(initial))
         this->_chunks.push_back(std::string(initial));
     }
-    // self._pos = 0
     this->_pos = 0;
-    // self._total = int32(len(initial))
     this->_total = ::tpy::__len__(initial);
-    // self._closed = False
     this->_closed = false;
 }
 
 // def readlines(self) -> Own[list[str]]:
+//     # Inlined readline loop instead of `for line in self:` to side-step
+//     # readonly auto-deduction picking the const __iter__ overload.
+//     out: list[str] = []
+//     while True:
+//         line: str = self.readline()
+//         if not line:
+//             break
+//         out.append(line)
+//     return out
 inline std::vector<std::string> StringIO::readlines() {
-    // # Inlined readline loop instead of `for line in self:` to side-step
-    // # readonly auto-deduction picking the const __iter__ overload.
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // while True:
     while (true) {
-        // line: str = self.readline()
         std::string line = this->readline();
-        // if not line:
         if ((!((!line.empty())))) {
-            // break
             break;
         }
-        // out.append(line)
         std::string __tmp_1{line};
         out.push_back(std::move(__tmp_1));
     }
-    // return out
     return out;
 }
 
 // def getvalue(self) -> str:
+//     self._check_open()
+//     if len(self._chunks) == 0:
+//         return ""
+//     if len(self._chunks) == 1:
+//         return self._chunks[0]
+//     return "".join(self._chunks)
 inline std::string StringIO::getvalue() const {
-    // self._check_open()
     this->_check_open();
-    // if len(self._chunks) == 0:
     if ((::tpy::__len__(this->_chunks) == 0)) {
-        // return ""
         return "";
     }
-    // if len(self._chunks) == 1:
     if ((::tpy::__len__(this->_chunks) == 1)) {
-        // return self._chunks[0]
         return ::tpy::__getitem__(this->_chunks, 0);
     }
-    // return "".join(self._chunks)
     return ::tpy::str_join("", this->_chunks);
 }
 
 // def tell(self) -> int32:
+//     self._check_open()
+//     return self._pos
 inline int32_t StringIO::tell() const {
-    // self._check_open()
     this->_check_open();
-    // return self._pos
     return this->_pos;
 }
 
 // def flush(self) -> None:
+//     self._check_open()
 inline void StringIO::flush() const {
-    // self._check_open()
     this->_check_open();
 }
 
 // def close(self) -> None:
+//     self._closed = True
+//     self._chunks = []
+//     self._total = 0
+//     self._pos = 0
 inline void StringIO::close() {
-    // self._closed = True
     this->_closed = true;
-    // self._chunks = []
     this->_chunks = std::vector<std::string>{};
-    // self._total = 0
     this->_total = 0;
-    // self._pos = 0
     this->_pos = 0;
 }
 
 // @property
 // def closed(self) -> bool:
+//     return self._closed
 inline bool StringIO::closed() const {
-    // return self._closed
     return this->_closed;
 }
 
 // def readable(self) -> bool:
+//     return not self._closed
 inline bool StringIO::readable() const {
-    // return not self._closed
     return (!(this->_closed));
 }
 
 // def writable(self) -> bool:
+//     return not self._closed
 inline bool StringIO::writable() const {
-    // return not self._closed
     return (!(this->_closed));
 }
 
 // def seekable(self) -> bool:
+//     return not self._closed
 inline bool StringIO::seekable() const {
-    // return not self._closed
     return (!(this->_closed));
 }
 
 // def __enter__(self) -> "StringIO":
+//     return self
 inline StringIO& StringIO::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.close()
 inline void StringIO::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.close()
     this->close();
 }
 
 // def _collapse(self) -> None:
+//     # After this, _chunks has exactly one element holding the full buffer
+//     # (or is empty if total is 0).
+//     if len(self._chunks) > 1:
+//         self._chunks = ["".join(self._chunks)]
+//     elif len(self._chunks) == 0 and self._total > 0:
+//         # Defensive: invariant says this can't happen, but keep readers
+//         # robust against hand-edited state.
+//         self._chunks = [""]
 inline void StringIO::_collapse() {
-    // # After this, _chunks has exactly one element holding the full buffer
-    // # (or is empty if total is 0).
-    // if len(self._chunks) > 1:
     if ((::tpy::__len__(this->_chunks) > 1)) {
-        // self._chunks = ["".join(self._chunks)]
         this->_chunks = {::tpy::str_join("", this->_chunks)};
-    // elif len(self._chunks) == 0 and self._total > 0:
     } else if (((::tpy::__len__(this->_chunks) == 0) && (this->_total > 0))) {
-        // # Defensive: invariant says this can't happen, but keep readers
-        // # robust against hand-edited state.
-        // self._chunks = [""]
         this->_chunks = {""};
     }
 }
 
 // def _check_open(self) -> None:
+//     if self._closed:
+//         # CPython StringIO drops the trailing period; BytesIO keeps it.
+//         # We match both quirks for byte-identical cpy-phase output.
+//         raise ValueError("I/O operation on closed file")
 inline void StringIO::_check_open() const {
-    // if self._closed:
     if (this->_closed) {
-        // # CPython StringIO drops the trailing period; BytesIO keeps it.
-        // # We match both quirks for byte-identical cpy-phase output.
-        // raise ValueError("I/O operation on closed file")
         throw ::tpy::ValueError("I/O operation on closed file");
     }
-    // # CPython StringIO drops the trailing period; BytesIO keeps it.
-    // # We match both quirks for byte-identical cpy-phase output.
 }
 
 // def __init__(self, initial: bytes | None = None) -> None:
+//     self._chunks = []
+//     self._pos = 0
+//     self._total = 0
+//     if initial is not None and len(initial) > 0:
+//         self._chunks.append(bytes(initial))
+//         self._total = int32(len(initial))
+//     self._closed = False
 inline BytesIO::BytesIO(std::optional<::tpy::BytesView> initial) : _chunks(std::vector<::tpy::Bytes>{}), _pos(0), _total(0) {
-    // if initial is not None and len(initial) > 0:
     if (((initial.has_value()) && (::tpy::__len__((*initial)) > 0))) {
-        // self._chunks.append(bytes(initial))
         this->_chunks.push_back(::tpy::Bytes((*initial)));
-        // self._total = int32(len(initial))
         this->_total = ::tpy::__len__((*initial));
     }
-    // self._closed = False
     this->_closed = false;
 }
 
 // def readlines(self) -> Own[list[bytes]]:
+//     out: list[bytes] = []
+//     while True:
+//         line: bytes = self.readline()
+//         if len(line) == 0:
+//             break
+//         out.append(line)
+//     return out
 inline std::vector<::tpy::Bytes> BytesIO::readlines() {
-    // out: list[bytes] = []
     std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
-    // while True:
     while (true) {
-        // line: bytes = self.readline()
         ::tpy::Bytes line = this->readline();
-        // if len(line) == 0:
         if ((::tpy::__len__(line) == 0)) {
-            // break
             break;
         }
-        // out.append(line)
         out.push_back(line);
     }
-    // return out
     return out;
 }
 
 // def getvalue(self) -> bytes:
+//     self._check_open()
+//     if len(self._chunks) == 0:
+//         return b""
+//     if len(self._chunks) == 1:
+//         return self._chunks[0]
+//     return b"".join(self._chunks)
 inline ::tpy::Bytes BytesIO::getvalue() const {
-    // self._check_open()
     this->_check_open();
-    // if len(self._chunks) == 0:
     if ((::tpy::__len__(this->_chunks) == 0)) {
-        // return b""
         return ::tpy::Bytes{};
     }
-    // if len(self._chunks) == 1:
     if ((::tpy::__len__(this->_chunks) == 1)) {
-        // return self._chunks[0]
         return ::tpy::__getitem__(this->_chunks, 0);
     }
-    // return b"".join(self._chunks)
     return ::tpy::bytes_join(::tpy::Bytes{}, this->_chunks);
 }
 
 // def tell(self) -> int32:
+//     self._check_open()
+//     return self._pos
 inline int32_t BytesIO::tell() const {
-    // self._check_open()
     this->_check_open();
-    // return self._pos
     return this->_pos;
 }
 
 // def flush(self) -> None:
+//     self._check_open()
 inline void BytesIO::flush() const {
-    // self._check_open()
     this->_check_open();
 }
 
 // def close(self) -> None:
+//     self._closed = True
+//     self._chunks = []
+//     self._total = 0
+//     self._pos = 0
 inline void BytesIO::close() {
-    // self._closed = True
     this->_closed = true;
-    // self._chunks = []
     this->_chunks = std::vector<::tpy::Bytes>{};
-    // self._total = 0
     this->_total = 0;
-    // self._pos = 0
     this->_pos = 0;
 }
 
 // @property
 // def closed(self) -> bool:
+//     return self._closed
 inline bool BytesIO::closed() const {
-    // return self._closed
     return this->_closed;
 }
 
 // def readable(self) -> bool:
+//     return not self._closed
 inline bool BytesIO::readable() const {
-    // return not self._closed
     return (!(this->_closed));
 }
 
 // def writable(self) -> bool:
+//     return not self._closed
 inline bool BytesIO::writable() const {
-    // return not self._closed
     return (!(this->_closed));
 }
 
 // def seekable(self) -> bool:
+//     return not self._closed
 inline bool BytesIO::seekable() const {
-    // return not self._closed
     return (!(this->_closed));
 }
 
 // def __enter__(self) -> "BytesIO":
+//     return self
 inline BytesIO& BytesIO::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.close()
 inline void BytesIO::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.close()
     this->close();
 }
 
 // def _collapse(self) -> None:
+//     if len(self._chunks) > 1:
+//         self._chunks = [b"".join(self._chunks)]
+//     elif len(self._chunks) == 0 and self._total > 0:
+//         self._chunks = [b""]
 inline void BytesIO::_collapse() {
-    // if len(self._chunks) > 1:
     if ((::tpy::__len__(this->_chunks) > 1)) {
-        // self._chunks = [b"".join(self._chunks)]
         this->_chunks = {::tpy::bytes_join(::tpy::Bytes{}, this->_chunks)};
-    // elif len(self._chunks) == 0 and self._total > 0:
     } else if (((::tpy::__len__(this->_chunks) == 0) && (this->_total > 0))) {
-        // self._chunks = [b""]
         this->_chunks = {::tpy::Bytes{}};
     }
 }
 
 // def _check_open(self) -> None:
+//     if self._closed:
+//         raise ValueError("I/O operation on closed file.")
 inline void BytesIO::_check_open() const {
-    // if self._closed:
     if (this->_closed) {
-        // raise ValueError("I/O operation on closed file.")
         throw ::tpy::ValueError("I/O operation on closed file.");
     }
 }
 
 // def __init__(self, fd: int64, closefd: bool = True,
-// timeout_mode: bool = False) -> None:
+//              timeout_mode: bool = False) -> None:
+//     if fd < 0:
+//         raise ValueError("negative file descriptor")
+//     self._fd = fd
+//     self._closefd = closefd
+//     self._closed = False
+//     self._timeout_mode = timeout_mode
 inline FileIO::FileIO(int64_t fd, bool closefd, bool timeout_mode) {
-    // if fd < 0:
     if ((fd < 0)) {
-        // raise ValueError("negative file descriptor")
         throw ::tpy::ValueError("negative file descriptor");
     }
-    // self._fd = fd
     this->_fd = fd;
-    // self._closefd = closefd
     this->_closefd = closefd;
-    // self._closed = False
     this->_closed = false;
-    // self._timeout_mode = timeout_mode
     this->_timeout_mode = timeout_mode;
 }
 
@@ -780,237 +785,245 @@ inline FileIO& FileIO::operator=(FileIO&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     if self._closefd and self._fd >= 0:
+//         os.close(self._fd)
+//         self._fd = -1
+//     # Keep _closed and the fd sentinel in agreement after teardown.
+//     self._closed = True
 inline FileIO::~FileIO() {
     if (!this->__tpy_owned_) return;
-    // if self._closefd and self._fd >= 0:
     if ((this->_closefd && (this->_fd >= 0))) {
-        // os.close(self._fd)
         ::tpystd::os::close(this->_fd);
-        // self._fd = -1
         this->_fd = -1;
     }
-    // # Keep _closed and the fd sentinel in agreement after teardown.
-    // self._closed = True
     this->_closed = true;
 }
 
 // def read(self, size: int32 = -1) -> bytes:
+//     self._check_open()
+//     if size < 0:
+//         return self._readall()
+//     if size == 0:
+//         return b""
+//     return self._os_read(int64(size))
 inline ::tpy::Bytes FileIO::read(int32_t size) const {
-    // self._check_open()
     this->_check_open();
-    // if size < 0:
     if ((size < 0)) {
-        // return self._readall()
         return this->_readall();
     }
-    // if size == 0:
     if ((size == 0)) {
-        // return b""
         return ::tpy::Bytes{};
     }
-    // return self._os_read(int64(size))
     return this->_os_read(::tpy::int_cast_check<int64_t>(size));
 }
 
 // def _readall(self) -> bytes:
+//     out: bytes = b""
+//     while True:
+//         chunk: bytes = self._os_read(int64(DEFAULT_BUFFER_SIZE))
+//         if len(chunk) == 0:
+//             break
+//         out = out + chunk
+//     return out
 inline ::tpy::Bytes FileIO::_readall() const {
-    // out: bytes = b""
     ::tpy::Bytes out = ::tpy::Bytes{};
-    // while True:
     while (true) {
-        // chunk: bytes = self._os_read(int64(DEFAULT_BUFFER_SIZE))
         ::tpy::Bytes chunk = this->_os_read(::tpy::int_cast_check<int64_t>(DEFAULT_BUFFER_SIZE));
-        // if len(chunk) == 0:
         if ((::tpy::__len__(chunk) == 0)) {
-            // break
             break;
         }
-        // out = out + chunk
         out = (::tpy::bytes_concat(out, chunk));
     }
-    // return out
     return out;
 }
 
 // def _os_read(self, n: int64) -> bytes:
+//     if not self._timeout_mode:
+//         return os.read(self._fd, n)
+//     try:
+//         return os.read(self._fd, n)
+//     except BlockingIOError:
+//         # SO_RCVTIMEO elapsed on a blocking socket fd -> CPython's
+//         # socket.timeout, i.e. TimeoutError("timed out").
+//         raise TimeoutError("timed out")
 inline ::tpy::Bytes FileIO::_os_read(int64_t n) const {
-    // if not self._timeout_mode:
     if ((!(this->_timeout_mode))) {
-        // return os.read(self._fd, n)
         return ::tpystd::os::read(this->_fd, n);
     }
-    // try:
     {
         try {
-            // return os.read(self._fd, n)
             return ::tpystd::os::read(this->_fd, n);
         } catch (const ::tpy::BlockingIOError&) {
-            // # SO_RCVTIMEO elapsed on a blocking socket fd -> CPython's
-            // # socket.timeout, i.e. TimeoutError("timed out").
-            // raise TimeoutError("timed out")
             throw ::tpy::TimeoutError("timed out");
         }
     }
 }
 
 // def readable(self) -> bool:
+//     return not self._closed
 inline bool FileIO::readable() const {
-    // return not self._closed
     return (!(this->_closed));
 }
 
 // def fileno(self) -> int64:
+//     self._check_open()
+//     return self._fd
 inline int64_t FileIO::fileno() const {
-    // self._check_open()
     this->_check_open();
-    // return self._fd
     return this->_fd;
 }
 
 // def close(self) -> None:
+//     if not self._closed:
+//         self._closed = True
+//         if self._closefd and self._fd >= 0:
+//             os.close(self._fd)
+//         self._fd = -1
 inline void FileIO::close() {
-    // if not self._closed:
     if ((!(this->_closed))) {
-        // self._closed = True
         this->_closed = true;
-        // if self._closefd and self._fd >= 0:
         if ((this->_closefd && (this->_fd >= 0))) {
-            // os.close(self._fd)
             ::tpystd::os::close(this->_fd);
         }
-        // self._fd = -1
         this->_fd = -1;
     }
 }
 
 // @property
 // def closed(self) -> bool:
+//     return self._closed
 inline bool FileIO::closed() const {
-    // return self._closed
     return this->_closed;
 }
 
 // def __enter__(self) -> "FileIO":
+//     return self
 inline FileIO& FileIO::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.close()
 inline void FileIO::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.close()
     this->close();
 }
 
 // def _check_open(self) -> None:
+//     if self._closed:
+//         raise ValueError("I/O operation on closed file")
 inline void FileIO::_check_open() const {
-    // if self._closed:
     if (this->_closed) {
-        // raise ValueError("I/O operation on closed file")
         throw ::tpy::ValueError("I/O operation on closed file");
     }
 }
 
 // def __init__(self, raw: Own[RawBinaryIO],
-// buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
+//              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
+//     # `_raw` is non-default-constructible, so it must be assigned before
+//     # any other statement (the buffer_size guard) runs.
+//     self._raw = Box(raw)
+//     self._buf = b""
+//     self._eof = False
+//     self._buffer_size = buffer_size
+//     self._closed = False
+//     if buffer_size <= 0:
+//         raise ValueError("buffer size must be strictly positive")
 inline BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size) : _raw(::tpystd::tplib::box::Box<RawBinaryIO>(std::move(raw))), _buf(::tpy::Bytes{}), _eof(false), _buffer_size(buffer_size), _closed(false) {
-    // if buffer_size <= 0:
     if ((buffer_size <= 0)) {
-        // raise ValueError("buffer size must be strictly positive")
         throw ::tpy::ValueError("buffer size must be strictly positive");
     }
 }
 
 // def _fill(self) -> None:
+//     chunk = self._raw.read(self._buffer_size)
+//     if len(chunk) == 0:
+//         self._eof = True
+//     else:
+//         self._buf = self._buf + chunk
 inline void BufferedReader::_fill() {
-    // chunk = self._raw.read(self._buffer_size)
     ::tpy::Bytes chunk = this->_raw.__deref__().read(this->_buffer_size);
-    // if len(chunk) == 0:
     if ((::tpy::__len__(chunk) == 0)) {
-        // self._eof = True
         this->_eof = true;
-    // else:
     } else {
-        // self._buf = self._buf + chunk
         this->_buf = (::tpy::bytes_concat(this->_buf, chunk));
     }
 }
 
 // def _take(self, n: int32) -> bytes:
+//     # Materialize the owned head before reassigning `_buf` (a slice is a
+//     # borrow into the old buffer).
+//     head = bytes(self._buf[:n])
+//     self._buf = bytes(self._buf[n:])
+//     return head
 inline ::tpy::Bytes BufferedReader::_take(int32_t n) {
-    // # Materialize the owned head before reassigning `_buf` (a slice is a
-    // # borrow into the old buffer).
-    // head = bytes(self._buf[:n])
     ::tpy::Bytes head = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{std::nullopt, n}));
-    // self._buf = bytes(self._buf[n:])
     this->_buf = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{n, std::nullopt}));
-    // return head
     return head;
 }
 
 // def readlines(self) -> Own[list[bytes]]:
+//     out: list[bytes] = []
+//     while True:
+//         line = self.readline()
+//         if len(line) == 0:
+//             break
+//         out.append(line)
+//     return out
 inline std::vector<::tpy::Bytes> BufferedReader::readlines() {
-    // out: list[bytes] = []
     std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
-    // while True:
     while (true) {
-        // line = self.readline()
         ::tpy::Bytes line = this->readline();
-        // if len(line) == 0:
         if ((::tpy::__len__(line) == 0)) {
-            // break
             break;
         }
-        // out.append(line)
         out.push_back(line);
     }
-    // return out
     return out;
 }
 
 // def readable(self) -> bool:
+//     return not self._closed
 inline bool BufferedReader::readable() const {
-    // return not self._closed
     return (!(this->_closed));
 }
 
 // def close(self) -> None:
+//     if not self._closed:
+//         self._closed = True
+//         self._raw.close()
+//         self._buf = b""
 inline void BufferedReader::close() {
-    // if not self._closed:
     if ((!(this->_closed))) {
-        // self._closed = True
         this->_closed = true;
-        // self._raw.close()
         this->_raw.__deref__().close();
-        // self._buf = b""
         this->_buf = ::tpy::Bytes{};
     }
 }
 
 // @property
 // def closed(self) -> bool:
+//     return self._closed
 inline bool BufferedReader::closed() const {
-    // return self._closed
     return this->_closed;
 }
 
 // def __enter__(self) -> "BufferedReader":
+//     return self
 inline BufferedReader& BufferedReader::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.close()
 inline void BufferedReader::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.close()
     this->close();
 }
 
 // def _check_open(self) -> None:
+//     if self._closed:
+//         raise ValueError("I/O operation on closed file.")
 inline void BufferedReader::_check_open() const {
-    // if self._closed:
     if (this->_closed) {
-        // raise ValueError("I/O operation on closed file.")
         throw ::tpy::ValueError("I/O operation on closed file.");
     }
 }

@@ -5,18 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(prog="prog")
+//     sub = parser.add_subparsers(dest="cmd", required=True)
+//
+//     show = sub.add_parser("show")
+//     show.add_argument("filename")
+//
+//     set_p = sub.add_parser("set")
+//     set_p.add_argument("--value")
+//
+//     args = parser.parse_args(["show", "config.toml"])
+//     print(args.cmd)
+//     if args.filename is not None:
+//         print("filename=" + args.filename)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["show", "config.toml"])
     std::vector<std::string> __tmp_1 = {"show", "config.toml"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.cmd)
     std::cout << args.cmd << "\n";
-    // if args.filename is not None:
     if ((args.filename.has_value())) {
-        // print("filename=" + args.filename)
         std::cout << (::tpy::str_concat("filename=", (*args.filename))) << "\n";
     }
-    // return 0
     return 0;
 }
 
@@ -121,14 +130,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(__tpy_argparse_cmd, __tpy_argparse_flat_filename, __tpy_argparse_flat_value);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

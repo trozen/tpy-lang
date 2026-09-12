@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_matrix;
 
+// def matrix() -> Iterator[int32]:
 __gen_matrix matrix();
+// def main():
 void main();
 
-// Generator: matrix
+// def matrix() -> Iterator[int32]:
 struct __gen_matrix : public ::tpy::next_iter_mixin<__gen_matrix, int32_t> {
     int32_t __state;
     int32_t i;

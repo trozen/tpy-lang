@@ -12,6 +12,7 @@ extern std::string_view label;
 extern std::vector<int32_t>* items;
 extern std::optional<int32_t> maybe;
 inline constexpr std::string_view __name__ = "helper";
+// BIG: Final[int32] = 99
 inline constexpr int32_t BIG = 99;
 
 void __tpy_init();

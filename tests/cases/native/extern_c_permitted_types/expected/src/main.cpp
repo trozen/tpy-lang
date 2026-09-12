@@ -7,108 +7,110 @@ namespace tpyapp::main {
 // # Every permitted family at once in param position, returning None (void).
 // @export(binding="C")
 // def sink(i8: int8, i16: int16, i32: int32, i64: int64,
-// u8: uint8, u16: uint16, u32: uint32, u64: uint64,
-// f32: float32, d: float, flag: bool, ch: char,
-// p: Ptr[int32]) -> None:
+//          u8: uint8, u16: uint16, u32: uint32, u64: uint64,
+//          f32: float32, d: float, flag: bool, ch: char,
+//          p: Ptr[int32]) -> None:
+//     print(i8)
+//     print(i16)
+//     print(i32)
+//     print(i64)
+//     print(u8)
+//     print(u16)
+//     print(u32)
+//     print(u64)
+//     print(f32)
+//     print(d)
+//     print(flag)
+//     print(ch)
+//     print(unsafe_load(p, 0))
 extern "C" void sink(int8_t i8, int16_t i16, int32_t i32, int64_t i64, uint8_t u8, uint16_t u16, uint32_t u32, uint64_t u64, float f32, double d, bool flag, char ch, int32_t* p) {
-    // print(i8)
     std::cout << static_cast<int>(i8) << "\n";
-    // print(i16)
     std::cout << i16 << "\n";
-    // print(i32)
     std::cout << i32 << "\n";
-    // print(i64)
     std::cout << i64 << "\n";
-    // print(u8)
     std::cout << static_cast<int>(u8) << "\n";
-    // print(u16)
     std::cout << u16 << "\n";
-    // print(u32)
     std::cout << u32 << "\n";
-    // print(u64)
     std::cout << u64 << "\n";
-    // print(f32)
     std::cout << ::tpy::print_float(static_cast<double>(f32)) << "\n";
-    // print(d)
     std::cout << ::tpy::print_float(d) << "\n";
-    // print(flag)
     std::cout << ::tpy::print_bool(flag) << "\n";
-    // print(ch)
     std::cout << ch << "\n";
-    // print(unsafe_load(p, 0))
     std::cout << p[0] << "\n";
 }
 
 // # The same families in return position -- the gate checks returns separately.
 // @export(binding="C")
 // def echo_i64(x: int64) -> int64:
+//     return x
 extern "C" int64_t echo_i64(int64_t x) {
-    // return x
     return x;
 }
 
 // @export(binding="C")
 // def echo_f32(x: float32) -> float32:
+//     return x
 extern "C" float echo_f32(float x) {
-    // return x
     return x;
 }
 
 // @export(binding="C")
 // def echo_bool(x: bool) -> bool:
+//     return x
 extern "C" bool echo_bool(bool x) {
-    // return x
     return x;
 }
 
 // @export(binding="C")
 // def echo_char(x: char) -> char:
+//     return x
 extern "C" char echo_char(char x) {
-    // return x
     return x;
 }
 
 // @export(binding="C")
 // def echo_ptr(p: Ptr[int32]) -> Ptr[int32]:
+//     return p
 extern "C" int32_t* echo_ptr(int32_t* p) {
-    // return p
     return p;
 }
 
 // def main() -> None:
+//     xs = [int32(7), int32(8)]
+//     p = unsafe_ptr(xs)
+//     sink(int8(-1), int16(-2), int32(-3), int64(-4),
+//          uint8(1), uint16(2), uint32(3), uint64(4),
+//          float32(0.5), 1.25, True, char('z'), p)
+//     print(echo_i64(int64(99)))
+//     print(echo_f32(float32(1.5)))
+//     print(echo_bool(False))
+//     print(echo_char(char('q')))
+//     print(unsafe_load(echo_ptr(p), 1))
 void main() {
-    // xs = [int32(7), int32(8)]
     std::vector<int32_t> xs = {7, 8};
-    // p = unsafe_ptr(xs)
     int32_t* p = xs.data();
-    // sink(int8(-1), int16(-2), int32(-3), int64(-4),
-    // uint8(1), uint16(2), uint32(3), uint64(4),
-    // float32(0.5), 1.25, True, char('z'), p)
     sink(-1, -2, -3, -4, 1, 2, 3, 4, 0.5f, 1.25, true, ::tpy::char_from_str("z"), p);
-    // print(echo_i64(int64(99)))
     std::cout << echo_i64(99) << "\n";
-    // print(echo_f32(float32(1.5)))
     std::cout << ::tpy::print_float(static_cast<double>(echo_f32(1.5f))) << "\n";
-    // print(echo_bool(False))
     std::cout << ::tpy::print_bool(echo_bool(false)) << "\n";
-    // print(echo_char(char('q')))
     std::cout << echo_char(::tpy::char_from_str("q")) << "\n";
-    // print(unsafe_load(echo_ptr(p), 1))
     std::cout << echo_ptr(p)[1] << "\n";
 }
 
+// # Regression guard for the PERMITTED side of the C-ABI allow-list: fixed-width
+// # ints, float32, float, bool, char and Ptr[T] must stay legal in a C-linkage
+// # signature, in both param and return position, plus `None` (void) as a return.
+// # Narrowing the allow-list has to fail here.
+// from tpy.extern import export
+//
+// from tpy.unsafe import unsafe_load, unsafe_ptr
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression guard for the PERMITTED side of the C-ABI allow-list: fixed-width
-    // # ints, float32, float, bool, char and Ptr[T] must stay legal in a C-linkage
-    // # signature, in both param and return position, plus `None` (void) as a return.
-    // # Narrowing the allow-list has to fail here.
-    // from tpy.extern import export
-    // from tpy.unsafe import unsafe_load, unsafe_ptr
-    // main()
     main();
 }
 

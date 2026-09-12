@@ -47,90 +47,90 @@ namespace tpyapp::main {
 
 
 // def break_plain() -> None:
+//     for c in [Color.Red, Color.Green, Color.Blue]:
+//         match c:
+//             case Color.Green:
+//                 break
+//             case _:
+//                 print("p", c.name)
+//     print("plain done")
 void break_plain() {
-    // for c in [Color.Red, Color.Green, Color.Blue]:
     auto __obj_0 = {Color::Red, Color::Green, Color::Blue};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        // match c:
         auto& __match_subject_1 = c;
         switch (__match_subject_1) {
-        // case Color.Green:
         case Color::Green: {
-            // break
             goto __loop_break_1;
             break;
         }
-        // case _:
         default: {
-            // print("p", c.name)
             std::cout << "p" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
             break;
         }
         }
     }
     __loop_break_1:;
-    // print("plain done")
     std::cout << "plain done" << "\n";
 }
 
 // def break_with_else() -> None:
+//     for c in [Color.Red, Color.Green, Color.Blue]:
+//         match c:
+//             case Color.Green:
+//                 break
+//             case _:
+//                 print("e", c.name)
+//     else:
+//         print("else ran")
+//     print("after else loop")
 void break_with_else() {
-    // for c in [Color.Red, Color.Green, Color.Blue]:
     auto __obj_1 = {Color::Red, Color::Green, Color::Blue};
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         Color c = *__beg_1;
-        // match c:
         auto& __match_subject_1 = c;
         switch (__match_subject_1) {
-        // case Color.Green:
         case Color::Green: {
-            // break
             goto __after_else_0;
             break;
         }
-        // case _:
         default: {
-            // print("e", c.name)
             std::cout << "e" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
             break;
         }
         }
     }
-    // else:
     {
-        // print("else ran")
         std::cout << "else ran" << "\n";
     }
     __after_else_0:;
-    // print("after else loop")
     std::cout << "after else loop" << "\n";
 }
 
 // def continue_in_arm() -> None:
+//     for c in [Color.Red, Color.Green, Color.Blue]:
+//         match c:
+//             case Color.Green:
+//                 continue
+//             case _:
+//                 print("c", c.name)
 void continue_in_arm() {
-    // for c in [Color.Red, Color.Green, Color.Blue]:
     auto __obj_0 = {Color::Red, Color::Green, Color::Blue};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        // match c:
         auto& __match_subject_1 = c;
         switch (__match_subject_1) {
-        // case Color.Green:
         case Color::Green: {
-            // continue
             continue;
             break;
         }
-        // case _:
         default: {
-            // print("c", c.name)
             std::cout << "c" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
             break;
         }
@@ -139,87 +139,90 @@ void continue_in_arm() {
 }
 
 // def break_in_while() -> None:
+//     i = 0
+//     while i < 5:
+//         match i:
+//             case 3:
+//                 break
+//             case _:
+//                 print("w", i)
+//         i = i + 1
+//     print("while done")
 void break_in_while() {
-    // i = 0
     int32_t i = 0;
-    // while i < 5:
     while ((i < 5)) {
-        // match i:
         auto& __match_subject_1 = i;
         switch (__match_subject_1) {
-        // case 3:
         case 3: {
-            // break
             goto __loop_break_0;
             break;
         }
-        // case _:
         default: {
-            // print("w", i)
             std::cout << "w" << " " << i << "\n";
             break;
         }
         }
-        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
     __loop_break_0:;
-    // print("while done")
     std::cout << "while done" << "\n";
 }
 
 // def break_in_str_switch() -> None:
+//     for s in ["a", "bb", "stop", "ccc"]:
+//         match s:
+//             case "a":
+//                 print("s a")
+//             case "bb":
+//                 print("s bb")
+//             case "stop":
+//                 break
+//             case "ccc":
+//                 print("s ccc")
+//             case "dddd":
+//                 print("s dddd")
+//             case _:
+//                 print("s other")
+//     print("str done")
 void break_in_str_switch() {
-    // for s in ["a", "bb", "stop", "ccc"]:
     auto __obj_0 = {"a", "bb", "stop", "ccc"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view s = *__beg_0;
-        // match s:
         auto& __match_subject_1 = s;
         if (__match_subject_1.size() >= 1) {
             switch (static_cast<unsigned char>(__match_subject_1[0])) {
             case 'a': {
-                // case "a":
                 if (__match_subject_1 == "a") {
-                    // print("s a")
                     std::cout << "s a" << "\n";
                     goto __match_end_2;
                 }
                 break;
             }
             case 'b': {
-                // case "bb":
                 if (__match_subject_1 == "bb") {
-                    // print("s bb")
                     std::cout << "s bb" << "\n";
                     goto __match_end_2;
                 }
                 break;
             }
             case 'c': {
-                // case "ccc":
                 if (__match_subject_1 == "ccc") {
-                    // print("s ccc")
                     std::cout << "s ccc" << "\n";
                     goto __match_end_2;
                 }
                 break;
             }
             case 'd': {
-                // case "dddd":
                 if (__match_subject_1 == "dddd") {
-                    // print("s dddd")
                     std::cout << "s dddd" << "\n";
                     goto __match_end_2;
                 }
                 break;
             }
             case 's': {
-                // case "stop":
                 if (__match_subject_1 == "stop") {
-                    // break
                     goto __loop_break_1;
                     goto __match_end_2;
                 }
@@ -227,43 +230,41 @@ void break_in_str_switch() {
             }
             }
         }
-        // case _:
         {
-            // print("s other")
             std::cout << "s other" << "\n";
             goto __match_end_2;
         }
         __match_end_2:;
     }
     __loop_break_1:;
-    // print("str done")
     std::cout << "str done" << "\n";
 }
 
 // def main() -> None:
+//     break_plain()
+//     break_with_else()
+//     continue_in_arm()
+//     break_in_while()
+//     break_in_str_switch()
 void main() {
-    // break_plain()
     break_plain();
-    // break_with_else()
     break_with_else();
-    // continue_in_arm()
     continue_in_arm();
-    // break_in_while()
     break_in_while();
-    // break_in_str_switch()
     break_in_str_switch();
 }
 
+// # break/continue inside switch-lowered match arms must target the enclosing
+// # Python loop, not the C++ switch: plain loop, for/else loop, and the
+// # string-switch dispatch path.
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # break/continue inside switch-lowered match arms must target the enclosing
-    // # Python loop, not the C++ switch: plain loop, for/else loop, and the
-    // # string-switch dispatch path.
-    // from enum import Enum
-    // main()
     main();
 }
 

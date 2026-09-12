@@ -13,8 +13,11 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mutating(h: Holder) -> None:
 void mutating(Holder& h);
+// def readonly_ok(h: Holder) -> None:
 void readonly_ok(const Holder& h);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -72,24 +75,27 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2, 3]
 inline Dog::Dog() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __init__(self, age: int32) -> None:
+//     self.age = age
 inline Cat::Cat(int32_t age) : age(age) {}
 
 // def __init__(self) -> None:
+//     self.pet = Cat(7)
 inline Holder::Holder() : pet(Cat(7)) {}
 
 // def swap(self) -> None:
+//     self.pet = Cat(9)
 inline void Holder::swap() {
-    // self.pet = Cat(9)
     this->pet = Cat(9);
 }
 
 // @readonly
 // def peek(self) -> int32:
+//     return 1
 inline int32_t Holder::peek() const {
-    // return 1
     return 1;
 }
 void __tpy_init();

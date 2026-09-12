@@ -5,14 +5,15 @@ namespace tpyapp::main {
 
 
 // def ok(b: Box[int32]) -> bool:
+//     return b.val > 0
 bool ok(const Box<int32_t>& b) {
-    // return b.val > 0
     return (b.val > 0);
 }
 
 // def f(xs: list[int32]) -> int32:
+//     ys = [x for x in xs if ok(wrap(1))]
+//     return len(ys)
 int32_t f(const std::vector<int32_t>& xs) {
-    // ys = [x for x in xs if ok(wrap(1))]
     std::vector<int32_t> ys = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = xs;
@@ -28,23 +29,22 @@ int32_t f(const std::vector<int32_t>& xs) {
         }
         std::move(__result);
     });
-    // return len(ys)
     return ::tpy::__len__(ys);
 }
 
 // def main() -> None:
+//     print(f([1, 2, 3]))
 void main() {
-    // print(f([1, 2, 3]))
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
     std::cout << f(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

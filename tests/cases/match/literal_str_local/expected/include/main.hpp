@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify_items(items: list[str]) -> None:
 void classify_items(const std::vector<std::string>& items);
+// def classify_many(items: list[str]) -> None:
 void classify_many(const std::vector<std::string>& items);
+// def main() -> None:
 void main();
 
 void __tpy_init();

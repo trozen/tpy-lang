@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def gen_values() -> Iterator[int32]:
+//     yield 10
+//     yield 20
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_values::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 10
         __state = S_RESUME_0;
         return 10;
     }
     case S_RESUME_0: {
-        // yield 20
         __state = S_RESUME_1;
         return 20;
     }
@@ -33,100 +33,107 @@ __gen_gen_values gen_values() {
 }
 
 // def main() -> None:
+//     a: list[int32] = [1, 2, 3, 4, 5]
+//
+//     # Replace same length
+//     a[1:3] = [10, 20]
+//     for x in a:
+//         print(x)
+//
+//     # Replace with longer (resize)
+//     a[1:3] = [10, 20, 30, 40]
+//     print(len(a))
+//
+//     # Delete elements
+//     a[1:4] = []
+//     for x in a:
+//         print(x)
+//
+//     # Insert at position (start == stop)
+//     a[1:1] = [99, 98]
+//     for x in a:
+//         print(x)
+//
+//     # Negative indices
+//     b: list[int32] = [1, 2, 3, 4, 5]
+//     b[-2:] = [100, 200]
+//     for x in b:
+//         print(x)
+//
+//     # Full slice replace
+//     c: list[int32] = [1, 2, 3]
+//     c[:] = [10, 20]
+//     for x in c:
+//         print(x)
+//
+//     # Generator as RHS
+//     d: list[int32] = [1, 2, 3, 4, 5]
+//     d[1:3] = gen_values()
+//     for x in d:
+//         print(x)
 void main() {
-    // a: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
-    // # Replace same length
-    // a[1:3] = [10, 20]
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::vector<int32_t>{10, 20});
-    // for x in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Replace with longer (resize)
-    // a[1:3] = [10, 20, 30, 40]
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::vector<int32_t>{10, 20, 30, 40});
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // # Delete elements
-    // a[1:4] = []
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 4}, std::vector<int32_t>{});
-    // for x in a:
     auto& __obj_1 = a;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Insert at position (start == stop)
-    // a[1:1] = [99, 98]
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 1}, std::vector<int32_t>{99, 98});
-    // for x in a:
     auto& __obj_2 = a;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Negative indices
-    // b: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> b = {1, 2, 3, 4, 5};
-    // b[-2:] = [100, 200]
     ::tpy::list_set_slice(b, ::tpy::BasicSlice{-2, std::nullopt}, std::vector<int32_t>{100, 200});
-    // for x in b:
     auto& __obj_3 = b;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t x = *__beg_3;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Full slice replace
-    // c: list[int32] = [1, 2, 3]
     std::vector<int32_t> c = {1, 2, 3};
-    // c[:] = [10, 20]
     ::tpy::list_set_slice(c, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{10, 20});
-    // for x in c:
     auto& __obj_4 = c;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t x = *__beg_4;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Generator as RHS
-    // d: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> d = {1, 2, 3, 4, 5};
-    // d[1:3] = gen_values()
     ::tpy::list_set_slice(d, ::tpy::BasicSlice{1, 3}, gen_values());
-    // for x in d:
     auto& __obj_5 = d;
     auto __beg_5 = __obj_5.begin();
     auto __end_5 = __obj_5.end();
     for (; __beg_5 != __end_5; ++__beg_5) {
         int32_t x = *__beg_5;
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

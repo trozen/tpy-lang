@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def make_pair(n: int32) -> Own[tuple[int32, Box]]:
+//     return (n, Box(n))
 std::tuple<int32_t, Box> make_pair(int32_t n) {
-    // return (n, Box(n))
     return std::tuple<int32_t, Box>{n, Box(n)};
 }
 
 // def use(c: bool) -> int32:
+//     if c:
+//         t = make_pair(9)
+//     else:
+//         t = make_pair(5)
+//     return t[1].val
 int32_t use(bool c) {
     std::optional<std::tuple<int32_t, Box>> __slot_1;
-    // if c:
     std::tuple<int32_t, Box*> t;
     if (c) {
-        // t = make_pair(9)
         t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(9)));
-    // else:
     } else {
-        // t = make_pair(5)
         t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(5)));
     }
-    // return t[1].val
     return std::get<1>(t)->val;
 }
 
 // def main() -> None:
+//     print(use(True))
+//     print(use(False))
 void main() {
-    // print(use(True))
     std::cout << use(true) << "\n";
-    // print(use(False))
     std::cout << use(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

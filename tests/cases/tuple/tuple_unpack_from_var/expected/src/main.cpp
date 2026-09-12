@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = (int32(42), "hello")
+//     a, b = t
+//     print(a)
+//     print(b)
+//
+//     # Original variable still usable after unpack
+//     print(t)
 void main() {
-    // t = (int32(42), "hello")
     std::tuple<int32_t, std::string> t = std::tuple<int32_t, std::string>{42, "hello"};
-    // a, b = t
     const auto& __tup_1 = t;
     int32_t a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
-    // # Original variable still usable after unpack
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

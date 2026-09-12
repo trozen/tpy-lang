@@ -5,58 +5,58 @@ namespace tpyapp::main {
 
 
 // def scalar() -> None:
+//     x = 100
+//     for x in range(3):
+//         pass
+//     print(x)
 void scalar() {
-    // x = 100
     int32_t x = 100;
-    // for x in range(3):
     for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
         x = __range_0;
-        // pass
     }
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def param_rebind(x: int32) -> None:
+//     for x in range(2):
+//         pass
+//     print(x)
 void param_rebind(int32_t x) {
-    // for x in range(2):
     for (int32_t __range_0 = 0; __range_0 < 2; ++__range_0) {
         x = __range_0;
-        // pass
     }
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def fresh_stays_scoped() -> None:
+//     total = 0
+//     for y in range(3):
+//         total = total + y
+//     print(total)
 void fresh_stays_scoped() {
-    // total = 0
     int32_t total = 0;
-    // for y in range(3):
     for (int32_t y = 0; y < 3; ++y) {
-        // total = total + y
         total = (::tpy::add_check<int32_t>(total, y));
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def main() -> None:
+//     scalar()
+//     param_rebind(50)
+//     fresh_stays_scoped()
 void main() {
-    // scalar()
     scalar();
-    // param_rebind(50)
     param_rebind(50);
-    // fresh_stays_scoped()
     fresh_stays_scoped();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

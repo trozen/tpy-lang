@@ -5,118 +5,118 @@ namespace tpyapp::main {
 
 
 // def test_basic() -> None:
+//     s = set()  # tpyc: type(set[int32])
+//     s.add(42)
+//     s.add(10)
+//     print(s)
 void test_basic() {
-    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // s.add(42)
     s.insert(42);
-    // s.add(10)
     s.insert(10);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def test_str() -> None:
+//     s = set()  # tpyc: type(set[str])
+//     s.add("hello")
+//     s.add("world")
+//     print(len(s))
+//     print("hello" in s)
 void test_str() {
-    // s = set()  # tpyc: type(set[str])
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
-    // s.add("hello")
     s.insert("hello");
-    // s.add("world")
     s.insert("world");
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // print("hello" in s)
     std::cout << ::tpy::print_bool((s.contains("hello"))) << "\n";
 }
 
 // def test_multiple() -> None:
+//     s = set()  # tpyc: type(set[int32])
+//     s.add(1)
+//     s.add(2)
+//     s.add(3)
+//     print(s)
 void test_multiple() {
-    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // s.add(1)
     s.insert(1);
-    // s.add(2)
     s.insert(2);
-    // s.add(3)
     s.insert(3);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def test_numeric_widen() -> None:
+//     s = set()  # tpyc: type(set[int64])
+//     s.add(int32(1))
+//     s.add(int64(2))
+//     print(s)
 void test_numeric_widen() {
-    // s = set()  # tpyc: type(set[int64])
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>();
-    // s.add(int32(1))
     s.insert(1);
-    // s.add(int64(2))
     s.insert(2);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def takes_set(s: set[int32]) -> None:
+//     for x in s:
+//         print(x)
 void takes_set(const ::tpy::ordered_set<int32_t>& s) {
-    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_param_context() -> None:
+//     s = set()  # tpyc: type(set[int32])
+//     s.add(42)
+//     takes_set(s)
 void test_param_context() {
-    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // s.add(42)
     s.insert(42);
-    // takes_set(s)
     takes_set(s);
 }
 
 // def test_param_only() -> None:
+//     s = set()  # tpyc: type(set[int32])
+//     takes_set(s)
 void test_param_only() {
-    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // takes_set(s)
     takes_set(s);
 }
 
 // def test_discard_infers() -> None:
+//     s = set()  # tpyc: type(set[int32])
+//     s.discard(42)
+//     s.add(10)
+//     print(s)
 void test_discard_infers() {
-    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // s.discard(42)
     s.erase(42);
-    // s.add(10)
     s.insert(10);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
+// test_basic()
+// test_str()
+// test_multiple()
+// test_numeric_widen()
+// test_param_context()
+// test_param_only()
+// test_discard_infers()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_basic()
     test_basic();
-    // test_str()
     test_str();
-    // test_multiple()
     test_multiple();
-    // test_numeric_widen()
     test_numeric_widen();
-    // test_param_context()
     test_param_context();
-    // test_param_only()
     test_param_only();
-    // test_discard_infers()
     test_discard_infers();
 }
 

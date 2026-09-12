@@ -31,7 +31,9 @@ struct ClickEvent;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(e: Optional[Event]) -> str:
 std::string describe(Event* e);
+// def main() -> None:
 void main();
 
 // class Event(Eventful):
@@ -93,21 +95,22 @@ namespace tpyapp::main {
 
 // def __init__(self) -> None: pass
 inline Event::Event() {
-    // def __init__(self) -> None: pass
 }
 
 // def kind(self) -> str:
+//     return "event"
 inline std::string Event::kind() {
-    // return "event"
     return "event";
 }
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline ClickEvent::ClickEvent(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def kind(self) -> str:
+//     return "click"
 inline std::string ClickEvent::kind() {
-    // return "click"
     return "click";
 }
 void __tpy_init();

@@ -12,6 +12,7 @@ namespace tpyapp::pkg::consumer {
 
 inline constexpr std::string_view __name__ = "pkg.consumer";
 
+// def check() -> None:
 void check();
 
 void __tpy_init();

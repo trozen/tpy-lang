@@ -5,8 +5,8 @@ namespace tpyapp::main {
 
 
 // def g(x: int = 86400000000, y: int = -86400000000, z: int = 5) -> int:
+//     return x + y + z
 ::tpy::BigInt g(const ::tpy::BigInt& x, const ::tpy::BigInt& y, const ::tpy::BigInt& z) {
-    // return x + y + z
     return ((((x) + (y))) + (z));
 }
 
@@ -14,36 +14,39 @@ namespace tpyapp::main {
 // # BOTH default sites -- the free-func param and the field member-init (which
 // # used to fall through to the parser's bare string for this spelling).
 // def w(x: int = int64(90000000000)) -> int:
+//     return x
 ::tpy::BigInt w(const ::tpy::BigInt& x) {
-    // return x
     return x;
 }
 
 // def main() -> None:
+//     print(g())
+//     print(g(1, 2, 3))
+//
+//     print(w())
+//
+//     r = R()
+//     print(r.big, r.neg, r.small, r.wide, r.wrapped)
 void main() {
-    // print(g())
     std::cout << g() << "\n";
-    // print(g(1, 2, 3))
     std::cout << g(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
-    // print(w())
     std::cout << w() << "\n";
-    // r = R()
     R r = R();
-    // print(r.big, r.neg, r.small, r.wide, r.wrapped)
     std::cout << r.big << " " << r.neg << " " << r.small << " " << r.wide << " " << r.wrapped << "\n";
 }
 
+// # A >int32 int literal used as a DEFAULT value (function param, dataclass field
+// # member-init, and the generated ctor param) must render the ambiguity-safe
+// # BigInt ctor, not a bare C++ `long` (which converts to BigInt ambiguously on
+// # macOS). Small defaults stay small; a fixed-width int64 default must not wrap.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A >int32 int literal used as a DEFAULT value (function param, dataclass field
-    // # member-init, and the generated ctor param) must render the ambiguity-safe
-    // # BigInt ctor, not a bare C++ `long` (which converts to BigInt ambiguously on
-    // # macOS). Small defaults stay small; a fixed-width int64 default must not wrap.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

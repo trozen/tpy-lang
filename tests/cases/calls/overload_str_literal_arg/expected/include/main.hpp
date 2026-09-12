@@ -11,14 +11,22 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def kind(x: bool) -> str:
 std::string kind(bool x);
+// def kind(x: str) -> str:
 std::string kind(std::string_view x);
+// def sv(x: bool) -> str:
 std::string sv(bool x);
+// def sv(x: StrView) -> str:
 std::string sv(std::string_view x);
+// def gen_ov[T](x: T) -> str:
 template<typename T>
 std::string gen_ov(::tpy::param_val_or_ref_t<T> x);
+// def gen_ov(x: bool) -> str:
 std::string gen_ov(bool x);
+// def echo(x: str) -> str:
 std::string echo(std::string_view x);
+// def main() -> None:
 void main();
 
 // class C:
@@ -43,24 +51,24 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // @dispatch
 // def kind(self, x: bool) -> str:
+//     return "m-bool"
 inline std::string C::kind(bool x) {
-    // return "m-bool"
     return "m-bool";
 }
 
 // @dispatch
 // def kind(self, x: str) -> str:
+//     return "m-str"
 inline std::string C::kind(std::string_view x) {
-    // return "m-str"
     return "m-str";
 }
 // # Generic overload: a str literal resolving here binds T by deduction, so the
 // # pin must be skipped (the param renders param_val_or_ref_t<T>, not a view).
 // @dispatch
 // def gen_ov[T](x: T) -> str:
+//     return "generic"
 template<typename T>
 std::string gen_ov(::tpy::param_val_or_ref_t<T> x) {
-    // return "generic"
     return "generic";
 }
 

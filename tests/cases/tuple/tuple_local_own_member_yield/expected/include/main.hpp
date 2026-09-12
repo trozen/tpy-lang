@@ -20,14 +20,23 @@ struct __gen_gen_preloop;
 struct __gen_gen_live;
 struct __gen_Src_pairs;
 
+// def first_item(b: Box) -> int32:
 int32_t first_item(const Box& b);
+// def mk(v: int32) -> Own[tuple[int32, Own[Box]]]:
 std::tuple<int32_t, Box> mk(int32_t v);
+// def gen_twice(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_twice gen_twice(int32_t n);
+// def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_call_init gen_call_init(int32_t n);
+// def gen_call_init_borrowed(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_call_init_borrowed gen_call_init_borrowed(int32_t n);
+// def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_call_init_borrow_dead gen_call_init_borrow_dead(int32_t n);
+// def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_preloop gen_preloop(int32_t n);
+// def gen_live(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_live gen_live(int32_t n);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -68,7 +77,7 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
     return os;
 }
 
-// Generator: gen_twice
+// def gen_twice(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_twice : public ::tpy::next_iter_mixin<__gen_gen_twice, std::tuple<int32_t, Box>> {
     int32_t __state;
     int32_t n;
@@ -95,7 +104,7 @@ struct __gen_gen_twice : public ::tpy::next_iter_mixin<__gen_gen_twice, std::tup
     }
 };
 
-// Generator: gen_call_init
+// def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_call_init : public ::tpy::next_iter_mixin<__gen_gen_call_init, std::tuple<int32_t, Box>> {
     int32_t __state;
     int32_t n;
@@ -122,7 +131,7 @@ struct __gen_gen_call_init : public ::tpy::next_iter_mixin<__gen_gen_call_init, 
     }
 };
 
-// Generator: gen_call_init_borrowed
+// def gen_call_init_borrowed(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_call_init_borrowed : public ::tpy::next_iter_mixin<__gen_gen_call_init_borrowed, std::tuple<int32_t, Box>> {
     int32_t __state;
     int32_t n;
@@ -150,7 +159,7 @@ struct __gen_gen_call_init_borrowed : public ::tpy::next_iter_mixin<__gen_gen_ca
     }
 };
 
-// Generator: gen_call_init_borrow_dead
+// def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_call_init_borrow_dead : public ::tpy::next_iter_mixin<__gen_gen_call_init_borrow_dead, std::tuple<int32_t, Box>> {
     int32_t __state;
     int32_t n;
@@ -178,7 +187,7 @@ struct __gen_gen_call_init_borrow_dead : public ::tpy::next_iter_mixin<__gen_gen
     }
 };
 
-// Generator: gen_preloop
+// def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_preloop : public ::tpy::next_iter_mixin<__gen_gen_preloop, std::tuple<int32_t, Box>> {
     int32_t __state;
     int32_t n;
@@ -205,7 +214,7 @@ struct __gen_gen_preloop : public ::tpy::next_iter_mixin<__gen_gen_preloop, std:
     }
 };
 
-// Generator: gen_live
+// def gen_live(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_gen_live : public ::tpy::next_iter_mixin<__gen_gen_live, std::tuple<int32_t, Box>> {
     int32_t __state;
     int32_t n;
@@ -232,7 +241,7 @@ struct __gen_gen_live : public ::tpy::next_iter_mixin<__gen_gen_live, std::tuple
     }
 };
 
-// Generator: Src.pairs
+// def pairs(self, n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 struct __gen_Src_pairs : public ::tpy::next_iter_mixin<__gen_Src_pairs, std::tuple<int32_t, Box>> {
     int32_t __state;
     const Src& __self;
@@ -266,20 +275,26 @@ inline __gen_Src_pairs Src::pairs(int32_t n) const {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
+//     self.items = [v]
 inline Box::Box(int32_t v) : val(v), items(std::vector<int32_t>{v}) {}
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Src::Src(int32_t base) : base(base) {}
+// def gen(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+//     i = int32(0)
+//     while i < n:
+//         t = (i, Box(i * 10))
+//         yield t  # tpyc: ok
+//         i += 1
 inline auto gen(int32_t n) {
-    // i = int32(0)
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, Box>>(
         [n, i]() mutable -> std::optional<std::tuple<int32_t, Box>> {
             while ((i < n)) {
-                // t = (i, Box(i * 10))
                 auto t = std::tuple<int32_t, Box>{i, Box((::tpy::mul_check<int32_t>(i, 10)))};
                 auto __val = t;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::tuple<int32_t, Box>>(__val);
             }
@@ -288,16 +303,19 @@ inline auto gen(int32_t n) {
     );
 }
 
+// def gen_call_init_once(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+//     i = int32(0)
+//     while i < n:
+//         t = mk(i)
+//         yield t  # tpyc: ok
+//         i += 1
 inline auto gen_call_init_once(int32_t n) {
-    // i = int32(0)
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, Box>>(
         [n, i]() mutable -> std::optional<std::tuple<int32_t, Box>> {
             while ((i < n)) {
-                // t = mk(i)
                 std::tuple<int32_t, Box> t = mk(i);
                 auto __val = t;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::tuple<int32_t, Box>>(__val);
             }

@@ -81,29 +81,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Same member produces same hash
+//     print(hash(Color.Red) == hash(Color.Red))
+//     print(hash(Priority.Low) == hash(Priority.Low))
+//
+//     # Different members produce different hashes
+//     print(hash(Color.Red) != hash(Color.Green))
+//     print(hash(Priority.Low) != hash(Priority.High))
+//     print("ok")
 void main() {
-    // # Same member produces same hash
-    // print(hash(Color.Red) == hash(Color.Red))
     std::cout << ::tpy::print_bool((::tpy::__hash__(Color::Red) == ::tpy::__hash__(Color::Red))) << "\n";
-    // print(hash(Priority.Low) == hash(Priority.Low))
     std::cout << ::tpy::print_bool((::tpy::__hash__(Priority::Low) == ::tpy::__hash__(Priority::Low))) << "\n";
-    // # Different members produce different hashes
-    // print(hash(Color.Red) != hash(Color.Green))
     std::cout << ::tpy::print_bool((::tpy::__hash__(Color::Red) != ::tpy::__hash__(Color::Green))) << "\n";
-    // print(hash(Priority.Low) != hash(Priority.High))
     std::cout << ::tpy::print_bool((::tpy::__hash__(Priority::Low) != ::tpy::__hash__(Priority::High))) << "\n";
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// # hash() on Enum and IntEnum types
+// from enum import Enum, IntEnum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # hash() on Enum and IntEnum types
-    // from enum import Enum, IntEnum
-    // main()
     main();
 }
 

@@ -9,22 +9,25 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first[T](*args: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::varargs<T> args);
+// def count[T](*args: T) -> int32:
 template<typename T>
 int32_t count(::tpy::varargs<const T> args);
+// def main() -> None:
 void main();
 
 // def first[T](*args: T) -> T:
+//     return args[0]
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::varargs<T> args) {
-    // return args[0]
     return ::tpy::__getitem__(args, 0);
 }
 // def count[T](*args: T) -> int32:
+//     return len(args)
 template<typename T>
 int32_t count(::tpy::varargs<const T> args) {
-    // return len(args)
     return ::tpy::__len__(args);
 }
 

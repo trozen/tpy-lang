@@ -12,11 +12,17 @@ struct OtherError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_error(code: int32) -> Own[AppError]:
 AppError make_error(int32_t code);
+// def test_raise_variable() -> None:
 void test_raise_variable();
+// def test_raise_reassigned() -> None:
 void test_raise_reassigned();
+// def test_raise_different_types() -> None:
 void test_raise_different_types();
+// def test_raise_function_result() -> None:
 void test_raise_function_result();
+// def main() -> None:
 void main();
 
 // class AppError(Exception):
@@ -61,9 +67,11 @@ inline std::ostream& operator<<(std::ostream& os, const OtherError& obj) {
 
 
 // def __init__(self, code: int32) -> None:
+//     self.code = code
 inline AppError::AppError(int32_t code) : code(code) {}
 
 // def __init__(self, tag: str) -> None:
+//     self.tag = tag
 inline OtherError::OtherError(std::string_view tag) : tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

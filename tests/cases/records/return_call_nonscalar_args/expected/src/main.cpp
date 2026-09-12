@@ -5,47 +5,47 @@ namespace tpyapp::main {
 
 
 // def build(label: str, values: list[int32]) -> Own[Config]:
+//     return Config(label, len(values))
 Config build(std::string_view label, const std::vector<int32_t>& values) {
-    // return Config(label, len(values))
     return Config(label, ::tpy::__len__(values));
 }
 
 // def make() -> Own[Config]:
+//     xs = [10, 20, 30]
+//     return build("cfg", xs)
 Config make() {
-    // xs = [10, 20, 30]
     std::vector<int32_t> xs = {10, 20, 30};
-    // return build("cfg", xs)
     return build("cfg", xs);
 }
 
 // def sized() -> int32:
+//     ys = [1, 2]
+//     c = build("dec", ys)
+//     return c.size
 int32_t sized() {
-    // ys = [1, 2]
     std::vector<int32_t> ys = {1, 2};
-    // c = build("dec", ys)
     Config c = build("dec", ys);
-    // return c.size
     return c.size;
 }
 
 // def main() -> None:
+//     c = make()
+//     print(c.label)
+//     print(c.size)
+//     print(sized())
 void main() {
-    // c = make()
     Config c = make();
-    // print(c.label)
     std::cout << c.label << "\n";
-    // print(c.size)
     std::cout << c.size << "\n";
-    // print(sized())
     std::cout << sized() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

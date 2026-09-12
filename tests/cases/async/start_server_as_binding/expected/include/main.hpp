@@ -16,12 +16,18 @@ struct __coro_handle;
 struct __coro_client;
 struct __coro_main_coro;
 
+// async def handle(reader: Own[asyncio.StreamReader],
+//                  writer: Own[asyncio.StreamWriter]) -> None:
 __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::StreamWriter writer);
+// async def client(port: int32, msg: str) -> str:
 __coro_client client(int32_t port, std::string_view msg);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: handle
+// async def handle(reader: Own[asyncio.StreamReader],
+//                  writer: Own[asyncio.StreamWriter]) -> None:
 struct __coro_handle {
     int32_t __state;
     bool __cancel_pending;
@@ -49,7 +55,7 @@ struct __coro_handle {
     }
 };
 
-// Async coroutine: client
+// async def client(port: int32, msg: str) -> str:
 struct __coro_client {
     int32_t __state;
     bool __cancel_pending;
@@ -85,7 +91,7 @@ struct __coro_client {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

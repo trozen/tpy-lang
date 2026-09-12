@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def inspect(h: Handle) -> int32:
+//     return h.fd
 int32_t inspect(const Handle& h) {
-    // return h.fd
     return h.fd;
 }
 
 // def close(h: Own[Handle]) -> int32:
+//     return h.fd
 int32_t close(Handle&& h) {
-    // return h.fd
     return h.fd;
 }
 
 // def main():
+//     h = Handle()
+//     h.fd = 42
+//     print(inspect(h))   # borrow (const ref), non-consuming
+//     print(close(h))     # last use -> auto-move  # tpyc: ok
 void main() {
-    // h = Handle()
     Handle h = Handle();
-    // h.fd = 42
     h.fd = 42;
-    // print(inspect(h))   # borrow (const ref), non-consuming
     std::cout << inspect(h) << "\n";
-    // print(close(h))     # last use -> auto-move  # tpyc: ok
     std::cout << close(std::move(h)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

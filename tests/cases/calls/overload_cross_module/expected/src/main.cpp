@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog("Rex")
+//     c = Cat(9)
+//     print(describe(d))
+//     print(describe(c))
 void main() {
-    // d = Dog("Rex")
     ::tpyapp::animals::Dog d = ::tpyapp::animals::Dog("Rex");
-    // c = Cat(9)
     ::tpyapp::animals::Cat c = ::tpyapp::animals::Cat(::tpy::BigInt(9));
-    // print(describe(d))
     std::cout << ::tpyapp::animals::describe(d) << "\n";
-    // print(describe(c))
     std::cout << ::tpyapp::animals::describe(c) << "\n";
 }
 
+// # Cross-module @overload: import and call overloaded function from another module
+// from animals import Dog, Cat, describe
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module @overload: import and call overloaded function from another module
-    // from animals import Dog, Cat, describe
     ::tpyapp::animals::__tpy_init();
-    // main()
     main();
 }
 

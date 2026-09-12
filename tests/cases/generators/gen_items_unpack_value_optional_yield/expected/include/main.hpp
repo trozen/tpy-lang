@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_g_items;
 
+// def g_items(d: dict[str, int32 | None]) -> Iterator[int32]:
 __gen_g_items g_items(::tpy::ordered_map<std::string, std::optional<int32_t>>& d);
+// def main() -> None:
 void main();
 
-// Generator: g_items
+// def g_items(d: dict[str, int32 | None]) -> Iterator[int32]:
 struct __gen_g_items : public ::tpy::next_iter_mixin<__gen_g_items, int32_t> {
     int32_t __state;
     ::tpy::ordered_map<std::string, std::optional<int32_t>>& d;

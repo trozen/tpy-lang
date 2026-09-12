@@ -5,57 +5,65 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[int32] = [10, 20, 30, 40, 50]
+//
+//     # basic_slice constructor
+//     s = basic_slice(1, 4)
+//     print(items[s])
+//
+//     # slice constructor (with step)
+//     s2 = slice(0, 5, 2)
+//     print(items[s2])
+//
+//     # basic_slice on string
+//     text = "hello world"
+//     s3 = basic_slice(0, 5)
+//     print(text[s3])
+//
+//     # printing
+//     print(s2)
+//
+//     # field access
+//     print(s.start)
+//     print(s.stop)
+//     print(s2.step)
+//
+//     # None args (open-ended slices)
+//     s4 = basic_slice(None, 3)
+//     print(items[s4])
+//
+//     s5 = basic_slice(2, None)
+//     print(items[s5])
+//
+//     s6 = slice(None, None, 2)
+//     print(items[s6])
 void main() {
-    // items: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
-    // # basic_slice constructor
-    // s = basic_slice(1, 4)
     ::tpy::BasicSlice s = ::tpy::BasicSlice{1, 4};
-    // print(items[s])
     std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s)) << "\n";
-    // # slice constructor (with step)
-    // s2 = slice(0, 5, 2)
     ::tpy::Slice s2 = ::tpy::Slice{0, 5, 2};
-    // print(items[s2])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, s2)) << "\n";
-    // # basic_slice on string
-    // text = "hello world"
     std::string_view text = "hello world";
-    // s3 = basic_slice(0, 5)
     ::tpy::BasicSlice s3 = ::tpy::BasicSlice{0, 5};
-    // print(text[s3])
     std::cout << ::tpy::str_slice(text, s3) << "\n";
-    // # printing
-    // print(s2)
     std::cout << s2 << "\n";
-    // # field access
-    // print(s.start)
     std::cout << ::tpy::print_optional_val(s.start) << "\n";
-    // print(s.stop)
     std::cout << ::tpy::print_optional_val(s.stop) << "\n";
-    // print(s2.step)
     std::cout << ::tpy::print_optional_val(s2.step) << "\n";
-    // # None args (open-ended slices)
-    // s4 = basic_slice(None, 3)
     ::tpy::BasicSlice s4 = ::tpy::BasicSlice{std::nullopt, 3};
-    // print(items[s4])
     std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s4)) << "\n";
-    // s5 = basic_slice(2, None)
     ::tpy::BasicSlice s5 = ::tpy::BasicSlice{2, std::nullopt};
-    // print(items[s5])
     std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, s5)) << "\n";
-    // s6 = slice(None, None, 2)
     ::tpy::Slice s6 = ::tpy::Slice{std::nullopt, std::nullopt, 2};
-    // print(items[s6])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, s6)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

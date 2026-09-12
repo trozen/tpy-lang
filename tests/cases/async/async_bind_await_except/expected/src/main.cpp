@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def boom(n: int) -> int:
+//     if n > 0:
+//         raise ValueError("bad input")
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_boom::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if n > 0:
         if ((n > 0)) {
-            // raise ValueError("bad input")
             throw ::tpy::ValueError("bad input");
         }
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -31,10 +31,15 @@ __coro_boom boom(::tpy::BigInt n) {
 }
 
 // async def main_coro() -> None:
+//     c = boom(1)
+//     try:
+//         print(await c)
+//     except ValueError:
+//         print("caught")
+//     await asyncio.sleep(0.001)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = boom(1)
         c.emplace(boom(::tpy::BigInt(1)));
         __state = S_JOIN_1;
         continue;
@@ -45,13 +50,11 @@ __coro_boom boom(::tpy::BigInt n) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             __await_lift_0 = std::move(__r0).value();
             c.reset();
-            // print(await c)
             std::cout << __await_lift_0 << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             c.reset();
-            // print("caught")
             std::cout << "caught" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -69,18 +72,15 @@ __coro_boom boom(::tpy::BigInt n) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_0: {
-        // await asyncio.sleep(0.001)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_1: {
         try {
-            // print(await c)
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // print("caught")
             std::cout << "caught" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -100,22 +100,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Awaiting a bound coroutine inside try/except where the coroutine
+// # raises: the prebuilt slot is reset on the catch path (no dangling
+// # in-flight frame) and the handler runs.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Awaiting a bound coroutine inside try/except where the coroutine
-    // # raises: the prebuilt slot is reset on the catch path (no dangling
-    // # in-flight frame) and the handler runs.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

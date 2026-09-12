@@ -5,31 +5,33 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p: Point | None = Point(7)
+//
+//     def clear():
+//         nonlocal p
+//         p = None
+//
+//     if p is not None:
+//         clear()
+//         print(p.x)  # tpyc: warning(/Potential None access/)
 void main() {
-    // p: Point | None = Point(7)
     Point __slot_1 = Point(7);
     Point* p = &__slot_1;
-    // def clear():
     auto clear = [&p]() {
-        // nonlocal p
-        // p = None
         p = nullptr;
     };
-    // if p is not None:
     if ((p != nullptr)) {
-        // clear()
         clear();
-        // print(p.x)  # tpyc: warning(/Potential None access/)
         std::cout << ::tpy::deref_check(p).x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

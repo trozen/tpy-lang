@@ -5,250 +5,250 @@ namespace tpyapp::main {
 
 
 // def make_list() -> Own[list[int32]]:
+//     return [1, 2, 3]
 std::vector<int32_t> make_list() {
-    // return [1, 2, 3]
     return {1, 2, 3};
 }
 
 // # Free function, for body: rvalue in both arms (pointer-local + rebind slot).
 // def for_record() -> None:
+//     for i in range(3):
+//         if i % 2 == 0:
+//             f = Flat(i)  # tpyc: ok
+//         else:
+//             f = Flat(i + 10)
+//         f.n += 1
+//         g = f
+//         g.n += 1
+//         print("for_record", f.n, g.n)
 void for_record() {
     std::optional<Flat> __slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // if i % 2 == 0:
         Flat* f;
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // f = Flat(i)  # tpyc: ok
             f = &*(__slot_1 = Flat(i));
-        // else:
         } else {
-            // f = Flat(i + 10)
             f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, 10))));
         }
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // g = f
         Flat& g = (*f);
-        // g.n += 1
         g.n = ::tpy::add_check<int32_t>(g.n, 1);
-        // print("for_record", f.n, g.n)
         std::cout << "for_record" << " " << f->n << " " << g.n << "\n";
     }
 }
 
 // # For body, list literal in both arms; the list is grown after the if.
 // def for_list() -> None:
+//     for i in range(3):
+//         if i % 2 == 0:
+//             xs = [i]  # tpyc: ok
+//         else:
+//             xs = [i, i]
+//         xs.append(7)
+//         print("for_list", xs)
 void for_list() {
     std::optional<std::vector<int32_t>> __slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // if i % 2 == 0:
         std::vector<int32_t>* xs;
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // xs = [i]  # tpyc: ok
             xs = &*(__slot_1 = {i});
-        // else:
         } else {
-            // xs = [i, i]
             xs = &*(__slot_1 = {i, i});
         }
-        // xs.append(7)
         xs->push_back(7);
-        // print("for_list", xs)
         std::cout << "for_list" << " " << ::tpy::ListPrinter((*xs)) << "\n";
     }
 }
 
 // # For body, an Own-returning call in one arm and a literal in the other.
 // def for_own_call(flag: bool) -> None:
+//     for i in range(2):
+//         if flag:
+//             items = make_list()  # tpyc: ok
+//         else:
+//             items = [i]
+//         items.append(99)
+//         print("for_own_call", items)
 void for_own_call(bool flag) {
     std::optional<std::vector<int32_t>> __slot_1;
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // if flag:
         std::vector<int32_t>* items;
         if (flag) {
-            // items = make_list()  # tpyc: ok
             items = &*(__slot_1 = make_list());
-        // else:
         } else {
-            // items = [i]
             items = &*(__slot_1 = {i});
         }
-        // items.append(99)
         items->push_back(99);
-        // print("for_own_call", items)
         std::cout << "for_own_call" << " " << ::tpy::ListPrinter((*items)) << "\n";
     }
 }
 
 // # While body, one binding arm plus `continue` (the OPTIONAL_STORAGE flavor).
 // def while_one_arm() -> None:
+//     i = 0
+//     while i < 4:
+//         i += 1
+//         if i % 2 == 0:
+//             f = Flat(i)  # tpyc: ok
+//         else:
+//             continue
+//         f.n += 1
+//         print("while_one_arm", f.n)
 void while_one_arm() {
-    // i = 0
     int32_t i = 0;
-    // while i < 4:
     while ((i < 4)) {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
-        // if i % 2 == 0:
         std::optional<Flat> f;
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // f = Flat(i)  # tpyc: ok
             f = Flat(i);
-        // else:
         } else {
-            // continue
             continue;
         }
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // print("while_one_arm", f.n)
         std::cout << "while_one_arm" << " " << f->n << "\n";
     }
 }
 
 // # The if nested in another if's arm (the outer if hoists nothing).
 // def nested_if(a: bool, b: bool) -> None:
+//     if a:
+//         if b:
+//             f = Flat(1)  # tpyc: ok
+//         else:
+//             f = Flat(2)
+//         f.n += 1
+//         print("nested_if", f.n)
+//     else:
+//         print("nested_if none")
 void nested_if(bool a, bool b) {
     std::optional<Flat> __slot_1;
-    // if a:
     if (a) {
-        // if b:
         Flat* f;
         if (b) {
-            // f = Flat(1)  # tpyc: ok
             f = &*(__slot_1 = Flat(1));
-        // else:
         } else {
-            // f = Flat(2)
             f = &*(__slot_1 = Flat(2));
         }
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // print("nested_if", f.n)
         std::cout << "nested_if" << " " << f->n << "\n";
-    // else:
     } else {
-        // print("nested_if none")
         std::cout << "nested_if none" << "\n";
     }
 }
 
 // # The loop-hoisted name is declared again in the sibling arm of the outer if.
 // def sibling_decl(a: bool) -> None:
+//     if a:
+//         for i in range(2):
+//             if i == 0:
+//                 f = Flat(i)  # tpyc: ok
+//             else:
+//                 f = Flat(i + 10)
+//             f.n += 1
+//             print("sibling_decl", f.n)
+//     else:
+//         f = Flat(5)
+//         f.n += 1
+//         print("sibling_decl", f.n)
 void sibling_decl(bool a) {
     std::optional<Flat> __slot_1;
-    // if a:
     if (a) {
-        // for i in range(2):
         for (int32_t i = 0; i < 2; ++i) {
-            // if i == 0:
             Flat* f;
             if ((i == 0)) {
-                // f = Flat(i)  # tpyc: ok
                 f = &*(__slot_1 = Flat(i));
-            // else:
             } else {
-                // f = Flat(i + 10)
                 f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, 10))));
             }
-            // f.n += 1
             f->n = ::tpy::add_check<int32_t>(f->n, 1);
-            // print("sibling_decl", f.n)
             std::cout << "sibling_decl" << " " << f->n << "\n";
         }
-    // else:
     } else {
-        // f = Flat(5)
         Flat __slot_2 = Flat(5);
         Flat* f = &__slot_2;
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // print("sibling_decl", f.n)
         std::cout << "sibling_decl" << " " << f->n << "\n";
     }
 }
 
 // # The loop-hoisted name is bound again after the loop (a fresh decl there).
 // def post_loop_redecl() -> None:
+//     for i in range(2):
+//         if i == 0:
+//             f = Flat(i)  # tpyc: ok
+//         else:
+//             f = Flat(i + 10)
+//         print("post_loop_redecl", f.n)
+//     f = Flat(99)
+//     f.n += 1
+//     print("post_loop_redecl", f.n)
 void post_loop_redecl() {
     std::optional<Flat> __slot_1;
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // if i == 0:
         Flat* f;
         if ((i == 0)) {
-            // f = Flat(i)  # tpyc: ok
             f = &*(__slot_1 = Flat(i));
-        // else:
         } else {
-            // f = Flat(i + 10)
             f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, 10))));
         }
-        // print("post_loop_redecl", f.n)
         std::cout << "post_loop_redecl" << " " << f->n << "\n";
     }
-    // f = Flat(99)
     Flat __slot_2 = Flat(99);
     Flat* f = &__slot_2;
-    // f.n += 1
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
-    // print("post_loop_redecl", f.n)
     std::cout << "post_loop_redecl" << " " << f->n << "\n";
 }
 
 // # @dynamic protocol local in a loop: `Base* s;` + per-arm adapter slots. Rvalue
 // # arms only: an lvalue arm copies the source (BUGS.md#dyn-local-lvalue-bind-copies).
 // def dyn_protocol() -> None:
+//     for i in range(3):
+//         if i % 2 == 0:
+//             s: Shape = Sq(i + 1)  # tpyc: ok
+//         else:
+//             s = Rect(i, 2)
+//         print("dyn_protocol", s.area())
 void dyn_protocol() {
     std::optional<::tpy::Adapter<Shape, Sq>> __slot_1;
     std::optional<::tpy::Adapter<Shape, Rect>> __slot_2;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // if i % 2 == 0:
         Shape* s;
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // s: Shape = Sq(i + 1)  # tpyc: ok
             __slot_1.emplace(Sq((::tpy::add_check<int32_t>(i, 1))));
             s = &*__slot_1;
-        // else:
         } else {
-            // s = Rect(i, 2)
             __slot_2.emplace(Rect(i, 2));
             s = &*__slot_2;
         }
-        // print("dyn_protocol", s.area())
         std::cout << "dyn_protocol" << " " << s->area() << "\n";
     }
 }
 
 // # Pointer-repr Optional bound in both arms (`None` in one).
 // def optional_both_arms() -> None:
+//     for i in range(3):
+//         if i % 2 == 0:
+//             p: Optional[Pic] = Pic(i)  # tpyc: ok
+//         else:
+//             p = None
+//         if p is not None:
+//             p.n += 1
+//             print("optional_both_arms", p.n)
+//         else:
+//             print("optional_both_arms none")
 void optional_both_arms() {
     std::optional<Pic> __slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // if i % 2 == 0:
         Pic* p;
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // p: Optional[Pic] = Pic(i)  # tpyc: ok
             p = &*(__slot_1 = Pic(i));
-        // else:
         } else {
-            // p = None
             p = nullptr;
         }
-        // if p is not None:
         if ((p != nullptr)) {
-            // p.n += 1
             p->n = ::tpy::add_check<int32_t>(p->n, 1);
-            // print("optional_both_arms", p.n)
             std::cout << "optional_both_arms" << " " << p->n << "\n";
-        // else:
         } else {
-            // print("optional_both_arms none")
             std::cout << "optional_both_arms none" << "\n";
         }
     }
@@ -256,31 +256,31 @@ void optional_both_arms() {
 
 // # Optional local first declared in the loop body, rvalue-reassigned in a nested if.
 // def optional_slot_loop() -> None:
+//     for i in range(3):
+//         p: Optional[Pic] = None  # tpyc: ok
+//         if i % 2 == 0:
+//             p = Pic(i)
+//         q = p
+//         if q is not None:
+//             q.n += 5
+//         if p is not None:
+//             print("optional_slot_loop", p.n)
+//         else:
+//             print("optional_slot_loop none")
 void optional_slot_loop() {
     std::optional<Pic> __slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p: Optional[Pic] = None  # tpyc: ok
         Pic* p = nullptr;
-        // if i % 2 == 0:
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // p = Pic(i)
             p = &*(__slot_1 = Pic(i));
         }
-        // q = p
         Pic* q = p;
-        // if q is not None:
         if ((q != nullptr)) {
-            // q.n += 5
             q->n = ::tpy::add_check<int32_t>(q->n, 5);
         }
-        // if p is not None:
         if ((p != nullptr)) {
-            // print("optional_slot_loop", p.n)
             std::cout << "optional_slot_loop" << " " << p->n << "\n";
-        // else:
         } else {
-            // print("optional_slot_loop none")
             std::cout << "optional_slot_loop none" << "\n";
         }
     }
@@ -289,17 +289,17 @@ void optional_slot_loop() {
 // # Optional local first declared in the loop body from a record rvalue and never
 // # reassigned: the F1 `__slot_N` storage is block-scoped next to the pointer.
 // def optional_rvalue_init() -> None:
+//     for i in range(2):
+//         p: Optional[Pic] = Pic(i)  # tpyc: ok
+//         if p is not None:
+//             p.n += 1
+//             print("optional_rvalue_init", p.n)
 void optional_rvalue_init() {
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // p: Optional[Pic] = Pic(i)  # tpyc: ok
         Pic __slot_1 = Pic(i);
         Pic* p = &__slot_1;
-        // if p is not None:
         if ((p != nullptr)) {
-            // p.n += 1
             p->n = ::tpy::add_check<int32_t>(p->n, 1);
-            // print("optional_rvalue_init", p.n)
             std::cout << "optional_rvalue_init" << " " << p->n << "\n";
         }
     }
@@ -307,17 +307,17 @@ void optional_rvalue_init() {
 
 // # ... the same with a list literal init, grown through the pointer.
 // def optional_list_init() -> None:
+//     for i in range(2):
+//         xs: Optional[list[int32]] = [i]  # tpyc: ok
+//         if xs is not None:
+//             xs.append(5)
+//             print("optional_list_init", xs)
 void optional_list_init() {
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // xs: Optional[list[int32]] = [i]  # tpyc: ok
         std::vector<int32_t> __slot_1 = std::vector<int32_t>{i};
         std::vector<int32_t>* xs = &__slot_1;
-        // if xs is not None:
         if ((xs != nullptr)) {
-            // xs.append(5)
             xs->push_back(5);
-            // print("optional_list_init", xs)
             std::cout << "optional_list_init" << " " << ::tpy::print_optional<::tpy::ListPrinter<std::vector<int32_t>>, std::vector<int32_t>>(xs) << "\n";
         }
     }
@@ -325,34 +325,34 @@ void optional_list_init() {
 
 // # ... and the same name declared again after the loop, reseated once more.
 // def optional_redecl_post_loop() -> None:
+//     for i in range(2):
+//         p: Optional[Pic] = None  # tpyc: ok
+//         if i == 0:
+//             p = Pic(i)
+//         if p is not None:
+//             print("optional_redecl_post_loop", p.n)
+//     p: Optional[Pic] = Pic(9)
+//     p = Pic(10)
+//     if p is not None:
+//         p.n += 1
+//         print("optional_redecl_post_loop", p.n)
 void optional_redecl_post_loop() {
     std::optional<Pic> __slot_1;
     std::optional<Pic> __slot_3;
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // p: Optional[Pic] = None  # tpyc: ok
         Pic* p = nullptr;
-        // if i == 0:
         if ((i == 0)) {
-            // p = Pic(i)
             p = &*(__slot_1 = Pic(i));
         }
-        // if p is not None:
         if ((p != nullptr)) {
-            // print("optional_redecl_post_loop", p.n)
             std::cout << "optional_redecl_post_loop" << " " << p->n << "\n";
         }
     }
-    // p: Optional[Pic] = Pic(9)
     Pic __slot_2 = Pic(9);
     Pic* p = &__slot_2;
-    // p = Pic(10)
     p = &*(__slot_3 = Pic(10));
-    // if p is not None:
     if ((p != nullptr)) {
-        // p.n += 1
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
-        // print("optional_redecl_post_loop", p.n)
         std::cout << "optional_redecl_post_loop" << " " << p->n << "\n";
     }
 }
@@ -360,25 +360,25 @@ void optional_redecl_post_loop() {
 // # With body: sema's with-hoist claims every body-new name first, so the if
 // # reseats through the with's predecl rather than hoisting its own.
 // def with_body() -> None:
+//     with CM(1) as n:
+//         if n > 0:
+//             f = Flat(n)  # tpyc: ok
+//         else:
+//             f = Flat(0)
+//         f.n += 1
+//         print("with_body", f.n)
 void with_body() {
     std::optional<Flat> __slot_1;
-    // with CM(1) as n:
     Flat* f;
     auto __ctx_1 = CM(1);
     auto n = __ctx_1.__enter__();
     try {
-        // if n > 0:
         if ((n > 0)) {
-            // f = Flat(n)  # tpyc: ok
             f = &*(__slot_1 = Flat(n));
-        // else:
         } else {
-            // f = Flat(0)
             f = &*(__slot_1 = Flat(0));
         }
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // print("with_body", f.n)
         std::cout << "with_body" << " " << f->n << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -394,29 +394,30 @@ void with_body() {
 
 // # Try body inside a loop.
 // def try_body() -> None:
+//     for i in range(2):
+//         try:
+//             if i == 0:
+//                 f = Flat(1)  # tpyc: ok
+//             else:
+//                 f = Flat(2)
+//             f.n += 1
+//             print("try_body", f.n)
+//         except ValueError:
+//             print("try_body err")
 void try_body() {
     std::optional<Flat> __slot_1;
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // try:
         {
             try {
-                // if i == 0:
                 Flat* f;
                 if ((i == 0)) {
-                    // f = Flat(1)  # tpyc: ok
                     f = &*(__slot_1 = Flat(1));
-                // else:
                 } else {
-                    // f = Flat(2)
                     f = &*(__slot_1 = Flat(2));
                 }
-                // f.n += 1
                 f->n = ::tpy::add_check<int32_t>(f->n, 1);
-                // print("try_body", f.n)
                 std::cout << "try_body" << " " << f->n << "\n";
             } catch (const ::tpy::ValueError&) {
-                // print("try_body err")
                 std::cout << "try_body err" << "\n";
             }
         }
@@ -425,32 +426,32 @@ void try_body() {
 
 // # Match arm body.
 // def match_arm(k: int32) -> None:
+//     match k:
+//         case 0:
+//             if k == 0:
+//                 f = Flat(10)  # tpyc: ok
+//             else:
+//                 f = Flat(11)
+//             f.n += 1
+//             print("match_arm", f.n)
+//         case _:
+//             print("match_arm other")
 void match_arm(int32_t k) {
     std::optional<Flat> __slot_1;
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 0:
     case 0: {
-        // if k == 0:
         Flat* f;
         if ((k == 0)) {
-            // f = Flat(10)  # tpyc: ok
             f = &*(__slot_1 = Flat(10));
-        // else:
         } else {
-            // f = Flat(11)
             f = &*(__slot_1 = Flat(11));
         }
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // print("match_arm", f.n)
         std::cout << "match_arm" << " " << f->n << "\n";
         break;
     }
-    // case _:
     default: {
-        // print("match_arm other")
         std::cout << "match_arm other" << "\n";
         break;
     }
@@ -461,128 +462,130 @@ void match_arm(int32_t k) {
 // # rebind slot a free function takes: the nested body classifies off the OUTER
 // # prescan (BUGS.md#rebind-slot-missing-module-nested-def).
 // def closure() -> None:
+//     def inner(k: int32) -> int32:
+//         for j in range(2):
+//             if j == 0:
+//                 f = Flat(k)  # tpyc: ok
+//             else:
+//                 f = Flat(k + j)
+//             f.n += 1
+//             k += f.n
+//         return k
+//
+//     print("closure", inner(1))
 void closure() {
-    // def inner(k: int32) -> int32:
     auto inner = [](int32_t k) -> int32_t {
-        // for j in range(2):
         for (int32_t j = 0; j < 2; ++j) {
-            // if j == 0:
             std::optional<Flat> f;
             if ((j == 0)) {
-                // f = Flat(k)  # tpyc: ok
                 f = Flat(k);
-            // else:
             } else {
-                // f = Flat(k + j)
                 f = Flat((::tpy::add_check<int32_t>(k, j)));
             }
-            // f.n += 1
             f->n = ::tpy::add_check<int32_t>(f->n, 1);
-            // k += f.n
             k = ::tpy::add_check<int32_t>(k, f->n);
         }
-        // return k
         return k;
     };
-    // print("closure", inner(1))
     std::cout << "closure" << " " << inner(1) << "\n";
 }
 
 // # @error_return body.
 // @error_return(MyErr)
 // def error_return_body(i: int32) -> int32:
+//     for j in range(2):
+//         if j == 0:
+//             f = Flat(i)  # tpyc: ok
+//         else:
+//             f = Flat(i + j)
+//         f.n += 1
+//         i += f.n
+//     return i
 std::expected<int32_t, MyErr> error_return_body(int32_t i) {
     std::optional<Flat> __slot_1;
-    // for j in range(2):
     for (int32_t j = 0; j < 2; ++j) {
-        // if j == 0:
         Flat* f;
         if ((j == 0)) {
-            // f = Flat(i)  # tpyc: ok
             f = &*(__slot_1 = Flat(i));
-        // else:
         } else {
-            // f = Flat(i + j)
             f = &*(__slot_1 = Flat((::tpy::add_check<int32_t>(i, j))));
         }
-        // f.n += 1
         f->n = ::tpy::add_check<int32_t>(f->n, 1);
-        // i += f.n
         i = ::tpy::add_check<int32_t>(i, f->n);
     }
-    // return i
     return i;
 }
 
 // def main() -> None:
+//     for_record()
+//     for_list()
+//     for_own_call(True)
+//     for_own_call(False)
+//     while_one_arm()
+//     nested_if(True, False)
+//     nested_if(False, False)
+//     sibling_decl(True)
+//     sibling_decl(False)
+//     post_loop_redecl()
+//     dyn_protocol()
+//     optional_both_arms()
+//     optional_slot_loop()
+//     optional_rvalue_init()
+//     optional_list_init()
+//     optional_redecl_post_loop()
+//     b = Builder(3)
+//     b.add(4)
+//     print("ctor_method", b.total)
+//     with_body()
+//     try_body()
+//     match_arm(0)
+//     match_arm(1)
+//     closure()
+//     try:
+//         print("error_return_body", error_return_body(1))
+//     except MyErr:
+//         print("error_return_body err")
 void main() {
-    // for_record()
     for_record();
-    // for_list()
     for_list();
-    // for_own_call(True)
     for_own_call(true);
-    // for_own_call(False)
     for_own_call(false);
-    // while_one_arm()
     while_one_arm();
-    // nested_if(True, False)
     nested_if(true, false);
-    // nested_if(False, False)
     nested_if(false, false);
-    // sibling_decl(True)
     sibling_decl(true);
-    // sibling_decl(False)
     sibling_decl(false);
-    // post_loop_redecl()
     post_loop_redecl();
-    // dyn_protocol()
     dyn_protocol();
-    // optional_both_arms()
     optional_both_arms();
-    // optional_slot_loop()
     optional_slot_loop();
-    // optional_rvalue_init()
     optional_rvalue_init();
-    // optional_list_init()
     optional_list_init();
-    // optional_redecl_post_loop()
     optional_redecl_post_loop();
-    // b = Builder(3)
     Builder b = Builder(3);
-    // b.add(4)
     b.add(4);
-    // print("ctor_method", b.total)
     std::cout << "ctor_method" << " " << b.total << "\n";
-    // with_body()
     with_body();
-    // try_body()
     try_body();
-    // match_arm(0)
     match_arm(0);
-    // match_arm(1)
     match_arm(1);
-    // closure()
     closure();
-    // try:
     {
-        // print("error_return_body", error_return_body(1))
         std::cout << "error_return_body" << " " << ({ auto __er_2 = error_return_body(1); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except MyErr:
         __except_1:;
-        // print("error_return_body err")
         std::cout << "error_return_body err" << "\n";
         __after_try_1:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

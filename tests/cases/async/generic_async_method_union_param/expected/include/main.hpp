@@ -23,8 +23,11 @@ template <typename T>
 struct __coro_Holder_show;
 struct __coro_PlainHolder_show;
 
+// async def bump(a: A) -> None:
 __coro_bump bump(A& a);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class A:
@@ -64,6 +67,7 @@ struct Holder {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
+    //     self.v = v
     Holder() = default;
     explicit Holder(::tpy::own_param_t<T> v) : v(std::move(v)) {}
 
@@ -95,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& os, const PlainHolder& obj) {
     return os;
 }
 
-// Async coroutine: Holder.show
+// async def show(self, u: A | B) -> int32:
 template <typename T>
 struct __coro_Holder_show {
     int32_t __state;
@@ -122,11 +126,14 @@ struct __coro_Holder_show {
 };
 
 // async def show(self, u: A | B) -> int32:
+//     await asyncio.sleep(0.001)
+//     if isinstance(u, A):
+//         return u.x
+//     return u.y
 template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_show<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -136,16 +143,13 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if isinstance(u, A):
         if (std::holds_alternative<const A*>(u)) {
             auto& __u = *std::get<const A*>(u);
-            // return u.x
             __state = S_DONE;
             int32_t __tpy_async_ret = __u.x;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         auto& __u = *std::get<const B*>(u);
-        // return u.y
         __state = S_DONE;
         int32_t __tpy_async_ret = __u.y;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -161,7 +165,7 @@ inline __coro_Holder_show<T> Holder<T>::show(::tpy::Union<const A*, const B*> u)
     return __coro_Holder_show<T>(*this, u);
 }
 
-// Async coroutine: PlainHolder.show
+// async def show(self, u: A | B) -> int32:
 struct __coro_PlainHolder_show {
     int32_t __state;
     bool __cancel_pending;
@@ -190,7 +194,7 @@ inline __coro_PlainHolder_show PlainHolder::show(::tpy::Union<const A*, const B*
     return __coro_PlainHolder_show(*this, u);
 }
 
-// Async coroutine: bump
+// async def bump(a: A) -> None:
 struct __coro_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -212,7 +216,7 @@ struct __coro_bump {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -248,12 +252,15 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.x = 1
 inline A::A() : x(1) {}
 
 // def __init__(self) -> None:
+//     self.y = 2
 inline B::B() : y(2) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline PlainHolder::PlainHolder(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

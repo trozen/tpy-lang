@@ -3,16 +3,18 @@
 
 namespace tpyapp::main {
 
-// total: int32 = 0
 int32_t total{};
 
 // async def main_coro() -> None:
+//     w = Worker()
+//     await w.add(5)
+//     print("total =", total)
+//     await w.add(3)
+//     print("total =", total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // w = Worker()
         w.emplace(Worker());
-        // await w.add(5)
         __sub_0.emplace((*w), 5);
         __state = S_RESUME_0;
         continue;
@@ -22,9 +24,7 @@ int32_t total{};
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("total =", total)
         std::cout << "total =" << " " << total << "\n";
-        // await w.add(3)
         __sub_1.emplace((*w), 3);
         __state = S_RESUME_1;
         continue;
@@ -34,7 +34,6 @@ int32_t total{};
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // print("total =", total)
         std::cout << "total =" << " " << total << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -51,17 +50,18 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def add(self, n: int32) -> None:
+//     global total
+//     await asyncio.sleep(0)
+//     total += n
 ::tpystd::tpy::Poll<::std::monostate> __coro_Worker_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // global total
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -71,7 +71,6 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // total += n
         total = ::tpy::add_check<int32_t>(total, n);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -82,20 +81,22 @@ void main() {
 }
 
 
+// # Regression: a `global` written inside an async METHOD, after an `await`
+// # suspension, must reach the module slot (not a resumable-frame copy) so the
+// # awaiter observes it. Exercises the method-path generator_locals fix and the
+// # post-suspension (resume-state) write that the free-function test omits.
+// import asyncio
+//
+// total: int32 = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: a `global` written inside an async METHOD, after an `await`
-    // # suspension, must reach the module slot (not a resumable-frame copy) so the
-    // # awaiter observes it. Exercises the method-path generator_locals fix and the
-    // # post-suspension (resume-state) write that the free-function test omits.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // total: int32 = 0
     total = 0;
-    // main()
     main();
 }
 

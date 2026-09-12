@@ -8,35 +8,35 @@ namespace tpyapp::main {
 // # must NOT reject compatible reassigns -- literal->literal and owned->view
 // # widening through the same PendingViewType branch.
 // def make_str() -> str:
+//     return "owned"
 std::string make_str() {
-    // return "owned"
     return "owned";
 }
 
 // def main() -> None:
+//     s = "asd"
+//     s = "qwe"
+//     print(s)           # tpyc: ok
+//     s = s + "x"        # owned source: must promote the local to owned, not stay a view
+//     print(s)
+//     s = make_str()
+//     print(s)
 void main() {
-    // s = "asd"
     std::string s = "asd";
-    // s = "qwe"
     s = "qwe";
-    // print(s)           # tpyc: ok
     std::cout << s << "\n";
-    // s = s + "x"        # owned source: must promote the local to owned, not stay a view
     s += "x";
-    // print(s)
     std::cout << s << "\n";
-    // s = make_str()
     s = make_str();
-    // print(s)
     std::cout << s << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

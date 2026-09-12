@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check_truthy(s: Optional[str]) -> None:
 void check_truthy(std::optional<std::string_view> s);
+// def check_none(s: Optional[str]) -> None:
 void check_none(std::optional<std::string_view> s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

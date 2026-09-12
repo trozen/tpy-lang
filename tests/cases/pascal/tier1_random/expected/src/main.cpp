@@ -3,11 +3,17 @@
 
 namespace tpyapp::main {
 
-// i, r: integer;
 int32_t i{};
-// i, r: integer;
 int32_t r{};
 
+// i, r: integer;
+//
+// i := 5;
+// writeln(succ(i));     { 6 }
+// writeln(pred(i));     { 4 }
+// r := random(100);
+// if (r >= 0) and (r < 100) then writeln('in range')
+// else writeln('out of range');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -16,20 +22,13 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
-    // i := 5;
     i = 5;
-    // writeln(succ(i));     { 6 }
     std::cout << ::pascal_rt::runtime::builtins::succ_int(i) << "\n";
-    // writeln(pred(i));     { 4 }
     std::cout << ::pascal_rt::runtime::builtins::pred_int(i) << "\n";
-    // r := random(100);
     r = ::pascal_rt::runtime::builtins::random_int(100);
-    // if (r >= 0) and (r < 100) then writeln('in range')
     if (((r >= 0) && (r < 100))) {
-        // if (r >= 0) and (r < 100) then writeln('in range')
         std::cout << "in range" << "\n";
     } else {
-        // else writeln('out of range');
         std::cout << "out of range" << "\n";
     }
 }

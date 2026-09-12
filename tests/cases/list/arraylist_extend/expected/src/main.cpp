@@ -5,61 +5,63 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # extend from another ArrayList (Spannable)
+//     a = ArrayList[int32, 16]()
+//     a.append(1)
+//     a.append(2)
+//     b = ArrayList[int32, 16]()
+//     b.append(10)
+//     b.append(20)
+//     b.append(30)
+//     a.extend(b)
+//     print(len(a))       # 5
+//     for x in a:
+//         print(x)
+//
+//     # extend from Array/Span
+//     c = ArrayList[int32, 8]()
+//     arr: Array[int32, 3] = [100, 200, 300]
+//     s: Span[int32] = arr
+//     c.extend(s)
+//     print(len(c))       # 3
+//     print(c[0])         # 100
+//     print(c[2])         # 300
 void main() {
-    // # extend from another ArrayList (Spannable)
-    // a = ArrayList[int32, 16]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 16> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
-    // a.append(1)
     a.append(1);
-    // a.append(2)
     a.append(2);
-    // b = ArrayList[int32, 16]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 16> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
-    // b.append(10)
     b.append(10);
-    // b.append(20)
     b.append(20);
-    // b.append(30)
     b.append(30);
-    // a.extend(b)
     a.extend(b);
-    // print(len(a))       # 5
     std::cout << ::tpy::__len__(a) << "\n";
-    // for x in a:
     auto& __src_0 = a;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
-    // # extend from Array/Span
-    // c = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    // arr: Array[int32, 3] = [100, 200, 300]
     std::array<int32_t, 3> arr = {100, 200, 300};
-    // s: Span[int32] = arr
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
-    // c.extend(s)
     c.extend(s);
-    // print(len(c))       # 3
     std::cout << ::tpy::__len__(c) << "\n";
-    // print(c[0])         # 100
     std::cout << c[0] << "\n";
-    // print(c[2])         # 300
     std::cout << c[2] << "\n";
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

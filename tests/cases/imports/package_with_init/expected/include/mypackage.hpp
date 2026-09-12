@@ -10,6 +10,7 @@ namespace tpyapp::mypackage {
 extern int32_t CONST;
 inline constexpr std::string_view __name__ = "mypackage";
 
+// def func() -> None:
 void func();
 
 void __tpy_init();

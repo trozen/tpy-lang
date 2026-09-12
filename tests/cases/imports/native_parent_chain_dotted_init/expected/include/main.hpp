@@ -12,6 +12,7 @@ inline auto& COUNTER = ::dotted_init::pkg::inner::leaf::COUNTER;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

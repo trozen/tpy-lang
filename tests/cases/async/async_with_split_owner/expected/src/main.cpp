@@ -5,13 +5,15 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     m = Mgr()
+//     async with m:
+//         print("inside:", m.n)
+//     print("after:", m.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // m = Mgr()
         m.emplace(Mgr());
         __with_ctx_0 = &((*m));
-        // async with m:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -38,20 +40,17 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_0: {
-        // async with m:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_1: {
-        // print("after:", m.n)
         std::cout << "after:" << " " << (*m).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_2: {
         try {
-            // print("inside:", m.n)
             std::cout << "inside:" << " " << (*m).n << "\n";
             __state = S_JOIN_0;
             continue;
@@ -73,16 +72,17 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def __aenter__(self) -> None:
+//     await asyncio.sleep(0)
+//     self.n += 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_HasEnter___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -92,7 +92,6 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // self.n += 1
         __self.n = ::tpy::add_check<int32_t>(__self.n, 1);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -104,10 +103,11 @@ void main() {
 
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
+//     await asyncio.sleep(0)
+//     self.n += 100
 ::tpystd::tpy::Poll<::std::monostate> __coro_HasBoth___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -117,7 +117,6 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // self.n += 100
         __self.n = ::tpy::add_check<int32_t>(__self.n, 100);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -128,17 +127,18 @@ void main() {
 }
 
 
+// # Regression: `async with` where __aenter__ and __aexit__ are defined on
+// # DIFFERENT ancestors -- each coro struct names its own defining record (the
+// # owners are stamped independently).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `async with` where __aenter__ and __aexit__ are defined on
-    // # DIFFERENT ancestors -- each coro struct names its own defining record (the
-    // # owners are stamped independently).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

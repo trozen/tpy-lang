@@ -5,135 +5,135 @@ namespace tpyapp::main {
 
 
 // def rewrite(s: Sink, h: Holder) -> None:
+//     # The plain field write, same two families.
+//     s.q = copy(h.brec())  # tpyc: ok
+//     s.box = copy(h.bctr())  # tpyc: ok
 void rewrite(Sink& s, Holder& h) {
-    // # The plain field write, same two families.
-    // s.q = copy(h.brec())  # tpyc: ok
     s.q = Payload(h.brec());
-    // s.box = copy(h.bctr())  # tpyc: ok
     s.box = std::vector<int32_t>(h.bctr());
 }
 
 // def setitem(h: Holder) -> int32:
+//     xs = [Payload(0)]
+//     xs[0] = copy(h.brec())  # tpyc: ok
+//     h.p.v = 5
+//     return xs[0].v
 int32_t setitem(Holder& h) {
-    // xs = [Payload(0)]
     std::array<Payload, 1> xs = {Payload(0)};
-    // xs[0] = copy(h.brec())  # tpyc: ok
     ::tpy::__setitem__(xs, 0, Payload(h.brec()));
-    // h.p.v = 5
     h.p.v = 5;
-    // return xs[0].v
     return ::tpy::__getitem__(xs, 0).v;
 }
 
 // def container_element(h: Holder) -> int32:
+//     xs = [copy(h.brec()), copy(h.p)]  # tpyc: ok
+//     h.p.v = 6
+//     return xs[0].v + xs[1].v
 int32_t container_element(Holder& h) {
-    // xs = [copy(h.brec()), copy(h.p)]  # tpyc: ok
     std::array<Payload, 2> xs = {Payload(h.brec()), Payload(h.p)};
-    // h.p.v = 6
     h.p.v = 6;
-    // return xs[0].v + xs[1].v
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(xs, 0).v, ::tpy::__getitem__(xs, 1).v));
 }
 
 // def qualified_decl(h: Holder) -> int32:
+//     # The module-QUALIFIED spelling at a plain decl reaches the generic call
+//     # tail rather than the decl sink's own copy row -- same one-step source.
+//     dup = tpy.copy(h.brec())
+//     h.p.v = 4
+//     return dup.v
 int32_t qualified_decl(Holder& h) {
-    // # The module-QUALIFIED spelling at a plain decl reaches the generic call
-    // # tail rather than the decl sink's own copy row -- same one-step source.
-    // dup = tpy.copy(h.brec())
     Payload dup = Payload(h.brec());
-    // h.p.v = 4
     h.p.v = 4;
-    // return dup.v
     return dup.v;
 }
 
 // def variant_copy(pick: bool) -> int32:
+//     # NOT the copy-construct tail: a ptr-variant union's copy is the
+//     # active-member deep copy, its own arm.
+//     u: Dog | Cat = Dog(1)
+//     if not pick:
+//         u = Cat(2)
+//     dup = copy(u)
+//     if isinstance(u, Dog):
+//         u.n = 8
+//     if isinstance(dup, Dog):
+//         return dup.n
+//     return 0
 int32_t variant_copy(bool pick) {
     std::optional<::tpy::Union<Cat, Dog>> __slot_2;
-    // # NOT the copy-construct tail: a ptr-variant union's copy is the
-    // # active-member deep copy, its own arm.
-    // u: Dog | Cat = Dog(1)
     ::tpy::Union<Cat, Dog> __slot_1 = Dog(1);
     ::tpy::Union<Cat*, Dog*> u = ::tpy::to_ptr_variant(__slot_1);
-    // if not pick:
     if ((!(pick))) {
-        // u = Cat(2)
         __slot_2.emplace(Cat(2));
         u = ::tpy::to_ptr_variant(*__slot_2);
     }
-    // dup = copy(u)
     ::tpy::Union<Cat, Dog> __slot_3 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(u);
     ::tpy::Union<Cat*, Dog*> dup = ::tpy::to_ptr_variant(__slot_3);
-    // if isinstance(u, Dog):
     if (std::holds_alternative<Dog*>(u)) {
         auto& __u = *std::get<Dog*>(u);
-        // u.n = 8
         __u.n = 8;
     }
-    // if isinstance(dup, Dog):
     if (std::holds_alternative<Dog*>(dup)) {
         auto& __dup = *std::get<Dog*>(dup);
-        // return dup.n
         return __dup.n;
     }
     auto& __dup = *std::get<Cat*>(dup);
-    // return 0
     return 0;
 }
 
 // def optional_copy(o: Payload | None) -> int32:
+//     # NOT the copy-construct tail either: a pointer-repr Optional is handed
+//     # back unwrapped, and the SINK's storage lift is what copies.
+//     s = OptSink()
+//     s.opt = copy(o)  # tpyc: ok
+//     if o is not None:
+//         o.v = 9
+//     if s.opt is not None:
+//         return s.opt.v
+//     return 0
 int32_t optional_copy(Payload* o) {
-    // # NOT the copy-construct tail either: a pointer-repr Optional is handed
-    // # back unwrapped, and the SINK's storage lift is what copies.
-    // s = OptSink()
     OptSink s = OptSink();
-    // s.opt = copy(o)  # tpyc: ok
     s.opt = ::tpy::ptr_to_optional(o);
-    // if o is not None:
     if ((o != nullptr)) {
-        // o.v = 9
         o->v = 9;
     }
-    // if s.opt is not None:
     if ((s.opt.has_value())) {
-        // return s.opt.v
         return (*s.opt).v;
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     h = Holder()
+//     s = Sink(h)
+//     rewrite(s, h)
+//     h.p.v = 3
+//     h.items.append(4)
+//     print(s.q.v, len(s.box), h.p.v, len(h.items))
+//     print(setitem(Holder()), container_element(Holder()),
+//           qualified_decl(Holder()))
+//     print(variant_copy(True), optional_copy(Payload(2)))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // s = Sink(h)
     Sink s = Sink(h);
-    // rewrite(s, h)
     rewrite(s, h);
-    // h.p.v = 3
     h.p.v = 3;
-    // h.items.append(4)
     h.items.push_back(4);
-    // print(s.q.v, len(s.box), h.p.v, len(h.items))
     std::cout << s.q.v << " " << ::tpy::__len__(s.box) << " " << h.p.v << " " << ::tpy::__len__(h.items) << "\n";
-    // print(setitem(Holder()), container_element(Holder()),
-    // qualified_decl(Holder()))
     Holder __tmp_1 = Holder();
     Holder __tmp_2 = Holder();
     Holder __tmp_3 = Holder();
     std::cout << setitem(__tmp_1) << " " << container_element(__tmp_2) << " " << qualified_decl(__tmp_3) << "\n";
-    // print(variant_copy(True), optional_copy(Payload(2)))
     Payload __tmp_4 = Payload(2);
     std::cout << variant_copy(true) << " " << optional_copy(&(__tmp_4)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

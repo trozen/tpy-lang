@@ -24,6 +24,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @model
@@ -150,12 +151,9 @@ inline std::string Item::to_json(int32_t indent) const {
 }
 
 inline void Item::save_json(std::string_view __path, int32_t indent) const {
-    // # Test @model and @dataclass with field(default_factory=list) in the same module.
     auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
     auto& __f = __ctx_1.__enter__();
     try {
-        // # Test @model and @dataclass with field(default_factory=list) in the same module.
-        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -167,18 +165,13 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-    // # registration (Default), which broke default_factory validation.
 }
 
 inline Item Item::load_json(std::string_view __path) {
-    // # Test @model and @dataclass with field(default_factory=list) in the same module.
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        // # Test @model and @dataclass with field(default_factory=list) in the same module.
-        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -190,20 +183,14 @@ inline Item Item::load_json(std::string_view __path) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // # Test @model and @dataclass with field(default_factory=list) in the same module.
-    // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-    // # registration (Default), which broke default_factory validation.
     return Item::from_json(__data);
 }
 
 inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_load_json(std::string_view __path) {
-    // # Test @model and @dataclass with field(default_factory=list) in the same module.
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        // # Test @model and @dataclass with field(default_factory=list) in the same module.
-        // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -215,9 +202,6 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // # Test @model and @dataclass with field(default_factory=list) in the same module.
-    // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
-    // # registration (Default), which broke default_factory validation.
     return Item::try_from_json(__data);
 }
 

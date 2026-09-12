@@ -20,15 +20,22 @@ struct __gen_each_mono;
 template <::tpystd::typing::Iterable<int32_t> T_items>
 struct __coro_count_mono;
 
+// def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 __gen_each<T, T_items> each(T_items&& items);
+// def each_mono(items: Own[Iterable[int32]]) -> Iterator[tuple[int32, int32]]:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 __gen_each_mono<T_items> each_mono(T_items&& items);
+// async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 __coro_count_mono<T_items> count_mono(T_items&& items);
+// def reference_element() -> None:
 void reference_element();
+// def value_element() -> None:
 void value_element();
+// def reused_source() -> None:
 void reused_source();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -47,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// Async coroutine: count_mono
+// async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 struct __coro_count_mono {
     int32_t __state;
@@ -72,24 +79,24 @@ struct __coro_count_mono {
     }
 };
 // async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
+//     s: int32 = 0
+//     for _item in items:
+//         s += 1
+//     return s
 template <::tpystd::typing::Iterable<int32_t> T_items>
 ::tpystd::tpy::Poll<int32_t> __coro_count_mono<T_items>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // s: int32 = 0
         s = 0;
-        // for _item in items:
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t _item = ::tpy::unwrap_ref(*__r_1);
-            // s += 1
             s = ::tpy::add_check<int32_t>(s, 1);
         }
-        // return s
         __state = S_DONE;
         int32_t __tpy_async_ret = s;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -106,7 +113,7 @@ __coro_count_mono<T_items> count_mono(T_items&& items) {
     return __coro_count_mono<T_items>(std::forward<T_items>(items));
 }
 
-// Generator: each
+// def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
     int32_t __state;
@@ -135,23 +142,25 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, std::t
     }
 };
 // def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
+//     i: int32 = 0
+//     for item in items:
+//         yield (i, item)
+//         yield (i, item)
+//         i += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_each<T, T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: int32 = 0
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // yield (i, item)
         __state = S_RESUME_1;
         return std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>((*item))};
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -163,7 +172,6 @@ std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration>
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         item.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        // yield (i, item)
         __state = S_RESUME_0;
         return std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>((*item))};
     }
@@ -179,7 +187,7 @@ __gen_each<T, T_items> each(T_items&& items) {
     return __gen_each<T, T_items>(std::forward<T_items>(items));
 }
 
-// Generator: each_mono
+// def each_mono(items: Own[Iterable[int32]]) -> Iterator[tuple[int32, int32]]:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 struct __gen_each_mono : public ::tpy::next_iter_mixin<__gen_each_mono<T_items>, std::tuple<int32_t, int32_t>> {
     int32_t __state;
@@ -208,23 +216,25 @@ struct __gen_each_mono : public ::tpy::next_iter_mixin<__gen_each_mono<T_items>,
     }
 };
 // def each_mono(items: Own[Iterable[int32]]) -> Iterator[tuple[int32, int32]]:  # tpyc: warning(/never consumed/)
+//     i: int32 = 0
+//     for item in items:
+//         yield (i, item)
+//         yield (i, item)
+//         i += 1
 template <::tpystd::typing::Iterable<int32_t> T_items>
 std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_each_mono<T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: int32 = 0
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // yield (i, item)
         __state = S_RESUME_1;
         return std::tuple<int32_t, int32_t>{i, item};
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -236,7 +246,6 @@ std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_each_mon
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         item = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield (i, item)
         __state = S_RESUME_0;
         return std::tuple<int32_t, int32_t>{i, item};
     }
@@ -254,6 +263,7 @@ __gen_each_mono<T_items> each_mono(T_items&& items) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

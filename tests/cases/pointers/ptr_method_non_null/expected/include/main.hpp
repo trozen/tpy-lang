@@ -11,7 +11,9 @@ struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_twice(p: Ptr[Cell]) -> int32:
 int32_t read_twice(Cell* p);
+// def main():
 void main();
 
 // class Cell:
@@ -37,17 +39,18 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 
 // def __init__(self):
+//     self.n = 3
 inline Cell::Cell() : n(3) {}
 
 // def val(self) -> int32:
+//     return self.n
 inline int32_t Cell::val() const {
-    // return self.n
     return this->n;
 }
 
 // def bump(self, k: int32) -> int32:
+//     return self.n + k
 inline int32_t Cell::bump(int32_t k) const {
-    // return self.n + k
     return (::tpy::add_check<int32_t>(this->n, k));
 }
 void __tpy_init();

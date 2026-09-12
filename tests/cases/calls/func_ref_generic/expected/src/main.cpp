@@ -6,59 +6,64 @@ namespace tpyapp::main {
 
 // # Callable param (type-erased std::function)
 // def apply_callable(f: Callable[[int32], int32], x: int32) -> int32:
+//     return f(x)
 int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 
 // # Callable local variable
 // def use_local() -> None:
+//     f: Callable[[int32], int32] = identity
+//     print(f(99))
 void use_local() {
-    // f: Callable[[int32], int32] = identity
     std::function<int32_t(int32_t)> f = identity<int32_t>;
-    // print(f(99))
     std::cout << f(99) << "\n";
 }
 
 // # Return as Callable
 // def get_identity() -> Callable[[int32], int32]:
+//     return identity
 std::function<int32_t(int32_t)> get_identity() {
-    // return identity
     return identity<int32_t>;
 }
 
 // def main() -> None:
+//     # Basic: identity[T] inferred as identity[int32]
+//     print(apply_fn(identity, 42))          # 42
+//     print(apply_callable(identity, 42))    # 42
+//
+//     # Multi type params: pair[T, U] inferred as pair[int32, int32]
+//     print(make_pair(pair, 3, 7))           # (3, 7)
+//
+//     # Bounded: max_val[T: Comparable] inferred as max_val[int32]
+//     print(apply2(max_val, 10, 3))          # 10
+//
+//     # Callable local variable
+//     use_local()                             # 99
+//
+//     # Return as Callable
+//     f = get_identity()
+//     print(f(7))                             # 7
+//
+//     # Void hint with generic function (return discarded)
+//     run_void(identity, 0)                   # (no output)
 void main() {
-    // # Basic: identity[T] inferred as identity[int32]
-    // print(apply_fn(identity, 42))          # 42
     std::cout << apply_fn(identity<int32_t>, 42) << "\n";
-    // print(apply_callable(identity, 42))    # 42
     std::cout << apply_callable(identity<int32_t>, 42) << "\n";
-    // # Multi type params: pair[T, U] inferred as pair[int32, int32]
-    // print(make_pair(pair, 3, 7))           # (3, 7)
     std::cout << ::tpy::TuplePrinter(make_pair(pair<int32_t, int32_t>, 3, 7)) << "\n";
-    // # Bounded: max_val[T: Comparable] inferred as max_val[int32]
-    // print(apply2(max_val, 10, 3))          # 10
     std::cout << apply2(max_val<int32_t>, 10, 3) << "\n";
-    // # Callable local variable
-    // use_local()                             # 99
     use_local();
-    // # Return as Callable
-    // f = get_identity()
     std::function<int32_t(int32_t)> f = get_identity();
-    // print(f(7))                             # 7
     std::cout << f(7) << "\n";
-    // # Void hint with generic function (return discarded)
-    // run_void(identity, 0)                   # (no output)
     run_void(identity<int32_t>, 0);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

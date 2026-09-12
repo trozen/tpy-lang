@@ -9,22 +9,25 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def seq_at(s: Sequence[int32], i: int32) -> int32:
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t seq_at(const T_s& s, int32_t i);
+// def seq_str_at(s: Sequence[str], i: int32) -> str:
 template<::tpystd::typing::Sequence<std::string> T_s>
 std::string seq_str_at(const T_s& s, int32_t i);
+// def main() -> None:
 void main();
 
 // def seq_at(s: Sequence[int32], i: int32) -> int32:
+//     return s[i]
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t seq_at(const T_s& s, int32_t i) {
-    // return s[i]
     return ::tpy::__getitem__(s, i);
 }
 // def seq_str_at(s: Sequence[str], i: int32) -> str:
+//     return s[i]
 template<::tpystd::typing::Sequence<std::string> T_s>
 std::string seq_str_at(const T_s& s, int32_t i) {
-    // return s[i]
     return ::tpy::__getitem__(s, i);
 }
 

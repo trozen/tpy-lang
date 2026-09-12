@@ -11,8 +11,10 @@ template<typename K, typename V> struct DictTree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def leaf_count[K, V](t: DictTree[K, V]) -> int32:
 template<typename K, typename V>
 int32_t leaf_count(const DictTree<K, V>& t);
+// def main() -> None:
 void main();
 
 template<typename K, typename V>
@@ -34,32 +36,32 @@ struct DictTree {
 };
 
 // def leaf_count[K, V](t: DictTree[K, V]) -> int32:
+//     match t:
+//         case dict() as d:
+//             acc = 0
+//             for v in d.values():
+//                 acc += leaf_count(v)
+//             return acc
+//         case _:
+//             return 1
 template<typename K, typename V>
 int32_t leaf_count(const DictTree<K, V>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case dict() as d:
     case 1: {
         auto& d = std::get<1>(__match_subject_1.value);
-        // acc = 0
         int32_t acc = 0;
-        // for v in d.values():
         auto __obj_0 = ::tpy::dict_values(d);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& v = *__beg_0;
-            // acc += leaf_count(v)
             acc = ::tpy::add_check<int32_t>(acc, leaf_count<K, V>(v));
         }
-        // return acc
         return acc;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }

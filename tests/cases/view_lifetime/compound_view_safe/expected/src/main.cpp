@@ -8,58 +8,58 @@ namespace tpyapp::main {
 // # over-trigger -- a compound view (ternary / and-or) over params or unmutated
 // # elements stays a zero-copy view, while an owning-rvalue arm stays owned.
 // def compound_of_params(a: str, b: str, cond: bool) -> None:
+//     x = a if cond else b  # tpyc: type(StrView)
+//     y = a or b  # tpyc: type(StrView)
+//     print(x, y)
 void compound_of_params(std::string_view a, std::string_view b, bool cond) {
-    // x = a if cond else b  # tpyc: type(StrView)
     std::string_view x = ((cond) ? (a) : (b));
-    // y = a or b  # tpyc: type(StrView)
     std::string_view y = ((!a.empty()) ? a : b);
-    // print(x, y)
     std::cout << x << " " << y << "\n";
 }
 
 // def compound_of_unmutated_elems(c: list[str], d: list[str], cond: bool) -> None:
+//     # Roots c/d are read but never mutated -> the view is safe and kept.
+//     x = c[0] if cond else d[0]  # tpyc: type(StrView)
+//     print(x, c[0], d[0])
 void compound_of_unmutated_elems(const std::vector<std::string>& c, const std::vector<std::string>& d, bool cond) {
-    // # Roots c/d are read but never mutated -> the view is safe and kept.
-    // x = c[0] if cond else d[0]  # tpyc: type(StrView)
     std::string_view x = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
-    // print(x, c[0], d[0])
     std::cout << x << " " << ::tpy::__getitem__(c, 0) << " " << ::tpy::__getitem__(d, 0) << "\n";
 }
 
 // def owning_rvalue_arm(a: str, cond: bool) -> None:
+//     # mk() returns a fresh owned str; the result cannot be a single borrowed
+//     # view, so the whole local must own a copy.
+//     x = a if cond else mk()  # tpyc: type(str)
+//     print(x)
 void owning_rvalue_arm(std::string_view a, bool cond) {
-    // # mk() returns a fresh owned str; the result cannot be a single borrowed
-    // # view, so the whole local must own a copy.
-    // x = a if cond else mk()  # tpyc: type(str)
     std::string x = ((cond) ? (std::string(a)) : (mk()));
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def mk() -> str:
+//     return "fresh"
 std::string mk() {
-    // return "fresh"
     return "fresh";
 }
 
 // def main() -> None:
+//     compound_of_params("hi", "yo", True)
+//     compound_of_unmutated_elems(["aa"], ["bb"], False)
+//     owning_rvalue_arm("kept", True)
 void main() {
-    // compound_of_params("hi", "yo", True)
     compound_of_params("hi", "yo", true);
-    // compound_of_unmutated_elems(["aa"], ["bb"], False)
     std::vector<std::string> __tmp_1 = {"aa"};
     std::vector<std::string> __tmp_2 = {"bb"};
     compound_of_unmutated_elems(__tmp_1, __tmp_2, false);
-    // owning_rvalue_arm("kept", True)
     owning_rvalue_arm("kept", true);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,42 +5,44 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box[int32](42)
+//     v = b.get()  # tpyc: type(int32 | None)
+//     if v is not None:
+//         print("got:", v)
+//
+//     b.clear()
+//     v2 = b.get()
+//     if v2 is None:
+//         print("cleared: ok")
+//
+//     b2 = Box[bool](True)
+//     v3 = b2.get()
+//     if v3 is not None:
+//         print("bool:", v3)
 void main() {
-    // b = Box[int32](42)
     Box<int32_t> b = Box<int32_t>(42);
-    // v = b.get()  # tpyc: type(int32 | None)
     std::optional<int32_t> v = b.get();
-    // if v is not None:
     if ((v.has_value())) {
-        // print("got:", v)
         std::cout << "got:" << " " << ::tpy::print_optional_val(v) << "\n";
     }
-    // b.clear()
     b.clear();
-    // v2 = b.get()
     std::optional<int32_t> v2 = b.get();
-    // if v2 is None:
     if ((!v2.has_value())) {
-        // print("cleared: ok")
         std::cout << "cleared: ok" << "\n";
     }
-    // b2 = Box[bool](True)
     Box<bool> b2 = Box<bool>(true);
-    // v3 = b2.get()
     std::optional<bool> v3 = b2.get();
-    // if v3 is not None:
     if ((v3.has_value())) {
-        // print("bool:", v3)
         std::cout << "bool:" << " " << ::tpy::print_optional_val<::tpy::print_bool, bool>(v3) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

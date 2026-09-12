@@ -11,6 +11,7 @@ template<typename T> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Wrapper[T]:
@@ -21,8 +22,10 @@ struct Wrapper {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T]):
+    //     # T inferred from self._storage: UninitHeapStorage[T]
+    //     self._storage = UninitHeapStorage(1)  # tpyc: ok
+    //     self._storage.init0(val)
     explicit Wrapper(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-        // self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }
     // non-copyable (field '_storage')
@@ -40,15 +43,15 @@ struct Wrapper {
     }
 
     // def __del__(self):
+    //     self._storage.drop0()
     ~Wrapper() {
         if (!this->__tpy_owned_) return;
-        // self._storage.drop0()
         this->_storage.drop0();
     }
 
     // def get(self) -> T:
+    //     return self._storage.load0()
     ::tpy::val_or_cref_t<T> get() const {
-        // return self._storage.load0()
         return this->_storage.load0();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";

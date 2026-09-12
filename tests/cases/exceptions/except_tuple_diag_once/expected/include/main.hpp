@@ -14,8 +14,11 @@ struct BErr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def boom(which: int) -> None:
 void boom(const ::tpy::BigInt& which);
+// def caught(which: int, p: Plain) -> None:
 void caught(const ::tpy::BigInt& which, const Plain& p);
+// def main() -> None:
 void main();
 
 // # A diagnostic inside an `except (A, B):` body is reported ONCE, not once per

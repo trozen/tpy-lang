@@ -5,22 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Container("empty")
+//     print(c.label)
+//     print(len(c.items))
+//
+//     item = Item.from_json('{"name": "widget", "value": 42}')
+//     c2 = Container("one", [item])
+//     print(c2.label)
+//     print(len(c2.items))
+//     print(c2.items[0].name)
 void main() {
-    // c = Container("empty")
     Container c = Container("empty");
-    // print(c.label)
     std::cout << c.label << "\n";
-    // print(len(c.items))
     std::cout << ::tpy::__len__(c.items) << "\n";
-    // item = Item.from_json('{"name": "widget", "value": 42}')
     Item item = Item::from_json("{\"name\": \"widget\", \"value\": 42}");
-    // c2 = Container("one", [item])
     Container c2 = Container("one", ::tpy::make_vector<Item>(std::move(item)));
-    // print(c2.label)
     std::cout << c2.label << "\n";
-    // print(len(c2.items))
     std::cout << ::tpy::__len__(c2.items) << "\n";
-    // print(c2.items[0].name)
     std::cout << ::tpy::__getitem__(c2.items, 0).name << "\n";
 }
 
@@ -70,6 +71,10 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
     }
     return Item(name, value);
 }
+// from tplib.json.model import model
+// from dataclasses import dataclass, field
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -79,9 +84,6 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // from tplib.json.model import model
-    // from dataclasses import dataclass, field
-    // main()
     main();
 }
 

@@ -18,7 +18,9 @@ struct __coro_total;
 struct __coro_main;
 struct __coro_Counter___anext__;
 
+// async def total(c: Counts) -> int:
 __coro_total total(Counts& c);
+// async def main() -> None:
 __coro_main main();
 
 // class Counter:
@@ -58,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
     return os;
 }
 
-// Async coroutine: Counter.__anext__
+// async def __anext__(self) -> int:
 struct __coro_Counter___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -84,7 +86,7 @@ inline __coro_Counter___anext__ Counter::__anext__() {
     return __coro_Counter___anext__(*this);
 }
 
-// Async coroutine: total
+// async def total(c: Counts) -> int:
 struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
@@ -114,7 +116,7 @@ struct __coro_total {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -141,14 +143,16 @@ struct __coro_main {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Counter::Counter(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, start: int) -> None:
+//     self.start = start
 inline Counts::Counts(const ::tpy::BigInt& start) : start(start) {}
 
 // def __aiter__(self) -> Own[Counter]:
+//     return Counter(self.start)
 inline Counter Counts::__aiter__() const {
-    // return Counter(self.start)
     return Counter(this->start);
 }
 void __tpy_init();

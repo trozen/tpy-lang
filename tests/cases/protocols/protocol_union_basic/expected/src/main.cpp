@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int] = [10, 20, 30]
+//     # list satisfies both Sized and Sequence[int]; Sequence branch fires first
+//     describe(nums)
+//     print(get_value(nums))
 void main() {
-    // nums: list[int] = [10, 20, 30]
     std::vector<::tpy::BigInt> nums = {10, 20, 30};
-    // # list satisfies both Sized and Sequence[int]; Sequence branch fires first
-    // describe(nums)
     describe(nums);
-    // print(get_value(nums))
     std::cout << get_value(nums) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

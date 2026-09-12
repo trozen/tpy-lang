@@ -11,11 +11,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_g;
 
+// def make_pair() -> tuple[int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair();
+// def g() -> Iterator[int]:
 __gen_g g();
+// def main() -> None:
 void main();
 
-// Generator: g
+// def g() -> Iterator[int]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt a;

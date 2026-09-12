@@ -3,27 +3,26 @@
 
 namespace tpyapp::main {
 
-// arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
 std::array<int32_t, 3>* arr{};
-// p: Ptr[int32] = m.unsafe_ptr(arr)
 int32_t* p{};
 
+// import tpy.unsafe as m
+//
+// arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
+// p: Ptr[int32] = m.unsafe_ptr(arr)
+// print(m.unsafe_load(p, uint32(0)))
+// m.unsafe_store(p, uint32(2), int32(99))
+// print(m.unsafe_load(p, uint32(2)))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import tpy.unsafe as m
-    // arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
     static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
     arr = &__global_slot_1;
-    // p: Ptr[int32] = m.unsafe_ptr(arr)
     p = (*arr).data();
-    // print(m.unsafe_load(p, uint32(0)))
     std::cout << p[0] << "\n";
-    // m.unsafe_store(p, uint32(2), int32(99))
     p[2] = 99;
-    // print(m.unsafe_load(p, uint32(2)))
     std::cout << p[2] << "\n";
 }
 

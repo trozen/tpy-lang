@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add_joined(xs: list[str], a: str, b: str) -> None:
 void add_joined(std::vector<std::string>& xs, std::string_view a, std::string_view b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -11,8 +11,11 @@ struct T;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(p: T | None) -> None:  # tpyc: ok
 void show(const T* p);
+// def bump(p: T | None) -> None:  # tpyc: ok
 void bump(T* p);
+// def main() -> None:
 void main();
 
 // class T:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const T& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline T::T(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

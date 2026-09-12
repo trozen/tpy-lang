@@ -12,9 +12,13 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use(a: A, k: int32, f: float64) -> int32:
 int32_t use(A& a, int32_t k, double f);
+// def use_inherited(c: Child, k: int32) -> int32:
 int32_t use_inherited(Child& c, int32_t k);
+// def use_lit(a: A) -> int32:
 int32_t use_lit(A& a);
+// def main() -> None:
 void main();
 
 // class A:
@@ -60,37 +64,40 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
+//     self.u = 0
 inline A::A(int32_t x) : x(x), u(0) {}
 
 // # Discriminates on float64 (== float under CPython) so a plain-int
 // # argument narrows the same way on both runtimes.
 // def tag(self, v: int32 | float64) -> int32:
+//     if isinstance(v, float64):
+//         return self.x
+//     return self.x + v
 inline int32_t A::tag(const ::tpy::Union<double, int32_t>& v) const {
-    // if isinstance(v, float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
-        // return self.x
         return this->x;
     }
     const auto& __v = std::get<int32_t>(v);
-    // return self.x + v
     return (::tpy::add_check<int32_t>(this->x, __v));
 }
 
 // def helper(self) -> int32:
+//     return self.x + 1
 inline int32_t A::helper() const {
-    // return self.x + 1
     return (::tpy::add_check<int32_t>(this->x, 1));
 }
 
 // def outer(self) -> int32:
+//     # The self receiver renders through the arrow.
+//     return self.helper()
 inline int32_t A::outer() const {
-    // # The self receiver renders through the arrow.
-    // return self.helper()
     return this->helper();
 }
 
 // def __init__(self, x: int32) -> None:
+//     super().__init__(x)
 inline Child::Child(int32_t x) : A(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -3,83 +3,84 @@
 
 namespace tpyapp::main {
 
-// # Value type: int32
-// storage = UninitArrayStorage[int32, 4]()
 ::tpy::UninitArrayStorage<int32_t, 4>* storage{};
-// # ptr() returns a raw pointer
-// p: Ptr[int32] = storage.ptr()
 int32_t* p{};
-// # Record type: Point
-// points = UninitArrayStorage[Point, 3]()
 ::tpy::UninitArrayStorage<Point, 3>* points{};
-// pt: Point = points.load(0)
 Point* pt{};
-// pt2: Point = points.load(1)
 Point* pt2{};
 
+// from tpy.unsafe import unsafe_load
+// from tpy.mem import UninitArrayStorage
+//
+// # Value type: int32
+// storage = UninitArrayStorage[int32, 4]()
+// storage.init(0, 10)
+// storage.init(1, 20)
+// storage.init(2, 30)
+//
+// print(storage.load(0))
+// print(storage.load(1))
+// print(storage.load(2))
+//
+// # ptr() returns a raw pointer
+// p: Ptr[int32] = storage.ptr()
+// print(unsafe_load(p, 0))
+//
+// storage.drop(0)
+// storage.drop(1)
+// storage.drop(2)
+//
+// # Record type: Point
+// points = UninitArrayStorage[Point, 3]()
+// points.init(0, Point(1, 2))
+// points.init(1, Point(3, 4))
+//
+// pt: Point = points.load(0)
+// print(pt.x)
+// print(pt.y)
+//
+// pt2: Point = points.load(1)
+// print(pt2.x)
+// print(pt2.y)
+//
+// # load() aliases live storage (not a copy): mutating through the bound
+// # result is observed on a fresh load of the same slot.
+// pt.x = 99
+// print(points.load(0).x)
+//
+// points.drop(0)
+// points.drop(1)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_load
-    // from tpy.mem import UninitArrayStorage
-    // # Value type: int32
-    // storage = UninitArrayStorage[int32, 4]()
     static ::tpy::UninitArrayStorage<int32_t, 4> __global_slot_1 = ::tpy::UninitArrayStorage<int32_t, 4>();
     storage = &__global_slot_1;
-    // storage.init(0, 10)
     storage->init(0, 10);
-    // storage.init(1, 20)
     storage->init(1, 20);
-    // storage.init(2, 30)
     storage->init(2, 30);
-    // print(storage.load(0))
     std::cout << storage->load(0) << "\n";
-    // print(storage.load(1))
     std::cout << storage->load(1) << "\n";
-    // print(storage.load(2))
     std::cout << storage->load(2) << "\n";
-    // # ptr() returns a raw pointer
-    // p: Ptr[int32] = storage.ptr()
     p = storage->ptr();
-    // print(unsafe_load(p, 0))
     std::cout << p[0] << "\n";
-    // storage.drop(0)
     storage->drop(0);
-    // storage.drop(1)
     storage->drop(1);
-    // storage.drop(2)
     storage->drop(2);
-    // # Record type: Point
-    // points = UninitArrayStorage[Point, 3]()
     static ::tpy::UninitArrayStorage<Point, 3> __global_slot_2 = ::tpy::UninitArrayStorage<Point, 3>();
     points = &__global_slot_2;
-    // points.init(0, Point(1, 2))
     points->init(0, Point(1, 2));
-    // points.init(1, Point(3, 4))
     points->init(1, Point(3, 4));
-    // pt: Point = points.load(0)
     pt = &(points->load(0));
-    // print(pt.x)
     std::cout << pt->x << "\n";
-    // print(pt.y)
     std::cout << pt->y << "\n";
-    // pt2: Point = points.load(1)
     pt2 = &(points->load(1));
-    // print(pt2.x)
     std::cout << pt2->x << "\n";
-    // print(pt2.y)
     std::cout << pt2->y << "\n";
-    // # load() aliases live storage (not a copy): mutating through the bound
-    // # result is observed on a fresh load of the same slot.
-    // pt.x = 99
     pt->x = 99;
-    // print(points.load(0).x)
     std::cout << points->load(0).x << "\n";
-    // points.drop(0)
     points->drop(0);
-    // points.drop(1)
     points->drop(1);
 }
 

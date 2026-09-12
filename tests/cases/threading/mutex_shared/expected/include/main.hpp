@@ -20,6 +20,7 @@ struct Appender;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -52,19 +53,23 @@ inline std::ostream& operator<<(std::ostream& os, const Appender& obj) {
 
 
 // def __init__(self, shared: Own[Arc[Mutex[list[int32]]]], id: int32, iters: int32) -> None:
+//     self.shared = shared
+//     self.id = id
+//     self.iters = iters
 inline Appender::Appender(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters) : shared(std::move(shared)), id(id), iters(iters) {}
 
 // def run(self) -> None:
+//     i = 0
+//     while i < self.iters:
+//         with self.shared.get().lock() as g:
+//             g.append(self.id)
+//         i += 1
 inline void Appender::run() const {
-    // i = 0
     int32_t i = 0;
-    // while i < self.iters:
     while ((i < this->iters)) {
-        // with self.shared.get().lock() as g:
         auto __ctx_1 = this->shared.get().lock();
         auto& g = __ctx_1.__enter__();
         try {
-            // g.append(self.id)
             g.__deref__().push_back(this->id);
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -76,7 +81,6 @@ inline void Appender::run() const {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }

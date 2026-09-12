@@ -5,40 +5,44 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d: dict[str, int32] = {"a": 1, "b": 2, "c": 3}
+//
+//     # dict itself is Iterable[K]
+//     print("keys via dict:")
+//     collect_items(d)
+//
+//     # dict.keys() is Iterable[K]
+//     print("keys via keys():")
+//     collect_items(d.keys())
+//
+//     # dict.values() is Iterable[V]
+//     print("values via values():")
+//     collect_ints(d.values())
+//
+//     # dict.items() is Iterable[tuple[K, V]]
+//     print("items via items():")
+//     collect_pairs(d.items())
 void main() {
-    // d: dict[str, int32] = {"a": 1, "b": 2, "c": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    // # dict itself is Iterable[K]
-    // print("keys via dict:")
     std::cout << "keys via dict:" << "\n";
-    // collect_items(d)
     collect_items(d);
-    // # dict.keys() is Iterable[K]
-    // print("keys via keys():")
     std::cout << "keys via keys():" << "\n";
-    // collect_items(d.keys())
     auto __tmp_1 = ::tpy::dict_keys(d);
     collect_items(__tmp_1);
-    // # dict.values() is Iterable[V]
-    // print("values via values():")
     std::cout << "values via values():" << "\n";
-    // collect_ints(d.values())
     auto __tmp_2 = ::tpy::dict_values(d);
     collect_ints(__tmp_2);
-    // # dict.items() is Iterable[tuple[K, V]]
-    // print("items via items():")
     std::cout << "items via items():" << "\n";
-    // collect_pairs(d.items())
     auto __tmp_3 = ::tpy::dict_items(d);
     collect_pairs(__tmp_3);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

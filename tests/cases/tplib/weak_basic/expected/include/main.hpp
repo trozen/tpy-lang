@@ -16,6 +16,7 @@ struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -36,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Cell::Cell(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

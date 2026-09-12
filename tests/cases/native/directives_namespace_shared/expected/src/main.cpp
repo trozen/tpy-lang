@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print("ok")
 void main() {
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// # Test that multiple native modules sharing the same cpp_namespace
+// # compile without collisions (no generated code for native modules)
+// from mypkg.math import add
+// from mypkg.text import greet
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test that multiple native modules sharing the same cpp_namespace
-    // # compile without collisions (no generated code for native modules)
-    // from mypkg.math import add
-    // from mypkg.text import greet
-    // main()
     main();
 }
 

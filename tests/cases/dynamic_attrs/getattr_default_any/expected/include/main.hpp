@@ -11,6 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -29,13 +30,13 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __getattr__(self, name: str) -> Any:
+//     if name == "count":
+//         return 7
+//     raise AttributeError(name)
 inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
-    // if name == "count":
     if ((name == "count")) {
-        // return 7
         return ::tpy::make_any(::tpy::BigInt(7));
     }
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 void __tpy_init();

@@ -6,98 +6,106 @@ namespace tpyapp::main {
 
 // @error_return(ParseError)
 // def parse(s: str) -> int32:
+//     if s == "ok":
+//         return 42
+//     raise ParseError(10, 5, "unexpected token")
 std::expected<int32_t, ParseError> parse(std::string_view s) {
-    // if s == "ok":
     if ((s == "ok")) {
-        // return 42
         return 42;
     }
-    // raise ParseError(10, 5, "unexpected token")
     return ::tpy::make_unexpected(ParseError(10, 5, "unexpected token"));
 }
 
 // def main() -> None:
+//     # Happy path
+//     try:
+//         v = parse("ok")
+//     except ParseError as e:
+//         print(e.line)
+//     else:
+//         print(v)
+//
+//     # Error path with field access
+//     try:
+//         v2 = parse("bad")
+//     except ParseError as e:
+//         print(e.line)
+//         print(e.column)
+//         print(e.detail)
+//     else:
+//         print(v2)
+//
+//     # No binding (as e not used)
+//     try:
+//         v3 = parse("bad")
+//     except ParseError:
+//         print("error without binding")
+//     else:
+//         print(v3)
 void main() {
-    // # Happy path
-    // try:
     int32_t v;
     {
         std::optional<ParseError> __err_opt_1;
-        // v = parse("ok")
         {
             auto __try_tmp_2 = parse("ok");
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_1;
         // except ParseError:
         __except_1:;
         {
             auto& e = *__err_opt_1;
-            // print(e.line)
             std::cout << e.line << "\n";
         }
         __after_try_1:;
     }
-    // # Error path with field access
-    // try:
     int32_t v2;
     {
         std::optional<ParseError> __err_opt_3;
-        // v2 = parse("bad")
         {
             auto __try_tmp_4 = parse("bad");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_3;
         // except ParseError:
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            // print(e.line)
             std::cout << e.line << "\n";
-            // print(e.column)
             std::cout << e.column << "\n";
-            // print(e.detail)
             std::cout << e.detail << "\n";
         }
         __after_try_3:;
     }
-    // # No binding (as e not used)
-    // try:
     int32_t v3;
     {
-        // v3 = parse("bad")
         {
             auto __try_tmp_6 = parse("bad");
             if (!__try_tmp_6.has_value()) goto __except_5;
             v3 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
-        // print(v3)
         std::cout << v3 << "\n";
         goto __after_try_5;
         // except ParseError:
         __except_5:;
-        // print("error without binding")
         std::cout << "error without binding" << "\n";
         __after_try_5:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

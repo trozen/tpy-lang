@@ -6,35 +6,37 @@ namespace tpyapp::main {
 
 
 
+// def log(x: float, base: float | None = None) -> float:
+//     if base is None:
+//         return x
+//     return x / base
 // @overload
 // def log(x: float) -> float: ...  # tpyc: ok
 double log(double x) {
-    // return x
     return x;
 }
 
 // @overload
 // def log(x: float, base: float) -> float: ...  # tpyc: ok
 double log(double x, double base) {
-    // return x / base
     return (::tpy::truediv(x, base));
 }
 
 
 // def main() -> None:
+//     print(log(16.0))
+//     print(log(16.0, 2.0))
 void main() {
-    // print(log(16.0))
     std::cout << ::tpy::print_float(log(16.0)) << "\n";
-    // print(log(16.0, 2.0))
     std::cout << ::tpy::print_float(log(16.0, 2.0)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

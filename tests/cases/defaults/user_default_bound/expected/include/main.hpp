@@ -9,30 +9,33 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def create_default[T: Default]() -> T:
 template<::std::default_initializable T>
 ::tpy::val_or_ref_t<T> create_default();
+// def fill[T: Default](n: int32) -> Own[list[T]]:
 template<::std::default_initializable T>
 std::vector<T> fill(int32_t n);
+// def main() -> None:
 void main();
 
 // def create_default[T: Default]() -> T:
+//     return make_default()
 template<::std::default_initializable T>
 ::tpy::val_or_ref_t<T> create_default() {
-    // return make_default()
     return T{};
 }
 // def fill[T: Default](n: int32) -> Own[list[T]]:
+//     result: list[T] = []
+//     for i in range(n):
+//         result.append(make_default())
+//     return result
 template<::std::default_initializable T>
 std::vector<T> fill(int32_t n) {
-    // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // result.append(make_default())
         result.push_back(T{});
     }
-    // return result
     return result;
 }
 

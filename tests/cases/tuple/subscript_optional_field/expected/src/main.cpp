@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def first_n(t: tuple[int32, Leaf | None]) -> int32:
+//     return t[1].n  # tpyc: warning(/Potential None access/)
 int32_t first_n(const std::tuple<int32_t, const Leaf*>& t) {
-    // return t[1].n  # tpyc: warning(/Potential None access/)
     return ::tpy::deref_check(std::get<1>(t)).n;
 }
 
 // def main() -> None:
+//     leaf = Leaf(7)
+//     print(first_n((1, leaf)))
 void main() {
-    // leaf = Leaf(7)
     Leaf leaf = Leaf(7);
-    // print(first_n((1, leaf)))
     std::cout << first_n(std::tuple<int32_t, Leaf*>{1, &(leaf)}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

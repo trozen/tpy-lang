@@ -12,10 +12,13 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def as_animal[U: Animal](p: Ptr[U]) -> Ptr[Animal]:
 template<typename U>
 Animal* as_animal(U* p);
+// def as_animal_ro[U: Animal](p: Ptr[readonly[U]]) -> Ptr[readonly[Animal]]:
 template<typename U>
 const Animal* as_animal_ro(const U* p);
+// def main() -> None:
 void main();
 
 // class Animal:
@@ -51,23 +54,24 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, code: int32) -> None:
+//     self.code = code
 inline Animal::Animal(int32_t code) : code(code) {}
 
 // def base_code(self) -> int32:
+//     return self.code
 inline int32_t Animal::base_code() const {
-    // return self.code
     return this->code;
 }
 // def as_animal[U: Animal](p: Ptr[U]) -> Ptr[Animal]:
+//     return p  # tpyc: ok
 template<typename U>
 Animal* as_animal(U* p) {
-    // return p  # tpyc: ok
     return p;
 }
 // def as_animal_ro[U: Animal](p: Ptr[readonly[U]]) -> Ptr[readonly[Animal]]:
+//     return p  # tpyc: ok
 template<typename U>
 const Animal* as_animal_ro(const U* p) {
-    // return p  # tpyc: ok
     return p;
 }
 

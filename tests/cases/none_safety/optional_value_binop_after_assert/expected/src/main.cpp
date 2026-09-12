@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def add_one(x: int32 | None) -> int32:
+//     assert x is not None
+//     return x + 1
 int32_t add_one(std::optional<int32_t> x) {
-    // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
-    // return x + 1
     return (::tpy::add_check<int32_t>((*x), 1));
 }
 
+// print(add_one(41))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(add_one(41))
     std::cout << add_one(41) << "\n";
 }
 

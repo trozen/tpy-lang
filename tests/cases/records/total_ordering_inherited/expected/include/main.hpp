@@ -78,17 +78,18 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Base::Base(int32_t v) : val(v) {}
 
 // def __eq__(self, other: "Base") -> bool:
+//     return self.val == other.val
 inline bool Base::__eq__(const Base& other) const {
-    // return self.val == other.val
     return (this->val == other.val);
 }
 
 // def __lt__(self, other: "Base") -> bool:
+//     return self.val < other.val
 inline bool Base::__lt__(const Base& other) const {
-    // return self.val < other.val
     return (this->val < other.val);
 }
 

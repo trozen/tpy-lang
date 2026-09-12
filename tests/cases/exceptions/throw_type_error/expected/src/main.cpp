@@ -7,31 +7,32 @@ namespace tpyapp::main {
 // # Explicit `raise TypeError(...)` is the throw-tier path; user code can
 // # catch it the same way as runtime-thrown TypeError.
 // def fail(x: int) -> None:
+//     raise TypeError("custom: type mismatch")
 void fail(const ::tpy::BigInt& x) {
-    // raise TypeError("custom: type mismatch")
     throw ::tpy::TypeError("custom: type mismatch");
 }
 
 // def main() -> None:
+//     try:
+//         fail(42)
+//     except TypeError as e:
+//         print("caught:", str(e))
 void main() {
-    // try:
     {
         try {
-            // fail(42)
             fail(::tpy::BigInt(42));
         } catch (const ::tpy::TypeError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -17,6 +17,7 @@ struct __coro_main_coro;
 struct __coro_Math_double_base;
 struct __coro_Math_quad_base;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
 
 // class Math:
@@ -39,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Math& obj) {
     return os;
 }
 
-// Async coroutine: Math.double_base
+// async def double_base(self) -> int32:
 struct __coro_Math_double_base {
     int32_t __state;
     bool __cancel_pending;
@@ -65,7 +66,7 @@ inline __coro_Math_double_base Math::double_base() const {
     return __coro_Math_double_base(*this);
 }
 
-// Async coroutine: Math.quad_base
+// async def quad_base(self) -> int32:
 struct __coro_Math_quad_base {
     int32_t __state;
     bool __cancel_pending;
@@ -94,7 +95,7 @@ inline __coro_Math_quad_base Math::quad_base() const {
     return __coro_Math_quad_base(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -121,6 +122,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self, b: int32) -> None:
+//     self.base = b
 inline Math::Math(int32_t b) : base(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -6,22 +6,23 @@ namespace tpyapp::main {
 
 // # Test that out-of-bounds access on list panics at runtime
 // def test_out_of_bounds() -> None:
+//     items: list[int32] = [10, 20, 30]
+//
+//     # Access index 10 which is out of bounds (only 3 elements)
+//     x: int32 = items[10]
+//     print(x)
 void test_out_of_bounds() {
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // # Access index 10 which is out of bounds (only 3 elements)
-    // x: int32 = items[10]
     int32_t x = ::tpy::__getitem__(items, 10);
-    // print(x)
     std::cout << x << "\n";
 }
 
+// test_out_of_bounds()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_out_of_bounds()
     test_out_of_bounds();
 }
 

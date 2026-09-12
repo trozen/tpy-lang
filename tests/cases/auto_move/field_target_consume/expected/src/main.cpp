@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main():
+//     k = K()
+//     b = Blob()
+//     b.n = k.take(b)  # tpyc: warning(/copies/)
+//     print(b.n)
+//     print(len(b.items))
 void main() {
-    // k = K()
     K k = K();
-    // b = Blob()
     Blob b = Blob();
-    // b.n = k.take(b)  # tpyc: warning(/copies/)
     Blob __tmp_1 = b;
     b.n = k.take(std::move(__tmp_1));
-    // print(b.n)
     std::cout << b.n << "\n";
-    // print(len(b.items))
     std::cout << ::tpy::__len__(b.items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

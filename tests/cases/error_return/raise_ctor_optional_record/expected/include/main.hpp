@@ -12,7 +12,9 @@ struct Failed;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(ok: bool) -> int:
 std::expected<::tpy::BigInt, Failed> run(bool ok);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -53,9 +55,12 @@ inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self, n: Node | None) -> None:
+//     super().__init__("failed")
+//     self.node = n
 inline Failed::Failed(const Node* n) : ::tpy::Exception("failed"), node(::tpy::ptr_to_optional(n)) {}
 void __tpy_init();
 } // namespace tpyapp::main

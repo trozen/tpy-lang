@@ -14,20 +14,35 @@ extern std::vector<Point>* items_for_find;
 extern Point* result;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mutate_point(p: Point) -> None:
 void mutate_point(Point& p);
+// def read_point(p: readonly[Point]) -> int32:
 int32_t read_point(const Point& p);
+// def test_read_only_loop() -> None:
 void test_read_only_loop();
+// def test_non_readonly_method_loop() -> None:
 void test_non_readonly_method_loop();
+// def test_field_mutate_loop() -> None:
 void test_field_mutate_loop();
+// def test_nested_field_mutate_loop() -> None:
 void test_nested_field_mutate_loop();
+// def test_assign_to_local_loop() -> None:
 void test_assign_to_local_loop();
+// def find_point(items: list[Point], target: int32) -> Point | None:
 Point* find_point(std::vector<Point>& items, int32_t target);
+// def test_pass_to_mutating_func() -> None:
 void test_pass_to_mutating_func();
+// def test_pass_to_readonly_func() -> None:
 void test_pass_to_readonly_func();
+// def test_ptr_from_loop_var() -> None:
 void test_ptr_from_loop_var();
+// def test_value_type_loop() -> None:
 void test_value_type_loop();
+// def test_sequential_loops_same_var() -> None:
 void test_sequential_loops_same_var();
+// def test_bigint_const_ref() -> None:
 void test_bigint_const_ref();
+// def test_bigint_mutated() -> None:
 void test_bigint_mutated();
 
 // class Point:
@@ -69,16 +84,19 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // @readonly
 // def value(self) -> int32:
+//     return self.x + self.y
 inline int32_t Point::value() const {
-    // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
 
 // def __init__(self) -> None:
+//     self.items = [int32(1), int32(2)]
 inline Container::Container() : items(std::vector<int32_t>{1, 2}) {}
 void __tpy_init();
 } // namespace tpyapp::main

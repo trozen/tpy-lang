@@ -5,6 +5,11 @@ namespace tpyapp::main {
 
 
 // def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
+//     for a, b in pairs:
+//         if a is not None:
+//             yield a.x
+//         if b is not None:
+//             yield b.x
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,12 +32,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = *((*__for_it_0))++;
-        // for a, b in pairs:
         auto& __tup_1 = __for_tup_0;
         a = ::tpy::optional_to_ptr(std::get<0>(__tup_1));
         b = ::tpy::optional_to_ptr(std::get<1>(__tup_1));
         if ((a != nullptr)) {
-            // yield a.x
             __state = S_RESUME_0;
             return a->x;
         } else {
@@ -42,7 +45,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_1: {
         if ((b != nullptr)) {
-            // yield b.x
             __state = S_RESUME_1;
             return b->x;
         } else {
@@ -66,10 +68,11 @@ __gen_gen gen(std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs
 }
 
 // def main() -> None:
+//     data: list[tuple[Optional[P], Optional[P]]] = [(P(1), None), (None, P(4))]
+//     for v in gen(data):
+//         print(v)
 void main() {
-    // data: list[tuple[Optional[P], Optional[P]]] = [(P(1), None), (None, P(4))]
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> data = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(1), nullptr})), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P*, P>{nullptr, P(4)}))};
-    // for v in gen(data):
     {
         auto __src_0 = gen(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -77,18 +80,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

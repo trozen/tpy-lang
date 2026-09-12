@@ -5,19 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(BASE)
+//     print(ALIAS)
 void main() {
-    // print(BASE)
     std::cout << BASE << "\n";
-    // print(ALIAS)
     std::cout << ALIAS << "\n";
 }
 
+// BASE: Final[int32] = 10
+// ALIAS: Final[int32] = BASE
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_str(s: str) -> None:
 void take_str(std::string_view s);
+// def take_string(s: String) -> None:
 void take_string(const ::tpy::String& s);
+// def take_strview(s: StrView) -> None:
 void take_strview(std::string_view s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

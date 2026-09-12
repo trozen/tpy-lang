@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     print(b_value())
+//     print(c_value())
+//     return int32(0)
 int32_t main() {
-    // print(b_value())
     std::cout << ::tpyapp::mod_b::b_value() << "\n";
-    // print(c_value())
     std::cout << ::tpyapp::mod_c::c_value() << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from mod_b import b_value
+// from mod_c import c_value
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mod_b import b_value
     ::tpyapp::mod_b::__tpy_init();
-    // from mod_c import c_value
     ::tpyapp::mod_c::__tpy_init();
-    // main()
     main();
 }
 

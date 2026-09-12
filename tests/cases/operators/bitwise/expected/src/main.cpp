@@ -3,91 +3,89 @@
 
 namespace tpyapp::main {
 
-// a: int32 = 12      # 0b1100
 int32_t a{};
-// b: int32 = 10      # 0b1010
 int32_t b{};
-// # Bitwise NOT
-// c: int32 = 0
 int32_t c{};
-// # BigInt bitwise operators
-// x = 12  # BigInt
 int32_t x{};
-// y = 10  # BigInt
 int32_t y{};
-// # BigInt bitwise NOT (Python: ~x = -(x+1))
-// z = 0
 int32_t z{};
-// # Large BigInt bitwise
-// big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt big1;
-// big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt big2;
 
+// a: int32 = 12      # 0b1100
+// b: int32 = 10      # 0b1010
+//
+// # Bitwise AND
+// print(a & b)       # 8 (0b1000)
+//
+// # Bitwise OR
+// print(a | b)       # 14 (0b1110)
+//
+// # Bitwise XOR
+// print(a ^ b)       # 6 (0b0110)
+//
+// # Bitwise NOT
+// c: int32 = 0
+// print(~c)          # -1
+//
+// # Left shift
+// print(1 << 4)      # 16
+//
+// # Right shift
+// print(32 >> 2)     # 8
+//
+// # Large shift (Python semantics - arbitrary precision)
+// print(1 << 100)    # 1267650600228229401496703205376
+// print((1 << 100) >> 90)  # 1024
+//
+// # BigInt bitwise operators
+// x = 12  # BigInt
+// y = 10  # BigInt
+// print(x & y)       # 8
+// print(x | y)       # 14
+// print(x ^ y)       # 6
+//
+// # BigInt bitwise NOT (Python: ~x = -(x+1))
+// z = 0
+// print(~z)          # -1
+// z = 5
+// print(~z)          # -6
+//
+// # Large BigInt bitwise
+// big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default int32 range/)
+// big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default int32 range/)
+// print((big1 & big2) >> 100)         # 1 - only bit 100 in common
+// print((big1 | big2) >> 100)         # 1 - bit 100 is set
+// print((big1 ^ big2) >> 50)          # 1 - bit 50 differs (in big1 only)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // a: int32 = 12      # 0b1100
     a = 12;
-    // b: int32 = 10      # 0b1010
     b = 10;
-    // # Bitwise AND
-    // print(a & b)       # 8 (0b1000)
     std::cout << (static_cast<int32_t>(a & b)) << "\n";
-    // # Bitwise OR
-    // print(a | b)       # 14 (0b1110)
     std::cout << (static_cast<int32_t>(a | b)) << "\n";
-    // # Bitwise XOR
-    // print(a ^ b)       # 6 (0b0110)
     std::cout << (static_cast<int32_t>(a ^ b)) << "\n";
-    // # Bitwise NOT
-    // c: int32 = 0
     c = 0;
-    // print(~c)          # -1
     std::cout << static_cast<int32_t>(~(c)) << "\n";
-    // # Left shift
-    // print(1 << 4)      # 16
     std::cout << 16 << "\n";
-    // # Right shift
-    // print(32 >> 2)     # 8
     std::cout << 8 << "\n";
-    // # Large shift (Python semantics - arbitrary precision)
-    // print(1 << 100)    # 1267650600228229401496703205376
     std::cout << ::tpy::BigInt::from_str("1267650600228229401496703205376") << "\n";
-    // print((1 << 100) >> 90)  # 1024
     std::cout << 1024 << "\n";
-    // # BigInt bitwise operators
-    // x = 12  # BigInt
     x = 12;
-    // y = 10  # BigInt
     y = 10;
-    // print(x & y)       # 8
     std::cout << (static_cast<int32_t>(x & y)) << "\n";
-    // print(x | y)       # 14
     std::cout << (static_cast<int32_t>(x | y)) << "\n";
-    // print(x ^ y)       # 6
     std::cout << (static_cast<int32_t>(x ^ y)) << "\n";
-    // # BigInt bitwise NOT (Python: ~x = -(x+1))
-    // z = 0
     z = 0;
-    // print(~z)          # -1
     std::cout << static_cast<int32_t>(~(z)) << "\n";
-    // z = 5
     z = 5;
-    // print(~z)          # -6
     std::cout << static_cast<int32_t>(~(z)) << "\n";
-    // # Large BigInt bitwise
-    // big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default int32 range/)
     big1 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | (((::tpy::BigInt(1)) << (::tpy::BigInt(50)))));
-    // big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default int32 range/)
     big2 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | ((::tpy::lshift_check<int32_t>(1, 25))));
-    // print((big1 & big2) >> 100)         # 1 - only bit 100 in common
     std::cout << ((((big1) & (big2))) >> (::tpy::BigInt(100))) << "\n";
-    // print((big1 | big2) >> 100)         # 1 - bit 100 is set
     std::cout << ((((big1) | (big2))) >> (::tpy::BigInt(100))) << "\n";
-    // print((big1 ^ big2) >> 50)          # 1 - bit 50 differs (in big1 only)
     std::cout << ((((big1) ^ (big2))) >> (::tpy::BigInt(50))) << "\n";
 }
 

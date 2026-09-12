@@ -18,6 +18,7 @@ template<Container<int32_t> V> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class IntBox:
@@ -47,12 +48,13 @@ struct Holder {
     V item;
 
     // def __init__(self, item: V) -> None:
+    //     self.item = item
     Holder() = default;
     explicit Holder(::tpy::readonly_form_t<V> item) : item(item) {}
 
     // def get_item(self) -> V:
+    //     return self.item
     ::tpy::val_or_ref_t<V> get_item() {
-        // return self.item
         return this->item;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -66,11 +68,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<V>& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline IntBox::IntBox(int32_t v) : value(v) {}
 
 // def get(self) -> int32:
+//     return self.value
 inline int32_t IntBox::get() const {
-    // return self.value
     return this->value;
 }
 void __tpy_init();

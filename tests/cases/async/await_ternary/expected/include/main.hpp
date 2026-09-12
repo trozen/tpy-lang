@@ -16,12 +16,16 @@ struct __coro_two;
 struct __coro_pick;
 struct __coro_main;
 
+// async def one(tag: str) -> int:
 __coro_one one(std::string_view tag);
+// async def two(tag: str) -> int:
 __coro_two two(std::string_view tag);
+// async def pick(tag: str, b: bool) -> bool:
 __coro_pick pick(std::string_view tag, bool b);
+// async def main() -> None:
 __coro_main main();
 
-// Async coroutine: one
+// async def one(tag: str) -> int:
 struct __coro_one {
     int32_t __state;
     bool __cancel_pending;
@@ -43,7 +47,7 @@ struct __coro_one {
     }
 };
 
-// Async coroutine: two
+// async def two(tag: str) -> int:
 struct __coro_two {
     int32_t __state;
     bool __cancel_pending;
@@ -65,7 +69,7 @@ struct __coro_two {
     }
 };
 
-// Async coroutine: pick
+// async def pick(tag: str, b: bool) -> bool:
 struct __coro_pick {
     int32_t __state;
     bool __cancel_pending;
@@ -88,7 +92,7 @@ struct __coro_pick {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;

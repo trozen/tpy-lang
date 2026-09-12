@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder[Token](Token(7))
+//     print("held:", h.value())
 void main() {
-    // h = Holder[Token](Token(7))
     Holder<Token> h = Holder<Token>(Token(7));
-    // print("held:", h.value())
     std::cout << "held:" << " " << h.value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

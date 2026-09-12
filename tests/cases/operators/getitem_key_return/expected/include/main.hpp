@@ -12,6 +12,7 @@ struct KeyEcho;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Node:
@@ -59,22 +60,23 @@ inline std::ostream& operator<<(std::ostream& os, const KeyEcho& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self):
+//     pass
 inline KeyEcho::KeyEcho() {
-    // pass
 }
 
 // def __getitem__(self, k: Node) -> Node:
+//     return k
 inline Node& KeyEcho::__getitem__(Node& k) {
-    // return k
     return k;
 }
 
 // def __getitem__(self, k: Node) -> Node:
+//     return k
 inline const Node& KeyEcho::__getitem__(const Node& k) const {
-    // return k
     return k;
 }
 void __tpy_init();

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: set[Any] = set()
+//     a: Any = 1
+//     b: Any = "hello"
+//     s.add(a)
+//     s.add(b)
+//     print(len(s))
 void main() {
-    // s: set[Any] = set()
     ::tpy::ordered_set<::tpy::Any> s = ::tpy::ordered_set<::tpy::Any>();
-    // a: Any = 1
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(1));
-    // b: Any = "hello"
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
-    // s.add(a)
     s.insert(a);
-    // s.add(b)
     s.insert(b);
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

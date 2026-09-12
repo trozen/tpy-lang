@@ -3,62 +3,71 @@
 
 namespace tpyapp::main {
 
+// VERSION: Final[tuple[int32, int32, int32]] = (1, 2, 3)
 const std::tuple<int32_t, int32_t, int32_t> VERSION = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
+// PAIR: Final[tuple[str, bool]] = ("hello", True)
 const std::tuple<std::string_view, bool> PAIR = std::tuple<std::string_view, bool>{"hello", true};
+// ARITH: Final[tuple[int32, int32]] = (10 + 20, 100 - 1)
 const std::tuple<int32_t, int32_t> ARITH = std::tuple<int32_t, int32_t>{::tpy::add_check<int32_t>(10, 20), ::tpy::sub_check<int32_t>(100, 1)};
+// NESTED: Final[tuple[tuple[str, int32], str]] = (("inner", 42), "outer")
 const std::tuple<std::tuple<std::string_view, int32_t>, std::string_view> NESTED = std::tuple<std::tuple<std::string_view, int32_t>, std::string_view>{std::tuple<std::string_view, int32_t>{"inner", 42}, "outer"};
 
 // def main() -> None:
+//     major, minor, patch = VERSION
+//     print(major)
+//     print(minor)
+//     print(patch)
+//     label, flag = PAIR
+//     print(label)
+//     print(flag)
+//     a, b = ARITH
+//     print(a)
+//     print(b)
+//     inner, outer = NESTED
+//     name, val = inner
+//     print(name)
+//     print(val)
+//     print(outer)
 void main() {
-    // major, minor, patch = VERSION
     const auto& __tup_1 = VERSION;
     int32_t major = std::get<0>(__tup_1);
     int32_t minor = std::get<1>(__tup_1);
     int32_t patch = std::get<2>(__tup_1);
-    // print(major)
     std::cout << major << "\n";
-    // print(minor)
     std::cout << minor << "\n";
-    // print(patch)
     std::cout << patch << "\n";
-    // label, flag = PAIR
     const auto& __tup_2 = PAIR;
     std::string_view label = std::get<0>(__tup_2);
     bool flag = std::get<1>(__tup_2);
-    // print(label)
     std::cout << label << "\n";
-    // print(flag)
     std::cout << ::tpy::print_bool(flag) << "\n";
-    // a, b = ARITH
     const auto& __tup_3 = ARITH;
     int32_t a = std::get<0>(__tup_3);
     int32_t b = std::get<1>(__tup_3);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
-    // inner, outer = NESTED
     const auto& __tup_4 = NESTED;
     std::tuple<std::string_view, int32_t> inner = std::get<0>(__tup_4);
     std::string_view outer = std::get<1>(__tup_4);
-    // name, val = inner
     const auto& __tup_5 = inner;
     std::string_view name = std::get<0>(__tup_5);
     int32_t val = std::get<1>(__tup_5);
-    // print(name)
     std::cout << name << "\n";
-    // print(val)
     std::cout << val << "\n";
-    // print(outer)
     std::cout << outer << "\n";
 }
 
+// VERSION: Final[tuple[int32, int32, int32]] = (1, 2, 3)
+// PAIR: Final[tuple[str, bool]] = ("hello", True)
+// ARITH: Final[tuple[int32, int32]] = (10 + 20, 100 - 1)
+// NESTED: Final[tuple[tuple[str, int32], str]] = (("inner", 42), "outer")
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

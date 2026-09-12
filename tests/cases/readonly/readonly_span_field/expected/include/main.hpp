@@ -11,7 +11,9 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_box(b: readonly[Box]) -> int32:
 int32_t read_box(const Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, items: Span[int32]) -> None:
+//     self.items = items
 inline Box::Box(std::span<int32_t> items) : items(items) {}
 void __tpy_init();
 } // namespace tpyapp::main

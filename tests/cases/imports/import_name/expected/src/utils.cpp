@@ -5,8 +5,8 @@ namespace tpyapp::utils {
 
 
 // def get_name() -> str:
+//     return __name__
 std::string get_name() {
-    // return __name__
     return std::string(__name__);
 }
 

@@ -46,12 +46,12 @@ std::optional<::tpyapp::lib::Color> EnumUtil<::tpyapp::lib::Color>::try_parse(st
 namespace tpyapp::lib {
 
 
+// from enum import Enum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
 }
 
 } // namespace tpyapp::lib

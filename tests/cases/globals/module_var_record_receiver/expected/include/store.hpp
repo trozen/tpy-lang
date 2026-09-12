@@ -51,29 +51,30 @@ inline std::ostream& operator<<(std::ostream& os, const Env& obj) {
 
 
 // def __init__(self) -> None:
+//     self.data = {}
 inline Env::Env() : data(::tpy::ordered_map<std::string, std::string>()) {}
 
 // def __getitem__(self, key: str) -> str:
+//     return self.data[key]
 inline std::string Env::__getitem__(std::string_view key) const {
-    // return self.data[key]
     return ::tpy::__getitem__(this->data, key);
 }
 
 // def __setitem__(self, key: str, value: str) -> None:
+//     self.data[key] = value
 inline void Env::__setitem__(std::string_view key, std::string_view value) {
-    // self.data[key] = value
     ::tpy::__setitem__(this->data, key, std::string(value));
 }
 
 // def __delitem__(self, key: str) -> None:
+//     del self.data[key]
 inline void Env::__delitem__(std::string_view key) {
-    // del self.data[key]
     ::tpy::__delitem__(this->data, key);
 }
 
 // def __iter__(self) -> Iterator[str]:
+//     return iter(self.data)
 inline auto Env::__iter__() const {
-    // return iter(self.data)
     return ::tpy::__iter__(this->data);
 }
 void __tpy_init();

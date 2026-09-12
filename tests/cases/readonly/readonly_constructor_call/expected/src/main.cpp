@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // @readonly
 // def build_flag() -> int:
+//     Token()  # tpyc: ok
+//     return 0
 ::tpy::BigInt build_flag() {
-    // Token()  # tpyc: ok
     Token();
-    // return 0
     return ::tpy::BigInt(0);
 }
 
+// print(build_flag())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(build_flag())
     std::cout << build_flag() << "\n";
 }
 

@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter()
+//     c.tick()
+//     c.tick()
+//     c.tick()
+//     print(c.value())
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // c.tick()
     c.tick();
-    // c.tick()
     c.tick();
-    // c.tick()
     c.tick();
-    // print(c.value())
     std::cout << c.value() << "\n";
 }
 
+// from tpy.unsafe import unsafe_take, unsafe_release
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_take, unsafe_release
-    // main()
     main();
 }
 

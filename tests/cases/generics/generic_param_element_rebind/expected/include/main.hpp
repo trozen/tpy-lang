@@ -11,8 +11,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def last[T](a: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> last(std::vector<T>& a);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -33,19 +35,20 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 // def last[T](a: list[T]) -> T:
+//     result: T = a[0]
+//     for i in range(1, len(a)):
+//         result = a[i]
+//     return result
 template<typename T>
 ::tpy::val_or_ref_t<T> last(std::vector<T>& a) {
-    // result: T = a[0]
     T* result = &(::tpy::__getitem__(a, 0));
-    // for i in range(1, len(a)):
     int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        // result = a[i]
         result = &(::tpy::__getitem__(a, i));
     }
-    // return result
     return (*result);
 }
 

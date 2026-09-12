@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(p.Box(10).n)       # aliased qualified -> pa.Box (int field)
+//     print(pa_re.Box(5).n)    # re-exported -> pc_def.Box (int field), not pb.Box
+//     print(Box("hi").msg)     # bare -> pb.Box (str field)
 void main() {
-    // print(p.Box(10).n)       # aliased qualified -> pa.Box (int field)
     std::cout << ::tpyapp::pa::Box(::tpy::BigInt(10)).n << "\n";
-    // print(pa_re.Box(5).n)    # re-exported -> pc_def.Box (int field), not pb.Box
     std::cout << ::tpyapp::pc_def::Box(::tpy::BigInt(5)).n << "\n";
-    // print(Box("hi").msg)     # bare -> pb.Box (str field)
     std::cout << ::tpyapp::pb::Box("hi").msg << "\n";
 }
 
+// # Qualified construction still resolves to the right module through an aliased
+// # import (`import pa as p`) and a re-exporting module (`pa_re` re-exports Box
+// # from pc_def), even with a same-named pb.Box bare-imported into scope.
+// import pa as p
+// import pa_re
+// from pb import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Qualified construction still resolves to the right module through an aliased
-    // # import (`import pa as p`) and a re-exporting module (`pa_re` re-exports Box
-    // # from pc_def), even with a same-named pb.Box bare-imported into scope.
-    // import pa as p
     ::tpyapp::pa::__tpy_init();
-    // import pa_re
     ::tpyapp::pa_re::__tpy_init();
-    // from pb import Box
     ::tpyapp::pb::__tpy_init();
-    // main()
     main();
 }
 

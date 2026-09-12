@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def describe(e: Optional[Event]) -> str:
+//     if e is None:
+//         return "<none>"
+//     if isinstance(e, ClickEvent):  # tpyc: ok
+//         narrowed = e  # tpyc: type(ClickEvent)
+//         return f"click({narrowed.x},{narrowed.y}) -> {narrowed.kind()}"
+//     return e.kind()
 std::string describe(Event* e) {
-    // if e is None:
     if ((e == nullptr)) {
-        // return "<none>"
         return "<none>";
     }
-    // if isinstance(e, ClickEvent):  # tpyc: ok
     if (ClickEvent* __e_ptr = dynamic_cast<ClickEvent*>(e); (__e_ptr != nullptr)) {
-        // narrowed = e  # tpyc: type(ClickEvent)
         ClickEvent& narrowed = (*__e_ptr);
-        // return f"click({narrowed.x},{narrowed.y}) -> {narrowed.kind()}"
         return std::format("click({},{}) -> {}", (narrowed.x).to_string(), (narrowed.y).to_string(), narrowed.kind());
     }
-    // return e.kind()
     return e->kind();
 }
 
 // def main() -> None:
+//     print(describe(None))
+//     print(describe(Event()))
+//     print(describe(ClickEvent(3, 7)))
 void main() {
-    // print(describe(None))
     std::cout << describe(nullptr) << "\n";
-    // print(describe(Event()))
     Event __tmp_1 = Event();
     std::cout << describe(&(__tmp_1)) << "\n";
-    // print(describe(ClickEvent(3, 7)))
     ClickEvent __tmp_2 = ClickEvent(::tpy::BigInt(3), ::tpy::BigInt(7));
     std::cout << describe(&(__tmp_2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

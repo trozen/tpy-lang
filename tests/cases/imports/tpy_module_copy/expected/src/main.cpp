@@ -3,21 +3,19 @@
 
 namespace tpyapp::main {
 
-// s: str = "hello"
 std::string s;
-// u = t.copy(s)
 std::string u;
 
+// s: str = "hello"
+// u = t.copy(s)
+// print(u)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // s: str = "hello"
     s = "hello";
-    // u = t.copy(s)
     u = std::string(s);
-    // print(u)
     std::cout << u << "\n";
 }
 

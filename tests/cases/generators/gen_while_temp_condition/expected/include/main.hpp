@@ -12,12 +12,16 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_fresh_each_pull_framed;
 struct __gen_if_cond_temp;
 
+// def eat(xs: list[int]) -> int:
 ::tpy::BigInt eat(std::vector<::tpy::BigInt>& xs);
+// def fresh_each_pull_framed() -> Iterator[int]:
 __gen_fresh_each_pull_framed fresh_each_pull_framed();
+// def if_cond_temp(n: int) -> Iterator[int]:
 __gen_if_cond_temp if_cond_temp(::tpy::BigInt n);
+// def main():
 void main();
 
-// Generator: fresh_each_pull_framed
+// def fresh_each_pull_framed() -> Iterator[int]:
 struct __gen_fresh_each_pull_framed : public ::tpy::next_iter_mixin<__gen_fresh_each_pull_framed, ::tpy::BigInt> {
     int32_t __state;
 
@@ -40,7 +44,7 @@ struct __gen_fresh_each_pull_framed : public ::tpy::next_iter_mixin<__gen_fresh_
     }
 };
 
-// Generator: if_cond_temp
+// def if_cond_temp(n: int) -> Iterator[int]:
 struct __gen_if_cond_temp : public ::tpy::next_iter_mixin<__gen_if_cond_temp, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt n;
@@ -68,6 +72,11 @@ struct __gen_if_cond_temp : public ::tpy::next_iter_mixin<__gen_if_cond_temp, ::
     }
 };
 
+// def fresh_each_pull() -> Iterator[int]:
+//     # A fresh [1, 2] per condition evaluation keeps eat() returning 2
+//     # forever; the caller's guard bounds the pulls.
+//     while eat([1, 2]) > 1:
+//         yield 1
 inline auto fresh_each_pull() {
     return ::tpy::make_generator<::tpy::BigInt>(
         []() mutable -> std::optional<::tpy::BigInt> {
@@ -82,15 +91,18 @@ inline auto fresh_each_pull() {
     );
 }
 
+// def walrus_gen(limit: int) -> Iterator[int]:
+//     n = limit
+//     while (m := n) > 0:
+//         yield m
+//         n -= 1
 inline auto walrus_gen(const ::tpy::BigInt& limit) {
-    // n = limit
     ::tpy::BigInt n = limit;
     return ::tpy::make_generator<::tpy::BigInt>(
         [limit, n]() mutable -> std::optional<::tpy::BigInt> {
             ::tpy::BigInt m;
             while (((m = n) > 0)) {
                 auto __val = m;
-                // n -= 1
                 n = (n) - (::tpy::BigInt(1));
                 return std::optional<::tpy::BigInt>(__val);
             }

@@ -12,7 +12,9 @@ struct NodeHolder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_holder(h: readonly[NodeHolder]) -> None:
 void read_holder(const NodeHolder& h);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -56,22 +58,24 @@ inline std::ostream& operator<<(std::ostream& os, const NodeHolder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Node::Node(int32_t v) : value(v) {}
 
 // def __init__(self) -> None:
+//     self._node = Ptr[Node]()
 inline NodeHolder::NodeHolder() : _node(static_cast<Node*>(nullptr)) {}
 
 // @auto_readonly
 // def get_node(self) -> Ptr[auto_readonly[Node]]:
+//     return self._node
 inline Node* NodeHolder::get_node() {
-    // return self._node
     return this->_node;
 }
 
 // @auto_readonly
 // def get_node(self) -> Ptr[auto_readonly[Node]]:
+//     return self._node
 inline const Node* NodeHolder::get_node() const {
-    // return self._node
     return this->_node;
 }
 void __tpy_init();

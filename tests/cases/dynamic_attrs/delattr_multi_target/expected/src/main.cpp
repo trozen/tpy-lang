@@ -5,41 +5,42 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Bag()
+//     a.x = 1
+//     a.keep = 2
+//     b = Bag()
+//     b.y = 3
+//     del a.x, b.y  # both targets are deleted, left to right
+//     print(len(a._data), len(b._data), cast(int, a.keep))
+//
+//     c = Bag()
+//     c.p = 1
+//     c.q = 2
+//     del c.p, c.q  # two targets on the SAME receiver
+//     print(len(c._data))
 void main() {
-    // a = Bag()
     Bag a = Bag();
-    // a.x = 1
     a.__setattr__("x", ::tpy::make_any(::tpy::BigInt(1)));
-    // a.keep = 2
     a.__setattr__("keep", ::tpy::make_any(::tpy::BigInt(2)));
-    // b = Bag()
     Bag b = Bag();
-    // b.y = 3
     b.__setattr__("y", ::tpy::make_any(::tpy::BigInt(3)));
-    // del a.x, b.y  # both targets are deleted, left to right
     a.__delattr__("x");
     b.__delattr__("y");
-    // print(len(a._data), len(b._data), cast(int, a.keep))
     std::cout << ::tpy::__len__(a._data) << " " << ::tpy::__len__(b._data) << " " << ::tpy::any_cast_or_panic<::tpy::BigInt>(a.__getattr__("keep")) << "\n";
-    // c = Bag()
     Bag c = Bag();
-    // c.p = 1
     c.__setattr__("p", ::tpy::make_any(::tpy::BigInt(1)));
-    // c.q = 2
     c.__setattr__("q", ::tpy::make_any(::tpy::BigInt(2)));
-    // del c.p, c.q  # two targets on the SAME receiver
     c.__delattr__("p");
     c.__delattr__("q");
-    // print(len(c._data))
     std::cout << ::tpy::__len__(c._data) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

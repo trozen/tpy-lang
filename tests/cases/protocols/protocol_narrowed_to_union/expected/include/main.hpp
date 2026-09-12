@@ -9,63 +9,66 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T_items>
-  requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
-int32_t total(T_items& items);
-template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
-int32_t maybe_total(const T_items* items);
-void main();
-
 // def total(items: Spannable[int32] | Iterable[int32]) -> int32:
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
+int32_t total(T_items& items);
+// def maybe_total(items: Spannable[int32] | Iterable[int32] | None) -> int32:
+template<typename T_items = std::nullptr_t>
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
+int32_t maybe_total(const T_items* items);
+// def main() -> None:
+void main();
+
+// def total(items: Spannable[int32] | Iterable[int32]) -> int32:
+//     if isinstance(items, Spannable):
+//         s = span(items)
+//         result: int32 = 0
+//         for x in s:
+//             result += x
+//         return result
+//     else:
+//         result2: int32 = 0
+//         for x2 in items:
+//             result2 += x2
+//         return result2
+template<typename T_items>
+  requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t total(T_items& items) {
-    // if isinstance(items, Spannable):
     if constexpr (::tpystd::tpy::Spannable<T_items, int32_t>) {
-        // s = span(items)
         std::span<const int32_t> s = ::tpy::as_span(items);
-        // result: int32 = 0
         int32_t result = 0;
-        // for x in s:
         auto& __obj_0 = s;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // result += x
             result = ::tpy::add_check<int32_t>(result, x);
         }
-        // return result
         return result;
-    // else:
     } else {
-        // result2: int32 = 0
         int32_t result2 = 0;
-        // for x2 in items:
         auto& __src_1 = items;
         auto&& __itr_1 = ::tpy::__iter__(__src_1);
         for (;;) {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t x2 = ::tpy::unwrap_ref(*__r_2);
-            // result2 += x2
             result2 = ::tpy::add_check<int32_t>(result2, x2);
         }
-        // return result2
         return result2;
     }
 }
 // def maybe_total(items: Spannable[int32] | Iterable[int32] | None) -> int32:
+//     if items is not None:
+//         return total(items)
+//     return -1
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t maybe_total(const T_items* items) {
-    // if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // return total(items)
         return total((*items));
     }
-    // return -1
     return -1;
 }
 

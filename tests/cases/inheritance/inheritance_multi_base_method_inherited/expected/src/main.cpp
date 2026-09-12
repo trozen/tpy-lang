@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Leaf().delegate())
 void main() {
-    // print(Leaf().delegate())
     std::cout << Leaf().delegate() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

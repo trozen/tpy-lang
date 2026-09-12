@@ -24,12 +24,19 @@ struct __coro_async_section;
 struct __gen_Holder_walk;
 struct __gen_Holder_peek;
 
+// def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
 __gen_walk_free walk_free(std::vector<std::tuple<int32_t, A>>& xs);
+// def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
 __gen_walk_value walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs);
+// async def walk_async(xs: list[tuple[int32, A]]) -> int32:
 __coro_walk_async walk_async(std::vector<std::tuple<int32_t, A>>& xs);
+// def walk_items(d: dict[int32, A]) -> Iterator[int32]:
 __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d);
+// async def sum_items(d: dict[int32, int32]) -> int32:
 __coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d);
+// async def async_section() -> None:
 __coro_async_section async_section();
+// def main() -> None:
 void main();
 
 // class A:
@@ -68,7 +75,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: walk_async
+// async def walk_async(xs: list[tuple[int32, A]]) -> int32:
 struct __coro_walk_async {
     int32_t __state;
     bool __cancel_pending;
@@ -97,7 +104,7 @@ struct __coro_walk_async {
     }
 };
 
-// Async coroutine: sum_items
+// async def sum_items(d: dict[int32, int32]) -> int32:
 struct __coro_sum_items {
     int32_t __state;
     bool __cancel_pending;
@@ -127,7 +134,7 @@ struct __coro_sum_items {
     }
 };
 
-// Async coroutine: async_section
+// async def async_section() -> None:
 struct __coro_async_section {
     int32_t __state;
     bool __cancel_pending;
@@ -156,7 +163,7 @@ struct __coro_async_section {
     }
 };
 
-// Generator: walk_free
+// def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
 struct __gen_walk_free : public ::tpy::next_iter_mixin<__gen_walk_free, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, A>>& xs;
@@ -183,7 +190,7 @@ struct __gen_walk_free : public ::tpy::next_iter_mixin<__gen_walk_free, int32_t>
     }
 };
 
-// Generator: walk_value
+// def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_walk_value : public ::tpy::next_iter_mixin<__gen_walk_value, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& xs;
@@ -210,7 +217,7 @@ struct __gen_walk_value : public ::tpy::next_iter_mixin<__gen_walk_value, int32_
     }
 };
 
-// Generator: walk_items
+// def walk_items(d: dict[int32, A]) -> Iterator[int32]:
 struct __gen_walk_items : public ::tpy::next_iter_mixin<__gen_walk_items, int32_t> {
     int32_t __state;
     ::tpy::ordered_map<int32_t, A>& d;
@@ -238,7 +245,7 @@ struct __gen_walk_items : public ::tpy::next_iter_mixin<__gen_walk_items, int32_
     }
 };
 
-// Generator: Holder.walk
+// def walk(self) -> Iterator[int32]:
 struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk, int32_t> {
     int32_t __state;
     Holder& __self;
@@ -269,7 +276,7 @@ inline __gen_Holder_walk Holder::walk() {
     return __gen_Holder_walk(*this);
 }
 
-// Generator: Holder.peek
+// def peek(self) -> Iterator[int32]:
 struct __gen_Holder_peek : public ::tpy::next_iter_mixin<__gen_Holder_peek, int32_t> {
     int32_t __state;
     const Holder& __self;
@@ -302,9 +309,11 @@ inline __gen_Holder_peek Holder::peek() const {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline A::A(int32_t v) : v(v) {}
 
 // def __init__(self, xs: Own[list[tuple[int32, A]]]) -> None:
+//     self.xs = xs
 inline Holder::Holder(std::vector<std::tuple<int32_t, A>>&& xs) : xs(std::move(xs)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,76 +5,80 @@ namespace tpyapp::main {
 
 
 // def fresh() -> Own[Counter]:
+//     return Counter(100)
 Counter fresh() {
-    // return Counter(100)
     return Counter(100);
 }
 
 // def main() -> None:
+//     items = [Counter(1), Counter(2), Counter(3)]
+//
+//     # Both targets alias their list elements; the mutation is observed.
+//     a, b = (items[0], items[1])
+//     a.n += 10
+//     b.n += 20
+//     print(items[0].n)
+//     print(items[1].n)
+//
+//     # `_` discards the second element (still evaluated); the first aliases.
+//     c, _ = (items[2], items[0])
+//     c.n += 5
+//     print(items[2].n)
+//
+//     # Mixed: lvalue alias + fresh rvalue. The alias mutates the source; the
+//     # rvalue is an independent fresh object.
+//     d, e = (items[1], fresh())
+//     d.n += 1
+//     print(items[1].n)
+//     print(e.n)
+//
+//     # Bare-name reference elements (the direct-bind path, no temps): f aliases
+//     # items[0], g aliases items[2].
+//     src0 = items[0]
+//     src2 = items[2]
+//     f, g = (src0, src2)
+//     f.n += 100
+//     g.n += 200
+//     print(items[0].n)
+//     print(items[2].n)
 void main() {
-    // items = [Counter(1), Counter(2), Counter(3)]
     std::array<Counter, 3> items = {Counter(1), Counter(2), Counter(3)};
-    // # Both targets alias their list elements; the mutation is observed.
-    // a, b = (items[0], items[1])
     Counter& __unpack_0_0 = ::tpy::__getitem__(items, 0);
     Counter& __unpack_0_1 = ::tpy::__getitem__(items, 1);
     Counter& a = __unpack_0_0;
     Counter& b = __unpack_0_1;
-    // a.n += 10
     a.n = ::tpy::add_check<int32_t>(a.n, 10);
-    // b.n += 20
     b.n = ::tpy::add_check<int32_t>(b.n, 20);
-    // print(items[0].n)
     std::cout << ::tpy::__getitem__(items, 0).n << "\n";
-    // print(items[1].n)
     std::cout << ::tpy::__getitem__(items, 1).n << "\n";
-    // # `_` discards the second element (still evaluated); the first aliases.
-    // c, _ = (items[2], items[0])
     Counter& __unpack_1_0 = ::tpy::__getitem__(items, 2);
     ::tpy::__getitem__(items, 0);
     Counter& c = __unpack_1_0;
-    // c.n += 5
     c.n = ::tpy::add_check<int32_t>(c.n, 5);
-    // print(items[2].n)
     std::cout << ::tpy::__getitem__(items, 2).n << "\n";
-    // # Mixed: lvalue alias + fresh rvalue. The alias mutates the source; the
-    // # rvalue is an independent fresh object.
-    // d, e = (items[1], fresh())
     Counter& __unpack_2_0 = ::tpy::__getitem__(items, 1);
     Counter __unpack_2_1 = fresh();
     Counter& d = __unpack_2_0;
     Counter e = std::move(__unpack_2_1);
-    // d.n += 1
     d.n = ::tpy::add_check<int32_t>(d.n, 1);
-    // print(items[1].n)
     std::cout << ::tpy::__getitem__(items, 1).n << "\n";
-    // print(e.n)
     std::cout << e.n << "\n";
-    // # Bare-name reference elements (the direct-bind path, no temps): f aliases
-    // # items[0], g aliases items[2].
-    // src0 = items[0]
     Counter& src0 = ::tpy::__getitem__(items, 0);
-    // src2 = items[2]
     Counter& src2 = ::tpy::__getitem__(items, 2);
-    // f, g = (src0, src2)
     Counter& f = src0;
     Counter& g = src2;
-    // f.n += 100
     f.n = ::tpy::add_check<int32_t>(f.n, 100);
-    // g.n += 200
     g.n = ::tpy::add_check<int32_t>(g.n, 200);
-    // print(items[0].n)
     std::cout << ::tpy::__getitem__(items, 0).n << "\n";
-    // print(items[2].n)
     std::cout << ::tpy::__getitem__(items, 2).n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

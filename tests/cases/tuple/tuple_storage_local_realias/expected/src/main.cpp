@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[tuple[int32, Box]] = [(1, Box(10)), (2, Box(20))]
+//     t = items[0]
+//     t[1].val = 99
+//     t = items[1]
+//     t[1].val = 88
+//     print(items[0][1].val)
+//     print(items[1][1].val)
 void main() {
-    // items: list[tuple[int32, Box]] = [(1, Box(10)), (2, Box(20))]
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(10)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(20)})};
-    // t = items[0]
     std::tuple<int32_t, Box*> t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 0));
-    // t[1].val = 99
     std::get<1>(t)->val = 99;
-    // t = items[1]
     t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 1));
-    // t[1].val = 88
     std::get<1>(t)->val = 88;
-    // print(items[0][1].val)
     std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n";
-    // print(items[1][1].val)
     std::cout << std::get<1>(::tpy::__getitem__(items, 1)).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

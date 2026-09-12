@@ -11,6 +11,7 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Item:
@@ -31,6 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Item::Item(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

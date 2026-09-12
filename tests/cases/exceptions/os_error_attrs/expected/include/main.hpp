@@ -11,7 +11,9 @@ struct DeviceError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fail(direct: bool) -> None:
 void fail(bool direct);
+// def main() -> None:
 void main();
 
 // class DeviceError(OSError):
@@ -33,6 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const DeviceError& obj) {
 
 
 // def __init__(self, message: String = "") -> None:
+//     super().__init__(message)
 inline DeviceError::DeviceError(const ::tpy::String& message) : ::tpy::OSError(message) {}
 void __tpy_init();
 } // namespace tpyapp::main

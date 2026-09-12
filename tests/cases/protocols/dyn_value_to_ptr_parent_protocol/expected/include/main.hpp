@@ -46,8 +46,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def takes_pet_ptr(p: Ptr[Pet]) -> int32:
 int32_t takes_pet_ptr(Pet* p);
+// def forward(np: NamedPet) -> int32:
 int32_t forward(NamedPet& np);
+// def main() -> None:
 void main();
 
 // class Cat(NamedPet):
@@ -110,17 +113,18 @@ namespace tpyapp::main {
 
 
 // def __init__(self, t: int32) -> None:
+//     self.tag = t
 inline Cat::Cat(int32_t t) : tag(t) {}
 
 // def name(self) -> int32:
+//     return self.tag
 inline int32_t Cat::name() {
-    // return self.tag
     return this->tag;
 }
 
 // def label(self) -> int32:
+//     return self.tag + 100
 inline int32_t Cat::label() {
-    // return self.tag + 100
     return (::tpy::add_check<int32_t>(this->tag, 100));
 }
 void __tpy_init();

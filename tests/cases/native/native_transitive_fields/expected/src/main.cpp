@@ -6,29 +6,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     m = M(get_s())
+//     print(m.read())
+//     m.write()
+//     print(m.read())
 void main() {
-    // m = M(get_s())
     M m = M(get_s());
-    // print(m.read())
     std::cout << ::tpy::print_bool(m.read()) << "\n";
-    // m.write()
     m.write();
-    // print(m.read())
     std::cout << ::tpy::print_bool(m.read()) << "\n";
 }
 
+// # Chained field access through intermediate record types that are NOT imported
+// # into the consumer. Only S is imported; A and Q are reached only via
+// # `self.s.a.q.flag`. Field lookup must resolve them via the cross-module record
+// # index, not require the consumer to re-import every intermediate type.
+// from native_stub import S
+//
+// from tpy.extern import cpp_template
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Chained field access through intermediate record types that are NOT imported
-    // # into the consumer. Only S is imported; A and Q are reached only via
-    // # `self.s.a.q.flag`. Field lookup must resolve them via the cross-module record
-    // # index, not require the consumer to re-import every intermediate type.
-    // from native_stub import S
-    // from tpy.extern import cpp_template
-    // main()
     main();
 }
 

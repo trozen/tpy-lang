@@ -5,47 +5,47 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Catch ZeroDivisionError via base.
+//     try:
+//         x: float = 10.0
+//         y: float = 0.0
+//         print(x / y)
+//     except ArithmeticError:
+//         print("caught arithmetic: zero division")
+//
+//     # Catch OverflowError via base.
+//     try:
+//         print(int(math.inf))
+//     except ArithmeticError:
+//         print("caught arithmetic: overflow")
 void main() {
-    // # Catch ZeroDivisionError via base.
-    // try:
     {
         try {
-            // x: float = 10.0
             double x = 10.0;
-            // y: float = 0.0
             double y = 0.0;
-            // print(x / y)
             std::cout << ::tpy::print_float((::tpy::truediv(x, y))) << "\n";
         } catch (const ::tpy::ArithmeticError&) {
-            // print("caught arithmetic: zero division")
             std::cout << "caught arithmetic: zero division" << "\n";
         }
     }
-    // # Catch OverflowError via base.
-    // try:
     {
         try {
-            // print(int(math.inf))
             std::cout << ::tpy::BigInt::from_float(::tpystd::math::inf) << "\n";
         } catch (const ::tpy::ArithmeticError&) {
-            // print("caught arithmetic: overflow")
             std::cout << "caught arithmetic: overflow" << "\n";
         }
     }
 }
 
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A single `except ArithmeticError` catches both ZeroDivisionError and
-    // # OverflowError (CPython's hierarchy). Print a fixed token, not str(e):
-    // # CPython 3.14 rewrote the message text, so pinning it would be
-    // # version-specific; the token still proves the base-class clause caught it.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

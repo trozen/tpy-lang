@@ -44,29 +44,30 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, start: int32):
+//     self.value = start
 inline Counter::Counter(int32_t start) : value(start) {}
 
 // def increment(self) -> None:
+//     self.value = self.value + 1
 inline void Counter::increment() {
-    // self.value = self.value + 1
     this->value = (::tpy::add_check<int32_t>(this->value, 1));
 }
 
 // def add(self, n: int32) -> None:
+//     self.value = self.value + n
 inline void Counter::add(int32_t n) {
-    // self.value = self.value + n
     this->value = (::tpy::add_check<int32_t>(this->value, n));
 }
 
 // def get(self) -> int32:
+//     return self.value
 inline int32_t Counter::get() const {
-    // return self.value
     return this->value;
 }
 
 // def reset(self) -> None:
+//     self.value = 0
 inline void Counter::reset() {
-    // self.value = 0
     this->value = 0;
 }
 void __tpy_init();

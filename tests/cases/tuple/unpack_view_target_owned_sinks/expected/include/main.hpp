@@ -9,16 +9,27 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(s: Own[str]) -> int:
 ::tpy::BigInt take(std::string s);
+// def first_of(src: tuple[str, str]) -> str:
 std::string first_of(const std::tuple<std::string, std::string>& src);
+// def first_bytes(src: tuple[bytes, bytes]) -> bytes:
 ::tpy::Bytes first_bytes(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src);
+// def take_bytes(b: Own[bytes]) -> int:
 ::tpy::BigInt take_bytes(::tpy::Bytes b);
+// def bytes_elements(src: tuple[bytes, bytes]) -> int:
 ::tpy::BigInt bytes_elements(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src);
+// def bytes_accumulate(t: tuple[bytes, bytes]) -> bytes:
 ::tpy::Bytes bytes_accumulate(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& t);
+// def elements(src: tuple[str, str]) -> int:
 ::tpy::BigInt elements(const std::tuple<std::string, std::string>& src);
+// def own_arg(src: tuple[str, str]) -> int:
 ::tpy::BigInt own_arg(const std::tuple<std::string, std::string>& src);
+// def accumulate(t: tuple[str, str]) -> str:
 std::string accumulate(const std::tuple<std::string, std::string>& t);
+// def collect(pairs: list[tuple[str, int]]) -> int:
 ::tpy::BigInt collect(const std::vector<std::tuple<std::string, ::tpy::BigInt>>& pairs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

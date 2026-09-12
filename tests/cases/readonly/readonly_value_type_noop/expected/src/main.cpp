@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def add_one(x: readonly[int32]) -> int32:
+//     return x + int32(1)
 int32_t add_one(int32_t x) {
-    // return x + int32(1)
     return (::tpy::add_check<int32_t>(x, 1));
 }
 
 // def main() -> None:
+//     v = int32(10)
+//     print(add_one(v))
 void main() {
-    // v = int32(10)
     int32_t v = 10;
-    // print(add_one(v))
     std::cout << add_one(v) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

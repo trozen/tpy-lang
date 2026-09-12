@@ -3,22 +3,21 @@
 
 namespace dotted_init::pkg::inner::leaf {
 
-// COUNTER: int32 = _seed()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
 int32_t COUNTER{};
 
 // def _seed() -> int32:
+//     # Non-trivial init so __tpy_init() runs (not a constexpr fold).
+//     return int32(40) + int32(2)
 int32_t _seed() {
-    // # Non-trivial init so __tpy_init() runs (not a constexpr fold).
-    // return int32(40) + int32(2)
     return (::tpy::add_check<int32_t>(40, 2));
 }
 
+// COUNTER: int32 = _seed()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // COUNTER: int32 = _seed()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
     COUNTER = _seed();
 }
 

@@ -11,7 +11,9 @@ struct Suppressor;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fall_through(do_raise: bool) -> None:
 void fall_through(bool do_raise);
+// def main() -> None:
 void main();
 
 // # Regression: a suppressing __exit__ must be called exactly once when the body
@@ -40,23 +42,23 @@ inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
 
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt Suppressor::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is not None:
+//         print(f"exit suppress: {str(exc_val)}")
+//         return True
+//     print("exit normal")
+//     return False
 inline bool Suppressor::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is not None:
     if ((exc_val != nullptr)) {
-        // print(f"exit suppress: {str(exc_val)}")
         std::cout << std::format("exit suppress: {}", std::string(::tpy::__str__((*exc_val)))) << "\n";
-        // return True
         return true;
     }
-    // print("exit normal")
     std::cout << "exit normal" << "\n";
-    // return False
     return false;
 }
 void __tpy_init();

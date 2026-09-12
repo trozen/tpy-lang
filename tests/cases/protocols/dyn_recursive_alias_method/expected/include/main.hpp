@@ -33,7 +33,9 @@ struct LeafCounter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(c: Counter) -> int32:
 int32_t run(Counter& c);
+// def main() -> None:
 void main();
 
 // class LeafCounter:
@@ -71,8 +73,8 @@ namespace tpyapp::main {
 
 
 // def count(self, t: Tree[int]) -> int32:
+//     return leaf_count(t)
 inline int32_t LeafCounter::count(const ::tpyapp::treelib::Tree<::tpy::BigInt>& t) const {
-    // return leaf_count(t)
     return ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t);
 }
 void __tpy_init();

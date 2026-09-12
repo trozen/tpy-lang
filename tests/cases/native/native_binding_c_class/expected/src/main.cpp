@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def use_rect(r: Ptr[Rect]) -> int32:
+//     return r.w * r.h
 int32_t use_rect(::SDL_Rect* r) {
-    // return r.w * r.h
     return (::tpy::mul_check<int32_t>(::tpy::deref_check(r).w, ::tpy::deref_check(r).h));
 }
 
 // def main() -> None:
+//     r: Rect = Rect(int32(0), int32(0), int32(800), int32(600))
+//     print(r.w)
+//     print(use_rect(r))
 void main() {
-    // r: Rect = Rect(int32(0), int32(0), int32(800), int32(600))
     ::SDL_Rect r = ::SDL_Rect{0, 0, 800, 600};
-    // print(r.w)
     std::cout << r.w << "\n";
-    // print(use_rect(r))
     std::cout << use_rect(&r) << "\n";
 }
 
+// # Test @native(binding="C") on a class -- C struct import with aggregate init
+// # Verifies aggregate initialization and native name in generated code
+// # tpy: include("native_types.hpp")
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test @native(binding="C") on a class -- C struct import with aggregate init
-    // # Verifies aggregate initialization and native name in generated code
-    // # tpy: include("native_types.hpp")
-    // from tpy.extern import native
-    // main()
     main();
 }
 

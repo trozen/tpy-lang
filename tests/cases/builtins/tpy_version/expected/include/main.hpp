@@ -14,6 +14,7 @@ inline auto& version_info = ::tpystd::tpy::version::version_info;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

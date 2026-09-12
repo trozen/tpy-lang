@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(int32(100))
+//     a: str = b.apply(int32(5), tag="sum")
+//     print(a)                                # sum:105
+//     c: int32 = b.apply(int32(5), tag=int32(7))
+//     print(c)                                # 112
 void main() {
-    // b = Box(int32(100))
     Box b = Box(100);
-    // a: str = b.apply(int32(5), tag="sum")
     std::string a = b.apply(5, std::string_view("sum"));
-    // print(a)                                # sum:105
     std::cout << a << "\n";
-    // c: int32 = b.apply(int32(5), tag=int32(7))
     int32_t c = b.apply(5, 7);
-    // print(c)                                # 112
     std::cout << c << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

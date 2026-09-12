@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_dict_value() -> Own[dict[str, str]]:
 ::tpy::ordered_map<std::string, std::string> in_dict_value();
+// def in_dict_key() -> Own[dict[str, int]]:
 ::tpy::ordered_map<std::string, ::tpy::BigInt> in_dict_key();
+// def in_dict_var() -> Own[dict[str, str]]:
 ::tpy::ordered_map<std::string, std::string> in_dict_var();
+// def in_dict_literal() -> Own[dict[str, str]]:
 ::tpy::ordered_map<std::string, std::string> in_dict_literal();
+// def in_dict_comp() -> Own[dict[str, str]]:
 ::tpy::ordered_map<std::string, std::string> in_dict_comp();
 
 void __tpy_init();

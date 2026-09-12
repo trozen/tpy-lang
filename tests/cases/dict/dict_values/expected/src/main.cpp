@@ -6,32 +6,34 @@ namespace tpyapp::main {
 
 // # Iterate values via d.values(), check len() and 'in' operator
 // def main() -> None:
+//     d = {"x": 10, "y": 20, "z": 30}
+//
+//     for v in d.values():
+//         print(v)
+//
+//     print(len(d.values()))
+//     print(20 in d.values())
+//     print(99 in d.values())
 void main() {
-    // d = {"x": 10, "y": 20, "z": 30}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
-    // for v in d.values():
     auto __obj_0 = ::tpy::dict_values(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // print(v)
         std::cout << v << "\n";
     }
-    // print(len(d.values()))
     std::cout << ::tpy::__len__(::tpy::dict_values(d)) << "\n";
-    // print(20 in d.values())
     std::cout << ::tpy::print_bool((::tpy::dict_values(d).contains(20))) << "\n";
-    // print(99 in d.values())
     std::cout << ::tpy::print_bool((::tpy::dict_values(d).contains(99))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

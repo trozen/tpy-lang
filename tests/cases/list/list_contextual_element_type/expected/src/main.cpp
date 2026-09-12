@@ -5,81 +5,90 @@ namespace tpyapp::main {
 
 
 // def make_optional_list() -> Own[list[int32 | None]]:
+//     return [int32(1), None, int32(3)]
 std::vector<std::optional<int32_t>> make_optional_list() {
-    // return [int32(1), None, int32(3)]
     return {1, std::nullopt, 3};
 }
 
 // def main():
+//     # Homogeneous literal, wider annotation (Optional)
+//     a: list[int32 | None] = [int32(1), int32(2)]
+//     print(len(a))
+//
+//     # None-only literal
+//     b: list[int32 | None] = [None]
+//     print(len(b))
+//
+//     # Mixed literal: int32 and None
+//     c: list[int32 | None] = [int32(1), None, int32(3)]
+//     print(len(c))
+//
+//     # Empty literal with union element type
+//     d: list[int32 | None] = []
+//     d.append(int32(42))
+//     d.append(None)
+//     print(len(d))
+//
+//     # Return type context with union element type
+//     e: list[int32 | None] = make_optional_list()
+//     print(len(e))
+//
+//     # Mutation on widened type
+//     a.append(None)
+//     print(len(a))
+//
+//     # Int literals in union annotation
+//     f: list[int32 | None] = [1, None, 3]
+//     print(len(f))
+//
+//     # Int literals in wider numeric type
+//     g: list[int64] = [1, 2, 3]
+//     print(len(g))
+//
+//     # Union of records: lvalue and rvalue mixing
+//     r = Rect()
+//     r.w = 10
+//     r.h = 20
+//     shapes: list[Rect | Circle] = [r, Circle()]
+//     print(len(shapes))
+//
+//     # Union of records: all rvalues
+//     shapes2: list[Rect | Circle] = [Rect(), Circle()]
+//     print(len(shapes2))
 void main() {
-    // # Homogeneous literal, wider annotation (Optional)
-    // a: list[int32 | None] = [int32(1), int32(2)]
     std::vector<std::optional<int32_t>> a = {1, 2};
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // # None-only literal
-    // b: list[int32 | None] = [None]
     std::vector<std::optional<int32_t>> b = {std::nullopt};
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    // # Mixed literal: int32 and None
-    // c: list[int32 | None] = [int32(1), None, int32(3)]
     std::vector<std::optional<int32_t>> c = {1, std::nullopt, 3};
-    // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
-    // # Empty literal with union element type
-    // d: list[int32 | None] = []
     std::vector<std::optional<int32_t>> d = std::vector<std::optional<int32_t>>{};
-    // d.append(int32(42))
     d.push_back(42);
-    // d.append(None)
     d.push_back(std::nullopt);
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // # Return type context with union element type
-    // e: list[int32 | None] = make_optional_list()
     std::vector<std::optional<int32_t>> e = make_optional_list();
-    // print(len(e))
     std::cout << ::tpy::__len__(e) << "\n";
-    // # Mutation on widened type
-    // a.append(None)
     a.push_back(std::nullopt);
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // # Int literals in union annotation
-    // f: list[int32 | None] = [1, None, 3]
     std::vector<std::optional<int32_t>> f = {1, std::nullopt, 3};
-    // print(len(f))
     std::cout << ::tpy::__len__(f) << "\n";
-    // # Int literals in wider numeric type
-    // g: list[int64] = [1, 2, 3]
     std::vector<int64_t> g = {1, 2, 3};
-    // print(len(g))
     std::cout << ::tpy::__len__(g) << "\n";
-    // # Union of records: lvalue and rvalue mixing
-    // r = Rect()
     Rect r = Rect();
-    // r.w = 10
     r.w = 10;
-    // r.h = 20
     r.h = 20;
-    // shapes: list[Rect | Circle] = [r, Circle()]
     std::vector<::tpy::Union<Circle, Rect>> shapes = ::tpy::make_vector<::tpy::Union<Circle, Rect>>(std::move(r), Circle());
-    // print(len(shapes))
     std::cout << ::tpy::__len__(shapes) << "\n";
-    // # Union of records: all rvalues
-    // shapes2: list[Rect | Circle] = [Rect(), Circle()]
     std::vector<::tpy::Union<Circle, Rect>> shapes2 = {Rect(), Circle()};
-    // print(len(shapes2))
     std::cout << ::tpy::__len__(shapes2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,11 +12,13 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def apply(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 int32_t apply(__F0&& f, int32_t x);
+// def main():
 void main();
 
 // class Base:
@@ -50,17 +52,17 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __call__(self, x: int32) -> int32:
+//     return x * 2
 inline int32_t Base::__call__(int32_t x) const {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 // def apply(f: Fn[[int32], int32], x: int32) -> int32:
+//     return f(x)
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 int32_t apply(__F0&& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 

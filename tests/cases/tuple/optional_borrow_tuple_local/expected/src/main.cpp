@@ -5,145 +5,149 @@ namespace tpyapp::main {
 
 
 // def make_pair(v: int) -> tuple[int, Own[Box]]:
+//     return (v, Box(v))
 std::tuple<::tpy::BigInt, Box> make_pair(const ::tpy::BigInt& v) {
-    // return (v, Box(v))
     return std::tuple<::tpy::BigInt, Box>{v, Box(v)};
 }
 
 // def alias_storage() -> int:
+//     h = Holder(Box(5))
+//     h2 = Holder(Box(7))
+//     t: tuple[int, Box] | None = h.pair
+//     t = h2.pair
+//     if t is not None:
+//         t[1].val = 99  # tpyc: ok
+//     return h2.pair[1].val  # 99 -- aliased, not the original 7
 ::tpy::BigInt alias_storage() {
-    // h = Holder(Box(5))
     Holder h = Holder(Box(::tpy::BigInt(5)));
-    // h2 = Holder(Box(7))
     Holder h2 = Holder(Box(::tpy::BigInt(7)));
-    // t: tuple[int, Box] | None = h.pair
     std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
-    // t = h2.pair
     t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h2.pair)};
-    // if t is not None:
     if ((t.has_value())) {
-        // t[1].val = 99  # tpyc: ok
         std::get<1>((*t))->val = ::tpy::BigInt(99);
     }
-    // return h2.pair[1].val  # 99 -- aliased, not the original 7
     return std::get<1>(h2.pair).val;
 }
 
 // def alias_after_owning_call(h: Holder) -> None:
+//     t: tuple[int, Box] | None = make_pair(9)
+//     # The rebind aliases h.pair (mutation below is observed on the source in
+//     # main); the local collapses to borrow form, so coercing the borrow source
+//     # against it must NOT warn about copying into owned storage.
+//     t = h.pair  # tpyc: ok
+//     if t is not None:
+//         t[1].val = 77
 void alias_after_owning_call(Holder& h) {
-    // t: tuple[int, Box] | None = make_pair(9)
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
     std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(::tpy::BigInt(9))))};
-    // # The rebind aliases h.pair (mutation below is observed on the source in
-    // # main); the local collapses to borrow form, so coercing the borrow source
-    // # against it must NOT warn about copying into owned storage.
-    // t = h.pair  # tpyc: ok
     t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
-    // if t is not None:
     if ((t.has_value())) {
-        // t[1].val = 77
         std::get<1>((*t))->val = ::tpy::BigInt(77);
     }
 }
 
 // def conditional(h: Holder, flag: bool) -> int:
+//     t: tuple[int, Box] | None = None
+//     if flag:
+//         t = h.pair
+//     if t is not None:
+//         t[1].val = 42
+//         return t[1].val
+//     return -1
 ::tpy::BigInt conditional(Holder& h, bool flag) {
-    // t: tuple[int, Box] | None = None
     std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::nullopt;
-    // if flag:
     if (flag) {
-        // t = h.pair
         t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
     }
-    // if t is not None:
     if ((t.has_value())) {
-        // t[1].val = 42
         std::get<1>((*t))->val = ::tpy::BigInt(42);
-        // return t[1].val
         return std::get<1>((*t))->val;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def branch_declared(h: Holder, flag: bool) -> int:
+//     # First DECLARED inside the `if` branch (hoisted for the post-branch read),
+//     # so the decl flows through the branch-decl path, not the straight-line one.
+//     if flag:
+//         t: tuple[int, Box] | None = h.pair
+//     else:
+//         t = None
+//     if t is not None:
+//         t[1].val = 55
+//     return h.pair[1].val
 ::tpy::BigInt branch_declared(Holder& h, bool flag) {
-    // # First DECLARED inside the `if` branch (hoisted for the post-branch read),
-    // # so the decl flows through the branch-decl path, not the straight-line one.
-    // if flag:
     std::optional<std::tuple<::tpy::BigInt, Box*>> t;
     if (flag) {
-        // t: tuple[int, Box] | None = h.pair
         t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
-    // else:
     } else {
-        // t = None
         t = std::nullopt;
     }
-    // if t is not None:
     if ((t.has_value())) {
-        // t[1].val = 55
         std::get<1>((*t))->val = ::tpy::BigInt(55);
     }
-    // return h.pair[1].val
     return std::get<1>(h.pair).val;
 }
 
 // def reowned(v: int) -> int:
+//     # Reassigning from a SECOND owning call: the owning rvalue materializes into
+//     # a slot the local aliases, so this is NOT a copy-into-owned -- it must not
+//     # warn (the negative guard for the collapse-the-reassignment-target fix).
+//     t: tuple[int, Box] | None = make_pair(9)
+//     t = make_pair(v)  # tpyc: ok
+//     if t is not None:
+//         t[1].val = 50
+//         return t[0] + t[1].val
+//     return -1
 ::tpy::BigInt reowned(const ::tpy::BigInt& v) {
-    // # Reassigning from a SECOND owning call: the owning rvalue materializes into
-    // # a slot the local aliases, so this is NOT a copy-into-owned -- it must not
-    // # warn (the negative guard for the collapse-the-reassignment-target fix).
-    // t: tuple[int, Box] | None = make_pair(9)
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
     std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(::tpy::BigInt(9))))};
-    // t = make_pair(v)  # tpyc: ok
     t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(v)))};
-    // if t is not None:
     if ((t.has_value())) {
-        // t[1].val = 50
         std::get<1>((*t))->val = ::tpy::BigInt(50);
-        // return t[0] + t[1].val
         return ((std::get<0>((*t))) + (std::get<1>((*t))->val));
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     print(alias_storage())
+//
+//     h3 = Holder(Box(3))
+//     alias_after_owning_call(h3)
+//     print(h3.pair[1].val)  # 77 -- aliased after rebind to h3.pair
+//
+//     h4 = Holder(Box(1))
+//     print(conditional(h4, True))   # 42
+//     print(h4.pair[1].val)          # 42 -- mutation visible on source
+//     print(conditional(h4, False))  # -1 -- stayed nullopt
+//
+//     h5 = Holder(Box(2))
+//     print(branch_declared(h5, True))   # 55 -- aliased through branch-declared local
+//     print(branch_declared(h5, False))  # 55 -- stayed nullopt, source unchanged
+//
+//     print(reowned(5))  # 5 + 50 = 55 -- re-owned, no spurious copy warning
 void main() {
-    // print(alias_storage())
     std::cout << alias_storage() << "\n";
-    // h3 = Holder(Box(3))
     Holder h3 = Holder(Box(::tpy::BigInt(3)));
-    // alias_after_owning_call(h3)
     alias_after_owning_call(h3);
-    // print(h3.pair[1].val)  # 77 -- aliased after rebind to h3.pair
     std::cout << std::get<1>(h3.pair).val << "\n";
-    // h4 = Holder(Box(1))
     Holder h4 = Holder(Box(::tpy::BigInt(1)));
-    // print(conditional(h4, True))   # 42
     std::cout << conditional(h4, true) << "\n";
-    // print(h4.pair[1].val)          # 42 -- mutation visible on source
     std::cout << std::get<1>(h4.pair).val << "\n";
-    // print(conditional(h4, False))  # -1 -- stayed nullopt
     std::cout << conditional(h4, false) << "\n";
-    // h5 = Holder(Box(2))
     Holder h5 = Holder(Box(::tpy::BigInt(2)));
-    // print(branch_declared(h5, True))   # 55 -- aliased through branch-declared local
     std::cout << branch_declared(h5, true) << "\n";
-    // print(branch_declared(h5, False))  # 55 -- stayed nullopt, source unchanged
     std::cout << branch_declared(h5, false) << "\n";
-    // print(reowned(5))  # 5 + 50 = 55 -- re-owned, no spurious copy warning
     std::cout << reowned(::tpy::BigInt(5)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

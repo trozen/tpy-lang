@@ -9,6 +9,7 @@ namespace mypkg::utils {
 
 inline constexpr std::string_view __name__ = "mypkg.utils";
 
+// def add(a: int32, b: int32) -> int32:
 int32_t add(int32_t a, int32_t b);
 
 void __tpy_init();

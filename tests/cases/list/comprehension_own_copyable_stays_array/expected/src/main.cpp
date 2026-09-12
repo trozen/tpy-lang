@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def make(i: int32) -> Own[Point]:
+//     return Point(i)
 Point make(int32_t i) {
-    // return Point(i)
     return Point(i);
 }
 
 // def main() -> None:
+//     pts = [make(i) for i in range(4)]  # tpyc: type(/Array\[Point, 4\]/)
+//     total = 0
+//     for p in pts:
+//         total += p.x
+//     print(total)
 void main() {
-    // pts = [make(i) for i in range(4)]  # tpyc: type(/Array\[Point, 4\]/)
     std::array<Point, 4> pts = ::tpy::array_from_index<Point, 4>([&](std::size_t __i_0) -> Point {
         int32_t i = int32_t(__i_0);
         return make(i);
     });
-    // total = 0
     int32_t total = 0;
-    // for p in pts:
     auto& __obj_1 = pts;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& p = *__beg_1;
-        // total += p.x
         total = ::tpy::add_check<int32_t>(total, p.x);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

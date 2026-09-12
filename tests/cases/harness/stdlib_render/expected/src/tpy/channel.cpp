@@ -4,15 +4,29 @@
 namespace tpystd::tpy::channel {
 
 
+// """Intra-process async channel -- the first Send-marker enforcement site.
+//
+// `channel[T: Send](cap)` returns a `(Sender[T], Receiver[T])` pair backed by
+// a fixed-capacity FIFO ring on the single-threaded executor. The `T: Send`
+// bound is the enforcement: a non-Send payload is rejected at the factory
+// call (Phase-2 bound machinery; no compiler-side code). See
+// `docs/CHANNEL_DESIGN.md`.
+//
+// v1 is SPSC (single producer, single consumer): at most one parked sender
+// and one parked receiver, mirroring `Future`'s single-waiter model. Shared
+// state is `Rc`-backed (single-threaded; the cross-thread Arc-backed channel
+// is Phase 6).
+// """
+//
+// from tpy.mem import UninitHeapStorage, UninitStorage
+// from tpy.coro import Waker, Poll, poll_ready, poll_pending, poll_ready_none
+// from tplib.rc import Rc
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitHeapStorage, UninitStorage
-    // from tpy.coro import Waker, Poll, poll_ready, poll_pending, poll_ready_none
     ::tpystd::coro::__tpy_init();
-    // from tplib.rc import Rc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
 }

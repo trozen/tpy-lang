@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main():
+//     m = Maybe(4)
+//     print("in main")
 void main() {
-    // m = Maybe(4)
     Maybe m = Maybe(4);
-    // print("in main")
     std::cout << "in main" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def leaf_count(t: Tree[int32]) -> int32:
+//     match t:
+//         case list() as branches:
+//             total = 0
+//             for child in branches:
+//                 total += leaf_count(child)
+//             return total
+//         case _:
+//             return 1
 int32_t leaf_count(const Tree<int32_t>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // total = 0
         int32_t total = 0;
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            // total += leaf_count(child)
             total = ::tpy::add_check<int32_t>(total, leaf_count(child));
         }
-        // return total
         return total;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }
@@ -38,29 +38,29 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 }
 
 // def main() -> None:
+//     seed: Tree[int32] = [1, [2, 3], 4]
+//     h = Holder(seed)
+//     g = h.get()
+//     print(leaf_count(g))
+//     print(leaf_count(h.get()))
+//     probe: Tree[int32] = [9, 9, 9, 9]
+//     print(h.matches(probe))
 void main() {
-    // seed: Tree[int32] = [1, [2, 3], 4]
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}, 4};
-    // h = Holder(seed)
     Holder h = Holder(std::move(seed));
-    // g = h.get()
     Tree<int32_t>& g = h.get();
-    // print(leaf_count(g))
     std::cout << leaf_count(g) << "\n";
-    // print(leaf_count(h.get()))
     std::cout << leaf_count(h.get()) << "\n";
-    // probe: Tree[int32] = [9, 9, 9, 9]
     Tree<int32_t> probe = std::vector<Tree<int32_t>>{9, 9, 9, 9};
-    // print(h.matches(probe))
     std::cout << ::tpy::print_bool(h.matches(probe)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

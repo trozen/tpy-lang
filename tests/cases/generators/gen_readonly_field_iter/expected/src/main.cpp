@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def alias_param(h: Holder) -> Iterator[int32]:
+//     a = h.plain  # tpyc: ok
+//     yield a[1]
+//     h.plain[1] = 222
+//     yield a[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_alias_param::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = h.plain  # tpyc: ok
         a = &(h.plain);
-        // yield a[1]
         __state = S_RESUME_0;
         return ::tpy::__getitem__((*a), 1);
     }
     case S_RESUME_0: {
-        // h.plain[1] = 222
         ::tpy::__setitem__(h.plain, 1, 222);
-        // yield a[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__((*a), 1);
     }
@@ -37,32 +37,35 @@ __gen_alias_param alias_param(Holder& h) {
 }
 
 // def main() -> None:
+//     h = Holder()
+//     print(sum(h.direct()))
+//     print(sum(h.via_alias()))
+//     print(sum(h.simple_alias()))
+//     h2 = Holder()
+//     print("live", list(h2.live_alias()))
+//     h3 = Holder()
+//     print("param", list(alias_param(h3)))
+//     b = Bumper()
+//     print(sum(b.bump()))
+//     print(b.cells[0].v, b.cells[1].v)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(sum(h.direct()))
     std::cout << ::tpy::builtin_sum<int32_t>(h.direct()) << "\n";
-    // print(sum(h.via_alias()))
     std::cout << ::tpy::builtin_sum<int32_t>(h.via_alias()) << "\n";
-    // print(sum(h.simple_alias()))
     std::cout << ::tpy::builtin_sum<int32_t>(h.simple_alias()) << "\n";
-    // h2 = Holder()
     Holder h2 = Holder();
-    // print("live", list(h2.live_alias()))
     std::cout << "live" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(h2.live_alias())) << "\n";
-    // h3 = Holder()
     Holder h3 = Holder();
-    // print("param", list(alias_param(h3)))
     std::cout << "param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(alias_param(h3))) << "\n";
-    // b = Bumper()
     Bumper b = Bumper();
-    // print(sum(b.bump()))
     std::cout << ::tpy::builtin_sum<int32_t>(b.bump()) << "\n";
-    // print(b.cells[0].v, b.cells[1].v)
     std::cout << ::tpy::__getitem__(b.cells, 0).v << " " << ::tpy::__getitem__(b.cells, 1).v << "\n";
 }
 
 // def direct(self) -> Iterator[int32]:
+//     if self.lst is not None:
+//         for x in self.lst:
+//             yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -90,7 +93,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
             continue;
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -101,10 +103,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
 
 
 // def via_alias(self) -> Iterator[int32]:
+//     h = self.lst
+//     if h is not None:
+//         for x in h:
+//             yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // h = self.lst
         h = ::tpy::optional_to_ptr(__self.lst);
         if ((h != nullptr)) {
             __for_it_0.emplace(((*h)).begin());
@@ -130,7 +135,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() 
             continue;
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -141,19 +145,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() 
 
 
 // def live_alias(self) -> Iterator[int32]:
+//     a = self.plain  # tpyc: ok
+//     yield a[0]
+//     self.plain[0] = 111
+//     yield a[0]
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = self.plain  # tpyc: ok
         a = &(__self.plain);
-        // yield a[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__((*a), 0);
     }
     case S_RESUME_0: {
-        // self.plain[0] = 111
         ::tpy::__setitem__(__self.plain, 0, 111);
-        // yield a[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__((*a), 0);
     }
@@ -167,12 +171,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__next__()
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

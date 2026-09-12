@@ -5,187 +5,214 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # list.remove(x) with x not in list.
+//     try:
+//         xs: list[int] = [1, 2, 3]
+//         xs.remove(99)
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # list.index(x) -- TPy's "list.index(x): x not in list" diverges from
+//     # CPython's "<repr(x)> is not in list" until generic value-formatting
+//     # lands in the runtime; covered by panic_arraylist_index_not_found.
+//
+//     # bytearray.remove with value not in bytearray.
+//     try:
+//         ba: bytearray = bytearray(b"abc")
+//         ba.remove(200)
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # bytes value out of range.
+//     try:
+//         print(bytes([300]))
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # str.split with empty separator.
+//     try:
+//         "abc".split("")
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # str.index with substring not found.
+//     try:
+//         print("hello".index("xyz"))
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # str.rindex with substring not found.
+//     try:
+//         print("hello".rindex("xyz"))
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # range() with step == 0.
+//     try:
+//         print(list(range(0, 10, 0)))
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # slice step == 0.
+//     try:
+//         zs: list[int] = [1, 2, 3, 4]
+//         print(zs[::0])
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # open() with invalid mode.
+//     try:
+//         f = open("anything", "z")
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # float() parse error.
+//     try:
+//         print(float("not_a_number"))
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # int() parse error.
+//     try:
+//         print(int("not_a_number"))
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # time.sleep with negative argument.
+//     try:
+//         time.sleep(-1.0)
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # Negative shift count (fixed-int).
+//     try:
+//         a: int32 = int32(1)
+//         b: int32 = int32(-1)
+//         print(a << b)
+//     except ValueError as e:
+//         print("caught:", str(e))
+//
+//     # Negative shift count (BigInt).
+//     try:
+//         c: int = 1
+//         print(c << -1)
+//     except ValueError as e:
+//         print("caught:", str(e))
 void main() {
-    // # list.remove(x) with x not in list.
-    // try:
     {
         try {
-            // xs: list[int] = [1, 2, 3]
             std::vector<::tpy::BigInt> xs = {1, 2, 3};
-            // xs.remove(99)
             ::tpy::list_remove(xs, ::tpy::BigInt(99));
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # bytearray.remove with value not in bytearray.
-    // try:
     {
         try {
-            // ba: bytearray = bytearray(b"abc")
             ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-            // ba.remove(200)
             ::tpy::bytearray_remove(ba, 200);
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # bytes value out of range.
-    // try:
     {
         try {
-            // print(bytes([300]))
             std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{300})) << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # str.split with empty separator.
-    // try:
     {
         try {
-            // "abc".split("")
             ::tpy::str_split("abc", "");
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # str.index with substring not found.
-    // try:
     {
         try {
-            // print("hello".index("xyz"))
             std::cout << ::tpy::str_index("hello", "xyz") << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # str.rindex with substring not found.
-    // try:
     {
         try {
-            // print("hello".rindex("xyz"))
             std::cout << ::tpy::str_rindex("hello", "xyz") << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # range() with step == 0.
-    // try:
     {
         try {
-            // print(list(range(0, 10, 0)))
             std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 10, 0))) << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # slice step == 0.
-    // try:
     {
         try {
-            // zs: list[int] = [1, 2, 3, 4]
             std::vector<::tpy::BigInt> zs = {1, 2, 3, 4};
-            // print(zs[::0])
             std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(zs, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # open() with invalid mode.
-    // try:
     {
         try {
-            // f = open("anything", "z")
             ::tpy::TextFile f = ::tpy::builtin_open_mode("anything", "z");
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # float() parse error.
-    // try:
     {
         try {
-            // print(float("not_a_number"))
             std::cout << ::tpy::print_float(::tpy::float_from_str("not_a_number")) << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # int() parse error.
-    // try:
     {
         try {
-            // print(int("not_a_number"))
             std::cout << ::tpy::BigInt::from_str("not_a_number") << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # time.sleep with negative argument.
-    // try:
     {
         try {
-            // time.sleep(-1.0)
             ::tpy::time_sleep(-(1.0));
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # Negative shift count (fixed-int).
-    // try:
     {
         try {
-            // a: int32 = int32(1)
             int32_t a = 1;
-            // b: int32 = int32(-1)
             int32_t b = -1;
-            // print(a << b)
             std::cout << (::tpy::lshift_check<int32_t>(a, b)) << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // # Negative shift count (BigInt).
-    // try:
     {
         try {
-            // c: int = 1
             ::tpy::BigInt c = ::tpy::BigInt(1);
-            // print(c << -1)
             std::cout << ((c) << (::tpy::BigInt(-1))) << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// import time
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Runtime ValueError-shape panics are now catchable throws. Exercises the
-    // # representative surfaces: list/bytearray remove-missing, str/bytes empty
-    // # separator, str.index missing substring, bytes value out of range, range
-    // # step==0, slice step==0, file open() invalid mode, float()/int() parse
-    // # errors, time.sleep negative, negative shift count.
-    // import time
-    // main()
     main();
 }
 

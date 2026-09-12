@@ -5,42 +5,46 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: int32 = 42
+//     p: Ptr[int32] = take_ptr(x)
+//     print(deref(p))
+//
+//     y: int32 = 77
+//     rp: Ptr[readonly[int32]] = take_ptr(y)
+//     print(deref(rp))
+//
+//     z: int32 = 99
+//     print(deref_protocol(take_ptr(z)))
+//
+//     w: int32 = 55
+//     print(deref_protocol(take_ptr(w)))
+//
+//     # User-defined Deref type
+//     b = Box(33)
+//     print(deref(b))
 void main() {
-    // x: int32 = 42
     int32_t x = 42;
-    // p: Ptr[int32] = take_ptr(x)
     int32_t* p = &x;
-    // print(deref(p))
     std::cout << ::tpy::deref_check(p) << "\n";
-    // y: int32 = 77
     int32_t y = 77;
-    // rp: Ptr[readonly[int32]] = take_ptr(y)
     const int32_t* rp = &y;
-    // print(deref(rp))
     std::cout << ::tpy::deref_check(rp) << "\n";
-    // z: int32 = 99
     int32_t z = 99;
-    // print(deref_protocol(take_ptr(z)))
     auto __tmp_1 = &z;
     std::cout << deref_protocol(__tmp_1) << "\n";
-    // w: int32 = 55
     int32_t w = 55;
-    // print(deref_protocol(take_ptr(w)))
     auto __tmp_2 = &w;
     std::cout << deref_protocol(__tmp_2) << "\n";
-    // # User-defined Deref type
-    // b = Box(33)
     Box b = Box(33);
-    // print(deref(b))
     std::cout << ::tpy::deref_check(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

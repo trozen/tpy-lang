@@ -5,106 +5,112 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     waw = ZoneInfo("Europe/Warsaw")
+//     # 2023-10-29 02:30 Warsaw occurs at 1698539400 (CEST, first pass) and
+//     # 1698543000 (CET, second pass).
+//     first = datetime.fromtimestamp(1698539400.0, waw)
+//     second = datetime.fromtimestamp(1698543000.0, waw)
+//     print(first, first.fold)
+//     print(second, second.fold)
+//     print(repr(second))
+//     print(first.timestamp(), second.timestamp())
+//
+//     # Naive-local fromtimestamp detects the fold the same way.
+//     nfirst = datetime.fromtimestamp(1698539400.0)
+//     nsecond = datetime.fromtimestamp(1698543000.0)
+//     print(nfirst, nfirst.fold, nsecond, nsecond.fold)
+//     print(nfirst.timestamp(), nsecond.timestamp())
+//
+//     # A fixed-offset target never folds.
+//     utc_dt = datetime.fromtimestamp(1698543000.0, UTC)
+//     print(utc_dt, utc_dt.fold)
+//
+//     # astimezone: naive (system-local) and fixed sources into a zone, and
+//     # zone -> zone across the Atlantic.
+//     ny = ZoneInfo("America/New_York")
+//     print(datetime(2023, 7, 15, 12, 0).astimezone(ny))
+//     fixed = datetime(2023, 7, 15, 12, 0, tzinfo=timezone(timedelta(hours=2)))
+//     print(fixed.astimezone(ny))
+//     aware = datetime(2023, 7, 15, 12, 0, tzinfo=waw)
+//     print(aware.astimezone(ny))
+//     print(aware.astimezone(ny).astimezone(waw) == aware)
+//     # Into the fold window: astimezone sets fold on the second pass.
+//     back = datetime.fromtimestamp(1698543000.0, UTC).astimezone(waw)
+//     print(back, back.fold)
+//
+//     # combine + now with a zone tz (now is invariant-checked only).
+//     print(datetime.combine(date(2023, 7, 15), time(12, 0), waw))
+//     n = datetime.now(waw)
+//     ntz = n.tzinfo
+//     print(ntz is not None and isinstance(ntz, ZoneInfo) and ntz == waw,
+//           n.utcoffset() is not None)
 void main() {
-    // waw = ZoneInfo("Europe/Warsaw")
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    // # 2023-10-29 02:30 Warsaw occurs at 1698539400 (CEST, first pass) and
-    // # 1698543000 (CET, second pass).
-    // first = datetime.fromtimestamp(1698539400.0, waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime first = datetime::fromtimestamp(1698539400.0, __tmp_1);
-    // second = datetime.fromtimestamp(1698543000.0, waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
     ::tpystd::datetime::datetime second = datetime::fromtimestamp(1698543000.0, __tmp_2);
-    // print(first, first.fold)
     std::cout << first << " " << first.fold() << "\n";
-    // print(second, second.fold)
     std::cout << second << " " << second.fold() << "\n";
-    // print(repr(second))
     std::cout << ::tpy::repr_of(second) << "\n";
-    // print(first.timestamp(), second.timestamp())
     std::cout << ::tpy::print_float(first.timestamp()) << " " << ::tpy::print_float(second.timestamp()) << "\n";
-    // # Naive-local fromtimestamp detects the fold the same way.
-    // nfirst = datetime.fromtimestamp(1698539400.0)
     ::tpystd::datetime::datetime nfirst = datetime::fromtimestamp(1698539400.0);
-    // nsecond = datetime.fromtimestamp(1698543000.0)
     ::tpystd::datetime::datetime nsecond = datetime::fromtimestamp(1698543000.0);
-    // print(nfirst, nfirst.fold, nsecond, nsecond.fold)
     std::cout << nfirst << " " << nfirst.fold() << " " << nsecond << " " << nsecond.fold() << "\n";
-    // print(nfirst.timestamp(), nsecond.timestamp())
     std::cout << ::tpy::print_float(nfirst.timestamp()) << " " << ::tpy::print_float(nsecond.timestamp()) << "\n";
-    // # A fixed-offset target never folds.
-    // utc_dt = datetime.fromtimestamp(1698543000.0, UTC)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
     ::tpystd::datetime::datetime utc_dt = datetime::fromtimestamp(1698543000.0, __tmp_3);
-    // print(utc_dt, utc_dt.fold)
     std::cout << utc_dt << " " << utc_dt.fold() << "\n";
-    // # astimezone: naive (system-local) and fixed sources into a zone, and
-    // # zone -> zone across the Atlantic.
-    // ny = ZoneInfo("America/New_York")
     ::tpystd::datetime::ZoneInfo ny = ::tpystd::datetime::ZoneInfo("America/New_York");
-    // print(datetime(2023, 7, 15, 12, 0).astimezone(ny))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ny;
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0)).astimezone(__tmp_4) << "\n";
-    // fixed = datetime(2023, 7, 15, 12, 0, tzinfo=timezone(timedelta(hours=2)))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime fixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_5);
-    // print(fixed.astimezone(ny))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ny;
     std::cout << fixed.astimezone(__tmp_6) << "\n";
-    // aware = datetime(2023, 7, 15, 12, 0, tzinfo=waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = waw;
     ::tpystd::datetime::datetime aware = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_7);
-    // print(aware.astimezone(ny))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = ny;
     std::cout << aware.astimezone(__tmp_8) << "\n";
-    // print(aware.astimezone(ny).astimezone(waw) == aware)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = ny;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = waw;
     std::cout << ::tpy::print_bool(((aware.astimezone(__tmp_9).astimezone(__tmp_10)) == (aware))) << "\n";
-    // # Into the fold window: astimezone sets fold on the second pass.
-    // back = datetime.fromtimestamp(1698543000.0, UTC).astimezone(waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_11 = ::tpystd::datetime::UTC;
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_12 = waw;
     ::tpystd::datetime::datetime back = datetime::fromtimestamp(1698543000.0, __tmp_11).astimezone(__tmp_12);
-    // print(back, back.fold)
     std::cout << back << " " << back.fold() << "\n";
-    // # combine + now with a zone tz (now is invariant-checked only).
-    // print(datetime.combine(date(2023, 7, 15), time(12, 0), waw))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_13 = waw;
     std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15)), ::tpystd::datetime::time(::tpy::BigInt(12), ::tpy::BigInt(0)), __tmp_13) << "\n";
-    // n = datetime.now(waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_14 = waw;
     ::tpystd::datetime::datetime n = datetime::now(__tmp_14);
-    // ntz = n.tzinfo
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> ntz = n.tzinfo();
-    // print(ntz is not None and isinstance(ntz, ZoneInfo) and ntz == waw,
-    // n.utcoffset() is not None)
     std::cout << ::tpy::print_bool((((!std::holds_alternative<std::monostate>(ntz)) && std::holds_alternative<::tpystd::datetime::ZoneInfo>(ntz)) && ((std::get<::tpystd::datetime::ZoneInfo>(ntz)) == (waw)))) << " " << ::tpy::print_bool((n.utcoffset().has_value())) << "\n";
 }
 
+// # datetime v4 conversions: fromtimestamp/now/astimezone/combine with a
+// # ZoneInfo tz. fromtimestamp must set fold=1 on the SECOND pass of a
+// # repeated wall time (both instants of Warsaw's 2023-10-29 fold window are
+// # checked, plus the naive-local detection under pinned TZ); astimezone
+// # converts naive/fixed/zone sources through the real instant.
+// import os
+// import time as _time
+// os.environ["TZ"] = "Europe/Warsaw"
+// _time.tzset()  # CPython needs it; TPy pins TZ at first use (no-op)
+//
+// from datetime import date, datetime, time, timedelta, timezone, UTC
+// from zoneinfo import ZoneInfo
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime v4 conversions: fromtimestamp/now/astimezone/combine with a
-    // # ZoneInfo tz. fromtimestamp must set fold=1 on the SECOND pass of a
-    // # repeated wall time (both instants of Warsaw's 2023-10-29 fold window are
-    // # checked, plus the naive-local detection under pinned TZ); astimezone
-    // # converts naive/fixed/zone sources through the real instant.
-    // import os
     ::tpystd::os::__tpy_init();
-    // import time as _time
-    // os.environ["TZ"] = "Europe/Warsaw"
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TZ", "Europe/Warsaw");
-    // _time.tzset()  # CPython needs it; TPy pins TZ at first use (no-op)
     ::tpy::stdlib::time::tzset();
-    // from datetime import date, datetime, time, timedelta, timezone, UTC
     ::tpystd::datetime::__tpy_init();
-    // from zoneinfo import ZoneInfo
     ::tpystd::zoneinfo::__tpy_init();
-    // main()
     main();
 }
 

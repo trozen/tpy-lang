@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: int32 = 10
+//     def add_x(n: int32) -> int32:
+//         return n + x
+//     print(add_x(5))
+//     print(add_x(32))
 void main() {
-    // x: int32 = 10
     int32_t x = 10;
-    // def add_x(n: int32) -> int32:
     auto add_x = [&x](int32_t n) -> int32_t {
-        // return n + x
         return (::tpy::add_check<int32_t>(n, x));
     };
-    // print(add_x(5))
     std::cout << add_x(5) << "\n";
-    // print(add_x(32))
     std::cout << add_x(32) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     A.X = 10
+//     B.X = 20
+//     C.X = 30
+//     print(A.X)
+//     print(B.X)
+//     print(C.X)
 void main() {
-    // A.X = 10
     A::X = 10;
-    // B.X = 20
     B::X = 20;
-    // C.X = 30
     C::X = 30;
-    // print(A.X)
     std::cout << A::X << "\n";
-    // print(B.X)
     std::cout << B::X << "\n";
-    // print(C.X)
     std::cout << C::X << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

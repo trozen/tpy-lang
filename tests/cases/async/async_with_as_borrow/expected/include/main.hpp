@@ -18,6 +18,7 @@ struct __coro_main;
 struct __coro_Server___aenter__;
 struct __coro_Server___aexit__;
 
+// async def main() -> None:
 __coro_main main();
 
 // class Server:
@@ -39,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Server& obj) {
     return os;
 }
 
-// Async coroutine: Server.__aenter__
+// async def __aenter__(self) -> "Server":
 struct __coro_Server___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -67,7 +68,8 @@ inline __coro_Server___aenter__ Server::__aenter__() {
     return __coro_Server___aenter__(*this);
 }
 
-// Async coroutine: Server.__aexit__
+// async def __aexit__(self, exc_type: None, exc_val: None,
+//                     exc_tb: None) -> None:
 struct __coro_Server___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -98,7 +100,7 @@ inline __coro_Server___aexit__ Server::__aexit__(std::monostate exc_type, std::m
     return __coro_Server___aexit__(*this, exc_type, exc_val, exc_tb);
 }
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -132,6 +134,7 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     self.n = 1
 inline Server::Server() : n(::tpy::BigInt(1)) {}
 void __tpy_init();
 } // namespace tpyapp::main

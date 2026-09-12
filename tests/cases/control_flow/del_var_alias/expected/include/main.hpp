@@ -11,7 +11,9 @@ struct Obj;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[Obj]:
 Obj make();
+// def main() -> None:
 void main();
 
 // class Obj:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Obj& obj) {
 
 
 // def __init__(self, val: int) -> None:
+//     self.val = val
 inline Obj::Obj(const ::tpy::BigInt& val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

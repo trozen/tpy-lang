@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def first_two(xs: list[int32]) -> Iterator[int32]:
+//     yield xs[0]
+//     yield xs[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_first_two::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield xs[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(xs, 0);
     }
     case S_RESUME_0: {
-        // yield xs[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(xs, 1);
     }
@@ -33,10 +33,11 @@ __gen_first_two first_two(std::vector<int32_t>& xs) {
 }
 
 // def main() -> None:
+//     data = [10, 20, 30]
+//     for v in first_two(data):
+//         print(v)
 void main() {
-    // data = [10, 20, 30]
     std::vector<int32_t> data = {10, 20, 30};
-    // for v in first_two(data):
     {
         auto __src_0 = first_two(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -44,18 +45,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

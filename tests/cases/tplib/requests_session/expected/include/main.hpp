@@ -19,9 +19,13 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def merge_and_clear() -> None:
 void merge_and_clear();
+// def session_post() -> None:
 void session_post();
+// def context_manager_closes() -> None:
 void context_manager_closes();
+// def main() -> None:
 void main();
 
 void __tpy_init();

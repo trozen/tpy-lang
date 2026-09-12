@@ -28,6 +28,7 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 
 
 // def __init__(self) -> None:
+//     self.tag = "from_sub"
 inline Foo::Foo() : tag("from_sub") {}
 void __tpy_init();
 } // namespace tpyapp::pkg::sub

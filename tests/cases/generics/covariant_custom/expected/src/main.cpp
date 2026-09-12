@@ -5,51 +5,55 @@ namespace tpyapp::main {
 
 
 // def show(t: Tagged[Animal, str]) -> None:
+//     print(t.tag(), t.get().name())
 void show(Tagged<Animal, std::string>& t) {
-    // print(t.tag(), t.get().name())
     std::cout << t.tag() << " " << t.get().name() << "\n";
 }
 
 // def make_tagged() -> Own[Tagged[Animal, str]]:
+//     return Tagged(Dog("Rex"), "pet")
 Tagged<Animal, std::string> make_tagged() {
-    // return Tagged(Dog("Rex"), "pet")
     return Tagged<Dog, std::string>(Dog("Rex"), "pet");
 }
 
 // def main() -> None:
+//     # Function arg coercion: Tagged[Dog, str] -> Tagged[Animal, str]
+//     td = Tagged(Dog("Buddy"), "good")
+//     show(td)
+//
+//     tc = Tagged(Cat("Whiskers"), "lazy")
+//     show(tc)
+//
+//     # Variable assignment coercion
+//     td2 = Tagged(Dog("Max"), "brave")
+//     animal_tagged: Tagged[Animal, str] = td2
+//     print(animal_tagged.tag(), animal_tagged.get().name())
+//
+//     # Return coercion via Own
+//     t3 = make_tagged()
+//     print(t3.tag(), t3.get().name())
 void main() {
-    // # Function arg coercion: Tagged[Dog, str] -> Tagged[Animal, str]
-    // td = Tagged(Dog("Buddy"), "good")
     Tagged<Dog, std::string> td = Tagged<Dog, std::string>(Dog("Buddy"), "good");
-    // show(td)
     Tagged<Animal, std::string> __tmp_1 = std::move(td);
     show(__tmp_1);
-    // tc = Tagged(Cat("Whiskers"), "lazy")
     Tagged<Cat, std::string> tc = Tagged<Cat, std::string>(Cat("Whiskers"), "lazy");
-    // show(tc)
     Tagged<Animal, std::string> __tmp_2 = std::move(tc);
     show(__tmp_2);
-    // # Variable assignment coercion
-    // td2 = Tagged(Dog("Max"), "brave")
     Tagged<Dog, std::string> td2 = Tagged<Dog, std::string>(Dog("Max"), "brave");
-    // animal_tagged: Tagged[Animal, str] = td2
     Tagged<Animal, std::string> animal_tagged = std::move(td2);
-    // print(animal_tagged.tag(), animal_tagged.get().name())
     std::cout << animal_tagged.tag() << " " << animal_tagged.get().name() << "\n";
-    // # Return coercion via Own
-    // t3 = make_tagged()
     Tagged<Animal, std::string> t3 = make_tagged();
-    // print(t3.tag(), t3.get().name())
     std::cout << t3.tag() << " " << t3.get().name() << "\n";
 }
 
+// from tpy.unsafe import unsafe_alloc, unsafe_init, unsafe_drop, unsafe_free
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_alloc, unsafe_init, unsafe_drop, unsafe_free
-    // main()
     main();
 }
 

@@ -11,7 +11,9 @@ struct A;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: ok
 int32_t read_mixed(const std::tuple<A, const A*>& p);
+// def main() -> None:
 void main();
 
 // class A:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline A::A(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

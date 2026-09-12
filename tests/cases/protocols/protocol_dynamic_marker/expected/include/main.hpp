@@ -28,7 +28,9 @@ struct Sub;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(r: Optional[Root]) -> str:
 std::string classify(const Root* r);
+// def main() -> None:
 void main();
 
 // class Root(Tagged):
@@ -82,9 +84,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Root::Root(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str, extra: int) -> None:
+//     super().__init__(name)
+//     self.extra = extra
 inline Sub::Sub(std::string_view name, const ::tpy::BigInt& extra) : Root(name), extra(extra) {}
 void __tpy_init();
 } // namespace tpyapp::main

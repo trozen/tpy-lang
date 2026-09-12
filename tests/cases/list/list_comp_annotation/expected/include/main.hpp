@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_bigints() -> Own[list[int]]:
 std::vector<::tpy::BigInt> make_bigints();
+// def accept_wide(items: list[int64]) -> None:
 void accept_wide(const std::vector<int64_t>& items);
+// def main() -> None:
 void main();
 
 void __tpy_init();

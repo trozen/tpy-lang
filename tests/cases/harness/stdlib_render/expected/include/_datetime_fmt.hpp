@@ -25,9 +25,16 @@ inline auto& _MONTH_FULL = ::tpystd::_datetime_cal::_MONTH_FULL;
 
 inline constexpr std::string_view __name__ = "_datetime_fmt";
 
+// def _strftime(fmt: str, y: int32, mo: int32, d: int32, hh: int32, mm: int32,
+//               ss: int32, us: int32, has_tz: bool, off_us: int,
+//               zone: str) -> str:
 std::string _strftime(std::string_view fmt, int32_t y, int32_t mo, int32_t d, int32_t hh, int32_t mm, int32_t ss, int32_t us, bool has_tz, const ::tpy::BigInt& off_us, std::string_view zone);
+// def _format_time(hh: int32, mm: int32, ss: int32, us: int32,
+//                  timespec: str = "auto") -> str:
 std::string _format_time(int32_t hh, int32_t mm, int32_t ss, int32_t us, std::string_view timespec = "auto");
+// def _offset_str(off_us: int, sep: str) -> str:
 std::string _offset_str(const ::tpy::BigInt& off_us, std::string_view sep);
+// def _tz_label(off_us: int) -> str:
 std::string _tz_label(const ::tpy::BigInt& off_us);
 
 void __tpy_init();

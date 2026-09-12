@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def make(n: int32) -> Own[Payload]:
+//     return Payload(n)
 ::tpystd::tpy::Poll<Payload> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return Payload(n)
         __state = S_DONE;
         Payload __tpy_async_ret = Payload(n);
         return ::tpystd::tpy::Poll<Payload>::ready(std::move(__tpy_async_ret));
@@ -26,18 +26,20 @@ __coro_make make(int32_t n) {
 }
 
 // def take(p: Own[Payload]) -> int32:
+//     return p.n
 int32_t take(Payload&& p) {
-    // return p.n
     return p.n;
 }
 
 // async def into_container() -> int32:
+//     out: list[Payload] = []
+//     p = await make(1)
+//     out.append(p)                 # last use -> moves into the element slot
+//     return out[0].n
 ::tpystd::tpy::Poll<int32_t> __coro_into_container::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // out: list[Payload] = []
         out.emplace(std::vector<Payload>{});
-        // p = await make(1)
         __sub_0.emplace(1);
         __state = S_RESUME_0;
         continue;
@@ -47,9 +49,7 @@ int32_t take(Payload&& p) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // out.append(p)                 # last use -> moves into the element slot
         (*out).push_back(std::move((*p)));
-        // return out[0].n
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__getitem__((*out), 0).n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -66,10 +66,11 @@ __coro_into_container into_container() {
 }
 
 // async def into_call_arg() -> int32:
+//     p = await make(2)
+//     return take(p)                # last use -> moves into the Own param
 ::tpystd::tpy::Poll<int32_t> __coro_into_call_arg::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // p = await make(2)
         __sub_0.emplace(2);
         __state = S_RESUME_0;
         continue;
@@ -79,7 +80,6 @@ __coro_into_container into_container() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // return take(p)                # last use -> moves into the Own param
         __state = S_DONE;
         int32_t __tpy_async_ret = take(std::move((*p)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -96,10 +96,12 @@ __coro_into_call_arg into_call_arg() {
 }
 
 // async def into_field() -> int32:
+//     p = await make(3)
+//     h = Holder(p)                 # last use -> moves into the field
+//     return h.item.n
 ::tpystd::tpy::Poll<int32_t> __coro_into_field::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // p = await make(3)
         __sub_0.emplace(3);
         __state = S_RESUME_0;
         continue;
@@ -109,9 +111,7 @@ __coro_into_call_arg into_call_arg() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // h = Holder(p)                 # last use -> moves into the field
         h.emplace(Holder(std::move((*p))));
-        // return h.item.n
         __state = S_DONE;
         int32_t __tpy_async_ret = (*h).item.n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -128,12 +128,19 @@ __coro_into_field into_field() {
 }
 
 // async def in_a_loop() -> int32:
+//     out: list[Payload] = []
+//     i = 0
+//     while i < 3:
+//         # Re-assigns the same frame field each iteration; moving out of it is
+//         # safe because the next read is preceded by this write.
+//         p = await make(i)
+//         out.append(p)
+//         i += 1
+//     return out[0].n + out[1].n + out[2].n
 ::tpystd::tpy::Poll<int32_t> __coro_in_a_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // out: list[Payload] = []
         out.emplace(std::vector<Payload>{});
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -143,21 +150,17 @@ __coro_into_field into_field() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // out.append(p)
         (*out).push_back(std::move((*p)));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 3)) {
-            // p = await make(i)
             __sub_0.emplace(i);
             __state = S_RESUME_0;
             continue;
         } else {
-            // return out[0].n + out[1].n + out[2].n
             __state = S_DONE;
             int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*out), 0).n, ::tpy::__getitem__((*out), 1).n)), ::tpy::__getitem__((*out), 2).n));
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -175,10 +178,11 @@ __coro_in_a_loop in_a_loop() {
 }
 
 // async def from_return() -> Own[Payload]:
+//     p = await make(4)
+//     return p                      # last use -> moves into the return slot
 ::tpystd::tpy::Poll<Payload> __coro_from_return::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // p = await make(4)
         __sub_0.emplace(4);
         __state = S_RESUME_0;
         continue;
@@ -188,7 +192,6 @@ __coro_in_a_loop in_a_loop() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Payload>::pending();
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // return p                      # last use -> moves into the return slot
         __state = S_DONE;
         Payload __tpy_async_ret = std::move((*p));
         return ::tpystd::tpy::Poll<Payload>::ready(std::move(__tpy_async_ret));
@@ -205,10 +208,15 @@ __coro_from_return from_return() {
 }
 
 // async def main_coro() -> None:
+//     print(await into_container())
+//     print(await into_call_arg())
+//     print(await into_field())
+//     print(await in_a_loop())
+//     r = await from_return()
+//     print(r.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await into_container())
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -218,9 +226,7 @@ __coro_from_return from_return() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await into_container())
         std::cout << __await_lift_0 << "\n";
-        // print(await into_call_arg())
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -230,9 +236,7 @@ __coro_from_return from_return() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await into_call_arg())
         std::cout << __await_lift_1 << "\n";
-        // print(await into_field())
         __sub_2.emplace();
         __state = S_RESUME_2;
         continue;
@@ -242,9 +246,7 @@ __coro_from_return from_return() {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await into_field())
         std::cout << __await_lift_2 << "\n";
-        // print(await in_a_loop())
         __sub_3.emplace();
         __state = S_RESUME_3;
         continue;
@@ -254,9 +256,7 @@ __coro_from_return from_return() {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        // print(await in_a_loop())
         std::cout << __await_lift_3 << "\n";
-        // r = await from_return()
         __sub_4.emplace();
         __state = S_RESUME_4;
         continue;
@@ -266,7 +266,6 @@ __coro_from_return from_return() {
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r.emplace(std::move(__r4).value());
         __sub_4.reset();
-        // print(r.n)
         std::cout << (*r).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -283,22 +282,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # An await-bound local is auto-moved at its last use, like any other owned
+// # local. @nocopy forces the issue: a copy at any of these sinks is a C++
+// # build error, so a passing run proves the move happened.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An await-bound local is auto-moved at its last use, like any other owned
-    // # local. @nocopy forces the issue: a copy at any of these sinks is a C++
-    // # build error, so a passing run proves the move happened.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

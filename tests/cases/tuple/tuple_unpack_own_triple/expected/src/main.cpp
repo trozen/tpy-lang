@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def make_triple() -> tuple[Own[Counter], Own[Counter], Own[Counter]]:
+//     return (Counter(1), Counter(2), Counter(3))
 std::tuple<Counter, Counter, Counter> make_triple() {
-    // return (Counter(1), Counter(2), Counter(3))
     return std::tuple<Counter, Counter, Counter>{Counter(1), Counter(2), Counter(3)};
 }
 
 // def consume(c: Own[Counter]) -> None:
+//     print(c.n)
 void consume(Counter&& c) {
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def main() -> None:
+//     a, b, c = make_triple()
+//     consume(a)
+//     consume(b)
+//     consume(c)
 void main() {
-    // a, b, c = make_triple()
     auto __tup_1 = make_triple();
     Counter a = std::move(std::get<0>(__tup_1));
     Counter b = std::move(std::get<1>(__tup_1));
     Counter c = std::move(std::get<2>(__tup_1));
-    // consume(a)
     consume(std::move(a));
-    // consume(b)
     consume(std::move(b));
-    // consume(c)
     consume(std::move(c));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

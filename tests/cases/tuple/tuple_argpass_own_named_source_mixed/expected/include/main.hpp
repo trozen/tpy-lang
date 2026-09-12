@@ -11,8 +11,11 @@ struct A;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> tuple[Own[A], int32]:
 std::tuple<A, int32_t> make();
+// def consume(p: tuple[Own[A], int32]) -> int32:
 int32_t consume(std::tuple<A, int32_t>&& p);
+// def main():
 void main();
 
 // @nocopy
@@ -39,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline A::A(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

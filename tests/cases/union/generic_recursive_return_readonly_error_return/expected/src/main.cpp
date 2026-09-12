@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def leaf_count(t: readonly[Tree[int32]]) -> int32:
+//     match t:
+//         case list() as branches:
+//             n = 0
+//             for c in branches:
+//                 n += leaf_count(c)
+//             return n
+//         case _:
+//             return 1
 int32_t leaf_count(const Tree<int32_t>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // n = 0
         int32_t n = 0;
-        // for c in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& c = *__beg_0;
-            // n += leaf_count(c)
             n = ::tpy::add_check<int32_t>(n, leaf_count(c));
         }
-        // return n
         return n;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }
@@ -38,35 +38,36 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 }
 
 // def main() -> None:
+//     h = Holder([1, 2])
+//     try:
+//         v = h.view()
+//         print(leaf_count(v))
+//     except E:
+//         print("err")
 void main() {
-    // h = Holder([1, 2])
     Holder h = Holder(std::vector<Tree<int32_t>>{1, 2});
-    // try:
     const Tree<int32_t>* v;
     {
-        // v = h.view()
         {
             auto __try_tmp_2 = h.view();
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = &(::tpy::unwrap_ref(*__try_tmp_2));
         }
-        // print(leaf_count(v))
         std::cout << leaf_count((*v)) << "\n";
         goto __after_try_1;
         // except E:
         __except_1:;
-        // print("err")
         std::cout << "err" << "\n";
         __after_try_1:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

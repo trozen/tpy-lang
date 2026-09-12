@@ -17,11 +17,17 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_g() -> int32:
 int32_t read_g();
+// def read_final() -> int32:
 int32_t read_final();
+// def label_owned() -> str:
 std::string label_owned();
+// def read_items() -> int32:
 int32_t read_items();
+// def shadow() -> int32:
 int32_t shadow();
+// def main() -> None:
 void main();
 
 // class C:
@@ -44,14 +50,14 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self) -> None:
+//     self.x = G
 inline C::C() {
-    // self.x = G
     this->x = ::tpyapp::helper::G;
 }
 
 // def m(self) -> int32:
+//     return G * 2
 inline int32_t C::m() const {
-    // return G * 2
     return (::tpy::mul_check<int32_t>(::tpyapp::helper::G, 2));
 }
 void __tpy_init();

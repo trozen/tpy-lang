@@ -5,40 +5,42 @@ namespace tpyapp::main {
 
 
 // def set_same_name(val: int32) -> None:
+//     global opentop
+//     opentop = val
 void set_same_name(int32_t val) {
-    // global opentop
-    // opentop = val
     opentop = val;
 }
 
 // def set_renamed(val: int32) -> None:
+//     global counter
+//     counter = val
 void set_renamed(int32_t val) {
-    // global counter
-    // counter = val
     g_counter = val;
 }
 
 // def main() -> None:
+//     set_same_name(int32(10))
+//     print(opentop)
+//     set_renamed(int32(20))
+//     print(counter)
 void main() {
-    // set_same_name(int32(10))
     set_same_name(10);
-    // print(opentop)
     std::cout << ::opentop << "\n";
-    // set_renamed(int32(20))
     set_renamed(20);
-    // print(counter)
     std::cout << ::g_counter << "\n";
 }
 
+// from tpy.extern import native_global
+//
+// opentop: int32 = native_global("opentop", binding="C")
+// counter: int32 = native_global("g_counter", binding="C")
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native_global
-    // # Write to native C globals at function scope.
-    // # Renamed globals must use the C name in the assignment target.
-    // main()
     main();
 }
 

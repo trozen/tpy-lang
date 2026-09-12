@@ -11,78 +11,78 @@ namespace tpyapp::main {
 // # here against a future refactor silently regressing it. The un-narrowed
 // # container form is a separate, still-open shape (see BUGS.md).
 // def narrowed_list(xs: list[str] | None) -> int:
+//     if xs is None:
+//         return -1
+//     if xs:
+//         return 1
+//     return 0
 ::tpy::BigInt narrowed_list(const std::vector<std::string>* xs) {
-    // if xs is None:
     if ((xs == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // if xs:
     if ((::tpy::__len__((*xs)) != 0)) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def narrowed_dict(d: dict[str, str] | None) -> int:
+//     if d is None:
+//         return -1
+//     if d:
+//         return 1
+//     return 0
 ::tpy::BigInt narrowed_dict(const ::tpy::ordered_map<std::string, std::string>* d) {
-    // if d is None:
     if ((d == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // if d:
     if ((::tpy::__len__((*d)) != 0)) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def narrowed_set(s: set[str] | None) -> int:
+//     if s is None:
+//         return -1
+//     if s:
+//         return 1
+//     return 0
 ::tpy::BigInt narrowed_set(const ::tpy::ordered_set<std::string>* s) {
-    // if s is None:
     if ((s == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // if s:
     if ((::tpy::__len__((*s)) != 0)) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def main():
+//     empty_list: list[str] = []
+//     empty_dict: dict[str, str] = {}
+//     empty_set: set[str] = set()
+//     print(narrowed_list(empty_list), narrowed_list(["a"]))
+//     print(narrowed_dict(empty_dict), narrowed_dict({"k": "v"}))
+//     print(narrowed_set(empty_set), narrowed_set({"x"}))
 void main() {
-    // empty_list: list[str] = []
     std::vector<std::string> empty_list = std::vector<std::string>{};
-    // empty_dict: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> empty_dict = ::tpy::ordered_map<std::string, std::string>();
-    // empty_set: set[str] = set()
     ::tpy::ordered_set<std::string> empty_set = ::tpy::ordered_set<std::string>();
-    // print(narrowed_list(empty_list), narrowed_list(["a"]))
     std::vector<std::string> __tmp_1 = std::vector<std::string>{"a"};
     std::cout << narrowed_list(&(empty_list)) << " " << narrowed_list(&(__tmp_1)) << "\n";
-    // print(narrowed_dict(empty_dict), narrowed_dict({"k": "v"}))
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"k", "v"}});
     std::cout << narrowed_dict(&(empty_dict)) << " " << narrowed_dict(&(__tmp_2)) << "\n";
-    // print(narrowed_set(empty_set), narrowed_set({"x"}))
     ::tpy::ordered_set<std::string> __tmp_3 = ::tpy::ordered_set<std::string>({"x"});
     std::cout << narrowed_set(&(empty_set)) << " " << narrowed_set(&(__tmp_3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -8,17 +8,28 @@ namespace tpyapp::main {
 
 
 
+// def classify(x: int32) -> str:
+//     if x == 1:
+//         return "one"
+//     elif x == 2:
+//         return "two"
+//     elif x == 3:
+//         return "three"
+//     elif x == 4:
+//         return "four"
+//     elif x == -1:
+//         return "neg_one"
+//     elif x == -2:
+//         return "neg_two"
+//     return "other"
 // @overload
 // def classify(x: Literal[1, 2]) -> str: ...
 std::string classify__lit_1__2(int32_t x) {
     if ((x == 1)) {
-        // return "one"
         return "one";
     } else if ((x == 2)) {
-        // return "two"
         return "two";
     }
-    // return "other"
     return "other";
 }
 
@@ -26,13 +37,10 @@ std::string classify__lit_1__2(int32_t x) {
 // def classify(x: Literal[3, 4]) -> str: ...
 std::string classify__lit_3__4(int32_t x) {
     if ((x == 3)) {
-        // return "three"
         return "three";
     } else if ((x == 4)) {
-        // return "four"
         return "four";
     }
-    // return "other"
     return "other";
 }
 
@@ -40,51 +48,39 @@ std::string classify__lit_3__4(int32_t x) {
 // def classify(x: Literal[-1, -2]) -> str: ...
 std::string classify__lit_neg1__neg2(int32_t x) {
     if ((x == -1)) {
-        // return "neg_one"
         return "neg_one";
     } else if ((x == -2)) {
-        // return "neg_two"
         return "neg_two";
     }
-    // return "other"
     return "other";
 }
 
 // @overload
 // def classify(x: int32) -> str: ...
 std::string classify(int32_t x) {
-    // if x == 1:
     if ((x == 1)) {
-        // return "one"
         return "one";
-    // elif x == 2:
     } else if ((x == 2)) {
-        // return "two"
         return "two";
-    // elif x == 3:
     } else if ((x == 3)) {
-        // return "three"
         return "three";
-    // elif x == 4:
     } else if ((x == 4)) {
-        // return "four"
         return "four";
-    // elif x == -1:
     } else if ((x == -1)) {
-        // return "neg_one"
         return "neg_one";
-    // elif x == -2:
     } else if ((x == -2)) {
-        // return "neg_two"
         return "neg_two";
     }
-    // return "other"
     return "other";
 }
 
 
 
 
+// def only_lit(x: int32) -> int32 | str:
+//     if x == 1:
+//         return 42
+//     return "two"
 // # A literal-only group with NO base-type fallback stub: an accepted call must
 // # land on one of the Literal stubs, and the per-stub return types make that
 // # selection observable. The call whose literal matches no stub is the reject
@@ -92,50 +88,51 @@ std::string classify(int32_t x) {
 // @overload
 // def only_lit(x: Literal[1]) -> int32: ...
 int32_t only_lit__lit_1(int32_t x) {
-    // return 42
     return 42;
 }
 
 // @overload
 // def only_lit(x: Literal[2]) -> str: ...
 std::string only_lit__lit_2(int32_t x) {
-    // return "two"
     return "two";
 }
 
 
 // def main() -> None:
+//     # Direct int literals match Literal stubs
+//     print(classify(1))
+//     print(classify(2))
+//     print(classify(3))
+//     print(classify(4))
+//
+//     # Negative int literals
+//     print(classify(-1))
+//     print(classify(-2))
+//
+//     # Variable falls through to int32 fallback
+//     x: int32 = 5
+//     print(classify(x))
+//
+//     # No fallback stub: each literal still resolves to its own stub.
+//     print("only_lit:", only_lit(1) + 1, only_lit(2) + "!")
 void main() {
-    // # Direct int literals match Literal stubs
-    // print(classify(1))
     std::cout << classify__lit_1__2(1) << "\n";
-    // print(classify(2))
     std::cout << classify__lit_1__2(2) << "\n";
-    // print(classify(3))
     std::cout << classify__lit_3__4(3) << "\n";
-    // print(classify(4))
     std::cout << classify__lit_3__4(4) << "\n";
-    // # Negative int literals
-    // print(classify(-1))
     std::cout << classify__lit_neg1__neg2(-1) << "\n";
-    // print(classify(-2))
     std::cout << classify__lit_neg1__neg2(-2) << "\n";
-    // # Variable falls through to int32 fallback
-    // x: int32 = 5
     int32_t x = 5;
-    // print(classify(x))
     std::cout << classify(x) << "\n";
-    // # No fallback stub: each literal still resolves to its own stub.
-    // print("only_lit:", only_lit(1) + 1, only_lit(2) + "!")
     std::cout << "only_lit:" << " " << (::tpy::add_check<int32_t>(only_lit__lit_1(1), 1)) << " " << (::tpy::str_concat(only_lit__lit_2(2), "!")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def while_escape() -> None:
+//     saved: Point = Point(0, 0)
+//     i: int32 = 0
+//     while i < 3:
+//         p: Point = Point(i, i)
+//         saved = p  # tpyc: warning(/will not keep the object it was given/)
+//         i = i + 1
+//     print(saved.x, saved.y)
 void while_escape() {
     std::optional<Point> __slot_2;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 3:
     while ((i < 3)) {
-        // p: Point = Point(i, i)
         Point* p = &*(__slot_2 = Point(i, i));
-        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
-        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// while_escape()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // while_escape()
     while_escape();
 }
 

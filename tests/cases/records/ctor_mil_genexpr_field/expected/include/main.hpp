@@ -12,6 +12,7 @@ struct N;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class H:
@@ -51,6 +52,8 @@ inline std::ostream& operator<<(std::ostream& os, const N& obj) {
 
 
 // def __init__(self, d: dict[int32, int32]) -> None:
+//     # The genexpr reads `d`, so its lambda must capture it.
+//     self.t = (sum(k for k in d), 1)
 inline H::H(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_t, int32_t>{::tpy::builtin_sum<int32_t>([&d]() {
     auto& __src = d;
     return ::tpy::make_generator<int32_t>(
@@ -65,6 +68,8 @@ inline H::H(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_
 }()), 1}) {}
 
 // def __init__(self, d: dict[int32, int32]) -> None:
+//     # ... the same capture one tuple level deeper.
+//     self.t = (1, (sum(k for k in d), "a"))
 inline N::N(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_t, std::tuple<int32_t, std::string>>{1, std::tuple<int32_t, std::string>{::tpy::builtin_sum<int32_t>([&d]() {
     auto& __src = d;
     return ::tpy::make_generator<int32_t>(
@@ -79,16 +84,16 @@ inline N::N(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_
 }()), "a"}}) {}
 
 // def inner(self) -> int32:
+//     a, b = self.t
+//     c, s = b
+//     return c
 inline int32_t N::inner() const {
-    // a, b = self.t
     auto __tup_1 = this->t;
     int32_t a = std::get<0>(__tup_1);
     const std::tuple<int32_t, std::string>& b = std::get<1>(__tup_1);
-    // c, s = b
     const auto& __tup_2 = b;
     int32_t c = std::get<0>(__tup_2);
     std::string_view s = std::get<1>(__tup_2);
-    // return c
     return c;
 }
 void __tpy_init();

@@ -13,8 +13,11 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(v: int32) -> Own[Box[int32]]:
 ::tpystd::tplib::box::Box<int32_t> make(int32_t v);
+// def pair() -> tuple[Own[Box[int32]], Own[Box[int32]]]:
 std::tuple<::tpystd::tplib::box::Box<int32_t>, ::tpystd::tplib::box::Box<int32_t>> pair();
+// def main() -> None:
 void main();
 
 void __tpy_init();

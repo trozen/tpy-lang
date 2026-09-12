@@ -11,8 +11,10 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def proc[T](fn: Callable[[Box[T]], int32], *xs: Box[T]) -> int32:
 template<typename T>
 int32_t proc(const std::function<int32_t(Box<T>&)>& fn, ::tpy::varargs<Box<T>> xs);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -23,6 +25,7 @@ struct Box {
     T val;
 
     // def __init__(self, v: T) -> None:
+    //     self.val = v
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
     // non-copyable (@nocopy)
@@ -40,20 +43,20 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 }
 
 // def proc[T](fn: Callable[[Box[T]], int32], *xs: Box[T]) -> int32:
+//     total: int32 = 0
+//     for x in xs:
+//         total += fn(x)
+//     return total
 template<typename T>
 int32_t proc(const std::function<int32_t(Box<T>&)>& fn, ::tpy::varargs<Box<T>> xs) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // total += fn(x)
         total = ::tpy::add_check<int32_t>(total, fn(x));
     }
-    // return total
     return total;
 }
 

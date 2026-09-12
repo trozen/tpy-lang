@@ -12,7 +12,9 @@ struct TD;
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[TD]:
 TD make();
+// def main() -> None:
 void main();
 
 // class TD(TypedDict):

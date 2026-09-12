@@ -11,12 +11,19 @@ struct V;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_int() -> Own[V]:
 V make_int();
+// def make_float() -> Own[V]:
 V make_float();
+// def make_null() -> Own[V]:
 V make_null();
+// def make_mixed_list() -> Own[V]:
 V make_mixed_list();
+// def make_mixed_dict() -> Own[V]:
 V make_mixed_dict();
+// def kind(v: V) -> str:
 std::string kind(const V& v);
+// def main() -> None:
 void main();
 
 struct V {

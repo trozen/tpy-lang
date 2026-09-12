@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def return_from_try() -> int32:
 int32_t return_from_try();
+// def return_from_except() -> int32:
 int32_t return_from_except();
+// def return_from_multiple_paths(flag: bool) -> str:
 std::string return_from_multiple_paths(bool flag);
+// def return_optional(flag: bool) -> int32 | None:
 std::optional<int32_t> return_optional(bool flag);
+// def main() -> None:
 void main();
 
 void __tpy_init();

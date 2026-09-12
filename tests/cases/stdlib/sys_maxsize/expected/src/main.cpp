@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(sys.maxsize)
+//     print(sys.maxsize == 2**63 - 1)
+//     print(sys.maxsize + 1)
+//     n = 5
+//     print(n < sys.maxsize)
 void main() {
-    // print(sys.maxsize)
     std::cout << ::tpystd::sys::maxsize << "\n";
-    // print(sys.maxsize == 2**63 - 1)
     std::cout << ::tpy::print_bool((::tpystd::sys::maxsize == ::tpy::BigInt(static_cast<int64_t>(9223372036854775807LL)))) << "\n";
-    // print(sys.maxsize + 1)
     std::cout << ((::tpystd::sys::maxsize) + (::tpy::BigInt(1))) << "\n";
-    // n = 5
     int32_t n = 5;
-    // print(n < sys.maxsize)
     std::cout << ::tpy::print_bool((::tpy::BigInt(n) < ::tpystd::sys::maxsize)) << "\n";
 }
 
+// # sys.maxsize is CPython's 64-bit value (2**63 - 1) and usable as a
+// # regular int (BigInt) in arithmetic and comparisons.
+// import sys
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # sys.maxsize is CPython's 64-bit value (2**63 - 1) and usable as a
-    // # regular int (BigInt) in arithmetic and comparisons.
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // main()
     main();
 }
 

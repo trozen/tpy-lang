@@ -14,9 +14,13 @@ struct Leaf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def and_not(u: A | B, flag: bool) -> int32:
 int32_t and_not(const ::tpy::Union<A, B>& u, bool flag);
+// def not_or(u: A | B, flag: bool) -> int32:
 int32_t not_or(const ::tpy::Union<A, B>& u, bool flag);
+// def ref_union(u: Node | Leaf, flag: bool) -> int32:
 int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag);
+// def main() -> None:
 void main();
 
 // class A(ValueType):
@@ -97,15 +101,19 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline A::A(int32_t n) : n(n) {}
 
 // def __init__(self, m: int32) -> None:
+//     self.m = m
 inline B::B(int32_t m) : m(m) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self, w: int32) -> None:
+//     self.w = w
 inline Leaf::Leaf(int32_t w) : w(w) {}
 void __tpy_init();
 } // namespace tpyapp::main

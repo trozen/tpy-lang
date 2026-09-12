@@ -9,62 +9,66 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count_if_sized(items: Sized | None = None) -> int32:
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items = nullptr);
+// def sum_span(items: Spannable[int32] | None = None) -> int32:
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t sum_span(const T_items* items = nullptr);
+// def check_not(items: Sized | None = None) -> int32:
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t check_not(const T_items* items = nullptr);
+// def main() -> None:
 void main();
 
 // def count_if_sized(items: Sized | None = None) -> int32:
+//     if isinstance(items, Sized):
+//         return len(items)
+//     return -1
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items) {
-    // if isinstance(items, Sized):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // return len(items)
         return ::tpy::__len__((*items));
     }
-    // return -1
     return -1;
 }
 // def sum_span(items: Spannable[int32] | None = None) -> int32:
+//     if isinstance(items, Spannable):
+//         total: int32 = 0
+//         for x in items:
+//             total += x
+//         return total
+//     return -1
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t sum_span(const T_items* items) {
-    // if isinstance(items, Spannable):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // total: int32 = 0
         int32_t total = 0;
-        // for x in items:
         auto& __obj_0 = (*items);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
-        // return total
         return total;
     }
-    // return -1
     return -1;
 }
 // def check_not(items: Sized | None = None) -> int32:
+//     if not isinstance(items, Sized):
+//         return -1
+//     return len(items)
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t check_not(const T_items* items) {
-    // if not isinstance(items, Sized):
     if constexpr (std::same_as<T_items, std::nullptr_t>) {
-        // return -1
         return -1;
     }
-    // return len(items)
     return ::tpy::__len__((*items));
 }
 

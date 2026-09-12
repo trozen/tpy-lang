@@ -5,56 +5,58 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Container[Point](Point(1, 2))
+//     p = c.get()
+//     if p is not None:
+//         print(p.x, p.y)
+//         # Mutate through the returned pointer -- should modify the original
+//         p.x = 10
+//         p.y = 20
+//
+//     # Verify the original was mutated
+//     p2 = c.get()
+//     if p2 is not None:
+//         print(p2.x, p2.y)
+//
+//     # Also test via dict.get()
+//     d: dict[str, Point] = {"a": Point(3, 4)}
+//     dp = d.get("a")
+//     if dp is not None:
+//         dp.x = 30
+//         dp.y = 40
+//     dp2 = d.get("a")
+//     if dp2 is not None:
+//         print(dp2.x, dp2.y)
 void main() {
-    // c = Container[Point](Point(1, 2))
     Container<Point> c = Container<Point>(Point(1, 2));
-    // p = c.get()
     Point* p = c.get();
-    // if p is not None:
     if ((p != nullptr)) {
-        // print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-        // # Mutate through the returned pointer -- should modify the original
-        // p.x = 10
         p->x = 10;
-        // p.y = 20
         p->y = 20;
     }
-    // # Verify the original was mutated
-    // p2 = c.get()
     Point* p2 = c.get();
-    // if p2 is not None:
     if ((p2 != nullptr)) {
-        // print(p2.x, p2.y)
         std::cout << p2->x << " " << p2->y << "\n";
     }
-    // # Also test via dict.get()
-    // d: dict[str, Point] = {"a": Point(3, 4)}
     ::tpy::ordered_map<std::string, Point> d = ::tpy::ordered_map<std::string, Point>({{"a", Point(3, 4)}});
-    // dp = d.get("a")
     Point* dp = ::tpy::dict_get(d, "a");
-    // if dp is not None:
     if ((dp != nullptr)) {
-        // dp.x = 30
         dp->x = 30;
-        // dp.y = 40
         dp->y = 40;
     }
-    // dp2 = d.get("a")
     Point* dp2 = ::tpy::dict_get(d, "a");
-    // if dp2 is not None:
     if ((dp2 != nullptr)) {
-        // print(dp2.x, dp2.y)
         std::cout << dp2->x << " " << dp2->y << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

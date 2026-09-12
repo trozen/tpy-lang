@@ -11,164 +11,177 @@ namespace tpystd::json {
 // # explicit ownership transfer to return freshly built values.
 // @error_return(JsonError)
 // def _read_value(reader: JsonReader) -> Own[JsonValue]:
+//     tok = reader.peek()
+//     if tok == JsonToken.OBJECT_START:
+//         d: dict[str, JsonValue] = {}
+//         reader.read_object_start()
+//         while reader.has_next():
+//             key = reader.read_key()
+//             # Intermediate local: dict subscript assignment doesn't accept
+//             # an Own[T] rvalue directly today. Revisit if the compiler
+//             # learns to auto-move Own into subscript slots.
+//             val = _read_value(reader)
+//             d[key] = val
+//         reader.read_object_end()
+//         return d
+//     if tok == JsonToken.ARRAY_START:
+//         a: list[JsonValue] = []
+//         reader.read_array_start()
+//         while reader.has_next():
+//             item = _read_value(reader)
+//             a.append(item)
+//         reader.read_array_end()
+//         return a
+//     if tok == JsonToken.STRING:
+//         return reader.read_str()
+//     if tok == JsonToken.NUMBER:
+//         raw = reader.read_number_raw()
+//         # Preserve BigInt precision: parse via int() unless the lexeme has
+//         # float syntax. CPython treats `1` and `1.0` as int and float.
+//         is_float = False
+//         i: int32 = 0
+//         n = len(raw)
+//         while i < n:
+//             c = raw[i]
+//             if c == "." or c == "e" or c == "E":
+//                 is_float = True
+//                 break
+//             i += 1
+//         if is_float:
+//             return float(raw)
+//         return int(raw)
+//     if tok == JsonToken.TRUE:
+//         reader.read_bool()
+//         return True
+//     if tok == JsonToken.FALSE:
+//         reader.read_bool()
+//         return False
+//     if tok == JsonToken.NONE:
+//         reader.read_null()
+//         return None
+//     raise JsonError("Expecting value", reader.position())
 std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(::tpystd::tplib::json::parser::JsonReader& reader) {
-    // tok = reader.peek()
     ::tpystd::tplib::json::parser::JsonToken tok = reader.peek();
-    // if tok == JsonToken.OBJECT_START:
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::OBJECT_START)) {
-        // d: dict[str, JsonValue] = {}
         ::tpy::ordered_map<std::string, JsonValue> d = ::tpy::ordered_map<std::string, JsonValue>();
-        // reader.read_object_start()
         {
             auto __try_tmp_1 = reader.read_object_start();
             if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         }
-        // while reader.has_next():
         while (reader.has_next()) {
-            // key = reader.read_key()
             std::string key;
             {
                 auto __try_tmp_2 = reader.read_key();
                 if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
                 key = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
-            // # Intermediate local: dict subscript assignment doesn't accept
-            // # an Own[T] rvalue directly today. Revisit if the compiler
-            // # learns to auto-move Own into subscript slots.
-            // val = _read_value(reader)
             JsonValue val;
             {
                 auto __try_tmp_3 = _read_value(reader);
                 if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
                 val = ::tpy::unwrap_ref_move(*__try_tmp_3);
             }
-            // d[key] = val
             ::tpy::__setitem__(d, key, val);
         }
-        // reader.read_object_end()
         {
             auto __try_tmp_4 = reader.read_object_end();
             if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
         }
-        // return d
         return d;
     }
-    // if tok == JsonToken.ARRAY_START:
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::ARRAY_START)) {
-        // a: list[JsonValue] = []
         std::vector<JsonValue> a = std::vector<JsonValue>{};
-        // reader.read_array_start()
         {
             auto __try_tmp_5 = reader.read_array_start();
             if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
         }
-        // while reader.has_next():
         while (reader.has_next()) {
-            // item = _read_value(reader)
             JsonValue item;
             {
                 auto __try_tmp_6 = _read_value(reader);
                 if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
                 item = ::tpy::unwrap_ref_move(*__try_tmp_6);
             }
-            // a.append(item)
             a.push_back(item);
         }
-        // reader.read_array_end()
         {
             auto __try_tmp_7 = reader.read_array_end();
             if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
         }
-        // return a
         return a;
     }
-    // if tok == JsonToken.STRING:
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::STRING)) {
-        // return reader.read_str()
         return reader.read_str();
     }
-    // if tok == JsonToken.NUMBER:
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::NUMBER)) {
-        // raw = reader.read_number_raw()
         std::string_view raw;
         {
             auto __try_tmp_8 = reader.read_number_raw();
             if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
             raw = ::tpy::unwrap_ref_move(*__try_tmp_8);
         }
-        // # Preserve BigInt precision: parse via int() unless the lexeme has
-        // # float syntax. CPython treats `1` and `1.0` as int and float.
-        // is_float = False
         bool is_float = false;
-        // i: int32 = 0
         int32_t i = 0;
-        // n = len(raw)
         int32_t n = ::tpy::__len__(raw);
-        // while i < n:
         while ((i < n)) {
-            // c = raw[i]
             char c = ::tpy::__getitem__(raw, i);
-            // if c == "." or c == "e" or c == "E":
             if ((((c == '.') || (c == 'e')) || (c == 'E'))) {
-                // is_float = True
                 is_float = true;
-                // break
                 break;
             }
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         }
-        // if is_float:
         if (is_float) {
-            // return float(raw)
             return ::tpy::float_from_str(raw);
         }
-        // return int(raw)
         return ::tpy::BigInt::from_str(raw);
     }
-    // if tok == JsonToken.TRUE:
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::TRUE)) {
-        // reader.read_bool()
         {
             auto __try_tmp_9 = reader.read_bool();
             if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
         }
-        // return True
         return true;
     }
-    // if tok == JsonToken.FALSE:
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::FALSE)) {
-        // reader.read_bool()
         {
             auto __try_tmp_10 = reader.read_bool();
             if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
         }
-        // return False
         return false;
     }
-    // if tok == JsonToken.NONE:
     if ((tok == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
-        // reader.read_null()
         {
             auto __try_tmp_11 = reader.read_null();
             if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
         }
-        // return None
         return std::monostate{};
     }
-    // raise JsonError("Expecting value", reader.position())
     return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("Expecting value", reader.position()));
 }
 
 // def loads(s: str) -> Own[JsonValue]:
+//     """Deserialize a JSON document string into a JsonValue.
+//
+//     Returns one of: None, bool, int (BigInt), float, str, list[JsonValue],
+//     dict[str, JsonValue]. Raises JSONDecodeError on malformed input or
+//     trailing data after the top-level value.
+//     """
+//     reader = JsonReader(s)
+//     try:
+//         value = _read_value(reader)
+//     except JsonError as e:
+//         raise JSONDecodeError(e.message, s, e.pos)
+//     # CPython rejects trailing non-whitespace; peek() skips whitespace and
+//     # returns END at EOF.
+//     if reader.peek() != JsonToken.END:
+//         raise JSONDecodeError("Extra data", s, reader.position())
+//     return value
 JsonValue loads(std::string_view s) {
-    // reader = JsonReader(s)
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader(s);
-    // try:
     std::optional<JsonValue> value;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_12;
-        // value = _read_value(reader)
         {
             auto __try_tmp_13 = _read_value(reader);
             if (!__try_tmp_13.has_value()) { __err_opt_12 = std::move(__try_tmp_13.error()); goto __except_12; }
@@ -179,19 +192,13 @@ JsonValue loads(std::string_view s) {
         __except_12:;
         {
             auto& e = *__err_opt_12;
-            // raise JSONDecodeError(e.message, s, e.pos)
             throw JSONDecodeError(e.message, s, e.pos);
         }
         __after_try_12:;
     }
-    // # CPython rejects trailing non-whitespace; peek() skips whitespace and
-    // # returns END at EOF.
-    // if reader.peek() != JsonToken.END:
     if ((reader.peek() != ::tpystd::tplib::json::parser::JsonToken::END)) {
-        // raise JSONDecodeError("Extra data", s, reader.position())
         throw JSONDecodeError("Extra data", s, reader.position());
     }
-    // return value
     return std::move((*value));
 }
 
@@ -199,87 +206,87 @@ JsonValue loads(std::string_view s) {
 // # dumps
 // # ----------------------------------------------------------------------
 // def _write_value(v: JsonValue, w: JsonWriter, sort_keys: bool) -> None:
+//     match v:
+//         case None:
+//             w.write_null()
+//         case bool() as b:
+//             w.write_bool(b)
+//         case int() as n:
+//             w.write_bigint(n)
+//         case float() as f:
+//             w.write_float(f)
+//         case str() as s:
+//             w.write_str(s)
+//         case list() as items:
+//             w.array_start()
+//             for item in items:
+//                 _write_value(item, w, sort_keys)
+//             w.array_end()
+//         case dict() as d:
+//             w.object_start()
+//             keys = sorted(d.keys()) if sort_keys else list(d.keys())
+//             for k in keys:
+//                 w.key(k)
+//                 _write_value(d[k], w, sort_keys)
+//             w.object_end()
 void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter& w, bool sort_keys) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.value.index()) {
-    // case None:
     case 0: {
-        // w.write_null()
         w.write_null();
         break;
     }
-    // case bool() as b:
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto b = __case_1;
-        // w.write_bool(b)
         w.write_bool(b);
         break;
     }
-    // case int() as n:
     case 4: {
         auto& __case_2 = std::get<4>(__match_subject_1.value);
         auto& n = __case_2;
-        // w.write_bigint(n)
         w.write_bigint(n);
         break;
     }
-    // case float() as f:
     case 3: {
         auto& __case_3 = std::get<3>(__match_subject_1.value);
         auto f = __case_3;
-        // w.write_float(f)
         w.write_float(f);
         break;
     }
-    // case str() as s:
     case 6: {
         auto& __case_4 = std::get<6>(__match_subject_1.value);
         auto& s = __case_4;
-        // w.write_str(s)
         w.write_str(s);
         break;
     }
-    // case list() as items:
     case 5: {
         auto& __case_5 = std::get<5>(__match_subject_1.value);
         auto& items = __case_5;
-        // w.array_start()
         w.array_start();
-        // for item in items:
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& item = *__beg_0;
-            // _write_value(item, w, sort_keys)
             _write_value(item, w, sort_keys);
         }
-        // w.array_end()
         w.array_end();
         break;
     }
-    // case dict() as d:
     case 2: {
         auto& __case_6 = std::get<2>(__match_subject_1.value);
         auto& d = __case_6;
-        // w.object_start()
         w.object_start();
-        // keys = sorted(d.keys()) if sort_keys else list(d.keys())
         std::vector<std::string> keys = ((sort_keys) ? (::tpy::builtin_sorted<std::string>(::tpy::dict_keys(d))) : (::tpy::construct<std::vector<std::string>>(::tpy::dict_keys(d))));
-        // for k in keys:
         auto& __obj_1 = keys;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             std::string_view k = *__beg_1;
-            // w.key(k)
             w.key(k);
-            // _write_value(d[k], w, sort_keys)
             _write_value(::tpy::__getitem__(d, k), w, sort_keys);
         }
-        // w.object_end()
         w.object_end();
         break;
     }
@@ -287,64 +294,72 @@ void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter&
 }
 
 // def dumps(obj: JsonValue, *, indent: int32 = 0, sort_keys: bool = False) -> str:
+//     """Serialize a JsonValue to a JSON-formatted str.
+//
+//     indent: non-zero turns on pretty-printing with that many spaces per level.
+//     sort_keys: when True, dict keys are emitted in sorted order.
+//     """
+//     w = JsonWriter(indent)
+//     _write_value(obj, w, sort_keys)
+//     return w.finish()
 std::string dumps(const JsonValue& obj, int32_t indent, bool sort_keys) {
-    // w = JsonWriter(indent)
     ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter(indent);
-    // _write_value(obj, w, sort_keys)
     _write_value(obj, w, sort_keys);
-    // return w.finish()
     return w.finish();
 }
 
 
 // def __init__(self, msg: str, doc: str, pos: int32) -> None:
+//     # `message` is BaseException's runtime field (used by __str__);
+//     # `msg` is CPython's documented attribute on JSONDecodeError.
+//     # Always equal -- both names are exposed for compatibility.
+//     self.message = msg
+//     self.msg = msg
+//     self.doc = doc
+//     self.pos = pos
+//     # 1-based to match CPython's JSONDecodeError.lineno/colno contract.
+//     line: int32 = 1
+//     col: int32 = 1
+//     i: int32 = 0
+//     end = pos
+//     if end > len(doc):
+//         end = len(doc)
+//     while i < end:
+//         if doc[i] == "\n":
+//             line += 1
+//             col = 1
+//         else:
+//             col += 1
+//         i += 1
+//     self.lineno = line
+//     self.colno = col
 JSONDecodeError::JSONDecodeError(std::string_view msg, std::string_view doc, int32_t pos) : msg(msg), doc(doc), pos(pos) {
-    // # `message` is BaseException's runtime field (used by __str__);
-    // # `msg` is CPython's documented attribute on JSONDecodeError.
-    // # Always equal -- both names are exposed for compatibility.
-    // self.message = msg
     this->message = msg;
-    // # 1-based to match CPython's JSONDecodeError.lineno/colno contract.
-    // line: int32 = 1
     int32_t line = 1;
-    // col: int32 = 1
     int32_t col = 1;
-    // i: int32 = 0
     int32_t i = 0;
-    // end = pos
     int32_t end = pos;
-    // if end > len(doc):
     if ((end > ::tpy::__len__(doc))) {
-        // end = len(doc)
         end = ::tpy::__len__(doc);
     }
-    // while i < end:
     while ((i < end)) {
-        // if doc[i] == "\n":
         if ((::tpy::__getitem__(doc, i) == '\n')) {
-            // line += 1
             line = ::tpy::add_check<int32_t>(line, 1);
-            // col = 1
             col = 1;
-        // else:
         } else {
-            // col += 1
             col = ::tpy::add_check<int32_t>(col, 1);
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // self.lineno = line
     this->lineno = line;
-    // self.colno = col
     this->colno = col;
 }
+// from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
 }

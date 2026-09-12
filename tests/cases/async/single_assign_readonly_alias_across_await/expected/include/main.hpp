@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_peek;
 struct __coro_amain;
 
+// async def peek(o: readonly[Outer]) -> int:
 __coro_peek peek(const Outer& o);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Inner:
@@ -53,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
-// Async coroutine: peek
+// async def peek(o: readonly[Outer]) -> int:
 struct __coro_peek {
     int32_t __state;
     bool __cancel_pending;
@@ -78,7 +80,7 @@ struct __coro_peek {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -105,9 +107,11 @@ struct __coro_amain {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Inner::Inner(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, n: int) -> None:
+//     self.inner = Inner(n)
 inline Outer::Outer(const ::tpy::BigInt& n) : inner(Inner(n)) {}
 void __tpy_init();
 } // namespace tpyapp::main

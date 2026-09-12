@@ -47,32 +47,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(SmallEnum.A)
+//     print(SmallEnum.C)
+//
+//     # Arithmetic gives int8
+//     x: int8 = SmallEnum.B + int8(10)
+//     print(x)
+//
+//     # Ordering
+//     print(SmallEnum.A < SmallEnum.C)
+//
+//     # Int comparison
+//     print(SmallEnum.B == int8(1))
 void main() {
-    // print(SmallEnum.A)
     std::cout << SmallEnum::A << "\n";
-    // print(SmallEnum.C)
     std::cout << SmallEnum::C << "\n";
-    // # Arithmetic gives int8
-    // x: int8 = SmallEnum.B + int8(10)
     int8_t x = (::tpy::add_check<int8_t>(static_cast<int8_t>(SmallEnum::B), 10));
-    // print(x)
     std::cout << static_cast<int>(x) << "\n";
-    // # Ordering
-    // print(SmallEnum.A < SmallEnum.C)
     std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n";
-    // # Int comparison
-    // print(SmallEnum.B == int8(1))
     std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n";
 }
 
+// # IntEnum with explicit int8 underlying type via mixin syntax
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # IntEnum with explicit int8 underlying type via mixin syntax
-    // from enum import Enum
-    // main()
     main();
 }
 

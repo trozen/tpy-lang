@@ -5,44 +5,45 @@ namespace tpyapp::main {
 
 
 // def show(v: Value) -> str:
+//     if isinstance(v, Neg):
+//         return "-" + show(v.inner.get())
+//     elif isinstance(v, int):
+//         return str(v)
+//     else:
+//         return v
 std::string show(const Value& v) {
-    // if isinstance(v, Neg):
     if (std::holds_alternative<Neg>(v.value)) {
         const auto& __v = std::get<Neg>(v.value);
-        // return "-" + show(v.inner.get())
         return (::tpy::str_concat("-", show(__v.inner.get())));
-    // elif isinstance(v, int):
     } else if (std::holds_alternative<::tpy::BigInt>(v.value)) {
         const auto& __v = std::get<::tpy::BigInt>(v.value);
-        // return str(v)
         return (__v).to_string();
-    // else:
     } else {
         const auto& __v = std::get<std::string>(v.value);
-        // return v
         return __v;
     }
 }
 
 // def main() -> None:
+//     print(show(42))
+//     print(show("hello"))
 void main() {
-    // print(show(42))
     Value __tmp_1 = 42;
     std::cout << show(__tmp_1) << "\n";
-    // print(show("hello"))
     Value __tmp_2 = "hello";
     std::cout << show(__tmp_2) << "\n";
 }
 
+// # Mutual recursion with mix of primitives and records
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Mutual recursion with mix of primitives and records
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

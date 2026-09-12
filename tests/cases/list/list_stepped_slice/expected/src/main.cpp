@@ -6,47 +6,57 @@ namespace tpyapp::main {
 
 // # Stepped list slicing: a[start:stop:step] returns a new list.
 // def main() -> None:
+//     items = [1, 2, 3, 4, 5]
+//
+//     # Every other element
+//     print(items[::2])
+//
+//     # Reverse
+//     print(items[::-1])
+//
+//     # Reverse with bounds
+//     print(items[3:0:-1])
+//
+//     # Step with start
+//     print(items[1::2])
+//
+//     # Step with start and stop
+//     print(items[0:4:2])
+//
+//     # Negative step with bounds
+//     print(items[4:1:-1])
+//
+//     # Step of 1 (same as basic slice but returns owned list)
+//     print(items[::1])
+//
+//     # Empty result (step in wrong direction)
+//     print(items[0:4:-1])
+//
+//     # Edge: very negative start with negative step -> empty
+//     print(items[-100::-1])
+//
+//     # Edge: large positive start clamped
+//     print(items[100::-1])
 void main() {
-    // items = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> items = {1, 2, 3, 4, 5};
-    // # Every other element
-    // print(items[::2])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 2})) << "\n";
-    // # Reverse
-    // print(items[::-1])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, -1})) << "\n";
-    // # Reverse with bounds
-    // print(items[3:0:-1])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{3, 0, -1})) << "\n";
-    // # Step with start
-    // print(items[1::2])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{1, std::nullopt, 2})) << "\n";
-    // # Step with start and stop
-    // print(items[0:4:2])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{0, 4, 2})) << "\n";
-    // # Negative step with bounds
-    // print(items[4:1:-1])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{4, 1, -1})) << "\n";
-    // # Step of 1 (same as basic slice but returns owned list)
-    // print(items[::1])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 1})) << "\n";
-    // # Empty result (step in wrong direction)
-    // print(items[0:4:-1])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{0, 4, -1})) << "\n";
-    // # Edge: very negative start with negative step -> empty
-    // print(items[-100::-1])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{-100, std::nullopt, -1})) << "\n";
-    // # Edge: large positive start clamped
-    // print(items[100::-1])
     std::cout << ::tpy::ListPrinter(::tpy::list_stepped_slice(items, ::tpy::Slice{100, std::nullopt, -1})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,16 +5,18 @@ namespace tpyapp::main {
 
 
 // def in_branch(flag: bool) -> None:
+//     if flag:
+//         # First bind of a reassigned target INSIDE the branch: the pointer
+//         # local is declared here, not at function top.
+//         with Res(1) as r:
+//             r.v += 10
+//         with Res(2) as r:
+//             r.v += 20
 void in_branch(bool flag) {
-    // if flag:
     if (flag) {
-        // # First bind of a reassigned target INSIDE the branch: the pointer
-        // # local is declared here, not at function top.
-        // with Res(1) as r:
         auto __ctx_1 = Res(1);
         Slot* r = &(__ctx_1.__enter__());
         try {
-            // r.v += 10
             r->v = ::tpy::add_check<int32_t>(r->v, 10);
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -26,11 +28,9 @@ void in_branch(bool flag) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // with Res(2) as r:
         auto __ctx_2 = Res(2);
         r = &(__ctx_2.__enter__());
         try {
-            // r.v += 20
             r->v = ::tpy::add_check<int32_t>(r->v, 20);
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
@@ -43,20 +43,20 @@ void in_branch(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // # First bind of a reassigned target INSIDE the branch: the pointer
-    // # local is declared here, not at function top.
 }
 
 // def in_loop() -> None:
+//     for i in range(2):
+//         # Same first bind, re-declared per iteration.
+//         with Res(i) as r:
+//             r.v += 100
+//         with Res(i + 5) as r:
+//             r.v += 200
 void in_loop() {
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // # Same first bind, re-declared per iteration.
-        // with Res(i) as r:
         auto __ctx_3 = Res(i);
         Slot* r = &(__ctx_3.__enter__());
         try {
-            // r.v += 100
             r->v = ::tpy::add_check<int32_t>(r->v, 100);
             goto __with_exit_3;
         } catch (::tpy::BaseException& __exc_3) {
@@ -68,11 +68,9 @@ void in_loop() {
         }
         __with_exit_3:
         __ctx_3.__exit__({}, nullptr, {});
-        // with Res(i + 5) as r:
         auto __ctx_4 = Res((::tpy::add_check<int32_t>(i, 5)));
         r = &(__ctx_4.__enter__());
         try {
-            // r.v += 200
             r->v = ::tpy::add_check<int32_t>(r->v, 200);
             goto __with_exit_4;
         } catch (::tpy::BaseException& __exc_4) {
@@ -85,25 +83,24 @@ void in_loop() {
         __with_exit_4:
         __ctx_4.__exit__({}, nullptr, {});
     }
-    // # Same first bind, re-declared per iteration.
 }
 
 // def main() -> None:
+//     in_branch(True)
+//     in_branch(False)
+//     in_loop()
 void main() {
-    // in_branch(True)
     in_branch(true);
-    // in_branch(False)
     in_branch(false);
-    // in_loop()
     in_loop();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

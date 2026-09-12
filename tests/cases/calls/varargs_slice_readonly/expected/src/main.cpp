@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def sum_tail(*items: readonly[Box]) -> int32:  # tpyc: ok
+//     n: int32 = 0
+//     for b in items[1:]:
+//         n += b.val
+//     return n
 int32_t sum_tail(::tpy::varargs<const Box> items) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for b in items[1:]:
     auto __obj_0 = ::tpy::list_slice(items, ::tpy::BasicSlice{1, std::nullopt});
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // n += b.val
         n = ::tpy::add_check<int32_t>(n, b.val);
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     print(sum_tail(Box(1), Box(2), Box(3)))
 void main() {
-    // print(sum_tail(Box(1), Box(2), Box(3)))
     const Box __tmp_1 = Box(1);
     const Box __tmp_2 = Box(2);
     const Box __tmp_3 = Box(3);
@@ -31,12 +31,12 @@ void main() {
     std::cout << sum_tail(::tpy::varargs<const Box>(__tmp_4)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

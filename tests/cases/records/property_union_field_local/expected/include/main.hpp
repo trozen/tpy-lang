@@ -13,6 +13,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class A:
@@ -68,33 +69,36 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, target: Optional[str]) -> None:
+//     self.target = target
 inline A::A(std::optional<std::string_view> target) : target(target ? std::make_optional(std::string(*target)) : std::nullopt) {}
 
 // def __init__(self, filter_: Optional[str]) -> None:
+//     self.filter_ = filter_
 inline B::B(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
 
 // def __init__(self, sub: A | B) -> None:
+//     self.sub = sub
 inline Holder::Holder(::tpy::Union<const A*, const B*> sub) : sub(::tpy::to_value_variant<::tpy::Union<A, B>>(sub)) {}
 
 // @property
 // def label(self) -> str:
+//     v = self.sub
+//     match v:
+//         case A(target=_):
+//             return "a"
+//         case B(filter_=_):
+//             return "b"
 inline std::string Holder::label() const {
-    // v = self.sub
     ::tpy::Union<const A*, const B*> v = ::tpy::to_const_ptr_variant(this->sub);
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
-    // case A(target=_):
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // return "a"
         return "a";
         break;
     }
-    // case B(filter_=_):
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // return "b"
         return "b";
         break;
     }

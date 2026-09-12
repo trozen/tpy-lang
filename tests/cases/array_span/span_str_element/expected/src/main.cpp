@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def first(words: Span[str]) -> str:
+//     return words[0]
 std::string first(std::span<std::string> words) {
-    // return words[0]
     return ::tpy::__getitem__(words, 0);
 }
 
 // def main() -> None:
+//     src: list[str] = []
+//     src.append("alpha")
+//     src.append("beta")
+//     src.append("gamma")
+//     tail = src[1:]  # tpyc: type(/Span/)
+//     print(len(tail), tail[0], tail[1])
+//     print(first(tail))
+//     # A span element assigns through to the source; read it back off the span
+//     # so the check stays inside the view (CPython's slice copies, so reading
+//     # the LIST back would diverge).
+//     tail[0] = "BETA"
+//     print(tail[0], first(tail))
 void main() {
-    // src: list[str] = []
     std::vector<std::string> src = std::vector<std::string>{};
-    // src.append("alpha")
     src.push_back("alpha");
-    // src.append("beta")
     src.push_back("beta");
-    // src.append("gamma")
     src.push_back("gamma");
-    // tail = src[1:]  # tpyc: type(/Span/)
     std::span<std::string> tail = ::tpy::list_slice(src, ::tpy::BasicSlice{1, std::nullopt});
-    // print(len(tail), tail[0], tail[1])
     std::cout << ::tpy::__len__(tail) << " " << ::tpy::__getitem__(tail, 0) << " " << ::tpy::__getitem__(tail, 1) << "\n";
-    // print(first(tail))
     std::cout << first(tail) << "\n";
-    // # A span element assigns through to the source; read it back off the span
-    // # so the check stays inside the view (CPython's slice copies, so reading
-    // # the LIST back would diverge).
-    // tail[0] = "BETA"
     ::tpy::__setitem__(tail, 0, "BETA");
-    // print(tail[0], first(tail))
     std::cout << ::tpy::__getitem__(tail, 0) << " " << first(tail) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

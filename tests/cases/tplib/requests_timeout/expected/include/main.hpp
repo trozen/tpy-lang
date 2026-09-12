@@ -21,7 +21,9 @@ using ::tpystd::tplib::requests::Timeout;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def _hang_request() -> None:
 void _hang_request();
+// def main() -> None:
 void main();
 
 void __tpy_init();

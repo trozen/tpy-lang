@@ -11,10 +11,15 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(p: Point) -> str:
 std::string describe(const Point& p);
+// def check_quadrant(p: Point) -> str:
 std::string check_quadrant(const Point& p);
+// def positional(p: Point) -> str:
 std::string positional(const Point& p);
+// def with_capture(p: Point) -> str:
 std::string with_capture(const Point& p);
+// def main() -> None:
 void main();
 
 // @dataclass

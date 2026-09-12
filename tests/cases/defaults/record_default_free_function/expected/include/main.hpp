@@ -13,9 +13,13 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def offset_of(tz: "Fixed | None" = None) -> int64:
 int64_t offset_of(std::optional<Fixed> tz);
+// def kind_of(z: "Fixed | Wide | None" = None) -> int64:
 int64_t kind_of(const ::tpy::Union<std::monostate, Fixed, Wide>& z);
+// def barks_of(d: "Dog | None" = None) -> int64:
 int64_t barks_of(const Dog* d = nullptr);
+// def main() -> None:
 void main();
 
 // class Fixed(ValueType):
@@ -80,12 +84,15 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, off: int64) -> None:
+//     self.off = off
 inline Fixed::Fixed(int64_t off) : off(off) {}
 
 // def __init__(self, span: int64) -> None:
+//     self.span = span
 inline Wide::Wide(int64_t span) : span(span) {}
 
 // def __init__(self, barks: int64) -> None:
+//     self.barks = barks
 inline Dog::Dog(int64_t barks) : barks(barks) {}
 void __tpy_init();
 } // namespace tpyapp::main

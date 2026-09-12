@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,16 +26,19 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def maybe(cond: bool) -> int:
+//     if cond:
+//         x = await value(42)
+//     else:
+//         x = 0
+//     return x
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_maybe::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (cond) {
-            // x = await value(42)
             __sub_0.emplace(::tpy::BigInt(42));
             __state = S_RESUME_0;
             continue;
         } else {
-            // x = 0
             x = 0;
             __state = S_JOIN_0;
             continue;
@@ -50,7 +53,6 @@ __coro_value value(::tpy::BigInt n) {
         continue;
     }
     case S_JOIN_0: {
-        // return x
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = std::move(x);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -67,22 +69,23 @@ __coro_maybe maybe(bool cond) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(maybe(True)))
+//     print(asyncio.run(maybe(False)))
 void main() {
-    // print(asyncio.run(maybe(True)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(maybe(true))) << "\n";
-    // print(asyncio.run(maybe(False)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(maybe(false))) << "\n";
 }
 
+// # `await` inside the then-branch of an if (else has no await).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` inside the then-branch of an if (else has no await).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

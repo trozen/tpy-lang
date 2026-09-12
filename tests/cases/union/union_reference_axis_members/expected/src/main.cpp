@@ -5,70 +5,72 @@ namespace tpyapp::main {
 
 
 // def grow(u: list[int32] | bytearray) -> None:
+//     if isinstance(u, bytearray):
+//         u.append(33)  # tpyc: ok
+//     else:
+//         u.append(9)  # tpyc: ok
 void grow(::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> u) {
-    // if isinstance(u, bytearray):
     if (std::holds_alternative<::tpy::ByteArray*>(u)) {
         auto& __u = *std::get<::tpy::ByteArray*>(u);
-        // u.append(33)  # tpyc: ok
         __u.push_back(33);
-    // else:
     } else {
         auto& __u = *std::get<std::vector<int32_t>*>(u);
-        // u.append(9)  # tpyc: ok
         __u.push_back(9);
     }
 }
 
 // def touch(u: list[int32] | Array[int32, 2]) -> None:
+//     if isinstance(u, list):
+//         u.append(4)
+//     else:
+//         u[0] = 7  # tpyc: ok
 void touch(::tpy::Union<std::array<int32_t, 2>*, std::vector<int32_t>*> u) {
-    // if isinstance(u, list):
     if (std::holds_alternative<std::vector<int32_t>*>(u)) {
         auto& __u = *std::get<std::vector<int32_t>*>(u);
-        // u.append(4)
         __u.push_back(4);
-    // else:
     } else {
         auto& __u = *std::get<std::array<int32_t, 2>*>(u);
-        // u[0] = 7  # tpyc: ok
         ::tpy::__setitem__(__u, 0, 7);
     }
 }
 
 // def main() -> None:
+//     ba = bytearray(b"ab")
+//     # The decl under test: a bytearray NAME into a ptr-variant union slot.
+//     u: list[int32] | bytearray = ba
+//     grow(u)
+//     print(len(ba))
+//
+//     xs: list[int32] = [1, 2]
+//     v: list[int32] | bytearray = xs
+//     grow(v)
+//     print(len(xs))
+//
+//     a = Array[int32, 2]()
+//     ua: list[int32] | Array[int32, 2] = a
+//     touch(ua)
+//     print(a[0])
 void main() {
-    // ba = bytearray(b"ab")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    // # The decl under test: a bytearray NAME into a ptr-variant union slot.
-    // u: list[int32] | bytearray = ba
     ::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> u{&(ba)};
-    // grow(u)
     grow(u);
-    // print(len(ba))
     std::cout << ::tpy::__len__(ba) << "\n";
-    // xs: list[int32] = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // v: list[int32] | bytearray = xs
     ::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> v{&(xs)};
-    // grow(v)
     grow(v);
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
-    // a = Array[int32, 2]()
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
-    // ua: list[int32] | Array[int32, 2] = a
     ::tpy::Union<std::array<int32_t, 2>*, std::vector<int32_t>*> ua{&(a)};
-    // touch(ua)
     touch(ua);
-    // print(a[0])
     std::cout << ::tpy::__getitem__(a, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

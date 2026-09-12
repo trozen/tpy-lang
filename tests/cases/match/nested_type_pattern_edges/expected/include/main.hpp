@@ -17,14 +17,23 @@ struct BoolHolder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def opt_wrapper(w: Wrapper | None) -> str:
 std::string opt_wrapper(const Wrapper* w);
+// def or_nested(x: Wrapper | Tag) -> str:
 std::string or_nested(::tpy::Union<const Tag*, const Wrapper*> x);
+// def deep3(x: Box[Box[Box[str]]] | Box[Box[Box[int32]]]) -> str:
 std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<std::string>>>*> x);
+// def positional_nested(x: Box[str] | Box[int32]) -> str:
 std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x);
+// def nested_pos_extract(w: Wrapper) -> str:
 std::string nested_pos_extract(const Wrapper& w);
+// def guard_combo(w: Wrapper) -> str:
 std::string guard_combo(const Wrapper& w);
+// def check_float(h: FloatHolder) -> str:
 std::string check_float(const FloatHolder& h);
+// def check_bool(h: BoolHolder) -> str:
 std::string check_bool(const BoolHolder& h);
+// def main() -> None:
 void main();
 
 // @dataclass
@@ -97,6 +106,7 @@ struct Box {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
+    //     self.value = value
     Box() = default;
     explicit Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -178,15 +188,19 @@ inline std::string Dog::__repr__() const {
 }
 
 // def __init__(self, pet: Cat | Dog) -> None:
+//     self.pet = pet
 inline Wrapper::Wrapper(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Tag::Tag(std::string_view label) : label(label) {}
 
 // def __init__(self, value: float | str) -> None:
+//     self.value = value
 inline FloatHolder::FloatHolder(const ::tpy::Union<double, std::string>& value) : value(value) {}
 
 // def __init__(self, value: bool | str) -> None:
+//     self.value = value
 inline BoolHolder::BoolHolder(const ::tpy::Union<bool, std::string>& value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

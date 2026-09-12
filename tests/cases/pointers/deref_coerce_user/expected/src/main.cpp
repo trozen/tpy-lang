@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def print_point(p: Point) -> None:
+//     print(p.x, p.y)
 void print_point(const Point& p) {
-    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
 }
 
 // def test() -> None:
+//     pt: Point = Point(10, 20)
+//     r: Ref = Ref(pt)
+//     # Ref has __deref__() -> Point, so it should auto-coerce to Point
+//     print_point(r)
 void test() {
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // r: Ref = Ref(pt)
     Ref r = Ref(pt);
-    // # Ref has __deref__() -> Point, so it should auto-coerce to Point
-    // print_point(r)
     Point __tmp_1 = r.__deref__();
     print_point(__tmp_1);
 }
 
+// test()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test()
     test();
 }
 

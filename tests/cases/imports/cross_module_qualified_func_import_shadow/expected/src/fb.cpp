@@ -5,8 +5,8 @@ namespace tpyapp::fb {
 
 
 // def make(s: str) -> int:
+//     return len(s)
 ::tpy::BigInt make(std::string_view s) {
-    // return len(s)
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 

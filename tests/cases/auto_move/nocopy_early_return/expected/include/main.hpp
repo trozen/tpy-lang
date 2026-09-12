@@ -11,7 +11,9 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test(cond: bool) -> Own[Handle]:
 Handle test(bool cond);
+// def main():
 void main();
 
 // @nocopy

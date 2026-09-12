@@ -13,19 +13,33 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mk_list() -> Own[list[int32]]:
 std::vector<int32_t> mk_list();
+// def mk_dict() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> mk_dict();
+// def mk_set() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> mk_set();
+// def mk_bytes() -> Own[bytearray]:
 ::tpy::ByteArray mk_bytes();
+// def mk_array() -> Own[Array[int32, 6]]:
 std::array<int32_t, 6> mk_array();
+// def mk_boxes() -> Own[list[Box[int32]]]:
 std::vector<::tpystd::tplib::box::Box<int32_t>> mk_boxes();
+// def opt_list(flag: bool) -> Own[list[int32]] | None:
 std::optional<std::vector<int32_t>> opt_list(bool flag);
+// def opt_dict(flag: bool) -> Own[dict[str, int32]] | None:
 std::optional<::tpy::ordered_map<std::string, int32_t>> opt_dict(bool flag);
+// def opt_set(flag: bool) -> Own[set[int32]] | None:
 std::optional<::tpy::ordered_set<int32_t>> opt_set(bool flag);
+// def opt_bytes(flag: bool) -> Own[bytearray] | None:
 std::optional<::tpy::ByteArray> opt_bytes(bool flag);
+// def opt_array(flag: bool) -> Own[Array[int32, 6]] | None:
 std::optional<std::array<int32_t, 6>> opt_array(bool flag);
+// def opt_boxes(flag: bool) -> Own[list[Box[int32]]] | None:
 std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> opt_boxes(bool flag);
+// def size(flag: bool) -> int32:
 int32_t size(bool flag);
+// def main() -> None:
 void main();
 
 void __tpy_init();

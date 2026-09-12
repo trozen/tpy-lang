@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def observe(p: readonly[Point]) -> int32:
+//     return p.x + p.y
 int32_t observe(const Point& p) {
-    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def call_readonly_method(p: readonly[Point]) -> int32:
+//     return p.magnitude_sq()
 int32_t call_readonly_method(const Point& p) {
-    // return p.magnitude_sq()
     return p.magnitude_sq();
 }
 
 // def main() -> None:
+//     p = Point(int32(3), int32(4))
+//     print(observe(p))
+//     print(call_readonly_method(p))
 void main() {
-    // p = Point(int32(3), int32(4))
     Point p = Point(3, 4);
-    // print(observe(p))
     std::cout << observe(p) << "\n";
-    // print(call_readonly_method(p))
     std::cout << call_readonly_method(p) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

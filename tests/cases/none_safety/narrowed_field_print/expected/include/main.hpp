@@ -11,8 +11,11 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show_guarded(cfg: Config) -> None:
 void show_guarded(const Config& cfg);
+// def show_truthy(cfg: Config) -> None:
 void show_truthy(const Config& cfg);
+// def main() -> None:
 void main();
 
 // class Config:
@@ -27,7 +30,7 @@ struct Config {
     std::optional<double> ratio;
 
     // def __init__(self, port: Optional[int32], name: Optional[str],
-    // flag: Optional[bool], ratio: Optional[float]) -> None:
+    //              flag: Optional[bool], ratio: Optional[float]) -> None:
     Config() = default;
     explicit Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
@@ -40,7 +43,11 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, port: Optional[int32], name: Optional[str],
-// flag: Optional[bool], ratio: Optional[float]) -> None:
+//              flag: Optional[bool], ratio: Optional[float]) -> None:
+//     self.port = port
+//     self.name = name
+//     self.flag = flag
+//     self.ratio = ratio
 inline Config::Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio) : port(port), name(name ? std::make_optional(std::string(*name)) : std::nullopt), flag(flag), ratio(ratio) {}
 void __tpy_init();
 } // namespace tpyapp::main

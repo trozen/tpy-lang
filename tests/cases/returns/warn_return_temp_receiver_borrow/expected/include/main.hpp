@@ -12,12 +12,19 @@ struct Factory;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(n: int32) -> Own[Point]:
 Point make(int32_t n);
+// def make_copy(n: int32) -> Own[Point]:
 Point make_copy(int32_t n);
+// def owned(n: int32) -> Own[Point]:
 Point owned(int32_t n);
+// def owned_copy(n: int32) -> Own[Point]:
 Point owned_copy(int32_t n);
+// def owned_method(f: Factory) -> Own[Point]:
 Point owned_method(Factory& f);
+// def owned_method_copy(f: Factory) -> Own[Point]:
 Point owned_method_copy(Factory& f);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -60,22 +67,24 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def updated(self) -> 'Point':
+//     self.x += 1
+//     return self
 inline Point& Point::updated() {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
-    // return self
     return (*this);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Factory::Factory(int32_t n) : n(n) {}
 
 // def make(self) -> Own[Point]:
+//     return Point(self.n)
 inline Point Factory::make() const {
-    // return Point(self.n)
     return Point(this->n);
 }
 void __tpy_init();

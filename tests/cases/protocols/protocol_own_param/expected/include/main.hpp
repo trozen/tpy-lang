@@ -9,44 +9,47 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first[T](items: Own[Iterable[T]]) -> T:  # tpyc: warning(/never consumed/)
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
 ::tpy::val_or_ref_t<T> first(T_items&& items);
+// def to_list[T](items: Own[Iterable[T]]) -> Own[list[T]]:  # tpyc: warning(/never consumed/)
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
 std::vector<T> to_list(T_items&& items);
+// def main() -> None:
 void main();
 
 // def first[T](items: Own[Iterable[T]]) -> T:  # tpyc: warning(/never consumed/)
+//     for x in items:
+//         return x
+//     assert False, "empty"
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
 ::tpy::val_or_ref_t<T> first(T_items&& items) {
-    // for x in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        // return x
         return x;
     }
-    // assert False, "empty"
     ::tpy::raise_assertion_error("empty");
 }
 // def to_list[T](items: Own[Iterable[T]]) -> Own[list[T]]:  # tpyc: warning(/never consumed/)
+//     result: list[T] = []
+//     for x in items:
+//         result.append(x)
+//     return result
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
 std::vector<T> to_list(T_items&& items) {
-    // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
-    // for x in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        // result.append(x)
         result.push_back(x);
     }
-    // return result
     return result;
 }
 

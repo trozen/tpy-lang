@@ -11,8 +11,11 @@ struct JV;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def push(a: list[JV], src: list[JV]) -> int32:
 int32_t push(std::vector<JV>& a, std::vector<JV>& src);
+// def store(d: dict[str, JV], src: list[JV]) -> int32:
 int32_t store(::tpy::ordered_map<std::string, JV>& d, std::vector<JV>& src);
+// def main() -> None:
 void main();
 
 struct JV {

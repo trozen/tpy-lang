@@ -12,9 +12,13 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def total(ps: list[P]) -> int32:
 int32_t total(const std::vector<P>& ps);
+// def bump_all(ps: list[P]) -> None:
 void bump_all(std::vector<P>& ps);
+// def count_total(cs: list[Counter]) -> int32:
 int32_t count_total(const std::vector<Counter>& cs);
+// def main() -> None:
 void main();
 
 // class P:
@@ -57,9 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

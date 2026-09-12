@@ -14,12 +14,19 @@ struct __tpy_builder_argparse_args_3;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> int32:
 int32_t main();
+// a1 = p1.parse_args([])
 void __tpy_builder_argparse_help_1();
+// a1 = p1.parse_args([])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
+// a2 = p2.parse_args(["--tag", "x", "--tag", "y"])
 void __tpy_builder_argparse_help_2();
+// a2 = p2.parse_args(["--tag", "x", "--tag", "y"])
 __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<std::string>& argv);
+// a3 = p3.parse_args([])
 void __tpy_builder_argparse_help_3();
+// a3 = p3.parse_args([])
 __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<std::string>& argv);
 
 // a1 = p1.parse_args([])

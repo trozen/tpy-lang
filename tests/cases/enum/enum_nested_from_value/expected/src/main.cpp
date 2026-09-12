@@ -43,35 +43,36 @@ namespace tpyapp::main {
 
 
 // def lookup(n: int32) -> Message.Kind:
+//     k = Message.Kind(n)
+//     return k
 Message::Kind lookup(int32_t n) {
-    // k = Message.Kind(n)
     Message::Kind k = ::tpy::EnumUtil<Message::Kind>::from_value(n);
-    // return k
     return k;
 }
 
 // def main() -> None:
+//     k = Message.Kind(1)
+//     print(k)
+//     print(k.name)
+//     m = lookup(2)
+//     print(m == Message.Kind.IMAGE)
 void main() {
-    // k = Message.Kind(1)
     Message::Kind k = ::tpy::EnumUtil<Message::Kind>::from_value(1);
-    // print(k)
     std::cout << k << "\n";
-    // print(k.name)
     std::cout << ::tpy::EnumUtil<Message::Kind>::name(k) << "\n";
-    // m = lookup(2)
     Message::Kind m = lookup(2);
-    // print(m == Message.Kind.IMAGE)
     std::cout << ::tpy::print_bool((m == Message::Kind::IMAGE)) << "\n";
 }
 
+// # Nested enum value lookup: Outer.Kind(v) resolves through EnumUtil from_value.
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Nested enum value lookup: Outer.Kind(v) resolves through EnumUtil from_value.
-    // from enum import Enum
-    // main()
     main();
 }
 

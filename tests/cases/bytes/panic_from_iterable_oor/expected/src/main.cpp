@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32] = [200, 999]
+//     print(bytes(xs))
 void main() {
-    // xs: list[int32] = [200, 999]
     std::vector<int32_t> xs = {200, 999};
-    // print(bytes(xs))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

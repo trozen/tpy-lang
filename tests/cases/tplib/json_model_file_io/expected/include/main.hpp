@@ -23,9 +23,13 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_roundtrip() -> None:
 void test_roundtrip();
+// def test_pretty() -> None:
 void test_pretty();
+// def test_try_load() -> None:
 void test_try_load();
+// def test_try_load_bad() -> None:
 void test_try_load_bad();
 
 // @model
@@ -119,12 +123,9 @@ inline std::string Item::to_json(int32_t indent) const {
 }
 
 inline void Item::save_json(std::string_view __path, int32_t indent) const {
-    // # Test @model file I/O: save_json, load_json, try_load_json.
     auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
     auto& __f = __ctx_1.__enter__();
     try {
-        // # Test @model file I/O: save_json, load_json, try_load_json.
-        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -139,13 +140,10 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
 }
 
 inline Item Item::load_json(std::string_view __path) {
-    // # Test @model file I/O: save_json, load_json, try_load_json.
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        // # Test @model file I/O: save_json, load_json, try_load_json.
-        // from tpy import int32
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -157,18 +155,14 @@ inline Item Item::load_json(std::string_view __path) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // from tplib.json.model import model
     return Item::from_json(__data);
 }
 
 inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_load_json(std::string_view __path) {
-    // # Test @model file I/O: save_json, load_json, try_load_json.
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        // # Test @model file I/O: save_json, load_json, try_load_json.
-        // from tpy import int32
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -180,7 +174,6 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // from tplib.json.model import model
     return Item::try_from_json(__data);
 }
 void __tpy_init();

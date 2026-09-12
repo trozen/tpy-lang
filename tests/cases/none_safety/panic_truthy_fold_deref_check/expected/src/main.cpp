@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def probe(a: A) -> int:
+//     if a.b.c:  # tpyc: warning(/Potential None access/)
+//         return 1
+//     return 0
 ::tpy::BigInt probe(const A& a) {
-    // if a.b.c:  # tpyc: warning(/Potential None access/)
     if ((static_cast<void>(::tpy::deref_optional_check(a.b).c), true)) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def main() -> None:
+//     present = B(C(1))
+//     print("present:", probe(A(present)))
+//     print("none:", probe(A(None)))
 void main() {
-    // present = B(C(1))
     B present = B(C(::tpy::BigInt(1)));
-    // print("present:", probe(A(present)))
     A __tmp_1 = A(&(present));
     std::cout << "present:" << " " << probe(__tmp_1) << "\n";
-    // print("none:", probe(A(None)))
     A __tmp_2 = A(nullptr);
     std::cout << "none:" << " " << probe(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

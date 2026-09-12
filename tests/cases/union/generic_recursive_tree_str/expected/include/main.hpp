@@ -11,8 +11,10 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def depth[T](t: Tree[T]) -> int32:
 template<typename T>
 int32_t depth(const Tree<T>& t);
+// def main() -> None:
 void main();
 
 template<typename T>
@@ -34,37 +36,37 @@ struct Tree {
 };
 
 // def depth[T](t: Tree[T]) -> int32:
+//     match t:
+//         case list() as branches:
+//             best = 0
+//             for child in branches:
+//                 d = depth(child)
+//                 if d > best:
+//                     best = d
+//             return best + 1
+//         case _:
+//             return 0
 template<typename T>
 int32_t depth(const Tree<T>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // best = 0
         int32_t best = 0;
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            // d = depth(child)
             int32_t d = depth<T>(child);
-            // if d > best:
             if ((d > best)) {
-                // best = d
                 best = d;
             }
         }
-        // return best + 1
         return (::tpy::add_check<int32_t>(best, 1));
         break;
     }
-    // case _:
     default: {
-        // return 0
         return 0;
         break;
     }

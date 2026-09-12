@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_array(arr: Array[int32, 3]) -> int32:
 int32_t sum_array(const std::array<int32_t, 3>& arr);
+// def main():
 void main();
 
 void __tpy_init();

@@ -8,9 +8,12 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// BASE: Final[int32] = 10
 inline constexpr int32_t BASE = 10;
+// ALIAS: Final[int32] = BASE
 inline constexpr int32_t ALIAS = BASE;
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

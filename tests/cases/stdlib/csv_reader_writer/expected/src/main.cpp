@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // def read_basic() -> None:
+//     data = "a,b,c\n1,2,3\nx,y,z\n"
+//     for row in csv.reader(io.StringIO(data)):
+//         print(len(row), "|".join(row))
 void read_basic() {
-    // data = "a,b,c\n1,2,3\nx,y,z\n"
     std::string_view data = "a,b,c\n1,2,3\nx,y,z\n";
-    // for row in csv.reader(io.StringIO(data)):
     {
         auto __tmp_1 = ::tpystd::io::StringIO(data);
         auto __src_0 = ::tpystd::csv::reader(__tmp_1, ",", "\"", true, false);
@@ -17,19 +18,19 @@ void read_basic() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        // print(len(row), "|".join(row))
         std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("|", row) << "\n";
         }
     }
 }
 
 // def read_quoted() -> None:
+//     # Quoted field with an embedded delimiter, a doubled quote, and an
+//     # embedded newline that spans physical lines.
+//     data = '1,"two, comma",3\r\n"q ""x""","ln\nbrk",z\r\n'
+//     for row in csv.reader(io.StringIO(data)):
+//         print(len(row), "::".join(row))
 void read_quoted() {
-    // # Quoted field with an embedded delimiter, a doubled quote, and an
-    // # embedded newline that spans physical lines.
-    // data = '1,"two, comma",3\r\n"q ""x""","ln\nbrk",z\r\n'
     std::string_view data = "1,\"two, comma\",3\r\n\"q \"\"x\"\"\",\"ln\nbrk\",z\r\n";
-    // for row in csv.reader(io.StringIO(data)):
     {
         auto __tmp_2 = ::tpystd::io::StringIO(data);
         auto __src_0 = ::tpystd::csv::reader(__tmp_2, ",", "\"", true, false);
@@ -38,15 +39,15 @@ void read_quoted() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        // print(len(row), "::".join(row))
         std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("::", row) << "\n";
         }
     }
 }
 
 // def read_custom_delim() -> None:
+//     for row in csv.reader(io.StringIO("a;b;c\n"), delimiter=";"):
+//         print("|".join(row))
 void read_custom_delim() {
-    // for row in csv.reader(io.StringIO("a;b;c\n"), delimiter=";"):
     {
         auto __tmp_3 = ::tpystd::io::StringIO("a;b;c\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_3, ";");
@@ -55,15 +56,15 @@ void read_custom_delim() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        // print("|".join(row))
         std::cout << ::tpy::str_join("|", row) << "\n";
         }
     }
 }
 
 // def read_skipinitialspace() -> None:
+//     for row in csv.reader(io.StringIO("a,  b,   c\n"), skipinitialspace=True):
+//         print("|".join(row))
 void read_skipinitialspace() {
-    // for row in csv.reader(io.StringIO("a,  b,   c\n"), skipinitialspace=True):
     {
         auto __tmp_4 = ::tpystd::io::StringIO("a,  b,   c\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_4, ",", "\"", true, true);
@@ -72,15 +73,15 @@ void read_skipinitialspace() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        // print("|".join(row))
         std::cout << ::tpy::str_join("|", row) << "\n";
         }
     }
 }
 
 // def read_empty_fields() -> None:
+//     for row in csv.reader(io.StringIO("a,,c\n,,\n")):
+//         print(len(row), "[" + "|".join(row) + "]")
 void read_empty_fields() {
-    // for row in csv.reader(io.StringIO("a,,c\n,,\n")):
     {
         auto __tmp_5 = ::tpystd::io::StringIO("a,,c\n,,\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_5, ",", "\"", true, false);
@@ -89,17 +90,21 @@ void read_empty_fields() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        // print(len(row), "[" + "|".join(row) + "]")
         std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n";
         }
     }
 }
 
 // def read_blank_and_empty() -> None:
+//     # A blank line is an empty row [] (not ['']); a fully empty input yields
+//     # no rows at all. Both match CPython.
+//     for row in csv.reader(io.StringIO("a\n\nb\n")):
+//         print(len(row), "[" + "|".join(row) + "]")
+//     count = 0
+//     for row in csv.reader(io.StringIO("")):
+//         count += 1
+//     print("empty-input rows:", count)
 void read_blank_and_empty() {
-    // # A blank line is an empty row [] (not ['']); a fully empty input yields
-    // # no rows at all. Both match CPython.
-    // for row in csv.reader(io.StringIO("a\n\nb\n")):
     {
         auto __tmp_6 = ::tpystd::io::StringIO("a\n\nb\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_6, ",", "\"", true, false);
@@ -108,13 +113,10 @@ void read_blank_and_empty() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        // print(len(row), "[" + "|".join(row) + "]")
         std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n";
         }
     }
-    // count = 0
     int32_t count = 0;
-    // for row in csv.reader(io.StringIO("")):
     {
         auto __tmp_7 = ::tpystd::io::StringIO("");
         auto __src_2 = ::tpystd::csv::reader(__tmp_7, ",", "\"", true, false);
@@ -123,22 +125,24 @@ void read_blank_and_empty() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_3);
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
-    // print("empty-input rows:", count)
     std::cout << "empty-input rows:" << " " << count << "\n";
 }
 
 // def read_then_mutate() -> None:
+//     # The yielded row is a fresh, independently-owned list[str] (a reference
+//     # type): mutating it after the yield is allowed and local, matching
+//     # CPython (which also yields a fresh list per row).
+//     rows: list[list[str]] = []
+//     for row in csv.reader(io.StringIO("a,b\nc,d\n")):
+//         row.append("EXTRA")
+//         rows.append(row)
+//     print(rows[0])
+//     print(rows[1])
 void read_then_mutate() {
-    // # The yielded row is a fresh, independently-owned list[str] (a reference
-    // # type): mutating it after the yield is allowed and local, matching
-    // # CPython (which also yields a fresh list per row).
-    // rows: list[list[str]] = []
     std::vector<std::vector<std::string>> rows = std::vector<std::vector<std::string>>{};
-    // for row in csv.reader(io.StringIO("a,b\nc,d\n")):
     {
         auto __tmp_8 = ::tpystd::io::StringIO("a,b\nc,d\n");
         auto __src_0 = ::tpystd::csv::reader(__tmp_8, ",", "\"", true, false);
@@ -147,72 +151,69 @@ void read_then_mutate() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& row = ::tpy::unwrap_ref(*__r_1);
-        // row.append("EXTRA")
         row.push_back("EXTRA");
-        // rows.append(row)
         rows.push_back(std::move(row));
         }
     }
-    // print(rows[0])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(rows, 0)) << "\n";
-    // print(rows[1])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(rows, 1)) << "\n";
 }
 
 // def write_basic() -> None:
+//     out = io.StringIO()
+//     w = csv.writer(out)
+//     w.writerow(["a", "b", "c"])
+//     w.writerows([["1", "2", "3"], ["x", "y", "z"]])
+//     print(repr(out.getvalue()))
 void write_basic() {
-    // out = io.StringIO()
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    // w = csv.writer(out)
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, ",", "\"", true, "\r\n");
-    // w.writerow(["a", "b", "c"])
     w.writerow({"a", "b", "c"});
-    // w.writerows([["1", "2", "3"], ["x", "y", "z"]])
     w.writerows({{"1", "2", "3"}, {"x", "y", "z"}});
-    // print(repr(out.getvalue()))
     std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
 }
 
 // def write_quoting() -> None:
+//     out = io.StringIO()
+//     w = csv.writer(out)
+//     # QUOTE_MINIMAL: quote only fields containing delimiter / quote / CR / LF.
+//     w.writerow(["plain", "has,comma", 'has"quote', "embed\nnl", "embed\rcr"])
+//     print(repr(out.getvalue()))
 void write_quoting() {
-    // out = io.StringIO()
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    // w = csv.writer(out)
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, ",", "\"", true, "\r\n");
-    // # QUOTE_MINIMAL: quote only fields containing delimiter / quote / CR / LF.
-    // w.writerow(["plain", "has,comma", 'has"quote', "embed\nnl", "embed\rcr"])
     w.writerow({"plain", "has,comma", "has\"quote", "embed\nnl", "embed\rcr"});
-    // print(repr(out.getvalue()))
     std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
 }
 
 // def write_custom() -> None:
+//     out = io.StringIO()
+//     w = csv.writer(out, delimiter="\t", lineterminator="\n")
+//     w.writerow(["a", "b"])
+//     w.writerow(["c", "d"])
+//     print(repr(out.getvalue()))
 void write_custom() {
-    // out = io.StringIO()
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    // w = csv.writer(out, delimiter="\t", lineterminator="\n")
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, "\t", "\"", true, "\n");
-    // w.writerow(["a", "b"])
     w.writerow({"a", "b"});
-    // w.writerow(["c", "d"])
     w.writerow({"c", "d"});
-    // print(repr(out.getvalue()))
     std::cout << ::tpy::repr_of(out.getvalue()) << "\n";
 }
 
 // def roundtrip() -> None:
+//     out = io.StringIO()
+//     w = csv.writer(out)
+//     w.writerow(["name", "note"])
+//     w.writerow(["Alice", "says, hi"])
+//     text = out.getvalue()
+//     for row in csv.reader(io.StringIO(text)):
+//         print("|".join(row))
 void roundtrip() {
-    // out = io.StringIO()
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    // w = csv.writer(out)
     ::tpystd::csv::_Writer<::tpystd::io::StringIO> w = ::tpystd::csv::writer<::tpystd::io::StringIO>(out, ",", "\"", true, "\r\n");
-    // w.writerow(["name", "note"])
     w.writerow({"name", "note"});
-    // w.writerow(["Alice", "says, hi"])
     w.writerow({"Alice", "says, hi"});
-    // text = out.getvalue()
     std::string text = out.getvalue();
-    // for row in csv.reader(io.StringIO(text)):
     {
         auto __tmp_9 = ::tpystd::io::StringIO(text);
         auto __src_0 = ::tpystd::csv::reader(__tmp_9, ",", "\"", true, false);
@@ -221,70 +222,70 @@ void roundtrip() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& row = ::tpy::unwrap_ref(*__r_1);
-        // print("|".join(row))
         std::cout << ::tpy::str_join("|", row) << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     read_basic()
+//     print("---")
+//     read_quoted()
+//     print("---")
+//     read_custom_delim()
+//     print("---")
+//     read_skipinitialspace()
+//     print("---")
+//     read_empty_fields()
+//     print("---")
+//     read_blank_and_empty()
+//     print("---")
+//     read_then_mutate()
+//     print("---")
+//     write_basic()
+//     print("---")
+//     write_quoting()
+//     print("---")
+//     write_custom()
+//     print("---")
+//     roundtrip()
 void main() {
-    // read_basic()
     read_basic();
-    // print("---")
     std::cout << "---" << "\n";
-    // read_quoted()
     read_quoted();
-    // print("---")
     std::cout << "---" << "\n";
-    // read_custom_delim()
     read_custom_delim();
-    // print("---")
     std::cout << "---" << "\n";
-    // read_skipinitialspace()
     read_skipinitialspace();
-    // print("---")
     std::cout << "---" << "\n";
-    // read_empty_fields()
     read_empty_fields();
-    // print("---")
     std::cout << "---" << "\n";
-    // read_blank_and_empty()
     read_blank_and_empty();
-    // print("---")
     std::cout << "---" << "\n";
-    // read_then_mutate()
     read_then_mutate();
-    // print("---")
     std::cout << "---" << "\n";
-    // write_basic()
     write_basic();
-    // print("---")
     std::cout << "---" << "\n";
-    // write_quoting()
     write_quoting();
-    // print("---")
     std::cout << "---" << "\n";
-    // write_custom()
     write_custom();
-    // print("---")
     std::cout << "---" << "\n";
-    // roundtrip()
     roundtrip();
 }
 
+// # csv.reader / csv.writer (list[str] row surface) over io text buffers --
+// # parity-checked against real CPython csv (the cpy phase).
+// import csv
+// import io
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # csv.reader / csv.writer (list[str] row surface) over io text buffers --
-    // # parity-checked against real CPython csv (the cpy phase).
-    // import csv
     ::tpystd::csv::__tpy_init();
-    // import io
     ::tpystd::io::__tpy_init();
-    // main()
     main();
 }
 

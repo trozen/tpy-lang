@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Pile()
+//     print(p.sum_tail(Box(10), Box(20), Box(30)))
 void main() {
-    // p = Pile()
     Pile p = Pile();
-    // print(p.sum_tail(Box(10), Box(20), Box(30)))
     const Box __tmp_1 = Box(10);
     const Box __tmp_2 = Box(20);
     const Box __tmp_3 = Box(30);
@@ -16,12 +16,12 @@ void main() {
     std::cout << p.sum_tail(::tpy::varargs<const Box>(__tmp_4)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

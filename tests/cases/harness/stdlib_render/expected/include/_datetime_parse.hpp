@@ -32,21 +32,43 @@ extern std::vector<std::string>* _AM_PM;
 extern std::vector<std::string>* _ZNAMES;
 inline constexpr std::string_view __name__ = "_datetime_parse";
 
+// def _is_digit_char(c: char) -> bool:
 bool _is_digit_char(char c);
+// def _is_space_char(c: char) -> bool:
 bool _is_space_char(char c);
+// def _char_ieq(a: char, b: char) -> bool:
 bool _char_ieq(char a, char b);
+// def _take_num(data: str, p: int, max_len: int, lo: int,
+//               hi: int) -> tuple[int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt> _take_num(std::string_view data, const ::tpy::BigInt& p, const ::tpy::BigInt& max_len, const ::tpy::BigInt& lo, const ::tpy::BigInt& hi);
+// def _take_exact_num(data: str, p: int, ln: int) -> tuple[int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt> _take_exact_num(std::string_view data, const ::tpy::BigInt& p, const ::tpy::BigInt& ln);
+// def _match_name(data: str, p: int, names: list[str],
+//                 start: int) -> tuple[int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt> _match_name(std::string_view data, const ::tpy::BigInt& p, const std::vector<std::string>& names, const ::tpy::BigInt& start);
+// def _parse_fail(data: str, fmt: str) -> None:
 void _parse_fail(std::string_view data, std::string_view fmt);
+// def _parse_zoffset(data: str, p: int, st: _ParseState, fmt: str) -> int:
 ::tpy::BigInt _parse_zoffset(std::string_view data, const ::tpy::BigInt& __param_p, _ParseState& st, std::string_view fmt);
+// def _apply_directive(d: char, data: str, p: int, st: _ParseState,
+//                      fmt: str) -> int:
 ::tpy::BigInt _apply_directive(char d, std::string_view data, const ::tpy::BigInt& p, _ParseState& st, std::string_view fmt);
+// def _calc_julian_from_week(year: int, week_of_year: int, day_of_week: int,
+//                            week_starts_mon: bool) -> int:
 ::tpy::BigInt _calc_julian_from_week(const ::tpy::BigInt& year, const ::tpy::BigInt& week_of_year, const ::tpy::BigInt& __param_day_of_week, bool week_starts_mon);
+// def _strptime_impl(
+//         data: str, fmt: str
+// ) -> tuple[int, int, int, int, int, int, int, bool, int, str]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, bool, ::tpy::BigInt, std::string> _strptime_impl(std::string_view data, std::string_view fmt);
+// def _int_digits(s: str) -> int:
 ::tpy::BigInt _int_digits(std::string_view s);
+// def _find_iso_datetime_separator(dtstr: str) -> int:
 ::tpy::BigInt _find_iso_datetime_separator(std::string_view dtstr);
+// def _parse_iso_date(dtstr: str) -> tuple[int, int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _parse_iso_date(std::string_view dtstr);
+// def _parse_iso_time_comps(tstr: str) -> tuple[int, int, int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _parse_iso_time_comps(std::string_view tstr);
+// def _parse_iso_time(tstr: str) -> tuple[int, int, int, int, int, bool]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, bool> _parse_iso_time(std::string_view tstr);
 
 // class _ParseState:

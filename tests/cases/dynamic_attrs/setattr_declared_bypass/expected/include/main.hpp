@@ -11,6 +11,7 @@ struct Counted;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counted:
@@ -38,27 +39,28 @@ inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
 
 
 // def __init__(self) -> None:
+//     self._counter = 0
+//     d: dict[str, Any] = {}
+//     self._data = d
 inline Counted::Counted() : _counter(::tpy::BigInt(0)) {
-    // d: dict[str, Any] = {}
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
-    // self._data = d
     this->_data = std::move(d);
 }
 
 // def __getattr__(self, name: str) -> Any:
+//     return self._data[name]
 inline ::tpy::Any Counted::__getattr__(std::string_view name) const {
-    // return self._data[name]
     return ::tpy::__getitem__(this->_data, name);
 }
 
 // def __setattr__(self, name: str, value: Any) -> None:
+//     # Fires only for undeclared names: _counter and _data writes don't
+//     # land here. The `+=` below also bypasses __setattr__ because
+//     # _counter is declared.
+//     self._counter += 1
+//     self._data[name] = value
 inline void Counted::__setattr__(std::string_view name, ::tpy::Any value) {
-    // # Fires only for undeclared names: _counter and _data writes don't
-    // # land here. The `+=` below also bypasses __setattr__ because
-    // # _counter is declared.
-    // self._counter += 1
     this->_counter = (this->_counter) + (::tpy::BigInt(1));
-    // self._data[name] = value
     ::tpy::__setitem__(this->_data, name, value);
 }
 void __tpy_init();

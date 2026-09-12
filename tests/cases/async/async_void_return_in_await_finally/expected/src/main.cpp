@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // async def cleanup() -> None:
+//     await asyncio.sleep(0)
 ::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -33,6 +33,12 @@ __coro_cleanup cleanup() {
 }
 
 // async def caller() -> None:
+//     try:
+//         print("try body")
+//     finally:
+//         await cleanup()
+//         print("did it")
+//         return
 ::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -44,22 +50,18 @@ __coro_cleanup cleanup() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("did it")
         std::cout << "did it" << "\n";
-        // return
         this->__finally_pending_0 = true;
         __state = S_JOIN_2;
         continue;
     }
     case S_JOIN_0: {
-        // await cleanup()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
     case S_JOIN_1: {
         try {
-            // print("try body")
             std::cout << "try body" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -96,22 +98,23 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     asyncio.run(caller())
 void main() {
-    // asyncio.run(caller())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(caller()));
 }
 
+// # Void async def with a bare `return` inside a suspending `finally`.
+// # Exercises the void branch of `_emit_async_finally_exit` (no slot, only
+// # the pending flag). Expected: prints "did it".
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Void async def with a bare `return` inside a suspending `finally`.
-    // # Exercises the void branch of `_emit_async_finally_exit` (no slot, only
-    // # the pending flag). Expected: prints "did it".
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Util;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Util:
@@ -19,14 +20,14 @@ struct Util {
 
     // @staticmethod
     // def pick[T](a: T, b: T) -> T:
+    //     if a > b:
+    //         return a
+    //     return b
     template<typename T>
     static ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-        // if a > b:
         if ((a > b)) {
-            // return a
             return ::tpy::param_to_return<T>(a);
         }
-        // return b
         return ::tpy::param_to_return<T>(b);
     }
 
@@ -48,15 +49,15 @@ inline std::ostream& operator<<(std::ostream& os, const Util& obj) {
 
 // @classmethod
 // def larger(cls, a: int32, b: int32) -> int32:
+//     return cls.pick(a, b)
 inline int32_t Util::larger(int32_t a, int32_t b) {
-    // return cls.pick(a, b)
     return Util::pick<int32_t>(a, b);
 }
 
 // @classmethod
 // def larger_float(cls, a: float, b: float) -> float:
+//     return cls.pick(a, b)
 inline double Util::larger_float(double a, double b) {
-    // return cls.pick(a, b)
     return Util::pick<double>(a, b);
 }
 void __tpy_init();

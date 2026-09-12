@@ -14,7 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen() -> Iterator[int32]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class Label:
@@ -51,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     std::string s;
@@ -77,25 +79,25 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 
 // def __enter__(self) -> str:
+//     return "hello" + "-world"
 inline std::string Label::__enter__() const {
-    // return "hello" + "-world"
     return (::tpy::str_concat("hello", "-world"));
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Label::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 
 // def __enter__(self) -> bytes:
+//     return b"abc" + b"def"
 inline ::tpy::Bytes Blob::__enter__() const {
-    // return b"abc" + b"def"
     return (::tpy::bytes_concat(::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)));
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Blob::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

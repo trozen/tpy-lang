@@ -12,7 +12,9 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_through(c: readonly[Container]) -> int32:
 int32_t read_through(const Container& c);
+// def main() -> None:
 void main();
 
 // class Data:
@@ -52,15 +54,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Data::Data(int32_t v) : value(v) {}
 
 // def __init__(self) -> None:
+//     self.ptr = Ptr[Data]()
 inline Container::Container() : ptr(static_cast<Data*>(nullptr)) {}
 
 // @readonly
 // def read_value(self) -> int32:
+//     return self.ptr.__deref__().value
 inline int32_t Container::read_value() const {
-    // return self.ptr.__deref__().value
     return ::tpy::deref_check(this->ptr).value;
 }
 void __tpy_init();

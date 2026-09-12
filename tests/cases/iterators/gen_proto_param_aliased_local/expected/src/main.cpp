@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     data = [1, 2]
+//     g = echo(data)
+//     data.append(3)  # tpyc: warning(/while borrowed/)
+//     for v in g:
+//         print(v)
 void main() {
-    // data = [1, 2]
     std::vector<int32_t> data = {1, 2};
-    // g = echo(data)
     auto g = echo(data);
-    // data.append(3)  # tpyc: warning(/while borrowed/)
     data.push_back(3);
-    // for v in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

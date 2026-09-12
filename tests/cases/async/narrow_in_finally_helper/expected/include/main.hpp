@@ -22,12 +22,19 @@ struct __gen_g_assert;
 struct __gen_g_post_if;
 struct __coro_amain;
 
+// async def a_assert(a: Dog | Cat) -> str:
 __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a);
+// async def a_post_if(a: Dog | Cat) -> str:
 __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a);
+// async def a_nested(a: Dog | Cat, b: Dog | Cat) -> str:
 __coro_a_nested a_nested(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b);
+// def g_assert(a: Dog | Cat) -> Iterator[str]:
 __gen_g_assert g_assert(::tpy::Union<Cat*, Dog*> a);
+// def g_post_if(a: Dog | Cat) -> Iterator[str]:
 __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a);
+// async def amain() -> None:
 __coro_amain amain();
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -66,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Async coroutine: a_assert
+// async def a_assert(a: Dog | Cat) -> str:
 struct __coro_a_assert {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -107,7 +114,7 @@ struct __coro_a_assert {
     }
 };
 
-// Async coroutine: a_post_if
+// async def a_post_if(a: Dog | Cat) -> str:
 struct __coro_a_post_if {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -148,7 +155,7 @@ struct __coro_a_post_if {
     }
 };
 
-// Async coroutine: a_nested
+// async def a_nested(a: Dog | Cat, b: Dog | Cat) -> str:
 struct __coro_a_nested {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -194,7 +201,7 @@ struct __coro_a_nested {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -228,7 +235,7 @@ struct __coro_amain {
     }
 };
 
-// Generator: g_assert
+// def g_assert(a: Dog | Cat) -> Iterator[str]:
 struct __gen_g_assert : public ::tpy::next_iter_mixin<__gen_g_assert, std::string> {
     ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
@@ -267,7 +274,7 @@ struct __gen_g_assert : public ::tpy::next_iter_mixin<__gen_g_assert, std::strin
     }
 };
 
-// Generator: g_post_if
+// def g_post_if(a: Dog | Cat) -> Iterator[str]:
 struct __gen_g_post_if : public ::tpy::next_iter_mixin<__gen_g_post_if, std::string> {
     ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
@@ -308,24 +315,26 @@ struct __gen_g_post_if : public ::tpy::next_iter_mixin<__gen_g_post_if, std::str
 
 
 // def __init__(self) -> None:
+//     self.barks = 0
 inline Dog::Dog() : barks(::tpy::BigInt(0)) {}
 
 // def bark(self) -> str:
+//     self.barks += 1
+//     return "woof"
 inline std::string Dog::bark() {
-    // self.barks += 1
     this->barks = (this->barks) + (::tpy::BigInt(1));
-    // return "woof"
     return "woof";
 }
 
 // def __init__(self) -> None:
+//     self.meows = 0
 inline Cat::Cat() : meows(::tpy::BigInt(0)) {}
 
 // def meow(self) -> str:
+//     self.meows += 1
+//     return "meow"
 inline std::string Cat::meow() {
-    // self.meows += 1
     this->meows = (this->meows) + (::tpy::BigInt(1));
-    // return "meow"
     return "meow";
 }
 void __tpy_init();

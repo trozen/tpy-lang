@@ -18,7 +18,9 @@ struct __gen_Holder_direct;
 struct __gen_Holder_via_alias;
 struct __gen_Holder_live_alias;
 
+// def alias_param(h: Holder) -> Iterator[int32]:
 __gen_alias_param alias_param(Holder& h);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -36,13 +38,15 @@ struct Holder {
     __gen_Holder_via_alias via_alias() const;
 
     // def simple_alias(self) -> Iterator[int32]:
+    //     # Single yield, so this one takes the simple-gen lambda, which
+    //     # captures `a` by value (the documented escaping-closure snapshot):
+    //     # field mutations after creation are NOT observed here
+    //     # (BUGS.md#sgen-proto-param-alias-copy). `live_alias` below is the
+    //     # frame twin, where the alias is live.
+    //     a = self.plain
+    //     for x in a:
+    //         yield x
     auto simple_alias() const {
-        // # Single yield, so this one takes the simple-gen lambda, which
-        // # captures `a` by value (the documented escaping-closure snapshot):
-        // # field mutations after creation are NOT observed here
-        // # (BUGS.md#sgen-proto-param-alias-copy). `live_alias` below is the
-        // # frame twin, where the alias is live.
-        // a = self.plain
         const std::vector<int32_t>& a = (*this).plain;
         return ::tpy::make_generator<int32_t>(
             [this, a, __beg = decltype((a).begin())(), __end = decltype((a).begin())(), __init = false]() mutable -> std::optional<int32_t> {
@@ -91,13 +95,15 @@ struct Bumper {
     Bumper();
 
     // def bump(self) -> Iterator[int32]:
+    //     for c in self.cells:
+    //         c.v += 1
+    //         yield c.v
     auto bump() {
         return ::tpy::make_generator<int32_t>(
             [this, __beg = decltype(((*this).cells).begin())(), __end = decltype(((*this).cells).begin())(), __init = false]() mutable -> std::optional<int32_t> {
                 if (!__init) { __beg = ((*this).cells).begin(); __end = ((*this).cells).end(); __init = true; }
                 if (__beg != __end) {
                     auto&& c = *__beg++;
-                    // c.v += 1
                     c.v = ::tpy::add_check<int32_t>(c.v, 1);
                     auto __val = c.v;
                     return std::optional<int32_t>(__val);
@@ -114,7 +120,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bumper& obj) {
     return os;
 }
 
-// Generator: alias_param
+// def alias_param(h: Holder) -> Iterator[int32]:
 struct __gen_alias_param : public ::tpy::next_iter_mixin<__gen_alias_param, int32_t> {
     int32_t __state;
     Holder& h;
@@ -138,7 +144,7 @@ struct __gen_alias_param : public ::tpy::next_iter_mixin<__gen_alias_param, int3
     }
 };
 
-// Generator: Holder.direct
+// def direct(self) -> Iterator[int32]:
 struct __gen_Holder_direct : public ::tpy::next_iter_mixin<__gen_Holder_direct, int32_t> {
     int32_t __state;
     const Holder& __self;
@@ -169,7 +175,7 @@ inline __gen_Holder_direct Holder::direct() const {
     return __gen_Holder_direct(*this);
 }
 
-// Generator: Holder.via_alias
+// def via_alias(self) -> Iterator[int32]:
 struct __gen_Holder_via_alias : public ::tpy::next_iter_mixin<__gen_Holder_via_alias, int32_t> {
     int32_t __state;
     const Holder& __self;
@@ -201,7 +207,7 @@ inline __gen_Holder_via_alias Holder::via_alias() const {
     return __gen_Holder_via_alias(*this);
 }
 
-// Generator: Holder.live_alias
+// def live_alias(self) -> Iterator[int32]:
 struct __gen_Holder_live_alias : public ::tpy::next_iter_mixin<__gen_Holder_live_alias, int32_t> {
     int32_t __state;
     Holder& __self;
@@ -231,12 +237,16 @@ inline __gen_Holder_live_alias Holder::live_alias() {
 
 
 // def __init__(self):
+//     self.lst = [1, 2, 3]
+//     self.plain = [10, 20]
 inline Holder::Holder() : lst(std::vector<int32_t>{1, 2, 3}), plain(std::vector<int32_t>{10, 20}) {}
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Counter::Counter(int32_t v) : v(v) {}
 
 // def __init__(self):
+//     self.cells = [Counter(5), Counter(6)]
 inline Bumper::Bumper() : cells(std::vector<Counter>{Counter(5), Counter(6)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

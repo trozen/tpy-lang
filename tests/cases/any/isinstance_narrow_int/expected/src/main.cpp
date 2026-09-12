@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: Any = 42
+//     if isinstance(x, int):
+//         print(x + 1)
+//     else:
+//         print("not int")
 void main() {
-    // x: Any = 42
     ::tpy::Any x = ::tpy::make_any(::tpy::BigInt(42));
-    // if isinstance(x, int):
     if ((x.value.has_value() && x.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __x = std::any_cast<const ::tpy::BigInt&>(x.value);
-        // print(x + 1)
         std::cout << ((__x) + (::tpy::BigInt(1))) << "\n";
-    // else:
     } else {
-        // print("not int")
         std::cout << "not int" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

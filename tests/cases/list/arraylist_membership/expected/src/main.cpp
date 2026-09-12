@@ -5,29 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = ArrayList[int32, 8]()
+//     a.append(10)
+//     a.append(20)
+//     a.append(30)
+//
+//     # `in` on ArrayList (has __contains__ -- direct call path)
+//     print(20 in a)
+//     print(99 in a)
+//
+//     # `in` on SimpleBuffer (no __contains__ -- __iter__+__next__ path)
+//     b = SimpleBuffer()
+//     print(20 in b)
+//     print(99 in b)
+//
+//     # list comprehension over user NativeIterable
+//     doubled = [x * 2 for x in a]
+//     print(doubled)
+//
+//     # set comprehension over user NativeIterable
+//     unique = {x // 10 for x in a}
+//     print(len(unique))
+//
+//     # for-loop (universal default path)
+//     total: int32 = 0
+//     for x in a:
+//         total += x
+//     print(total)
 void main() {
-    // a = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    // a.append(10)
     a.append(10);
-    // a.append(20)
     a.append(20);
-    // a.append(30)
     a.append(30);
-    // # `in` on ArrayList (has __contains__ -- direct call path)
-    // print(20 in a)
     std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n";
-    // print(99 in a)
     std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n";
-    // # `in` on SimpleBuffer (no __contains__ -- __iter__+__next__ path)
-    // b = SimpleBuffer()
     SimpleBuffer b = SimpleBuffer();
-    // print(20 in b)
     std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 20) { __found = true; break; } } __found; })) << "\n";
-    // print(99 in b)
     std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 99) { __found = true; break; } } __found; })) << "\n";
-    // # list comprehension over user NativeIterable
-    // doubled = [x * 2 for x in a]
     std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = a;
@@ -39,10 +53,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
-    // # set comprehension over user NativeIterable
-    // unique = {x // 10 for x in a}
     ::tpy::ordered_set<int32_t> unique = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = a;
@@ -54,33 +65,28 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(unique))
     std::cout << ::tpy::__len__(unique) << "\n";
-    // # for-loop (universal default path)
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in a:
     auto& __src_2 = a;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

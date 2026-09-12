@@ -5,66 +5,67 @@ namespace tpyapp::main {
 
 
 // def pointer_arm(pet: Dog | Cat | None = None) -> str:
+//     if pet is None:
+//         return "none"
+//     if isinstance(pet, Dog):
+//         pet.barks += 1  # mutate through the union param: borrow, not a copy
+//         return "dog"
+//     return "cat"
 std::string pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*> pet) {
-    // if pet is None:
     if ((std::holds_alternative<std::monostate>(pet))) {
-        // return "none"
         return "none";
     }
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        // pet.barks += 1  # mutate through the union param: borrow, not a copy
         __pet.barks = (__pet.barks) + (::tpy::BigInt(1));
-        // return "dog"
         return "dog";
     }
     auto& __pet = *std::get<Cat*>(pet);
-    // return "cat"
     return "cat";
 }
 
 // def main() -> None:
+//     print(Holder().kind, Holder(Fixed(60)).kind, Holder(Zone(2)).kind)
+//     h = Holder()
+//     print(h.describe())
+//     print(h.describe(Fixed(60)))
+//     print(h.describe(Zone(7)))
+//     print(h.opt())
+//     print(h.opt(Fixed(5)))
+//     print(pointer_arm())
+//     d = Dog(1)
+//     print(pointer_arm(d), d.barks)
 void main() {
-    // print(Holder().kind, Holder(Fixed(60)).kind, Holder(Zone(2)).kind)
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = Fixed(60);
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = Zone(2);
     std::cout << Holder().kind << " " << Holder(__tmp_1).kind << " " << Holder(__tmp_2).kind << "\n";
-    // h = Holder()
     Holder h = Holder();
-    // print(h.describe())
     std::cout << h.describe() << "\n";
-    // print(h.describe(Fixed(60)))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_3 = Fixed(60);
     std::cout << h.describe(__tmp_3) << "\n";
-    // print(h.describe(Zone(7)))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = Zone(7);
     std::cout << h.describe(__tmp_4) << "\n";
-    // print(h.opt())
     std::cout << h.opt() << "\n";
-    // print(h.opt(Fixed(5)))
     std::cout << h.opt(Fixed(5)) << "\n";
-    // print(pointer_arm())
     std::cout << pointer_arm() << "\n";
-    // d = Dog(1)
     Dog d = Dog(::tpy::BigInt(1));
-    // print(pointer_arm(d), d.barks)
     std::cout << pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*>{&(d)}) << " " << d.barks << "\n";
 }
 
+// # A `= None` default on a None-including union param must default-construct
+// # the variant's monostate arm (regression: it emitted `nullptr`). A member
+// # keeps that as a C++ default argument -- its record alternatives are defined
+// # by the time the in-class declaration is read -- while a FREE function's
+// # declaration precedes every record, so there the default is materialized at
+// # the call site instead.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A `= None` default on a None-including union param must default-construct
-    // # the variant's monostate arm (regression: it emitted `nullptr`). A member
-    // # keeps that as a C++ default argument -- its record alternatives are defined
-    // # by the time the in-class declaration is read -- while a FREE function's
-    // # declaration precedes every record, so there the default is materialized at
-    // # the call site instead.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

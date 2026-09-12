@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // async def one(tag: str) -> int:
+//     print("eval", tag)
+//     return 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("eval", tag)
         std::cout << "eval" << " " << tag << "\n";
-        // return 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 1;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -28,13 +28,13 @@ __coro_one one(std::string_view tag) {
 }
 
 // async def two(tag: str) -> int:
+//     print("eval", tag)
+//     return 2
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_two::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("eval", tag)
         std::cout << "eval" << " " << tag << "\n";
-        // return 2
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 2;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -51,13 +51,13 @@ __coro_two two(std::string_view tag) {
 }
 
 // async def pick(tag: str, b: bool) -> bool:
+//     print("eval", tag)
+//     return b
 ::tpystd::tpy::Poll<bool> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("eval", tag)
         std::cout << "eval" << " " << tag << "\n";
-        // return b
         __state = S_DONE;
         bool __tpy_async_ret = b;
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -74,20 +74,30 @@ __coro_pick pick(std::string_view tag, bool b) {
 }
 
 // async def main() -> None:
+//     cond = True
+//     x = await one("then-run") if cond else await two("else-skipped")
+//     print("x", x)
+//     cond2 = False
+//     y = await one("then-skipped") if cond2 else await two("else-run")
+//     print("y", y)
+//     # await in the condition AND both branches: condition runs once, only
+//     # the taken branch is awaited.
+//     z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
+//     print("z", z)
+//     # await only in the condition, plain branches.
+//     w = 10 if await pick("w-cond", True) else 20
+//     print("w", w)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // cond = True
         cond = true;
         if (cond) {
             __coro_arg_0 = "then-run";
-            // x = await one("then-run") if cond else await two("else-skipped")
             __sub_0.emplace(__coro_arg_0);
             __state = S_RESUME_0;
             continue;
         } else {
             __coro_arg_1 = "else-skipped";
-            // x = await one("then-run") if cond else await two("else-skipped")
             __sub_1.emplace(__coro_arg_1);
             __state = S_RESUME_1;
             continue;
@@ -132,13 +142,11 @@ __coro_pick pick(std::string_view tag, bool b) {
         __sub_4.reset();
         if (__await_lift_0) {
             __coro_arg_5 = "z-then-skip";
-            // z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
             __sub_5.emplace(__coro_arg_5);
             __state = S_RESUME_5;
             continue;
         } else {
             __coro_arg_6 = "z-else-run";
-            // z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
             __sub_6.emplace(__coro_arg_6);
             __state = S_RESUME_6;
             continue;
@@ -165,55 +173,39 @@ __coro_pick pick(std::string_view tag, bool b) {
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r7).value();
         __sub_7.reset();
-        // # await only in the condition, plain branches.
-        // w = 10 if await pick("w-cond", True) else 20
         w = ((__await_lift_1) ? (10) : (20));
-        // print("w", w)
         std::cout << "w" << " " << w << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_0: {
-        // x = await one("then-run") if cond else await two("else-skipped")
         x = __await_ternary_0;
-        // print("x", x)
         std::cout << "x" << " " << x << "\n";
-        // cond2 = False
         cond2 = false;
         if (cond2) {
             __coro_arg_2 = "then-skipped";
-            // y = await one("then-skipped") if cond2 else await two("else-run")
             __sub_2.emplace(__coro_arg_2);
             __state = S_RESUME_2;
             continue;
         } else {
             __coro_arg_3 = "else-run";
-            // y = await one("then-skipped") if cond2 else await two("else-run")
             __sub_3.emplace(__coro_arg_3);
             __state = S_RESUME_3;
             continue;
         }
     }
     case S_JOIN_1: {
-        // y = await one("then-skipped") if cond2 else await two("else-run")
         y = __await_ternary_1;
-        // print("y", y)
         std::cout << "y" << " " << y << "\n";
         __coro_arg_4 = "z-cond";
-        // z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
         __sub_4.emplace(__coro_arg_4, false);
         __state = S_RESUME_4;
         continue;
     }
     case S_JOIN_2: {
-        // # await in the condition AND both branches: condition runs once, only
-        // # the taken branch is awaited.
-        // z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
         z = __await_ternary_2;
-        // print("z", z)
         std::cout << "z" << " " << z << "\n";
         __coro_arg_7 = "w-cond";
-        // w = 10 if await pick("w-cond", True) else 20
         __sub_7.emplace(__coro_arg_7, true);
         __state = S_RESUME_7;
         continue;
@@ -229,17 +221,18 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # `await` in a ternary: only the selected branch's coroutine is awaited,
+// # and an `await` in the condition (always evaluated once) composes with
+// # awaited or plain branches.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` in a ternary: only the selected branch's coroutine is awaited,
-    // # and an `await` in the condition (always evaluated once) composes with
-    // # awaited or plain branches.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

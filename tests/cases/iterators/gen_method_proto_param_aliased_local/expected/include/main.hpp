@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __gen_Repeater_run;
 
+// def main() -> None:
 void main();
 
 // class Repeater:
@@ -35,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Repeater& obj) {
     return os;
 }
 
-// Generator: Repeater.run
+// def run(self, it: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __gen_Repeater_run : public ::tpy::next_iter_mixin<__gen_Repeater_run<T_it>, int32_t> {
     int32_t __state;
@@ -68,6 +69,10 @@ struct __gen_Repeater_run : public ::tpy::next_iter_mixin<__gen_Repeater_run<T_i
 };
 
 // def run(self, it: Iterable[int32]) -> Iterator[int32]:
+//     xs = it
+//     for x in xs:
+//         for _ in range(self.times):
+//             yield x
 template <::tpystd::typing::Iterable<int32_t> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Repeater_run<T_it>::__next__() {
     while (true) switch (__state) {
@@ -98,7 +103,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Repeater_run<T_it>::__next__(
             continue;
         }
         _ = ((*__for_i_1))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -115,6 +119,7 @@ inline __gen_Repeater_run<T_it> Repeater::run(T_it&& it) const {
 
 
 // def __init__(self, times: int32) -> None:
+//     self.times = times
 inline Repeater::Repeater(int32_t times) : times(times) {}
 void __tpy_init();
 } // namespace tpyapp::main

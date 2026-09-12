@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def gen_a() -> Iterator[int32]:
+//     yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_a::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -33,20 +33,20 @@ __gen_gen_a gen_a() {
 }
 
 // def gen_b() -> Iterator[int32]:
+//     yield 10
+//     yield 20
+//     yield 30
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_b::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 10
         __state = S_RESUME_0;
         return 10;
     }
     case S_RESUME_0: {
-        // yield 20
         __state = S_RESUME_1;
         return 20;
     }
     case S_RESUME_1: {
-        // yield 30
         __state = S_RESUME_2;
         return 30;
     }
@@ -66,8 +66,11 @@ __gen_gen_b gen_b() {
 }
 
 // def main():
+//     for x in gen_a():
+//         print(x)
+//     for x in gen_b():
+//         print(x)
 void main() {
-    // for x in gen_a():
     {
         auto __src_0 = gen_a();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -75,11 +78,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for x in gen_b():
     {
         auto __src_2 = gen_b();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -87,18 +88,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

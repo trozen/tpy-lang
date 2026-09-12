@@ -5,64 +5,65 @@ namespace tpyapp::main {
 
 
 // def test_array_overload() -> None:
+//     arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
+//     p: Ptr[int32] = unsafe_ptr(arr)
+//     print(unsafe_load(p, uint32(1)))
 void test_array_overload() {
-    // arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // p: Ptr[int32] = unsafe_ptr(arr)
     int32_t* p = arr.data();
-    // print(unsafe_load(p, uint32(1)))
     std::cout << p[1] << "\n";
 }
 
 // def test_list_overload() -> None:
+//     lst: list[int32] = [int32(40), int32(50), int32(60)]
+//     p: Ptr[int32] = unsafe_ptr(lst)
+//     print(unsafe_load(p, uint32(2)))
 void test_list_overload() {
-    // lst: list[int32] = [int32(40), int32(50), int32(60)]
     std::vector<int32_t> lst = {40, 50, 60};
-    // p: Ptr[int32] = unsafe_ptr(lst)
     int32_t* p = lst.data();
-    // print(unsafe_load(p, uint32(2)))
     std::cout << p[2] << "\n";
 }
 
 // def test_str_overload() -> None:
+//     s: str = "abc"
+//     cp: Ptr[readonly[char]] = unsafe_ptr(s)
+//     print(unsafe_load(cp, uint32(0)))
 void test_str_overload() {
-    // s: str = "abc"
     std::string_view s = "abc";
-    // cp: Ptr[readonly[char]] = unsafe_ptr(s)
     const char* cp = s.data();
-    // print(unsafe_load(cp, uint32(0)))
     std::cout << cp[0] << "\n";
 }
 
 // def test_store_and_load() -> None:
+//     arr: Array[int32, 2] = [int32(0), int32(0)]
+//     p: Ptr[int32] = unsafe_ptr(arr)
+//     unsafe_store(p, uint32(0), int32(77))
+//     unsafe_store(p, uint32(1), int32(88))
+//     print(unsafe_load(p, uint32(0)))
+//     print(unsafe_load(p, uint32(1)))
 void test_store_and_load() {
-    // arr: Array[int32, 2] = [int32(0), int32(0)]
     std::array<int32_t, 2> arr = {0, 0};
-    // p: Ptr[int32] = unsafe_ptr(arr)
     int32_t* p = arr.data();
-    // unsafe_store(p, uint32(0), int32(77))
     p[0] = 77;
-    // unsafe_store(p, uint32(1), int32(88))
     p[1] = 88;
-    // print(unsafe_load(p, uint32(0)))
     std::cout << p[0] << "\n";
-    // print(unsafe_load(p, uint32(1)))
     std::cout << p[1] << "\n";
 }
 
+// from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
+//
+// test_array_overload()
+// test_list_overload()
+// test_str_overload()
+// test_store_and_load()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
-    // test_array_overload()
     test_array_overload();
-    // test_list_overload()
     test_list_overload();
-    // test_str_overload()
     test_str_overload();
-    // test_store_and_load()
     test_store_and_load();
 }
 

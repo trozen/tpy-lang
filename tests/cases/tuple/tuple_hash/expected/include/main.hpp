@@ -13,8 +13,11 @@ struct Edge;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
+// def test_nocopy_hash() -> None:
 void test_nocopy_hash();
+// def test_hash_delegation() -> None:
 void test_hash_delegation();
 
 // @nocopy
@@ -143,47 +146,52 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Key::Key(int32_t v) : val(v) {}
 
 // def __hash__(self) -> uint64:
+//     return uint64(self.val)
 inline uint64_t Key::__hash__() const {
-    // return uint64(self.val)
     return ::tpy::int_cast_check<uint64_t>(this->val);
 }
 
 // def __eq__(self, other: Key) -> bool:
+//     return self.val == other.val
 inline bool Key::__eq__(const Key& other) const {
-    // return self.val == other.val
     return (this->val == other.val);
 }
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __hash__(self) -> uint64:
+//     return hash((self.x, self.y))
 inline uint64_t Point::__hash__() const {
-    // return hash((self.x, self.y))
     return ::tpy::__hash__(std::tuple<int32_t, int32_t>{this->x, this->y});
 }
 
 // def __eq__(self, other: Point) -> bool:
+//     return self.x == other.x and self.y == other.y
 inline bool Point::__eq__(const Point& other) const {
-    // return self.x == other.x and self.y == other.y
     return ((this->x == other.x) && (this->y == other.y));
 }
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.a = Key(x)
+//     self.b = Key(y)
 inline Edge::Edge(int32_t x, int32_t y) : a(Key(x)), b(Key(y)) {}
 
 // def __hash__(self) -> uint64:
+//     return hash((self.a, self.b))
 inline uint64_t Edge::__hash__() const {
-    // return hash((self.a, self.b))
     return ::tpy::__hash__(std::tuple<const Key*, const Key*>{&(this->a), &(this->b)});
 }
 
 // def __eq__(self, other: Edge) -> bool:
+//     return (self.a, self.b) == (other.a, other.b)
 inline bool Edge::__eq__(const Edge& other) const {
-    // return (self.a, self.b) == (other.a, other.b)
     return ::tpy::tuple_eq(std::tuple<const Key*, const Key*>{&(this->a), &(this->b)}, std::tuple<const Key*, const Key*>{&(other.a), &(other.b)});
 }
 void __tpy_init();

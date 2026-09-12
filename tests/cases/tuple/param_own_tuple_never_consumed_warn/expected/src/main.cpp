@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def read_owned(p: tuple[Own[A], Own[A]]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+//     return p[0].n + p[1].n
 int32_t read_owned(std::tuple<A, A>&& p) {
-    // return p[0].n + p[1].n
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p).n));
 }
 
 // def read_borrow(p: tuple[A, A]) -> int32:  # tpyc: ok
+//     return p[0].n + p[1].n
 int32_t read_borrow(const std::tuple<const A*, const A*>& p) {
-    // return p[0].n + p[1].n
     return (::tpy::add_check<int32_t>(std::get<0>(p)->n, std::get<1>(p)->n));
 }
 
 // def read_nocopy(p: tuple[Own[B], Own[B]]) -> int32:  # tpyc: ok
+//     return p[0].m + p[1].m
 int32_t read_nocopy(std::tuple<B, B>&& p) {
-    // return p[0].m + p[1].m
     return (::tpy::add_check<int32_t>(std::get<0>(p).m, std::get<1>(p).m));
 }
 
 // def main() -> None:
+//     print(read_owned((A(1), A(2))))
+//     a = A(3)
+//     b = A(4)
+//     print(read_borrow((a, b)))
+//     print(read_nocopy((B(5), B(6))))
 void main() {
-    // print(read_owned((A(1), A(2))))
     std::cout << read_owned(std::tuple<A, A>{A(1), A(2)}) << "\n";
-    // a = A(3)
     A a = A(3);
-    // b = A(4)
     A b = A(4);
-    // print(read_borrow((a, b)))
     std::cout << read_borrow(std::tuple<A*, A*>{&(a), &(b)}) << "\n";
-    // print(read_nocopy((B(5), B(6))))
     std::cout << read_nocopy(std::tuple<B, B>{B(5), B(6)}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

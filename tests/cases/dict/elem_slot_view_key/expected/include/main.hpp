@@ -9,17 +9,29 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_param(d: dict[str, list[int32]], k: str) -> int32:
 int32_t read_param(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::string_view k);
+// def get_param(d: dict[str, list[int32]], k: str) -> bool:
 bool get_param(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::string_view k);
+// def has_param(d: dict[str, list[int32]], k: str) -> bool:
 bool has_param(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::string_view k);
+// def drop_param(d: dict[str, list[int32]], k: str) -> None:
 void drop_param(::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::string_view k);
+// def push_literal(d: dict[str, list[int32]]) -> None:
 void push_literal(::tpy::ordered_map<std::string, std::vector<int32_t>>& d);
+// def pop_literal(d: dict[str, list[int32]]) -> int32:
 int32_t pop_literal(::tpy::ordered_map<std::string, std::vector<int32_t>>& d);
+// def empty_key(d: dict[str, int32], k: str) -> int32:
 int32_t empty_key(const ::tpy::ordered_map<std::string, int32_t>& d, std::string_view k);
+// def read_bytes_param(d: dict[bytes, int32], k: bytes) -> int32:
 int32_t read_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k);
+// def get_bytes_param(d: dict[bytes, int32], k: bytes) -> bool:
 bool get_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k);
+// def drop_bytes_param(d: dict[bytes, int32], k: bytes) -> None:
 void drop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k);
+// def pop_bytes_param(d: dict[bytes, int32], k: bytes) -> int32:
 int32_t pop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k);
+// def main() -> None:
 void main();
 
 void __tpy_init();

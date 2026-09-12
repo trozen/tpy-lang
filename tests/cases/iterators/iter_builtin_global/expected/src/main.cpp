@@ -3,81 +3,72 @@
 
 namespace tpyapp::main {
 
-// # Tests iter() at module level (global scope) -- the result is a structural
-// # protocol type which requires decltype() in the C++ global declaration.
-// # Also tests reassignment of a protocol-typed global.
-// d = {"a": 1, "b": 2, "c": 3}
 ::tpy::ordered_map<std::string, int32_t>* d{};
-// it = iter(d)
 decltype(::tpy::__iter__((*d)))* it{};
-// nums = [10, 20, 30]
 std::vector<int32_t>* nums{};
-// it2 = iter(nums)
 decltype(::tpy::__iter__((*nums)))* it2{};
-// # Reassign protocol-typed global to a new iterator
-// d2 = {"x": 10, "y": 20}
 ::tpy::ordered_map<std::string, int32_t>* d2{};
 
 // def use_global_iter() -> None:
+//     for k in it:
+//         print(k)
 void use_global_iter() {
-    // for k in it:
     auto& __src_0 = (*it);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_1);
-        // print(k)
         std::cout << k << "\n";
     }
 }
 
+// d = {"a": 1, "b": 2, "c": 3}
+// it = iter(d)
+//
+// use_global_iter()
+//
+// nums = [10, 20, 30]
+// it2 = iter(nums)
+// for v in it2:
+//     print(v)
+//
+// # Reassign protocol-typed global to a new iterator
+// d2 = {"x": 10, "y": 20}
+// it = iter(d2)
+// for k in it:
+//     print(k)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Tests iter() at module level (global scope) -- the result is a structural
-    // # protocol type which requires decltype() in the C++ global declaration.
-    // # Also tests reassignment of a protocol-typed global.
-    // d = {"a": 1, "b": 2, "c": 3}
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     d = &__global_slot_1;
-    // it = iter(d)
     static auto __global_slot_2 = ::tpy::__iter__((*d));
     it = &__global_slot_2;
-    // use_global_iter()
     use_global_iter();
-    // nums = [10, 20, 30]
     static std::vector<int32_t> __global_slot_3 = {10, 20, 30};
     nums = &__global_slot_3;
-    // it2 = iter(nums)
     static auto __global_slot_4 = ::tpy::__iter__((*nums));
     it2 = &__global_slot_4;
-    // for v in it2:
     auto& __src_0 = (*it2);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
     }
-    // # Reassign protocol-typed global to a new iterator
-    // d2 = {"x": 10, "y": 20}
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_5 = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
     d2 = &__global_slot_5;
-    // it = iter(d2)
     it = &(__global_slot_2 = ::tpy::__iter__((*d2)));
-    // for k in it:
     auto& __src_2 = (*it);
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         const std::string& k = ::tpy::unwrap_ref(*__r_3);
-        // print(k)
         std::cout << k << "\n";
     }
 }

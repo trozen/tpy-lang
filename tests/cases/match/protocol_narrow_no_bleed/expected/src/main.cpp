@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [10, 20, 30]
+//     print(process(nums, "iter_path"))
+//     print(process(nums, "other"))
 void main() {
-    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // print(process(nums, "iter_path"))
     std::cout << process(nums, "iter_path") << "\n";
-    // print(process(nums, "other"))
     std::cout << process(nums, "other") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

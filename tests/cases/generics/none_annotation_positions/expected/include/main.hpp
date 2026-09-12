@@ -12,7 +12,9 @@ struct Guard;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def takes_none(x: None) -> None:
 void takes_none(std::monostate x);
+// def main() -> None:
 void main();
 
 // # Bare `None` is accepted at every value-bearing annotation slot:
@@ -68,25 +70,26 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 
 // def __init__(self):
+//     self.slot = None
 inline Field::Field() : slot(std::monostate{}) {}
 
 // def take(self, x: None) -> None:
+//     self.slot = x
 inline void Field::take(std::monostate x) {
-    // self.slot = x
     this->slot = x;
 }
 
 // def __enter__(self) -> 'Guard':
+//     print("enter")
+//     return self
 inline Guard& Guard::__enter__() {
-    // print("enter")
     std::cout << "enter" << "\n";
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
+//     print("exit")
 inline void Guard::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) const {
-    // print("exit")
     std::cout << "exit" << "\n";
 }
 void __tpy_init();

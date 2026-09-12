@@ -9,7 +9,9 @@ namespace myproject::core {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(name: str) -> str:
 std::string greet(std::string_view name);
+// def main() -> None:
 void main();
 
 void __tpy_init();

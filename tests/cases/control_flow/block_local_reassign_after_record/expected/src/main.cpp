@@ -5,140 +5,141 @@ namespace tpyapp::main {
 
 
 // def escaped_alias() -> int:
+//     # `saved` aliases the loop-body local, whose storage is hoisted to function
+//     # scope; the post-loop rebind of `p` must not disturb what `saved` holds.
+//     # Narrow by construction: `saved` is re-captured every iteration, so it
+//     # holds the last one either way -- this pins the post-loop rebind only, NOT
+//     # per-iteration identity. A mid-loop conditional capture still clobbers
+//     # (see BUGS.md); the hoisted storage is one slot per name, not per binding.
+//     saved = Point(0)
+//     for i in range(3):
+//         p = Point(i)
+//         saved = p
+//     p = Point(9)
+//     return saved.x * 100 + p.x
 ::tpy::BigInt escaped_alias() {
     std::optional<Point> __slot_2;
     std::optional<Point> __slot_4;
-    // # `saved` aliases the loop-body local, whose storage is hoisted to function
-    // # scope; the post-loop rebind of `p` must not disturb what `saved` holds.
-    // # Narrow by construction: `saved` is re-captured every iteration, so it
-    // # holds the last one either way -- this pins the post-loop rebind only, NOT
-    // # per-iteration identity. A mid-loop conditional capture still clobbers
-    // # (see BUGS.md); the hoisted storage is one slot per name, not per binding.
-    // saved = Point(0)
     Point __slot_1 = Point(::tpy::BigInt(0));
     Point* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p = Point(i)
         Point* p = &*(__slot_2 = Point(::tpy::BigInt(i)));
-        // saved = p
         saved = p;
     }
-    // p = Point(9)
     Point* p = &*(__slot_4 = Point(::tpy::BigInt(9)));
-    // return saved.x * 100 + p.x
     return ((((saved->x) * (::tpy::BigInt(100)))) + (p->x));
 }
 
 // def mutate_through_alias() -> int:
+//     # Mutating through the rebound handle must be visible through the alias
+//     # taken from it -- a silent copy at the rebind would hide the write.
+//     for i in range(2):
+//         p = Point(i)
+//     p = Point(9)
+//     q = p
+//     q.x = 55
+//     return p.x
 ::tpy::BigInt mutate_through_alias() {
-    // # Mutating through the rebound handle must be visible through the alias
-    // # taken from it -- a silent copy at the rebind would hide the write.
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // p = Point(i)
         Point __slot_1 = Point(::tpy::BigInt(i));
         Point* p = &__slot_1;
     }
-    // p = Point(9)
     Point __slot_3 = Point(::tpy::BigInt(9));
     Point* p = &__slot_3;
-    // q = p
     Point& q = (*p);
-    // q.x = 55
     q.x = ::tpy::BigInt(55);
-    // return p.x
     return p->x;
 }
 
 // def in_match_arm(tag: int) -> int:
+//     match tag:
+//         case 1:
+//             p = Point(1)
+//             print(p.x)
+//         case _:
+//             pass
+//     p = Point(9)
+//     return p.x
 ::tpy::BigInt in_match_arm(const ::tpy::BigInt& tag) {
-    // match tag:
     auto& __match_subject_1 = tag;
-    // case 1:
     if (__match_subject_1 == 1) {
-        // p = Point(1)
         Point __slot_1 = Point(::tpy::BigInt(1));
         Point* p = &__slot_1;
-        // print(p.x)
         std::cout << p->x << "\n";
-    // case _:
     } else {
-        // pass
     }
-    // p = Point(9)
     Point __slot_3 = Point(::tpy::BigInt(9));
     Point* p = &__slot_3;
-    // return p.x
     return p->x;
 }
 
 // def in_try_body() -> int:
+//     try:
+//         p = Point(1)
+//         print(p.x)
+//     except ValueError:
+//         pass
+//     p = Point(9)
+//     return p.x
 ::tpy::BigInt in_try_body() {
-    // try:
     {
         try {
-            // p = Point(1)
             Point __slot_1 = Point(::tpy::BigInt(1));
             Point* p = &__slot_1;
-            // print(p.x)
             std::cout << p->x << "\n";
         } catch (const ::tpy::ValueError&) {
-            // pass
         }
     }
-    // p = Point(9)
     Point __slot_3 = Point(::tpy::BigInt(9));
     Point* p = &__slot_3;
-    // return p.x
     return p->x;
 }
 
 // def loop_var_rebind(points: list[Point]) -> int:
+//     # The one-type-per-local rule is scoped to BODY-declared locals: a loop
+//     # VARIABLE's type comes from the iterable rather than from the user, so a
+//     # later assignment binds a fresh local rather than being forced into the
+//     # element type (CPython rebinds the same name either way).
+//     for p in points:
+//         print(p.x)
+//     p = Point(9)
+//     return p.x
 ::tpy::BigInt loop_var_rebind(const std::vector<Point>& points) {
-    // # The one-type-per-local rule is scoped to BODY-declared locals: a loop
-    // # VARIABLE's type comes from the iterable rather than from the user, so a
-    // # later assignment binds a fresh local rather than being forced into the
-    // # element type (CPython rebinds the same name either way).
-    // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // print(p.x)
         std::cout << p.x << "\n";
     }
-    // p = Point(9)
     Point __slot_1 = Point(::tpy::BigInt(9));
     Point* p = &__slot_1;
-    // return p.x
     return p->x;
 }
 
 // def main() -> None:
+//     print(escaped_alias())
+//     print(mutate_through_alias())
+//     print(in_match_arm(1))
+//     print(in_match_arm(2))
+//     print(in_try_body())
+//     print(loop_var_rebind([Point(1), Point(2)]))
 void main() {
-    // print(escaped_alias())
     std::cout << escaped_alias() << "\n";
-    // print(mutate_through_alias())
     std::cout << mutate_through_alias() << "\n";
-    // print(in_match_arm(1))
     std::cout << in_match_arm(::tpy::BigInt(1)) << "\n";
-    // print(in_match_arm(2))
     std::cout << in_match_arm(::tpy::BigInt(2)) << "\n";
-    // print(in_try_body())
     std::cout << in_try_body() << "\n";
-    // print(loop_var_rebind([Point(1), Point(2)]))
     std::vector<Point> __tmp_1 = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
     std::cout << loop_var_rebind(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

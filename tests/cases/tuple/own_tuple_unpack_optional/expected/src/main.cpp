@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def pair() -> tuple[Own[P | None], int32]:
+//     return (P(42), int32(99))
 std::tuple<std::optional<P>, int32_t> pair() {
-    // return (P(42), int32(99))
     return std::tuple<std::optional<P>, int32_t>{P(42), 99};
 }
 
 // def borrow(p: P | None) -> int32:
+//     if p is None:
+//         return int32(-1)
+//     return p.x
 int32_t borrow(const P* p) {
-    // if p is None:
     if ((p == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return p.x
     return p->x;
 }
 
 // def main() -> None:
+//     p, n = pair()
+//     print(borrow(p))
+//     print(n)
 void main() {
-    // p, n = pair()
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(pair());
     P* p = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
-    // print(borrow(p))
     std::cout << borrow(p) << "\n";
-    // print(n)
     std::cout << n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

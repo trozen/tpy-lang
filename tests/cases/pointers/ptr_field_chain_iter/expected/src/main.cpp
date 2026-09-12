@@ -5,95 +5,94 @@ namespace tpyapp::main {
 
 
 // def head_floor(subsectors: list[Ptr[SubSector]]) -> int32:
+//     # Two Ptr hops under a subscript: the whole chain is one read.
+//     return subsectors[0].segs[0].sector_front.floor_h  # tpyc: ok
 int32_t head_floor(const std::vector<SubSector*>& subsectors) {
-    // # Two Ptr hops under a subscript: the whole chain is one read.
-    // return subsectors[0].segs[0].sector_front.floor_h  # tpyc: ok
     return ::tpy::deref_check(::tpy::deref_check(::tpy::__getitem__(::tpy::deref_check(::tpy::__getitem__(subsectors, 0)).segs, 0)).sector_front).floor_h;
 }
 
 // def via_local(ss: Ptr[SubSector]) -> int32:
+//     seg = ss.segs[0]
+//     # A Ptr-valued field taken off a Ptr binding, then read again.
+//     return seg.sector_front.floor_h  # tpyc: ok
 int32_t via_local(SubSector* ss) {
-    // seg = ss.segs[0]
     Seg* seg = ::tpy::__getitem__(::tpy::deref_check(ss).segs, 0);
-    // # A Ptr-valued field taken off a Ptr binding, then read again.
-    // return seg.sector_front.floor_h  # tpyc: ok
     return ::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h;
 }
 
 // def total(subsectors: list[Ptr[SubSector]]) -> int32:
+//     acc = 0
+//     for subsector in subsectors:
+//         # A container member of a Ptr binding is the loop's iterable.
+//         for seg in subsector.segs:  # tpyc: ok
+//             acc += seg.sector_front.floor_h
+//     return acc
 int32_t total(const std::vector<SubSector*>& subsectors) {
-    // acc = 0
     int32_t acc = 0;
-    // for subsector in subsectors:
     auto& __obj_0 = subsectors;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         SubSector* subsector = *__beg_0;
-        // # A container member of a Ptr binding is the loop's iterable.
-        // for seg in subsector.segs:  # tpyc: ok
         auto& __obj_1 = ::tpy::deref_check(subsector).segs;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             Seg* seg = *__beg_1;
-            // acc += seg.sector_front.floor_h
             acc = ::tpy::add_check<int32_t>(acc, ::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h);
         }
     }
-    // return acc
     return acc;
 }
 
 // def raise_floors(subsectors: list[Ptr[SubSector]]) -> None:
+//     for subsector in subsectors:
+//         for seg in subsector.segs:
+//             # The chain is an lvalue: the write lands on the pointee.
+//             seg.sector_front.floor_h += 1  # tpyc: ok
 void raise_floors(std::vector<SubSector*>& subsectors) {
-    // for subsector in subsectors:
     auto& __obj_0 = subsectors;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         SubSector* subsector = *__beg_0;
-        // for seg in subsector.segs:
         auto& __obj_1 = ::tpy::deref_check(subsector).segs;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             Seg* seg = *__beg_1;
-            // # The chain is an lvalue: the write lands on the pointee.
-            // seg.sector_front.floor_h += 1  # tpyc: ok
             ::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h = ::tpy::add_check<int32_t>(::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h, 1);
         }
-        // # The chain is an lvalue: the write lands on the pointee.
     }
 }
 
 // def main() -> None:
+//     m = Map()
+//     subsectors: list[Ptr[SubSector]] = []
+//     subsectors.append(m.subsectors[0])
+//     print(head_floor(subsectors))
+//     print(via_local(subsectors[0]))
+//     print(total(subsectors))
+//     raise_floors(subsectors)
+//     # The mutation reached the sectors the pointers alias, not a copy.
+//     print(m.sectors[0].floor_h, m.sectors[1].floor_h)
 void main() {
-    // m = Map()
     Map m = Map();
-    // subsectors: list[Ptr[SubSector]] = []
     std::vector<SubSector*> subsectors = std::vector<SubSector*>{};
-    // subsectors.append(m.subsectors[0])
     subsectors.push_back(&::tpy::__getitem__(m.subsectors, 0));
-    // print(head_floor(subsectors))
     std::cout << head_floor(subsectors) << "\n";
-    // print(via_local(subsectors[0]))
     std::cout << via_local(::tpy::__getitem__(subsectors, 0)) << "\n";
-    // print(total(subsectors))
     std::cout << total(subsectors) << "\n";
-    // raise_floors(subsectors)
     raise_floors(subsectors);
-    // # The mutation reached the sectors the pointers alias, not a copy.
-    // print(m.sectors[0].floor_h, m.sectors[1].floor_h)
     std::cout << ::tpy::__getitem__(m.sectors, 0).floor_h << " " << ::tpy::__getitem__(m.sectors, 1).floor_h << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

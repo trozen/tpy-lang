@@ -5,69 +5,72 @@ namespace tpyapp::main {
 
 
 // def fail(direct: bool) -> None:
+//     if direct:
+//         e = OSError("io failed")
+//         e.errno = 5
+//         e.strerror = "Input/output error"
+//         raise e
+//     d = DeviceError("device gone")
+//     d.errno = 19
+//     d.strerror = "No such device"
+//     raise d
 void fail(bool direct) {
-    // if direct:
     if (direct) {
-        // e = OSError("io failed")
         ::tpy::OSError e = ::tpy::OSError("io failed");
-        // e.errno = 5
         e.error_number = 5;
-        // e.strerror = "Input/output error"
         e.strerror_text = "Input/output error";
-        // raise e
         e.__raise__();
     }
-    // d = DeviceError("device gone")
     DeviceError d = DeviceError("device gone");
-    // d.errno = 19
     d.error_number = 19;
-    // d.strerror = "No such device"
     d.strerror_text = "No such device";
-    // raise d
     d.__raise__();
 }
 
 // def main() -> None:
+//     try:
+//         fail(True)
+//     except OSError as e:
+//         print(e.errno, e.strerror)
+//     try:
+//         fail(False)
+//     except DeviceError as e:
+//         print(e.errno, e.strerror)
+//     # Subclass instance caught through the OSError base still carries them.
+//     try:
+//         fail(False)
+//     except OSError as e:
+//         print(e.errno, e.strerror)
 void main() {
-    // try:
     {
         try {
-            // fail(True)
             fail(true);
         } catch (const ::tpy::OSError& e) {
-            // print(e.errno, e.strerror)
             std::cout << e.error_number << " " << e.strerror_text << "\n";
         }
     }
-    // try:
     {
         try {
-            // fail(False)
             fail(false);
         } catch (const DeviceError& e) {
-            // print(e.errno, e.strerror)
             std::cout << e.error_number << " " << e.strerror_text << "\n";
         }
     }
-    // # Subclass instance caught through the OSError base still carries them.
-    // try:
     {
         try {
-            // fail(False)
             fail(false);
         } catch (const ::tpy::OSError& e) {
-            // print(e.errno, e.strerror)
             std::cout << e.error_number << " " << e.strerror_text << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

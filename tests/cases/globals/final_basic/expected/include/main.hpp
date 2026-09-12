@@ -8,15 +8,24 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// MAX_SIZE: Final[int32] = 100
 inline constexpr int32_t MAX_SIZE = 100;
+// NEG_VAL: Final[int32] = -42
 inline constexpr int32_t NEG_VAL = -42;
+// PI: Final[float] = 3.14159
 inline constexpr double PI = 3.14159;
+// DEBUG: Final[bool] = True
 inline constexpr bool DEBUG = true;
+// DISABLED: Final[bool] = False
 inline constexpr bool DISABLED = false;
+// NAME: Final[str] = "hello"
 inline constexpr std::string_view NAME = "hello";
+// LETTER: Final[char] = "A"
 inline constexpr char LETTER = 'A';
 
+// def twice(x: int32) -> int32:
 int32_t twice(int32_t x);
+// def main() -> None:
 void main();
 
 void __tpy_init();

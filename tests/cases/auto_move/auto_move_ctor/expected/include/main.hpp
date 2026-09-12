@@ -12,6 +12,7 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Inner:
@@ -48,11 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, inner: Own[Inner]):
+//     self.inner = inner  # tpyc: ok
 inline Outer::Outer(Inner&& inner) : inner(std::move(inner)) {}
 
 // def get_value(self) -> int32:
+//     return self.inner.value
 inline int32_t Outer::get_value() const {
-    // return self.inner.value
     return this->inner.value;
 }
 void __tpy_init();

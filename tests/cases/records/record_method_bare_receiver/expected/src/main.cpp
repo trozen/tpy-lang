@@ -5,73 +5,73 @@ namespace tpyapp::main {
 
 
 // def combine(a: Counter, b: Counter) -> int32:
+//     a.bump()          # void, statement position
+//     a.add_from(b)     # record name as method arg
+//     return a.diff(b)
 int32_t combine(Counter& a, const Counter& b) {
-    // a.bump()          # void, statement position
     a.bump();
-    // a.add_from(b)     # record name as method arg
     a.add_from(b);
-    // return a.diff(b)
     return a.diff(b);
 }
 
 // def narrowed_receiver(v: Counter | Label) -> int32:
+//     if isinstance(v, Counter):
+//         v.bump()
+//         return v.get()
+//     return len(v.name)
 int32_t narrowed_receiver(::tpy::Union<Counter*, Label*> v) {
-    // if isinstance(v, Counter):
     if (std::holds_alternative<Counter*>(v)) {
         auto& __v = *std::get<Counter*>(v);
-        // v.bump()
         __v.bump();
-        // return v.get()
         return __v.get();
     }
     auto& __v = *std::get<Label*>(v);
-    // return len(v.name)
     return ::tpy::__len__(__v.name);
 }
 
 // def inherited(f: FancyCounter, k: int32) -> int32:
+//     f.bump()
+//     return f.get() + k
 int32_t inherited(FancyCounter& f, int32_t k) {
-    // f.bump()
     f.bump();
-    // return f.get() + k
     return (::tpy::add_check<int32_t>(f.get(), k));
 }
 
 // def main():
+//     a = Counter(3)
+//     b = Counter(4)
+//     print(combine(a, b))
+//     print(a.get())    # 8: mutated through the receiver param
+//     print(b.get())    # 4: the arg was only read
+//     c = Counter(10)
+//     print(narrowed_receiver(c))
+//     print(c.get())    # 11: mutated through the narrowed alias
+//     print(narrowed_receiver(Label("abc")))
+//     f = FancyCounter(20)
+//     print(inherited(f, 2))
+//     print(f.get())    # 21
 void main() {
-    // a = Counter(3)
     Counter a = Counter(3);
-    // b = Counter(4)
     Counter b = Counter(4);
-    // print(combine(a, b))
     std::cout << combine(a, b) << "\n";
-    // print(a.get())    # 8: mutated through the receiver param
     std::cout << a.get() << "\n";
-    // print(b.get())    # 4: the arg was only read
     std::cout << b.get() << "\n";
-    // c = Counter(10)
     Counter c = Counter(10);
-    // print(narrowed_receiver(c))
     std::cout << narrowed_receiver(::tpy::Union<Counter*, Label*>{&(c)}) << "\n";
-    // print(c.get())    # 11: mutated through the narrowed alias
     std::cout << c.get() << "\n";
-    // print(narrowed_receiver(Label("abc")))
     Label __tmp_1 = Label("abc");
     std::cout << narrowed_receiver(::tpy::Union<Counter*, Label*>{&__tmp_1}) << "\n";
-    // f = FancyCounter(20)
     FancyCounter f = FancyCounter(20);
-    // print(inherited(f, 2))
     std::cout << inherited(f, 2) << "\n";
-    // print(f.get())    # 21
     std::cout << f.get() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

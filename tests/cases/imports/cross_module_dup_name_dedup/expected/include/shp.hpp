@@ -31,6 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int):
+//     self.x = x
 inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::shp

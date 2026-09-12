@@ -5,8 +5,8 @@ namespace tpyapp::pkg::defs {
 
 
 // def double(x: int32) -> int32:
+//     return x + x
 int32_t double_(int32_t x) {
-    // return x + x
     return (::tpy::add_check<int32_t>(x, x));
 }
 

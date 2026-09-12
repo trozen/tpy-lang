@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def take_mut(p: Ptr[Node]) -> None:
+//     p.x = 1
 void take_mut(Node* p) {
-    // p.x = 1
     ::tpy::deref_check(p).x = ::tpy::BigInt(1);
 }
 
 // def helper(n: Node) -> None:
+//     take_mut(n)
 void helper(Node& n) {
-    // take_mut(n)
     take_mut(&n);
 }
 
 // def main() -> None:
+//     n = Node()
+//     h = Holder(n)
+//     print(n.x)
+//     print(h.started)
 void main() {
-    // n = Node()
     Node n = Node();
-    // h = Holder(n)
     Holder h = Holder(n);
-    // print(n.x)
     std::cout << n.x << "\n";
-    // print(h.started)
     std::cout << ::tpy::print_bool(h.started) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

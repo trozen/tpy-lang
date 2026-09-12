@@ -14,9 +14,10 @@ inline constexpr std::string_view __name__ = "othermod";
 
 struct __coro_work;
 
+// async def work() -> int32:
 __coro_work work();
 
-// Async coroutine: work
+// async def work() -> int32:
 struct __coro_work {
     int32_t __state;
     bool __cancel_pending;

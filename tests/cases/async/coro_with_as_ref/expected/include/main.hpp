@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_total;
 struct __coro_driver;
 
+// async def total() -> int32:
 __coro_total total();
+// async def driver() -> None:
 __coro_driver driver();
 
 // class Item:
@@ -59,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
     return os;
 }
 
-// Async coroutine: total
+// async def total() -> int32:
 struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
@@ -85,7 +87,7 @@ struct __coro_total {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -111,20 +113,22 @@ struct __coro_driver {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.item = Item(n)
 inline CM::CM(int32_t n) : item(Item(n)) {}
 
 // def __enter__(self) -> Item:
+//     return self.item
 inline Item& CM::__enter__() {
-    // return self.item
     return this->item;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

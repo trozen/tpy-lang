@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def boom() -> None:
+//     raise ValueError("boom")
 void boom() {
-    // raise ValueError("boom")
     throw ::tpy::ValueError("boom");
 }
 
 // def multi() -> None:
+//     with Gate(1), Gate(2):
+//         print("body")
 void multi() {
-    // with Gate(1), Gate(2):
     auto __ctx_1 = Gate(::tpy::BigInt(1));
     __ctx_1.__enter__();
     auto __ctx_2 = Gate(::tpy::BigInt(2));
     __ctx_2.__enter__();
     try {
         try {
-            // print("body")
             std::cout << "body" << "\n";
             goto __with_exit_2;
         } catch (...) {
@@ -38,14 +38,15 @@ void multi() {
 }
 
 // def suppress() -> None:
+//     with Sup():
+//         print("before")
+//         boom()
+//     print("after suppressed")
 void suppress() {
-    // with Sup():
     auto __ctx_3 = Sup();
     __ctx_3.__enter__();
     try {
-        // print("before")
         std::cout << "before" << "\n";
-        // boom()
         boom();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -58,21 +59,21 @@ void suppress() {
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
     __with_after_3:;
-    // print("after suppressed")
     std::cout << "after suppressed" << "\n";
 }
 
 // def ref_target() -> None:
+//     # The as-binding borrows the manager (auto&): mutation through it is
+//     # visible on the shared object after the block.
+//     with Guard() as g:
+//         g.depth += 10
+//         print("inside:", g.depth)
+//     print("after:", g.depth)
 void ref_target() {
-    // # The as-binding borrows the manager (auto&): mutation through it is
-    // # visible on the shared object after the block.
-    // with Guard() as g:
     auto __ctx_4 = Guard();
     auto& g = __ctx_4.__enter__();
     try {
-        // g.depth += 10
         g.depth = (g.depth) + (::tpy::BigInt(10));
-        // print("inside:", g.depth)
         std::cout << "inside:" << " " << g.depth << "\n";
         goto __with_exit_4;
     } catch (...) {
@@ -81,21 +82,25 @@ void ref_target() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, {}, {});
-    // print("after:", g.depth)
     std::cout << "after:" << " " << g.depth << "\n";
 }
 
 // def deref_manager(h: Holder, h2: Holder) -> None:
+//     # A reassigned borrow local is a T* pointer-local; using it as the
+//     # manager must borrow the pointee (deref), not copy the pointer.
+//     m = h.g
+//     with m:
+//         print("in:", m.depth)
+//     print("mid:", m.depth)
+//     m = h2.g
+//     with m:
+//         print("in2:", m.depth)
+//     print("post:", m.depth)
 void deref_manager(Holder& h, Holder& h2) {
-    // # A reassigned borrow local is a T* pointer-local; using it as the
-    // # manager must borrow the pointee (deref), not copy the pointer.
-    // m = h.g
     Guard* m = &(h.g);
-    // with m:
     auto& __ctx_5 = *(m);
     __ctx_5.__enter__();
     try {
-        // print("in:", m.depth)
         std::cout << "in:" << " " << m->depth << "\n";
         goto __with_exit_5;
     } catch (...) {
@@ -104,15 +109,11 @@ void deref_manager(Holder& h, Holder& h2) {
     }
     __with_exit_5:
     __ctx_5.__exit__({}, {}, {});
-    // print("mid:", m.depth)
     std::cout << "mid:" << " " << m->depth << "\n";
-    // m = h2.g
     m = &(h2.g);
-    // with m:
     auto& __ctx_6 = *(m);
     __ctx_6.__enter__();
     try {
-        // print("in2:", m.depth)
         std::cout << "in2:" << " " << m->depth << "\n";
         goto __with_exit_6;
     } catch (...) {
@@ -121,34 +122,34 @@ void deref_manager(Holder& h, Holder& h2) {
     }
     __with_exit_6:
     __ctx_6.__exit__({}, {}, {});
-    // print("post:", m.depth)
     std::cout << "post:" << " " << m->depth << "\n";
 }
 
 // def loop_exits(cm: Gate) -> None:
+//     for i in range(4):
+//         with cm:
+//             if i == 1:
+//                 continue
+//             if i == 3:
+//                 break
+//             print("i =", i)
+//     print("loop done")
 void loop_exits(Gate& cm) {
-    // for i in range(4):
     for (int32_t i = 0; i < 4; ++i) {
-        // with cm:
         auto& __ctx_7 = cm;
         __ctx_7.__enter__();
         bool __fin_ran_7 = false;
         try {
-            // if i == 1:
             if ((i == 1)) {
-                // continue
                 __fin_ran_7 = true;
                 __ctx_7.__exit__({}, {}, {});
                 continue;
             }
-            // if i == 3:
             if ((i == 3)) {
-                // break
                 __fin_ran_7 = true;
                 __ctx_7.__exit__({}, {}, {});
                 break;
             }
-            // print("i =", i)
             std::cout << "i =" << " " << i << "\n";
             goto __with_exit_7;
         } catch (...) {
@@ -159,18 +160,17 @@ void loop_exits(Gate& cm) {
         __with_exit_7:
         __ctx_7.__exit__({}, {}, {});
     }
-    // print("loop done")
     std::cout << "loop done" << "\n";
 }
 
 // def ret_through(cm: Gate) -> int:
+//     with cm:
+//         return 42
 ::tpy::BigInt ret_through(Gate& cm) {
-    // with cm:
     auto& __ctx_8 = cm;
     __ctx_8.__enter__();
     bool __fin_ran_8 = false;
     try {
-        // return 42
         ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(42);
         __fin_ran_8 = true;
         __ctx_8.__exit__({}, {}, {});
@@ -183,41 +183,41 @@ void loop_exits(Gate& cm) {
 }
 
 // def main() -> None:
+//     multi()
+//     print("---")
+//     suppress()
+//     print("---")
+//     ref_target()
+//     print("---")
+//     deref_manager(Holder(), Holder())
+//     print("---")
+//     loop_exits(Gate(7))
+//     print("---")
+//     print(ret_through(Gate(9)))
 void main() {
-    // multi()
     multi();
-    // print("---")
     std::cout << "---" << "\n";
-    // suppress()
     suppress();
-    // print("---")
     std::cout << "---" << "\n";
-    // ref_target()
     ref_target();
-    // print("---")
     std::cout << "---" << "\n";
-    // deref_manager(Holder(), Holder())
     Holder __tmp_1 = Holder();
     Holder __tmp_2 = Holder();
     deref_manager(__tmp_1, __tmp_2);
-    // print("---")
     std::cout << "---" << "\n";
-    // loop_exits(Gate(7))
     Gate __tmp_3 = Gate(::tpy::BigInt(7));
     loop_exits(__tmp_3);
-    // print("---")
     std::cout << "---" << "\n";
-    // print(ret_through(Gate(9)))
     Gate __tmp_4 = Gate(::tpy::BigInt(9));
     std::cout << ret_through(__tmp_4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

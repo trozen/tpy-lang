@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def test() -> None:
+//     b = Box[Point](Point(1))
+//     process(b)
+//     print(b.get().x)  # 11: mutation in process() was visible, so item was a ref not a copy
 void test() {
-    // b = Box[Point](Point(1))
     ::tpystd::tplib::box::Box<Point> b = ::tpystd::tplib::box::Box<Point>(Point(::tpy::BigInt(1)));
-    // process(b)
     process<Point>(b);
-    // print(b.get().x)  # 11: mutation in process() was visible, so item was a ref not a copy
     std::cout << b.get().x << "\n";
 }
 
+// from tplib import Box
+//
+// test()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // test()
     test();
 }
 

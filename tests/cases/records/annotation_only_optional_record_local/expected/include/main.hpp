@@ -11,7 +11,9 @@ struct R;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def build(x: int32) -> int32:
 int32_t build(int32_t x);
+// def main() -> None:
 void main();
 
 // class R:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const R& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline R::R(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

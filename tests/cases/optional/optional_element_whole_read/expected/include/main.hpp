@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def scalars(x: int32 | None) -> int32:
 int32_t scalars(std::optional<int32_t> x);
+// def spans(sp: Span[int32] | None) -> int32:
 int32_t spans(std::optional<std::span<int32_t>> sp);
+// def pairs(tp: tuple[int32, int32] | None) -> int32:
 int32_t pairs(std::optional<std::tuple<int32_t, int32_t>> tp);
+// def main() -> None:
 void main();
 
 void __tpy_init();

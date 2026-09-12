@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_AIter___anext__;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class AIter:
@@ -60,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     return os;
 }
 
-// Async coroutine: AIter.__anext__
+// async def __anext__(self) -> int32:
 struct __coro_AIter___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -86,7 +88,7 @@ inline __coro_AIter___anext__ AIter::__anext__() {
     return __coro_AIter___anext__(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -117,14 +119,17 @@ struct __coro_main_coro {
 
 
 // def __init__(self, limit: int32) -> None:
+//     self.n = 0
+//     self.limit = limit
 inline AIter::AIter(int32_t limit) : n(0), limit(limit) {}
 
 // def __init__(self, limit: int32) -> None:
+//     self.limit = limit
 inline Source::Source(int32_t limit) : limit(limit) {}
 
 // def __aiter__(self) -> Own[AIter]:
+//     return AIter(self.limit)
 inline AIter Source::__aiter__() const {
-    // return AIter(self.limit)
     return AIter(this->limit);
 }
 void __tpy_init();

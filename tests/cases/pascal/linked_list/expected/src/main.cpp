@@ -3,66 +3,70 @@
 
 namespace tpyapp::main {
 
-// head, cur, tmp: PNode;
 node* head{};
-// head, cur, tmp: PNode;
 node* cur{};
-// head, cur, tmp: PNode;
 node* tmp{};
-// i, sum: integer;
 int32_t i{};
-// i, sum: integer;
 int32_t sum{};
 
+// head, cur, tmp: PNode;
+// i, sum: integer;
+//
+// head := nil;
+// for i := 5 downto 1 do
+// begin
+//   new(cur);
+//   cur^.value := i * i;
+//   cur^.next := head;
+//   head := cur;
+// end;
+//
+// cur := head;
+// sum := 0;
+// while cur <> nil do
+// begin
+//   writeln(cur^.value);
+//   sum := sum + cur^.value;
+//   cur := cur^.next;
+// end;
+// write('sum: ');
+// writeln(sum);
+//
+// cur := head;
+// while cur <> nil do
+// begin
+//   tmp := cur^.next;
+//   dispose(cur);
+//   cur := tmp;
+// end;
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // head := nil;
     head = nullptr;
-    // for i := 5 downto 1 do
     int32_t __stop_0 = ::tpy::sub_check<int32_t>(1, 1);
     for (int32_t i = 5; i > __stop_0; --i) {
-        // new(cur);
         cur = static_cast<node*>(::operator new(sizeof(node), std::align_val_t(alignof(node))));
-        // new(cur);
         ::new(static_cast<void*>(cur)) node(node());
-        // cur^.value := i * i;
         ::tpy::deref_check(cur).value = (::tpy::mul_check<int32_t>(i, i));
-        // cur^.next := head;
         cur->next = head;
-        // head := cur;
         head = cur;
     }
-    // cur := head;
     cur = head;
-    // sum := 0;
     sum = 0;
-    // while cur <> nil do
     while ((cur != nullptr)) {
-        // writeln(cur^.value);
         std::cout << cur->value << "\n";
-        // sum := sum + cur^.value;
         sum = (::tpy::add_check<int32_t>(sum, cur->value));
-        // cur := cur^.next;
         cur = cur->next;
     }
-    // write('sum: ');
     std::cout << "sum: ";
-    // writeln(sum);
     std::cout << sum << "\n";
-    // cur := head;
     cur = head;
-    // while cur <> nil do
     while ((cur != nullptr)) {
-        // tmp := cur^.next;
         tmp = cur->next;
-        // dispose(cur);
         ::tpy::destroy_at(cur);
-        // dispose(cur);
         ::operator delete(cur, std::align_val_t(alignof(node)));
-        // cur := tmp;
         cur = tmp;
     }
 }

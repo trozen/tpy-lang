@@ -9,150 +9,150 @@ namespace tpyapp::main {
 // # Revoking the body's declarations must not disturb that -- the pre-declared
 // # name is established before the block, so it outlives it.
 // def read_after() -> int:
+//     for i in range(3):
+//         n = i
+//     return n
 ::tpy::BigInt read_after() {
-    // for i in range(3):
     int32_t n;
     for (int32_t i = 0; i < 3; ++i) {
-        // n = i
         n = i;
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def read_then_assign() -> int:
+//     # The read on the RHS sees the loop's last value; the assignment targets
+//     # the same local.
+//     for i in range(3):
+//         n = i
+//     n = n + 1
+//     return n
 ::tpy::BigInt read_then_assign() {
-    // # The read on the RHS sees the loop's last value; the assignment targets
-    // # the same local.
-    // for i in range(3):
     int32_t n;
     for (int32_t i = 0; i < 3; ++i) {
-        // n = i
         n = i;
     }
-    // n = n + 1
     n = (::tpy::add_check<int32_t>(n, 1));
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def augmented_after() -> int:
+//     for i in range(3):
+//         n = i
+//     n += 1
+//     return n
 ::tpy::BigInt augmented_after() {
-    // for i in range(3):
     int32_t n;
     for (int32_t i = 0; i < 3; ++i) {
-        // n = i
         n = i;
     }
-    // n += 1
     n = ::tpy::add_check<int32_t>(n, 1);
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def declared_before() -> int:
+//     # Already function-scoped before the loop: the body assigns, never declares.
+//     n = 0
+//     for i in range(3):
+//         n = i
+//     n = 9
+//     return n
 ::tpy::BigInt declared_before() {
-    // # Already function-scoped before the loop: the body assigns, never declares.
-    // n = 0
     int32_t n = 0;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // n = i
         n = i;
     }
-    // n = 9
     n = 9;
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def read_in_later_block() -> int:
+//     # Read from inside a SIBLING block after the declaring one.
+//     for i in range(3):
+//         n = i
+//     total = 0
+//     for _ in range(2):
+//         total += n
+//     return total
 ::tpy::BigInt read_in_later_block() {
-    // # Read from inside a SIBLING block after the declaring one.
-    // for i in range(3):
     int32_t n;
     for (int32_t i = 0; i < 3; ++i) {
-        // n = i
         n = i;
     }
-    // total = 0
     int32_t total = 0;
-    // for _ in range(2):
     for (int32_t _ = 0; _ < 2; ++_) {
-        // total += n
         total = ::tpy::add_check<int32_t>(total, n);
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 
 // def read_after_while() -> int:
+//     # `while` took the same scope-revoke widening as `for`, so it needs the
+//     # same over-trigger guard: a body-declared name read after the loop must
+//     # still be pre-declared at function scope rather than re-declared.
+//     i = 0
+//     n = 0
+//     while i < 3:
+//         n = i
+//         i += 1
+//     return n
 ::tpy::BigInt read_after_while() {
-    // # `while` took the same scope-revoke widening as `for`, so it needs the
-    // # same over-trigger guard: a body-declared name read after the loop must
-    // # still be pre-declared at function scope rather than re-declared.
-    // i = 0
     int32_t i = 0;
-    // n = 0
     int32_t n = 0;
-    // while i < 3:
     while ((i < 3)) {
-        // n = i
         n = i;
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def sibling_loops_reuse_name() -> int:
+//     # Two sibling loops each declaring the same name are independent locals;
+//     # the second must still be able to declare it.
+//     for i in range(2):
+//         n = i + 1
+//         print(n)
+//     for i in range(2):
+//         n = i + 10
+//         print(n)
+//     return n
 ::tpy::BigInt sibling_loops_reuse_name() {
-    // # Two sibling loops each declaring the same name are independent locals;
-    // # the second must still be able to declare it.
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // n = i + 1
         int32_t n = (::tpy::add_check<int32_t>(i, 1));
-        // print(n)
         std::cout << n << "\n";
     }
-    // for i in range(2):
     int32_t n;
     for (int32_t i = 0; i < 2; ++i) {
-        // n = i + 10
         n = (::tpy::add_check<int32_t>(i, 10));
-        // print(n)
         std::cout << n << "\n";
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def main() -> None:
+//     print(read_after())
+//     print(read_then_assign())
+//     print(augmented_after())
+//     print(declared_before())
+//     print(read_in_later_block())
+//     print(read_after_while())
+//     print(sibling_loops_reuse_name())
 void main() {
-    // print(read_after())
     std::cout << read_after() << "\n";
-    // print(read_then_assign())
     std::cout << read_then_assign() << "\n";
-    // print(augmented_after())
     std::cout << augmented_after() << "\n";
-    // print(declared_before())
     std::cout << declared_before() << "\n";
-    // print(read_in_later_block())
     std::cout << read_in_later_block() << "\n";
-    // print(read_after_while())
     std::cout << read_after_while() << "\n";
-    // print(sibling_loops_reuse_name())
     std::cout << sibling_loops_reuse_name() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,40 +5,47 @@ namespace tpyapp::main {
 
 
 // def add(a: int32, b: int32) -> int32:
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def add3(a: int32, b: int32, c: int32) -> int32:
+//     return a + b + c
 int32_t add3(int32_t a, int32_t b, int32_t c) {
-    // return a + b + c
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a, b)), c));
 }
 
 // def main() -> None:
+//     xs = [1, 2, 3]
+//     ys = [10, 20, 30]
+//
+//     # Two-iterable map with function ref
+//     print(list(map(add, xs, ys)))
+//
+//     # Two-iterable map with lambda
+//     print(list(map(lambda x, y: x * y, [2, 3, 4], [5, 6, 7])))
+//
+//     # Different-length iterables (stops at shortest)
+//     print(list(map(add, [1, 2], [10, 20, 30])))
+//
+//     # Three-iterable map
+//     print(list(map(add3, xs, ys, [100, 200, 300])))
+//
+//     # Three-iterable map with lambda
+//     print(list(map(lambda a, b, c: a + b + c, [1, 2], [10, 20], [100, 200])))
+//
+//     # Lazy iteration (two-iterable)
+//     for v in map(add, xs, ys):
+//         print(v)
 void main() {
-    // xs = [1, 2, 3]
     std::array<int32_t, 3> xs = {1, 2, 3};
-    // ys = [10, 20, 30]
     std::array<int32_t, 3> ys = {10, 20, 30};
-    // # Two-iterable map with function ref
-    // print(list(map(add, xs, ys)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, xs, ys))) << "\n";
-    // # Two-iterable map with lambda
-    // print(list(map(lambda x, y: x * y, [2, 3, 4], [5, 6, 7])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t x, int32_t y) -> int32_t { return (::tpy::mul_check<int32_t>(x, y)); }, std::array<int32_t, 3>{2, 3, 4}, std::array<int32_t, 3>{5, 6, 7}))) << "\n";
-    // # Different-length iterables (stops at shortest)
-    // print(list(map(add, [1, 2], [10, 20, 30])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, std::array<int32_t, 2>{1, 2}, std::array<int32_t, 3>{10, 20, 30}))) << "\n";
-    // # Three-iterable map
-    // print(list(map(add3, xs, ys, [100, 200, 300])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add3, xs, ys, std::array<int32_t, 3>{100, 200, 300}))) << "\n";
-    // # Three-iterable map with lambda
-    // print(list(map(lambda a, b, c: a + b + c, [1, 2], [10, 20], [100, 200])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b, int32_t c) -> int32_t { return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a, b)), c)); }, std::array<int32_t, 2>{1, 2}, std::array<int32_t, 2>{10, 20}, std::array<int32_t, 2>{100, 200}))) << "\n";
-    // # Lazy iteration (two-iterable)
-    // for v in map(add, xs, ys):
     {
         auto __src_0 = ::tpy::builtin_map_n<int32_t>(add, xs, ys);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -46,18 +53,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

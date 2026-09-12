@@ -12,8 +12,11 @@ struct Picker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(rows: list[Row]) -> Own[Row]:
 Row take(std::vector<Row>& rows);
+// def take_copy(rows: list[Row]) -> Own[Row]:
 Row take_copy(std::vector<Row>& rows);
+// def main() -> None:
 void main();
 
 // class Row:
@@ -50,17 +53,18 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Row::Row(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     pass
 inline Picker::Picker() {
-    // pass
 }
 
 // def pick(self, rows: list[Row]) -> Row:
+//     # Borrows from ARGUMENT 0, not from self.
+//     return rows[0]
 inline const Row& Picker::pick(const std::vector<Row>& rows) const {
-    // # Borrows from ARGUMENT 0, not from self.
-    // return rows[0]
     return ::tpy::__getitem__(rows, 0);
 }
 void __tpy_init();

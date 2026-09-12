@@ -11,11 +11,17 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_own_dunder_fresh():
 void test_own_dunder_fresh();
+// def test_own_augassign_fallback():
 void test_own_augassign_fallback();
+// def test_list_concat_fresh():
 void test_list_concat_fresh();
+// def test_bytes_concat_fresh():
 void test_bytes_concat_fresh();
+// def test_bytearray_fresh():
 void test_bytearray_fresh();
+// def main():
 void main();
 
 // class Acc:
@@ -43,11 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Acc::Acc(int32_t n) : n(n) {}
 
 // def __add__(self, o: "Acc") -> Own["Acc"]:
+//     return Acc(self.n + o.n)
 inline Acc Acc::__add__(const Acc& o) const {
-    // return Acc(self.n + o.n)
     return Acc((::tpy::add_check<int32_t>(this->n, o.n)));
 }
 void __tpy_init();

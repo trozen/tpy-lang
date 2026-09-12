@@ -42,12 +42,12 @@ std::optional<::tpyapp::colors::Color> EnumUtil<::tpyapp::colors::Color>::try_pa
 namespace tpyapp::colors {
 
 
+// from enum import IntEnum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import IntEnum
 }
 
 } // namespace tpyapp::colors

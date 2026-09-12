@@ -5,8 +5,9 @@ namespace tpyapp::main {
 
 
 // def list_scalar(cells: list[Cell]) -> None:
+//     xs: list[Cell] = [c for c in cells]  # tpyc: warning(/copies Cell into owned storage/)
+//     print(len(xs))
 void list_scalar(const std::vector<Cell>& cells) {
-    // xs: list[Cell] = [c for c in cells]  # tpyc: warning(/copies Cell into owned storage/)
     std::vector<Cell> xs = ({
         std::vector<Cell> __result;
         auto& __obj_0 = cells;
@@ -19,13 +20,13 @@ void list_scalar(const std::vector<Cell>& cells) {
         }
         std::move(__result);
     });
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def list_tuple_member(src: list[tuple[int32, Cell]]) -> None:
+//     xs: list[tuple[int32, Cell]] = [t for t in src]  # tpyc: warning(/copies Cell into owned storage/)
+//     print(len(xs))
 void list_tuple_member(const std::vector<std::tuple<int32_t, Cell>>& src) {
-    // xs: list[tuple[int32, Cell]] = [t for t in src]  # tpyc: warning(/copies Cell into owned storage/)
     std::vector<std::tuple<int32_t, Cell>> xs = ({
         std::vector<std::tuple<int32_t, Cell>> __result;
         auto& __obj_0 = src;
@@ -38,13 +39,13 @@ void list_tuple_member(const std::vector<std::tuple<int32_t, Cell>>& src) {
         }
         std::move(__result);
     });
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def dict_value(cells: list[Cell]) -> None:
+//     d: dict[int32, Cell] = {c.v: c for c in cells}  # tpyc: warning(/copies Cell into owned storage/)
+//     print(len(d))
 void dict_value(const std::vector<Cell>& cells) {
-    // d: dict[int32, Cell] = {c.v: c for c in cells}  # tpyc: warning(/copies Cell into owned storage/)
     ::tpy::ordered_map<int32_t, Cell> d = ({
         ::tpy::ordered_map<int32_t, Cell> __result;
         auto& __obj_0 = cells;
@@ -56,13 +57,13 @@ void dict_value(const std::vector<Cell>& cells) {
         }
         std::move(__result);
     });
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def exempt_fresh(n: int32) -> None:
+//     xs: list[Cell] = [Cell(i) for i in range(n)]  # tpyc: ok
+//     print(len(xs))
 void exempt_fresh(int32_t n) {
-    // xs: list[Cell] = [Cell(i) for i in range(n)]  # tpyc: ok
     std::vector<Cell> xs = ({
         std::vector<Cell> __result;
         const int32_t __stop_0 = n;
@@ -72,13 +73,13 @@ void exempt_fresh(int32_t n) {
         }
         std::move(__result);
     });
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def exempt_copy(cells: list[Cell]) -> None:
+//     xs: list[Cell] = [copy(c) for c in cells]  # tpyc: ok
+//     print(len(xs))
 void exempt_copy(const std::vector<Cell>& cells) {
-    // xs: list[Cell] = [copy(c) for c in cells]  # tpyc: ok
     std::vector<Cell> xs = ({
         std::vector<Cell> __result;
         auto& __obj_0 = cells;
@@ -91,13 +92,13 @@ void exempt_copy(const std::vector<Cell>& cells) {
         }
         std::move(__result);
     });
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def exempt_value(n: int32) -> None:
+//     xs: list[int32] = [i for i in range(n)]  # tpyc: ok
+//     print(len(xs))
 void exempt_value(int32_t n) {
-    // xs: list[int32] = [i for i in range(n)]  # tpyc: ok
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = n;
@@ -107,36 +108,35 @@ void exempt_value(int32_t n) {
         }
         std::move(__result);
     });
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def main() -> None:
+//     cells = [Cell(1), Cell(2)]
+//     src = [(1, Cell(5))]
+//     list_scalar(cells)
+//     list_tuple_member(src)
+//     dict_value(cells)
+//     exempt_fresh(2)
+//     exempt_copy(cells)
+//     exempt_value(3)
 void main() {
-    // cells = [Cell(1), Cell(2)]
     std::vector<Cell> cells = {Cell(1), Cell(2)};
-    // src = [(1, Cell(5))]
     std::vector<std::tuple<int32_t, Cell>> src = {::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>(std::tuple<int32_t, Cell>{1, Cell(5)})};
-    // list_scalar(cells)
     list_scalar(cells);
-    // list_tuple_member(src)
     list_tuple_member(src);
-    // dict_value(cells)
     dict_value(cells);
-    // exempt_fresh(2)
     exempt_fresh(2);
-    // exempt_copy(cells)
     exempt_copy(cells);
-    // exempt_value(3)
     exempt_value(3);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

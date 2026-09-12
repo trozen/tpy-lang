@@ -6,26 +6,37 @@ namespace tpyapp::main {
 
 // @error_return(StopIteration)
 // def first_negative(items: list[int32]) -> int32:
+//     for i in range(len(items)):
+//         if items[i] < 0:
+//             return items[i]
+//     raise StopIteration
 std::expected<int32_t, StopIteration> first_negative(const std::vector<int32_t>& items) {
-    // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if items[i] < 0:
         if ((items[static_cast<std::size_t>(i)] < 0)) {
-            // return items[i]
             return items[static_cast<std::size_t>(i)];
         }
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(StopIteration{});
 }
 
 // def main() -> None:
+//     try:
+//         v = first_negative([1, -2, 3])
+//     except StopIteration:
+//         print("none")
+//     else:
+//         print(v)
+//
+//     try:
+//         v2 = first_negative([1, 2, 3])
+//     except StopIteration:
+//         print("none")
+//     else:
+//         print(v2)
 void main() {
-    // try:
     int32_t v;
     {
-        // v = first_negative([1, -2, 3])
         std::vector<int32_t> __tmp_1 = {1, -2, 3};
         {
             auto __try_tmp_2 = first_negative(__tmp_1);
@@ -33,19 +44,15 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        // print("none")
         std::cout << "none" << "\n";
         __after_try_1:;
     }
-    // try:
     int32_t v2;
     {
-        // v2 = first_negative([1, 2, 3])
         std::vector<int32_t> __tmp_2 = {1, 2, 3};
         {
             auto __try_tmp_4 = first_negative(__tmp_2);
@@ -53,23 +60,21 @@ void main() {
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_3;
         // except StopIteration:
         __except_3:;
-        // print("none")
         std::cout << "none" << "\n";
         __after_try_3:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def check(v: int32 | None) -> str:
+//     if v is None:
+//         return "none"
+//     return "has value"
 std::string check(std::optional<int32_t> v) {
-    // if v is None:
     if ((!v.has_value())) {
-        // return "none"
         return "none";
     }
-    // return "has value"
     return "has value";
 }
 
 // def main() -> None:
+//     print(check(int32(42)))
+//     print(check(None))
 void main() {
-    // print(check(int32(42)))
     std::cout << check(42) << "\n";
-    // print(check(None))
     std::cout << check(std::nullopt) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

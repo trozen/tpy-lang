@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main():
+//     d = Doubler()
+//     apply_and_discard(d, 5)
+//     print("ok")
 void main() {
-    // d = Doubler()
     Doubler d = Doubler();
-    // apply_and_discard(d, 5)
     apply_and_discard(d, 5);
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

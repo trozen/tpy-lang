@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(5)
+//     t = (1, b)
+//     print(t)
+//     print(t[1])
+//     print(hash(t) == hash((1, Box(5))))
+//     b.val = 7
+//     print(t)
 void main() {
-    // b = Box(5)
     Box b = Box(5);
-    // t = (1, b)
     auto t = std::tuple<int32_t, Box*>{1, &(b)};
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
-    // print(t[1])
     std::cout << (*std::get<1>(t)) << "\n";
-    // print(hash(t) == hash((1, Box(5))))
     std::cout << ::tpy::print_bool((::tpy::__hash__(t) == ::tpy::__hash__(std::tuple<int32_t, Box>{1, Box(5)}))) << "\n";
-    // b.val = 7
     b.val = 7;
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

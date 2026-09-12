@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def main():
+//     b: Box | None = Box(1)
+//     match b:
+//         case q:
+//             q.v = 99       # q aliases b's Box
+//     if b is not None:
+//         print(b.v)         # 99
 void main() {
-    // b: Box | None = Box(1)
     Box __slot_1 = Box(::tpy::BigInt(1));
     Box* b = &__slot_1;
-    // match b:
     Box* q;
     auto& __match_subject_1 = b;
-    // case q:
     {
         q = __match_subject_1;
-        // q.v = 99       # q aliases b's Box
         q->v = ::tpy::BigInt(99);
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.v)         # 99
         std::cout << b->v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

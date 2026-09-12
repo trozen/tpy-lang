@@ -11,10 +11,15 @@ struct Store;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(a: bytes, b: bytes) -> int32:
 int32_t pick(::tpy::BytesView a, ::tpy::BytesView b);
+// def pick_local(a: bytes, b: bytes) -> int32:
 int32_t pick_local(::tpy::BytesView a, ::tpy::BytesView b);
+// def pick_rebound(a: bytes, b: bytes) -> int32:
 int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b);
+// def pick_owned(a: bytes, b: bytes) -> bytes:
 ::tpy::Bytes pick_owned(::tpy::BytesView a, ::tpy::BytesView b);
+// def main() -> None:
 void main();
 
 // class Store:
@@ -37,14 +42,15 @@ inline std::ostream& operator<<(std::ostream& os, const Store& obj) {
 
 
 // def __init__(self, data: bytes) -> None:
+//     self.data = data
 inline Store::Store(::tpy::BytesView data) : data(::tpy::Bytes(data)) {}
 
 // def put(self, a: bytes, b: bytes) -> None:
+//     # An OWNED `bytes` field sink over the same view-spelled select: the
+//     # store copies, so the field keeps the bytes after the caller's
+//     # argument buffers are gone.
+//     self.data = a or b  # tpyc: ok
 inline void Store::put(::tpy::BytesView a, ::tpy::BytesView b) {
-    // # An OWNED `bytes` field sink over the same view-spelled select: the
-    // # store copies, so the field keeps the bytes after the caller's
-    // # argument buffers are gone.
-    // self.data = a or b  # tpyc: ok
     this->data = ::tpy::Bytes(((!a.empty()) ? a : b));
 }
 void __tpy_init();

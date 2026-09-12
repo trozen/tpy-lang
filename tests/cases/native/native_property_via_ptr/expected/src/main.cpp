@@ -6,21 +6,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: Ptr[S] = get_s()
+//     # Property access through Ptr[T] -- must emit `.config()`, not `.Config()`.
+//     print(s.Config.v)
 void main() {
-    // s: Ptr[S] = get_s()
     ::x::S* s = get_s();
-    // # Property access through Ptr[T] -- must emit `.config()`, not `.Config()`.
-    // print(s.Config.v)
     std::cout << ::tpy::deref_check(s).config().v << "\n";
 }
 
+// from tpy.extern import native, cpp_template
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native, cpp_template
-    // main()
     main();
 }
 

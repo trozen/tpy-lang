@@ -14,7 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_codes;
 
+// def codes(a: Dog | Cat) -> Iterator[int]:
 __gen_codes codes(::tpy::Union<const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -43,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Generator: codes
+// def codes(a: Dog | Cat) -> Iterator[int]:
 struct __gen_codes : public ::tpy::next_iter_mixin<__gen_codes, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::Union<const Cat*, const Dog*> a;
@@ -70,13 +72,13 @@ struct __gen_codes : public ::tpy::next_iter_mixin<__gen_codes, ::tpy::BigInt> {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Dog::Dog() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Cat::Cat() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

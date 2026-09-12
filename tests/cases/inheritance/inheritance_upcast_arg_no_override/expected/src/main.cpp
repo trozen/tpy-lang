@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def name_of(a: Animal) -> str:
+//     return a.describe()
 std::string name_of(Animal& a) {
-    // return a.describe()
     return a.describe();
 }
 
 // def main() -> None:
+//     d: Dog = Dog("Rex", "Lab")
+//     print(name_of(d))  # tpyc: ok
+//     print(d.bark())
 void main() {
-    // d: Dog = Dog("Rex", "Lab")
     Dog d = Dog("Rex", "Lab");
-    // print(name_of(d))  # tpyc: ok
     std::cout << name_of(d) << "\n";
-    // print(d.bark())
     std::cout << d.bark() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

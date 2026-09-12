@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // # bytearray is a reference type: binding a local or reading a field aliases the
@@ -34,6 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, data: bytearray):
+//     # bytearray is a reference type: storing into a field copies (storage
+//     # form), warned like list/dict/set.
+//     self.data = data  # tpyc: warning(/copies bytearray into field/)
 inline Holder::Holder(const ::tpy::ByteArray& data) : data(data) {}
 void __tpy_init();
 } // namespace tpyapp::main

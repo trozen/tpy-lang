@@ -9,21 +9,24 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def cb(x: int32 | None) -> None:
 void cb(std::optional<int32_t> x);
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      __fn(__a0);
-  }
-void use(__F0&& f);
-void main();
-
 // def use(f: Fn[[int32], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);
   }
+void use(__F0&& f);
+// def main() -> None:
+void main();
+
+// def use(f: Fn[[int32], None]) -> None:
+//     f(7)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      __fn(__a0);
+  }
 void use(__F0&& f) {
-    // f(7)
     f(7);
 }
 

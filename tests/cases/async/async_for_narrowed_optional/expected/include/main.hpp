@@ -16,12 +16,16 @@ struct __gen_each_byte;
 struct __coro_count_chars;
 struct __coro_main_coro;
 
+// def each_byte(b: bytes | None) -> Iterator[int]:
 __gen_each_byte each_byte(std::optional<::tpy::BytesView> b);
+// async def count_chars(s: str | None) -> int:
 __coro_count_chars count_chars(std::optional<std::string_view> s);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: count_chars
+// async def count_chars(s: str | None) -> int:
 struct __coro_count_chars {
     int32_t __state;
     bool __cancel_pending;
@@ -50,7 +54,7 @@ struct __coro_count_chars {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -78,7 +82,7 @@ struct __coro_main_coro {
     }
 };
 
-// Generator: each_byte
+// def each_byte(b: bytes | None) -> Iterator[int]:
 struct __gen_each_byte : public ::tpy::next_iter_mixin<__gen_each_byte, ::tpy::BigInt> {
     int32_t __state;
     std::optional<::tpy::Bytes> b;

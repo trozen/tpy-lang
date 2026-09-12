@@ -9,24 +9,28 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_empty[T]() -> Own[list[T]]:
 template<typename T>
 std::vector<T> make_empty();
+// def make_single[T](x: T) -> Own[list[T]]:
 template<typename T>
 std::vector<T> make_single(::tpy::param_val_or_ref_t<T> x);
+// def make_list(x: int32) -> Own[list[int32]]:
 std::vector<int32_t> make_list(int32_t x);
+// def main():
 void main();
 
 // def make_empty[T]() -> Own[list[T]]:
+//     return []
 template<typename T>
 std::vector<T> make_empty() {
-    // return []
     return std::vector<T>{};
 }
 // def make_single[T](x: T) -> Own[list[T]]:
+//     # The element is an open `T`, so the body states its copy contract here.
+//     return [x]  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 std::vector<T> make_single(::tpy::param_val_or_ref_t<T> x) {
-    // # The element is an open `T`, so the body states its copy contract here.
-    // return [x]  # tpyc: warning(/may copy T into owned storage/)
     return {::tpy::param_to_storage<T>(x)};
 }
 

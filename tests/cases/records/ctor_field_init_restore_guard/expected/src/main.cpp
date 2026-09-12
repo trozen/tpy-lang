@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(A(Node(8)).got)
+//     print(B(3).x)
 void main() {
-    // print(A(Node(8)).got)
     Node __tmp_1 = Node(::tpy::BigInt(8));
     std::cout << A(&(__tmp_1)).got << "\n";
-    // print(B(3).x)
     std::cout << B(::tpy::BigInt(3)).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

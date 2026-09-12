@@ -5,77 +5,77 @@ namespace tpyapp::main {
 
 
 // def pick(a: Cat, b: Cat) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             match b:
+//                 case Cat(lives=v):   # tpyc: ok -- rebinds the outer v
+//                     pass
+//             return v                 # 2, not 1
+//     return -1
 ::tpy::BigInt pick(const Cat& a, const Cat& b) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // match b:
         auto& __match_subject_2 = b;
-        // case Cat(lives=v):   # tpyc: ok -- rebinds the outer v
         {
             v = __match_subject_2.lives;
-            // pass
         }
-        // return v                 # 2, not 1
         return v;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def relabel(a: Cat, b: Cat) -> str:
+//     # Same shape one level deeper: the innermost bind is what every enclosing
+//     # arm reads, so the third `case` -- back on `a` -- is what flows out.
+//     match a:
+//         case Cat(lives=v):
+//             match b:
+//                 case Cat(lives=v):
+//                     match a:
+//                         case Cat(lives=v):
+//                             pass
+//             return str(v)
+//     return "?"
 std::string relabel(const Cat& a, const Cat& b) {
-    // # Same shape one level deeper: the innermost bind is what every enclosing
-    // # arm reads, so the third `case` -- back on `a` -- is what flows out.
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // match b:
         auto& __match_subject_2 = b;
-        // case Cat(lives=v):
         {
             v = __match_subject_2.lives;
-            // match a:
             auto& __match_subject_3 = a;
-            // case Cat(lives=v):
             {
                 v = __match_subject_3.lives;
-                // pass
             }
         }
-        // return str(v)
         return (v).to_string();
     }
     ::std::unreachable();
-    // return "?"
     return "?";
 }
 
 // def main() -> None:
+//     print(pick(Cat(1), Cat(2)))
+//     print(relabel(Cat(1), Cat(2)))
 void main() {
-    // print(pick(Cat(1), Cat(2)))
     Cat __tmp_1 = Cat(::tpy::BigInt(1));
     Cat __tmp_2 = Cat(::tpy::BigInt(2));
     std::cout << pick(__tmp_1, __tmp_2) << "\n";
-    // print(relabel(Cat(1), Cat(2)))
     Cat __tmp_3 = Cat(::tpy::BigInt(1));
     Cat __tmp_4 = Cat(::tpy::BigInt(2));
     std::cout << relabel(__tmp_3, __tmp_4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_xs() -> Own[list[int32]]:
 std::vector<int32_t> make_xs();
+// def make_ys() -> Own[list[int32]]:
 std::vector<int32_t> make_ys();
+// def add(a: int32, b: int32) -> int32:
 int32_t add(int32_t a, int32_t b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

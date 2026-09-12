@@ -14,11 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_sub;
 struct __coro_caller;
 
+// async def sub(n: int) -> int:
 __coro_sub sub(::tpy::BigInt n);
+// async def caller(tag: int) -> int:
 __coro_caller caller(::tpy::BigInt tag);
+// def main() -> None:
 void main();
 
-// Async coroutine: sub
+// async def sub(n: int) -> int:
 struct __coro_sub {
     int32_t __state;
     bool __cancel_pending;
@@ -40,7 +43,7 @@ struct __coro_sub {
     }
 };
 
-// Async coroutine: caller
+// async def caller(tag: int) -> int:
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;

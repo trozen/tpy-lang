@@ -3,33 +3,32 @@
 
 namespace tpyapp::main {
 
-// t1 = (int32(1), "hello")
 std::tuple<int32_t, std::string> t1;
-// t2 = (int32(42), True)
 std::tuple<int32_t, bool> t2;
 
 // def main() -> None:
+//     print(t1)
+//     print(t2)
+//     print(t1[0])
+//     print(t2[1])
 void main() {
-    // print(t1)
     std::cout << ::tpy::TuplePrinter(t1) << "\n";
-    // print(t2)
     std::cout << ::tpy::TuplePrinter(t2) << "\n";
-    // print(t1[0])
     std::cout << std::get<0>(t1) << "\n";
-    // print(t2[1])
     std::cout << ::tpy::print_bool(std::get<1>(t2)) << "\n";
 }
 
+// t1 = (int32(1), "hello")
+// t2 = (int32(42), True)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // t1 = (int32(1), "hello")
     t1 = std::tuple<int32_t, std::string>{1, "hello"};
-    // t2 = (int32(42), True)
     t2 = std::tuple<int32_t, bool>{42, true};
-    // main()
     main();
 }
 

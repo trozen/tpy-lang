@@ -65,17 +65,18 @@ inline std::ostream& operator<<(std::ostream& os, const Bid& obj) {
 
 
 // def __init__(self, a: int32) -> None:
+//     self.amount = a
 inline Bid::Bid(int32_t a) : amount(a) {}
 
 // def __eq__(self, other: "Bid") -> bool:
+//     return self.amount == other.amount
 inline bool Bid::__eq__(const Bid& other) const {
-    // return self.amount == other.amount
     return (this->amount == other.amount);
 }
 
 // def __le__(self, other: "Bid") -> bool:
+//     return self.amount <= other.amount
 inline bool Bid::__le__(const Bid& other) const {
-    // return self.amount <= other.amount
     return (this->amount <= other.amount);
 }
 

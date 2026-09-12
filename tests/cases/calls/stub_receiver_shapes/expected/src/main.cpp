@@ -5,70 +5,70 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     ba = bytearray(b"ab")
+//     ba.append(99)  # tpyc: ok
+//     seed = bytearray(b"xy")
+//     holder = Buf(seed)
+//     holder.data.append(100)  # tpyc: ok
+//     holder.view.append(101)  # tpyc: ok
+//     # The property lends the buffer rather than handing back a copy: both
+//     # appends above have to be visible through the FIELD read.
+//     print(len(holder.data))
+//     print(holder.data[2])
+//     print(holder.data[3])
+//     # An inner-call receiver: `strip()` yields an owned temporary that the
+//     # outer stub method composes onto.
+//     print(ba.strip().upper())  # tpyc: ok
+//     t = Tagged()
+//     t.append(65)  # tpyc: ok
+//     t.append(66)  # tpyc: ok
+//     print(len(t))
+//     print(t.tag)
+//     print(ba)
+//     # The same five shapes one family over.
+//     xs = [1]
+//     xs.append(2)  # tpyc: ok
+//     holder.nums.append(3)  # tpyc: ok
+//     holder.rows.append(4)  # tpyc: ok
+//     print(len(holder.nums))
+//     print(xs.copy().index(2))  # tpyc: ok -- an inner-call receiver
+//     tl = TaggedList()
+//     tl.append(5)  # tpyc: ok
+//     print(len(tl), tl.tag)
 void main() {
-    // ba = bytearray(b"ab")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    // ba.append(99)  # tpyc: ok
     ba.push_back(99);
-    // seed = bytearray(b"xy")
     ::tpy::ByteArray seed = ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
-    // holder = Buf(seed)
     Buf holder = Buf(std::move(seed));
-    // holder.data.append(100)  # tpyc: ok
     holder.data.push_back(100);
-    // holder.view.append(101)  # tpyc: ok
     holder.view().push_back(101);
-    // # The property lends the buffer rather than handing back a copy: both
-    // # appends above have to be visible through the FIELD read.
-    // print(len(holder.data))
     std::cout << ::tpy::__len__(holder.data) << "\n";
-    // print(holder.data[2])
     std::cout << static_cast<int>(::tpy::bytes_getitem(holder.data, 2)) << "\n";
-    // print(holder.data[3])
     std::cout << static_cast<int>(::tpy::bytes_getitem(holder.data, 3)) << "\n";
-    // # An inner-call receiver: `strip()` yields an owned temporary that the
-    // # outer stub method composes onto.
-    // print(ba.strip().upper())  # tpyc: ok
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper(::tpy::bytes_strip(ba))) << "\n";
-    // t = Tagged()
     Tagged t = Tagged();
-    // t.append(65)  # tpyc: ok
     t.push_back(65);
-    // t.append(66)  # tpyc: ok
     t.push_back(66);
-    // print(len(t))
     std::cout << ::tpy::__len__(t) << "\n";
-    // print(t.tag)
     std::cout << t.tag << "\n";
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // # The same five shapes one family over.
-    // xs = [1]
     std::vector<int32_t> xs = {1};
-    // xs.append(2)  # tpyc: ok
     xs.push_back(2);
-    // holder.nums.append(3)  # tpyc: ok
     holder.nums.push_back(3);
-    // holder.rows.append(4)  # tpyc: ok
     holder.rows().push_back(4);
-    // print(len(holder.nums))
     std::cout << ::tpy::__len__(holder.nums) << "\n";
-    // print(xs.copy().index(2))  # tpyc: ok -- an inner-call receiver
     std::cout << ::tpy::list_index(::tpy::list_copy(xs), 2) << "\n";
-    // tl = TaggedList()
     TaggedList tl = TaggedList();
-    // tl.append(5)  # tpyc: ok
     tl.push_back(5);
-    // print(len(tl), tl.tag)
     std::cout << ::tpy::__len__(tl) << " " << tl.tag << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Vec2;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Vec2(ValueType):
@@ -47,19 +48,21 @@ namespace tpyapp::main {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 
 // @classmethod
 // def zero(cls) -> Self:
+//     return cls(0, 0)
 inline Vec2 Vec2::zero() {
-    // return cls(0, 0)
     return Vec2(0, 0);
 }
 
 // @classmethod
 // def diagonal(cls, n: int32) -> Self:
+//     return cls(n, n)
 inline Vec2 Vec2::diagonal(int32_t n) {
-    // return cls(n, n)
     return Vec2(n, n);
 }
 void __tpy_init();

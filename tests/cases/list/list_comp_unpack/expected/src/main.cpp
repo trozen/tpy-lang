@@ -5,11 +5,50 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Unpack from list of tuples
+//     pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
+//     values = [v for k, v in pairs]
+//     print(values)
+//
+//     keys = [k for k, v in pairs]
+//     print(keys)
+//
+//     # Unpack from dict.items()
+//     d: dict[str, int32] = {"x": 10, "y": 20, "z": 30}
+//     doubled = [v * 2 for k, v in d.items()]
+//     print(doubled)
+//
+//     # Unpack with filter
+//     big_keys = [k for k, v in d.items() if v > 15]
+//     print(big_keys)
+//
+//     # Transform both elements
+//     labels = [k + "=" + str(v) for k, v in d.items()]
+//     print(labels)
+//
+//     # Discard with _
+//     vals_only = [v for _, v in pairs]
+//     print(vals_only)
+//
+//     # Filter on first variable
+//     filtered = [v for k, v in d.items() if k != "x"]
+//     print(filtered)
+//
+//     # 3-element tuple unpack
+//     triples: list[tuple[str, int32, bool]] = [("a", 1, True), ("b", 2, False), ("c", 3, True)]
+//     middle = [n for _, n, _ in triples]
+//     print(middle)
+//
+//     first_and_last = [s + ":" + str(b) for s, _, b in triples]
+//     print(first_and_last)
+//
+//     # Non-value element type (const auto& binding via dict.items())
+//     point_map: dict[str, Point] = {"a": Point(1, 2), "b": Point(3, 4)}
+//     pts = [p for _, p in point_map.items()]
+//     print(pts[0].x)
+//     print(pts[1].y)
 void main() {
-    // # Unpack from list of tuples
-    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
-    // values = [v for k, v in pairs]
     std::vector<int32_t> values = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = pairs;
@@ -24,9 +63,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(values)
     std::cout << ::tpy::ListPrinter(values) << "\n";
-    // keys = [k for k, v in pairs]
     std::vector<std::string> keys = ({
         std::vector<std::string> __result;
         auto& __obj_1 = pairs;
@@ -41,12 +78,8 @@ void main() {
         }
         std::move(__result);
     });
-    // print(keys)
     std::cout << ::tpy::ListPrinter(keys) << "\n";
-    // # Unpack from dict.items()
-    // d: dict[str, int32] = {"x": 10, "y": 20, "z": 30}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
-    // doubled = [v * 2 for k, v in d.items()]
     std::vector<int32_t> doubled = ({
         std::vector<int32_t> __result;
         auto __obj_2 = ::tpy::dict_items(d);
@@ -61,10 +94,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
-    // # Unpack with filter
-    // big_keys = [k for k, v in d.items() if v > 15]
     std::vector<std::string> big_keys = ({
         std::vector<std::string> __result;
         auto __obj_3 = ::tpy::dict_items(d);
@@ -81,10 +111,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(big_keys)
     std::cout << ::tpy::ListPrinter(big_keys) << "\n";
-    // # Transform both elements
-    // labels = [k + "=" + str(v) for k, v in d.items()]
     std::vector<::tpy::String> labels = ({
         std::vector<::tpy::String> __result;
         auto __obj_4 = ::tpy::dict_items(d);
@@ -99,10 +126,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(labels)
     std::cout << ::tpy::ListPrinter(labels) << "\n";
-    // # Discard with _
-    // vals_only = [v for _, v in pairs]
     std::vector<int32_t> vals_only = ({
         std::vector<int32_t> __result;
         auto& __obj_5 = pairs;
@@ -116,10 +140,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(vals_only)
     std::cout << ::tpy::ListPrinter(vals_only) << "\n";
-    // # Filter on first variable
-    // filtered = [v for k, v in d.items() if k != "x"]
     std::vector<int32_t> filtered = ({
         std::vector<int32_t> __result;
         auto __obj_6 = ::tpy::dict_items(d);
@@ -136,12 +157,8 @@ void main() {
         }
         std::move(__result);
     });
-    // print(filtered)
     std::cout << ::tpy::ListPrinter(filtered) << "\n";
-    // # 3-element tuple unpack
-    // triples: list[tuple[str, int32, bool]] = [("a", 1, True), ("b", 2, False), ("c", 3, True)]
     std::vector<std::tuple<std::string, int32_t, bool>> triples = {std::tuple<std::string, int32_t, bool>{"a", 1, true}, std::tuple<std::string, int32_t, bool>{"b", 2, false}, std::tuple<std::string, int32_t, bool>{"c", 3, true}};
-    // middle = [n for _, n, _ in triples]
     std::vector<int32_t> middle = ({
         std::vector<int32_t> __result;
         auto& __obj_7 = triples;
@@ -155,9 +172,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(middle)
     std::cout << ::tpy::ListPrinter(middle) << "\n";
-    // first_and_last = [s + ":" + str(b) for s, _, b in triples]
     std::vector<::tpy::String> first_and_last = ({
         std::vector<::tpy::String> __result;
         auto& __obj_8 = triples;
@@ -172,12 +187,8 @@ void main() {
         }
         std::move(__result);
     });
-    // print(first_and_last)
     std::cout << ::tpy::ListPrinter(first_and_last) << "\n";
-    // # Non-value element type (const auto& binding via dict.items())
-    // point_map: dict[str, Point] = {"a": Point(1, 2), "b": Point(3, 4)}
     ::tpy::ordered_map<std::string, Point> point_map = ::tpy::ordered_map<std::string, Point>({{"a", Point(1, 2)}, {"b", Point(3, 4)}});
-    // pts = [p for _, p in point_map.items()]
     std::vector<Point> pts = ({
         std::vector<Point> __result;
         auto __obj_9 = ::tpy::dict_items(point_map);
@@ -191,18 +202,16 @@ void main() {
         }
         std::move(__result);
     });
-    // print(pts[0].x)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // print(pts[1].y)
     std::cout << ::tpy::__getitem__(pts, 1).y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

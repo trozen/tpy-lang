@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def sink(p: tuple[Own[Box], int32]) -> int32:
+//     return p[0].val + p[1]
 int32_t sink(std::tuple<Box, int32_t>&& p) {
-    // return p[0].val + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p).val, std::get<1>(p)));
 }
 
 // def pass_by_name(ob: Own[Box]) -> int32:
+//     pair = (ob, 0)
+//     return sink(pair)
 int32_t pass_by_name(Box&& ob) {
-    // pair = (ob, 0)
     auto pair = std::tuple<Box, int32_t>{std::move(ob), 0};
-    // return sink(pair)
     return sink(std::move(pair));
 }
 
 // def return_by_name(ob: Own[Box]) -> tuple[Own[Box], int32]:
+//     pair = (ob, 1)
+//     return pair
 std::tuple<Box, int32_t> return_by_name(Box&& ob) {
-    // pair = (ob, 1)
     auto pair = std::tuple<Box, int32_t>{std::move(ob), 1};
-    // return pair
     return pair;
 }
 
 // def main() -> None:
+//     print(pass_by_name(Box(5)))
+//     got, n = return_by_name(Box(7))
+//     print(got.val + n)
 void main() {
-    // print(pass_by_name(Box(5)))
     std::cout << pass_by_name(Box(5)) << "\n";
-    // got, n = return_by_name(Box(7))
     auto __tup_1 = return_by_name(Box(7));
     Box got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // print(got.val + n)
     std::cout << (::tpy::add_check<int32_t>(got.val, n)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

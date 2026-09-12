@@ -5,20 +5,20 @@ namespace tpyapp::explib {
 
 
 // def one() -> None:
+//     print("one")
 void one() {
-    // print("one")
     std::cout << "one" << "\n";
 }
 
 // def two() -> None:
+//     print("two")
 void two() {
-    // print("two")
     std::cout << "two" << "\n";
 }
 
 // def _private() -> None:
+//     print("private")
 void _private() {
-    // print("private")
     std::cout << "private" << "\n";
 }
 

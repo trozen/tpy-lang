@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(VERSION)
+//     print(LIMIT)
+//     print(int32(LIMIT) + int32(1))
 void main() {
-    // print(VERSION)
     std::cout << ::repro::pkg::constants::VERSION << "\n";
-    // print(LIMIT)
     std::cout << ::repro::pkg::constants::LIMIT << "\n";
-    // print(int32(LIMIT) + int32(1))
     std::cout << (::tpy::add_check<int32_t>(::repro::pkg::constants::LIMIT, 1)) << "\n";
 }
 
+// # Re-exporting a Final[T] constant through a `# tpy: native_module`
+// # package __init__.py. Codegen has to chase the reexport chain to the
+// # defining module (the facade has no .hpp) and skip the facade-header
+// # include (it doesn't exist).
+// from pkg import VERSION, LIMIT
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Re-exporting a Final[T] constant through a `# tpy: native_module`
-    // # package __init__.py. Codegen has to chase the reexport chain to the
-    // # defining module (the facade has no .hpp) and skip the facade-header
-    // # include (it doesn't exist).
-    // from pkg import VERSION, LIMIT
     ::repro::pkg::constants::__tpy_init();
-    // main()
     main();
 }
 

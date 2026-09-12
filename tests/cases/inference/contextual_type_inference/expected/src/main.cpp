@@ -6,54 +6,60 @@ namespace tpyapp::main {
 
 // # Return context
 // def get_box() -> Own[Container[int32]]:
+//     return make_box()  # tpyc: ok
 Container<int32_t> get_box() {
-    // return make_box()  # tpyc: ok
     return make_box<int32_t>();
 }
 
 // def main():
+//     # Assignment context (annotated var_decl)
+//     b: Container[int32] = make_box()  # tpyc: ok
+//     print(b)
+//
+//     # Record constructor (no __init__, no args) with annotation context
+//     c: Container[int32] = Container()  # tpyc: ok
+//     print(c)
+//
+//     print(get_box())
+//
+//     # Partial inference: args determine T, context not needed
+//     y: int32 = identity(int32(5))  # tpyc: ok
+//     print(y)
+//
+//     # Reassignment context: existing type used as hint
+//     r = Container[int32]()
+//     r = Container()  # tpyc: ok
+//     print(r)
+//
+//     # Constructor with __init__: args infer some params, context infers the rest
+//     p: Pair[int32, str] = Pair(int32(42))  # tpyc: ok -- A from arg, B from context
+//     print(p)
+//
+//     print("done")
 void main() {
     std::optional<Container<int32_t>> __slot_2;
-    // # Assignment context (annotated var_decl)
-    // b: Container[int32] = make_box()  # tpyc: ok
     Container<int32_t> b = make_box<int32_t>();
-    // print(b)
     std::cout << b << "\n";
-    // # Record constructor (no __init__, no args) with annotation context
-    // c: Container[int32] = Container()  # tpyc: ok
     Container<int32_t> c = Container<int32_t>();
-    // print(c)
     std::cout << c << "\n";
-    // print(get_box())
     std::cout << get_box() << "\n";
-    // # Partial inference: args determine T, context not needed
-    // y: int32 = identity(int32(5))  # tpyc: ok
     int32_t y = identity<int32_t>(5);
-    // print(y)
     std::cout << y << "\n";
-    // # Reassignment context: existing type used as hint
-    // r = Container[int32]()
     Container<int32_t> __slot_1 = Container<int32_t>();
     Container<int32_t>* r = &__slot_1;
-    // r = Container()  # tpyc: ok
     r = &*(__slot_2 = Container<int32_t>());
-    // print(r)
     std::cout << (*r) << "\n";
-    // # Constructor with __init__: args infer some params, context infers the rest
-    // p: Pair[int32, str] = Pair(int32(42))  # tpyc: ok -- A from arg, B from context
     Pair<int32_t, std::string> p = Pair<int32_t, std::string>(42);
-    // print(p)
     std::cout << p << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

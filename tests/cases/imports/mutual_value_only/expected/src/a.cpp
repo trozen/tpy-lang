@@ -6,24 +6,24 @@ namespace tpyapp::a {
 
 
 // def K() -> int32:
+//     return 42
 int32_t K() {
-    // return 42
     return 42;
 }
 
 // # Calls back into the cycle peer at value level.
 // def K_then_H() -> int32:
+//     return K() + H()
 int32_t K_then_H() {
-    // return K() + H()
     return (::tpy::add_check<int32_t>(K(), ::tpyapp::b::H()));
 }
 
+// from b import H
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from b import H
     ::tpyapp::b::__tpy_init();
 }
 

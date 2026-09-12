@@ -6,52 +6,58 @@ namespace tpyapp::main {
 
 // # Test str.split() -- separator split, whitespace split, maxsplit
 // def main() -> None:
+//     # Split with separator
+//     parts = "a,b,c".split(",")
+//     print(len(parts), parts[0], parts[1], parts[2])
+//
+//     # Split whitespace default
+//     words = "  one  two  three  ".split()
+//     print(len(words), words[0], words[1], words[2])
+//
+//     # Split with maxsplit
+//     limited = "a,b,c,d".split(",", 2)
+//     print(len(limited), limited[0], limited[1], limited[2])
+//
+//     # Empty parts from consecutive separators
+//     empties = ",a,,b,".split(",")
+//     print(len(empties))
+//
+//     # No match -- entire string as single element
+//     nomatch = "hello".split(",")
+//     print(len(nomatch), nomatch[0])
+//
+//     # Whitespace split on simple spaces
+//     two = "one two three".split()
+//     print(len(two), two[0], two[1], two[2])
+//
+//     # Variable separator
+//     sep = ":"
+//     data = "x:y:z".split(sep)
+//     print(len(data), data[0], data[1], data[2])
 void main() {
-    // # Split with separator
-    // parts = "a,b,c".split(",")
     std::vector<std::string> parts = ::tpy::str_split("a,b,c", ",");
-    // print(len(parts), parts[0], parts[1], parts[2])
     std::cout << ::tpy::__len__(parts) << " " << ::tpy::__getitem__(parts, 0) << " " << ::tpy::__getitem__(parts, 1) << " " << ::tpy::__getitem__(parts, 2) << "\n";
-    // # Split whitespace default
-    // words = "  one  two  three  ".split()
     std::vector<std::string> words = ::tpy::str_split_whitespace("  one  two  three  ");
-    // print(len(words), words[0], words[1], words[2])
     std::cout << ::tpy::__len__(words) << " " << ::tpy::__getitem__(words, 0) << " " << ::tpy::__getitem__(words, 1) << " " << ::tpy::__getitem__(words, 2) << "\n";
-    // # Split with maxsplit
-    // limited = "a,b,c,d".split(",", 2)
     std::vector<std::string> limited = ::tpy::str_split("a,b,c,d", ",", 2);
-    // print(len(limited), limited[0], limited[1], limited[2])
     std::cout << ::tpy::__len__(limited) << " " << ::tpy::__getitem__(limited, 0) << " " << ::tpy::__getitem__(limited, 1) << " " << ::tpy::__getitem__(limited, 2) << "\n";
-    // # Empty parts from consecutive separators
-    // empties = ",a,,b,".split(",")
     std::vector<std::string> empties = ::tpy::str_split(",a,,b,", ",");
-    // print(len(empties))
     std::cout << ::tpy::__len__(empties) << "\n";
-    // # No match -- entire string as single element
-    // nomatch = "hello".split(",")
     std::vector<std::string> nomatch = ::tpy::str_split("hello", ",");
-    // print(len(nomatch), nomatch[0])
     std::cout << ::tpy::__len__(nomatch) << " " << ::tpy::__getitem__(nomatch, 0) << "\n";
-    // # Whitespace split on simple spaces
-    // two = "one two three".split()
     std::vector<std::string> two = ::tpy::str_split_whitespace("one two three");
-    // print(len(two), two[0], two[1], two[2])
     std::cout << ::tpy::__len__(two) << " " << ::tpy::__getitem__(two, 0) << " " << ::tpy::__getitem__(two, 1) << " " << ::tpy::__getitem__(two, 2) << "\n";
-    // # Variable separator
-    // sep = ":"
     std::string_view sep = ":";
-    // data = "x:y:z".split(sep)
     std::vector<std::string> data = ::tpy::str_split("x:y:z", sep);
-    // print(len(data), data[0], data[1], data[2])
     std::cout << ::tpy::__len__(data) << " " << ::tpy::__getitem__(data, 0) << " " << ::tpy::__getitem__(data, 1) << " " << ::tpy::__getitem__(data, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

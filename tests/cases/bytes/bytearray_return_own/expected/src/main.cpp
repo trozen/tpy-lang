@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[bytearray]:
+//     return bytearray(b"hi")
 ::tpy::ByteArray make() {
-    // return bytearray(b"hi")
     return ::tpy::ByteArray(::tpy::bytes_literal("hi", 2));
 }
 
 // def first_param(b: bytearray) -> bytearray:
+//     return b
 ::tpy::ByteArray& first_param(::tpy::ByteArray& b) {
-    // return b
     return b;
 }
 
 // def main() -> None:
+//     print(len(make()))
+//     ba = bytearray(b"abc")
+//     print(len(first_param(ba)))
 void main() {
-    // print(len(make()))
     std::cout << ::tpy::__len__(make()) << "\n";
-    // ba = bytearray(b"abc")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    // print(len(first_param(ba)))
     std::cout << ::tpy::__len__(first_param(ba)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

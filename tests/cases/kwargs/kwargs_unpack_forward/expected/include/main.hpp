@@ -11,8 +11,11 @@ struct Options;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def connect(**kwargs: Unpack[Options]) -> None:
 void connect(const Options& kwargs);
+// def wrapper(**kwargs: Unpack[Options]) -> None:
 void wrapper(const Options& kwargs);
+// def main() -> None:
 void main();
 
 // class Options(TypedDict):

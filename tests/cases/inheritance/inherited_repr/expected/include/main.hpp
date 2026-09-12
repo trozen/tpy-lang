@@ -17,6 +17,7 @@ struct LoudCat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Inherited __repr__ / __str__ on a user record drives operator<< for
@@ -139,45 +140,52 @@ inline std::ostream& operator<<(std::ostream& os, const LoudCat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def __repr__(self) -> str:
+//     return f"Animal({self.name})"
 inline std::string Animal::__repr__() const {
-    // return f"Animal({self.name})"
     return std::format("Animal({})", this->name);
 }
 
 // def __init__(self, msg: str) -> None:
+//     self.msg = msg
 inline Speaker::Speaker(std::string_view msg) : msg(msg) {}
 
 // def __str__(self) -> str:
+//     return f"<{self.msg}>"
 inline std::string Speaker::__str__() const {
-    // return f"<{self.msg}>"
     return std::format("<{}>", this->msg);
 }
 
 // def __init__(self, name: str) -> None:
+//     super().__init__(name)
 inline Dog::Dog(std::string_view name) : Animal(name) {}
 
 // def __init__(self, name: str) -> None:
+//     super().__init__(name)
 inline Cat::Cat(std::string_view name) : Animal(name) {}
 
 // def __repr__(self) -> str:
+//     return f"Cat({self.name})"
 inline std::string Cat::__repr__() const {
-    // return f"Cat({self.name})"
     return std::format("Cat({})", this->name);
 }
 
 // def __init__(self, msg: str) -> None:
+//     super().__init__(msg)
 inline Echo::Echo(std::string_view msg) : Speaker(msg) {}
 
 // # Grandparent (Animal) defines __repr__; Dog has none; Pet has none.
 // # Walks the full user MRO to find Animal.__repr__.
 // def __init__(self, name: str) -> None:
+//     super().__init__(name)
 inline Pet::Pet(std::string_view name) : Dog(name) {}
 
 // # Parent (Cat) overrides Animal.__repr__; closer-wins per MRO.
 // def __init__(self, name: str) -> None:
+//     super().__init__(name)
 inline LoudCat::LoudCat(std::string_view name) : Cat(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

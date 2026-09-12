@@ -6,112 +6,112 @@ namespace tpyapp::main {
 
 // # the monomorphic twin: the same body with the payload monomorphized.
 // def collect_twin(h: Twin, xs: list[Cell]) -> None:
+//     xs.append(h.borrow())  # tpyc: warning(/copies Cell into owned storage/)
 void collect_twin(Twin& h, std::vector<Cell>& xs) {
-    // xs.append(h.borrow())  # tpyc: warning(/copies Cell into owned storage/)
     xs.push_back(h.borrow());
 }
 
 // # the return slot's twin: monomorphized, so the text names the type it copies.
 // def dup_return_twin(h: Twin) -> Own[Cell]:
+//     return h.borrow()  # tpyc: warning(/copies Cell into owned storage/)
 Cell dup_return_twin(Twin& h) {
-    // return h.borrow()  # tpyc: warning(/copies Cell into owned storage/)
     return h.borrow();
 }
 
 // def sec_own_param() -> None:
+//     b = GBox[Cell](Cell(1))
+//     d = b.dup()
+//     b.get().n = 99
+//     print("own-param:", b.get().n, d.get().n)
 void sec_own_param() {
-    // b = GBox[Cell](Cell(1))
     GBox<Cell> b = GBox<Cell>(Cell(1));
-    // d = b.dup()
     GBox<Cell> d = b.dup();
-    // b.get().n = 99
     b.get().n = 99;
-    // print("own-param:", b.get().n, d.get().n)
     std::cout << "own-param:" << " " << b.get().n << " " << d.get().n << "\n";
 }
 
 // def sec_return() -> None:
+//     g = GHolder[Cell](Cell(1))
+//     d = dup_return(g)
+//     g.borrow().n = 99
+//     print("return:", g.borrow().n, d.n)
+//     t = Twin(Cell(1))
+//     dt = dup_return_twin(t)
+//     t.borrow().n = 99
+//     print("return-twin:", t.borrow().n, dt.n)
 void sec_return() {
-    // g = GHolder[Cell](Cell(1))
     GHolder<Cell> g = GHolder<Cell>(Cell(1));
-    // d = dup_return(g)
     Cell d = dup_return<Cell>(g);
-    // g.borrow().n = 99
     g.borrow().n = 99;
-    // print("return:", g.borrow().n, d.n)
     std::cout << "return:" << " " << g.borrow().n << " " << d.n << "\n";
-    // t = Twin(Cell(1))
     Twin t = Twin(Cell(1));
-    // dt = dup_return_twin(t)
     Cell dt = dup_return_twin(t);
-    // t.borrow().n = 99
     t.borrow().n = 99;
-    // print("return-twin:", t.borrow().n, dt.n)
     std::cout << "return-twin:" << " " << t.borrow().n << " " << dt.n << "\n";
 }
 
 // def sec_generic() -> None:
+//     g = GHolder[Cell](Cell(1))
+//     xs: list[Cell] = []
+//     collect_generic(g, xs)
+//     g.borrow().n = 99
+//     print("generic:", g.borrow().n, xs[0].n)
 void sec_generic() {
-    // g = GHolder[Cell](Cell(1))
     GHolder<Cell> g = GHolder<Cell>(Cell(1));
-    // xs: list[Cell] = []
     std::vector<Cell> xs = std::vector<Cell>{};
-    // collect_generic(g, xs)
     collect_generic<Cell>(g, xs);
-    // g.borrow().n = 99
     g.borrow().n = 99;
-    // print("generic:", g.borrow().n, xs[0].n)
     std::cout << "generic:" << " " << g.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n";
 }
 
 // def sec_twin() -> None:
+//     t = Twin(Cell(1))
+//     xs: list[Cell] = []
+//     collect_twin(t, xs)
+//     t.borrow().n = 99
+//     print("twin:", t.borrow().n, xs[0].n)
 void sec_twin() {
-    // t = Twin(Cell(1))
     Twin t = Twin(Cell(1));
-    // xs: list[Cell] = []
     std::vector<Cell> xs = std::vector<Cell>{};
-    // collect_twin(t, xs)
     collect_twin(t, xs);
-    // t.borrow().n = 99
     t.borrow().n = 99;
-    // print("twin:", t.borrow().n, xs[0].n)
     std::cout << "twin:" << " " << t.borrow().n << " " << ::tpy::__getitem__(xs, 0).n << "\n";
 }
 
 // def sec_method() -> None:
+//     g = GHolder[Cell](Cell(1))
+//     r = GRelay[Cell]()
+//     r.take(g)
+//     g.borrow().n = 99
+//     print("method:", g.borrow().n, r.kept[0].n)
 void sec_method() {
-    // g = GHolder[Cell](Cell(1))
     GHolder<Cell> g = GHolder<Cell>(Cell(1));
-    // r = GRelay[Cell]()
     GRelay<Cell> r = GRelay<Cell>();
-    // r.take(g)
     r.take(g);
-    // g.borrow().n = 99
     g.borrow().n = 99;
-    // print("method:", g.borrow().n, r.kept[0].n)
     std::cout << "method:" << " " << g.borrow().n << " " << ::tpy::__getitem__(r.kept, 0).n << "\n";
 }
 
 // def main() -> None:
+//     sec_generic()
+//     sec_twin()
+//     sec_method()
+//     sec_return()
+//     sec_own_param()
 void main() {
-    // sec_generic()
     sec_generic();
-    // sec_twin()
     sec_twin();
-    // sec_method()
     sec_method();
-    // sec_return()
     sec_return();
-    // sec_own_param()
     sec_own_param();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

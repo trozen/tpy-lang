@@ -5,70 +5,70 @@ namespace tpyapp::main {
 
 
 // def make(n: int32) -> Own[Point]:
+//     # Constructor receiver: `Point(n)` is a temporary, and still a borrow.
+//     return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 Point make(int32_t n) {
-    // # Constructor receiver: `Point(n)` is a temporary, and still a borrow.
-    // return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
     return Point(n).updated();
 }
 
 // def make_copy(n: int32) -> Own[Point]:
+//     return copy(Point(n).updated())  # tpyc: ok
 Point make_copy(int32_t n) {
-    // return copy(Point(n).updated())  # tpyc: ok
     return Point(Point(n).updated());
 }
 
 // def owned(n: int32) -> Own[Point]:
+//     # Owning FREE-call receiver: `make(n)` hands back a value, and `updated`
+//     # still hands back a borrow of it.
+//     return make(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 Point owned(int32_t n) {
-    // # Owning FREE-call receiver: `make(n)` hands back a value, and `updated`
-    // # still hands back a borrow of it.
-    // return make(n).updated()  # tpyc: warning(/copies Point into owned storage/)
     return make(n).updated();
 }
 
 // def owned_copy(n: int32) -> Own[Point]:
+//     return copy(make(n).updated())  # tpyc: ok
 Point owned_copy(int32_t n) {
-    // return copy(make(n).updated())  # tpyc: ok
     return Point(make(n).updated());
 }
 
 // def owned_method(f: Factory) -> Own[Point]:
+//     # Owning METHOD receiver on a named parameter: the intermediate link is an
+//     # rvalue, which used to clear the chain and no longer does.
+//     return f.make().updated()  # tpyc: warning(/copies Point into owned storage/)
 Point owned_method(Factory& f) {
-    // # Owning METHOD receiver on a named parameter: the intermediate link is an
-    // # rvalue, which used to clear the chain and no longer does.
-    // return f.make().updated()  # tpyc: warning(/copies Point into owned storage/)
     return f.make().updated();
 }
 
 // def owned_method_copy(f: Factory) -> Own[Point]:
+//     return copy(f.make().updated())  # tpyc: ok
 Point owned_method_copy(Factory& f) {
-    // return copy(f.make().updated())  # tpyc: ok
     return Point(f.make().updated());
 }
 
 // def main() -> None:
+//     p = make(1)
+//     q = owned(1)
+//     r = owned_method(Factory(5))
+//     p.x = 10
+//     print(p.x, q.x, r.x)
+//     print(make_copy(1).x, owned_copy(1).x, owned_method_copy(Factory(5)).x)
 void main() {
-    // p = make(1)
     Point p = make(1);
-    // q = owned(1)
     Point q = owned(1);
-    // r = owned_method(Factory(5))
     Factory __tmp_1 = Factory(5);
     Point r = owned_method(__tmp_1);
-    // p.x = 10
     p.x = 10;
-    // print(p.x, q.x, r.x)
     std::cout << p.x << " " << q.x << " " << r.x << "\n";
-    // print(make_copy(1).x, owned_copy(1).x, owned_method_copy(Factory(5)).x)
     Factory __tmp_2 = Factory(5);
     std::cout << make_copy(1).x << " " << owned_copy(1).x << " " << owned_method_copy(__tmp_2).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

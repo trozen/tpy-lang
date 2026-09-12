@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen() -> Iterator[int32]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class Item:
@@ -58,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<Item> a;
@@ -103,17 +105,18 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 
 // def __init__(self, b: Own[Box[int32]]):
+//     self.boxed = b
 inline Item::Item(::tpystd::tplib::box::Box<int32_t>&& b) : boxed(std::move(b)) {}
 
 // def __enter__(self) -> Own[Item]:
+//     return Item(Box(5))
 inline Item Fresh::__enter__() const {
-    // return Item(Box(5))
     return Item(::tpystd::tplib::box::Box<int32_t>(5));
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Fresh::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

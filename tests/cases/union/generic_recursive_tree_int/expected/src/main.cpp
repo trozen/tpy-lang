@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def sum_leaves(t: Tree[int]) -> int32:
+//     match t:
+//         case list() as branches:
+//             total = 0
+//             for child in branches:
+//                 total += sum_leaves(child)
+//             return total
+//         case int() as v:
+//             return v
 int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // total = 0
         int32_t total = 0;
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            // total += sum_leaves(child)
             total = ::tpy::add_check<int32_t>(total, sum_leaves(child));
         }
-        // return total
         return total;
         break;
     }
-    // case int() as v:
     case 0: {
         auto& v = std::get<0>(__match_subject_1.value);
-        // return v
         return (v).to_fixed_check<int32_t>();
         break;
     }
@@ -39,31 +39,31 @@ int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
 }
 
 // def main() -> None:
+//     t: Tree[int] = [1, [2, 3], 4]  # tpyc: type(Tree[int])
+//     print(leaf_count(t))
+//     print(sum_leaves(t))
+//     leaf: Tree[int] = 9
+//     print(leaf_count(leaf))
+//     a: Tree[int] = [1, 2]
+//     b: Tree[int] = [1, 2]
+//     print(a == b)
 void main() {
-    // t: Tree[int] = [1, [2, 3], 4]  # tpyc: type(Tree[int])
     Tree<::tpy::BigInt> t = std::vector<Tree<::tpy::BigInt>>{1, std::vector<Tree<::tpy::BigInt>>{2, 3}, 4};
-    // print(leaf_count(t))
     std::cout << leaf_count<::tpy::BigInt>(t) << "\n";
-    // print(sum_leaves(t))
     std::cout << sum_leaves(t) << "\n";
-    // leaf: Tree[int] = 9
     Tree<::tpy::BigInt> leaf = 9;
-    // print(leaf_count(leaf))
     std::cout << leaf_count<::tpy::BigInt>(leaf) << "\n";
-    // a: Tree[int] = [1, 2]
     Tree<::tpy::BigInt> a = std::vector<Tree<::tpy::BigInt>>{1, 2};
-    // b: Tree[int] = [1, 2]
     Tree<::tpy::BigInt> b = std::vector<Tree<::tpy::BigInt>>{1, 2};
-    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

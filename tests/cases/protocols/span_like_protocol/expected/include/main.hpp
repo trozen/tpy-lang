@@ -11,11 +11,15 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_span(c: Spannable[int32]) -> int32:
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c);
+// def accept_ro(s: Span[readonly[int32]]) -> int32:
 int32_t accept_ro(std::span<const int32_t> s);
+// def test_pass_to_ro_span(c: Spannable[int32]) -> int32:
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t test_pass_to_ro_span(const T_c& c);
+// def main() -> None:
 void main();
 
 // class Buffer:
@@ -48,42 +52,44 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = [1, 2, 3]
 inline Buffer::Buffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<int32_t> Buffer::__span__() {
-    // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<const int32_t> Buffer::__span__() const {
-    // return self._data
     return ::tpy::as_span(this->_data);
 }
 // def sum_span(c: Spannable[int32]) -> int32:
+//     total: int32 = 0
+//     for x in c:
+//         total += x
+//     return total
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in c:
     auto& __obj_0 = c;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 // def test_pass_to_ro_span(c: Spannable[int32]) -> int32:
+//     """Spannable coerces to Span[readonly[T]]."""
+//     return accept_ro(c)
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t test_pass_to_ro_span(const T_c& c) {
-    // return accept_ro(c)
     return accept_ro(::tpy::as_span(c));
 }
 

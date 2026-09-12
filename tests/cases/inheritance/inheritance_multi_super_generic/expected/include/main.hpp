@@ -13,6 +13,7 @@ struct IntBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -22,6 +23,7 @@ struct Box {
     T val;
 
     // def __init__(self, v: T) -> None:
+    //     self.val = v
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -63,12 +65,13 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 
 
 // def log(self, msg: str) -> None:
+//     print("[log] " + msg)
 inline void Logger::log(std::string_view msg) const {
-    // print("[log] " + msg)
     std::cout << (::tpy::str_concat("[log] ", msg)) << "\n";
 }
 
 // def __init__(self, v: int32) -> None:
+//     super().__init__(v)
 inline IntBox::IntBox(int32_t v) : Box<int32_t>(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,6 +12,7 @@ struct Plain;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -61,21 +62,23 @@ inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Widget::Widget(int32_t n) : n(n) {}
 
 // # The subject: the receiver fills an owning tuple ELEMENT slot.
 // def split(self: Own[Self]) -> Own[tuple[Own['Widget'], int32]]:
+//     return (self, 1)  # tpyc: ok
 inline std::tuple<Widget, int32_t> Widget::split() && {
-    // return (self, 1)  # tpyc: ok
     return std::tuple<Widget, int32_t>{std::move((*this)), 1};
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Plain::Plain(int32_t n) : n(n) {}
 
 // def split(self: Own[Self]) -> Own[tuple[Own['Plain'], int32]]:
+//     return (self, 2)  # tpyc: ok
 inline std::tuple<Plain, int32_t> Plain::split() && {
-    // return (self, 2)  # tpyc: ok
     return std::tuple<Plain, int32_t>{std::move((*this)), 2};
 }
 void __tpy_init();

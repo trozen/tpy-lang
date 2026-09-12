@@ -11,6 +11,7 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class C:
@@ -35,16 +36,16 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline C::C() {
-    // pass
 }
 
 // def show(self) -> None:
+//     # Read class constants through `self`.
+//     print(self.LIMIT)
+//     print(self.NAME)
 inline void C::show() const {
-    // # Read class constants through `self`.
-    // print(self.LIMIT)
     std::cout << C::LIMIT << "\n";
-    // print(self.NAME)
     std::cout << C::NAME << "\n";
 }
 void __tpy_init();

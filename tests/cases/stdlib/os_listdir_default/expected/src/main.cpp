@@ -5,45 +5,52 @@ namespace tpyapp::main {
 
 
 // def teardown(base: str) -> None:
+//     for n in ["a.txt", "b.txt"]:
+//         if os.path.exists(base + "/" + n):
+//             os.remove(base + "/" + n)
+//     if os.path.exists(base):
+//         os.rmdir(base)
 void teardown(std::string_view base) {
-    // for n in ["a.txt", "b.txt"]:
     auto __obj_0 = {"a.txt", "b.txt"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view n = *__beg_0;
-        // if os.path.exists(base + "/" + n):
         if (::tpy::stdlib::os::path_exists((::tpy::str_concat((::tpy::str_concat(base, "/")), n)))) {
-            // os.remove(base + "/" + n)
             ::tpy::stdlib::os::remove((::tpy::str_concat((::tpy::str_concat(base, "/")), n)));
         }
     }
-    // if os.path.exists(base):
     if (::tpy::stdlib::os::path_exists(base)) {
-        // os.rmdir(base)
         ::tpy::stdlib::os::rmdir(base);
     }
 }
 
 // def main():
+//     base = "tpy_os_listdir_default"
+//     teardown(base)
+//     os.mkdir(base)
+//     for n in ["a.txt", "b.txt"]:
+//         with open(base + "/" + n, "w") as fh:
+//             fh.write(n)
+//
+//     cwd = os.getcwd()
+//     os.chdir(base)
+//     print(",".join(sorted(os.listdir())))       # no-arg -> cwd
+//     print(",".join(sorted(os.listdir("."))))    # explicit "." matches
+//     os.chdir(cwd)
+//     teardown(base)
 void main() {
-    // base = "tpy_os_listdir_default"
     std::string_view base = "tpy_os_listdir_default";
-    // teardown(base)
     teardown(base);
-    // os.mkdir(base)
     ::tpystd::os::mkdir(base);
-    // for n in ["a.txt", "b.txt"]:
     auto __obj_0 = {"a.txt", "b.txt"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view n = *__beg_0;
-        // with open(base + "/" + n, "w") as fh:
         auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat((::tpy::str_concat(base, "/")), n)), "w");
         auto& fh = __ctx_1.__enter__();
         try {
-            // fh.write(n)
             fh.write(n);
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -56,31 +63,26 @@ void main() {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     }
-    // cwd = os.getcwd()
     std::string cwd = ::tpy::stdlib::os::getcwd();
-    // os.chdir(base)
     ::tpy::stdlib::os::chdir(base);
-    // print(",".join(sorted(os.listdir())))       # no-arg -> cwd
     std::cout << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir())) << "\n";
-    // print(",".join(sorted(os.listdir("."))))    # explicit "." matches
     std::cout << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir("."))) << "\n";
-    // os.chdir(cwd)
     ::tpy::stdlib::os::chdir(cwd);
-    // teardown(base)
     teardown(base);
 }
 
+// # os.listdir() with no argument defaults to the current directory (CPython
+// # listdir(path=".")). Builds a fresh tree in the scratch cwd, chdir into it, and lists with no
+// # arg. Byte-compared against CPython.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.listdir() with no argument defaults to the current directory (CPython
-    // # listdir(path=".")). Builds a fresh tree in the scratch cwd, chdir into it, and lists with no
-    // # arg. Byte-compared against CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

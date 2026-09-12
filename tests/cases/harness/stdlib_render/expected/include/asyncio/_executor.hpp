@@ -74,23 +74,42 @@ struct Executor;
 struct _ExecutorScope;
 
 extern Executor* _current_executor;
+// # epoll_ctl ops + the reactor's drain-batch size. Kept here (not in
+// # posix_epoll.py, which stays declaration-only) the way socket.py hardcodes
+// # the AF_* wire values. The EPOLLIN / EPOLLOUT interest masks live in
+// # `asyncio/__init__.py` next to the fd-awaitable that passes them. The
+// # batch size must equal kMaxBatch in runtime/cpp/src/stdlib/epoll_impl.cpp.
+// _EPOLL_CTL_ADD: Final[int32] = 1
 inline constexpr int32_t _EPOLL_CTL_ADD = 1;
+// _EPOLL_CTL_DEL: Final[int32] = 2
 inline constexpr int32_t _EPOLL_CTL_DEL = 2;
+// _EPOLL_CTL_MOD: Final[int32] = 3
 inline constexpr int32_t _EPOLL_CTL_MOD = 3;
+// _REACTOR_BATCH: Final[int32] = 64
 inline constexpr int32_t _REACTOR_BATCH = 64;
 
+// def task_from_coro[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
 template<typename T>
 Task<T> task_from_coro(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro);
+// def make_executor_owned_task[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
 template<typename T>
 Task<T> make_executor_owned_task(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro);
+// def _build_task[T](coro: Own[Cancellable[T]], executor_owned: bool) -> Own[Task[T]]:
 template<typename T>
 Task<T> _build_task(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, bool executor_owned);
+// def task_to_any_box[T](task: Task[T]) -> Own[Box[AnyTask]]:
 template<typename T>
 ::tpystd::tplib::box::Box<AnyTask> task_to_any_box(const Task<T>& task);
+// def _make_waker(handle: Awaker, task_id: int32,
+//                 generation: int32) -> Waker:
 ::tpystd::coro::Waker _make_waker(::tpystd::coro::Awaker& handle, int32_t task_id, int32_t generation);
+// def _get_current_executor() -> Ptr[Executor]:
 Executor* _get_current_executor();
+// def _set_current_executor(handle: Ptr[Executor]) -> None:
 void _set_current_executor(Executor* handle);
+// def _clear_current_executor() -> None:
 void _clear_current_executor();
+// def _make_any_task_for_test[T](coro: Own[Cancellable[T]]) -> Own[Box[AnyTask]]:
 template<typename T>
 ::tpystd::tplib::box::Box<AnyTask> _make_any_task_for_test(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro);
 
@@ -116,6 +135,12 @@ struct TaskState {
     bool __tpy_owned_ = true;
 
     // def __init__(self, frame: Own[Box[Cancellable[T]]]) -> None:
+    //     self.frame = frame
+    //     self.result = UninitStorage[T]()
+    //     self.exc = None
+    //     self.awaiter = Waker()
+    //     self.done = False
+    //     self.executor_owned = False
     explicit TaskState(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>&& frame) : frame(std::move(frame)), result(::tpy::UninitStorage<T>()), exc(std::nullopt), awaiter(::tpystd::coro::Waker()), done(false), executor_owned(false) {}
     // non-copyable (@nocopy)
     TaskState(const TaskState&) = delete;
@@ -132,14 +157,14 @@ struct TaskState {
     }
 
     // def __del__(self) -> None:
+    //     # Redundant with the slot's own RAII drop -- left until removing this
+    //     # __del__ is verified not to change the type's move/value-class codegen
+    //     # (TODO). A no-op when the result was already consumed.
+    //     if self.result.has():
+    //         self.result.reset()
     ~TaskState() {
         if (!this->__tpy_owned_) return;
-        // # Redundant with the slot's own RAII drop -- left until removing this
-        // # __del__ is verified not to change the type's move/value-class codegen
-        // # (TODO). A no-op when the result was already consumed.
-        // if self.result.has():
         if (this->result.has()) {
-            // self.result.reset()
             this->result.reset();
         }
     }
@@ -147,59 +172,60 @@ struct TaskState {
     // # User-facing poll. Drives the frame for non-executor-owned tasks;
     // # for executor-owned tasks, parks (the executor's poll_any drives).
     // def __poll__(self, w: Waker) -> Own[Poll[T]]:
+    //     if self.done:
+    //         exc = self.exc
+    //         if exc is not None:
+    //             raise exc
+    //         if not self.result.has():
+    //             raise RuntimeError(
+    //                 "Task: __poll__ after Ready was already consumed")
+    //         return poll_ready(self.result.take())
+    //     if self.executor_owned:
+    //         self.awaiter = w
+    //         return poll_pending()
+    //     # Non-executor-owned: drive the frame directly.
+    //     frame = self.frame
+    //     if frame is None:
+    //         raise RuntimeError("Task: __poll__ on empty TaskState")
+    //     try:
+    //         p = frame.get().__poll__(w)
+    //         if p.is_ready():
+    //             self.done = True
+    //         return p
+    //     except BaseException as e:
+    //         self.done = True
+    //         self.exc = Box(e.clone())
+    //         raise
     ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w) {
-        // if self.done:
         if (this->done) {
-            // exc = self.exc
             ::tpystd::tplib::box::Box<::tpy::Throwable>* exc = ::tpy::optional_to_ptr(this->exc);
-            // if exc is not None:
             if ((exc != nullptr)) {
-                // raise exc
                 (*exc).__deref__().__raise__();
             }
-            // if not self.result.has():
             if ((!(this->result.has()))) {
-                // raise RuntimeError(
-                // "Task: __poll__ after Ready was already consumed")
                 throw ::tpy::RuntimeError("Task: __poll__ after Ready was already consumed");
             }
-            // return poll_ready(self.result.take())
             return ::tpystd::coro::poll_ready<T>(this->result.take());
         }
-        // if self.executor_owned:
         if (this->executor_owned) {
-            // self.awaiter = w
             this->awaiter = w;
-            // return poll_pending()
             return ::tpystd::coro::poll_pending<T>();
         }
-        // # Non-executor-owned: drive the frame directly.
-        // frame = self.frame
         ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
-        // if frame is None:
         if ((frame == nullptr)) {
-            // raise RuntimeError("Task: __poll__ on empty TaskState")
             throw ::tpy::RuntimeError("Task: __poll__ on empty TaskState");
         }
-        // try:
         std::optional<::tpystd::tpy::Poll<T>> p;
         {
             try {
-                // p = frame.get().__poll__(w)
                 p = frame->get().__poll__(w);
-                // if p.is_ready():
                 if (p->is_ready()) {
-                    // self.done = True
                     this->done = true;
                 }
-                // return p
                 return std::move((*p));
             } catch (const ::tpy::BaseException& e) {
-                // self.done = True
                 this->done = true;
-                // self.exc = Box(e.clone())
                 this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
-                // raise
                 throw;
             }
         }
@@ -208,63 +234,64 @@ struct TaskState {
     // # AnyTask interface: drives the frame and caches result/exc. Used
     // # by the executor's slot table via the TaskStateView adapter.
     // def poll_any(self, w: Waker) -> bool:
+    //     if self.done:
+    //         return True
+    //     frame = self.frame
+    //     if frame is None:
+    //         return True
+    //     try:
+    //         p = frame.get().__poll__(w)
+    //         if p.is_ready():
+    //             self.done = True
+    //             self.result.construct(p.value())
+    //             self.awaiter.wake()
+    //             return True
+    //         return False
+    //     except BaseException as e:
+    //         self.done = True
+    //         self.exc = Box(e.clone())
+    //         self.awaiter.wake()
+    //         return True
     bool poll_any(::tpystd::coro::Waker w) {
-        // if self.done:
         if (this->done) {
-            // return True
             return true;
         }
-        // frame = self.frame
         ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
-        // if frame is None:
         if ((frame == nullptr)) {
-            // return True
             return true;
         }
-        // try:
         std::optional<::tpystd::tpy::Poll<T>> p;
         {
             try {
-                // p = frame.get().__poll__(w)
                 p = frame->get().__poll__(w);
-                // if p.is_ready():
                 if (p->is_ready()) {
-                    // self.done = True
                     this->done = true;
-                    // self.result.construct(p.value())
                     this->result.construct(std::move(*p).value());
-                    // self.awaiter.wake()
                     this->awaiter.wake();
-                    // return True
                     return true;
                 }
-                // return False
                 return false;
             } catch (const ::tpy::BaseException& e) {
-                // self.done = True
                 this->done = true;
-                // self.exc = Box(e.clone())
                 this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
-                // self.awaiter.wake()
                 this->awaiter.wake();
-                // return True
                 return true;
             }
         }
     }
 
     // def cancel_any(self) -> None:
+    //     if self.done:
+    //         return
+    //     frame = self.frame
+    //     if frame is not None:
+    //         frame.get().cancel()
     void cancel_any() {
-        // if self.done:
         if (this->done) {
-            // return
             return;
         }
-        // frame = self.frame
         ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
-        // if frame is not None:
         if ((frame != nullptr)) {
-            // frame.get().cancel()
             frame->get().cancel();
         }
     }
@@ -288,6 +315,7 @@ struct TaskStateView {
     ::tpystd::tplib::rc::Rc<TaskState<T>> state;
 
     // def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
+    //     self.state = state
     TaskStateView() = default;
     explicit TaskStateView(::tpystd::tplib::rc::Rc<TaskState<T>>&& state) : state(std::move(state)) {}
     // non-copyable (@nocopy)
@@ -297,14 +325,14 @@ struct TaskStateView {
     TaskStateView& operator=(TaskStateView&&) = default;
 
     // def poll_any(self, w: Waker) -> bool:
+    //     return self.state.get().poll_any(w)
     bool poll_any(::tpystd::coro::Waker w) {
-        // return self.state.get().poll_any(w)
         return this->state.get().poll_any(w);
     }
 
     // def cancel_any(self) -> None:
+    //     self.state.get().cancel_any()
     void cancel_any() {
-        // self.state.get().cancel_any()
         this->state.get().cancel_any();
     }
     static constexpr std::string_view __tpy_class_name__ = "asyncio._executor.TaskStateView";
@@ -341,6 +369,8 @@ struct Task {
     ::tpystd::coro::Waker _waker;
 
     // def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
+    //     self._state = state
+    //     self._waker = Waker()
     Task() = default;
     explicit Task(::tpystd::tplib::rc::Rc<TaskState<T>>&& state) : _state(std::move(state)), _waker(::tpystd::coro::Waker()) {}
     // non-copyable (@nocopy)
@@ -350,20 +380,20 @@ struct Task {
     Task& operator=(Task&&) = default;
 
     // def __poll__(self, w: Waker) -> Own[Poll[T]]:
+    //     return self._state.get().__poll__(w)
     ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w) {
-        // return self._state.get().__poll__(w)
         return this->_state.get().__poll__(w);
     }
 
     // def cancel(self) -> None:
+    //     self._state.get().cancel_any()
+    //     # Wake routes through the @dynamic Awaker vtable to the
+    //     # executor's mark_runnable. The generation guard there filters
+    //     # late wakes against a completed slot, so this is safe even
+    //     # after the underlying task has already finished.
+    //     self._waker.wake()
     void cancel() {
-        // self._state.get().cancel_any()
         this->_state.get().cancel_any();
-        // # Wake routes through the @dynamic Awaker vtable to the
-        // # executor's mark_runnable. The generation guard there filters
-        // # late wakes against a completed slot, so this is safe even
-        // # after the underlying task has already finished.
-        // self._waker.wake()
         this->_waker.wake();
     }
 
@@ -390,12 +420,12 @@ struct Task {
     // # (gather) once they've handed off to either entrypoint. A multi-
     // # awaiter TaskState is filed in TODO.md.
     // def clone(self) -> Own[Task[T]]:
+    //     t = Task[T](self._state.clone())
+    //     t._waker = self._waker
+    //     return t
     Task<T> clone() {
-        // t = Task[T](self._state.clone())
         Task<T> t = Task<T>(this->_state.clone());
-        // t._waker = self._waker
         t._waker = this->_waker;
-        // return t
         return t;
     }
     static constexpr std::string_view __tpy_class_name__ = "asyncio._executor.Task";
@@ -607,7 +637,7 @@ struct Executor : ::tpystd::coro::Awaker {
     bool run_until(int32_t main_id);
 
     // def drain_spawned_with_cancel(self, skip_id: int32,
-    // max_polls: int32 = 8) -> None:
+    //                               max_polls: int32 = 8) -> None:
     void drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls = 8);
     static constexpr std::string_view __tpy_class_name__ = "asyncio._executor.Executor";
 };
@@ -663,40 +693,45 @@ namespace tpystd::asyncio::_executor {
 
 
 // def __init__(self, deadline: float, waker: Waker) -> None:
+//     self.deadline = deadline
+//     self.waker = waker
 inline TimerEntry::TimerEntry(double deadline, ::tpystd::coro::Waker waker) : deadline(deadline), waker(waker) {}
 
 // def __lt__(self, other: 'TimerEntry') -> bool:
+//     return self.deadline < other.deadline
 inline bool TimerEntry::__lt__(const TimerEntry& other) const {
-    // return self.deadline < other.deadline
     return (this->deadline < other.deadline);
 }
 
 // def __init__(self) -> None:
+//     self.box = None
+//     self.generation = 0
+//     self.runnable = False
 inline Slot::Slot() : box(std::nullopt), generation(0), runnable(false) {}
 
 // @readonly
 // def is_done(self) -> bool:
+//     return self.box is None
 inline bool Slot::is_done() const {
-    // return self.box is None
     return (!this->box.has_value());
 }
 
 // def __init__(self) -> None:
+//     epfd = posix_epoll.epoll_create()
+//     if epfd < 0:
+//         raise RuntimeError("asyncio reactor: epoll_create failed")
+//     self._epfd = epfd
+//     self._waiters = {}
+//     self._out_fds = Array[int32, 64]()
+//     self._out_events = Array[uint32, 64]()
 inline EpollReactor::EpollReactor() {
-    // epfd = posix_epoll.epoll_create()
     int32_t epfd = ::tpy_epoll_create();
-    // if epfd < 0:
     if ((epfd < 0)) {
-        // raise RuntimeError("asyncio reactor: epoll_create failed")
         throw ::tpy::RuntimeError("asyncio reactor: epoll_create failed");
     }
-    // self._epfd = epfd
     this->_epfd = epfd;
-    // self._waiters = {}
     this->_waiters = ::tpy::ordered_map<int32_t, ::tpystd::coro::Waker>();
-    // self._out_fds = Array[int32, 64]()
     this->_out_fds = std::array<int32_t, 64>();
-    // self._out_events = Array[uint32, 64]()
     this->_out_events = std::array<uint32_t, 64>();
 }
 
@@ -712,114 +747,114 @@ inline EpollReactor& EpollReactor::operator=(EpollReactor&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     self.close()
 inline EpollReactor::~EpollReactor() {
     if (!this->__tpy_owned_) return;
-    // self.close()
     this->close();
 }
 
 // def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
+//     # Re-arm with MOD if the fd is still tracked (a prior would-block
+//     # that has not fired yet); ADD otherwise. `_waiters` membership
+//     # mirrors epoll membership because `poll` removes both together.
+//     if fd in self._waiters:
+//         posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_MOD, fd, events)
+//     else:
+//         posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_ADD, fd, events)
+//     self._waiters[fd] = waker
 inline void EpollReactor::register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker waker) {
-    // # Re-arm with MOD if the fd is still tracked (a prior would-block
-    // # that has not fired yet); ADD otherwise. `_waiters` membership
-    // # mirrors epoll membership because `poll` removes both together.
-    // if fd in self._waiters:
     if ((this->_waiters.contains(fd))) {
-        // posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_MOD, fd, events)
         ::tpy_epoll_ctl(this->_epfd, _EPOLL_CTL_MOD, fd, events);
-    // else:
     } else {
-        // posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_ADD, fd, events)
         ::tpy_epoll_ctl(this->_epfd, _EPOLL_CTL_ADD, fd, events);
     }
-    // self._waiters[fd] = waker
     ::tpy::__setitem__(this->_waiters, fd, waker);
 }
 
 // def unregister_fd(self, fd: int32) -> None:
+//     if fd in self._waiters:
+//         posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)
+//         del self._waiters[fd]
 inline void EpollReactor::unregister_fd(int32_t fd) {
-    // if fd in self._waiters:
     if ((this->_waiters.contains(fd))) {
-        // posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)
         ::tpy_epoll_ctl(this->_epfd, _EPOLL_CTL_DEL, fd, 0);
-        // del self._waiters[fd]
         ::tpy::__delitem__(this->_waiters, fd);
     }
 }
 
 // def count(self) -> int32:
+//     return len(self._waiters)
 inline int32_t EpollReactor::count() const {
-    // return len(self._waiters)
     return ::tpy::__len__(this->_waiters);
 }
 
 // def close(self) -> None:
+//     if self._epfd >= 0:
+//         posix_socket.close(self._epfd)
+//         self._epfd = -1
 inline void EpollReactor::close() {
-    // if self._epfd >= 0:
     if ((this->_epfd >= 0)) {
-        // posix_socket.close(self._epfd)
         ::close(this->_epfd);
-        // self._epfd = -1
         this->_epfd = -1;
     }
 }
 
 // def __init__(self) -> None:
+//     # Backstop for `asyncio.run`'s nested-loop check: a non-null
+//     # current_executor means a `_ExecutorScope` is already active.
+//     # Bare `Executor()` in unit tests is unaffected because those
+//     # tests never set the global.
+//     if _get_current_executor() is not None:
+//         raise RuntimeError(
+//             "Executor: another executor is already running "
+//             "(nested asyncio.run or leaked _ExecutorScope)")
+//     self.slots = []
+//     self.runnable_q = []
+//     self.timer_heap = []
+//     self.reactor = None
+//     self.shutdown_armed = False
 inline Executor::Executor() {
-    // # Backstop for `asyncio.run`'s nested-loop check: a non-null
-    // # current_executor means a `_ExecutorScope` is already active.
-    // # Bare `Executor()` in unit tests is unaffected because those
-    // # tests never set the global.
-    // if _get_current_executor() is not None:
     if ((_get_current_executor() != nullptr)) {
-        // raise RuntimeError(
-        // "Executor: another executor is already running "
-        // "(nested asyncio.run or leaked _ExecutorScope)")
         throw ::tpy::RuntimeError("Executor: another executor is already running (nested asyncio.run or leaked _ExecutorScope)");
     }
-    // self.slots = []
     this->slots = std::vector<Slot>{};
-    // self.runnable_q = []
     this->runnable_q = std::vector<int32_t>{};
-    // self.timer_heap = []
     this->timer_heap = std::vector<TimerEntry>{};
-    // self.reactor = None
     this->reactor = std::nullopt;
-    // self.shutdown_armed = False
     this->shutdown_armed = false;
 }
 
 // def register_timer(self, deadline_seconds: float, waker: Waker) -> None:
+//     heapq.heappush(self.timer_heap, TimerEntry(deadline_seconds, waker))
 inline void Executor::register_timer(double deadline_seconds, ::tpystd::coro::Waker waker) {
-    // heapq.heappush(self.timer_heap, TimerEntry(deadline_seconds, waker))
     ::tpystd::heapq::heappush<TimerEntry>(this->timer_heap, TimerEntry(deadline_seconds, waker));
 }
 
 // # Lazily opens the reactor on the first fd registration so a pure-timer
 // # / pure-CPU program never allocates an epoll fd.
 // def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
+//     if self.reactor is None:
+//         self.reactor = EpollReactor()
+//     reactor = self.reactor
+//     if reactor is not None:
+//         reactor.register_fd(fd, events, waker)
 inline void Executor::register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker waker) {
-    // if self.reactor is None:
     if ((!this->reactor.has_value())) {
-        // self.reactor = EpollReactor()
         this->reactor = EpollReactor();
     }
-    // reactor = self.reactor
     EpollReactor* reactor = ::tpy::optional_to_ptr(this->reactor);
-    // if reactor is not None:
     if ((reactor != nullptr)) {
-        // reactor.register_fd(fd, events, waker)
         reactor->register_fd(fd, events, waker);
     }
 }
 
 // def unregister_fd(self, fd: int32) -> None:
+//     reactor = self.reactor
+//     if reactor is not None:
+//         reactor.unregister_fd(fd)
 inline void Executor::unregister_fd(int32_t fd) {
-    // reactor = self.reactor
     EpollReactor* reactor = ::tpy::optional_to_ptr(this->reactor);
-    // if reactor is not None:
     if ((reactor != nullptr)) {
-        // reactor.unregister_fd(fd)
         reactor->unregister_fd(fd);
     }
 }
@@ -831,101 +866,101 @@ inline void Executor::unregister_fd(int32_t fd) {
 // # method receiver instead of trying to coerce `Ptr[Executor]` to
 // # the `Awaker` protocol param of `_make_waker`.
 // def make_waker_for_slot(self, slot_id: int32, generation: int32) -> Waker:
+//     return _make_waker(self, slot_id, generation)
 inline ::tpystd::coro::Waker Executor::make_waker_for_slot(int32_t slot_id, int32_t generation) {
-    // return _make_waker(self, slot_id, generation)
     return _make_waker((*this), slot_id, generation);
 }
 
 // def spawn(self, box: Own[Box[AnyTask]]) -> int32:
+//     new_id = len(self.slots)
+//     slot = Slot()
+//     slot.box = box
+//     slot.runnable = True
+//     self.slots.append(slot)
+//     self.runnable_q.append(new_id)
+//     return new_id
 inline int32_t Executor::spawn(::tpystd::tplib::box::Box<AnyTask>&& box) {
-    // new_id = len(self.slots)
     int32_t new_id = ::tpy::__len__(this->slots);
-    // slot = Slot()
     Slot slot = Slot();
-    // slot.box = box
     slot.box = std::move(box);
-    // slot.runnable = True
     slot.runnable = true;
-    // self.slots.append(slot)
     this->slots.push_back(std::move(slot));
-    // self.runnable_q.append(new_id)
     this->runnable_q.push_back(new_id);
-    // return new_id
     return new_id;
 }
 
 // def mark_runnable(self, slot_id: int32, generation: int32) -> None:
+//     if slot_id >= len(self.slots):
+//         return
+//     slot = self.slots[slot_id]
+//     if slot.is_done() or slot.generation != generation or slot.runnable:
+//         return
+//     slot.runnable = True
+//     self.runnable_q.append(slot_id)
 inline void Executor::mark_runnable(int32_t slot_id, int32_t generation) {
-    // if slot_id >= len(self.slots):
     if ((slot_id >= ::tpy::__len__(this->slots))) {
-        // return
         return;
     }
-    // slot = self.slots[slot_id]
     Slot& slot = ::tpy::__getitem__(this->slots, slot_id);
-    // if slot.is_done() or slot.generation != generation or slot.runnable:
     if (((slot.is_done() || (slot.generation != generation)) || slot.runnable)) {
-        // return
         return;
     }
-    // slot.runnable = True
     slot.runnable = true;
-    // self.runnable_q.append(slot_id)
     this->runnable_q.push_back(slot_id);
 }
 
 // def drain_runnable(self) -> bool:
+//     any_polled = False
+//     # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
+//     # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
+//     # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
+//     # runnable_q O(n) pop.
+//     while len(self.runnable_q) > 0:
+//         slot_id = self.runnable_q.pop(0)
+//         if self.poll_slot(slot_id):
+//             any_polled = True
+//     return any_polled
 inline bool Executor::drain_runnable() {
-    // any_polled = False
     bool any_polled = false;
-    // # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
-    // # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
-    // # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
-    // # runnable_q O(n) pop.
-    // while len(self.runnable_q) > 0:
     while ((::tpy::__len__(this->runnable_q) > 0)) {
-        // slot_id = self.runnable_q.pop(0)
         int32_t slot_id = ::tpy::list_pop_at(this->runnable_q, 0);
-        // if self.poll_slot(slot_id):
         if (this->poll_slot(slot_id)) {
-            // any_polled = True
             any_polled = true;
         }
     }
-    // return any_polled
     return any_polled;
 }
 
 // @readonly
 // def slot_done(self, slot_id: int32) -> bool:
+//     if slot_id >= len(self.slots):
+//         return False
+//     return self.slots[slot_id].is_done()
 inline bool Executor::slot_done(int32_t slot_id) const {
-    // if slot_id >= len(self.slots):
     if ((slot_id >= ::tpy::__len__(this->slots))) {
-        // return False
         return false;
     }
-    // return self.slots[slot_id].is_done()
     return ::tpy::__getitem__(this->slots, slot_id).is_done();
 }
 
 // @readonly
 // def has_live_tasks(self, skip_id: int32) -> bool:
+//     n = len(self.slots)
+//     i: int32 = 0
+//     while i < n:
+//         if i != skip_id and not self.slots[i].is_done():
+//             return True
+//         i += 1
+//     return False
 inline bool Executor::has_live_tasks(int32_t skip_id) const {
-    // n = len(self.slots)
     int32_t n = ::tpy::__len__(this->slots);
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // if i != skip_id and not self.slots[i].is_done():
         if (((i != skip_id) && (!(::tpy::__getitem__(this->slots, i).is_done())))) {
-            // return True
             return true;
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return False
     return false;
 }
 
@@ -933,46 +968,46 @@ inline bool Executor::has_live_tasks(int32_t skip_id) const {
 // # (finally / __aexit__ / wait_closed), then mark it runnable so the next
 // # drain delivers the cancel at its suspension point.
 // def _cancel_root(self, main_id: int32) -> None:
+//     if main_id >= len(self.slots) or self.slots[main_id].is_done():
+//         return
+//     box = self.slots[main_id].box
+//     if box is not None:
+//         box.get().cancel_any()
+//     self.mark_runnable(main_id, self.slots[main_id].generation)
 inline void Executor::_cancel_root(int32_t main_id) {
-    // if main_id >= len(self.slots) or self.slots[main_id].is_done():
     if (((main_id >= ::tpy::__len__(this->slots)) || ::tpy::__getitem__(this->slots, main_id).is_done())) {
-        // return
         return;
     }
-    // box = self.slots[main_id].box
     ::tpystd::tplib::box::Box<AnyTask>* box = ::tpy::optional_to_ptr(::tpy::__getitem__(this->slots, main_id).box);
-    // if box is not None:
     if ((box != nullptr)) {
-        // box.get().cancel_any()
         box->get().cancel_any();
     }
-    // self.mark_runnable(main_id, self.slots[main_id].generation)
     this->mark_runnable(main_id, ::tpy::__getitem__(this->slots, main_id).generation);
 }
 
 // # True iff a SIGINT has been delivered since the last check; on the first
 // # such observation cancels the root for graceful shutdown.
 // def _check_shutdown_signal(self, main_id: int32, already: bool) -> bool:
+//     if already or not self.shutdown_armed:
+//         return already
+//     if posix_signal.consume() == 0:
+//         return False
+//     self._cancel_root(main_id)
+//     return True
 inline bool Executor::_check_shutdown_signal(int32_t main_id, bool already) {
-    // if already or not self.shutdown_armed:
     if ((already || (!(this->shutdown_armed)))) {
-        // return already
         return already;
     }
-    // if posix_signal.consume() == 0:
     if ((::tpy_signal_consume() == 0)) {
-        // return False
         return false;
     }
-    // self._cancel_root(main_id)
     this->_cancel_root(main_id);
-    // return True
     return true;
 }
 
 // def __init__(self, executor: Executor) -> None:
+//     _set_current_executor(executor)
 inline _ExecutorScope::_ExecutorScope(Executor& executor) {
-    // _set_current_executor(executor)
     _set_current_executor(&executor);
 }
 
@@ -988,49 +1023,56 @@ inline _ExecutorScope& _ExecutorScope::operator=(_ExecutorScope&& other) noexcep
 }
 
 // def __del__(self) -> None:
+//     _clear_current_executor()
 inline _ExecutorScope::~_ExecutorScope() {
     if (!this->__tpy_owned_) return;
-    // _clear_current_executor()
     _clear_current_executor();
 }
 // def task_from_coro[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
+//     """Box an awaitable into a heap-allocated Task[T] without
+//     registering with an executor (no `asyncio.run` required).
+//     """
+//     return _build_task[T](coro, False)
 template<typename T>
 Task<T> task_from_coro(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro) {
-    // return _build_task[T](coro, False)
     return _build_task<T>(std::move(coro), false);
 }
 // def make_executor_owned_task[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
+//     """Build a Task[T] flagged `executor_owned=True` (ready to be
+//     spawned via the executor's slot table)."""
+//     return _build_task[T](coro, True)
 template<typename T>
 Task<T> make_executor_owned_task(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro) {
-    // return _build_task[T](coro, True)
     return _build_task<T>(std::move(coro), true);
 }
 // def _build_task[T](coro: Own[Cancellable[T]], executor_owned: bool) -> Own[Task[T]]:
+//     frame = Box[Cancellable[T]](coro)
+//     state = TaskState[T](frame)
+//     state.executor_owned = executor_owned
+//     return Task[T](Rc.new(state))
 template<typename T>
 Task<T> _build_task(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, bool executor_owned) {
-    // frame = Box[Cancellable[T]](coro)
     ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>> frame = ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>(std::move(coro));
-    // state = TaskState[T](frame)
     TaskState<T> state = TaskState<T>(std::move(frame));
-    // state.executor_owned = executor_owned
     state.executor_owned = executor_owned;
-    // return Task[T](Rc.new(state))
     return Task<T>(Rc<TaskState<T>>::template new_<TaskState<T>>(std::move(state)));
 }
 // def task_to_any_box[T](task: Task[T]) -> Own[Box[AnyTask]]:
+//     """Mirror a `Task[T]`'s shared state into a `Box[AnyTask]` for the
+//     executor's slot table."""
+//     return Box[AnyTask](TaskStateView[T](task._state.clone()))
 template<typename T>
 ::tpystd::tplib::box::Box<AnyTask> task_to_any_box(const Task<T>& task) {
-    // return Box[AnyTask](TaskStateView[T](task._state.clone()))
     return ::tpystd::tplib::box::Box<AnyTask>(::tpy::make_adapter<AnyTask>(TaskStateView<T>(task._state.clone())));
 }
 // # Test-only Box[AnyTask] factory: builds a TaskState[T] without
 // # executor registration so tests can drive the executor directly.
 // def _make_any_task_for_test[T](coro: Own[Cancellable[T]]) -> Own[Box[AnyTask]]:
+//     task = make_executor_owned_task[T](coro)
+//     return task_to_any_box[T](task)
 template<typename T>
 ::tpystd::tplib::box::Box<AnyTask> _make_any_task_for_test(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro) {
-    // task = make_executor_owned_task[T](coro)
     Task<T> task = make_executor_owned_task<T>(std::move(coro));
-    // return task_to_any_box[T](task)
     return task_to_any_box<T>(task);
 }
 

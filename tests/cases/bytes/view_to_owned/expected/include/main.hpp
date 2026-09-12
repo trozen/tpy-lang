@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def process(data: bytes) -> None:
 void process(::tpy::BytesView data);
+// def augassign(data: bytes) -> None:
 void augassign(::tpy::BytesView data);
+// def literal_view() -> None:
 void literal_view();
+// def main() -> None:
 void main();
 
 void __tpy_init();

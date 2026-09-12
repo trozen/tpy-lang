@@ -3,24 +3,33 @@
 
 namespace tpyapp::main {
 
-// # 4 MiB overflows the socket send buffer, so sendall must park at least once
-// # (the peer never reads) -- giving the timeout a parked write to cancel.
-// _BIG = b"x" * (4 * 1024 * 1024)
 ::tpy::Bytes _BIG;
 
 // async def main_coro() -> None:
+//     a, b = socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     loop = asyncio.get_running_loop()
+//
+//     try:
+//         await asyncio.wait_for(loop.sock_recv(b, 16), 0.01)
+//         print("recv: not reached")
+//     except TimeoutError:
+//         print("recv: timed out")
+//
+//     try:
+//         await asyncio.wait_for(loop.sock_sendall(a, _BIG), 0.01)
+//         print("sendall: not reached")
+//     except TimeoutError:
+//         print("sendall: timed out")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = socketpair()
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
-        // a.setblocking(False)
         (*a).setblocking(false);
-        // b.setblocking(False)
         (*b).setblocking(false);
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __state = S_JOIN_2;
         continue;
@@ -31,13 +40,11 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("recv: not reached")
             std::cout << "recv: not reached" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
             __sub_0.reset();
-            // print("recv: timed out")
             std::cout << "recv: timed out" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -52,13 +59,11 @@ namespace tpyapp::main {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r1).value();
             __sub_1.reset();
-            // print("sendall: not reached")
             std::cout << "sendall: not reached" << "\n";
             __state = S_JOIN_1;
             continue;
         } catch (const ::tpy::TimeoutError&) {
             __sub_1.reset();
-            // print("sendall: timed out")
             std::cout << "sendall: timed out" << "\n";
             __state = S_JOIN_1;
             continue;
@@ -77,12 +82,10 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            // await asyncio.wait_for(loop.sock_recv(b, 16), 0.01)
             __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>((*loop).sock_recv((*b), 16)), 0.01);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
-            // print("recv: timed out")
             std::cout << "recv: timed out" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -92,12 +95,10 @@ namespace tpyapp::main {
     }
     case S_JOIN_3: {
         try {
-            // await asyncio.wait_for(loop.sock_sendall(a, _BIG), 0.01)
             __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>((*loop).sock_sendall((*a), _BIG)), 0.01);
             __state = S_RESUME_1;
             continue;
         } catch (const ::tpy::TimeoutError&) {
-            // print("sendall: timed out")
             std::cout << "sendall: timed out" << "\n";
             __state = S_JOIN_1;
             continue;
@@ -117,30 +118,32 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio epoll reactor (v2): cancelling a parked fd awaitable. wait_for's
+// # timeout cancels the inner _SockRecv / _SockSendAll, which unregisters the
+// # fd from the reactor and raises CancelledError; wait_for surfaces that as
+// # TimeoutError. Covers the cancel -> _reactor_unregister_fd -> CancelledError
+// # path for both the read and write awaitables.
+// import asyncio
+// from socket import socketpair
+//
+// # 4 MiB overflows the socket send buffer, so sendall must park at least once
+// # (the peer never reads) -- giving the timeout a parked write to cancel.
+// _BIG = b"x" * (4 * 1024 * 1024)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio epoll reactor (v2): cancelling a parked fd awaitable. wait_for's
-    // # timeout cancels the inner _SockRecv / _SockSendAll, which unregisters the
-    // # fd from the reactor and raises CancelledError; wait_for surfaces that as
-    // # TimeoutError. Covers the cancel -> _reactor_unregister_fd -> CancelledError
-    // # path for both the read and write awaitables.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socketpair
     ::tpystd::socket::__tpy_init();
-    // # 4 MiB overflows the socket send buffer, so sendall must park at least once
-    // # (the peer never reads) -- giving the timeout a parked write to cancel.
-    // _BIG = b"x" * (4 * 1024 * 1024)
     _BIG = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), ::tpy::mul_check<int32_t>(::tpy::mul_check<int32_t>(4, 1024), 1024)));
-    // main()
     main();
 }
 

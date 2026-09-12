@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def view_of_param(s: str) -> None:
+//     v = s.strip()           # tpyc: type(StrView)
+//     print(v)
 void view_of_param(std::string_view s) {
-    // v = s.strip()           # tpyc: type(StrView)
     std::string_view v = ::tpy::str_strip(s);
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def explicit_view_of_param(s: str) -> None:
+//     v: StrView = s          # pinned view of a stable source -> allowed
+//     print(v)
 void explicit_view_of_param(std::string_view s) {
-    // v: StrView = s          # pinned view of a stable source -> allowed
     std::string_view v = s;
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def slice_of_param(s: str) -> None:
+//     v = s[0:3]              # tpyc: type(StrView)
+//     print(v)
 void slice_of_param(std::string_view s) {
-    // v = s[0:3]              # tpyc: type(StrView)
     std::string_view v = ::tpy::str_slice(s, ::tpy::BasicSlice{0, 3});
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def main() -> None:
+//     view_of_param("  trimmed  ")
+//     explicit_view_of_param("kept")
+//     slice_of_param("abcdef")
 void main() {
-    // view_of_param("  trimmed  ")
     view_of_param("  trimmed  ");
-    // explicit_view_of_param("kept")
     explicit_view_of_param("kept");
-    // slice_of_param("abcdef")
     slice_of_param("abcdef");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

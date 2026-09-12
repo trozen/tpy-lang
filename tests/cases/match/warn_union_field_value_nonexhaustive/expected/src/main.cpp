@@ -5,17 +5,18 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> str:
+//     result = "none"
+//     match a:  # tpyc: warning(/non-exhaustive match on 'Cat \| Dog'; missing: Cat, Dog/)
+//         case Dog(legs=4):
+//             result = "quad dog"
+//     return result
 std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
-    // result = "none"
     std::string_view result = "none";
-    // match a:  # tpyc: warning(/non-exhaustive match on 'Cat \| Dog'; missing: Cat, Dog/)
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Dog(legs=4):
         if (__case_1.legs == 4) {
-            // result = "quad dog"
             result = "quad dog";
             goto __match_end_2;
         }
@@ -23,29 +24,28 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     }
     }
 __match_end_2:;
-    // return result
     return std::string(result);
 }
 
 // def main() -> None:
+//     print(describe(Dog(4)))
+//     print(describe(Dog(2)))
+//     print(describe(Cat("x")))
 void main() {
-    // print(describe(Dog(4)))
     Dog __tmp_1 = Dog(::tpy::BigInt(4));
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
-    // print(describe(Dog(2)))
     Dog __tmp_2 = Dog(::tpy::BigInt(2));
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
-    // print(describe(Cat("x")))
     Cat __tmp_3 = Cat("x");
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

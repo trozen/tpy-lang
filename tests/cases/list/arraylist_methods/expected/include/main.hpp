@@ -13,16 +13,27 @@ using ::tpystd::tplib::array_list::ArrayList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_contains() -> None:
 void test_contains();
+// def test_eq() -> None:
 void test_eq();
+// def test_repr() -> None:
 void test_repr();
+// def test_swap() -> None:
 void test_swap();
+// def test_truncate() -> None:
 void test_truncate();
+// def test_index() -> None:
 void test_index();
+// def test_count() -> None:
 void test_count();
+// def test_remove() -> None:
 void test_remove();
+// def test_reverse() -> None:
 void test_reverse();
+// def test_sort() -> None:
 void test_sort();
+// def main() -> None:
 void main();
 
 void __tpy_init();

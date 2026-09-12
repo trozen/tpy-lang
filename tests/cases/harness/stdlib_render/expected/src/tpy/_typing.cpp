@@ -5,13 +5,13 @@ namespace tpystd::typing {
 
 
 
+// from .._bootstrap._decorators import readonly
+// from .._bootstrap._extern import builtin_type, builtin_decorator, builtin_function
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from .._bootstrap._decorators import readonly
-    // from .._bootstrap._extern import builtin_type, builtin_decorator, builtin_function
 }
 
 } // namespace tpystd::typing

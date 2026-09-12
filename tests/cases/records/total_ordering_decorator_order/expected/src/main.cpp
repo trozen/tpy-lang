@@ -3,42 +3,40 @@
 
 namespace tpyapp::main {
 
-// a, b = Outer(int32(1)), Outer(int32(2))
 Outer* a{};
-// a, b = Outer(int32(1)), Outer(int32(2))
 Outer* b{};
-// c, d = Inner(int32(1)), Inner(int32(2))
 Inner* c{};
-// c, d = Inner(int32(1)), Inner(int32(2))
 Inner* d{};
 
+// # @total_ordering composes with @dataclass regardless of decorator
+// # order. The macro defers its synthesis until all eager class macros
+// # have applied -- so by the time it picks an anchor and derives the
+// # missing comparisons, @dataclass has already added the synthesized
+// # __eq__. Both orderings should produce identical results, matching
+// # CPython's runtime late-binding behavior.
+// from dataclasses import dataclass
+// from functools import total_ordering
+//
+// a, b = Outer(int32(1)), Outer(int32(2))
+// print(a < b, a <= b, a > b, a >= b, a == Outer(int32(1)))
+//
+// c, d = Inner(int32(1)), Inner(int32(2))
+// print(c < d, c <= d, c > d, c >= d, c == Inner(int32(1)))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @total_ordering composes with @dataclass regardless of decorator
-    // # order. The macro defers its synthesis until all eager class macros
-    // # have applied -- so by the time it picks an anchor and derives the
-    // # missing comparisons, @dataclass has already added the synthesized
-    // # __eq__. Both orderings should produce identical results, matching
-    // # CPython's runtime late-binding behavior.
-    // from dataclasses import dataclass
-    // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a, b = Outer(int32(1)), Outer(int32(2))
     Outer __unpack_0_0 = Outer(1);
     Outer __unpack_0_1 = Outer(2);
     a = &(__unpack_0_0);
     b = &(__unpack_0_1);
-    // print(a < b, a <= b, a > b, a >= b, a == Outer(int32(1)))
     std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << " " << ::tpy::print_bool((((*a)) <= ((*b)))) << " " << ::tpy::print_bool((((*a)) > ((*b)))) << " " << ::tpy::print_bool((((*a)) >= ((*b)))) << " " << ::tpy::print_bool((((*a)) == (Outer(1)))) << "\n";
-    // c, d = Inner(int32(1)), Inner(int32(2))
     Inner __unpack_1_0 = Inner(1);
     Inner __unpack_1_1 = Inner(2);
     c = &(__unpack_1_0);
     d = &(__unpack_1_1);
-    // print(c < d, c <= d, c > d, c >= d, c == Inner(int32(1)))
     std::cout << ::tpy::print_bool((((*c)) < ((*d)))) << " " << ::tpy::print_bool((((*c)) <= ((*d)))) << " " << ::tpy::print_bool((((*c)) > ((*d)))) << " " << ::tpy::print_bool((((*c)) >= ((*d)))) << " " << ::tpy::print_bool((((*c)) == (Inner(1)))) << "\n";
 }
 

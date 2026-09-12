@@ -3,76 +3,75 @@
 
 namespace tpyapp::main {
 
-// x: int32 | None = None
 std::optional<int32_t> x;
-// y: int32 | None = 10
 std::optional<int32_t> y;
-// b: bool | None = None
 std::optional<bool> b;
-// f: float | None = None
 std::optional<double> f;
-// # 0 must be distinct from None (std::optional<int>(0) has a value)
-// z: int32 | None = 0
 std::optional<int32_t> z;
 
 // # Global-to-local: must stay on value path, no pointer-local indirection
 // def use_global() -> None:
+//     local: int32 | None = y
+//     print(local)
+//     inferred = y
+//     print(inferred is None)
 void use_global() {
-    // local: int32 | None = y
     std::optional<int32_t> local = y;
-    // print(local)
     std::cout << ::tpy::print_optional_val(local) << "\n";
-    // inferred = y
     std::optional<int32_t> inferred = y;
-    // print(inferred is None)
     std::cout << ::tpy::print_bool((!inferred.has_value())) << "\n";
 }
 
+// x: int32 | None = None
+// print(x is None)
+// print(x)
+// x = 42
+// print(x is None)
+// print(x)
+//
+// y: int32 | None = 10
+// print(y)
+//
+// b: bool | None = None
+// print(b)
+// b = True
+// print(b)
+//
+// f: float | None = None
+// print(f)
+// f = 3.14
+// print(f)
+//
+// # 0 must be distinct from None (std::optional<int>(0) has a value)
+// z: int32 | None = 0
+// print(z is None)
+// print(z)
+//
+// use_global()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 | None = None
     x = std::nullopt;
-    // print(x is None)
     std::cout << ::tpy::print_bool((!x.has_value())) << "\n";
-    // print(x)
     std::cout << ::tpy::print_optional_val(x) << "\n";
-    // x = 42
     x = 42;
-    // print(x is None)
     std::cout << ::tpy::print_bool((!x.has_value())) << "\n";
-    // print(x)
     std::cout << ::tpy::print_optional_val(x) << "\n";
-    // y: int32 | None = 10
     y = 10;
-    // print(y)
     std::cout << ::tpy::print_optional_val(y) << "\n";
-    // b: bool | None = None
     b = std::nullopt;
-    // print(b)
     std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(b) << "\n";
-    // b = True
     b = true;
-    // print(b)
     std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(b) << "\n";
-    // f: float | None = None
     f = std::nullopt;
-    // print(f)
     std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(f) << "\n";
-    // f = 3.14
     f = 3.14;
-    // print(f)
     std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(f) << "\n";
-    // # 0 must be distinct from None (std::optional<int>(0) has a value)
-    // z: int32 | None = 0
     z = 0;
-    // print(z is None)
     std::cout << ::tpy::print_bool((!z.has_value())) << "\n";
-    // print(z)
     std::cout << ::tpy::print_optional_val(z) << "\n";
-    // use_global()
     use_global();
 }
 

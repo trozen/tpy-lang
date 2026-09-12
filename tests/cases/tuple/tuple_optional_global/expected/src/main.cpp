@@ -3,65 +3,62 @@
 
 namespace tpyapp::main {
 
-// t1 = T(10)
 T* t1{};
-// t2 = T(20)
 T* t2{};
-// g: tuple[T | None, T | None] = (t1, t2)
 std::tuple<std::optional<T>, std::optional<T>> g;
-// g_partial: tuple[T | None, T | None] = (t1, None)
 std::tuple<std::optional<T>, std::optional<T>> g_partial;
 
 // def consume(p: tuple[T | None, T | None]) -> None:
+//     a, b = p
+//     if a is not None:
+//         print(a.x)
+//     else:
+//         print("None")
+//     if b is not None:
+//         print(b.x)
+//     else:
+//         print("None")
 void consume(const std::tuple<const T*, const T*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.x)
         std::cout << b->x << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
 }
 
 // def main() -> None:
+//     consume(g)
+//     consume(g_partial)
 void main() {
-    // consume(g)
     consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(g));
-    // consume(g_partial)
     consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(g_partial));
 }
 
+// t1 = T(10)
+// t2 = T(20)
+// g: tuple[T | None, T | None] = (t1, t2)
+// g_partial: tuple[T | None, T | None] = (t1, None)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // t1 = T(10)
     static T __global_slot_1 = T(10);
     t1 = &__global_slot_1;
-    // t2 = T(20)
     static T __global_slot_2 = T(20);
     t2 = &__global_slot_2;
-    // g: tuple[T | None, T | None] = (t1, t2)
     g = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{t1, t2});
-    // g_partial: tuple[T | None, T | None] = (t1, None)
     g_partial = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{t1, nullptr});
-    // main()
     main();
 }
 

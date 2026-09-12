@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(first(10, 20, 30))
+//     print(first("a", "b"))
+//     print(count_rest(1, 2, 3, 4))
 void main() {
-    // print(first(10, 20, 30))
     std::array<int32_t, 3> __tmp_1{10, 20, 30};
     std::cout << first<int32_t>(::tpy::varargs<int32_t>(__tmp_1)) << "\n";
-    // print(first("a", "b"))
     std::array<std::string, 2> __tmp_2{"a", "b"};
     std::cout << first<std::string>(::tpy::varargs<std::string>(__tmp_2)) << "\n";
-    // print(count_rest(1, 2, 3, 4))
     std::array<const int32_t, 4> __tmp_3{1, 2, 3, 4};
     std::cout << count_rest<int32_t>(::tpy::varargs<const int32_t>(__tmp_3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

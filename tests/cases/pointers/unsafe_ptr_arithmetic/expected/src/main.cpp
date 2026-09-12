@@ -3,53 +3,48 @@
 
 namespace tpyapp::main {
 
-// arr: Array[int32, 4] = [int32(10), int32(20), int32(30), int32(40)]
 std::array<int32_t, 4>* arr{};
-// base: Ptr[int32] = unsafe_ptr(arr)
 int32_t* base{};
-// # Advance pointer by 2 elements
-// p2: Ptr[int32] = unsafe_ptr_add(base, int64(2))
 int32_t* p2{};
-// # Negative offset
-// p0: Ptr[int32] = unsafe_ptr_add(p2, int64(-2))
 int32_t* p0{};
-// # Pointer difference
-// diff: int64 = unsafe_ptr_diff(p2, base)
 int64_t diff{};
-// # Reverse difference (negative)
-// diff2: int64 = unsafe_ptr_diff(base, p2)
 int64_t diff2{};
 
+// from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_ptr_add, unsafe_ptr_diff
+//
+// arr: Array[int32, 4] = [int32(10), int32(20), int32(30), int32(40)]
+// base: Ptr[int32] = unsafe_ptr(arr)
+//
+// # Advance pointer by 2 elements
+// p2: Ptr[int32] = unsafe_ptr_add(base, int64(2))
+// print(unsafe_load(p2, 0))
+//
+// # Negative offset
+// p0: Ptr[int32] = unsafe_ptr_add(p2, int64(-2))
+// print(unsafe_load(p0, 0))
+//
+// # Pointer difference
+// diff: int64 = unsafe_ptr_diff(p2, base)
+// print(diff)
+//
+// # Reverse difference (negative)
+// diff2: int64 = unsafe_ptr_diff(base, p2)
+// print(diff2)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_ptr_add, unsafe_ptr_diff
-    // arr: Array[int32, 4] = [int32(10), int32(20), int32(30), int32(40)]
     static std::array<int32_t, 4> __global_slot_1 = {10, 20, 30, 40};
     arr = &__global_slot_1;
-    // base: Ptr[int32] = unsafe_ptr(arr)
     base = (*arr).data();
-    // # Advance pointer by 2 elements
-    // p2: Ptr[int32] = unsafe_ptr_add(base, int64(2))
     p2 = (base + 2);
-    // print(unsafe_load(p2, 0))
     std::cout << p2[0] << "\n";
-    // # Negative offset
-    // p0: Ptr[int32] = unsafe_ptr_add(p2, int64(-2))
     p0 = (p2 + -2);
-    // print(unsafe_load(p0, 0))
     std::cout << p0[0] << "\n";
-    // # Pointer difference
-    // diff: int64 = unsafe_ptr_diff(p2, base)
     diff = static_cast<int64_t>(p2 - base);
-    // print(diff)
     std::cout << diff << "\n";
-    // # Reverse difference (negative)
-    // diff2: int64 = unsafe_ptr_diff(base, p2)
     diff2 = static_cast<int64_t>(base - p2);
-    // print(diff2)
     std::cout << diff2 << "\n";
 }
 

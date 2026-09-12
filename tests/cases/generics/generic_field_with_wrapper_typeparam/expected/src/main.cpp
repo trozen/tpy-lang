@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = W[int32](42)
+//     print(w.tag)
 void main() {
-    // w = W[int32](42)
     W<int32_t> w = W<int32_t>(42);
-    // print(w.tag)
     std::cout << w.tag << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

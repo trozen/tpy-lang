@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Child(5).as_pair())
 void main() {
-    // print(Child(5).as_pair())
     std::cout << Child(5).as_pair() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

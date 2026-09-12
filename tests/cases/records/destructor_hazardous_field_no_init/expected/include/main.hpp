@@ -12,6 +12,7 @@ struct Safe;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Hazardous: raw pointer field with no in-class initializer. Codegen
@@ -74,9 +75,9 @@ inline Hazard& Hazard::operator=(Hazard&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("dropping hazard")
 inline Hazard::~Hazard() {
     if (!this->__tpy_owned_) return;
-    // print("dropping hazard")
     std::cout << "dropping hazard" << "\n";
 }
 
@@ -92,9 +93,9 @@ inline Safe& Safe::operator=(Safe&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("dropping safe:", self.name)
 inline Safe::~Safe() {
     if (!this->__tpy_owned_) return;
-    // print("dropping safe:", self.name)
     std::cout << "dropping safe:" << " " << this->name << "\n";
 }
 void __tpy_init();

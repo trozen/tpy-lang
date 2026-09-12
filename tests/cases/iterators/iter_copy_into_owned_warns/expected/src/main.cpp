@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: list[Item] = []
+//     b: list[Item] = [Item(1), Item(2)]
+//     a.extend(b)  # tpyc: warning(/copies Item elements/)
+//     print(len(b))
 void main() {
-    // a: list[Item] = []
     std::vector<Item> a = std::vector<Item>{};
-    // b: list[Item] = [Item(1), Item(2)]
     std::vector<Item> b = {Item(1), Item(2)};
-    // a.extend(b)  # tpyc: warning(/copies Item elements/)
     ::tpy::list_extend(a, b);
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

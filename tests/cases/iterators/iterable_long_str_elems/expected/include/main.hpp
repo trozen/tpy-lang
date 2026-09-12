@@ -10,32 +10,37 @@ namespace tpyapp::main {
 extern std::string NEEDLE;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def proto_hits(xs: Iterable[str]) -> int:
 template<::tpystd::typing::Iterable<std::string> T_xs>
 ::tpy::BigInt proto_hits(T_xs& xs);
+// def narrow_list_hits(xs: list[str] | None) -> int:
 ::tpy::BigInt narrow_list_hits(const std::vector<std::string>* xs);
+// def narrow_set_hits(xs: set[str] | None) -> int:
 ::tpy::BigInt narrow_set_hits(const ::tpy::ordered_set<std::string>* xs);
+// def append_needle(xs: list[str] | None) -> None:
 void append_needle(std::vector<std::string>* xs);
+// def main() -> None:
 void main();
 
 // def proto_hits(xs: Iterable[str]) -> int:
+//     hits = 0
+//     for s in xs:
+//         if s == NEEDLE:
+//             hits += 1
+//     return hits
 template<::tpystd::typing::Iterable<std::string> T_xs>
 ::tpy::BigInt proto_hits(T_xs& xs) {
-    // hits = 0
     int32_t hits = 0;
-    // for s in xs:
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // if s == NEEDLE:
         if ((s == NEEDLE)) {
-            // hits += 1
             hits = ::tpy::add_check<int32_t>(hits, 1);
         }
     }
-    // return hits
     return ::tpy::BigInt(hits);
 }
 

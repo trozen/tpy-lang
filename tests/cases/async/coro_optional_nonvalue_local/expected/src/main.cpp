@@ -5,29 +5,32 @@ namespace tpyapp::main {
 
 
 // def maybe_p(items: list[P], i: int32) -> P | None:
+//     if i < len(items):
+//         return items[i]
+//     return None
 P* maybe_p(std::vector<P>& items, int32_t i) {
-    // if i < len(items):
     if ((i < ::tpy::__len__(items))) {
-        // return items[i]
         return &(::tpy::__getitem__(items, i));
     }
-    // return None
     return nullptr;
 }
 
 // async def pick(items: list[P], i: int32, drop: bool) -> int32:
+//     # h is a pointer-repr Optional local that must survive the await.
+//     h = maybe_p(items, i)
+//     if drop:
+//         h = None
+//     await asyncio.sleep(0)
+//     if h is not None:
+//         return h.x
+//     return -1
 ::tpystd::tpy::Poll<int32_t> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # h is a pointer-repr Optional local that must survive the await.
-        // h = maybe_p(items, i)
         h = maybe_p(items, i);
-        // if drop:
         if (drop) {
-            // h = None
             h = nullptr;
         }
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -37,14 +40,11 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if h is not None:
         if ((h != nullptr)) {
-            // return h.x
             __state = S_DONE;
             int32_t __tpy_async_ret = h->x;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
-        // return -1
         __state = S_DONE;
         int32_t __tpy_async_ret = -1;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -61,18 +61,21 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
 }
 
 // async def driver() -> None:
+//     items: list[P] = []
+//     items.append(P(10))
+//     items.append(P(20))
+//     items.append(P(30))
+//     print(await pick(items, 0, False))
+//     print(await pick(items, 2, False))
+//     print(await pick(items, 5, False))
+//     print(await pick(items, 0, True))
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items: list[P] = []
         items.emplace(std::vector<P>{});
-        // items.append(P(10))
         (*items).push_back(P(10));
-        // items.append(P(20))
         (*items).push_back(P(20));
-        // items.append(P(30))
         (*items).push_back(P(30));
-        // print(await pick(items, 0, False))
         __sub_0.emplace((*items), 0, false);
         __state = S_RESUME_0;
         continue;
@@ -82,9 +85,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await pick(items, 0, False))
         std::cout << __await_lift_0 << "\n";
-        // print(await pick(items, 2, False))
         __sub_1.emplace((*items), 2, false);
         __state = S_RESUME_1;
         continue;
@@ -94,9 +95,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await pick(items, 2, False))
         std::cout << __await_lift_1 << "\n";
-        // print(await pick(items, 5, False))
         __sub_2.emplace((*items), 5, false);
         __state = S_RESUME_2;
         continue;
@@ -106,9 +105,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await pick(items, 5, False))
         std::cout << __await_lift_2 << "\n";
-        // print(await pick(items, 0, True))
         __sub_3.emplace((*items), 0, true);
         __state = S_RESUME_3;
         continue;
@@ -118,7 +115,6 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        // print(await pick(items, 0, True))
         std::cout << __await_lift_3 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -134,25 +130,26 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
+// # Regression: coroutine-frame Optional[NonValue] local. The frame slot
+// # used to be std::optional<std::optional<T>> (double-wrap for the
+// # "uninitialized" outer + storage form inner), which (a) fails to
+// # compile when T is @nocopy (deleted inner copy ctor) and (b) is
+// # semantically a hidden copy for any T -- diverging from CPython's
+// # reference semantics. The frame slot is now `T* = nullptr` (nullptr
+// # serves as both "uninitialized" and "None"), aliasing whatever the
+// # assignment source pointed at. Exercises @nocopy P inner +
+// # survival across a suspension boundary (await). Also exercises an
+// # explicit `h = None` reassign inside the coroutine to hit the
+// # pointer-local rebind path's None-literal branch.
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: coroutine-frame Optional[NonValue] local. The frame slot
-    // # used to be std::optional<std::optional<T>> (double-wrap for the
-    // # "uninitialized" outer + storage form inner), which (a) fails to
-    // # compile when T is @nocopy (deleted inner copy ctor) and (b) is
-    // # semantically a hidden copy for any T -- diverging from CPython's
-    // # reference semantics. The frame slot is now `T* = nullptr` (nullptr
-    // # serves as both "uninitialized" and "None"), aliasing whatever the
-    // # assignment source pointed at. Exercises @nocopy P inner +
-    // # survival across a suspension boundary (await). Also exercises an
-    // # explicit `h = None` reassign inside the coroutine to hit the
-    // # pointer-local rebind path's None-literal branch.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

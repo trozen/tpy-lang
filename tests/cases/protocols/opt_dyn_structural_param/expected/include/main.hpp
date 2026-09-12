@@ -30,7 +30,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(p: Optional[Pet]) -> str:
 std::string greet(Pet* p);
+// def main() -> None:
 void main();
 
 // class Cat:                       # structural conformer, no inheritance
@@ -73,11 +75,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Cat::Cat(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Cat::name() const {
-    // return self.label
     return this->label;
 }
 void __tpy_init();

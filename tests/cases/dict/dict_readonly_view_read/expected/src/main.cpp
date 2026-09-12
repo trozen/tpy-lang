@@ -5,53 +5,52 @@ namespace tpyapp::main {
 
 
 // def total(d: readonly[dict[str, list[int32]]]) -> int32:
+//     n = 0
+//     for k, v in d.items():  # tpyc: ok
+//         n = n + len(v)
+//     for v in d.values():  # tpyc: ok
+//         n = n + v[0]
+//     return n
 int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
-    // n = 0
     int32_t n = 0;
-    // for k, v in d.items():  # tpyc: ok
     auto __obj_0 = ::tpy::dict_items(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        // for k, v in d.items():  # tpyc: ok
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, const std::vector<int32_t>*>>(__for_tup_0);
         std::string_view k = std::get<0>(__tup_1);
         auto&& v = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        // n = n + len(v)
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(v)));
     }
-    // for v in d.values():  # tpyc: ok
     auto __obj_1 = ::tpy::dict_values(d);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& v = *__beg_1;
-        // n = n + v[0]
         n = (::tpy::add_check<int32_t>(n, ::tpy::__getitem__(v, 0)));
     }
-    // return n
     return n;
 }
 
 // def main():
+//     d: dict[str, list[int32]] = {}
+//     d["a"] = [1, 2]
+//     d["b"] = [3]
+//     print(total(d))
 void main() {
-    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // d["a"] = [1, 2]
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1, 2});
-    // d["b"] = [3]
     ::tpy::__setitem__(d, "b", std::vector<int32_t>{3});
-    // print(total(d))
     std::cout << total(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

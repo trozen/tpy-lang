@@ -5,159 +5,158 @@ namespace tpyapp::main {
 
 
 // def take(s: Own[str]) -> int:
+//     return len(s)
 ::tpy::BigInt take(std::string s) {
-    // return len(s)
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 
 // def first_of(src: tuple[str, str]) -> str:
+//     x, y = src
+//     return x
 std::string first_of(const std::tuple<std::string, std::string>& src) {
-    // x, y = src
     const auto& __tup_1 = src;
     std::string_view x = std::get<0>(__tup_1);
     std::string_view y = std::get<1>(__tup_1);
-    // return x
     return std::string(x);
 }
 
 // def first_bytes(src: tuple[bytes, bytes]) -> bytes:
+//     x, y = src
+//     return x
 ::tpy::Bytes first_bytes(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src) {
-    // x, y = src
     const auto& __tup_1 = src;
     ::tpy::BytesView x = std::get<0>(__tup_1);
     ::tpy::BytesView y = std::get<1>(__tup_1);
-    // return x
     return ::tpy::Bytes(x);
 }
 
 // def take_bytes(b: Own[bytes]) -> int:
+//     return len(b)
 ::tpy::BigInt take_bytes(::tpy::Bytes b) {
-    // return len(b)
     return ::tpy::BigInt(::tpy::__len__(b));
 }
 
 // def bytes_elements(src: tuple[bytes, bytes]) -> int:
+//     x, y = src
+//     xs: list[bytes] = [x, y]
+//     xs.append(x)
+//     return len(xs) + take_bytes(y)
 ::tpy::BigInt bytes_elements(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src) {
-    // x, y = src
     const auto& __tup_1 = src;
     ::tpy::BytesView x = std::get<0>(__tup_1);
     ::tpy::BytesView y = std::get<1>(__tup_1);
-    // xs: list[bytes] = [x, y]
     std::vector<::tpy::Bytes> xs = {::tpy::Bytes(x), ::tpy::Bytes(y)};
-    // xs.append(x)
     xs.push_back(::tpy::Bytes(x));
-    // return len(xs) + take_bytes(y)
     return ((::tpy::BigInt(::tpy::__len__(xs))) + (take_bytes(::tpy::Bytes(y))));
 }
 
 // def bytes_accumulate(t: tuple[bytes, bytes]) -> bytes:
+//     a, b = t
+//     out = a
+//     out = out + b
+//     return out
 ::tpy::Bytes bytes_accumulate(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& t) {
-    // a, b = t
     const auto& __tup_1 = t;
     ::tpy::BytesView a = std::get<0>(__tup_1);
     ::tpy::BytesView b = std::get<1>(__tup_1);
-    // out = a
     ::tpy::Bytes out = ::tpy::Bytes(a);
-    // out = out + b
     out = (::tpy::bytes_concat(out, b));
-    // return out
     return out;
 }
 
 // def elements(src: tuple[str, str]) -> int:
+//     x, y = src
+//     # Annotated because two pending-str peers don't unify unannotated
+//     # (BUGS.md "list literal mixing a str-family LOCAL").
+//     xs: list[str] = [x, y]
+//     print(xs[0], xs[1])
+//     return len(xs)
 ::tpy::BigInt elements(const std::tuple<std::string, std::string>& src) {
-    // x, y = src
     const auto& __tup_1 = src;
     std::string_view x = std::get<0>(__tup_1);
     std::string_view y = std::get<1>(__tup_1);
-    // # Annotated because two pending-str peers don't unify unannotated
-    // # (BUGS.md "list literal mixing a str-family LOCAL").
-    // xs: list[str] = [x, y]
     std::vector<std::string> xs = {std::string(x), std::string(y)};
-    // print(xs[0], xs[1])
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
-    // return len(xs)
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
 // def own_arg(src: tuple[str, str]) -> int:
+//     x, y = src
+//     return take(x)
 ::tpy::BigInt own_arg(const std::tuple<std::string, std::string>& src) {
-    // x, y = src
     const auto& __tup_1 = src;
     std::string_view x = std::get<0>(__tup_1);
     std::string_view y = std::get<1>(__tup_1);
-    // return take(x)
     return take(std::string(x));
 }
 
 // def accumulate(t: tuple[str, str]) -> str:
+//     a, b = t
+//     out = a
+//     out = out + b
+//     return out
 std::string accumulate(const std::tuple<std::string, std::string>& t) {
-    // a, b = t
     const auto& __tup_1 = t;
     std::string_view a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
-    // out = a
     std::string out = std::string(a);
-    // out = out + b
     out += b;
-    // return out
     return out;
 }
 
 // def collect(pairs: list[tuple[str, int]]) -> int:
+//     seen: list[str] = []
+//     for name, num in pairs:
+//         seen.append(name)
+//     print(seen[0], seen[1])
+//     return len(seen)
 ::tpy::BigInt collect(const std::vector<std::tuple<std::string, ::tpy::BigInt>>& pairs) {
-    // seen: list[str] = []
     std::vector<std::string> seen = std::vector<std::string>{};
-    // for name, num in pairs:
     auto& __obj_0 = pairs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        // for name, num in pairs:
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
         const ::tpy::BigInt& num = std::get<1>(__tup_1);
-        // seen.append(name)
         seen.push_back(std::string(name));
     }
-    // print(seen[0], seen[1])
     std::cout << ::tpy::__getitem__(seen, 0) << " " << ::tpy::__getitem__(seen, 1) << "\n";
-    // return len(seen)
     return ::tpy::BigInt(::tpy::__len__(seen));
 }
 
 // def main() -> None:
+//     src = ("ab", "c")
+//     bsrc = (b"ab", b"c")
+//     print(first_of(src))
+//     print(first_bytes(bsrc))
+//     print(bytes_elements(bsrc))
+//     print(bytes_accumulate(bsrc))
+//     print(elements(src))
+//     print(own_arg(src))
+//     print(accumulate(src))
+//     print(collect([("a", 1), ("b", 2)]))
 void main() {
-    // src = ("ab", "c")
     std::tuple<std::string, std::string> src = std::tuple<std::string, std::string>{"ab", "c"};
-    // bsrc = (b"ab", b"c")
     std::tuple<::tpy::Bytes, ::tpy::Bytes> bsrc = std::tuple<::tpy::Bytes, ::tpy::Bytes>{::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)};
-    // print(first_of(src))
     std::cout << first_of(src) << "\n";
-    // print(first_bytes(bsrc))
     std::cout << ::tpy::BytesPrinter(first_bytes(bsrc)) << "\n";
-    // print(bytes_elements(bsrc))
     std::cout << bytes_elements(bsrc) << "\n";
-    // print(bytes_accumulate(bsrc))
     std::cout << ::tpy::BytesPrinter(bytes_accumulate(bsrc)) << "\n";
-    // print(elements(src))
     std::cout << elements(src) << "\n";
-    // print(own_arg(src))
     std::cout << own_arg(src) << "\n";
-    // print(accumulate(src))
     std::cout << accumulate(src) << "\n";
-    // print(collect([("a", 1), ("b", 2)]))
     std::vector<std::tuple<std::string, ::tpy::BigInt>> __tmp_1 = {std::tuple<std::string, ::tpy::BigInt>{"a", ::tpy::BigInt(1)}, std::tuple<std::string, ::tpy::BigInt>{"b", ::tpy::BigInt(2)}};
     std::cout << collect(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

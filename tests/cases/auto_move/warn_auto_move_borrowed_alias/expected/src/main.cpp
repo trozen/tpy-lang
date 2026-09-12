@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def consume(p: Own[Point]) -> int32:
+//     return p.x
 int32_t consume(Point&& p) {
-    // return p.x
     return p.x;
 }
 
 // def test(a: Point) -> int32:
+//     b = a  # lvalue init -> T& reference (Tier 2)
+//     return consume(b)  # tpyc: warning(/copies.*into owned storage/)
 int32_t test(const Point& a) {
-    // b = a  # lvalue init -> T& reference (Tier 2)
     const Point& b = a;
-    // return consume(b)  # tpyc: warning(/copies.*into owned storage/)
     Point __tmp_1 = b;
     return consume(std::move(__tmp_1));
 }

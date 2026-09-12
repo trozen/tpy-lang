@@ -6,75 +6,75 @@ namespace tpyapp::main {
 
 // @dispatch
 // def kind(x: bool) -> str:
+//     return "bool"
 std::string kind(bool x) {
-    // return "bool"
     return "bool";
 }
 
 // @dispatch
 // def kind(x: str) -> str:
+//     return "str"
 std::string kind(std::string_view x) {
-    // return "str"
     return "str";
 }
 
 // @dispatch
 // def sv(x: bool) -> str:
+//     return "sv-bool"
 std::string sv(bool x) {
-    // return "sv-bool"
     return "sv-bool";
 }
 
 // @dispatch
 // def sv(x: StrView) -> str:
+//     return "sv-str"
 std::string sv(std::string_view x) {
-    // return "sv-str"
     return "sv-str";
 }
 
 // @dispatch
 // def gen_ov(x: bool) -> str:
+//     return "gen-bool"
 std::string gen_ov(bool x) {
-    // return "gen-bool"
     return "gen-bool";
 }
 
 // def echo(x: str) -> str:
+//     return x
 std::string echo(std::string_view x) {
-    // return x
     return std::string(x);
 }
 
 // def main() -> None:
+//     print(kind("ok"))
+//     print(kind(True))
+//     s = "ok"
+//     print(kind(s))
+//     print(sv("v"))
+//     print(gen_ov("hi"))
+//     print(echo("hi"))
+//     c = C()
+//     print(c.kind("ok"))
+//     print(c.kind(True))
 void main() {
-    // print(kind("ok"))
     std::cout << kind(std::string_view("ok")) << "\n";
-    // print(kind(True))
     std::cout << kind(true) << "\n";
-    // s = "ok"
     std::string_view s = "ok";
-    // print(kind(s))
     std::cout << kind(s) << "\n";
-    // print(sv("v"))
     std::cout << sv(std::string_view("v")) << "\n";
-    // print(gen_ov("hi"))
     std::cout << gen_ov<std::string>("hi") << "\n";
-    // print(echo("hi"))
     std::cout << echo("hi") << "\n";
-    // c = C()
     C c = C();
-    // print(c.kind("ok"))
     std::cout << c.kind(std::string_view("ok")) << "\n";
-    // print(c.kind(True))
     std::cout << c.kind(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

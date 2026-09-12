@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_tail(*nums: int32) -> int32:  # tpyc: ok
 int32_t sum_tail(::tpy::varargs<const int32_t> nums);
+// def main() -> None:
 void main();
 
 void __tpy_init();

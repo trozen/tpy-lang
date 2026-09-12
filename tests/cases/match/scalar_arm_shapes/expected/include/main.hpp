@@ -32,17 +32,29 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def label() -> str:
 std::string label();
+// def chain_call_subject() -> str:
 std::string chain_call_subject();
+// def guarded_call_subject(flag: bool) -> str:
 std::string guarded_call_subject(bool flag);
+// def switch_call_subject(c: Counter) -> int32:
 int32_t switch_call_subject(Counter& c);
+// def str_switch_call_subject() -> int32:
 int32_t str_switch_call_subject();
+// def or_wildcard_switch(n: int32) -> str:
 std::string or_wildcard_switch(int32_t n);
+// def or_wildcard_chain(s: str) -> str:
 std::string or_wildcard_chain(std::string_view s);
+// def as_capture(n: int32) -> int32:
 int32_t as_capture(int32_t n);
+// def optional_inner_as_capture(n: Optional[int32]) -> int32:
 int32_t optional_inner_as_capture(std::optional<int32_t> n);
+// def str_switch_as_capture(s: str) -> int32:
 int32_t str_switch_as_capture(std::string_view s);
+// def poly_as_capture(p: Pet) -> int32:
 int32_t poly_as_capture(Pet& p);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -120,35 +132,38 @@ namespace tpyapp::main {
 
 
 // def __init__(self) -> None:
+//     self.hits = 0
 inline Counter::Counter() : hits(0) {}
 
 // def bump(self) -> int32:
+//     self.hits += 1
+//     return self.hits
 inline int32_t Counter::bump() {
-    // self.hits += 1
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
-    // return self.hits
     return this->hits;
 }
 
 // def __init__(self) -> None:
+//     self.hits = 0
 inline Dog::Dog() : hits(0) {}
 
 // def bump(self) -> int32:
+//     self.hits += 1
+//     return self.hits
 inline int32_t Dog::bump() {
-    // self.hits += 1
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
-    // return self.hits
     return this->hits;
 }
 
 // def __init__(self) -> None:
+//     self.hits = 0
 inline Cat::Cat() : hits(0) {}
 
 // def bump(self) -> int32:
+//     self.hits += 2
+//     return self.hits
 inline int32_t Cat::bump() {
-    // self.hits += 2
     this->hits = ::tpy::add_check<int32_t>(this->hits, 2);
-    // return self.hits
     return this->hits;
 }
 void __tpy_init();

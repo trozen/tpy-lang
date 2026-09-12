@@ -8,6 +8,7 @@
 namespace tpyapp::caps {
 
 inline constexpr std::string_view __name__ = "caps";
+// CAP: Final[int32] = 4
 inline constexpr int32_t CAP = 4;
 
 void __tpy_init();

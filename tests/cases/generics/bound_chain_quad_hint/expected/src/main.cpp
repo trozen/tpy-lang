@@ -5,20 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h: Holder[Leaf] = make(Leaf("d"))  # tpyc: type(Holder[Leaf])
+//     print(h.get().kind())
 void main() {
-    // h: Holder[Leaf] = make(Leaf("d"))  # tpyc: type(Holder[Leaf])
     Holder<Leaf> h = make<Leaf, Leaf, Leaf, Leaf>(Leaf("d"));
-    // print(h.get().kind())
     std::cout << h.get().kind() << "\n";
 }
 
+// from tpy.unsafe import unsafe_take, unsafe_release
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_take, unsafe_release
-    // main()
     main();
 }
 

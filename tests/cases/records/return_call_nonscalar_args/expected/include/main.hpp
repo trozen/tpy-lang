@@ -11,9 +11,13 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def build(label: str, values: list[int32]) -> Own[Config]:
 Config build(std::string_view label, const std::vector<int32_t>& values);
+// def make() -> Own[Config]:
 Config make();
+// def sized() -> int32:
 int32_t sized();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -42,6 +46,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, label: str, size: int32) -> None:
+//     self.label = label
+//     self.size = size
 inline Config::Config(std::string_view label, int32_t size) : label(label), size(size) {}
 void __tpy_init();
 } // namespace tpyapp::main

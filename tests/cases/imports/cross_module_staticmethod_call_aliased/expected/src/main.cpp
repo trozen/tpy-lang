@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Ctr.make(99)  # tpyc: ok
+//     print(a.value)
 void main() {
-    // a = Ctr.make(99)  # tpyc: ok
     ::tpyapp::factory::Counter a = Ctr::make(99);
-    // print(a.value)
     std::cout << a.value << "\n";
 }
 
+// # Regression: ClassName.staticmethod() works cross-module when ClassName is
+// # imported under an alias via `from m import ClassName as Alias`. The aliased
+// # binding should route to the same record info as the un-aliased form.
+// from factory import Counter as Ctr
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: ClassName.staticmethod() works cross-module when ClassName is
-    // # imported under an alias via `from m import ClassName as Alias`. The aliased
-    // # binding should route to the same record info as the un-aliased form.
-    // from factory import Counter as Ctr
     ::tpyapp::factory::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def fail_value() -> int32:
+//     raise ValueError("inner-fail")
 ::tpystd::tpy::Poll<int32_t> __coro_fail_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // raise ValueError("inner-fail")
         throw ::tpy::ValueError("inner-fail");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -24,6 +24,20 @@ __coro_fail_value fail_value() {
 }
 
 // async def go() -> int32:
+//     try:
+//         try:
+//             x = await fail_value()
+//             return x
+//         except ValueError:
+//             print("inner-handler")
+//             raise RuntimeError("handler-raised")
+//         finally:
+//             print("inner-finally")
+//     except RuntimeError:
+//         print("outer-handler")
+//         return int32(42)
+//     finally:
+//         print("outer-finally")
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -40,7 +54,6 @@ __coro_fail_value fail_value() {
                 if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
                 x = std::move(__r0).value();
                 __sub_0.reset();
-                // return x
                 int32_t __tpy_async_ret_0 = x;
                 __fin_ran_2 = true;
                 this->__finally_1();
@@ -51,9 +64,7 @@ __coro_fail_value fail_value() {
             } catch (const ::tpy::ValueError&) {
                 __sub_0.reset();
                 try {
-                    // print("inner-handler")
                     std::cout << "inner-handler" << "\n";
-                    // raise RuntimeError("handler-raised")
                     throw ::tpy::RuntimeError("handler-raised");
                 } catch (...) {
                     this->__finally_1();
@@ -70,9 +81,7 @@ __coro_fail_value fail_value() {
             __sub_0.reset();
             bool __fin_ran_4 = false;
             try {
-                // print("outer-handler")
                 std::cout << "outer-handler" << "\n";
-                // return int32(42)
                 int32_t __tpy_async_ret_1 = 42;
                 __fin_ran_4 = true;
                 this->__finally_0();
@@ -102,9 +111,7 @@ __coro_fail_value fail_value() {
         } catch (const ::tpy::RuntimeError&) {
             bool __fin_ran_6 = false;
             try {
-                // print("outer-handler")
                 std::cout << "outer-handler" << "\n";
-                // return int32(42)
                 int32_t __tpy_async_ret_2 = 42;
                 __fin_ran_6 = true;
                 this->__finally_0();
@@ -122,7 +129,6 @@ __coro_fail_value fail_value() {
         }
     }
     case S_JOIN_2: {
-        // x = await fail_value()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -137,11 +143,9 @@ __coro_fail_value fail_value() {
 }
 
 void __coro_go::__finally_0() {
-    // print("outer-finally")
     std::cout << "outer-finally" << "\n";
 }
 void __coro_go::__finally_1() {
-    // print("inner-finally")
     std::cout << "inner-finally" << "\n";
 }
 
@@ -151,27 +155,28 @@ __coro_go go() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(go()))
 void main() {
-    // print(asyncio.run(go()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(go())) << "\n";
 }
 
+// # Pins the inner-finally-on-throw path: when an except handler body
+// # raises a new exception, the enclosing try's finally must run before
+// # the new exception propagates to an outer try's handler. Python
+// # semantics require: inner-handler -> inner-finally -> outer-handler
+// # -> outer-finally. The CFG-lite codegen wraps handler bodies in a
+// # nested try/catch that calls the parent finally on throw and uses
+// # the handler entry BB's region_stack (not the case-entry's) to
+// # populate the active finally chain.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Pins the inner-finally-on-throw path: when an except handler body
-    // # raises a new exception, the enclosing try's finally must run before
-    // # the new exception propagates to an outer try's handler. Python
-    // # semantics require: inner-handler -> inner-finally -> outer-handler
-    // # -> outer-finally. The CFG-lite codegen wraps handler bodies in a
-    // # nested try/catch that calls the parent finally on throw and uses
-    // # the handler entry BB's region_stack (not the case-entry's) to
-    // # populate the active finally chain.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

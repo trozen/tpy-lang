@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def f() -> None:
+//     a: A | B = A(1.0)
+//     print(a.x)
 void f() {
-    // a: A | B = A(1.0)
     ::tpy::Union<A, B> __slot_1 = A(1.0);
     ::tpy::Union<A*, B*> a = ::tpy::to_ptr_variant(__slot_1);
-    // print(a.x)
     std::cout << ::tpy::print_float((*std::get<A*>(a)).x) << "\n";
 }
 
 // def g(a: C) -> None:
+//     print(a.x)
 void g(const C& a) {
-    // print(a.x)
     std::cout << ::tpy::print_float(a.x) << "\n";
 }
 
 // def main() -> None:
+//     f()
+//     g(C(2.0))
 void main() {
-    // f()
     f();
-    // g(C(2.0))
     C __tmp_1 = C(2.0);
     g(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

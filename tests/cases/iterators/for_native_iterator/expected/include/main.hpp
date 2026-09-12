@@ -11,10 +11,13 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_iter(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it);
+// def count_iter(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t count_iter(T_it& it);
+// def first_or_fallback(it: Iterator[int32], fallback: int32) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t first_or_fallback(T_it& it, int32_t fallback);
 
@@ -44,78 +47,80 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.current = start
+//     self.limit = limit
 inline Counter::Counter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
 // def __iter__(self) -> Counter:
+//     return self
 inline Counter& Counter::__iter__() {
-    // return self
     return (*this);
 }
 
 // def __next__(self) -> int32:
+//     if self.current < self.limit:
+//         val = self.current
+//         self.current += 1
+//         return val
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // val = self.current
         int32_t val = this->current;
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return val
         return val;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 // def sum_iter(it: Iterator[int32]) -> int32:
+//     total: int32 = 0
+//     for x in it:
+//         total += x
+//     return total
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 // def count_iter(it: Iterator[int32]) -> int32:
+//     n: int32 = 0
+//     for x in it:
+//         n += 1
+//     return n
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t count_iter(T_it& it) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // return n
     return n;
 }
 // def first_or_fallback(it: Iterator[int32], fallback: int32) -> int32:
+//     for x in it:
+//         return x
+//     return fallback
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t first_or_fallback(T_it& it, int32_t fallback) {
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // return x
         return x;
     }
-    // return fallback
     return fallback;
 }
 

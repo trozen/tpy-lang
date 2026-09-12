@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Circle(5)
+//     print(c.radius)
+//     print(c.diameter)
 void main() {
-    // c = Circle(5)
     Circle c = Circle(5);
-    // print(c.radius)
     std::cout << c.radius() << "\n";
-    // print(c.diameter)
     std::cout << c.diameter() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

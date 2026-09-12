@@ -34,6 +34,7 @@ struct Owner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Animal(Tag):
@@ -121,39 +122,43 @@ namespace tpyapp::main {
 
 
 // def __init__(self, legs: int) -> None:
+//     self.legs = legs
 inline Animal::Animal(const ::tpy::BigInt& legs) : legs(legs) {}
 
 // def __init__(self, pet: Own[Box[Animal]]) -> None:
+//     self.pet = pet
 inline Owner::Owner(::tpystd::tplib::box::Box<Animal>&& pet) : pet(std::move(pet)) {}
 
 // @readonly
 // def describe(self) -> str:
+//     match self.pet:  # tpyc: ok
+//         case Dog():
+//             return "dog"
+//         case Snake() as s:
+//             return "snake legs=" + str(s.legs)
+//         case _:
+//             return "?"
 inline std::string Owner::describe() const {
-    // match self.pet:  # tpyc: ok
     auto& __match_subject_1 = this->pet;
-    // case Dog():
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
         const Dog& __case_0 = *__mpoly_0;
-        // return "dog"
         return "dog";
-    // case Snake() as s:
     } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&(__match_subject_1.__deref__()))) {
         const Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
-        // return "snake legs=" + str(s.legs)
         return (::tpy::str_concat("snake legs=", (s.legs).to_string()));
-    // case _:
     } else {
-        // return "?"
         return "?";
     }
     ::std::unreachable();
 }
 
 // def __init__(self) -> None:
+//     super().__init__(4)
 inline Dog::Dog() : Animal(4) {}
 
 // def __init__(self) -> None:
+//     super().__init__(0)
 inline Snake::Snake() : Animal(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

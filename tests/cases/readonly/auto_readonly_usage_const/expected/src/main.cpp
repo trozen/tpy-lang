@@ -5,135 +5,138 @@ namespace tpyapp::main {
 
 
 // def read_through_get(o: Outer) -> int32:   # const Outer&
+//     return o.b.get().v
 int32_t read_through_get(const Outer& o) {
-    // return o.b.get().v
     return o.b.get().v;
 }
 
 // def write_through_get(o: Outer):           # Outer&
+//     o.b.get().v = 9
 void write_through_get(Outer& o) {
-    // o.b.get().v = 9
     o.b.get().v = 9;
 }
 
 // def mutate_through_get(o: Outer):          # Outer&
+//     o.b.get().bump()
 void mutate_through_get(Outer& o) {
-    // o.b.get().bump()
     o.b.get().bump();
 }
 
 // def aug_through_get(o: Outer):             # Outer&
+//     o.b.get().v += 1
 void aug_through_get(Outer& o) {
-    // o.b.get().v += 1
     o.b.get().v = ::tpy::add_check<int32_t>(o.b.get().v, 1);
 }
 
 // def alias_read(o: Outer) -> int32:         # Outer&: non-const local alias needs a
+//     x = o.b.get()                          # mutable source, so the receiver stays mutable
+//     return x.v                             # until never-mutated locals can bind const
 int32_t alias_read(Outer& o) {
-    // x = o.b.get()                          # mutable source, so the receiver stays mutable
     Inner& x = o.b.get();
-    // return x.v                             # until never-mutated locals can bind const
     return x.v;
 }
 
 // def alias_write(o: Outer):                 # Outer&
+//     x = o.b.get()
+//     x.v = 7
 void alias_write(Outer& o) {
-    // x = o.b.get()
     Inner& x = o.b.get();
-    // x.v = 7
     x.v = 7;
 }
 
 // def elem_alias_write(o: Outer):            # Outer&: field-path element-borrow alias write
+//     e = o.items[0]
+//     e.v = 3
 void elem_alias_write(Outer& o) {
-    // e = o.items[0]
     Inner& e = ::tpy::__getitem__(o.items, 0);
-    // e.v = 3
     e.v = 3;
 }
 
 // def read_user_accessor(c: Cell) -> int32:  # const Cell&
+//     return c.get().v
 int32_t read_user_accessor(const Cell& c) {
-    // return c.get().v
     return c.get().v;
 }
 
 // def write_user_accessor(c: Cell):          # Cell&
+//     c.get().v = 8
 void write_user_accessor(Cell& c) {
-    // c.get().v = 8
     c.get().v = 8;
 }
 
 // def peek_user_accessor(c: Cell) -> int32:  # const Cell&: value return, only read
+//     return c.peek()
 int32_t peek_user_accessor(const Cell& c) {
-    // return c.peek()
     return c.peek();
 }
 
 // def sum_boxes(boxes: list[Box[Inner]]) -> int32:   # const list&: loop var read through accessor
+//     total = 0
+//     for b in boxes:
+//         total += b.get().v
+//     return total
 int32_t sum_boxes(const std::vector<::tpystd::tplib::box::Box<Inner>>& boxes) {
-    // total = 0
     int32_t total = 0;
-    // for b in boxes:
     auto& __obj_0 = boxes;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // total += b.get().v
         total = ::tpy::add_check<int32_t>(total, b.get().v);
     }
-    // return total
     return total;
 }
 
 // def main():
+//     o = Outer(5)
+//     print(read_through_get(o))
+//     write_through_get(o)
+//     print(read_through_get(o))
+//     mutate_through_get(o)
+//     aug_through_get(o)
+//     print(read_through_get(o))
+//     alias_write(o)
+//     print(alias_read(o))
+//     elem_alias_write(o)
+//     print(o.items[0].v)
+//
+//     c = Cell(2)
+//     print(read_user_accessor(c))
+//     write_user_accessor(c)
+//     print(peek_user_accessor(c))
+//
+//     boxes = [Box(Inner(1)), Box(Inner(2)), Box(Inner(3))]
+//     print(sum_boxes(boxes))
 void main() {
-    // o = Outer(5)
     Outer o = Outer(5);
-    // print(read_through_get(o))
     std::cout << read_through_get(o) << "\n";
-    // write_through_get(o)
     write_through_get(o);
-    // print(read_through_get(o))
     std::cout << read_through_get(o) << "\n";
-    // mutate_through_get(o)
     mutate_through_get(o);
-    // aug_through_get(o)
     aug_through_get(o);
-    // print(read_through_get(o))
     std::cout << read_through_get(o) << "\n";
-    // alias_write(o)
     alias_write(o);
-    // print(alias_read(o))
     std::cout << alias_read(o) << "\n";
-    // elem_alias_write(o)
     elem_alias_write(o);
-    // print(o.items[0].v)
     std::cout << ::tpy::__getitem__(o.items, 0).v << "\n";
-    // c = Cell(2)
     Cell c = Cell(2);
-    // print(read_user_accessor(c))
     std::cout << read_user_accessor(c) << "\n";
-    // write_user_accessor(c)
     write_user_accessor(c);
-    // print(peek_user_accessor(c))
     std::cout << peek_user_accessor(c) << "\n";
-    // boxes = [Box(Inner(1)), Box(Inner(2)), Box(Inner(3))]
     std::vector<::tpystd::tplib::box::Box<Inner>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<Inner>>(::tpystd::tplib::box::Box<Inner>(Inner(1)), ::tpystd::tplib::box::Box<Inner>(Inner(2)), ::tpystd::tplib::box::Box<Inner>(Inner(3)));
-    // print(sum_boxes(boxes))
     std::cout << sum_boxes(boxes) << "\n";
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

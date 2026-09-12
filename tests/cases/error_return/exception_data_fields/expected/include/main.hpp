@@ -11,7 +11,9 @@ struct ParseError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def parse(s: str) -> int32:
 std::expected<int32_t, ParseError> parse(std::string_view s);
+// def main() -> None:
 void main();
 
 // class ParseError(Exception, ReturnException):
@@ -40,6 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
 
 
 // def __init__(self, line: int32, column: int32, detail: str) -> None:
+//     self.line = line
+//     self.column = column
+//     self.detail = detail
 inline ParseError::ParseError(int32_t line, int32_t column, std::string_view detail) : line(line), column(column), detail(detail) {}
 void __tpy_init();
 } // namespace tpyapp::main

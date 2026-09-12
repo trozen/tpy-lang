@@ -17,9 +17,13 @@ using ::tpyapp::helpers::Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_imported_read_no_warn() -> None:
 void test_imported_read_no_warn();
+// def test_imported_mutate_warns() -> None:
 void test_imported_mutate_warns();
+// def test_imported_transitive_mutation_warns() -> None:
 void test_imported_transitive_mutation_warns();
+// def test_imported_transitive_read_no_warn() -> None:
 void test_imported_transitive_read_no_warn();
 
 void __tpy_init();

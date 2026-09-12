@@ -7,34 +7,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(int32(10), int32(20))
+//     print(p.x)
+//     print(p.y)
+//     print(point_sum(p))
+//     print(p.manhattan())
+//
+//     r = MyRect(int32(0), int32(0), int32(800), int32(600))
+//     print(r.w)
+//     print(rect_area(r))
+//     print(r.area())
 void main() {
-    // p = Point(int32(10), int32(20))
     ::Point p = ::Point{10, 20};
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(p.y)
     std::cout << p.y << "\n";
-    // print(point_sum(p))
     std::cout << point_sum(&p) << "\n";
-    // print(p.manhattan())
     std::cout << p.manhattan() << "\n";
-    // r = MyRect(int32(0), int32(0), int32(800), int32(600))
     ::Rect r = ::Rect{0, 0, 800, 600};
-    // print(r.w)
     std::cout << r.w << "\n";
-    // print(rect_area(r))
     std::cout << rect_area(&r) << "\n";
-    // print(r.area())
     std::cout << r.area() << "\n";
 }
 
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
-    // main()
     main();
 }
 

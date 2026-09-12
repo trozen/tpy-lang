@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def extract(a: Any) -> int:
 ::tpy::BigInt extract(::tpy::Any a);
+// def main() -> None:
 void main();
 
 void __tpy_init();

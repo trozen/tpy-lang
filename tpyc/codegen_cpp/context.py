@@ -5,7 +5,9 @@ Shared state and utilities for C++ code generation.
 """
 
 from __future__ import annotations
+import io
 import re
+import tokenize
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -2237,14 +2239,93 @@ class CodeGenContext:
             return True
         return self.any_ancestor_has_del(record_name)
 
-    def _write_source_comment(self, out: TextIO, line_no: int, source: str, indent: str = "") -> None:
-        """Write a source comment line, optionally including the .py line number."""
-        source = source.lstrip()
-        if self.options.comment_line_numbers:
-            out.write(f"{indent}// {line_no}: {source}\n")
-        else:
-            out.write(f"{indent}// {source}\n")
+    def _write_source_lines(self, out: TextIO, first_line_no: int,
+                            lines: list[str], indent: str = "") -> None:
+        """Write consecutive source lines as one comment block. The block is
+        dedented by its common leading whitespace, never line by line, so a
+        multi-line statement keeps its relative indentation."""
+        stripped = [ln.rstrip() for ln in lines]
+        widths = [len(ln) - len(ln.lstrip()) for ln in stripped if ln.strip()]
+        common = min(widths) if widths else 0
+        for offset, ln in enumerate(stripped):
+            text = ln[common:] if ln.strip() else ""
+            body = f" {text}" if text else ""
+            if self.options.comment_line_numbers:
+                out.write(f"{indent}// {first_line_no + offset}:{body}\n")
+            else:
+                out.write(f"{indent}//{body}\n")
 
+    def _logical_line_end(self, start_idx: int) -> int:
+        """Index of the last line of the logical line starting at `start_idx`."""
+        end_idx = start_idx
+        # Tokenize from this line forward to find the logical-line boundary.
+        # 32-line cap is a safety bound; real signatures fit easily. Track
+        # paren depth via OP tokens so the boundary is the first NEWLINE/NL
+        # at depth 0 -- `NEWLINE` ends a statement; `NL` at depth 0 ends a
+        # comment-only or blank line (and we shouldn't pull the next stmt's
+        # source into this comment block).
+        snippet = "".join(
+            line if line.endswith("\n") else line + "\n"
+            for line in self.source_lines[start_idx:start_idx + 32]
+        )
+        try:
+            depth = 0
+            for tok in tokenize.generate_tokens(io.StringIO(snippet).readline):
+                if tok.type == tokenize.OP:
+                    if tok.string in "([{":
+                        depth += 1
+                    elif tok.string in ")]}":
+                        depth -= 1
+                elif tok.type in (tokenize.NEWLINE, tokenize.NL) and depth <= 0:
+                    end_idx = start_idx + tok.start[0] - 1
+                    break
+        except (tokenize.TokenError, IndentationError):
+            pass  # Fall back: just the start line.
+        return min(end_idx, len(self.source_lines) - 1)
+
+    def emit_definition_source_block(self, out: TextIO, loc: SourceLocation | None,
+                                     indent: str = "") -> None:
+        """Echo a whole definition, def line through last body line, as one
+        comment block above its implementation, dedented as a block. A
+        location without an end line falls back to the signature echo."""
+        if not self.options.emit_source_comments:
+            return
+        if loc is None:
+            return
+        if loc.end_line is None:
+            self.emit_source_comment(out, loc, indent)
+            return
+        start_idx = loc.line - 1
+        if not (0 <= start_idx < len(self.source_lines)):
+            return
+        last = min(loc.end_line - 1, len(self.source_lines) - 1)
+        self._write_source_lines(out, start_idx + 1,
+                                 self.source_lines[start_idx:last + 1], indent)
+
+    def emit_module_source_block(self, out: TextIO, stmts, indent: str = "") -> None:
+        """Echo the module body -- every top-level statement with the `#`
+        comments directly above it, definitions left out -- as the block
+        above __tpy_init, its implementation. A gap left by a skipped
+        definition renders as one empty comment line."""
+        if not self.options.emit_source_comments:
+            return
+        prev_end = -1
+        for stmt in stmts:
+            loc = getattr(stmt, "loc", None)
+            if loc is None:
+                continue
+            start = loc.line - 1
+            if not (0 <= start < len(self.source_lines)) or start <= prev_end:
+                continue
+            first = start
+            while first - 1 > prev_end and self.source_lines[first - 1].lstrip().startswith("#"):
+                first -= 1
+            end = (min(loc.end_line - 1, len(self.source_lines) - 1)
+                   if loc.end_line is not None else self._logical_line_end(start))
+            if prev_end >= 0 and first > prev_end + 1:
+                out.write(f"{indent}//\n")
+            self._write_source_lines(out, first + 1, self.source_lines[first:end + 1], indent)
+            prev_end = end
     def emit_source_comment(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
         """Emit the original Python source line(s) as a comment if enabled.
 
@@ -2260,131 +2341,9 @@ class CodeGenContext:
         start_idx = loc.line - 1
         if not (0 <= start_idx < len(self.source_lines)):
             return
-        end_idx = start_idx
-        # Tokenize from this line forward to find the logical-line boundary.
-        # 32-line cap is a safety bound; real signatures fit easily. Track
-        # paren depth via OP tokens so the boundary is the first NEWLINE/NL
-        # at depth 0 -- `NEWLINE` ends a statement; `NL` at depth 0 ends a
-        # comment-only or blank line (and we shouldn't pull the next stmt's
-        # source into this comment block).
-        snippet = "".join(
-            line if line.endswith("\n") else line + "\n"
-            for line in self.source_lines[start_idx:start_idx + 32]
-        )
-        try:
-            import io
-            import tokenize
-            depth = 0
-            for tok in tokenize.generate_tokens(io.StringIO(snippet).readline):
-                if tok.type == tokenize.OP:
-                    if tok.string in "([{":
-                        depth += 1
-                    elif tok.string in ")]}":
-                        depth -= 1
-                elif tok.type in (tokenize.NEWLINE, tokenize.NL) and depth <= 0:
-                    end_idx = start_idx + tok.start[0] - 1
-                    break
-        except (tokenize.TokenError, IndentationError):
-            pass  # Fall back: just the start line.
-        end_idx = min(end_idx, len(self.source_lines) - 1)
-        for i in range(start_idx, end_idx + 1):
-            self._write_source_comment(out, i + 1, self.source_lines[i].rstrip(), indent)
-
-    def emit_else_comment(self, out: TextIO, orelse: list, indent: str = "") -> None:
-        """Emit the 'else:' source line as a comment.
-
-        Scans backward from the first orelse statement, skipping blank lines
-        and comment lines. Stops on any other non-empty line that is not 'else:'.
-        """
-        if not self.options.emit_source_comments:
-            return
-        if not orelse or not hasattr(orelse[0], 'loc') or orelse[0].loc is None:
-            return
-        first_line = orelse[0].loc.line
-        for line_num in range(first_line - 1, 0, -1):
-            line_idx = line_num - 1
-            if 0 <= line_idx < len(self.source_lines):
-                stripped = self.source_lines[line_idx].strip()
-                if stripped.startswith('else:'):
-                    self._write_source_comment(out, line_num, self.source_lines[line_idx].rstrip(), indent)
-                    return
-                if stripped and not stripped.startswith('#'):
-                    return
-
-    def emit_inline_comments(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
-        """Emit Python comment lines immediately preceding a statement.
-
-        Walks backwards from the line before loc, skipping blank lines,
-        then collecting consecutive comment lines (#...) at the same or
-        shallower indentation as the current statement (deeper-indented
-        comments belong to inner blocks and are handled by
-        emit_block_trailing_comments).
-        Emits them in source order.
-        """
-        if not self.options.emit_source_comments:
-            return
-        if loc is None:
-            return
-        stmt_line = self.source_lines[loc.line - 1]
-        stmt_indent = len(stmt_line) - len(stmt_line.lstrip())
-        collected: list[tuple[int, str]] = []
-        idx = loc.line - 2  # 0-indexed line before current statement
-        # Skip blank lines
-        while idx >= 0 and not self.source_lines[idx].strip():
-            idx -= 1
-        # Collect consecutive comment lines at same or shallower indentation
-        while idx >= 0:
-            stripped = self.source_lines[idx].strip()
-            if stripped.startswith("#"):
-                line_indent = len(self.source_lines[idx]) - len(self.source_lines[idx].lstrip())
-                if line_indent > stmt_indent:
-                    break
-                collected.append((idx + 1, self.source_lines[idx].rstrip()))
-                idx -= 1
-            else:
-                break
-        # Emit in source order
-        for line_no, source_line in reversed(collected):
-            self._write_source_comment(out, line_no, source_line, indent)
-
-    def emit_block_trailing_comments(self, out: TextIO, body: list, indent: str = "") -> None:
-        """Emit trailing comment lines after the last statement in a block.
-
-        Scans forward from the last statement's line, emitting Python comment
-        lines that maintain the same or deeper indentation. Stops at
-        non-comment code or dedented lines.
-        """
-        if not self.options.emit_source_comments:
-            return
-        if not body:
-            return
-        last_stmt = body[-1]
-        if not hasattr(last_stmt, 'loc') or last_stmt.loc is None:
-            return
-        last_line = last_stmt.loc.line
-        # Determine expected indentation from the last statement's source
-        ref_idx = last_line - 1
-        if ref_idx < 0 or ref_idx >= len(self.source_lines):
-            return
-        ref_line = self.source_lines[ref_idx]
-        block_indent = len(ref_line) - len(ref_line.lstrip())
-
-        line_no = last_line + 1
-        while line_no <= len(self.source_lines):
-            line_idx = line_no - 1
-            source_line = self.source_lines[line_idx]
-            stripped = source_line.strip()
-            if not stripped:
-                line_no += 1
-                continue
-            line_indent = len(source_line) - len(source_line.lstrip())
-            if line_indent < block_indent:
-                break
-            if stripped.startswith("#"):
-                self._write_source_comment(out, line_no, source_line.rstrip(), indent)
-                line_no += 1
-            else:
-                break
+        end_idx = self._logical_line_end(start_idx)
+        self._write_source_lines(out, start_idx + 1,
+                                 self.source_lines[start_idx:end_idx + 1], indent)
 
     def emit_preceding_comments(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
         """Emit comments and decorators preceding a definition as C++ comments.
@@ -2431,7 +2390,7 @@ class CodeGenContext:
                 break
         # Emit in source order (collected is reversed)
         for line_no, source_line in reversed(collected):
-            self._write_source_comment(out, line_no, source_line, indent)
+            self._write_source_lines(out, line_no, [source_line], indent)
 
     def lookup_var_type(self, var_name: str) -> 'TpyType | None':
         """Resolve a variable's declared type in any visible scope.

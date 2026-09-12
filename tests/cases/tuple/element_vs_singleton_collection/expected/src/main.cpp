@@ -5,78 +5,78 @@ namespace tpyapp::main {
 
 
 // def make_borrow(b: Box) -> tuple[Box, Box]:
+//     return (b, b)
 std::tuple<Box*, Box*> make_borrow(Box& b) {
-    // return (b, b)
     return std::tuple<Box*, Box*>{&(b), &(b)};
 }
 
 // def singleton_append(b: Box) -> int32:
+//     xs: list[Box] = []
+//     xs.append(b)  # tpyc: warning(/copies Box into owned storage/)
+//     xs[0].n = 21
+//     return b.n
 int32_t singleton_append(const Box& b) {
-    // xs: list[Box] = []
     std::vector<Box> xs = std::vector<Box>{};
-    // xs.append(b)  # tpyc: warning(/copies Box into owned storage/)
     xs.push_back(b);
-    // xs[0].n = 21
     ::tpy::__getitem__(xs, 0).n = 21;
-    // return b.n
     return b.n;
 }
 
 // def tuple_append(b: Box) -> int32:
+//     xs: list[tuple[Box, Box]] = []
+//     xs.append(make_borrow(b))  # tpyc: warning(/copies Box into owned storage/) warning(/copies Box into owned storage/)
+//     xs[0][0].n = 22
+//     return b.n
 int32_t tuple_append(Box& b) {
-    // xs: list[tuple[Box, Box]] = []
     std::vector<std::tuple<Box, Box>> xs = std::vector<std::tuple<Box, Box>>{};
-    // xs.append(make_borrow(b))  # tpyc: warning(/copies Box into owned storage/) warning(/copies Box into owned storage/)
     xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_borrow(b)));
-    // xs[0][0].n = 22
     std::get<0>(::tpy::__getitem__(xs, 0)).n = 22;
-    // return b.n
     return b.n;
 }
 
 // def singleton_dict(b: Box) -> int32:
+//     d: dict[int32, Box] = {}
+//     d[1] = b  # tpyc: warning(/copies Box into container/)
+//     d[1].n = 23
+//     return b.n
 int32_t singleton_dict(const Box& b) {
-    // d: dict[int32, Box] = {}
     ::tpy::ordered_map<int32_t, Box> d = ::tpy::ordered_map<int32_t, Box>();
-    // d[1] = b  # tpyc: warning(/copies Box into container/)
     ::tpy::__setitem__(d, 1, b);
-    // d[1].n = 23
     ::tpy::__getitem__(d, 1).n = 23;
-    // return b.n
     return b.n;
 }
 
 // def tuple_dict(b: Box) -> int32:
+//     d: dict[int32, tuple[Box, Box]] = {}
+//     d[1] = make_borrow(b)  # tpyc: warning(/copies Box into container/) warning(/copies Box into container/)
+//     d[1][0].n = 24
+//     return b.n
 int32_t tuple_dict(Box& b) {
-    // d: dict[int32, tuple[Box, Box]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>();
-    // d[1] = make_borrow(b)  # tpyc: warning(/copies Box into container/) warning(/copies Box into container/)
     ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_borrow(b)));
-    // d[1][0].n = 24
     std::get<0>(::tpy::__getitem__(d, 1)).n = 24;
-    // return b.n
     return b.n;
 }
 
 // def main() -> None:
+//     # All 2: the container owns its element, so the write hit the copy.
+//     print(singleton_append(Box(2)), tuple_append(Box(2)))
+//     print(singleton_dict(Box(2)), tuple_dict(Box(2)))
 void main() {
-    // # All 2: the container owns its element, so the write hit the copy.
-    // print(singleton_append(Box(2)), tuple_append(Box(2)))
     Box __tmp_1 = Box(2);
     Box __tmp_2 = Box(2);
     std::cout << singleton_append(__tmp_1) << " " << tuple_append(__tmp_2) << "\n";
-    // print(singleton_dict(Box(2)), tuple_dict(Box(2)))
     Box __tmp_3 = Box(2);
     Box __tmp_4 = Box(2);
     std::cout << singleton_dict(__tmp_3) << " " << tuple_dict(__tmp_4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

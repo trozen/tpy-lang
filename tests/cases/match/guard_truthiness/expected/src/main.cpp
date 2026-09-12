@@ -77,48 +77,48 @@ namespace tpyapp::main {
 
 
 // def opt_guard(k: int32, v: int32 | None) -> int32:
+//     match k:
+//         # No optional-truthiness warning fires here, unlike the same test in
+//         # an `if` -- a diagnostic gap tracked in BUGS.md, not a fix target.
+//         case 1 if v:  # tpyc: ok
+//             return 10
+//         case _:
+//             return 20
 int32_t opt_guard(int32_t k, std::optional<int32_t> v) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if v:  # tpyc: ok
     case 1: {
         if (::tpy::is_truthy(v)) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
     }
     ::std::unreachable();
-    // # No optional-truthiness warning fires here, unlike the same test in
-    // # an `if` -- a diagnostic gap tracked in BUGS.md, not a fix target.
 }
 
 // def str_guard(k: int32, t: str) -> int32:
+//     match k:
+//         case 1 if t:
+//             return 10
+//         case _:
+//             return 20
 int32_t str_guard(int32_t k, std::string_view t) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if t:
     case 1: {
         if ((!t.empty())) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -127,22 +127,22 @@ int32_t str_guard(int32_t k, std::string_view t) {
 }
 
 // def list_guard(k: int32, xs: list[int32]) -> int32:
+//     match k:
+//         case 1 if xs:
+//             return 10
+//         case _:
+//             return 20
 int32_t list_guard(int32_t k, const std::vector<int32_t>& xs) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if xs:
     case 1: {
         if ((::tpy::__len__(xs) != 0)) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -151,22 +151,22 @@ int32_t list_guard(int32_t k, const std::vector<int32_t>& xs) {
 }
 
 // def record_guard(k: int32, g: Bag) -> int32:
+//     match k:
+//         case 1 if g:
+//             return 10
+//         case _:
+//             return 20
 int32_t record_guard(int32_t k, const Bag& g) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if g:
     case 1: {
         if ((::tpy::__len__(g) != 0)) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -175,22 +175,22 @@ int32_t record_guard(int32_t k, const Bag& g) {
 }
 
 // def not_guard(k: int32, t: str) -> int32:
+//     match k:
+//         case 1 if not t:
+//             return 10
+//         case _:
+//             return 20
 int32_t not_guard(int32_t k, std::string_view t) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if not t:
     case 1: {
         if ((!((!t.empty())))) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -199,22 +199,22 @@ int32_t not_guard(int32_t k, std::string_view t) {
 }
 
 // def enum_guard(k: int32, c: Color) -> int32:
+//     match k:
+//         case 1 if c:
+//             return 10
+//         case _:
+//             return 20
 int32_t enum_guard(int32_t k, Color c) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if c:
     case 1: {
         if ((static_cast<void>(c), true)) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -223,22 +223,22 @@ int32_t enum_guard(int32_t k, Color c) {
 }
 
 // def int_enum_guard(k: int32, lv: Level) -> int32:
+//     match k:
+//         case 1 if lv:
+//             return 10
+//         case _:
+//             return 20
 int32_t int_enum_guard(int32_t k, Level lv) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if lv:
     case 1: {
         if ((static_cast<int32_t>(lv) != 0)) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -247,22 +247,22 @@ int32_t int_enum_guard(int32_t k, Level lv) {
 }
 
 // def plain_record_guard(k: int32, p: Plain) -> int32:
+//     match k:
+//         case 1 if p:
+//             return 10
+//         case _:
+//             return 20
 int32_t plain_record_guard(int32_t k, const Plain& p) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if p:
     case 1: {
         if ((static_cast<void>(p), true)) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -271,22 +271,22 @@ int32_t plain_record_guard(int32_t k, const Plain& p) {
 }
 
 // def any_guard(k: int32, v: Any) -> int32:
+//     match k:
+//         case 1 if v:
+//             return 10
+//         case _:
+//             return 20
 int32_t any_guard(int32_t k, ::tpy::Any v) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if v:
     case 1: {
         if (::tpy::to_bool(v)) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -295,22 +295,22 @@ int32_t any_guard(int32_t k, ::tpy::Any v) {
 }
 
 // def and_guard(k: int32, t: str, xs: list[int32]) -> int32:
+//     match k:
+//         case 1 if t and xs:
+//             return 10
+//         case _:
+//             return 20
 int32_t and_guard(int32_t k, std::string_view t, const std::vector<int32_t>& xs) {
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 1 if t and xs:
     case 1: {
         if (((!t.empty()) && (::tpy::__len__(xs) != 0))) {
-            // return 10
             return 10;
         }
         goto __match_default_2;
         break;
     }
-    // case _:
     default: __match_default_2: {
-        // return 20
         return 20;
         break;
     }
@@ -319,54 +319,55 @@ int32_t and_guard(int32_t k, std::string_view t, const std::vector<int32_t>& xs)
 }
 
 // def main() -> None:
+//     print("opt", opt_guard(1, 0), opt_guard(1, 5), opt_guard(1, None))
+//     print("str", str_guard(1, ""), str_guard(1, "a"))
+//     print("list", list_guard(1, []), list_guard(1, [1]))
+//     print("record", record_guard(1, Bag(0)), record_guard(1, Bag(2)))
+//     # Enum members are always truthy; an IntEnum tests its value, so ZERO
+//     # is falsy. A dunder-less record is always truthy (Python default).
+//     print("enum", enum_guard(1, Color.RED), enum_guard(1, Color.BLUE))
+//     print("intenum", int_enum_guard(1, Level.ZERO), int_enum_guard(1, Level.HIGH))
+//     print("plain", plain_record_guard(1, Plain(0)))
+//     print("any", any_guard(1, 0), any_guard(1, 1))
+//     print("not", not_guard(1, ""), not_guard(1, "a"))
+//     print("and", and_guard(1, "", [1]), and_guard(1, "a", []),
+//           and_guard(1, "a", [1]))
+//     # The unguarded arm still wins when the subject does not match.
+//     print("miss", opt_guard(9, 5), str_guard(9, "a"))
 void main() {
-    // print("opt", opt_guard(1, 0), opt_guard(1, 5), opt_guard(1, None))
     std::cout << "opt" << " " << opt_guard(1, 0) << " " << opt_guard(1, 5) << " " << opt_guard(1, std::nullopt) << "\n";
-    // print("str", str_guard(1, ""), str_guard(1, "a"))
     std::cout << "str" << " " << str_guard(1, "") << " " << str_guard(1, "a") << "\n";
-    // print("list", list_guard(1, []), list_guard(1, [1]))
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{};
     std::vector<int32_t> __tmp_2 = {1};
     std::cout << "list" << " " << list_guard(1, __tmp_1) << " " << list_guard(1, __tmp_2) << "\n";
-    // print("record", record_guard(1, Bag(0)), record_guard(1, Bag(2)))
     Bag __tmp_3 = Bag(0);
     Bag __tmp_4 = Bag(2);
     std::cout << "record" << " " << record_guard(1, __tmp_3) << " " << record_guard(1, __tmp_4) << "\n";
-    // # Enum members are always truthy; an IntEnum tests its value, so ZERO
-    // # is falsy. A dunder-less record is always truthy (Python default).
-    // print("enum", enum_guard(1, Color.RED), enum_guard(1, Color.BLUE))
     std::cout << "enum" << " " << enum_guard(1, Color::RED) << " " << enum_guard(1, Color::BLUE) << "\n";
-    // print("intenum", int_enum_guard(1, Level.ZERO), int_enum_guard(1, Level.HIGH))
     std::cout << "intenum" << " " << int_enum_guard(1, Level::ZERO) << " " << int_enum_guard(1, Level::HIGH) << "\n";
-    // print("plain", plain_record_guard(1, Plain(0)))
     Plain __tmp_5 = Plain(0);
     std::cout << "plain" << " " << plain_record_guard(1, __tmp_5) << "\n";
-    // print("any", any_guard(1, 0), any_guard(1, 1))
     std::cout << "any" << " " << any_guard(1, ::tpy::make_any(::tpy::BigInt(0))) << " " << any_guard(1, ::tpy::make_any(::tpy::BigInt(1))) << "\n";
-    // print("not", not_guard(1, ""), not_guard(1, "a"))
     std::cout << "not" << " " << not_guard(1, "") << " " << not_guard(1, "a") << "\n";
-    // print("and", and_guard(1, "", [1]), and_guard(1, "a", []),
-    // and_guard(1, "a", [1]))
     std::vector<int32_t> __tmp_6 = {1};
     std::vector<int32_t> __tmp_7 = std::vector<int32_t>{};
     std::vector<int32_t> __tmp_8 = {1};
     std::cout << "and" << " " << and_guard(1, "", __tmp_6) << " " << and_guard(1, "a", __tmp_7) << " " << and_guard(1, "a", __tmp_8) << "\n";
-    // # The unguarded arm still wins when the subject does not match.
-    // print("miss", opt_guard(9, 5), str_guard(9, "a"))
     std::cout << "miss" << " " << opt_guard(9, 5) << " " << str_guard(9, "a") << "\n";
 }
 
+// # A `case ... if <guard>:` guard is a boolean context, so a non-bool guard
+// # needs the same truthiness lowering an `if` gets. Guards used to render
+// # the value raw: a str/list guard did not compile, and a value-repr
+// # `Optional[scalar]` guard tested engagement only, so `Some(0)` matched.
+// from enum import Enum, IntEnum, auto
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A `case ... if <guard>:` guard is a boolean context, so a non-bool guard
-    // # needs the same truthiness lowering an `if` gets. Guards used to render
-    // # the value raw: a str/list guard did not compile, and a value-repr
-    // # `Optional[scalar]` guard tested engagement only, so `Some(0)` matched.
-    // from enum import Enum, IntEnum, auto
-    // main()
     main();
 }
 

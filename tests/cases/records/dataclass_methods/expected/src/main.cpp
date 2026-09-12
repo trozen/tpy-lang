@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Rect(3, 4)
+//     print(r)
+//     print(r.area())
+//     r.scale(2)
+//     print(r)
+//     print(r.area())
 void main() {
-    // r = Rect(3, 4)
     Rect r = Rect(3, 4);
-    // print(r)
     std::cout << r << "\n";
-    // print(r.area())
     std::cout << r.area() << "\n";
-    // r.scale(2)
     r.scale(2);
-    // print(r)
     std::cout << r << "\n";
-    // print(r.area())
     std::cout << r.area() << "\n";
 }
 
+// # @dataclass with user-defined methods alongside auto-generated __init__
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass with user-defined methods alongside auto-generated __init__
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

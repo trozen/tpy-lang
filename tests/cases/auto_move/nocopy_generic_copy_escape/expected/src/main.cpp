@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main():
+//     v = TaggedValue[Handle](42)
+//     v2 = copy(v)  # tpyc: ok
+//     print(v.data)
+//     print(v2.data)
 void main() {
-    // v = TaggedValue[Handle](42)
     TaggedValue<Handle> v = TaggedValue<Handle>(42);
-    // v2 = copy(v)  # tpyc: ok
     TaggedValue<Handle> v2 = TaggedValue<Handle>(v);
-    // print(v.data)
     std::cout << v.data << "\n";
-    // print(v2.data)
     std::cout << v2.data << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

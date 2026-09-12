@@ -5,57 +5,59 @@ namespace tpyapp::main {
 
 
 // def risky(n: int32) -> int32:
+//     if n == 1:
+//         raise ValueError("v")
+//     if n == 2:
+//         raise OSError("o")
+//     return 10
 int32_t risky(int32_t n) {
-    // if n == 1:
     if ((n == 1)) {
-        // raise ValueError("v")
         throw ::tpy::ValueError("v");
     }
-    // if n == 2:
     if ((n == 2)) {
-        // raise OSError("o")
         ::tpy::OSError("o").__raise__();
     }
-    // return 10
     return 10;
 }
 
 // def run(n: int32) -> int32:
+//     try:
+//         x = risky(n)
+//     except ValueError:
+//         x = -1
+//     except OSError:
+//         x = -2
+//     return x
 int32_t run(int32_t n) {
-    // try:
     int32_t x;
     {
         try {
-            // x = risky(n)
             x = risky(n);
         } catch (const ::tpy::ValueError&) {
-            // x = -1
             x = -1;
         } catch (const ::tpy::OSError&) {
-            // x = -2
             x = -2;
         }
     }
-    // return x
     return x;
 }
 
 // def main() -> None:
+//     print(run(0))
+//     print(run(1))
+//     print(run(2))
 void main() {
-    // print(run(0))
     std::cout << run(0) << "\n";
-    // print(run(1))
     std::cout << run(1) << "\n";
-    // print(run(2))
     std::cout << run(2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

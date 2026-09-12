@@ -5,57 +5,58 @@ namespace tpyapp::main {
 
 
 // def local_sink(flag: bool, label: str) -> bool:
+//     return flag if label else flag
 bool local_sink(bool flag, std::string_view label) {
-    // return flag if label else flag
     return (((!label.empty())) ? (flag) : (flag));
 }
 
 // @dispatch
 // def amb(x: bool) -> bool:
+//     return x
 bool amb(bool x) {
-    // return x
     return x;
 }
 
 // @dispatch
 // def amb(x: str) -> str:
+//     return x
 std::string amb(std::string_view x) {
-    // return x
     return std::string(x);
 }
 
 // @deduce_from_slot
 // def run() -> bool:
+//     armed = "true"
+//     return local_sink(amb(armed), "go")
 bool run() {
-    // armed = "true"
     bool armed = true;
-    // return local_sink(amb(armed), "go")
     return local_sink(amb(armed), "go");
 }
 
 // def main() -> None:
+//     print(1 if run() else 0)
+//     print(1 if paint(Color.RED) else 0)
+//     print(1 if amb(True) else 0)
+//     s = "ok"
+//     print(amb(s))
 void main() {
-    // print(1 if run() else 0)
     std::cout << ((run()) ? (1) : (0)) << "\n";
-    // print(1 if paint(Color.RED) else 0)
     std::cout << ((::tpyapp::helpermod::paint(::tpyapp::helpermod::Color::RED)) ? (1) : (0)) << "\n";
-    // print(1 if amb(True) else 0)
     std::cout << ((amb(true)) ? (1) : (0)) << "\n";
-    // s = "ok"
     std::string_view s = "ok";
-    // print(amb(s))
     std::cout << amb(s) << "\n";
 }
 
+// from helpermod import paint, Color, paint as painter
+// from paramsmod import deduce_from_slot
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from helpermod import paint, Color, paint as painter
     ::tpyapp::helpermod::__tpy_init();
-    // from paramsmod import deduce_from_slot
-    // main()
     main();
 }
 

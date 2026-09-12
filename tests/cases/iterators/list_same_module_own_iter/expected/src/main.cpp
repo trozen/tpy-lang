@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     out = list(points())
+//     for p in out:
+//         print(p.x)
 void main() {
-    // out = list(points())
     std::vector<Point> out = ::tpy::construct<std::vector<Point>>(points());
-    // for p in out:
     auto& __obj_0 = out;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // print(p.x)
         std::cout << p.x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

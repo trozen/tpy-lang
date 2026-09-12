@@ -12,7 +12,9 @@ struct Ref;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_only(r: Ref) -> int32:
 int32_t read_only(const Ref& r);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -71,17 +73,20 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, target: Point) -> None:
+//     self._target = copy(target)
 inline Ref::Ref(const Point& target) : _target(target) {}
 
 // # Plain `def __deref__` -- no @auto_readonly or @readonly. Implicit path
 // # should produce dual mutable/const overloads because the return type is
 // # a reference type (Point).
 // def __deref__(self) -> Point:
+//     return self._target
 inline Point& Ref::__deref__() {
-    // return self._target
     return this->_target;
 }
 
@@ -89,8 +94,8 @@ inline Point& Ref::__deref__() {
 // # should produce dual mutable/const overloads because the return type is
 // # a reference type (Point).
 // def __deref__(self) -> Point:
+//     return self._target
 inline const Point& Ref::__deref__() const {
-    // return self._target
     return this->_target;
 }
 void __tpy_init();

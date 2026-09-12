@@ -47,26 +47,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # User Comparable protocol works (explicit implementation)
+//     w = Widget(42)
+//     print(use_user_comparable(w))
+//     # Builtin Comparable still works (IntEnum comparison)
+//     print(Priority.LOW < Priority.HIGH)
+//     print(Priority.HIGH < Priority.LOW)
 void main() {
-    // # User Comparable protocol works (explicit implementation)
-    // w = Widget(42)
     Widget w = Widget(42);
-    // print(use_user_comparable(w))
     std::cout << use_user_comparable(w) << "\n";
-    // # Builtin Comparable still works (IntEnum comparison)
-    // print(Priority.LOW < Priority.HIGH)
     std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::LOW) < static_cast<int32_t>(Priority::HIGH))) << "\n";
-    // print(Priority.HIGH < Priority.LOW)
     std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::HIGH) < static_cast<int32_t>(Priority::LOW))) << "\n";
 }
 
+// from enum import IntEnum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import IntEnum
-    // main()
     main();
 }
 

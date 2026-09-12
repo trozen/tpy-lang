@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def depth(e: Expr) -> int32:
+//     match e:
+//         case list() as items:
+//             best = 0
+//             for c in items:
+//                 d = depth(c)
+//                 if d > best:
+//                     best = d
+//             return best + 1
+//         case _:
+//             return 0
 int32_t depth(const Expr& e) {
-    // match e:
     auto& __match_subject_1 = e;
     switch (__match_subject_1.value.index()) {
-    // case list() as items:
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& items = __case_0;
-        // best = 0
         int32_t best = 0;
-        // for c in items:
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& c = *__beg_0;
-            // d = depth(c)
             int32_t d = depth(c);
-            // if d > best:
             if ((d > best)) {
-                // best = d
                 best = d;
             }
         }
-        // return best + 1
         return (::tpy::add_check<int32_t>(best, 1));
         break;
     }
-    // case _:
     default: {
-        // return 0
         return 0;
         break;
     }
@@ -44,20 +44,20 @@ int32_t depth(const Expr& e) {
 }
 
 // def main() -> None:
+//     e: Expr = [1, [2, 3]]
+//     print(run(Counter(), e))
 void main() {
-    // e: Expr = [1, [2, 3]]
     Expr e = std::vector<Expr>{1, std::vector<Expr>{2, 3}};
-    // print(run(Counter(), e))
     auto __tmp_1 = Counter();
     std::cout << run(__tmp_1, e) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

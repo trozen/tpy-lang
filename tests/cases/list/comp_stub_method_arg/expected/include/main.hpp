@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def extend_iterable() -> int:
 ::tpy::BigInt extend_iterable();
+// def join_iterable() -> str:
 std::string join_iterable();
+// def update_dict() -> int:
 ::tpy::BigInt update_dict();
+// def update_set() -> int:
 ::tpy::BigInt update_set();
+// def main():
 void main();
 
 void __tpy_init();

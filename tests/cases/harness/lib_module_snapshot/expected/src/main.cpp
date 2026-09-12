@@ -5,43 +5,46 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     counters = ArrayList[Counter, 4]()
+//     counters.append(Counter(0))
+//     counters.append(Counter(10))
+//
+//     # Mutated in place through the container: the appended records were moved
+//     # in, not copied, so the bumps must be visible when read back.
+//     counters[0].bump()
+//     counters[0].bump()
+//     counters[1].bump()
+//
+//     for c in counters:
+//         print(c.hits)
+//     print(len(counters))
 void main() {
-    // counters = ArrayList[Counter, 4]()
     ::tpystd::tplib::array_list::ArrayList<Counter, 4> counters = ::tpystd::tplib::array_list::ArrayList<Counter, 4>();
-    // counters.append(Counter(0))
     counters.append(Counter(0));
-    // counters.append(Counter(10))
     counters.append(Counter(10));
-    // # Mutated in place through the container: the appended records were moved
-    // # in, not copied, so the bumps must be visible when read back.
-    // counters[0].bump()
     counters[0].bump();
-    // counters[0].bump()
     counters[0].bump();
-    // counters[1].bump()
     counters[1].bump();
-    // for c in counters:
     auto& __src_0 = counters;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& c = ::tpy::unwrap_ref(*__r_1);
-        // print(c.hits)
         std::cout << c.hits << "\n";
     }
-    // print(len(counters))
     std::cout << ::tpy::__len__(counters) << "\n";
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

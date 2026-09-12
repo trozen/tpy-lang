@@ -5,51 +5,54 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     dt = datetime(2026, 7, 6, 14, 30, 45, 123456)
+//     d = dt.date()
+//     t = dt.time()
+//     print(d.year, d.month, d.day)
+//     print(t.hour, t.minute, t.second, t.microsecond)
+//     print(d.isoformat(), t.isoformat())
+//     # round-trip: combine back to the original datetime
+//     print(datetime.combine(d, t) == dt)
+//
+//     # aware datetime: time() drops the tzinfo (naive result)
+//     aware = datetime(2026, 1, 2, 8, 15, 0, 0,
+//                      tzinfo=timezone(timedelta(hours=2)))
+//     at = aware.time()
+//     print(at.hour, at.minute, at.second)
+//     print(aware.date().isoformat())
+//
+//     # midnight / zero components
+//     z = datetime(1, 1, 1)
+//     print(z.date().isoformat(), z.time().isoformat())
 void main() {
-    // dt = datetime(2026, 7, 6, 14, 30, 45, 123456)
     ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(6), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(45), ::tpy::BigInt(123456));
-    // d = dt.date()
     ::tpystd::datetime::date d = dt.date();
-    // t = dt.time()
     ::tpystd::datetime::time t = dt.time();
-    // print(d.year, d.month, d.day)
     std::cout << d.year() << " " << d.month() << " " << d.day() << "\n";
-    // print(t.hour, t.minute, t.second, t.microsecond)
     std::cout << t.hour() << " " << t.minute() << " " << t.second() << " " << t.microsecond() << "\n";
-    // print(d.isoformat(), t.isoformat())
     std::cout << d.isoformat() << " " << t.isoformat() << "\n";
-    // # round-trip: combine back to the original datetime
-    // print(datetime.combine(d, t) == dt)
     std::cout << ::tpy::print_bool(((datetime::combine(d, t)) == (dt))) << "\n";
-    // # aware datetime: time() drops the tzinfo (naive result)
-    // aware = datetime(2026, 1, 2, 8, 15, 0, 0,
-    // tzinfo=timezone(timedelta(hours=2)))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime aware = ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(8), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
-    // at = aware.time()
     ::tpystd::datetime::time at = aware.time();
-    // print(at.hour, at.minute, at.second)
     std::cout << at.hour() << " " << at.minute() << " " << at.second() << "\n";
-    // print(aware.date().isoformat())
     std::cout << aware.date().isoformat() << "\n";
-    // # midnight / zero components
-    // z = datetime(1, 1, 1)
     ::tpystd::datetime::datetime z = ::tpystd::datetime::datetime(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1));
-    // print(z.date().isoformat(), z.time().isoformat())
     std::cout << z.date().isoformat() << " " << z.time().isoformat() << "\n";
 }
 
+// # datetime.date() / datetime.time() accessors: split a datetime into its date
+// # and (naive) time components. time() drops tzinfo like CPython.
+// # Byte-compared against real CPython datetime.
+// from datetime import datetime, timezone, timedelta
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime.date() / datetime.time() accessors: split a datetime into its date
-    // # and (naive) time components. time() drops tzinfo like CPython.
-    // # Byte-compared against real CPython datetime.
-    // from datetime import datetime, timezone, timedelta
     ::tpystd::datetime::__tpy_init();
-    // main()
     main();
 }
 

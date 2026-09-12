@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Acc()
+//     a.collect(5)
+//     print(a.total)
+//     print(a.count)
 void main() {
-    // a = Acc()
     Acc a = Acc();
-    // a.collect(5)
     a.collect(5);
-    // print(a.total)
     std::cout << a.total << "\n";
-    // print(a.count)
     std::cout << a.count << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

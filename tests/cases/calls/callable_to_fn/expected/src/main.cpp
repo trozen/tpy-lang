@@ -5,50 +5,54 @@ namespace tpyapp::main {
 
 
 // def double(x: int32) -> int32:
+//     return x * 2
 int32_t double_(int32_t x) {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main() -> None:
+//     # Callable variable passed to Fn param
+//     f: Callable[[int32], int32] = double
+//     print(apply(f, 21))
+//
+//     # Callable variable with lambda
+//     g: Callable[[int32], int32] = lambda x: x + 100
+//     print(apply(g, 5))
+//
+//     # Callable passed to builtin map (Fn param)
+//     h: Callable[[int32], int32] = double
+//     result = list(map(h, [1, 2, 3]))
+//     print(result)
+//
+//     # Callable passed to builtin filter (Fn param)
+//     is_pos: Callable[[int32], bool] = lambda x: x > 0
+//     result2 = list(filter(is_pos, [-1, 2, -3, 4]))
+//     print(result2)
+//
+//     # Callable field accessed and passed to Fn param
+//     handler = Handler(double)
+//     print(apply(handler.cb, 10))
 void main() {
-    // # Callable variable passed to Fn param
-    // f: Callable[[int32], int32] = double
     std::function<int32_t(int32_t)> f = double_;
-    // print(apply(f, 21))
     std::cout << apply(f, 21) << "\n";
-    // # Callable variable with lambda
-    // g: Callable[[int32], int32] = lambda x: x + 100
     std::function<int32_t(int32_t)> g = [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 100)); };
-    // print(apply(g, 5))
     std::cout << apply(g, 5) << "\n";
-    // # Callable passed to builtin map (Fn param)
-    // h: Callable[[int32], int32] = double
     std::function<int32_t(int32_t)> h = double_;
-    // result = list(map(h, [1, 2, 3]))
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(h, std::array<int32_t, 3>{1, 2, 3}));
-    // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
-    // # Callable passed to builtin filter (Fn param)
-    // is_pos: Callable[[int32], bool] = lambda x: x > 0
     std::function<bool(int32_t)> is_pos = [](int32_t x) -> bool { return (x > 0); };
-    // result2 = list(filter(is_pos, [-1, 2, -3, 4]))
     std::vector<int32_t> result2 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>(is_pos, std::array<int32_t, 4>{-1, 2, -3, 4}));
-    // print(result2)
     std::cout << ::tpy::ListPrinter(result2) << "\n";
-    // # Callable field accessed and passed to Fn param
-    // handler = Handler(double)
     Handler handler = Handler(double_);
-    // print(apply(handler.cb, 10))
     std::cout << apply(handler.cb, 10) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

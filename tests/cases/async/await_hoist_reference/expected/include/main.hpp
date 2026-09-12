@@ -16,12 +16,16 @@ struct __coro_make_list;
 struct __coro_get_multiplier;
 struct __coro_caller;
 
+// async def make_list() -> Own[list[int32]]:
 __coro_make_list make_list();
+// async def get_multiplier() -> int32:
 __coro_get_multiplier get_multiplier();
+// async def caller() -> int32:
 __coro_caller caller();
+// def main() -> None:
 void main();
 
-// Async coroutine: make_list
+// async def make_list() -> Own[list[int32]]:
 struct __coro_make_list {
     int32_t __state;
     bool __cancel_pending;
@@ -42,7 +46,7 @@ struct __coro_make_list {
     }
 };
 
-// Async coroutine: get_multiplier
+// async def get_multiplier() -> int32:
 struct __coro_get_multiplier {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +67,7 @@ struct __coro_get_multiplier {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> int32:
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;

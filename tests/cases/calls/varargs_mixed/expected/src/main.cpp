@@ -6,42 +6,42 @@ namespace tpyapp::main {
 
 // # *args with fixed positional params before it
 // def join_parts(sep: str, *parts: str) -> str:
+//     result = ""
+//     for i in range(len(parts)):
+//         if i > 0:
+//             result += sep
+//         result += parts[i]
+//     return result
 std::string join_parts(std::string_view sep, ::tpy::varargs<const std::string> parts) {
-    // result = ""
     std::string result = "";
-    // for i in range(len(parts)):
     int32_t __stop_0 = ::tpy::__len__(parts);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if i > 0:
         if ((i > 0)) {
-            // result += sep
             result += sep;
         }
-        // result += parts[i]
         result += parts[static_cast<std::size_t>(i)];
     }
-    // return result
     return result;
 }
 
 // def main() -> None:
+//     print(join_parts(", ", "a", "b", "c"))
+//     print(join_parts("-"))
+//     print(join_parts(" and ", "x", "y"))
 void main() {
-    // print(join_parts(", ", "a", "b", "c"))
     std::array<const std::string, 3> __tmp_1{"a", "b", "c"};
     std::cout << join_parts(", ", ::tpy::varargs<const std::string>(__tmp_1)) << "\n";
-    // print(join_parts("-"))
     std::cout << join_parts("-", ::tpy::varargs<const std::string>()) << "\n";
-    // print(join_parts(" and ", "x", "y"))
     std::array<const std::string, 2> __tmp_2{"x", "y"};
     std::cout << join_parts(" and ", ::tpy::varargs<const std::string>(__tmp_2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -13,10 +13,15 @@ struct E;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(a: D, b: D) -> D:
 D pick(D a, D b);
+// def first(xs: list[D]) -> D:
 D first(const std::vector<D>& xs);
+// def again(xs: list[D]) -> D:
 D again(const std::vector<D>& xs);
+// def widen(a: D, b: D) -> D | E:
 ::tpy::Union<D, E> widen(D a, D b);
+// def main() -> None:
 void main();
 
 // @dataclass(frozen=True)
@@ -116,10 +121,10 @@ namespace tpyapp::main {
 inline F::F(int32_t k) : k(k) {}
 
 // def __add__(self, o: "F") -> "F":  # tpyc: ok
+//     # The ternary is a C++ lvalue over two lvalues; the by-value return
+//     # copy-constructs from it.
+//     return self if self.k >= o.k else o  # tpyc: ok
 inline F F::__add__(F o) const {
-    // # The ternary is a C++ lvalue over two lvalues; the by-value return
-    // # copy-constructs from it.
-    // return self if self.k >= o.k else o  # tpyc: ok
     return (((this->k >= o.k)) ? ((*this)) : (o));
 }
 
@@ -137,9 +142,11 @@ inline uint64_t F::__hash__() const {
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline D::D(int32_t n) : n(n) {}
 
 // def __init__(self, m: int32) -> None:
+//     self.m = m
 inline E::E(int32_t m) : m(m) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,6 +12,7 @@ struct Pile;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -55,28 +56,29 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def total(self, *boxes: Box) -> int32:
+//     n: int32 = 0
+//     for b in boxes:
+//         n += b.val
+//     return n
 inline int32_t Pile::total(::tpy::varargs<const Box> boxes) const {
-    // n: int32 = 0
     int32_t n = 0;
-    // for b in boxes:
     auto& __obj_0 = boxes;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // n += b.val
         n = ::tpy::add_check<int32_t>(n, b.val);
     }
-    // return n
     return n;
 }
 
 // def via_param(self, b: Box, c: Box) -> int32:
+//     return self.total(b, c)  # tpyc: ok
 inline int32_t Pile::via_param(const Box& b, const Box& c) const {
-    // return self.total(b, c)  # tpyc: ok
     std::array<const Box*, 2> __tmp_1{&b, &c};
     return this->total(::tpy::varargs<const Box>(__tmp_1));
 }

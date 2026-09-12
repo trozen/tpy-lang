@@ -9,8 +9,11 @@ namespace tpyapp::explib {
 
 inline constexpr std::string_view __name__ = "explib";
 
+// def one() -> None:
 void one();
+// def two() -> None:
 void two();
+// def _private() -> None:
 void _private();
 
 void __tpy_init();

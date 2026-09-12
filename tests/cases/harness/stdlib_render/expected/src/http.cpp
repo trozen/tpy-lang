@@ -359,22 +359,22 @@ std::optional<::tpystd::http::HTTPStatus> EnumUtil<::tpystd::http::HTTPStatus>::
 namespace tpystd::http {
 
 
+// # http -- HTTP status codes and (in the `http.client` submodule) a minimal
+// # HTTP/1.1 client. CPython exposes HTTPStatus/HTTPMethod here and splits the
+// # client into http.client; this v1 ships HTTPStatus + http.client only.
+// #
+// # HTTPStatus is a plain IntEnum: members carry the numeric code (`.value`,
+// # int comparison, `HTTPStatus(code)` lookup). CPython's members additionally
+// # carry `.phrase`/`.description` and `.is_success`-style helpers via a custom
+// # __new__ -- TPy enums can't hold per-member data, so those attributes are
+// # absent (a compile error if used, not a silent wrong value).
+// # tpy: cpp_namespace("tpystd::http")
+// from enum import IntEnum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # http -- HTTP status codes and (in the `http.client` submodule) a minimal
-    // # HTTP/1.1 client. CPython exposes HTTPStatus/HTTPMethod here and splits the
-    // # client into http.client; this v1 ships HTTPStatus + http.client only.
-    // #
-    // # HTTPStatus is a plain IntEnum: members carry the numeric code (`.value`,
-    // # int comparison, `HTTPStatus(code)` lookup). CPython's members additionally
-    // # carry `.phrase`/`.description` and `.is_success`-style helpers via a custom
-    // # __new__ -- TPy enums can't hold per-member data, so those attributes are
-    // # absent (a compile error if used, not a silent wrong value).
-    // # tpy: cpp_namespace("tpystd::http")
-    // from enum import IntEnum
 }
 
 } // namespace tpystd::http

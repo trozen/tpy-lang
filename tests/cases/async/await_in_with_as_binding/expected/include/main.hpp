@@ -16,8 +16,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_value;
 struct __coro_caller;
 
+// async def value(n: int) -> int:
 __coro_value value(::tpy::BigInt n);
+// async def caller() -> None:
 __coro_caller caller();
+// def main() -> None:
 void main();
 
 // class Resource:
@@ -42,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
-// Async coroutine: value
+// async def value(n: int) -> int:
 struct __coro_value {
     int32_t __state;
     bool __cancel_pending;
@@ -64,7 +67,7 @@ struct __coro_value {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> None:
 struct __coro_caller {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -109,17 +112,18 @@ struct __coro_caller {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Resource::Resource(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> str:
+//     return self.name
 inline std::string Resource::__enter__() const {
-    // return self.name
     return this->name;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print(f"exit {self.name}")
 inline void Resource::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print(f"exit {self.name}")
     std::cout << std::format("exit {}", this->name) << "\n";
 }
 void __tpy_init();

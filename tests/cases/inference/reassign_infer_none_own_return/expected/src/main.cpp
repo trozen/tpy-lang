@@ -3,26 +3,25 @@
 
 namespace tpyapp::main {
 
-// x = None
 Point* x{};
 
 // def make_owned_point() -> Own[Point]:
+//     return Point(11)
 Point make_owned_point() {
-    // return Point(11)
     return Point(11);
 }
 
+// x = None
+// x = make_owned_point()
+// print(x.x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = None
     x = nullptr;
-    // x = make_owned_point()
     static Point __global_slot_1 = make_owned_point();
     x = &__global_slot_1;
-    // print(x.x)
     std::cout << x->x << "\n";
 }
 

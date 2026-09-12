@@ -11,13 +11,17 @@
 namespace tpyapp::defmod {
 
 inline constexpr std::string_view __name__ = "defmod";
+// # The default names THIS module's Final -- a caller in another module must not
+// # resolve it in its own scope.
+// BUMP: Final[int32] = 30
 inline constexpr int32_t BUMP = 30;
 
 struct __coro_scaled;
 
+// async def scaled(a: int32, b: int32 = BUMP) -> int32:
 __coro_scaled scaled(int32_t a, int32_t b = BUMP);
 
-// Async coroutine: scaled
+// async def scaled(a: int32, b: int32 = BUMP) -> int32:
 struct __coro_scaled {
     int32_t __state;
     bool __cancel_pending;

@@ -3,21 +3,25 @@
 
 namespace tpyapp::main {
 
-// _code = 0
 int32_t _code{};
 
 // def bump() -> int:
+//     global _code
+//     _code += 1
+//     print(f"side-effect {_code}")
+//     return _code
 ::tpy::BigInt bump() {
-    // global _code
-    // _code += 1
     _code = ::tpy::add_check<int32_t>(_code, 1);
-    // print(f"side-effect {_code}")
     std::cout << std::format("side-effect {}", _code) << "\n";
-    // return _code
     return ::tpy::BigInt(_code);
 }
 
 // def normal_exit() -> Iterator[int]:
+//     # finally raises on the try's fall-through after a suspension.
+//     try:
+//         yield 1
+//     finally:
+//         raise Err(bump())
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_normal_exit::__next__() {
     try {
     while (true) switch (__state) {
@@ -44,7 +48,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_normal_exit::__next__()
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -58,7 +61,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_normal_exit::__next__()
 }
 
 void __gen_normal_exit::__finally_0() {
-    // raise Err(bump())
     throw Err(bump());
 }
 
@@ -68,6 +70,14 @@ __gen_normal_exit normal_exit() {
 }
 
 // def handler_exit() -> Iterator[int]:
+//     # finally raises after the except handler completes normally.
+//     try:
+//         yield 1
+//         raise ValueError("v")
+//     except ValueError:
+//         print("caught")
+//     finally:
+//         raise Err(bump())
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__() {
     try {
     while (true) switch (__state) {
@@ -77,12 +87,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__(
     }
     case S_RESUME_0: {
         try {
-            // raise ValueError("v")
             throw ::tpy::ValueError("v");
         } catch (const ::tpy::ValueError&) {
             bool __fin_ran_3 = false;
             try {
-                // print("caught")
                 std::cout << "caught" << "\n";
                 __fin_ran_3 = true;
                 this->__finally_0();
@@ -104,7 +112,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__(
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -118,7 +125,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__(
 }
 
 void __gen_handler_exit::__finally_0() {
-    // raise Err(bump())
     throw Err(bump());
 }
 
@@ -128,6 +134,12 @@ __gen_handler_exit handler_exit() {
 }
 
 // def return_exit() -> Iterator[int]:
+//     # return inside the try after a suspension; the finally raises.
+//     try:
+//         yield 1
+//         return
+//     finally:
+//         raise Err(bump())
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__next__() {
     try {
     while (true) switch (__state) {
@@ -138,7 +150,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__next__()
     case S_RESUME_0: {
         bool __fin_ran_4 = false;
         try {
-            // return
             __fin_ran_4 = true;
             this->__finally_0();
             __state = S_DONE;
@@ -151,7 +162,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__next__()
         }
     }
     case S_JOIN_0: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -165,7 +175,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__next__()
 }
 
 void __gen_return_exit::__finally_0() {
-    // raise Err(bump())
     throw Err(bump());
 }
 
@@ -175,6 +184,9 @@ __gen_return_exit return_exit() {
 }
 
 // def with_exit() -> Iterator[int]:
+//     # __exit__ raises on the with's fall-through after a suspension.
+//     with Thrower():
+//         yield 1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_with_exit::__next__() {
     try {
     while (true) switch (__state) {
@@ -206,7 +218,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_with_exit::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_1: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -226,6 +237,16 @@ __gen_with_exit with_exit() {
 }
 
 // def nested_exit() -> Iterator[int]:
+//     # inner finally raises on the return path; outer finally must still run.
+//     try:
+//         try:
+//             yield 1
+//             return
+//         finally:
+//             print("inner fin")
+//             raise Err(bump())
+//     finally:
+//         print("outer fin")
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__() {
     try {
     while (true) switch (__state) {
@@ -238,7 +259,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__()
         try {
             bool __fin_ran_7 = false;
             try {
-                // return
                 __fin_ran_7 = true;
                 this->__finally_1();
                 __fin_ran_6 = true;
@@ -272,7 +292,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__()
         }
     }
     case S_JOIN_2: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
@@ -286,13 +305,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__()
 }
 
 void __gen_nested_exit::__finally_0() {
-    // print("outer fin")
     std::cout << "outer fin" << "\n";
 }
 void __gen_nested_exit::__finally_1() {
-    // print("inner fin")
     std::cout << "inner fin" << "\n";
-    // raise Err(bump())
     throw Err(bump());
 }
 
@@ -302,6 +318,15 @@ __gen_nested_exit nested_exit() {
 }
 
 // def break_exit() -> Iterator[int]:
+//     # break out of a try in a loop after a suspension; the finally raises.
+//     for i in range(3):
+//         try:
+//             yield i
+//             if i == 1:
+//                 break
+//         finally:
+//             if i == 1:
+//                 raise Err(bump())
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_break_exit::__next__() {
     try {
     while (true) switch (__state) {
@@ -350,7 +375,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_break_exit::__next__() 
         continue;
     }
     case S_JOIN_3: {
-        // yield i
         __state = S_RESUME_0;
         return ::tpy::BigInt(i);
     }
@@ -364,9 +388,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_break_exit::__next__() 
 }
 
 void __gen_break_exit::__finally_0() {
-    // if i == 1:
     if ((i == 1)) {
-        // raise Err(bump())
         throw Err(bump());
     }
 }
@@ -377,6 +399,13 @@ __gen_break_exit break_exit() {
 }
 
 // def continue_exit() -> Iterator[int]:
+//     # continue out of a try in a loop after a suspension; the finally raises.
+//     for i in range(2):
+//         try:
+//             yield i
+//             continue
+//         finally:
+//             raise Err(bump())
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_continue_exit::__next__() {
     try {
     while (true) switch (__state) {
@@ -410,7 +439,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_continue_exit::__next__
         continue;
     }
     case S_JOIN_1: {
-        // yield i
         __state = S_RESUME_0;
         return ::tpy::BigInt(i);
     }
@@ -424,7 +452,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_continue_exit::__next__
 }
 
 void __gen_continue_exit::__finally_0() {
-    // raise Err(bump())
     throw Err(bump());
 }
 
@@ -434,38 +461,39 @@ __gen_continue_exit continue_exit() {
 }
 
 // def main() -> None:
+//     run("normal_exit", normal_exit())
+//     run("handler_exit", handler_exit())
+//     run("return_exit", return_exit())
+//     run("with_exit", with_exit())
+//     run("nested_exit", nested_exit())
+//     run("break_exit", break_exit())
+//     run("continue_exit", continue_exit())
 void main() {
-    // run("normal_exit", normal_exit())
     auto __tmp_1 = normal_exit();
     run("normal_exit", __tmp_1);
-    // run("handler_exit", handler_exit())
     auto __tmp_2 = handler_exit();
     run("handler_exit", __tmp_2);
-    // run("return_exit", return_exit())
     auto __tmp_3 = return_exit();
     run("return_exit", __tmp_3);
-    // run("with_exit", with_exit())
     auto __tmp_4 = with_exit();
     run("with_exit", __tmp_4);
-    // run("nested_exit", nested_exit())
     auto __tmp_5 = nested_exit();
     run("nested_exit", __tmp_5);
-    // run("break_exit", break_exit())
     auto __tmp_6 = break_exit();
     run("break_exit", __tmp_6);
-    // run("continue_exit", continue_exit())
     auto __tmp_7 = continue_exit();
     run("continue_exit", __tmp_7);
 }
 
+// _code = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // _code = 0
     _code = 0;
-    // main()
     main();
 }
 

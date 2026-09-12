@@ -5,34 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o1 = Outer("a", Inner(42))
+//     print(o1)
+//
+//     o2 = Outer("b")
+//     print(o2)
+//
+//     o3 = Outer("c", None)
+//     print(o3)
+//
+//     print(o1 == o2)
+//     print(o2 == o3)
+//     print(o1 == Outer("a", Inner(42)))
 void main() {
-    // o1 = Outer("a", Inner(42))
     Outer o1 = Outer("a", Inner(42));
-    // print(o1)
     std::cout << o1 << "\n";
-    // o2 = Outer("b")
     Outer o2 = Outer("b");
-    // print(o2)
     std::cout << o2 << "\n";
-    // o3 = Outer("c", None)
     Outer o3 = Outer("c", std::nullopt);
-    // print(o3)
     std::cout << o3 << "\n";
-    // print(o1 == o2)
     std::cout << ::tpy::print_bool(((o1) == (o2))) << "\n";
-    // print(o2 == o3)
     std::cout << ::tpy::print_bool(((o2) == (o3))) << "\n";
-    // print(o1 == Outer("a", Inner(42)))
     std::cout << ::tpy::print_bool(((o1) == (Outer("a", Inner(42))))) << "\n";
 }
 
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

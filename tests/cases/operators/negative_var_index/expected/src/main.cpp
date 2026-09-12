@@ -5,33 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     arr: Array[int32, 3] = [10, 20, 30]
+//     i: int32 = -1
+//     print(arr[i])
+//
+//     nums: list[int32] = [1, 2, 3, 4, 5]
+//     j: int32 = -2
+//     print(nums[j])
+//
+//     s: str = "hello"
+//     k: int32 = -3
+//     print(s[k])
 void main() {
-    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // i: int32 = -1
     int32_t i = -1;
-    // print(arr[i])
     std::cout << ::tpy::__getitem__(arr, i) << "\n";
-    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // j: int32 = -2
     int32_t j = -2;
-    // print(nums[j])
     std::cout << ::tpy::__getitem__(nums, j) << "\n";
-    // s: str = "hello"
     std::string_view s = "hello";
-    // k: int32 = -3
     int32_t k = -3;
-    // print(s[k])
     std::cout << ::tpy::__getitem__(s, k) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,8 +5,8 @@ namespace tpyapp::pkg::my__helper {
 
 
 // def get_value() -> int32:
+//     return int32(99)
 int32_t get_value() {
-    // return int32(99)
     return 99;
 }
 

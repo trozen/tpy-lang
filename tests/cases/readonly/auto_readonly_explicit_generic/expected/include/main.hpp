@@ -11,7 +11,9 @@ template<typename T> struct Vec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_vec(v: readonly[Vec[int32]]) -> None:
 void read_vec(const Vec<int32_t>& v);
+// def main() -> None:
 void main();
 
 // class Vec[T]:
@@ -21,25 +23,26 @@ struct Vec {
     std::vector<T> _data;
 
     // def __init__(self) -> None:
+    //     self._data = []
     Vec() : _data(std::vector<T>{}) {}
 
     // def push(self, v: T) -> None:
+    //     self._data.append(v)
     void push(::tpy::param_val_or_ref_t<T> v) {
-        // self._data.append(v)
         this->_data.push_back(::tpy::param_to_storage<T>(v));
     }
 
     // @auto_readonly
     // def data(self) -> Span[auto_readonly[T]]:
+    //     return self._data
     std::span<T> data() {
-        // return self._data
         return ::tpy::as_mut_span(this->_data);
     }
 
     // @auto_readonly
     // def data(self) -> Span[auto_readonly[T]]:
+    //     return self._data
     std::span<const T> data() const {
-        // return self._data
         return ::tpy::as_span(this->_data);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vec";

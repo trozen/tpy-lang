@@ -5,26 +5,36 @@ namespace tpyapp::main {
 
 
 // def main():
+//     tmp = os.getcwd() + "/tpy_os_fs_dir"
+//     os.mkdir(tmp)
+//     os.chdir(tmp)
+//     print(os.getcwd() == tmp)
+//
+//     for i in ["a", "b", "c"]:
+//         with open(tmp + "/tpy_os_fs_" + i + ".txt", "w") as f:
+//             f.write(i)
+//     names = sorted([n for n in os.listdir(tmp) if n.startswith("tpy_os_fs_")])
+//     print(",".join(names))
+//
+//     # Unset var: None / default. PATH is set in any environment that can run
+//     # the toolchain, so `is not None` exercises the value-returning branch
+//     # without printing a machine-specific value.
+//     print(os.getenv("TPY_DEFINITELY_UNSET_VAR") is None)
+//     print(os.getenv("TPY_DEFINITELY_UNSET_VAR", "dflt"))
+//     print(os.getenv("PATH") is not None)
 void main() {
-    // tmp = os.getcwd() + "/tpy_os_fs_dir"
     ::tpy::String tmp = (::tpy::str_concat(::tpy::stdlib::os::getcwd(), "/tpy_os_fs_dir"));
-    // os.mkdir(tmp)
     ::tpystd::os::mkdir(tmp);
-    // os.chdir(tmp)
     ::tpy::stdlib::os::chdir(tmp);
-    // print(os.getcwd() == tmp)
     std::cout << ::tpy::print_bool((::tpy::stdlib::os::getcwd() == tmp)) << "\n";
-    // for i in ["a", "b", "c"]:
     auto __obj_0 = {"a", "b", "c"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view i = *__beg_0;
-        // with open(tmp + "/tpy_os_fs_" + i + ".txt", "w") as f:
         auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(tmp, "/tpy_os_fs_")), i)), ".txt")), "w");
         auto& f = __ctx_1.__enter__();
         try {
-            // f.write(i)
             f.write(i);
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -37,7 +47,6 @@ void main() {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     }
-    // names = sorted([n for n in os.listdir(tmp) if n.startswith("tpy_os_fs_")])
     std::vector<std::string> names = ::tpy::builtin_sorted<std::string>(({
         std::vector<std::string> __result;
         auto __obj_1 = ::tpystd::os::listdir(tmp);
@@ -52,30 +61,24 @@ void main() {
         }
         std::move(__result);
     }));
-    // print(",".join(names))
     std::cout << ::tpy::str_join(",", names) << "\n";
-    // # Unset var: None / default. PATH is set in any environment that can run
-    // # the toolchain, so `is not None` exercises the value-returning branch
-    // # without printing a machine-specific value.
-    // print(os.getenv("TPY_DEFINITELY_UNSET_VAR") is None)
     std::cout << ::tpy::print_bool((!::tpystd::os::getenv("TPY_DEFINITELY_UNSET_VAR").has_value())) << "\n";
-    // print(os.getenv("TPY_DEFINITELY_UNSET_VAR", "dflt"))
     std::cout << ::tpystd::os::getenv("TPY_DEFINITELY_UNSET_VAR", "dflt") << "\n";
-    // print(os.getenv("PATH") is not None)
     std::cout << ::tpy::print_bool((::tpystd::os::getenv("PATH").has_value())) << "\n";
 }
 
+// # os filesystem layer (getcwd/chdir/listdir/getenv). Output is kept
+// # host-independent: the run's scratch cwd differs per run, so getcwd is
+// # compared against a path built from it rather than printed.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os filesystem layer (getcwd/chdir/listdir/getenv). Output is kept
-    // # host-independent: the run's scratch cwd differs per run, so getcwd is
-    // # compared against a path built from it rather than printed.
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

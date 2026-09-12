@@ -5,57 +5,57 @@ namespace tpyapp::main {
 
 
 // def read_param(s: readonly[Store]) -> int32:
+//     # The pre-existing healthy path: declared-readonly receiver.
+//     p = s[5]
+//     if p is not None:
+//         return p.v
+//     return -1
 int32_t read_param(const Store& s) {
-    // # The pre-existing healthy path: declared-readonly receiver.
-    // p = s[5]
     const Cell* p = s[5];
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.v
         return p->v;
     }
-    // return -1
     return -1;
 }
 
 // def read_call(o: readonly[Outer]) -> int32:
+//     # A method call on a const-rooted receiver (`s` aliases a field off the
+//     # readonly param) returning a bare reference type binds `const Cell&`.
+//     # This body has no Optional, so it routes through THIR -- exercising the
+//     # const-rooted method-call arm on both codegen paths, not just the AST.
+//     s = o.store
+//     c = s.first()
+//     return c.v
 int32_t read_call(const Outer& o) {
-    // # A method call on a const-rooted receiver (`s` aliases a field off the
-    // # readonly param) returning a bare reference type binds `const Cell&`.
-    // # This body has no Optional, so it routes through THIR -- exercising the
-    // # const-rooted method-call arm on both codegen paths, not just the AST.
-    // s = o.store
     const Store& s = o.store;
-    // c = s.first()
     const Cell& c = s.first();
-    // return c.v
     return c.v;
 }
 
 // def main() -> None:
+//     d = Outer()
+//     print(d.read_sub())
+//     print(d.read_named())
+//     d.bump()
+//     print(d.read_sub())
+//     print(read_param(d.store))
+//     print(read_call(d))
 void main() {
-    // d = Outer()
     Outer d = Outer();
-    // print(d.read_sub())
     std::cout << d.read_sub() << "\n";
-    // print(d.read_named())
     std::cout << d.read_named() << "\n";
-    // d.bump()
     d.bump();
-    // print(d.read_sub())
     std::cout << d.read_sub() << "\n";
-    // print(read_param(d.store))
     std::cout << read_param(d.store) << "\n";
-    // print(read_call(d))
     std::cout << read_call(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

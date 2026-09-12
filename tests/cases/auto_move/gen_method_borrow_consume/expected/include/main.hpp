@@ -11,7 +11,9 @@ struct Walker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drop(xs: Own[list[int32]]) -> int32:
 int32_t drop(std::vector<int32_t>&& xs);
+// def main():
 void main();
 
 // class Walker:
@@ -19,6 +21,8 @@ struct Walker {
 
 
     // def walk(self, xs: list[int32]) -> Iterator[int32]:
+    //     for x in xs:
+    //         yield x
     auto walk(std::vector<int32_t>& xs) const {
         return ::tpy::make_generator<int32_t>(
             [this, &xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<int32_t> {

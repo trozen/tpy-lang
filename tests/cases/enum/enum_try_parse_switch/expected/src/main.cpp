@@ -81,48 +81,49 @@ namespace tpyapp::main {
 
 
 // def try_it(name: str) -> None:
+//     d = try_parse(Direction, name)
+//     if d is not None:
+//         print(d)
+//     else:
+//         print("not found")
 void try_it(std::string_view name) {
-    // d = try_parse(Direction, name)
     std::optional<Direction> d = ::tpy::EnumUtil<Direction>::try_parse(name);
-    // if d is not None:
     if ((d.has_value())) {
-        // print(d)
         std::cout << ::tpy::print_optional_val(d) << "\n";
-    // else:
     } else {
-        // print("not found")
         std::cout << "not found" << "\n";
     }
 }
 
 // def main() -> None:
+//     try_it("North")
+//     try_it("South")
+//     try_it("East")
+//     try_it("West")
+//     try_it("Up")
+//     try_it("Down")
+//     try_it("Left")
+//     try_it("")
 void main() {
-    // try_it("North")
     try_it("North");
-    // try_it("South")
     try_it("South");
-    // try_it("East")
     try_it("East");
-    // try_it("West")
     try_it("West");
-    // try_it("Up")
     try_it("Up");
-    // try_it("Down")
     try_it("Down");
-    // try_it("Left")
     try_it("Left");
-    // try_it("")
     try_it("");
 }
 
+// # try_parse with 5+ members triggers switch-based dispatch
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # try_parse with 5+ members triggers switch-based dispatch
-    // from enum import Enum
-    // main()
     main();
 }
 

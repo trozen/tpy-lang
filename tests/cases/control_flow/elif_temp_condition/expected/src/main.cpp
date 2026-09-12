@@ -5,47 +5,47 @@ namespace tpyapp::main {
 
 
 // def has_items(items: list[int32]) -> bool:
+//     return len(items) > 0
 bool has_items(const std::vector<int32_t>& items) {
-    // return len(items) > 0
     return (::tpy::__len__(items) > 0);
 }
 
 // def test(x: int32) -> int32:
+//     if x < 0:
+//         return -1
+//     elif has_items([10, 20]):
+//         return 0
+//     else:
+//         return 1
 int32_t test(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // return -1
         return -1;
-    // elif has_items([10, 20]):
     } else {
         std::vector<int32_t> __tmp_1 = {10, 20};
         if (has_items(__tmp_1)) {
-            // return 0
             return 0;
-        // else:
         } else {
-            // return 1
             return 1;
         }
     }
 }
 
 // def main() -> None:
+//     print(test(-5))
+//     print(test(0))
+//     print(test(5))
 void main() {
-    // print(test(-5))
     std::cout << test(-5) << "\n";
-    // print(test(0))
     std::cout << test(0) << "\n";
-    // print(test(5))
     std::cout << test(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

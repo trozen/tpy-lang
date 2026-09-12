@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def take_mut(p: Ptr[Node]) -> None:
+//     p.value = 99
 void take_mut(Node* p) {
-    // p.value = 99
     ::tpy::deref_check(p).value = ::tpy::BigInt(99);
 }
 
 // def main() -> None:
+//     s = Sink(Node(1))
+//     print(s.captured)
 void main() {
-    // s = Sink(Node(1))
     Node __tmp_1 = Node(::tpy::BigInt(1));
     Sink s = Sink(__tmp_1);
-    // print(s.captured)
     std::cout << s.captured << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

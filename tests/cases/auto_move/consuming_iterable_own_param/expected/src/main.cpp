@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Item] = [Item(1), Item(2), Item(3)]
+//     out = collect(items)
+//     for r in out:
+//         print(r.value)
 void main() {
-    // items: list[Item] = [Item(1), Item(2), Item(3)]
     std::vector<Item> items = {Item(1), Item(2), Item(3)};
-    // out = collect(items)
     std::vector<Item> out = collect(::tpy::own_iter(std::move(items)));
-    // for r in out:
     auto& __obj_0 = out;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& r = *__beg_0;
-        // print(r.value)
         std::cout << r.value << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

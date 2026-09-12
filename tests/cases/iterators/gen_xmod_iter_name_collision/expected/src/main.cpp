@@ -5,8 +5,9 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     for v in Bag():
+//         print(v)
 void main() {
-    // for v in Bag():
     {
         auto __src_0 = Bag();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -14,13 +15,15 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def __iter__(self) -> Iterator[int32]:
+//     for x in self.src:
+//         yield x
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,7 +32,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -44,7 +46,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -54,14 +55,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
 }
 
 
+// import bags
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import bags
     ::tpyapp::bags::__tpy_init();
-    // main()
     main();
 }
 

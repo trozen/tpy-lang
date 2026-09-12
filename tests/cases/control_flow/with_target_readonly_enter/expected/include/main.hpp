@@ -11,7 +11,9 @@ struct Reg;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def probe(flag: bool) -> int32:
 int32_t probe(bool flag);
+// def main() -> None:
 void main();
 
 // class Reg:
@@ -39,18 +41,19 @@ inline std::ostream& operator<<(std::ostream& os, const Reg& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Reg::Reg(int32_t n) : n(n) {}
 
 // @readonly
 // def __enter__(self) -> "Reg":
+//     return self
 inline const Reg& Reg::__enter__() const {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Reg::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

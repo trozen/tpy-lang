@@ -5,37 +5,40 @@ namespace tpyapp::main {
 
 
 // def make_pair(left: P, right: P) -> tuple[P | None, P | None]:
+//     return (left, right)
 std::tuple<P*, P*> make_pair(P& left, P& right) {
-    // return (left, right)
     return std::tuple<P*, P*>{&(left), &(right)};
 }
 
 // def main() -> None:
+//     a = P(1)
+//     b = P(2)
+//
+//     pairs: list[tuple[P | None, P | None]] = []
+//     pairs.append(make_pair(a, b))  # tpyc: warning(/copies/) warning(/copies/)
+//
+//     d: dict[int32, tuple[P | None, P | None]] = {}
+//     d[int32(0)] = make_pair(a, b)  # tpyc: warning(/copies/) warning(/copies/)
+//
+//     print(len(pairs))
+//     print(len(d))
 void main() {
-    // a = P(1)
     P a = P(1);
-    // b = P(2)
     P b = P(2);
-    // pairs: list[tuple[P | None, P | None]] = []
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = std::vector<std::tuple<std::optional<P>, std::optional<P>>>{};
-    // pairs.append(make_pair(a, b))  # tpyc: warning(/copies/) warning(/copies/)
     pairs.push_back(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(make_pair(a, b)));
-    // d: dict[int32, tuple[P | None, P | None]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
-    // d[int32(0)] = make_pair(a, b)  # tpyc: warning(/copies/) warning(/copies/)
     ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(make_pair(a, b)));
-    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

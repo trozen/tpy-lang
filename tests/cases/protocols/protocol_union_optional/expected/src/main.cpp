@@ -5,44 +5,47 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int] = [10, 20, 30]
+//
+//     # process: with arg, explicit None, omitted
+//     print(process(nums))
+//     print(process(None))
+//     print(process())
+//
+//     # with_else: else branch fires for None / omitted
+//     print(with_else(nums))
+//     print(with_else(None))
+//     print(with_else())
+//
+//     # Constructor with protocol union + None
+//     h1 = Holder(nums)
+//     print(h1.count)
+//     h2 = Holder(None)
+//     print(h2.count)
+//     h3 = Holder()
+//     print(h3.count)
 void main() {
-    // nums: list[int] = [10, 20, 30]
     std::vector<::tpy::BigInt> nums = {10, 20, 30};
-    // # process: with arg, explicit None, omitted
-    // print(process(nums))
     std::cout << process(&(nums)) << "\n";
-    // print(process(None))
     std::cout << process(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    // print(process())
     std::cout << process() << "\n";
-    // # with_else: else branch fires for None / omitted
-    // print(with_else(nums))
     std::cout << with_else(&(nums)) << "\n";
-    // print(with_else(None))
     std::cout << with_else(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    // print(with_else())
     std::cout << with_else() << "\n";
-    // # Constructor with protocol union + None
-    // h1 = Holder(nums)
     Holder h1 = Holder(&(nums));
-    // print(h1.count)
     std::cout << h1.count << "\n";
-    // h2 = Holder(None)
     Holder h2 = Holder(static_cast<std::nullptr_t*>(nullptr));
-    // print(h2.count)
     std::cout << h2.count << "\n";
-    // h3 = Holder()
     Holder h3 = Holder();
-    // print(h3.count)
     std::cout << h3.count << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

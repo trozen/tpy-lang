@@ -5,6 +5,13 @@ namespace tpyapp::main {
 
 
 // def gen(items: list[int]) -> Iterator[int]:
+//     for it in items:
+//         match it:
+//             case 0:
+//                 continue
+//             case v:
+//                 yield v
+//                 yield v * 10
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -14,7 +21,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield v * 10
         __state = S_RESUME_1;
         return ((v) * (::tpy::BigInt(10)));
     }
@@ -29,14 +35,11 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         }
         it = *((*__for_it_0))++;
         auto& __match_subject_1 = it;
-        // case 0:
         if (__match_subject_1 == 0) {
             __state = S_JOIN_0;
             continue;
-        // case v:
         } else {
             v = __match_subject_1;
-            // yield v
             __state = S_RESUME_0;
             return v;
         }
@@ -59,8 +62,9 @@ __gen_gen gen(std::vector<::tpy::BigInt>& items) {
 }
 
 // def main() -> None:
+//     for y in gen([1, 0, 2]):
+//         print(y)
 void main() {
-    // for y in gen([1, 0, 2]):
     {
         std::vector<::tpy::BigInt> __tmp_1 = {1, 0, 2};
         auto __src_0 = gen(__tmp_1);
@@ -69,18 +73,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
-        // print(y)
         std::cout << y << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     v = Vec2(int32(3), int32(4))
+//     print(v.x)
+//     print(v.y)
+//     v.x = int32(10)
+//     print(v.x)
+//     print(v.sum())
 void main() {
-    // v = Vec2(int32(3), int32(4))
     ::Vec2 v = ::Vec2(3, 4);
-    // print(v.x)
     std::cout << v.m_x << "\n";
-    // print(v.y)
     std::cout << v.m_y << "\n";
-    // v.x = int32(10)
     v.m_x = 10;
-    // print(v.x)
     std::cout << v.m_x << "\n";
-    // print(v.sum())
     std::cout << v.sum() << "\n";
 }
 
+// # native_field() -- per-field C++ rename on @native classes.
+// # The generated C++ must reference m_x / m_y, not x / y, or the link fails.
+// from tpy.extern import native, native_field
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # native_field() -- per-field C++ rename on @native classes.
-    // # The generated C++ must reference m_x / m_y, not x / y, or the link fails.
-    // from tpy.extern import native, native_field
-    // main()
     main();
 }
 

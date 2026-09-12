@@ -21,8 +21,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def process[T: Mutable](box: Box[T]) -> None:
 template<Mutable T>
 void process(::tpystd::tplib::box::Box<T>& box);
+// def test() -> None:
 void test();
 
 // class Point:
@@ -46,19 +48,20 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
 
 // def mutate(self) -> None:
+//     self.x += 10
 inline void Point::mutate() {
-    // self.x += 10
     this->x = (this->x) + (::tpy::BigInt(10));
 }
 // def process[T: Mutable](box: Box[T]) -> None:
+//     item = box.get()  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
+//     item.mutate()     # mutation through the reference
 template<Mutable T>
 void process(::tpystd::tplib::box::Box<T>& box) {
-    // item = box.get()  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
     ::tpy::val_or_ref_t<T> item = box.get();
-    // item.mutate()     # mutation through the reference
     item.mutate();
 }
 

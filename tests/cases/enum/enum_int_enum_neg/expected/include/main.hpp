@@ -32,7 +32,9 @@ inline std::ostream& operator<<(std::ostream& __os, Prio __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def neg(p: Prio) -> int32:
 int32_t neg(Prio p);
+// def main() -> None:
 void main();
 
 void __tpy_init();

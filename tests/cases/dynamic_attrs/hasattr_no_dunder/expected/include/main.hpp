@@ -11,6 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # D16 v1.5 phase 7: hasattr on a class without __getattr__: declared members
@@ -35,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,73 +5,73 @@ namespace tpyapp::main {
 
 
 // def dict_ops() -> int32:
+//     d = {1: 100, 2: 200, 3: 300}
+//     total = d[1]
+//     total = total + d.pop(2)
+//     total = total + d.pop(9, 4)
+//     for k in d:
+//         total = total + k
+//     return total + len(d)
 int32_t dict_ops() {
-    // d = {1: 100, 2: 200, 3: 300}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 100}, {2, 200}, {3, 300}});
-    // total = d[1]
     int32_t total = ::tpy::__getitem__(d, 1);
-    // total = total + d.pop(2)
     total = (::tpy::add_check<int32_t>(total, ::tpy::dict_pop(d, 2)));
-    // total = total + d.pop(9, 4)
     total = (::tpy::add_check<int32_t>(total, ::tpy::dict_pop_default(d, 9, 4)));
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t k = *__beg_0;
-        // total = total + k
         total = (::tpy::add_check<int32_t>(total, k));
     }
-    // return total + len(d)
     return (::tpy::add_check<int32_t>(total, ::tpy::__len__(d)));
 }
 
 // def empty_dict(k: int32, v: int32) -> int32:
+//     e: dict[int32, int32] = {}
+//     print(len(e))
+//     return e.pop(k, v)
 int32_t empty_dict(int32_t k, int32_t v) {
-    // e: dict[int32, int32] = {}
     ::tpy::ordered_map<int32_t, int32_t> e = ::tpy::ordered_map<int32_t, int32_t>();
-    // print(len(e))
     std::cout << ::tpy::__len__(e) << "\n";
-    // return e.pop(k, v)
     return ::tpy::dict_pop_default(e, k, v);
 }
 
 // def set_ops() -> int32:
+//     s = {5, 6, 7}
+//     total = len(s)
+//     for v in s:
+//         total = total + v
+//     return total
 int32_t set_ops() {
-    // s = {5, 6, 7}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({5, 6, 7});
-    // total = len(s)
     int32_t total = ::tpy::__len__(s);
-    // for v in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // total = total + v
         total = (::tpy::add_check<int32_t>(total, v));
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     print(dict_ops())
+//     print(empty_dict(1, 42))
+//     print(set_ops())
 void main() {
-    // print(dict_ops())
     std::cout << dict_ops() << "\n";
-    // print(empty_dict(1, 42))
     std::cout << empty_dict(1, 42) << "\n";
-    // print(set_ops())
     std::cout << set_ops() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,37 +3,36 @@
 
 namespace tpyapp::main {
 
-// vals: list[int32 | None] = list()
 std::vector<std::optional<int32_t>>* vals{};
 
 // def write_none(items: list[int32 | None]) -> int32:
+//     items[0] = None
+//     items.append(None)
+//     items.insert(0, None)
+//     if items[1] is not None:
+//         return items[1] + 1  # tpyc: warning(/Potential None access/)
+//     return 0
 int32_t write_none(std::vector<std::optional<int32_t>>& items) {
-    // items[0] = None
     ::tpy::__setitem__(items, 0, std::nullopt);
-    // items.append(None)
     items.push_back(std::nullopt);
-    // items.insert(0, None)
     ::tpy::list_insert(items, 0, std::nullopt);
-    // if items[1] is not None:
     if ((::tpy::__getitem__(items, 1).has_value())) {
-        // return items[1] + 1  # tpyc: warning(/Potential None access/)
         return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(::tpy::__getitem__(items, 1)), 1));
     }
-    // return 0
     return 0;
 }
 
+// vals: list[int32 | None] = list()
+// vals.append(7)
+// print(write_none(vals))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // vals: list[int32 | None] = list()
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
-    // vals.append(7)
     vals->push_back(7);
-    // print(write_none(vals))
     std::cout << write_none((*vals)) << "\n";
 }
 

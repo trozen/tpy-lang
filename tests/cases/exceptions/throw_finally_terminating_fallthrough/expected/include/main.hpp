@@ -9,13 +9,21 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def raise_from_finally() -> None:
 void raise_from_finally();
+// def return_from_finally() -> int32:
 int32_t return_from_finally();
+// def handler_falls_through() -> None:
 void handler_falls_through();
+// def finally_return_wins() -> int32:
 int32_t finally_return_wins();
+// def tuple_clause_falls_through() -> None:
 void tuple_clause_falls_through();
+// def deep_terminating_finally(c: bool) -> None:
 void deep_terminating_finally(bool c);
+// def all_paths_terminate() -> int32:
 int32_t all_paths_terminate();
+// def main() -> None:
 void main();
 
 void __tpy_init();

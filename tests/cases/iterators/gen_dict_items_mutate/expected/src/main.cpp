@@ -5,6 +5,9 @@ namespace tpyapp::main {
 
 
 // def bump(d: dict[int32, C]) -> Iterator[int32]:
+//     for k, c in d.items():
+//         c.v = c.v + 1
+//         yield k
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -24,13 +27,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>(*((*__for_it_0))++);
-        // for k, c in d.items():
         auto& __tup_1 = __for_tup_0;
         k = std::get<0>(__tup_1);
         c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
-        // c.v = c.v + 1
         c->v = (::tpy::add_check<int32_t>(c->v, 1));
-        // yield k
         __state = S_RESUME_0;
         return k;
     }
@@ -46,10 +46,15 @@ __gen_bump bump(::tpy::ordered_map<int32_t, C>& d) {
 }
 
 // def main():
+//     d = {1: C(10), 2: C(20)}
+//     for k in bump(d):
+//         print(k)
+//     print(d[1].v, d[2].v)
+//     for k in pairs(d):
+//         print(k)
+//     print(d[1].v, d[2].v)
 void main() {
-    // d = {1: C(10), 2: C(20)}
     ::tpy::ordered_map<int32_t, C> d = ::tpy::ordered_map<int32_t, C>({{1, C(10)}, {2, C(20)}});
-    // for k in bump(d):
     {
         auto __src_0 = bump(d);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -57,13 +62,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_1);
-        // print(k)
         std::cout << k << "\n";
         }
     }
-    // print(d[1].v, d[2].v)
     std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n";
-    // for k in pairs(d):
     {
         auto __src_2 = pairs(d);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -71,20 +73,18 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_3);
-        // print(k)
         std::cout << k << "\n";
         }
     }
-    // print(d[1].v, d[2].v)
     std::cout << ::tpy::__getitem__(d, 1).v << " " << ::tpy::__getitem__(d, 2).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

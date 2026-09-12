@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def swap(p: tuple[Point, int32]) -> tuple[int32, Point]:
+//     return (p[1], p[0])
 std::tuple<int32_t, Point*> swap(const std::tuple<Point*, int32_t>& p) {
-    // return (p[1], p[0])
     return std::tuple<int32_t, Point*>{std::get<1>(p), std::get<0>(p)};
 }
 
 // def main() -> None:
+//     p = Point(int32(1), int32(2))
+//     t = (p, int32(10))
+//     result = swap(t)
+//     print(result[0])
+//     print(result[1].x)
+//     print(result[1].y)
 void main() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // t = (p, int32(10))
     auto t = std::tuple<Point, int32_t>{std::move(p), 10};
-    // result = swap(t)
     auto result = swap(::tpy::tuple_to_pointer<std::tuple<Point*, int32_t>>(t));
-    // print(result[0])
     std::cout << std::get<0>(result) << "\n";
-    // print(result[1].x)
     std::cout << std::get<1>(result)->x << "\n";
-    // print(result[1].y)
     std::cout << std::get<1>(result)->y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

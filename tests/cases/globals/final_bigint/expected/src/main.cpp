@@ -3,20 +3,23 @@
 
 namespace tpyapp::main {
 
+// BIG_VALUE: Final[int] = 1000000
 const ::tpy::BigInt BIG_VALUE = ::tpy::BigInt(1000000);
 
 // def main() -> None:
+//     print(BIG_VALUE)
 void main() {
-    // print(BIG_VALUE)
     std::cout << BIG_VALUE << "\n";
 }
 
+// BIG_VALUE: Final[int] = 1000000
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,185 +3,193 @@
 
 namespace tpyapp::main {
 
-// # Global scope
-// g: Tree = [Leaf(1), [Leaf(2), [Leaf(3)]]]
 Tree g;
-// g_int: IntTree = [1, [2, [3]]]
 IntTree g_int;
-// g_dict: JsonValue = {"a": 1, "b": {"c": 2}}
 JsonValue g_dict;
 
 // def depth(t: Tree) -> int32:
+//     if isinstance(t, Leaf):
+//         return 0
+//     else:
+//         result = 0
+//         for child in t:
+//             d = depth(child)
+//             if d > result:
+//                 result = d
+//         return result + 1
 int32_t depth(const Tree& t) {
-    // if isinstance(t, Leaf):
     if (std::holds_alternative<Leaf>(t.value)) {
         const auto& __t = std::get<Leaf>(t.value);
-        // return 0
         return 0;
-    // else:
     } else {
         const auto& __t = std::get<std::vector<Tree>>(t.value);
-        // result = 0
         int32_t result = 0;
-        // for child in t:
         auto& __src_0 = __t;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            // d = depth(child)
             int32_t d = depth(child);
-            // if d > result:
             if ((d > result)) {
-                // result = d
                 result = d;
             }
         }
-        // return result + 1
         return (::tpy::add_check<int32_t>(result, 1));
     }
 }
 
 // def int_depth(t: IntTree) -> int:
+//     if isinstance(t, int):
+//         return 0
+//     else:
+//         result = 0
+//         for child in t:
+//             d = int_depth(child)
+//             if d > result:
+//                 result = d
+//         return result + 1
 ::tpy::BigInt int_depth(const IntTree& t) {
-    // if isinstance(t, int):
     if (std::holds_alternative<::tpy::BigInt>(t.value)) {
         const auto& __t = std::get<::tpy::BigInt>(t.value);
-        // return 0
         return ::tpy::BigInt(0);
-    // else:
     } else {
         const auto& __t = std::get<std::vector<IntTree>>(t.value);
-        // result = 0
         ::tpy::BigInt result = ::tpy::BigInt(0);
-        // for child in t:
         auto& __src_0 = __t;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& child = ::tpy::unwrap_ref(*__r_1);
-            // d = int_depth(child)
             ::tpy::BigInt d = int_depth(child);
-            // if d > result:
             if ((d > result)) {
-                // result = d
                 result = d;
             }
         }
-        // return result + 1
         return ((result) + (::tpy::BigInt(1)));
     }
 }
 
 // def json_keys(v: JsonValue) -> int:
+//     if isinstance(v, str):
+//         return 0
+//     elif isinstance(v, int):
+//         return 0
+//     else:
+//         result = 0
+//         for k in v:
+//             result = result + 1
+//         return result
 ::tpy::BigInt json_keys(const JsonValue& v) {
-    // if isinstance(v, str):
     if (std::holds_alternative<std::string>(v.value)) {
         const auto& __v = std::get<std::string>(v.value);
-        // return 0
         return ::tpy::BigInt(0);
-    // elif isinstance(v, int):
     } else if (std::holds_alternative<::tpy::BigInt>(v.value)) {
         const auto& __v = std::get<::tpy::BigInt>(v.value);
-        // return 0
         return ::tpy::BigInt(0);
-    // else:
     } else {
         const auto& __v = std::get<::tpy::ordered_map<std::string, JsonValue>>(v.value);
-        // result = 0
         int32_t result = 0;
-        // for k in v:
         auto& __src_0 = __v;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view k = ::tpy::unwrap_ref(*__r_1);
-            // result = result + 1
             result = (::tpy::add_check<int32_t>(result, 1));
         }
-        // return result
         return ::tpy::BigInt(result);
     }
 }
 
 // def main() -> None:
+//     # Record variant
+//     x: Tree = [Leaf(1), [Leaf(2), Leaf(3)]]
+//     print(depth(x))
+//
+//     y: Tree = [Leaf(1), [Leaf(2), [Leaf(3)]]]
+//     print(depth(y))
+//
+//     # list[Tree] annotation
+//     zs: list[Tree] = [Leaf(1), [Leaf(2), Leaf(3)]]
+//     print(depth(zs[1]))
+//
+//     # Function argument
+//     print(depth([Leaf(10), [Leaf(20), Leaf(30)]]))
+//     print(depth([Leaf(1), [Leaf(2), [Leaf(3), Leaf(4)]]]))
+//
+//     # Primitive variant
+//     a: IntTree = [1, [2, 3]]
+//     print(int_depth(a))
+//
+//     b: IntTree = [1, [2, [3]]]
+//     print(int_depth(b))
+//
+//     print(int_depth([10, [20, 30]]))
+//
+//     # Dict variant
+//     d: JsonValue = {"a": 1, "b": {"c": 2, "d": 3}}
+//     print(json_keys(d))
+//
+//     print(json_keys({"x": 1, "y": {"z": 2}}))
+//
+//     # Print recursive unions directly
+//     print(x)
+//     print(a)
+//     print(d)
+//
+//     # Global scope
+//     print(depth(g))
+//     print(int_depth(g_int))
+//     print(json_keys(g_dict))
 void main() {
-    // # Record variant
-    // x: Tree = [Leaf(1), [Leaf(2), Leaf(3)]]
     Tree x = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), Leaf(3)}};
-    // print(depth(x))
     std::cout << depth(x) << "\n";
-    // y: Tree = [Leaf(1), [Leaf(2), [Leaf(3)]]]
     Tree y = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3)}}};
-    // print(depth(y))
     std::cout << depth(y) << "\n";
-    // # list[Tree] annotation
-    // zs: list[Tree] = [Leaf(1), [Leaf(2), Leaf(3)]]
     std::vector<Tree> zs = {Leaf(1), std::vector<Tree>{Leaf(2), Leaf(3)}};
-    // print(depth(zs[1]))
     std::cout << depth(::tpy::__getitem__(zs, 1)) << "\n";
-    // # Function argument
-    // print(depth([Leaf(10), [Leaf(20), Leaf(30)]]))
     Tree __tmp_1 = std::vector<Tree>{Leaf(10), std::vector<Tree>{Leaf(20), Leaf(30)}};
     std::cout << depth(__tmp_1) << "\n";
-    // print(depth([Leaf(1), [Leaf(2), [Leaf(3), Leaf(4)]]]))
     Tree __tmp_2 = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3), Leaf(4)}}};
     std::cout << depth(__tmp_2) << "\n";
-    // # Primitive variant
-    // a: IntTree = [1, [2, 3]]
     IntTree a = std::vector<IntTree>{1, std::vector<IntTree>{2, 3}};
-    // print(int_depth(a))
     std::cout << int_depth(a) << "\n";
-    // b: IntTree = [1, [2, [3]]]
     IntTree b = std::vector<IntTree>{1, std::vector<IntTree>{2, std::vector<IntTree>{3}}};
-    // print(int_depth(b))
     std::cout << int_depth(b) << "\n";
-    // print(int_depth([10, [20, 30]]))
     IntTree __tmp_3 = std::vector<IntTree>{10, std::vector<IntTree>{20, 30}};
     std::cout << int_depth(__tmp_3) << "\n";
-    // # Dict variant
-    // d: JsonValue = {"a": 1, "b": {"c": 2, "d": 3}}
     JsonValue d = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}, {"d", 3}})}});
-    // print(json_keys(d))
     std::cout << json_keys(d) << "\n";
-    // print(json_keys({"x": 1, "y": {"z": 2}}))
     JsonValue __tmp_4 = ::tpy::ordered_map<std::string, JsonValue>({{"x", 1}, {"y", ::tpy::ordered_map<std::string, JsonValue>({{"z", 2}})}});
     std::cout << json_keys(__tmp_4) << "\n";
-    // # Print recursive unions directly
-    // print(x)
     std::cout << ::tpy::__str__(x) << "\n";
-    // print(a)
     std::cout << ::tpy::__str__(a) << "\n";
-    // print(d)
     std::cout << ::tpy::__str__(d) << "\n";
-    // # Global scope
-    // print(depth(g))
     std::cout << depth(g) << "\n";
-    // print(int_depth(g_int))
     std::cout << int_depth(g_int) << "\n";
-    // print(json_keys(g_dict))
     std::cout << json_keys(g_dict) << "\n";
 }
 
+// # Annotation-driven literal inference for recursive union types
+// # Nested list/dict literals infer element types from the target annotation
+// from dataclasses import dataclass
+//
+// # Global scope
+// g: Tree = [Leaf(1), [Leaf(2), [Leaf(3)]]]
+// g_int: IntTree = [1, [2, [3]]]
+// g_dict: JsonValue = {"a": 1, "b": {"c": 2}}
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Annotation-driven literal inference for recursive union types
-    // # Nested list/dict literals infer element types from the target annotation
-    // from dataclasses import dataclass
-    // # Global scope
-    // g: Tree = [Leaf(1), [Leaf(2), [Leaf(3)]]]
     g = std::vector<Tree>{Leaf(1), std::vector<Tree>{Leaf(2), std::vector<Tree>{Leaf(3)}}};
-    // g_int: IntTree = [1, [2, [3]]]
     g_int = std::vector<IntTree>{1, std::vector<IntTree>{2, std::vector<IntTree>{3}}};
-    // g_dict: JsonValue = {"a": 1, "b": {"c": 2}}
     g_dict = ::tpy::ordered_map<std::string, JsonValue>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, JsonValue>({{"c", 2}})}});
-    // main()
     main();
 }
 

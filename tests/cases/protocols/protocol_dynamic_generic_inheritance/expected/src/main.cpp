@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def show_source(s: Source[int32]) -> None:
+//     print(s.get())
 void show_source(Source<int32_t>& s) {
-    // print(s.get())
     std::cout << s.get() << "\n";
 }
 
 // def main() -> None:
+//     c: Counter[int32] = IntCounter()
+//     c.bump()
+//     c.bump()
+//     c.bump()
+//     print(c.get())
+//     show_source(c)  # Counter[int32] -> Source[int32] via implicit upcast
+//     s: Source[int32] = IntCounter()
+//     print(s.get())
 void main() {
-    // c: Counter[int32] = IntCounter()
     ::tpy::Adapter<Counter<int32_t>, IntCounter> __slot_1{IntCounter()};
     Counter<int32_t>* c = &__slot_1;
-    // c.bump()
     c->bump();
-    // c.bump()
     c->bump();
-    // c.bump()
     c->bump();
-    // print(c.get())
     std::cout << c->get() << "\n";
-    // show_source(c)  # Counter[int32] -> Source[int32] via implicit upcast
     show_source((*c));
-    // s: Source[int32] = IntCounter()
     ::tpy::Adapter<Source<int32_t>, IntCounter> __slot_2{IntCounter()};
     Source<int32_t>* s = &__slot_2;
-    // print(s.get())
     std::cout << s->get() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

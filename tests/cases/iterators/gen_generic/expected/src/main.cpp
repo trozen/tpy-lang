@@ -5,9 +5,42 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Generic while-generator with value type
+//     for x in repeat(42, 3):
+//         print(x)
+//
+//     # Generic while-generator with str
+//     for s in repeat("hi", 2):
+//         print(s)
+//
+//     # Generic for-generator (enumerate) over list[str]
+//     words = ["hello", "world", "foo"]
+//     for i, w in enumerate(words):
+//         print(i, w)
+//
+//     # enumerate over list[int32]
+//     nums = [10, 20, 30]
+//     for i, n in enumerate(nums):
+//         print(i, n)
+//
+//     # compose: enumerate directly over repeat (generator over generator)
+//     for i, s in enumerate(repeat("x", 3)):
+//         print(i, s)
+//
+//     # a REFERENCE instantiation of a mutated bare-`T` slot
+//     b = Bin()
+//     for k in bump_each(b, 2):  # tpyc: ok
+//         print("bump", k)
+//     print("bump total", b.total)
+//
+//     # the readonly sibling of that slot, at the same record
+//     for k in size_each(b, 2):  # tpyc: ok
+//         print("size", k)
+//     # and at str, whose slot is `const std::string&`, not the view
+//     word = "ro"
+//     for t in len_each(word, 2):  # tpyc: ok
+//         print("len", t)
 void main() {
-    // # Generic while-generator with value type
-    // for x in repeat(42, 3):
     {
         int32_t __tmp_1 = 42;
         auto __src_0 = repeat<int32_t>(__tmp_1, 3);
@@ -16,12 +49,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // # Generic while-generator with str
-    // for s in repeat("hi", 2):
     {
         std::string __tmp_2 = "hi";
         auto __src_2 = repeat<std::string>(__tmp_2, 2);
@@ -30,14 +60,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // # Generic for-generator (enumerate) over list[str]
-    // words = ["hello", "world", "foo"]
     std::array<std::string, 3> words = {"hello", "world", "foo"};
-    // for i, w in enumerate(words):
     {
         auto __src_4 = enumerate<std::string>(words);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -45,18 +71,13 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_5);
-        // for i, w in enumerate(words):
         const auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
         std::string_view w = std::get<1>(__tup_1);
-        // print(i, w)
         std::cout << i << " " << w << "\n";
         }
     }
-    // # enumerate over list[int32]
-    // nums = [10, 20, 30]
     std::array<int32_t, 3> nums = {10, 20, 30};
-    // for i, n in enumerate(nums):
     {
         auto __src_6 = enumerate<int32_t>(nums);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -64,16 +85,12 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_7);
-        // for i, n in enumerate(nums):
         const auto& __tup_2 = __for_tup_1;
         int32_t i = std::get<0>(__tup_2);
         int32_t n = std::get<1>(__tup_2);
-        // print(i, n)
         std::cout << i << " " << n << "\n";
         }
     }
-    // # compose: enumerate directly over repeat (generator over generator)
-    // for i, s in enumerate(repeat("x", 3)):
     {
         std::string __tmp_3 = "x";
         auto __tmp_4 = repeat<std::string>(__tmp_3, 3);
@@ -83,19 +100,13 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
-        // # compose: enumerate directly over repeat (generator over generator)
-        // for i, s in enumerate(repeat("x", 3)):
         const auto& __tup_3 = __for_tup_2;
         int32_t i = std::get<0>(__tup_3);
         std::string_view s = std::get<1>(__tup_3);
-        // print(i, s)
         std::cout << i << " " << s << "\n";
         }
     }
-    // # a REFERENCE instantiation of a mutated bare-`T` slot
-    // b = Bin()
     Bin b = Bin();
-    // for k in bump_each(b, 2):  # tpyc: ok
     {
         auto __src_10 = bump_each<Bin>(b, 2);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
@@ -103,14 +114,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_11);
-        // print("bump", k)
         std::cout << "bump" << " " << k << "\n";
         }
     }
-    // print("bump total", b.total)
     std::cout << "bump total" << " " << b.total << "\n";
-    // # the readonly sibling of that slot, at the same record
-    // for k in size_each(b, 2):  # tpyc: ok
     {
         auto __src_12 = size_each<Bin>(b, 2);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -118,14 +125,10 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t k = ::tpy::unwrap_ref(*__r_13);
-        // print("size", k)
         std::cout << "size" << " " << k << "\n";
         }
     }
-    // # and at str, whose slot is `const std::string&`, not the view
-    // word = "ro"
     std::string_view word = "ro";
-    // for t in len_each(word, 2):  # tpyc: ok
     {
         auto __src_14 = len_each<std::string_view>(word, 2);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
@@ -133,18 +136,17 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t t = ::tpy::unwrap_ref(*__r_15);
-        // print("len", t)
         std::cout << "len" << " " << t << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

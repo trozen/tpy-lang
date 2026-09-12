@@ -11,6 +11,7 @@ struct Blob;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Blob:
@@ -30,6 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
 
 
 // def __init__(self, v: BytesView) -> None:
+//     self.data = v  # bytesview_to_bytes -> an owned copy
 inline Blob::Blob(::tpy::BytesView v) : data(::tpy::Bytes(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

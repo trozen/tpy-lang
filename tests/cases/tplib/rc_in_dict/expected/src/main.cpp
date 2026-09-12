@@ -5,56 +5,64 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Rc.new(Node(1))
+//     b = Rc.new(Node(2))
+//
+//     a_alias = a.clone()
+//
+//     items: dict[str, Rc[Node]] = {"a": a.clone(), "b": b.clone()}
+//
+//     a_alias.get().value = 99
+//     print(items["a"].get().value)  # 99 -- shared
+//
+//     items["b"].get().value = 42
+//     print(b.get().value)  # 42 -- shared
+//
+//     # Single-entry literal -- smallest make_ordered_map invocation.
+//     single: dict[str, Rc[Node]] = {"only": a.clone()}
+//     print(single["only"].get().value)  # 99 -- still shared with a
+//
+//     # Empty literal + per-key assign -- exercises ordered_map default ctor
+//     # then __setitem__ -> insert_or_assign(V&&) move path.
+//     grown: dict[str, Rc[Node]] = {}
+//     grown["x"] = a.clone()
+//     grown["y"] = b.clone()
+//     print(grown["x"].get().value)  # 99
+//     print(grown["y"].get().value)  # 42
+//
+//     # Overwrite existing key -- exercises insert_or_assign's update branch
+//     # (it != end) with a move-only value.
+//     grown["x"] = b.clone()
+//     print(grown["x"].get().value)  # 42
 void main() {
-    // a = Rc.new(Node(1))
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(1));
-    // b = Rc.new(Node(2))
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(2));
-    // a_alias = a.clone()
     ::tpystd::tplib::rc::Rc<Node> a_alias = a.clone();
-    // items: dict[str, Rc[Node]] = {"a": a.clone(), "b": b.clone()}
     ::tpy::ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>> items = ::tpy::make_ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>>("a", a.clone(), "b", b.clone());
-    // a_alias.get().value = 99
     a_alias.get().value = 99;
-    // print(items["a"].get().value)  # 99 -- shared
     std::cout << ::tpy::__getitem__(items, "a").get().value << "\n";
-    // items["b"].get().value = 42
     ::tpy::__getitem__(items, "b").get().value = 42;
-    // print(b.get().value)  # 42 -- shared
     std::cout << b.get().value << "\n";
-    // # Single-entry literal -- smallest make_ordered_map invocation.
-    // single: dict[str, Rc[Node]] = {"only": a.clone()}
     ::tpy::ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>> single = ::tpy::make_ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>>("only", a.clone());
-    // print(single["only"].get().value)  # 99 -- still shared with a
     std::cout << ::tpy::__getitem__(single, "only").get().value << "\n";
-    // # Empty literal + per-key assign -- exercises ordered_map default ctor
-    // # then __setitem__ -> insert_or_assign(V&&) move path.
-    // grown: dict[str, Rc[Node]] = {}
     ::tpy::ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>> grown = ::tpy::ordered_map<std::string, ::tpystd::tplib::rc::Rc<Node>>();
-    // grown["x"] = a.clone()
     ::tpy::__setitem__(grown, "x", a.clone());
-    // grown["y"] = b.clone()
     ::tpy::__setitem__(grown, "y", b.clone());
-    // print(grown["x"].get().value)  # 99
     std::cout << ::tpy::__getitem__(grown, "x").get().value << "\n";
-    // print(grown["y"].get().value)  # 42
     std::cout << ::tpy::__getitem__(grown, "y").get().value << "\n";
-    // # Overwrite existing key -- exercises insert_or_assign's update branch
-    // # (it != end) with a move-only value.
-    // grown["x"] = b.clone()
     ::tpy::__setitem__(grown, "x", b.clone());
-    // print(grown["x"].get().value)  # 42
     std::cout << ::tpy::__getitem__(grown, "x").get().value << "\n";
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

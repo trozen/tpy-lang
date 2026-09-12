@@ -11,7 +11,9 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mutate(b: Box) -> None:
 void mutate(Box& b);
+// def ok(b: Box) -> int32:
 int32_t ok(const Box& b);
 
 // class Box:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.value = v
 inline Box::Box(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

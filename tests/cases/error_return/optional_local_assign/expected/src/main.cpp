@@ -6,24 +6,29 @@ namespace tpyapp::main {
 
 // @error_return(Bad)
 // def decode(ok: bool) -> Own[Box]:
+//     if ok:
+//         return Box(7)
+//     raise Bad
 std::expected<Box, Bad> decode(bool ok) {
-    // if ok:
     if (ok) {
-        // return Box(7)
         return Box(7);
     }
-    // raise Bad
     return ::tpy::make_unexpected(Bad{});
 }
 
 // def run(ok: bool) -> int32:
+//     b: Box | None = None
+//     try:
+//         b = decode(ok)          # result -> pointer-repr Optional local (rebind slot)
+//     except Bad:
+//         return -1
+//     if b is not None:
+//         return b.v
+//     return -2
 int32_t run(bool ok) {
     std::optional<Box> __slot_1;
-    // b: Box | None = None
     Box* b = nullptr;
-    // try:
     {
-        // b = decode(ok)          # result -> pointer-repr Optional local (rebind slot)
         {
             auto __try_tmp_2 = decode(ok);
             if (!__try_tmp_2.has_value()) goto __except_1;
@@ -32,33 +37,29 @@ int32_t run(bool ok) {
         goto __after_try_1;
         // except Bad:
         __except_1:;
-        // return -1
         return -1;
         __after_try_1:;
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // return b.v
         return b->v;
     }
-    // return -2
     return -2;
 }
 
 // def main() -> None:
+//     print(run(True))
+//     print(run(False))
 void main() {
-    // print(run(True))
     std::cout << run(true) << "\n";
-    // print(run(False))
     std::cout << run(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

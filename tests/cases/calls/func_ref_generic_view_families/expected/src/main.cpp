@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # the subject: the generic instantiated at each view family, by reference
+//     print("func_ref", apply_str(identity, "hello"))  # tpyc: ok
+//     print("func_ref", apply_bytes(identity, b"ab"))  # tpyc: ok
 void main() {
-    // # the subject: the generic instantiated at each view family, by reference
-    // print("func_ref", apply_str(identity, "hello"))  # tpyc: ok
     std::cout << "func_ref" << " " << apply_str(identity<std::string>, "hello") << "\n";
-    // print("func_ref", apply_bytes(identity, b"ab"))  # tpyc: ok
     std::cout << "func_ref" << " " << apply_bytes(identity<::tpy::Bytes>, ::tpy::bytes_literal("ab", 2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

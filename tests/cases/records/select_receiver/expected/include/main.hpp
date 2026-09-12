@@ -11,10 +11,15 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ternary_record(c: bool) -> None:
 void ternary_record(bool c);
+// def walrus_record() -> None:
 void walrus_record();
+// def ternary_str(c: bool) -> None:
 void ternary_str(bool c);
+// def walrus_str() -> None:
 void walrus_str();
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -38,13 +43,14 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump(self) -> int32:
+//     self.n += 1
+//     return self.n
 inline int32_t Counter::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
-    // return self.n
     return this->n;
 }
 void __tpy_init();

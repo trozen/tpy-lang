@@ -13,6 +13,7 @@ extern std::vector<Point>* points;
 extern Point* result;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find(points: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target);
 
 // class Point:
@@ -35,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,7 +12,9 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def process(v: A | B) -> None:
 void process(::tpy::Union<const A*, const B*> v);
+// def main() -> None:
 void main();
 
 // # Test passing concrete types to functions expecting union parameters
@@ -50,9 +52,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: str) -> None:
+//     self.y = y
 inline B::B(std::string_view y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

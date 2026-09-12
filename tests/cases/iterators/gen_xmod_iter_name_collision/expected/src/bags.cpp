@@ -5,6 +5,9 @@ namespace tpyapp::bags {
 
 
 // def __iter__(self) -> Iterator[int32]:
+//     for x in self.items:
+//         yield x
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -14,7 +17,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -28,7 +30,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }

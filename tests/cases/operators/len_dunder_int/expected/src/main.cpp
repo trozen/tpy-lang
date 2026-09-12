@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     print(len(b))                 # 3
+//     b.add(40)
+//     print(len(b))                 # 4 -- __len__ reflects mutated state
+//     print(len(b) == 4)            # len() in a comparison context
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // print(len(b))                 # 3
     std::cout << ::tpy::__len__(b) << "\n";
-    // b.add(40)
     b.add(40);
-    // print(len(b))                 # 4 -- __len__ reflects mutated state
     std::cout << ::tpy::__len__(b) << "\n";
-    // print(len(b) == 4)            # len() in a comparison context
     std::cout << ::tpy::print_bool((::tpy::__len__(b) == 4)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

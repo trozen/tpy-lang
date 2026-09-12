@@ -5,115 +5,118 @@ namespace tpyapp::main {
 
 
 // def test_external_wake() -> None:
+//     e = Executor()
+//     sid = e.spawn(_make_any_task_for_test(NeverComplete()))
+//     e.drain_runnable()
+//     print("parked, runnable_q:", len(e.runnable_q))
+//     print("slot done:", e.slot_done(sid))
+//
+//     # Externally wake the parked slot via Waker.wake() -- this routes
+//     # through the C++ ops table back into Executor.mark_runnable.
+//     w = _make_waker(e, sid, 0)
+//     w.wake()
+//     print("after wake, runnable_q:", len(e.runnable_q))
+//     e.drain_runnable()
+//     print("re-parked, runnable_q:", len(e.runnable_q))
 void test_external_wake() {
-    // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // sid = e.spawn(_make_any_task_for_test(NeverComplete()))
     int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(NeverComplete())));
-    // e.drain_runnable()
     e.drain_runnable();
-    // print("parked, runnable_q:", len(e.runnable_q))
     std::cout << "parked, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
-    // print("slot done:", e.slot_done(sid))
     std::cout << "slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
-    // # Externally wake the parked slot via Waker.wake() -- this routes
-    // # through the C++ ops table back into Executor.mark_runnable.
-    // w = _make_waker(e, sid, 0)
     ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(e, sid, 0);
-    // w.wake()
     w.wake();
-    // print("after wake, runnable_q:", len(e.runnable_q))
     std::cout << "after wake, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
-    // e.drain_runnable()
     e.drain_runnable();
-    // print("re-parked, runnable_q:", len(e.runnable_q))
     std::cout << "re-parked, runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
 }
 
 // def test_stale_generation_wake() -> None:
+//     # A Waker for a slot whose generation has moved on is silently
+//     # dropped: mark_runnable rejects on generation mismatch.
+//     e = Executor()
+//     sid = e.spawn(_make_any_task_for_test(NeverComplete()))
+//     e.drain_runnable()
+//     # Fabricate a waker with a wrong (future) generation.
+//     stale = _make_waker(e, sid, 99)
+//     stale.wake()
+//     print("stale wake runnable_q:", len(e.runnable_q))
 void test_stale_generation_wake() {
-    // # A Waker for a slot whose generation has moved on is silently
-    // # dropped: mark_runnable rejects on generation mismatch.
-    // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // sid = e.spawn(_make_any_task_for_test(NeverComplete()))
     int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(NeverComplete())));
-    // e.drain_runnable()
     e.drain_runnable();
-    // # Fabricate a waker with a wrong (future) generation.
-    // stale = _make_waker(e, sid, 99)
     ::tpystd::coro::Waker stale = ::tpystd::asyncio::_executor::_make_waker(e, sid, 99);
-    // stale.wake()
     stale.wake();
-    // print("stale wake runnable_q:", len(e.runnable_q))
     std::cout << "stale wake runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
 }
 
 // def test_timer_drives_to_completion() -> None:
+//     # Register a past-deadline timer paired with the slot's waker. The
+//     # run loop should pop the timer, route .wake() through the ops
+//     # table, re-poll the slot, and the slot completes after N polls.
+//     e = Executor()
+//     sid = e.spawn(_make_any_task_for_test(CountdownThenReady(uint32(3))))
+//     # First drain handles the initial poll (decrements to 2).
+//     e.drain_runnable()
+//     print("after first poll, slot done:", e.slot_done(sid))
+//     # Loop: each iteration registers a past-deadline timer; wait_for_event
+//     # pops it and wakes the slot; drain_runnable polls it.
+//     while not e.slot_done(sid):
+//         w = _make_waker(e, sid, 0)
+//         e.register_timer(monotonic() - 0.5, w)
+//         e.wait_for_event()
+//         e.drain_runnable()
+//     print("countdown finished, slot done:", e.slot_done(sid))
 void test_timer_drives_to_completion() {
-    // # Register a past-deadline timer paired with the slot's waker. The
-    // # run loop should pop the timer, route .wake() through the ops
-    // # table, re-poll the slot, and the slot completes after N polls.
-    // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // sid = e.spawn(_make_any_task_for_test(CountdownThenReady(uint32(3))))
     int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(CountdownThenReady(3))));
-    // # First drain handles the initial poll (decrements to 2).
-    // e.drain_runnable()
     e.drain_runnable();
-    // print("after first poll, slot done:", e.slot_done(sid))
     std::cout << "after first poll, slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
-    // # Loop: each iteration registers a past-deadline timer; wait_for_event
-    // # pops it and wakes the slot; drain_runnable polls it.
-    // while not e.slot_done(sid):
     while ((!(e.slot_done(sid)))) {
-        // w = _make_waker(e, sid, 0)
         ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(e, sid, 0);
-        // e.register_timer(monotonic() - 0.5, w)
         e.register_timer(((::tpy::stdlib::time::monotonic()) - (0.5)), w);
-        // e.wait_for_event()
         e.wait_for_event();
-        // e.drain_runnable()
         e.drain_runnable();
     }
-    // print("countdown finished, slot done:", e.slot_done(sid))
     std::cout << "countdown finished, slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
 }
 
 // def main() -> None:
+//     test_external_wake()
+//     print("---")
+//     test_stale_generation_wake()
+//     print("---")
+//     test_timer_drives_to_completion()
 void main() {
-    // test_external_wake()
     test_external_wake();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_stale_generation_wake()
     test_stale_generation_wake();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_timer_drives_to_completion()
     test_timer_drives_to_completion();
 }
 
+// # Waker dispatch into the TPy Executor. Validates that an externally-
+// # held Waker pointing at a parked slot, when wake()'d from outside the
+// # executor's run loop, correctly re-schedules the slot through the
+// # @dynamic Awaker vtable into Executor.mark_runnable.
+// from asyncio._executor import (
+//     Executor,
+//     _make_any_task_for_test,
+//     _make_waker,
+// )
+// from time import monotonic
+//
+// from tpy.coro import Poll, Waker, poll_pending, poll_ready_none
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Waker dispatch into the TPy Executor. Validates that an externally-
-    // # held Waker pointing at a parked slot, when wake()'d from outside the
-    // # executor's run loop, correctly re-schedules the slot through the
-    // # @dynamic Awaker vtable into Executor.mark_runnable.
-    // from asyncio._executor import (
-    // Executor,
-    // _make_any_task_for_test,
-    // _make_waker,
-    // )
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
-    // from time import monotonic
-    // from tpy.coro import Poll, Waker, poll_pending, poll_ready_none
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

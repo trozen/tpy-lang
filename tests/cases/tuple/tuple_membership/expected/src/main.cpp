@@ -3,105 +3,105 @@
 
 namespace tpyapp::main {
 
-// call_count: int32 = 0
 int32_t call_count{};
 
 // def test_int_membership() -> None:
+//     x: int32 = 17
+//     if x in (1, 17, 42):
+//         print("found 17")
+//     if x not in (1, 2, 3):
+//         print("17 not in small set")
+//     if x not in (17, 42):
+//         print("should not print")
 void test_int_membership() {
-    // x: int32 = 17
     int32_t x = 17;
-    // if x in (1, 17, 42):
     if (((x == 1) || (x == 17) || (x == 42))) {
-        // print("found 17")
         std::cout << "found 17" << "\n";
     }
-    // if x not in (1, 2, 3):
     if ((!((x == 1) || (x == 2) || (x == 3)))) {
-        // print("17 not in small set")
         std::cout << "17 not in small set" << "\n";
     }
-    // if x not in (17, 42):
     if ((!((x == 17) || (x == 42)))) {
-        // print("should not print")
         std::cout << "should not print" << "\n";
     }
 }
 
 // def test_str_membership() -> None:
+//     s = "hello"
+//     if s in ("hello", "world"):
+//         print("found hello")
+//     if s not in ("foo", "bar"):
+//         print("hello not in foo/bar")
 void test_str_membership() {
-    // s = "hello"
     std::string_view s = "hello";
-    // if s in ("hello", "world"):
     if (((s == "hello") || (s == "world"))) {
-        // print("found hello")
         std::cout << "found hello" << "\n";
     }
-    // if s not in ("foo", "bar"):
     if ((!((s == "foo") || (s == "bar")))) {
-        // print("hello not in foo/bar")
         std::cout << "hello not in foo/bar" << "\n";
     }
 }
 
 // def test_single_element() -> None:
+//     x: int32 = 5
+//     if x in (5,):
+//         print("single match")
+//     if x not in (3,):
+//         print("single non-match")
 void test_single_element() {
-    // x: int32 = 5
     int32_t x = 5;
-    // if x in (5,):
     if (((x == 5))) {
-        // print("single match")
         std::cout << "single match" << "\n";
     }
-    // if x not in (3,):
     if ((!(x == 3))) {
-        // print("single non-match")
         std::cout << "single non-match" << "\n";
     }
 }
 
 // def get_val() -> int32:
+//     global call_count
+//     call_count = call_count + 1
+//     return int32(17)
 int32_t get_val() {
-    // global call_count
-    // call_count = call_count + 1
     call_count = (::tpy::add_check<int32_t>(call_count, 1));
-    // return int32(17)
     return 17;
 }
 
 // def test_call_lhs() -> None:
+//     global call_count
+//     call_count = 0
+//     if get_val() in (1, 17, 42):
+//         print("call found")
+//     print(call_count)
 void test_call_lhs() {
-    // global call_count
-    // call_count = 0
     call_count = 0;
-    // if get_val() in (1, 17, 42):
     if (({ auto&& __in_lhs = get_val(); (__in_lhs == 1) || (__in_lhs == 17) || (__in_lhs == 42); })) {
-        // print("call found")
         std::cout << "call found" << "\n";
     }
-    // print(call_count)
     std::cout << call_count << "\n";
 }
 
 // def main() -> None:
+//     test_int_membership()
+//     test_str_membership()
+//     test_single_element()
+//     test_call_lhs()
 void main() {
-    // test_int_membership()
     test_int_membership();
-    // test_str_membership()
     test_str_membership();
-    // test_single_element()
     test_single_element();
-    // test_call_lhs()
     test_call_lhs();
 }
 
+// call_count: int32 = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // call_count: int32 = 0
     call_count = 0;
-    // main()
     main();
 }
 

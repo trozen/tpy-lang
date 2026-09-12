@@ -5,36 +5,37 @@ namespace tpyapp::main {
 
 
 // def pick(cond: bool) -> None:
+//     if cond:
+//         x = None
+//     else:
+//         x = 5
+//
+//     if x is None:
+//         print(0)
+//     else:
+//         print(x)
 void pick(bool cond) {
-    // if cond:
     std::optional<int32_t> x;
     if (cond) {
-        // x = None
         x = std::nullopt;
-    // else:
     } else {
-        // x = 5
         x = 5;
     }
-    // if x is None:
     if ((!x.has_value())) {
-        // print(0)
         std::cout << 0 << "\n";
-    // else:
     } else {
-        // print(x)
         std::cout << ::tpy::print_optional_val(x) << "\n";
     }
 }
 
+// pick(True)
+// pick(False)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // pick(True)
     pick(true);
-    // pick(False)
     pick(false);
 }
 

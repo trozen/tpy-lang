@@ -7,64 +7,64 @@ namespace tpyapp::main {
 
 
 
+// def get_field(name: str) -> int32 | str:
+//     if name == "age":
+//         return 42
+//     return "hello"
 // # --- Free function flattening ---
 // @overload
 // def get_field(name: Literal["age"]) -> int32: ...
 int32_t get_field__lit_age(std::string_view name) {
-    // return 42
     return 42;
 }
 
 // @overload
 // def get_field(name: Literal["name"]) -> str: ...
 std::string get_field__lit_name(std::string_view name) {
-    // return "hello"
     return "hello";
 }
 
 // @overload
 // def get_field(name: str) -> int32 | str: ...
 ::tpy::Union<int32_t, std::string> get_field(std::string_view name) {
-    // if name == "age":
     if ((name == "age")) {
-        // return 42
         return 42;
     }
-    // return "hello"
     return "hello";
 }
 
 
 // def main() -> None:
+//     # Free function dispatch
+//     age = get_field("age")
+//     name = get_field("name")
+//     print(age + 1)
+//     print(name + "!")
+//
+//     # Method dispatch
+//     r = Record(25, "Alice")
+//     a = r.get("age")
+//     n = r.get("name")
+//     print(a + 1)
+//     print(n + "!")
 void main() {
-    // # Free function dispatch
-    // age = get_field("age")
     int32_t age = get_field__lit_age("age");
-    // name = get_field("name")
     std::string name = get_field__lit_name("name");
-    // print(age + 1)
     std::cout << (::tpy::add_check<int32_t>(age, 1)) << "\n";
-    // print(name + "!")
     std::cout << (::tpy::str_concat(name, "!")) << "\n";
-    // # Method dispatch
-    // r = Record(25, "Alice")
     Record r = Record(25, "Alice");
-    // a = r.get("age")
     int32_t a = r.get__lit_age("age");
-    // n = r.get("name")
     std::string n = r.get__lit_name("name");
-    // print(a + 1)
     std::cout << (::tpy::add_check<int32_t>(a, 1)) << "\n";
-    // print(n + "!")
     std::cout << (::tpy::str_concat(n, "!")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

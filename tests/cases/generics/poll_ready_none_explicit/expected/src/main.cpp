@@ -5,32 +5,33 @@ namespace tpyapp::main {
 
 
 // def make_ready() -> Own[Poll[None]]:
+//     return poll_ready[None](None)
 ::tpystd::tpy::Poll<std::monostate> make_ready() {
-    // return poll_ready[None](None)
     return ::tpystd::coro::poll_ready<std::monostate>(std::monostate{});
 }
 
 // def main() -> None:
+//     p = make_ready()
+//     print("ok")
 void main() {
-    // p = make_ready()
     ::tpystd::tpy::Poll<std::monostate> p = make_ready();
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// # poll_ready[None](None) -- explicit-type-arg form of the parametrized
+// # poll_ready factory with T=None. Companion to the existing
+// # poll_ready_none() shim (which is a separate factory specialized
+// # pre-fix for the void-payload case); this exercises the generic-T=None
+// # path through the `Own[T]` parameter slot.
+// from tpy.coro import Poll, poll_ready
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # poll_ready[None](None) -- explicit-type-arg form of the parametrized
-    // # poll_ready factory with T=None. Companion to the existing
-    // # poll_ready_none() shim (which is a separate factory specialized
-    // # pre-fix for the void-payload case); this exercises the generic-T=None
-    // # path through the `Own[T]` parameter slot.
-    // from tpy.coro import Poll, poll_ready
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

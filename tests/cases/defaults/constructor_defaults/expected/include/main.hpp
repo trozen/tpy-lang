@@ -12,6 +12,7 @@ struct Named;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -51,9 +52,13 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
 
 
 // def __init__(self, x: int32 = int32(0), y: int32 = int32(0)) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, name: str, value: int32 = int32(42)) -> None:
+//     self.name = name
+//     self.value = value
 inline Named::Named(std::string_view name, int32_t value) : name(name), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

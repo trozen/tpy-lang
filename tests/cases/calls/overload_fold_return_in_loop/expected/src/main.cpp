@@ -6,115 +6,119 @@ namespace tpyapp::main {
 
 
 
+// def in_loop(v: A | B, k: int) -> int:
+//     while k > 0:
+//         if isinstance(v, A):
+//             return v.x + k
+//         else:
+//             return v.y - k
+//     return 0            # reachable when k <= 0 -- must not be truncated
 // @overload
 // def in_loop(v: A, k: int) -> int: ...
 ::tpy::BigInt in_loop(const A& v, const ::tpy::BigInt& k) {
-    // while k > 0:
     while ((k > 0)) {
-        // return v.x + k
         return ((v.x) + (k));
     }
-    // return 0            # reachable when k <= 0 -- must not be truncated
     return ::tpy::BigInt(0);
 }
 
 // @overload
 // def in_loop(v: B, k: int) -> int: ...
 ::tpy::BigInt in_loop(const B& v, const ::tpy::BigInt& k) {
-    // while k > 0:
     while ((k > 0)) {
-        // return v.y - k
         return ((v.y) - (k));
     }
-    // return 0            # reachable when k <= 0 -- must not be truncated
     return ::tpy::BigInt(0);
 }
 
 
 
 
+// def in_branch(v: A | B, gate: bool) -> int:
+//     if gate:
+//         if isinstance(v, A):
+//             return v.x
+//         else:
+//             return v.y
+//     return -1           # reachable when gate is False -- must not be truncated
 // @overload
 // def in_branch(v: A, gate: bool) -> int: ...
 ::tpy::BigInt in_branch(const A& v, bool gate) {
-    // if gate:
     if (gate) {
-        // return v.x
         return v.x;
     }
-    // return -1           # reachable when gate is False -- must not be truncated
     return ::tpy::BigInt(-1);
 }
 
 // @overload
 // def in_branch(v: B, gate: bool) -> int: ...
 ::tpy::BigInt in_branch(const B& v, bool gate) {
-    // if gate:
     if (gate) {
-        // return v.y
         return v.y;
     }
-    // return -1           # reachable when gate is False -- must not be truncated
     return ::tpy::BigInt(-1);
 }
 
 
 
 
+// def toplevel(v: A | B) -> int:
+//     if isinstance(v, A):
+//         return v.x      # A-stub folds True here and truncates the tail below
+//     return v.y
 // @overload
 // def toplevel(v: A) -> int: ...
 ::tpy::BigInt toplevel(const A& v) {
-    // return v.x      # A-stub folds True here and truncates the tail below
     return v.x;
 }
 
 // @overload
 // def toplevel(v: B) -> int: ...
 ::tpy::BigInt toplevel(const B& v) {
-    // return v.y
     return v.y;
 }
 
 
 // def main() -> None:
+//     print(in_loop(A(5), 0))        # 0 -- loop skipped, trailing return
+//     print(in_loop(A(5), 3))        # 8
+//     print(in_loop(B(7), 0))        # 0
+//     print(in_loop(B(7), 2))        # 5
+//     print(in_branch(A(9), False))  # -1 -- branch skipped, trailing return
+//     print(in_branch(A(9), True))   # 9
+//     print(in_branch(B(4), False))  # -1
+//     print(in_branch(B(4), True))   # 4
+//     print(toplevel(A(2)))          # 2
+//     print(toplevel(B(6)))          # 6
 void main() {
-    // print(in_loop(A(5), 0))        # 0 -- loop skipped, trailing return
     A __tmp_1 = A(::tpy::BigInt(5));
     std::cout << in_loop(__tmp_1, ::tpy::BigInt(0)) << "\n";
-    // print(in_loop(A(5), 3))        # 8
     A __tmp_2 = A(::tpy::BigInt(5));
     std::cout << in_loop(__tmp_2, ::tpy::BigInt(3)) << "\n";
-    // print(in_loop(B(7), 0))        # 0
     B __tmp_3 = B(::tpy::BigInt(7));
     std::cout << in_loop(__tmp_3, ::tpy::BigInt(0)) << "\n";
-    // print(in_loop(B(7), 2))        # 5
     B __tmp_4 = B(::tpy::BigInt(7));
     std::cout << in_loop(__tmp_4, ::tpy::BigInt(2)) << "\n";
-    // print(in_branch(A(9), False))  # -1 -- branch skipped, trailing return
     A __tmp_5 = A(::tpy::BigInt(9));
     std::cout << in_branch(__tmp_5, false) << "\n";
-    // print(in_branch(A(9), True))   # 9
     A __tmp_6 = A(::tpy::BigInt(9));
     std::cout << in_branch(__tmp_6, true) << "\n";
-    // print(in_branch(B(4), False))  # -1
     B __tmp_7 = B(::tpy::BigInt(4));
     std::cout << in_branch(__tmp_7, false) << "\n";
-    // print(in_branch(B(4), True))   # 4
     B __tmp_8 = B(::tpy::BigInt(4));
     std::cout << in_branch(__tmp_8, true) << "\n";
-    // print(toplevel(A(2)))          # 2
     A __tmp_9 = A(::tpy::BigInt(2));
     std::cout << toplevel(__tmp_9) << "\n";
-    // print(toplevel(B(6)))          # 6
     B __tmp_10 = B(::tpy::BigInt(6));
     std::cout << toplevel(__tmp_10) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

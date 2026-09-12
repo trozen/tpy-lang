@@ -12,6 +12,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -74,15 +75,17 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
+//     self.n = self.n + 1
 inline void Cell::bump() {
-    // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
 }
 
 // def __init__(self) -> None:
+//     self._cell = unsafe_take(Cell(0))
 inline Counter::Counter() : _cell(::tpy::heap_take(Cell(0))) {}
 
 inline Counter::Counter(Counter&& other) noexcept : _cell(std::move(other._cell)) {
@@ -97,23 +100,23 @@ inline Counter& Counter::operator=(Counter&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     unsafe_release(self._cell)
 inline Counter::~Counter() {
     if (!this->__tpy_owned_) return;
-    // unsafe_release(self._cell)
     ::tpy::heap_release(this->_cell);
 }
 
 // @readonly
 // def tick(self) -> None:
+//     self._cell.bump()
 inline void Counter::tick() const {
-    // self._cell.bump()
     ::tpy::deref_check(this->_cell).bump();
 }
 
 // @readonly
 // def value(self) -> int32:
+//     return self._cell.n
 inline int32_t Counter::value() const {
-    // return self._cell.n
     return ::tpy::deref_check(this->_cell).n;
 }
 void __tpy_init();

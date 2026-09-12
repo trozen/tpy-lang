@@ -12,6 +12,7 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -49,19 +50,20 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = int32(0)
 inline Counter::Counter() : n(0) {}
 
 // def bump(self) -> None:
+//     self.n = self.n + 1
 inline void Counter::bump() {
-    // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
 }
 
 // def bump_twice(self) -> None:
+//     Counter.bump(self)
+//     Counter.bump(self)
 inline void Wrapper::bump_twice() {
-    // Counter.bump(self)
     this->Counter::bump();
-    // Counter.bump(self)
     this->Counter::bump();
 }
 void __tpy_init();

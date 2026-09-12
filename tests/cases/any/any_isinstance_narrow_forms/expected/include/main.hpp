@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def dispatch(v: Any) -> None:
 void dispatch(::tpy::Any v);
+// def tuple_form(v: Any) -> bool:
 bool tuple_form(::tpy::Any v);
+// def negated(v: Any) -> bool:
 bool negated(::tpy::Any v);
+// def main() -> None:
 void main();
 
 void __tpy_init();

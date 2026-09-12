@@ -16,8 +16,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_make_pair;
 struct __coro_main_coro;
 
+// async def make_pair() -> tuple[Own[Counter], int32]:
 __coro_make_pair make_pair();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -45,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: make_pair
+// async def make_pair() -> tuple[Own[Counter], int32]:
 struct __coro_make_pair {
     int32_t __state;
     bool __cancel_pending;
@@ -67,7 +70,7 @@ struct __coro_make_pair {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -95,11 +98,12 @@ struct __coro_main_coro {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
+//     self.n += 1
 inline void Counter::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 void __tpy_init();

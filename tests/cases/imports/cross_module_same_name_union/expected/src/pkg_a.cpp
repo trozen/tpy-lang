@@ -5,8 +5,8 @@ namespace tpyapp::pkg_a {
 
 
 // def name_of(x: Foo) -> str:
+//     return "pkg_a"
 std::string name_of(const Foo& x) {
-    // return "pkg_a"
     return "pkg_a";
 }
 

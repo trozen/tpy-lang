@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pass_through(s: Optional[str]) -> Optional[str]:
 std::optional<std::string> pass_through(std::optional<std::string_view> s);
+// def assign_local(s: Optional[str]) -> None:
 void assign_local(std::optional<std::string_view> s);
+// def unwrap(s: Optional[str]) -> str:
 std::string unwrap(std::optional<std::string_view> s);
+// def append_to_list(items: list[Optional[str]], s: Optional[str]) -> None:
 void append_to_list(std::vector<std::optional<std::string>>& items, std::optional<std::string_view> s);
+// def normalize(s: Optional[str]) -> Optional[str]:
 std::optional<std::string> normalize(std::optional<std::string_view> __param_s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def boom() -> int32:
+//     try:
+//         raise MyError(7)
+//     except MyError as Registry:  # tpyc: ok
+//         return Registry.code
+//     return -1
 int32_t boom() {
-    // try:
     {
         try {
-            // raise MyError(7)
             throw MyError(7);
         } catch (const MyError& Registry) {
-            // return Registry.code
             return Registry.code;
         }
     }
-    // return -1
     return -1;
 }
 
 // def main() -> None:
+//     print(boom())
+//     print(Registry.code)
 void main() {
-    // print(boom())
     std::cout << boom() << "\n";
-    // print(Registry.code)
     std::cout << Registry::code << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

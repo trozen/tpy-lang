@@ -7,38 +7,38 @@ namespace tpyapp::main {
 // # str subject with only literal arms: coverage cannot be proven, so the
 // # match warns and falls through on the no-match path.
 // def f(s: str) -> str:
+//     match s:  # tpyc: warning(/non-exhaustive match.*no unconditional catch-all/)
+//         case "a":
+//             return "ay"
+//         case "b":
+//             return "bee"
+//     return "other"
 std::string f(std::string_view s) {
-    // match s:  # tpyc: warning(/non-exhaustive match.*no unconditional catch-all/)
     auto& __match_subject_1 = s;
-    // case "a":
     if (__match_subject_1 == "a") {
-        // return "ay"
         return "ay";
-    // case "b":
     } else if (__match_subject_1 == "b") {
-        // return "bee"
         return "bee";
     }
-    // return "other"
     return "other";
 }
 
 // def main() -> None:
+//     print(f("a"))
+//     print(f("b"))
+//     print(f("z"))
 void main() {
-    // print(f("a"))
     std::cout << f("a") << "\n";
-    // print(f("b"))
     std::cout << f("b") << "\n";
-    // print(f("z"))
     std::cout << f("z") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

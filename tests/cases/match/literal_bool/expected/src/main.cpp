@@ -6,35 +6,35 @@ namespace tpyapp::main {
 
 // # match/case on bool subject with True/False singleton patterns
 // def describe(b: bool) -> str:
+//     match b:
+//         case True:
+//             return "yes"
+//         case False:
+//             return "no"
 std::string describe(bool b) {
-    // match b:
     auto& __match_subject_1 = b;
-    // case True:
     if (__match_subject_1 == true) {
-        // return "yes"
         return "yes";
-    // case False:
     } else if (__match_subject_1 == false) {
-        // return "no"
         return "no";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(describe(True))
+//     print(describe(False))
 void main() {
-    // print(describe(True))
     std::cout << describe(true) << "\n";
-    // print(describe(False))
     std::cout << describe(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

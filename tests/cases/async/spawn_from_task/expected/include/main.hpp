@@ -18,12 +18,16 @@ struct __coro_grandchild;
 struct __coro_child;
 struct __coro_main_coro;
 
+// async def grandchild() -> int32:
 __coro_grandchild grandchild();
+// async def child() -> int32:
 __coro_child child();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: grandchild
+// async def grandchild() -> int32:
 struct __coro_grandchild {
     int32_t __state;
     bool __cancel_pending;
@@ -46,7 +50,7 @@ struct __coro_grandchild {
     }
 };
 
-// Async coroutine: child
+// async def child() -> int32:
 struct __coro_child {
     int32_t __state;
     bool __cancel_pending;
@@ -71,7 +75,7 @@ struct __coro_child {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

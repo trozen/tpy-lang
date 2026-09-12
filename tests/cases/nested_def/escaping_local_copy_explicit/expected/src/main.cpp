@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def make_getter() -> Callable[[], int32]:
+//     cfg = Config(42)
+//     cfg_copy = copy(cfg)  # tpyc: ok
+//     def get_value() -> int32:  # tpyc: ok
+//         return cfg_copy.value
+//     cfg.value = 999
+//     print(cfg.value)
+//     return get_value
 std::function<int32_t()> make_getter() {
-    // cfg = Config(42)
     Config cfg = Config(42);
-    // cfg_copy = copy(cfg)  # tpyc: ok
     Config cfg_copy = Config(cfg);
-    // def get_value() -> int32:  # tpyc: ok
     auto get_value = [cfg_copy = std::move(cfg_copy)]() -> int32_t {
-        // return cfg_copy.value
         return cfg_copy.value;
     };
-    // cfg.value = 999
     cfg.value = 999;
-    // print(cfg.value)
     std::cout << cfg.value << "\n";
-    // return get_value
     return get_value;
 }
 
 // def main() -> None:
+//     getter = make_getter()
+//     print(getter())
 void main() {
-    // getter = make_getter()
     std::function<int32_t()> getter = make_getter();
-    // print(getter())
     std::cout << getter() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

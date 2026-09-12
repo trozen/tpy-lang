@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_bytes(b: bytes | None) -> int:
 ::tpy::BigInt sum_bytes(std::optional<::tpy::BytesView> b);
+// def sum_chars(s: str | None) -> int:
 ::tpy::BigInt sum_chars(std::optional<std::string_view> s);
+// def comp_bytes(b: bytes | None) -> int:
 ::tpy::BigInt comp_bytes(std::optional<::tpy::BytesView> b);
+// def distinct_chars(s: str | None) -> int:
 ::tpy::BigInt distinct_chars(std::optional<std::string_view> s);
+// def byte_map(b: bytes | None) -> int:
 ::tpy::BigInt byte_map(std::optional<::tpy::BytesView> b);
+// def sum_list(xs: list[int] | None) -> int:
 ::tpy::BigInt sum_list(const std::vector<::tpy::BigInt>* xs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

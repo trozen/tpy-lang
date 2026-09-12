@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     arr: Array[int32, 3] = [10, 20, 30]
+//     i: int32 = -4
+//     print(arr[i])
 void main() {
-    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // i: int32 = -4
     int32_t i = -4;
-    // print(arr[i])
     std::cout << ::tpy::__getitem__(arr, i) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

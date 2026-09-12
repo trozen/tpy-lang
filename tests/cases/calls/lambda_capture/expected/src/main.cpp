@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     offset: int32 = 100
+//     print(apply(lambda x: x + offset, 5))
+//
+//     factor: int32 = 3
+//     print(apply(lambda x: x * factor, 7))
 void main() {
-    // offset: int32 = 100
     int32_t offset = 100;
-    // print(apply(lambda x: x + offset, 5))
     std::cout << apply([&offset](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, offset)); }, 5) << "\n";
-    // factor: int32 = 3
     int32_t factor = 3;
-    // print(apply(lambda x: x * factor, 7))
     std::cout << apply([&factor](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, factor)); }, 7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -33,19 +33,32 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
+// STEP: Final[int64] = 7
 inline constexpr int64_t STEP = 7;
 
+// def widen(n: int64 = 5) -> int64:
 int64_t widen(int64_t n = 5);
+// def as_float(x: float = 1) -> float:
 double as_float(double x = 1);
+// def negative(n: int8 = -5) -> int8:
 int8_t negative(int8_t n = -5);
+// def bracket(ch: char = "[") -> str:
 std::string bracket(char ch = '[');
+// def raw(b: bytes = b"ab") -> int32:
 int32_t raw(::tpy::BytesView b = ::tpy::bytes_literal("ab", 2));
+// def view(s: StrView = "hi") -> int32:
 int32_t view(std::string_view s = "hi");
+// def flagged(on: bool = True) -> bool:
 bool flagged(bool on = true);
+// def optional(n: int32 | None = None) -> int32:
 int32_t optional(std::optional<int32_t> n = std::nullopt);
+// def from_final(n: int64 = STEP) -> int64:
 int64_t from_final(int64_t n = STEP);
+// def shade(c: Color = Color.BLUE) -> int32:
 int32_t shade(Color c = Color::BLUE);
+// def wrapped(n: int32 = int32(7)) -> int32:
 int32_t wrapped(int32_t n = 7);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -73,22 +86,22 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Box::Box() {
-    // pass
 }
 
 // def scale(self, by: int32 = 2) -> int32:
+//     return self.n * by
 inline int32_t Box::scale(int32_t by) const {
-    // return self.n * by
     return (::tpy::mul_check<int32_t>(this->n, by));
 }
 
 // def stepped(self, by: int64 = STEP) -> int64:
+//     # A Final default on a METHOD: `self` occupies a parameter slot but no
+//     # default slot, so a misaligned check would compare STEP against the
+//     # receiver's type and reject this.
+//     return int64(self.n) + by
 inline int64_t Box::stepped(int64_t by) const {
-    // # A Final default on a METHOD: `self` occupies a parameter slot but no
-    // # default slot, so a misaligned check would compare STEP against the
-    // # receiver's type and reject this.
-    // return int64(self.n) + by
     return (::tpy::add_check<int64_t>(::tpy::int_cast_check<int64_t>(this->n), by));
 }
 void __tpy_init();

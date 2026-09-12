@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
-// Generator: Bag.__iter__
+// def __iter__(self) -> Iterator[int32]:
 struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, int32_t> {
     int32_t __state;
     const Bag& __self;
@@ -63,6 +63,7 @@ inline __gen_Bag___iter__ Bag::__iter__() const {
 
 
 // def __init__(self) -> None:
+//     self.items = [7, 8]
 inline Bag::Bag() : items(std::vector<int32_t>{7, 8}) {}
 void __tpy_init();
 } // namespace tpyapp::bags

@@ -5,14 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     cfg_builder = Config()
+//     cfg_builder.add("host", "localhost")
+//     cfg_builder.add("port", "8080")
+//     cfg = cfg_builder.build()
+//     print(cfg.host)
+//     print(cfg.port)
+//     return 0
 int32_t main() {
-    // cfg = cfg_builder.build()
     __tpy_builder_config_1 cfg = __tpy_builder_build_config_1();
-    // print(cfg.host)
     std::cout << cfg.host << "\n";
-    // print(cfg.port)
     std::cout << cfg.port << "\n";
-    // return 0
     return 0;
 }
 
@@ -21,13 +24,14 @@ __tpy_builder_config_1 __tpy_builder_build_config_1() {
     return __tpy_builder_config_1("localhost", "8080");
 }
 
+// from _smoke_builder import Config
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from _smoke_builder import Config
-    // main()
     main();
 }
 

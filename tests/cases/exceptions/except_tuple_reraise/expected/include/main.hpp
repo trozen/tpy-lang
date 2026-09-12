@@ -12,7 +12,9 @@ struct BErr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def inner(which: int) -> None:
 void inner(const ::tpy::BigInt& which);
+// def main() -> None:
 void main();
 
 // # A bare `raise` inside an `except (A, B):` body. Each expanded arm re-raises the

@@ -26,9 +26,13 @@ struct CountdownThenReady;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_external_wake() -> None:
 void test_external_wake();
+// def test_stale_generation_wake() -> None:
 void test_stale_generation_wake();
+// def test_timer_drives_to_completion() -> None:
 void test_timer_drives_to_completion();
+// def main() -> None:
 void main();
 
 // class NeverComplete:
@@ -78,39 +82,42 @@ inline std::ostream& operator<<(std::ostream& os, const CountdownThenReady& obj)
 
 
 // def __init__(self) -> None:
+//     self.__cancel_pending = False
 inline NeverComplete::NeverComplete() : __cancel_pending(false) {}
 
 // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+//     return poll_pending()
 inline ::tpystd::tpy::Poll<std::monostate> NeverComplete::__poll__(::tpystd::coro::Waker waker) const {
-    // return poll_pending()
     return ::tpystd::coro::poll_pending<std::monostate>();
 }
 
 // def cancel(self) -> None:
+//     self.__cancel_pending = True
 inline void NeverComplete::cancel() {
-    // self.__cancel_pending = True
     this->__cancel_pending = true;
 }
 
 // def __init__(self, n: uint32) -> None:
+//     self.remaining = n
+//     self.__cancel_pending = False
 inline CountdownThenReady::CountdownThenReady(uint32_t n) : remaining(n), __cancel_pending(false) {}
 
 // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+//     if self.remaining == uint32(0):
+//         return poll_ready_none()
+//     self.remaining -= uint32(1)
+//     return poll_pending[None]()
 inline ::tpystd::tpy::Poll<std::monostate> CountdownThenReady::__poll__(::tpystd::coro::Waker waker) {
-    // if self.remaining == uint32(0):
     if ((this->remaining == 0)) {
-        // return poll_ready_none()
         return ::tpystd::coro::poll_ready_none();
     }
-    // self.remaining -= uint32(1)
     this->remaining = ::tpy::sub_check<uint32_t>(this->remaining, 1);
-    // return poll_pending[None]()
     return ::tpystd::coro::poll_pending<std::monostate>();
 }
 
 // def cancel(self) -> None:
+//     self.__cancel_pending = True
 inline void CountdownThenReady::cancel() {
-    // self.__cancel_pending = True
     this->__cancel_pending = true;
 }
 void __tpy_init();

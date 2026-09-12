@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def describe(s: MaybeShape) -> str:
+//     if s is None:
+//         return "nothing"
+//     if isinstance(s, Circle):
+//         return "circle"
+//     assert isinstance(s, Rect)
+//     return "rect"
 std::string describe(::tpy::Union<std::monostate, const Circle*, const Rect*> s) {
-    // if s is None:
     if ((std::holds_alternative<std::monostate>(s))) {
-        // return "nothing"
         return "nothing";
     }
-    // if isinstance(s, Circle):
     if (std::holds_alternative<const Circle*>(s)) {
         auto& __s = *std::get<const Circle*>(s);
-        // return "circle"
         return "circle";
     }
     auto& __s = *std::get<const Rect*>(s);
-    // assert isinstance(s, Rect)
     if (!(true)) ::tpy::raise_assertion_error();
     auto& __s_2 = *std::get<const Rect*>(s);
-    // return "rect"
     return "rect";
 }
 
 // def main() -> None:
+//     a: MaybeShape = Circle(int32(1))
+//     b: MaybeShape = None
+//     print(describe(a))
+//     print(describe(b))
 void main() {
-    // a: MaybeShape = Circle(int32(1))
     MaybeShape __slot_1 = Circle(1);
     ::tpy::Union<std::monostate, Circle*, Rect*> a = ::tpy::to_ptr_variant(__slot_1);
-    // b: MaybeShape = None
     ::tpy::Union<std::monostate, Circle*, Rect*> b = std::monostate{};
-    // print(describe(a))
     std::cout << describe(a.as_const()) << "\n";
-    // print(describe(b))
     std::cout << describe(b.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

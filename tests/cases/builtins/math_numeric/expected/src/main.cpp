@@ -5,227 +5,244 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # isnan / isinf / isfinite on normal values
+//     print(math.isnan(0.0))
+//     print(math.isinf(0.0))
+//     print(math.isfinite(0.0))
+//     print(math.isnan(1.5))
+//     print(math.isinf(1.5))
+//     print(math.isfinite(1.5))
+//
+//     # isinf / isfinite on infinity
+//     print(math.isinf(math.inf))
+//     print(math.isfinite(math.inf))
+//
+//     # NaN via inf - inf detects as NaN
+//     nan = math.inf - math.inf
+//     print(math.isnan(nan))
+//     print(math.isfinite(nan))
+//
+//     # math.nan is accessible as a Final[float] constant (constexpr nan)
+//     print(math.isnan(math.nan))
+//     print(math.isfinite(math.nan))
+//     # NaN never equals itself (IEEE 754); isclose(nan, nan) is False in CPython
+//     print(math.nan == math.nan)
+//     print(math.isclose(math.nan, math.nan))
+//
+//     # copysign
+//     print(math.copysign(3.0, -1.0))
+//     print(math.copysign(-3.0, 1.0))
+//     print(math.copysign(0.0, -1.0))
+//
+//     # fmod (truncation; sign of dividend)
+//     print(math.fmod(7.5, 2.0))
+//     print(math.fmod(-7.5, 2.0))
+//
+//     # remainder (IEEE 754; nearest-even)
+//     r1 = math.remainder(7.0, 4.0)
+//     print(r1 > -1.01 and r1 < -0.99)
+//     r2 = math.remainder(5.0, 4.0)
+//     print(r2 > 0.99 and r2 < 1.01)
+//
+//     # gcd
+//     print(math.gcd(12, 8))
+//     print(math.gcd(-12, 8))
+//     print(math.gcd(12, -8))
+//     print(math.gcd(0, 5))
+//     print(math.gcd(5, 0))
+//     print(math.gcd(0, 0))
+//
+//     # lcm
+//     print(math.lcm(4, 6))
+//     print(math.lcm(0, 5))
+//     print(math.lcm(-4, 6))
+//     print(math.lcm(4, -6))
+//     print(math.lcm(-4, -6))
+//     # lcm with gcd > 1 -- actually exercises the (a // gcd) * b bounded
+//     # intermediate path. gcd(600000, 1000000) = 200000; naive a * b = 6e11,
+//     # new impl's intermediate is only 3e6.
+//     print(math.lcm(600000, 1000000))
+//
+//     # factorial
+//     print(math.factorial(0))
+//     print(math.factorial(1))
+//     print(math.factorial(5))
+//     print(math.factorial(10))
+//
+//     # isqrt
+//     print(math.isqrt(0))
+//     print(math.isqrt(1))
+//     print(math.isqrt(10))
+//     print(math.isqrt(100))
+//     print(math.isqrt(1000))
+//     # Large n: bit_length > 32 forces the BigInt shift path that
+//     # `int(1) <<` enables; a bare `1 <<` would overflow-panic at int32.
+//     print(math.isqrt(int(10) ** int(40)) == int(10) ** int(20))
+//     print(math.isqrt((int(1) << int(200)) - int(1)).bit_length())  # 100
+//
+//     # perm / comb
+//     print(math.perm(5, 0))
+//     print(math.perm(5, 2))
+//     print(math.perm(5, 5))
+//     print(math.perm(5, 6))
+//     # perm(n) one-arg form == factorial(n)
+//     print(math.perm(0))
+//     print(math.perm(5))
+//     print(math.comb(5, 0))
+//     print(math.comb(5, 2))
+//     print(math.comb(10, 5))
+//     print(math.comb(5, 6))
+//
+//     # isclose
+//     print(math.isclose(1.0, 1.0))
+//     print(math.isclose(1.0, 1.0 + 1e-10))
+//     print(math.isclose(1.0, 1.1))
+//     print(math.isclose(0.0, 1e-10, abs_tol=1e-8))
+//     print(math.isclose(math.inf, math.inf))
+//     print(math.isclose(math.inf, -math.inf))
+//
+//     # prod
+//     print(math.prod([2.0, 3.0, 4.0]))
+//     print(math.prod([1.0, 2.0, 3.0], start=10.0))
+//     # Empty input: CPython returns the start value (1 without start, 1.0 with
+//     # start=1.0). TPy's Iterable[float] signature always returns float, so
+//     # start=1.0 gives 1.0 in both environments.
+//     print(math.prod([], start=1.0))
+//
+//     # fsum: sum of 10 x 0.1 should be exactly 1.0 with Neumaier
+//     t = math.fsum([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+//     print(t > 0.999999 and t < 1.000001)
+//
+//     # sumprod
+//     print(math.sumprod([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]))
+//
+//     # dist
+//     print(math.dist([0.0, 0.0], [3.0, 4.0]))
+//     print(math.dist([1.0, 2.0, 3.0], [4.0, 6.0, 3.0]))
+//     print(math.dist([0.0], [0.0]))
+//     # n=1 with p[0] > q[0]: verifies the fabs() in the hypot-fold base case.
+//     print(math.dist([1.0], [3.0]))
+//     # Overflow safety: naive sqrt(sum((pi-qi)**2)) would overflow since
+//     # 1e200 * 1e200 == inf. Hypot-fold handles this. std::hypot is required
+//     # to be faithfully rounded so the exact value is deterministic.
+//     print(math.dist([1e200, 1e200], [0.0, 0.0]))
 void main() {
-    // # isnan / isinf / isfinite on normal values
-    // print(math.isnan(0.0))
     std::cout << ::tpy::print_bool(::std::isnan(0.0)) << "\n";
-    // print(math.isinf(0.0))
     std::cout << ::tpy::print_bool(::std::isinf(0.0)) << "\n";
-    // print(math.isfinite(0.0))
     std::cout << ::tpy::print_bool(::std::isfinite(0.0)) << "\n";
-    // print(math.isnan(1.5))
     std::cout << ::tpy::print_bool(::std::isnan(1.5)) << "\n";
-    // print(math.isinf(1.5))
     std::cout << ::tpy::print_bool(::std::isinf(1.5)) << "\n";
-    // print(math.isfinite(1.5))
     std::cout << ::tpy::print_bool(::std::isfinite(1.5)) << "\n";
-    // # isinf / isfinite on infinity
-    // print(math.isinf(math.inf))
     std::cout << ::tpy::print_bool(::std::isinf(::tpystd::math::inf)) << "\n";
-    // print(math.isfinite(math.inf))
     std::cout << ::tpy::print_bool(::std::isfinite(::tpystd::math::inf)) << "\n";
-    // # NaN via inf - inf detects as NaN
-    // nan = math.inf - math.inf
     double nan = ((::tpystd::math::inf) - (::tpystd::math::inf));
-    // print(math.isnan(nan))
     std::cout << ::tpy::print_bool(::std::isnan(nan)) << "\n";
-    // print(math.isfinite(nan))
     std::cout << ::tpy::print_bool(::std::isfinite(nan)) << "\n";
-    // # math.nan is accessible as a Final[float] constant (constexpr nan)
-    // print(math.isnan(math.nan))
     std::cout << ::tpy::print_bool(::std::isnan(::tpystd::math::nan)) << "\n";
-    // print(math.isfinite(math.nan))
     std::cout << ::tpy::print_bool(::std::isfinite(::tpystd::math::nan)) << "\n";
-    // # NaN never equals itself (IEEE 754); isclose(nan, nan) is False in CPython
-    // print(math.nan == math.nan)
     std::cout << ::tpy::print_bool((::tpystd::math::nan == ::tpystd::math::nan)) << "\n";
-    // print(math.isclose(math.nan, math.nan))
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(::tpystd::math::nan, ::tpystd::math::nan, 1e-09, 0.0)) << "\n";
-    // # copysign
-    // print(math.copysign(3.0, -1.0))
     std::cout << ::tpy::print_float(::std::copysign(3.0, -(1.0))) << "\n";
-    // print(math.copysign(-3.0, 1.0))
     std::cout << ::tpy::print_float(::std::copysign(-(3.0), 1.0)) << "\n";
-    // print(math.copysign(0.0, -1.0))
     std::cout << ::tpy::print_float(::std::copysign(0.0, -(1.0))) << "\n";
-    // # fmod (truncation; sign of dividend)
-    // print(math.fmod(7.5, 2.0))
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fmod(7.5, 2.0)) << "\n";
-    // print(math.fmod(-7.5, 2.0))
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fmod(-(7.5), 2.0)) << "\n";
-    // # remainder (IEEE 754; nearest-even)
-    // r1 = math.remainder(7.0, 4.0)
     double r1 = ::tpy::stdlib::math::checked_remainder(7.0, 4.0);
-    // print(r1 > -1.01 and r1 < -0.99)
     std::cout << ::tpy::print_bool(((r1 > -(1.01)) && (r1 < -(0.99)))) << "\n";
-    // r2 = math.remainder(5.0, 4.0)
     double r2 = ::tpy::stdlib::math::checked_remainder(5.0, 4.0);
-    // print(r2 > 0.99 and r2 < 1.01)
     std::cout << ::tpy::print_bool(((r2 > 0.99) && (r2 < 1.01))) << "\n";
-    // # gcd
-    // print(math.gcd(12, 8))
     std::array<const ::tpy::BigInt, 2> __tmp_1{12, 8};
     std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)) << "\n";
-    // print(math.gcd(-12, 8))
     std::array<const ::tpy::BigInt, 2> __tmp_2{-12, 8};
     std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_2)) << "\n";
-    // print(math.gcd(12, -8))
     std::array<const ::tpy::BigInt, 2> __tmp_3{12, -8};
     std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_3)) << "\n";
-    // print(math.gcd(0, 5))
     std::array<const ::tpy::BigInt, 2> __tmp_4{0, 5};
     std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_4)) << "\n";
-    // print(math.gcd(5, 0))
     std::array<const ::tpy::BigInt, 2> __tmp_5{5, 0};
     std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_5)) << "\n";
-    // print(math.gcd(0, 0))
     std::array<const ::tpy::BigInt, 2> __tmp_6{0, 0};
     std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_6)) << "\n";
-    // # lcm
-    // print(math.lcm(4, 6))
     std::array<const ::tpy::BigInt, 2> __tmp_7{4, 6};
     std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_7)) << "\n";
-    // print(math.lcm(0, 5))
     std::array<const ::tpy::BigInt, 2> __tmp_8{0, 5};
     std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_8)) << "\n";
-    // print(math.lcm(-4, 6))
     std::array<const ::tpy::BigInt, 2> __tmp_9{-4, 6};
     std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_9)) << "\n";
-    // print(math.lcm(4, -6))
     std::array<const ::tpy::BigInt, 2> __tmp_10{4, -6};
     std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_10)) << "\n";
-    // print(math.lcm(-4, -6))
     std::array<const ::tpy::BigInt, 2> __tmp_11{-4, -6};
     std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_11)) << "\n";
-    // # lcm with gcd > 1 -- actually exercises the (a // gcd) * b bounded
-    // # intermediate path. gcd(600000, 1000000) = 200000; naive a * b = 6e11,
-    // # new impl's intermediate is only 3e6.
-    // print(math.lcm(600000, 1000000))
     std::array<const ::tpy::BigInt, 2> __tmp_12{600000, 1000000};
     std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_12)) << "\n";
-    // # factorial
-    // print(math.factorial(0))
     std::cout << ::tpystd::math::factorial(::tpy::BigInt(0)) << "\n";
-    // print(math.factorial(1))
     std::cout << ::tpystd::math::factorial(::tpy::BigInt(1)) << "\n";
-    // print(math.factorial(5))
     std::cout << ::tpystd::math::factorial(::tpy::BigInt(5)) << "\n";
-    // print(math.factorial(10))
     std::cout << ::tpystd::math::factorial(::tpy::BigInt(10)) << "\n";
-    // # isqrt
-    // print(math.isqrt(0))
     std::cout << ::tpystd::math::isqrt(::tpy::BigInt(0)) << "\n";
-    // print(math.isqrt(1))
     std::cout << ::tpystd::math::isqrt(::tpy::BigInt(1)) << "\n";
-    // print(math.isqrt(10))
     std::cout << ::tpystd::math::isqrt(::tpy::BigInt(10)) << "\n";
-    // print(math.isqrt(100))
     std::cout << ::tpystd::math::isqrt(::tpy::BigInt(100)) << "\n";
-    // print(math.isqrt(1000))
     std::cout << ::tpystd::math::isqrt(::tpy::BigInt(1000)) << "\n";
-    // # Large n: bit_length > 32 forces the BigInt shift path that
-    // # `int(1) <<` enables; a bare `1 <<` would overflow-panic at int32.
-    // print(math.isqrt(int(10) ** int(40)) == int(10) ** int(20))
     std::cout << ::tpy::print_bool((::tpystd::math::isqrt(((::tpy::BigInt(10)).pow(::tpy::BigInt(40)))) == ((::tpy::BigInt(10)).pow(::tpy::BigInt(20))))) << "\n";
-    // print(math.isqrt((int(1) << int(200)) - int(1)).bit_length())  # 100
     std::cout << (::tpystd::math::isqrt(((((::tpy::BigInt(1)) << (::tpy::BigInt(200)))) - (::tpy::BigInt(1))))).bit_length() << "\n";
-    // # perm / comb
-    // print(math.perm(5, 0))
     std::cout << ::tpystd::math::perm(::tpy::BigInt(5), ::tpy::BigInt(0)) << "\n";
-    // print(math.perm(5, 2))
     std::cout << ::tpystd::math::perm(::tpy::BigInt(5), ::tpy::BigInt(2)) << "\n";
-    // print(math.perm(5, 5))
     std::cout << ::tpystd::math::perm(::tpy::BigInt(5), ::tpy::BigInt(5)) << "\n";
-    // print(math.perm(5, 6))
     std::cout << ::tpystd::math::perm(::tpy::BigInt(5), ::tpy::BigInt(6)) << "\n";
-    // # perm(n) one-arg form == factorial(n)
-    // print(math.perm(0))
     std::cout << ::tpystd::math::perm(::tpy::BigInt(0)) << "\n";
-    // print(math.perm(5))
     std::cout << ::tpystd::math::perm(::tpy::BigInt(5)) << "\n";
-    // print(math.comb(5, 0))
     std::cout << ::tpystd::math::comb(::tpy::BigInt(5), ::tpy::BigInt(0)) << "\n";
-    // print(math.comb(5, 2))
     std::cout << ::tpystd::math::comb(::tpy::BigInt(5), ::tpy::BigInt(2)) << "\n";
-    // print(math.comb(10, 5))
     std::cout << ::tpystd::math::comb(::tpy::BigInt(10), ::tpy::BigInt(5)) << "\n";
-    // print(math.comb(5, 6))
     std::cout << ::tpystd::math::comb(::tpy::BigInt(5), ::tpy::BigInt(6)) << "\n";
-    // # isclose
-    // print(math.isclose(1.0, 1.0))
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(1.0, 1.0, 1e-09, 0.0)) << "\n";
-    // print(math.isclose(1.0, 1.0 + 1e-10))
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(1.0, ((1.0) + (1e-10)), 1e-09, 0.0)) << "\n";
-    // print(math.isclose(1.0, 1.1))
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(1.0, 1.1, 1e-09, 0.0)) << "\n";
-    // print(math.isclose(0.0, 1e-10, abs_tol=1e-8))
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(0.0, 1e-10, 1e-09, 1e-08)) << "\n";
-    // print(math.isclose(math.inf, math.inf))
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(::tpystd::math::inf, ::tpystd::math::inf, 1e-09, 0.0)) << "\n";
-    // print(math.isclose(math.inf, -math.inf))
     std::cout << ::tpy::print_bool(::tpystd::math::isclose(::tpystd::math::inf, -(::tpystd::math::inf), 1e-09, 0.0)) << "\n";
-    // # prod
-    // print(math.prod([2.0, 3.0, 4.0]))
     auto __tmp_13 = std::array<double, 3>{2.0, 3.0, 4.0};
     std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_13, 1.0)) << "\n";
-    // print(math.prod([1.0, 2.0, 3.0], start=10.0))
     auto __tmp_14 = std::array<double, 3>{1.0, 2.0, 3.0};
     std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_14, 10.0)) << "\n";
-    // # Empty input: CPython returns the start value (1 without start, 1.0 with
-    // # start=1.0). TPy's Iterable[float] signature always returns float, so
-    // # start=1.0 gives 1.0 in both environments.
-    // print(math.prod([], start=1.0))
     auto __tmp_15 = std::vector<double>{};
     std::cout << ::tpy::print_float(::tpystd::math::prod(__tmp_15, 1.0)) << "\n";
-    // # fsum: sum of 10 x 0.1 should be exactly 1.0 with Neumaier
-    // t = math.fsum([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
     auto __tmp_16 = std::array<double, 10>{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
     double t = ::tpystd::math::fsum(__tmp_16);
-    // print(t > 0.999999 and t < 1.000001)
     std::cout << ::tpy::print_bool(((t > 0.999999) && (t < 1.000001))) << "\n";
-    // # sumprod
-    // print(math.sumprod([1.0, 2.0, 3.0], [4.0, 5.0, 6.0]))
     auto __tmp_17 = std::array<double, 3>{1.0, 2.0, 3.0};
     auto __tmp_18 = std::array<double, 3>{4.0, 5.0, 6.0};
     std::cout << ::tpy::print_float(::tpystd::math::sumprod(__tmp_17, __tmp_18)) << "\n";
-    // # dist
-    // print(math.dist([0.0, 0.0], [3.0, 4.0]))
     auto __tmp_19 = std::array<double, 2>{0.0, 0.0};
     auto __tmp_20 = std::array<double, 2>{3.0, 4.0};
     std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_19, __tmp_20)) << "\n";
-    // print(math.dist([1.0, 2.0, 3.0], [4.0, 6.0, 3.0]))
     auto __tmp_21 = std::array<double, 3>{1.0, 2.0, 3.0};
     auto __tmp_22 = std::array<double, 3>{4.0, 6.0, 3.0};
     std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_21, __tmp_22)) << "\n";
-    // print(math.dist([0.0], [0.0]))
     auto __tmp_23 = std::array<double, 1>{0.0};
     auto __tmp_24 = std::array<double, 1>{0.0};
     std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_23, __tmp_24)) << "\n";
-    // # n=1 with p[0] > q[0]: verifies the fabs() in the hypot-fold base case.
-    // print(math.dist([1.0], [3.0]))
     auto __tmp_25 = std::array<double, 1>{1.0};
     auto __tmp_26 = std::array<double, 1>{3.0};
     std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_25, __tmp_26)) << "\n";
-    // # Overflow safety: naive sqrt(sum((pi-qi)**2)) would overflow since
-    // # 1e200 * 1e200 == inf. Hypot-fold handles this. std::hypot is required
-    // # to be faithfully rounded so the exact value is deterministic.
-    // print(math.dist([1e200, 1e200], [0.0, 0.0]))
     auto __tmp_27 = std::array<double, 2>{1e+200, 1e+200};
     auto __tmp_28 = std::array<double, 2>{0.0, 0.0};
     std::cout << ::tpy::print_float(::tpystd::math::dist(__tmp_27, __tmp_28)) << "\n";
 }
 
+// # math module: float predicates (isnan/isinf/isfinite), copysign, fmod,
+// # remainder, integer helpers (gcd/lcm/factorial/isqrt/perm/comb), isclose,
+// # prod/fsum/sumprod/dist.
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # math module: float predicates (isnan/isinf/isfinite), copysign, fmod,
-    // # remainder, integer helpers (gcd/lcm/factorial/isqrt/perm/comb), isclose,
-    // # prod/fsum/sumprod/dist.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

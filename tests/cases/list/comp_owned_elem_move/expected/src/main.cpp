@@ -5,32 +5,33 @@ namespace tpyapp::main {
 
 
 // def is_small(b: Box[int32]) -> bool:
+//     return b < Box(3)
 bool is_small(const ::tpystd::tplib::box::Box<int32_t>& b) {
-    // return b < Box(3)
     return ((b) < (::tpystd::tplib::box::Box<int32_t>(3)));
 }
 
 // def score(b: Box[int32]) -> int32:
+//     return 1 if b < Box(3) else 0
 int32_t score(const ::tpystd::tplib::box::Box<int32_t>& b) {
-    // return 1 if b < Box(3) else 0
     return ((((b) < (::tpystd::tplib::box::Box<int32_t>(3)))) ? (1) : (0));
 }
 
 // def array_comp() -> None:
+//     xs = [Box(i) for i in range(4)]  # tpyc: type(/Array\[Box\[int32\], 4\]/)
+//     print(len(xs), xs[0].get(), xs[3].get())
 void array_comp() {
-    // xs = [Box(i) for i in range(4)]  # tpyc: type(/Array\[Box\[int32\], 4\]/)
     std::array<::tpystd::tplib::box::Box<int32_t>, 4> xs = ::tpy::array_from_index<::tpystd::tplib::box::Box<int32_t>, 4>([&](std::size_t __i_0) -> ::tpystd::tplib::box::Box<int32_t> {
         int32_t i = int32_t(__i_0);
         int32_t __tmp_1 = i;
         return ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
     });
-    // print(len(xs), xs[0].get(), xs[3].get())
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << " " << ::tpy::__getitem__(xs, 3).get() << "\n";
 }
 
 // def list_comp(n: int32) -> None:
+//     ys = [Box(i) for i in range(n)]
+//     print(len(ys), ys[0].get())
 void list_comp(int32_t n) {
-    // ys = [Box(i) for i in range(n)]
     std::vector<::tpystd::tplib::box::Box<int32_t>> ys = ({
         std::vector<::tpystd::tplib::box::Box<int32_t>> __result;
         const int32_t __stop_0 = n;
@@ -41,15 +42,14 @@ void list_comp(int32_t n) {
         }
         std::move(__result);
     });
-    // print(len(ys), ys[0].get())
     std::cout << ::tpy::__len__(ys) << " " << ::tpy::__getitem__(ys, 0).get() << "\n";
 }
 
 // def genexpr(n: int32) -> None:
+//     # owned move-temp in BOTH the genexpr element (score(Box(i))) and its filter
+//     # condition (is_small(Box(i))) -- each must flush into the lambda body.
+//     print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))
 void genexpr(int32_t n) {
-    // # owned move-temp in BOTH the genexpr element (score(Box(i))) and its filter
-    // # condition (is_small(Box(i))) -- each must flush into the lambda body.
-    // print(sum(score(Box(i)) for i in range(n) if is_small(Box(i))))
     std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
         [__i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -68,9 +68,10 @@ void genexpr(int32_t n) {
 }
 
 // def filtered(n: int32) -> None:
+//     # owned move-temp in a list-comp filter condition, re-evaluated per iteration
+//     zs = [i for i in range(n) if is_small(Box(i))]
+//     print(len(zs))
 void filtered(int32_t n) {
-    // # owned move-temp in a list-comp filter condition, re-evaluated per iteration
-    // zs = [i for i in range(n) if is_small(Box(i))]
     std::vector<int32_t> zs = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = n;
@@ -84,16 +85,16 @@ void filtered(int32_t n) {
         }
         std::move(__result);
     });
-    // print(len(zs))
     std::cout << ::tpy::__len__(zs) << "\n";
 }
 
 // def walrus_owned(n: int32) -> None:
+//     # walrus target leaks to the enclosing scope (PEP 572) so its declaration
+//     # must stay at function scope, while the owned move-temp in the condition
+//     # expression must still land inside the loop body.
+//     zs = [x for x in range(n) if (y := score(Box(x))) > 0]
+//     print(len(zs), y)
 void walrus_owned(int32_t n) {
-    // # walrus target leaks to the enclosing scope (PEP 572) so its declaration
-    // # must stay at function scope, while the owned move-temp in the condition
-    // # expression must still land inside the loop body.
-    // zs = [x for x in range(n) if (y := score(Box(x))) > 0]
     int32_t y;
     std::vector<int32_t> zs = ({
         std::vector<int32_t> __result;
@@ -108,33 +109,33 @@ void walrus_owned(int32_t n) {
         }
         std::move(__result);
     });
-    // print(len(zs), y)
     std::cout << ::tpy::__len__(zs) << " " << y << "\n";
 }
 
 // def main() -> None:
+//     array_comp()
+//     list_comp(3)
+//     genexpr(6)
+//     filtered(6)
+//     walrus_owned(6)
 void main() {
-    // array_comp()
     array_comp();
-    // list_comp(3)
     list_comp(3);
-    // genexpr(6)
     genexpr(6);
-    // filtered(6)
     filtered(6);
-    // walrus_owned(6)
     walrus_owned(6);
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

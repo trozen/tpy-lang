@@ -17,6 +17,7 @@ extern std::vector<Node>* pool;
 extern Node* q;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find(ns: list[Node], k: int32) -> Node | None:
 Node* find(std::vector<Node>& ns, int32_t k);
 
 // class Node:
@@ -37,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Node::Node(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

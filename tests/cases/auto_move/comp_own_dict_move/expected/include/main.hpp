@@ -12,11 +12,17 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def value_moves_key_field() -> int:
 ::tpy::BigInt value_moves_key_field();
+// def value_only() -> int:
 ::tpy::BigInt value_only();
+// def key_does_not_move(src_key: int) -> int:
 ::tpy::BigInt key_does_not_move(const ::tpy::BigInt& src_key);
+// def filtered_value_moves() -> int:
 ::tpy::BigInt filtered_value_moves();
+// def same_var_key_and_value() -> int:
 ::tpy::BigInt same_var_key_and_value();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -81,30 +87,36 @@ namespace tpyapp::main {
 
 
 // def __init__(self, i: int) -> None:
+//     self.id = i
+//     self.tag = i * 10
 inline Widget::Widget(const ::tpy::BigInt& i) : id(i), tag(((i) * (::tpy::BigInt(10)))) {}
 
 // def __init__(self, i: int) -> None:
+//     self.id = i
 inline Node::Node(const ::tpy::BigInt& i) : id(i) {}
 
 // def __hash__(self) -> int:
+//     return self.id
 inline ::tpy::BigInt Node::__hash__() const {
-    // return self.id
     return this->id;
 }
 
 // def __eq__(self, o: "Node") -> bool:
+//     return self.id == o.id
 inline bool Node::__eq__(const Node& o) const {
-    // return self.id == o.id
     return (this->id == o.id);
 }
+// def widgets(n: int) -> Iterator[Own[Widget]]:
+//     i = 0
+//     while i < n:
+//         yield Widget(i)
+//         i += 1
 inline auto widgets(const ::tpy::BigInt& n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<Widget>(
         [n, i]() mutable -> std::optional<Widget> {
             while ((::tpy::BigInt(i) < n)) {
                 auto __val = Widget(::tpy::BigInt(i));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<Widget>(std::move(__val));
             }
@@ -113,14 +125,17 @@ inline auto widgets(const ::tpy::BigInt& n) {
     );
 }
 
+// def nodes(n: int) -> Iterator[Own[Node]]:
+//     i = 0
+//     while i < n:
+//         yield Node(i)
+//         i += 1
 inline auto nodes(const ::tpy::BigInt& n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<Node>(
         [n, i]() mutable -> std::optional<Node> {
             while ((::tpy::BigInt(i) < n)) {
                 auto __val = Node(::tpy::BigInt(i));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<Node>(std::move(__val));
             }

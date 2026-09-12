@@ -5,106 +5,110 @@ namespace tpyapp::main {
 
 
 // def print_copy_param(pet: Dog | Cat) -> None:
+//     pet2 = copy(pet)
+//     if isinstance(pet2, Dog):
+//         print(pet2.name)
+//     elif isinstance(pet2, Cat):
+//         print(pet2.name)
 void print_copy_param(::tpy::Union<const Cat*, const Dog*> pet) {
-    // pet2 = copy(pet)
     ::tpy::Union<Cat, Dog> __slot_1 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet);
     ::tpy::Union<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_1);
-    // if isinstance(pet2, Dog):
     if (std::holds_alternative<Dog*>(pet2)) {
         auto& __pet2 = *std::get<Dog*>(pet2);
-        // print(pet2.name)
         std::cout << __pet2.name << "\n";
     } else {
-        // elif isinstance(pet2, Cat):
         if (true) {
             auto& __pet2 = *std::get<Cat*>(pet2);
-            // print(pet2.name)
             std::cout << __pet2.name << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     # Copy a Dog through a union-typed variable
+//     d = Dog("Rex")
+//     pet: Dog | Cat = d
+//     pet2 = copy(pet)
+//     d.name = "Changed"
+//     if isinstance(pet2, Dog):
+//         print(pet2.name)
+//
+//     # Copy a Cat through a union-typed variable
+//     c = Cat("Whiskers")
+//     pet3: Dog | Cat = c
+//     pet4 = copy(pet3)
+//     if isinstance(pet4, Cat):
+//         print(pet4.name)
+//
+//     # Copy through a function parameter
+//     d2 = Dog("Fido")
+//     param_pet: Dog | Cat = d2
+//     print_copy_param(param_pet)
+//
+//     # Copy inside isinstance branch (narrowed context)
+//     c2 = Cat("Mittens")
+//     pet6: Dog | Cat = c2
+//     if isinstance(pet6, Cat):
+//         pet7 = copy(pet6)
+//         if isinstance(pet7, Cat):
+//             print(pet7.name)
+//
+//     # Copy a nullable union
+//     pet8: Dog | Cat | None = Dog("Buddy")
+//     pet9 = copy(pet8)
+//     if pet9 is not None:
+//         if isinstance(pet9, Dog):
+//             print(pet9.name)
 void main() {
-    // # Copy a Dog through a union-typed variable
-    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    // pet: Dog | Cat = d
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
-    // pet2 = copy(pet)
     ::tpy::Union<Cat, Dog> __slot_1 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet);
     ::tpy::Union<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_1);
-    // d.name = "Changed"
     d.name = "Changed";
-    // if isinstance(pet2, Dog):
     if (std::holds_alternative<Dog*>(pet2)) {
         auto& __pet2 = *std::get<Dog*>(pet2);
-        // print(pet2.name)
         std::cout << __pet2.name << "\n";
     }
-    // # Copy a Cat through a union-typed variable
-    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    // pet3: Dog | Cat = c
     ::tpy::Union<Cat*, Dog*> pet3{&(c)};
-    // pet4 = copy(pet3)
     ::tpy::Union<Cat, Dog> __slot_2 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet3);
     ::tpy::Union<Cat*, Dog*> pet4 = ::tpy::to_ptr_variant(__slot_2);
-    // if isinstance(pet4, Cat):
     if (std::holds_alternative<Cat*>(pet4)) {
         auto& __pet4 = *std::get<Cat*>(pet4);
-        // print(pet4.name)
         std::cout << __pet4.name << "\n";
     }
-    // # Copy through a function parameter
-    // d2 = Dog("Fido")
     Dog d2 = Dog("Fido");
-    // param_pet: Dog | Cat = d2
     ::tpy::Union<Cat*, Dog*> param_pet{&(d2)};
-    // print_copy_param(param_pet)
     print_copy_param(param_pet.as_const());
-    // # Copy inside isinstance branch (narrowed context)
-    // c2 = Cat("Mittens")
     Cat c2 = Cat("Mittens");
-    // pet6: Dog | Cat = c2
     ::tpy::Union<Cat*, Dog*> pet6{&(c2)};
-    // if isinstance(pet6, Cat):
     if (true) {
         auto& __pet6 = *std::get<Cat*>(pet6);
-        // pet7 = copy(pet6)
         ::tpy::Union<Cat, Dog> __slot_3 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet6);
         ::tpy::Union<Cat*, Dog*> pet7 = ::tpy::to_ptr_variant(__slot_3);
-        // if isinstance(pet7, Cat):
         if (std::holds_alternative<Cat*>(pet7)) {
             auto& __pet7 = *std::get<Cat*>(pet7);
-            // print(pet7.name)
             std::cout << __pet7.name << "\n";
         }
     }
-    // # Copy a nullable union
-    // pet8: Dog | Cat | None = Dog("Buddy")
     ::tpy::Union<std::monostate, Cat, Dog> __slot_4 = Dog("Buddy");
     ::tpy::Union<std::monostate, Cat*, Dog*> pet8 = ::tpy::to_ptr_variant(__slot_4);
-    // pet9 = copy(pet8)
     ::tpy::Union<std::monostate, Cat, Dog> __slot_5 = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(pet8);
     ::tpy::Union<std::monostate, Cat*, Dog*> pet9 = ::tpy::to_ptr_variant(__slot_5);
-    // if pet9 is not None:
     if ((!std::holds_alternative<std::monostate>(pet9))) {
-        // if isinstance(pet9, Dog):
         if (std::holds_alternative<Dog*>(pet9)) {
             auto& __pet9 = *std::get<Dog*>(pet9);
-            // print(pet9.name)
             std::cout << __pet9.name << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -10,8 +10,11 @@ namespace tpyapp::main {
 extern std::string LETTERS;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def from_global() -> None:
 void from_global();
+// def from_local() -> None:
 void from_local();
+// def main() -> None:
 void main();
 
 void __tpy_init();

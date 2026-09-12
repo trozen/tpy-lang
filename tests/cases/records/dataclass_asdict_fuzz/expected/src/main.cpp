@@ -5,37 +5,76 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # 1. Flat homogeneous
+//     p = Point(int32(1), int32(2))
+//     print(asdict(p))
+//     print(astuple(p))
+//
+//     # 2. Mixed types
+//     person = Person("Alice", int32(30))
+//     print(asdict(person))
+//     print(astuple(person))
+//
+//     # 3. Nested dataclass (homogeneous)
+//     line = Line(Point(int32(0), int32(0)), Point(int32(1), int32(1)))
+//     print(asdict(line))
+//     print(astuple(line))
+//
+//     # 4. Nested with mixed types
+//     np = NamedPoint("origin", Point(int32(0), int32(0)))
+//     print(asdict(np))
+//
+//     # 5. List of dataclasses
+//     poly = Polygon([Point(int32(0), int32(0)), Point(int32(1), int32(0)), Point(int32(0), int32(1))])
+//     print(asdict(poly))
+//
+//     # 6. Mixed types + list
+//     d = Drawing("sketch", [Point(int32(1), int32(2))])
+//     print(asdict(d))
+//
+//     # 7. Deeply nested
+//     w = Wrapper(NamedPoint("deep", Point(int32(9), int32(8))))
+//     print(asdict(w))
+//
+//     # 8. Default values
+//     m = MaybeNamed("test")
+//     print(asdict(m))
+//
+//     # 9. Empty list
+//     c = Container([])
+//     print(asdict(c))
+//
+//     # 10. Multiple list fields (mixed field types)
+//     ml = MultiList([Point(int32(1), int32(2))], ["a", "b"])
+//     print(asdict(ml))
+//
+//     # 11. Dict with dataclass values
+//     dd = DictOfDC({"origin": Point(int32(0), int32(0)), "end": Point(int32(1), int32(2))})
+//     print(asdict(dd))
+//     print(astuple(dd))
+//
+//     # 12. Tuple with mixed types (DC + scalar)
+//     tm = TupleMixed((Point(int32(1), int32(2)), int32(42)))
+//     print(asdict(tm))
+//     print(astuple(tm))
+//
+//     # 13. Tuple with all dataclass elements
+//     ta = TupleAllDC((Point(int32(1), int32(2)), Point(int32(3), int32(4))))
+//     print(asdict(ta))
+//     print(astuple(ta))
 void main() {
-    // # 1. Flat homogeneous
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // print(asdict(p))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, int32_t>({{"x", p.x}, {"y", p.y}})) << "\n";
-    // print(astuple(p))
     std::cout << ::tpy::TuplePrinter(std::tuple<int32_t, int32_t>{p.x, p.y}) << "\n";
-    // # 2. Mixed types
-    // person = Person("Alice", int32(30))
     Person person = Person("Alice", 30);
-    // print(asdict(person))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", person.name}, {"age", person.age}}))) << "\n";
-    // print(astuple(person))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{person.name, person.age}) << "\n";
-    // # 3. Nested dataclass (homogeneous)
-    // line = Line(Point(int32(0), int32(0)), Point(int32(1), int32(1)))
     Line line = Line(Point(0, 0), Point(1, 1));
-    // print(asdict(line))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", line.start.x}, {"y", line.start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", line.end.x}, {"y", line.end.y}})}})) << "\n";
-    // print(astuple(line))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{line.start.x, line.start.y}, std::tuple<int32_t, int32_t>{line.end.x, line.end.y}}) << "\n";
-    // # 4. Nested with mixed types
-    // np = NamedPoint("origin", Point(int32(0), int32(0)))
     NamedPoint np = NamedPoint("origin", Point(0, 0));
-    // print(asdict(np))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
-    // # 5. List of dataclasses
-    // poly = Polygon([Point(int32(0), int32(0)), Point(int32(1), int32(0)), Point(int32(0), int32(1))])
     Polygon poly = Polygon({Point(0, 0), Point(1, 0), Point(0, 1)});
-    // print(asdict(poly))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"vertices", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_0 = poly.vertices;
@@ -48,10 +87,7 @@ void main() {
         }
         std::move(__result);
     })}})) << "\n";
-    // # 6. Mixed types + list
-    // d = Drawing("sketch", [Point(int32(1), int32(2))])
     Drawing d = Drawing("sketch", {Point(1, 2)});
-    // print(asdict(d))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"title", d.title}, {"shapes", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_1 = d.shapes;
@@ -64,20 +100,11 @@ void main() {
         }
         std::move(__result);
     })}}))) << "\n";
-    // # 7. Deeply nested
-    // w = Wrapper(NamedPoint("deep", Point(int32(9), int32(8))))
     Wrapper w = Wrapper(NamedPoint("deep", Point(9, 8)));
-    // print(asdict(w))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"inner", ::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", w.inner.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", w.inner.pos.x}, {"y", w.inner.pos.y}})}}))}})) << "\n";
-    // # 8. Default values
-    // m = MaybeNamed("test")
     MaybeNamed m = MaybeNamed("test");
-    // print(asdict(m))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", m.name}, {"value", m.value}}))) << "\n";
-    // # 9. Empty list
-    // c = Container([])
     Container c = Container(std::vector<Point>{});
-    // print(asdict(c))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_2 = c.items;
@@ -90,10 +117,7 @@ void main() {
         }
         std::move(__result);
     })}})) << "\n";
-    // # 10. Multiple list fields (mixed field types)
-    // ml = MultiList([Point(int32(1), int32(2))], ["a", "b"])
     MultiList ml = MultiList({Point(1, 2)}, {"a", "b"});
-    // print(asdict(ml))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>({{"points", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_3 = ml.points;
@@ -106,10 +130,7 @@ void main() {
         }
         std::move(__result);
     })}, {"labels", ml.labels}}))) << "\n";
-    // # 11. Dict with dataclass values
-    // dd = DictOfDC({"origin": Point(int32(0), int32(0)), "end": Point(int32(1), int32(2))})
     DictOfDC dd = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}, {"end", Point(1, 2)}}));
-    // print(asdict(dd))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __result;
         auto __obj_4 = ::tpy::dict_items(dd.items);
@@ -123,7 +144,6 @@ void main() {
         }
         std::move(__result);
     })}})) << "\n";
-    // print(astuple(dd))
     std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>(({
         ::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>> __result;
         auto __obj_5 = ::tpy::dict_items(dd.items);
@@ -137,30 +157,23 @@ void main() {
         }
         std::move(__result);
     }))) << "\n";
-    // # 12. Tuple with mixed types (DC + scalar)
-    // tm = TupleMixed((Point(int32(1), int32(2)), int32(42)))
     TupleMixed tm = TupleMixed(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1, 2), 42}));
-    // print(asdict(tm))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(tm.pair).x}, {"y", std::get<0>(tm.pair).y}}), std::get<1>(tm.pair)})}})) << "\n";
-    // print(astuple(tm))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>(std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(tm.pair).x, std::get<0>(tm.pair).y}, std::get<1>(tm.pair)})) << "\n";
-    // # 13. Tuple with all dataclass elements
-    // ta = TupleAllDC((Point(int32(1), int32(2)), Point(int32(3), int32(4))))
     TupleAllDC ta = TupleAllDC(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}));
-    // print(asdict(ta))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(ta.pair).x}, {"y", std::get<0>(ta.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(ta.pair).x}, {"y", std::get<1>(ta.pair).y}})})}})) << "\n";
-    // print(astuple(ta))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{std::get<0>(ta.pair).x, std::get<0>(ta.pair).y}, std::tuple<int32_t, int32_t>{std::get<1>(ta.pair).x, std::get<1>(ta.pair).y}})) << "\n";
 }
 
+// # Fuzz-style coverage of asdict()/astuple() across nested, list, dict, and tuple field types
+// from dataclasses import dataclass, asdict, astuple
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Fuzz-style coverage of asdict()/astuple() across nested, list, dict, and tuple field types
-    // from dataclasses import dataclass, asdict, astuple
-    // main()
     main();
 }
 

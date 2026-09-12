@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Color.RED)
+//     print(Color.GREEN)
+//     print(Color.BLUE)
+//     print(Color.RED.value)
 void main() {
-    // print(Color.RED)
     std::cout << ::tpy::__repr__(::lib::Color::RED) << "\n";
-    // print(Color.GREEN)
     std::cout << ::tpy::__repr__(::lib::Color::GREEN) << "\n";
-    // print(Color.BLUE)
     std::cout << ::tpy::__repr__(::lib::Color::BLUE) << "\n";
-    // print(Color.RED.value)
     std::cout << static_cast<int32_t>(::lib::Color::RED) << "\n";
 }
 
+// # Cross-module import of a @native enum.
+// from lib_enum import Color
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module import of a @native enum.
-    // from lib_enum import Color
     ::tpyapp::lib_enum::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,79 +5,79 @@ namespace tpyapp::main {
 
 
 // def classify(e: Optional[BaseExc]) -> str:
+//     if e is None:
+//         return "<none>"
+//     if isinstance(e, ValErr):  # tpyc: ok
+//         narrowed = e  # tpyc: type(ValErr)
+//         return "VAL: " + narrowed.what()
+//     if isinstance(e, (OsErr, ValErr)):  # tpyc: ok -- tuple form (no narrowing)
+//         return "OS-or-VAL: " + e.what()
+//     return "BASE: " + e.what()
 std::string classify(BaseExc* e) {
-    // if e is None:
     if ((e == nullptr)) {
-        // return "<none>"
         return "<none>";
     }
-    // if isinstance(e, ValErr):  # tpyc: ok
     if (ValErr* __e_ptr = dynamic_cast<ValErr*>(e); (__e_ptr != nullptr)) {
-        // narrowed = e  # tpyc: type(ValErr)
         ValErr& narrowed = (*__e_ptr);
-        // return "VAL: " + narrowed.what()
         return (::tpy::str_concat("VAL: ", narrowed.what()));
     }
-    // if isinstance(e, (OsErr, ValErr)):  # tpyc: ok -- tuple form (no narrowing)
     if (((dynamic_cast<OsErr*>(e) != nullptr) || (dynamic_cast<ValErr*>(e) != nullptr))) {
-        // return "OS-or-VAL: " + e.what()
         return (::tpy::str_concat("OS-or-VAL: ", e->what()));
     }
-    // return "BASE: " + e.what()
     return (::tpy::str_concat("BASE: ", e->what()));
 }
 
 // def classify_direct(e: Optional[BaseExc]) -> str:
+//     # Optional-source isinstance path (no preceding `is None` narrowing) --
+//     # exercises _analyze_isinstance's Optional-direct branch.
+//     if isinstance(e, ValErr):  # tpyc: ok
+//         narrowed = e  # tpyc: type(ValErr)
+//         return "DIRECT-VAL: " + narrowed.what()
+//     if isinstance(e, BaseExc):  # tpyc: ok -- always-True boundary on non-None
+//         return "DIRECT-BASE"
+//     return "DIRECT-NONE"
 std::string classify_direct(BaseExc* e) {
-    // # Optional-source isinstance path (no preceding `is None` narrowing) --
-    // # exercises _analyze_isinstance's Optional-direct branch.
-    // if isinstance(e, ValErr):  # tpyc: ok
     if (ValErr* __e_ptr = dynamic_cast<ValErr*>(e); (__e_ptr != nullptr)) {
-        // narrowed = e  # tpyc: type(ValErr)
         ValErr& narrowed = (*__e_ptr);
-        // return "DIRECT-VAL: " + narrowed.what()
         return (::tpy::str_concat("DIRECT-VAL: ", narrowed.what()));
     }
-    // if isinstance(e, BaseExc):  # tpyc: ok -- always-True boundary on non-None
     if ((dynamic_cast<BaseExc*>(e) != nullptr)) {
-        // return "DIRECT-BASE"
         return "DIRECT-BASE";
     }
-    // return "DIRECT-NONE"
     return "DIRECT-NONE";
 }
 
 // def main() -> None:
+//     # rvalue construction into Optional[BaseExc] -- previously sliced
+//     print(classify(ValErr("v1")))
+//     print(classify(OsErr("o1")))
+//     print(classify(BaseExc("b1")))
+//     print(classify(None))
+//     # Optional-source path
+//     print(classify_direct(ValErr("d1")))
+//     print(classify_direct(BaseExc("d2")))
+//     print(classify_direct(None))
 void main() {
-    // # rvalue construction into Optional[BaseExc] -- previously sliced
-    // print(classify(ValErr("v1")))
     ValErr __tmp_1 = ValErr("v1");
     std::cout << classify(&(__tmp_1)) << "\n";
-    // print(classify(OsErr("o1")))
     OsErr __tmp_2 = OsErr("o1");
     std::cout << classify(&(__tmp_2)) << "\n";
-    // print(classify(BaseExc("b1")))
     BaseExc __tmp_3 = BaseExc("b1");
     std::cout << classify(&(__tmp_3)) << "\n";
-    // print(classify(None))
     std::cout << classify(nullptr) << "\n";
-    // # Optional-source path
-    // print(classify_direct(ValErr("d1")))
     ValErr __tmp_4 = ValErr("d1");
     std::cout << classify_direct(&(__tmp_4)) << "\n";
-    // print(classify_direct(BaseExc("d2")))
     BaseExc __tmp_5 = BaseExc("d2");
     std::cout << classify_direct(&(__tmp_5)) << "\n";
-    // print(classify_direct(None))
     std::cout << classify_direct(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

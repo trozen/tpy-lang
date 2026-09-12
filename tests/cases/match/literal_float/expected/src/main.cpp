@@ -6,42 +6,42 @@ namespace tpyapp::main {
 
 // # match/case on float subject with literal patterns
 // def classify(x: float) -> str:
+//     match x:
+//         case 0.0:
+//             return "zero"
+//         case 1.0:
+//             return "one"
+//         case other:
+//             return "other"
 std::string classify(double x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case 0.0:
     if (__match_subject_1 == 0.0) {
-        // return "zero"
         return "zero";
-    // case 1.0:
     } else if (__match_subject_1 == 1.0) {
-        // return "one"
         return "one";
-    // case other:
     } else {
         auto other = __match_subject_1;
-        // return "other"
         return "other";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(classify(0.0))
+//     print(classify(1.0))
+//     print(classify(3.14))
 void main() {
-    // print(classify(0.0))
     std::cout << classify(0.0) << "\n";
-    // print(classify(1.0))
     std::cout << classify(1.0) << "\n";
-    // print(classify(3.14))
     std::cout << classify(3.14) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

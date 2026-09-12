@@ -5,50 +5,68 @@ namespace tpyapp::main {
 
 
 // def ordinary_aliases(a: Cell, b: Cell) -> None:
+//     # Shared helper inverse: ordinary parameters and reseatable pointer locals.
+//     direct = a  # tpyc: ok
+//     direct.n += 1
+//     pointer = a
+//     pointer = b
+//     indirect = pointer  # tpyc: ok
+//     indirect.n += 2
+//     print("ordinary", a.n, b.n, pointer.n)
 void ordinary_aliases(Cell& a, Cell& b) {
-    // # Shared helper inverse: ordinary parameters and reseatable pointer locals.
-    // direct = a  # tpyc: ok
     Cell& direct = a;
-    // direct.n += 1
     direct.n = ::tpy::add_check<int32_t>(direct.n, 1);
-    // pointer = a
     Cell* pointer = &(a);
-    // pointer = b
     pointer = &(b);
-    // indirect = pointer  # tpyc: ok
     Cell& indirect = (*pointer);
-    // indirect.n += 2
     indirect.n = ::tpy::add_check<int32_t>(indirect.n, 2);
-    // print("ordinary", a.n, b.n, pointer.n)
     std::cout << "ordinary" << " " << a.n << " " << b.n << " " << pointer->n << "\n";
 }
 
 // def main() -> None:
+//     cell = Cell(10)
+//     print("constructor", cell.n)
+//     cell.mutate()
+//     print("readonly", cell.read(), cell.inferred_read())
+//     cell.n += 1
+//     print("readonly_changed", cell.read(), cell.inferred_read())
+//     cell.nested()
+//     print("generic", cell.generic(7), cell.concrete(7), cell.n)
+//     other = Cell(20)
+//     cell.reassign(other)
+//     ordinary_aliases(cell, other)
+//
+//     # Receivers stay live and unmoved while each method frame borrows them.
+//     for value in cell.steps():
+//         print("generator", value, cell.n)
+//         cell.n += 10
+//     print("generator_done", cell.n)
+//     for value in cell.rebound_steps():
+//         print("generator_rebind", value, cell.n)
+//         cell.n += 10
+//     for value in cell.readonly_steps():
+//         print("readonly_generator", value, cell.n)
+//         cell.n += 10
+//     print("async", asyncio.run(cell.update()), cell.n)
+//
+//     consumed = Consumed(40)
+//     returned = consumed.finish()
+//     print("returned", returned.n)
+//     derived = Derived(50)
+//     derived.narrowed()
+//     print("narrowed_caller", derived.n)
 void main() {
-    // cell = Cell(10)
     Cell cell = Cell(10);
-    // print("constructor", cell.n)
     std::cout << "constructor" << " " << cell.n << "\n";
-    // cell.mutate()
     cell.mutate();
-    // print("readonly", cell.read(), cell.inferred_read())
     std::cout << "readonly" << " " << cell.read() << " " << cell.inferred_read() << "\n";
-    // cell.n += 1
     cell.n = ::tpy::add_check<int32_t>(cell.n, 1);
-    // print("readonly_changed", cell.read(), cell.inferred_read())
     std::cout << "readonly_changed" << " " << cell.read() << " " << cell.inferred_read() << "\n";
-    // cell.nested()
     cell.nested();
-    // print("generic", cell.generic(7), cell.concrete(7), cell.n)
     std::cout << "generic" << " " << cell.generic<int32_t>(7) << " " << cell.concrete(7) << " " << cell.n << "\n";
-    // other = Cell(20)
     Cell other = Cell(20);
-    // cell.reassign(other)
     cell.reassign(other);
-    // ordinary_aliases(cell, other)
     ordinary_aliases(cell, other);
-    // # Receivers stay live and unmoved while each method frame borrows them.
-    // for value in cell.steps():
     {
         auto __src_0 = cell.steps();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -56,15 +74,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-        // print("generator", value, cell.n)
         std::cout << "generator" << " " << value << " " << cell.n << "\n";
-        // cell.n += 10
         cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
-    // print("generator_done", cell.n)
     std::cout << "generator_done" << " " << cell.n << "\n";
-    // for value in cell.rebound_steps():
     {
         auto __src_2 = cell.rebound_steps();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -72,13 +86,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_3);
-        // print("generator_rebind", value, cell.n)
         std::cout << "generator_rebind" << " " << value << " " << cell.n << "\n";
-        // cell.n += 10
         cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
-    // for value in cell.readonly_steps():
     {
         auto __src_4 = cell.readonly_steps();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -86,45 +97,36 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_5);
-        // print("readonly_generator", value, cell.n)
         std::cout << "readonly_generator" << " " << value << " " << cell.n << "\n";
-        // cell.n += 10
         cell.n = ::tpy::add_check<int32_t>(cell.n, 10);
         }
     }
-    // print("async", asyncio.run(cell.update()), cell.n)
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cell.update())) << " " << cell.n << "\n";
-    // consumed = Consumed(40)
     Consumed consumed = Consumed(40);
-    // returned = consumed.finish()
     Consumed returned = std::move(consumed).finish();
-    // print("returned", returned.n)
     std::cout << "returned" << " " << returned.n << "\n";
-    // derived = Derived(50)
     Derived derived = Derived(50);
-    // derived.narrowed()
     derived.narrowed();
-    // print("narrowed_caller", derived.n)
     std::cout << "narrowed_caller" << " " << derived.n << "\n";
 }
 
 // def steps(self) -> Iterator[int32]:
+//     # Generator: the alias remains live before and after suspension.
+//     me = self  # tpyc: ok
+//     me.n += 1
+//     yield me.n
+//     me.n += 2
+//     yield self.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # Generator: the alias remains live before and after suspension.
-        // me = self  # tpyc: ok
         me = &(__self);
-        // me.n += 1
         me->n = ::tpy::add_check<int32_t>(me->n, 1);
-        // yield me.n
         __state = S_RESUME_0;
         return me->n;
     }
     case S_RESUME_0: {
-        // me.n += 2
         me->n = ::tpy::add_check<int32_t>(me->n, 2);
-        // yield self.n
         __state = S_RESUME_1;
         return __self.n;
     }
@@ -139,24 +141,24 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_steps::__next__() {
 
 
 // def rebound_steps(self) -> Iterator[int32]:
+//     first = self  # tpyc: ok
+//     # Existing alias-of-alias sources and rebinds to self share the frame.
+//     me = first
+//     yield me.n
+//     me = self  # tpyc: ok
+//     me.n += 1
+//     yield self.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_rebound_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // first = self  # tpyc: ok
         first = &(__self);
-        // # Existing alias-of-alias sources and rebinds to self share the frame.
-        // me = first
         me = first;
-        // yield me.n
         __state = S_RESUME_0;
         return me->n;
     }
     case S_RESUME_0: {
-        // me = self  # tpyc: ok
         me = &(__self);
-        // me.n += 1
         me->n = ::tpy::add_check<int32_t>(me->n, 1);
-        // yield self.n
         __state = S_RESUME_1;
         return __self.n;
     }
@@ -171,18 +173,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_rebound_steps::__next__(
 
 
 // def readonly_steps(self) -> Iterator[int32]:
+//     # The frame alias and its captured receiver must agree on constness.
+//     me = self  # tpyc: ok
+//     yield me.n
+//     yield me.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The frame alias and its captured receiver must agree on constness.
-        // me = self  # tpyc: ok
         me = &(__self);
-        // yield me.n
         __state = S_RESUME_0;
         return me->n;
     }
     case S_RESUME_0: {
-        // yield me.n
         __state = S_RESUME_1;
         return me->n;
     }
@@ -197,13 +199,16 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__
 
 
 // async def update(self) -> int32:
+//     # Async: the frame alias survives an actual suspension point.
+//     me = self  # tpyc: ok
+//     await asyncio.sleep(0)
+//     me.n += 6
+//     self.n += 7
+//     return me.n
 ::tpystd::tpy::Poll<int32_t> __coro_Cell_update::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # Async: the frame alias survives an actual suspension point.
-        // me = self  # tpyc: ok
         me = &(__self);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -213,11 +218,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // me.n += 6
         me->n = ::tpy::add_check<int32_t>(me->n, 6);
-        // self.n += 7
         __self.n = ::tpy::add_check<int32_t>(__self.n, 7);
-        // return me.n
         __state = S_DONE;
         int32_t __tpy_async_ret = me->n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -228,14 +230,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__
 }
 
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

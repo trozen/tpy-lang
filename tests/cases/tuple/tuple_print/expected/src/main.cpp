@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t: tuple[int32, int32] = (int32(10), int32(20))
+//     print(t)
+//     # Single-element tuple (trailing comma)
+//     s: tuple[int32] = (int32(42),)
+//     print(s)
+//     # Record with tuple field
+//     p = Pair(int32(1), "hello")
+//     print(p)
+//     # Nested tuple
+//     n: tuple[tuple[int32, int32], str] = ((int32(3), int32(4)), "xy")
+//     print(n)
 void main() {
-    // t: tuple[int32, int32] = (int32(10), int32(20))
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{10, 20};
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
-    // # Single-element tuple (trailing comma)
-    // s: tuple[int32] = (int32(42),)
     std::tuple<int32_t> s = std::tuple<int32_t>(42);
-    // print(s)
     std::cout << ::tpy::TuplePrinter(s) << "\n";
-    // # Record with tuple field
-    // p = Pair(int32(1), "hello")
     Pair p = Pair(1, "hello");
-    // print(p)
     std::cout << p << "\n";
-    // # Nested tuple
-    // n: tuple[tuple[int32, int32], str] = ((int32(3), int32(4)), "xy")
     std::tuple<std::tuple<int32_t, int32_t>, std::string> n = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{3, 4}, "xy"};
-    // print(n)
     std::cout << ::tpy::TuplePrinter(n) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

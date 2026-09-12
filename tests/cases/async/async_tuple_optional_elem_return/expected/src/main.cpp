@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // async def pick(n: int32) -> tuple[int32, int32 | None]:
+//     if n > 0:
+//         return (n, n * 2)
+//     return (n, None)
 ::tpystd::tpy::Poll<std::tuple<int32_t, std::optional<int32_t>>> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if n > 0:
         if ((n > 0)) {
-            // return (n, n * 2)
             __state = S_DONE;
             std::tuple<int32_t, std::optional<int32_t>> __tpy_async_ret = std::tuple<int32_t, std::optional<int32_t>>{n, (::tpy::mul_check<int32_t>(n, 2))};
             return ::tpystd::tpy::Poll<std::tuple<int32_t, std::optional<int32_t>>>::ready(std::move(__tpy_async_ret));
         }
-        // return (n, None)
         __state = S_DONE;
         std::tuple<int32_t, std::optional<int32_t>> __tpy_async_ret = std::tuple<int32_t, std::optional<int32_t>>{n, std::nullopt};
         return ::tpystd::tpy::Poll<std::tuple<int32_t, std::optional<int32_t>>>::ready(std::move(__tpy_async_ret));
@@ -33,10 +33,15 @@ __coro_pick pick(int32_t n) {
 }
 
 // async def main_coro() -> None:
+//     a = await pick(5)
+//     v = a[1]
+//     if v is not None:
+//         print(a[0], v)
+//     b = await pick(-1)
+//     print(b[0], b[1] is None)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = await pick(5)
         __sub_0.emplace(5);
         __state = S_RESUME_0;
         continue;
@@ -46,14 +51,10 @@ __coro_pick pick(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
         __sub_0.reset();
-        // v = a[1]
         v = std::get<1>(a);
-        // if v is not None:
         if ((v.has_value())) {
-            // print(a[0], v)
             std::cout << std::get<0>(a) << " " << ::tpy::print_optional_val(v) << "\n";
         }
-        // b = await pick(-1)
         __sub_1.emplace(-1);
         __state = S_RESUME_1;
         continue;
@@ -63,7 +64,6 @@ __coro_pick pick(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
         __sub_1.reset();
-        // print(b[0], b[1] is None)
         std::cout << std::get<0>(b) << " " << ::tpy::print_bool((!std::get<1>(b).has_value())) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -80,23 +80,24 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Async value-tuple return of a tuple LITERAL with a value-repr Optional
+// # element: the render must target the return slot (None -> std::nullopt,
+// # a scalar absorbed by the optional's converting ctor), not spell the
+// # element's own type (regression: untargeted monostate/nullptr render).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async value-tuple return of a tuple LITERAL with a value-repr Optional
-    // # element: the render must target the return slot (None -> std::nullopt,
-    // # a scalar absorbed by the optional's converting ctor), not spell the
-    // # element's own type (regression: untargeted monostate/nullptr render).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

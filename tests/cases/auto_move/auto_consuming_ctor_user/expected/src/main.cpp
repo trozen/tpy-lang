@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Borrowing (nums used after)
+//     nums: list[int32] = [10, 20, 30]
+//     b1 = Bag(nums)
+//     print(b1.items)
+//     print(len(nums))
+//
+//     # Consuming (nums2 at last use)
+//     nums2: list[int32] = [40, 50]
+//     b2 = Bag(nums2)
+//     print(b2.items)
 void main() {
-    // # Borrowing (nums used after)
-    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // b1 = Bag(nums)
     Bag b1 = Bag(nums);
-    // print(b1.items)
     std::cout << ::tpy::ListPrinter(b1.items) << "\n";
-    // print(len(nums))
     std::cout << ::tpy::__len__(nums) << "\n";
-    // # Consuming (nums2 at last use)
-    // nums2: list[int32] = [40, 50]
     std::vector<int32_t> nums2 = {40, 50};
-    // b2 = Bag(nums2)
     Bag b2 = Bag(::tpy::own_iter(std::move(nums2)));
-    // print(b2.items)
     std::cout << ::tpy::ListPrinter(b2.items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

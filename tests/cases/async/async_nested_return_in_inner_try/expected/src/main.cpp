@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub(label: str) -> None:
+//     print(label)
 ::tpystd::tpy::Poll<::std::monostate> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print(label)
         std::cout << label << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,6 +26,13 @@ __coro_sub sub(std::string_view label) {
 }
 
 // async def caller() -> int:
+//     try:
+//         try:
+//             return 7
+//         finally:
+//             await sub("inner")
+//     finally:
+//         await sub("outer")
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -71,7 +78,6 @@ __coro_sub sub(std::string_view label) {
     }
     case S_JOIN_1: {
         __coro_arg_1 = "outer";
-        // await sub("outer")
         __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
@@ -112,7 +118,6 @@ __coro_sub sub(std::string_view label) {
     case S_JOIN_4: {
         try {
             try {
-                // return 7
                 this->__finally_ret_1 = 7;
                 this->__finally_pending_1 = true;
                 __state = S_JOIN_5;
@@ -131,7 +136,6 @@ __coro_sub sub(std::string_view label) {
     case S_JOIN_5: {
         try {
             __coro_arg_0 = "inner";
-            // await sub("inner")
             __sub_0.emplace(__coro_arg_0);
             __state = S_RESUME_0;
             continue;
@@ -153,22 +157,23 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # `return` in the inner TRY body parks into the inner's slot, then
+// # forwards through both nested suspending `finally` bodies before the
+// # value is delivered.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `return` in the inner TRY body parks into the inner's slot, then
-    // # forwards through both nested suspending `finally` bodies before the
-    // # value is delivered.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

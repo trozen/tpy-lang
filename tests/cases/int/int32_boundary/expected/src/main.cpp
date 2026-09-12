@@ -3,35 +3,34 @@
 
 namespace tpyapp::main {
 
-// # INT32_MAX operations that don't overflow
-// x: int32 = 2147483647
 int32_t x{};
-// # INT32_MIN operations that don't overflow
-// y: int32 = -2147483648
 int32_t y{};
 
+// """Test valid int32 operations at boundary values."""
+//
+// # INT32_MAX operations that don't overflow
+// x: int32 = 2147483647
+// print(x)
+// print(x - 1)
+// print(x // 2)
+//
+// # INT32_MIN operations that don't overflow
+// y: int32 = -2147483648
+// print(y)
+// print(y + 1)
+// print(y // 2)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # INT32_MAX operations that don't overflow
-    // x: int32 = 2147483647
     x = 2147483647;
-    // print(x)
     std::cout << x << "\n";
-    // print(x - 1)
     std::cout << (::tpy::sub_check<int32_t>(x, 1)) << "\n";
-    // print(x // 2)
     std::cout << (::tpy::div_floor<int32_t>(x, 2)) << "\n";
-    // # INT32_MIN operations that don't overflow
-    // y: int32 = -2147483648
     y = -2147483648;
-    // print(y)
     std::cout << y << "\n";
-    // print(y + 1)
     std::cout << (::tpy::add_check<int32_t>(y, 1)) << "\n";
-    // print(y // 2)
     std::cout << (::tpy::div_floor<int32_t>(y, 2)) << "\n";
 }
 

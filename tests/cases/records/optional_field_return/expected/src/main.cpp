@@ -3,32 +3,31 @@
 
 namespace tpyapp::main {
 
-// b = Box()
 Box* b{};
-// r = b.get_item()
 Point* r{};
 
+// b = Box()
+// r = b.get_item()
+// print(r is None)
+//
+// b.item = copy(Point(3, 4))
+// r = b.get_item()
+// print(r is not None)
+// print(r.x)
+// print(r.y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // b = Box()
     static Box __global_slot_1 = Box();
     b = &__global_slot_1;
-    // r = b.get_item()
     r = b->get_item();
-    // print(r is None)
     std::cout << ::tpy::print_bool((r == nullptr)) << "\n";
-    // b.item = copy(Point(3, 4))
     b->item = Point(3, 4);
-    // r = b.get_item()
     r = b->get_item();
-    // print(r is not None)
     std::cout << ::tpy::print_bool((r != nullptr)) << "\n";
-    // print(r.x)
     std::cout << ::tpy::deref_check(r).x << "\n";
-    // print(r.y)
     std::cout << ::tpy::deref_check(r).y << "\n";
 }
 

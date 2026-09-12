@@ -5,86 +5,88 @@ namespace tpyapp::main {
 
 
 // def peek(t: readonly[T]) -> int32:
+//     return t.x
 int32_t peek(const T& t) {
-    // return t.x
     return t.x;
 }
 
 // def bump(t: T) -> None:
+//     t.x = t.x + 1
 void bump(T& t) {
-    // t.x = t.x + 1
     t.x = (::tpy::add_check<int32_t>(t.x, 1));
 }
 
 // def bump_opt(t: T | None) -> None:
+//     if t is not None:
+//         t.x = t.x + 10
 void bump_opt(T* t) {
-    // if t is not None:
     if ((t != nullptr)) {
-        // t.x = t.x + 10
         t->x = (::tpy::add_check<int32_t>(t->x, 10));
     }
 }
 
 // def read_first(p: tuple[T | None, T | None]) -> int32:  # tpyc: ok
+//     # Read-only body -- slots stay const, so the targets bind `const T*`
+//     # and the narrowed one passes into a readonly param.
+//     a, _ = p
+//     if a is not None:
+//         return peek(a)
+//     return 0
 int32_t read_first(const std::tuple<const T*, const T*>& p) {
-    // # Read-only body -- slots stay const, so the targets bind `const T*`
-    // # and the narrowed one passes into a readonly param.
-    // a, _ = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // return peek(a)
         return peek((*a));
     }
-    // return 0
     return 0;
 }
 
 // def apply(p: tuple[T | None, T | None]) -> None:  # tpyc: ok
+//     # Mutates through the callees -- slots stay mutable (`T*` targets).
+//     a, b = p
+//     if a is not None:
+//         bump(a)
+//     bump_opt(b)
 void apply(const std::tuple<T*, T*>& p) {
-    // # Mutates through the callees -- slots stay mutable (`T*` targets).
-    // a, b = p
     auto& __tup_1 = p;
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // bump(a)
         bump((*a));
     }
-    // bump_opt(b)
     bump_opt(b);
 }
 
 // def main() -> None:
+//     first = T(1)
+//     second = T(2)
+//
+//     print(read_first((first, second)))
+//     apply((first, second))
+//     print(first.x)
+//     print(second.x)
+//
+//     apply((first, None))
+//     print(first.x)
+//     print(read_first((None, second)))
 void main() {
-    // first = T(1)
     T first = T(1);
-    // second = T(2)
     T second = T(2);
-    // print(read_first((first, second)))
     std::cout << read_first(std::tuple<T*, T*>{&(first), &(second)}) << "\n";
-    // apply((first, second))
     apply(std::tuple<T*, T*>{&(first), &(second)});
-    // print(first.x)
     std::cout << first.x << "\n";
-    // print(second.x)
     std::cout << second.x << "\n";
-    // apply((first, None))
     apply(std::tuple<T*, T*>{&(first), nullptr});
-    // print(first.x)
     std::cout << first.x << "\n";
-    // print(read_first((None, second)))
     std::cout << read_first(std::tuple<T*, T*>{nullptr, &(second)}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

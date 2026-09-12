@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def greet(a: Animal) -> None:
+//     print(a.name)
 void greet(const Animal& a) {
-    // print(a.name)
     std::cout << a.name << "\n";
 }
 
 // def main() -> None:
+//     d: Dog = Dog("Rex", "Lab")
+//     # Direct upcast
+//     a: Animal = Dog("Buddy", "Poodle")  # tpyc: warning(/upcast narrows 'Dog' to 'Animal'/)
+//     print(a.name)
+//     # Param passing (const ref binding, no slicing)
+//     greet(d)
+//     greet(Dog("Max", "Beagle"))
+//     # Multi-level upcast (grandchild -> grandparent)
+//     p: Puppy = Puppy("Tiny", "Corgi", 8)
+//     greet(p)
+//     a2: Animal = p  # tpyc: warning(/upcast narrows 'Puppy' to 'Animal'/)
+//     print(a2.name)
 void main() {
-    // d: Dog = Dog("Rex", "Lab")
     Dog d = Dog("Rex", "Lab");
-    // # Direct upcast
-    // a: Animal = Dog("Buddy", "Poodle")  # tpyc: warning(/upcast narrows 'Dog' to 'Animal'/)
     Animal a = Dog("Buddy", "Poodle");
-    // print(a.name)
     std::cout << a.name << "\n";
-    // # Param passing (const ref binding, no slicing)
-    // greet(d)
     greet(d);
-    // greet(Dog("Max", "Beagle"))
     Dog __tmp_1 = Dog("Max", "Beagle");
     greet(__tmp_1);
-    // # Multi-level upcast (grandchild -> grandparent)
-    // p: Puppy = Puppy("Tiny", "Corgi", 8)
     Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
-    // greet(p)
     greet(p);
-    // a2: Animal = p  # tpyc: warning(/upcast narrows 'Puppy' to 'Animal'/)
     Animal a2 = std::move(p);
-    // print(a2.name)
     std::cout << a2.name << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

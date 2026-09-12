@@ -5,82 +5,82 @@ namespace tpyapp::main {
 
 
 // def takes_str(s: str) -> None:
+//     print(s)
 void takes_str(std::string_view s) {
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def takes_str_opt(s: str | None) -> None:
+//     if s is None:
+//         print("(none)")
+//     else:
+//         print(s)
 void takes_str_opt(std::optional<std::string_view> s) {
-    // if s is None:
     if ((!s.has_value())) {
-        // print("(none)")
         std::cout << "(none)" << "\n";
-    // else:
     } else {
-        // print(s)
         std::cout << ::tpy::print_optional_val(s) << "\n";
     }
 }
 
 // def takes_strview_opt(s: StrView | None) -> None:
+//     if s is None:
+//         print("(none)")
+//     else:
+//         print(s)
 void takes_strview_opt(std::optional<std::string_view> s) {
-    // if s is None:
     if ((!s.has_value())) {
-        // print("(none)")
         std::cout << "(none)" << "\n";
-    // else:
     } else {
-        // print(s)
         std::cout << ::tpy::print_optional_val(s) << "\n";
     }
 }
 
 // def returns_view() -> StrView:
+//     return StrView("view")
 std::string_view returns_view() {
-    // return StrView("view")
     return "view";
 }
 
 // def returns_view_opt() -> StrView | None:
+//     return StrView("opt-view")
 std::optional<std::string_view> returns_view_opt() {
-    // return StrView("opt-view")
     return "opt-view";
 }
 
 // def returns_view_none() -> StrView | None:
+//     return None
 std::optional<std::string_view> returns_view_none() {
-    // return None
     return std::nullopt;
 }
 
 // def returns_str_opt() -> str | None:
+//     return "opt-str"
 std::optional<std::string> returns_str_opt() {
-    // return "opt-str"
     return "opt-str";
 }
 
 // def main() -> None:
+//     # Non-optional baseline -- StrView -> str arg works today.
+//     takes_str(returns_view())                              # tpyc: ok
+//     # New: Optional[StrView] -> Optional[str] arg.
+//     takes_str_opt(returns_view_opt())                      # tpyc: ok
+//     takes_str_opt(returns_view_none())                     # tpyc: ok
+//     # New: Optional[str] -> Optional[StrView] arg (reverse direction).
+//     takes_strview_opt(returns_str_opt())                   # tpyc: ok
 void main() {
-    // # Non-optional baseline -- StrView -> str arg works today.
-    // takes_str(returns_view())                              # tpyc: ok
     takes_str(returns_view());
-    // # New: Optional[StrView] -> Optional[str] arg.
-    // takes_str_opt(returns_view_opt())                      # tpyc: ok
     takes_str_opt(returns_view_opt());
-    // takes_str_opt(returns_view_none())                     # tpyc: ok
     takes_str_opt(returns_view_none());
-    // # New: Optional[str] -> Optional[StrView] arg (reverse direction).
-    // takes_strview_opt(returns_str_opt())                   # tpyc: ok
     takes_strview_opt(returns_str_opt());
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

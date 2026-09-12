@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Widget(5).consume().n)
 void main() {
-    // print(Widget(5).consume().n)
     std::cout << Widget(5).consume().n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

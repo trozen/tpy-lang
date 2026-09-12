@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def priority_label(level: Literal[1, 2, 3]) -> str:
+//     match level:
+//         case 1:
+//             return "low"
+//         case 2:
+//             return "medium"
+//         case 3:
+//             return "high"
 std::string priority_label(int32_t level) {
-    // match level:
     auto& __match_subject_1 = level;
     switch (__match_subject_1) {
-    // case 1:
     case 1: {
-        // return "low"
         return "low";
         break;
     }
-    // case 2:
     case 2: {
-        // return "medium"
         return "medium";
         break;
     }
-    // case 3:
     case 3: {
-        // return "high"
         return "high";
         break;
     }
@@ -32,21 +32,21 @@ std::string priority_label(int32_t level) {
 }
 
 // def main() -> None:
+//     print(priority_label(1))
+//     print(priority_label(2))
+//     print(priority_label(3))
 void main() {
-    // print(priority_label(1))
     std::cout << priority_label(1) << "\n";
-    // print(priority_label(2))
     std::cout << priority_label(2) << "\n";
-    // print(priority_label(3))
     std::cout << priority_label(3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

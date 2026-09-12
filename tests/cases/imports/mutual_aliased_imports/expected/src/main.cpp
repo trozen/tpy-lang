@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(A().go())
 void main() {
-    // print(A().go())
     std::cout << ::tpyapp::a::A().go() << "\n";
 }
 
+// # Cycle members can use `import as` aliases; the alias still finds
+// # the peer's pre-populated skeleton.
+// from a import A
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cycle members can use `import as` aliases; the alias still finds
-    // # the peer's pre-populated skeleton.
-    // from a import A
     ::tpyapp::a::__tpy_init();
-    // main()
     main();
 }
 

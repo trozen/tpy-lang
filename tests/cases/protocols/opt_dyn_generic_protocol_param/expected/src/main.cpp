@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def maybe_show(c: Optional[Container[int32]]) -> int32:
+//     if c is None:                 # tpyc: ok
+//         return -1
+//     return c.get()
 int32_t maybe_show(Container<int32_t>* c) {
-    // if c is None:                 # tpyc: ok
     if ((c == nullptr)) {
-        // return -1
         return -1;
     }
-    // return c.get()
     return c->get();
 }
 
 // def main() -> None:
+//     print(maybe_show(IntBox(42)))
+//     print(maybe_show(None))
 void main() {
-    // print(maybe_show(IntBox(42)))
     IntBox __tmp_1 = IntBox(42);
     std::cout << maybe_show(&(__tmp_1)) << "\n";
-    // print(maybe_show(None))
     std::cout << maybe_show(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

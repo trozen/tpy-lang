@@ -5,58 +5,61 @@ namespace tpyapp::main {
 
 
 // def make_adder(n: int32) -> Callable[[int32], int32]:
+//     def add(x: int32) -> int32:
+//         return x + n
+//     return add
 std::function<int32_t(int32_t)> make_adder(int32_t n) {
-    // def add(x: int32) -> int32:
     auto add = [n](int32_t x) -> int32_t {
-        // return x + n
         return (::tpy::add_check<int32_t>(x, n));
     };
-    // return add
     return add;
 }
 
 // def make_negator() -> Callable[[int32], int32]:
+//     def negate(x: int32) -> int32:
+//         return -x
+//     return negate
 std::function<int32_t(int32_t)> make_negator() {
-    // def negate(x: int32) -> int32:
     auto negate = [](int32_t x) -> int32_t {
-        // return -x
         return ::tpy::neg_check<int32_t>(x);
     };
-    // return negate
     return negate;
 }
 
 // def main() -> None:
+//     # Chained call: function_call()(args)
+//     result = make_adder(10)(5)
+//     print(result)
+//
+//     # Store and chain
+//     fns: list[Callable[[int32], int32]] = [make_adder(1), make_adder(2), make_negator()]
+//
+//     # Subscript call via local variable: list[index](args)
+//     # (fns is resolved as a name, fns[i] is a subscript expression)
+//     print(fns[0](100))
+//     print(fns[1](100))
+//     print(fns[2](100))
+//
+//     # Uppercase variable name -- must not be confused with generic type call
+//     Handlers: list[Callable[[int32], int32]] = [make_adder(100)]
+//     print(Handlers[0](5))
 void main() {
-    // # Chained call: function_call()(args)
-    // result = make_adder(10)(5)
     int32_t result = (make_adder(10))(5);
-    // print(result)
     std::cout << result << "\n";
-    // # Store and chain
-    // fns: list[Callable[[int32], int32]] = [make_adder(1), make_adder(2), make_negator()]
     std::vector<std::function<int32_t(int32_t)>> fns = {make_adder(1), make_adder(2), make_negator()};
-    // # Subscript call via local variable: list[index](args)
-    // # (fns is resolved as a name, fns[i] is a subscript expression)
-    // print(fns[0](100))
     std::cout << (::tpy::__getitem__(fns, 0))(100) << "\n";
-    // print(fns[1](100))
     std::cout << (::tpy::__getitem__(fns, 1))(100) << "\n";
-    // print(fns[2](100))
     std::cout << (::tpy::__getitem__(fns, 2))(100) << "\n";
-    // # Uppercase variable name -- must not be confused with generic type call
-    // Handlers: list[Callable[[int32], int32]] = [make_adder(100)]
     std::vector<std::function<int32_t(int32_t)>> Handlers = {make_adder(100)};
-    // print(Handlers[0](5))
     std::cout << (::tpy::__getitem__(Handlers, 0))(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

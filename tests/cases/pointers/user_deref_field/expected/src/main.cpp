@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pt: Point = Point(10, 20)
+//     r: Ref = Ref(pt)
+//     # Field access through user-defined __deref__
+//     print(r.x)
+//     print(r.y)
 void main() {
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // r: Ref = Ref(pt)
     Ref r = Ref(pt);
-    // # Field access through user-defined __deref__
-    // print(r.x)
     std::cout << r.__deref__().x << "\n";
-    // print(r.y)
     std::cout << r.__deref__().y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

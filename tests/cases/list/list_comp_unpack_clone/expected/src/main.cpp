@@ -5,20 +5,22 @@ namespace tpyapp::main {
 
 
 // def make_pair(i: int32, v: int32) -> Own[tuple[int32, Rc[Node]]]:
+//     return (i, Rc.new(Node(v)))
 std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>> make_pair(int32_t i, int32_t v) {
-    // return (i, Rc.new(Node(v)))
     return std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>>{i, Rc<Node>::new_<Node>(Node(v))};
 }
 
 // def main() -> None:
+//     pairs: list[tuple[int32, Rc[Node]]] = []
+//     pairs.append(make_pair(1, 10))
+//     pairs.append(make_pair(2, 20))
+//     clones: list[Rc[Node]] = [r.clone() for (_, r) in pairs]
+//     for c in clones:
+//         print(c.get().value)
 void main() {
-    // pairs: list[tuple[int32, Rc[Node]]] = []
     std::vector<std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>>> pairs = std::vector<std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>>>{};
-    // pairs.append(make_pair(1, 10))
     pairs.push_back(make_pair(1, 10));
-    // pairs.append(make_pair(2, 20))
     pairs.push_back(make_pair(2, 20));
-    // clones: list[Rc[Node]] = [r.clone() for (_, r) in pairs]
     std::vector<::tpystd::tplib::rc::Rc<Node>> clones = ({
         std::vector<::tpystd::tplib::rc::Rc<Node>> __result;
         auto& __obj_0 = pairs;
@@ -32,25 +34,24 @@ void main() {
         }
         std::move(__result);
     });
-    // for c in clones:
     auto& __obj_1 = clones;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& c = *__beg_1;
-        // print(c.get().value)
         std::cout << c.get().value << "\n";
     }
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

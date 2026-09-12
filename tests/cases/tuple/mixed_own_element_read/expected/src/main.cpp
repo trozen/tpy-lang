@@ -5,107 +5,107 @@ namespace tpyapp::main {
 
 
 // def make_mixed(b: Box) -> tuple[Own[Box], Box]:
+//     return (Box(1), b)
 std::tuple<Box, Box*> make_mixed(Box& b) {
-    // return (Box(1), b)
     return std::tuple<Box, Box*>{Box(1), &(b)};
 }
 
 // def make_owned() -> Own[tuple[Box, Box]]:
+//     return (Box(3), Box(4))
 std::tuple<Box, Box> make_owned() {
-    // return (Box(3), Box(4))
     return std::tuple<Box, Box>{Box(3), Box(4)};
 }
 
 // def take(t: tuple[Box, Box]) -> int32:
+//     return t[0].val + t[1].val
 int32_t take(const std::tuple<const Box*, const Box*>& t) {
-    // return t[0].val + t[1].val
     return (::tpy::add_check<int32_t>(std::get<0>(t)->val, std::get<1>(t)->val));
 }
 
 // def read_borrow_elem(b: Box) -> int32:
+//     p = make_mixed(b)
+//     return p[1].val
 int32_t read_borrow_elem(Box& b) {
-    // p = make_mixed(b)
     auto p = make_mixed(b);
-    // return p[1].val
     return std::get<1>(p)->val;
 }
 
 // def read_own_elem(b: Box) -> int32:
+//     p = make_mixed(b)
+//     return p[0].val
 int32_t read_own_elem(Box& b) {
-    // p = make_mixed(b)
     auto p = make_mixed(b);
-    // return p[0].val
     return std::get<0>(p).val;
 }
 
 // def write_borrow_elem(b: Box) -> int32:
+//     p = make_mixed(b)
+//     p[1].val = 99
+//     # Observed on the ORIGINAL: element 1 aliases `b`, it is not a copy.
+//     return b.val
 int32_t write_borrow_elem(Box& b) {
-    // p = make_mixed(b)
     auto p = make_mixed(b);
-    // p[1].val = 99
     std::get<1>(p)->val = 99;
-    // # Observed on the ORIGINAL: element 1 aliases `b`, it is not a copy.
-    // return b.val
     return b.val;
 }
 
 // def read_direct(b: Box) -> int32:
+//     # No local: the call result is subscripted in place, the other shape whose
+//     # whole-tuple storage verdict used to veto the per-element answer.
+//     return make_mixed(b)[1].val
 int32_t read_direct(Box& b) {
-    // # No local: the call result is subscripted in place, the other shape whose
-    // # whole-tuple storage verdict used to veto the per-element answer.
-    // return make_mixed(b)[1].val
     return std::get<1>(make_mixed(b))->val;
 }
 
 // def read_param(p: tuple[Own[Box], Box]) -> int32:
+//     # A param is not storage-form to begin with, so this shape always worked --
+//     # it is the inverse guarding against the fix over-reaching.
+//     return p[1].val
 int32_t read_param(const std::tuple<Box, const Box*>& p) {
-    // # A param is not storage-form to begin with, so this shape always worked --
-    // # it is the inverse guarding against the fix over-reaching.
-    // return p[1].val
     return std::get<1>(p)->val;
 }
 
 // def unpack_mixed(b: Box) -> int32:
+//     owned, borrowed = make_mixed(b)
+//     return owned.val + borrowed.val
 int32_t unpack_mixed(Box& b) {
-    // owned, borrowed = make_mixed(b)
     auto __tup_1 = make_mixed(b);
     Box owned = std::move(std::get<0>(__tup_1));
     auto&& borrowed = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    // return owned.val + borrowed.val
     return (::tpy::add_check<int32_t>(owned.val, borrowed.val));
 }
 
 // def method_on_borrow_elem(b: Box) -> int32:
+//     # A method receiver composes the arrow decision separately from the
+//     # field-access site, over the same predicate.
+//     p = make_mixed(b)
+//     p[1].bump()
+//     return b.val
 int32_t method_on_borrow_elem(Box& b) {
-    // # A method receiver composes the arrow decision separately from the
-    // # field-access site, over the same predicate.
-    // p = make_mixed(b)
     auto p = make_mixed(b);
-    // p[1].bump()
     std::get<1>(p)->bump();
-    // return b.val
     return b.val;
 }
 
 // def pass_whole(b: Box) -> int32:
+//     p = make_mixed(b)
+//     n = take(p)
+//     # The whole-tuple lift must alias too, not snapshot: mutate after it and
+//     # read the original.
+//     p[1].val = 50
+//     return n + b.val
 int32_t pass_whole(Box& b) {
-    // p = make_mixed(b)
     auto p = make_mixed(b);
-    // n = take(p)
     int32_t n = take(::tpy::tuple_to_pointer<std::tuple<const Box*, const Box*>>(p));
-    // # The whole-tuple lift must alias too, not snapshot: mutate after it and
-    // # read the original.
-    // p[1].val = 50
     std::get<1>(p)->val = 50;
-    // return n + b.val
     return (::tpy::add_check<int32_t>(n, b.val));
 }
 
 // def wholly_owned_still_dots() -> int32:
+//     p = make_owned()
+//     return p[1].val
 int32_t wholly_owned_still_dots() {
-    // p = make_owned()
     auto p = make_owned();
-    // return p[1].val
     return std::get<1>(p).val;
 }
 
@@ -126,148 +126,148 @@ int32_t wholly_owned_still_dots() {
 // # case stays cpy-visible; the annotations are what pin the copy here. Do NOT
 // # add no_cpython.txt to this case.
 // def in_list(b: Box) -> int32:
+//     xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
+//     return xs[0][1].val
 int32_t in_list(Box& b) {
-    // xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
     std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
-    // return xs[0][1].val
     return std::get<1>(::tpy::__getitem__(xs, 0)).val;
 }
 
 // def in_dict(b: Box) -> int32:
+//     d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
+//     return d[1][1].val
 int32_t in_dict(Box& b) {
-    // d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))}});
-    // return d[1][1].val
     return std::get<1>(::tpy::__getitem__(d, 1)).val;
 }
 
 // def in_nested_tuple(b: Box) -> int32:
+//     # The member is itself a value tuple, so its borrowed element sits a level
+//     # below the direct members -- the per-member check walks into it and names
+//     # the depth in the element path.
+//     q = (make_mixed(b), 1)  # tpyc: warning(/copies Box into owned storage \(tuple element 0.1\)/)
+//     return q[0][1].val
 int32_t in_nested_tuple(Box& b) {
-    // # The member is itself a value tuple, so its borrowed element sits a level
-    // # below the direct members -- the per-member check walks into it and names
-    // # the depth in the element path.
-    // q = (make_mixed(b), 1)  # tpyc: warning(/copies Box into owned storage \(tuple element 0.1\)/)
     std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)), 1};
-    // return q[0][1].val
     return std::get<1>(std::get<0>(q)).val;
 }
 
 // def as_loop_var(b: Box) -> int32:
+//     xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
+//     n = 0
+//     for t in xs:
+//         n = n + t[1].val
+//     return n
 int32_t as_loop_var(Box& b) {
-    // xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
     std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
-    // n = 0
     int32_t n = 0;
-    // for t in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& t = *__beg_0;
-        // n = n + t[1].val
         n = (::tpy::add_check<int32_t>(n, std::get<1>(t).val));
     }
-    // return n
     return n;
 }
 
 // def in_list_copy_ack(b: Box) -> int32:
+//     # The acknowledgement silences the warning; copy() of a mixed tuple yields
+//     # the fully-owned storage form, so this is the same copy, made explicit --
+//     # and CPython's copy() deep-copies, so this shape agrees with CPython.
+//     xs = [copy(make_mixed(b))]  # tpyc: ok
+//     xs[0][1].val = 41
+//     return b.val
 int32_t in_list_copy_ack(Box& b) {
-    // # The acknowledgement silences the warning; copy() of a mixed tuple yields
-    // # the fully-owned storage form, so this is the same copy, made explicit --
-    // # and CPython's copy() deep-copies, so this shape agrees with CPython.
-    // xs = [copy(make_mixed(b))]  # tpyc: ok
     std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
-    // xs[0][1].val = 41
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 41;
-    // return b.val
     return b.val;
 }
 
 // def via_ternary(b: Box, c: Box, flag: bool) -> int32:
+//     # Both arms are the borrow render, so the ternary is too -- the sibling
+//     # composition rule `is_storage_form_source` already spells.
+//     p = make_mixed(b) if flag else make_mixed(c)
+//     return p[1].val
 int32_t via_ternary(Box& b, Box& c, bool flag) {
-    // # Both arms are the borrow render, so the ternary is too -- the sibling
-    // # composition rule `is_storage_form_source` already spells.
-    // p = make_mixed(b) if flag else make_mixed(c)
     auto p = ((flag) ? (make_mixed(b)) : (make_mixed(c)));
-    // return p[1].val
     return std::get<1>(p)->val;
 }
 
 // def rebound_in_branch(b: Box, c: Box, flag: bool) -> int32:
+//     # Reads the mixed local inside both arms, so the per-branch snapshot and
+//     # restore of the local sets has to carry the binding across.
+//     p = make_mixed(b)
+//     if flag:
+//         n = p[1].val
+//     else:
+//         n = p[1].val + make_mixed(c)[1].val
+//     return n
 int32_t rebound_in_branch(Box& b, Box& c, bool flag) {
-    // # Reads the mixed local inside both arms, so the per-branch snapshot and
-    // # restore of the local sets has to carry the binding across.
-    // p = make_mixed(b)
     auto p = make_mixed(b);
-    // if flag:
     int32_t n;
     if (flag) {
-        // n = p[1].val
         n = std::get<1>(p)->val;
-    // else:
     } else {
-        // n = p[1].val + make_mixed(c)[1].val
         n = (::tpy::add_check<int32_t>(std::get<1>(p)->val, std::get<1>(make_mixed(c))->val));
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     print(read_borrow_elem(Box(7)))
+//     print(read_own_elem(Box(7)))
+//     print(write_borrow_elem(Box(7)))
+//     print(read_direct(Box(7)))
+//     print(read_param((Box(5), Box(6))))
+//     print(unpack_mixed(Box(7)))
+//     print(method_on_borrow_elem(Box(7)))
+//     print(pass_whole(Box(7)))
+//     print(wholly_owned_still_dots())
+//     print(in_list(Box(2)), in_dict(Box(2)))
+//     print(in_nested_tuple(Box(2)), as_loop_var(Box(2)))
+//     print(in_list_copy_ack(Box(2)))
+//     print(via_ternary(Box(2), Box(3), True))
+//     print(rebound_in_branch(Box(2), Box(3), False))
 void main() {
-    // print(read_borrow_elem(Box(7)))
     Box __tmp_1 = Box(7);
     std::cout << read_borrow_elem(__tmp_1) << "\n";
-    // print(read_own_elem(Box(7)))
     Box __tmp_2 = Box(7);
     std::cout << read_own_elem(__tmp_2) << "\n";
-    // print(write_borrow_elem(Box(7)))
     Box __tmp_3 = Box(7);
     std::cout << write_borrow_elem(__tmp_3) << "\n";
-    // print(read_direct(Box(7)))
     Box __tmp_4 = Box(7);
     std::cout << read_direct(__tmp_4) << "\n";
-    // print(read_param((Box(5), Box(6))))
     std::cout << read_param(::tpy::tuple_value_to_borrow<std::tuple<Box, Box*>>(std::tuple<Box, Box>{Box(5), Box(6)})) << "\n";
-    // print(unpack_mixed(Box(7)))
     Box __tmp_5 = Box(7);
     std::cout << unpack_mixed(__tmp_5) << "\n";
-    // print(method_on_borrow_elem(Box(7)))
     Box __tmp_6 = Box(7);
     std::cout << method_on_borrow_elem(__tmp_6) << "\n";
-    // print(pass_whole(Box(7)))
     Box __tmp_7 = Box(7);
     std::cout << pass_whole(__tmp_7) << "\n";
-    // print(wholly_owned_still_dots())
     std::cout << wholly_owned_still_dots() << "\n";
-    // print(in_list(Box(2)), in_dict(Box(2)))
     Box __tmp_8 = Box(2);
     Box __tmp_9 = Box(2);
     std::cout << in_list(__tmp_8) << " " << in_dict(__tmp_9) << "\n";
-    // print(in_nested_tuple(Box(2)), as_loop_var(Box(2)))
     Box __tmp_10 = Box(2);
     Box __tmp_11 = Box(2);
     std::cout << in_nested_tuple(__tmp_10) << " " << as_loop_var(__tmp_11) << "\n";
-    // print(in_list_copy_ack(Box(2)))
     Box __tmp_12 = Box(2);
     std::cout << in_list_copy_ack(__tmp_12) << "\n";
-    // print(via_ternary(Box(2), Box(3), True))
     Box __tmp_13 = Box(2);
     Box __tmp_14 = Box(3);
     std::cout << via_ternary(__tmp_13, __tmp_14, true) << "\n";
-    // print(rebound_in_branch(Box(2), Box(3), False))
     Box __tmp_15 = Box(2);
     Box __tmp_16 = Box(3);
     std::cout << rebound_in_branch(__tmp_15, __tmp_16, false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

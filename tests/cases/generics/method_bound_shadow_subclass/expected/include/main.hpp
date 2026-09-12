@@ -14,6 +14,7 @@ template<typename U> struct WideBag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag[T, N: int]:
@@ -23,50 +24,51 @@ struct Bag {
     std::vector<T> items;
 
     // def __init__(self) -> None:
+    //     self.items = []
     Bag() : items(std::vector<T>{}) {}
 
     // def add(self, value: T) -> None:
+    //     self.items.append(value)
     void add(::tpy::param_val_or_ref_t<T> value) {
-        // self.items.append(value)
         this->items.push_back(::tpy::param_to_storage<T>(value));
     }
 
     // def contains[T: Equatable](self, value: T) -> bool:
+    //     for it in self.items:
+    //         if it == value:
+    //             return True
+    //     return False
     bool contains(::tpy::readonly_form_t<T> value) const
       requires ::tpystd::tpy::Equatable<T> {
-        // for it in self.items:
         auto& __obj_0 = this->items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& it = *__beg_0;
-            // if it == value:
             if (::tpy::eq(it, value)) {
-                // return True
                 return true;
             }
         }
-        // return False
         return false;
     }
 
     // def biggest[T: Comparable](self) -> T:
+    //     # Return a field element (not a local): a bare-T local return would
+    //     # need Own[T] under the borrow rules; irrelevant to what this pins.
+    //     idx: int32 = 0
+    //     for i in range(1, len(self.items)):
+    //         if self.items[i] > self.items[idx]:
+    //             idx = i
+    //     return self.items[idx]
     ::tpy::val_or_ref_t<T> biggest()
       requires ::tpystd::tpy::Comparable<T> {
-        // # Return a field element (not a local): a bare-T local return would
-        // # need Own[T] under the borrow rules; irrelevant to what this pins.
-        // idx: int32 = 0
         int32_t idx = 0;
-        // for i in range(1, len(self.items)):
         int32_t __stop_0 = ::tpy::__len__(this->items);
         for (int32_t i = 1; i < __stop_0; ++i) {
-            // if self.items[i] > self.items[idx]:
             if ((::tpy::__getitem__(this->items, i) > ::tpy::__getitem__(this->items, idx))) {
-                // idx = i
                 idx = i;
             }
         }
-        // return self.items[idx]
         return ::tpy::__getitem__(this->items, idx);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";

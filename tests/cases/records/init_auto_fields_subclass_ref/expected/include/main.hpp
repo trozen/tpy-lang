@@ -12,6 +12,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # An inferred ref-type field on a subclass stores and mutates correctly. The
@@ -46,6 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self, items: list[int]):
+//     self.items = items
 inline Bag::Bag(const std::vector<::tpy::BigInt>& items) : items(items) {}
 void __tpy_init();
 } // namespace tpyapp::main

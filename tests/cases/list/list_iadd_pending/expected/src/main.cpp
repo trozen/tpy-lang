@@ -7,90 +7,90 @@ namespace tpyapp::main {
 // # `+=` on an UNANNOTATED list literal is a mutation: the pending literal must
 // # resolve to list, not the never-mutated Array form (all target shapes).
 // def test_direct():
+//     xs = [1, 2]
+//     xs += [3]
+//     xs += [4, 5]
+//     print(xs)
 void test_direct() {
-    // xs = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // xs += [3]
     ::tpy::list_extend(xs, {3});
-    // xs += [4, 5]
     ::tpy::list_extend(xs, {4, 5});
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_alias():
+//     xs = [1, 2]
+//     ys = xs
+//     ys += [3]
+//     ys.append(6)
+//     print(ys)
+//     print(xs)
 void test_alias() {
-    // xs = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // ys = xs
     std::vector<int32_t>& ys = xs;
-    // ys += [3]
     ::tpy::list_extend(ys, {3});
-    // ys.append(6)
     ys.push_back(6);
-    // print(ys)
     std::cout << ::tpy::ListPrinter(ys) << "\n";
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_in_branch(flag: bool):
+//     xs = [1, 2]
+//     if flag:
+//         xs += [9]
+//     print(xs)
 void test_in_branch(bool flag) {
-    // xs = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // if flag:
     if (flag) {
-        // xs += [9]
         ::tpy::list_extend(xs, {9});
     }
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_name_rhs():
+//     xs = [1, 2]
+//     more = [7, 8]
+//     xs += more
+//     print(xs, more)
 void test_name_rhs() {
-    // xs = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // more = [7, 8]
     std::array<int32_t, 2> more = {7, 8};
-    // xs += more
     ::tpy::list_extend(xs, more);
-    // print(xs, more)
     std::cout << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(more) << "\n";
 }
 
 // def test_set_aug():
+//     s = {1, 2}
+//     s |= {3}
+//     print(sorted(s))
 void test_set_aug() {
-    // s = {1, 2}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // s |= {3}
     ::tpy::set_update(s, ::tpy::ordered_set<int32_t>({3}));
-    // print(sorted(s))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(s)) << "\n";
 }
 
 // def main():
+//     test_direct()
+//     test_alias()
+//     test_in_branch(True)
+//     test_in_branch(False)
+//     test_name_rhs()
+//     test_set_aug()
 void main() {
-    // test_direct()
     test_direct();
-    // test_alias()
     test_alias();
-    // test_in_branch(True)
     test_in_branch(true);
-    // test_in_branch(False)
     test_in_branch(false);
-    // test_name_rhs()
     test_name_rhs();
-    // test_set_aug()
     test_set_aug();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

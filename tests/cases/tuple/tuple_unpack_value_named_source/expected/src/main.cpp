@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def make() -> tuple[int32, int32]:
+//     return (1, 2)
 std::tuple<int32_t, int32_t> make() {
-    // return (1, 2)
     return std::tuple<int32_t, int32_t>{1, 2};
 }
 
 // def main() -> None:
+//     t = make()
+//     a, b = t
+//     print(a + b)
 void main() {
-    // t = make()
     std::tuple<int32_t, int32_t> t = make();
-    // a, b = t
     const auto& __tup_1 = t;
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
-    // print(a + b)
     std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

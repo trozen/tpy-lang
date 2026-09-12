@@ -5,87 +5,91 @@ namespace tpyapp::main {
 
 
 // def ptr_to_field() -> None:
+//     """Ptr to obj.field tracks borrow on 'h.point', not just 'h'."""
+//     h = Holder(Point(1, 2))
+//     ptr = take_ptr(h.point)
+//     h.point = Point(9, 9)  # tpyc: warning(/while borrowed/)
+//     print(h.point.x)
 void ptr_to_field() {
-    // h = Holder(Point(1, 2))
     Holder h = Holder(Point(1, 2));
-    // ptr = take_ptr(h.point)
     Point* ptr = &h.point;
-    // h.point = Point(9, 9)  # tpyc: warning(/while borrowed/)
     h.point = Point(9, 9);
-    // print(h.point.x)
     std::cout << h.point.x << "\n";
 }
 
 // def ptr_to_field_no_conflict() -> None:
+//     """Ptr to obj.field -- mutating a different field is safe."""
+//     h = Holder(Point(1, 2))
+//     ptr = take_ptr(h.point)
+//     # Mutating h itself (not h.point) would warn because the borrow is on "h.point"
+//     # but there's no mutation of h.point here, only a read.
+//     print(ptr.x)
 void ptr_to_field_no_conflict() {
-    // h = Holder(Point(1, 2))
     Holder h = Holder(Point(1, 2));
-    // ptr = take_ptr(h.point)
     Point* ptr = &h.point;
-    // # Mutating h itself (not h.point) would warn because the borrow is on "h.point"
-    // # but there's no mutation of h.point here, only a read.
-    // print(ptr.x)
     std::cout << ptr->x << "\n";
 }
 
 // def external_field_path() -> None:
+//     """Field-path borrow on a local variable (not self)."""
+//     c = Container()
+//     ptr = take_ptr(c.items[0])
+//     c.items.append(Point(7, 8))  # tpyc: warning(/'append'.*invalidate/)
+//     print(len(c.items))
 void external_field_path() {
-    // c = Container()
     Container c = Container();
-    // ptr = take_ptr(c.items[0])
     Point* ptr = &::tpy::__getitem__(c.items, 0);
-    // c.items.append(Point(7, 8))  # tpyc: warning(/'append'.*invalidate/)
     c.items.push_back(Point(7, 8));
-    // print(len(c.items))
     std::cout << ::tpy::__len__(c.items) << "\n";
 }
 
 // def reassign_clears_borrow() -> None:
+//     """Reassigning the root variable clears field-path borrows."""
+//     c = Container()
+//     ptr = take_ptr(c.items[0])
+//     c = Container()
+//     c.items.append(Point(7, 8))  # tpyc: ok
+//     print(len(c.items))
 void reassign_clears_borrow() {
     std::optional<Container> __slot_2;
-    // c = Container()
     Container __slot_1 = Container();
     Container* c = &__slot_1;
-    // ptr = take_ptr(c.items[0])
     Point* ptr = &::tpy::__getitem__(c->items, 0);
-    // c = Container()
     c = &*(__slot_2 = Container());
-    // c.items.append(Point(7, 8))  # tpyc: ok
     c->items.push_back(Point(7, 8));
-    // print(len(c.items))
     std::cout << ::tpy::__len__(c->items) << "\n";
 }
 
 // def main() -> None:
+//     c = Container()
+//     c.iter_then_mutate()
+//     c.ptr_then_mutate()
+//     c.safe_subscript_assign()
+//     c.aug_assign_field_container()
+//     c.field_reassign_while_borrowed()
+//     ptr_to_field()
+//     ptr_to_field_no_conflict()
+//     external_field_path()
+//     reassign_clears_borrow()
 void main() {
-    // c = Container()
     Container c = Container();
-    // c.iter_then_mutate()
     c.iter_then_mutate();
-    // c.ptr_then_mutate()
     c.ptr_then_mutate();
-    // c.safe_subscript_assign()
     c.safe_subscript_assign();
-    // c.aug_assign_field_container()
     c.aug_assign_field_container();
-    // c.field_reassign_while_borrowed()
     c.field_reassign_while_borrowed();
-    // ptr_to_field()
     ptr_to_field();
-    // ptr_to_field_no_conflict()
     ptr_to_field_no_conflict();
-    // external_field_path()
     external_field_path();
-    // reassign_clears_borrow()
     reassign_clears_borrow();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

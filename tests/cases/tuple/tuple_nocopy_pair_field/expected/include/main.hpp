@@ -12,6 +12,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -58,15 +59,16 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, fd: int32) -> None:
+//     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 
 // def __init__(self) -> None:
+//     a = Handle(int32(1))
+//     b = Handle(int32(2))
+//     self.pair = (a, b)
 inline Container::Container() {
-    // a = Handle(int32(1))
     Handle a = Handle(1);
-    // b = Handle(int32(2))
     Handle b = Handle(2);
-    // self.pair = (a, b)
     this->pair = ::tpy::tuple_to_storage<std::tuple<Handle, Handle>>(std::tuple<Handle, Handle>{std::move(a), std::move(b)});
 }
 void __tpy_init();

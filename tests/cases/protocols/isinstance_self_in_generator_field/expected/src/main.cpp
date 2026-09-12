@@ -5,10 +5,14 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog("rex", "lab")
+//     for s in d.describe():
+//         print(s)
+//     p = Pet("generic")
+//     for s in p.describe():
+//         print(s)
 void main() {
-    // d = Dog("rex", "lab")
     Dog d = Dog("rex", "lab");
-    // for s in d.describe():
     {
         auto __src_0 = d.describe();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,13 +20,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // p = Pet("generic")
     Pet p = Pet("generic");
-    // for s in p.describe():
     {
         auto __src_2 = p.describe();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -30,36 +31,38 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
 // def describe(self) -> Iterator[str]:
+//     if isinstance(self, Dog):  # tpyc: ok
+//         yield "kind:dog"
+//         yield self.breed
+//         yield self.breed + "/" + self.name
+//     else:
+//         yield "kind:pet"
+//         yield self.name
 std::expected<std::string, ::tpy::StopIteration> __gen_Pet_describe::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((dynamic_cast<const Dog*>(&__self) != nullptr)) {
             const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
-            // yield "kind:dog"
             __state = S_RESUME_0;
             return "kind:dog";
         } else {
-            // yield "kind:pet"
             __state = S_RESUME_3;
             return "kind:pet";
         }
     }
     case S_RESUME_0: {
         const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
-        // yield self.breed
         __state = S_RESUME_1;
         return __self_narrowed.breed;
     }
     case S_RESUME_1: {
         const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
-        // yield self.breed + "/" + self.name
         __state = S_RESUME_2;
         return (::tpy::str_concat((::tpy::str_concat(__self_narrowed.breed, "/")), __self_narrowed.name));
     }
@@ -69,7 +72,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_describe::__next__() 
         continue;
     }
     case S_RESUME_3: {
-        // yield self.name
         __state = S_RESUME_4;
         return __self.name;
     }
@@ -87,12 +89,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_describe::__next__() 
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

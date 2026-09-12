@@ -5,44 +5,48 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Test generic function with protocol field
+//     p = Point(42)
+//     print(get_value(p))
+//
+//     # Test protocol with multiple fields
+//     v = Vec2(10, 20)
+//     print(sum_xy(v))
+//
+//     # Test protocol with field + method
+//     b1 = Box(5)
+//     b2 = Box(0)
+//     print(describe(b1))
+//     print(describe(b2))
+//
+//     # Test generic class with protocol field bound
+//     w = Wrapper(Point(100))
+//     print(w.get_inner_value())
+//
+//     # Test generic protocol with type parameter in field
+//     ih = IntHolder(77)
+//     print(get_item(ih))
 void main() {
-    // # Test generic function with protocol field
-    // p = Point(42)
     Point p = Point(42);
-    // print(get_value(p))
     std::cout << get_value<Point>(p) << "\n";
-    // # Test protocol with multiple fields
-    // v = Vec2(10, 20)
     Vec2 v = Vec2(10, 20);
-    // print(sum_xy(v))
     std::cout << sum_xy<Vec2>(v) << "\n";
-    // # Test protocol with field + method
-    // b1 = Box(5)
     Box b1 = Box(5);
-    // b2 = Box(0)
     Box b2 = Box(0);
-    // print(describe(b1))
     std::cout << describe<Box>(b1) << "\n";
-    // print(describe(b2))
     std::cout << describe<Box>(b2) << "\n";
-    // # Test generic class with protocol field bound
-    // w = Wrapper(Point(100))
     Wrapper<Point> w = Wrapper<Point>(Point(100));
-    // print(w.get_inner_value())
     std::cout << w.get_inner_value() << "\n";
-    // # Test generic protocol with type parameter in field
-    // ih = IntHolder(77)
     IntHolder ih = IntHolder(77);
-    // print(get_item(ih))
     std::cout << get_item<IntHolder>(ih) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

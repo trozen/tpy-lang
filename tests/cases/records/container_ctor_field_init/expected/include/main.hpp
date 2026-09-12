@@ -14,6 +14,7 @@ struct Copied;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Empty:
@@ -80,15 +81,21 @@ inline std::ostream& operator<<(std::ostream& os, const Copied& obj) {
 
 
 // def __init__(self) -> None:
+//     self.buf = bytearray()  # tpyc: ok
+//     self.tags = list()  # tpyc: ok
 inline Empty::Empty() : buf(::tpy::ByteArray()), tags(std::vector<int32_t>()) {}
 
 // def __init__(self, seed: bytes) -> None:
+//     self.buf = bytearray(seed)  # tpyc: ok
 inline Seeded::Seeded(::tpy::BytesView seed) : buf(::tpy::ByteArray(seed)) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.buf = bytearray(n)  # tpyc: ok
 inline Sized::Sized(int32_t n) : buf(::tpy::bytearray_from_size(n)) {}
 
 // def __init__(self, data: bytearray) -> None:
+//     # Storing a reference type into owned storage copies, and says so.
+//     self.buf = data  # tpyc: warning(/copies bytearray into field/)
 inline Copied::Copied(const ::tpy::ByteArray& data) : buf(data) {}
 void __tpy_init();
 } // namespace tpyapp::main

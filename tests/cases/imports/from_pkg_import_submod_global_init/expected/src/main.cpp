@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(hexcodec.hex_byte(58).decode())   # ':' -> %3A, needs _HEX initialized
+//     print(hexcodec.offset_sum())            # needs the top-level-built list
+//     print(u.scaled(3))                       # aliased submodule global
 void main() {
-    // print(hexcodec.hex_byte(58).decode())   # ':' -> %3A, needs _HEX initialized
     std::cout << ::tpy::bytes_decode(::tpyapp::geo::hexcodec::hex_byte(58)) << "\n";
-    // print(hexcodec.offset_sum())            # needs the top-level-built list
     std::cout << ::tpyapp::geo::hexcodec::offset_sum() << "\n";
-    // print(u.scaled(3))                       # aliased submodule global
     std::cout << ::tpyapp::geo::units::scaled(3) << "\n";
 }
 
+// # `from pkg import submod` must run the submodule's __tpy_init so its module-global
+// # constants initialize; the `as`-aliased form is the sibling.
+// from geo import hexcodec
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `from pkg import submod` must run the submodule's __tpy_init so its module-global
-    // # constants initialize; the `as`-aliased form is the sibling.
-    // from geo import hexcodec
     ::tpyapp::geo::__tpy_init();
     ::tpyapp::geo::hexcodec::__tpy_init();
     ::tpyapp::geo::units::__tpy_init();
-    // main()
     main();
 }
 

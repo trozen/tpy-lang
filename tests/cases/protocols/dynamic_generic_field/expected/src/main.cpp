@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o = Owner(Tagged[Greeter](42))
+//     print(o.item.tag)
 void main() {
-    // o = Owner(Tagged[Greeter](42))
     Owner o = Owner(Tagged<Greeter>(42));
-    // print(o.item.tag)
     std::cout << o.item.tag << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

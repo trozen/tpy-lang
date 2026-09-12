@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def test() -> None:
+//     p: Point | None = None
+//     print(p is None)
+//     p = Point(1, 2)
+//     print(p is None)
+//     print(p is not None)
+//     print(p.x)
 void test() {
     std::optional<Point> __slot_1;
-    // p: Point | None = None
     Point* p = nullptr;
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // p = Point(1, 2)
     p = &*(__slot_1 = Point(1, 2));
-    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // print(p is not None)
     std::cout << ::tpy::print_bool((p != nullptr)) << "\n";
-    // print(p.x)
     std::cout << p->x << "\n";
 }
 
+// test()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test()
     test();
 }
 

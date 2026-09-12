@@ -17,7 +17,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_work;
 struct __coro_amain;
 
+// async def work(items: list[Counter]) -> None:
 __coro_work work(std::vector<Counter>& items);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Counter:
@@ -36,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: work
+// async def work(items: list[Counter]) -> None:
 struct __coro_work {
     int32_t __state;
     bool __cancel_pending;
@@ -64,7 +66,7 @@ struct __coro_work {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -90,6 +92,7 @@ struct __coro_amain {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

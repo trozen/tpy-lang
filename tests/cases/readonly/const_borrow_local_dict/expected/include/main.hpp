@@ -12,6 +12,7 @@ struct Jar;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # A reference-type borrow-local from a const dict `__getitem__`/`.get()` off an inferred-const
@@ -61,43 +62,45 @@ inline std::ostream& operator<<(std::ostream& os, const Jar& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.value = v
 inline Cookie::Cookie(const ::tpy::BigInt& v) : value(v) {}
 
 // def __init__(self) -> None:
+//     self.store = {}
 inline Jar::Jar() : store(::tpy::ordered_map<std::string, Cookie>()) {}
 
 // def add(self, name: str, v: int) -> None:
+//     self.store[name] = Cookie(v)
 inline void Jar::add(std::string_view name, const ::tpy::BigInt& v) {
-    // self.store[name] = Cookie(v)
     ::tpy::__setitem__(this->store, name, Cookie(v));
 }
 
 // def peek(self, name: str) -> int:       # inferred const receiver; subscript-on-field
+//     c = self.store[name]
+//     return c.value
 inline ::tpy::BigInt Jar::peek(std::string_view name) const {
-    // c = self.store[name]
     const Cookie& c = ::tpy::__getitem__(this->store, name);
-    // return c.value
     return c.value;
 }
 
 // def peek_get(self, name: str) -> int:   # inferred const receiver; `.get()` -> const Cookie*
+//     c = self.store.get(name)
+//     if c is not None:
+//         return c.value
+//     return -1
 inline ::tpy::BigInt Jar::peek_get(std::string_view name) const {
-    // c = self.store.get(name)
     const Cookie* c = ::tpy::dict_get(this->store, name);
-    // if c is not None:
     if ((c != nullptr)) {
-        // return c.value
         return c->value;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def rename(self, name: str) -> None:    # inverse: mutates via the borrow-local -> non-const
+//     c = self.store[name]
+//     c.value = 99
 inline void Jar::rename(std::string_view name) {
-    // c = self.store[name]
     Cookie& c = ::tpy::__getitem__(this->store, name);
-    // c.value = 99
     c.value = ::tpy::BigInt(99);
 }
 void __tpy_init();

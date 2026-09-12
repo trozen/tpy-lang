@@ -17,10 +17,15 @@ struct __coro_make;
 struct __coro_used_again;
 struct __coro_main_coro;
 
+// async def make() -> Own[Payload]:
 __coro_make make();
+// def size_of(p: Own[Payload]) -> int32:
 int32_t size_of(Payload&& p);
+// async def used_again() -> int32:
 __coro_used_again used_again();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Payload:
@@ -38,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
     return os;
 }
 
-// Async coroutine: make
+// async def make() -> Own[Payload]:
 struct __coro_make {
     int32_t __state;
     bool __cancel_pending;
@@ -59,7 +64,7 @@ struct __coro_make {
     }
 };
 
-// Async coroutine: used_again
+// async def used_again() -> int32:
 struct __coro_used_again {
     int32_t __state;
     bool __cancel_pending;
@@ -84,7 +89,7 @@ struct __coro_used_again {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -110,6 +115,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2, 3]
 inline Payload::Payload() : items(std::vector<int32_t>{1, 2, 3}) {}
 void __tpy_init();
 } // namespace tpyapp::main

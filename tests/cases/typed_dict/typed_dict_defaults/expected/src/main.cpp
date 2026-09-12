@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # All fields must be provided at direct construction
+//     c = Config(host="example.com", port=int32(9090), debug=True)
+//     print(c["host"])
+//     print(c["port"])
+//     print(c["debug"])
 void main() {
-    // # All fields must be provided at direct construction
-    // c = Config(host="example.com", port=int32(9090), debug=True)
     Config c = Config("example.com", 9090, true);
-    // print(c["host"])
     std::cout << c.host << "\n";
-    // print(c["port"])
     std::cout << c.port << "\n";
-    // print(c["debug"])
     std::cout << ::tpy::print_bool(c.debug) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,31 +9,32 @@ namespace tpyapp::main {
 // # allocate); the class is exposed so user code can `raise MemoryError(...)`
 // # for higher-level allocation-failure paths it controls.
 // def fail() -> None:
+//     raise MemoryError("custom: cannot allocate")
 void fail() {
-    // raise MemoryError("custom: cannot allocate")
     throw ::tpy::MemoryError("custom: cannot allocate");
 }
 
 // def main() -> None:
+//     try:
+//         fail()
+//     except MemoryError as e:
+//         print("caught MemoryError:", str(e))
 void main() {
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (const ::tpy::MemoryError& e) {
-            // print("caught MemoryError:", str(e))
             std::cout << "caught MemoryError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Pile()
+//     items: list[Box[int32]] = []
+//     items.append(Box(1))
+//     items.append(Box(2))
+//     items.append(Box(3))
+//     print("list unpack:", p.total(*items))
 void main() {
-    // p = Pile()
     Pile p = Pile();
-    // items: list[Box[int32]] = []
     std::vector<Box<int32_t>> items = std::vector<Box<int32_t>>{};
-    // items.append(Box(1))
     items.push_back(Box<int32_t>(1));
-    // items.append(Box(2))
     items.push_back(Box<int32_t>(2));
-    // items.append(Box(3))
     items.push_back(Box<int32_t>(3));
-    // print("list unpack:", p.total(*items))
     std::cout << "list unpack:" << " " << p.total<int32_t>(::tpy::varargs<const Box<int32_t>>(::tpy::as_span(items))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

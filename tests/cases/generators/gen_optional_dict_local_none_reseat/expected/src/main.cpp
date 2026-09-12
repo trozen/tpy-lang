@@ -5,30 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     print(sum(h.keys_of()))
+//     d = h.d
+//     if d is not None:
+//         print(len(d))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(sum(h.keys_of()))
     std::cout << ::tpy::builtin_sum<int32_t>(h.keys_of()) << "\n";
-    // d = h.d
     ::tpy::ordered_map<int32_t, int32_t>* d = ::tpy::optional_to_ptr(h.d);
-    // if d is not None:
     if ((d != nullptr)) {
-        // print(len(d))
         std::cout << ::tpy::__len__((*d)) << "\n";
     }
 }
 
 // def keys_of(self) -> Iterator[int32]:
+//     m = self.d
+//     if m is not None:
+//         # The local aliases the field's dict -- the insert must be seen
+//         # by the owner after the generator drains.
+//         m[3] = 30
+//         for k in m:
+//             yield k
+//     m = None
+//     if m is None:
+//         yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // m = self.d
         m = ::tpy::optional_to_ptr(__self.d);
         if ((m != nullptr)) {
-            // # The local aliases the field's dict -- the insert must be seen
-            // # by the owner after the generator drains.
-            // m[3] = 30
             ::tpy::__setitem__((*m), 3, 30);
             __for_it_0.emplace(((*m)).begin());
             __for_end_0.emplace(((*m)).end());
@@ -48,10 +54,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
         continue;
     }
     case S_JOIN_0: {
-        // m = None
         m = nullptr;
         if ((m == nullptr)) {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         } else {
@@ -65,7 +69,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
             continue;
         }
         k = *((*__for_it_0))++;
-        // yield k
         __state = S_RESUME_0;
         return k;
     }
@@ -79,12 +82,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

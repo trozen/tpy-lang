@@ -68,9 +68,11 @@ inline std::ostream& operator<<(std::ostream& __os, Container::Kind __e) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Container::Inner::Inner(int32_t val) : val(val) {}
 
 // def __init__(self, kind: Kind) -> None:
+//     self.kind = kind
 inline Container::Container(Container::Kind kind) : kind(kind) {}
 void __tpy_init();
 } // namespace tpyapp::shapes

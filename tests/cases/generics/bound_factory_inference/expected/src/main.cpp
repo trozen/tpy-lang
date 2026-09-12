@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: PetBox[Pet] = PetBox.make(Parrot("Polly"))
+//     b: PetBox[Pet] = PetBox.make(Dog("Rex"))
+//     print(a.get().name())
+//     print(b.get().name())
 void main() {
-    // a: PetBox[Pet] = PetBox.make(Parrot("Polly"))
     PetBox<Pet> a = PetBox<Pet>::make<Parrot>(Parrot("Polly"));
-    // b: PetBox[Pet] = PetBox.make(Dog("Rex"))
     PetBox<Pet> b = PetBox<Pet>::make<Dog>(Dog("Rex"));
-    // print(a.get().name())
     std::cout << a.get().name() << "\n";
-    // print(b.get().name())
     std::cout << b.get().name() << "\n";
 }
 
+// from tpy.unsafe import unsafe_take, unsafe_release
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_take, unsafe_release
-    // main()
     main();
 }
 

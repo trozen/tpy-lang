@@ -3,28 +3,28 @@
 
 namespace tpyapp::main {
 
-// x: int = 0
 ::tpy::BigInt x;
 
 // def increment() -> None:
+//     global x
+//     x = x + 1
 void increment() {
-    // global x
-    // x = x + 1
     x = ((x) + (::tpy::BigInt(1)));
 }
 
+// x: int = 0
+//
+// increment()
+// increment()
+// print(x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int = 0
     x = ::tpy::BigInt(0);
-    // increment()
     increment();
-    // increment()
     increment();
-    // print(x)
     std::cout << x << "\n";
 }
 

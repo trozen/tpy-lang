@@ -7,68 +7,69 @@ namespace tpyapp::main {
 // # A str-view key (param/local) works in `k in dict[str,str]` / `k in set[str]`
 // # membership, not just a literal -- the heterogeneous contains overload.
 // def dict_has(k: str, d: dict[str, str]) -> bool:
+//     return k in d
 bool dict_has(std::string_view k, const ::tpy::ordered_map<std::string, std::string>& d) {
-    // return k in d
     return (d.contains(k));
 }
 
 // def dict_missing(k: str, d: dict[str, str]) -> bool:
+//     return k not in d
 bool dict_missing(std::string_view k, const ::tpy::ordered_map<std::string, std::string>& d) {
-    // return k not in d
     return (!(d.contains(k)));
 }
 
 // def set_has(k: str, s: set[str]) -> bool:
+//     return k in s
 bool set_has(std::string_view k, const ::tpy::ordered_set<std::string>& s) {
-    // return k in s
     return (s.contains(k));
 }
 
 // def set_missing(k: str, s: set[str]) -> bool:
+//     return k not in s
 bool set_missing(std::string_view k, const ::tpy::ordered_set<std::string>& s) {
-    // return k not in s
     return (!(s.contains(k)));
 }
 
 // def main():
+//     d: dict[str, str] = {}
+//     d["alpha"] = "1"
+//     d["beta"] = "2"
+//     # view-typed key (the param) against a str-keyed dict
+//     print(dict_has("alpha", d), dict_has("gamma", d))
+//     print(dict_missing("gamma", d), dict_missing("alpha", d))
+//     # a view key built from a slice, not a literal
+//     name = ("xalpha")[1:]
+//     print(name in d)
+//     # literal key still works (inverse: non-template overload)
+//     print("beta" in d, "zeta" in d)
+//
+//     s: set[str] = set()
+//     s.add("x")
+//     print(set_has("x", s), set_has("y", s))
+//     print(set_missing("y", s), set_missing("x", s))
+//     print("x" in s)
 void main() {
-    // d: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>();
-    // d["alpha"] = "1"
     ::tpy::__setitem__(d, "alpha", "1");
-    // d["beta"] = "2"
     ::tpy::__setitem__(d, "beta", "2");
-    // # view-typed key (the param) against a str-keyed dict
-    // print(dict_has("alpha", d), dict_has("gamma", d))
     std::cout << ::tpy::print_bool(dict_has("alpha", d)) << " " << ::tpy::print_bool(dict_has("gamma", d)) << "\n";
-    // print(dict_missing("gamma", d), dict_missing("alpha", d))
     std::cout << ::tpy::print_bool(dict_missing("gamma", d)) << " " << ::tpy::print_bool(dict_missing("alpha", d)) << "\n";
-    // # a view key built from a slice, not a literal
-    // name = ("xalpha")[1:]
     std::string_view name = ::tpy::str_slice("xalpha", ::tpy::BasicSlice{1, std::nullopt});
-    // print(name in d)
     std::cout << ::tpy::print_bool((d.contains(name))) << "\n";
-    // # literal key still works (inverse: non-template overload)
-    // print("beta" in d, "zeta" in d)
     std::cout << ::tpy::print_bool((d.contains("beta"))) << " " << ::tpy::print_bool((d.contains("zeta"))) << "\n";
-    // s: set[str] = set()
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
-    // s.add("x")
     s.insert("x");
-    // print(set_has("x", s), set_has("y", s))
     std::cout << ::tpy::print_bool(set_has("x", s)) << " " << ::tpy::print_bool(set_has("y", s)) << "\n";
-    // print(set_missing("y", s), set_missing("x", s))
     std::cout << ::tpy::print_bool(set_missing("y", s)) << " " << ::tpy::print_bool(set_missing("x", s)) << "\n";
-    // print("x" in s)
     std::cout << ::tpy::print_bool((s.contains("x"))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

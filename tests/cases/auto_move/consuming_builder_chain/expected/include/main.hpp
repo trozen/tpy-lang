@@ -13,10 +13,15 @@ struct Ticket;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(n: int32) -> Own[Point]:
 Point make(int32_t n);
+// def owned(n: int32) -> Own[Point]:
 Point owned(int32_t n);
+// def owned_method(f: Factory) -> Own[Point]:
 Point owned_method(Factory& f);
+// def issue(n: int32) -> Own[Ticket]:
 Ticket issue(int32_t n);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -86,35 +91,38 @@ inline std::ostream& operator<<(std::ostream& os, const Ticket& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // # The subject: a consuming builder step handing the receiver back.
 // def updated(self: Own[Self]) -> Own[Self]:
+//     self.x += 1
+//     return self  # tpyc: ok
 inline Point Point::updated() && {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
-    // return self  # tpyc: ok
     return std::move((*this));
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Factory::Factory(int32_t n) : n(n) {}
 
 // def make(self) -> Own[Point]:
+//     return Point(self.n)
 inline Point Factory::make() const {
-    // return Point(self.n)
     return Point(this->n);
 }
 
 // def __init__(self, id: int32) -> None:
+//     self.id = id
 inline Ticket::Ticket(int32_t id) : id(id) {}
 
 // # A copy here cannot compile, so this leg pins that the return MOVES.
 // def stamped(self: Own[Self]) -> Own[Self]:
+//     self.id += 100
+//     return self  # tpyc: ok
 inline Ticket Ticket::stamped() && {
-    // self.id += 100
     this->id = ::tpy::add_check<int32_t>(this->id, 100);
-    // return self  # tpyc: ok
     return std::move((*this));
 }
 void __tpy_init();

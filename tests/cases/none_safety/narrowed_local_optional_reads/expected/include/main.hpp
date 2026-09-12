@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def step(x: int | None, y: int32 | None, lst: list[int] | None) -> None:
 void step(std::optional<::tpy::BigInt> x, std::optional<int32_t> y, std::vector<::tpy::BigInt>* lst);
+// def local_path() -> None:
 void local_path();
+// def main() -> None:
 void main();
 
 void __tpy_init();

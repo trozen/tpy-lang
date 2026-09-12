@@ -13,8 +13,10 @@ extern Pair<int32_t, std::string>* p1;
 extern Pair<std::string, int32_t>* p2;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def swap_pair[A, B](p: Pair[A, B]) -> Own[Pair[B, A]]:
 template<typename A, typename B>
 Pair<B, A> swap_pair(const Pair<A, B>& p);
+// def create_pair[A, B](a: A, b: B) -> Own[Pair[A, B]]:
 template<typename A, typename B>
 Pair<A, B> create_pair(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b);
 
@@ -27,6 +29,8 @@ struct Pair {
     B second;
 
     // def __init__(self, first: A, second: B) -> None:
+    //     self.first = first
+    //     self.second = second
     Pair() = default;
     explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second) : first(first), second(second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -39,15 +43,15 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
 }
 
 // def swap_pair[A, B](p: Pair[A, B]) -> Own[Pair[B, A]]:
+//     return Pair[B, A](p.second, p.first)
 template<typename A, typename B>
 Pair<B, A> swap_pair(const Pair<A, B>& p) {
-    // return Pair[B, A](p.second, p.first)
     return Pair<B, A>(p.second, p.first);
 }
 // def create_pair[A, B](a: A, b: B) -> Own[Pair[A, B]]:
+//     return Pair[A, B](a, b)
 template<typename A, typename B>
 Pair<A, B> create_pair(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b) {
-    // return Pair[A, B](a, b)
     return Pair<A, B>(a, b);
 }
 

@@ -7,51 +7,52 @@ namespace tpyapp::main {
 // # str tuple-unpack targets assigned on all paths of a try/except, read after:
 // # hoisted out of the try, they must own (std::string), not dangle into the temp.
 // def maybe_pair(fail: bool) -> tuple[str, str]:
+//     if fail:
+//         raise OSError("x")
+//     return ("hello-world-long", "another-long-str")
 std::tuple<std::string, std::string> maybe_pair(bool fail) {
-    // if fail:
     if (fail) {
-        // raise OSError("x")
         ::tpy::OSError("x").__raise__();
     }
-    // return ("hello-world-long", "another-long-str")
     return std::tuple<std::string, std::string>{"hello-world-long", "another-long-str"};
 }
 
 // def run(fail: bool) -> str:
+//     try:
+//         a, b = maybe_pair(fail)
+//     except OSError:
+//         a, b = ("fb-a-long-enough", "fb-b-long-enough")
+//     return a + "|" + b
 std::string run(bool fail) {
-    // try:
     std::string a;
     std::string b;
     {
         try {
-            // a, b = maybe_pair(fail)
             auto __tup_1 = maybe_pair(fail);
             a = std::get<0>(__tup_1);
             b = std::get<1>(__tup_1);
         } catch (const ::tpy::OSError&) {
-            // a, b = ("fb-a-long-enough", "fb-b-long-enough")
             a = "fb-a-long-enough";
             b = "fb-b-long-enough";
         }
     }
-    // return a + "|" + b
     return (::tpy::str_concat((::tpy::str_concat(a, "|")), b));
 }
 
 // def main() -> None:
+//     print(run(False))
+//     print(run(True))
 void main() {
-    // print(run(False))
     std::cout << run(false) << "\n";
-    // print(run(True))
     std::cout << run(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

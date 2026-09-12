@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o = Owner()
+//     o.add(2.0, 20)
+//     o.add(1.0, 10)
+//     print(o.heap[0].deadline)
 void main() {
-    // o = Owner()
     Owner o = Owner();
-    // o.add(2.0, 20)
     o.add(2.0, 20);
-    // o.add(1.0, 10)
     o.add(1.0, 10);
-    // print(o.heap[0].deadline)
     std::cout << ::tpy::print_float(::tpy::__getitem__(o.heap, 0).deadline) << "\n";
 }
 
+// import heapq
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import heapq
     ::tpystd::heapq::__tpy_init();
-    // main()
     main();
 }
 

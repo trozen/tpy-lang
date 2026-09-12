@@ -6,26 +6,26 @@ namespace tpyapp::main {
 
 // # StrView-promoted local used in nested tuple's str slot must become owned str
 // def pick(flag: bool) -> tuple[int, tuple[str, bool]]:
+//     label: str = "no"
+//     if flag:
+//         label = "yes"
+//     return 0, (label, flag)
 std::tuple<::tpy::BigInt, std::tuple<std::string, bool>> pick(bool flag) {
-    // label: str = "no"
     std::string_view label = "no";
-    // if flag:
     if (flag) {
-        // label = "yes"
         label = "yes";
     }
-    // return 0, (label, flag)
     return std::tuple<::tpy::BigInt, std::tuple<std::string, bool>>{::tpy::BigInt(0), std::tuple<std::string, bool>{std::string(label), flag}};
 }
 
+// print(pick(True))
+// print(pick(False))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(pick(True))
     std::cout << ::tpy::TuplePrinter(pick(true)) << "\n";
-    // print(pick(False))
     std::cout << ::tpy::TuplePrinter(pick(false)) << "\n";
 }
 

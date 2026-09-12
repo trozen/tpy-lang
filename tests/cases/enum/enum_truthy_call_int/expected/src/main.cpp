@@ -41,79 +41,84 @@ std::optional<::tpyapp::main::Prio> EnumUtil<::tpyapp::main::Prio>::try_parse(st
 
 namespace tpyapp::main {
 
-// calls = 0
 int32_t calls{};
 
 // def make(v: Prio) -> Prio:
+//     global calls
+//     calls += 1
+//     return v
 Prio make(Prio v) {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return v
     return v;
 }
 
 // def main() -> None:
+//     if make(Prio.HIGH):
+//         print("high:", calls)
+//
+//     if make(Prio.ZERO):
+//         print("unreachable")
+//     print("zero:", calls)
+//
+//     if not make(Prio.ZERO):
+//         print("not zero:", calls)
+//
+//     while make(Prio.HIGH):
+//         break
+//     print("while:", calls)
+//
+//     # Member reads are embedded with no call to lose. ZERO is the one worth
+//     # spelling out: an IntEnum tests its underlying value, so a zero-valued
+//     # member is FALSY -- where every plain-enum member is truthy whatever its
+//     # value (enum/enum_truthiness pins that side).
+//     if Prio.HIGH:
+//         print("member HIGH truthy")
+//     if Prio.ZERO:
+//         print("unreachable")
+//     else:
+//         print("member ZERO falsy")
+//     print("total:", calls)
 void main() {
-    // if make(Prio.HIGH):
     if ((static_cast<int32_t>(make(Prio::HIGH)) != 0)) {
-        // print("high:", calls)
         std::cout << "high:" << " " << calls << "\n";
     }
-    // if make(Prio.ZERO):
     if ((static_cast<int32_t>(make(Prio::ZERO)) != 0)) {
-        // print("unreachable")
         std::cout << "unreachable" << "\n";
     }
-    // print("zero:", calls)
     std::cout << "zero:" << " " << calls << "\n";
-    // if not make(Prio.ZERO):
     if ((!((static_cast<int32_t>(make(Prio::ZERO)) != 0)))) {
-        // print("not zero:", calls)
         std::cout << "not zero:" << " " << calls << "\n";
     }
-    // while make(Prio.HIGH):
     while ((static_cast<int32_t>(make(Prio::HIGH)) != 0)) {
-        // break
         break;
     }
-    // print("while:", calls)
     std::cout << "while:" << " " << calls << "\n";
-    // # Member reads are embedded with no call to lose. ZERO is the one worth
-    // # spelling out: an IntEnum tests its underlying value, so a zero-valued
-    // # member is FALSY -- where every plain-enum member is truthy whatever its
-    // # value (enum/enum_truthiness pins that side).
-    // if Prio.HIGH:
     if ((static_cast<int32_t>(Prio::HIGH) != 0)) {
-        // print("member HIGH truthy")
         std::cout << "member HIGH truthy" << "\n";
     }
-    // if Prio.ZERO:
     if ((static_cast<int32_t>(Prio::ZERO) != 0)) {
-        // print("unreachable")
         std::cout << "unreachable" << "\n";
-    // else:
     } else {
-        // print("member ZERO falsy")
         std::cout << "member ZERO falsy" << "\n";
     }
-    // print("total:", calls)
     std::cout << "total:" << " " << calls << "\n";
 }
 
+// # The IntEnum contrast to enum_truthy_call: an IntEnum tests its UNDERLYING
+// # value, so the operand was always embedded in the `!= 0` test (never
+// # droppable, unlike the plain-enum always-true fold) and the result is
+// # value-dependent -- Prio.ZERO is falsy where every plain enum member is truthy.
+// from enum import IntEnum
+//
+// calls = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The IntEnum contrast to enum_truthy_call: an IntEnum tests its UNDERLYING
-    // # value, so the operand was always embedded in the `!= 0` test (never
-    // # droppable, unlike the plain-enum always-true fold) and the result is
-    // # value-dependent -- Prio.ZERO is falsy where every plain enum member is truthy.
-    // from enum import IntEnum
-    // calls = 0
     calls = 0;
-    // main()
     main();
 }
 

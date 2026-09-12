@@ -9,13 +9,21 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_vu(v: int32 | float64) -> int32:
 int32_t take_vu(const ::tpy::Union<double, int32_t>& v);
+// def two(a: int32 | float64, b: int32 | float64) -> int32:
 int32_t two(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+// def use_decl(k: int32) -> int32:
 int32_t use_decl(int32_t k);
+// def use_reassign(k: int32) -> int32:
 int32_t use_reassign(int32_t k);
+// def use_stmt(k: int32) -> int32:
 int32_t use_stmt(int32_t k);
+// def use_two(k: int32, f: float64) -> int32:
 int32_t use_two(int32_t k, double f);
+// def use_float() -> int32:
 int32_t use_float();
+// def main() -> None:
 void main();
 
 void __tpy_init();

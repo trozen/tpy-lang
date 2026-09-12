@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Rows()
+//     print(len(a.items), a.items[2])
 void main() {
-    // a = Rows()
     Rows a = Rows();
-    // print(len(a.items), a.items[2])
     std::cout << ::tpy::__len__(a.items) << " " << ::tpy::__getitem__(a.items, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

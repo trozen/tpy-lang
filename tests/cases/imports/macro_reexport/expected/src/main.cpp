@@ -3,27 +3,27 @@
 
 namespace tpyapp::main {
 
-// p = Point(3, 4)
 Point* p{};
 
+// # Macro re-export through a plain (non-facade) module. utils.py does
+// # `from dataclasses import dataclass`; main pulls @dataclass via utils
+// # and applies it. Phase 6 of the per-module attribute table refactor
+// # enables this -- the parser canonicalizes the decorator's source
+// # module to the ultimate macro definer (dataclasses), and sema's
+// # _apply_class_macros walks the binding chain when the parser's
+// # immediate-source qname misses in MacroRegistry.
+// from utils import dataclass
+//
+// p = Point(3, 4)
+// print(p.x, p.y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Macro re-export through a plain (non-facade) module. utils.py does
-    // # `from dataclasses import dataclass`; main pulls @dataclass via utils
-    // # and applies it. Phase 6 of the per-module attribute table refactor
-    // # enables this -- the parser canonicalizes the decorator's source
-    // # module to the ultimate macro definer (dataclasses), and sema's
-    // # _apply_class_macros walks the binding chain when the parser's
-    // # immediate-source qname misses in MacroRegistry.
-    // from utils import dataclass
     ::tpyapp::utils::__tpy_init();
-    // p = Point(3, 4)
     static Point __global_slot_1 = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
     p = &__global_slot_1;
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 

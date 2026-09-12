@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_star_import() -> None:
 void test_star_import();
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -11,9 +11,13 @@ struct Maker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_batch(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> make_batch(int32_t n);
+// def make_pairs() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> make_pairs();
+// def make_uniques() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> make_uniques();
+// def main() -> None:
 void main();
 
 // class Maker:
@@ -32,16 +36,16 @@ inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
 
 
 // def make(self, n: int32) -> Own[list[int32]]:
+//     out: list[int32] = []
+//     for i in range(n):
+//         out.append(i)
+//     return out
 inline std::vector<int32_t> Maker::make(int32_t n) const {
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // out.append(i)
         out.push_back(i);
     }
-    // return out
     return out;
 }
 void __tpy_init();

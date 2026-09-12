@@ -11,17 +11,29 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mutate_point(p: Point, val: int32) -> None:
 void mutate_point(Point& p, int32_t val);
+// def read_only_point(p: Point) -> int32:
 int32_t read_only_point(const Point& p);
+// def read_elem_ref(items: list[Point]) -> int32:
 int32_t read_elem_ref(const std::vector<Point>& items);
+// def read_via_alias(items: list[Point]) -> int32:
 int32_t read_via_alias(const std::vector<Point>& items);
+// def read_via_deep_alias(items: list[Point]) -> int32:
 int32_t read_via_deep_alias(const std::vector<Point>& items);
+// def read_via_read_only_call(items: list[Point]) -> int32:
 int32_t read_via_read_only_call(const std::vector<Point>& items);
+// def write_elem_ref(items: list[Point], val: int32) -> None:
 void write_elem_ref(std::vector<Point>& items, int32_t val);
+// def write_via_mutating_call(items: list[Point], val: int32) -> None:
 void write_via_mutating_call(std::vector<Point>& items, int32_t val);
+// def write_via_alias(items: list[Point], val: int32) -> None:
 void write_via_alias(std::vector<Point>& items, int32_t val);
+// def read_nested(matrix: list[list[int32]]) -> int32:
 int32_t read_nested(const std::vector<std::vector<int32_t>>& matrix);
+// def write_nested(matrix: list[list[int32]], val: int32) -> None:
 void write_nested(std::vector<std::vector<int32_t>>& matrix, int32_t val);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -44,6 +56,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,8 +11,11 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def value_only(p: readonly[tuple[int32, int32]]) -> int32:
 int32_t value_only(const std::tuple<int32_t, int32_t>& p);
+// def mixed(p: readonly[tuple[int32, Counter]]) -> int32:
 int32_t mixed(const std::tuple<int32_t, const Counter*>& p);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -39,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

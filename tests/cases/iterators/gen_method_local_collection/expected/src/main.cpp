@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     se = Series(3, 4)
+//     for v in se.items():
+//         print(v)
 void main() {
-    // se = Series(3, 4)
     Series se = Series(3, 4);
-    // for v in se.items():
     {
         auto __src_0 = se.items();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,17 +17,19 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def items(self) -> Iterator[int32]:
+//     tmp = [self.a, self.b, self.a + self.b]
+//     for x in tmp:
+//         yield x
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_Series_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tmp = [self.a, self.b, self.a + self.b]
         tmp.emplace(std::array<int32_t, 3>{__self.a, __self.b, (::tpy::add_check<int32_t>(__self.a, __self.b))});
         __for_it_0.emplace(((*tmp)).begin());
         __for_end_0.emplace(((*tmp)).end());
@@ -34,7 +37,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Series_items::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -48,7 +50,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Series_items::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -58,12 +59,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Series_items::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

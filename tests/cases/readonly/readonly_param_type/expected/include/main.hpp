@@ -11,8 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def observe(p: readonly[Point]) -> int32:
 int32_t observe(const Point& p);
+// def call_readonly_method(p: readonly[Point]) -> int32:
 int32_t call_readonly_method(const Point& p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -39,12 +42,14 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // @readonly
 // def magnitude_sq(self) -> int32:
+//     return self.x * self.x + self.y * self.y
 inline int32_t Point::magnitude_sq() const {
-    // return self.x * self.x + self.y * self.y
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(this->x, this->x)), (::tpy::mul_check<int32_t>(this->y, this->y))));
 }
 void __tpy_init();

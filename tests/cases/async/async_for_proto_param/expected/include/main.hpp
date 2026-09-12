@@ -18,8 +18,10 @@ inline constexpr std::string_view __name__ = "__main__";
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __coro_consume;
 
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __coro_consume<T_it> consume(T_it&& it);
+// def main() -> None:
 void main();
 
 // class CounterIter:
@@ -72,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: consume
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __coro_consume {
     int32_t __state;
@@ -101,6 +103,9 @@ struct __coro_consume {
     }
 };
 // async def consume(it: Iterable[int32]) -> None:
+//     for x in it:
+//         await asyncio.sleep(0)
+//         print(x)
 template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -114,7 +119,6 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print(x)
         std::cout << x << "\n";
         __state = S_JOIN_0;
         continue;
@@ -126,7 +130,6 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -145,29 +148,33 @@ __coro_consume<T_it> consume(T_it&& it) {
 
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.current = start
+//     self.limit = limit
 inline CounterIter::CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
 // def __next__(self) -> int32:
+//     if self.current < self.limit:
+//         result = self.current
+//         self.current += 1
+//         return result
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // result = self.current
         int32_t result = this->current;
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return result
         return result;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.start = start
+//     self.limit = limit
 inline Counter::Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:
+//     return CounterIter(self.start, self.limit)
 inline CounterIter Counter::__iter__() const {
-    // return CounterIter(self.start, self.limit)
     return CounterIter(this->start, this->limit);
 }
 void __tpy_init();

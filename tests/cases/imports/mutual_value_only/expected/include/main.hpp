@@ -15,6 +15,7 @@ using ::tpyapp::a::K_then_H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

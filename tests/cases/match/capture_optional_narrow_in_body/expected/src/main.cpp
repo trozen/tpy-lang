@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def describe(s: Build | Test) -> None:
+//     match s:
+//         case Build(target=t, jobs=j):
+//             if t is not None:
+//                 print("target=" + t)
+//             if j is not None:
+//                 print("jobs=" + j)
+//         case Test(filter_=f):
+//             if f is not None:
+//                 print("filter=" + f)
 void describe(::tpy::Union<const Build*, const Test*> s) {
-    // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.index()) {
-    // case Build(target=t, jobs=j):
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& t = __case_0.target;
         auto& j = __case_0.jobs;
-        // if t is not None:
         if ((t.has_value())) {
-            // print("target=" + t)
             std::cout << (::tpy::str_concat("target=", (*t))) << "\n";
         }
-        // if j is not None:
         if ((j.has_value())) {
-            // print("jobs=" + j)
             std::cout << (::tpy::str_concat("jobs=", (*j))) << "\n";
         }
         break;
     }
-    // case Test(filter_=f):
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto& f = __case_1.filter_;
-        // if f is not None:
         if ((f.has_value())) {
-            // print("filter=" + f)
             std::cout << (::tpy::str_concat("filter=", (*f))) << "\n";
         }
         break;
@@ -41,27 +41,27 @@ void describe(::tpy::Union<const Build*, const Test*> s) {
 }
 
 // def main() -> None:
+//     describe(Build("release", "4"))
+//     describe(Build(None, "1"))
+//     describe(Test("smoke"))
+//     describe(Test(None))
 void main() {
-    // describe(Build("release", "4"))
     Build __tmp_1 = Build("release", "4");
     describe(::tpy::Union<const Build*, const Test*>{&__tmp_1});
-    // describe(Build(None, "1"))
     Build __tmp_2 = Build(std::nullopt, "1");
     describe(::tpy::Union<const Build*, const Test*>{&__tmp_2});
-    // describe(Test("smoke"))
     Test __tmp_3 = Test("smoke");
     describe(::tpy::Union<const Build*, const Test*>{&__tmp_3});
-    // describe(Test(None))
     Test __tmp_4 = Test(std::nullopt);
     describe(::tpy::Union<const Build*, const Test*>{&__tmp_4});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

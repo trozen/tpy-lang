@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def make() -> int32:
+//     p: Point | None = Point(7)
+//     return p.x
 int32_t make() {
-    // p: Point | None = Point(7)
     Point __slot_1 = Point(7);
     Point* p = &__slot_1;
-    // return p.x
     return p->x;
 }
 
+// print(make())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(make())
     std::cout << make() << "\n";
 }
 

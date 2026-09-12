@@ -5,14 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(
+//         prog="myapp",
+//         description="Frobnicate widgets.",
+//         epilog="See myapp(1) for further details.",
+//     )
+//     parser.add_argument("file", help="input file path")
+//     parser.add_argument("--count", type=int, default=1, help="repetition count")
+//     args = parser.parse_args(["-h"])
+//     # Unreachable: parse_args invokes the help printer, which exits(0).
+//     print(args.file)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["-h"])
     std::vector<std::string> __tmp_1 = {"-h"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // # Unreachable: parse_args invokes the help printer, which exits(0).
-    // print(args.file)
     std::cout << args.file << "\n";
-    // return 0
     return 0;
 }
 
@@ -61,14 +68,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(file, count);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

@@ -5,29 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # @native("myns::namespaced_add") -> ::myns::namespaced_add(10, 32)
+//     print(lib.ns_add(int32(10), int32(32)))
+//
+//     # @native("bare_add") -> ::bare_add(10, 32)
+//     print(lib.bare(int32(10), int32(32)))
+//
+//     # @native("c_multiply", binding="C") -> ::tpyapp::lib::c_multiply(6, 7)
+//     print(lib.c_mul(int32(6), int32(7)))
 void main() {
-    // # @native("myns::namespaced_add") -> ::myns::namespaced_add(10, 32)
-    // print(lib.ns_add(int32(10), int32(32)))
     std::cout << ::myns::namespaced_add(10, 32) << "\n";
-    // # @native("bare_add") -> ::bare_add(10, 32)
-    // print(lib.bare(int32(10), int32(32)))
     std::cout << ::bare_add(10, 32) << "\n";
-    // # @native("c_multiply", binding="C") -> ::tpyapp::lib::c_multiply(6, 7)
-    // print(lib.c_mul(int32(6), int32(7)))
     std::cout << ::tpyapp::lib::c_multiply(6, 7) << "\n";
 }
 
+// # Test module-qualified calls to @native vs @native(binding="C") functions
+// # @native: use native name directly (::ns::func or ::bare_func)
+// # @native(binding="C"): use module-qualified name (::tpyapp::lib::func)
+// import lib
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test module-qualified calls to @native vs @native(binding="C") functions
-    // # @native: use native name directly (::ns::func or ::bare_func)
-    // # @native(binding="C"): use module-qualified name (::tpyapp::lib::func)
-    // import lib
     ::tpyapp::lib::__tpy_init();
-    // main()
     main();
 }
 

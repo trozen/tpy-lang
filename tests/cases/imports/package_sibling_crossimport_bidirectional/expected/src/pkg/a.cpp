@@ -6,27 +6,27 @@ namespace tpyapp::pkg::a {
 
 
 // def with_b() -> int32:
+//     b = B()
+//     return b.kind()
 int32_t with_b() {
-    // b = B()
     ::tpyapp::pkg::b::B b = ::tpyapp::pkg::b::B();
-    // return b.kind()
     return b.kind();
 }
 
 
 // def kind(self) -> int32:
+//     return int32(1)
 int32_t A::kind() const {
-    // return int32(1)
     return 1;
 }
+// # pkg.a and pkg.b mutually cross-import (cycle peers under TPy's
+// # Python-cycle handling). Pkg/__init__.py re-exports from both.
+// from pkg.b import B
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # pkg.a and pkg.b mutually cross-import (cycle peers under TPy's
-    // # Python-cycle handling). Pkg/__init__.py re-exports from both.
-    // from pkg.b import B
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::b::__tpy_init();
 }

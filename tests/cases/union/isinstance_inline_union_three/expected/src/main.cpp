@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def classify(v: A | B | C | D) -> int32:
+//     if not isinstance(v, A | B | C):
+//         v.n += 100
+//         return v.n
+//     return 0
 int32_t classify(::tpy::Union<A*, B*, C*, D*> v) {
-    // if not isinstance(v, A | B | C):
     if ((!((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v) || std::holds_alternative<C*>(v))))) {
         auto& __v = *std::get<D*>(v);
-        // v.n += 100
         __v.n = ::tpy::add_check<int32_t>(__v.n, 100);
-        // return v.n
         return __v.n;
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     print(classify(A(1)))
+//     print(classify(D(5)))
 void main() {
-    // print(classify(A(1)))
     A __tmp_1 = A(1);
     std::cout << classify(::tpy::Union<A*, B*, C*, D*>{&__tmp_1}) << "\n";
-    // print(classify(D(5)))
     D __tmp_2 = D(5);
     std::cout << classify(::tpy::Union<A*, B*, C*, D*>{&__tmp_2}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

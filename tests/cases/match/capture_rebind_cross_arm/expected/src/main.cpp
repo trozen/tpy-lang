@@ -5,47 +5,47 @@ namespace tpyapp::main {
 
 
 // def score(a: Cat | Dog) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             v = v + 100    # tpyc: ok -- rebinding arm
+//         case Dog(lives=v):
+//             pass           # same name, same type, NOT rebound
+//     return v
 ::tpy::BigInt score(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Cat(lives=v):
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         v = __case_0.lives;
-        // v = v + 100    # tpyc: ok -- rebinding arm
         v = ((v) + (::tpy::BigInt(100)));
         break;
     }
-    // case Dog(lives=v):
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         v = __case_1.lives;
-        // pass           # same name, same type, NOT rebound
         break;
     }
     }
-    // return v
     return v;
 }
 
 // def main() -> None:
+//     print(score(Cat(9)))   # 109
+//     print(score(Dog(7)))   # 7 -- the non-rebinding arm's value still flows out
 void main() {
-    // print(score(Cat(9)))   # 109
     Cat __tmp_1 = Cat(::tpy::BigInt(9));
     std::cout << score(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
-    // print(score(Dog(7)))   # 7 -- the non-rebinding arm's value still flows out
     Dog __tmp_2 = Dog(::tpy::BigInt(7));
     std::cout << score(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

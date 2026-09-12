@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def literals() -> int:
 ::tpy::BigInt literals();
+// def owned_source(s: String) -> int:
 ::tpy::BigInt owned_source(const ::tpy::String& s);
+// def view_reads(src: tuple[str, str]) -> int:
 ::tpy::BigInt view_reads(const std::tuple<std::string, std::string>& src);
+// def main() -> None:
 void main();
 
 void __tpy_init();

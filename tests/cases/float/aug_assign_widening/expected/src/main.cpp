@@ -5,73 +5,73 @@ namespace tpyapp::main {
 
 
 // def bigint_widen() -> float:
+//     x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
+//     x *= 1.3
+//     return x
 double bigint_widen() {
-    // x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
     double x = 14;
-    // x *= 1.3
     x = static_cast<double>(x) * (1.3);
-    // return x
     return static_cast<double>(x);
 }
 
 // def int32_literal_widen() -> float:
+//     y = 10         # tpyc: type(float)   -- widens to float because y += 0.5 follows
+//     y += 0.5
+//     return y
 double int32_literal_widen() {
-    // y = 10         # tpyc: type(float)   -- widens to float because y += 0.5 follows
     double y = 10;
-    // y += 0.5
     y = static_cast<double>(y) + (0.5);
-    // return y
     return static_cast<double>(y);
 }
 
 // def chain_widen() -> float:
+//     z = 5          # tpyc: type(float)   -- widens to float because z += 0.5 follows
+//     z += 0.5
+//     z *= 2.0
+//     return z
 double chain_widen() {
-    // z = 5          # tpyc: type(float)   -- widens to float because z += 0.5 follows
     double z = 5;
-    // z += 0.5
     z = static_cast<double>(z) + (0.5);
-    // z *= 2.0
     z = static_cast<double>(z) * (2.0);
-    // return z
     return static_cast<double>(z);
 }
 
 // def use_after_widen() -> float:
+//     # Subsequent use of x must see the widened float type, not the original int
+//     x = 14
+//     x *= 1.3
+//     return x + 1.0   # should be 19.2, not 19.0
 double use_after_widen() {
-    // # Subsequent use of x must see the widened float type, not the original int
-    // x = 14
     double x = 14;
-    // x *= 1.3
     x = static_cast<double>(x) * (1.3);
-    // return x + 1.0   # should be 19.2, not 19.0
     return (static_cast<double>(x) + (1.0));
 }
 
 // def float32_stays() -> float32:
+//     # float32 variable stays float32 when multiplied by a float literal (2.0 adapts to context)
+//     x = float32(1.5)   # tpyc: type(float32) -- stays float32 because 2.0 is a literal that adapts
+//     x *= 2.0
+//     return x
 float float32_stays() {
-    // # float32 variable stays float32 when multiplied by a float literal (2.0 adapts to context)
-    // x = float32(1.5)   # tpyc: type(float32) -- stays float32 because 2.0 is a literal that adapts
     float x = 1.5f;
-    // x *= 2.0
     x = (x) * (2.0f);
-    // return x
     return x;
 }
 
+// print(bigint_widen())
+// print(int32_literal_widen())
+// print(chain_widen())
+// print(use_after_widen())
+// print(float32_stays())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(bigint_widen())
     std::cout << ::tpy::print_float(bigint_widen()) << "\n";
-    // print(int32_literal_widen())
     std::cout << ::tpy::print_float(int32_literal_widen()) << "\n";
-    // print(chain_widen())
     std::cout << ::tpy::print_float(chain_widen()) << "\n";
-    // print(use_after_widen())
     std::cout << ::tpy::print_float(use_after_widen()) << "\n";
-    // print(float32_stays())
     std::cout << ::tpy::print_float(static_cast<double>(float32_stays())) << "\n";
 }
 

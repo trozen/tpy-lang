@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def grow(u: list[int32] | bytearray) -> None:
 void grow(::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> u);
+// def touch(u: list[int32] | Array[int32, 2]) -> None:
 void touch(::tpy::Union<std::array<int32_t, 2>*, std::vector<int32_t>*> u);
+// def main() -> None:
 void main();
 
 void __tpy_init();

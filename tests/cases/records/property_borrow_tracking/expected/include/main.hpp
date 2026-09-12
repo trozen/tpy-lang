@@ -11,9 +11,13 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_borrow_via_property() -> None:
 void test_borrow_via_property();
+// def test_iter_via_property() -> None:
 void test_iter_via_property();
+// def test_setter_invalidates_borrow() -> None:
 void test_setter_invalidates_borrow();
+// def test_value_type_no_warn() -> None:
 void test_value_type_no_warn();
 
 // class Container:
@@ -45,26 +49,27 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self) -> None:
+//     self._items = [1, 2, 3]
 inline Container::Container() : _items(std::vector<int32_t>{1, 2, 3}) {}
 
 // @property
 // def items(self) -> list[int32]:
+//     return self._items
 inline std::vector<int32_t>& Container::items() {
-    // return self._items
     return this->_items;
 }
 
 // @property
 // def items(self) -> list[int32]:
+//     return self._items
 inline const std::vector<int32_t>& Container::items() const {
-    // return self._items
     return this->_items;
 }
 
 // @items.setter
 // def items(self, v: list[int32]) -> None:
+//     self._items = v
 inline void Container::set_items(std::vector<int32_t>&& v) {
-    // self._items = v
     this->_items = std::move(v);
 }
 void __tpy_init();

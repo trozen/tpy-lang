@@ -11,10 +11,14 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def wrap[T](v: T) -> Own[Box[T]]:
 template<typename T>
 Box<T> wrap(::tpy::param_val_or_ref_t<T> v);
+// def sink(b: Own[Box[int32]]) -> None:
 void sink(Box<int32_t>&& b);
+// def take_two(a: Own[Box[int32]], b: Own[Box[int32]]) -> None:
 void take_two(Box<int32_t>&& a, Box<int32_t>&& b);
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -24,6 +28,7 @@ struct Box {
     T val;
 
     // def __init__(self, val: Own[T]) -> None:
+    //     self.val = val
     Box() = default;
     explicit Box(::tpy::own_param_t<T> val) : val(std::move(val)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -36,9 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 }
 
 // def wrap[T](v: T) -> Own[Box[T]]:
+//     return Box[T](v)
 template<typename T>
 Box<T> wrap(::tpy::param_val_or_ref_t<T> v) {
-    // return Box[T](v)
     return Box<T>(::tpy::param_to_storage<T>(v));
 }
 

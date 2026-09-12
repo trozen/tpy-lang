@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Any] = [1, "hello", 3.14, None, True]
+//     print(len(items))
 void main() {
-    // items: list[Any] = [1, "hello", 3.14, None, True]
     std::vector<::tpy::Any> items = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("hello")), ::tpy::make_any(static_cast<double>(3.14)), ::tpy::make_any(nullptr), ::tpy::make_any(true)};
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

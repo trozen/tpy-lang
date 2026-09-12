@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def describe(e: Expr) -> str:
+//     match e:
+//         case Lit(value=v):
+//             return "lit=" + str(v)
+//         case _:
+//             return "binop"
 std::string describe(const Expr& e) {
-    // match e:
     auto& __match_subject_1 = e;
     switch (__match_subject_1.value.index()) {
-    // case Lit(value=v):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& v = __case_0.value;
-        // return "lit=" + str(v)
         return (::tpy::str_concat("lit=", (v).to_string()));
         break;
     }
-    // case _:
     default: {
-        // return "binop"
         return "binop";
         break;
     }
@@ -28,29 +28,30 @@ std::string describe(const Expr& e) {
 }
 
 // def main() -> None:
+//     a: Expr = Lit(1)
+//     print(describe(a))
 void main() {
-    // a: Expr = Lit(1)
     Expr a = Lit(::tpy::BigInt(1));
-    // print(describe(a))
     std::cout << describe(a) << "\n";
 }
 
+// # Cycle detection should accept a recursive union broken by a user-defined
+// # generic record (not Box, not tplib) whose only indirection is a `Ptr[T]`
+// # field. The compiler infers indirection structurally by walking MyWrap's
+// # fields under T=Expr; the `_ptr: Ptr[Expr]` field hits the PtrType branch.
+// #
+// # The test exercises sema acceptance only -- MyWrap is a no-init stub here
+// # (cycle detection is structural, not value-construction). Compiles + runs
+// # the wrapper-struct codegen for the recursive variant.
+// from mywrap import MyWrap
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cycle detection should accept a recursive union broken by a user-defined
-    // # generic record (not Box, not tplib) whose only indirection is a `Ptr[T]`
-    // # field. The compiler infers indirection structurally by walking MyWrap's
-    // # fields under T=Expr; the `_ptr: Ptr[Expr]` field hits the PtrType branch.
-    // #
-    // # The test exercises sema acceptance only -- MyWrap is a no-init stub here
-    // # (cycle detection is structural, not value-construction). Compiles + runs
-    // # the wrapper-struct codegen for the recursive variant.
-    // from mywrap import MyWrap
     ::tpyapp::mywrap::__tpy_init();
-    // main()
     main();
 }
 

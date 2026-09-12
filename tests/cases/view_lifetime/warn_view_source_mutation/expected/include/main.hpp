@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> str:
 std::string make();
+// def inferred_view() -> None:
 void inferred_view();
+// def pinned_view() -> None:
 void pinned_view();
+// def slice_view() -> None:
 void slice_view();
+// def bytearray_slice_view() -> None:
 void bytearray_slice_view();
+// def main() -> None:
 void main();
 
 void __tpy_init();

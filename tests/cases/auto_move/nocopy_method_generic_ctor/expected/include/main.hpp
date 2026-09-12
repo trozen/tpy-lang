@@ -13,6 +13,7 @@ template<typename T> struct GenericHolder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // @nocopy
@@ -64,12 +65,13 @@ struct GenericHolder {
     T item;
 
     // def __init__(self, item: Own[T]):
+    //     self.item = item
     GenericHolder() = default;
     explicit GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
 
     // def replace(self, item: Own[T]) -> None:
+    //     self.item = item
     void replace(::tpy::own_param_t<T> item) {
-        // self.item = item
         this->item = std::move(item);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericHolder";
@@ -83,8 +85,8 @@ inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
 
 
 // def take(self, h: Own[Handle]) -> None:
+//     self.h = h
 inline void Holder::take(Handle&& h) {
-    // self.h = h
     this->h = std::move(h);
 }
 void __tpy_init();

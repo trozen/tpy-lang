@@ -11,7 +11,9 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def twice(x: int32) -> int32:
 int32_t twice(int32_t x);
+// def main():
 void main();
 
 // class Pair:
@@ -34,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.a = x
+//     self.b = twice(x)
 inline Pair::Pair(int32_t x) : a(x), b(twice(x)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -10,8 +10,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def split_user(raw: str) -> tuple[str, str]:
 std::tuple<std::string, std::string> split_user(std::string_view raw);
+// def call(user: str, secs: float) -> int:
 ::tpy::BigInt call(std::string_view user, double secs);
+// def main():
 void main();
 
 void __tpy_init();

@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def passthru(e: Expr) -> Expr:   # returned by reference -> Expr& e
+//     return e
 Expr& passthru(Expr& e) {
-    // return e
     return e;
 }
 
 // def count(e: Expr) -> int32:     # only read -> const Expr& e
+//     if isinstance(e, int):
+//         return 1
+//     n = 0
+//     for sub in e:
+//         n += count(sub)
+//     return n
 int32_t count(const Expr& e) {
-    // if isinstance(e, int):
     if (std::holds_alternative<::tpy::BigInt>(e.value)) {
         const auto& __e = std::get<::tpy::BigInt>(e.value);
-        // return 1
         return 1;
     }
     const auto& __e = std::get<std::vector<Expr>>(e.value);
-    // n = 0
     int32_t n = 0;
-    // for sub in e:
     auto& __src_0 = __e;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& sub = ::tpy::unwrap_ref(*__r_1);
-        // n += count(sub)
         n = ::tpy::add_check<int32_t>(n, count(sub));
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     tree: Expr = [1, [2, 3], 4]
+//     print(count(tree))
+//     print(count(passthru(tree)))
 void main() {
-    // tree: Expr = [1, [2, 3], 4]
     Expr tree = std::vector<Expr>{1, std::vector<Expr>{2, 3}, 4};
-    // print(count(tree))
     std::cout << count(tree) << "\n";
-    // print(count(passthru(tree)))
     std::cout << count(passthru(tree)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,7 +11,9 @@ struct Resource;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_all(*args: Resource) -> None:
 void use_all(::tpy::varargs<const Resource> args);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -41,6 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 
 // def __init__(self, id: int32) -> None:
+//     self.id = id
 inline Resource::Resource(int32_t id) : id(id) {}
 
 inline Resource::Resource(Resource&& other) noexcept : id(std::move(other.id)) {
@@ -55,9 +58,9 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("drop", self.id)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    // print("drop", self.id)
     std::cout << "drop" << " " << this->id << "\n";
 }
 void __tpy_init();

@@ -3,21 +3,20 @@
 
 namespace tpyapp::geo::units {
 
-// _SCALE: int32 = 100
 int32_t _SCALE{};
 
 // def scaled(x: int32) -> int32:
+//     return x * _SCALE
 int32_t scaled(int32_t x) {
-    // return x * _SCALE
     return (::tpy::mul_check<int32_t>(x, _SCALE));
 }
 
+// _SCALE: int32 = 100
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // _SCALE: int32 = 100
     _SCALE = 100;
 }
 

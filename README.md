@@ -112,6 +112,7 @@ Then:
 tpy hello.py                     # compile and run a file
 tpy --debug hello.py             # debug build (-g -O0; the default is -O3)
 tpy --dump-code hello.py         # inspect generated C++
+tpy --dump-code --emit-source hello.py  # ... with each definition's Python source as a comment block
 tpy --cxx list                   # show available C++ compilers
 tpy -j4 hello.py                 # parallel compilation (4 jobs)
 tpy --install-agent-docs docs/   # install TPy agent docs into your project

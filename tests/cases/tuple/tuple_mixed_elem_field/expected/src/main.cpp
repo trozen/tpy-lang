@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Box(1)
+//     b = Box(2)
+//     h = H(a, b)
+//     x = Box(9)
+//     y = Box(8)
+//     h.set((x, y))
+//     first = h.t[0]
+//     if first is not None:
+//         print(first.val)
+//     print(h.t[1].val)
+//     # None in the optional slot survives the storage write.
+//     n: Optional[Box] = None
+//     h.set((n, y))
+//     print(h.t[0] is None)
 void main() {
-    // a = Box(1)
     Box a = Box(1);
-    // b = Box(2)
     Box b = Box(2);
-    // h = H(a, b)
     H h = H(a, b);
-    // x = Box(9)
     Box x = Box(9);
-    // y = Box(8)
     Box y = Box(8);
-    // h.set((x, y))
     h.set(std::tuple<Box*, Box*>{&(x), &(y)});
-    // first = h.t[0]
     Box* first = ::tpy::optional_to_ptr(std::get<0>(h.t));
-    // if first is not None:
     if ((first != nullptr)) {
-        // print(first.val)
         std::cout << first->val << "\n";
     }
-    // print(h.t[1].val)
     std::cout << std::get<1>(h.t).val << "\n";
-    // # None in the optional slot survives the storage write.
-    // n: Optional[Box] = None
     Box* n = nullptr;
-    // h.set((n, y))
     h.set(std::tuple<Box*, Box*>{n, &(y)});
-    // print(h.t[0] is None)
     std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(h.t)) == nullptr)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

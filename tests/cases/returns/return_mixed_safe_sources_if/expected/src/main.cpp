@@ -5,89 +5,89 @@ namespace tpyapp::main {
 
 
 // def trusted(p: Point) -> Point:
+//     return p
 Point& trusted(Point& p) {
-    // return p
     return p;
 }
 
 // def pick_view(s: StrView) -> StrView:
+//     return s
 std::string_view pick_view(std::string_view s) {
-    // return s
     return s;
 }
 
 // def mixed_record(seed: Point, flag: bool) -> Point:
+//     if flag:
+//         result = seed            # param-derived
+//     else:
+//         result = trusted(seed)   # trusted call return
+//     return result  # tpyc: ok
 Point& mixed_record(Point& seed, bool flag) {
-    // if flag:
     Point* result;
     if (flag) {
-        // result = seed            # param-derived
         result = &(seed);
-    // else:
     } else {
-        // result = trusted(seed)   # trusted call return
         result = &(trusted(seed));
     }
-    // return result  # tpyc: ok
     return (*result);
 }
 
 // def mixed_record_swapped(seed: Point, flag: bool) -> Point:
+//     if flag:
+//         result = trusted(seed)   # trusted call return
+//     else:
+//         result = seed            # param-derived
+//     return result  # tpyc: ok
 Point& mixed_record_swapped(Point& seed, bool flag) {
-    // if flag:
     Point* result;
     if (flag) {
-        // result = trusted(seed)   # trusted call return
         result = &(trusted(seed));
-    // else:
     } else {
-        // result = seed            # param-derived
         result = &(seed);
     }
-    // return result  # tpyc: ok
     return (*result);
 }
 
 // def mixed_strview(p: str, flag: bool) -> StrView:
+//     if flag:
+//         sv: StrView = p                 # param-derived
+//     else:
+//         sv = pick_view(StrView("x"))    # trusted call return (literal-rooted)
+//     return sv  # tpyc: ok
 std::string_view mixed_strview(std::string_view p, bool flag) {
-    // if flag:
     std::string_view sv;
     if (flag) {
-        // sv: StrView = p                 # param-derived
         sv = p;
-    // else:
     } else {
-        // sv = pick_view(StrView("x"))    # trusted call return (literal-rooted)
         sv = pick_view("x");
     }
-    // return sv  # tpyc: ok
     return sv;
 }
 
 // def main():
+//     seed = Point(7)
+//     print(mixed_record(seed, True).x)
+//     print(mixed_record(seed, False).x)
+//     print(mixed_record_swapped(seed, True).x)
+//     print(mixed_record_swapped(seed, False).x)
+//     print(mixed_strview("hello", True))
+//     print(mixed_strview("hello", False))
 void main() {
-    // seed = Point(7)
     Point seed = Point(7);
-    // print(mixed_record(seed, True).x)
     std::cout << mixed_record(seed, true).x << "\n";
-    // print(mixed_record(seed, False).x)
     std::cout << mixed_record(seed, false).x << "\n";
-    // print(mixed_record_swapped(seed, True).x)
     std::cout << mixed_record_swapped(seed, true).x << "\n";
-    // print(mixed_record_swapped(seed, False).x)
     std::cout << mixed_record_swapped(seed, false).x << "\n";
-    // print(mixed_strview("hello", True))
     std::cout << mixed_strview("hello", true) << "\n";
-    // print(mixed_strview("hello", False))
     std::cout << mixed_strview("hello", false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def leaf_count(t: Tree[int32 | str]) -> int32:
+//     match t:
+//         case list() as branches:  # tpyc: ok
+//             total = 0
+//             for child in branches:
+//                 total += leaf_count(child)
+//             return total
+//         case _:
+//             return 1
 int32_t leaf_count(const Tree<::tpy::Union<int32_t, std::string>>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:  # tpyc: ok
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // total = 0
         int32_t total = 0;
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            // total += leaf_count(child)
             total = ::tpy::add_check<int32_t>(total, leaf_count(child));
         }
-        // return total
         return total;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }
@@ -38,42 +38,42 @@ int32_t leaf_count(const Tree<::tpy::Union<int32_t, std::string>>& t) {
 }
 
 // def main() -> None:
+//     forest: Tree[int32 | str] = [1, "a", [2, "b"]]
+//     print(leaf_count(forest))
+//     match forest:
+//         case list() as branches:  # tpyc: ok
+//             branches.append(3)  # mutates `forest` itself, not a copy
+//         case _:
+//             print("leaf")
+//     print(leaf_count(forest))
+//     leaf: Tree[int32 | str] = "solo"
+//     print(leaf_count(leaf))
 void main() {
-    // forest: Tree[int32 | str] = [1, "a", [2, "b"]]
     Tree<::tpy::Union<int32_t, std::string>> forest = std::vector<Tree<::tpy::Union<int32_t, std::string>>>{1, "a", std::vector<Tree<::tpy::Union<int32_t, std::string>>>{2, "b"}};
-    // print(leaf_count(forest))
     std::cout << leaf_count(forest) << "\n";
-    // match forest:
     auto& __match_subject_1 = forest;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:  # tpyc: ok
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // branches.append(3)  # mutates `forest` itself, not a copy
         branches.push_back(3);
         break;
     }
-    // case _:
     default: {
-        // print("leaf")
         std::cout << "leaf" << "\n";
         break;
     }
     }
-    // print(leaf_count(forest))
     std::cout << leaf_count(forest) << "\n";
-    // leaf: Tree[int32 | str] = "solo"
     Tree<::tpy::Union<int32_t, std::string>> leaf = "solo";
-    // print(leaf_count(leaf))
     std::cout << leaf_count(leaf) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,110 +5,117 @@ namespace tpyapp::main {
 
 
 // def test_assert_non_negative() -> None:
+//     """assert x >= 0 proves non-negative, int32->uint32 skips range check."""
+//     x: int32 = 42
+//     assert x >= 0
+//     y = uint32(x)  # tpyc: cast_safe(uint32)
+//     print(y)
 void test_assert_non_negative() {
-    // x: int32 = 42
     int32_t x = 42;
-    // assert x >= 0
     if (!((x >= 0))) ::tpy::raise_assertion_error();
-    // y = uint32(x)  # tpyc: cast_safe(uint32)
     uint32_t y = static_cast<uint32_t>(x);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_if_positive() -> None:
+//     """if x > 0 proves non-negative, int32->uint64 (widening) skips range check."""
+//     x: int32 = 10
+//     if x > 0:
+//         y = uint64(x)  # tpyc: cast_safe(uint64)
+//         print(y)
 void test_if_positive() {
-    // x: int32 = 10
     int32_t x = 10;
-    // if x > 0:
     if ((x > 0)) {
-        // y = uint64(x)  # tpyc: cast_safe(uint64)
         uint64_t y = static_cast<uint64_t>(x);
-        // print(y)
         std::cout << y << "\n";
     }
 }
 
 // def test_no_elision_unchecked() -> None:
+//     """No assertion -- cast check remains when value is not a literal."""
+//     x: int32 = int32(5)
+//     y = uint32(x)  # tpyc: cast_checked(uint32)
+//     print(y)
 void test_no_elision_unchecked() {
-    // x: int32 = int32(5)
     int32_t x = 5;
-    // y = uint32(x)  # tpyc: cast_checked(uint32)
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_no_elision_narrowing() -> None:
+//     """int64->uint32 even with assert >= 0: target is narrower, still needs check."""
+//     x: int64 = 100
+//     assert x >= 0
+//     y = uint32(x)  # tpyc: cast_checked(uint32)
+//     print(y)
 void test_no_elision_narrowing() {
-    // x: int64 = 100
     int64_t x = 100;
-    // assert x >= 0
     if (!((x >= 0))) ::tpy::raise_assertion_error();
-    // y = uint32(x)  # tpyc: cast_checked(uint32)
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_no_elision_after_reassign() -> None:
+//     """Reassignment clears range fact."""
+//     x: int32 = 10
+//     assert x >= 0
+//     x = int32(3)
+//     y = uint32(x)  # tpyc: cast_checked(uint32)
+//     print(y)
 void test_no_elision_after_reassign() {
-    // x: int32 = 10
     int32_t x = 10;
-    // assert x >= 0
     if (!((x >= 0))) ::tpy::raise_assertion_error();
-    // x = int32(3)
     x = 3;
-    // y = uint32(x)  # tpyc: cast_checked(uint32)
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_for_range_index() -> None:
+//     """Loop variable from range(n) is non-negative, cast to uint32 is safe."""
+//     n: int32 = 5
+//     for i in range(n):
+//         u = uint32(i)  # tpyc: cast_safe(uint32)
+//         print(u)
 void test_for_range_index() {
-    // n: int32 = 5
     int32_t n = 5;
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // u = uint32(i)  # tpyc: cast_safe(uint32)
         uint32_t u = static_cast<uint32_t>(i);
-        // print(u)
         std::cout << u << "\n";
     }
 }
 
 // def test_int64_to_uint64() -> None:
+//     """int64->uint64 same-width cast with assert >= 0 is safe."""
+//     x: int64 = 1000
+//     assert x >= 0
+//     y = uint64(x)  # tpyc: cast_safe(uint64)
+//     print(y)
 void test_int64_to_uint64() {
-    // x: int64 = 1000
     int64_t x = 1000;
-    // assert x >= 0
     if (!((x >= 0))) ::tpy::raise_assertion_error();
-    // y = uint64(x)  # tpyc: cast_safe(uint64)
     uint64_t y = static_cast<uint64_t>(x);
-    // print(y)
     std::cout << y << "\n";
 }
 
+// test_assert_non_negative()
+// test_if_positive()
+// test_no_elision_unchecked()
+// test_no_elision_narrowing()
+// test_no_elision_after_reassign()
+// test_for_range_index()
+// test_int64_to_uint64()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_assert_non_negative()
     test_assert_non_negative();
-    // test_if_positive()
     test_if_positive();
-    // test_no_elision_unchecked()
     test_no_elision_unchecked();
-    // test_no_elision_narrowing()
     test_no_elision_narrowing();
-    // test_no_elision_after_reassign()
     test_no_elision_after_reassign();
-    // test_for_range_index()
     test_for_range_index();
-    // test_int64_to_uint64()
     test_int64_to_uint64();
 }
 

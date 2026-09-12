@@ -5,8 +5,12 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     for v in gen(1, 2, 0):
+//         print(v)
+//     print("--")
+//     for v in gen(8, 9, 1):
+//         print(v)
 void main() {
-    // for v in gen(1, 2, 0):
     {
         int32_t __tmp_1 = 1;
         int32_t __tmp_2 = 2;
@@ -16,13 +20,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in gen(8, 9, 1):
     {
         int32_t __tmp_3 = 8;
         int32_t __tmp_4 = 9;
@@ -32,18 +33,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     h.finish()
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // h.finish()
     h.finish();
 }
 
+// # Regression: after `if self.field is None: return`, reassigning the
+// # same field to None must still emit `std::nullopt` against the
+// # `std::optional<Box<T>>` storage, not bare `nullptr`.
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: after `if self.field is None: return`, reassigning the
-    // # same field to None must still emit `std::nullopt` against the
-    // # `std::optional<Box<T>>` storage, not bare `nullptr`.
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

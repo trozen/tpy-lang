@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def via_alias() -> Own[Box]:
+//     b = Box()
+//     a = b
+//     try:
+//         return b
+//     finally:
+//         a.n += 1
 Box via_alias() {
-    // b = Box()
     Box b = Box();
-    // a = b
     Box& a = b;
-    // try:
     {
         bool __fin_ran_1 = false;
         try {
-            // return b
             auto* __tpy_retp_0 = &(b);
             __fin_ran_1 = true;
-            // a.n += 1
             a.n = ::tpy::add_check<int32_t>(a.n, 1);
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_1) {
-                // a.n += 1
                 a.n = ::tpy::add_check<int32_t>(a.n, 1);
             }
             throw;
@@ -31,28 +31,30 @@ Box via_alias() {
 }
 
 // def via_closure() -> Own[Box]:
+//     b = Box()
+//
+//     def bump() -> None:
+//         nonlocal b
+//         b.n += 1
+//
+//     try:
+//         return b
+//     finally:
+//         bump()
 Box via_closure() {
-    // b = Box()
     Box b = Box();
-    // def bump() -> None:
     auto bump = [&b]() {
-        // nonlocal b
-        // b.n += 1
         b.n = ::tpy::add_check<int32_t>(b.n, 1);
     };
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
-            // return b
             auto* __tpy_retp_0 = &(b);
             __fin_ran_2 = true;
-            // bump()
             bump();
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_2) {
-                // bump()
                 bump();
             }
             throw;
@@ -61,32 +63,34 @@ Box via_closure() {
 }
 
 // def via_closure_rebind() -> Own[Box]:
+//     # A closure REBIND keeps the eager capture: the pending return holds the
+//     # pre-rebind copy (nested-def rebinds have no slot model -- BUGS.md).
+//     b = Box()
+//
+//     def swap() -> None:
+//         nonlocal b
+//         b = Box()
+//         b.n = 99
+//
+//     try:
+//         return b
+//     finally:
+//         swap()
 Box via_closure_rebind() {
-    // # A closure REBIND keeps the eager capture: the pending return holds the
-    // # pre-rebind copy (nested-def rebinds have no slot model -- BUGS.md).
-    // b = Box()
     Box b = Box();
-    // def swap() -> None:
     auto swap = [&b]() {
-        // nonlocal b
-        // b = Box()
         b = Box();
-        // b.n = 99
         b.n = 99;
     };
-    // try:
     {
         bool __fin_ran_3 = false;
         try {
-            // return b
             Box __tpy_ret_0 = b;
             __fin_ran_3 = true;
-            // swap()
             swap();
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_3) {
-                // swap()
                 swap();
             }
             throw;
@@ -95,37 +99,39 @@ Box via_closure_rebind() {
 }
 
 // def opt_via_closure(flag: bool) -> Own[Box] | None:
+//     b: Box | None = None
+//     if flag:
+//         b = Box()
+//
+//     def bump() -> None:
+//         nonlocal b
+//         if b is not None:
+//             b.n += 1
+//
+//     try:
+//         return b
+//     finally:
+//         bump()
 std::optional<Box> opt_via_closure(bool flag) {
     std::optional<Box> __slot_1;
-    // b: Box | None = None
     Box* b = nullptr;
-    // if flag:
     if (flag) {
-        // b = Box()
         b = &*(__slot_1 = Box());
     }
-    // def bump() -> None:
     auto bump = [&b]() {
-        // nonlocal b
-        // if b is not None:
         if ((b != nullptr)) {
-            // b.n += 1
             b->n = ::tpy::add_check<int32_t>(b->n, 1);
         }
     };
-    // try:
     {
         bool __fin_ran_4 = false;
         try {
-            // return b
             auto* __tpy_retp_0 = b;
             __fin_ran_4 = true;
-            // bump()
             bump();
             return ::tpy::ptr_to_optional_move(__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_4) {
-                // bump()
                 bump();
             }
             throw;
@@ -134,35 +140,36 @@ std::optional<Box> opt_via_closure(bool flag) {
 }
 
 // def closure_dels_other() -> Own[Box]:
+//     # Inverse of the closure-del guard: deleting a DIFFERENT nonlocal is fine.
+//     b = Box()
+//     c = Box()
+//
+//     def drop_c() -> None:
+//         nonlocal c
+//         del c
+//
+//     try:
+//         return b
+//     finally:
+//         b.n += 1
+//         drop_c()
 Box closure_dels_other() {
-    // # Inverse of the closure-del guard: deleting a DIFFERENT nonlocal is fine.
-    // b = Box()
     Box b = Box();
-    // c = Box()
     Box c = Box();
-    // def drop_c() -> None:
     auto drop_c = [&c]() {
-        // nonlocal c
-        // del c
         { auto __del_sink = std::move(c); }
     };
-    // try:
     {
         bool __fin_ran_5 = false;
         try {
-            // return b
             auto* __tpy_retp_0 = &(b);
             __fin_ran_5 = true;
-            // b.n += 1
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
-            // drop_c()
             drop_c();
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_5) {
-                // b.n += 1
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
-                // drop_c()
                 drop_c();
             }
             throw;
@@ -171,22 +178,22 @@ Box closure_dels_other() {
 }
 
 // def untouched() -> Own[Box]:
+//     b = Box()
+//     try:
+//         return b
+//     finally:
+//         print("cleanup")
 Box untouched() {
-    // b = Box()
     Box b = Box();
-    // try:
     {
         bool __fin_ran_6 = false;
         try {
-            // return b
             auto* __tpy_retp_0 = &(b);
             __fin_ran_6 = true;
-            // print("cleanup")
             std::cout << "cleanup" << "\n";
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_6) {
-                // print("cleanup")
                 std::cout << "cleanup" << "\n";
             }
             throw;
@@ -195,28 +202,27 @@ Box untouched() {
 }
 
 // def del_other_local() -> Own[Box]:
+//     b = Box()
+//     c = Box()
+//     try:
+//         return b
+//     finally:
+//         b.n += 1
+//         del c
 Box del_other_local() {
-    // b = Box()
     Box b = Box();
-    // c = Box()
     Box c = Box();
-    // try:
     {
         bool __fin_ran_7 = false;
         try {
-            // return b
             auto* __tpy_retp_0 = &(b);
             __fin_ran_7 = true;
-            // b.n += 1
             b.n = ::tpy::add_check<int32_t>(b.n, 1);
-            // del c
             { auto __del_sink = std::move(c); }
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_7) {
-                // b.n += 1
                 b.n = ::tpy::add_check<int32_t>(b.n, 1);
-                // del c
                 { auto __del_sink = std::move(c); }
             }
             throw;
@@ -225,34 +231,34 @@ Box del_other_local() {
 }
 
 // def main() -> None:
+//     print(via_alias().n)
+//     print(via_closure().n)
+//     print(via_closure_rebind().n)
+//     r = opt_via_closure(True)
+//     if r is not None:
+//         print(r.n)
+//     print(closure_dels_other().n)
+//     print(untouched().n)
+//     print(del_other_local().n)
 void main() {
-    // print(via_alias().n)
     std::cout << via_alias().n << "\n";
-    // print(via_closure().n)
     std::cout << via_closure().n << "\n";
-    // print(via_closure_rebind().n)
     std::cout << via_closure_rebind().n << "\n";
-    // r = opt_via_closure(True)
     std::optional<Box> r = opt_via_closure(true);
-    // if r is not None:
     if ((r.has_value())) {
-        // print(r.n)
         std::cout << (*r).n << "\n";
     }
-    // print(closure_dels_other().n)
     std::cout << closure_dels_other().n << "\n";
-    // print(untouched().n)
     std::cout << untouched().n << "\n";
-    // print(del_other_local().n)
     std::cout << del_other_local().n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

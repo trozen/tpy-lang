@@ -11,8 +11,11 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f() -> Own[Handle]:
 Handle f();
+// def f_alias() -> Own[Handle]:
 Handle f_alias();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -38,6 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline Handle::Handle() : n(10) {}
 void __tpy_init();
 } // namespace tpyapp::main

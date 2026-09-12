@@ -5,31 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1, 2)
+//     print(p)
+//     print(p.x, p.y)
+//     print(p == Point(1, 2))
+//     print(p == Point(3, 4))
+//
+//     c = Config("test", 42)
+//     print(c)
 void main() {
-    // p = Point(1, 2)
     Point p = Point(1, 2);
-    // print(p)
     std::cout << p << "\n";
-    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
-    // print(p == Point(1, 2))
     std::cout << ::tpy::print_bool(((p) == (Point(1, 2)))) << "\n";
-    // print(p == Point(3, 4))
     std::cout << ::tpy::print_bool(((p) == (Point(3, 4)))) << "\n";
-    // c = Config("test", 42)
     Config c = Config("test", 42);
-    // print(c)
     std::cout << c << "\n";
 }
 
+// # @dataclass(frozen=True): immutable instances with auto __init__ and __eq__
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass(frozen=True): immutable instances with auto __init__ and __eq__
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

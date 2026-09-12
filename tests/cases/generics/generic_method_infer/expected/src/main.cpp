@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box[int32](int32(10))
+//     r1 = b.transform(42)
+//     print(r1)
+//     r2 = b.transform("hello")
+//     print(r2)
+//     r3 = b.transform(True)
+//     print(r3)
 void main() {
-    // b = Box[int32](int32(10))
     Box<int32_t> b = Box<int32_t>(10);
-    // r1 = b.transform(42)
     int32_t r1 = b.transform<int32_t>(42);
-    // print(r1)
     std::cout << r1 << "\n";
-    // r2 = b.transform("hello")
     std::string r2 = b.transform<std::string>("hello");
-    // print(r2)
     std::cout << r2 << "\n";
-    // r3 = b.transform(True)
     bool r3 = b.transform<bool>(true);
-    // print(r3)
     std::cout << ::tpy::print_bool(r3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

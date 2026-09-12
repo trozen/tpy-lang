@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f = open_binary("tpy_test_badmode.bin", "zb")
+//     f.close()
 void main() {
-    // f = open_binary("tpy_test_badmode.bin", "zb")
     ::tpy::BinaryFile f = ::tpy::builtin_open_binary("tpy_test_badmode.bin", "zb");
-    // f.close()
     f.close();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,8 +12,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(a: Dog | Cat, strict: bool) -> str:
 std::string classify(::tpy::Union<const Cat*, const Dog*> a, bool strict);
+// def as_guard(a: Dog | Cat) -> str:
 std::string as_guard(::tpy::Union<const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // @dataclass

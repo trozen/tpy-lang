@@ -5,16 +5,24 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int32]:
+//     pr = Pair(7)
+//     with pr as p:
+//         pass
+//     yield 1
+//     item, tag = p
+//     item.v += 1
+//     yield item.v
+//     yield tag
+//     # Observed through the manager's own handle: a copied element
+//     # would leave this at 7.
+//     yield pr.item.v
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // pr = Pair(7)
         pr.emplace(Pair(7));
-        // with pr as p:
         auto& __ctx_1 = (*pr);
         p = __ctx_1.__enter__();
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -25,28 +33,22 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // item, tag = p
         auto& __tup_1 = p;
         item = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         tag = std::get<1>(__tup_1);
-        // item.v += 1
         item->v = ::tpy::add_check<int32_t>(item->v, 1);
-        // yield item.v
         __state = S_RESUME_1;
         return item->v;
     }
     case S_RESUME_1: {
-        // yield tag
         __state = S_RESUME_2;
         return tag;
     }
     case S_RESUME_2: {
-        // yield pr.item.v
         __state = S_RESUME_3;
         return (*pr).item.v;
     }
@@ -66,8 +68,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for v in gen():
+//         print(v)
 void main() {
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -75,18 +78,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

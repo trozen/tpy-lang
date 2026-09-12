@@ -13,7 +13,9 @@ using ::tpystd::io::FileIO;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def feed(data: bytes) -> int64:
 int64_t feed(::tpy::BytesView data);
+// def main() -> None:
 void main();
 
 void __tpy_init();

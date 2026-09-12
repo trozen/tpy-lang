@@ -12,7 +12,9 @@ struct Guard;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run() -> int32:
 int32_t run();
+// def main() -> None:
 void main();
 
 // class Registry:
@@ -52,17 +54,18 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 
 // def __init__(self, code: int32):
+//     self.code = code
 inline Guard::Guard(int32_t code) : code(code) {}
 
 // def __enter__(self) -> "Guard":
+//     return self
 inline Guard& Guard::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Guard::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

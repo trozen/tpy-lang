@@ -3,15 +3,14 @@
 
 namespace tpyapp::c {
 
-// LIMIT: int32 = int32(100)
 int32_t LIMIT{};
 
+// LIMIT: int32 = int32(100)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // LIMIT: int32 = int32(100)
     LIMIT = 100;
 }
 

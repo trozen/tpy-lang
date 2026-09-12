@@ -7,23 +7,23 @@ namespace myproject::core {
 // # Test that # tpy: namespace overrides the default tpyapp namespace
 // # tpy: cpp_namespace("myproject::core")
 // def greet(name: str) -> str:
+//     return "hello " + name
 std::string greet(std::string_view name) {
-    // return "hello " + name
     return (::tpy::str_concat("hello ", name));
 }
 
 // def main() -> None:
+//     print(greet("world"))
 void main() {
-    // print(greet("world"))
     std::cout << greet("world") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

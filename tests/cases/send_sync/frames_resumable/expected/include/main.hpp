@@ -23,14 +23,23 @@ struct __coro_tup_ref;
 struct __coro_tup_val;
 struct __coro_Counter_bump;
 
+// async def inner(n: int32) -> int32:     # tpyc: frame_send(yes)
 __coro_inner inner(int32_t n);
+// async def outer(n: int32) -> int32:     # tpyc: frame_send(yes)
 __coro_outer outer(int32_t n);
+// async def borrowing(xs: list[int32]) -> int32:  # tpyc: frame_send(no)
 __coro_borrowing borrowing(std::vector<int32_t>& xs);
+// async def chained(n: int32) -> int32:   # tpyc: frame_send(no)
 __coro_chained chained(int32_t n);
+// def gen_str(s: str) -> Iterator[int32]:         # tpyc: frame_send(no) frame_sync(yes)
 __gen_gen_str gen_str(std::string_view s);
+// def gen_own(xs: Own[list[int32]]) -> Iterator[int32]:  # tpyc: frame_send(yes)
 __gen_gen_own gen_own(std::vector<int32_t> xs);
+// async def tup_ref(pair: tuple[Counter, Counter]) -> int32:  # tpyc: frame_send(no)
 __coro_tup_ref tup_ref(std::tuple<const Counter*, const Counter*> pair);
+// async def tup_val(pair: tuple[int32, int32]) -> int32:      # tpyc: frame_send(yes)
 __coro_tup_val tup_val(std::tuple<int32_t, int32_t> pair);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -51,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: Counter.bump
+// async def bump(self) -> int32:      # tpyc: frame_send(no)
 struct __coro_Counter_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -77,7 +86,7 @@ inline __coro_Counter_bump Counter::bump() const {
     return __coro_Counter_bump(*this);
 }
 
-// Async coroutine: inner
+// async def inner(n: int32) -> int32:     # tpyc: frame_send(yes)
 struct __coro_inner {
     int32_t __state;
     bool __cancel_pending;
@@ -99,7 +108,7 @@ struct __coro_inner {
     }
 };
 
-// Async coroutine: outer
+// async def outer(n: int32) -> int32:     # tpyc: frame_send(yes)
 struct __coro_outer {
     int32_t __state;
     bool __cancel_pending;
@@ -124,7 +133,7 @@ struct __coro_outer {
     }
 };
 
-// Async coroutine: borrowing
+// async def borrowing(xs: list[int32]) -> int32:  # tpyc: frame_send(no)
 struct __coro_borrowing {
     int32_t __state;
     bool __cancel_pending;
@@ -146,7 +155,7 @@ struct __coro_borrowing {
     }
 };
 
-// Async coroutine: chained
+// async def chained(n: int32) -> int32:   # tpyc: frame_send(no)
 struct __coro_chained {
     int32_t __state;
     bool __cancel_pending;
@@ -171,7 +180,7 @@ struct __coro_chained {
     }
 };
 
-// Async coroutine: tup_ref
+// async def tup_ref(pair: tuple[Counter, Counter]) -> int32:  # tpyc: frame_send(no)
 struct __coro_tup_ref {
     int32_t __state;
     bool __cancel_pending;
@@ -193,7 +202,7 @@ struct __coro_tup_ref {
     }
 };
 
-// Async coroutine: tup_val
+// async def tup_val(pair: tuple[int32, int32]) -> int32:      # tpyc: frame_send(yes)
 struct __coro_tup_val {
     int32_t __state;
     bool __cancel_pending;
@@ -215,7 +224,7 @@ struct __coro_tup_val {
     }
 };
 
-// Generator: gen_str
+// def gen_str(s: str) -> Iterator[int32]:         # tpyc: frame_send(no) frame_sync(yes)
 struct __gen_gen_str : public ::tpy::next_iter_mixin<__gen_gen_str, int32_t> {
     int32_t __state;
     std::string s;
@@ -237,7 +246,7 @@ struct __gen_gen_str : public ::tpy::next_iter_mixin<__gen_gen_str, int32_t> {
     }
 };
 
-// Generator: gen_own
+// def gen_own(xs: Own[list[int32]]) -> Iterator[int32]:  # tpyc: frame_send(yes)
 struct __gen_gen_own : public ::tpy::next_iter_mixin<__gen_gen_own, int32_t> {
     int32_t __state;
     std::vector<int32_t> xs;
@@ -262,15 +271,19 @@ struct __gen_gen_own : public ::tpy::next_iter_mixin<__gen_gen_own, int32_t> {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
+// def gen_while(n: int32) -> Iterator[int32]:     # tpyc: frame_send(yes)
+//     i = 0
+//     while i < n:
+//         yield i
+//         i += 1
 inline auto gen_while(int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {
             while ((i < n)) {
                 auto __val = i;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }
@@ -279,6 +292,9 @@ inline auto gen_while(int32_t n) {
     );
 }
 
+// def gen_for(n: int32) -> Iterator[int32]:       # tpyc: frame_send(no)
+//     for i in range(n):
+//         yield i * 2
 inline auto gen_for(int32_t n) {
     return ::tpy::make_generator<int32_t>(
         [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<int32_t> {

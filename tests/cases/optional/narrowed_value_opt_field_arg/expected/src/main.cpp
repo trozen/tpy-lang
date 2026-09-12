@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Conn("h", None).whole(), Conn("h", 1.0).whole())
+//     print(Conn("h", None).narrowed(), Conn("h", 1.0).narrowed())
 void main() {
-    // print(Conn("h", None).whole(), Conn("h", 1.0).whole())
     std::cout << Conn("h", std::nullopt).whole() << " " << Conn("h", 1.0).whole() << "\n";
-    // print(Conn("h", None).narrowed(), Conn("h", 1.0).narrowed())
     std::cout << Conn("h", std::nullopt).narrowed() << " " << Conn("h", 1.0).narrowed() << "\n";
 }
 
+// # A value-repr Optional FIELD at an Optional parameter slot: passed whole it is
+// # the field read, but a NARROWED read is the deref instead -- both have to reach
+// # the callee with the value the field holds.
+// import dialer
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A value-repr Optional FIELD at an Optional parameter slot: passed whole it is
-    // # the field read, but a NARROWED read is the deref instead -- both have to reach
-    // # the callee with the value the field holds.
-    // import dialer
     ::tpyapp::dialer::__tpy_init();
-    // main()
     main();
 }
 

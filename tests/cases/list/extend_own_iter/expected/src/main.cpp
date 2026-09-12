@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: list[int32] = [1, 2, 3]
+//     b: list[int32] = [10, 20]
+//     b.extend(own_iter(a))
+//     print(b)
 void main() {
-    // a: list[int32] = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // b: list[int32] = [10, 20]
     std::vector<int32_t> b = {10, 20};
-    // b.extend(own_iter(a))
     ::tpy::list_extend(b, ::tpy::own_iter(std::move(a)));
-    // print(b)
     std::cout << ::tpy::ListPrinter(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

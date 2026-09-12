@@ -8,11 +8,16 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// X: Final[float32] = float32(0.5)
 inline constexpr float X = 0.5f;
+// Y: Final[int64] = int64(42)
 inline constexpr int64_t Y = 42;
+// BASE: Final[int32] = 10
 inline constexpr int32_t BASE = 10;
+// Z: Final[int64] = int64(BASE)
 inline constexpr int64_t Z = ::tpy::int_cast_check<int64_t>(BASE);
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

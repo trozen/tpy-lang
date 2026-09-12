@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // # free function, union param, `as` capture
 // def free_union(a: Cat | Dog) -> None:
+//     match a:
+//         case Cat() as c:
+//             c.hunger -= 1  # tpyc: ok
+//         case Dog() as d:
+//             d.bones += 1
 void free_union(::tpy::Union<Cat*, Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Cat() as c:
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& c = __case_0;
-        // c.hunger -= 1  # tpyc: ok
         c.hunger = ::tpy::sub_check<int32_t>(c.hunger, 1);
         break;
     }
-    // case Dog() as d:
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto& d = __case_1;
-        // d.bones += 1
         d.bones = ::tpy::add_check<int32_t>(d.bones, 1);
         break;
     }
@@ -31,14 +31,14 @@ void free_union(::tpy::Union<Cat*, Dog*> a) {
 
 // # free function, record param, bare-name capture
 // def free_record(b: Counter) -> None:
+//     match b:
+//         case q:
+//             q.n = 99  # tpyc: ok
 void free_record(Counter& b) {
-    // match b:
     Counter* q;
     auto& __match_subject_1 = b;
-    // case q:
     {
         q = &(__match_subject_1);
-        // q.n = 99  # tpyc: ok
         q->n = 99;
     }
 }
@@ -46,28 +46,27 @@ void free_record(Counter& b) {
 // # or-pattern alternatives binding one field sub-capture; the mutation is
 // # STRUCTURAL (append), which reaches the param through the same alias
 // def or_sub_capture(a: Cat | Dog) -> None:
+//     match a:
+//         case Cat(tags=ts) | Dog(tags=ts):
+//             ts.append("x")  # tpyc: ok
+//         case _:
+//             pass
 void or_sub_capture(::tpy::Union<Cat*, Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Cat(tags=ts) | Dog(tags=ts):
     case 0: {
         auto& __case_0_0 = *std::get<0>(__match_subject_1);
         auto& ts = __case_0_0.tags;
-        // ts.append("x")  # tpyc: ok
         ts.push_back("x");
         break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& ts = __case_0_1.tags;
-        // ts.append("x")  # tpyc: ok
         ts.push_back("x");
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
@@ -75,48 +74,48 @@ void or_sub_capture(::tpy::Union<Cat*, Dog*> a) {
 
 // # Optional subject: the capture binds the narrowed payload
 // def optional_subject(x: Counter | None) -> None:
+//     match x:
+//         case None:
+//             pass
+//         case v:
+//             v.n += 1  # tpyc: ok
 void optional_subject(Counter* x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // pass
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case v:
         {
             auto& v = __match_inner_1;
-            // v.n += 1  # tpyc: ok
             v.n = ::tpy::add_check<int32_t>(v.n, 1);
         }
     }
 }
 
 // def add_one(c: Counter) -> None:
+//     c.n += 1
 void add_one(Counter& c) {
-    // c.n += 1
     c.n = ::tpy::add_check<int32_t>(c.n, 1);
 }
 
 // # the capture is handed to a MUTATING callee rather than written directly
 // def via_callee(u: Counter | Cat) -> None:
+//     match u:
+//         case Counter() as got:
+//             add_one(got)  # tpyc: ok
+//         case Cat() as c:
+//             c.hunger += 1
 void via_callee(::tpy::Union<Cat*, Counter*> u) {
-    // match u:
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
-    // case Counter() as got:
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& got = __case_0;
-        // add_one(got)  # tpyc: ok
         add_one(got);
         break;
     }
-    // case Cat() as c:
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& c = __case_1;
-        // c.hunger += 1
         c.hunger = ::tpy::add_check<int32_t>(c.hunger, 1);
         break;
     }
@@ -126,19 +125,19 @@ void via_callee(::tpy::Union<Cat*, Counter*> u) {
 // # a capture RE-SEATED by a nested match holds one loan per subject, so the
 // # write has to credit both params, not whichever loan came first
 // def reseated(h: Bag, g: Bag) -> None:
+//     match h:
+//         case Bag(c=q):
+//             match g:
+//                 case Bag(c=q):
+//                     q.n += 7  # tpyc: ok
 void reseated(Bag& h, Bag& g) {
-    // match h:
     Counter* q;
     auto& __match_subject_1 = h;
-    // case Bag(c=q):
     {
         q = &(__match_subject_1.c);
-        // match g:
         auto& __match_subject_2 = g;
-        // case Bag(c=q):
         {
             q = &(__match_subject_2.c);
-            // q.n += 7  # tpyc: ok
             q->n = ::tpy::add_check<int32_t>(q->n, 7);
         }
     }
@@ -147,19 +146,19 @@ void reseated(Bag& h, Bag& g) {
 // # the same re-seated capture reaching its mutation through a CALLEE rather
 // # than a direct write: the call-edge attribution owes every loan an edge
 // def reseated_callee(h: Bag, g: Bag) -> None:
+//     match h:
+//         case Bag(c=q):
+//             match g:
+//                 case Bag(c=q):
+//                     add_one(q)  # tpyc: ok
 void reseated_callee(Bag& h, Bag& g) {
-    // match h:
     Counter* q;
     auto& __match_subject_1 = h;
-    // case Bag(c=q):
     {
         q = &(__match_subject_1.c);
-        // match g:
         auto& __match_subject_2 = g;
-        // case Bag(c=q):
         {
             q = &(__match_subject_2.c);
-            // add_one(q)  # tpyc: ok
             add_one((*q));
         }
     }
@@ -168,78 +167,78 @@ void reseated_callee(Bag& h, Bag& g) {
 // # SUBSCRIPT-rooted subject: the loan is rooted at the container, so the write
 // # through the capture keeps the container param mutable
 // def subscript_subject(xs: list[Counter], i: int32) -> None:
+//     match xs[i]:
+//         case Counter() as e:
+//             e.n += 3  # tpyc: ok
 void subscript_subject(std::vector<Counter>& xs, int32_t i) {
-    // match xs[i]:
     Counter* e;
     auto& __match_subject_1 = ::tpy::__getitem__(xs, i);
-    // case Counter() as e:
     {
         e = &(__match_subject_1);
-        // e.n += 3  # tpyc: ok
         e->n = ::tpy::add_check<int32_t>(e->n, 3);
     }
 }
 
 // # POSITIONAL class-pattern sub-captures bind the same way the keyword ones do
 // def positional_sub_capture(p: Pair) -> None:
+//     match p:
+//         case Pair(a, b):
+//             a.n += 1  # tpyc: ok
+//             b.n += 2
 void positional_sub_capture(Pair& p) {
-    // match p:
     Slot* a;
     Slot* b;
     auto& __match_subject_1 = p;
-    // case Pair(a, b):
     {
         a = &(__match_subject_1.left);
         b = &(__match_subject_1.right);
-        // a.n += 1  # tpyc: ok
         a->n = ::tpy::add_check<int32_t>(a->n, 1);
-        // b.n += 2
         b->n = ::tpy::add_check<int32_t>(b->n, 2);
     }
 }
 
 // # @dynamic-protocol subject: the arm dispatches by runtime type
 // def poly_subject(p: Pet) -> None:
+//     match p:
+//         case Kitty() as seen:
+//             seen.bump()  # tpyc: ok
+//         case _:
+//             pass
 void poly_subject(Pet& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Kitty() as seen:
     if (Kitty* __mpoly_0 = dynamic_cast<Kitty*>(&__match_subject_1)) {
         Kitty& __case_0 = *__mpoly_0;
         auto& seen = __case_0;
-        // seen.bump()  # tpyc: ok
         seen.bump();
-    // case _:
     } else {
-        // pass
     }
 }
 
 // def gen_body(a: Counter | Cat) -> Iterator[int32]:
+//     match a:
+//         case Counter() as c:
+//             c.n += 1  # tpyc: ok
+//         case Cat() as k:
+//             k.hunger += 1
+//     yield 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // match a:
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case Counter() as c:
         case 1: {
             auto& __case_0 = *std::get<1>(__match_subject_1);
             auto& c = __case_0;
-            // c.n += 1  # tpyc: ok
             c.n = ::tpy::add_check<int32_t>(c.n, 1);
             break;
         }
-        // case Cat() as k:
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
             auto& k = __case_1;
-            // k.hunger += 1
             k.hunger = ::tpy::add_check<int32_t>(k.hunger, 1);
             break;
         }
         }
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
@@ -259,30 +258,31 @@ __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
 }
 
 // async def async_body(a: Counter | Cat) -> int32:
+//     match a:
+//         case Counter() as c:
+//             c.n += 1  # tpyc: ok
+//             return c.n
+//         case Cat() as k:
+//             return k.hunger
+//     return 0
 ::tpystd::tpy::Poll<int32_t> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // match a:
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case Counter() as c:
         case 1: {
             auto& __case_0 = *std::get<1>(__match_subject_1);
             auto& c = __case_0;
-            // c.n += 1  # tpyc: ok
             c.n = ::tpy::add_check<int32_t>(c.n, 1);
-            // return c.n
             __state = S_DONE;
             int32_t __tpy_async_ret = c.n;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
             break;
         }
-        // case Cat() as k:
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
             auto& k = __case_1;
-            // return k.hunger
             __state = S_DONE;
             int32_t __tpy_async_ret = k.hunger;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -290,7 +290,6 @@ __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
         }
         }
         ::std::unreachable();
-        // return 0
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -309,23 +308,23 @@ __coro_async_body async_body(::tpy::Union<Cat*, Counter*> a) {
 // # inverse: an arm that only READS keeps the param's non-mutating verdict --
 // # the snapshot pins the `const std::variant<...>` this section must keep
 // def read_only(a: Counter | Cat) -> int32:
+//     match a:
+//         case Counter() as c:
+//             return c.n
+//         case Cat() as k:
+//             return k.hunger
 int32_t read_only(::tpy::Union<const Cat*, const Counter*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Counter() as c:
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& c = __case_0;
-        // return c.n
         return c.n;
         break;
     }
-    // case Cat() as k:
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& k = __case_1;
-        // return k.hunger
         return k.hunger;
         break;
     }
@@ -334,161 +333,191 @@ int32_t read_only(::tpy::Union<const Cat*, const Counter*> a) {
 }
 
 // def clone_of(c: Counter) -> Own[Counter]:
+//     return Counter(c.n)
 Counter clone_of(const Counter& c) {
-    // return Counter(c.n)
     return Counter(c.n);
 }
 
 // # inverse: an RVALUE subject owns a temporary, so the write reaches no caller
 // # storage -- `c` must stay a non-mutating (const) param
 // def rvalue_subject(c: Counter) -> int32:
+//     match clone_of(c):
+//         case Counter() as q:
+//             q.n += 1
+//             return q.n
+//     return 0
 int32_t rvalue_subject(const Counter& c) {
-    // match clone_of(c):
     auto __match_subject_1 = clone_of(c);
-    // case Counter() as q:
     {
         auto& q = __match_subject_1;
-        // q.n += 1
         q.n = ::tpy::add_check<int32_t>(q.n, 1);
-        // return q.n
         return q.n;
     }
     ::std::unreachable();
-    // return 0
     return 0;
 }
 
 // # inverse: a free-copy scalar capture is a durable COPY, so rebinding and
 // # writing it leaves the subject alone
 // def scalar_capture(n: int32) -> int32:
+//     match n:
+//         case v:
+//             v = v + 1
+//             return v
+//     return 0
 int32_t scalar_capture(int32_t n) {
-    // match n:
     int32_t v;
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case v:
     default: {
         v = __match_subject_1;
-        // v = v + 1
         v = (::tpy::add_check<int32_t>(v, 1));
-        // return v
         return v;
         break;
     }
     }
     ::std::unreachable();
-    // return 0
     return 0;
 }
 
 // # LOCAL subject rather than a param: the local is already mutable, so the
 // # section pins that the capture write still lands on it
 // def local_subject() -> int32:
+//     loc = Counter(0)
+//     match loc:
+//         case Counter() as lc:
+//             lc.n += 5  # tpyc: ok
+//     return loc.n
 int32_t local_subject() {
-    // loc = Counter(0)
     Counter loc = Counter(0);
-    // match loc:
     Counter* lc;
     auto& __match_subject_1 = loc;
-    // case Counter() as lc:
     {
         lc = &(__match_subject_1);
-        // lc.n += 5  # tpyc: ok
         lc->n = ::tpy::add_check<int32_t>(lc->n, 5);
     }
-    // return loc.n
     return loc.n;
 }
 
 // def main() -> None:
+//     cat = Cat(5)
+//     free_union(cat)
+//     print("free_union:", cat.hunger)
+//
+//     ctr = Counter(1)
+//     free_record(ctr)
+//     print("free_record:", ctr.n)
+//
+//     dog = Dog(2)
+//     or_sub_capture(dog)
+//     print("or_sub_capture:", len(dog.tags), dog.tags[0])
+//
+//     opt = Counter(10)
+//     optional_subject(opt)
+//     print("optional_subject:", opt.n)
+//
+//     callee = Counter(20)
+//     via_callee(callee)
+//     print("via_callee:", callee.n)
+//
+//     bag = Bag(30)
+//     bag.bump()
+//     print("bump:", bag.value())
+//
+//     left = Bag(40)
+//     right = Bag(50)
+//     reseated(left, right)
+//     print("reseated:", left.value(), right.value())
+//
+//     cl = Bag(40)
+//     cr = Bag(50)
+//     reseated_callee(cl, cr)
+//     print("reseated_callee:", cl.value(), cr.value())
+//
+//     own = Owner(1)
+//     other = Bag(10)
+//     own.touch(other)
+//     print("self_and_param_reseat:", own.value(), other.value())
+//
+//     xs = [Counter(1), Counter(2)]
+//     subscript_subject(xs, 1)
+//     print("subscript_subject:", xs[0].n, xs[1].n)
+//
+//     pair = Pair(Slot(10), Slot(10))
+//     positional_sub_capture(pair)
+//     print("positional_sub_capture:", pair.left.n, pair.right.n)
+//
+//     uh = UnionHolder(0)
+//     uh.bump(42)
+//     print("union_field_method:", uh.value())
+//
+//     kitty = Kitty(9)
+//     poly_subject(kitty)
+//     print("poly_subject:", kitty.lives)
+//
+//     gen_ctr = Counter(60)
+//     for got in gen_body(gen_ctr):
+//         print("gen_body:", got)
+//     print("gen_body after:", gen_ctr.n)
+//
+//
+//     async_ctr = Counter(70)
+//     print("async_body:", asyncio.run(async_body(async_ctr)))
+//     print("async_body after:", async_ctr.n)
+//
+//     ro = Counter(80)
+//     print("read_only:", read_only(ro), ro.n)
+//
+//     rv = Counter(90)
+//     print("rvalue_subject:", rvalue_subject(rv), rv.n)
+//
+//     print("scalar_capture:", scalar_capture(100))
+//
+//     print("local_subject:", local_subject())
 void main() {
-    // cat = Cat(5)
     Cat cat = Cat(5);
-    // free_union(cat)
     free_union(::tpy::Union<Cat*, Dog*>{&(cat)});
-    // print("free_union:", cat.hunger)
     std::cout << "free_union:" << " " << cat.hunger << "\n";
-    // ctr = Counter(1)
     Counter ctr = Counter(1);
-    // free_record(ctr)
     free_record(ctr);
-    // print("free_record:", ctr.n)
     std::cout << "free_record:" << " " << ctr.n << "\n";
-    // dog = Dog(2)
     Dog dog = Dog(2);
-    // or_sub_capture(dog)
     or_sub_capture(::tpy::Union<Cat*, Dog*>{&(dog)});
-    // print("or_sub_capture:", len(dog.tags), dog.tags[0])
     std::cout << "or_sub_capture:" << " " << ::tpy::__len__(dog.tags) << " " << ::tpy::__getitem__(dog.tags, 0) << "\n";
-    // opt = Counter(10)
     Counter opt = Counter(10);
-    // optional_subject(opt)
     optional_subject(&(opt));
-    // print("optional_subject:", opt.n)
     std::cout << "optional_subject:" << " " << opt.n << "\n";
-    // callee = Counter(20)
     Counter callee = Counter(20);
-    // via_callee(callee)
     via_callee(::tpy::Union<Cat*, Counter*>{&(callee)});
-    // print("via_callee:", callee.n)
     std::cout << "via_callee:" << " " << callee.n << "\n";
-    // bag = Bag(30)
     Bag bag = Bag(30);
-    // bag.bump()
     bag.bump();
-    // print("bump:", bag.value())
     std::cout << "bump:" << " " << bag.value() << "\n";
-    // left = Bag(40)
     Bag left = Bag(40);
-    // right = Bag(50)
     Bag right = Bag(50);
-    // reseated(left, right)
     reseated(left, right);
-    // print("reseated:", left.value(), right.value())
     std::cout << "reseated:" << " " << left.value() << " " << right.value() << "\n";
-    // cl = Bag(40)
     Bag cl = Bag(40);
-    // cr = Bag(50)
     Bag cr = Bag(50);
-    // reseated_callee(cl, cr)
     reseated_callee(cl, cr);
-    // print("reseated_callee:", cl.value(), cr.value())
     std::cout << "reseated_callee:" << " " << cl.value() << " " << cr.value() << "\n";
-    // own = Owner(1)
     Owner own = Owner(1);
-    // other = Bag(10)
     Bag other = Bag(10);
-    // own.touch(other)
     own.touch(other);
-    // print("self_and_param_reseat:", own.value(), other.value())
     std::cout << "self_and_param_reseat:" << " " << own.value() << " " << other.value() << "\n";
-    // xs = [Counter(1), Counter(2)]
     std::vector<Counter> xs = {Counter(1), Counter(2)};
-    // subscript_subject(xs, 1)
     subscript_subject(xs, 1);
-    // print("subscript_subject:", xs[0].n, xs[1].n)
     std::cout << "subscript_subject:" << " " << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(xs, 1).n << "\n";
-    // pair = Pair(Slot(10), Slot(10))
     Pair pair = Pair(Slot(10), Slot(10));
-    // positional_sub_capture(pair)
     positional_sub_capture(pair);
-    // print("positional_sub_capture:", pair.left.n, pair.right.n)
     std::cout << "positional_sub_capture:" << " " << pair.left.n << " " << pair.right.n << "\n";
-    // uh = UnionHolder(0)
     UnionHolder uh = UnionHolder(0);
-    // uh.bump(42)
     uh.bump(42);
-    // print("union_field_method:", uh.value())
     std::cout << "union_field_method:" << " " << uh.value() << "\n";
-    // kitty = Kitty(9)
     Kitty kitty = Kitty(9);
-    // poly_subject(kitty)
     poly_subject(kitty);
-    // print("poly_subject:", kitty.lives)
     std::cout << "poly_subject:" << " " << kitty.lives << "\n";
-    // gen_ctr = Counter(60)
     Counter gen_ctr = Counter(60);
-    // for got in gen_body(gen_ctr):
     {
         auto __src_0 = gen_body(::tpy::Union<Cat*, Counter*>{&(gen_ctr)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -496,47 +525,37 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t got = ::tpy::unwrap_ref(*__r_1);
-        // print("gen_body:", got)
         std::cout << "gen_body:" << " " << got << "\n";
         }
     }
-    // print("gen_body after:", gen_ctr.n)
     std::cout << "gen_body after:" << " " << gen_ctr.n << "\n";
-    // async_ctr = Counter(70)
     Counter async_ctr = Counter(70);
-    // print("async_body:", asyncio.run(async_body(async_ctr)))
     std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_body(::tpy::Union<Cat*, Counter*>{&(async_ctr)}))) << "\n";
-    // print("async_body after:", async_ctr.n)
     std::cout << "async_body after:" << " " << async_ctr.n << "\n";
-    // ro = Counter(80)
     Counter ro = Counter(80);
-    // print("read_only:", read_only(ro), ro.n)
     std::cout << "read_only:" << " " << read_only(::tpy::Union<const Cat*, const Counter*>{&(ro)}) << " " << ro.n << "\n";
-    // rv = Counter(90)
     Counter rv = Counter(90);
-    // print("rvalue_subject:", rvalue_subject(rv), rv.n)
     std::cout << "rvalue_subject:" << " " << rvalue_subject(rv) << " " << rv.n << "\n";
-    // print("scalar_capture:", scalar_capture(100))
     std::cout << "scalar_capture:" << " " << scalar_capture(100) << "\n";
-    // print("local_subject:", local_subject())
     std::cout << "local_subject:" << " " << local_subject() << "\n";
 }
 
+// # A mutation through a `match`-arm capture is credited to the matched
+// # subject, exactly as the `isinstance` twin's is: the param stays mutable,
+// # the enclosing method loses its inferred readonly, and the write reaches the
+// # caller's object. Every section mutates AFTER the boundary and reads the
+// # change back through the caller, so a silent copy shows up as a wrong value.
+// # The three inverse sections at the end pin what must NOT move.
+// import asyncio
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A mutation through a `match`-arm capture is credited to the matched
-    // # subject, exactly as the `isinstance` twin's is: the param stays mutable,
-    // # the enclosing method loses its inferred readonly, and the write reaches the
-    // # caller's object. Every section mutates AFTER the boundary and reads the
-    // # change back through the caller, so a silent copy shows up as a wrong value.
-    // # The three inverse sections at the end pin what must NOT move.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

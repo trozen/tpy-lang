@@ -5,99 +5,98 @@ namespace tpyapp::main {
 
 
 // def pick(x: A | B | C | D) -> str:
+//     match x:
+//         # Equivalent to `case A() | B() | C() | D():` at every depth.
+//         case ((A() | B()) | C()) | D():
+//             return "any"
+//     return "none"
 std::string pick(::tpy::Union<const A*, const B*, const C*, const D*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case ((A() | B()) | C()) | D():
     case 0:
     case 1:
     case 2:
     case 3:
     {
-        // return "any"
         return "any";
         break;
     }
     }
     ::std::unreachable();
-    // return "none"
     return "none";
 }
 
 // def value(x: A | B | C | D) -> int:
+//     match x:
+//         case ((A(n=v) | B(n=v)) | C(n=v)) | D(n=v):
+//             return v
+//     return -1
 ::tpy::BigInt value(::tpy::Union<const A*, const B*, const C*, const D*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case ((A(n=v) | B(n=v)) | C(n=v)) | D(n=v):
     case 0: {
         auto& __case_0_0 = *std::get<0>(__match_subject_1);
         auto& v = __case_0_0.n;
-        // return v
         return v;
         break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& v = __case_0_1.n;
-        // return v
         return v;
         break;
     }
     case 2: {
         auto& __case_0_2 = *std::get<2>(__match_subject_1);
         auto& v = __case_0_2.n;
-        // return v
         return v;
         break;
     }
     case 3: {
         auto& __case_0_3 = *std::get<3>(__match_subject_1);
         auto& v = __case_0_3.n;
-        // return v
         return v;
         break;
     }
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     a: A | B | C | D = A(1)
+//     b: A | B | C | D = B(2)
+//     c: A | B | C | D = C(3)
+//     d: A | B | C | D = D(4)
+//     print(pick(a), value(a))
+//     print(pick(b), value(b))
+//     print(pick(c), value(c))
+//     print(pick(d), value(d))
 void main() {
-    // a: A | B | C | D = A(1)
     ::tpy::Union<A, B, C, D> __slot_1 = A(::tpy::BigInt(1));
     ::tpy::Union<A*, B*, C*, D*> a = ::tpy::to_ptr_variant(__slot_1);
-    // b: A | B | C | D = B(2)
     ::tpy::Union<A, B, C, D> __slot_2 = B(::tpy::BigInt(2));
     ::tpy::Union<A*, B*, C*, D*> b = ::tpy::to_ptr_variant(__slot_2);
-    // c: A | B | C | D = C(3)
     ::tpy::Union<A, B, C, D> __slot_3 = C(::tpy::BigInt(3));
     ::tpy::Union<A*, B*, C*, D*> c = ::tpy::to_ptr_variant(__slot_3);
-    // d: A | B | C | D = D(4)
     ::tpy::Union<A, B, C, D> __slot_4 = D(::tpy::BigInt(4));
     ::tpy::Union<A*, B*, C*, D*> d = ::tpy::to_ptr_variant(__slot_4);
-    // print(pick(a), value(a))
     std::cout << pick(a.as_const()) << " " << value(a.as_const()) << "\n";
-    // print(pick(b), value(b))
     std::cout << pick(b.as_const()) << " " << value(b.as_const()) << "\n";
-    // print(pick(c), value(c))
     std::cout << pick(c.as_const()) << " " << value(c.as_const()) << "\n";
-    // print(pick(d), value(d))
     std::cout << pick(d.as_const()) << " " << value(d.as_const()) << "\n";
 }
 
+// # Three levels of parenthesized or-pattern groups: flattening is bottom-up,
+// # so arbitrary nesting depth collapses into one flat alternative list.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Three levels of parenthesized or-pattern groups: flattening is bottom-up,
-    // # so arbitrary nesting depth collapses into one flat alternative list.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

@@ -5,57 +5,59 @@ namespace tpyapp::main {
 
 
 // def expect_error(s: str) -> None:
+//     try:
+//         v = json.loads(s)
+//         print("UNEXPECTED OK")
+//     except JSONDecodeError as e:
+//         # Print msg + computed line/col so the cpy phase can compare.
+//         # `doc` and `pos` are runtime-equal to the inputs; not printed
+//         # to keep the output portable across CPython versions that
+//         # word the error messages slightly differently.
+//         print(e.lineno, e.colno)
 void expect_error(std::string_view s) {
-    // try:
     {
         try {
-            // v = json.loads(s)
             ::tpystd::json::JsonValue v = ::tpystd::json::loads(s);
-            // print("UNEXPECTED OK")
             std::cout << "UNEXPECTED OK" << "\n";
         } catch (const ::tpystd::json::JSONDecodeError& e) {
-            // # Print msg + computed line/col so the cpy phase can compare.
-            // # `doc` and `pos` are runtime-equal to the inputs; not printed
-            // # to keep the output portable across CPython versions that
-            // # word the error messages slightly differently.
-            // print(e.lineno, e.colno)
             std::cout << e.lineno << " " << e.colno << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     # Truncated object
+//     expect_error('{"key": ')
+//     # Trailing data
+//     expect_error('{} extra')
+//     # Unterminated string
+//     expect_error('{"key": "value')
+//     # Multi-line input -- error reported with correct line/col
+//     expect_error('{\n  "key" 123\n}')
+//     # Empty string
+//     expect_error("")
+//     # Just whitespace
+//     expect_error("   ")
 void main() {
-    // # Truncated object
-    // expect_error('{"key": ')
     expect_error("{\"key\": ");
-    // # Trailing data
-    // expect_error('{} extra')
     expect_error("{} extra");
-    // # Unterminated string
-    // expect_error('{"key": "value')
     expect_error("{\"key\": \"value");
-    // # Multi-line input -- error reported with correct line/col
-    // expect_error('{\n  "key" 123\n}')
     expect_error("{\n  \"key\" 123\n}");
-    // # Empty string
-    // expect_error("")
     expect_error("");
-    // # Just whitespace
-    // expect_error("   ")
     expect_error("   ");
 }
 
+// # JSONDecodeError surface: msg, doc, pos, lineno, colno.
+// # CPython compatibility check via the cpy phase.
+// import json
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # JSONDecodeError surface: msg, doc, pos, lineno, colno.
-    // # CPython compatibility check via the cpy phase.
-    // import json
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

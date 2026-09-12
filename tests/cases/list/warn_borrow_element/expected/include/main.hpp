@@ -11,13 +11,21 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_element_borrow_append() -> None:
 void test_element_borrow_append();
+// def test_element_borrow_subscript_assign() -> None:
 void test_element_borrow_subscript_assign();
+// def test_alias_no_warn() -> None:
 void test_alias_no_warn();
+// def test_value_type_no_borrow() -> None:
 void test_value_type_no_borrow();
+// def test_reassign_clears_borrows() -> None:
 void test_reassign_clears_borrows();
+// def test_reassign_borrower_clears() -> None:
 void test_reassign_borrower_clears();
+// def test_element_borrow_del() -> None:
 void test_element_borrow_del();
+// def test_field_borrow_write() -> None:
 void test_field_borrow_write();
 
 // class Point:
@@ -40,6 +48,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

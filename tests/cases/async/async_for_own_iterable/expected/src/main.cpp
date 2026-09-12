@@ -5,16 +5,19 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[Source]:
+//     return Source(3)
 Source make() {
-    // return Source(3)
     return Source(::tpy::BigInt(3));
 }
 
 // async def total() -> int:
+//     s = 0
+//     async for x in make():
+//         s += x
+//     return s
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s = 0
         s = 0;
         __for_itr_0.emplace((make()).__aiter__());
         __state = S_JOIN_0;
@@ -38,19 +41,16 @@ Source make() {
         }
     }
     case S_JOIN_0: {
-        // async for x in make():
         __sub_0.emplace(*__for_itr_0);
         __state = S_RESUME_0;
         continue;
     }
     case S_JOIN_1: {
-        // s += x
         s = ::tpy::add_check<int32_t>(s, (x).to_fixed_check<int32_t>());
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
-        // return s
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(s);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -67,10 +67,10 @@ __coro_total total() {
 }
 
 // async def main() -> None:
+//     print(await total())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await total())
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -80,7 +80,6 @@ __coro_total total() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await total())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -97,18 +96,18 @@ __coro_main main() {
 }
 
 // async def __anext__(self) -> int:
+//     if self.n <= 0:
+//         raise StopAsyncIteration
+//     self.n -= 1
+//     return self.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if self.n <= 0:
         if ((__self.n <= 0)) {
-            // raise StopAsyncIteration
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.n -= 1
         __self.n = (__self.n) - (::tpy::BigInt(1));
-        // return self.n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -119,18 +118,19 @@ __coro_main main() {
 }
 
 
+// # `async for` over an `Own[T]` iterable. Regression test: the codegen's
+// # __anext__ sub-struct-name resolution must unwrap `Own[T]` before
+// # looking up the iterable's __aiter__ method, otherwise it crashes with
+// # an internal CodeGenError about a non-record iterable type.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `async for` over an `Own[T]` iterable. Regression test: the codegen's
-    // # __anext__ sub-struct-name resolution must unwrap `Own[T]` before
-    // # looking up the iterable's __aiter__ method, otherwise it crashes with
-    // # an internal CodeGenError about a non-record iterable type.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

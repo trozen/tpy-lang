@@ -11,7 +11,9 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(h: Own[Handle]) -> None:
 void consume(Handle&& h);
+// def main():
 void main();
 
 // @nocopy
@@ -41,6 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 
 // def __init__(self, id: int32):
+//     self.id = id
 inline Handle::Handle(int32_t id) : id(id) {}
 
 inline Handle::Handle(Handle&& other) noexcept : id(std::move(other.id)) {
@@ -55,9 +58,9 @@ inline Handle& Handle::operator=(Handle&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("close", self.id)
 inline Handle::~Handle() {
     if (!this->__tpy_owned_) return;
-    // print("close", self.id)
     std::cout << "close" << " " << this->id << "\n";
 }
 void __tpy_init();

@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     s = h.slot
+//     if isinstance(s, A):
+//         print(s.a)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // s = h.slot
     ::tpy::Union<std::monostate, A*, B*> s = ::tpy::to_ptr_variant(h.slot);
-    // if isinstance(s, A):
     if (std::holds_alternative<A*>(s)) {
         auto& __s = *std::get<A*>(s);
-        // print(s.a)
         std::cout << __s.a << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

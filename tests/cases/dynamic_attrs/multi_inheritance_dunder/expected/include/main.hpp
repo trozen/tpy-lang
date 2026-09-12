@@ -13,6 +13,7 @@ struct Combined;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # D16 Phase 5: with multiple inheritance, the first ancestor in MRO declaring
@@ -66,21 +67,23 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 
 
 // def __init__(self, store: dict[str, str]) -> None:
+//     self._store = store
 inline WithGetattr::WithGetattr(const ::tpy::ordered_map<std::string, std::string>& store) : _store(store) {}
 
 // def __getattr__(self, name: str) -> str:
+//     return self._store[name]
 inline std::string WithGetattr::__getattr__(std::string_view name) const {
-    // return self._store[name]
     return ::tpy::__getitem__(this->_store, name);
 }
 
 // def helper(self) -> str:
+//     return "mixin"
 inline std::string Mixin::helper() const {
-    // return "mixin"
     return "mixin";
 }
 
 // def __init__(self, store: dict[str, str]) -> None:
+//     super().__init__(store)
 inline Combined::Combined(const ::tpy::ordered_map<std::string, std::string>& store) : WithGetattr(store) {}
 void __tpy_init();
 } // namespace tpyapp::main

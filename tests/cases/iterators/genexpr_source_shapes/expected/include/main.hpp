@@ -11,6 +11,7 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class P:
@@ -34,13 +35,14 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 
 // def bump(self) -> int32:
+//     self.x += 10
+//     return self.x
 inline int32_t P::bump() {
-    // self.x += 10
     this->x = ::tpy::add_check<int32_t>(this->x, 10);
-    // return self.x
     return this->x;
 }
 void __tpy_init();

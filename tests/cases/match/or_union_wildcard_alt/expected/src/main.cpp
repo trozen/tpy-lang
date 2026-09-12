@@ -5,81 +5,83 @@ namespace tpyapp::main {
 
 
 // def feed(a: Dog | Cat | None) -> str:
+//     match a:
+//         case Cat() as c:
+//             # Mutating through the arm binding must reach the caller's object.
+//             c.hunger -= 1
+//             return "cat"
+//         # The wildcard subsumes the alternatives beside it, so the group is the
+//         # catch-all rather than a per-member dispatch.
+//         case Dog() | None | _:  # tpyc: ok
+//             return "rest"
+//     return "unreached"
 std::string feed(::tpy::Union<std::monostate, Cat*, Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Cat() as c:
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& c = __case_0;
-        // # Mutating through the arm binding must reach the caller's object.
-        // c.hunger -= 1
         c.hunger = (c.hunger) - (::tpy::BigInt(1));
-        // return "cat"
         return "cat";
         break;
     }
-    // case Dog() | None | _:  # tpyc: ok
     default: {
-        // return "rest"
         return "rest";
         break;
     }
     }
     ::std::unreachable();
-    // return "unreached"
     return "unreached";
 }
 
 // def only_wildcard_covers(a: Dog | Fox | None) -> str:
+//     # Fox is reachable only through the wildcard alternative. Exhaustiveness
+//     # credits an or-group's named alternatives but not its wildcard, so the
+//     # match warns even though the group matches everything.
+//     match a:  # tpyc: warning(/non-exhaustive match on 'None \| Dog \| Fox'; missing: Fox/)
+//         case Dog() | None | _:
+//             return "any"
+//     return "unreached"
 std::string only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*> a) {
-    // # Fox is reachable only through the wildcard alternative. Exhaustiveness
-    // # credits an or-group's named alternatives but not its wildcard, so the
-    // # match warns even though the group matches everything.
-    // match a:  # tpyc: warning(/non-exhaustive match on 'None \| Dog \| Fox'; missing: Fox/)
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog() | None | _:
     default: {
-        // return "any"
         return "any";
         break;
     }
     }
-    // return "unreached"
     return "unreached";
 }
 
 // def main() -> None:
+//     d: Dog | Cat | None = Dog(5)
+//     c: Dog | Cat | None = Cat(7)
+//     print(feed(d))
+//     print(feed(c))
+//     print(feed(None))
+//     print(c.hunger)
+//     print(only_wildcard_covers(Fox(3)))
+//     print(only_wildcard_covers(None))
 void main() {
-    // d: Dog | Cat | None = Dog(5)
     ::tpy::Union<std::monostate, Cat, Dog> __slot_1 = Dog(::tpy::BigInt(5));
     ::tpy::Union<std::monostate, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat | None = Cat(7)
     ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(7));
     ::tpy::Union<std::monostate, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // print(feed(d))
     std::cout << feed(d) << "\n";
-    // print(feed(c))
     std::cout << feed(c) << "\n";
-    // print(feed(None))
     std::cout << feed(::tpy::Union<std::monostate, Cat*, Dog*>{std::monostate{}}) << "\n";
-    // print(c.hunger)
     std::cout << (*std::get<Cat*>(c)).hunger << "\n";
-    // print(only_wildcard_covers(Fox(3)))
     Fox __tmp_1 = Fox(::tpy::BigInt(3));
     std::cout << only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{&__tmp_1}) << "\n";
-    // print(only_wildcard_covers(None))
     std::cout << only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{std::monostate{}}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

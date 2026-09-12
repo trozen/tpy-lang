@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add_offset(x: float | None) -> float:
 double add_offset(std::optional<double> x);
 
 void __tpy_init();

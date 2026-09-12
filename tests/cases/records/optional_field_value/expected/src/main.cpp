@@ -3,47 +3,43 @@
 
 namespace tpyapp::main {
 
-// # Basic: init to None, set, read
-// c = Config("test")
 Config* c{};
-// # Return optional value-type field from method
-// r = c.get_retries()
 std::optional<int32_t> r;
-// # Field-to-field value-type optional
-// c2 = Config("other")
 Config* c2{};
 
+// # Basic: init to None, set, read
+// c = Config("test")
+// print(c.max_retries is None)
+// c.max_retries = 5
+// print(c.max_retries)
+// print(c.name)
+//
+// # Return optional value-type field from method
+// r = c.get_retries()
+// print(r)
+// print(r is not None)
+//
+// # Field-to-field value-type optional
+// c2 = Config("other")
+// c2.max_retries = c.max_retries
+// print(c2.max_retries)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Basic: init to None, set, read
-    // c = Config("test")
     static Config __global_slot_1 = Config("test");
     c = &__global_slot_1;
-    // print(c.max_retries is None)
     std::cout << ::tpy::print_bool((!c->max_retries.has_value())) << "\n";
-    // c.max_retries = 5
     c->max_retries = 5;
-    // print(c.max_retries)
     std::cout << ::tpy::print_optional_val(c->max_retries) << "\n";
-    // print(c.name)
     std::cout << c->name << "\n";
-    // # Return optional value-type field from method
-    // r = c.get_retries()
     r = c->get_retries();
-    // print(r)
     std::cout << ::tpy::print_optional_val(r) << "\n";
-    // print(r is not None)
     std::cout << ::tpy::print_bool((r.has_value())) << "\n";
-    // # Field-to-field value-type optional
-    // c2 = Config("other")
     static Config __global_slot_2 = Config("other");
     c2 = &__global_slot_2;
-    // c2.max_retries = c.max_retries
     c2->max_retries = c->max_retries;
-    // print(c2.max_retries)
     std::cout << ::tpy::print_optional_val(c2->max_retries) << "\n";
 }
 

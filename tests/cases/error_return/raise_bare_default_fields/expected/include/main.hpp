@@ -11,7 +11,9 @@ struct MyError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fail() -> int32:
 std::expected<int32_t, MyError> fail();
+// def main() -> None:
 void main();
 
 // class MyError(Exception, ReturnException):

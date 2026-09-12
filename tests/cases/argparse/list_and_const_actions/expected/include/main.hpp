@@ -12,12 +12,19 @@ struct __tpy_builder_argparse_args_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> int32:
 int32_t main();
+// args = parser.parse_args(
+//     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+// )
 void __tpy_builder_argparse_help_1();
+// args = parser.parse_args(
+//     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+// )
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
 
 // args = parser.parse_args(
-// ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+//     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
 // )
 struct __tpy_builder_argparse_args_1 {
     std::optional<std::vector<std::string>> tag;
@@ -25,7 +32,7 @@ struct __tpy_builder_argparse_args_1 {
     std::string mode;
 
     // args = parser.parse_args(
-    // ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+    //     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
     // )
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num, std::string_view mode);
@@ -39,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // args = parser.parse_args(
-// ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+//     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
 // )
 inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num, std::string_view mode) : tag(std::move(tag)), num(std::move(num)), mode(mode) {}
 void __tpy_init();

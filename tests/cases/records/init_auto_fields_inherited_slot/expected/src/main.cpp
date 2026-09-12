@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(7)
+//     print(c.get_x())        # base method sees the child-assigned value -> 7
 void main() {
-    // c = Child(7)
     Child c = Child(7);
-    // print(c.get_x())        # base method sees the child-assigned value -> 7
     std::cout << c.get_x() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

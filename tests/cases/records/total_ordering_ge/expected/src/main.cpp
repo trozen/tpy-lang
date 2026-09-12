@@ -3,36 +3,35 @@
 
 namespace tpyapp::main {
 
-// a = Weight(int32(50))
 Weight* a{};
-// b = Weight(int32(30))
 Weight* b{};
 
+// # @total_ordering with __ge__ as the anchor: synthesizes __lt__,
+// # __le__, __gt__. Covers the remaining anchor-row in the derivation
+// # table.
+// from functools import total_ordering
+//
+// a = Weight(int32(50))
+// b = Weight(int32(30))
+// print(a >= b)
+// print(a > b)
+// print(a <= b)
+// print(a < b)
+// print(b <= a)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @total_ordering with __ge__ as the anchor: synthesizes __lt__,
-    // # __le__, __gt__. Covers the remaining anchor-row in the derivation
-    // # table.
-    // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Weight(int32(50))
     static Weight __global_slot_1 = Weight(50);
     a = &__global_slot_1;
-    // b = Weight(int32(30))
     static Weight __global_slot_2 = Weight(30);
     b = &__global_slot_2;
-    // print(a >= b)
     std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
-    // print(a > b)
     std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
-    // print(a <= b)
     std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    // print(a < b)
     std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n";
-    // print(b <= a)
     std::cout << ::tpy::print_bool((((*b)) <= ((*a)))) << "\n";
 }
 

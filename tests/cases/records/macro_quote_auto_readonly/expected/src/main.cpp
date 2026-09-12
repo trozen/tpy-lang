@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def touch_readonly(h: readonly[Holder]) -> int32:
+//     return h.first()
 int32_t touch_readonly(const Holder& h) {
-    // return h.first()
     return h.first();
 }
 
 // def main() -> None:
+//     h = Holder(int32(42))
+//     print(h.first())
+//     print(touch_readonly(h))
 void main() {
-    // h = Holder(int32(42))
     Holder h = Holder(42);
-    // print(h.first())
     std::cout << h.first() << "\n";
-    // print(touch_readonly(h))
     std::cout << touch_readonly(h) << "\n";
 }
 
+// from ro_getter import ro_getter
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from ro_getter import ro_getter
-    // main()
     main();
 }
 

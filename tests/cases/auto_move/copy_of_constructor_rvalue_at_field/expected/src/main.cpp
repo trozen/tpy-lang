@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def use(h: Holder) -> None:
+//     h.p = copy(Point(3, 4))  # the copy of a ctor rvalue peels to the ctor
 void use(Holder& h) {
-    // h.p = copy(Point(3, 4))  # the copy of a ctor rvalue peels to the ctor
     h.p = Point(3, 4);
 }
 
 // def main() -> None:
+//     src = Point(1, 2)
+//     h = Holder(src)
+//     src.x = 99  # the ctor copied, so the field is untouched
+//     print(h.p.x)
+//     use(h)
+//     print(h.p.x, h.p.y)
 void main() {
-    // src = Point(1, 2)
     Point src = Point(1, 2);
-    // h = Holder(src)
     Holder h = Holder(src);
-    // src.x = 99  # the ctor copied, so the field is untouched
     src.x = 99;
-    // print(h.p.x)
     std::cout << h.p.x << "\n";
-    // use(h)
     use(h);
-    // print(h.p.x, h.p.y)
     std::cout << h.p.x << " " << h.p.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

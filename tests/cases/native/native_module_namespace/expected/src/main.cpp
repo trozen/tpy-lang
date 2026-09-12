@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def use_vec(v: Ptr[Vec2]) -> int32:
+//     return v.x
 int32_t use_vec(::mypkg::Vec2* v) {
-    // return v.x
     return ::tpy::deref_check(v).x;
 }
 
 // def use_add(a: Vec2, b: Vec2) -> Own[Vec2]:
+//     return add_vecs(a, b)
 ::mypkg::Vec2 use_add(::mypkg::Vec2& a, ::mypkg::Vec2& b) {
-    // return add_vecs(a, b)
     return ::mypkg::add_vecs(a, b);
 }
 
 // def use_thing(t: Ptr[Thing]) -> None:
+//     pass
 void use_thing(::other::Thing* t) {
-    // pass
 }
 
 // def main() -> None:
+//     print("ok")
 void main() {
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// from mypkg.types import Vec2, add_vecs, Thing
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mypkg.types import Vec2, add_vecs, Thing
-    // main()
     main();
 }
 

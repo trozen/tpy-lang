@@ -5,47 +5,53 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Container()
+//
+//     # str property: read
+//     print(c.name)
+//
+//     # list property: read + mutate through ref
+//     print(c.items)
+//     c.items.append(4)
+//     print(c.items)
+//
+//     # record property: read + mutate through ref
+//     print(c.pt.x)
+//     c.pt.x = 99
+//     print(c.pt.x)
+//
+//     # BigInt property: read (by ref, no copy)
+//     print(c.big)
+//
+//     # str property on temporary: copies (no dangling view)
+//     s = Container().name
+//     print(s)
+//
+//     # setter
+//     c.name = "world"
+//     print(c.name)
 void main() {
-    // c = Container()
     Container c = Container();
-    // # str property: read
-    // print(c.name)
     std::cout << c.name() << "\n";
-    // # list property: read + mutate through ref
-    // print(c.items)
     std::cout << ::tpy::ListPrinter(c.items()) << "\n";
-    // c.items.append(4)
     c.items().push_back(4);
-    // print(c.items)
     std::cout << ::tpy::ListPrinter(c.items()) << "\n";
-    // # record property: read + mutate through ref
-    // print(c.pt.x)
     std::cout << c.pt().x << "\n";
-    // c.pt.x = 99
     c.pt().x = 99;
-    // print(c.pt.x)
     std::cout << c.pt().x << "\n";
-    // # BigInt property: read (by ref, no copy)
-    // print(c.big)
     std::cout << c.big() << "\n";
-    // # str property on temporary: copies (no dangling view)
-    // s = Container().name
     std::string s = Container().name();
-    // print(s)
     std::cout << s << "\n";
-    // # setter
-    // c.name = "world"
     c.set_name("world");
-    // print(c.name)
     std::cout << c.name() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

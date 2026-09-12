@@ -5,60 +5,60 @@ namespace tpyapp::main {
 
 
 // def relabel(b: Box) -> str:
+//     match b:
+//         case Box(label=s):
+//             if len(s) > 0:
+//                 s = "x:" + s   # tpyc: ok
+//             return s           # "x:hi"
+//     return "?"
 std::string relabel(const Box& b) {
-    // match b:
     std::string s;
     auto& __match_subject_1 = b;
-    // case Box(label=s):
     {
         s = __match_subject_1.label;
-        // if len(s) > 0:
         if ((::tpy::__len__(s) > 0)) {
-            // s = "x:" + s   # tpyc: ok
             s = (::tpy::str_concat("x:", s));
         }
-        // return s           # "x:hi"
         return s;
     }
     ::std::unreachable();
-    // return "?"
     return "?";
 }
 
 // def repair(b: Box) -> int:
+//     match b:
+//         case Box(pair=t):
+//             t = (7, 8)         # tpyc: ok
+//             return t[0] + t[1]  # 15
+//     return -1
 ::tpy::BigInt repair(const Box& b) {
-    // match b:
     std::tuple<::tpy::BigInt, ::tpy::BigInt> t;
     auto& __match_subject_1 = b;
-    // case Box(pair=t):
     {
         t = __match_subject_1.pair;
-        // t = (7, 8)         # tpyc: ok
         t = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(7), ::tpy::BigInt(8)};
-        // return t[0] + t[1]  # 15
         return ((std::get<0>(t)) + (std::get<1>(t)));
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     b = Box("hi", (1, 2))
+//     print(relabel(b), b.label)            # x:hi hi -- field untouched
+//     print(repair(b), b.pair[0], b.pair[1])  # 15 1 2 -- field untouched
 void main() {
-    // b = Box("hi", (1, 2))
     Box b = Box("hi", std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)});
-    // print(relabel(b), b.label)            # x:hi hi -- field untouched
     std::cout << relabel(b) << " " << b.label << "\n";
-    // print(repair(b), b.pair[0], b.pair[1])  # 15 1 2 -- field untouched
     std::cout << repair(b) << " " << std::get<0>(b.pair) << " " << std::get<1>(b.pair) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

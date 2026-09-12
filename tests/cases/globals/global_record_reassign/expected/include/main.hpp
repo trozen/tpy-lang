@@ -30,6 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, value: int32):
+//     self.value = value
 inline Container::Container(int32_t value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

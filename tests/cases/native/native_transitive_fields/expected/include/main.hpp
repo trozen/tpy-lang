@@ -12,6 +12,7 @@ struct M;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class M:
@@ -38,17 +39,18 @@ inline std::ostream& operator<<(std::ostream& os, const M& obj) {
 
 
 // def __init__(self, s: Ptr[S]) -> None:
+//     self.s = s
 inline M::M(::mylib::S* s) : s(s) {}
 
 // def read(self) -> bool:
+//     return self.s.a.q.flag       # tpyc: ok
 inline bool M::read() const {
-    // return self.s.a.q.flag       # tpyc: ok
     return ::tpy::deref_check(this->s).a.q.flag;
 }
 
 // def write(self) -> None:
+//     self.s.a.q.flag = True       # tpyc: ok
 inline void M::write() {
-    // self.s.a.q.flag = True       # tpyc: ok
     ::tpy::deref_check(this->s).a.q.flag = true;
 }
 void __tpy_init();

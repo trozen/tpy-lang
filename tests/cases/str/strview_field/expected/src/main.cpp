@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper("hello")
+//     print(w.get())
 void main() {
-    // w = Wrapper("hello")
     Wrapper w = Wrapper("hello");
-    // print(w.get())
     std::cout << w.get() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

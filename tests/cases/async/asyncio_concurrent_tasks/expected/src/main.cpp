@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // async def doubler(n: int32, label: str) -> int32:
+//     print(label, "pre")
+//     await asyncio.sleep(0.001)
+//     print(label, "post")
+//     return n * int32(2)
 ::tpystd::tpy::Poll<int32_t> __coro_doubler::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(label, "pre")
         std::cout << label << " " << "pre" << "\n";
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -20,9 +22,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print(label, "post")
         std::cout << label << " " << "post" << "\n";
-        // return n * int32(2)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(n, 2));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -39,16 +39,18 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
 }
 
 // async def main_coro() -> None:
+//     t1: Task[int32] = asyncio.create_task(doubler(int32(5), "t1"))
+//     t2: Task[int32] = asyncio.create_task(doubler(int32(7), "t2"))
+//     a = await t1
+//     b = await t2
+//     print(a + b)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = "t1";
-        // t1: Task[int32] = asyncio.create_task(doubler(int32(5), "t1"))
         t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(5, __coro_arg_0))));
         __coro_arg_1 = "t2";
-        // t2: Task[int32] = asyncio.create_task(doubler(int32(7), "t2"))
         t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(7, __coro_arg_1))));
-        // a = await t1
         __sub_0 = &((*t1));
         __state = S_RESUME_0;
         continue;
@@ -58,7 +60,6 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
         __sub_0 = nullptr;
-        // b = await t2
         __sub_1 = &((*t2));
         __state = S_RESUME_1;
         continue;
@@ -68,7 +69,6 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
         __sub_1 = nullptr;
-        // print(a + b)
         std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -85,24 +85,25 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Concurrent task execution: two tasks created with create_task should run
+// # concurrently with the main coroutine across asyncio.sleep boundaries.
+// # Both tasks' "pre" prints land before either "post" because the executor
+// # drives spawned tasks once while the main coro is parked on its first
+// # await; both sleeps run in parallel.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Concurrent task execution: two tasks created with create_task should run
-    // # concurrently with the main coroutine across asyncio.sleep boundaries.
-    // # Both tasks' "pre" prints land before either "post" because the executor
-    // # drives spawned tasks once while the main coro is parked on its first
-    // # await; both sleeps run in parallel.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = IntListHolder([1, 2, 3])
+//     w = Wrapper[IntListHolder](h)
+//     result = w.get_holder()
+//     print(len(result.items()))
 void main() {
-    // h = IntListHolder([1, 2, 3])
     IntListHolder h = IntListHolder({1, 2, 3});
-    // w = Wrapper[IntListHolder](h)
     Wrapper<IntListHolder> w = Wrapper<IntListHolder>(h);
-    // result = w.get_holder()
     IntListHolder& result = w.get_holder();
-    // print(len(result.items()))
     std::cout << ::tpy::__len__(result.items()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

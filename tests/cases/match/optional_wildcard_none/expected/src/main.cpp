@@ -5,56 +5,56 @@ namespace tpyapp::main {
 
 
 // def label(v: int32 | None) -> None:
+//     match v:
+//         case 5:
+//             print("five")
+//         case _:
+//             print("other")
 void label(std::optional<int32_t> v) {
-    // match v:
     auto& __match_subject_1 = v;
-    // case 5:
     if (__match_subject_1.has_value() && (*__match_subject_1) == 5) {
-        // print("five")
         std::cout << "five" << "\n";
-    // case _:
     } else {
-        // print("other")
         std::cout << "other" << "\n";
     }
 }
 
 // def pick(v: int32 | None) -> int32:
+//     match v:
+//         case 5:
+//             return 50
+//         case _:
+//             return 99
 int32_t pick(std::optional<int32_t> v) {
-    // match v:
     auto& __match_subject_1 = v;
-    // case 5:
     if (__match_subject_1.has_value() && (*__match_subject_1) == 5) {
-        // return 50
         return 50;
-    // case _:
     } else {
-        // return 99
         return 99;
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     label(5)
+//     label(1)
+//     label(None)
+//     print(pick(5))
+//     print(pick(None))
 void main() {
-    // label(5)
     label(5);
-    // label(1)
     label(1);
-    // label(None)
     label(std::nullopt);
-    // print(pick(5))
     std::cout << pick(5) << "\n";
-    // print(pick(None))
     std::cout << pick(std::nullopt) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

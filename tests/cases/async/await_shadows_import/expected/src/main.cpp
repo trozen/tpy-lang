@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def work() -> int32:
+//     await asyncio.sleep(0)
+//     return 7
 ::tpystd::tpy::Poll<int32_t> __coro_work::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 7
         __state = S_DONE;
         int32_t __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,10 +35,11 @@ __coro_work work() {
 }
 
 // async def amain() -> None:
+//     v = await work()
+//     print(v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // v = await work()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -48,7 +49,6 @@ __coro_work work() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r0).value();
         __sub_0.reset();
-        // print(v)
         std::cout << v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -64,19 +64,20 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # A local async def shadowing a from-imported name of the same type must win:
+// # the awaited coro struct is the LOCAL one, not the imported module's (regression
+// # -- a naive imported_names lookup would mis-qualify to othermod and print 99).
+// import asyncio
+// from othermod import work
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A local async def shadowing a from-imported name of the same type must win:
-    // # the awaited coro struct is the LOCAL one, not the imported module's (regression
-    // # -- a naive imported_names lookup would mis-qualify to othermod and print 99).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from othermod import work
     ::tpyapp::othermod::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

@@ -5,57 +5,57 @@ namespace tpyapp::main {
 
 
 // def classify(mode: Literal["r", "w", "rb", "wb"]) -> None:
+//     match mode:
+//         case "r" | "w":
+//             print("text:" + mode)
+//         case "rb" | "wb":
+//             print("binary:" + mode)
 void classify(std::string_view mode) {
-    // match mode:
     auto& __match_subject_1 = mode;
-    // case "r" | "w":
     if ((__match_subject_1 == "r" || __match_subject_1 == "w")) {
-        // print("text:" + mode)
         std::cout << (::tpy::str_concat("text:", mode)) << "\n";
-    // case "rb" | "wb":
     } else if ((__match_subject_1 == "rb" || __match_subject_1 == "wb")) {
-        // print("binary:" + mode)
         std::cout << (::tpy::str_concat("binary:", mode)) << "\n";
     }
 }
 
 // def with_wildcard(mode: Literal["a", "b", "c"]) -> None:
+//     match mode:
+//         case "a":
+//             print("first")
+//         case _:
+//             print("other")
 void with_wildcard(std::string_view mode) {
-    // match mode:
     auto& __match_subject_1 = mode;
-    // case "a":
     if (__match_subject_1 == "a") {
-        // print("first")
         std::cout << "first" << "\n";
-    // case _:
     } else {
-        // print("other")
         std::cout << "other" << "\n";
     }
 }
 
 // def main() -> None:
+//     classify("r")
+//     classify("w")
+//     classify("rb")
+//     classify("wb")
+//     with_wildcard("a")
+//     with_wildcard("b")
 void main() {
-    // classify("r")
     classify("r");
-    // classify("w")
     classify("w");
-    // classify("rb")
     classify("rb");
-    // classify("wb")
     classify("wb");
-    // with_wildcard("a")
     with_wildcard("a");
-    // with_wildcard("b")
     with_wildcard("b");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

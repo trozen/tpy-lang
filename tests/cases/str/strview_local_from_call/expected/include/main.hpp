@@ -9,14 +9,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(s: str) -> StrView:
 std::string_view pick(std::string_view s);
+// def indirect_annot(text: str) -> StrView:
 std::string_view indirect_annot(std::string_view text);
+// def indirect_inferred(text: str) -> StrView:
 std::string_view indirect_inferred(std::string_view text);
+// def reassigned(a: str, b: str) -> StrView:
 std::string_view reassigned(std::string_view a, std::string_view b);
+// def from_ctor(s: str) -> StrView:
 std::string_view from_ctor(std::string_view s);
+// def conditional_rebind(a: str, b: str, flag: bool) -> StrView:
 std::string_view conditional_rebind(std::string_view a, std::string_view b, bool flag);
+// def ternary_params(a: str, b: str, flag: bool) -> StrView:
 std::string_view ternary_params(std::string_view a, std::string_view b, bool flag);
+// def loop_iter(items: list[str], default: str) -> StrView:
 std::string_view loop_iter(const std::vector<std::string>& items, std::string_view default_);
+// def main() -> None:
 void main();
 
 void __tpy_init();

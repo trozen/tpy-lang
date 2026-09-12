@@ -33,8 +33,11 @@ struct Snake;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_box(kind: int) -> Own[Box[Animal]]:
 ::tpystd::tplib::box::Box<Animal> make_box(const ::tpy::BigInt& kind);
+// def describe(kind: int) -> str:
 std::string describe(const ::tpy::BigInt& kind);
+// def main() -> None:
 void main();
 
 // class Animal(Tag):
@@ -98,12 +101,15 @@ namespace tpyapp::main {
 
 
 // def __init__(self, legs: int) -> None:
+//     self.legs = legs
 inline Animal::Animal(const ::tpy::BigInt& legs) : legs(legs) {}
 
 // def __init__(self) -> None:
+//     super().__init__(4)
 inline Dog::Dog() : Animal(4) {}
 
 // def __init__(self) -> None:
+//     super().__init__(0)
 inline Snake::Snake() : Animal(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

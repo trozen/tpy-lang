@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Sub(5, Rec(7))
+//     print(h.key)          # inherited getter, K substituted to int32
+//     h.key = 6             # inherited setter, value param substituted
+//     print(h.key)
+//     h.val.x = 8           # aliasing: mutate through the inherited V getter
+//     print(h._v.x)
+//     r = h.find(1)         # inverse: plain method V | None keeps working
+//     if r is not None:
+//         print(r.x)
+//     d = Holder(1, Rec(9)) # inverse: direct instantiation unchanged
+//     print(d.val.x)
 void main() {
-    // h = Sub(5, Rec(7))
     Sub h = Sub(5, Rec(7));
-    // print(h.key)          # inherited getter, K substituted to int32
     std::cout << h.key() << "\n";
-    // h.key = 6             # inherited setter, value param substituted
     h.set_key(6);
-    // print(h.key)
     std::cout << h.key() << "\n";
-    // h.val.x = 8           # aliasing: mutate through the inherited V getter
     h.val().x = 8;
-    // print(h._v.x)
     std::cout << h._v.x << "\n";
-    // r = h.find(1)         # inverse: plain method V | None keeps working
     Rec* r = h.find(1);
-    // if r is not None:
     if ((r != nullptr)) {
-        // print(r.x)
         std::cout << r->x << "\n";
     }
-    // d = Holder(1, Rec(9)) # inverse: direct instantiation unchanged
     Holder<int32_t, Rec> d = Holder<int32_t, Rec>(1, Rec(9));
-    // print(d.val.x)
     std::cout << d.val().x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

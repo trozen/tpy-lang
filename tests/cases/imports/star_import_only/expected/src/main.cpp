@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     p = Point(int32(1), int32(2))
+//     result = add(p.x, p.y)
+//     print(result)
+//     return int32(0)
 int32_t main() {
-    // p = Point(int32(1), int32(2))
     ::tpyapp::utils::Point p = ::tpyapp::utils::Point(1, 2);
-    // result = add(p.x, p.y)
     int32_t result = ::tpyapp::utils::add(p.x, p.y);
-    // print(result)
     std::cout << result << "\n";
-    // return int32(0)
     return 0;
 }
 
+// # No explicit tpy import -- int32 comes only via star import from utils.
+// # Tests that re-exported stdlib types resolve correctly.
+// from utils import *
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # No explicit tpy import -- int32 comes only via star import from utils.
-    // # Tests that re-exported stdlib types resolve correctly.
-    // from utils import *
     ::tpyapp::utils::__tpy_init();
-    // main()
     main();
 }
 

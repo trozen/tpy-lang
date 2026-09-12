@@ -29,6 +29,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 
 // def __init__(self, n: int):
+//     self.n = n
 inline Tag::Tag(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::blue

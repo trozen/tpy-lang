@@ -34,8 +34,11 @@ struct BadDoc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def has_nul(x: int64) -> int64:  # tpyc: warning(/docstring will not be visible from Python/)
 int64_t has_nul(int64_t x);
+// def clean(x: int64) -> int64:  # tpyc: ok
 int64_t clean(int64_t x);
+// def boom() -> None:  # tpyc: ok
 void boom();
 
 // @export
@@ -80,18 +83,21 @@ inline std::ostream& operator<<(std::ostream& os, const BadDoc& obj) {
 
 
 // def __init__(self, v: int64):
+//     self.v = v
 inline Holder::Holder(int64_t v) : v(v) {}
 
 // def meth(self) -> int64:  # tpyc: warning(/method 'meth': the docstring will not be visible/)
+//     "meth\0doc"
+//     return self.v
 inline int64_t Holder::meth() const {
-    // return self.v
     return this->v;
 }
 
 // @property
 // def prop(self) -> int64:  # tpyc: warning(/property 'prop': the docstring will not be visible/)
+//     "prop\0doc"
+//     return self.v
 inline int64_t Holder::prop() const {
-    // return self.v
     return this->v;
 }
 void __tpy_init();

@@ -5,32 +5,33 @@ namespace tpyapp::main {
 
 
 // def emit(n: int32, to_out: bool) -> None:
+//     print(n, file=sys.stdout if to_out else sys.stderr)  # tpyc: ok
 void emit(int32_t n, bool to_out) {
-    // print(n, file=sys.stdout if to_out else sys.stderr)  # tpyc: ok
     ::tpy::as_ostream(((to_out) ? ((*::tpystd::sys::stdout)) : ((*::tpystd::sys::stderr)))) << n << "\n";
 }
 
 // def main() -> None:
+//     emit(1, True)
+//     emit(2, False)
+//     emit(3, True)
 void main() {
-    // emit(1, True)
     emit(1, true);
-    // emit(2, False)
     emit(2, false);
-    // emit(3, True)
     emit(3, true);
 }
 
+// # A `print(file=...)` sink chosen by a ternary: each arm is an admitted sink
+// # read, so the select goes under the pinned as_ostream consumer whole. stderr
+// # output is not captured by the runner, so only the stdout arm shows up.
+// import sys
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A `print(file=...)` sink chosen by a ternary: each arm is an admitted sink
-    // # read, so the select goes under the pinned as_ostream consumer whole. stderr
-    // # output is not captured by the runner, so only the stdout arm shows up.
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // main()
     main();
 }
 

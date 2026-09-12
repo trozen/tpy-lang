@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     h.s.add(Point(1))
+//     h.s.add(Point(2))
+//     h.s.add(Point(1))
+//     print(len(h.s))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // h.s.add(Point(1))
     h.s.insert(Point(1));
-    // h.s.add(Point(2))
     h.s.insert(Point(2));
-    // h.s.add(Point(1))
     h.s.insert(Point(1));
-    // print(len(h.s))
     std::cout << ::tpy::__len__(h.s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

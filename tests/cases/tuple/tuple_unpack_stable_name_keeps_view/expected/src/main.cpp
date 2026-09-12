@@ -7,29 +7,29 @@ namespace tpyapp::main {
 // # Inverse: a reassigned target whose source is a STABLE tuple local (bound
 // # by-ref, elements alias the live local) stays a zero-copy view, not over-owned.
 // def main() -> None:
+//     t = ("hello world long enough", "another long string here ok")
+//     x = "init"
+//     y = "init"
+//     x, y = t
+//     print(x)
+//     print(y)
 void main() {
-    // t = ("hello world long enough", "another long string here ok")
     std::tuple<std::string, std::string> t = std::tuple<std::string, std::string>{"hello world long enough", "another long string here ok"};
-    // x = "init"
     std::string_view x = "init";
-    // y = "init"
     std::string_view y = "init";
-    // x, y = t
     const auto& __tup_1 = t;
     x = std::get<0>(__tup_1);
     y = std::get<1>(__tup_1);
-    // print(x)
     std::cout << x << "\n";
-    // print(y)
     std::cout << y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

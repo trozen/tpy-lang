@@ -5,19 +5,19 @@ namespace tpyapp::pkg::consumer {
 
 
 // def compute() -> int32:
+//     v = Vec2(int32(3), int32(4))
+//     return double(v.x)
 int32_t compute() {
-    // v = Vec2(int32(3), int32(4))
     ::tpyapp::pkg::defs::Vec2 v = ::tpyapp::pkg::defs::Vec2(3, 4);
-    // return double(v.x)
     return ::tpyapp::pkg::defs::double_(v.x);
 }
 
+// from .defs import *
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from .defs import *
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::defs::__tpy_init();
 }

@@ -3,24 +3,23 @@
 
 namespace tpyapp::main {
 
-// items: list[int32] = []
 std::vector<int32_t>* items{};
 
+// items: list[int32] = []
+// items.append(1)
+// items.append(2)
+// items.append(3)
+// print(get_len(items))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // items: list[int32] = []
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
     items = &__global_slot_1;
-    // items.append(1)
     items->push_back(1);
-    // items.append(2)
     items->push_back(2);
-    // items.append(3)
     items->push_back(3);
-    // print(get_len(items))
     std::cout << get_len((*items)) << "\n";
 }
 

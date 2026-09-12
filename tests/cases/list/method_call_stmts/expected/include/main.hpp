@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def grow(xs: list[int32], n: int32) -> None:
 void grow(std::vector<int32_t>& xs, int32_t n);
+// def take_two(xs: list[int32]) -> int32:
 int32_t take_two(std::vector<int32_t>& xs);
+// def wipe(xs: list[int32]) -> None:
 void wipe(std::vector<int32_t>& xs);
+// def show_last(xs: list[int32]) -> None:
 void show_last(std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

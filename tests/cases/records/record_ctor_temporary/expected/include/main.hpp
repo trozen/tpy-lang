@@ -11,6 +11,7 @@ struct Numbers;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Numbers:
@@ -34,22 +35,23 @@ inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
 
 
 // def __init__(self, items: list[int32]) -> None:
+//     self.data = items
 inline Numbers::Numbers(const std::vector<int32_t>& items) : data(items) {}
 
 // def sum(self) -> int32:
+//     total: int32 = 0
+//     i: int32 = 0
+//     while i < len(self.data):
+//         total += self.data[i]
+//         i += 1
+//     return total
 inline int32_t Numbers::sum() const {
-    // total: int32 = 0
     int32_t total = 0;
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < len(self.data):
     while ((i < ::tpy::__len__(this->data))) {
-        // total += self.data[i]
         total = ::tpy::add_check<int32_t>(total, ::tpy::__getitem__(this->data, i));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return total
     return total;
 }
 void __tpy_init();

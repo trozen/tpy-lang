@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub(label: str) -> None:
+//     print(label)
 ::tpystd::tpy::Poll<::std::monostate> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print(label)
         std::cout << label << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,6 +26,13 @@ __coro_sub sub(std::string_view label) {
 }
 
 // async def caller() -> None:
+//     try:
+//         try:
+//             pass
+//         finally:
+//             await sub("inner")
+//     finally:
+//         await sub("outer")
 ::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -66,7 +73,6 @@ __coro_sub sub(std::string_view label) {
     }
     case S_JOIN_1: {
         __coro_arg_1 = "outer";
-        // await sub("outer")
         __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
@@ -99,7 +105,6 @@ __coro_sub sub(std::string_view label) {
     case S_JOIN_4: {
         try {
             __coro_arg_0 = "inner";
-            // await sub("inner")
             __sub_0.emplace(__coro_arg_0);
             __state = S_RESUME_0;
             continue;
@@ -112,7 +117,6 @@ __coro_sub sub(std::string_view label) {
     case S_JOIN_5: {
         try {
             try {
-                // pass
                 __state = S_JOIN_4;
                 continue;
             } catch (...) {
@@ -138,21 +142,22 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     asyncio.run(caller())
 void main() {
-    // asyncio.run(caller())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(caller()));
 }
 
+// # Two nested suspending `finally` bodies; both run on normal exit in
+// # inner-then-outer order.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two nested suspending `finally` bodies; both run on normal exit in
-    // # inner-then-outer order.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

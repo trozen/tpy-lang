@@ -6,59 +6,59 @@ namespace tpyapp::main {
 
 // @error_return(JsonError)
 // def test_basic_object() -> None:
+//     reader = JsonReader('{"name": "Alice", "age": 30, "active": true}')
+//     reader.read_object_start()
+//     while reader.has_next():
+//         key = reader.read_key()
+//         if key == "name":
+//             v = reader.read_str()
+//             print(v)
+//         elif key == "age":
+//             v2 = reader.read_int()
+//             print(v2)
+//         elif key == "active":
+//             v3 = reader.read_bool()
+//             print(v3)
+//     reader.read_object_end()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_basic_object() {
-    // reader = JsonReader('{"name": "Alice", "age": 30, "active": true}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"name\": \"Alice\", \"age\": 30, \"active\": true}");
-    // reader.read_object_start()
     {
         auto __try_tmp_1 = reader.read_object_start();
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
     }
-    // while reader.has_next():
     while (reader.has_next()) {
-        // key = reader.read_key()
         std::string key;
         {
             auto __try_tmp_2 = reader.read_key();
             if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
             key = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        // if key == "name":
         if ((key == "name")) {
-            // v = reader.read_str()
             std::string v;
             {
                 auto __try_tmp_3 = reader.read_str();
                 if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
                 v = ::tpy::unwrap_ref_move(*__try_tmp_3);
             }
-            // print(v)
             std::cout << v << "\n";
-        // elif key == "age":
         } else if ((key == "age")) {
-            // v2 = reader.read_int()
             int64_t v2;
             {
                 auto __try_tmp_4 = reader.read_int();
                 if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
                 v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
             }
-            // print(v2)
             std::cout << v2 << "\n";
-        // elif key == "active":
         } else if ((key == "active")) {
-            // v3 = reader.read_bool()
             bool v3;
             {
                 auto __try_tmp_5 = reader.read_bool();
                 if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
                 v3 = ::tpy::unwrap_ref_move(*__try_tmp_5);
             }
-            // print(v3)
             std::cout << ::tpy::print_bool(v3) << "\n";
         }
     }
-    // reader.read_object_end()
     {
         auto __try_tmp_6 = reader.read_object_end();
         if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
@@ -68,84 +68,84 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_basic_object(
 
 // @error_return(JsonError)
 // def test_nested() -> None:
+//     reader = JsonReader('{"user": {"name": "Bob"}, "scores": [1, 2, 3]}')
+//     reader.read_object_start()
+//     while reader.has_next():
+//         key = reader.read_key()
+//         if key == "user":
+//             reader.read_object_start()
+//             while reader.has_next():
+//                 k = reader.read_key()
+//                 if k == "name":
+//                     v = reader.read_str()
+//                     print(v)
+//             reader.read_object_end()
+//         elif key == "scores":
+//             reader.read_array_start()
+//             while reader.has_next():
+//                 v2 = reader.read_int()
+//                 print(v2)
+//             reader.read_array_end()
+//     reader.read_object_end()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_nested() {
-    // reader = JsonReader('{"user": {"name": "Bob"}, "scores": [1, 2, 3]}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"user\": {\"name\": \"Bob\"}, \"scores\": [1, 2, 3]}");
-    // reader.read_object_start()
     {
         auto __try_tmp_7 = reader.read_object_start();
         if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
     }
-    // while reader.has_next():
     while (reader.has_next()) {
-        // key = reader.read_key()
         std::string key;
         {
             auto __try_tmp_8 = reader.read_key();
             if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
             key = ::tpy::unwrap_ref_move(*__try_tmp_8);
         }
-        // if key == "user":
         if ((key == "user")) {
-            // reader.read_object_start()
             {
                 auto __try_tmp_9 = reader.read_object_start();
                 if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
             }
-            // while reader.has_next():
             while (reader.has_next()) {
-                // k = reader.read_key()
                 std::string k;
                 {
                     auto __try_tmp_10 = reader.read_key();
                     if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
                     k = ::tpy::unwrap_ref_move(*__try_tmp_10);
                 }
-                // if k == "name":
                 if ((k == "name")) {
-                    // v = reader.read_str()
                     std::string v;
                     {
                         auto __try_tmp_11 = reader.read_str();
                         if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
                         v = ::tpy::unwrap_ref_move(*__try_tmp_11);
                     }
-                    // print(v)
                     std::cout << v << "\n";
                 }
             }
-            // reader.read_object_end()
             {
                 auto __try_tmp_12 = reader.read_object_end();
                 if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
             }
-        // elif key == "scores":
         } else if ((key == "scores")) {
-            // reader.read_array_start()
             {
                 auto __try_tmp_13 = reader.read_array_start();
                 if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
             }
-            // while reader.has_next():
             while (reader.has_next()) {
-                // v2 = reader.read_int()
                 int64_t v2;
                 {
                     auto __try_tmp_14 = reader.read_int();
                     if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
                     v2 = ::tpy::unwrap_ref_move(*__try_tmp_14);
                 }
-                // print(v2)
                 std::cout << v2 << "\n";
             }
-            // reader.read_array_end()
             {
                 auto __try_tmp_15 = reader.read_array_end();
                 if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
             }
         }
     }
-    // reader.read_object_end()
     {
         auto __try_tmp_16 = reader.read_object_end();
         if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
@@ -155,51 +155,51 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_nested() {
 
 // @error_return(JsonError)
 // def test_null_and_escape() -> None:
+//     reader = JsonReader('{"x": null, "msg": "hello\\nworld"}')
+//     reader.read_object_start()
+//     while reader.has_next():
+//         key = reader.read_key()
+//         if key == "x":
+//             tok = reader.peek()
+//             if tok == JsonToken.NONE:
+//                 reader.read_null()
+//                 print("null")
+//         elif key == "msg":
+//             v = reader.read_str()
+//             print(v)
+//     reader.read_object_end()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_null_and_escape() {
-    // reader = JsonReader('{"x": null, "msg": "hello\\nworld"}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"x\": null, \"msg\": \"hello\\nworld\"}");
-    // reader.read_object_start()
     {
         auto __try_tmp_17 = reader.read_object_start();
         if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
     }
-    // while reader.has_next():
     while (reader.has_next()) {
-        // key = reader.read_key()
         std::string key;
         {
             auto __try_tmp_18 = reader.read_key();
             if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
             key = ::tpy::unwrap_ref_move(*__try_tmp_18);
         }
-        // if key == "x":
         if ((key == "x")) {
-            // tok = reader.peek()
             ::tpystd::tplib::json::parser::JsonToken tok = reader.peek();
-            // if tok == JsonToken.NONE:
             if ((tok == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
-                // reader.read_null()
                 {
                     auto __try_tmp_19 = reader.read_null();
                     if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
                 }
-                // print("null")
                 std::cout << "null" << "\n";
             }
-        // elif key == "msg":
         } else if ((key == "msg")) {
-            // v = reader.read_str()
             std::string v;
             {
                 auto __try_tmp_20 = reader.read_str();
                 if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
                 v = ::tpy::unwrap_ref_move(*__try_tmp_20);
             }
-            // print(v)
             std::cout << v << "\n";
         }
     }
-    // reader.read_object_end()
     {
         auto __try_tmp_21 = reader.read_object_end();
         if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
@@ -209,27 +209,27 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_null_and_esca
 
 // @error_return(JsonError)
 // def test_float() -> None:
+//     reader = JsonReader('[3.14, -0.5, 1e3]')
+//     reader.read_array_start()
+//     while reader.has_next():
+//         v = reader.read_float()
+//         print(v)
+//     reader.read_array_end()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_float() {
-    // reader = JsonReader('[3.14, -0.5, 1e3]')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("[3.14, -0.5, 1e3]");
-    // reader.read_array_start()
     {
         auto __try_tmp_22 = reader.read_array_start();
         if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
     }
-    // while reader.has_next():
     while (reader.has_next()) {
-        // v = reader.read_float()
         double v;
         {
             auto __try_tmp_23 = reader.read_float();
             if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
             v = ::tpy::unwrap_ref_move(*__try_tmp_23);
         }
-        // print(v)
         std::cout << ::tpy::print_float(v) << "\n";
     }
-    // reader.read_array_end()
     {
         auto __try_tmp_24 = reader.read_array_end();
         if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
@@ -239,55 +239,55 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_float() {
 
 // @error_return(JsonError)
 // def test_skip() -> None:
+//     reader = JsonReader('{"keep": 42, "skip": {"nested": [1,2,3]}, "also": "yes"}')
+//     reader.read_object_start()
+//     while reader.has_next():
+//         key = reader.read_key()
+//         if key == "keep":
+//             v = reader.read_int()
+//             print(v)
+//         elif key == "also":
+//             v2 = reader.read_str()
+//             print(v2)
+//         else:
+//             reader.skip_value()
+//     reader.read_object_end()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_skip() {
-    // reader = JsonReader('{"keep": 42, "skip": {"nested": [1,2,3]}, "also": "yes"}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"keep\": 42, \"skip\": {\"nested\": [1,2,3]}, \"also\": \"yes\"}");
-    // reader.read_object_start()
     {
         auto __try_tmp_25 = reader.read_object_start();
         if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
     }
-    // while reader.has_next():
     while (reader.has_next()) {
-        // key = reader.read_key()
         std::string key;
         {
             auto __try_tmp_26 = reader.read_key();
             if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
             key = ::tpy::unwrap_ref_move(*__try_tmp_26);
         }
-        // if key == "keep":
         if ((key == "keep")) {
-            // v = reader.read_int()
             int64_t v;
             {
                 auto __try_tmp_27 = reader.read_int();
                 if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
                 v = ::tpy::unwrap_ref_move(*__try_tmp_27);
             }
-            // print(v)
             std::cout << v << "\n";
-        // elif key == "also":
         } else if ((key == "also")) {
-            // v2 = reader.read_str()
             std::string v2;
             {
                 auto __try_tmp_28 = reader.read_str();
                 if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
                 v2 = ::tpy::unwrap_ref_move(*__try_tmp_28);
             }
-            // print(v2)
             std::cout << v2 << "\n";
-        // else:
         } else {
-            // reader.skip_value()
             {
                 auto __try_tmp_29 = reader.skip_value();
                 if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
             }
         }
     }
-    // reader.read_object_end()
     {
         auto __try_tmp_30 = reader.read_object_end();
         if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
@@ -297,54 +297,54 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_skip() {
 
 // @error_return(JsonError)
 // def test_empty_containers() -> None:
+//     reader = JsonReader('{"obj": {}, "arr": []}')
+//     reader.read_object_start()
+//     while reader.has_next():
+//         key = reader.read_key()
+//         if key == "obj":
+//             reader.read_object_start()
+//             reader.read_object_end()
+//             print("empty_obj")
+//         elif key == "arr":
+//             reader.read_array_start()
+//             reader.read_array_end()
+//             print("empty_arr")
+//     reader.read_object_end()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_empty_containers() {
-    // reader = JsonReader('{"obj": {}, "arr": []}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"obj\": {}, \"arr\": []}");
-    // reader.read_object_start()
     {
         auto __try_tmp_31 = reader.read_object_start();
         if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
     }
-    // while reader.has_next():
     while (reader.has_next()) {
-        // key = reader.read_key()
         std::string key;
         {
             auto __try_tmp_32 = reader.read_key();
             if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
             key = ::tpy::unwrap_ref_move(*__try_tmp_32);
         }
-        // if key == "obj":
         if ((key == "obj")) {
-            // reader.read_object_start()
             {
                 auto __try_tmp_33 = reader.read_object_start();
                 if (!__try_tmp_33.has_value()) return ::tpy::make_unexpected(__try_tmp_33.error());
             }
-            // reader.read_object_end()
             {
                 auto __try_tmp_34 = reader.read_object_end();
                 if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(__try_tmp_34.error());
             }
-            // print("empty_obj")
             std::cout << "empty_obj" << "\n";
-        // elif key == "arr":
         } else if ((key == "arr")) {
-            // reader.read_array_start()
             {
                 auto __try_tmp_35 = reader.read_array_start();
                 if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
             }
-            // reader.read_array_end()
             {
                 auto __try_tmp_36 = reader.read_array_end();
                 if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
             }
-            // print("empty_arr")
             std::cout << "empty_arr" << "\n";
         }
     }
-    // reader.read_object_end()
     {
         auto __try_tmp_37 = reader.read_object_end();
         if (!__try_tmp_37.has_value()) return ::tpy::make_unexpected(__try_tmp_37.error());
@@ -354,27 +354,27 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_empty_contain
 
 // @error_return(JsonError)
 // def test_negative_int() -> None:
+//     reader = JsonReader('[-42, 0, 100]')
+//     reader.read_array_start()
+//     while reader.has_next():
+//         v = reader.read_int()
+//         print(v)
+//     reader.read_array_end()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_negative_int() {
-    // reader = JsonReader('[-42, 0, 100]')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("[-42, 0, 100]");
-    // reader.read_array_start()
     {
         auto __try_tmp_38 = reader.read_array_start();
         if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
     }
-    // while reader.has_next():
     while (reader.has_next()) {
-        // v = reader.read_int()
         int64_t v;
         {
             auto __try_tmp_39 = reader.read_int();
             if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(__try_tmp_39.error());
             v = ::tpy::unwrap_ref_move(*__try_tmp_39);
         }
-        // print(v)
         std::cout << v << "\n";
     }
-    // reader.read_array_end()
     {
         auto __try_tmp_40 = reader.read_array_end();
         if (!__try_tmp_40.has_value()) return ::tpy::make_unexpected(__try_tmp_40.error());
@@ -384,36 +384,36 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_negative_int(
 
 // @error_return(JsonError)
 // def test_raw_methods() -> None:
+//     reader = JsonReader('{"name": "Alice", "city": "NYC"}')
+//     reader.read_object_start()
+//     while reader.has_next():
+//         key = reader.read_key_raw()
+//         print(key)
+//         v = reader.read_str_raw()
+//         print(v)
+//     reader.read_object_end()
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_raw_methods() {
-    // reader = JsonReader('{"name": "Alice", "city": "NYC"}')
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader("{\"name\": \"Alice\", \"city\": \"NYC\"}");
-    // reader.read_object_start()
     {
         auto __try_tmp_41 = reader.read_object_start();
         if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
     }
-    // while reader.has_next():
     while (reader.has_next()) {
-        // key = reader.read_key_raw()
         std::string_view key;
         {
             auto __try_tmp_42 = reader.read_key_raw();
             if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(__try_tmp_42.error());
             key = ::tpy::unwrap_ref_move(*__try_tmp_42);
         }
-        // print(key)
         std::cout << key << "\n";
-        // v = reader.read_str_raw()
         std::string_view v;
         {
             auto __try_tmp_43 = reader.read_str_raw();
             if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(__try_tmp_43.error());
             v = ::tpy::unwrap_ref_move(*__try_tmp_43);
         }
-        // print(v)
         std::cout << v << "\n";
     }
-    // reader.read_object_end()
     {
         auto __try_tmp_44 = reader.read_object_end();
         if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
@@ -422,20 +422,65 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_raw_methods()
 }
 
 // def test_describe() -> None:
+//     data = '{"key" 123}'
+//     reader = JsonReader(data)
+//     try:
+//         reader.read_object_start()
+//         reader.read_key()
+//     except JsonError as e:
+//         print(e.describe(data))
+//     # Unterminated string
+//     data2 = '{"name": "hello'
+//     reader2 = JsonReader(data2)
+//     try:
+//         reader2.read_object_start()
+//         reader2.read_key()
+//         reader2.read_str()
+//     except JsonError as e2:
+//         print(e2.describe(data2))
+//     # Long context (truncated with ...)
+//     data3 = '{"first_name": "Alice", "last_name": "Smith", "age" "thirty"}'
+//     reader3 = JsonReader(data3)
+//     try:
+//         reader3.read_object_start()
+//         while reader3.has_next():
+//             reader3.read_key()
+//             reader3.skip_value()
+//     except JsonError as e3:
+//         print(e3.describe(data3))
+//     # Error at end of input (truncated JSON)
+//     data4 = '{"key": 1'
+//     reader4 = JsonReader(data4)
+//     try:
+//         reader4.read_object_start()
+//         reader4.read_key()
+//         reader4.read_int()
+//         reader4.read_object_end()
+//     except JsonError as e4:
+//         print(e4.describe(data4))
+//     # Malformed numbers: lone minus, minus-dot, minus-exponent
+//     for bad in ['[-]', '[-.e3]', '[-.]']:
+//         reader5 = JsonReader(bad)
+//         try:
+//             reader5.read_array_start()
+//             reader5.read_float()
+//         except JsonError as e5:
+//             print(e5.describe(bad))
+//     # No position (bare JsonError)
+//     err = JsonError()
+//     print(err.describe("any"))
+//     # Message only, no position
+//     err2 = JsonError("custom msg")
+//     print(err2.describe("any"))
 void test_describe() {
-    // data = '{"key" 123}'
     std::string_view data = "{\"key\" 123}";
-    // reader = JsonReader(data)
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader(data);
-    // try:
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_45;
-        // reader.read_object_start()
         {
             auto __try_tmp_46 = reader.read_object_start();
             if (!__try_tmp_46.has_value()) { __err_opt_45 = std::move(__try_tmp_46.error()); goto __except_45; }
         }
-        // reader.read_key()
         {
             auto __try_tmp_47 = reader.read_key();
             if (!__try_tmp_47.has_value()) { __err_opt_45 = std::move(__try_tmp_47.error()); goto __except_45; }
@@ -445,30 +490,22 @@ void test_describe() {
         __except_45:;
         {
             auto& e = *__err_opt_45;
-            // print(e.describe(data))
             std::cout << e.describe(data) << "\n";
         }
         __after_try_45:;
     }
-    // # Unterminated string
-    // data2 = '{"name": "hello'
     std::string_view data2 = "{\"name\": \"hello";
-    // reader2 = JsonReader(data2)
     ::tpystd::tplib::json::parser::JsonReader reader2 = ::tpystd::tplib::json::parser::JsonReader(data2);
-    // try:
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_48;
-        // reader2.read_object_start()
         {
             auto __try_tmp_49 = reader2.read_object_start();
             if (!__try_tmp_49.has_value()) { __err_opt_48 = std::move(__try_tmp_49.error()); goto __except_48; }
         }
-        // reader2.read_key()
         {
             auto __try_tmp_50 = reader2.read_key();
             if (!__try_tmp_50.has_value()) { __err_opt_48 = std::move(__try_tmp_50.error()); goto __except_48; }
         }
-        // reader2.read_str()
         {
             auto __try_tmp_51 = reader2.read_str();
             if (!__try_tmp_51.has_value()) { __err_opt_48 = std::move(__try_tmp_51.error()); goto __except_48; }
@@ -478,32 +515,23 @@ void test_describe() {
         __except_48:;
         {
             auto& e2 = *__err_opt_48;
-            // print(e2.describe(data2))
             std::cout << e2.describe(data2) << "\n";
         }
         __after_try_48:;
     }
-    // # Long context (truncated with ...)
-    // data3 = '{"first_name": "Alice", "last_name": "Smith", "age" "thirty"}'
     std::string_view data3 = "{\"first_name\": \"Alice\", \"last_name\": \"Smith\", \"age\" \"thirty\"}";
-    // reader3 = JsonReader(data3)
     ::tpystd::tplib::json::parser::JsonReader reader3 = ::tpystd::tplib::json::parser::JsonReader(data3);
-    // try:
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_52;
-        // reader3.read_object_start()
         {
             auto __try_tmp_53 = reader3.read_object_start();
             if (!__try_tmp_53.has_value()) { __err_opt_52 = std::move(__try_tmp_53.error()); goto __except_52; }
         }
-        // while reader3.has_next():
         while (reader3.has_next()) {
-            // reader3.read_key()
             {
                 auto __try_tmp_54 = reader3.read_key();
                 if (!__try_tmp_54.has_value()) { __err_opt_52 = std::move(__try_tmp_54.error()); goto __except_52; }
             }
-            // reader3.skip_value()
             {
                 auto __try_tmp_55 = reader3.skip_value();
                 if (!__try_tmp_55.has_value()) { __err_opt_52 = std::move(__try_tmp_55.error()); goto __except_52; }
@@ -514,35 +542,26 @@ void test_describe() {
         __except_52:;
         {
             auto& e3 = *__err_opt_52;
-            // print(e3.describe(data3))
             std::cout << e3.describe(data3) << "\n";
         }
         __after_try_52:;
     }
-    // # Error at end of input (truncated JSON)
-    // data4 = '{"key": 1'
     std::string_view data4 = "{\"key\": 1";
-    // reader4 = JsonReader(data4)
     ::tpystd::tplib::json::parser::JsonReader reader4 = ::tpystd::tplib::json::parser::JsonReader(data4);
-    // try:
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_56;
-        // reader4.read_object_start()
         {
             auto __try_tmp_57 = reader4.read_object_start();
             if (!__try_tmp_57.has_value()) { __err_opt_56 = std::move(__try_tmp_57.error()); goto __except_56; }
         }
-        // reader4.read_key()
         {
             auto __try_tmp_58 = reader4.read_key();
             if (!__try_tmp_58.has_value()) { __err_opt_56 = std::move(__try_tmp_58.error()); goto __except_56; }
         }
-        // reader4.read_int()
         {
             auto __try_tmp_59 = reader4.read_int();
             if (!__try_tmp_59.has_value()) { __err_opt_56 = std::move(__try_tmp_59.error()); goto __except_56; }
         }
-        // reader4.read_object_end()
         {
             auto __try_tmp_60 = reader4.read_object_end();
             if (!__try_tmp_60.has_value()) { __err_opt_56 = std::move(__try_tmp_60.error()); goto __except_56; }
@@ -552,29 +571,22 @@ void test_describe() {
         __except_56:;
         {
             auto& e4 = *__err_opt_56;
-            // print(e4.describe(data4))
             std::cout << e4.describe(data4) << "\n";
         }
         __after_try_56:;
     }
-    // # Malformed numbers: lone minus, minus-dot, minus-exponent
-    // for bad in ['[-]', '[-.e3]', '[-.]']:
     auto __obj_0 = {"[-]", "[-.e3]", "[-.]"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view bad = *__beg_0;
-        // reader5 = JsonReader(bad)
         ::tpystd::tplib::json::parser::JsonReader reader5 = ::tpystd::tplib::json::parser::JsonReader(bad);
-        // try:
         {
             std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_61;
-            // reader5.read_array_start()
             {
                 auto __try_tmp_62 = reader5.read_array_start();
                 if (!__try_tmp_62.has_value()) { __err_opt_61 = std::move(__try_tmp_62.error()); goto __except_61; }
             }
-            // reader5.read_float()
             {
                 auto __try_tmp_63 = reader5.read_float();
                 if (!__try_tmp_63.has_value()) { __err_opt_61 = std::move(__try_tmp_63.error()); goto __except_61; }
@@ -584,29 +596,53 @@ void test_describe() {
             __except_61:;
             {
                 auto& e5 = *__err_opt_61;
-                // print(e5.describe(bad))
                 std::cout << e5.describe(bad) << "\n";
             }
             __after_try_61:;
         }
     }
-    // # No position (bare JsonError)
-    // err = JsonError()
     ::tpystd::tplib::json::parser::JsonError err = ::tpystd::tplib::json::parser::JsonError();
-    // print(err.describe("any"))
     std::cout << err.describe("any") << "\n";
-    // # Message only, no position
-    // err2 = JsonError("custom msg")
     ::tpystd::tplib::json::parser::JsonError err2 = ::tpystd::tplib::json::parser::JsonError("custom msg");
-    // print(err2.describe("any"))
     std::cout << err2.describe("any") << "\n";
 }
 
 // def main() -> None:
+//     try:
+//         test_basic_object()
+//     except JsonError:
+//         print("ERROR")
+//     try:
+//         test_nested()
+//     except JsonError:
+//         print("ERROR")
+//     try:
+//         test_null_and_escape()
+//     except JsonError:
+//         print("ERROR")
+//     try:
+//         test_float()
+//     except JsonError:
+//         print("ERROR")
+//     try:
+//         test_skip()
+//     except JsonError:
+//         print("ERROR")
+//     try:
+//         test_empty_containers()
+//     except JsonError:
+//         print("ERROR")
+//     try:
+//         test_negative_int()
+//     except JsonError:
+//         print("ERROR")
+//     try:
+//         test_raw_methods()
+//     except JsonError:
+//         print("ERROR")
+//     test_describe()
 void main() {
-    // try:
     {
-        // test_basic_object()
         {
             auto __try_tmp_65 = test_basic_object();
             if (!__try_tmp_65.has_value()) goto __except_64;
@@ -614,13 +650,10 @@ void main() {
         goto __after_try_64;
         // except JsonError:
         __except_64:;
-        // print("ERROR")
         std::cout << "ERROR" << "\n";
         __after_try_64:;
     }
-    // try:
     {
-        // test_nested()
         {
             auto __try_tmp_67 = test_nested();
             if (!__try_tmp_67.has_value()) goto __except_66;
@@ -628,13 +661,10 @@ void main() {
         goto __after_try_66;
         // except JsonError:
         __except_66:;
-        // print("ERROR")
         std::cout << "ERROR" << "\n";
         __after_try_66:;
     }
-    // try:
     {
-        // test_null_and_escape()
         {
             auto __try_tmp_69 = test_null_and_escape();
             if (!__try_tmp_69.has_value()) goto __except_68;
@@ -642,13 +672,10 @@ void main() {
         goto __after_try_68;
         // except JsonError:
         __except_68:;
-        // print("ERROR")
         std::cout << "ERROR" << "\n";
         __after_try_68:;
     }
-    // try:
     {
-        // test_float()
         {
             auto __try_tmp_71 = test_float();
             if (!__try_tmp_71.has_value()) goto __except_70;
@@ -656,13 +683,10 @@ void main() {
         goto __after_try_70;
         // except JsonError:
         __except_70:;
-        // print("ERROR")
         std::cout << "ERROR" << "\n";
         __after_try_70:;
     }
-    // try:
     {
-        // test_skip()
         {
             auto __try_tmp_73 = test_skip();
             if (!__try_tmp_73.has_value()) goto __except_72;
@@ -670,13 +694,10 @@ void main() {
         goto __after_try_72;
         // except JsonError:
         __except_72:;
-        // print("ERROR")
         std::cout << "ERROR" << "\n";
         __after_try_72:;
     }
-    // try:
     {
-        // test_empty_containers()
         {
             auto __try_tmp_75 = test_empty_containers();
             if (!__try_tmp_75.has_value()) goto __except_74;
@@ -684,13 +705,10 @@ void main() {
         goto __after_try_74;
         // except JsonError:
         __except_74:;
-        // print("ERROR")
         std::cout << "ERROR" << "\n";
         __after_try_74:;
     }
-    // try:
     {
-        // test_negative_int()
         {
             auto __try_tmp_77 = test_negative_int();
             if (!__try_tmp_77.has_value()) goto __except_76;
@@ -698,13 +716,10 @@ void main() {
         goto __after_try_76;
         // except JsonError:
         __except_76:;
-        // print("ERROR")
         std::cout << "ERROR" << "\n";
         __after_try_76:;
     }
-    // try:
     {
-        // test_raw_methods()
         {
             auto __try_tmp_79 = test_raw_methods();
             if (!__try_tmp_79.has_value()) goto __except_78;
@@ -712,23 +727,22 @@ void main() {
         goto __after_try_78;
         // except JsonError:
         __except_78:;
-        // print("ERROR")
         std::cout << "ERROR" << "\n";
         __after_try_78:;
     }
-    // test_describe()
     test_describe();
 }
 
+// from tplib.json import JsonError, JsonReader, JsonToken
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.json import JsonError, JsonReader, JsonToken
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
-    // main()
     main();
 }
 

@@ -33,8 +33,11 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def next_color(c: Color) -> Color:
 Color next_color(Color c);
+// def print_color(c: Color) -> None:
 void print_color(Color c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

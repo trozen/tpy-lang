@@ -5,14 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     data = Arc.new(Mutex.new([1, 2]))
+//     with data.lock() as g:          # auto-deref: Arc -> Mutex.lock()
+//         g.append(3)
+//     with data.lock() as g:
+//         print(sorted(g.get()))      # [1, 2, 3]
 void main() {
-    // data = Arc.new(Mutex.new([1, 2]))
     ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>(::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2}));
-    // with data.lock() as g:          # auto-deref: Arc -> Mutex.lock()
     auto __ctx_1 = data.__deref__().lock();
     ::tpystd::tpy::sync::MutexGuard<std::vector<int32_t>>* g = &(__ctx_1.__enter__());
     try {
-        // g.append(3)
         g->__deref__().push_back(3);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -24,11 +26,9 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with data.lock() as g:
     auto __ctx_2 = data.__deref__().lock();
     g = &(__ctx_2.__enter__());
     try {
-        // print(sorted(g.get()))      # [1, 2, 3]
         std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(g->get())) << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -42,22 +42,23 @@ void main() {
     __ctx_2.__exit__({}, nullptr, {});
 }
 
+// # `lock()` auto-derefs through Arc: `arc.lock()` resolves Arc's Deref -> Mutex
+// # and acquires, no explicit `.get()`. no_cpython because Arc method auto-deref is
+// # a compile-time deref-chain feature the CPython stubs don't model (see
+// # tests/cases/tplib/rc_auto_deref, also no_cpython). Single-threaded; the append
+// # is mutated then observed through a second lock.
+// from tplib.arc import Arc
+// from tpy.sync import Mutex
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `lock()` auto-derefs through Arc: `arc.lock()` resolves Arc's Deref -> Mutex
-    // # and acquires, no explicit `.get()`. no_cpython because Arc method auto-deref is
-    // # a compile-time deref-chain feature the CPython stubs don't model (see
-    // # tests/cases/tplib/rc_auto_deref, also no_cpython). Single-threaded; the append
-    // # is mutated then observed through a second lock.
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // from tpy.sync import Mutex
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

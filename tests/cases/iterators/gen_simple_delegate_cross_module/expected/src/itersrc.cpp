@@ -5,15 +5,15 @@ namespace tpyapp::itersrc {
 
 
 // def walk() -> Iterator[int32]:
+//     yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }

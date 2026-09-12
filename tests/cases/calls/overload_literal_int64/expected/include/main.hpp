@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(x: int64) -> str:
 std::string classify__lit_1__2(int64_t x);
+// def classify(x: int64) -> str:
 std::string classify(int64_t x);
+// def main() -> None:
 void main();
 
 void __tpy_init();

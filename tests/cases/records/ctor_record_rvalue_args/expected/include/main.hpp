@@ -14,7 +14,9 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_inner(v: int32) -> Own[Inner]:
 Inner make_inner(int32_t v);
+// def main() -> None:
 void main();
 
 // class Inner:
@@ -86,26 +88,29 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Inner::Inner(int32_t v) : v(v) {}
 
 // def bump(self) -> None:
+//     self.v += 1
 inline void Inner::bump() {
-    // self.v += 1
     this->v = ::tpy::add_check<int32_t>(this->v, 1);
 }
 
 // def __init__(self, inner: Inner):
+//     self.x = inner.v
 inline HolderConst::HolderConst(const Inner& inner) : x(inner.v) {}
 
 // def __init__(self, inner: Inner):
+//     inner.bump()
+//     self.x = inner.v
 inline HolderMut::HolderMut(Inner& inner) {
-    // inner.bump()
     inner.bump();
-    // self.x = inner.v
     this->x = inner.v;
 }
 
 // def __init__(self, h: HolderConst):
+//     self.y = h.x
 inline Outer::Outer(const HolderConst& h) : y(h.x) {}
 void __tpy_init();
 } // namespace tpyapp::main

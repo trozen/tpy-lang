@@ -5,16 +5,19 @@ namespace tpyapp::main {
 
 
 // def counts(a: Cat) -> Iterator[int]:
+//     match a:
+//         case Cat(lives=v):
+//             v = v + 1    # tpyc: ok
+//             yield v      # 6
+//             v = v + 10   # rebind after the suspension, same slot
+//             yield v      # 16
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = a;
-        // case Cat(lives=v):
         {
             v = __match_subject_1.lives;
-            // v = v + 1    # tpyc: ok
             v = ((v) + (::tpy::BigInt(1)));
-            // yield v      # 6
             __state = S_RESUME_0;
             return v;
         }
@@ -22,9 +25,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // v = v + 10   # rebind after the suspension, same slot
         v = ((v) + (::tpy::BigInt(10)));
-        // yield v      # 16
         __state = S_RESUME_1;
         return v;
     }
@@ -48,8 +49,9 @@ __gen_counts counts(Cat& a) {
 }
 
 // def main() -> None:
+//     for x in counts(Cat(5)):
+//         print(x)
 void main() {
-    // for x in counts(Cat(5)):
     {
         Cat __tmp_1 = Cat(::tpy::BigInt(5));
         auto __src_0 = counts(__tmp_1);
@@ -58,18 +60,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

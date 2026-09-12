@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Seg(3, 4)
+//     p = Picture(7)
+//     t = Triangle(3, 4, 5, 12, "tri")
+//     print(s.length)
+//     print(p.width)
+//     print(t.a)
+//     print(t.b)
+//     print(t.label)
 void main() {
-    // s = Seg(3, 4)
     Seg s = Seg(::tpy::BigInt(3), ::tpy::BigInt(4));
-    // p = Picture(7)
     Picture p = Picture(::tpy::BigInt(7));
-    // t = Triangle(3, 4, 5, 12, "tri")
     Triangle t = Triangle(::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(5), ::tpy::BigInt(12), "tri");
-    // print(s.length)
     std::cout << ::tpy::print_float(s.length) << "\n";
-    // print(p.width)
     std::cout << p.width << "\n";
-    // print(t.a)
     std::cout << ::tpy::print_float(t.a) << "\n";
-    // print(t.b)
     std::cout << ::tpy::print_float(t.b) << "\n";
-    // print(t.label)
     std::cout << t.label << "\n";
 }
 
+// # Field init RHS that registers a codegen temp (e.g. varargs call) must be
+// # demoted from the member-initializer list to the constructor body. Otherwise
+// # the MIL would reference an undeclared temp, and the temp would leak into the
+// # next constructor body that triggers temps.flush.
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Field init RHS that registers a codegen temp (e.g. varargs call) must be
-    // # demoted from the member-initializer list to the constructor body. Otherwise
-    // # the MIL would reference an undeclared temp, and the temp would leak into the
-    // # next constructor body that triggers temps.flush.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

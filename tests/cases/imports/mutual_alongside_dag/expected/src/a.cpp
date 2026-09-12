@@ -6,19 +6,19 @@ namespace tpyapp::a {
 
 
 // def a_func() -> int32:
+//     return boost(b_helper())
 int32_t a_func() {
-    // return boost(b_helper())
     return ::tpyapp::util::boost(::tpyapp::b::b_helper());
 }
 
+// from b import b_helper
+// from util import boost
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from b import b_helper
     ::tpyapp::b::__tpy_init();
-    // from util import boost
     ::tpyapp::util::__tpy_init();
 }
 

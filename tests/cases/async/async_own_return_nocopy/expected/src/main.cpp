@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // async def make(v: int32) -> Own[Box]:
+//     b = Box(v)
+//     return b
 ::tpystd::tpy::Poll<Box> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // b = Box(v)
         b.emplace(Box(v));
-        // return b
         __state = S_DONE;
         Box __tpy_async_ret = std::move((*b));
         return ::tpystd::tpy::Poll<Box>::ready(std::move(__tpy_async_ret));
@@ -28,10 +28,12 @@ __coro_make make(int32_t v) {
 }
 
 // async def driver() -> int32:
+//     b = await make(7)
+//     b.v += 1
+//     return b.v
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = await make(7)
         __sub_0.emplace(7);
         __state = S_RESUME_0;
         continue;
@@ -41,9 +43,7 @@ __coro_make make(int32_t v) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         b.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // b.v += 1
         (*b).v = ::tpy::add_check<int32_t>((*b).v, 1);
-        // return b.v
         __state = S_DONE;
         int32_t __tpy_async_ret = (*b).v;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -60,22 +60,23 @@ __coro_driver driver() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(driver()))
 void main() {
-    // print(asyncio.run(driver()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(driver())) << "\n";
 }
 
+// # An async def returning a @nocopy frame local as Own[T]: the return
+// # moves out of the frame slot (a copy is a deleted-ctor build error).
+// # The awaiter owns the result and mutates it freely.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async def returning a @nocopy frame local as Own[T]: the return
-    // # moves out of the frame slot (a copy is a deleted-ctor build error).
-    // # The awaiter owns the result and mutates it freely.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

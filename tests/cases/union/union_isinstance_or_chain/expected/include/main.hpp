@@ -13,10 +13,15 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def two_member(v: A | B) -> str:
 std::string two_member(::tpy::Union<const A*, const B*> v);
+// def three_member(v: A | B | C) -> str:
 std::string three_member(::tpy::Union<const A*, const B*, const C*> v);
+// def and_chain(v: A | B, flag: bool) -> str:
 std::string and_chain(::tpy::Union<const A*, const B*> v, bool flag);
+// def negated_or(v: A | B) -> str:
 std::string negated_or(::tpy::Union<const A*, const B*> v);
+// def main() -> None:
 void main();
 
 // # or-chain isinstance: isinstance(v, A) or isinstance(v, B) must emit
@@ -71,12 +76,15 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, tag: int) -> None:
+//     self.tag = tag
 inline A::A(const ::tpy::BigInt& tag) : tag(tag) {}
 
 // def __init__(self, tag: int) -> None:
+//     self.tag = tag
 inline B::B(const ::tpy::BigInt& tag) : tag(tag) {}
 
 // def __init__(self, tag: int) -> None:
+//     self.tag = tag
 inline C::C(const ::tpy::BigInt& tag) : tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

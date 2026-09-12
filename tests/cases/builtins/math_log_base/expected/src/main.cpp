@@ -5,61 +5,64 @@ namespace tpyapp::main {
 
 
 // def approx(x: float, target: float) -> bool:
+//     d = x - target
+//     if d < 0.0:
+//         d = -d
+//     return d < 0.001
 bool approx(double x, double target) {
-    // d = x - target
     double d = ((x) - (target));
-    // if d < 0.0:
     if ((d < 0.0)) {
-        // d = -d
         d = -(d);
     }
-    // return d < 0.001
     return (d < 0.001);
 }
 
 // def main() -> None:
+//     # log(8, 2) should be ~3.0
+//     if approx(math.log(8.0, 2.0), 3.0):
+//         print("log(8, 2) ok")
+//     else:
+//         print("log(8, 2) error")
+//
+//     # log(100, 10) should be ~2.0
+//     if approx(math.log(100.0, 10.0), 2.0):
+//         print("log(100, 10) ok")
+//     else:
+//         print("log(100, 10) error")
+//
+//     # Single-arg form still works (natural log of e)
+//     if approx(math.log(2.718281828), 1.0):
+//         print("log(e) ok")
+//     else:
+//         print("log(e) error")
 void main() {
-    // # log(8, 2) should be ~3.0
-    // if approx(math.log(8.0, 2.0), 3.0):
     if (approx(::tpystd::math::log(8.0, 2.0), 3.0)) {
-        // print("log(8, 2) ok")
         std::cout << "log(8, 2) ok" << "\n";
-    // else:
     } else {
-        // print("log(8, 2) error")
         std::cout << "log(8, 2) error" << "\n";
     }
-    // # log(100, 10) should be ~2.0
-    // if approx(math.log(100.0, 10.0), 2.0):
     if (approx(::tpystd::math::log(100.0, 10.0), 2.0)) {
-        // print("log(100, 10) ok")
         std::cout << "log(100, 10) ok" << "\n";
-    // else:
     } else {
-        // print("log(100, 10) error")
         std::cout << "log(100, 10) error" << "\n";
     }
-    // # Single-arg form still works (natural log of e)
-    // if approx(math.log(2.718281828), 1.0):
     if (approx(::tpy::stdlib::math::checked_log(2.718281828), 1.0)) {
-        // print("log(e) ok")
         std::cout << "log(e) ok" << "\n";
-    // else:
     } else {
-        // print("log(e) error")
         std::cout << "log(e) error" << "\n";
     }
 }
 
+// # Two-argument math.log(x, base) -- motivating use case for bodied @overload
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two-argument math.log(x, base) -- motivating use case for bodied @overload
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

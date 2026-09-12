@@ -10,7 +10,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_thing(sec: Ptr[SectorT]) -> Ptr[ThingT]:
 ::thing_t* get_thing(::sector_t* sec);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -13,6 +13,7 @@ struct Speaker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: union param on a readonly method, narrowed member access (address
@@ -68,42 +69,42 @@ inline std::ostream& operator<<(std::ostream& os, const Speaker& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Dog::Dog() {
-    // pass
 }
 
 // def sound(self) -> str:
+//     return "woof"
 inline std::string Dog::sound() const {
-    // return "woof"
     return "woof";
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Cat::Cat() {
-    // pass
 }
 
 // def sound(self) -> str:
+//     return "meow"
 inline std::string Cat::sound() const {
-    // return "meow"
     return "meow";
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Speaker::Speaker() {
-    // pass
 }
 
 // def voice(self, a: Dog | Cat) -> str:
+//     if isinstance(a, Dog):
+//         return a.sound()
+//     return "?"
 inline std::string Speaker::voice(::tpy::Union<Cat*, Dog*> a) const {
-    // if isinstance(a, Dog):
     if (std::holds_alternative<Dog*>(a)) {
         auto& __a = *std::get<Dog*>(a);
-        // return a.sound()
         return __a.sound();
     }
     auto& __a = *std::get<Cat*>(a);
-    // return "?"
     return "?";
 }
 void __tpy_init();

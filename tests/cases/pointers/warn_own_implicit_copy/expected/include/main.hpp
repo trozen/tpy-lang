@@ -11,8 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_point(p: Own[Point]) -> int32:
 int32_t take_point(Point&& p);
+// def use_point(p: Point) -> None:
 void use_point(const Point& p);
+// def main():
 void main();
 
 // class Point:

@@ -64,25 +64,28 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 
 
 // def __init__(self, name: str, id: int32) -> None:
+//     self.name = name
+//     self.id = id
 inline Entity::Entity(std::string_view name, int32_t id) : name(name), id(id) {}
 
 // def get_name(self) -> str:
+//     return self.name
 inline std::string Entity::get_name() const {
-    // return self.name
     return this->name;
 }
 
 // def __init__(self, name: str, id: int32, age: int32) -> None:
+//     self.name = name
+//     self.id = id
+//     self.age = age
 inline Person::Person(std::string_view name, int32_t id, int32_t age) : age(age) {
-    // self.name = name
     this->name = name;
-    // self.id = id
     this->id = id;
 }
 
 // def __str__(self) -> str:
+//     return self.name
 inline std::string Person::__str__() const {
-    // return self.name
     return this->name;
 }
 void __tpy_init();

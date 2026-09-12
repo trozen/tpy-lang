@@ -11,6 +11,7 @@ template<typename T> struct Processor;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Processor[T]:
@@ -20,19 +21,20 @@ struct Processor {
     T val;
 
     // def __init__(self, val: T):
+    //     self.val = val
     Processor() = default;
     explicit Processor(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def wrap[U](self, x: U) -> U:
+    //     return x
     template<typename U>
     ::tpy::val_or_cref_t<U> wrap(::tpy::readonly_form_t<U> x) const {
-        // return x
         return ::tpy::param_to_return<U>(x);
     }
 
     // def process(self) -> int32:
+    //     return self.wrap(int32(99))
     int32_t process() const {
-        // return self.wrap(int32(99))
         return this->wrap<int32_t>(99);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";

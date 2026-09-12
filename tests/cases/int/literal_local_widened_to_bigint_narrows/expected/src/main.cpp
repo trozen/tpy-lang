@@ -43,80 +43,81 @@ namespace tpyapp::main {
 
 
 // def widen() -> int:
+//     return 1
 ::tpy::BigInt widen() {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def subscript_positions(data: str, xs: list[int32],
-// d: dict[int32, int32]) -> None:
+//                         d: dict[int32, int32]) -> None:
+//     p = 0
+//     print(data[p])       # read index
+//     print(xs[p])
+//     xs[p] = 9            # __setitem__ index
+//     xs[p] += 1           # element aug-assign: read AND write index
+//     del d[p]             # __delitem__ index
+//     print(xs[0], len(d))
+//     p = widen()          # the assignment that retro-widens `p` to BigInt
+//     print(p)
 void subscript_positions(std::string_view data, std::vector<int32_t>& xs, ::tpy::ordered_map<int32_t, int32_t>& d) {
-    // p = 0
     ::tpy::BigInt p = ::tpy::BigInt(0);
-    // print(data[p])       # read index
     std::cout << ::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) << "\n";
-    // print(xs[p])
     std::cout << ::tpy::__getitem__(xs, p.to_fixed_check<int32_t>()) << "\n";
-    // xs[p] = 9            # __setitem__ index
     ::tpy::__setitem__(xs, p.to_fixed_check<int32_t>(), 9);
-    // xs[p] += 1           # element aug-assign: read AND write index
     ::tpy::__setitem__(xs, p.to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, p.to_fixed_check<int32_t>()), 1));
-    // del d[p]             # __delitem__ index
     ::tpy::__delitem__(d, p.to_fixed_check<int32_t>());
-    // print(xs[0], len(d))
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__len__(d) << "\n";
-    // p = widen()          # the assignment that retro-widens `p` to BigInt
     p = widen();
-    // print(p)
     std::cout << p << "\n";
 }
 
 // def value_positions(data: str) -> None:
+//     p = 1
+//     print(data[p:])      # slice lower bound
+//     print(data[:p])      # slice upper bound
+//     q: int32 = 7
+//     q += p               # FixedInt += (declared) BigInt
+//     print(q)
+//     print(f"{p}")        # f-string arg -> .to_string()
+//     print(Color(p))      # enum from_value arg
+//     p = widen()
+//     print(p)
 void value_positions(std::string_view data) {
-    // p = 1
     ::tpy::BigInt p = ::tpy::BigInt(1);
-    // print(data[p:])      # slice lower bound
     std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), std::nullopt}) << "\n";
-    // print(data[:p])      # slice upper bound
     std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{std::nullopt, p.to_fixed_check<int32_t>()}) << "\n";
-    // q: int32 = 7
     int32_t q = 7;
-    // q += p               # FixedInt += (declared) BigInt
     q = ::tpy::add_check<int32_t>(q, (p).to_fixed_check<int32_t>());
-    // print(q)
     std::cout << q << "\n";
-    // print(f"{p}")        # f-string arg -> .to_string()
     std::cout << std::format("{}", (p).to_string()) << "\n";
-    // print(Color(p))      # enum from_value arg
     std::cout << ::tpy::EnumUtil<Color>::from_value((p).to_fixed_check<int32_t>()) << "\n";
-    // p = widen()
     p = widen();
-    // print(p)
     std::cout << p << "\n";
 }
 
 // def main() -> None:
+//     subscript_positions("abc", [1, 2, 3], {0: 1})
+//     value_positions("abcd")
 void main() {
-    // subscript_positions("abc", [1, 2, 3], {0: 1})
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     ::tpy::ordered_map<int32_t, int32_t> __tmp_2 = ::tpy::ordered_map<int32_t, int32_t>({{0, 1}});
     subscript_positions("abc", __tmp_1, __tmp_2);
-    // value_positions("abcd")
     value_positions("abcd");
 }
 
+// # A literal-seeded local that a later `int`-returning assignment retro-widens to
+// # BigInt still types int32 at every EARLIER use. Codegen must key the checked
+// # `.to_fixed_check<T>()` narrows on the local's DECLARED type -- keying on
+// # sema's per-occurrence type emits a bare BigInt into an int32 slot (no viable
+// # overload). One case per narrow position.
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A literal-seeded local that a later `int`-returning assignment retro-widens to
-    // # BigInt still types int32 at every EARLIER use. Codegen must key the checked
-    // # `.to_fixed_check<T>()` narrows on the local's DECLARED type -- keying on
-    // # sema's per-occurrence type emits a bare BigInt into an int32 slot (no viable
-    // # overload). One case per narrow position.
-    // from enum import Enum
-    // main()
     main();
 }
 

@@ -15,9 +15,13 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_run;
 struct __gen_first_value;
 
+// def run() -> Iterator[int]:
 __gen_run run();
+// def first_value(t: Push | Emit) -> Iterator[int]:
 __gen_first_value first_value(::tpy::Union<const Emit*, const Push*> t);
+// def plain(t: Push | Emit) -> int:
 ::tpy::BigInt plain(::tpy::Union<const Emit*, const Push*> t);
+// def main() -> None:
 void main();
 
 // class Push:
@@ -52,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Emit& obj) {
     return os;
 }
 
-// Generator: run
+// def run() -> Iterator[int]:
 struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<::tpy::Union<Emit, Push>>> work;
@@ -80,7 +84,7 @@ struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
     }
 };
 
-// Generator: first_value
+// def first_value(t: Push | Emit) -> Iterator[int]:
 struct __gen_first_value : public ::tpy::next_iter_mixin<__gen_first_value, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::Union<const Emit*, const Push*> t;
@@ -104,9 +108,11 @@ struct __gen_first_value : public ::tpy::next_iter_mixin<__gen_first_value, ::tp
 
 
 // def __init__(self, items: Own[list[int]]) -> None:
+//     self.items = items
 inline Push::Push(std::vector<::tpy::BigInt>&& items) : items(std::move(items)) {}
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Emit::Emit(std::string_view label) : label(label) {}
 void __tpy_init();
 } // namespace tpyapp::main

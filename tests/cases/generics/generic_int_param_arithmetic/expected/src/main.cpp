@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Container[str, 10] = Container[str, 10]()
+//     print(c.get_double())      # 20
+//     print(c.get_plus_one())    # 11
+//     print(c.get_minus_five())  # 5
 void main() {
-    // c: Container[str, 10] = Container[str, 10]()
     Container<std::string, 10> c = Container<std::string, 10>();
-    // print(c.get_double())      # 20
     std::cout << c.get_double() << "\n";
-    // print(c.get_plus_one())    # 11
     std::cout << c.get_plus_one() << "\n";
-    // print(c.get_minus_five())  # 5
     std::cout << c.get_minus_five() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

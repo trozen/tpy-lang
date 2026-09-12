@@ -3,53 +3,49 @@
 
 namespace tpyapp::main {
 
-// # Test abs with int32
-// x: int32 = -42
 int32_t x{};
-// # Test abs with BigInt (default int)
-// y = -100
 int32_t y{};
-// # Large BigInt
-// big = int(-1000000)
 ::tpy::BigInt big;
-// # Test abs with float
-// z: float = -3.14
 double z{};
 
+// """Test abs() builtin function for int32, BigInt, and float."""
+//
+// # Test abs with int32
+// x: int32 = -42
+// print(abs(x))
+// print(abs(int32(10)))
+// print(abs(int32(0)))
+//
+// # Test abs with BigInt (default int)
+// y = -100
+// print(abs(y))
+// print(abs(99))
+// # Large BigInt
+// big = int(-1000000)
+// print(abs(big))
+//
+// # Test abs with float
+// z: float = -3.14
+// print(abs(z))
+// print(abs(2.5))
+// print(abs(-0.0))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test abs with int32
-    // x: int32 = -42
     x = -42;
-    // print(abs(x))
     std::cout << ::std::abs(x) << "\n";
-    // print(abs(int32(10)))
     std::cout << ::std::abs(10) << "\n";
-    // print(abs(int32(0)))
     std::cout << ::std::abs(0) << "\n";
-    // # Test abs with BigInt (default int)
-    // y = -100
     y = -100;
-    // print(abs(y))
     std::cout << ::std::abs(y) << "\n";
-    // print(abs(99))
     std::cout << ::std::abs(99) << "\n";
-    // # Large BigInt
-    // big = int(-1000000)
     big = ::tpy::BigInt(-1000000);
-    // print(abs(big))
     std::cout << ::tpy::BigInt::abs(big) << "\n";
-    // # Test abs with float
-    // z: float = -3.14
     z = -(3.14);
-    // print(abs(z))
     std::cout << ::tpy::print_float(::std::fabs(z)) << "\n";
-    // print(abs(2.5))
     std::cout << ::tpy::print_float(::std::fabs(2.5)) << "\n";
-    // print(abs(-0.0))
     std::cout << ::tpy::print_float(::std::fabs(-(0.0))) << "\n";
 }
 

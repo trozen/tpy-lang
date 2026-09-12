@@ -17,10 +17,15 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_nested_field_move(o: Outer, inner: Own[Inner]) -> None:
 void test_nested_field_move(Outer& o, Inner&& inner);
+// def test_nested_field_copy(o: Outer, inner: Own[Inner]) -> None:
 void test_nested_field_copy(Outer& o, Inner&& inner);
+// def test_subscript_move(xs: list[Inner], inner: Own[Inner]) -> None:
 void test_subscript_move(std::vector<Inner>& xs, Inner&& inner);
+// def test_subscript_copy(xs: list[Inner], inner: Own[Inner]) -> None:
 void test_subscript_copy(std::vector<Inner>& xs, Inner&& inner);
+// def main():
 void main();
 
 // class Inner:
@@ -78,12 +83,13 @@ struct GenericHolder {
     T item;
 
     // def __init__(self, item: Own[T]):
+    //     self.item = item  # tpyc: ok (generic ctor, last use -- std::move)
     GenericHolder() = default;
     explicit GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
 
     // def set_item(self, item: Own[T]) -> None:
+    //     self.item = item  # tpyc: ok (generic method, last use -- std::move)
     void set_item(::tpy::own_param_t<T> item) {
-        // self.item = item  # tpyc: ok (generic method, last use -- std::move)
         this->item = std::move(item);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericHolder";
@@ -104,6 +110,8 @@ struct GenericNotLastUse {
     T spare;
 
     // def __init__(self, item: Own[T]):
+    //     self.item = item  # tpyc: warning(/may copy T into field/)
+    //     self.spare = item
     GenericNotLastUse() = default;
     explicit GenericNotLastUse(::tpy::own_param_t<T> item) : item(item), spare(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericNotLastUse";
@@ -149,31 +157,33 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, inner: Own[Inner]):
+//     self.inner = inner  # tpyc: ok (ctor own-field, last use -- auto-moved)
 inline Holder::Holder(Inner&& inner) : inner(std::move(inner)) {}
 
 // def set_inner(self, inner: Own[Inner]) -> None:
+//     self.inner = inner  # tpyc: ok (field assign, last use -- auto-moved)
 inline void Holder::set_inner(Inner&& inner) {
-    // self.inner = inner  # tpyc: ok (field assign, last use -- auto-moved)
     this->inner = std::move(inner);
 }
 
 // def __init__(self, inner: Own[Inner]):
+//     self.inner = inner  # tpyc: warning(/copies.*field/)
+//     print(inner.value)
 inline NotLastUse::NotLastUse(Inner&& inner) : inner(inner) {
-    // print(inner.value)
     std::cout << inner.value << "\n";
 }
 
 // def set(self, inner: Own[Inner]) -> None:
+//     self.inner = inner  # tpyc: ok (optional field assign, last use -- auto-moved)
 inline void OptHolder::set(Inner&& inner) {
-    // self.inner = inner  # tpyc: ok (optional field assign, last use -- auto-moved)
     this->inner = std::move(inner);
 }
 
 // def set_not_last(self, inner: Own[Inner]) -> None:
+//     self.inner = inner  # tpyc: warning(/copies.*field/)
+//     print(inner.value)
 inline void OptHolder::set_not_last(Inner&& inner) {
-    // self.inner = inner  # tpyc: warning(/copies.*field/)
     this->inner = inner;
-    // print(inner.value)
     std::cout << inner.value << "\n";
 }
 void __tpy_init();

@@ -5,49 +5,46 @@ namespace tpyapp::main {
 
 
 // def classify(a: Dog | Cat, strict: bool) -> str:
+//     match a:
+//         case Dog(name=n) if n == "Rex":
+//             return "Rex!"
+//         case _ if strict:
+//             return "strict other"
+//         case _:
+//             return "other"
+//     return ""
 std::string classify(::tpy::Union<const Cat*, const Dog*> a, bool strict) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Dog(name=n) if n == "Rex":
         {
             auto& n = __case_1.name;
             if ((n == "Rex")) {
-                // return "Rex!"
                 return "Rex!";
                 goto __match_end_2;
             }
         }
-        // case _ if strict:
         {
             if (strict) {
-                // return "strict other"
                 return "strict other";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // return "other"
             return "other";
             goto __match_end_2;
         }
         break;
     }
     default: {
-        // case _ if strict:
         {
             if (strict) {
-                // return "strict other"
                 return "strict other";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // return "other"
             return "other";
             goto __match_end_2;
         }
@@ -56,40 +53,40 @@ std::string classify(::tpy::Union<const Cat*, const Dog*> a, bool strict) {
     }
 __match_end_2:;
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def as_guard(a: Dog | Cat) -> str:
+//     match a:
+//         case Dog(name=n) as d if n == "Buddy":
+//             return d.name + " the dog"
+//         case Dog(name=n):
+//             return "dog: " + n
+//         case Cat(name=n):
+//             return "cat: " + n
+//     return ""
 std::string as_guard(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // case Cat(name=n):
         auto& n = __case_0.name;
-        // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
         goto __match_end_2;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Dog(name=n) as d if n == "Buddy":
         {
             auto& n = __case_1.name;
             auto& d = __case_1;
             if ((n == "Buddy")) {
-                // return d.name + " the dog"
                 return (::tpy::str_concat(d.name, " the dog"));
                 goto __match_end_2;
             }
         }
-        // case Dog(name=n):
         {
             auto& n = __case_1.name;
-            // return "dog: " + n
             return (::tpy::str_concat("dog: ", n));
             goto __match_end_2;
         }
@@ -98,47 +95,47 @@ std::string as_guard(::tpy::Union<const Cat*, const Dog*> a) {
     }
 __match_end_2:;
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     d1: Dog | Cat = Dog("Rex")
+//     d2: Dog | Cat = Dog("Buddy")
+//     c: Dog | Cat = Cat("Luna")
+//     print(classify(d1, True))
+//     print(classify(d2, True))
+//     print(classify(d2, False))
+//     print(classify(c, True))
+//     print(classify(c, False))
+//     print(as_guard(d1))
+//     print(as_guard(d2))
+//     print(as_guard(c))
 void main() {
-    // d1: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
-    // d2: Dog | Cat = Dog("Buddy")
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("Buddy");
     ::tpy::Union<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
-    // c: Dog | Cat = Cat("Luna")
     ::tpy::Union<Cat, Dog> __slot_3 = Cat("Luna");
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_3);
-    // print(classify(d1, True))
     std::cout << classify(d1.as_const(), true) << "\n";
-    // print(classify(d2, True))
     std::cout << classify(d2.as_const(), true) << "\n";
-    // print(classify(d2, False))
     std::cout << classify(d2.as_const(), false) << "\n";
-    // print(classify(c, True))
     std::cout << classify(c.as_const(), true) << "\n";
-    // print(classify(c, False))
     std::cout << classify(c.as_const(), false) << "\n";
-    // print(as_guard(d1))
     std::cout << as_guard(d1.as_const()) << "\n";
-    // print(as_guard(d2))
     std::cout << as_guard(d2.as_const()) << "\n";
-    // print(as_guard(c))
     std::cout << as_guard(c.as_const()) << "\n";
 }
 
+// # match/case with wildcard guard and as-pattern on union subjects
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case with wildcard guard and as-pattern on union subjects
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

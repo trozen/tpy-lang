@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def generic_on_optional(b: Bag | None) -> int32:
+//     return b.conv(3)  # tpyc: warning(/Potential None access/)
 int32_t generic_on_optional(Bag* b) {
-    // return b.conv(3)  # tpyc: warning(/Potential None access/)
     return ::tpy::deref_check(b).conv<int32_t>(3);
 }
 
 // def main() -> None:
+//     print(generic_on_optional(Bag(1)))
+//     b: Bag | None = None
+//     print(generic_on_optional(b))
 void main() {
-    // print(generic_on_optional(Bag(1)))
     Bag __tmp_1 = Bag(1);
     std::cout << generic_on_optional(&(__tmp_1)) << "\n";
-    // b: Bag | None = None
     Bag* b = nullptr;
-    // print(generic_on_optional(b))
     std::cout << generic_on_optional(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

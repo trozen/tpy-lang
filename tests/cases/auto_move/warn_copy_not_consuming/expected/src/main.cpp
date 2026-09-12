@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Item] = [Item(1), Item(2)]
+//     result: list[Item] = []
+//     for x in items:
+//         result.append(x)  # tpyc: warning(/copies Item into owned storage/)
+//     print(len(items))
 void main() {
-    // items: list[Item] = [Item(1), Item(2)]
     std::vector<Item> items = {Item(1), Item(2)};
-    // result: list[Item] = []
     std::vector<Item> result = std::vector<Item>{};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // result.append(x)  # tpyc: warning(/copies Item into owned storage/)
         result.push_back(x);
     }
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def consume_own(p: Own[Point]) -> int32:
+//     return p.x + p.y
 int32_t consume_own(Point&& p) {
-    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def forward_optional(p: Own[Point] | None) -> int32:
+//     if p is None:
+//         return int32(-1)
+//     # p is at its last use; should be auto-moved (no copy warning)
+//     return consume_own(p)
 int32_t forward_optional(std::optional<Point> p) {
-    // if p is None:
     if ((!p.has_value())) {
-        // return int32(-1)
         return -1;
     }
-    // # p is at its last use; should be auto-moved (no copy warning)
-    // return consume_own(p)
     return consume_own(std::move((*p)));
 }
 
 // def main():
+//     p = Point()
+//     p.x = 5
+//     p.y = 7
+//     print(forward_optional(p))
 void main() {
-    // p = Point()
     Point p = Point();
-    // p.x = 5
     p.x = 5;
-    // p.y = 7
     p.y = 7;
-    // print(forward_optional(p))
     std::cout << forward_optional(std::move(p)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

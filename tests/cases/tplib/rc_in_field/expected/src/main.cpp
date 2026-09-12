@@ -5,35 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     counter = Rc.new(Counter())
+//     h1 = Holder("first", counter.clone())
+//     h2 = Holder("second", counter.clone())
+//
+//     h1.shared.get().bump()
+//     h2.shared.get().bump()
+//     counter.get().bump()
+//
+//     print(h1.name, h1.shared.get().value)
+//     print(h2.name, h2.shared.get().value)
+//     print("orig", counter.get().value)
 void main() {
-    // counter = Rc.new(Counter())
     ::tpystd::tplib::rc::Rc<Counter> counter = Rc<Counter>::new_<Counter>(Counter());
-    // h1 = Holder("first", counter.clone())
     Holder h1 = Holder("first", counter.clone());
-    // h2 = Holder("second", counter.clone())
     Holder h2 = Holder("second", counter.clone());
-    // h1.shared.get().bump()
     h1.shared.get().bump();
-    // h2.shared.get().bump()
     h2.shared.get().bump();
-    // counter.get().bump()
     counter.get().bump();
-    // print(h1.name, h1.shared.get().value)
     std::cout << h1.name << " " << h1.shared.get().value << "\n";
-    // print(h2.name, h2.shared.get().value)
     std::cout << h2.name << " " << h2.shared.get().value << "\n";
-    // print("orig", counter.get().value)
     std::cout << "orig" << " " << counter.get().value << "\n";
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

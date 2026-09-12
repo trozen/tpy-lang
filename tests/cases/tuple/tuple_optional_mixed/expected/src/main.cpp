@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def f(a: T, b: T) -> tuple[T | None, int32, T | None]:
+//     return (a, 42, b)
 std::tuple<T*, int32_t, T*> f(T& a, T& b) {
-    // return (a, 42, b)
     return std::tuple<T*, int32_t, T*>{&(a), 42, &(b)};
 }
 
 // def show(p: tuple[T | None, int32, T | None]) -> None:
+//     a, n, b = p
+//     if a is not None:
+//         print(a.x)
+//     print(n)
+//     if b is not None:
+//         print(b.x)
 void show(const std::tuple<const T*, int32_t, const T*>& p) {
-    // a, n, b = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
     const T* b = std::get<2>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
     }
-    // print(n)
     std::cout << n << "\n";
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.x)
         std::cout << b->x << "\n";
     }
 }
 
 // def main() -> None:
+//     t1 = T(1)
+//     t2 = T(2)
+//     show(f(t1, t2))
+//     show((t1, 99, None))
 void main() {
-    // t1 = T(1)
     T t1 = T(1);
-    // t2 = T(2)
     T t2 = T(2);
-    // show(f(t1, t2))
     show(f(t1, t2));
-    // show((t1, 99, None))
     show(std::tuple<T*, int32_t, T*>{&(t1), 99, nullptr});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

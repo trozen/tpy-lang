@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main():
+//     greet(Dog("Rex"))
+//     greet(Cat("Whiskers"))
+//     greet(Bird("Tweety"))
 void main() {
-    // greet(Dog("Rex"))
     auto __tmp_1 = Dog("Rex");
     greet(__tmp_1);
-    // greet(Cat("Whiskers"))
     auto __tmp_2 = Cat("Whiskers");
     greet(__tmp_2);
-    // greet(Bird("Tweety"))
     auto __tmp_3 = Bird("Tweety");
     greet(__tmp_3);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Point;
 extern int32_t MAX_VALUE;
 inline constexpr std::string_view __name__ = "utils";
 
+// def add(a: int32, b: int32) -> int32:
 int32_t add(int32_t a, int32_t b);
 
 // class Point:
@@ -34,6 +35,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::utils

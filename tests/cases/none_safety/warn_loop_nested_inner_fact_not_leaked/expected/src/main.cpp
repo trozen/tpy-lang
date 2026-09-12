@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def nested_warn(x: int32 | None, y: int32 | None) -> int32:
+//     while x is not None:
+//         while y is not None:
+//             break
+//         return y + 1  # tpyc: warning(/Potential None access/)
+//     return 0
 int32_t nested_warn(std::optional<int32_t> x, std::optional<int32_t> y) {
-    // while x is not None:
     while ((x.has_value())) {
-        // while y is not None:
         while ((y.has_value())) {
-            // break
             break;
         }
-        // return y + 1  # tpyc: warning(/Potential None access/)
         return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(y), 1));
     }
-    // return 0
     return 0;
 }
 
+// print(nested_warn(4, 1))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(nested_warn(4, 1))
     std::cout << nested_warn(4, 1) << "\n";
 }
 

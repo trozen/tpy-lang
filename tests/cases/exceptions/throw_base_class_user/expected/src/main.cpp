@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         raise AppError(7)
+//     except Exception:
+//         print("caught as Exception")
 void main() {
-    // try:
     {
         try {
-            // raise AppError(7)
             throw AppError(7);
         } catch (const ::tpy::Exception&) {
-            // print("caught as Exception")
             std::cout << "caught as Exception" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

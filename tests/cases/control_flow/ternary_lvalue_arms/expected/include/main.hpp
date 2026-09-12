@@ -11,10 +11,15 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick_elem(rs: list[Rec], c: bool) -> int32:
 int32_t pick_elem(std::vector<Rec>& rs, bool c);
+// def pick_opt_elem(rs: list[Rec], c: bool) -> int32:
 int32_t pick_opt_elem(std::vector<Rec>& rs, bool c);
+// def pick_optional_element(xs: list[Rec | None], c: bool) -> int32:
 int32_t pick_optional_element(std::vector<std::optional<Rec>>& xs, bool c);
+// def pick_array(a: Array[int32, 2], b: Array[int32, 2], c: bool) -> int32:
 int32_t pick_array(std::array<int32_t, 2>& a, std::array<int32_t, 2>& b, bool c);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -35,6 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Rec::Rec(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

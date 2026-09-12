@@ -5,54 +5,58 @@ namespace tpyapp::main {
 
 
 // def greet(pet: Pet) -> None:
+//     print(pet.speak())
 void greet(::tpyapp::pet::Pet& pet) {
-    // print(pet.speak())
     std::cout << pet.speak() << "\n";
 }
 
 // def echo(pet: Pet) -> Pet:
+//     return pet
 ::tpyapp::pet::Pet& echo(::tpyapp::pet::Pet& pet) {
-    // return pet
     return pet;
 }
 
 // def main() -> None:
+//     # Local variable with direct inheritor
+//     dog: Pet = Dog()
+//     print(dog.speak())
+//
+//     # Local variable with structural conformance
+//     cat: Pet = Cat()
+//     print(cat.speak())
+//
+//     # Pass to function param
+//     greet(Dog())
+//     greet(Cat())
+//
+//     # Return type
+//     p = echo(dog)
+//     print(p.speak())
 void main() {
-    // # Local variable with direct inheritor
-    // dog: Pet = Dog()
     Dog __slot_1{Dog()};
     ::tpyapp::pet::Pet* dog = &__slot_1;
-    // print(dog.speak())
     std::cout << dog->speak() << "\n";
-    // # Local variable with structural conformance
-    // cat: Pet = Cat()
     ::tpy::Adapter<::tpyapp::pet::Pet, Cat> __slot_2{Cat()};
     ::tpyapp::pet::Pet* cat = &__slot_2;
-    // print(cat.speak())
     std::cout << cat->speak() << "\n";
-    // # Pass to function param
-    // greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    // greet(Cat())
     ::tpy::Adapter<::tpyapp::pet::Pet, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
-    // # Return type
-    // p = echo(dog)
     ::tpyapp::pet::Pet* p = &echo((*dog));
-    // print(p.speak())
     std::cout << p->speak() << "\n";
 }
 
+// # Tests cross-module @dynamic protocol: import, local vars, params, return, structural conformance.
+// from pet import Pet
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Tests cross-module @dynamic protocol: import, local vars, params, return, structural conformance.
-    // from pet import Pet
     ::tpyapp::pet::__tpy_init();
-    // main()
     main();
 }
 

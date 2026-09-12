@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def take(h: Holder) -> Own[list[int32]]:
+//     # `h.borrow()` hands back `std::vector<int32_t>&`; filling the owning slot
+//     # from it is the copy the warning declares.
+//     return h.borrow()  # tpyc: warning(/copies list\[int32\] into owned storage/)
 std::vector<int32_t> take(Holder& h) {
-    // # `h.borrow()` hands back `std::vector<int32_t>&`; filling the owning slot
-    // # from it is the copy the warning declares.
-    // return h.borrow()  # tpyc: warning(/copies list\[int32\] into owned storage/)
     return h.borrow();
 }
 
 // def take_copy(h: Holder) -> Own[list[int32]]:
+//     return copy(h.borrow())  # tpyc: ok
 std::vector<int32_t> take_copy(Holder& h) {
-    // return copy(h.borrow())  # tpyc: ok
     return std::vector<int32_t>(h.borrow());
 }
 
 // def main() -> None:
+//     h = Holder()
+//     print(len(take(h)), len(take_copy(h)), len(h.items))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(len(take(h)), len(take_copy(h)), len(h.items))
     std::cout << ::tpy::__len__(take(h)) << " " << ::tpy::__len__(take_copy(h)) << " " << ::tpy::__len__(h.items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

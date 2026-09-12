@@ -11,7 +11,9 @@ struct NotFound;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find(items: list[int32], target: int32) -> int32:
 std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t target);
+// def main() -> None:
 void main();
 
 // class NotFound(Exception, ReturnException):

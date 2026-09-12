@@ -11,6 +11,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def time() -> int:
 ::tpy::BigInt time();
 
 void __tpy_init();

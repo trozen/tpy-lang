@@ -5,31 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = ArrayList[int32, 8]()
+//     a.append(int32(1))
+//     a.append(int32(2))
+//     a.append(int32(3))
+//
+//     # Direct __iter__() returns SpanIter
+//     it: SpanIter[int32] = a.__iter__()
+//     consume(it)
 void main() {
-    // a = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    // a.append(int32(1))
     a.append(1);
-    // a.append(int32(2))
     a.append(2);
-    // a.append(int32(3))
     a.append(3);
-    // # Direct __iter__() returns SpanIter
-    // it: SpanIter[int32] = a.__iter__()
     ::tpy::SpanIter<int32_t> it = a.__iter__();
-    // consume(it)
     consume(it);
 }
 
+// from tplib.array_list import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.array_list import ArrayList
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::array_list::__tpy_init();
-    // main()
     main();
 }
 

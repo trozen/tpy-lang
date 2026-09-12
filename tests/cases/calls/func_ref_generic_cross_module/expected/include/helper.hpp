@@ -9,22 +9,24 @@ namespace tpyapp::helper {
 
 inline constexpr std::string_view __name__ = "helper";
 
+// def identity[T](x: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
+// def swap[T, U](a: T, b: U) -> tuple[U, T]:
 template<typename T, typename U>
 std::tuple<::tpy::val_or_ptr_t<U>, ::tpy::val_or_ptr_t<T>> swap(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
 
 // # Generic functions for cross-module function reference tests
 // def identity[T](x: T) -> T:
+//     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    // return x
     return ::tpy::param_to_return<T>(x);
 }
 // def swap[T, U](a: T, b: U) -> tuple[U, T]:
+//     return (b, a)
 template<typename T, typename U>
 std::tuple<::tpy::val_or_ptr_t<U>, ::tpy::val_or_ptr_t<T>> swap(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-    // return (b, a)
     return std::tuple<::tpy::val_or_ptr_t<U>, ::tpy::val_or_ptr_t<T>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(b), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(a)};
 }
 

@@ -11,6 +11,7 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -20,12 +21,13 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def take(self) -> Own[T]:
+    //     return copy(self.value)
     T take() const {
-        // return copy(self.value)
         return T(this->value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

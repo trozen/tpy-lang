@@ -3,20 +3,19 @@
 
 namespace tpyapp::main {
 
-// obj = Impl(42)
 Impl* obj{};
 
+// obj = Impl(42)
+// print(safe_read(obj))
+// print(use_both(obj))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // obj = Impl(42)
     static Impl __global_slot_1 = Impl(42);
     obj = &__global_slot_1;
-    // print(safe_read(obj))
     std::cout << safe_read((*obj)) << "\n";
-    // print(use_both(obj))
     std::cout << use_both((*obj)) << "\n";
 }
 

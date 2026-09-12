@@ -5,39 +5,76 @@ namespace tpyapp::main {
 
 
 // def dbl(v: int32) -> int32:
+//     return v * 2
 int32_t dbl(int32_t v) {
-    // return v * 2
     return (::tpy::mul_check<int32_t>(v, 2));
 }
 
 // def odd(v: int32) -> bool:
+//     return v % 2 == 1
 bool odd(int32_t v) {
-    // return v % 2 == 1
     return ((::tpy::mod_floor<int32_t>(v, 2)) == 1);
 }
 
 // def node_pos(n: Node) -> bool:
+//     return n.v > 0
 bool node_pos(const Node& n) {
-    // return n.v > 0
     return (n.v > 0);
 }
 
 // def make_nodes() -> Own[list[Node]]:
+//     return [Node(1), Node(2)]
 std::vector<Node> make_nodes() {
-    // return [Node(1), Node(2)]
     return {Node(1), Node(2)};
 }
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3]
+//     ys: list[int32] = [10, 20, 30]
+//     ws = ["a", "bb"]
+//     # zip / enumerate reach the comp through the tuple-unpack head.
+//     print([a + b for a, b in zip(xs, ys)])  # tpyc: ok
+//     print([i * v for i, v in enumerate(xs)])  # tpyc: ok
+//     # ... the single-target combinators through the plain loop-var binding.
+//     print([v for v in map(dbl, xs)])  # tpyc: ok
+//     print([v for v in filter(odd, xs)])  # tpyc: ok
+//     print([v for v in reversed(xs)])  # tpyc: ok
+//     print([v for v in iter(xs)])  # tpyc: ok
+//     # A str element rides the same arm (the view binding off *__beg).
+//     print([w for w in reversed(ws)])  # tpyc: ok
+//     # The set and dict comps take the same source.
+//     print(sorted({a * b for a, b in zip(xs, ys)}))  # tpyc: ok
+//     print({k: v for k, v in zip(xs, ys)})  # tpyc: ok
+//     # A filter clause over a combinator source.
+//     print([v for v in map(dbl, xs) if v > 2])  # tpyc: ok
+//     # A REFERENCE element type through zip: the loop var must alias the source
+//     # element, so the bump lands on ps/qs and not on a copy.
+//     ps = [Node(1), Node(2)]
+//     qs = [Node(10), Node(20)]
+//     print([p.bump(q.v) for p, q in zip(ps, qs)])  # tpyc: ok
+//     print([p.v for p in ps], [q.v for q in qs])
+//     # ... and through enumerate, whose tuple pairs a value with the borrow.
+//     rs = [Node(5), Node(6)]
+//     print([r.bump(i) for i, r in enumerate(rs)])  # tpyc: ok
+//     print([r.v for r in rs])
+//     # ... and through the single-target `filter`, whose callable argument is not
+//     # a source, so the named container is still the only one that has to lend.
+//     ts = [Node(7), Node(8)]
+//     print([t.bump(2) for t in filter(node_pos, ts)])  # tpyc: ok
+//     print([t.v for t in ts])
+//     # `enumerate` has an OWNING direct flavor, so an owned-container rvalue
+//     # still lends -- the difference from zip, which has no such flavor.
+//     print([n.bump(i) for i, n in enumerate(make_nodes())])  # tpyc: ok
+//     # A named Span is a begin()/end() container too, and lends into the source
+//     # list it views.
+//     us = [Node(11), Node(12)]
+//     sp: Span[Node] = us
+//     print([u.bump(y) for u, y in zip(sp, ys)])  # tpyc: ok
+//     print([u.v for u in us])
 void main() {
-    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // ys: list[int32] = [10, 20, 30]
     std::vector<int32_t> ys = {10, 20, 30};
-    // ws = ["a", "bb"]
     std::array<std::string, 2> ws = {"a", "bb"};
-    // # zip / enumerate reach the comp through the tuple-unpack head.
-    // print([a + b for a, b in zip(xs, ys)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_0 = ::tpy::builtin_zip<int32_t, int32_t>(xs, ys);
@@ -51,7 +88,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([i * v for i, v in enumerate(xs)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_1 = ::tpy::builtin_enumerate<int32_t>(xs);
@@ -65,8 +101,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # ... the single-target combinators through the plain loop-var binding.
-    // print([v for v in map(dbl, xs)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_2 = ::tpy::builtin_map<int32_t, int32_t>(dbl, xs);
@@ -78,7 +112,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([v for v in filter(odd, xs)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_3 = ::tpy::builtin_filter<int32_t>(odd, xs);
@@ -90,7 +123,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([v for v in reversed(xs)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_4 = ::tpy::builtin_reversed<int32_t>(xs);
@@ -102,7 +134,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([v for v in iter(xs)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_5 = ::tpy::__iter__(xs);
@@ -114,8 +145,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # A str element rides the same arm (the view binding off *__beg).
-    // print([w for w in reversed(ws)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
         auto __obj_6 = ::tpy::builtin_reversed<std::string>(ws);
@@ -127,8 +156,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # The set and dict comps take the same source.
-    // print(sorted({a * b for a, b in zip(xs, ys)}))  # tpyc: ok
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(({
         ::tpy::ordered_set<int32_t> __result;
         auto __obj_7 = ::tpy::builtin_zip<int32_t, int32_t>(xs, ys);
@@ -142,7 +169,6 @@ void main() {
         }
         std::move(__result);
     }))) << "\n";
-    // print({k: v for k, v in zip(xs, ys)})  # tpyc: ok
     std::cout << ::tpy::DictPrinter(({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         auto __obj_8 = ::tpy::builtin_zip<int32_t, int32_t>(xs, ys);
@@ -156,8 +182,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # A filter clause over a combinator source.
-    // print([v for v in map(dbl, xs) if v > 2])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_9 = ::tpy::builtin_map<int32_t, int32_t>(dbl, xs);
@@ -171,13 +195,8 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # A REFERENCE element type through zip: the loop var must alias the source
-    // # element, so the bump lands on ps/qs and not on a copy.
-    // ps = [Node(1), Node(2)]
     std::array<Node, 2> ps = {Node(1), Node(2)};
-    // qs = [Node(10), Node(20)]
     std::array<Node, 2> qs = {Node(10), Node(20)};
-    // print([p.bump(q.v) for p, q in zip(ps, qs)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_10 = ::tpy::builtin_zip<Node, Node>(ps, qs);
@@ -191,7 +210,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([p.v for p in ps], [q.v for q in qs])
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_11 = ps;
@@ -215,10 +233,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # ... and through enumerate, whose tuple pairs a value with the borrow.
-    // rs = [Node(5), Node(6)]
     std::array<Node, 2> rs = {Node(5), Node(6)};
-    // print([r.bump(i) for i, r in enumerate(rs)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_13 = ::tpy::builtin_enumerate<Node>(rs);
@@ -232,7 +247,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([r.v for r in rs])
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_14 = rs;
@@ -245,11 +259,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # ... and through the single-target `filter`, whose callable argument is not
-    // # a source, so the named container is still the only one that has to lend.
-    // ts = [Node(7), Node(8)]
     std::array<Node, 2> ts = {Node(7), Node(8)};
-    // print([t.bump(2) for t in filter(node_pos, ts)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_15 = ::tpy::builtin_filter<Node>(node_pos, ts);
@@ -261,7 +271,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([t.v for t in ts])
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_16 = ts;
@@ -274,9 +283,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # `enumerate` has an OWNING direct flavor, so an owned-container rvalue
-    // # still lends -- the difference from zip, which has no such flavor.
-    // print([n.bump(i) for i, n in enumerate(make_nodes())])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_17 = ::tpy::builtin_enumerate<Node>(make_nodes());
@@ -290,13 +296,8 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # A named Span is a begin()/end() container too, and lends into the source
-    // # list it views.
-    // us = [Node(11), Node(12)]
     std::array<Node, 2> us = {Node(11), Node(12)};
-    // sp: Span[Node] = us
     std::span<Node> sp = ::tpy::as_mut_span(us);
-    // print([u.bump(y) for u, y in zip(sp, ys)])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_18 = ::tpy::builtin_zip<Node, int32_t>(sp, ys);
@@ -310,7 +311,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([u.v for u in us])
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_19 = us;
@@ -325,12 +325,12 @@ void main() {
     })) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

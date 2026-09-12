@@ -12,6 +12,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -39,11 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 
 // def __lt__(self, o: 'Box') -> bool:
+//     return self.val < o.val
 inline bool Box::__lt__(const Box& o) const {
-    // return self.val < o.val
     return (this->val < o.val);
 }
 void __tpy_init();

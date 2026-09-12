@@ -19,8 +19,10 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(x: Named) -> None:
 template<Named T_x>
 void greet(T_x& x);
+// def main():
 void main();
 
 // class Dog:
@@ -82,35 +84,38 @@ inline std::ostream& operator<<(std::ostream& os, const Bird& obj) {
 
 
 // def __init__(self, n: str):
+//     self._name = n
 inline Dog::Dog(std::string_view n) : _name(n) {}
 
 // def name(self) -> str:
+//     return self._name
 inline std::string Dog::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str):
+//     self._name = n
 inline Cat::Cat(std::string_view n) : _name(n) {}
 
 // def name(self) -> StrView:
+//     return self._name
 inline std::string_view Cat::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str):
+//     self._name = n
 inline Bird::Bird(std::string_view n) : _name(n) {}
 
 // def name(self) -> String:
+//     return self._name
 inline ::tpy::String Bird::name() const {
-    // return self._name
     return this->_name;
 }
 // def greet(x: Named) -> None:
+//     print(x.name())
 template<Named T_x>
 void greet(T_x& x) {
-    // print(x.name())
     std::cout << x.name() << "\n";
 }
 

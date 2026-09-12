@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = dict(DoublePairIter(2))
+//     print(d)
+//     print(len(d))
 void main() {
-    // d = dict(DoublePairIter(2))
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(DoublePairIter(2));
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

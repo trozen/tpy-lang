@@ -5,38 +5,40 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         raise MyErr(None)
+//     except MyErr as ex:
+//         print(ex.e is None)
+//     try:
+//         raise MyErr(7)
+//     except MyErr as ex:
+//         if ex.e is not None:
+//             print(ex.e)
 void main() {
-    // try:
     {
         try {
-            // raise MyErr(None)
             throw MyErr(std::nullopt);
         } catch (const MyErr& ex) {
-            // print(ex.e is None)
             std::cout << ::tpy::print_bool((!ex.e.has_value())) << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise MyErr(7)
             throw MyErr(7);
         } catch (const MyErr& ex) {
-            // if ex.e is not None:
             if ((ex.e.has_value())) {
-                // print(ex.e)
                 std::cout << ::tpy::print_optional_val(ex.e) << "\n";
             }
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

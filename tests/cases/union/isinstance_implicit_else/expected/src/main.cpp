@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def show(x: Cat | Dog) -> int:
+//     if isinstance(x, Cat):
+//         return x.a
+//     return x.b          # x is Dog here, reached by falling through the return
 ::tpy::BigInt show(::tpy::Union<const Cat*, const Dog*> x) {
-    // if isinstance(x, Cat):
     if (std::holds_alternative<const Cat*>(x)) {
         auto& __x = *std::get<const Cat*>(x);
-        // return x.a
         return __x.a;
     }
     auto& __x = *std::get<const Dog*>(x);
-    // return x.b          # x is Dog here, reached by falling through the return
     return __x.b;
 }
 
 // def main() -> None:
+//     print(show(Cat(1)))
+//     print(show(Dog(2)))
 void main() {
-    // print(show(Cat(1)))
     Cat __tmp_1 = Cat(::tpy::BigInt(1));
     std::cout << show(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
-    // print(show(Dog(2)))
     Dog __tmp_2 = Dog(::tpy::BigInt(2));
     std::cout << show(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

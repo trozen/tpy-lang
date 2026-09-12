@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # An int literal at an `int | float` field renders bare: the union is the render
@@ -32,6 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.u = 5  # bare into the variant slot
 inline Holder::Holder() : u(5) {}
 void __tpy_init();
 } // namespace tpyapp::main

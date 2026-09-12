@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_list() -> Own[list[int] | int]:
 ::tpy::Union<::tpy::BigInt, std::vector<::tpy::BigInt>> get_list();
+// def main() -> None:
 void main();
 
 void __tpy_init();

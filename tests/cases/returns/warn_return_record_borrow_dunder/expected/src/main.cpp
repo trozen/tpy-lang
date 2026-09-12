@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def bigger(a: Acc, b: Acc) -> Own[Acc]:
+//     return a + b  # tpyc: warning(/copies Acc into owned storage/)
 Acc bigger(const Acc& a, const Acc& b) {
-    // return a + b  # tpyc: warning(/copies Acc into owned storage/)
     return Acc(((a) + (b)));
 }
 
 // def bigger_copy(a: Acc, b: Acc) -> Own[Acc]:
+//     return copy(a + b)  # tpyc: ok
 Acc bigger_copy(const Acc& a, const Acc& b) {
-    // return copy(a + b)  # tpyc: ok
     return Acc(((a) + (b)));
 }
 
 // def main() -> None:
+//     print(bigger(Acc(3), Acc(1)).n, bigger_copy(Acc(3), Acc(1)).n)
 void main() {
-    // print(bigger(Acc(3), Acc(1)).n, bigger_copy(Acc(3), Acc(1)).n)
     Acc __tmp_1 = Acc(3);
     Acc __tmp_2 = Acc(1);
     Acc __tmp_3 = Acc(3);
@@ -26,12 +26,12 @@ void main() {
     std::cout << bigger(__tmp_1, __tmp_2).n << " " << bigger_copy(__tmp_3, __tmp_4).n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

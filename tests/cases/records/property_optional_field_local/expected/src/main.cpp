@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder(Inner("hi"))
+//     v1 = h.value
+//     if v1 is not None:
+//         print(v1)
+//     h2 = Holder(None)
+//     print(h2.value is None)
 void main() {
-    // h = Holder(Inner("hi"))
     Inner __tmp_1 = Inner("hi");
     Holder h = Holder(&(__tmp_1));
-    // v1 = h.value
     std::optional<std::string> v1 = h.value();
-    // if v1 is not None:
     if ((v1.has_value())) {
-        // print(v1)
         std::cout << ::tpy::print_optional_val(v1) << "\n";
     }
-    // h2 = Holder(None)
     Holder h2 = Holder(nullptr);
-    // print(h2.value is None)
     std::cout << ::tpy::print_bool((!h2.value().has_value())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

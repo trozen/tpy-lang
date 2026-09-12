@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: Any = "hello"
+//     if isinstance(x, str):
+//         print(x.upper())
 void main() {
-    // x: Any = "hello"
     ::tpy::Any x = ::tpy::make_any(std::string("hello"));
-    // if isinstance(x, str):
     if ((x.value.has_value() && x.value.type() == typeid(std::string))) {
         const std::string& __x = std::any_cast<const std::string&>(x.value);
-        // print(x.upper())
         std::cout << ::tpy::str_upper(__x) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

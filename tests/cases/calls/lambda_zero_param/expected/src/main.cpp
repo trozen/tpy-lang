@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(invoke(lambda: 42))
+//     print(invoke(lambda: 0))
 void main() {
-    // print(invoke(lambda: 42))
     std::cout << invoke([]() -> int32_t { return 42; }) << "\n";
-    // print(invoke(lambda: 0))
     std::cout << invoke([]() -> int32_t { return 0; }) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

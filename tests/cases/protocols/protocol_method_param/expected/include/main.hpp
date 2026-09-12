@@ -19,6 +19,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Words:
@@ -67,22 +68,23 @@ struct Container {
     ::tpy::BigInt count;
 
     // def __init__(self, items: HasLength) -> None:
+    //     self.count = items.length()
     Container() = default;
     template<HasLength T_items>
     explicit Container(const T_items& items) : count(items.length()) {}
 
     // def update(self, items: HasLength) -> None:
+    //     self.count = items.length()
     template<HasLength T_items>
     void update(const T_items& items) {
-        // self.count = items.length()
         this->count = items.length();
     }
 
     // @readonly
     // def combined_len(self, other: HasLength) -> int:
+    //     return self.count + other.length()
     template<HasLength T_other>
     ::tpy::BigInt combined_len(const T_other& other) const {
-        // return self.count + other.length()
         return ((this->count) + (other.length()));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -95,22 +97,24 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, items: list[str]) -> None:
+//     self.items = copy(items)
 inline Words::Words(const std::vector<std::string>& items) : items(items) {}
 
 // @readonly
 // def length(self) -> int:
+//     return len(self.items)
 inline ::tpy::BigInt Words::length() const {
-    // return len(self.items)
     return ::tpy::BigInt(::tpy::__len__(this->items));
 }
 
 // def __init__(self, items: list[int]) -> None:
+//     self.items = copy(items)
 inline Numbers::Numbers(const std::vector<::tpy::BigInt>& items) : items(items) {}
 
 // @readonly
 // def length(self) -> int:
+//     return len(self.items)
 inline ::tpy::BigInt Numbers::length() const {
-    // return len(self.items)
     return ::tpy::BigInt(::tpy::__len__(this->items));
 }
 void __tpy_init();

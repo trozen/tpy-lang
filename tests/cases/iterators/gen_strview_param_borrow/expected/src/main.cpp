@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def lengths(s: StrView) -> Iterator[int]:
+//     yield len(s)
+//     yield len(s)
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_lengths::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield len(s)
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__len__(s));
     }
     case S_RESUME_0: {
-        // yield len(s)
         __state = S_RESUME_1;
         return ::tpy::BigInt(::tpy::__len__(s));
     }
@@ -33,16 +33,21 @@ __gen_lengths lengths(std::string_view s) {
 }
 
 // def make_tmp() -> str:
+//     return "ab" + "cd"
 std::string make_tmp() {
-    // return "ab" + "cd"
     return (::tpy::str_concat("ab", "cd"));
 }
 
 // def main() -> None:
+//     text = "hello"
+//     for n in lengths(text):  # outliving local source: borrow is safe, no warning
+//         print(n)
+//     # Temporary source: hoisted, so the view reads live storage on both pulls.
+//     g = lengths(make_tmp())  # tpyc: ok
+//     for n in g:
+//         print(n)
 void main() {
-    // text = "hello"
     std::string_view text = "hello";
-    // for n in lengths(text):  # outliving local source: borrow is safe, no warning
     {
         auto __src_0 = lengths(text);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -50,32 +55,27 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& n = ::tpy::unwrap_ref(*__r_1);
-        // print(n)
         std::cout << n << "\n";
         }
     }
-    // # Temporary source: hoisted, so the view reads live storage on both pulls.
-    // g = lengths(make_tmp())  # tpyc: ok
     std::string __tmp_1 = make_tmp();
     auto g = lengths(__tmp_1);
-    // for n in g:
     auto& __src_2 = g;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         const ::tpy::BigInt& n = ::tpy::unwrap_ref(*__r_3);
-        // print(n)
         std::cout << n << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

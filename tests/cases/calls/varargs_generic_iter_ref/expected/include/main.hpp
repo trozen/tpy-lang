@@ -11,8 +11,10 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count_all[T](*args: T) -> int:
 template<typename T>
 ::tpy::BigInt count_all(::tpy::varargs<const T> args);
+// def main() -> None:
 void main();
 
 // # generic *args iteration monomorphized with a REFERENCE element type: the
@@ -36,22 +38,23 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 // def count_all[T](*args: T) -> int:
+//     n = 0
+//     for _ in args:  # tpyc: ok
+//         n += 1
+//     return n
 template<typename T>
 ::tpy::BigInt count_all(::tpy::varargs<const T> args) {
-    // n = 0
     int32_t n = 0;
-    // for _ in args:  # tpyc: ok
     auto& __obj_0 = args;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& _ = *__beg_0;
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 

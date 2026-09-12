@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def risky(fail: bool) -> int32:
 int32_t risky(bool fail);
+// def run(fail: bool) -> int32:
 int32_t run(bool fail);
+// def main() -> None:
 void main();
 
 void __tpy_init();

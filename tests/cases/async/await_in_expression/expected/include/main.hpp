@@ -15,12 +15,16 @@ struct __coro_add_one;
 struct __coro_caller;
 struct __coro_main_coro;
 
+// async def add_one(x: int32) -> int32:
 __coro_add_one add_one(int32_t x);
+// async def caller() -> int32:
 __coro_caller caller();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: add_one
+// async def add_one(x: int32) -> int32:
 struct __coro_add_one {
     int32_t __state;
     bool __cancel_pending;
@@ -42,7 +46,7 @@ struct __coro_add_one {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> int32:
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;
@@ -69,7 +73,7 @@ struct __coro_caller {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

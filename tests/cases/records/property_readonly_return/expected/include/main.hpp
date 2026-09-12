@@ -11,7 +11,9 @@ struct Foo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_count(f: Foo) -> int32:
 int32_t get_count(const Foo& f);
+// def main() -> None:
 void main();
 
 // class Foo:
@@ -39,19 +41,20 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 
 
 // def __init__(self) -> None:
+//     self._items = [1, 2, 3]
 inline Foo::Foo() : _items(std::vector<int32_t>{1, 2, 3}) {}
 
 // @property
 // def items(self) -> list[int32]:
+//     return self._items
 inline std::vector<int32_t>& Foo::items() {
-    // return self._items
     return this->_items;
 }
 
 // @property
 // def items(self) -> list[int32]:
+//     return self._items
 inline const std::vector<int32_t>& Foo::items() const {
-    // return self._items
     return this->_items;
 }
 void __tpy_init();

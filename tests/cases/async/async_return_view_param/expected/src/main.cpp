@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def direct(tag: str) -> str:
+//     return tag  # direct site
 ::tpystd::tpy::Poll<std::string> __coro_direct::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return tag  # direct site
         __state = S_DONE;
         std::string __tpy_async_ret = std::string(tag);
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -26,24 +26,24 @@ __coro_direct direct(std::string_view tag) {
 }
 
 // async def in_finally(tag: str) -> str:
+//     try:
+//         return tag  # finally-chain site
+//     finally:
+//         print("cleanup")
 ::tpystd::tpy::Poll<std::string> __coro_in_finally::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // try:
         {
             bool __fin_ran_1 = false;
             try {
-                // return tag  # finally-chain site
                 std::string __tpy_async_ret_0 = std::string(tag);
                 __fin_ran_1 = true;
-                // print("cleanup")
                 std::cout << "cleanup" << "\n";
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret_0));
             } catch (...) {
                 if (!__fin_ran_1) {
-                    // print("cleanup")
                     std::cout << "cleanup" << "\n";
                 }
                 throw;
@@ -63,6 +63,11 @@ __coro_in_finally in_finally(std::string_view tag) {
 }
 
 // async def pending_slot(tag: str) -> str:
+//     try:
+//         return tag  # pending-return slot: an await in the finally routes the return through it
+//     finally:
+//         await asyncio.sleep(0)
+//         print("done")
 ::tpystd::tpy::Poll<std::string> __coro_pending_slot::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -74,7 +79,6 @@ __coro_in_finally in_finally(std::string_view tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("done")
         std::cout << "done" << "\n";
         __state = S_JOIN_0;
         continue;
@@ -95,7 +99,6 @@ __coro_in_finally in_finally(std::string_view tag) {
     }
     case S_JOIN_1: {
         try {
-            // return tag  # pending-return slot: an await in the finally routes the return through it
             this->__finally_ret_0 = std::string(tag);
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -107,7 +110,6 @@ __coro_in_finally in_finally(std::string_view tag) {
         }
     }
     case S_JOIN_2: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -124,11 +126,11 @@ __coro_pending_slot pending_slot(std::string_view tag) {
 }
 
 // async def opt_ternary(tag: Optional[str]) -> str:
+//     return tag if tag is not None else "fallback"
 ::tpystd::tpy::Poll<std::string> __coro_opt_ternary::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return tag if tag is not None else "fallback"
         __state = S_DONE;
         std::string __tpy_async_ret = std::string((((tag.has_value())) ? ((*tag)) : ("fallback")));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -145,11 +147,15 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
 }
 
 // async def main_coro() -> None:
+//     print(await direct("a"))
+//     print(await in_finally("b"))
+//     print(await pending_slot("c"))
+//     print(await opt_ternary("d"))
+//     print(await opt_ternary(None))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = "a";
-        // print(await direct("a"))
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
@@ -159,10 +165,8 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await direct("a"))
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1 = "b";
-        // print(await in_finally("b"))
         __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
@@ -172,10 +176,8 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await in_finally("b"))
         std::cout << __await_lift_1 << "\n";
         __coro_arg_2 = "c";
-        // print(await pending_slot("c"))
         __sub_2.emplace(__coro_arg_2);
         __state = S_RESUME_2;
         continue;
@@ -185,10 +187,8 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await pending_slot("c"))
         std::cout << __await_lift_2 << "\n";
         __coro_arg_3 = "d";
-        // print(await opt_ternary("d"))
         __sub_3.emplace(__coro_arg_3);
         __state = S_RESUME_3;
         continue;
@@ -198,9 +198,7 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
         __sub_3.reset();
-        // print(await opt_ternary("d"))
         std::cout << __await_lift_3 << "\n";
-        // print(await opt_ternary(None))
         __sub_4.emplace(std::nullopt);
         __state = S_RESUME_4;
         continue;
@@ -210,7 +208,6 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
         __sub_4.reset();
-        // print(await opt_ternary(None))
         std::cout << __await_lift_4 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -227,21 +224,22 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # An async def returning a str param (string_view) converts to the owned
+// # std::string return slot like the sync return path, across all three async sites.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async def returning a str param (string_view) converts to the owned
-    // # std::string return slot like the sync return path, across all three async sites.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

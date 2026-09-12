@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int] = [5, 1, 4, 2, 3]
+//     print(heap_sort(nums))
+//     words: list[str] = ["pear", "apple", "kiwi", "fig"]
+//     print(heap_sort(words))
 void main() {
-    // nums: list[int] = [5, 1, 4, 2, 3]
     std::vector<::tpy::BigInt> nums = {5, 1, 4, 2, 3};
-    // print(heap_sort(nums))
     std::cout << ::tpy::ListPrinter(heap_sort<::tpy::BigInt>(nums)) << "\n";
-    // words: list[str] = ["pear", "apple", "kiwi", "fig"]
     std::vector<std::string> words = {"pear", "apple", "kiwi", "fig"};
-    // print(heap_sort(words))
     std::cout << ::tpy::ListPrinter(heap_sort<std::string>(words)) << "\n";
 }
 
+// import heapq
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import heapq
     ::tpystd::heapq::__tpy_init();
-    // main()
     main();
 }
 

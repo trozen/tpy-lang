@@ -42,12 +42,12 @@ std::optional<::tpyapp::shapes::Container::Kind> EnumUtil<::tpyapp::shapes::Cont
 namespace tpyapp::shapes {
 
 
+// from enum import Enum, auto
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum, auto
 }
 
 } // namespace tpyapp::shapes

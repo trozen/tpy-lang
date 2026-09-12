@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // # A name borrow-captured from a reference-type lvalue match subject (aliases
@@ -42,17 +43,18 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline Box::Box(const ::tpy::BigInt& v) : v(v) {}
 
 // def __enter__(self) -> "Box":
+//     return self
 inline Box& Box::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void Box::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

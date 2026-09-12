@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def lookup(h: Headers, name: str) -> str:
+//     return getattr(h, name)
 std::string lookup(const Headers& h, std::string_view name) {
-    // return getattr(h, name)
     return h.__getattr__(name);
 }
 
 // def main() -> None:
+//     h = Headers()
+//     print(lookup(h, "host"))
+//     print(lookup(h, "port"))
+//     try:
+//         print(lookup(h, "missing"))
+//     except AttributeError as e:
+//         print("caught:", str(e))
 void main() {
-    // h = Headers()
     Headers h = Headers();
-    // print(lookup(h, "host"))
     std::cout << lookup(h, "host") << "\n";
-    // print(lookup(h, "port"))
     std::cout << lookup(h, "port") << "\n";
-    // try:
     {
         try {
-            // print(lookup(h, "missing"))
             std::cout << lookup(h, "missing") << "\n";
         } catch (const ::tpy::AttributeError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -6,37 +6,39 @@ namespace tpyapp::main {
 
 // # Bytes slicing: start:stop with positive, negative, and omitted bounds
 // def main() -> None:
+//     data = b"hello world"
+//     print(data[0:5])
+//     print(data[6:11])
+//     print(data[-5:])
+//     print(data[:5])
+//     print(data[3:3])
+//
+//     # Slice of a literal
+//     print(b"abcdef"[1:4])
+//
+//     # Slice passed to function
+//     chunk = data[0:5]
+//     print(len(chunk))
+//     print(chunk)
 void main() {
-    // data = b"hello world"
     ::tpy::BytesView data = ::tpy::bytes_literal("hello world", 11);
-    // print(data[0:5])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5})) << "\n";
-    // print(data[6:11])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{6, 11})) << "\n";
-    // print(data[-5:])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{-5, std::nullopt})) << "\n";
-    // print(data[:5])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{std::nullopt, 5})) << "\n";
-    // print(data[3:3])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{3, 3})) << "\n";
-    // # Slice of a literal
-    // print(b"abcdef"[1:4])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(::tpy::bytes_literal_owned("abcdef", 6), ::tpy::BasicSlice{1, 4})) << "\n";
-    // # Slice passed to function
-    // chunk = data[0:5]
     ::tpy::BytesView chunk = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5});
-    // print(len(chunk))
     std::cout << ::tpy::__len__(chunk) << "\n";
-    // print(chunk)
     std::cout << ::tpy::BytesPrinter(chunk) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

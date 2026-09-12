@@ -3,21 +3,20 @@
 
 namespace tpyapp::pkg::amod {
 
-// _A: bytes = b"AAAA"
 ::tpy::Bytes _A;
 
 // def a_first() -> int32:
+//     return int32(_A[0])
 int32_t a_first() {
-    // return int32(_A[0])
     return ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(_A, 0));
 }
 
+// _A: bytes = b"AAAA"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // _A: bytes = b"AAAA"
     _A = ::tpy::bytes_literal_owned("AAAA", 4);
 }
 

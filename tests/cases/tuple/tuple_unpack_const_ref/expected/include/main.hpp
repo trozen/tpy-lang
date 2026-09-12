@@ -9,14 +9,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_pair() -> tuple[int, int]:
 std::tuple<::tpy::BigInt, ::tpy::BigInt> get_pair();
+// def get_string_pair() -> tuple[String, String]:
 std::tuple<::tpy::String, ::tpy::String> get_string_pair();
+// def test_rvalue_const_ref() -> None:
 void test_rvalue_const_ref();
+// def test_augassign_no_const_ref() -> None:
 void test_augassign_no_const_ref();
+// def test_reassign_no_const_ref() -> None:
 void test_reassign_no_const_ref();
+// def test_lvalue_const_ref() -> None:
 void test_lvalue_const_ref();
+// def test_lvalue_reassigned_source() -> None:
 void test_lvalue_reassigned_source();
+// def test_string_const_ref() -> None:
 void test_string_const_ref();
+// def test_augassign_in_branch() -> None:
 void test_augassign_in_branch();
 
 void __tpy_init();

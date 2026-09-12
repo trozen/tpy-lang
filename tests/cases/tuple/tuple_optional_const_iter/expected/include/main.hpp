@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(p: tuple[T | None, T | None]) -> None:
 void consume(const std::tuple<const T*, const T*>& p);
+// def main() -> None:
 void main();
 
 // class T:
@@ -54,42 +56,42 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline T::T(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.pairs = []
 inline Holder::Holder() : pairs(std::vector<std::tuple<std::optional<T>, std::optional<T>>>{}) {}
 
 // def show_all_iter(self) -> None:
+//     # for it in self.pairs: ... -- const list iter, calls consume
+//     for it in self.pairs:
+//         consume(it)
 inline void Holder::show_all_iter() const {
-    // # for it in self.pairs: ... -- const list iter, calls consume
-    // for it in self.pairs:
     auto& __obj_0 = this->pairs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        // consume(it)
         consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
     }
 }
 
 // def show_all_unpack(self) -> None:
+//     # for a, b in self.pairs: ... -- destructure direct from const source
+//     for a, b in self.pairs:
+//         if a is not None:
+//             print(a.x)
 inline void Holder::show_all_unpack() const {
-    // # for a, b in self.pairs: ... -- destructure direct from const source
-    // for a, b in self.pairs:
     auto& __obj_0 = this->pairs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        // # for a, b in self.pairs: ... -- destructure direct from const source
-        // for a, b in self.pairs:
         auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(__for_tup_0);
         const T* a = std::get<0>(__tup_1);
         const T* b = std::get<1>(__tup_1);
-        // if a is not None:
         if ((a != nullptr)) {
-            // print(a.x)
             std::cout << a->x << "\n";
         }
     }

@@ -5,84 +5,92 @@ namespace tpyapp::main {
 
 
 // def sum_span(values: Span[int32]) -> int32:
+//     total: int32 = 0
+//     for v in values:
+//         total += v
+//     return total
 int32_t sum_span(std::span<int32_t> values) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for v in values:
     auto& __obj_0 = values;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    // return total
     return total;
 }
 
 // def sum_span_bigint(values: Span[int]) -> int:
+//     total: int = 0
+//     for v in values:
+//         total += v
+//     return total
 ::tpy::BigInt sum_span_bigint(std::span<::tpy::BigInt> values) {
-    // total: int = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
-    // for v in values:
     auto& __obj_0 = values;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& v = *__beg_0;
-        // total += v
         total = (total) + (v);
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     # Array coerces to Span
+//     arr: Array[int32, 4] = [1, 2, 3, 4]
+//     print(sum_span(arr))  # 10
+//
+//     # ArrayList coerces to Span (user type with __span__)
+//     al = ArrayList[int32, 8]()
+//     al.append(10)
+//     al.append(20)
+//     al.append(30)
+//     print(sum_span(al))  # 60
+//
+//     # list coerces to Span
+//     lst: list[int32] = [100, 200, 300, 400]
+//     print(sum_span(lst))  # 1000
+//
+//     # Literal array coerces to Span (via PendingListType)
+//     print(sum_span([5, 5, 5, 5, 5]))  # 25
+//
+//     # BigInt tests - IntLiteral elements coerce to BigInt
+//     # list[int] coerces to Span[int]
+//     bigint_list: list[int] = [1000, 2000, 3000]
+//     print(sum_span_bigint(bigint_list))  # 6000
+//
+//     # PendingListType with IntLiteral -> Span[int] (BigInt)
+//     print(sum_span_bigint([100, 200, 300]))  # 600
 void main() {
-    // # Array coerces to Span
-    // arr: Array[int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
-    // print(sum_span(arr))  # 10
     std::cout << sum_span(::tpy::as_mut_span(arr)) << "\n";
-    // # ArrayList coerces to Span (user type with __span__)
-    // al = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    // al.append(10)
     al.append(10);
-    // al.append(20)
     al.append(20);
-    // al.append(30)
     al.append(30);
-    // print(sum_span(al))  # 60
     std::cout << sum_span(al.__span__()) << "\n";
-    // # list coerces to Span
-    // lst: list[int32] = [100, 200, 300, 400]
     std::vector<int32_t> lst = {100, 200, 300, 400};
-    // print(sum_span(lst))  # 1000
     std::cout << sum_span(::tpy::as_mut_span(lst)) << "\n";
-    // # Literal array coerces to Span (via PendingListType)
-    // print(sum_span([5, 5, 5, 5, 5]))  # 25
     std::cout << sum_span(::tpy::as_mut_span(std::array<int32_t, 5>{5, 5, 5, 5, 5})) << "\n";
-    // # BigInt tests - IntLiteral elements coerce to BigInt
-    // # list[int] coerces to Span[int]
-    // bigint_list: list[int] = [1000, 2000, 3000]
     std::vector<::tpy::BigInt> bigint_list = {1000, 2000, 3000};
-    // print(sum_span_bigint(bigint_list))  # 6000
     std::cout << sum_span_bigint(::tpy::as_mut_span(bigint_list)) << "\n";
-    // # PendingListType with IntLiteral -> Span[int] (BigInt)
-    // print(sum_span_bigint([100, 200, 300]))  # 600
     std::cout << sum_span_bigint(::tpy::as_mut_span(std::array<::tpy::BigInt, 3>{::tpy::BigInt(100), ::tpy::BigInt(200), ::tpy::BigInt(300)})) << "\n";
 }
 
+// """Tests that Spannable[T] types can coerce to Span[T]."""
+//
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

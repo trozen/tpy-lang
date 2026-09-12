@@ -9,13 +9,21 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_after() -> int:
 ::tpy::BigInt read_after();
+// def read_then_assign() -> int:
 ::tpy::BigInt read_then_assign();
+// def augmented_after() -> int:
 ::tpy::BigInt augmented_after();
+// def declared_before() -> int:
 ::tpy::BigInt declared_before();
+// def read_in_later_block() -> int:
 ::tpy::BigInt read_in_later_block();
+// def read_after_while() -> int:
 ::tpy::BigInt read_after_while();
+// def sibling_loops_reuse_name() -> int:
 ::tpy::BigInt sibling_loops_reuse_name();
+// def main() -> None:
 void main();
 
 void __tpy_init();

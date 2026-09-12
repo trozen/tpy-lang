@@ -11,6 +11,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T]:
@@ -22,25 +23,26 @@ struct Container {
     T val;
 
     // def __init__(self) -> None:
+    //     self.count = int32(0)
     Container() : count(0) {}
 
     // def set(self, val: T) -> None:
+    //     self.val = val
+    //     self.count = self.count + int32(1)
     void set(::tpy::param_val_or_ref_t<T> val) {
-        // self.val = val
         this->val = ::tpy::param_to_storage<T>(val);
-        // self.count = self.count + int32(1)
         this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }
 
     // def get(self) -> T:
+    //     return self.val
     ::tpy::val_or_ref_t<T> get() {
-        // return self.val
         return this->val;
     }
 
     // def get_count(self) -> int32:
+    //     return self.count
     int32_t get_count() const {
-        // return self.count
         return this->count;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

@@ -6,72 +6,82 @@ namespace tpyapp::main {
 
 // @error_return(NotFound)
 // def lookup(key: str) -> int32:
+//     if key == "":
+//         raise BadKey(key)
+//     if key == "x":
+//         return 42
+//     raise NotFound
 std::expected<int32_t, NotFound> lookup(std::string_view key) {
-    // if key == "":
     if ((key == "")) {
-        // raise BadKey(key)
         throw BadKey(key);
     }
-    // if key == "x":
     if ((key == "x")) {
-        // return 42
         return 42;
     }
-    // raise NotFound
     return ::tpy::make_unexpected(NotFound{});
 }
 
 // def main() -> None:
+//     # Happy path
+//     try:
+//         v = lookup("x")
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(v)
+//
+//     # Return-tier error (NotFound)
+//     try:
+//         v2 = lookup("y")
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(v2)
+//
+//     # Throw-tier error (BadKey) propagates through error_return
+//     # Need two nested try blocks: inner handles NotFound, outer catches BadKey
+//     try:
+//         try:
+//             v3 = lookup("")
+//         except NotFound:
+//             print("not found")
+//     except BadKey as e:
+//         print("bad key: " + e.key)
 void main() {
-    // # Happy path
-    // try:
     int32_t v;
     {
-        // v = lookup("x")
         {
             auto __try_tmp_2 = lookup("x");
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_1:;
     }
-    // # Return-tier error (NotFound)
-    // try:
     int32_t v2;
     {
-        // v2 = lookup("y")
         {
             auto __try_tmp_4 = lookup("y");
             if (!__try_tmp_4.has_value()) goto __except_3;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_3;
         // except NotFound:
         __except_3:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_3:;
     }
-    // # Throw-tier error (BadKey) propagates through error_return
-    // # Need two nested try blocks: inner handles NotFound, outer catches BadKey
-    // try:
     {
         try {
-            // try:
             int32_t v3;
             {
-                // v3 = lookup("")
                 {
                     auto __try_tmp_6 = lookup("");
                     if (!__try_tmp_6.has_value()) goto __except_5;
@@ -80,23 +90,21 @@ void main() {
                 goto __after_try_5;
                 // except NotFound:
                 __except_5:;
-                // print("not found")
                 std::cout << "not found" << "\n";
                 __after_try_5:;
             }
         } catch (const BadKey& e) {
-            // print("bad key: " + e.key)
             std::cout << (::tpy::str_concat("bad key: ", e.key)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

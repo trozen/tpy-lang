@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def pick(flag: bool) -> Own[tuple[str, int] | Rec]:
+//     if flag:
+//         return ("hi", 7)
+//     return Rec(3)
 ::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> pick(bool flag) {
-    // if flag:
     if (flag) {
-        // return ("hi", 7)
         return std::tuple<std::string, int32_t>{"hi", 7};
     }
-    // return Rec(3)
     return Rec(::tpy::BigInt(3));
 }
 
 // def main() -> None:
+//     v = pick(True)
+//     if isinstance(v, Rec):
+//         print(v.n)
+//     else:
+//         print(v[0], v[1])  # std::get<0>, std::get<1>
 void main() {
-    // v = pick(True)
     ::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> __slot_1 = pick(true);
     ::tpy::Union<Rec*, std::tuple<std::string, ::tpy::BigInt>*> v = ::tpy::to_ptr_variant(__slot_1);
-    // if isinstance(v, Rec):
     if (std::holds_alternative<Rec*>(v)) {
         auto& __v = *std::get<Rec*>(v);
-        // print(v.n)
         std::cout << __v.n << "\n";
-    // else:
     } else {
         auto& __v = *std::get<std::tuple<std::string, ::tpy::BigInt>*>(v);
-        // print(v[0], v[1])  # std::get<0>, std::get<1>
         std::cout << std::get<0>(__v) << " " << std::get<1>(__v) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

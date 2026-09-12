@@ -21,6 +21,8 @@ struct Same {
     T b;
 
     // def __init__(self, a: T, b: T) -> None:
+    //     self.a = a
+    //     self.b = b
     Same() = default;
     explicit Same(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b) : a(a), b(b) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Same";

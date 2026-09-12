@@ -33,7 +33,9 @@ struct Fish;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(x: Named) -> None:
 void greet(Named& x);
+// def main():
 void main();
 
 // # Structural conformance (adapter wraps the call)
@@ -135,38 +137,42 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: str):
+//     self._name = n
 inline Dog::Dog(std::string_view n) : _name(n) {}
 
 // def name(self) -> StrView:
+//     return self._name
 inline std::string_view Dog::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str):
+//     self._name = n
 inline Cat::Cat(std::string_view n) : _name(n) {}
 
 // def name(self) -> String:
+//     return self._name
 inline ::tpy::String Cat::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str):
+//     self._name = n
 inline Bird::Bird(std::string_view n) : _name(n) {}
 
 // def name(self) -> StrView:
+//     return self._name
 inline std::string Bird::name() {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str):
+//     self._name = n
 inline Fish::Fish(std::string_view n) : _name(n) {}
 
 // def name(self) -> String:
+//     return self._name
 inline std::string Fish::name() {
-    // return self._name
     return this->_name;
 }
 void __tpy_init();

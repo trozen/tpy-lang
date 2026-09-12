@@ -3,14 +3,13 @@
 
 namespace tpyapp::main {
 
-// dropped: list[str] = []
 std::vector<std::string>* dropped{};
 
 // async def waiter(f: Future[Tracked]) -> Own[Tracked]:
+//     return await f
 ::tpystd::tpy::Poll<Tracked> __coro_waiter::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await f
         __sub_0 = &(f);
         __state = S_RESUME_0;
         continue;
@@ -35,16 +34,20 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
 }
 
 // async def main_coro() -> None:
+//     f: Future[Tracked] = Future[Tracked]()
+//     t = asyncio.create_task(waiter(f))
+//     f.set_result(Tracked("payload"))
+//     t.cancel()
+//     try:
+//         await t
+//     except asyncio.CancelledError:
+//         print("cancelled")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // f: Future[Tracked] = Future[Tracked]()
         f.emplace(::tpystd::asyncio::Future<Tracked>());
-        // t = asyncio.create_task(waiter(f))
         t.emplace(::tpystd::asyncio::create_task<Tracked>(::tpy::make_adapter<::tpystd::coro::Cancellable<Tracked>>(waiter((*f)))));
-        // f.set_result(Tracked("payload"))
         (*f).set_result(Tracked("payload"));
-        // t.cancel()
         (*t).cancel();
         __state = S_JOIN_1;
         continue;
@@ -59,7 +62,6 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_0 = nullptr;
-            // print("cancelled")
             std::cout << "cancelled" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -73,7 +75,6 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        // await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -90,42 +91,44 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
+//     # By here every coroutine frame has torn down. Tracked must have
+//     # dropped exactly once.
+//     if "payload" in dropped:
+//         print("dropped:", "payload")
+//     print("count:", len(dropped))
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
-    // # By here every coroutine frame has torn down. Tracked must have
-    // # dropped exactly once.
-    // if "payload" in dropped:
     if (std::ranges::contains((*dropped), "payload")) {
-        // print("dropped:", "payload")
         std::cout << "dropped:" << " " << "payload" << "\n";
     }
-    // print("count:", len(dropped))
     std::cout << "count:" << " " << ::tpy::__len__((*dropped)) << "\n";
 }
 
+// # Future result must be dropped if its awaiter is cancelled after the
+// # result was set but before the awaiter consumed it. Validated by
+// # storing a `Tracked` value whose `__del__` records into a module-level
+// # list; the test asserts the destructor fires (catches both the
+// # debug-build panic on missing drop and the release-build silent leak).
+// #
+// # We verify drop occurred but don't pin the ordering of "drop" vs
+// # "cancelled" prints: TPy and CPython sequence destructor execution
+// # differently (RAII-immediate at throw vs deferred decref at frame
+// # teardown), and the test's purpose is "destructor fires, no leak"
+// # regardless of exact timing.
+// import asyncio
+//
+// dropped: list[str] = []
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Future result must be dropped if its awaiter is cancelled after the
-    // # result was set but before the awaiter consumed it. Validated by
-    // # storing a `Tracked` value whose `__del__` records into a module-level
-    // # list; the test asserts the destructor fires (catches both the
-    // # debug-build panic on missing drop and the release-build silent leak).
-    // #
-    // # We verify drop occurred but don't pin the ordering of "drop" vs
-    // # "cancelled" prints: TPy and CPython sequence destructor execution
-    // # differently (RAII-immediate at throw vs deferred decref at frame
-    // # teardown), and the test's purpose is "destructor fires, no leak"
-    // # regardless of exact timing.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // dropped: list[str] = []
     static std::vector<std::string> __global_slot_1 = std::vector<std::string>{};
     dropped = &__global_slot_1;
-    // main()
     main();
 }
 

@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def combine(a: int64, b: int64 = 10, *, c: int64 = 20) -> int64:
 int64_t combine(int64_t a, int64_t b = 10, int64_t c = 20);
+// def partial(a: int64, b: int64 = 10, c: int64 = 30, *, d: int64 = 40) -> int64:
 int64_t partial(int64_t a, int64_t b = 10, int64_t c = 30, int64_t d = 40);
+// def main() -> None:
 void main();
 
 void __tpy_init();

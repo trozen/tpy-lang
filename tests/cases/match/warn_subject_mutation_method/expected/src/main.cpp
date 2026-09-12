@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def mutating(h: Holder) -> None:
+//     match h.pet:
+//         case Dog(items=lst):
+//             h.swap()  # tpyc: warning(/'h.pet' may be mutated by 'swap\(\)'/)
+//             print(len(lst))
+//         case Cat(age=a):
+//             print("cat", a)
 void mutating(Holder& h) {
-    // match h.pet:
     auto& __match_subject_1 = h.pet;
     switch (__match_subject_1.index()) {
-    // case Dog(items=lst):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto& lst = __case_0.items;
-        // h.swap()  # tpyc: warning(/'h.pet' may be mutated by 'swap\(\)'/)
         h.swap();
-        // print(len(lst))
         std::cout << ::tpy::__len__(lst) << "\n";
         break;
     }
-    // case Cat(age=a):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        // print("cat", a)
         std::cout << "cat" << " " << a << "\n";
         break;
     }
@@ -31,25 +31,25 @@ void mutating(Holder& h) {
 }
 
 // def readonly_ok(h: Holder) -> None:
+//     match h.pet:
+//         case Dog(items=lst):
+//             n = h.peek()  # readonly -- no warning
+//             print(len(lst), n)
+//         case Cat(age=a):
+//             print("cat-ro", a)
 void readonly_ok(const Holder& h) {
-    // match h.pet:
     auto& __match_subject_1 = h.pet;
     switch (__match_subject_1.index()) {
-    // case Dog(items=lst):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto& lst = __case_0.items;
-        // n = h.peek()  # readonly -- no warning
         int32_t n = h.peek();
-        // print(len(lst), n)
         std::cout << ::tpy::__len__(lst) << " " << n << "\n";
         break;
     }
-    // case Cat(age=a):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        // print("cat-ro", a)
         std::cout << "cat-ro" << " " << a << "\n";
         break;
     }
@@ -57,21 +57,21 @@ void readonly_ok(const Holder& h) {
 }
 
 // def main() -> None:
+//     mutating(Holder())
+//     readonly_ok(Holder())
 void main() {
-    // mutating(Holder())
     Holder __tmp_1 = Holder();
     mutating(__tmp_1);
-    // readonly_ok(Holder())
     Holder __tmp_2 = Holder();
     readonly_ok(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

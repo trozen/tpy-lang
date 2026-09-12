@@ -11,6 +11,7 @@ template<typename T> struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cell[T]:
@@ -22,30 +23,32 @@ struct Cell {
     T other;
 
     // def __init__(self, v: Own[T], o: Own[T]) -> None:
+    //     self.value = v
+    //     self.other = o
     Cell() = default;
     explicit Cell(::tpy::own_param_t<T> v, ::tpy::own_param_t<T> o) : value(std::move(v)), other(std::move(o)) {}
 
     // def get(self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> get() {
-        // return self.value
         return this->value;
     }
 
     // def pick(self) -> T:
+    //     return self.other
     ::tpy::val_or_ref_t<T> pick() {
-        // return self.other
         return this->other;
     }
 
     // def echo(self, v: T) -> T:
+    //     return v
     ::tpy::val_or_cref_t<T> echo(::tpy::readonly_form_t<T> v) const {
-        // return v
         return ::tpy::param_to_return<T>(v);
     }
 
     // def store(self, v: T) -> None:
+    //     self.value = v
     void store(::tpy::param_val_or_ref_t<T> v) {
-        // self.value = v
         this->value = ::tpy::param_to_storage<T>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";

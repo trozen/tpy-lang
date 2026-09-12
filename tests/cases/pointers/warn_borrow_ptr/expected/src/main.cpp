@@ -5,69 +5,73 @@ namespace tpyapp::main {
 
 
 // def test_ptr_borrow_field_write() -> None:
+//     """Ptr borrow + field write on storage = warn."""
+//     p = Point(int32(1), int32(2))
+//     ptr = take_ptr(p)
+//     p.x = int32(10)  # tpyc: warning(/Mutation of 'p'.*field assignment/)
+//     print(p.x)
 void test_ptr_borrow_field_write() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // ptr = take_ptr(p)
     Point* ptr = &p;
-    // p.x = int32(10)  # tpyc: warning(/Mutation of 'p'.*field assignment/)
     p.x = 10;
-    // print(p.x)
     std::cout << p.x << "\n";
 }
 
 // def test_ptr_borrow_append() -> None:
+//     """Ptr into list element + structural mutation = warn."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     ptr = take_ptr(items[int32(0)])
+//     items.append(Point(int32(3), int32(4)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+//     print(len(items))
 void test_ptr_borrow_append() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // ptr = take_ptr(items[int32(0)])
     Point* ptr = &::tpy::__getitem__(items, 0);
-    // items.append(Point(int32(3), int32(4)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(3, 4));
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_ptr_borrow_subscript_assign() -> None:
+//     """Ptr into list element + subscript assign = ok (in-place, no reallocation, no dangling)."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     ptr = take_ptr(items[int32(0)])
+//     items[int32(0)] = Point(int32(9), int32(9))  # tpyc: ok
+//     print(items[int32(0)].x)
 void test_ptr_borrow_subscript_assign() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // ptr = take_ptr(items[int32(0)])
     Point* ptr = &::tpy::__getitem__(items, 0);
-    // items[int32(0)] = Point(int32(9), int32(9))  # tpyc: ok
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_ptr_reassign_clears() -> None:
+//     """Reassigning the ptr variable clears the borrow."""
+//     p = Point(int32(1), int32(2))
+//     q = Point(int32(3), int32(4))
+//     ptr = take_ptr(p)
+//     ptr = take_ptr(q)
+//     p.x = int32(10)  # tpyc: ok
+//     print(p.x)
 void test_ptr_reassign_clears() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // q = Point(int32(3), int32(4))
     Point q = Point(3, 4);
-    // ptr = take_ptr(p)
     Point* ptr = &p;
-    // ptr = take_ptr(q)
     ptr = &q;
-    // p.x = int32(10)  # tpyc: ok
     p.x = 10;
-    // print(p.x)
     std::cout << p.x << "\n";
 }
 
+// test_ptr_borrow_field_write()
+// test_ptr_borrow_append()
+// test_ptr_borrow_subscript_assign()
+// test_ptr_reassign_clears()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_ptr_borrow_field_write()
     test_ptr_borrow_field_write();
-    // test_ptr_borrow_append()
     test_ptr_borrow_append();
-    // test_ptr_borrow_subscript_assign()
     test_ptr_borrow_subscript_assign();
-    // test_ptr_reassign_clears()
     test_ptr_reassign_clears();
 }
 

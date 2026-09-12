@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter()
+//     c.display()
+//     c.increment()
+//     c.display()
+//     c.increment(int32(5))
+//     c.display()
+//     c.display("total")
+//
+//     c2 = Counter(int32(100))
+//     c2.display()
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // c.display()
     c.display();
-    // c.increment()
     c.increment();
-    // c.display()
     c.display();
-    // c.increment(int32(5))
     c.increment(5);
-    // c.display()
     c.display();
-    // c.display("total")
     c.display("total");
-    // c2 = Counter(int32(100))
     Counter c2 = Counter(100);
-    // c2.display()
     c2.display();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

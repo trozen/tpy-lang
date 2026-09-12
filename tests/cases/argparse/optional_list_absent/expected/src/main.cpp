@@ -5,38 +5,47 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     p1 = ArgumentParser()
+//     p1.add_argument("--tag", action="append")
+//     p1.add_argument("--num", action="append", type=int)
+//     a1 = p1.parse_args([])
+//     if a1.tag is None:
+//         print("tag none")
+//     if a1.num is None:
+//         print("num none")
+//
+//     p2 = ArgumentParser()
+//     p2.add_argument("--tag", action="append")
+//     a2 = p2.parse_args(["--tag", "x", "--tag", "y"])
+//     assert a2.tag is not None
+//     print(a2.tag[0])
+//     print(a2.tag[1])
+//
+//     p3 = ArgumentParser()
+//     p3.add_argument("--coord", nargs=2, type=int)
+//     a3 = p3.parse_args([])
+//     if a3.coord is None:
+//         print("coord none")
+//     return 0
 int32_t main() {
-    // a1 = p1.parse_args([])
     std::vector<std::string> __tmp_1 = std::vector<std::string>{};
     __tpy_builder_argparse_args_1 a1 = __tpy_builder_argparse_parse_1(__tmp_1);
-    // if a1.tag is None:
     if ((!a1.tag.has_value())) {
-        // print("tag none")
         std::cout << "tag none" << "\n";
     }
-    // if a1.num is None:
     if ((!a1.num.has_value())) {
-        // print("num none")
         std::cout << "num none" << "\n";
     }
-    // a2 = p2.parse_args(["--tag", "x", "--tag", "y"])
     std::vector<std::string> __tmp_2 = {"--tag", "x", "--tag", "y"};
     __tpy_builder_argparse_args_2 a2 = __tpy_builder_argparse_parse_2(__tmp_2);
-    // assert a2.tag is not None
     if (!((a2.tag.has_value()))) ::tpy::raise_assertion_error();
-    // print(a2.tag[0])
     std::cout << ::tpy::__getitem__((*a2.tag), 0) << "\n";
-    // print(a2.tag[1])
     std::cout << ::tpy::__getitem__((*a2.tag), 1) << "\n";
-    // a3 = p3.parse_args([])
     std::vector<std::string> __tmp_3 = std::vector<std::string>{};
     __tpy_builder_argparse_args_3 a3 = __tpy_builder_argparse_parse_3(__tmp_3);
-    // if a3.coord is None:
     if ((!a3.coord.has_value())) {
-        // print("coord none")
         std::cout << "coord none" << "\n";
     }
-    // return 0
     return 0;
 }
 
@@ -188,14 +197,15 @@ __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<s
     return __tpy_builder_argparse_args_3(std::move(coord ? std::optional<std::vector<::tpy::BigInt>>(std::move(*coord)) : std::nullopt));
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

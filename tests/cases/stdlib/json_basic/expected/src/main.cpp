@@ -5,86 +5,94 @@ namespace tpyapp::main {
 
 
 // def roundtrip(s: str) -> str:
+//     v = json.loads(s)
+//     return json.dumps(v)
 std::string roundtrip(std::string_view s) {
-    // v = json.loads(s)
     ::tpystd::json::JsonValue v = ::tpystd::json::loads(s);
-    // return json.dumps(v)
     return ::tpystd::json::dumps(v, 0, false);
 }
 
 // def main() -> None:
+//     try:
+//         # Primitives + null
+//         print(roundtrip("null"))
+//         print(roundtrip("true"))
+//         print(roundtrip("false"))
+//         print(roundtrip("42"))
+//         print(roundtrip("-7"))
+//         print(roundtrip("0"))
+//         print(roundtrip("3.14"))
+//         print(roundtrip('"hello"'))
+//
+//         # Object and array
+//         print(roundtrip('{"name": "Alice", "age": 30}'))
+//         print(roundtrip("[1, 2, 3]"))
+//
+//         # Mixed nesting
+//         print(roundtrip('{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], "count": 2}'))
+//
+//         # Round-trip preserves int vs float distinction
+//         print(roundtrip("[1, 2, 3]"))
+//         print(roundtrip("[1.0, 2.0, 3.0]"))
+//
+//         # null inside containers
+//         print(roundtrip('[1, null, "x"]'))
+//         print(roundtrip('{"a": null}'))
+//
+//         # String escapes
+//         print(roundtrip('"line1\\nline2"'))
+//         print(roundtrip('"quote\\""'))
+//
+//         # Empty containers
+//         print(roundtrip("{}"))
+//         print(roundtrip("[]"))
+//
+//         # sort_keys
+//         sk = json.loads('{"b": 1, "a": 2, "c": 3}')
+//         print(json.dumps(sk, sort_keys=True))
+//     except JSONDecodeError as e:
+//         print("ERR:", e.msg)
 void main() {
-    // try:
     {
         try {
-            // # Primitives + null
-            // print(roundtrip("null"))
             std::cout << roundtrip("null") << "\n";
-            // print(roundtrip("true"))
             std::cout << roundtrip("true") << "\n";
-            // print(roundtrip("false"))
             std::cout << roundtrip("false") << "\n";
-            // print(roundtrip("42"))
             std::cout << roundtrip("42") << "\n";
-            // print(roundtrip("-7"))
             std::cout << roundtrip("-7") << "\n";
-            // print(roundtrip("0"))
             std::cout << roundtrip("0") << "\n";
-            // print(roundtrip("3.14"))
             std::cout << roundtrip("3.14") << "\n";
-            // print(roundtrip('"hello"'))
             std::cout << roundtrip("\"hello\"") << "\n";
-            // # Object and array
-            // print(roundtrip('{"name": "Alice", "age": 30}'))
             std::cout << roundtrip("{\"name\": \"Alice\", \"age\": 30}") << "\n";
-            // print(roundtrip("[1, 2, 3]"))
             std::cout << roundtrip("[1, 2, 3]") << "\n";
-            // # Mixed nesting
-            // print(roundtrip('{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}], "count": 2}'))
             std::cout << roundtrip("{\"users\": [{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}], \"count\": 2}") << "\n";
-            // # Round-trip preserves int vs float distinction
-            // print(roundtrip("[1, 2, 3]"))
             std::cout << roundtrip("[1, 2, 3]") << "\n";
-            // print(roundtrip("[1.0, 2.0, 3.0]"))
             std::cout << roundtrip("[1.0, 2.0, 3.0]") << "\n";
-            // # null inside containers
-            // print(roundtrip('[1, null, "x"]'))
             std::cout << roundtrip("[1, null, \"x\"]") << "\n";
-            // print(roundtrip('{"a": null}'))
             std::cout << roundtrip("{\"a\": null}") << "\n";
-            // # String escapes
-            // print(roundtrip('"line1\\nline2"'))
             std::cout << roundtrip("\"line1\\nline2\"") << "\n";
-            // print(roundtrip('"quote\\""'))
             std::cout << roundtrip("\"quote\\\"\"") << "\n";
-            // # Empty containers
-            // print(roundtrip("{}"))
             std::cout << roundtrip("{}") << "\n";
-            // print(roundtrip("[]"))
             std::cout << roundtrip("[]") << "\n";
-            // # sort_keys
-            // sk = json.loads('{"b": 1, "a": 2, "c": 3}')
             ::tpystd::json::JsonValue sk = ::tpystd::json::loads("{\"b\": 1, \"a\": 2, \"c\": 3}");
-            // print(json.dumps(sk, sort_keys=True))
             std::cout << ::tpystd::json::dumps(sk, 0, true) << "\n";
         } catch (const ::tpystd::json::JSONDecodeError& e) {
-            // print("ERR:", e.msg)
             std::cout << "ERR:" << " " << e.msg << "\n";
         }
     }
-    // # Primitives + null
 }
 
+// # json.loads / json.dumps round-trip for every JsonValue alternative.
+// # Output is byte-compared against CPython's json module via the cpy phase.
+// import json
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # json.loads / json.dumps round-trip for every JsonValue alternative.
-    // # Output is byte-compared against CPython's json module via the cpy phase.
-    // import json
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

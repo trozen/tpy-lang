@@ -21,13 +21,21 @@ struct __coro_late;
 struct __gen_late_gen;
 struct __coro_amain;
 
+// def each(xs: list[int32]) -> Iterator[list[int32]]:
 __gen_each each(std::vector<int32_t>& xs);
+// def rep(b: P) -> Iterator[P]:
 __gen_rep rep(P& b);
+// def pairs(d: dict[str, int32]) -> Iterator[dict[str, int32]]:
 __gen_pairs pairs(::tpy::ordered_map<std::string, int32_t>& d);
+// async def step(n: int32) -> int32:
 __coro_step step(int32_t n);
+// async def late() -> int32:
 __coro_late late();
+// def late_gen() -> Iterator[int32]:
 __gen_late_gen late_gen();
+// async def amain() -> None:
 __coro_amain amain();
+// def main() -> None:
 void main();
 
 // class P:
@@ -46,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
-// Async coroutine: step
+// async def step(n: int32) -> int32:
 struct __coro_step {
     int32_t __state;
     bool __cancel_pending;
@@ -68,7 +76,7 @@ struct __coro_step {
     }
 };
 
-// Async coroutine: late
+// async def late() -> int32:
 struct __coro_late {
     int32_t __state;
     bool __cancel_pending;
@@ -93,7 +101,7 @@ struct __coro_late {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -117,7 +125,7 @@ struct __coro_amain {
     }
 };
 
-// Generator: each
+// def each(xs: list[int32]) -> Iterator[list[int32]]:
 struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, ::tpy::val_or_ref<std::vector<int32_t>>> {
     int32_t __state;
     std::vector<int32_t>& xs;
@@ -140,7 +148,7 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, ::tpy::val_or_ref<
     }
 };
 
-// Generator: rep
+// def rep(b: P) -> Iterator[P]:
 struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep, ::tpy::val_or_ref<P>> {
     int32_t __state;
     P& b;
@@ -163,7 +171,7 @@ struct __gen_rep : public ::tpy::next_iter_mixin<__gen_rep, ::tpy::val_or_ref<P>
     }
 };
 
-// Generator: pairs
+// def pairs(d: dict[str, int32]) -> Iterator[dict[str, int32]]:
 struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, ::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>> {
     int32_t __state;
     ::tpy::ordered_map<std::string, int32_t>& d;
@@ -186,7 +194,7 @@ struct __gen_pairs : public ::tpy::next_iter_mixin<__gen_pairs, ::tpy::val_or_re
     }
 };
 
-// Generator: late_gen
+// def late_gen() -> Iterator[int32]:
 struct __gen_late_gen : public ::tpy::next_iter_mixin<__gen_late_gen, int32_t> {
     int32_t __state;
     int32_t n;
@@ -211,6 +219,7 @@ struct __gen_late_gen : public ::tpy::next_iter_mixin<__gen_late_gen, int32_t> {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

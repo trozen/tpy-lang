@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = 5
+//     if isinstance(a, int) and a > 0:
+//         print("positive int")
+//     if isinstance(a, str) or len("x") > 0:
+//         print("either str or non-empty literal")
 void main() {
-    // a: Any = 5
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(5));
-    // if isinstance(a, int) and a > 0:
     if (((a.value.has_value() && a.value.type() == typeid(::tpy::BigInt)) && (std::any_cast<const ::tpy::BigInt&>(a.value) > 0))) {
         const ::tpy::BigInt& __a = std::any_cast<const ::tpy::BigInt&>(a.value);
-        // print("positive int")
         std::cout << "positive int" << "\n";
     }
-    // if isinstance(a, str) or len("x") > 0:
     if (((a.value.has_value() && a.value.type() == typeid(std::string)) || (::tpy::__len__("x") > 0))) {
-        // print("either str or non-empty literal")
         std::cout << "either str or non-empty literal" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -16,10 +16,13 @@ struct __gen_bump;
 template <::tpystd::typing::Iterable<int32_t> T_nums>
 struct __gen_doubled;
 
+// def bump(items: Iterable[Point]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<Point> T_items>
 __gen_bump<T_items> bump(T_items&& items);
+// def doubled(nums: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_nums>
 __gen_doubled<T_nums> doubled(T_nums&& nums);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -38,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// Generator: bump
+// def bump(items: Iterable[Point]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<Point> T_items>
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump<T_items>, int32_t> {
     int32_t __state;
@@ -66,6 +69,10 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump<T_items>, int32_t> 
     }
 };
 // def bump(items: Iterable[Point]) -> Iterator[int32]:
+//     for p in items:
+//         p.x += 100
+//         yield p.x
+//         yield p.x
 template <::tpystd::typing::Iterable<Point> T_items>
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump<T_items>::__next__() {
     while (true) switch (__state) {
@@ -75,7 +82,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump<T_items>::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield p.x
         __state = S_RESUME_1;
         return (*p).x;
     }
@@ -90,9 +96,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump<T_items>::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         p.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        // p.x += 100
         (*p).x = ::tpy::add_check<int32_t>((*p).x, 100);
-        // yield p.x
         __state = S_RESUME_0;
         return (*p).x;
     }
@@ -108,7 +112,7 @@ __gen_bump<T_items> bump(T_items&& items) {
     return __gen_bump<T_items>(std::forward<T_items>(items));
 }
 
-// Generator: doubled
+// def doubled(nums: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_nums>
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_nums>, int32_t> {
     int32_t __state;
@@ -136,6 +140,10 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_nums>, int3
     }
 };
 // def doubled(nums: Iterable[int32]) -> Iterator[int32]:
+//     for n in nums:
+//         n += 1
+//         yield n
+//         yield n * 2
 template <::tpystd::typing::Iterable<int32_t> T_nums>
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_nums>::__next__() {
     while (true) switch (__state) {
@@ -145,7 +153,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_nums>::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield n * 2
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(n, 2));
     }
@@ -160,9 +167,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_nums>::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         n = ::tpy::unwrap_ref(*(*__for_r_0));
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
-        // yield n
         __state = S_RESUME_0;
         return n;
     }
@@ -180,6 +185,7 @@ __gen_doubled<T_nums> doubled(T_nums&& nums) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

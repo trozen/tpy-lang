@@ -5,26 +5,29 @@ namespace tpyapp::main {
 
 
 // def sign_stream(n: int32) -> Iterator[int32]:
+//     yield 0
+//     if n > 0:
+//         yield 1
+//         yield 2
+//     else:
+//         yield -1
+//     yield 99
 std::expected<int32_t, ::tpy::StopIteration> __gen_sign_stream::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
         if ((n > 0)) {
-            // yield 1
             __state = S_RESUME_1;
             return 1;
         } else {
-            // yield -1
             __state = S_RESUME_3;
             return -1;
         }
     }
     case S_RESUME_1: {
-        // yield 2
         __state = S_RESUME_2;
         return 2;
     }
@@ -41,7 +44,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_sign_stream::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 99
         __state = S_RESUME_4;
         return 99;
     }
@@ -57,8 +59,11 @@ __gen_sign_stream sign_stream(int32_t n) {
 }
 
 // def main() -> None:
+//     for v in sign_stream(5):
+//         print(v)
+//     for v in sign_stream(-3):
+//         print(v)
 void main() {
-    // for v in sign_stream(5):
     {
         auto __src_0 = sign_stream(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -66,11 +71,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in sign_stream(-3):
     {
         auto __src_2 = sign_stream(-3);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -78,18 +81,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

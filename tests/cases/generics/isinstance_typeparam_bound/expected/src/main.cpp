@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main():
+//     print(classify(Dog(1)))    # Animal + Dog = 3
+//     print(classify(Puppy(1)))  # Animal + Dog + Puppy = 7
 void main() {
-    // print(classify(Dog(1)))    # Animal + Dog = 3
     Dog __tmp_1 = Dog(1);
     std::cout << classify<Dog>(__tmp_1) << "\n";
-    // print(classify(Puppy(1)))  # Animal + Dog + Puppy = 7
     Puppy __tmp_2 = Puppy(1);
     std::cout << classify<Puppy>(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

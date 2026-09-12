@@ -12,6 +12,7 @@ struct Badge;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Ticket:
@@ -66,24 +67,25 @@ inline std::ostream& operator<<(std::ostream& os, const Badge& obj) {
 
 
 // def __init__(self, id: int32) -> None:
+//     self.id = id
 inline Ticket::Ticket(int32_t id) : id(id) {}
 
 // # The subject: the finally mutates the receiver the return hands back.
 // def stamped(self: Own[Self]) -> Own[Self]:
+//     try:
+//         return self  # tpyc: ok
+//     finally:
+//         self.id += 100
 inline Ticket Ticket::stamped() && {
-    // try:
     {
         bool __fin_ran_1 = false;
         try {
-            // return self  # tpyc: ok
             auto* __tpy_retp_0 = &((*this));
             __fin_ran_1 = true;
-            // self.id += 100
             this->id = ::tpy::add_check<int32_t>(this->id, 100);
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_1) {
-                // self.id += 100
                 this->id = ::tpy::add_check<int32_t>(this->id, 100);
             }
             throw;
@@ -93,20 +95,20 @@ inline Ticket Ticket::stamped() && {
 
 // # The same shape with a finally that never touches the receiver.
 // def logged(self: Own[Self]) -> Own[Self]:
+//     try:
+//         return self  # tpyc: ok
+//     finally:
+//         print("logged")
 inline Ticket Ticket::logged() && {
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
-            // return self  # tpyc: ok
             auto* __tpy_retp_0 = &((*this));
             __fin_ran_2 = true;
-            // print("logged")
             std::cout << "logged" << "\n";
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_2) {
-                // print("logged")
                 std::cout << "logged" << "\n";
             }
             throw;
@@ -115,24 +117,25 @@ inline Ticket Ticket::logged() && {
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Badge::Badge(int32_t n) : n(n) {}
 
 // # A copy here cannot compile, so the deferred capture must be a move.
 // def bumped(self: Own[Self]) -> Own[Self]:
+//     try:
+//         return self  # tpyc: ok
+//     finally:
+//         self.n += 1
 inline Badge Badge::bumped() && {
-    // try:
     {
         bool __fin_ran_3 = false;
         try {
-            // return self  # tpyc: ok
             auto* __tpy_retp_0 = &((*this));
             __fin_ran_3 = true;
-            // self.n += 1
             this->n = ::tpy::add_check<int32_t>(this->n, 1);
             return std::move(*__tpy_retp_0);
         } catch (...) {
             if (!__fin_ran_3) {
-                // self.n += 1
                 this->n = ::tpy::add_check<int32_t>(this->n, 1);
             }
             throw;

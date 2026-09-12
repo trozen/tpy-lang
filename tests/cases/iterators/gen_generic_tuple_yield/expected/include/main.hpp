@@ -12,11 +12,13 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename K, typename V>
 struct __gen_zip_pairs;
 
+// def zip_pairs[K, V](ks: list[K], vs: list[V]) -> Iterator[tuple[K, V]]:  # tpyc: ok
 template <typename K, typename V>
 __gen_zip_pairs<K, V> zip_pairs(std::vector<K>& ks, std::vector<V>& vs);
+// def main() -> None:
 void main();
 
-// Generator: zip_pairs
+// def zip_pairs[K, V](ks: list[K], vs: list[V]) -> Iterator[tuple[K, V]]:  # tpyc: ok
 template <typename K, typename V>
 struct __gen_zip_pairs : public ::tpy::next_iter_mixin<__gen_zip_pairs<K, V>, std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>> {
     ::tpy::frame_state __state;
@@ -59,19 +61,24 @@ struct __gen_zip_pairs : public ::tpy::next_iter_mixin<__gen_zip_pairs<K, V>, st
     }
 };
 // def zip_pairs[K, V](ks: list[K], vs: list[V]) -> Iterator[tuple[K, V]]:  # tpyc: ok
+//     i = 0
+//     try:
+//         while i < len(ks) and i < len(vs):
+//             yield (ks[i], vs[i])
+//             i += 1
+//     finally:
+//         print("zip done")
 template <typename K, typename V>
 std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy::StopIteration> __gen_zip_pairs<K, V>::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_2;
         continue;
     }
     case S_RESUME_0: {
         try {
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;
             continue;
@@ -84,7 +91,6 @@ std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy:
         bool __fin_ran_2 = false;
         try {
             if (((i < ::tpy::__len__(ks)) && (i < ::tpy::__len__(vs)))) {
-                // yield (ks[i], vs[i])
                 __state = S_RESUME_0;
                 return std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(::tpy::__getitem__(ks, i)), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<V>>(::tpy::__getitem__(vs, i))};
             } else {
@@ -124,7 +130,6 @@ std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy:
 
 template <typename K, typename V>
 void __gen_zip_pairs<K, V>::__finally_0() {
-    // print("zip done")
     std::cout << "zip done" << "\n";
 }
 

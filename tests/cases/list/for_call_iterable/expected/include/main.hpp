@@ -11,13 +11,21 @@ struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_list(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> make_list(int32_t n);
+// def make_dict() -> Own[dict[int32, int32]]:
 ::tpy::ordered_map<int32_t, int32_t> make_dict();
+// def get_cells(cells: list[Cell]) -> list[Cell]:
 std::vector<Cell>& get_cells(std::vector<Cell>& cells);
+// def view(items: list[int32]) -> readonly[list[int32]]:
 const std::vector<int32_t>& view(std::vector<int32_t>& items);
+// def own_returns() -> None:
 void own_returns();
+// def bump(cells: list[Cell]) -> None:
 void bump(std::vector<Cell>& cells);
+// def readonly_sum(items: list[int32]) -> int32:
 int32_t readonly_sum(std::vector<int32_t>& items);
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -38,6 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Cell::Cell(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Widget("button", int32(5))
+//     print(w.describe())
+//     print(w.name)
+//     print(w.count)
 void main() {
-    // w = Widget("button", int32(5))
     Widget w = Widget("button", 5);
-    // print(w.describe())
     std::cout << w.describe() << "\n";
-    // print(w.name)
     std::cout << w.name << "\n";
-    // print(w.count)
     std::cout << w.count << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

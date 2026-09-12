@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def empty_set() -> Own[set[int32]]:
+//     return set()
 ::tpy::ordered_set<int32_t> empty_set() {
-    // return set()
     return ::tpy::ordered_set<int32_t>();
 }
 
 // def f() -> None:
+//     # The container rvalue is the argument, with no local in between.
+//     print(len(empty_set()))
 void f() {
-    // # The container rvalue is the argument, with no local in between.
-    // print(len(empty_set()))
     std::cout << ::tpy::__len__(empty_set()) << "\n";
 }
 
 // def main() -> None:
+//     f()
 void main() {
-    // f()
     f();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

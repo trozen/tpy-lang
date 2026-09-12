@@ -12,6 +12,7 @@ struct Fibonacci;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Recursive:
@@ -52,24 +53,24 @@ inline std::ostream& operator<<(std::ostream& os, const Fibonacci& obj) {
 
 
 // def __call__(self, x: int32) -> int32:
+//     if x <= 0:
+//         return 0
+//     return self(x - 1) + 1
 inline int32_t Recursive::__call__(int32_t x) const {
-    // if x <= 0:
     if ((x <= 0)) {
-        // return 0
         return 0;
     }
-    // return self(x - 1) + 1
     return (::tpy::add_check<int32_t>(this->__call__((::tpy::sub_check<int32_t>(x, 1))), 1));
 }
 
 // def __call__(self, n: int32) -> int32:
+//     if n <= 1:
+//         return n
+//     return self(n - 1) + self(n - 2)
 inline int32_t Fibonacci::__call__(int32_t n) const {
-    // if n <= 1:
     if ((n <= 1)) {
-        // return n
         return n;
     }
-    // return self(n - 1) + self(n - 2)
     return (::tpy::add_check<int32_t>(this->__call__((::tpy::sub_check<int32_t>(n, 1))), this->__call__((::tpy::sub_check<int32_t>(n, 2)))));
 }
 void __tpy_init();

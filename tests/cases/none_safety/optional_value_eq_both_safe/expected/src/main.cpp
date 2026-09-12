@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def eq_both(a: int32 | None, b: int32 | None) -> bool:
+//     return a == b  # tpyc: ok
 bool eq_both(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // return a == b  # tpyc: ok
     return (a == b);
 }
 
+// print(eq_both(5, 5))
+// print(eq_both(5, 3))
+// print(eq_both(None, 5))
+// print(eq_both(5, None))
+// print(eq_both(None, None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(eq_both(5, 5))
     std::cout << ::tpy::print_bool(eq_both(5, 5)) << "\n";
-    // print(eq_both(5, 3))
     std::cout << ::tpy::print_bool(eq_both(5, 3)) << "\n";
-    // print(eq_both(None, 5))
     std::cout << ::tpy::print_bool(eq_both(std::nullopt, 5)) << "\n";
-    // print(eq_both(5, None))
     std::cout << ::tpy::print_bool(eq_both(5, std::nullopt)) << "\n";
-    // print(eq_both(None, None))
     std::cout << ::tpy::print_bool(eq_both(std::nullopt, std::nullopt)) << "\n";
 }
 

@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(x: Cat | Dog) -> int:
 ::tpy::BigInt show(::tpy::Union<Cat*, Dog*> x);
+// def main() -> None:
 void main();
 
 // # Method call (not just field access) through an implicit-else union narrowing:
@@ -57,20 +59,22 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, a: int):
+//     self.a = a
 inline Cat::Cat(const ::tpy::BigInt& a) : a(a) {}
 
 // def speak(self) -> int:
+//     return self.a + 10
 inline ::tpy::BigInt Cat::speak() const {
-    // return self.a + 10
     return ((this->a) + (::tpy::BigInt(10)));
 }
 
 // def __init__(self, b: int):
+//     self.b = b
 inline Dog::Dog(const ::tpy::BigInt& b) : b(b) {}
 
 // def speak(self) -> int:
+//     return self.b + 20
 inline ::tpy::BigInt Dog::speak() const {
-    // return self.b + 20
     return ((this->b) + (::tpy::BigInt(20)));
 }
 void __tpy_init();

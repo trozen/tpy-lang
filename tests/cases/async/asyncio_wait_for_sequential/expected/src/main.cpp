@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def first() -> int:
+//     await asyncio.sleep(0.001)
+//     return 10
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_first::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 10
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 10;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -35,10 +35,11 @@ __coro_first first() {
 }
 
 // async def second() -> int:
+//     await asyncio.sleep(0.001)
+//     return 20
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_second::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -48,7 +49,6 @@ __coro_first first() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 20
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 20;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -65,10 +65,12 @@ __coro_second second() {
 }
 
 // async def main_coro() -> None:
+//     a = await asyncio.wait_for(first(), 5.0)
+//     b = await asyncio.wait_for(second(), 5.0)
+//     print(a + b)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = await asyncio.wait_for(first(), 5.0)
         __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(first()), 5.0);
         __state = S_RESUME_0;
         continue;
@@ -78,7 +80,6 @@ __coro_second second() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
         __sub_0.reset();
-        // b = await asyncio.wait_for(second(), 5.0)
         __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(second()), 5.0);
         __state = S_RESUME_1;
         continue;
@@ -88,7 +89,6 @@ __coro_second second() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
         __sub_1.reset();
-        // print(a + b)
         std::cout << ((a) + (b)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -105,25 +105,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Two sequential `await asyncio.wait_for(...)` calls in the same
+// # async function. Each await uses a separate `__sub_N` slot in the
+// # coro frame; the cancel-check helper runs on both. Validates that
+// # the second wait_for's sub-coro field (which carries a deduced
+// # `T_coro` template arg derived from a different free-function call)
+// # is emitted with the right per-call qualification.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two sequential `await asyncio.wait_for(...)` calls in the same
-    // # async function. Each await uses a separate `__sub_N` slot in the
-    // # coro frame; the cancel-check helper runs on both. Validates that
-    // # the second wait_for's sub-coro field (which carries a deduced
-    // # `T_coro` template arg derived from a different free-function call)
-    // # is emitted with the right per-call qualification.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

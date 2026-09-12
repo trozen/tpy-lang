@@ -18,10 +18,13 @@ struct IntStr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_k[K, V, T: Pair[V, K]](x: T) -> K:      # tpyc: ok
 template<typename K, typename V, Pair<V, K> T>
 ::tpy::val_or_ref_t<K> get_k(::tpy::param_val_or_ref_t<T> x);
+// def get_v[K, V, T: Pair[V, K]](x: T) -> V:      # tpyc: ok
 template<typename K, typename V, Pair<V, K> T>
 ::tpy::val_or_ref_t<V> get_v(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // class IntStr:
@@ -50,30 +53,32 @@ inline std::ostream& operator<<(std::ostream& os, const IntStr& obj) {
 
 
 // def __init__(self, a: int, b: str):
+//     self.a = a
+//     self.b = b
 inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
 
 // def first(self) -> int:
+//     return self.a
 inline ::tpy::BigInt IntStr::first() const {
-    // return self.a
     return this->a;
 }
 
 // def second(self) -> str:
+//     return self.b
 inline std::string IntStr::second() const {
-    // return self.b
     return this->b;
 }
 // # bound is Pair[V, K]: V <- protocol param 0 (first/int), K <- param 1 (second/str)
 // def get_k[K, V, T: Pair[V, K]](x: T) -> K:      # tpyc: ok
+//     return x.second()
 template<typename K, typename V, Pair<V, K> T>
 ::tpy::val_or_ref_t<K> get_k(::tpy::param_val_or_ref_t<T> x) {
-    // return x.second()
     return x.second();
 }
 // def get_v[K, V, T: Pair[V, K]](x: T) -> V:      # tpyc: ok
+//     return x.first()
 template<typename K, typename V, Pair<V, K> T>
 ::tpy::val_or_ref_t<V> get_v(::tpy::param_val_or_ref_t<T> x) {
-    // return x.first()
     return x.first();
 }
 

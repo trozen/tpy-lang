@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     rows = [Row(1)]
+//     xs: list[Row] = []
+//     # The receiver is a temporary, but `pick` borrows its ARGUMENT.
+//     xs.append(Picker().pick(rows))  # tpyc: warning(/copies Row into owned storage/)
+//     print(xs[0].v)
 void main() {
-    // rows = [Row(1)]
     std::vector<Row> rows = {Row(1)};
-    // xs: list[Row] = []
     std::vector<Row> xs = std::vector<Row>{};
-    // # The receiver is a temporary, but `pick` borrows its ARGUMENT.
-    // xs.append(Picker().pick(rows))  # tpyc: warning(/copies Row into owned storage/)
     xs.push_back(Picker().pick(rows));
-    // print(xs[0].v)
     std::cout << ::tpy::__getitem__(xs, 0).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

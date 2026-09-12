@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
+// writeln(double(7));
+// writeln(triple(5));
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::helpers::__tpy_init();
-    // writeln(double(7));
     std::cout << ::tpyapp::helpers::double_(7) << "\n";
-    // writeln(triple(5));
     std::cout << ::tpyapp::helpers::triple(5) << "\n";
 }
 

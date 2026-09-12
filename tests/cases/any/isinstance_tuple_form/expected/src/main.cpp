@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def classify(x: Any) -> str:
+//     if isinstance(x, (int, str)):
+//         return "int-or-str"
+//     if isinstance(x, (float, bool)):
+//         return "float-or-bool"
+//     return "other"
 std::string classify(::tpy::Any x) {
-    // if isinstance(x, (int, str)):
     if ((x.value.has_value() && (x.value.type() == typeid(::tpy::BigInt) || x.value.type() == typeid(std::string)))) {
-        // return "int-or-str"
         return "int-or-str";
     }
-    // if isinstance(x, (float, bool)):
     if ((x.value.has_value() && (x.value.type() == typeid(bool) || x.value.type() == typeid(double)))) {
-        // return "float-or-bool"
         return "float-or-bool";
     }
-    // return "other"
     return "other";
 }
 
 // def main() -> None:
+//     print(classify(1))
+//     print(classify("hi"))
+//     print(classify(2.5))
+//     print(classify(None))
 void main() {
-    // print(classify(1))
     std::cout << classify(::tpy::make_any(::tpy::BigInt(1))) << "\n";
-    // print(classify("hi"))
     std::cout << classify(::tpy::make_any(std::string("hi"))) << "\n";
-    // print(classify(2.5))
     std::cout << classify(::tpy::make_any(static_cast<double>(2.5))) << "\n";
-    // print(classify(None))
     std::cout << classify(::tpy::make_any(std::monostate{})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

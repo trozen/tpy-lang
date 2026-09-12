@@ -11,6 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Direct `obj.foo` access with no enclosing try/except: the throw propagates
@@ -31,8 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __getattr__(self, name: str) -> str:
+//     raise AttributeError(name)
 inline std::string Bag::__getattr__(std::string_view name) const {
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 void __tpy_init();

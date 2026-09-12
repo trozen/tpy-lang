@@ -9,27 +9,27 @@ namespace tpyapp::main {
 // # to the whole union) over a pointer alternative pack, which is what makes it
 // # compare through the pointee. No call site can build the argument yet.
 // def takes(u: PtrPet) -> int32:  # tpyc: ok
+//     return 1
 int32_t takes(const PtrPet& u) {
-    // return 1
     return 1;
 }
 
 // def main() -> None:
+//     d = Dog(7)
+//     p: Ptr[Dog] = d
+//     print(p.n)
 void main() {
-    // d = Dog(7)
     Dog d = Dog(7);
-    // p: Ptr[Dog] = d
     Dog* p = &d;
-    // print(p.n)
     std::cout << p->n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

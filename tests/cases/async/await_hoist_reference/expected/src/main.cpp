@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def make_list() -> Own[list[int32]]:
+//     return [int32(10), int32(20), int32(30)]
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make_list::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return [int32(10), int32(20), int32(30)]
         __state = S_DONE;
         std::vector<int32_t> __tpy_async_ret = {10, 20, 30};
         return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,11 @@ __coro_make_list make_list() {
 }
 
 // async def get_multiplier() -> int32:
+//     return int32(2)
 ::tpystd::tpy::Poll<int32_t> __coro_get_multiplier::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return int32(2)
         __state = S_DONE;
         int32_t __tpy_async_ret = 2;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -47,10 +47,18 @@ __coro_get_multiplier get_multiplier() {
 }
 
 // async def caller() -> int32:
+//     # `xs: list[int32]` is set in region 0 (before await get_multiplier())
+//     # and read in region 2 (after that await). Must be hoisted as
+//     # `tpy::frame_slot<std::vector<int32_t>> xs;` on the frame.
+//     xs = await make_list()
+//     multiplier = await get_multiplier()
+//     total = int32(0)
+//     for x in xs:
+//         total = total + x * multiplier
+//     return total
 ::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // xs = await make_list()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -60,7 +68,6 @@ __coro_get_multiplier get_multiplier() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         xs.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // multiplier = await get_multiplier()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -70,18 +77,14 @@ __coro_get_multiplier get_multiplier() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         multiplier = std::move(__r1).value();
         __sub_1.reset();
-        // total = int32(0)
         total = 0;
-        // for x in xs:
         auto& __obj_0 = (*xs);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // total = total + x * multiplier
             total = (::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(x, multiplier))));
         }
-        // return total
         __state = S_DONE;
         int32_t __tpy_async_ret = total;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -98,20 +101,21 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(poll_once(caller()).value())
 void main() {
-    // print(poll_once(caller()).value())
     auto __tmp_1 = caller();
     std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n";
 }
 
+// from tpy.coro import poll_once
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import poll_once
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

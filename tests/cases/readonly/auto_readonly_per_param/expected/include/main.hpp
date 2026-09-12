@@ -11,7 +11,9 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_buf(b: readonly[Buffer]) -> None:
 void read_buf(const Buffer& b);
+// def main() -> None:
 void main();
 
 // class Buffer:
@@ -39,31 +41,32 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = [int32(1), int32(2), int32(3)]
 inline Buffer::Buffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
 // def copy_into(self: auto_readonly[Self], dest: list[int32]) -> Span[auto_readonly[int32]]:
+//     for i in range(len(self._data)):
+//         dest.append(self._data[i])
+//     return self._data
 inline std::span<int32_t> Buffer::copy_into(std::vector<int32_t>& dest) {
-    // for i in range(len(self._data)):
     int32_t __stop_0 = ::tpy::__len__(this->_data);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // dest.append(self._data[i])
         dest.push_back(::tpy::__getitem__(this->_data, i));
     }
-    // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
 // def copy_into(self: auto_readonly[Self], dest: list[int32]) -> Span[auto_readonly[int32]]:
+//     for i in range(len(self._data)):
+//         dest.append(self._data[i])
+//     return self._data
 inline std::span<const int32_t> Buffer::copy_into(std::vector<int32_t>& dest) const {
-    // for i in range(len(self._data)):
     int32_t __stop_0 = ::tpy::__len__(this->_data);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // dest.append(self._data[i])
         dest.push_back(::tpy::__getitem__(this->_data, i));
     }
-    // return self._data
     return ::tpy::as_span(this->_data);
 }
 void __tpy_init();

@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     m = Message("Hello")
+//     show(m)
+//     return int32(0)
 int32_t main() {
-    // m = Message("Hello")
     Message m = Message("Hello");
-    // show(m)
     show(m);
-    // return int32(0)
     return 0;
 }
 
+// from traits import Printable
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from traits import Printable
     ::tpyapp::traits::__tpy_init();
-    // main()
     main();
 }
 

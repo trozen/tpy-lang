@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def accept_two(x: int32 | str) -> None:
+//     pass
 void accept_two(const ::tpy::Union<int32_t, std::string>& x) {
-    // pass
 }
 
 // def accept_three(x: int32 | str | bool) -> None:
+//     pass
 void accept_three(const ::tpy::Union<bool, int32_t, std::string>& x) {
-    // pass
 }
 
 // def test() -> None:
+//     a: int32 | str = int32(10)
+//     b: int32 | str = "hello"
+//     accept_two(a)
+//     accept_two(b)
+//     c: int32 | str | bool = True
+//     accept_three(c)
+//     print("ok")
 void test() {
-    // a: int32 | str = int32(10)
     ::tpy::Union<int32_t, std::string> a = 10;
-    // b: int32 | str = "hello"
     ::tpy::Union<int32_t, std::string> b = "hello";
-    // accept_two(a)
     accept_two(a);
-    // accept_two(b)
     accept_two(b);
-    // c: int32 | str | bool = True
     ::tpy::Union<bool, int32_t, std::string> c = true;
-    // accept_three(c)
     accept_three(c);
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// test()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test()
     test();
 }
 

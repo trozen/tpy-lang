@@ -5,54 +5,57 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     groups: dict[str, list[int32]] = {}
+//     groups["odds"] = [1, 3, 5, 7]  # tpyc: ok
+//     groups["odds"].append(9)
+//     print(len(groups["odds"]), groups["odds"][4])
+//
+//     # Non-trivial element expressions must survive the type-prefix wrap.
+//     a = 10
+//     b = 20
+//     groups["calc"] = [a, b + 1, a * 2]  # tpyc: ok
+//     print(groups["calc"][0], groups["calc"][1], groups["calc"][2])
+//
+//     # Same hazard via an integer index into a list-of-lists.
+//     matrix: list[list[int32]] = [[0]]
+//     matrix[0] = [1, 2, 3]  # tpyc: ok
+//     matrix[0].append(4)
+//     print(len(matrix[0]), matrix[0][3])
+//
+//     # Proven bounds-safe index: takes the `x[i] = value` lvalue path, which
+//     # binds a bare brace-init directly (no type prefix). Guards that the
+//     # deliberately-unwrapped path stays correct.
+//     rows: list[list[int32]] = [[0], [0], [0]]
+//     for i in range(len(rows)):
+//         rows[i] = [i, i + 1]  # tpyc: ok
+//     print(len(rows), rows[2][1])
 void main() {
-    // groups: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> groups = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // groups["odds"] = [1, 3, 5, 7]  # tpyc: ok
     ::tpy::__setitem__(groups, "odds", std::vector<int32_t>{1, 3, 5, 7});
-    // groups["odds"].append(9)
     ::tpy::__getitem__(groups, "odds").push_back(9);
-    // print(len(groups["odds"]), groups["odds"][4])
     std::cout << ::tpy::__len__(::tpy::__getitem__(groups, "odds")) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "odds"), 4) << "\n";
-    // # Non-trivial element expressions must survive the type-prefix wrap.
-    // a = 10
     int32_t a = 10;
-    // b = 20
     int32_t b = 20;
-    // groups["calc"] = [a, b + 1, a * 2]  # tpyc: ok
     ::tpy::__setitem__(groups, "calc", std::vector<int32_t>{a, (::tpy::add_check<int32_t>(b, 1)), (::tpy::mul_check<int32_t>(a, 2))});
-    // print(groups["calc"][0], groups["calc"][1], groups["calc"][2])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 1) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 2) << "\n";
-    // # Same hazard via an integer index into a list-of-lists.
-    // matrix: list[list[int32]] = [[0]]
     std::vector<std::vector<int32_t>> matrix = {{0}};
-    // matrix[0] = [1, 2, 3]  # tpyc: ok
     ::tpy::__setitem__(matrix, 0, std::vector<int32_t>{1, 2, 3});
-    // matrix[0].append(4)
     ::tpy::__getitem__(matrix, 0).push_back(4);
-    // print(len(matrix[0]), matrix[0][3])
     std::cout << ::tpy::__len__(::tpy::__getitem__(matrix, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(matrix, 0), 3) << "\n";
-    // # Proven bounds-safe index: takes the `x[i] = value` lvalue path, which
-    // # binds a bare brace-init directly (no type prefix). Guards that the
-    // # deliberately-unwrapped path stays correct.
-    // rows: list[list[int32]] = [[0], [0], [0]]
     std::vector<std::vector<int32_t>> rows = {{0}, {0}, {0}};
-    // for i in range(len(rows)):
     int32_t __stop_0 = ::tpy::__len__(rows);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // rows[i] = [i, i + 1]  # tpyc: ok
         rows[static_cast<std::size_t>(i)] = {i, (::tpy::add_check<int32_t>(i, 1))};
     }
-    // print(len(rows), rows[2][1])
     std::cout << ::tpy::__len__(rows) << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 2), 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

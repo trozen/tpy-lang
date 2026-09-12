@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def driver() -> None:
+//     c = Container()
+//     print(await c.last_n())
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Container()
         c.emplace(Container());
-        // print(await c.last_n())
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +20,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await c.last_n())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,10 +36,13 @@ __coro_driver driver() {
 }
 
 // async def last_n(self) -> int32:
+//     await asyncio.sleep(0)
+//     for it in self.items:
+//         pass
+//     return it.n
 ::tpystd::tpy::Poll<int32_t> __coro_Container_last_n::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -50,16 +52,13 @@ __coro_driver driver() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // for it in self.items:
         std::optional<Item> it;
         auto& __obj_0 = __self.items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             it = *__beg_0;
-            // pass
         }
-        // return it.n
         __state = S_DONE;
         int32_t __tpy_async_ret = it->n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -70,25 +69,26 @@ __coro_driver driver() {
 }
 
 
+// # Regression: iter var read AFTER the loop in an async body. Sema's
+// # `_promote_pending_loop_var` (triggered by the post-loop read) sets
+// # `for_stmt.hoist_loop_var=True` and registers a pre-declaration in
+// # `analyzer.if_branch_decls[id(for_stmt)]`. Before the fix, the async
+// # lift pre-pass (`_lift_compound_subbodies`) unconditionally cloned
+// # any compound stmt with sub-bodies via `copy.copy`, generating a new
+// # `id()` that orphaned the if_branch_decls entry. Codegen's
+// # `_emit_branch_decls` then found an empty dict for the cloned stmt
+// # id, skipped the pre-declaration, and emitted `it = *__beg_0;` to an
+// # undeclared `it`. The fix preserves the original stmt object when
+// # sub-body lifting produced no actual changes.
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: iter var read AFTER the loop in an async body. Sema's
-    // # `_promote_pending_loop_var` (triggered by the post-loop read) sets
-    // # `for_stmt.hoist_loop_var=True` and registers a pre-declaration in
-    // # `analyzer.if_branch_decls[id(for_stmt)]`. Before the fix, the async
-    // # lift pre-pass (`_lift_compound_subbodies`) unconditionally cloned
-    // # any compound stmt with sub-bodies via `copy.copy`, generating a new
-    // # `id()` that orphaned the if_branch_decls entry. Codegen's
-    // # `_emit_branch_decls` then found an empty dict for the cloned stmt
-    // # id, skipped the pre-declaration, and emitted `it = *__beg_0;` to an
-    // # undeclared `it`. The fix preserves the original stmt object when
-    // # sub-body lifting produced no actual changes.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

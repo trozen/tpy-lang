@@ -13,7 +13,9 @@ struct error;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def trigger_re() -> None:
 void trigger_re();
+// def main() -> None:
 void main();
 
 // class MyError(Exception):

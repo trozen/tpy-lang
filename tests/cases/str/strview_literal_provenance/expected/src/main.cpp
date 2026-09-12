@@ -5,98 +5,98 @@ namespace tpyapp::main {
 
 
 // def first_or_default(items: list[str], default: str) -> StrView:
+//     sv: StrView = ""
+//     for item in items:
+//         sv = item
+//         break
+//     else:
+//         sv = default
+//     return sv
 std::string_view first_or_default(const std::vector<std::string>& items, std::string_view default_) {
-    // sv: StrView = ""
     std::string_view sv = "";
-    // for item in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view item = *__beg_1;
-        // sv = item
         sv = item;
-        // break
         goto __after_else_0;
     }
-    // else:
     {
-        // sv = default
         sv = default_;
     }
     __after_else_0:;
-    // return sv
     return sv;
 }
 
 // def default_literal_only(items: list[str]) -> StrView:
+//     sv: StrView = ""
+//     for item in items:
+//         sv = item
+//     return sv
 std::string_view default_literal_only(const std::vector<std::string>& items) {
-    // sv: StrView = ""
     std::string_view sv = "";
-    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view item = *__beg_0;
-        // sv = item
         sv = item;
     }
-    // return sv
     return sv;
 }
 
 // def conditional_literal_or_param(flag: bool, p: str) -> StrView:
+//     sv: StrView = "fallback"
+//     if flag:
+//         sv = p
+//     return sv
 std::string_view conditional_literal_or_param(bool flag, std::string_view p) {
-    // sv: StrView = "fallback"
     std::string_view sv = "fallback";
-    // if flag:
     if (flag) {
-        // sv = p
         sv = p;
     }
-    // return sv
     return sv;
 }
 
 // def ternary_literal_branch(flag: bool, p: str) -> StrView:
+//     sv: StrView = p if flag else "empty"
+//     return sv
 std::string_view ternary_literal_branch(bool flag, std::string_view p) {
-    // sv: StrView = p if flag else "empty"
     std::string_view sv = ((flag) ? (p) : ("empty"));
-    // return sv
     return sv;
 }
 
 // def main() -> None:
+//     print(first_or_default(["hi"], "fallback"))
+//     print(first_or_default([], "fallback"))
+//     print(default_literal_only(["a", "b", "c"]))
+//     print(default_literal_only([]))
+//     print(conditional_literal_or_param(True, "param"))
+//     print(conditional_literal_or_param(False, "param"))
+//     print(ternary_literal_branch(True, "param"))
+//     print(ternary_literal_branch(False, "param"))
 void main() {
-    // print(first_or_default(["hi"], "fallback"))
     std::vector<std::string> __tmp_1 = {"hi"};
     std::cout << first_or_default(__tmp_1, "fallback") << "\n";
-    // print(first_or_default([], "fallback"))
     std::vector<std::string> __tmp_2 = std::vector<std::string>{};
     std::cout << first_or_default(__tmp_2, "fallback") << "\n";
-    // print(default_literal_only(["a", "b", "c"]))
     std::vector<std::string> __tmp_3 = {"a", "b", "c"};
     std::cout << default_literal_only(__tmp_3) << "\n";
-    // print(default_literal_only([]))
     std::vector<std::string> __tmp_4 = std::vector<std::string>{};
     std::cout << default_literal_only(__tmp_4) << "\n";
-    // print(conditional_literal_or_param(True, "param"))
     std::cout << conditional_literal_or_param(true, "param") << "\n";
-    // print(conditional_literal_or_param(False, "param"))
     std::cout << conditional_literal_or_param(false, "param") << "\n";
-    // print(ternary_literal_branch(True, "param"))
     std::cout << ternary_literal_branch(true, "param") << "\n";
-    // print(ternary_literal_branch(False, "param"))
     std::cout << ternary_literal_branch(false, "param") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

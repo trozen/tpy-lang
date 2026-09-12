@@ -5,26 +5,29 @@ namespace tpyapp::label_infra {
 
 
 // def tag(kind: str, value: str) -> str:
+//     return f"[{kind}]{value}"
 std::string tag(std::string_view kind, std::string_view value) {
-    // return f"[{kind}]{value}"
     return std::format("[{}]{}", kind, value);
 }
 
 // def emit(fmt: str, parts: list[str]) -> None:
+//     print(fmt)
+//     for p in parts:
+//         print(p)
 void emit(std::string_view fmt, const std::vector<std::string>& parts) {
-    // print(fmt)
     std::cout << fmt << "\n";
-    // for p in parts:
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
-        // print(p)
         std::cout << p << "\n";
     }
 }
 
+// """Runtime support for the label macro. tag() prefixes a value with [static] or
+// [dynamic]; emit() prints fmt plus each tagged part so output reveals which
+// parts the macro classified as static."""
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

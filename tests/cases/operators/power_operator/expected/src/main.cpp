@@ -3,49 +3,50 @@
 
 namespace tpyapp::main {
 
-// # Power with variables
-// x = 5
 int32_t x{};
-// y = 3
 int32_t y{};
 
+// # Basic powers
+// print(2 ** 0)   # 1
+// print(2 ** 1)   # 2
+// print(2 ** 10)  # 1024
+// print(3 ** 3)   # 27
+//
+// # Large exponents (arbitrary precision)
+// print(2 ** 32)   # 4294967296
+// print(2 ** 64)   # 18446744073709551616
+// print(10 ** 20)  # 100000000000000000000
+//
+// # Negative base with even/odd exponents
+// print((-2) ** 3)  # -8
+// print((-2) ** 4)  # 16
+//
+// # Zero base
+// print(0 ** 5)  # 0
+// print(0 ** 0)  # 1 (by convention)
+//
+// # Power with variables
+// x = 5
+// y = 3
+// print(x ** y)  # 125
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Basic powers
-    // print(2 ** 0)   # 1
     std::cout << 1 << "\n";
-    // print(2 ** 1)   # 2
     std::cout << 2 << "\n";
-    // print(2 ** 10)  # 1024
     std::cout << 1024 << "\n";
-    // print(3 ** 3)   # 27
     std::cout << 27 << "\n";
-    // # Large exponents (arbitrary precision)
-    // print(2 ** 32)   # 4294967296
     std::cout << ::tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n";
-    // print(2 ** 64)   # 18446744073709551616
     std::cout << ::tpy::BigInt::from_str("18446744073709551616") << "\n";
-    // print(10 ** 20)  # 100000000000000000000
     std::cout << ::tpy::BigInt::from_str("100000000000000000000") << "\n";
-    // # Negative base with even/odd exponents
-    // print((-2) ** 3)  # -8
     std::cout << -8 << "\n";
-    // print((-2) ** 4)  # 16
     std::cout << 16 << "\n";
-    // # Zero base
-    // print(0 ** 5)  # 0
     std::cout << 0 << "\n";
-    // print(0 ** 0)  # 1 (by convention)
     std::cout << 1 << "\n";
-    // # Power with variables
-    // x = 5
     x = 5;
-    // y = 3
     y = 3;
-    // print(x ** y)  # 125
     std::cout << (::tpy::pow_check<int32_t>(x, y)) << "\n";
 }
 

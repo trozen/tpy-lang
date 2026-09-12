@@ -5,54 +5,55 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /elsewhere\r\n"
+//               b"Content-Length: 0\r\n\r\n")
+//     s = requests.Session()
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.get("http://api.test/start", None, None, None, False)
+//     print(r.status_code, r.ok)
+//     print(r.url)
+//     print(len(r.history))
+//     print(r.headers["Location"])
+//     b.close()
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /elsewhere\r\n"
-    // b"Content-Length: 0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: /elsewhere\r\nContent-Length: 0\r\n\r\n", 63));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.get("http://api.test/start", None, None, None, False)
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/start", nullptr, nullptr, std::nullopt, false);
-    // print(r.status_code, r.ok)
     std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << "\n";
-    // print(r.url)
     std::cout << r.url << "\n";
-    // print(len(r.history))
     std::cout << ::tpy::__len__(r.history) << "\n";
-    // print(r.headers["Location"])
     std::cout << r.headers["Location"] << "\n";
-    // b.close()
     b.close();
 }
 
+// # allow_redirects=False returns the 3xx response as-is (no following): status is
+// # the 302, .history is empty, .url is the requested URL. One socketpair is
+// # enough since no second hop is made.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # allow_redirects=False returns the 3xx response as-is (no following): status is
-    // # the 302, .history is empty, .url is the requested URL. One socketpair is
-    // # enough since no second hop is made.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

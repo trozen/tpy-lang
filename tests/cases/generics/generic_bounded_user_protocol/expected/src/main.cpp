@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # MyNumber satisfies Addable protocol
+//     h = Holder[MyNumber](MyNumber(10))
+//     num = h.get_item()
+//     print(num.add(5))  # Should print 15
 void main() {
-    // # MyNumber satisfies Addable protocol
-    // h = Holder[MyNumber](MyNumber(10))
     Holder<MyNumber> h = Holder<MyNumber>(MyNumber(10));
-    // num = h.get_item()
     MyNumber& num = h.get_item();
-    // print(num.add(5))  # Should print 15
     std::cout << num.add(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

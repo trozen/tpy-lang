@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def process(flag: bool) -> int32:
+//     v: Circle | Rect = Circle(int32(1))
+//     v = Rect(int32(3))  # reassignment makes v a pointer-local
+//     assert isinstance(v, Rect)
+//     return v.width
 int32_t process(bool flag) {
     std::optional<::tpy::Union<Circle, Rect>> __slot_2;
-    // v: Circle | Rect = Circle(int32(1))
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(1);
     ::tpy::Union<Circle*, Rect*> v = ::tpy::to_ptr_variant(__slot_1);
-    // v = Rect(int32(3))  # reassignment makes v a pointer-local
     __slot_2.emplace(Rect(3));
     v = ::tpy::to_ptr_variant(*__slot_2);
-    // assert isinstance(v, Rect)
     if (!(std::holds_alternative<Rect*>(v))) ::tpy::raise_assertion_error();
     auto& __v = *std::get<Rect*>(v);
-    // return v.width
     return __v.width;
 }
 
 // def main() -> None:
+//     print(process(True))
 void main() {
-    // print(process(True))
     std::cout << process(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

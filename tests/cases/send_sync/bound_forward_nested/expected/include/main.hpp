@@ -12,10 +12,13 @@ template<typename T> struct Wrap;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sink[T: Send](x: Own[T]) -> None:
 template<typename T>
 void sink(::tpy::own_param_t<T> x);
+// def forward[T: Send](x: Own[T]) -> None:
 template<typename T>
 void forward(::tpy::own_param_t<T> x);
+// def main() -> None:
 void main();
 
 // class Box[T: Send]:
@@ -25,6 +28,7 @@ struct Box {
     T item;
 
     // def __init__(self, item: Own[T]) -> None:
+    //     self.item = item
     Box() = default;
     explicit Box(::tpy::own_param_t<T> item) : item(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -43,6 +47,7 @@ struct Wrap {
     Box<T> inner;
 
     // def __init__(self, item: Own[T]) -> None:
+    //     self.inner = Box[T](item)
     Wrap() = default;
     explicit Wrap(::tpy::own_param_t<T> item) : inner(Box<T>(std::move(item))) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
@@ -55,15 +60,15 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
 }
 
 // def sink[T: Send](x: Own[T]) -> None:
+//     print("sink")
 template<typename T>
 void sink(::tpy::own_param_t<T> x) {
-    // print("sink")
     std::cout << "sink" << "\n";
 }
 // def forward[T: Send](x: Own[T]) -> None:
+//     sink(x)
 template<typename T>
 void forward(::tpy::own_param_t<T> x) {
-    // sink(x)
     sink<T>(std::move(x));
 }
 

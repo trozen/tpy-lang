@@ -6,60 +6,61 @@ namespace tpyapp::main {
 
 // # Bytes as function parameters (passed as span), boolean context
 // def byte_len(data: bytes) -> int:
+//     return len(data)
 ::tpy::BigInt byte_len(::tpy::BytesView data) {
-    // return len(data)
     return ::tpy::BigInt(::tpy::__len__(data));
 }
 
 // def first_byte(data: bytes) -> int:
+//     return data[0]
 ::tpy::BigInt first_byte(::tpy::BytesView data) {
-    // return data[0]
     return ::tpy::BigInt(::tpy::bytes_getitem(data, 0));
 }
 
 // def is_empty(data: bytes) -> bool:
+//     if data:
+//         return False
+//     return True
 bool is_empty(::tpy::BytesView data) {
-    // if data:
     if ((!data.empty())) {
-        // return False
         return false;
     }
-    // return True
     return true;
 }
 
 // def copy_bytes(data: bytes) -> bytes:
+//     return bytes(data)
 ::tpy::Bytes copy_bytes(::tpy::BytesView data) {
-    // return bytes(data)
     return ::tpy::Bytes(data);
 }
 
 // def main() -> None:
+//     b = b"hello"
+//     print(byte_len(b))
+//     print(first_byte(b))
+//     print(is_empty(b))
+//     print(is_empty(b""))
+//
+//     copied = copy_bytes(b)
+//     print(copied)
+//     print(copied == b)
 void main() {
-    // b = b"hello"
     ::tpy::BytesView b = ::tpy::bytes_literal("hello", 5);
-    // print(byte_len(b))
     std::cout << byte_len(b) << "\n";
-    // print(first_byte(b))
     std::cout << first_byte(b) << "\n";
-    // print(is_empty(b))
     std::cout << ::tpy::print_bool(is_empty(b)) << "\n";
-    // print(is_empty(b""))
     std::cout << ::tpy::print_bool(is_empty(::tpy::BytesView{})) << "\n";
-    // copied = copy_bytes(b)
     ::tpy::Bytes copied = copy_bytes(b);
-    // print(copied)
     std::cout << ::tpy::BytesPrinter(copied) << "\n";
-    // print(copied == b)
     std::cout << ::tpy::print_bool((copied == b)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

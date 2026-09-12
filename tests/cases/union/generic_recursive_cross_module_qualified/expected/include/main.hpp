@@ -10,7 +10,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def depth(t: treelib.Tree[int]) -> int:
 ::tpy::BigInt depth(const ::tpyapp::treelib::Tree<::tpy::BigInt>& t);
+// def main() -> None:
 void main();
 
 void __tpy_init();

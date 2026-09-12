@@ -12,6 +12,7 @@ template<typename T> struct SendCell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Send + Sync iff T is Send AND Sync (Arc's rule), despite the raw Ptr field.
@@ -24,6 +25,7 @@ struct Shared {
     T* p;
 
     // def __init__(self, p: Ptr[T]) -> None:
+    //     self.p = p
     Shared() = default;
     explicit Shared(T* p) : p(p) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shared";
@@ -45,6 +47,7 @@ struct SendCell {
     T* p;
 
     // def __init__(self, p: Ptr[T]) -> None:
+    //     self.p = p
     SendCell() = default;
     explicit SendCell(T* p) : p(p) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.SendCell";

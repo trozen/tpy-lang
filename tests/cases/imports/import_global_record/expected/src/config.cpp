@@ -3,15 +3,16 @@
 
 namespace tpyapp::config {
 
-// DEFAULT: Settings = Settings(int32(800), int32(600))
 Settings* DEFAULT{};
 
+// """Module that exports a non-value-type global."""
+//
+// DEFAULT: Settings = Settings(int32(800), int32(600))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // DEFAULT: Settings = Settings(int32(800), int32(600))
     static Settings __global_slot_1 = Settings(800, 600);
     DEFAULT = &__global_slot_1;
 }

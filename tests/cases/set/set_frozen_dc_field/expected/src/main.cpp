@@ -5,33 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # set[frozen DC] field
+//     si = SetItem("test", {Tag("a", 1), Tag("b", 2)})
+//     print(si.name)
+//     print(len(si.tags))
+//     print(Tag("a", 1) in si.tags)
+//
+//     # dict[frozen DC, V] field
+//     di = DictItem({Tag("x", 10): "hello", Tag("y", 20): "world"})
+//     print(len(di.lookup))
+//     print(di.lookup[Tag("x", 10)])
 void main() {
-    // # set[frozen DC] field
-    // si = SetItem("test", {Tag("a", 1), Tag("b", 2)})
     SetItem si = SetItem("test", ::tpy::ordered_set<Tag>({Tag("a", 1), Tag("b", 2)}));
-    // print(si.name)
     std::cout << si.name << "\n";
-    // print(len(si.tags))
     std::cout << ::tpy::__len__(si.tags) << "\n";
-    // print(Tag("a", 1) in si.tags)
     std::cout << ::tpy::print_bool((si.tags.contains(Tag("a", 1)))) << "\n";
-    // # dict[frozen DC, V] field
-    // di = DictItem({Tag("x", 10): "hello", Tag("y", 20): "world"})
     DictItem di = DictItem(::tpy::ordered_map<Tag, std::string>({{Tag("x", 10), "hello"}, {Tag("y", 20), "world"}}));
-    // print(len(di.lookup))
     std::cout << ::tpy::__len__(di.lookup) << "\n";
-    // print(di.lookup[Tag("x", 10)])
     std::cout << ::tpy::__getitem__(di.lookup, Tag("x", 10)) << "\n";
 }
 
+// # Test set/dict with frozen dataclass as record field (hash specialization ordering)
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test set/dict with frozen dataclass as record field (hash specialization ordering)
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

@@ -3,22 +3,21 @@
 
 namespace tpyapp::main {
 
-// d = Dog("Rex", "Labrador")
 Dog* d{};
 
+// d = Dog("Rex", "Labrador")
+// print(d.speak())
+// print(d.full_speak())
+// print(d.describe())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // d = Dog("Rex", "Labrador")
     static Dog __global_slot_1 = Dog("Rex", "Labrador");
     d = &__global_slot_1;
-    // print(d.speak())
     std::cout << d->speak() << "\n";
-    // print(d.full_speak())
     std::cout << d->full_speak() << "\n";
-    // print(d.describe())
     std::cout << d->describe() << "\n";
 }
 

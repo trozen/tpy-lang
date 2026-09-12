@@ -12,6 +12,7 @@ using ::tpyapp::a::A;
 
 inline constexpr std::string_view __name__ = "b";
 
+// def H(x: A) -> int32:
 int32_t H(const ::tpyapp::a::A& x);
 
 void __tpy_init();

@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def push(a: list[JV], src: list[JV]) -> int32:
+//     item = src.pop()
+//     a.append(item)  # the last use of `item` moves into the element slot
+//     return len(a)
 int32_t push(std::vector<JV>& a, std::vector<JV>& src) {
-    // item = src.pop()
     JV item = ::tpy::pop_back(src);
-    // a.append(item)  # the last use of `item` moves into the element slot
     a.push_back(std::move(item));
-    // return len(a)
     return ::tpy::__len__(a);
 }
 
 // def store(d: dict[str, JV], src: list[JV]) -> int32:
+//     item = src.pop()
+//     d["k"] = item  # the dict insert is the same sink
+//     return len(d)
 int32_t store(::tpy::ordered_map<std::string, JV>& d, std::vector<JV>& src) {
-    // item = src.pop()
     JV item = ::tpy::pop_back(src);
-    // d["k"] = item  # the dict insert is the same sink
     ::tpy::__setitem__(d, "k", std::move(item));
-    // return len(d)
     return ::tpy::__len__(d);
 }
 
 // def main() -> None:
+//     a: list[JV] = []
+//     s: list[JV] = [1, 2]
+//     print(push(a, s), len(s))
+//     print(store({}, s), len(s))
 void main() {
-    // a: list[JV] = []
     std::vector<JV> a = std::vector<JV>{};
-    // s: list[JV] = [1, 2]
     std::vector<JV> s = {1, 2};
-    // print(push(a, s), len(s))
     std::cout << push(a, s) << " " << ::tpy::__len__(s) << "\n";
-    // print(store({}, s), len(s))
     ::tpy::ordered_map<std::string, JV> __tmp_1 = ::tpy::ordered_map<std::string, JV>();
     std::cout << store(__tmp_1, s) << " " << ::tpy::__len__(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Sink:
@@ -36,19 +37,20 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self) -> None:
+//     self.parts = []
 inline Sink::Sink() : parts(std::vector<std::string>{}) {}
 
 // def write(self, text: str) -> int32:
+//     self.parts.append(text)
+//     return int32(len(text))
 inline int32_t Sink::write(std::string_view text) {
-    // self.parts.append(text)
     this->parts.push_back(std::string(text));
-    // return int32(len(text))
     return ::tpy::__len__(text);
 }
 
 // def flush(self) -> None:
+//     pass
 inline void Sink::flush() const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

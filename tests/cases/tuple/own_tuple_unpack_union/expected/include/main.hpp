@@ -12,8 +12,11 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pair() -> tuple[Own[A | B], int32]:
 std::tuple<::tpy::Union<A, B>, int32_t> pair();
+// def borrow(u: A | B) -> int32:
 int32_t borrow(::tpy::Union<const A*, const B*> u);
+// def main() -> None:
 void main();
 
 // class A:
@@ -50,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32) -> None:
+//     self.y = y
 inline B::B(int32_t y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

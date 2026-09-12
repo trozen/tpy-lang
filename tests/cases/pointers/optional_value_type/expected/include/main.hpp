@@ -14,6 +14,7 @@ extern std::optional<double> f;
 extern std::optional<int32_t> z;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_global() -> None:
 void use_global();
 
 void __tpy_init();

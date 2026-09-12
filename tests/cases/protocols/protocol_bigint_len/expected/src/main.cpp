@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = MyCollection(42)
+//     print(count(c))
 void main() {
-    // c = MyCollection(42)
     MyCollection c = MyCollection(::tpy::BigInt(42));
-    // print(count(c))
     std::cout << count(c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -6,57 +6,54 @@ namespace tpyapp::main {
 
 
 
+// def classify(x: int64) -> str:
+//     if x == 1:
+//         return "one"
+//     elif x == 2:
+//         return "two"
+//     return "other"
 // @overload
 // def classify(x: Literal[1, 2]) -> str: ...
 std::string classify__lit_1__2(int64_t x) {
-    // if x == 1:
     if ((x == 1)) {
-        // return "one"
         return "one";
-    // elif x == 2:
     } else if ((x == 2)) {
-        // return "two"
         return "two";
     }
-    // return "other"
     return "other";
 }
 
 // @overload
 // def classify(x: int64) -> str: ...
 std::string classify(int64_t x) {
-    // if x == 1:
     if ((x == 1)) {
-        // return "one"
         return "one";
-    // elif x == 2:
     } else if ((x == 2)) {
-        // return "two"
         return "two";
     }
-    // return "other"
     return "other";
 }
 
 
 // def main() -> None:
+//     print(classify(1))
+//     print(classify(2))
+//
+//     x: int64 = 99
+//     print(classify(x))
 void main() {
-    // print(classify(1))
     std::cout << classify__lit_1__2(1) << "\n";
-    // print(classify(2))
     std::cout << classify__lit_1__2(2) << "\n";
-    // x: int64 = 99
     int64_t x = 99;
-    // print(classify(x))
     std::cout << classify(x) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

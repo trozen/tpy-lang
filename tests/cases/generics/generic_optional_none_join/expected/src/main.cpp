@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def via_ternary(xs: list[int32], c: bool) -> int32:
+//     y = first(xs) if c else None  # tpyc: type(int32 | None)
+//     if y is not None:
+//         return y
+//     return -1
 int32_t via_ternary(std::vector<int32_t>& xs, bool c) {
-    // y = first(xs) if c else None  # tpyc: type(int32 | None)
     int32_t* y = ((c) ? (first<int32_t>(xs)) : (nullptr));
-    // if y is not None:
     if ((y != nullptr)) {
-        // return y
         return std::move((*y));
     }
-    // return -1
     return -1;
 }
 
 // def via_branches(xs: list[int32], c: bool) -> int32:
+//     if c:
+//         z = first(xs)
+//     else:
+//         z = None
+//     if z is not None:
+//         return z
+//     return -1
 int32_t via_branches(std::vector<int32_t>& xs, bool c) {
-    // if c:
     int32_t* z;
     if (c) {
-        // z = first(xs)
         z = first<int32_t>(xs);
-    // else:
     } else {
-        // z = None
         z = nullptr;
     }
-    // if z is not None:
     if ((z != nullptr)) {
-        // return z
         return std::move((*z));
     }
-    // return -1
     return -1;
 }
 
 // def main() -> None:
+//     xs = [int32(10), int32(20), int32(30)]
+//     print(via_ternary(xs, True))
+//     print(via_ternary(xs, False))
+//     print(via_branches(xs, True))
+//     print(via_branches(xs, False))
 void main() {
-    // xs = [int32(10), int32(20), int32(30)]
     std::vector<int32_t> xs = {10, 20, 30};
-    // print(via_ternary(xs, True))
     std::cout << via_ternary(xs, true) << "\n";
-    // print(via_ternary(xs, False))
     std::cout << via_ternary(xs, false) << "\n";
-    // print(via_branches(xs, True))
     std::cout << via_branches(xs, true) << "\n";
-    // print(via_branches(xs, False))
     std::cout << via_branches(xs, false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

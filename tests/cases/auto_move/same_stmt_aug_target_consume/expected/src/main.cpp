@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main():
+//     k = K()
+//     b = Blob()
+//     d: dict[int32, int32] = {3: 1}
+//     d[len(b.items)] += k.take(b)  # tpyc: warning(/copies/)
+//     print(d)
 void main() {
-    // k = K()
     K k = K();
-    // b = Blob()
     Blob b = Blob();
-    // d: dict[int32, int32] = {3: 1}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{3, 1}});
-    // d[len(b.items)] += k.take(b)  # tpyc: warning(/copies/)
     Blob __tmp_1 = b;
     ::tpy::__setitem__(d, ::tpy::__len__(b.items), ::tpy::add_check<int32_t>(::tpy::__getitem__(d, ::tpy::__len__(b.items)), k.take(std::move(__tmp_1))));
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename T>
 struct __gen_Box_items;
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -23,6 +24,7 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
@@ -36,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// Generator: Box.items
+// def items(self) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, T> {
     int32_t __state;
@@ -61,16 +63,16 @@ struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, T> {
 };
 
 // def items(self) -> Iterator[T]:  # tpyc: ok
+//     yield self.value
+//     yield self.value
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Box_items<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.value
         __state = S_RESUME_0;
         return __self.value;
     }
     case S_RESUME_0: {
-        // yield self.value
         __state = S_RESUME_1;
         return __self.value;
     }

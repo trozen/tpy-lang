@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def put(parent: Node, key: str, child: Node) -> None:
+//     parent.kids[key] = child  # tpyc: warning(/copies Node into container/)
 void put(Node& parent, std::string_view key, const Node& child) {
-    // parent.kids[key] = child  # tpyc: warning(/copies Node into container/)
     ::tpy::__setitem__(parent.kids, key, child);
 }
 
 // def main() -> None:
+//     root = Node(1)
+//     leaf = Node(2)
+//     put(root, "a", leaf)
+//     root.kids["a"].val = 20
+//     root.kids["a"].kids["b"] = Node(99)
+//     print(root.val, root.kids["a"].val, len(root.kids),
+//           len(root.kids["a"].kids))
 void main() {
-    // root = Node(1)
     Node root = Node(1);
-    // leaf = Node(2)
     Node leaf = Node(2);
-    // put(root, "a", leaf)
     put(root, "a", leaf);
-    // root.kids["a"].val = 20
     ::tpy::__getitem__(root.kids, "a").val = 20;
-    // root.kids["a"].kids["b"] = Node(99)
     ::tpy::__setitem__(::tpy::__getitem__(root.kids, "a").kids, "b", Node(99));
-    // print(root.val, root.kids["a"].val, len(root.kids),
-    // len(root.kids["a"].kids))
     std::cout << root.val << " " << ::tpy::__getitem__(root.kids, "a").val << " " << ::tpy::__len__(root.kids) << " " << ::tpy::__len__(::tpy::__getitem__(root.kids, "a").kids) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

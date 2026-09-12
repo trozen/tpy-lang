@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub() -> int32:
+//     return int32(77)
 ::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return int32(77)
         __state = S_DONE;
         int32_t __tpy_async_ret = 77;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,12 +26,12 @@ __coro_sub sub() {
 }
 
 // async def caller() -> int32:
+//     t = task_from_coro(sub())
+//     return await t
 ::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = task_from_coro(sub())
         t.emplace(::tpystd::asyncio::_executor::task_from_coro<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(sub())));
-        // return await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -56,10 +56,11 @@ __coro_caller caller() {
 }
 
 // async def main_coro() -> None:
+//     result = await caller()
+//     print(result)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // result = await caller()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -69,7 +70,6 @@ __coro_caller caller() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         result = std::move(__r0).value();
         __sub_0.reset();
-        // print(result)
         std::cout << result << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -86,19 +86,20 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// from asyncio import Task, task_from_coro
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from asyncio import Task, task_from_coro
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

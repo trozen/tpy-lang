@@ -12,7 +12,9 @@ using ::tpystd::random::Random;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def _p(x: float) -> None:
 void _p(double x);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -13,7 +13,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(p: A | B, h: Holder, c: bool) -> None:
 void bump(::tpy::Union<A*, B*> p, Holder& h, bool c);
+// def main() -> None:
 void main();
 
 // # A ternary (union form) joining a borrow-form arm (pointer-variant
@@ -72,12 +74,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 
 // def __init__(self, p: A | B) -> None:
+//     self.pet = p
 inline Holder::Holder(::tpy::Union<const A*, const B*> p) : pet(::tpy::to_value_variant<::tpy::Union<A, B>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

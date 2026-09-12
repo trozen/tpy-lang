@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def parse_int(s: str) -> Result[int32, str]:
 ::tpy::Union<int32_t, std::string> parse_int(std::string_view s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

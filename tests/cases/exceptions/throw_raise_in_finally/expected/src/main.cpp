@@ -6,65 +6,70 @@ namespace tpyapp::main {
 
 // # raise inside finally replaces the pending exception
 // def test_raise_in_finally() -> None:
+//     """Raise in finally replaces the original exception."""
+//     try:
+//         try:
+//             raise ValueError("original")
+//         finally:
+//             raise ValueError("replacement")
+//     except ValueError:
+//         print("caught replacement")
 void test_raise_in_finally() {
-    // try:
     {
         try {
-            // try:
             {
                 try {
-                    // raise ValueError("original")
                     throw ::tpy::ValueError("original");
                 } catch (...) {
-                    // raise ValueError("replacement")
                     throw ::tpy::ValueError("replacement");
                 }
             }
         } catch (const ::tpy::ValueError&) {
-            // print("caught replacement")
             std::cout << "caught replacement" << "\n";
         }
     }
 }
 
 // def test_raise_in_finally_no_exception() -> None:
+//     """Raise in finally when try body succeeds."""
+//     try:
+//         try:
+//             print("try body ok")
+//         finally:
+//             raise ValueError("from finally")
+//     except ValueError:
+//         print("caught from finally")
 void test_raise_in_finally_no_exception() {
-    // try:
     {
         try {
-            // try:
             {
                 try {
-                    // print("try body ok")
                     std::cout << "try body ok" << "\n";
                 } catch (...) {
-                    // raise ValueError("from finally")
                     throw ::tpy::ValueError("from finally");
                 }
-                // raise ValueError("from finally")
                 throw ::tpy::ValueError("from finally");
             }
         } catch (const ::tpy::ValueError&) {
-            // print("caught from finally")
             std::cout << "caught from finally" << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     test_raise_in_finally()
+//     test_raise_in_finally_no_exception()
 void main() {
-    // test_raise_in_finally()
     test_raise_in_finally();
-    // test_raise_in_finally_no_exception()
     test_raise_in_finally_no_exception();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct PointList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -75,28 +76,31 @@ inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, pts: list[Point]) -> None:
+//     self.data = pts
 inline PointList::PointList(const std::vector<Point>& pts) : data(pts) {}
 
 // def __len__(self) -> int32:
+//     return len(self.data)
 inline int32_t PointList::__len__() const {
-    // return len(self.data)
     return ::tpy::__len__(this->data);
 }
 
 // @auto_readonly
 // def __getitem__(self, index: int32) -> Point:
+//     return self.data[index]
 inline Point& PointList::__getitem__(int32_t index) {
-    // return self.data[index]
     return ::tpy::__getitem__(this->data, index);
 }
 
 // @auto_readonly
 // def __getitem__(self, index: int32) -> Point:
+//     return self.data[index]
 inline const Point& PointList::__getitem__(int32_t index) const {
-    // return self.data[index]
     return ::tpy::__getitem__(this->data, index);
 }
 void __tpy_init();

@@ -13,6 +13,7 @@ struct Combined;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class HasInitA:
@@ -63,12 +64,16 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 
 
 // def __init__(self, a: int32) -> None:
+//     self.a = a
 inline HasInitA::HasInitA(int32_t a) : a(a) {}
 
 // def __init__(self, b: int32) -> None:
+//     self.b = b
 inline HasInitB::HasInitB(int32_t b) : b(b) {}
 
 // def __init__(self, a: int32, b: int32) -> None:
+//     super().__init__(a)              # covers HasInitA (MRO-first)
+//     HasInitB.__init__(self, b)       # HasInitB still needs an explicit call
 inline Combined::Combined(int32_t a, int32_t b) : HasInitA(a), HasInitB(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

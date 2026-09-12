@@ -21,10 +21,15 @@ struct __coro_via_ref;
 struct __coro_via_mixed;
 struct __coro_main;
 
+// async def via_union(a: Dog | Cat) -> str:
 __coro_via_union via_union(::tpy::Union<const Cat*, const Dog*> a);
+// async def via_optional(a: Dog | None) -> str:
 __coro_via_optional via_optional(Dog* a);
+// async def via_ref(a: Dog) -> str:
 __coro_via_ref via_ref(Dog& a);
+// async def via_mixed(tag: str, a: Dog | Cat) -> str:
 __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const Dog*> a);
+// async def main() -> None:
 __coro_main main();
 
 // class Dog:
@@ -59,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Async coroutine: via_union
+// async def via_union(a: Dog | Cat) -> str:
 struct __coro_via_union {
     int32_t __state;
     bool __cancel_pending;
@@ -83,7 +88,7 @@ struct __coro_via_union {
     }
 };
 
-// Async coroutine: via_optional
+// async def via_optional(a: Dog | None) -> str:
 struct __coro_via_optional {
     int32_t __state;
     bool __cancel_pending;
@@ -107,7 +112,7 @@ struct __coro_via_optional {
     }
 };
 
-// Async coroutine: via_ref
+// async def via_ref(a: Dog) -> str:
 struct __coro_via_ref {
     int32_t __state;
     bool __cancel_pending;
@@ -131,7 +136,7 @@ struct __coro_via_ref {
     }
 };
 
-// Async coroutine: via_mixed
+// async def via_mixed(tag: str, a: Dog | Cat) -> str:
 struct __coro_via_mixed {
     int32_t __state;
     bool __cancel_pending;
@@ -156,7 +161,7 @@ struct __coro_via_mixed {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -215,9 +220,11 @@ struct __coro_main {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

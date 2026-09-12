@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first_or_default(items: list[str], default: str) -> StrView:
 std::string_view first_or_default(const std::vector<std::string>& items, std::string_view default_);
+// def default_literal_only(items: list[str]) -> StrView:
 std::string_view default_literal_only(const std::vector<std::string>& items);
+// def conditional_literal_or_param(flag: bool, p: str) -> StrView:
 std::string_view conditional_literal_or_param(bool flag, std::string_view p);
+// def ternary_literal_branch(flag: bool, p: str) -> StrView:
 std::string_view ternary_literal_branch(bool flag, std::string_view p);
+// def main() -> None:
 void main();
 
 void __tpy_init();

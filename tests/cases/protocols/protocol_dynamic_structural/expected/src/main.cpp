@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def greet(pet: Pet) -> None:
+//     print(pet.make_noise())
 void greet(Pet& pet) {
-    // print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
 
 // def main() -> None:
+//     greet(Parrot())       # rvalue: owning adapter
+//     p = Parrot()
+//     greet(p)              # lvalue: ref adapter (zero-copy)
+//     pet: Pet = Parrot()   # local: owning adapter (owns inner value)
+//     print(pet.make_noise())
 void main() {
-    // greet(Parrot())       # rvalue: owning adapter
     ::tpy::Adapter<Pet, Parrot> __tmp_1{Parrot()};
     greet(__tmp_1);
-    // p = Parrot()
     Parrot p = Parrot();
-    // greet(p)              # lvalue: ref adapter (zero-copy)
     ::tpy::RefAdapter<Pet, Parrot> __tmp_2{p};
     greet(__tmp_2);
-    // pet: Pet = Parrot()   # local: owning adapter (owns inner value)
     ::tpy::Adapter<Pet, Parrot> __slot_1{Parrot()};
     Pet* pet = &__slot_1;
-    // print(pet.make_noise())
     std::cout << pet->make_noise() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

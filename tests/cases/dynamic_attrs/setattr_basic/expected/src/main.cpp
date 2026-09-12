@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     b.color = "red"
+//     b.size = 42
+//     print(cast(str, b.color))
+//     print(cast(int, b.size))
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // b.color = "red"
     b.__setattr__("color", ::tpy::make_any(std::string("red")));
-    // b.size = 42
     b.__setattr__("size", ::tpy::make_any(::tpy::BigInt(42)));
-    // print(cast(str, b.color))
     std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("color")) << "\n";
-    // print(cast(int, b.size))
     std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("size")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

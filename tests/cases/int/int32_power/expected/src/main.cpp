@@ -3,48 +3,46 @@
 
 namespace tpyapp::main {
 
-// # Basic power
-// x: int32 = 2
 int32_t x{};
-// # Power with literal exponent
-// y: int32 = 3
 int32_t y{};
-// # Power of 0
-// z: int32 = 5
 int32_t z{};
-// # Negative base
-// n: int32 = -2
 int32_t n{};
 
+// """Test int32 power operator."""
+//
+// # Basic power
+// x: int32 = 2
+// print(x ** 10)  # 1024
+//
+// # Power with literal exponent
+// y: int32 = 3
+// print(y ** 4)   # 81
+//
+// # Power of 0
+// z: int32 = 5
+// print(z ** 0)   # 1
+//
+// # Power of 1
+// print(x ** 1)   # 2
+//
+// # Negative base
+// n: int32 = -2
+// print(n ** 3)   # -8
+// print(n ** 4)   # 16
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Basic power
-    // x: int32 = 2
     x = 2;
-    // print(x ** 10)  # 1024
     std::cout << (::tpy::pow_check<int32_t>(x, 10)) << "\n";
-    // # Power with literal exponent
-    // y: int32 = 3
     y = 3;
-    // print(y ** 4)   # 81
     std::cout << (::tpy::pow_check<int32_t>(y, 4)) << "\n";
-    // # Power of 0
-    // z: int32 = 5
     z = 5;
-    // print(z ** 0)   # 1
     std::cout << (::tpy::pow_check<int32_t>(z, 0)) << "\n";
-    // # Power of 1
-    // print(x ** 1)   # 2
     std::cout << (::tpy::pow_check<int32_t>(x, 1)) << "\n";
-    // # Negative base
-    // n: int32 = -2
     n = -2;
-    // print(n ** 3)   # -8
     std::cout << (::tpy::pow_check<int32_t>(n, 3)) << "\n";
-    // print(n ** 4)   # 16
     std::cout << (::tpy::pow_check<int32_t>(n, 4)) << "\n";
 }
 

@@ -21,13 +21,18 @@ struct __coro_make_array;
 struct __coro_make_boxes;
 struct __coro_drive;
 
+// async def make_list() -> Own[list[int32]]:
 __coro_make_list make_list();
+// async def make_bytes() -> Own[bytearray]:      # the bytearray return slot
 __coro_make_bytes make_bytes();
+// async def make_array() -> Own[Array[int32, 3]]:  # the Array return slot
 __coro_make_array make_array();
+// async def make_boxes() -> Own[list[Box[int32]]]:   # the @nocopy payload
 __coro_make_boxes make_boxes();
+// async def drive() -> None:
 __coro_drive drive();
 
-// Async coroutine: make_list
+// async def make_list() -> Own[list[int32]]:
 struct __coro_make_list {
     int32_t __state;
     bool __cancel_pending;
@@ -48,7 +53,7 @@ struct __coro_make_list {
     }
 };
 
-// Async coroutine: make_bytes
+// async def make_bytes() -> Own[bytearray]:      # the bytearray return slot
 struct __coro_make_bytes {
     int32_t __state;
     bool __cancel_pending;
@@ -69,7 +74,7 @@ struct __coro_make_bytes {
     }
 };
 
-// Async coroutine: make_array
+// async def make_array() -> Own[Array[int32, 3]]:  # the Array return slot
 struct __coro_make_array {
     int32_t __state;
     bool __cancel_pending;
@@ -90,7 +95,7 @@ struct __coro_make_array {
     }
 };
 
-// Async coroutine: make_boxes
+// async def make_boxes() -> Own[list[Box[int32]]]:   # the @nocopy payload
 struct __coro_make_boxes {
     int32_t __state;
     bool __cancel_pending;
@@ -111,7 +116,7 @@ struct __coro_make_boxes {
     }
 };
 
-// Async coroutine: drive
+// async def drive() -> None:
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;

@@ -9,37 +9,41 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T, typename U, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<U>;
-  }
-::tpy::val_or_ref_t<U> f(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init);
-template<typename T, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<T>;
-  }
-::tpy::val_or_ref_t<T> f(__F0&& g, const std::vector<T>& a);
-int32_t add(int32_t x, int32_t y);
-void main();
-
-// @dispatch
 // def f[T, U](g: Fn[[U, T], U], a: list[T], init: U) -> U:  # tpyc: ok
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-::tpy::val_or_ref_t<U> f(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init) {
-    // return init
-    return ::tpy::param_to_return<U>(init);
-}
-// @dispatch
+::tpy::val_or_ref_t<U> f(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init);
 // def f[T](g: Fn[[T, T], T], a: list[T]) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
+::tpy::val_or_ref_t<T> f(__F0&& g, const std::vector<T>& a);
+// def add(x: int32, y: int32) -> int32:
+int32_t add(int32_t x, int32_t y);
+// def main() -> None:
+void main();
+
+// @dispatch
+// def f[T, U](g: Fn[[U, T], U], a: list[T], init: U) -> U:  # tpyc: ok
+//     return init
+template<typename T, typename U, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<U>;
+  }
+::tpy::val_or_ref_t<U> f(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init) {
+    return ::tpy::param_to_return<U>(init);
+}
+// @dispatch
+// def f[T](g: Fn[[T, T], T], a: list[T]) -> T:  # tpyc: ok
+//     return a[0]
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<T>;
+  }
 ::tpy::val_or_ref_t<T> f(__F0&& g, const std::vector<T>& a) {
-    // return a[0]
     return ::tpy::__getitem__(a, 0);
 }
 

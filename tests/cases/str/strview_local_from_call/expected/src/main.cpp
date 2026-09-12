@@ -5,113 +5,113 @@ namespace tpyapp::main {
 
 
 // def pick(s: str) -> StrView:
+//     return s
 std::string_view pick(std::string_view s) {
-    // return s
     return s;
 }
 
 // def indirect_annot(text: str) -> StrView:
+//     sv: StrView = pick(text)
+//     return sv
 std::string_view indirect_annot(std::string_view text) {
-    // sv: StrView = pick(text)
     std::string_view sv = pick(text);
-    // return sv
     return sv;
 }
 
 // def indirect_inferred(text: str) -> StrView:
+//     sv = pick(text)
+//     return sv
 std::string_view indirect_inferred(std::string_view text) {
-    // sv = pick(text)
     std::string_view sv = pick(text);
-    // return sv
     return sv;
 }
 
 // def reassigned(a: str, b: str) -> StrView:
+//     sv: StrView = pick(a)
+//     sv = pick(b)
+//     return sv
 std::string_view reassigned(std::string_view a, std::string_view b) {
-    // sv: StrView = pick(a)
     std::string_view sv = pick(a);
-    // sv = pick(b)
     sv = pick(b);
-    // return sv
     return sv;
 }
 
 // def from_ctor(s: str) -> StrView:
+//     sv: StrView = StrView(s)
+//     return sv
 std::string_view from_ctor(std::string_view s) {
-    // sv: StrView = StrView(s)
     std::string_view sv = s;
-    // return sv
     return sv;
 }
 
 // def conditional_rebind(a: str, b: str, flag: bool) -> StrView:
+//     sv: StrView = pick(a)
+//     if flag:
+//         sv = pick(b)
+//     return sv
 std::string_view conditional_rebind(std::string_view a, std::string_view b, bool flag) {
-    // sv: StrView = pick(a)
     std::string_view sv = pick(a);
-    // if flag:
     if (flag) {
-        // sv = pick(b)
         sv = pick(b);
     }
-    // return sv
     return sv;
 }
 
 // def ternary_params(a: str, b: str, flag: bool) -> StrView:
+//     sv: StrView = a if flag else b
+//     return sv
 std::string_view ternary_params(std::string_view a, std::string_view b, bool flag) {
-    // sv: StrView = a if flag else b
     std::string_view sv = ((flag) ? (a) : (b));
-    // return sv
     return sv;
 }
 
 // def loop_iter(items: list[str], default: str) -> StrView:
+//     sv: StrView = default
+//     for item in items:
+//         sv = item
+//     return sv
 std::string_view loop_iter(const std::vector<std::string>& items, std::string_view default_) {
-    // sv: StrView = default
     std::string_view sv = default_;
-    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view item = *__beg_0;
-        // sv = item
         sv = item;
     }
-    // return sv
     return sv;
 }
 
 // def main() -> None:
+//     print(indirect_annot("hello"))
+//     print(indirect_inferred("world"))
+//     print(reassigned("foo", "bar"))
+//     print(from_ctor("baz"))
+//     print(conditional_rebind("aa", "bb", True))
+//     print(conditional_rebind("cc", "dd", False))
+//     print(ternary_params("yes", "no", True))
+//     print(loop_iter(["a", "b", "c"], "d"))
+//     print(loop_iter([], "empty"))
 void main() {
-    // print(indirect_annot("hello"))
     std::cout << indirect_annot("hello") << "\n";
-    // print(indirect_inferred("world"))
     std::cout << indirect_inferred("world") << "\n";
-    // print(reassigned("foo", "bar"))
     std::cout << reassigned("foo", "bar") << "\n";
-    // print(from_ctor("baz"))
     std::cout << from_ctor("baz") << "\n";
-    // print(conditional_rebind("aa", "bb", True))
     std::cout << conditional_rebind("aa", "bb", true) << "\n";
-    // print(conditional_rebind("cc", "dd", False))
     std::cout << conditional_rebind("cc", "dd", false) << "\n";
-    // print(ternary_params("yes", "no", True))
     std::cout << ternary_params("yes", "no", true) << "\n";
-    // print(loop_iter(["a", "b", "c"], "d"))
     std::vector<std::string> __tmp_1 = {"a", "b", "c"};
     std::cout << loop_iter(__tmp_1, "d") << "\n";
-    // print(loop_iter([], "empty"))
     std::vector<std::string> __tmp_2 = std::vector<std::string>{};
     std::cout << loop_iter(__tmp_2, "empty") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

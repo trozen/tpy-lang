@@ -12,10 +12,15 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_value(animal: Dog) -> str: ...  # tpyc: ok
 std::string get_value(const Dog& animal);
+// def get_value(animal: Cat) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_value(const Cat& animal);
+// def use_dog_result(name: str) -> None:
 void use_dog_result(std::string_view name);
+// def use_cat_result(lives: int) -> None:
 void use_cat_result(const ::tpy::BigInt& lives);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -52,9 +57,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::main

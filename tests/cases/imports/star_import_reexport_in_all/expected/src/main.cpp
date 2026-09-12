@@ -4,20 +4,21 @@
 namespace tpyapp::main {
 
 
+// # Star-import through a re-exporter: outer's __all__ lists
+// # shared_helper which outer doesn't define directly but imports from
+// # inner. Two regression guards in one case:
+// #   1. outer's __all__ = ["shared_helper"] must compile cleanly
+// #      without phantom-name warning.
+// #   2. `from outer import *` must bring shared_helper into scope.
+// from outer import *
+//
+// shared_helper()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Star-import through a re-exporter: outer's __all__ lists
-    // # shared_helper which outer doesn't define directly but imports from
-    // # inner. Two regression guards in one case:
-    // #   1. outer's __all__ = ["shared_helper"] must compile cleanly
-    // #      without phantom-name warning.
-    // #   2. `from outer import *` must bring shared_helper into scope.
-    // from outer import *
     ::tpyapp::outer::__tpy_init();
-    // shared_helper()
     ::tpyapp::inner::shared_helper();
 }
 

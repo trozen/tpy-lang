@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def make() -> Own[Payload]:
+//     return Payload()
 ::tpystd::tpy::Poll<Payload> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return Payload()
         __state = S_DONE;
         Payload __tpy_async_ret = Payload();
         return ::tpystd::tpy::Poll<Payload>::ready(std::move(__tpy_async_ret));
@@ -26,16 +26,21 @@ __coro_make make() {
 }
 
 // def size_of(p: Own[Payload]) -> int32:
+//     return len(p.items)
 int32_t size_of(Payload&& p) {
-    // return len(p.items)
     return ::tpy::__len__(p.items);
 }
 
 // async def used_again() -> int32:
+//     p = await make()
+//     # NOT the last use of p, so this must copy rather than move -- the copy
+//     # is what the warning names, and what keeps p.items intact for the read
+//     # below. A wrong move here would empty the vector and give 3 + 0.
+//     first = size_of(p)  # tpyc: warning(/copies Payload into owned storage/)
+//     return first + len(p.items)
 ::tpystd::tpy::Poll<int32_t> __coro_used_again::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // p = await make()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -45,13 +50,8 @@ int32_t size_of(Payload&& p) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         p.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // # NOT the last use of p, so this must copy rather than move -- the copy
-        // # is what the warning names, and what keeps p.items intact for the read
-        // # below. A wrong move here would empty the vector and give 3 + 0.
-        // first = size_of(p)  # tpyc: warning(/copies Payload into owned storage/)
         Payload __tmp_1 = (*p);
         first = size_of(std::move(__tmp_1));
-        // return first + len(p.items)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(first, ::tpy::__len__((*p).items)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -68,10 +68,10 @@ __coro_used_again used_again() {
 }
 
 // async def main_coro() -> None:
+//     print(await used_again())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await used_again())
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -81,7 +81,6 @@ __coro_used_again used_again() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await used_again())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -98,23 +97,24 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # The inverse of await_bind_move: an await-bound local used AGAIN after a sink
+// # must NOT be moved at the earlier use. The payload owns a list, so a wrong
+// # move is observable -- a moved-from vector is left empty, and the second read
+// # would see 0 instead of 3.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The inverse of await_bind_move: an await-bound local used AGAIN after a sink
-    // # must NOT be moved at the earlier use. The payload owns a list, so a wrong
-    // # move is observable -- a moved-from vector is left empty, and the second read
-    // # would see 0 instead of 3.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

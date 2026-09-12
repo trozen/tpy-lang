@@ -8,19 +8,19 @@ namespace tpyapp::main {
 // # (the expr form) -- exercises native-exception ctor-into-var + raise <expr>
 // # with no surrounding try, so the whole body routes through THIR.
 // def main() -> None:
+//     e = OSError(2, "No such file or directory")
+//     raise e
 void main() {
-    // e = OSError(2, "No such file or directory")
     ::tpy::OSError e = ::tpy::OSError(2, "No such file or directory");
-    // raise e
     e.__raise__();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

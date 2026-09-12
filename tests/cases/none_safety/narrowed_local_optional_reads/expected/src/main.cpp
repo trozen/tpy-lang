@@ -5,74 +5,74 @@ namespace tpyapp::main {
 
 
 // def step(x: int | None, y: int32 | None, lst: list[int] | None) -> None:
+//     if x is None:
+//         return
+//     if y is None:
+//         return
+//     if lst is None:
+//         return
+//     x += 1
+//     y *= 2
+//     lst[0] = x + y
+//     # Avoid `print(lst)` here -- pointer-repr Optional list print is a
+//     # separate pre-existing gap; this test focuses on the narrowed-local
+//     # aug-assign + subscript-LHS fixes.
+//     print(x, y, lst[0])
 void step(std::optional<::tpy::BigInt> x, std::optional<int32_t> y, std::vector<::tpy::BigInt>* lst) {
-    // if x is None:
     if ((!x.has_value())) {
-        // return
         return;
     }
-    // if y is None:
     if ((!y.has_value())) {
-        // return
         return;
     }
-    // if lst is None:
     if ((lst == nullptr)) {
-        // return
         return;
     }
-    // x += 1
     (*x) = ((*x)) + (::tpy::BigInt(1));
-    // y *= 2
     (*y) = ::tpy::mul_check<int32_t>((*y), 2);
-    // lst[0] = x + y
     ::tpy::__setitem__((*lst), 0, (((*x)) + (::tpy::BigInt((*y)))));
-    // # Avoid `print(lst)` here -- pointer-repr Optional list print is a
-    // # separate pre-existing gap; this test focuses on the narrowed-local
-    // # aug-assign + subscript-LHS fixes.
-    // print(x, y, lst[0])
     std::cout << ::tpy::print_optional_val(x) << " " << ::tpy::print_optional_val(y) << " " << ::tpy::__getitem__((*lst), 0) << "\n";
 }
 
 // def local_path() -> None:
+//     a: int | None = 10
+//     b: int32 | None = 3
+//     if a is None:
+//         return
+//     if b is None:
+//         return
+//     a -= 4
+//     b += 5
+//     print(a, b)
 void local_path() {
-    // a: int | None = 10
     std::optional<::tpy::BigInt> a = 10;
-    // b: int32 | None = 3
     std::optional<int32_t> b = 3;
-    // if a is None:
     if ((!a.has_value())) {
-        // return
         return;
     }
-    // if b is None:
     if ((!b.has_value())) {
-        // return
         return;
     }
-    // a -= 4
     (*a) = ((*a)) - (::tpy::BigInt(4));
-    // b += 5
     (*b) = ::tpy::add_check<int32_t>((*b), 5);
-    // print(a, b)
     std::cout << ::tpy::print_optional_val(a) << " " << ::tpy::print_optional_val(b) << "\n";
 }
 
 // def main() -> None:
+//     step(7, 8, [0, 0, 0])
+//     local_path()
 void main() {
-    // step(7, 8, [0, 0, 0])
     std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{0, 0, 0};
     step(7, 8, &(__tmp_1));
-    // local_path()
     local_path();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,83 +5,86 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = date(2021, 3, 5)
+//     print(d.strftime("%a %A %b %B %d %m %y %Y %j %w %u"))
+//     print(d.strftime("%c"))
+//     print(d.strftime("%x | %X"))
+//     print(d.strftime("%U %W %G %V"))
+//     print(date(1, 1, 1).strftime("%y %U %W %V %u %j"))
+//     print(date(2016, 1, 1).strftime("%U %W %G %V %u"))
+//     print(date(2018, 12, 31).strftime("%U %W %G %V %u"))
+//     print(date(2019, 1, 1).strftime("%U %W %G %V %u"))
+//     print(date(2020, 12, 31).strftime("%G-%V-%u"))
+//     print(d.strftime("%z|%Z|"))
+//     print(d.strftime("100%% %"))
+//
+//     t = time(0, 5, 3, 40)
+//     print(t.strftime("%H %I %p %M %S %f %j %Y %a"))  # 1900-01-01 timetuple
+//     print(time(12, 0).strftime("%I %p"))
+//     print(time(13, 30).strftime("%I %p"))
+//
+//     ist = timezone(timedelta(hours=5, minutes=30), "IST")
+//     dt = datetime(2021, 3, 5, 14, 30, 15, 123456, tzinfo=ist)
+//     print(dt.strftime("%Y-%m-%d %H:%M:%S.%f %z %Z"))
+//     print(dt.strftime("%c"))
+//     print(datetime(2021, 3, 5, 1, 2, 3,
+//                    tzinfo=timezone(timedelta(hours=-3, minutes=-30)))
+//           .strftime("%z %Z"))
+//     print(datetime(2021, 3, 5,
+//                    tzinfo=timezone(timedelta(hours=5, minutes=30,
+//                                              seconds=15)))
+//           .strftime("%z %Z"))
+//     print(datetime(2021, 3, 5, 14, 30).strftime("|%z %Z|"))
 void main() {
-    // d = date(2021, 3, 5)
     ::tpystd::datetime::date d = ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5));
-    // print(d.strftime("%a %A %b %B %d %m %y %Y %j %w %u"))
     std::cout << d.strftime("%a %A %b %B %d %m %y %Y %j %w %u") << "\n";
-    // print(d.strftime("%c"))
     std::cout << d.strftime("%c") << "\n";
-    // print(d.strftime("%x | %X"))
     std::cout << d.strftime("%x | %X") << "\n";
-    // print(d.strftime("%U %W %G %V"))
     std::cout << d.strftime("%U %W %G %V") << "\n";
-    // print(date(1, 1, 1).strftime("%y %U %W %V %u %j"))
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%y %U %W %V %u %j") << "\n";
-    // print(date(2016, 1, 1).strftime("%U %W %G %V %u"))
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2016), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%U %W %G %V %u") << "\n";
-    // print(date(2018, 12, 31).strftime("%U %W %G %V %u"))
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2018), ::tpy::BigInt(12), ::tpy::BigInt(31)).strftime("%U %W %G %V %u") << "\n";
-    // print(date(2019, 1, 1).strftime("%U %W %G %V %u"))
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2019), ::tpy::BigInt(1), ::tpy::BigInt(1)).strftime("%U %W %G %V %u") << "\n";
-    // print(date(2020, 12, 31).strftime("%G-%V-%u"))
     std::cout << ::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(12), ::tpy::BigInt(31)).strftime("%G-%V-%u") << "\n";
-    // print(d.strftime("%z|%Z|"))
     std::cout << d.strftime("%z|%Z|") << "\n";
-    // print(d.strftime("100%% %"))
     std::cout << d.strftime("100%% %") << "\n";
-    // t = time(0, 5, 3, 40)
     ::tpystd::datetime::time t = ::tpystd::datetime::time(::tpy::BigInt(0), ::tpy::BigInt(5), ::tpy::BigInt(3), ::tpy::BigInt(40));
-    // print(t.strftime("%H %I %p %M %S %f %j %Y %a"))  # 1900-01-01 timetuple
     std::cout << t.strftime("%H %I %p %M %S %f %j %Y %a") << "\n";
-    // print(time(12, 0).strftime("%I %p"))
     std::cout << ::tpystd::datetime::time(::tpy::BigInt(12), ::tpy::BigInt(0)).strftime("%I %p") << "\n";
-    // print(time(13, 30).strftime("%I %p"))
     std::cout << ::tpystd::datetime::time(::tpy::BigInt(13), ::tpy::BigInt(30)).strftime("%I %p") << "\n";
-    // ist = timezone(timedelta(hours=5, minutes=30), "IST")
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
-    // dt = datetime(2021, 3, 5, 14, 30, 15, 123456, tzinfo=ist)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
     ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_1);
-    // print(dt.strftime("%Y-%m-%d %H:%M:%S.%f %z %Z"))
     std::cout << dt.strftime("%Y-%m-%d %H:%M:%S.%f %z %Z") << "\n";
-    // print(dt.strftime("%c"))
     std::cout << dt.strftime("%c") << "\n";
-    // print(datetime(2021, 3, 5, 1, 2, 3,
-    // tzinfo=timezone(timedelta(hours=-3, minutes=-30)))
-    // .strftime("%z %Z"))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-30), ::tpy::BigInt(-3)));
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(0), __tmp_2).strftime("%z %Z") << "\n";
-    // print(datetime(2021, 3, 5,
-    // tzinfo=timezone(timedelta(hours=5, minutes=30,
-    // seconds=15)))
-    // .strftime("%z %Z"))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)));
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3).strftime("%z %Z") << "\n";
-    // print(datetime(2021, 3, 5, 14, 30).strftime("|%z %Z|"))
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30)).strftime("|%z %Z|") << "\n";
 }
 
+// # datetime v3 strftime: full directive set on date/time/datetime with the
+// # CPython-on-glibc edge behaviors -- %c/%x/%X C-locale compositions, ISO
+// # %G/%V/%u across year rollovers, %U/%W week-number edges, %I/%p
+// # midnight/noon, %z/%Z empty when naive and seconds-bearing when the offset
+// # has them, trailing lone % kept.
+// # Platform/version-divergent bits are NOT pinned in the cpy comparison (they
+// # diverge glibc vs macOS libc, and by CPython version): the tiny-year year
+// # padding of %Y/%G -- and of %c, which embeds the year ("...1" on glibc vs
+// # "...0001" on macOS libc / CPython 3.14) -- and an invalid directive like
+// # %q (passed through verbatim by glibc, stripped to "q" by macOS libc). TPy
+// # is glibc-consistent on every platform, so the exec phase still pins its
+// # output; %Y/%G/%c on normal years are covered above.
+// from datetime import datetime, date, time, timedelta, timezone
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime v3 strftime: full directive set on date/time/datetime with the
-    // # CPython-on-glibc edge behaviors -- %c/%x/%X C-locale compositions, ISO
-    // # %G/%V/%u across year rollovers, %U/%W week-number edges, %I/%p
-    // # midnight/noon, %z/%Z empty when naive and seconds-bearing when the offset
-    // # has them, trailing lone % kept.
-    // # Platform/version-divergent bits are NOT pinned in the cpy comparison (they
-    // # diverge glibc vs macOS libc, and by CPython version): the tiny-year year
-    // # padding of %Y/%G -- and of %c, which embeds the year ("...1" on glibc vs
-    // # "...0001" on macOS libc / CPython 3.14) -- and an invalid directive like
-    // # %q (passed through verbatim by glibc, stripped to "q" by macOS libc). TPy
-    // # is glibc-consistent on every platform, so the exec phase still pins its
-    // # output; %Y/%G/%c on normal years are covered above.
-    // from datetime import datetime, date, time, timedelta, timezone
     ::tpystd::datetime::__tpy_init();
-    // main()
     main();
 }
 

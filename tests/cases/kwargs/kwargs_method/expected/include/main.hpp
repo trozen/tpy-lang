@@ -11,6 +11,7 @@ struct Formatter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Keyword arguments in method calls
@@ -34,13 +35,14 @@ inline std::ostream& operator<<(std::ostream& os, const Formatter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.prefix = ">"
 inline Formatter::Formatter() : prefix(">") {}
 
 // def format(self, text: str, width: int = 0, fill: str = " ") -> str:
+//     result = self.prefix + text
+//     return result
 inline std::string Formatter::format(std::string_view text, const ::tpy::BigInt& width, std::string_view fill) const {
-    // result = self.prefix + text
     ::tpy::String result = (::tpy::str_concat(this->prefix, text));
-    // return result
     return result;
 }
 void __tpy_init();

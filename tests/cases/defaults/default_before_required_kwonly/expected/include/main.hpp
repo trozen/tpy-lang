@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(a: int64, b: int64 = 10, *, c: int64) -> int64:
 int64_t f(int64_t a, int64_t b, int64_t c);
+// def g(a: int64, b: int64 = 1, c: int64 = 2, *, d: int64, e: int64 = 5) -> int64:
 int64_t g(int64_t a, int64_t b, int64_t c, int64_t d, int64_t e = 5);
+// def main() -> None:
 void main();
 
 void __tpy_init();

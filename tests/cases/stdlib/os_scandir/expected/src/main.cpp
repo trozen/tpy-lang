@@ -5,51 +5,72 @@ namespace tpyapp::main {
 
 
 // def teardown(base: str) -> None:
+//     if os.path.lexists(base + "/lnk"):
+//         os.remove(base + "/lnk")
+//     if os.path.exists(base + "/f.txt"):
+//         os.remove(base + "/f.txt")
+//     if os.path.exists(base + "/sub"):
+//         os.rmdir(base + "/sub")
+//     if os.path.exists(base + "/empty"):
+//         os.rmdir(base + "/empty")
+//     if os.path.exists(base):
+//         os.rmdir(base)
 void teardown(std::string_view base) {
-    // if os.path.lexists(base + "/lnk"):
     if (::tpy::stdlib::os::path_lexists((::tpy::str_concat(base, "/lnk")))) {
-        // os.remove(base + "/lnk")
         ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/lnk")));
     }
-    // if os.path.exists(base + "/f.txt"):
     if (::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/f.txt")))) {
-        // os.remove(base + "/f.txt")
         ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/f.txt")));
     }
-    // if os.path.exists(base + "/sub"):
     if (::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/sub")))) {
-        // os.rmdir(base + "/sub")
         ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/sub")));
     }
-    // if os.path.exists(base + "/empty"):
     if (::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/empty")))) {
-        // os.rmdir(base + "/empty")
         ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/empty")));
     }
-    // if os.path.exists(base):
     if (::tpy::stdlib::os::path_exists(base)) {
-        // os.rmdir(base)
         ::tpy::stdlib::os::rmdir(base);
     }
 }
 
 // def main():
+//     base = "tpy_os_scandir"
+//     teardown(base)
+//     os.mkdir(base)
+//     os.mkdir(base + "/sub")
+//     os.mkdir(base + "/empty")
+//     with open(base + "/f.txt", "w") as fh:
+//         fh.write("hi")
+//     os.symlink("f.txt", base + "/lnk")
+//
+//     rows: list[str] = []
+//     size = 0
+//     for e in os.scandir(base):
+//         rows.append(e.name + ":" + str(e.is_dir()) + "/" + str(e.is_file())
+//                     + "/" + str(e.is_symlink()))
+//         if e.name == "f.txt":
+//             size = e.stat().st_size      # DirEntry.stat() -> stat_result
+//     rows.sort()
+//     for r in rows:
+//         print(r)
+//     print("f.txt size:", size)           # 2 ("hi")
+//
+//     # empty directory -> empty listing
+//     n = 0
+//     for _ in os.scandir(base + "/empty"):
+//         n += 1
+//     print("empty entries:", n)
+//
+//     teardown(base)
 void main() {
-    // base = "tpy_os_scandir"
     std::string_view base = "tpy_os_scandir";
-    // teardown(base)
     teardown(base);
-    // os.mkdir(base)
     ::tpystd::os::mkdir(base);
-    // os.mkdir(base + "/sub")
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/sub")));
-    // os.mkdir(base + "/empty")
     ::tpystd::os::mkdir((::tpy::str_concat(base, "/empty")));
-    // with open(base + "/f.txt", "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(base, "/f.txt")), "w");
     auto& fh = __ctx_1.__enter__();
     try {
-        // fh.write("hi")
         fh.write("hi");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -61,71 +82,54 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // os.symlink("f.txt", base + "/lnk")
     ::tpy::stdlib::os::symlink("f.txt", (::tpy::str_concat(base, "/lnk")));
-    // rows: list[str] = []
     std::vector<std::string> rows = std::vector<std::string>{};
-    // size = 0
     int64_t size = 0;
-    // for e in os.scandir(base):
     auto __obj_0 = ::tpystd::os::scandir(base);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& e = *__beg_0;
-        // rows.append(e.name + ":" + str(e.is_dir()) + "/" + str(e.is_file())
-        // + "/" + str(e.is_symlink()))
         rows.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(e.name, ":")), std::string(::tpy::bool_to_str(e.is_dir())))), "/")), std::string(::tpy::bool_to_str(e.is_file())))), "/")), std::string(::tpy::bool_to_str(e.is_symlink())))));
-        // if e.name == "f.txt":
         if ((e.name == "f.txt")) {
-            // size = e.stat().st_size      # DirEntry.stat() -> stat_result
             size = e.stat().st_size;
         }
     }
-    // rows.sort()
     ::tpy::sort_in_place(rows);
-    // for r in rows:
     auto& __obj_1 = rows;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view r = *__beg_1;
-        // print(r)
         std::cout << r << "\n";
     }
-    // print("f.txt size:", size)           # 2 ("hi")
     std::cout << "f.txt size:" << " " << size << "\n";
-    // # empty directory -> empty listing
-    // n = 0
     int32_t n = 0;
-    // for _ in os.scandir(base + "/empty"):
     auto __obj_2 = ::tpystd::os::scandir((::tpy::str_concat(base, "/empty")));
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& _ = *__beg_2;
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // print("empty entries:", n)
     std::cout << "empty entries:" << " " << n << "\n";
-    // teardown(base)
     teardown(base);
 }
 
+// # os.scandir + DirEntry (name / is_dir / is_file / is_symlink / stat). Builds a
+// # fresh tree in the run's scratch cwd (subdir, a 2-byte file, a symlink to it) so both phases start
+// # clean; entries are sorted since scandir order is unspecified. The symlink case
+// # exercises the d_type -> stat follow path (is_file follows, is_symlink doesn't).
+// # Byte-compared against CPython.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.scandir + DirEntry (name / is_dir / is_file / is_symlink / stat). Builds a
-    // # fresh tree in the run's scratch cwd (subdir, a 2-byte file, a symlink to it) so both phases start
-    // # clean; entries are sorted since scandir order is unspecified. The symlink case
-    // # exercises the d_type -> stat follow path (is_file follows, is_symlink doesn't).
-    // # Byte-compared against CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

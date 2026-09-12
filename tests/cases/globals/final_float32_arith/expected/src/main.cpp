@@ -5,19 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(SUM, DIFF, PROD)
+//     print(QUOT, FLR, MODR)
 void main() {
-    // print(SUM, DIFF, PROD)
     std::cout << ::tpy::print_float(static_cast<double>(SUM)) << " " << ::tpy::print_float(static_cast<double>(DIFF)) << " " << ::tpy::print_float(static_cast<double>(PROD)) << "\n";
-    // print(QUOT, FLR, MODR)
     std::cout << ::tpy::print_float(static_cast<double>(QUOT)) << " " << ::tpy::print_float(static_cast<double>(FLR)) << " " << ::tpy::print_float(static_cast<double>(MODR)) << "\n";
 }
 
+// A: Final[float32] = float32(1.5)
+// B: Final[float32] = float32(2.5)
+// SUM: Final[float32] = A + B
+// DIFF: Final[float32] = A - B
+// PROD: Final[float32] = A * B
+// QUOT: Final[float32] = A / B
+// FLR: Final[float32] = A // B
+// MODR: Final[float32] = A % B
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

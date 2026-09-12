@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def inner() -> int:
+//     await asyncio.sleep(0.001)
+//     return 13
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 13
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 13;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -35,12 +35,13 @@ __coro_inner inner() {
 }
 
 // async def main_coro() -> None:
+//     r = Runner()
+//     v = await r.with_timeout(inner(), 5.0)
+//     print(v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // r = Runner()
         r.emplace(Runner());
-        // v = await r.with_timeout(inner(), 5.0)
         __sub_0.emplace((*r), ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(inner()), 5.0);
         __state = S_RESUME_0;
         continue;
@@ -50,7 +51,6 @@ __coro_inner inner() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r0).value();
         __sub_0.reset();
-        // print(v)
         std::cout << v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -67,32 +67,34 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Regression: async method on a non-generic class taking an
+// # `Own[Cancellable[T]]`-shaped (static-protocol) param. Two codegen
+// # sites that previously emitted wrong C++ for this shape:
+// #   - In-struct template header (records.py) must include the
+// #     `T_<pname>` extra for the deduced sub-coro type.
+// #   - Factory body (generator.py) must `std::move(coro)` so the
+// #     T_coro&& ctor param binds when called from the factory's
+// #     T_coro&& lvalue param.
+// # The inner `coro` is forwarded into `asyncio.wait_for`; the await
+// # at the wait_for site drives the static-protocol param through
+// # both fixed code paths end-to-end.
+// import asyncio
+//
+// from tpy.coro import Cancellable
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: async method on a non-generic class taking an
-    // # `Own[Cancellable[T]]`-shaped (static-protocol) param. Two codegen
-    // # sites that previously emitted wrong C++ for this shape:
-    // #   - In-struct template header (records.py) must include the
-    // #     `T_<pname>` extra for the deduced sub-coro type.
-    // #   - Factory body (generator.py) must `std::move(coro)` so the
-    // #     T_coro&& ctor param binds when called from the factory's
-    // #     T_coro&& lvalue param.
-    // # The inner `coro` is forwarded into `asyncio.wait_for`; the await
-    // # at the wait_for site drives the static-protocol param through
-    // # both fixed code paths end-to-end.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Cancellable
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

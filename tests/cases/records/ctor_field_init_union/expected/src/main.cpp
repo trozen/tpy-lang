@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Pick(A(3)).val)
+//     print(Pick(B(4)).val)
 void main() {
-    // print(Pick(A(3)).val)
     A __tmp_1 = A(::tpy::BigInt(3));
     std::cout << Pick(::tpy::Union<const A*, const B*>{&__tmp_1}).val << "\n";
-    // print(Pick(B(4)).val)
     B __tmp_2 = B(::tpy::BigInt(4));
     std::cout << Pick(::tpy::Union<const A*, const B*>{&__tmp_2}).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

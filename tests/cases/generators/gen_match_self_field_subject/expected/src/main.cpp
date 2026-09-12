@@ -5,10 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(0)
+//     for v in c.items():
+//         print(v)
+//     # The frame borrows the receiver, so the write above is visible here.
+//     print(c.n)
+//     # A CALL receiver is not a bare name, so it takes no view-iterable row.
+//     for v in Counter(1).items():
+//         print(v)
 void main() {
-    // c = Counter(0)
     Counter c = Counter(0);
-    // for v in c.items():
     {
         auto __src_0 = c.items();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,15 +22,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // # The frame borrows the receiver, so the write above is visible here.
-    // print(c.n)
     std::cout << c.n << "\n";
-    // # A CALL receiver is not a bare name, so it takes no view-iterable row.
-    // for v in Counter(1).items():
     {
         Counter __tmp_1 = Counter(1);
         auto __src_2 = __tmp_1.items();
@@ -33,28 +34,31 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def items(self) -> Iterator[int32]:
+//     # The match subject is a scalar field read off `self`.
+//     match self.n:
+//         case 0:
+//             yield 10
+//             yield 20
+//         case _:
+//             yield 30
+//     self.n = 99
 std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = __self.n;
         switch (__match_subject_1) {
-        // case 0:
         case 0: {
-            // yield 10
             __state = S_RESUME_0;
             return 10;
             break;
         }
-        // case _:
         default: {
-            // yield 30
             __state = S_RESUME_2;
             return 30;
             break;
@@ -64,7 +68,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_items::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield 20
         __state = S_RESUME_1;
         return 20;
     }
@@ -77,7 +80,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_items::__next__() {
         continue;
     }
     case S_JOIN_0: {
-        // self.n = 99
         __self.n = 99;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -88,12 +90,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_items::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

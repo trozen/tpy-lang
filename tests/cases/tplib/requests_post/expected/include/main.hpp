@@ -22,7 +22,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 using ::tpystd::json::JsonValue;
 
+// def send(method: str, url: str, data: bytes | dict[str, str] | None,
+//          body_json: JsonValue | None,
+//          auth: tuple[str, str] | None) -> None:
 void send(std::string_view method, std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* body_json, std::optional<std::tuple<std::string, std::string>> auth);
+// def main() -> None:
 void main();
 
 void __tpy_init();

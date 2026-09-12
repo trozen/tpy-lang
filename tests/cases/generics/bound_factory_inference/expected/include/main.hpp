@@ -32,6 +32,7 @@ template<typename T> struct PetBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Parrot(Pet):
@@ -80,6 +81,7 @@ struct PetBox {
     bool __tpy_owned_ = true;
 
     // def __init__(self, payload: Ptr[T]) -> None:
+    //     self._payload = payload
     explicit PetBox(T* payload) : _payload(payload) {}
     PetBox(const PetBox&) = delete;
     PetBox& operator=(const PetBox&) = delete;
@@ -95,23 +97,23 @@ struct PetBox {
     }
 
     // def __del__(self) -> None:
+    //     unsafe_release(self._payload)
     ~PetBox() {
         if (!this->__tpy_owned_) return;
-        // unsafe_release(self._payload)
         ::tpy::heap_release(this->_payload);
     }
 
     // def get(self) -> T:
+    //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
     // @staticmethod
     // def make[U: T](value: Own[U]) -> Own[PetBox[T]]:
+    //     return PetBox[T](unsafe_take(value))
     template<typename U>
     static PetBox<T> make(::tpy::own_param_t<U> value) {
-        // return PetBox[T](unsafe_take(value))
         return PetBox<T>(::tpy::heap_take(std::move(value)));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.PetBox";
@@ -144,20 +146,22 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Parrot::Parrot(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Parrot::name() {
-    // return self.label
     return this->label;
 }
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Dog::Dog(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return "dog:" + self.label
 inline std::string Dog::name() {
-    // return "dog:" + self.label
     return (::tpy::str_concat("dog:", this->label));
 }
 void __tpy_init();

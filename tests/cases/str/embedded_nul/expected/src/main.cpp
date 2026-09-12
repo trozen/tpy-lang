@@ -8,67 +8,70 @@ namespace tpyapp::main {
 // # strlen for raw const-char-pointer literals, so codegen must use the
 // # explicit-length form to preserve the full byte run.
 // def take_str(s: str) -> int:
+//     return len(s)
 ::tpy::BigInt take_str(std::string_view s) {
-    // return len(s)
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 
 // def use_default(s: str = "\x00null") -> int:
+//     return len(s)
 ::tpy::BigInt use_default(std::string_view s) {
-    // return len(s)
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 
 // def main() -> None:
+//     s = "\x00null"
+//     print(len(s))
+//     print(s == "\x00null")
+//     print(take_str("ab\x00cd"))
+//     print(use_default())
+//
+//     # match on a NUL-containing literal
+//     target = "\x00x"
+//     match target:
+//         case "\x00x":
+//             print("matched")
+//         case _:
+//             print("no match")
+//
+//     # f-string pure literal with NUL
+//     pure = f"a\x00b"
+//     print(len(pure))
+//
+//     # f-string with interpolation -- routes through std::vformat when NUL
+//     # appears in any literal portion (std::format's consteval ctor would
+//     # truncate via strlen).
+//     name = "world"
+//     interp = f"a\x00b{name}"
+//     print(len(interp))
+//     print(interp == "a\x00bworld")
 void main() {
-    // s = "\x00null"
     std::string_view s = std::string_view{"\000null", 5};
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // print(s == "\x00null")
     std::cout << ::tpy::print_bool((s == std::string_view{"\000null", 5})) << "\n";
-    // print(take_str("ab\x00cd"))
     std::cout << take_str(std::string_view{"ab\000cd", 5}) << "\n";
-    // print(use_default())
     std::cout << use_default() << "\n";
-    // # match on a NUL-containing literal
-    // target = "\x00x"
     std::string_view target = std::string_view{"\000x", 2};
-    // match target:
     auto& __match_subject_1 = target;
-    // case "\x00x":
     if (__match_subject_1 == std::string_view{"\000x", 2}) {
-        // print("matched")
         std::cout << "matched" << "\n";
-    // case _:
     } else {
-        // print("no match")
         std::cout << "no match" << "\n";
     }
-    // # f-string pure literal with NUL
-    // pure = f"a\x00b"
     std::string pure = std::string("a\000b", 3);
-    // print(len(pure))
     std::cout << ::tpy::__len__(pure) << "\n";
-    // # f-string with interpolation -- routes through std::vformat when NUL
-    // # appears in any literal portion (std::format's consteval ctor would
-    // # truncate via strlen).
-    // name = "world"
     std::string_view name = "world";
-    // interp = f"a\x00b{name}"
     std::string interp = std::vformat(std::string_view{"a\000b{}", 5}, std::make_format_args(name));
-    // print(len(interp))
     std::cout << ::tpy::__len__(interp) << "\n";
-    // print(interp == "a\x00bworld")
     std::cout << ::tpy::print_bool((interp == std::string_view{"a\000bworld", 8})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

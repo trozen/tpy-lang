@@ -12,6 +12,7 @@ struct Pile;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -46,22 +47,23 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Box::Box(int32_t value) : value(value) {}
 
 // def total(self, *boxes: Box) -> int32:
+//     s: int32 = int32(0)
+//     for b in boxes:
+//         s += b.value
+//     return s
 inline int32_t Pile::total(::tpy::varargs<const Box> boxes) const {
-    // s: int32 = int32(0)
     int32_t s = 0;
-    // for b in boxes:
     auto& __obj_0 = boxes;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // s += b.value
         s = ::tpy::add_check<int32_t>(s, b.value);
     }
-    // return s
     return s;
 }
 void __tpy_init();

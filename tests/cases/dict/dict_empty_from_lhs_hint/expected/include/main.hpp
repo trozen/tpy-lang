@@ -11,8 +11,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(d: dict[str, int]) -> int:
 ::tpy::BigInt take(const ::tpy::ordered_map<std::string, ::tpy::BigInt>& d);
+// def make() -> Own[dict[str, int]]:
 ::tpy::ordered_map<std::string, ::tpy::BigInt> make();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -34,6 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
+//     self.by_name = {}
+//     self.by_pair = {"first": {}}
 inline Box::Box() : by_name(::tpy::ordered_map<std::string, ::tpy::BigInt>()), by_pair(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::BigInt>>({{"first", ::tpy::ordered_map<std::string, ::tpy::BigInt>()}})) {}
 void __tpy_init();
 } // namespace tpyapp::main

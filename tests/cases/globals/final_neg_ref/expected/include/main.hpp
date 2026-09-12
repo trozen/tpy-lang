@@ -8,11 +8,16 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// A: Final[int32] = 5
 inline constexpr int32_t A = 5;
+// NA: Final[int32] = -A
 inline constexpr int32_t NA = ::tpy::neg_check<int32_t>(A);
+// B: Final[int64] = -1000
 inline constexpr int64_t B = -1000;
+// NB: Final[int64] = -B
 inline constexpr int64_t NB = ::tpy::neg_check<int64_t>(B);
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,111 +5,111 @@ namespace tpyapp::main {
 
 
 // def move_owned_optional_into_field() -> int:
+//     h = Holder()
+//     tmp: Box | None = Box(7)
+//     h.slot = tmp                 # tmp's last use -> move (copy would be a @nocopy error)
+//     if h.slot is not None:
+//         return h.slot.v
+//     return -1
 ::tpy::BigInt move_owned_optional_into_field() {
-    // h = Holder()
     Holder h = Holder();
-    // tmp: Box | None = Box(7)
     Box __slot_1 = Box(::tpy::BigInt(7));
     Box* tmp = &__slot_1;
-    // h.slot = tmp                 # tmp's last use -> move (copy would be a @nocopy error)
     h.slot = ::tpy::ptr_to_optional_move(tmp);
-    // if h.slot is not None:
     if ((h.slot.has_value())) {
-        // return h.slot.v
         return (*h.slot).v;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def move_owned_optional_out_return(c: bool) -> Own[Box] | None:
+//     tmp: Box | None = None
+//     if c:
+//         tmp = Box(11)
+//     return tmp                   # last use -> move the slot out as Own[Box] | None
 std::optional<Box> move_owned_optional_out_return(bool c) {
     std::optional<Box> __slot_1;
-    // tmp: Box | None = None
     Box* tmp = nullptr;
-    // if c:
     if (c) {
-        // tmp = Box(11)
         tmp = &*(__slot_1 = Box(::tpy::BigInt(11)));
     }
-    // return tmp                   # last use -> move the slot out as Own[Box] | None
     return ::tpy::ptr_to_optional_move(tmp);
 }
 
 // def move_owned_optional_into_ctor_arg() -> int:
+//     tmp: Box | None = Box(13)
+//     b = Boxed(tmp)               # tmp last use -> move into the Own[Box]|None param
+//     if b.slot is not None:
+//         return b.slot.v
+//     return -1
 ::tpy::BigInt move_owned_optional_into_ctor_arg() {
-    // tmp: Box | None = Box(13)
     Box __slot_1 = Box(::tpy::BigInt(13));
     Box* tmp = &__slot_1;
-    // b = Boxed(tmp)               # tmp last use -> move into the Own[Box]|None param
     Boxed b = Boxed(::tpy::ptr_to_optional_move(tmp));
-    // if b.slot is not None:
     if ((b.slot.has_value())) {
-        // return b.slot.v
         return (*b.slot).v;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def alias_then_rebind() -> int:
+//     x: Pt | None = Pt(1)
+//     y: Pt | None = x             # y aliases x's object
+//     if x is not None:
+//         x.v = 99                 # mutate the shared object
+//     seen = -1
+//     if y is not None:
+//         seen = y.v               # 99 -- alias sees the mutation
+//     x = Pt(2)                    # rebind x to a new object; y unaffected
+//     after = -1
+//     if y is not None:
+//         after = y.v              # still 99
+//     return seen + after          # 198
 ::tpy::BigInt alias_then_rebind() {
     std::optional<Pt> __slot_2;
-    // x: Pt | None = Pt(1)
     Pt __slot_1 = Pt(::tpy::BigInt(1));
     Pt* x = &__slot_1;
-    // y: Pt | None = x             # y aliases x's object
     Pt* y = x;
-    // if x is not None:
     if ((x != nullptr)) {
-        // x.v = 99                 # mutate the shared object
         x->v = ::tpy::BigInt(99);
     }
-    // seen = -1
     ::tpy::BigInt seen = ::tpy::BigInt(-1);
-    // if y is not None:
     if ((y != nullptr)) {
-        // seen = y.v               # 99 -- alias sees the mutation
         seen = y->v;
     }
-    // x = Pt(2)                    # rebind x to a new object; y unaffected
     x = &*(__slot_2 = Pt(::tpy::BigInt(2)));
-    // after = -1
     ::tpy::BigInt after = ::tpy::BigInt(-1);
-    // if y is not None:
     if ((y != nullptr)) {
-        // after = y.v              # still 99
         after = y->v;
     }
-    // return seen + after          # 198
     return ((seen) + (after));
 }
 
 // def main() -> None:
+//     print(move_owned_optional_into_field())
+//     r = move_owned_optional_out_return(True)
+//     if r is not None:
+//         print(r.v)
+//     print(move_owned_optional_out_return(False) is None)
+//     print(move_owned_optional_into_ctor_arg())
+//     print(alias_then_rebind())
 void main() {
-    // print(move_owned_optional_into_field())
     std::cout << move_owned_optional_into_field() << "\n";
-    // r = move_owned_optional_out_return(True)
     std::optional<Box> r = move_owned_optional_out_return(true);
-    // if r is not None:
     if ((r.has_value())) {
-        // print(r.v)
         std::cout << (*r).v << "\n";
     }
-    // print(move_owned_optional_out_return(False) is None)
     std::cout << ::tpy::print_bool((!move_owned_optional_out_return(false).has_value())) << "\n";
-    // print(move_owned_optional_into_ctor_arg())
     std::cout << move_owned_optional_into_ctor_arg() << "\n";
-    // print(alias_then_rebind())
     std::cout << alias_then_rebind() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper()
+//     p = w.build(1)
+//     xs: list[Point] = []
+//     w.collect(5, xs)
+//     # The appended element is the container's, not a detached copy.
+//     xs[0].x = 9
+//     print(p.x, xs[0].x, w.build_copy(3).x)
 void main() {
-    // w = Wrapper()
     Wrapper w = Wrapper();
-    // p = w.build(1)
     Point p = w.build(1);
-    // xs: list[Point] = []
     std::vector<Point> xs = std::vector<Point>{};
-    // w.collect(5, xs)
     w.collect(5, xs);
-    // # The appended element is the container's, not a detached copy.
-    // xs[0].x = 9
     ::tpy::__getitem__(xs, 0).x = 9;
-    // print(p.x, xs[0].x, w.build_copy(3).x)
     std::cout << p.x << " " << ::tpy::__getitem__(xs, 0).x << " " << w.build_copy(3).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def scale(xs: Span[int32], factor: int32) -> None:  # tpyc: warning(/Span parameter 'xs' is copied in.*not visible to the caller/)
 void scale(std::span<int32_t> xs, int32_t factor);
+// def total(xs: Span[readonly[int32]]) -> int32:  # tpyc: ok
 int32_t total(std::span<const int32_t> xs);
+// def peek(xs: Span[int32]) -> int32:  # tpyc: ok
 int32_t peek(std::span<int32_t> xs);
 
 void __tpy_init();

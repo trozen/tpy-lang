@@ -6,52 +6,52 @@ namespace tpyapp::main {
 
 
 
+// def repeat(s: str, count: int = 0) -> str:
+//     if count == 0:
+//         return s
+//     result = ""
+//     i = 0
+//     while i < count:
+//         result = result + s
+//         i = i + 1
+//     return result
 // @overload
 // def repeat(s: str) -> str: ...  # tpyc: ok
 std::string repeat(std::string_view s) {
     ::tpy::BigInt count = ::tpy::BigInt(0);
-    // return s
     return std::string(s);
 }
 
 // @overload
 // def repeat(s: str, count: int) -> str: ...  # tpyc: ok
 std::string repeat(std::string_view s, const ::tpy::BigInt& count) {
-    // if count == 0:
     if ((count == 0)) {
-        // return s
         return std::string(s);
     }
-    // result = ""
     std::string result = "";
-    // i = 0
     int32_t i = 0;
-    // while i < count:
     while ((::tpy::BigInt(i) < count)) {
-        // result = result + s
         result += s;
-        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    // return result
     return result;
 }
 
 
 // def main() -> None:
+//     print(repeat("ab"))
+//     print(repeat("ab", 3))
 void main() {
-    // print(repeat("ab"))
     std::cout << repeat(std::string_view("ab")) << "\n";
-    // print(repeat("ab", 3))
     std::cout << repeat(std::string_view("ab"), ::tpy::BigInt(3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

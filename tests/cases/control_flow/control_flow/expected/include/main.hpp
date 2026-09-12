@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(x: int32) -> int32:
 int32_t classify(int32_t x);
+// def check_range(x: int32) -> int32:
 int32_t check_range(int32_t x);
+// def check_bounds(x: int32) -> int32:
 int32_t check_bounds(int32_t x);
+// def complex_condition(a: int32, b: int32) -> int32:
 int32_t complex_condition(int32_t a, int32_t b);
+// def nested_else_if(x: int32, y: int32) -> int32:
 int32_t nested_else_if(int32_t x, int32_t y);
 
 void __tpy_init();

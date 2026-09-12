@@ -5,190 +5,206 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # b64: all three padding remainders + roundtrip.
+//     print(b64encode(b"Man"))
+//     print(b64decode(b"TWFu"))
+//     print(b64encode(b"Ma"))
+//     print(b64decode(b"TWE="))
+//     print(b64encode(b"M"))
+//     print(b64decode(b"TQ=="))
+//     print(b64encode(b""))
+//     print(b64decode(b""))
+//     print(b64encode(b"hello world"))
+//     print(b64decode(b"aGVsbG8gd29ybGQ="))
+//
+//     # standard_b64* are aliases.
+//     print(standard_b64encode(b"Man"))
+//     print(standard_b64decode(b"TWFu"))
+//
+//     # urlsafe: bytes that trigger + and / in the standard alphabet get -/_.
+//     raw: bytes = b"\xfb\xff"
+//     print(b64encode(raw))
+//     print(urlsafe_b64encode(raw))
+//     print(urlsafe_b64decode(b"-_8="))
+//     print(b64decode(b"+/8="))
+//
+//     # b16: all-zero, simple, roundtrip.
+//     print(b16encode(b""))
+//     print(b16encode(b"\x00"))
+//     print(b16encode(b"Hi!"))
+//     print(b16decode(b"486921"))
+//
+//     # b32: every input-length mod 5 triggers a different pad count.
+//     print(b32encode(b""))
+//     print(b32encode(b"f"))         # 1 -> 6 pads
+//     print(b32encode(b"fo"))        # 2 -> 4 pads
+//     print(b32encode(b"foo"))       # 3 -> 3 pads
+//     print(b32encode(b"foob"))      # 4 -> 1 pad
+//     print(b32encode(b"fooba"))     # 5 -> 0 pads
+//     print(b32encode(b"foobar"))    # 6 -> 6 pads (5+1)
+//     print(b32decode(b"MY======"))
+//     print(b32decode(b"MZXQ===="))
+//     print(b32decode(b"MZXW6==="))
+//     print(b32decode(b"MZXW6YQ="))
+//     print(b32decode(b"MZXW6YTB"))
+//     print(b32decode(b"MZXW6YTBOI======"))
+//
+//     # altchars on b64: same alphabet swap as urlsafe_*, callable form.
+//     print(b64encode(raw, b"-_"))
+//     print(b64decode(b"-_8=", b"-_"))
+//
+//     # validate=False (CPython default) skips non-alphabet chars.
+//     print(b64decode(b"TWFu\n"))
+//     print(b64decode(b"T W F u"))
+//     # validate=True: strict, must consist entirely of alphabet + padding.
+//     print(b64decode(b"TWFu", None, True))
+//
+//     # b32 casefold + map01.
+//     print(b32decode(b"mzxw6ytb", True))
+//     print(b32decode(b"MZXW0YTB", False, b"I"))  # '0' -> 'O'
+//     print(b32decode(b"MZXW1YTB", False, b"L"))  # '1' -> 'L'
+//
+//     # bytearray input: accepted via span coercion.
+//     ba: bytearray = bytearray(b"Man")
+//     print(b64encode(ba))
+//
+//     # encodebytes: MIME-style 76-char line wrap + trailing newline.
+//     print(encodebytes(b""))
+//     print(encodebytes(b"hello"))
+//     print(encodebytes(b"a" * 76))
+//     print(encodebytes(b"a" * 77))
+//     print(decodebytes(b"YWFh\n"))
+//     print(decodebytes(b"aGVsbG8=\n"))
+//
+//     # bytes/bytearray inputs share the code path; verify with a standard
+//     # bytearray through urlsafe too.
+//     print(urlsafe_b64encode(bytearray(b"\xfb\xff")))
+//
+//     # str input on decoders (CPython accepts ASCII str; encoders don't).
+//     print(b64decode("TWFu"))
+//     print(standard_b64decode("TWFu"))
+//     print(urlsafe_b64decode("-_8="))
+//     print(b32decode("MZXW6YTB"))
+//     print(b32decode("mzxw6ytb", True))
+//     print(b16decode("486921"))
+//     print(b16decode("48af", True))
+//
+//     # Error paths -- catchable ValueError, matching CPython's binascii.Error
+//     # (which subclasses ValueError). altchars/map01 length validation uses
+//     # AssertionError in CPython and ValueError in TPy, so those aren't covered
+//     # here (would break byte-identical cpy parity).
+//     try:
+//         b64decode(b"????", None, True)  # validate=True + invalid chars
+//     except ValueError:
+//         print("b64 validate raised")
+//     try:
+//         b32decode(b"MZXQ===")  # 7 chars, not a multiple of 8
+//     except ValueError:
+//         print("b32 length raised")
+//     try:
+//         b16decode(b"4G")  # G not a valid hex char
+//     except ValueError:
+//         print("b16 char raised")
 void main() {
-    // # b64: all three padding remainders + roundtrip.
-    // print(b64encode(b"Man"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("Man", 3))) << "\n";
-    // print(b64decode(b"TWFu"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n";
-    // print(b64encode(b"Ma"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("Ma", 2))) << "\n";
-    // print(b64decode(b"TWE="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWE=", 4))) << "\n";
-    // print(b64encode(b"M"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("M", 1))) << "\n";
-    // print(b64decode(b"TQ=="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TQ==", 4))) << "\n";
-    // print(b64encode(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::BytesView{})) << "\n";
-    // print(b64decode(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::BytesView{})) << "\n";
-    // print(b64encode(b"hello world"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("hello world", 11))) << "\n";
-    // print(b64decode(b"aGVsbG8gd29ybGQ="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("aGVsbG8gd29ybGQ=", 16))) << "\n";
-    // # standard_b64* are aliases.
-    // print(standard_b64encode(b"Man"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64encode(::tpy::bytes_literal("Man", 3))) << "\n";
-    // print(standard_b64decode(b"TWFu"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n";
-    // # urlsafe: bytes that trigger + and / in the standard alphabet get -/_.
-    // raw: bytes = b"\xfb\xff"
     ::tpy::BytesView raw = ::tpy::bytes_literal("\xfb\xff", 2);
-    // print(b64encode(raw))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw)) << "\n";
-    // print(urlsafe_b64encode(raw))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(raw)) << "\n";
-    // print(urlsafe_b64decode(b"-_8="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(::tpy::bytes_literal("-_8=", 4))) << "\n";
-    // print(b64decode(b"+/8="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("+/8=", 4))) << "\n";
-    // # b16: all-zero, simple, roundtrip.
-    // print(b16encode(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::BytesView{})) << "\n";
-    // print(b16encode(b"\x00"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("\000", 1))) << "\n";
-    // print(b16encode(b"Hi!"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("Hi!", 3))) << "\n";
-    // print(b16decode(b"486921"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(::tpy::bytes_literal("486921", 6))) << "\n";
-    // # b32: every input-length mod 5 triggers a different pad count.
-    // print(b32encode(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::BytesView{})) << "\n";
-    // print(b32encode(b"f"))         # 1 -> 6 pads
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("f", 1))) << "\n";
-    // print(b32encode(b"fo"))        # 2 -> 4 pads
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("fo", 2))) << "\n";
-    // print(b32encode(b"foo"))       # 3 -> 3 pads
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foo", 3))) << "\n";
-    // print(b32encode(b"foob"))      # 4 -> 1 pad
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foob", 4))) << "\n";
-    // print(b32encode(b"fooba"))     # 5 -> 0 pads
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("fooba", 5))) << "\n";
-    // print(b32encode(b"foobar"))    # 6 -> 6 pads (5+1)
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foobar", 6))) << "\n";
-    // print(b32decode(b"MY======"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MY======", 8))) << "\n";
-    // print(b32decode(b"MZXQ===="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXQ====", 8))) << "\n";
-    // print(b32decode(b"MZXW6==="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6===", 8))) << "\n";
-    // print(b32decode(b"MZXW6YQ="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YQ=", 8))) << "\n";
-    // print(b32decode(b"MZXW6YTB"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YTB", 8))) << "\n";
-    // print(b32decode(b"MZXW6YTBOI======"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YTBOI======", 16))) << "\n";
-    // # altchars on b64: same alphabet swap as urlsafe_*, callable form.
-    // print(b64encode(raw, b"-_"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw, ::tpy::bytes_literal_owned("-_", 2))) << "\n";
-    // print(b64decode(b"-_8=", b"-_"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("-_8=", 4), ::tpy::bytes_literal_owned("-_", 2))) << "\n";
-    // # validate=False (CPython default) skips non-alphabet chars.
-    // print(b64decode(b"TWFu\n"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu\n", 5))) << "\n";
-    // print(b64decode(b"T W F u"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("T W F u", 7))) << "\n";
-    // # validate=True: strict, must consist entirely of alphabet + padding.
-    // print(b64decode(b"TWFu", None, True))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu", 4), std::nullopt, true)) << "\n";
-    // # b32 casefold + map01.
-    // print(b32decode(b"mzxw6ytb", True))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("mzxw6ytb", 8), true)) << "\n";
-    // print(b32decode(b"MZXW0YTB", False, b"I"))  # '0' -> 'O'
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW0YTB", 8), false, ::tpy::bytes_literal_owned("I", 1))) << "\n";
-    // print(b32decode(b"MZXW1YTB", False, b"L"))  # '1' -> 'L'
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW1YTB", 8), false, ::tpy::bytes_literal_owned("L", 1))) << "\n";
-    // # bytearray input: accepted via span coercion.
-    // ba: bytearray = bytearray(b"Man")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("Man", 3));
-    // print(b64encode(ba))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(ba)) << "\n";
-    // # encodebytes: MIME-style 76-char line wrap + trailing newline.
-    // print(encodebytes(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::BytesView{})) << "\n";
-    // print(encodebytes(b"hello"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::bytes_literal("hello", 5))) << "\n";
-    // print(encodebytes(b"a" * 76))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 76)))) << "\n";
-    // print(encodebytes(b"a" * 77))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 77)))) << "\n";
-    // print(decodebytes(b"YWFh\n"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("YWFh\n", 5))) << "\n";
-    // print(decodebytes(b"aGVsbG8=\n"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("aGVsbG8=\n", 9))) << "\n";
-    // # bytes/bytearray inputs share the code path; verify with a standard
-    // # bytearray through urlsafe too.
-    // print(urlsafe_b64encode(bytearray(b"\xfb\xff")))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(::tpy::ByteArray(::tpy::bytes_literal("\xfb\xff", 2)))) << "\n";
-    // # str input on decoders (CPython accepts ASCII str; encoders don't).
-    // print(b64decode("TWFu"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(std::string_view("TWFu"))) << "\n";
-    // print(standard_b64decode("TWFu"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(std::string_view("TWFu"))) << "\n";
-    // print(urlsafe_b64decode("-_8="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(std::string_view("-_8="))) << "\n";
-    // print(b32decode("MZXW6YTB"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(std::string_view("MZXW6YTB"))) << "\n";
-    // print(b32decode("mzxw6ytb", True))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(std::string_view("mzxw6ytb"), true)) << "\n";
-    // print(b16decode("486921"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(std::string_view("486921"))) << "\n";
-    // print(b16decode("48af", True))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(std::string_view("48af"), true)) << "\n";
-    // # Error paths -- catchable ValueError, matching CPython's binascii.Error
-    // # (which subclasses ValueError). altchars/map01 length validation uses
-    // # AssertionError in CPython and ValueError in TPy, so those aren't covered
-    // # here (would break byte-identical cpy parity).
-    // try:
     {
         try {
-            // b64decode(b"????", None, True)  # validate=True + invalid chars
             ::tpystd::base64::b64decode(::tpy::bytes_literal("????", 4), std::nullopt, true);
         } catch (const ::tpy::ValueError&) {
-            // print("b64 validate raised")
             std::cout << "b64 validate raised" << "\n";
         }
     }
-    // try:
     {
         try {
-            // b32decode(b"MZXQ===")  # 7 chars, not a multiple of 8
             ::tpystd::base64::b32decode(::tpy::bytes_literal("MZXQ===", 7));
         } catch (const ::tpy::ValueError&) {
-            // print("b32 length raised")
             std::cout << "b32 length raised" << "\n";
         }
     }
-    // try:
     {
         try {
-            // b16decode(b"4G")  # G not a valid hex char
             ::tpystd::base64::b16decode(::tpy::bytes_literal("4G", 2));
         } catch (const ::tpy::ValueError&) {
-            // print("b16 char raised")
             std::cout << "b16 char raised" << "\n";
         }
     }
 }
 
+// # base64: encode/decode for b64 (standard + urlsafe), b16, b32, covering
+// # all padding remainders and the urlsafe alphabet divergence from standard.
+// from base64 import (
+//     b64encode, b64decode,
+//     standard_b64encode, standard_b64decode,
+//     urlsafe_b64encode, urlsafe_b64decode,
+//     b16encode, b16decode,
+//     b32encode, b32decode,
+//     encodebytes, decodebytes,
+// )
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # base64: encode/decode for b64 (standard + urlsafe), b16, b32, covering
-    // # all padding remainders and the urlsafe alphabet divergence from standard.
-    // from base64 import (
-    // b64encode, b64decode,
-    // standard_b64encode, standard_b64decode,
-    // urlsafe_b64encode, urlsafe_b64decode,
-    // b16encode, b16decode,
-    // b32encode, b32decode,
-    // encodebytes, decodebytes,
-    // )
     ::tpystd::base64::__tpy_init();
-    // main()
     main();
 }
 

@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(d: dict[str, bytearray], cond: bool) -> None:
 void pick(::tpy::ordered_map<std::string, ::tpy::ByteArray>& d, bool cond);
+// def main() -> None:
 void main();
 
 void __tpy_init();

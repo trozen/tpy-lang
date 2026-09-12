@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[list[int32]]:
 std::vector<int32_t> make();
+// def uniq() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> uniq();
+// def main() -> None:
 void main();
 
 void __tpy_init();

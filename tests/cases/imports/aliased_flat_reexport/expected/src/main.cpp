@@ -3,22 +3,22 @@
 
 namespace tpyapp::main {
 
-// x = MyCls(7)
 ::tpyapp::c::Original* x{};
 
+// # Aliased re-export through a non-facade intermediate. `b` does
+// # `from c import Original as MyCls`, then main pulls `MyCls`.
+// from b import MyCls
+//
+// x = MyCls(7)
+// print(x.val)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Aliased re-export through a non-facade intermediate. `b` does
-    // # `from c import Original as MyCls`, then main pulls `MyCls`.
-    // from b import MyCls
     ::tpyapp::b::__tpy_init();
-    // x = MyCls(7)
     static ::tpyapp::c::Original __global_slot_1 = ::tpyapp::c::Original(7);
     x = &__global_slot_1;
-    // print(x.val)
     std::cout << x->val << "\n";
 }
 

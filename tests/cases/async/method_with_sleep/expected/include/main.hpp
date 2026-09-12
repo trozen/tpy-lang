@@ -17,6 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_Worker_run;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
 
 // class Worker:
@@ -37,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Worker& obj) {
     return os;
 }
 
-// Async coroutine: Worker.run
+// async def run(self) -> str:
 struct __coro_Worker_run {
     int32_t __state;
     bool __cancel_pending;
@@ -65,7 +66,7 @@ inline __coro_Worker_run Worker::run() const {
     return __coro_Worker_run(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -92,6 +93,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self, n: str) -> None:
+//     self.name = n
 inline Worker::Worker(std::string_view n) : name(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

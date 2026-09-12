@@ -13,7 +13,9 @@ struct BinOp;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(e: Expr) -> str:
 std::string describe(::tpy::Union<const BinOp*, const Lit*> e);
+// def main() -> None:
 void main();
 
 // class MyWrap[T]:
@@ -66,6 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 using Expr = ::tpy::Union<BinOp, Lit>;
 

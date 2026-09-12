@@ -5,25 +5,48 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # 1. Optional[DC] present
+//     mp1 = MaybePoint("origin", Point(0, 0))
+//     print(asdict(mp1))
+//     print(astuple(mp1))
+//
+//     # 2. Optional[DC] absent
+//     mp2 = MaybePoint("none", None)
+//     print(asdict(mp2))
+//     print(astuple(mp2))
+//
+//     # 3. list[Optional[DC]]
+//     pl = PointList([Point(1, 2), None, Point(3, 4)])
+//     print(asdict(pl))
+//     print(astuple(pl))
+//
+//     # 4. Deeply nested Optional
+//     ml1 = MaybeLine(Line(Point(0, 0), Point(1, 1)))
+//     print(asdict(ml1))
+//     print(astuple(ml1))
+//
+//     ml2 = MaybeLine(None)
+//     print(asdict(ml2))
+//     print(astuple(ml2))
+//
+//     # 5. Mixed required + optional
+//     m1 = Mixed("both", Point(1, 2), Point(3, 4))
+//     print(asdict(m1))
+//
+//     m2 = Mixed("req-only", Point(5, 6), None)
+//     print(asdict(m2))
+//
+//     # 6. dict[str, Optional[DC]]
+//     lp = LabeledPoints({"a": Point(1, 2), "b": None, "c": Point(3, 4)})
+//     print(asdict(lp))
 void main() {
-    // # 1. Optional[DC] present
-    // mp1 = MaybePoint("origin", Point(0, 0))
     MaybePoint mp1 = MaybePoint("origin", Point(0, 0));
-    // print(asdict(mp1))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"label", mp1.label}, {"pos", (((mp1.pos.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*mp1.pos).x}, {"y", (*mp1.pos).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt)))}}))) << "\n";
-    // print(astuple(mp1))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, std::optional<std::tuple<int32_t, int32_t>>>{mp1.label, (((mp1.pos.has_value())) ? (std::optional<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{(*mp1.pos).x, (*mp1.pos).y})) : (std::optional<std::tuple<int32_t, int32_t>>(std::nullopt)))}) << "\n";
-    // # 2. Optional[DC] absent
-    // mp2 = MaybePoint("none", None)
     MaybePoint mp2 = MaybePoint("none", std::nullopt);
-    // print(asdict(mp2))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"label", mp2.label}, {"pos", (((mp2.pos.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*mp2.pos).x}, {"y", (*mp2.pos).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt)))}}))) << "\n";
-    // print(astuple(mp2))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, std::optional<std::tuple<int32_t, int32_t>>>{mp2.label, (((mp2.pos.has_value())) ? (std::optional<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{(*mp2.pos).x, (*mp2.pos).y})) : (std::optional<std::tuple<int32_t, int32_t>>(std::nullopt)))}) << "\n";
-    // # 3. list[Optional[DC]]
-    // pl = PointList([Point(1, 2), None, Point(3, 4)])
     PointList pl = PointList({Point(1, 2), std::nullopt, Point(3, 4)});
-    // print(asdict(pl))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"items", ({
         std::vector<std::optional<::tpy::ordered_map<std::string, int32_t>>> __result;
         auto& __obj_0 = pl.items;
@@ -36,7 +59,6 @@ void main() {
         }
         std::move(__result);
     })}})) << "\n";
-    // print(astuple(pl))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::vector<std::optional<std::tuple<int32_t, int32_t>>>>(({
         std::vector<std::optional<std::tuple<int32_t, int32_t>>> __result;
         auto& __obj_1 = pl.items;
@@ -49,32 +71,17 @@ void main() {
         }
         std::move(__result);
     }))) << "\n";
-    // # 4. Deeply nested Optional
-    // ml1 = MaybeLine(Line(Point(0, 0), Point(1, 1)))
     MaybeLine ml1 = MaybeLine(Line(Point(0, 0), Point(1, 1)));
-    // print(asdict(ml1))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"line", (((ml1.line.has_value())) ? (std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", (*ml1.line).start.x}, {"y", (*ml1.line).start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", (*ml1.line).end.x}, {"y", (*ml1.line).end.y}})}}))) : (std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>(std::nullopt)))}})) << "\n";
-    // print(astuple(ml1))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>>((((ml1.line.has_value())) ? (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{(*ml1.line).start.x, (*ml1.line).start.y}, std::tuple<int32_t, int32_t>{(*ml1.line).end.x, (*ml1.line).end.y}})) : (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::nullopt))))) << "\n";
-    // ml2 = MaybeLine(None)
     MaybeLine ml2 = MaybeLine(std::nullopt);
-    // print(asdict(ml2))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"line", (((ml2.line.has_value())) ? (std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", (*ml2.line).start.x}, {"y", (*ml2.line).start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", (*ml2.line).end.x}, {"y", (*ml2.line).end.y}})}}))) : (std::optional<::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>(std::nullopt)))}})) << "\n";
-    // print(astuple(ml2))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>>((((ml2.line.has_value())) ? (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{(*ml2.line).start.x, (*ml2.line).start.y}, std::tuple<int32_t, int32_t>{(*ml2.line).end.x, (*ml2.line).end.y}})) : (std::optional<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>(std::nullopt))))) << "\n";
-    // # 5. Mixed required + optional
-    // m1 = Mixed("both", Point(1, 2), Point(3, 4))
     Mixed m1 = Mixed("both", Point(1, 2), Point(3, 4));
-    // print(asdict(m1))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>, std::optional<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>, std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"name", m1.name}, {"required", ::tpy::ordered_map<std::string, int32_t>({{"x", m1.required.x}, {"y", m1.required.y}})}, {"optional", (((m1.optional.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*m1.optional).x}, {"y", (*m1.optional).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt)))}}))) << "\n";
-    // m2 = Mixed("req-only", Point(5, 6), None)
     Mixed m2 = Mixed("req-only", Point(5, 6), std::nullopt);
-    // print(asdict(m2))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>, std::optional<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>, std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"name", m2.name}, {"required", ::tpy::ordered_map<std::string, int32_t>({{"x", m2.required.x}, {"y", m2.required.y}})}, {"optional", (((m2.optional.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*m2.optional).x}, {"y", (*m2.optional).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt)))}}))) << "\n";
-    // # 6. dict[str, Optional[DC]]
-    // lp = LabeledPoints({"a": Point(1, 2), "b": None, "c": Point(3, 4)})
     LabeledPoints lp = LabeledPoints(::tpy::ordered_map<std::string, std::optional<Point>>({{"a", Point(1, 2)}, {"b", std::nullopt}, {"c", Point(3, 4)}}));
-    // print(asdict(lp))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>>>({{"items", ({
         ::tpy::ordered_map<std::string, std::optional<::tpy::ordered_map<std::string, int32_t>>> __result;
         auto __obj_2 = ::tpy::dict_items(lp.items);
@@ -90,14 +97,15 @@ void main() {
     })}})) << "\n";
 }
 
+// # Test asdict()/astuple() with Optional[Dataclass] fields and nested containers
+// from dataclasses import dataclass, asdict, astuple
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test asdict()/astuple() with Optional[Dataclass] fields and nested containers
-    // from dataclasses import dataclass, asdict, astuple
-    // main()
     main();
 }
 

@@ -7,43 +7,43 @@ namespace tpyapp::main {
 // # sync FIRST rebind: the loan sits in the block-scoped init storage, which the
 // # rebind slot does not overlap.
 // def sync_first_section() -> None:
+//     p = Point(1)
+//     alias = p
+//     p = Point(50)  # tpyc: ok
+//     alias.bump()
+//     print("sync_first:", alias.x, p.x)
 void sync_first_section() {
     std::optional<Point> __slot_2;
-    // p = Point(1)
     Point __slot_1 = Point(1);
     Point* p = &__slot_1;
-    // alias = p
     Point& alias = (*p);
-    // p = Point(50)  # tpyc: ok
     p = &*(__slot_2 = Point(50));
-    // alias.bump()
     alias.bump();
-    // print("sync_first:", alias.x, p.x)
     std::cout << "sync_first:" << " " << alias.x << " " << p->x << "\n";
 }
 
 // # loan taken before the loop, rebind inside it: same init/slot split, and the
 // # body binds no loan of its own for the next iteration to clobber.
 // def rebind_in_loop_section() -> None:
+//     p = Point(2)
+//     alias = p
+//     i = 0
+//     while i < 3:
+//         p = Point(i)  # tpyc: ok
+//         i += 1
+//     alias.bump()
+//     print("rebind_in_loop:", alias.x, p.x)
 void rebind_in_loop_section() {
     std::optional<Point> __slot_2;
-    // p = Point(2)
     Point __slot_1 = Point(2);
     Point* p = &__slot_1;
-    // alias = p
     Point& alias = (*p);
-    // i = 0
     int32_t i = 0;
-    // while i < 3:
     while ((i < 3)) {
-        // p = Point(i)  # tpyc: ok
         p = &*(__slot_2 = Point(i));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // alias.bump()
     alias.bump();
-    // print("rebind_in_loop:", alias.x, p.x)
     std::cout << "rebind_in_loop:" << " " << alias.x << " " << p->x << "\n";
 }
 
@@ -51,195 +51,196 @@ void rebind_in_loop_section() {
 // # path only, so the else-arm's loan still sits in the init storage and the
 // # else-arm's own rebind (its first) does not reach it.
 // def branch_arms_section(c: bool) -> None:
+//     p = Point(15)
+//     if c:
+//         p = Point(16)
+//         print("branch_arms_then:", p.x)
+//     else:
+//         alias = p
+//         p = Point(50)  # tpyc: ok
+//         alias.bump()
+//         print("branch_arms_else:", alias.x, p.x)
 void branch_arms_section(bool c) {
     std::optional<Point> __slot_2;
-    // p = Point(15)
     Point __slot_1 = Point(15);
     Point* p = &__slot_1;
-    // if c:
     if (c) {
-        // p = Point(16)
         p = &*(__slot_2 = Point(16));
-        // print("branch_arms_then:", p.x)
         std::cout << "branch_arms_then:" << " " << p->x << "\n";
-    // else:
     } else {
-        // alias = p
         Point& alias = (*p);
-        // p = Point(50)  # tpyc: ok
         p = &*(__slot_2 = Point(50));
-        // alias.bump()
         alias.bump();
-        // print("branch_arms_else:", alias.x, p.x)
         std::cout << "branch_arms_else:" << " " << alias.x << " " << p->x << "\n";
     }
 }
 
 // # the loan is dead at the rebind, so nothing observes the clobber.
 // def dead_alias_section() -> None:
+//     p = Point(3)
+//     p = Point(4)
+//     alias = p
+//     print("dead_alias_pre:", alias.x)
+//     p = Point(50)  # tpyc: ok
+//     print("dead_alias:", p.x)
 void dead_alias_section() {
     std::optional<Point> __slot_2;
-    // p = Point(3)
     Point __slot_1 = Point(3);
     Point* p = &__slot_1;
-    // p = Point(4)
     p = &*(__slot_2 = Point(4));
-    // alias = p
     Point& alias = (*p);
-    // print("dead_alias_pre:", alias.x)
     std::cout << "dead_alias_pre:" << " " << alias.x << "\n";
-    // p = Point(50)  # tpyc: ok
     p = &*(__slot_2 = Point(50));
-    // print("dead_alias:", p.x)
     std::cout << "dead_alias:" << " " << p->x << "\n";
 }
 
 // # `None` stores a null handle; the object the loan holds is untouched.
 // def none_rebind_section() -> None:
+//     p: Point | None = Point(5)
+//     p = Point(6)
+//     alias = p
+//     p = None  # tpyc: ok
+//     alias.bump()
+//     print("none_rebind:", alias.x, p is None)
 void none_rebind_section() {
     std::optional<Point> __slot_2;
-    // p: Point | None = Point(5)
     Point __slot_1 = Point(5);
     Point* p = &__slot_1;
-    // p = Point(6)
     p = &*(__slot_2 = Point(6));
-    // alias = p
     Point& alias = (*p);
-    // p = None  # tpyc: ok
     p = nullptr;
-    // alias.bump()
     alias.bump();
-    // print("none_rebind:", alias.x, p is None)
     std::cout << "none_rebind:" << " " << alias.x << " " << ::tpy::print_bool((p == nullptr)) << "\n";
 }
 
 // # a container insert copies at the boundary (intended here -- the mutation
 // # below proves it), so `xs` holds no loan of `p` for the rebind to clobber.
 // def container_insert_section() -> None:
+//     p = Point(7)
+//     xs: list[Point] = []
+//     xs.append(copy(p))
+//     p.bump()
+//     p = Point(50)  # tpyc: ok
+//     print("container_insert:", xs[0].x, p.x)
 void container_insert_section() {
     std::optional<Point> __slot_2;
-    // p = Point(7)
     Point __slot_1 = Point(7);
     Point* p = &__slot_1;
-    // xs: list[Point] = []
     std::vector<Point> xs = std::vector<Point>{};
-    // xs.append(copy(p))
     xs.push_back(Point((*p)));
-    // p.bump()
     p->bump();
-    // p = Point(50)  # tpyc: ok
     p = &*(__slot_2 = Point(50));
-    // print("container_insert:", xs[0].x, p.x)
     std::cout << "container_insert:" << " " << ::tpy::__getitem__(xs, 0).x << " " << p->x << "\n";
 }
 
 // # rebinding the Ptr LOCAL (a value type) copies a pointer; it clobbers nothing.
 // def rebound_ptr_section() -> None:
+//     a = Point(8)
+//     b = Point(9)
+//     q = take_ptr(a)
+//     q = take_ptr(b)  # tpyc: ok
+//     q.x += 100
+//     print("rebound_ptr:", a.x, b.x)
 void rebound_ptr_section() {
-    // a = Point(8)
     Point a = Point(8);
-    // b = Point(9)
     Point b = Point(9);
-    // q = take_ptr(a)
     Point* q = &a;
-    // q = take_ptr(b)  # tpyc: ok
     q = &b;
-    // q.x += 100
     q->x = ::tpy::add_check<int32_t>(q->x, 100);
-    // print("rebound_ptr:", a.x, b.x)
     std::cout << "rebound_ptr:" << " " << a.x << " " << b.x << "\n";
 }
 
 // # hatch 1: copy() gives the loan an independent object.
 // def hatch_copy_section() -> None:
+//     p = Point(10)
+//     p = Point(11)
+//     held = copy(p)
+//     p = Point(50)  # tpyc: ok
+//     held.bump()
+//     print("hatch_copy:", held.x, p.x)
 void hatch_copy_section() {
     std::optional<Point> __slot_2;
-    // p = Point(10)
     Point __slot_1 = Point(10);
     Point* p = &__slot_1;
-    // p = Point(11)
     p = &*(__slot_2 = Point(11));
-    // held = copy(p)
     Point held = Point((*p));
-    // p = Point(50)  # tpyc: ok
     p = &*(__slot_2 = Point(50));
-    // held.bump()
     held.bump();
-    // print("hatch_copy:", held.x, p.x)
     std::cout << "hatch_copy:" << " " << held.x << " " << p->x << "\n";
 }
 
 // # hatch 2: Rc keeps identity AND refcount, so the rebind drops one handle only.
 // def hatch_rc_section() -> None:
+//     r = Rc.new(Point(12))
+//     shared = r.clone()
+//     r = Rc.new(Point(50))  # tpyc: ok
+//     shared.bump()
+//     print("hatch_rc:", shared.x, r.x)
 void hatch_rc_section() {
     std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
-    // r = Rc.new(Point(12))
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(12));
     ::tpystd::tplib::rc::Rc<Point>* r = &__slot_1;
-    // shared = r.clone()
     ::tpystd::tplib::rc::Rc<Point> shared = r->clone();
-    // r = Rc.new(Point(50))  # tpyc: ok
     r = &*(__slot_2 = Rc<Point>::new_<Point>(Point(50)));
-    // shared.bump()
     shared.__deref__().bump();
-    // print("hatch_rc:", shared.x, r.x)
     std::cout << "hatch_rc:" << " " << shared.__deref__().x << " " << r->__deref__().x << "\n";
 }
 
 // # hatch 3: a fresh name for the new value -- allocation-free, semantics-preserving.
 // def hatch_fresh_name_section() -> None:
+//     p = Point(13)
+//     p = Point(14)
+//     alias = p
+//     q = Point(50)
+//     alias.bump()
+//     print("hatch_fresh_name:", alias.x, p.x, q.x)
 void hatch_fresh_name_section() {
     std::optional<Point> __slot_2;
-    // p = Point(13)
     Point __slot_1 = Point(13);
     Point* p = &__slot_1;
-    // p = Point(14)
     p = &*(__slot_2 = Point(14));
-    // alias = p
     Point& alias = (*p);
-    // q = Point(50)
     Point q = Point(50);
-    // alias.bump()
     alias.bump();
-    // print("hatch_fresh_name:", alias.x, p.x, q.x)
     std::cout << "hatch_fresh_name:" << " " << alias.x << " " << p->x << " " << q.x << "\n";
 }
 
 // def main() -> None:
+//     sync_first_section()
+//     rebind_in_loop_section()
+//     branch_arms_section(True)
+//     branch_arms_section(False)
+//     dead_alias_section()
+//     none_rebind_section()
+//     container_insert_section()
+//     rebound_ptr_section()
+//     hatch_copy_section()
+//     hatch_rc_section()
+//     hatch_fresh_name_section()
 void main() {
-    // sync_first_section()
     sync_first_section();
-    // rebind_in_loop_section()
     rebind_in_loop_section();
-    // branch_arms_section(True)
     branch_arms_section(true);
-    // branch_arms_section(False)
     branch_arms_section(false);
-    // dead_alias_section()
     dead_alias_section();
-    // none_rebind_section()
     none_rebind_section();
-    // container_insert_section()
     container_insert_section();
-    // rebound_ptr_section()
     rebound_ptr_section();
-    // hatch_copy_section()
     hatch_copy_section();
-    // hatch_rc_section()
     hatch_rc_section();
-    // hatch_fresh_name_section()
     hatch_fresh_name_section();
 }
 
+// from tplib.rc import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

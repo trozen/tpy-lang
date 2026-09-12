@@ -5,74 +5,74 @@ namespace tpyapp::main {
 
 
 // def take_u32(x: uint32) -> uint32:
+//     return x
 uint32_t take_u32(uint32_t x) {
-    // return x
     return x;
 }
 
 // def take_u64(x: uint64) -> uint64:
+//     return x
 uint64_t take_u64(uint64_t x) {
-    // return x
     return x;
 }
 
 // def loop_shape(limit: uint64) -> uint64:
+//     # offset starts at literal 0 (no annotation), then both the binop ARG
+//     # at line 18 and the comparison vs limit lock it in as uint64.
+//     offset = 0
+//     while offset < limit:
+//         offset = take_u64(offset) + 1
+//     return offset
 uint64_t loop_shape(uint64_t limit) {
-    // # offset starts at literal 0 (no annotation), then both the binop ARG
-    // # at line 18 and the comparison vs limit lock it in as uint64.
-    // offset = 0
     uint64_t offset = 0;
-    // while offset < limit:
     while ((offset < limit)) {
-        // offset = take_u64(offset) + 1
         offset = (::tpy::add_check<uint64_t>(take_u64(offset), 1));
     }
-    // return offset
     return offset;
 }
 
 // def repeated_use() -> None:
+//     # First call retro-widens; later use of the same local just sees uint32.
+//     a = 5
+//     print(take_u32(a))
+//     print(take_u32(a + 1))
 void repeated_use() {
-    // # First call retro-widens; later use of the same local just sees uint32.
-    // a = 5
     uint32_t a = 5;
-    // print(take_u32(a))
     std::cout << take_u32(a) << "\n";
-    // print(take_u32(a + 1))
     std::cout << take_u32((::tpy::add_check<uint32_t>(a, 1))) << "\n";
 }
 
 // def literal_only_branch() -> None:
+//     # Reassignment from another integer literal keeps the seed alive, so a
+//     # later uint64 demand still triggers retro-widen.
+//     n = 0
+//     if True:
+//         n = 7
+//     print(take_u64(n))
 void literal_only_branch() {
-    // # Reassignment from another integer literal keeps the seed alive, so a
-    // # later uint64 demand still triggers retro-widen.
-    // n = 0
     uint64_t n = 0;
-    // if True:
     if (true) {
-        // n = 7
         n = 7;
     }
-    // print(take_u64(n))
     std::cout << take_u64(n) << "\n";
 }
 
 // def main() -> None:
+//     print(loop_shape(3))
+//     repeated_use()
+//     literal_only_branch()
 void main() {
-    // print(loop_shape(3))
     std::cout << loop_shape(3) << "\n";
-    // repeated_use()
     repeated_use();
-    // literal_only_branch()
     literal_only_branch();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -35,13 +36,14 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Bag::Bag() : n(0) {}
 
 // # The body cannot READ an Own[view] param yet (`name.own_read`), so the
 // # case is about the ARGUMENT the call binds, not about `s`.
 // def keep(self, s: Own[StrView]) -> None:
+//     self.n += 1
 inline void Bag::keep(std::string_view s) {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 void __tpy_init();

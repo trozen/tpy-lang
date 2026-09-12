@@ -13,6 +13,7 @@ struct Both;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class A:
@@ -64,28 +65,28 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
 
 
 // def foo(self) -> str:
+//     return "A.foo"
 inline std::string A::foo() const {
-    // return "A.foo"
     return "A.foo";
 }
 
 // def bar(self) -> str:
+//     return "B.bar"
 inline std::string B::bar() const {
-    // return "B.bar"
     return "B.bar";
 }
 
 // @override
 // def foo(self) -> str:  # tpyc: warning(/non-polymorphic/)
+//     return "Both.foo"
 inline std::string Both::foo() const {
-    // return "Both.foo"
     return "Both.foo";
 }
 
 // @override
 // def bar(self) -> str:  # tpyc: warning(/non-polymorphic/)
+//     return "Both.bar"
 inline std::string Both::bar() const {
-    // return "Both.bar"
     return "Both.bar";
 }
 void __tpy_init();

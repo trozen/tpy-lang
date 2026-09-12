@@ -12,6 +12,7 @@ template<typename T, std::size_t N> struct SimpleList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class StorageIter[T, N: int]:
@@ -25,23 +26,26 @@ struct StorageIter {
     int32_t _index;
 
     // def __init__(self, storage: Ptr[UninitArrayStorage[T, N]], size: int32) -> None:
+    //     self._storage = storage
+    //     self._size = size
+    //     self._index = 0
     StorageIter() = default;
     explicit StorageIter(::tpy::UninitArrayStorage<T, N>* storage, int32_t size) : _storage(storage), _size(size), _index(0) {}
 
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> Own[T]:
+    //     if self._index < self._size:
+    //         val = self._storage.load(uint32(self._index))
+    //         self._index += 1
+    //         return val
+    //     raise StopIteration
     std::expected<T, ::tpy::StopIteration> __next__() {
-        // if self._index < self._size:
         if ((this->_index < this->_size)) {
-            // val = self._storage.load(uint32(self._index))
             ::tpy::val_or_cref_t<T> val = ::tpy::deref_check(this->_storage).load(::tpy::int_cast_check<uint32_t>(this->_index));
-            // self._index += 1
             this->_index = ::tpy::add_check<int32_t>(this->_index, 1);
-            // return val
             return val;
         }
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.StorageIter";
@@ -63,6 +67,8 @@ struct SimpleList {
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
+    //     self._storage = UninitArrayStorage[T, N]()
+    //     self._size = 0
     SimpleList() : _storage(::tpy::UninitArrayStorage<T, N>()), _size(0) {}
     // non-copyable (field '_storage')
     SimpleList(const SimpleList&) = delete;
@@ -79,27 +85,27 @@ struct SimpleList {
     }
 
     // def __del__(self) -> None:
+    //     for i in range(self._size):
+    //         self._storage.drop(uint32(i))
     ~SimpleList() {
         if (!this->__tpy_owned_) return;
-        // for i in range(self._size):
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            // self._storage.drop(uint32(i))
             this->_storage.drop(static_cast<uint32_t>(i));
         }
     }
 
     // def add(self, value: Own[T]) -> None:
+    //     self._storage.init(uint32(self._size), value)
+    //     self._size += 1
     void add(::tpy::own_param_t<T> value) {
-        // self._storage.init(uint32(self._size), value)
         this->_storage.init(::tpy::int_cast_check<uint32_t>(this->_size), std::move(value));
-        // self._size += 1
         this->_size = ::tpy::add_check<int32_t>(this->_size, 1);
     }
 
     // def __iter__(self) -> Own[StorageIter[T, N]]:
+    //     return StorageIter[T, N](self._storage, self._size)
     StorageIter<T, N> __iter__() {
-        // return StorageIter[T, N](self._storage, self._size)
         return StorageIter<T, N>(&this->_storage, this->_size);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.SimpleList";

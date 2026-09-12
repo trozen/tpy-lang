@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def dump_pairs(xs: list[tuple[int, int]]) -> None:
 void dump_pairs(const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>& xs);
+// def dump_items(d: dict[int, int]) -> None:
 void dump_items(const ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>& d);
+// def sum_first(xs: list[tuple[int, int]]) -> int:
 ::tpy::BigInt sum_first(const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>& xs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

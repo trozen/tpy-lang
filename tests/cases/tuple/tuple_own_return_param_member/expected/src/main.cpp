@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def f(b: Box) -> tuple[Own[Box], int32]:
+//     pair = (copy(b), 0)   # tpyc: ok
+//     return pair
 std::tuple<Box, int32_t> f(const Box& b) {
-    // pair = (copy(b), 0)   # tpyc: ok
     auto pair = std::tuple<Box, int32_t>{Box(b), 0};
-    // return pair
     return pair;
 }
 
 // def main() -> None:
+//     b = Box(5)
+//     got, n = f(b)
+//     got.val = 99          # mutate the returned (copied) Box
+//     print(b.val)          # 5 -- the copy did not alias b
+//     print(got.val)        # 99
+//     print(n)              # 0
 void main() {
-    // b = Box(5)
     Box b = Box(5);
-    // got, n = f(b)
     auto __tup_1 = f(b);
     Box got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // got.val = 99          # mutate the returned (copied) Box
     got.val = 99;
-    // print(b.val)          # 5 -- the copy did not alias b
     std::cout << b.val << "\n";
-    // print(got.val)        # 99
     std::cout << got.val << "\n";
-    // print(n)              # 0
     std::cout << n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

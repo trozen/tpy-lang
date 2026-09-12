@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def close(h: Own[Handle]) -> int32:
+//     return h.fd
 int32_t close(Handle&& h) {
-    // return h.fd
     return h.fd;
 }
 
 // def main():
+//     h = Handle(42)
+//     alias = h
+//     print(close(alias))
 void main() {
-    // h = Handle(42)
     Handle h = Handle(42);
-    // alias = h
     Handle alias = std::move(h);
-    // print(close(alias))
     std::cout << close(std::move(alias)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

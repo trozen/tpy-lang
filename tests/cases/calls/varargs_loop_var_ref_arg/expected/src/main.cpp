@@ -5,58 +5,58 @@ namespace tpyapp::main {
 
 
 // def take_mut(*items: Box) -> int32:
+//     n: int32 = 0
+//     for b in items:
+//         n += b.val
+//     return n
 int32_t take_mut(::tpy::varargs<const Box> items) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // n += b.val
         n = ::tpy::add_check<int32_t>(n, b.val);
     }
-    // return n
     return n;
 }
 
 // def via_loop(xs: list[Box]) -> int32:
+//     total: int32 = 0
+//     for b in xs:
+//         total += take_mut(b)  # tpyc: ok
+//     return total
 int32_t via_loop(const std::vector<Box>& xs) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for b in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // total += take_mut(b)  # tpyc: ok
         std::array<const Box*, 1> __tmp_1{&b};
         total = ::tpy::add_check<int32_t>(total, take_mut(::tpy::varargs<const Box>(__tmp_1)));
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     items: list[Box] = []
+//     items.append(Box(5))
+//     items.append(Box(6))
+//     print(via_loop(items))
 void main() {
-    // items: list[Box] = []
     std::vector<Box> items = std::vector<Box>{};
-    // items.append(Box(5))
     items.push_back(Box(5));
-    // items.append(Box(6))
     items.push_back(Box(6));
-    // print(via_loop(items))
     std::cout << via_loop(items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

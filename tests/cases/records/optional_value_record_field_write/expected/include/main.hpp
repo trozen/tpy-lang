@@ -12,6 +12,7 @@ struct Slot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point(ValueType):
@@ -56,14 +57,16 @@ inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.o = None
 inline Slot::Slot() : o(std::nullopt) {}
 
 // def put(self, v: Point) -> None:
+//     self.o = v  # value-record inner: stored bare, no convert
 inline void Slot::put(Point v) {
-    // self.o = v  # value-record inner: stored bare, no convert
     this->o = v;
 }
 void __tpy_init();

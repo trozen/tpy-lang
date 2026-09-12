@@ -5,11 +5,11 @@ namespace tpyapp::helpers {
 
 
 // async def add_one(n: int) -> int:
+//     return n + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_add_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));

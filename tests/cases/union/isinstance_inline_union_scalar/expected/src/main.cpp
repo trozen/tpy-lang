@@ -7,35 +7,35 @@ namespace tpyapp::main {
 // # A scalar-member inline union as the isinstance second arg (sibling of the
 // # concrete-class case). All-value union, so no pointer-variant interaction.
 // def kind(v: int | float | str) -> str:
+//     if isinstance(v, int | float):
+//         return "num"
+//     return "str"
 std::string kind(const ::tpy::Union<double, ::tpy::BigInt, std::string>& v) {
-    // if isinstance(v, int | float):
     if ((std::holds_alternative<double>(v) || std::holds_alternative<::tpy::BigInt>(v))) {
-        // return "num"
         return "num";
     }
     const auto& __v = std::get<std::string>(v);
-    // return "str"
     return "str";
 }
 
 // def main() -> None:
+//     a: int | float | str = 5
+//     print(kind(a))
+//     b: int | float | str = "hi"
+//     print(kind(b))
 void main() {
-    // a: int | float | str = 5
     ::tpy::Union<double, ::tpy::BigInt, std::string> a = 5;
-    // print(kind(a))
     std::cout << kind(a) << "\n";
-    // b: int | float | str = "hi"
     ::tpy::Union<double, ::tpy::BigInt, std::string> b = "hi";
-    // print(kind(b))
     std::cout << kind(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

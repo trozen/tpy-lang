@@ -39,14 +39,16 @@ inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = [10, 20, 30]
+//     self._hits = 0
 inline CachedList::CachedList() : _data(std::vector<int32_t>{10, 20, 30}), _hits(0) {}
 
 // @readonly(False)
 // def __getitem__(self, idx: int32) -> int32:
+//     self._hits = self._hits + 1
+//     return self._data[idx]
 inline int32_t CachedList::__getitem__(int32_t idx) {
-    // self._hits = self._hits + 1
     this->_hits = (::tpy::add_check<int32_t>(this->_hits, 1));
-    // return self._data[idx]
     return ::tpy::__getitem__(this->_data, idx);
 }
 void __tpy_init();

@@ -20,8 +20,10 @@ struct DefaultPairFactory;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def create_pair[T: PairFactory](factory: T, a: int32, b: int32) -> Own[SortedPair[int32]]:
 template<PairFactory T>
 SortedPair<int32_t> create_pair(::tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b);
+// def main() -> None:
 void main();
 
 // # A generic record with a bounded type parameter
@@ -34,19 +36,19 @@ struct SortedPair {
     T second;
 
     // def __init__(self, a: T, b: T) -> None:
+    //     if a < b:
+    //         self.first = a
+    //         self.second = b
+    //     else:
+    //         self.first = b
+    //         self.second = a
     SortedPair() = default;
     explicit SortedPair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b) {
-        // if a < b:
         if ((a < b)) {
-            // self.first = a
             this->first = ::tpy::param_to_storage<T>(a);
-            // self.second = b
             this->second = ::tpy::param_to_storage<T>(b);
-        // else:
         } else {
-            // self.first = b
             this->first = ::tpy::param_to_storage<T>(b);
-            // self.second = a
             this->second = ::tpy::param_to_storage<T>(a);
         }
     }
@@ -75,14 +77,14 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultPairFactory& obj)
 
 
 // def make_pair(self, a: int32, b: int32) -> Own[SortedPair[int32]]:
+//     return SortedPair[int32](a, b)
 inline SortedPair<int32_t> DefaultPairFactory::make_pair(int32_t a, int32_t b) const {
-    // return SortedPair[int32](a, b)
     return SortedPair<int32_t>(a, b);
 }
 // def create_pair[T: PairFactory](factory: T, a: int32, b: int32) -> Own[SortedPair[int32]]:
+//     return factory.make_pair(a, b)
 template<PairFactory T>
 SortedPair<int32_t> create_pair(::tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b) {
-    // return factory.make_pair(a, b)
     return factory.make_pair(a, b);
 }
 

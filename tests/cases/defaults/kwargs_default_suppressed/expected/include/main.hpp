@@ -11,8 +11,11 @@ struct Options;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def scaled(a: int64, b: int64 = 5, **kwargs: Unpack[Options]) -> int64:
 int64_t scaled(int64_t a, int64_t b, const Options& kwargs);
+// def spanned(a: int64, b: int64 = 2, c: int64 = 3, **kwargs: Unpack[Options]) -> int64:
 int64_t spanned(int64_t a, int64_t b, int64_t c, const Options& kwargs);
+// def main() -> None:
 void main();
 
 // class Options(TypedDict):

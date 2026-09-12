@@ -5,12 +5,18 @@ namespace tpyapp::main {
 
 
 // def pairs(items: list[P]) -> Iterator[tuple[int32, P]]:
+//     n = int32(len(items))
+//     i: int32 = 0
+//     while i < n:
+//         if i == 0:
+//             yield (i, items[i])
+//         else:
+//             yield (i * 10, items[i])
+//         i += 1
 std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = int32(len(items))
         n = ::tpy::__len__(items);
-        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -26,11 +32,9 @@ std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_pairs::__next
     case S_JOIN_0: {
         if ((i < n)) {
             if ((i == 0)) {
-                // yield (i, items[i])
                 __state = S_RESUME_0;
                 return std::tuple<int32_t, P*>{i, &(::tpy::__getitem__(items, i))};
             } else {
-                // yield (i * 10, items[i])
                 __state = S_RESUME_1;
                 return std::tuple<int32_t, P*>{(::tpy::mul_check<int32_t>(i, 10)), &(::tpy::__getitem__(items, i))};
             }
@@ -40,7 +44,6 @@ std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_pairs::__next
         }
     }
     case S_JOIN_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -57,10 +60,12 @@ __gen_pairs pairs(std::vector<P>& items) {
 }
 
 // def main() -> None:
+//     items = [P(1), P(2), P(3)]
+//     for idx, p in pairs(items):
+//         print(idx)
+//         print(p.x)
 void main() {
-    // items = [P(1), P(2), P(3)]
     std::vector<P> items = {P(1), P(2), P(3)};
-    // for idx, p in pairs(items):
     {
         auto __src_0 = pairs(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -68,24 +73,21 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for idx, p in pairs(items):
         auto& __tup_1 = __for_tup_0;
         int32_t idx = std::get<0>(__tup_1);
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        // print(idx)
         std::cout << idx << "\n";
-        // print(p.x)
         std::cout << p.x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

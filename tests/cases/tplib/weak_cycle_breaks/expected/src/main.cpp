@@ -5,42 +5,45 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     root = Rc.new(Node("root"))
+//     child = Rc.new(Node("child"))
+//
+//     # Wire the cycle: root owns child strongly; child holds a Weak back to root.
+//     root.get().children.append(child.clone())
+//     child.get().parent = root.downgrade()
+//
+//     # Walk back via Weak to prove the link is alive.
+//     parent_ref = child.get().parent
+//     if parent_ref is not None:
+//         upgraded = parent_ref.upgrade()
+//         if upgraded is not None:
+//             print("found parent:", upgraded.get().name)
 void main() {
-    // root = Rc.new(Node("root"))
     ::tpystd::tplib::rc::Rc<Node> root = Rc<Node>::new_<Node>(Node("root"));
-    // child = Rc.new(Node("child"))
     ::tpystd::tplib::rc::Rc<Node> child = Rc<Node>::new_<Node>(Node("child"));
-    // # Wire the cycle: root owns child strongly; child holds a Weak back to root.
-    // root.get().children.append(child.clone())
     root.get().children.push_back(child.clone());
-    // child.get().parent = root.downgrade()
     child.get().parent = root.downgrade();
-    // # Walk back via Weak to prove the link is alive.
-    // parent_ref = child.get().parent
     ::tpystd::tplib::rc::Weak<Node>* parent_ref = ::tpy::optional_to_ptr(child.get().parent);
-    // if parent_ref is not None:
     if ((parent_ref != nullptr)) {
-        // upgraded = parent_ref.upgrade()
         std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = parent_ref->upgrade();
-        // if upgraded is not None:
         if ((upgraded.has_value())) {
-            // print("found parent:", upgraded.get().name)
             std::cout << "found parent:" << " " << (*upgraded).get().name << "\n";
         }
     }
 }
 
+// from tplib.rc import Rc, Weak
+//
+// main()
+// print("done")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
-    // print("done")
     std::cout << "done" << "\n";
 }
 

@@ -5,12 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     with SuppressVE():
+//         raise ValueError("bad value")
+//     print("after VE")
+//
+//     try:
+//         with SuppressVE():
+//             raise RuntimeError("re")
+//     except RuntimeError:
+//         print("unexpected re-raise")
+//     else:
+//         print("after RE")
+//
+//     try:
+//         with SuppressVE():
+//             raise IndexError("ix")
+//     except IndexError as e:
+//         print("propagated: " + str(e))
 void main() {
-    // with SuppressVE():
     auto __ctx_1 = SuppressVE();
     __ctx_1.__enter__();
     try {
-        // raise ValueError("bad value")
         throw ::tpy::ValueError("bad value");
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
@@ -18,16 +33,12 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    // print("after VE")
     std::cout << "after VE" << "\n";
-    // try:
     {
         try {
-            // with SuppressVE():
             auto __ctx_2 = SuppressVE();
             __ctx_2.__enter__();
             try {
-                // raise RuntimeError("re")
                 throw ::tpy::RuntimeError("re");
             } catch (::tpy::BaseException& __exc_2) {
                 if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
@@ -36,23 +47,18 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::RuntimeError&) {
-            // print("unexpected re-raise")
             std::cout << "unexpected re-raise" << "\n";
             goto __after_else_1;
         }
         // else:
-        // print("after RE")
         std::cout << "after RE" << "\n";
         __after_else_1:;
     }
-    // try:
     {
         try {
-            // with SuppressVE():
             auto __ctx_3 = SuppressVE();
             __ctx_3.__enter__();
             try {
-                // raise IndexError("ix")
                 throw ::tpy::IndexError("ix");
             } catch (::tpy::BaseException& __exc_3) {
                 if (!__ctx_3.__exit__({}, &__exc_3, {})) throw;
@@ -61,7 +67,6 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::IndexError& e) {
-            // print("propagated: " + str(e))
             std::cout << (::tpy::str_concat("propagated: ", std::string(::tpy::__str__(e)))) << "\n";
         }
     }
@@ -69,35 +74,35 @@ void main() {
 
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is None:
+//         return False
+//     if isinstance(exc_val, ValueError):  # tpyc: ok
+//         print("suppressed VE: " + str(exc_val))
+//         return True
+//     if isinstance(exc_val, (RuntimeError, OSError)):  # tpyc: ok -- tuple form
+//         print("suppressed family: " + str(exc_val))
+//         return True
+//     return False
 bool SuppressVE::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is None:
     if ((exc_val == nullptr)) {
-        // return False
         return false;
     }
-    // if isinstance(exc_val, ValueError):  # tpyc: ok
     if (const ::tpy::ValueError* __exc_val_ptr = dynamic_cast<const ::tpy::ValueError*>(exc_val); (__exc_val_ptr != nullptr)) {
-        // print("suppressed VE: " + str(exc_val))
         std::cout << (::tpy::str_concat("suppressed VE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
-        // return True
         return true;
     }
-    // if isinstance(exc_val, (RuntimeError, OSError)):  # tpyc: ok -- tuple form
     if (((dynamic_cast<const ::tpy::OSError*>(exc_val) != nullptr) || (dynamic_cast<const ::tpy::RuntimeError*>(exc_val) != nullptr))) {
-        // print("suppressed family: " + str(exc_val))
         std::cout << (::tpy::str_concat("suppressed family: ", std::string(::tpy::__str__((*exc_val))))) << "\n";
-        // return True
         return true;
     }
-    // return False
     return false;
 }
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

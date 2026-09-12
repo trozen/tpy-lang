@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # y=1.0 disambiguates to the float overload. Before W2 fix, the empty
+//     # list was cemented as list[int] from the int probe and compilation
+//     # failed. After fix, empty list correctly types as list[float].
+//     print(pick([], 1.0))
+//
+//     # Same pattern for builtin-overloads dispatch: `sum([])` routes through
+//     # _analyze_builtin_function_overloads, a different call path than pick().
+//     # Both paths now call _maybe_coerce_empty_list_to_protocol post-resolution.
+//     # The empty-list element type defaults to the configured default_int_type
+//     # (int32) via the overload-ranking cost model, so sum([]) resolves to the
+//     # int32 overload and returns 0 -- matching CPython. This is now principled
+//     # (cost-based), not declaration-order-dependent.
+//     print(sum([]))
 void main() {
-    // # y=1.0 disambiguates to the float overload. Before W2 fix, the empty
-    // # list was cemented as list[int] from the int probe and compilation
-    // # failed. After fix, empty list correctly types as list[float].
-    // print(pick([], 1.0))
     auto __tmp_1 = std::vector<double>{};
     std::cout << pick(__tmp_1, 1.0) << "\n";
-    // # Same pattern for builtin-overloads dispatch: `sum([])` routes through
-    // # _analyze_builtin_function_overloads, a different call path than pick().
-    // # Both paths now call _maybe_coerce_empty_list_to_protocol post-resolution.
-    // # The empty-list element type defaults to the configured default_int_type
-    // # (int32) via the overload-ranking cost model, so sum([]) resolves to the
-    // # int32 overload and returns 0 -- matching CPython. This is now principled
-    // # (cost-based), not declaration-order-dependent.
-    // print(sum([]))
     std::cout << ::tpy::builtin_sum<int32_t>(std::vector<int32_t>{}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

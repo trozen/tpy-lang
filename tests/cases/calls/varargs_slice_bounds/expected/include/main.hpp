@@ -11,7 +11,9 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_slice(start: int32, stop: int32, *items: Box) -> int32:
 int32_t sum_slice(int32_t start, int32_t stop, ::tpy::varargs<const Box> items);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

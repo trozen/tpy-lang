@@ -12,7 +12,9 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def process(flag: bool) -> int32:
 int32_t process(bool flag);
+// def main() -> None:
 void main();
 
 // class Circle:
@@ -49,9 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 
 // def __init__(self, r: int32) -> None:
+//     self.radius = r
 inline Circle::Circle(int32_t r) : radius(r) {}
 
 // def __init__(self, w: int32) -> None:
+//     self.width = w
 inline Rect::Rect(int32_t w) : width(w) {}
 void __tpy_init();
 } // namespace tpyapp::main

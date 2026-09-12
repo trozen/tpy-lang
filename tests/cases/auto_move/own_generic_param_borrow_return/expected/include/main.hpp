@@ -9,22 +9,25 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first_val[T](items: Own[list[T]]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items);
+// def passthrough[T: ValueType](x: Own[T]) -> T:
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> passthrough(::tpy::own_param_t<T> x);
+// def main() -> None:
 void main();
 
 // def first_val[T](items: Own[list[T]]) -> T:
+//     return items[0]  # tpyc: ok
 template<typename T>
 ::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items) {
-    // return items[0]  # tpyc: ok
     return ::tpy::__getitem__(items, 0);
 }
 // def passthrough[T: ValueType](x: Own[T]) -> T:
+//     return x  # tpyc: ok
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> passthrough(::tpy::own_param_t<T> x) {
-    // return x  # tpyc: ok
     return x;
 }
 

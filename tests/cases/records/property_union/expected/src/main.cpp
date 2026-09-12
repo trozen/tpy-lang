@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def describe(c: Canvas) -> None:
+//     s = c.shape
+//     if isinstance(s, Circle):
+//         print(s.radius)
+//     elif isinstance(s, Square):
+//         print(s.side)
 void describe(const Canvas& c) {
-    // s = c.shape
     ::tpy::Union<const Circle*, const Square*> s = ::tpy::to_const_ptr_variant(c.shape());
-    // if isinstance(s, Circle):
     if (std::holds_alternative<const Circle*>(s)) {
         auto& __s = *std::get<const Circle*>(s);
-        // print(s.radius)
         std::cout << __s.radius << "\n";
     } else {
-        // elif isinstance(s, Square):
         if (true) {
             auto& __s = *std::get<const Square*>(s);
-            // print(s.side)
             std::cout << __s.side << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     describe(Canvas(Circle(5)))
+//     describe(Canvas(Square(10)))
 void main() {
-    // describe(Canvas(Circle(5)))
     Circle __tmp_1 = Circle(5);
     Canvas __tmp_2 = Canvas(::tpy::Union<const Circle*, const Square*>{&__tmp_1});
     describe(__tmp_2);
-    // describe(Canvas(Square(10)))
     Square __tmp_3 = Square(10);
     Canvas __tmp_4 = Canvas(::tpy::Union<const Circle*, const Square*>{&__tmp_3});
     describe(__tmp_4);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

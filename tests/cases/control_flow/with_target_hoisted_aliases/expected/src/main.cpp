@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def run(flag: bool) -> int32:
+//     with Logger(1) as outer:
+//         with Logger(10) as inner:
+//             inner.tag = 99
+//             if flag:
+//                 return outer.tag
+//             return 0
 int32_t run(bool flag) {
-    // with Logger(1) as outer:
     Logger* inner;
     auto __ctx_1 = Logger(1);
     auto& outer = __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        // with Logger(10) as inner:
         auto __ctx_2 = Logger(10);
         inner = &(__ctx_2.__enter__());
         bool __fin_ran_2 = false;
         try {
-            // inner.tag = 99
             inner->tag = 99;
-            // if flag:
             if (flag) {
-                // return outer.tag
                 int32_t __tpy_ret_0 = outer.tag;
                 __fin_ran_2 = true;
                 __ctx_2.__exit__({}, nullptr, {});
@@ -29,7 +30,6 @@ int32_t run(bool flag) {
                 __ctx_1.__exit__({}, nullptr, {});
                 return __tpy_ret_0;
             }
-            // return 0
             int32_t __tpy_ret_1 = 0;
             __fin_ran_2 = true;
             __ctx_2.__exit__({}, nullptr, {});
@@ -57,21 +57,21 @@ int32_t run(bool flag) {
 }
 
 // def main() -> None:
+//     # Bound first rather than nested in the call: `print(a, run())` interleaves
+//     # the callee's own output ahead of `a` (tracked separately in BUGS.md).
+//     r = run(True)
+//     print("returned:", r)
 void main() {
-    // # Bound first rather than nested in the call: `print(a, run())` interleaves
-    // # the callee's own output ahead of `a` (tracked separately in BUGS.md).
-    // r = run(True)
     int32_t r = run(true);
-    // print("returned:", r)
     std::cout << "returned:" << " " << r << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

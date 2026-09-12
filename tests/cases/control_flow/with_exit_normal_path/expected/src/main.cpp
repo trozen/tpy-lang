@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // def fall_through() -> None:
+//     with Tracker() as x:
+//         print(f"body sees x={x}")
+//     print("after fall_through")
 void fall_through() {
-    // with Tracker() as x:
     auto __ctx_1 = Tracker();
     auto x = __ctx_1.__enter__();
     try {
-        // print(f"body sees x={x}")
         std::cout << std::format("body sees x={}", (x).to_string()) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -22,18 +23,17 @@ void fall_through() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // print("after fall_through")
     std::cout << "after fall_through" << "\n";
 }
 
 // def early_return() -> int:
+//     with Tracker() as x:
+//         return x
 ::tpy::BigInt early_return() {
-    // with Tracker() as x:
     auto __ctx_2 = Tracker();
     auto x = __ctx_2.__enter__();
     bool __fin_ran_2 = false;
     try {
-        // return x
         ::tpy::BigInt __tpy_ret_0 = x;
         __fin_ran_2 = true;
         __ctx_2.__exit__({}, nullptr, {});
@@ -50,23 +50,23 @@ void fall_through() {
 }
 
 // def main() -> None:
+//     fall_through()
+//     print("---")
+//     r = early_return()
+//     print(f"got {r}")
 void main() {
-    // fall_through()
     fall_through();
-    // print("---")
     std::cout << "---" << "\n";
-    // r = early_return()
     ::tpy::BigInt r = early_return();
-    // print(f"got {r}")
     std::cout << std::format("got {}", (r).to_string()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

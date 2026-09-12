@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def get(h: H) -> Box | None:
+//     await asyncio.sleep(0)
+//     return h.opt
 ::tpystd::tpy::Poll<Box*> __coro_get::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box*>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return h.opt
         __state = S_DONE;
         Box* __tpy_async_ret = ::tpy::optional_to_ptr(h.opt);
         return ::tpystd::tpy::Poll<Box*>::ready(std::move(__tpy_async_ret));
@@ -35,10 +35,13 @@ __coro_get get(H& h) {
 }
 
 // async def make(present: bool) -> Own[Box] | None:
+//     await asyncio.sleep(0)
+//     if present:
+//         return Box(7)
+//     return None
 ::tpystd::tpy::Poll<std::optional<Box>> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -48,14 +51,11 @@ __coro_get get(H& h) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::optional<Box>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if present:
         if (present) {
-            // return Box(7)
             __state = S_DONE;
             std::optional<Box> __tpy_async_ret = Box(::tpy::BigInt(7));
             return ::tpystd::tpy::Poll<std::optional<Box>>::ready(std::move(__tpy_async_ret));
         }
-        // return None
         __state = S_DONE;
         std::optional<Box> __tpy_async_ret = std::nullopt;
         return ::tpystd::tpy::Poll<std::optional<Box>>::ready(std::move(__tpy_async_ret));
@@ -72,13 +72,24 @@ __coro_make make(bool present) {
 }
 
 // async def main_coro() -> None:
+//     h = H(Box(1))
+//     t = await get(h)
+//     if t is not None:
+//         t.val = 99              # write through the aliased borrow
+//     if h.opt is not None:
+//         print(h.opt.val)        # 99 -- visible on the field (alias)
+//
+//     empty = H(None)
+//     e = await get(empty)
+//     print("none" if e is None else "?")
+//
+//     owned = await make(True)
+//     print(owned.val if owned is not None else -1)   # 7 (owning path intact)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // h = H(Box(1))
         Box __tmp_1 = Box(::tpy::BigInt(1));
         h.emplace(H(&(__tmp_1)));
-        // t = await get(h)
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
@@ -88,19 +99,13 @@ __coro_make make(bool present) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         t = std::move(__r0).value();
         __sub_0.reset();
-        // if t is not None:
         if ((t != nullptr)) {
-            // t.val = 99              # write through the aliased borrow
             t->val = ::tpy::BigInt(99);
         }
-        // if h.opt is not None:
         if (((*h).opt.has_value())) {
-            // print(h.opt.val)        # 99 -- visible on the field (alias)
             std::cout << (*(*h).opt).val << "\n";
         }
-        // empty = H(None)
         empty.emplace(H(nullptr));
-        // e = await get(empty)
         __sub_1.emplace((*empty));
         __state = S_RESUME_1;
         continue;
@@ -110,9 +115,7 @@ __coro_make make(bool present) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         e = std::move(__r1).value();
         __sub_1.reset();
-        // print("none" if e is None else "?")
         std::cout << (((e == nullptr)) ? ("none") : ("?")) << "\n";
-        // owned = await make(True)
         __sub_2.emplace(true);
         __state = S_RESUME_2;
         continue;
@@ -122,7 +125,6 @@ __coro_make make(bool present) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         owned = std::move(__r2).value();
         __sub_2.reset();
-        // print(owned.val if owned is not None else -1)   # 7 (owning path intact)
         std::cout << (((owned.has_value())) ? ((*owned).val) : (::tpy::BigInt(-1))) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -139,29 +141,30 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # The await result of an `async def -> T | None` (pointer-repr Optional)
+// # binds in borrow form, matching the sync convention -- the coro return slot is
+// # now Poll<Box*>, not Poll<std::optional<Box>>. The bound local ALIASES the
+// # returned source (mutation visible), like the sync twin and CPython; pre-fix
+// # this was a hard g++ error (std::optional<Box> -> Box* at the await binding).
+// #
+// # Safe because a reference-type param lives in the frame by reference (H& h),
+// # so the returned borrow points into the caller's storage, which outlives the
+// # suspension. The existing dangling-return check gates what may be returned
+// # (a fresh `return Box(n)` is rejected, pointed at Own[Box] | None).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The await result of an `async def -> T | None` (pointer-repr Optional)
-    // # binds in borrow form, matching the sync convention -- the coro return slot is
-    // # now Poll<Box*>, not Poll<std::optional<Box>>. The bound local ALIASES the
-    // # returned source (mutation visible), like the sync twin and CPython; pre-fix
-    // # this was a hard g++ error (std::optional<Box> -> Box* at the await binding).
-    // #
-    // # Safe because a reference-type param lives in the frame by reference (H& h),
-    // # so the returned borrow points into the caller's storage, which outlives the
-    // # suspension. The existing dangling-return check gates what may be returned
-    // # (a fresh `return Box(n)` is rejected, pointed at Own[Box] | None).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

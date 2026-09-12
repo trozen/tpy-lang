@@ -5,15 +5,17 @@ namespace tpyapp::main {
 
 
 // def peek(p: P | None) -> int32:
+//     return -1 if p is None else p.x
 int32_t peek(const P* p) {
-    // return -1 if p is None else p.x
     return (((p == nullptr)) ? (-1) : (p->x));
 }
 
 // def from_readonly(items: readonly[list[P | None]]) -> None:
+//     # The narrowed field read off the const-bound storage optional.
+//     print([v.x if v is not None else -1 for v in items])  # tpyc: ok
+//     # ... and the whole-optional read at a const `P*` param slot.
+//     print([peek(v) for v in items])  # tpyc: ok
 void from_readonly(const std::vector<std::optional<P>>& items) {
-    // # The narrowed field read off the const-bound storage optional.
-    // print([v.x if v is not None else -1 for v in items])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
@@ -26,8 +28,6 @@ void from_readonly(const std::vector<std::optional<P>>& items) {
         }
         std::move(__result);
     })) << "\n";
-    // # ... and the whole-optional read at a const `P*` param slot.
-    // print([peek(v) for v in items])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_1 = items;
@@ -43,9 +43,9 @@ void from_readonly(const std::vector<std::optional<P>>& items) {
 }
 
 // def from_inferred(items: list[P | None]) -> None:
+//     # Sema infers the const borrow here too (nothing mutates items).
+//     print([v.x if v is not None else -1 for v in items])  # tpyc: ok
 void from_inferred(const std::vector<std::optional<P>>& items) {
-    // # Sema infers the const borrow here too (nothing mutates items).
-    // print([v.x if v is not None else -1 for v in items])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
@@ -61,10 +61,11 @@ void from_inferred(const std::vector<std::optional<P>>& items) {
 }
 
 // def from_local() -> None:
+//     xs: list[P | None] = [P(1), None]
+//     print([v.x if v is not None else -1 for v in xs])  # tpyc: ok
+//     print(sorted({peek(v) for v in xs}))  # tpyc: ok
 void from_local() {
-    // xs: list[P | None] = [P(1), None]
     std::vector<std::optional<P>> xs = ::tpy::make_vector<std::optional<P>>(P(1), std::nullopt);
-    // print([v.x if v is not None else -1 for v in xs])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_0 = xs;
@@ -77,7 +78,6 @@ void from_local() {
         }
         std::move(__result);
     })) << "\n";
-    // print(sorted({peek(v) for v in xs}))  # tpyc: ok
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = xs;
@@ -92,23 +92,23 @@ void from_local() {
 }
 
 // def main() -> None:
+//     xs: list[P | None] = [P(4), None, P(6)]
+//     from_readonly(xs)
+//     from_inferred(xs)
+//     from_local()
 void main() {
-    // xs: list[P | None] = [P(4), None, P(6)]
     std::vector<std::optional<P>> xs = ::tpy::make_vector<std::optional<P>>(P(4), std::nullopt, P(6));
-    // from_readonly(xs)
     from_readonly(xs);
-    // from_inferred(xs)
     from_inferred(xs);
-    // from_local()
     from_local();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     forward(5)
+//     w = Wrap(7)
+//     print(w.inner.item)
 void main() {
-    // forward(5)
     forward<int32_t>(5);
-    // w = Wrap(7)
     Wrap<int32_t> w = Wrap<int32_t>(7);
-    // print(w.inner.item)
     std::cout << w.inner.item << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

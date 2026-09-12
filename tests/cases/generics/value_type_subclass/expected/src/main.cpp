@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Derived(7)
+//     print(d.x)
+//     print(d.double())
 void main() {
-    // d = Derived(7)
     Derived d = Derived(7);
-    // print(d.x)
     std::cout << d.x << "\n";
-    // print(d.double())
     std::cout << d.double_() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

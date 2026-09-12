@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(3, 7)
+//     w = Writer()
+//     p.encode(w)
+//     print(w.result())
 void main() {
-    // p = Point(3, 7)
     Point p = Point(3, 7);
-    // w = Writer()
     Writer w = Writer();
-    // p.encode(w)
     p.encode(w);
-    // print(w.result())
     std::cout << w.result() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

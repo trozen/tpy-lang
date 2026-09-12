@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(name: str, *, greeting: str = "Hello", punctuation: str = "!") -> None:
 void greet(std::string_view name, std::string_view greeting = "Hello", std::string_view punctuation = "!");
+// def main() -> None:
 void main();
 
 void __tpy_init();

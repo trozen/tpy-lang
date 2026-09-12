@@ -5,6 +5,15 @@ namespace tpyapp::main {
 
 
 // async def runner(c: Counts) -> str:
+//     try:
+//         async for x in c:
+//             if x == 2:
+//                 # Raised from the body, not __anext__. Should escape the
+//                 # loop's auto-handler and surface here.
+//                 raise StopAsyncIteration("body-raise")
+//         return "loop-finished"
+//     except StopAsyncIteration as e:
+//         return "caught: " + str(e)
 ::tpystd::tpy::Poll<std::string> __coro_runner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -30,7 +39,6 @@ namespace tpyapp::main {
             }
         } catch (const ::tpy::StopAsyncIteration& e) {
             __sub_0.reset();
-            // return "caught: " + str(e)
             __state = S_DONE;
             std::string __tpy_async_ret = (::tpy::str_concat("caught: ", std::string(::tpy::__str__(e))));
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -42,7 +50,6 @@ namespace tpyapp::main {
     case S_JOIN_0: {
         try {
             try {
-                // async for x in c:
                 __sub_0.emplace(*__for_itr_0);
                 __state = S_RESUME_0;
                 continue;
@@ -53,7 +60,6 @@ namespace tpyapp::main {
                 throw;
             }
         } catch (const ::tpy::StopAsyncIteration& e) {
-            // return "caught: " + str(e)
             __state = S_DONE;
             std::string __tpy_async_ret = (::tpy::str_concat("caught: ", std::string(::tpy::__str__(e))));
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -67,7 +73,6 @@ namespace tpyapp::main {
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::StopAsyncIteration& e) {
-            // return "caught: " + str(e)
             __state = S_DONE;
             std::string __tpy_async_ret = (::tpy::str_concat("caught: ", std::string(::tpy::__str__(e))));
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -77,17 +82,12 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            // if x == 2:
             if ((x == 2)) {
-                // # Raised from the body, not __anext__. Should escape the
-                // # loop's auto-handler and surface here.
-                // raise StopAsyncIteration("body-raise")
                 throw ::tpy::StopAsyncIteration("body-raise");
             }
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::StopAsyncIteration& e) {
-            // return "caught: " + str(e)
             __state = S_DONE;
             std::string __tpy_async_ret = (::tpy::str_concat("caught: ", std::string(::tpy::__str__(e))));
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -97,12 +97,10 @@ namespace tpyapp::main {
     }
     case S_JOIN_3: {
         try {
-            // return "loop-finished"
             __state = S_DONE;
             std::string __tpy_async_ret = "loop-finished";
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::StopAsyncIteration& e) {
-            // return "caught: " + str(e)
             __state = S_DONE;
             std::string __tpy_async_ret = (::tpy::str_concat("caught: ", std::string(::tpy::__str__(e))));
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -122,12 +120,12 @@ __coro_runner runner(Counts& c) {
 }
 
 // async def main() -> None:
+//     c = Counts(5)
+//     print(await runner(c))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counts(5)
         c.emplace(Counts(::tpy::BigInt(5)));
-        // print(await runner(c))
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -137,7 +135,6 @@ __coro_runner runner(Counts& c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await runner(c))
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -154,18 +151,18 @@ __coro_main main() {
 }
 
 // async def __anext__(self) -> int:
+//     if self.n >= self.limit:
+//         raise StopAsyncIteration
+//     self.n += 1
+//     return self.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if self.n >= self.limit:
         if ((__self.n >= __self.limit)) {
-            // raise StopAsyncIteration
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.n += 1
         __self.n = (__self.n) + (::tpy::BigInt(1));
-        // return self.n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -176,17 +173,18 @@ __coro_main main() {
 }
 
 
+// # `StopAsyncIteration` raised from inside the `async for` BODY (not
+// # __anext__) must propagate, not be silently caught by the loop's
+// # auto-handler. Regression test for the body-inside-the-TryRegion bug.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `StopAsyncIteration` raised from inside the `async for` BODY (not
-    // # __anext__) must propagate, not be silently caught by the loop's
-    // # auto-handler. Regression test for the body-inside-the-TryRegion bug.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

@@ -14,6 +14,7 @@ extern Holder* _ptr_g;
 extern std::optional<::tpy::BigInt> _opt_int_g;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -51,23 +52,24 @@ inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Holder::Holder(const ::tpy::BigInt& n) : n(n) {}
 
 // def install(self, h: Ptr[Holder], v: int) -> None:
+//     global _ptr_g, _opt_int_g
+//     _ptr_g = h
+//     _opt_int_g = v
 inline void Registry::install(Holder* h, const ::tpy::BigInt& v) const {
-    // global _ptr_g, _opt_int_g
-    // _ptr_g = h
     _ptr_g = h;
-    // _opt_int_g = v
     _opt_int_g = v;
 }
 
 // def clear(self) -> None:
+//     global _ptr_g, _opt_int_g
+//     _ptr_g = None
+//     _opt_int_g = None
 inline void Registry::clear() const {
-    // global _ptr_g, _opt_int_g
-    // _ptr_g = None
     _ptr_g = nullptr;
-    // _opt_int_g = None
     _opt_int_g = std::nullopt;
 }
 void __tpy_init();

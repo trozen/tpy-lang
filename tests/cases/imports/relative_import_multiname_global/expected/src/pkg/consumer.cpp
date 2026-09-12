@@ -5,10 +5,10 @@ namespace tpyapp::pkg::consumer {
 
 
 // def check() -> None:
+//     print(amod.a_first())
+//     print(bmod.b_first())
 void check() {
-    // print(amod.a_first())
     std::cout << ::tpyapp::pkg::amod::a_first() << "\n";
-    // print(bmod.b_first())
     std::cout << ::tpyapp::pkg::bmod::b_first() << "\n";
 }
 

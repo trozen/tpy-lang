@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Counter()
+//     a.instances = 5  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
+//     print(Counter.instances)
+//     print(a.instances)
+//     b = Counter()
+//     b.instances = 7  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
+//     print(Counter.instances)
+//     print(a.instances)
 void main() {
-    // a = Counter()
     Counter a = Counter();
-    // a.instances = 5  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
     Counter::instances = 5;
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
-    // print(a.instances)
     std::cout << Counter::instances << "\n";
-    // b = Counter()
     Counter b = Counter();
-    // b.instances = 7  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
     Counter::instances = 7;
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
-    // print(a.instances)
     std::cout << Counter::instances << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

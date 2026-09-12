@@ -11,11 +11,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def remake() -> tuple[int | str, int]:
 std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt> remake();
+// def gen(a: int | str) -> Iterator[str]:
 __gen_gen gen(::tpy::Union<::tpy::BigInt, std::string> a);
+// def main() -> None:
 void main();
 
-// Generator: gen
+// def gen(a: int | str) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     int32_t __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;

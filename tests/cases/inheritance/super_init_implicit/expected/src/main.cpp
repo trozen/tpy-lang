@@ -3,18 +3,17 @@
 
 namespace tpyapp::main {
 
-// c = Child(42)
 Child* c{};
 
+// c = Child(42)
+// print(c.value)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // c = Child(42)
     static Child __global_slot_1 = Child(::tpy::BigInt(42));
     c = &__global_slot_1;
-    // print(c.value)
     std::cout << c->value << "\n";
 }
 

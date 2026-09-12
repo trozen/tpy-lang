@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     math.dist([1.0, 2.0, 3.0], [4.0, 5.0])
 void main() {
-    // math.dist([1.0, 2.0, 3.0], [4.0, 5.0])
     auto __tmp_1 = std::array<double, 3>{1.0, 2.0, 3.0};
     auto __tmp_2 = std::array<double, 2>{4.0, 5.0};
     ::tpystd::math::dist(__tmp_1, __tmp_2);
 }
 
+// # dist raises ValueError on length mismatch. The seed-phase / main-loop
+// # try/except chains mirror sumprod; this test covers the p-longer main-loop
+// # branch. Seed-phase mismatch (one side empty) is structurally equivalent
+// # and not separately panic-tested.
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # dist raises ValueError on length mismatch. The seed-phase / main-loop
-    // # try/except chains mirror sumprod; this test covers the p-longer main-loop
-    // # branch. Seed-phase mismatch (one side empty) is structurally equivalent
-    // # and not separately panic-tested.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

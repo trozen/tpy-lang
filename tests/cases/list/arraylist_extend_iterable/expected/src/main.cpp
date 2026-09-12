@@ -5,34 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = ArrayList[int32, 16]()
+//     a.append(1)
+//
+//     # extend from list (Iterable, not Spannable)
+//     items: list[int32] = [10, 20, 30]
+//     a.extend(items)
+//     print(len(a))       # 4
+//     print(a[0])         # 1
+//     print(a[1])         # 10
+//     print(a[3])         # 30
 void main() {
-    // a = ArrayList[int32, 16]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 16> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
-    // a.append(1)
     a.append(1);
-    // # extend from list (Iterable, not Spannable)
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // a.extend(items)
     a.extend(items);
-    // print(len(a))       # 4
     std::cout << ::tpy::__len__(a) << "\n";
-    // print(a[0])         # 1
     std::cout << a[0] << "\n";
-    // print(a[1])         # 10
     std::cout << a[1] << "\n";
-    // print(a[3])         # 30
     std::cout << a[3] << "\n";
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

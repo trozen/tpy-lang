@@ -5,10 +5,11 @@ namespace tpyapp::definer {
 
 
 // async def deep() -> int32:
+//     await asyncio.sleep(0)
+//     return 5
 ::tpystd::tpy::Poll<int32_t> __coro_deep::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::definer {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 5
         __state = S_DONE;
         int32_t __tpy_async_ret = 5;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -34,12 +34,12 @@ __coro_deep deep() {
     return __coro_deep();
 }
 
+// import asyncio
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
 }
 

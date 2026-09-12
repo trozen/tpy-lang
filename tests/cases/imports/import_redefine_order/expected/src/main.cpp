@@ -3,35 +3,35 @@
 
 namespace tpyapp::main {
 
-// # Redefine MAX with same type (explicit annotation)
-// MAX: int32 = int32(42)
 int32_t MAX{};
-// # Redefine MIN with different type (int/BigInt)
-// MIN: int = 99
 ::tpy::BigInt MIN;
 
+// from utils import MAX, MIN
+//
+// # Use imported values first
+// print(MAX)  # 100
+// print(MIN)  # 1
+//
+// # Redefine MAX with same type (explicit annotation)
+// MAX: int32 = int32(42)
+//
+// # Redefine MIN with different type (int/BigInt)
+// MIN: int = 99
+//
+// # Use local values
+// print(MAX)  # 42
+// print(MIN)  # 99
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from utils import MAX, MIN
     ::tpyapp::utils::__tpy_init();
-    // # Use imported values first
-    // print(MAX)  # 100
     std::cout << ::tpyapp::utils::MAX << "\n";
-    // print(MIN)  # 1
     std::cout << ::tpyapp::utils::MIN << "\n";
-    // # Redefine MAX with same type (explicit annotation)
-    // MAX: int32 = int32(42)
     MAX = 42;
-    // # Redefine MIN with different type (int/BigInt)
-    // MIN: int = 99
     MIN = ::tpy::BigInt(99);
-    // # Use local values
-    // print(MAX)  # 42
     std::cout << MAX << "\n";
-    // print(MIN)  # 99
     std::cout << MIN << "\n";
 }
 

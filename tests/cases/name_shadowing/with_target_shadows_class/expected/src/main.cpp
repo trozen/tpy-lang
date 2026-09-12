@@ -5,14 +5,15 @@ namespace tpyapp::main {
 
 
 // def run() -> int32:
+//     g = Guard(7)
+//     with g as Registry:  # tpyc: ok
+//         Registry.code += 1
+//     return g.code
 int32_t run() {
-    // g = Guard(7)
     Guard g = Guard(7);
-    // with g as Registry:  # tpyc: ok
     auto& __ctx_1 = g;
     auto& Registry = __ctx_1.__enter__();
     try {
-        // Registry.code += 1
         Registry.code = ::tpy::add_check<int32_t>(Registry.code, 1);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -24,24 +25,23 @@ int32_t run() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // return g.code
     return g.code;
 }
 
 // def main() -> None:
+//     print(run())
+//     print(Registry.code)
 void main() {
-    // print(run())
     std::cout << run() << "\n";
-    // print(Registry.code)
     std::cout << Registry::code << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

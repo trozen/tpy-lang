@@ -5,10 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(4)
+//     for x in b.gen_field():
+//         print(x)
+//     for x in b.gen_reassign():
+//         print(x)
+//     for x in b.gen_local_bind():
+//         print(x)
+//     for x in b.gen_try_body():
+//         print("try_body", x)
+//     for x in b.gen_local_bind_loop():
+//         print("bind_loop", x)
+//     # The second guard in gen_reguard re-checks the field at resume:
+//     # clearing it between next() calls skips the narrowed yield.
+//     it = b.gen_reguard()
+//     try:
+//         print(next(it))
+//         b.f = None
+//         print(next(it))
+//     except StopIteration:
+//         print("stop")
+//     n = Box(None)
+//     for x in n.gen_field():
+//         print(x)
+//     for x in n.gen_reassign():
+//         print(x)
 void main() {
-    // b = Box(4)
     Box b = Box(4);
-    // for x in b.gen_field():
     {
         auto __src_0 = b.gen_field();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,11 +39,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for x in b.gen_reassign():
     {
         auto __src_2 = b.gen_reassign();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -28,11 +49,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for x in b.gen_local_bind():
     {
         auto __src_4 = b.gen_local_bind();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -40,11 +59,9 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_5);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for x in b.gen_try_body():
     {
         auto __src_6 = b.gen_try_body();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -52,11 +69,9 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_7);
-        // print("try_body", x)
         std::cout << "try_body" << " " << x << "\n";
         }
     }
-    // for x in b.gen_local_bind_loop():
     {
         auto __src_8 = b.gen_local_bind_loop();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -64,32 +79,21 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_9);
-        // print("bind_loop", x)
         std::cout << "bind_loop" << " " << x << "\n";
         }
     }
-    // # The second guard in gen_reguard re-checks the field at resume:
-    // # clearing it between next() calls skips the narrowed yield.
-    // it = b.gen_reguard()
     auto it = b.gen_reguard();
-    // try:
     {
-        // print(next(it))
         std::cout << ({ auto __er_2 = ::tpy::next(it); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
-        // b.f = None
         b.f = std::nullopt;
-        // print(next(it))
         std::cout << ({ auto __er_3 = ::tpy::next(it); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        // print("stop")
         std::cout << "stop" << "\n";
         __after_try_1:;
     }
-    // n = Box(None)
     Box n = Box(std::nullopt);
-    // for x in n.gen_field():
     {
         auto __src_10 = n.gen_field();
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
@@ -97,11 +101,9 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_11);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for x in n.gen_reassign():
     {
         auto __src_12 = n.gen_reassign();
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -109,18 +111,19 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_13);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
 // def gen_field(self) -> Iterator[int32]:
+//     if self.f is not None:
+//         yield self.f
+//     yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((__self.f.has_value())) {
-            // yield self.f
             __state = S_RESUME_0;
             return (*__self.f);
         } else {
@@ -137,7 +140,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield -1
         __state = S_RESUME_1;
         return -1;
     }
@@ -148,22 +150,22 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
 
 
 // def gen_reassign(self) -> Iterator[int32]:
+//     q = 0
+//     if self.f is not None:
+//         q = self.f
+//     yield q
+//     yield -2
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // q = 0
         q = 0;
-        // if self.f is not None:
         if ((__self.f.has_value())) {
-            // q = self.f
             q = (*__self.f);
         }
-        // yield q
         __state = S_RESUME_0;
         return q;
     }
     case S_RESUME_0: {
-        // yield -2
         __state = S_RESUME_1;
         return -2;
     }
@@ -178,11 +180,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__next__() 
 
 
 // def gen_reguard(self) -> Iterator[int32]:
+//     if self.f is not None:
+//         yield self.f
+//     if self.f is not None:
+//         yield self.f + 1
+//     yield -3
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((__self.f.has_value())) {
-            // yield self.f
             __state = S_RESUME_0;
             return (*__self.f);
         } else {
@@ -204,7 +210,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
     }
     case S_JOIN_0: {
         if ((__self.f.has_value())) {
-            // yield self.f + 1
             __state = S_RESUME_1;
             return (::tpy::add_check<int32_t>((*__self.f), 1));
         } else {
@@ -213,7 +218,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
         }
     }
     case S_JOIN_1: {
-        // yield -3
         __state = S_RESUME_2;
         return -3;
     }
@@ -224,13 +228,16 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
 
 
 // def gen_local_bind(self) -> Iterator[int32]:
+//     v = self.f
+//     if v is not None:
+//         yield v
+//         yield v + 1
+//     yield -4
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // v = self.f
         v = __self.f;
         if ((v.has_value())) {
-            // yield v
             __state = S_RESUME_0;
             return (*v);
         } else {
@@ -239,7 +246,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__(
         }
     }
     case S_RESUME_0: {
-        // yield v + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>((*v), 1));
     }
@@ -252,7 +258,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__(
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield -4
         __state = S_RESUME_2;
         return -4;
     }
@@ -263,6 +268,16 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__(
 
 
 // def gen_try_body(self) -> Iterator[int32]:
+//     # The guard survives into the try body, so its FIRST yield still
+//     # derefs; only handler entry kills the fact (the reject is
+//     # error_narrowed_field_stale_except).
+//     if self.f is not None:
+//         try:
+//             yield self.f
+//             raise ValueError("boom")
+//         except ValueError:
+//             yield -5
+//     yield -6
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -276,10 +291,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() 
     }
     case S_RESUME_0: {
         try {
-            // raise ValueError("boom")
             throw ::tpy::ValueError("boom");
         } catch (const ::tpy::ValueError&) {
-            // yield -5
             __state = S_RESUME_1;
             return -5;
         } catch (...) {
@@ -295,7 +308,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() 
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield -6
         __state = S_RESUME_2;
         return -6;
     }
@@ -305,11 +317,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() 
     }
     case S_JOIN_2: {
         try {
-            // yield self.f
             __state = S_RESUME_0;
             return (*__self.f);
         } catch (const ::tpy::ValueError&) {
-            // yield -5
             __state = S_RESUME_1;
             return -5;
         } catch (...) {
@@ -323,13 +333,17 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() 
 
 
 // def gen_local_bind_loop(self) -> Iterator[int32]:
+//     # A local binding carries the fact across a loop back-edge that
+//     # crosses the yield; reading the field there instead is the reject
+//     # error_narrowed_field_stale_loop_yield pins.
+//     v = self.f
+//     if v is not None:
+//         for _i in range(2):
+//             yield v
+//     yield -7
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # A local binding carries the fact across a loop back-edge that
-        // # crosses the yield; reading the field there instead is the reject
-        // # error_narrowed_field_stale_loop_yield pins.
-        // v = self.f
         v = __self.f;
         if ((v.has_value())) {
             __for_i_0.emplace(int32_t(0));
@@ -350,7 +364,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind_loop::__ne
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield -7
         __state = S_RESUME_1;
         return -7;
     }
@@ -360,7 +373,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind_loop::__ne
             continue;
         }
         _i = ((*__for_i_0))++;
-        // yield v
         __state = S_RESUME_0;
         return (*v);
     }
@@ -370,12 +382,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind_loop::__ne
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

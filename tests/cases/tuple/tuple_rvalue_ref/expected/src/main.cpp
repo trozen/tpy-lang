@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def show(p: tuple[T, T]) -> None:
+//     a, b = p
+//     print(a.x)
+//     print(b.x)
 void show(const std::tuple<const T*, const T*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    // print(a.x)
     std::cout << a.x << "\n";
-    // print(b.x)
     std::cout << b.x << "\n";
 }
 
 // def main() -> None:
+//     # Both rvalue.
+//     show((T(1), T(2)))
+//     # Mixed: rvalue + lvalue.
+//     a = T(10)
+//     show((a, T(20)))
+//     show((T(30), a))
 void main() {
-    // # Both rvalue.
-    // show((T(1), T(2)))
     show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(1), T(2)}));
-    // # Mixed: rvalue + lvalue.
-    // a = T(10)
     T a = T(10);
-    // show((a, T(20)))
     show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T*, T>{&(a), T(20)}));
-    // show((T(30), a))
     show(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T*>{T(30), &(a)}));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

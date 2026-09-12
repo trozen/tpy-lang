@@ -5,11 +5,14 @@ namespace tpyapp::main {
 
 
 // def branch_suspends(v: int32 | None) -> Iterator[int32]:
+//     # The branch body yields -> CFG Branch terminator.
+//     if v:  # tpyc: warning(/Truthiness check on optional value/)
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (::tpy::is_truthy(v)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -26,7 +29,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -42,19 +44,19 @@ __gen_branch_suspends branch_suspends(std::optional<int32_t> v) {
 }
 
 // def branch_no_suspend(v: int32 | None) -> Iterator[int32]:
+//     # Same test, no suspension inside -> ordinary statement path. The
+//     # control: this form was never wrong, and must not move.
+//     n = 0
+//     if v:  # tpyc: warning(/Truthiness check on optional value/)
+//         n = 1
+//     yield n
 std::expected<int32_t, ::tpy::StopIteration> __gen_branch_no_suspend::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # Same test, no suspension inside -> ordinary statement path. The
-        // # control: this form was never wrong, and must not move.
-        // n = 0
         n = 0;
-        // if v:  # tpyc: warning(/Truthiness check on optional value/)
         if (::tpy::is_truthy(v)) {
-            // n = 1
             n = 1;
         }
-        // yield n
         __state = S_RESUME_0;
         return n;
     }
@@ -74,11 +76,13 @@ __gen_branch_no_suspend branch_no_suspend(std::optional<int32_t> v) {
 }
 
 // def not_form(v: int32 | None) -> Iterator[int32]:
+//     if not v:  # tpyc: warning(/Truthiness check on optional value/)
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_not_form::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((!(::tpy::is_truthy(v)))) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -95,7 +99,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_not_form::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -111,6 +114,12 @@ __gen_not_form not_form(std::optional<int32_t> v) {
 }
 
 // def while_suspends(v: int32 | None) -> Iterator[int32]:
+//     # A trailing statement keeps the simple-generator peephole from
+//     # applying, so the loop head goes through the CFG.
+//     while v:  # tpyc: warning(/Truthiness check on optional value/)
+//         yield 1
+//         v = None
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -118,7 +127,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // v = None
         v = std::nullopt;
         __state = S_JOIN_0;
         continue;
@@ -129,11 +137,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
     }
     case S_JOIN_0: {
         if (::tpy::is_truthy(v)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
-            // yield 2
             __state = S_RESUME_1;
             return 2;
         }
@@ -150,14 +156,16 @@ __gen_while_suspends while_suspends(std::optional<int32_t> v) {
 }
 
 // def frame_local(b: Box) -> Iterator[int32]:
+//     # The optional reaches the frame as a promoted LOCAL rather than a param.
+//     v = b.f
+//     if v:  # tpyc: warning(/Truthiness check on optional value/)
+//         yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The optional reaches the frame as a promoted LOCAL rather than a param.
-        // v = b.f
         v = b.f;
         if (::tpy::is_truthy(v)) {
-            // yield 1
             __state = S_RESUME_0;
             return 1;
         } else {
@@ -174,7 +182,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -190,39 +197,39 @@ __gen_frame_local frame_local(Box& b) {
 }
 
 // def drive(label: str, v: int32 | None) -> None:
+//     print(label, "branch", list(branch_suspends(v)))
+//     print(label, "nosusp", list(branch_no_suspend(v)))
+//     print(label, "not", list(not_form(v)))
+//     print(label, "while", list(while_suspends(v)))
+//     print(label, "peep", list(peephole_while(v)))
+//     print(label, "local", list(frame_local(Box(v))))
 void drive(std::string_view label, std::optional<int32_t> v) {
-    // print(label, "branch", list(branch_suspends(v)))
     std::cout << label << " " << "branch" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(branch_suspends(v))) << "\n";
-    // print(label, "nosusp", list(branch_no_suspend(v)))
     std::cout << label << " " << "nosusp" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(branch_no_suspend(v))) << "\n";
-    // print(label, "not", list(not_form(v)))
     std::cout << label << " " << "not" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(not_form(v))) << "\n";
-    // print(label, "while", list(while_suspends(v)))
     std::cout << label << " " << "while" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(while_suspends(v))) << "\n";
-    // print(label, "peep", list(peephole_while(v)))
     std::cout << label << " " << "peep" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(peephole_while(v))) << "\n";
-    // print(label, "local", list(frame_local(Box(v))))
     Box __tmp_1 = Box(v);
     std::cout << label << " " << "local" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(frame_local(__tmp_1))) << "\n";
 }
 
 // def main() -> None:
+//     # 0 is the falsy-but-engaged payload -- the whole point.
+//     drive("zero", 0)
+//     drive("none", None)
+//     drive("five", 5)
 void main() {
-    // # 0 is the falsy-but-engaged payload -- the whole point.
-    // drive("zero", 0)
     drive("zero", 0);
-    // drive("none", None)
     drive("none", std::nullopt);
-    // drive("five", 5)
     drive("five", 5);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -18,6 +18,7 @@ struct __gen_Lim_rec_val;
 struct __gen_Lim_dvals;
 struct __gen_Lim_echo;
 
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -57,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Lim& obj) {
     return os;
 }
 
-// Generator: Lim.first
+// def first(self, items: list[int32], cap: int32) -> Iterator[int32]:
 struct __gen_Lim_first : public ::tpy::next_iter_mixin<__gen_Lim_first, int32_t> {
     int32_t __state;
     const Lim& __self;
@@ -91,7 +92,7 @@ inline __gen_Lim_first Lim::first(std::vector<int32_t>& items, int32_t cap) cons
     return __gen_Lim_first(*this, items, cap);
 }
 
-// Generator: Lim.ro_pair
+// def ro_pair(self, xs: readonly[list[int32]]) -> Iterator[int32]:
 struct __gen_Lim_ro_pair : public ::tpy::next_iter_mixin<__gen_Lim_ro_pair, int32_t> {
     int32_t __state;
     const Lim& __self;
@@ -123,7 +124,7 @@ inline __gen_Lim_ro_pair Lim::ro_pair(const std::vector<int32_t>& xs) const {
     return __gen_Lim_ro_pair(*this, xs);
 }
 
-// Generator: Lim.rec_val
+// def rec_val(self, r: readonly[Rec]) -> Iterator[int32]:
 struct __gen_Lim_rec_val : public ::tpy::next_iter_mixin<__gen_Lim_rec_val, int32_t> {
     int32_t __state;
     const Lim& __self;
@@ -151,7 +152,7 @@ inline __gen_Lim_rec_val Lim::rec_val(const Rec& r) const {
     return __gen_Lim_rec_val(*this, r);
 }
 
-// Generator: Lim.dvals
+// def dvals(self, d: readonly[dict[str, int32]]) -> Iterator[int32]:
 struct __gen_Lim_dvals : public ::tpy::next_iter_mixin<__gen_Lim_dvals, int32_t> {
     int32_t __state;
     const Lim& __self;
@@ -183,7 +184,7 @@ inline __gen_Lim_dvals Lim::dvals(const ::tpy::ordered_map<std::string, int32_t>
     return __gen_Lim_dvals(*this, d);
 }
 
-// Generator: Lim.echo
+// def echo(self, xs: list[int32]) -> Iterator[int32]:
 struct __gen_Lim_echo : public ::tpy::next_iter_mixin<__gen_Lim_echo, int32_t> {
     int32_t __state;
     const Lim& __self;
@@ -213,6 +214,7 @@ inline __gen_Lim_echo Lim::echo(std::vector<int32_t>& xs) const {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Rec::Rec(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

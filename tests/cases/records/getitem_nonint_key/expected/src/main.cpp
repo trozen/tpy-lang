@@ -8,29 +8,29 @@ namespace tpyapp::main {
 // # operator[] must take the borrow form (string_view), or a view key won't
 // # convert. A string literal converts to either form, so this guards the fix.
 // def lookup(s: Scores, key: str) -> int32:
+//     return s[key]
 int32_t lookup(const Scores& s, std::string_view key) {
-    // return s[key]
     return s[key];
 }
 
 // def main() -> None:
+//     s = Scores()
+//     print(s["a"], s["b"])
+//     k = "a"
+//     print(lookup(s, k), lookup(s, "b"))
 void main() {
-    // s = Scores()
     Scores s = Scores();
-    // print(s["a"], s["b"])
     std::cout << s["a"] << " " << s["b"] << "\n";
-    // k = "a"
     std::string_view k = "a";
-    // print(lookup(s, k), lookup(s, "b"))
     std::cout << lookup(s, k) << " " << lookup(s, "b") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

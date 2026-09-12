@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     Stats(42, 7).show()
+//     Stats(None, None).show()
 void main() {
-    // Stats(42, 7).show()
     Stats(42, 7).show();
-    // Stats(None, None).show()
     Stats(std::nullopt, std::nullopt).show();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

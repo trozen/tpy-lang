@@ -9,10 +9,16 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x);
+// def is_positive(x: int32) -> bool:
 bool is_positive(int32_t x);
+// def main() -> None:
 void main();
 
+// def triple_gen(items: Span[int32]) -> Iterator[int32]:
+//     for item in items:
+//         yield item * 3
 inline auto triple_gen(std::span<int32_t> items) {
     return ::tpy::make_generator<int32_t>(
         [items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<int32_t> {

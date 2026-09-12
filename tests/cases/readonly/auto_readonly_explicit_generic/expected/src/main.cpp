@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def read_vec(v: readonly[Vec[int32]]) -> None:
+//     s = v.data()  # tpyc: type(Span[readonly[int32]])
+//     print(s[int32(0)])
+//     print(s[int32(1)])
 void read_vec(const Vec<int32_t>& v) {
-    // s = v.data()  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = v.data();
-    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // print(s[int32(1)])
     std::cout << ::tpy::__getitem__(s, 1) << "\n";
 }
 
 // def main() -> None:
+//     v = Vec[int32]()
+//     v.push(int32(10))
+//     v.push(int32(20))
+//     s = v.data()  # tpyc: type(Span[int32])
+//     print(s[int32(0)])
+//     read_vec(v)
 void main() {
-    // v = Vec[int32]()
     Vec<int32_t> v = Vec<int32_t>();
-    // v.push(int32(10))
     v.push(10);
-    // v.push(int32(20))
     v.push(20);
-    // s = v.data()  # tpyc: type(Span[int32])
     std::span<int32_t> s = v.data();
-    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // read_vec(v)
     read_vec(v);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

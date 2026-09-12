@@ -5,65 +5,69 @@ namespace tpyapp::main {
 
 
 // def probe(key: str) -> str:
+//     try:
+//         z = ZoneInfo(key)
+//         return "ok(" + z.key + ")"
+//     except ZoneInfoNotFoundError:
+//         return "ZoneInfoNotFoundError"
+//     except ValueError:
+//         return "ValueError"
 std::string probe(std::string_view key) {
-    // try:
     ::tpystd::datetime::ZoneInfo z;
     {
         try {
-            // z = ZoneInfo(key)
             z = ::tpystd::datetime::ZoneInfo(key);
-            // return "ok(" + z.key + ")"
             return (::tpy::str_concat((::tpy::str_concat("ok(", z.key())), ")"));
         } catch (const ::tpystd::datetime::ZoneInfoNotFoundError&) {
-            // return "ZoneInfoNotFoundError"
             return "ZoneInfoNotFoundError";
         } catch (const ::tpy::ValueError&) {
-            // return "ValueError"
             return "ValueError";
         }
     }
 }
 
 // def main() -> None:
+//     print(probe("Europe/Warsaw"))
+//     print(probe("Not/AZone"))
+//     print(probe(""))
+//     print(probe("../etc/passwd"))
+//     print(probe("/etc/localtime"))
+//     print(probe("Europe//Warsaw"))
+//     # The subclass is catchable as its KeyError base.
+//     try:
+//         z = ZoneInfo("Also/NotAZone")
+//         print("no-raise", z.key)
+//     except KeyError:
+//         print("KeyError-base")
 void main() {
-    // print(probe("Europe/Warsaw"))
     std::cout << probe("Europe/Warsaw") << "\n";
-    // print(probe("Not/AZone"))
     std::cout << probe("Not/AZone") << "\n";
-    // print(probe(""))
     std::cout << probe("") << "\n";
-    // print(probe("../etc/passwd"))
     std::cout << probe("../etc/passwd") << "\n";
-    // print(probe("/etc/localtime"))
     std::cout << probe("/etc/localtime") << "\n";
-    // print(probe("Europe//Warsaw"))
     std::cout << probe("Europe//Warsaw") << "\n";
-    // # The subclass is catchable as its KeyError base.
-    // try:
     {
         try {
-            // z = ZoneInfo("Also/NotAZone")
             ::tpystd::datetime::ZoneInfo z = ::tpystd::datetime::ZoneInfo("Also/NotAZone");
-            // print("no-raise", z.key)
             std::cout << "no-raise" << " " << z.key() << "\n";
         } catch (const ::tpy::KeyError&) {
-            // print("KeyError-base")
             std::cout << "KeyError-base" << "\n";
         }
     }
 }
 
+// # datetime v4 zoneinfo error surface (all catchable at runtime, so match
+// # by type token): unknown key -> ZoneInfoNotFoundError (a KeyError
+// # subclass), malformed keys -> ValueError per CPython's tzpath rules.
+// from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime v4 zoneinfo error surface (all catchable at runtime, so match
-    // # by type token): unknown key -> ZoneInfoNotFoundError (a KeyError
-    // # subclass), malformed keys -> ValueError per CPython's tzpath rules.
-    // from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
     ::tpystd::zoneinfo::__tpy_init();
-    // main()
     main();
 }
 

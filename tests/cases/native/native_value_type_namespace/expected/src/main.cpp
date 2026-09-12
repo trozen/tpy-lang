@@ -5,24 +5,26 @@ namespace tpyapp::myns {
 
 
 // def main() -> None:
+//     h = Handle(42)
+//     print(h.val)
+//
+//     copied = identity(h)
+//     print(copied.val)
 void main() {
-    // h = Handle(42)
     ::MyHandle h = ::MyHandle(42);
-    // print(h.val)
     std::cout << h.val << "\n";
-    // copied = identity(h)
     ::MyHandle copied = identity<::MyHandle>(h);
-    // print(copied.val)
     std::cout << copied.val << "\n";
 }
 
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
-    // main()
     main();
 }
 

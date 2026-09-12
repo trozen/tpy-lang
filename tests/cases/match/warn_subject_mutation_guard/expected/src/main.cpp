@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def poke(xs: list[Item]) -> None:
+//     match xs[0]:
+//         case Item(tag=t) if xs.pop().v > 100:  # tpyc: warning(/'xs\[0\]' is mutated in this arm while pattern bindings borrow/)
+//             print("big tail", t.n)
+//         case Item(tag=t2):
+//             print("small", t2.n)
 void poke(std::vector<Item>& xs) {
-    // match xs[0]:
     auto& __match_subject_1 = ::tpy::__getitem__(xs, 0);
-    // case Item(tag=t) if xs.pop().v > 100:  # tpyc: warning(/'xs\[0\]' is mutated in this arm while pattern bindings borrow/)
     {
         auto& t = __match_subject_1.tag;
         if ((::tpy::pop_back(xs).v > 100)) {
-            // print("big tail", t.n)
             std::cout << "big tail" << " " << t.n << "\n";
             goto __match_end_2;
         }
     }
-    // case Item(tag=t2):
     {
         auto& t2 = __match_subject_1.tag;
-        // print("small", t2.n)
         std::cout << "small" << " " << t2.n << "\n";
         goto __match_end_2;
     }
@@ -28,18 +28,18 @@ void poke(std::vector<Item>& xs) {
 }
 
 // def main() -> None:
+//     poke([Item(1, 5), Item(2, 50)])
 void main() {
-    // poke([Item(1, 5), Item(2, 50)])
     std::vector<Item> __tmp_1 = {Item(1, 5), Item(2, 50)};
     poke(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

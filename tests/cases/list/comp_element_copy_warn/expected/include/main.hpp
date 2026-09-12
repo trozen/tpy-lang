@@ -11,12 +11,19 @@ struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def list_scalar(cells: list[Cell]) -> None:
 void list_scalar(const std::vector<Cell>& cells);
+// def list_tuple_member(src: list[tuple[int32, Cell]]) -> None:
 void list_tuple_member(const std::vector<std::tuple<int32_t, Cell>>& src);
+// def dict_value(cells: list[Cell]) -> None:
 void dict_value(const std::vector<Cell>& cells);
+// def exempt_fresh(n: int32) -> None:
 void exempt_fresh(int32_t n);
+// def exempt_copy(cells: list[Cell]) -> None:
 void exempt_copy(const std::vector<Cell>& cells);
+// def exempt_value(n: int32) -> None:
 void exempt_value(int32_t n);
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -37,6 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Cell::Cell(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

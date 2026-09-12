@@ -5,69 +5,69 @@ namespace tpyapp::main {
 
 
 // def test_int32_cmp() -> None:
+//     a = int32(5)
+//     b = int32(3)
+//     print(a > b)
+//     print(a < b)
+//     print(a == b)
+//     print(a != b)
+//     print(a >= b)
+//     print(a <= b)
 void test_int32_cmp() {
-    // a = int32(5)
     int32_t a = 5;
-    // b = int32(3)
     int32_t b = 3;
-    // print(a > b)
     std::cout << ::tpy::print_bool((a > b)) << "\n";
-    // print(a < b)
     std::cout << ::tpy::print_bool((a < b)) << "\n";
-    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
-    // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
-    // print(a >= b)
     std::cout << ::tpy::print_bool((a >= b)) << "\n";
-    // print(a <= b)
     std::cout << ::tpy::print_bool((a <= b)) << "\n";
 }
 
 // def test_int64_cmp() -> None:
+//     x = int64(100)
+//     y = int64(200)
+//     print(x < y)
+//     print(x > y)
+//     print(x == y)
 void test_int64_cmp() {
-    // x = int64(100)
     int64_t x = 100;
-    // y = int64(200)
     int64_t y = 200;
-    // print(x < y)
     std::cout << ::tpy::print_bool((x < y)) << "\n";
-    // print(x > y)
     std::cout << ::tpy::print_bool((x > y)) << "\n";
-    // print(x == y)
     std::cout << ::tpy::print_bool((x == y)) << "\n";
 }
 
 // def test_uint32_cmp() -> None:
+//     m = uint32(10)
+//     n = uint32(10)
+//     print(m == n)
+//     print(m != n)
+//     print(m >= n)
 void test_uint32_cmp() {
-    // m = uint32(10)
     uint32_t m = 10;
-    // n = uint32(10)
     uint32_t n = 10;
-    // print(m == n)
     std::cout << ::tpy::print_bool((m == n)) << "\n";
-    // print(m != n)
     std::cout << ::tpy::print_bool((m != n)) << "\n";
-    // print(m >= n)
     std::cout << ::tpy::print_bool((m >= n)) << "\n";
 }
 
 // def main() -> None:
+//     test_int32_cmp()
+//     test_int64_cmp()
+//     test_uint32_cmp()
 void main() {
-    // test_int32_cmp()
     test_int32_cmp();
-    // test_int64_cmp()
     test_int64_cmp();
-    // test_uint32_cmp()
     test_uint32_cmp();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

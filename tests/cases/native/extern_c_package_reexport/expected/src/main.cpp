@@ -6,22 +6,23 @@ namespace tpyapp::main {
 
 // @export(binding="C")
 // def app_init() -> None:
+//     abs(int32(0))
+//     x: int32 = get_clock()
+//     print(x)
 extern "C" void app_init() {
-    // abs(int32(0))
     abs(0);
-    // x: int32 = get_clock()
     int32_t x = tpy_clock();
-    // print(x)
     std::cout << x << "\n";
 }
 
+// from tpy.extern import export
+//
+// from mathlib import abs, get_clock
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import export
-    // from mathlib import abs, get_clock
     ::tpyapp::mathlib::__tpy_init();
 }
 

@@ -3,71 +3,70 @@
 
 namespace tpyapp::main {
 
-// cx, cy, x, y, tmp: real;
 double cx{};
-// cx, cy, x, y, tmp: real;
 double cy{};
-// cx, cy, x, y, tmp: real;
 double x{};
-// cx, cy, x, y, tmp: real;
 double y{};
-// cx, cy, x, y, tmp: real;
 double tmp{};
-// px, py, iter: integer;
 int32_t px{};
-// px, py, iter: integer;
 int32_t py{};
-// px, py, iter: integer;
 int32_t iter{};
 
+// cx, cy, x, y, tmp: real;
+// px, py, iter: integer;
+//
+// py := 0;
+// while py < 16 do
+// begin
+//   px := 0;
+//   while px < 60 do
+//   begin
+//     cx := -2.0 + 3.0 * px / 60;
+//     cy := -1.0 + 2.0 * py / 16;
+//     x := 0.0;
+//     y := 0.0;
+//     iter := 0;
+//     while (iter < 30) and (x*x + y*y < 4.0) do
+//     begin
+//       tmp := x*x - y*y + cx;
+//       y := 2.0 * x * y + cy;
+//       x := tmp;
+//       iter := iter + 1;
+//     end;
+//     if iter = 30 then write('#') else write(' ');
+//     px := px + 1;
+//   end;
+//   writeln('');
+//   py := py + 1;
+// end;
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // py := 0;
     py = 0;
-    // while py < 16 do
     while ((py < 16)) {
-        // px := 0;
         px = 0;
-        // while px < 60 do
         while ((px < 60)) {
-            // cx := -2.0 + 3.0 * px / 60;
             cx = ((-(2.0)) + ((::tpy::truediv(((3.0) * static_cast<double>(px)), 60))));
-            // cy := -1.0 + 2.0 * py / 16;
             cy = ((-(1.0)) + ((::tpy::truediv(((2.0) * static_cast<double>(py)), 16))));
-            // x := 0.0;
             x = 0.0;
-            // y := 0.0;
             y = 0.0;
-            // iter := 0;
             iter = 0;
-            // while (iter < 30) and (x*x + y*y < 4.0) do
             while (((iter < 30) && (((((x) * (x))) + (((y) * (y)))) < 4.0))) {
-                // tmp := x*x - y*y + cx;
                 tmp = ((((((x) * (x))) - (((y) * (y))))) + (cx));
-                // y := 2.0 * x * y + cy;
                 y = ((((((2.0) * (x))) * (y))) + (cy));
-                // x := tmp;
                 x = tmp;
-                // iter := iter + 1;
                 iter = (::tpy::add_check<int32_t>(iter, 1));
             }
-            // if iter = 30 then write('#') else write(' ');
             if ((iter == 30)) {
-                // if iter = 30 then write('#') else write(' ');
                 std::cout << "#";
             } else {
-                // if iter = 30 then write('#') else write(' ');
                 std::cout << " ";
             }
-            // px := px + 1;
             px = (::tpy::add_check<int32_t>(px, 1));
         }
-        // writeln('');
         std::cout << "" << "\n";
-        // py := py + 1;
         py = (::tpy::add_check<int32_t>(py, 1));
     }
 }

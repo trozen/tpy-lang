@@ -35,7 +35,9 @@ struct Painter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(c: Color = Color.GREEN) -> Color:
 Color describe(Color c = Color::GREEN);
+// def main() -> None:
 void main();
 
 // class Painter:
@@ -54,8 +56,8 @@ inline std::ostream& operator<<(std::ostream& os, const Painter& obj) {
 
 
 // def paint(self, c: Color = Color.BLUE) -> Color:
+//     return c
 inline Color Painter::paint(Color c) const {
-    // return c
     return c;
 }
 void __tpy_init();

@@ -5,49 +5,49 @@ namespace tpyapp::main {
 
 
 // def pick(a: Cat, b: Cat, flag: bool) -> int:
+//     match a:
+//         case Cat(lives=v):
+//             if flag:
+//                 match b:
+//                     case Cat(lives=v):   # tpyc: ok
+//                         pass
+//             return v
+//     return -1
 ::tpy::BigInt pick(const Cat& a, const Cat& b, bool flag) {
-    // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
-    // case Cat(lives=v):
     {
         v = __match_subject_1.lives;
-        // if flag:
         if (flag) {
-            // match b:
             auto& __match_subject_2 = b;
-            // case Cat(lives=v):   # tpyc: ok
             {
                 v = __match_subject_2.lives;
-                // pass
             }
         }
-        // return v
         return v;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     print(pick(Cat(1), Cat(2), True))    # 2 -- the nested bind ran
+//     print(pick(Cat(1), Cat(2), False))   # 1 -- it did not
 void main() {
-    // print(pick(Cat(1), Cat(2), True))    # 2 -- the nested bind ran
     Cat __tmp_1 = Cat(::tpy::BigInt(1));
     Cat __tmp_2 = Cat(::tpy::BigInt(2));
     std::cout << pick(__tmp_1, __tmp_2, true) << "\n";
-    // print(pick(Cat(1), Cat(2), False))   # 1 -- it did not
     Cat __tmp_3 = Cat(::tpy::BigInt(1));
     Cat __tmp_4 = Cat(::tpy::BigInt(2));
     std::cout << pick(__tmp_3, __tmp_4, false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

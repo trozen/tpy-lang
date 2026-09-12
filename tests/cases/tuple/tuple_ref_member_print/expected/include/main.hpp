@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -47,17 +48,18 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __repr__(self) -> str:
+//     return f"Box({self.val})"
 inline std::string Box::__repr__() const {
-    // return f"Box({self.val})"
     return std::format("Box({})", this->val);
 }
 
 // def __hash__(self) -> uint64:
+//     return uint64(self.val)
 inline uint64_t Box::__hash__() const {
-    // return uint64(self.val)
     return ::tpy::int_cast_check<uint64_t>(this->val);
 }
 void __tpy_init();

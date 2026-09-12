@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def show(c: Container[int32]) -> None:
+//     print(c.get())
 void show(Container<int32_t>& c) {
-    // print(c.get())
     std::cout << c.get() << "\n";
 }
 
 // def main() -> None:
+//     b = IntBox()
+//     show(b)
+//     c: Container[int32] = IntBox()
+//     print(c.get())
 void main() {
-    // b = IntBox()
     IntBox b = IntBox();
-    // show(b)
     show(b);
-    // c: Container[int32] = IntBox()
     IntBox __slot_1{IntBox()};
     Container<int32_t>* c = &__slot_1;
-    // print(c.get())
     std::cout << c->get() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

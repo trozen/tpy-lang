@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     partial = Info(name="Alice")
+//     print(partial["age"])  # panics -- age is None
 void main() {
-    // partial = Info(name="Alice")
     Info partial = Info("Alice");
-    // print(partial["age"])  # panics -- age is None
     std::cout << ::tpy::typed_dict_field_check(partial.age) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

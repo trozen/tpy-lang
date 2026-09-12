@@ -11,7 +11,9 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_buf(b: readonly[Buffer]) -> None:
 void read_buf(const Buffer& b);
+// def main() -> None:
 void main();
 
 // class Buffer:
@@ -47,26 +49,27 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = [int32(1), int32(2), int32(3)]
 inline Buffer::Buffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // @auto_readonly
 // def as_span(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<int32_t> Buffer::as_span() {
-    // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
 // def as_span(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<const int32_t> Buffer::as_span() const {
-    // return self._data
     return ::tpy::as_span(this->_data);
 }
 
 // # __getitem__ is implicitly readonly; returns int32 (value type), no dual overload needed
 // def __getitem__(self, index: int32) -> int32:
+//     return self._data[index]
 inline int32_t Buffer::__getitem__(int32_t index) const {
-    // return self._data[index]
     return ::tpy::__getitem__(this->_data, index);
 }
 void __tpy_init();

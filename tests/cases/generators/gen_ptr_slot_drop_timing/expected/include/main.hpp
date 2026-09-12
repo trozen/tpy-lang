@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen() -> Iterator[int32]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class Resource:
@@ -39,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     Resource* saved = nullptr;
@@ -66,6 +68,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Resource::Resource(int32_t n) : n(n) {}
 
 inline Resource::Resource(Resource&& other) noexcept : n(std::move(other.n)) {
@@ -80,9 +83,9 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("drop", self.n)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    // print("drop", self.n)
     std::cout << "drop" << " " << this->n << "\n";
 }
 void __tpy_init();

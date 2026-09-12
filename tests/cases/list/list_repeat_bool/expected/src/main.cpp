@@ -5,69 +5,77 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     falses: list[bool] = [False] * 5
+//     print(len(falses))
+//     print(falses[0])
+//     print(falses[4])
+//
+//     trues: list[bool] = [True] * 3
+//     print(len(trues))
+//     print(trues[0])
+//
+//     mixed: list[bool] = [True, False] * 2
+//     print(len(mixed))
+//     print(mixed[0])
+//     print(mixed[1])
+//     print(mixed[2])
+//     print(mixed[3])
+//
+//     empty: list[bool] = [True] * 0
+//     print(len(empty))
+//
+//     neg: list[bool] = [True] * (-2)
+//     print(len(neg))
+//
+//     n = 4
+//     dynamic: list[bool] = [False] * n
+//     print(len(dynamic))
+//     print(dynamic[3])
+//
+//     # Direct iteration over a materialized list[bool] (vector<bool>'s own
+//     # iterator, distinct from repeat_range's) -- guard against future
+//     # for-loop lowering accidentally binding bool& to the proxy.
+//     for x in mixed:
+//         print(x)
 void main() {
-    // falses: list[bool] = [False] * 5
     std::vector<bool> falses = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(5, {false}));
-    // print(len(falses))
     std::cout << ::tpy::__len__(falses) << "\n";
-    // print(falses[0])
     std::cout << ::tpy::print_bool(::tpy::__getitem__(falses, 0)) << "\n";
-    // print(falses[4])
     std::cout << ::tpy::print_bool(::tpy::__getitem__(falses, 4)) << "\n";
-    // trues: list[bool] = [True] * 3
     std::vector<bool> trues = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(3, {true}));
-    // print(len(trues))
     std::cout << ::tpy::__len__(trues) << "\n";
-    // print(trues[0])
     std::cout << ::tpy::print_bool(::tpy::__getitem__(trues, 0)) << "\n";
-    // mixed: list[bool] = [True, False] * 2
     std::vector<bool> mixed = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(2, {true, false}));
-    // print(len(mixed))
     std::cout << ::tpy::__len__(mixed) << "\n";
-    // print(mixed[0])
     std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 0)) << "\n";
-    // print(mixed[1])
     std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 1)) << "\n";
-    // print(mixed[2])
     std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 2)) << "\n";
-    // print(mixed[3])
     std::cout << ::tpy::print_bool(::tpy::__getitem__(mixed, 3)) << "\n";
-    // empty: list[bool] = [True] * 0
     std::vector<bool> empty = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(0, {true}));
-    // print(len(empty))
     std::cout << ::tpy::__len__(empty) << "\n";
-    // neg: list[bool] = [True] * (-2)
     std::vector<bool> neg = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(-2, {true}));
-    // print(len(neg))
     std::cout << ::tpy::__len__(neg) << "\n";
-    // n = 4
     int32_t n = 4;
-    // dynamic: list[bool] = [False] * n
     std::vector<bool> dynamic = ::tpy::from_range<std::vector<bool>>(::tpy::repeat_range<bool>(n, {false}));
-    // print(len(dynamic))
     std::cout << ::tpy::__len__(dynamic) << "\n";
-    // print(dynamic[3])
     std::cout << ::tpy::print_bool(::tpy::__getitem__(dynamic, 3)) << "\n";
-    // # Direct iteration over a materialized list[bool] (vector<bool>'s own
-    // # iterator, distinct from repeat_range's) -- guard against future
-    // # for-loop lowering accidentally binding bool& to the proxy.
-    // for x in mixed:
     auto& __obj_0 = mixed;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         bool x = *__beg_0;
-        // print(x)
         std::cout << ::tpy::print_bool(x) << "\n";
     }
 }
 
+// """Regression: [False] * n must not dangle on vector<bool>'s proxy reference."""
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

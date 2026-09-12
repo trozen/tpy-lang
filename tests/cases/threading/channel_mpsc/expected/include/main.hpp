@@ -23,6 +23,7 @@ struct Producer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -75,20 +76,23 @@ inline std::ostream& operator<<(std::ostream& os, const Producer& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Item::Item(int32_t v) : v(v) {}
 
 // def __init__(self, tx: Own[Sender[Item]], base: int32) -> None:
+//     self.tx = tx
+//     self.base = base
 inline Producer::Producer(::tpystd::tplib::channel::Sender<Item>&& tx, int32_t base) : tx(std::move(tx)), base(base) {}
 
 // def run(self) -> None:
+//     i = 0
+//     while i < 3:
+//         self.tx.send(Item(self.base + i))
+//         i += 1
 inline void Producer::run() {
-    // i = 0
     int32_t i = 0;
-    // while i < 3:
     while ((i < 3)) {
-        // self.tx.send(Item(self.base + i))
         this->tx.send(Item((::tpy::add_check<int32_t>(this->base, i))));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }

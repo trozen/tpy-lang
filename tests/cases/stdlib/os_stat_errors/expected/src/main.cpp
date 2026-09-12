@@ -5,73 +5,79 @@ namespace tpyapp::main {
 
 
 // def main():
+//     missing = "tpy_os_stat_missing_xyz"
+//     try:
+//         os.stat(missing)
+//     except FileNotFoundError:
+//         print("stat: FileNotFoundError")
+//     try:
+//         os.lstat(missing)
+//     except FileNotFoundError:
+//         print("lstat: FileNotFoundError")
+//     try:
+//         getmtime(missing)
+//     except FileNotFoundError:
+//         print("getmtime: FileNotFoundError")
+//     try:
+//         samefile(missing, missing)
+//     except FileNotFoundError:
+//         print("samefile: FileNotFoundError")
+//     try:
+//         os.stat(missing)
+//     except OSError:
+//         print("stat: OSError base")
 void main() {
-    // missing = "tpy_os_stat_missing_xyz"
     std::string_view missing = "tpy_os_stat_missing_xyz";
-    // try:
     {
         try {
-            // os.stat(missing)
             ::tpystd::os::stat(missing);
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("stat: FileNotFoundError")
             std::cout << "stat: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.lstat(missing)
             ::tpystd::os::lstat(missing);
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("lstat: FileNotFoundError")
             std::cout << "lstat: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // getmtime(missing)
             ::tpy::stdlib::os::path_getmtime(missing);
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("getmtime: FileNotFoundError")
             std::cout << "getmtime: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // samefile(missing, missing)
             ::tpy::stdlib::os::path_samefile(missing, missing);
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("samefile: FileNotFoundError")
             std::cout << "samefile: FileNotFoundError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // os.stat(missing)
             ::tpystd::os::stat(missing);
         } catch (const ::tpy::OSError&) {
-            // print("stat: OSError base")
             std::cout << "stat: OSError base" << "\n";
         }
     }
 }
 
+// # os.stat / os.path.getmtime / samefile on a missing path raise
+// # FileNotFoundError (matching CPython). Only the exception TYPE is observed.
+// import os
+// from os.path import getmtime, samefile
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.stat / os.path.getmtime / samefile on a missing path raise
-    // # FileNotFoundError (matching CPython). Only the exception TYPE is observed.
-    // import os
     ::tpystd::os::__tpy_init();
-    // from os.path import getmtime, samefile
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

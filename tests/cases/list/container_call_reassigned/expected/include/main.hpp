@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(n: int) -> Own[list[int]]:
 std::vector<::tpy::BigInt> make(const ::tpy::BigInt& n);
+// def other(n: int) -> Own[list[int]]:
 std::vector<::tpy::BigInt> other(const ::tpy::BigInt& n);
+// def counts() -> Own[dict[int, int]]:
 ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> counts();
+// def push(b: bytearray, v: int) -> None:
 void push(::tpy::ByteArray& b, const ::tpy::BigInt& v);
+// def main():
 void main();
 
 void __tpy_init();

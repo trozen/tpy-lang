@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename T>
 struct __coro_Box_peek;
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -25,6 +26,7 @@ struct Box {
     T val;
 
     // def __init__(self, v: T) -> None:
+    //     self.val = v
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
 
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// Async coroutine: Box.peek
+// async def peek(self) -> T:
 template <typename T>
 struct __coro_Box_peek {
     int32_t __state;
@@ -62,12 +64,12 @@ struct __coro_Box_peek {
 };
 
 // async def peek(self) -> T:
+//     return self.val
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Box_peek<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return self.val
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.val);
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));

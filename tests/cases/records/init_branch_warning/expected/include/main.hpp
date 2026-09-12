@@ -11,6 +11,7 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Config:
@@ -31,14 +32,14 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, flag: bool):
+//     if flag:  # tpyc: warning(/is not initialized before the constructor body/)
+//         self.value = 10  # tpyc: ok
+//     else:
+//         self.value = 20  # tpyc: ok
 inline Config::Config(bool flag) {
-    // if flag:  # tpyc: warning(/is not initialized before the constructor body/)
     if (flag) {
-        // self.value = 10  # tpyc: ok
         this->value = 10;
-    // else:
     } else {
-        // self.value = 20  # tpyc: ok
         this->value = 20;
     }
 }

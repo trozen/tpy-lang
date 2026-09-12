@@ -5,15 +5,17 @@ namespace tpyapp::main {
 
 
 // def fall_through() -> None:
+//     try:
+//         with Thrower():
+//             print("body")
+//     except RuntimeError as e:
+//         print(f"caught: {str(e)}")
 void fall_through() {
-    // try:
     {
         try {
-            // with Thrower():
             auto __ctx_1 = Thrower();
             __ctx_1.__enter__();
             try {
-                // print("body")
                 std::cout << "body" << "\n";
                 goto __with_exit_1;
             } catch (::tpy::BaseException& __exc_1) {
@@ -26,28 +28,29 @@ void fall_through() {
             __with_exit_1:
             __ctx_1.__exit__({}, nullptr, {});
         } catch (const ::tpy::RuntimeError& e) {
-            // print(f"caught: {str(e)}")
             std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
 }
 
 // def nested_inner_throws() -> None:
+//     # The inner __exit__ throws on fall-through; the outer manager must still
+//     # see the exceptional path and run its own __exit__ exactly once.
+//     try:
+//         with Quiet("outer"):
+//             with Thrower():
+//                 print("nested body")
+//     except RuntimeError as e:
+//         print(f"caught nested: {str(e)}")
 void nested_inner_throws() {
-    // # The inner __exit__ throws on fall-through; the outer manager must still
-    // # see the exceptional path and run its own __exit__ exactly once.
-    // try:
     {
         try {
-            // with Quiet("outer"):
             auto __ctx_2 = Quiet("outer");
             __ctx_2.__enter__();
             try {
-                // with Thrower():
                 auto __ctx_3 = Thrower();
                 __ctx_3.__enter__();
                 try {
-                    // print("nested body")
                     std::cout << "nested body" << "\n";
                     goto __with_exit_3;
                 } catch (::tpy::BaseException& __exc_3) {
@@ -70,24 +73,25 @@ void nested_inner_throws() {
             __with_exit_2:
             __ctx_2.__exit__({}, nullptr, {});
         } catch (const ::tpy::RuntimeError& e) {
-            // print(f"caught nested: {str(e)}")
             std::cout << std::format("caught nested: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
 }
 
 // def body_raises_exit_throws() -> None:
+//     # Body raises first: __exit__ runs on the catch path (not the fall-through
+//     # copy), and its own throw replaces the in-flight exception -- once.
+//     try:
+//         with Thrower():
+//             raise ValueError("from body")
+//     except RuntimeError as e:
+//         print(f"caught replaced: {str(e)}")
 void body_raises_exit_throws() {
-    // # Body raises first: __exit__ runs on the catch path (not the fall-through
-    // # copy), and its own throw replaces the in-flight exception -- once.
-    // try:
     {
         try {
-            // with Thrower():
             auto __ctx_4 = Thrower();
             __ctx_4.__enter__();
             try {
-                // raise ValueError("from body")
                 throw ::tpy::ValueError("from body");
             } catch (::tpy::BaseException& __exc_4) {
                 __ctx_4.__exit__({}, &__exc_4, {});
@@ -97,28 +101,27 @@ void body_raises_exit_throws() {
                 throw;
             }
         } catch (const ::tpy::RuntimeError& e) {
-            // print(f"caught replaced: {str(e)}")
             std::cout << std::format("caught replaced: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     fall_through()
+//     nested_inner_throws()
+//     body_raises_exit_throws()
 void main() {
-    // fall_through()
     fall_through();
-    // nested_inner_throws()
     nested_inner_throws();
-    // body_raises_exit_throws()
     body_raises_exit_throws();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

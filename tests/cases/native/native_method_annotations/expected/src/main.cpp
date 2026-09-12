@@ -5,36 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     v: Vec[int32] = Vec[int32]()
+//     v.add(10)
+//     v.add(20)
+//     v.add(30)
+//     print(v.count())
+//     print(v.get(1))
+//     print(v.pop_last())
+//     print(v.count())
+//     v.clear()
+//     print(v.count())
 void main() {
-    // v: Vec[int32] = Vec[int32]()
     ::std::vector<int32_t> v = ::std::vector<int32_t>();
-    // v.add(10)
     v.push_back(10);
-    // v.add(20)
     v.push_back(20);
-    // v.add(30)
     v.push_back(30);
-    // print(v.count())
     std::cout << static_cast<int32_t>(v.size()) << "\n";
-    // print(v.get(1))
     std::cout << v[1] << "\n";
-    // print(v.pop_last())
     std::cout << ::tpy::pop_back(v) << "\n";
-    // print(v.count())
     std::cout << static_cast<int32_t>(v.size()) << "\n";
-    // v.clear()
     v.clear();
-    // print(v.count())
     std::cout << static_cast<int32_t>(v.size()) << "\n";
 }
 
+// from tpy.extern import native, cpp_template
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native, cpp_template
-    // main()
     main();
 }
 

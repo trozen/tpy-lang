@@ -11,6 +11,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass
@@ -50,8 +51,8 @@ inline Rect::Rect(int32_t w, int32_t h, int32_t area) : w(w), h(h), area(area) {
 }
 
 // def __post_init__(self) -> None:
+//     self.area = self.w * self.h
 inline void Rect::__post_init__() {
-    // self.area = self.w * self.h
     this->area = (::tpy::mul_check<int32_t>(this->w, this->h));
 }
 

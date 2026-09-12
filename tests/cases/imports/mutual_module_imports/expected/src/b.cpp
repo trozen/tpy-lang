@@ -6,26 +6,26 @@ namespace tpyapp::b {
 
 
 // def bar() -> int:
+//     return 41
 ::tpy::BigInt bar() {
-    // return 41
     return ::tpy::BigInt(41);
 }
 
 // def relay() -> int:
+//     # Calls back into the cycle peer at runtime, exercising the
+//     # whole-module name binding both ways (a calls b.bar above; b
+//     # calls a.foo here).
+//     return a.foo()
 ::tpy::BigInt relay() {
-    // # Calls back into the cycle peer at runtime, exercising the
-    // # whole-module name binding both ways (a calls b.bar above; b
-    // # calls a.foo here).
-    // return a.foo()
     return ::tpyapp::a::foo();
 }
 
+// import a
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import a
     ::tpyapp::a::__tpy_init();
 }
 

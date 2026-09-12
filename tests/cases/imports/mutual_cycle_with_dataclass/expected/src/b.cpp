@@ -6,8 +6,8 @@ namespace tpyapp::b {
 
 
 // def sum_pair(p: Pair) -> int32:
+//     return p.x + p.y
 int32_t sum_pair(const ::tpyapp::a::Pair& p) {
-    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
@@ -16,19 +16,19 @@ int32_t sum_pair(const ::tpyapp::a::Pair& p) {
 // # constructor is visible across the cycle, not just the field
 // # accessors.
 // def make_pair_sum(x: int32, y: int32) -> int32:
+//     p = Pair(x, y)
+//     return sum_pair(p)
 int32_t make_pair_sum(int32_t x, int32_t y) {
-    // p = Pair(x, y)
     ::tpyapp::a::Pair p = ::tpyapp::a::Pair(x, y);
-    // return sum_pair(p)
     return sum_pair(p);
 }
 
+// from a import Pair
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import Pair
     ::tpyapp::a::__tpy_init();
 }
 

@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // def write_fixtures() -> None:
+//     with open(CERT_PATH, "w") as f:
+//         f.write(CERT_PEM)
+//     with open(KEY_PATH, "w") as f:
+//         f.write(KEY_PEM)
 void write_fixtures() {
-    // with open(CERT_PATH, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(CERT_PATH, "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // f.write(CERT_PEM)
         f->write(CERT_PEM);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -22,11 +24,9 @@ void write_fixtures() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(KEY_PATH, "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode(KEY_PATH, "w");
     f = &(__ctx_2.__enter__());
     try {
-        // f.write(KEY_PEM)
         f->write(KEY_PEM);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -41,175 +41,206 @@ void write_fixtures() {
 }
 
 // def bundle_embedded() -> None:
+//     n = ssl._bundled_ca_count()
+//     # A pinned Mozilla root set carries ~100+ roots; >50 proves it parsed and
+//     # is substantial (not empty, not a single placeholder).
+//     print("bundle non-empty:", n > 50)
 void bundle_embedded() {
-    // n = ssl._bundled_ca_count()
     int32_t n = ::tpystd::ssl::_bundled_ca_count();
-    // # A pinned Mozilla root set carries ~100+ roots; >50 proves it parsed and
-    // # is substantial (not empty, not a single placeholder).
-    // print("bundle non-empty:", n > 50)
     std::cout << "bundle non-empty:" << " " << ::tpy::print_bool((n > 50)) << "\n";
 }
 
 // def default_context_rejects_self_signed() -> None:
+//     a, b = socket.socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     ctx = ssl.create_default_context()  # bundled roots only; NO load_verify_locations
+//     cli = ctx.wrap_socket(a, "localhost", False)
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+//
+//     sdone = False
+//     i = 0
+//     while i < 500:
+//         if not sdone:
+//             try:
+//                 if srv.do_handshake():
+//                     sdone = True
+//             except ssl.SSLError:
+//                 break  # server aborts after the client rejects the cert
+//         try:
+//             if cli.do_handshake():
+//                 print("FAIL: self-signed cert was accepted")
+//                 return
+//         except ssl.SSLCertVerificationError:
+//             print("default context rejected self-signed cert")
+//             return
+//         i += 1
+//     print("FAIL: no verify decision")
 void default_context_rejects_self_signed() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.setblocking(False)
     a.setblocking(false);
-    // b.setblocking(False)
     b.setblocking(false);
-    // ctx = ssl.create_default_context()  # bundled roots only; NO load_verify_locations
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
-    // cli = ctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    // sdone = False
     bool sdone = false;
-    // i = 0
     int32_t i = 0;
-    // while i < 500:
     while ((i < 500)) {
-        // if not sdone:
         if ((!(sdone))) {
-            // try:
             {
                 try {
-                    // if srv.do_handshake():
                     if (srv.do_handshake()) {
-                        // sdone = True
                         sdone = true;
                     }
                 } catch (const ::tpystd::ssl::SSLError&) {
-                    // break  # server aborts after the client rejects the cert
                     break;
                 }
             }
         }
-        // try:
         {
             try {
-                // if cli.do_handshake():
                 if (cli.do_handshake()) {
-                    // print("FAIL: self-signed cert was accepted")
                     std::cout << "FAIL: self-signed cert was accepted" << "\n";
-                    // return
                     return;
                 }
             } catch (const ::tpystd::ssl::SSLCertVerificationError&) {
-                // print("default context rejected self-signed cert")
                 std::cout << "default context rejected self-signed cert" << "\n";
-                // return
                 return;
             }
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // print("FAIL: no verify decision")
     std::cout << "FAIL: no verify decision" << "\n";
 }
 
 // def bare_context_trusts_nothing() -> None:
+//     # A bare SSLContext() (no create_default_context, no load_verify_locations)
+//     # keeps CERT_REQUIRED but starts with an EMPTY trust store -- so it rejects
+//     # the peer. Guards that __init__ does not load the bundle by default (only
+//     # create_default_context() flips _use_bundled_ca). With zero trusted CAs
+//     # mbedTLS aborts the handshake before per-cert verification (a generic
+//     # SSLError, not SSLCertVerificationError), so catch the base class.
+//     a, b = socket.socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     ctx = ssl.SSLContext()
+//     cli = ctx.wrap_socket(a, "localhost", False)
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+//
+//     sdone = False
+//     i = 0
+//     while i < 500:
+//         if not sdone:
+//             try:
+//                 if srv.do_handshake():
+//                     sdone = True
+//             except ssl.SSLError:
+//                 break
+//         try:
+//             if cli.do_handshake():
+//                 print("FAIL: bare context accepted untrusted cert")
+//                 return
+//         except ssl.SSLError:
+//             print("bare context rejected untrusted cert")
+//             return
+//         i += 1
+//     print("FAIL: no verify decision")
 void bare_context_trusts_nothing() {
-    // # A bare SSLContext() (no create_default_context, no load_verify_locations)
-    // # keeps CERT_REQUIRED but starts with an EMPTY trust store -- so it rejects
-    // # the peer. Guards that __init__ does not load the bundle by default (only
-    // # create_default_context() flips _use_bundled_ca). With zero trusted CAs
-    // # mbedTLS aborts the handshake before per-cert verification (a generic
-    // # SSLError, not SSLCertVerificationError), so catch the base class.
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.setblocking(False)
     a.setblocking(false);
-    // b.setblocking(False)
     b.setblocking(false);
-    // ctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::SSLContext();
-    // cli = ctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    // sdone = False
     bool sdone = false;
-    // i = 0
     int32_t i = 0;
-    // while i < 500:
     while ((i < 500)) {
-        // if not sdone:
         if ((!(sdone))) {
-            // try:
             {
                 try {
-                    // if srv.do_handshake():
                     if (srv.do_handshake()) {
-                        // sdone = True
                         sdone = true;
                     }
                 } catch (const ::tpystd::ssl::SSLError&) {
-                    // break
                     break;
                 }
             }
         }
-        // try:
         {
             try {
-                // if cli.do_handshake():
                 if (cli.do_handshake()) {
-                    // print("FAIL: bare context accepted untrusted cert")
                     std::cout << "FAIL: bare context accepted untrusted cert" << "\n";
-                    // return
                     return;
                 }
             } catch (const ::tpystd::ssl::SSLError&) {
-                // print("bare context rejected untrusted cert")
                 std::cout << "bare context rejected untrusted cert" << "\n";
-                // return
                 return;
             }
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // print("FAIL: no verify decision")
     std::cout << "FAIL: no verify decision" << "\n";
 }
 
 // def main() -> None:
+//     write_fixtures()
+//     bundle_embedded()
+//     default_context_rejects_self_signed()
+//     bare_context_trusts_nothing()
 void main() {
-    // write_fixtures()
     write_fixtures();
-    // bundle_embedded()
     bundle_embedded();
-    // default_context_rejects_self_signed()
     default_context_rejects_self_signed();
-    // bare_context_trusts_nothing()
     bare_context_trusts_nothing();
 }
 
+// import ssl
+//
+// import socket
+//
+// CERT_PEM: Final[str] = """-----BEGIN CERTIFICATE-----
+// MIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw
+// FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1
+// MTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO
+// PQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE
+// tP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN
+// WGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD
+// VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID
+// SAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW
+// Ddslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==
+// -----END CERTIFICATE-----
+// """
+//
+// KEY_PEM: Final[str] = """-----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg2kn/USvpv4Ilspd2
+// xfLz4BM0UjqqhFJndB7QYY+ijAihRANCAATi4r8fZOEM8tz66TgRALGG7z33xtTC
+// AHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq
+// -----END PRIVATE KEY-----
+// """
+//
+// CERT_PATH: Final[str] = "tpy_test_ca_cert.pem"
+// KEY_PATH: Final[str] = "tpy_test_ca_key.pem"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import ssl
     ::tpystd::ssl::__tpy_init();
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

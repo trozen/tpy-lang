@@ -9,24 +9,27 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(xs: Iterable[int], y: int) -> str:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_xs>
 std::string pick(const T_xs& xs, const ::tpy::BigInt& y);
+// def pick(xs: Iterable[float], y: float) -> str:
 template<::tpystd::typing::Iterable<double> T_xs>
 std::string pick(const T_xs& xs, double y);
+// def main() -> None:
 void main();
 
 // @dispatch
 // def pick(xs: Iterable[int], y: int) -> str:
+//     return "int"
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_xs>
 std::string pick(const T_xs& xs, const ::tpy::BigInt& y) {
-    // return "int"
     return "int";
 }
 // @dispatch
 // def pick(xs: Iterable[float], y: float) -> str:
+//     return "float"
 template<::tpystd::typing::Iterable<double> T_xs>
 std::string pick(const T_xs& xs, double y) {
-    // return "float"
     return "float";
 }
 

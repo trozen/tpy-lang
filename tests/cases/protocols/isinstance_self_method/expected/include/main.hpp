@@ -29,6 +29,7 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pet(Tagged):
@@ -121,94 +122,97 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Pet::Pet(std::string_view n) : _name(n) {}
 
 // @readonly
 // def name(self) -> str:
+//     return self._name
 inline std::string Pet::name() const {
-    // return self._name
     return this->_name;
 }
 
 // @readonly
 // def describe(self) -> str:
+//     # const method: self lowers to `const Pet* this`; dynamic_cast<const Dog*>(this)
+//     # picks the subclass; narrowed local binds `const Dog& __self` (via cast-and-cache)
+//     # though here we use the if-init form so the read routes through __self_ptr.
+//     if isinstance(self, Dog):  # tpyc: ok
+//         return "dog: " + self.bark()
+//     if isinstance(self, Cat):  # tpyc: ok
+//         return "cat: " + self.purr()
+//     return "pet: " + self._name
 inline std::string Pet::describe() const {
-    // # const method: self lowers to `const Pet* this`; dynamic_cast<const Dog*>(this)
-    // # picks the subclass; narrowed local binds `const Dog& __self` (via cast-and-cache)
-    // # though here we use the if-init form so the read routes through __self_ptr.
-    // if isinstance(self, Dog):  # tpyc: ok
     if (const Dog* __self_ptr = dynamic_cast<const Dog*>(this); (__self_ptr != nullptr)) {
-        // return "dog: " + self.bark()
         return (::tpy::str_concat("dog: ", (*__self_ptr).bark()));
     }
-    // if isinstance(self, Cat):  # tpyc: ok
     if (const Cat* __self_ptr = dynamic_cast<const Cat*>(this); (__self_ptr != nullptr)) {
-        // return "cat: " + self.purr()
         return (::tpy::str_concat("cat: ", (*__self_ptr).purr()));
     }
-    // return "pet: " + self._name
     return (::tpy::str_concat("pet: ", this->_name));
 }
 
 // @readonly
 // def kind(self) -> str:
+//     # Tuple form on self: multi-cast OR, no narrowing (matches the bare
+//     # polymorphic param test's `kind()` shape).
+//     if isinstance(self, (Dog, Cat)):  # tpyc: ok -- tuple form (no narrowing)
+//         return "mammal: " + self._name
+//     return "other: " + self._name
 inline std::string Pet::kind() const {
-    // # Tuple form on self: multi-cast OR, no narrowing (matches the bare
-    // # polymorphic param test's `kind()` shape).
-    // if isinstance(self, (Dog, Cat)):  # tpyc: ok -- tuple form (no narrowing)
     if (((dynamic_cast<const Cat*>(this) != nullptr) || (dynamic_cast<const Dog*>(this) != nullptr))) {
-        // return "mammal: " + self._name
         return (::tpy::str_concat("mammal: ", this->_name));
     }
-    // return "other: " + self._name
     return (::tpy::str_concat("other: ", this->_name));
 }
 
 // @readonly
 // def assert_dog(self) -> str:
+//     # assert isinstance(...) takes the fresh-cast reference-local path
+//     # (no if-init pre-bind). For self, the cast input is `this`.
+//     assert isinstance(self, Dog)  # tpyc: ok
+//     return "ASSERT: " + self.bark()
 inline std::string Pet::assert_dog() const {
-    // # assert isinstance(...) takes the fresh-cast reference-local path
-    // # (no if-init pre-bind). For self, the cast input is `this`.
-    // assert isinstance(self, Dog)  # tpyc: ok
     if (!((dynamic_cast<const Dog*>(this) != nullptr))) ::tpy::raise_assertion_error();
     const Dog& __self = *dynamic_cast<const Dog*>(this);
-    // return "ASSERT: " + self.bark()
     return (::tpy::str_concat("ASSERT: ", __self.bark()));
 }
 
 // def mutate_then_describe(self, suffix: str) -> str:
+//     # non-const method: self lowers to `Pet* this`; cast emits non-const `Dog*`.
+//     # `self._name = ...` mutates the *current* dynamic type's slot (works for
+//     # any concrete subclass).
+//     self._name = self._name + suffix
+//     if isinstance(self, Dog):  # tpyc: ok
+//         return "MUT-DOG: " + self.bark()
+//     return "MUT-PET: " + self._name
 inline std::string Pet::mutate_then_describe(std::string_view suffix) {
-    // # non-const method: self lowers to `Pet* this`; cast emits non-const `Dog*`.
-    // # `self._name = ...` mutates the *current* dynamic type's slot (works for
-    // # any concrete subclass).
-    // self._name = self._name + suffix
     this->_name = (::tpy::str_concat(this->_name, suffix));
-    // if isinstance(self, Dog):  # tpyc: ok
     if (Dog* __self_ptr = dynamic_cast<Dog*>(this); (__self_ptr != nullptr)) {
-        // return "MUT-DOG: " + self.bark()
         return (::tpy::str_concat("MUT-DOG: ", (*__self_ptr).bark()));
     }
-    // return "MUT-PET: " + self._name
     return (::tpy::str_concat("MUT-PET: ", this->_name));
 }
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline Dog::Dog(std::string_view n) : Pet(n) {}
 
 // @readonly
 // def bark(self) -> str:
+//     return "woof from " + self._name
 inline std::string Dog::bark() const {
-    // return "woof from " + self._name
     return (::tpy::str_concat("woof from ", this->_name));
 }
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline Cat::Cat(std::string_view n) : Pet(n) {}
 
 // @readonly
 // def purr(self) -> str:
+//     return "purr from " + self._name
 inline std::string Cat::purr() const {
-    // return "purr from " + self._name
     return (::tpy::str_concat("purr from ", this->_name));
 }
 void __tpy_init();

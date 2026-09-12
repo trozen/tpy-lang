@@ -16,6 +16,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -59,21 +60,23 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Cell::Cell(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.slot = Box(Cell(1))
 inline Holder::Holder() : slot(::tpystd::tplib::box::Box<Cell>(Cell(::tpy::BigInt(1)))) {}
 
 // def finish(self) -> None:
+//     if self.slot is None:
+//         return
+//     print(self.slot.get().v)
+//     self.slot = None
 inline void Holder::finish() {
-    // if self.slot is None:
     if ((!this->slot.has_value())) {
-        // return
         return;
     }
-    // print(self.slot.get().v)
     std::cout << (*this->slot).get().v << "\n";
-    // self.slot = None
     this->slot = std::nullopt;
 }
 void __tpy_init();

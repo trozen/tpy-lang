@@ -5,87 +5,87 @@ namespace tpyapp::main {
 
 
 // def and_not(u: A | B, flag: bool) -> int32:
+//     t = 0
+//     # Negated isinstance under `and`: the body knows u is A.
+//     while not isinstance(u, B) and flag:
+//         t += u.n
+//         flag = False
+//     return t
 int32_t and_not(const ::tpy::Union<A, B>& u, bool flag) {
-    // t = 0
     int32_t t = 0;
-    // # Negated isinstance under `and`: the body knows u is A.
-    // while not isinstance(u, B) and flag:
     while (((!(std::holds_alternative<B>(u))) && flag)) {
         const auto& __u = std::get<A>(u);
-        // t += u.n
         t = ::tpy::add_check<int32_t>(t, __u.n);
-        // flag = False
         flag = false;
     }
-    // return t
     return t;
 }
 
 // def not_or(u: A | B, flag: bool) -> int32:
+//     t = 0
+//     # A negated OR chain leaves the same single fact: the body knows u is B.
+//     while not (isinstance(u, A) or flag):
+//         t += u.m
+//         flag = True
+//     return t
 int32_t not_or(const ::tpy::Union<A, B>& u, bool flag) {
-    // t = 0
     int32_t t = 0;
-    // # A negated OR chain leaves the same single fact: the body knows u is B.
-    // while not (isinstance(u, A) or flag):
     while ((!((std::holds_alternative<A>(u) || flag)))) {
         const auto& __u = std::get<B>(u);
-        // t += u.m
         t = ::tpy::add_check<int32_t>(t, __u.m);
-        // flag = True
         flag = true;
     }
-    // return t
     return t;
 }
 
 // def ref_union(u: Node | Leaf, flag: bool) -> int32:
+//     # The reference-union twin: the alias borrows the pointer variant, so the
+//     # mutation inside the loop is visible on the caller`s object afterwards.
+//     while not isinstance(u, Leaf) and flag:
+//         u.v += 5
+//         flag = False
+//     if isinstance(u, Node):
+//         return u.v
+//     return -1
 int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag) {
-    // # The reference-union twin: the alias borrows the pointer variant, so the
-    // # mutation inside the loop is visible on the caller`s object afterwards.
-    // while not isinstance(u, Leaf) and flag:
     while (((!(std::holds_alternative<Leaf*>(u))) && flag)) {
         auto& __u = *std::get<Node*>(u);
-        // u.v += 5
         __u.v = ::tpy::add_check<int32_t>(__u.v, 5);
-        // flag = False
         flag = false;
     }
-    // if isinstance(u, Node):
     if (std::holds_alternative<Node*>(u)) {
         auto& __u = *std::get<Node*>(u);
-        // return u.v
         return __u.v;
     }
     auto& __u = *std::get<Leaf*>(u);
-    // return -1
     return -1;
 }
 
 // def main() -> None:
+//     print(and_not(A(3), True))
+//     print(and_not(B(4), True))
+//     print(not_or(B(7), False))
+//     n = Node(1)
+//     print(ref_union(n, True))
+//     print(n.v)
 void main() {
-    // print(and_not(A(3), True))
     ::tpy::Union<A, B> __tmp_1 = A(3);
     std::cout << and_not(__tmp_1, true) << "\n";
-    // print(and_not(B(4), True))
     ::tpy::Union<A, B> __tmp_2 = B(4);
     std::cout << and_not(__tmp_2, true) << "\n";
-    // print(not_or(B(7), False))
     ::tpy::Union<A, B> __tmp_3 = B(7);
     std::cout << not_or(__tmp_3, false) << "\n";
-    // n = Node(1)
     Node n = Node(1);
-    // print(ref_union(n, True))
     std::cout << ref_union(::tpy::Union<Leaf*, Node*>{&(n)}, true) << "\n";
-    // print(n.v)
     std::cout << n.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

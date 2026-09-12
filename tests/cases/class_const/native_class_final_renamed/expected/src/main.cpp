@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(BuildOpts.FLAG)
+//     print(BuildOpts.MAX_RETRIES)
+//     print(BuildOpts.RELEASE_TAG)
 void main() {
-    // print(BuildOpts.FLAG)
     std::cout << ::tpy::print_bool(::BuildOpts::g_flag) << "\n";
-    // print(BuildOpts.MAX_RETRIES)
     std::cout << ::BuildOpts::kMaxRetries << "\n";
-    // print(BuildOpts.RELEASE_TAG)
     std::cout << ::BuildOpts::RELEASE_TAG << "\n";
 }
 
+// # Phase 10: native_field("rename") on a @native class constant. The Python
+// # identifier is `FLAG`, but the C++ side has `g_flag`. Use sites resolve to
+// # `<native_qname>::g_flag` instead of `<native_qname>::FLAG`.
+// # tpy: include("native_types.hpp")
+// from tpy.extern import native, native_field
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Phase 10: native_field("rename") on a @native class constant. The Python
-    // # identifier is `FLAG`, but the C++ side has `g_flag`. Use sites resolve to
-    // # `<native_qname>::g_flag` instead of `<native_qname>::FLAG`.
-    // # tpy: include("native_types.hpp")
-    // from tpy.extern import native, native_field
-    // main()
     main();
 }
 

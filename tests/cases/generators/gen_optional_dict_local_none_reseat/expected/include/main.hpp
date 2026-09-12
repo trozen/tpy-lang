@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Holder_keys_of;
 
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -32,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: Holder.keys_of
+// def keys_of(self) -> Iterator[int32]:
 struct __gen_Holder_keys_of : public ::tpy::next_iter_mixin<__gen_Holder_keys_of, int32_t> {
     int32_t __state;
     Holder& __self;
@@ -68,6 +69,7 @@ inline __gen_Holder_keys_of Holder::keys_of() {
 
 
 // def __init__(self) -> None:
+//     self.d = {1: 10, 2: 20}
 inline Holder::Holder() : d(::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}})) {}
 void __tpy_init();
 } // namespace tpyapp::main

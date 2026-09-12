@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // async def cleanup_task(label: str) -> int32:
+//     await asyncio.sleep(0.001)
+//     print("cleanup", label)
+//     return int32(0)
 ::tpystd::tpy::Poll<int32_t> __coro_cleanup_task::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,9 +20,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("cleanup", label)
         std::cout << "cleanup" << " " << label << "\n";
-        // return int32(0)
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -37,6 +37,18 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
 }
 
 // async def main_coro() -> None:
+//     try:
+//         try:
+//             print("inner-try")
+//             raise RuntimeError("inner-fail")
+//         finally:
+//             tasks: list[asyncio.Task[int32]] = []
+//             tasks.append(asyncio.create_task(cleanup_task("a")))
+//             tasks.append(asyncio.create_task(cleanup_task("b")))
+//             await asyncio.gather_list(tasks)
+//             print("finally-done")
+//     except RuntimeError as e:
+//         print("caught:", e)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -49,13 +61,11 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("finally-done")
             std::cout << "finally-done" << "\n";
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::RuntimeError& e) {
             __sub_0.reset();
-            // print("caught:", e)
             std::cout << "caught:" << " " << e << "\n";
             __state = S_JOIN_0;
             continue;
@@ -73,7 +83,6 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
             __state = S_JOIN_3;
             continue;
         } catch (const ::tpy::RuntimeError& e) {
-            // print("caught:", e)
             std::cout << "caught:" << " " << e << "\n";
             __state = S_JOIN_0;
             continue;
@@ -91,7 +100,6 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::RuntimeError& e) {
-            // print("caught:", e)
             std::cout << "caught:" << " " << e << "\n";
             __state = S_JOIN_0;
             continue;
@@ -102,9 +110,7 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
     case S_JOIN_3: {
         try {
             try {
-                // print("inner-try")
                 std::cout << "inner-try" << "\n";
-                // raise RuntimeError("inner-fail")
                 throw ::tpy::RuntimeError("inner-fail");
             } catch (...) {
                 this->__finally_exc_0 = std::current_exception();
@@ -112,7 +118,6 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
                 continue;
             }
         } catch (const ::tpy::RuntimeError& e) {
-            // print("caught:", e)
             std::cout << "caught:" << " " << e << "\n";
             __state = S_JOIN_0;
             continue;
@@ -122,20 +127,15 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
     }
     case S_JOIN_4: {
         try {
-            // tasks: list[asyncio.Task[int32]] = []
             tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
             __coro_arg_0 = "a";
-            // tasks.append(asyncio.create_task(cleanup_task("a")))
             (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cleanup_task(__coro_arg_0))));
             __coro_arg_1 = "b";
-            // tasks.append(asyncio.create_task(cleanup_task("b")))
             (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cleanup_task(__coro_arg_1))));
-            // await asyncio.gather_list(tasks)
             __sub_0.emplace((*tasks));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::RuntimeError& e) {
-            // print("caught:", e)
             std::cout << "caught:" << " " << e << "\n";
             __state = S_JOIN_0;
             continue;
@@ -155,28 +155,29 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.gather_list invoked from inside a `finally` clause -- exercises
+// # the M3.3 CFG-based await-in-finally lowering, with gather_list as the
+// # sub-coro at the finally suspension point. The inner try raises so
+// # `__finally_exc_0` is populated (a pending exception is in flight) when
+// # gather_list suspends; this pins that the resume cancel-check on the
+// # gather_list sub-future doesn't trip over the finally's pending-
+// # exception slot. After the finally completes (gather drains its sub-
+// # tasks), the inner RuntimeError re-propagates and is caught by the
+// # outer handler.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.gather_list invoked from inside a `finally` clause -- exercises
-    // # the M3.3 CFG-based await-in-finally lowering, with gather_list as the
-    // # sub-coro at the finally suspension point. The inner try raises so
-    // # `__finally_exc_0` is populated (a pending exception is in flight) when
-    // # gather_list suspends; this pins that the resume cancel-check on the
-    // # gather_list sub-future doesn't trip over the finally's pending-
-    // # exception slot. After the finally completes (gather drains its sub-
-    // # tasks), the inner RuntimeError re-propagates and is caught by the
-    // # outer handler.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

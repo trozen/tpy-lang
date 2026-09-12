@@ -3,19 +3,18 @@
 
 namespace tpyapp::main {
 
-// x = 2_147_483_648  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt x;
 
+// x = 2_147_483_648  # tpyc: warning(/outside default int32 range/)
+// x = int32(1)
+// print(x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = 2_147_483_648  # tpyc: warning(/outside default int32 range/)
     x = ::tpy::BigInt(static_cast<int64_t>(2147483648LL));
-    // x = int32(1)
     x = ::tpy::BigInt(1);
-    // print(x)
     std::cout << x << "\n";
 }
 

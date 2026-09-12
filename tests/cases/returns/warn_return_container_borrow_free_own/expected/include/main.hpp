@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first(rows: list[list[int32]]) -> list[int32]:
 std::vector<int32_t>& first(std::vector<std::vector<int32_t>>& rows);
+// def take(rows: list[list[int32]]) -> Own[list[int32]]:
 std::vector<int32_t> take(std::vector<std::vector<int32_t>>& rows);
+// def take_copy(rows: list[list[int32]]) -> Own[list[int32]]:
 std::vector<int32_t> take_copy(std::vector<std::vector<int32_t>>& rows);
+// def main() -> None:
 void main();
 
 void __tpy_init();

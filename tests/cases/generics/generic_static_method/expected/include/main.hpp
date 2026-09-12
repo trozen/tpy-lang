@@ -11,6 +11,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T]:
@@ -20,31 +21,32 @@ struct Container {
     T value;
 
     // def __init__(self, value: Own[T]):
+    //     self.value = value
     Container() = default;
     explicit Container(::tpy::own_param_t<T> value) : value(std::move(value)) {}
 
     // def __repr__(self) -> str:
+    //     return f"Container(value={self.value!r})"
     std::string __repr__() const {
-        // return f"Container(value={self.value!r})"
         return std::format("Container(value={})", ::tpy::repr_of(this->value));
     }
 
     // @staticmethod
     // def create(v: Own[T]) -> Own[Container[T]]:
+    //     return Container(v)
     static Container<T> create(::tpy::own_param_t<T> v) {
-        // return Container(v)
         return Container<T>(std::move(v));
     }
 
     // @staticmethod
     // def wrap_optional(v: Own[T] | None) -> Own[Container[T]] | None:
+    //     if v is not None:
+    //         return Container(v)
+    //     return None
     static std::optional<Container<T>> wrap_optional(std::optional<T> v) {
-        // if v is not None:
         if ((v.has_value())) {
-            // return Container(v)
             return Container<T>(std::move((*v)));
         }
-        // return None
         return std::nullopt;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

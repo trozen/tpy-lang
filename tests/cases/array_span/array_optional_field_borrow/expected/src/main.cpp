@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def first_after_bump(g: Grid) -> int32:
+//     # The decl under test: `xs` binds `std::array<int32_t, 2>*` off the
+//     # storage-form optional field, so `g.bump()` is visible through it.
+//     xs = g.cells
+//     if xs is None:
+//         return -1
+//     g.bump()
+//     return xs[0]
 int32_t first_after_bump(Grid& g) {
-    // # The decl under test: `xs` binds `std::array<int32_t, 2>*` off the
-    // # storage-form optional field, so `g.bump()` is visible through it.
-    // xs = g.cells
     std::array<int32_t, 2>* xs = ::tpy::optional_to_ptr(g.cells);
-    // if xs is None:
     if ((xs == nullptr)) {
-        // return -1
         return -1;
     }
-    // g.bump()
     g.bump();
-    // return xs[0]
     return ::tpy::__getitem__((*xs), 0);
 }
 
 // def size_of(g: Grid) -> int32:
+//     ys = g.cells
+//     if ys is None:
+//         return 0
+//     return len(ys)
 int32_t size_of(const Grid& g) {
-    // ys = g.cells
     const std::array<int32_t, 2>* ys = ::tpy::optional_to_ptr(g.cells);
-    // if ys is None:
     if ((ys == nullptr)) {
-        // return 0
         return 0;
     }
-    // return len(ys)
     return ::tpy::__len__((*ys));
 }
 
 // def main() -> None:
+//     g = Grid()
+//     print(size_of(g))
+//     print(first_after_bump(g))
 void main() {
-    // g = Grid()
     Grid g = Grid();
-    // print(size_of(g))
     std::cout << size_of(g) << "\n";
-    // print(first_after_bump(g))
     std::cout << first_after_bump(g) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

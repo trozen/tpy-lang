@@ -6,44 +6,47 @@ namespace tpyapp::main {
 
 // # Bytes iteration, indexing, contains, concat, repeat
 // def main() -> None:
+//     data = b"ABC"
+//     for b in data:
+//         print(b)
+//
+//     print(data[0])
+//     print(data[2])
+//     print(data[-1])
+//
+//     print(65 in data)
+//     print(0 in data)
+//
+//     a = b"hello"
+//     b2 = b" world"
+//     print(a + b2)
+//     print(a * 3)
 void main() {
-    // data = b"ABC"
     ::tpy::BytesView data = ::tpy::bytes_literal("ABC", 3);
-    // for b in data:
     auto& __obj_0 = data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         uint8_t b = *__beg_0;
-        // print(b)
         std::cout << static_cast<int>(b) << "\n";
     }
-    // print(data[0])
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << "\n";
-    // print(data[2])
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 2)) << "\n";
-    // print(data[-1])
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, -1)) << "\n";
-    // print(65 in data)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 65))) << "\n";
-    // print(0 in data)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 0))) << "\n";
-    // a = b"hello"
     ::tpy::BytesView a = ::tpy::bytes_literal("hello", 5);
-    // b2 = b" world"
     ::tpy::BytesView b2 = ::tpy::bytes_literal(" world", 6);
-    // print(a + b2)
     std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(a, b2))) << "\n";
-    // print(a * 3)
     std::cout << ::tpy::BytesPrinter((::tpy::bytes_repeat(a, 3))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

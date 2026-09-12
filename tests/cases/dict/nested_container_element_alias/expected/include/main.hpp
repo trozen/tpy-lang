@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def push(xs: list[int32], v: int32) -> None:
 void push(std::vector<int32_t>& xs, int32_t v);
+// def read_elements(g: dict[str, list[int32]], m: list[list[int32]]) -> int32:
 int32_t read_elements(::tpy::ordered_map<std::string, std::vector<int32_t>>& g, const std::vector<std::vector<int32_t>>& m);
+// def main() -> None:
 void main();
 
 void __tpy_init();

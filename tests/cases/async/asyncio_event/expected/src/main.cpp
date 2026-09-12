@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // async def producer(e: Event) -> None:
+//     await asyncio.sleep(0.001)
+//     e.set()
+//     print("producer set")
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,9 +20,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // e.set()
         e.set();
-        // print("producer set")
         std::cout << "producer set" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,10 +37,11 @@ __coro_producer producer(::tpystd::asyncio::Event& e) {
 }
 
 // async def consumer(e: Event) -> None:
+//     await e
+//     print("consumer woke")
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await e
         __sub_0 = &(e);
         __state = S_RESUME_0;
         continue;
@@ -50,7 +51,6 @@ __coro_producer producer(::tpystd::asyncio::Event& e) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        // print("consumer woke")
         std::cout << "consumer woke" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -67,10 +67,11 @@ __coro_consumer consumer(::tpystd::asyncio::Event& e) {
 }
 
 // async def fast_path_consumer(e: Event) -> None:
+//     await e
+//     print("fast-path woke")
 ::tpystd::tpy::Poll<::std::monostate> __coro_fast_path_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await e
         __sub_0 = &(e);
         __state = S_RESUME_0;
         continue;
@@ -80,7 +81,6 @@ __coro_consumer consumer(::tpystd::asyncio::Event& e) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        // print("fast-path woke")
         std::cout << "fast-path woke" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -97,33 +97,37 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
 }
 
 // async def main_coro() -> None:
+//     e_fast = Event()
+//     print(e_fast.is_set())
+//     # Second set() must be a no-op, not a double-wake.
+//     e_fast.set()
+//     e_fast.set()
+//     print(e_fast.is_set())
+//     asyncio.create_task(fast_path_consumer(e_fast))
+//
+//     e = Event()
+//     print(e.is_set())
+//     # Await the consumer task (not a sleep) so the test can't race the
+//     # scheduler under load: main resumes only after "consumer woke".
+//     t = asyncio.create_task(consumer(e))
+//     asyncio.create_task(producer(e))
+//     await t
+//     print(e.is_set())
+//     e.clear()
+//     print(e.is_set())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // e_fast = Event()
         e_fast.emplace(::tpystd::asyncio::Event());
-        // print(e_fast.is_set())
         std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
-        // # Second set() must be a no-op, not a double-wake.
-        // e_fast.set()
         (*e_fast).set();
-        // e_fast.set()
         (*e_fast).set();
-        // print(e_fast.is_set())
         std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
-        // asyncio.create_task(fast_path_consumer(e_fast))
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(fast_path_consumer((*e_fast))));
-        // e = Event()
         e.emplace(::tpystd::asyncio::Event());
-        // print(e.is_set())
         std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
-        // # Await the consumer task (not a sleep) so the test can't race the
-        // # scheduler under load: main resumes only after "consumer woke".
-        // t = asyncio.create_task(consumer(e))
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer((*e)))));
-        // asyncio.create_task(producer(e))
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*e))));
-        // await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -133,11 +137,8 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        // print(e.is_set())
         std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
-        // e.clear()
         (*e).clear();
-        // print(e.is_set())
         std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -154,22 +155,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Event is the no-payload completion signal -- producer set(), consumer
+// # awaits and resumes. Also covers fast-path (await on already-set Event
+// # resolves immediately) and set() idempotency.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Event is the no-payload completion signal -- producer set(), consumer
-    // # awaits and resumes. Also covers fast-path (await on already-set Event
-    // # resolves immediately) and set() idempotency.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

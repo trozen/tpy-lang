@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def consume(t: Own[Tracker]) -> None:
+//     print("consumed", t.name)
 void consume(Tracker&& t) {
-    // print("consumed", t.name)
     std::cout << "consumed" << " " << t.name << "\n";
 }
 
 // def main():
+//     # Temporary passed to Own param -- temporary is moved, not copied
+//     consume(Tracker("a"))
+//     print("---")
+//
+//     # Local passed to Own param via auto-move at last use
+//     t = Tracker("b")
+//     consume(t)
+//     print("---")
 void main() {
-    // # Temporary passed to Own param -- temporary is moved, not copied
-    // consume(Tracker("a"))
     consume(Tracker("a"));
-    // print("---")
     std::cout << "---" << "\n";
-    // # Local passed to Own param via auto-move at last use
-    // t = Tracker("b")
     Tracker t = Tracker("b");
-    // consume(t)
     consume(std::move(t));
-    // print("---")
     std::cout << "---" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

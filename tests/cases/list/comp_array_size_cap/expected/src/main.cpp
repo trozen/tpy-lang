@@ -8,8 +8,10 @@ namespace tpyapp::main {
 // # list -- the N-element pack expansion would be a C++ compile-time cliff. At
 // # the cap it stays a stack Array.
 // def main():
+//     big = [i for i in range(2000)]  # tpyc: type(/list\[int32\]/)
+//     edge = [i for i in range(1024)]  # tpyc: type(/Array\[int32, 1024\]/)
+//     print(len(big), big[1999], len(edge), edge[1023])
 void main() {
-    // big = [i for i in range(2000)]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> big = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 2000;
@@ -19,21 +21,19 @@ void main() {
         }
         std::move(__result);
     });
-    // edge = [i for i in range(1024)]  # tpyc: type(/Array\[int32, 1024\]/)
     std::array<int32_t, 1024> edge = ::tpy::array_from_index<int32_t, 1024>([&](std::size_t __i_1) -> int32_t {
         int32_t i = int32_t(__i_1);
         return i;
     });
-    // print(len(big), big[1999], len(edge), edge[1023])
     std::cout << ::tpy::__len__(big) << " " << ::tpy::__getitem__(big, 1999) << " " << ::tpy::__len__(edge) << " " << ::tpy::__getitem__(edge, 1023) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

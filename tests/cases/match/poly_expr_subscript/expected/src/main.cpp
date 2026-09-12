@@ -5,50 +5,51 @@ namespace tpyapp::main {
 
 
 // def describe(animals: list[Box[Animal]], i: int) -> str:
+//     match animals[i]:  # tpyc: ok
+//         case Dog():
+//             return "dog"
+//         case Snake() as s:
+//             return "snake legs=" + str(s.legs)
+//         case _:
+//             return "?"
 std::string describe(const std::vector<::tpystd::tplib::box::Box<Animal>>& animals, const ::tpy::BigInt& i) {
-    // match animals[i]:  # tpyc: ok
     auto& __match_subject_1 = ::tpy::__getitem__(animals, i.to_fixed_check<int32_t>());
-    // case Dog():
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
         const Dog& __case_0 = *__mpoly_0;
-        // return "dog"
         return "dog";
-    // case Snake() as s:
     } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&(__match_subject_1.__deref__()))) {
         const Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
-        // return "snake legs=" + str(s.legs)
         return (::tpy::str_concat("snake legs=", (s.legs).to_string()));
-    // case _:
     } else {
-        // return "?"
         return "?";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     animals: list[Box[Animal]] = []
+//     animals.append(Box(Dog()))
+//     animals.append(Box(Snake()))
+//     print(describe(animals, 0))
+//     print(describe(animals, 1))
 void main() {
-    // animals: list[Box[Animal]] = []
     std::vector<::tpystd::tplib::box::Box<Animal>> animals = std::vector<::tpystd::tplib::box::Box<Animal>>{};
-    // animals.append(Box(Dog()))
     animals.push_back(::tpystd::tplib::box::Box<Dog>(Dog()));
-    // animals.append(Box(Snake()))
     animals.push_back(::tpystd::tplib::box::Box<Snake>(Snake()));
-    // print(describe(animals, 0))
     std::cout << describe(animals, ::tpy::BigInt(0)) << "\n";
-    // print(describe(animals, 1))
     std::cout << describe(animals, ::tpy::BigInt(1)) << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

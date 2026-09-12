@@ -5,53 +5,56 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Test 1: Own[T] with value type (int32) - same behavior as T
+//     box_int: Box[int32] = Box[int32](42)
+//     val: int32 = box_int.take()
+//     print(val)
+//
+//     # Test 2: Own[T] with object type returns by value
+//     box_list: Box[list[int32]] = Box[list[int32]]([1, 2, 3])
+//     taken: list[int32] = box_list.take()
+//     for x in taken:
+//         print(x)
+//
+//     # Test 3: Verify get() still works (uses trait-based return)
+//     print(box_int.get())
+//
+//     # Test 4: Variable inference from Own[T] unwraps to T
+//     c = box_list.take()
+//     c.append(4)
+//     for x in c:
+//         print(x)
 void main() {
-    // # Test 1: Own[T] with value type (int32) - same behavior as T
-    // box_int: Box[int32] = Box[int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
-    // val: int32 = box_int.take()
     int32_t val = box_int.take();
-    // print(val)
     std::cout << val << "\n";
-    // # Test 2: Own[T] with object type returns by value
-    // box_list: Box[list[int32]] = Box[list[int32]]([1, 2, 3])
     Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
-    // taken: list[int32] = box_list.take()
     std::vector<int32_t> taken = box_list.take();
-    // for x in taken:
     auto& __obj_0 = taken;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Test 3: Verify get() still works (uses trait-based return)
-    // print(box_int.get())
     std::cout << box_int.get() << "\n";
-    // # Test 4: Variable inference from Own[T] unwraps to T
-    // c = box_list.take()
     std::vector<int32_t> c = box_list.take();
-    // c.append(4)
     c.push_back(4);
-    // for x in c:
     auto& __obj_1 = c;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

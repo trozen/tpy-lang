@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def check_outside() -> None:
+//     print("outside null?", (_get_current_executor() is None))
 void check_outside() {
-    // print("outside null?", (_get_current_executor() is None))
     std::cout << "outside null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
 }
 
 // async def check_inside() -> None:
+//     h = _get_current_executor()
+//     print("inside null?", (h is None))
+//     # Manual save/restore round-trip via the public bindings; not
+//     # the production path (that's _ExecutorScope.__del__, exercised
+//     # by check_teardown below).
+//     _clear_current_executor()
+//     print("after clear:", (_get_current_executor() is None))
+//     _set_current_executor(h)
+//     print("after restore:", (_get_current_executor() is None))
 ::tpystd::tpy::Poll<::std::monostate> __coro_check_inside::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // h = _get_current_executor()
         h = ::tpystd::asyncio::_executor::_get_current_executor();
-        // print("inside null?", (h is None))
         std::cout << "inside null?" << " " << ::tpy::print_bool((h == nullptr)) << "\n";
-        // # Manual save/restore round-trip via the public bindings; not
-        // # the production path (that's _ExecutorScope.__del__, exercised
-        // # by check_teardown below).
-        // _clear_current_executor()
         ::tpystd::asyncio::_executor::_clear_current_executor();
-        // print("after clear:", (_get_current_executor() is None))
         std::cout << "after clear:" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
-        // _set_current_executor(h)
         ::tpystd::asyncio::_executor::_set_current_executor(h);
-        // print("after restore:", (_get_current_executor() is None))
         std::cout << "after restore:" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -45,19 +45,19 @@ __coro_check_inside check_inside() {
 }
 
 // def check_sleep() -> None:
+//     sleep_until_steady(monotonic() - 1.0)
+//     print("sleep_until_steady past deadline: ok")
 void check_sleep() {
-    // sleep_until_steady(monotonic() - 1.0)
     ::tpy::stdlib::time::sleep_until_steady(((::tpy::stdlib::time::monotonic()) - (1.0)));
-    // print("sleep_until_steady past deadline: ok")
     std::cout << "sleep_until_steady past deadline: ok" << "\n";
 }
 
 // async def trivial() -> None:
+//     return None
 ::tpystd::tpy::Poll<::std::monostate> __coro_trivial::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return None
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -73,55 +73,56 @@ __coro_trivial trivial() {
 }
 
 // def check_teardown() -> None:
+//     # `_current_executor` should be null after asyncio.run returns --
+//     # `_ExecutorScope.__del__` has cleared it. Direct evidence that the
+//     # RAII teardown ran.
+//     asyncio.run(trivial())
+//     print("after run, null?", (_get_current_executor() is None))
+//     # A second asyncio.run is allowed because `_current_executor` was
+//     # cleared (re-entry into a running event loop is what gets
+//     # rejected; back-to-back runs are fine).
+//     asyncio.run(trivial())
+//     print("second run completed, null?", (_get_current_executor() is None))
 void check_teardown() {
-    // # `_current_executor` should be null after asyncio.run returns --
-    // # `_ExecutorScope.__del__` has cleared it. Direct evidence that the
-    // # RAII teardown ran.
-    // asyncio.run(trivial())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(trivial()));
-    // print("after run, null?", (_get_current_executor() is None))
     std::cout << "after run, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
-    // # A second asyncio.run is allowed because `_current_executor` was
-    // # cleared (re-entry into a running event loop is what gets
-    // # rejected; back-to-back runs are fine).
-    // asyncio.run(trivial())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(trivial()));
-    // print("second run completed, null?", (_get_current_executor() is None))
     std::cout << "second run completed, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
 }
 
 // def main() -> None:
+//     check_outside()
+//     check_sleep()
+//     asyncio.run(check_inside())
+//     check_teardown()
 void main() {
-    // check_outside()
     check_outside();
-    // check_sleep()
     check_sleep();
-    // asyncio.run(check_inside())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(check_inside()));
-    // check_teardown()
     check_teardown();
 }
 
+// # asyncio internal-helpers smoke: current-executor getter/setter/clear,
+// # time.sleep_until_steady. Smoke-checks that the helpers parse, compile,
+// # link, and behave, plus that asyncio.run's _ExecutorScope correctly
+// # clears `_current_executor` on teardown so a stale post-run wake is a
+// # silent no-op rather than a stale-pointer dispatch.
+// import asyncio
+// from asyncio._executor import (
+//     _clear_current_executor,
+//     _get_current_executor,
+//     _set_current_executor,
+// )
+// from time import monotonic, sleep_until_steady
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio internal-helpers smoke: current-executor getter/setter/clear,
-    // # time.sleep_until_steady. Smoke-checks that the helpers parse, compile,
-    // # link, and behave, plus that asyncio.run's _ExecutorScope correctly
-    // # clears `_current_executor` on teardown so a stale post-run wake is a
-    // # silent no-op rather than a stale-pointer dispatch.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from asyncio._executor import (
-    // _clear_current_executor,
-    // _get_current_executor,
-    // _set_current_executor,
-    // )
     ::tpystd::asyncio::_executor::__tpy_init();
-    // from time import monotonic, sleep_until_steady
-    // main()
     main();
 }
 

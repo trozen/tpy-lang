@@ -5,31 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         asyncio.get_running_loop()
+//         print("no error")
+//     except RuntimeError:
+//         print("RuntimeError")
 void main() {
-    // try:
     {
         try {
-            // asyncio.get_running_loop()
             ::tpystd::asyncio::get_running_loop();
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::RuntimeError&) {
-            // print("RuntimeError")
             std::cout << "RuntimeError" << "\n";
         }
     }
 }
 
+// # Regression guard: get_running_loop() called with no loop running raises
+// # RuntimeError (CPython parity). Exercised here from a plain sync context.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression guard: get_running_loop() called with no loop running raises
-    // # RuntimeError (CPython parity). Exercised here from a plain sync context.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

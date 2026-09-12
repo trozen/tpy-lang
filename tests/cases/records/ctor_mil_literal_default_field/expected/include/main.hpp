@@ -12,6 +12,7 @@ struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -51,14 +52,15 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Cell::Cell(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     # The subject: literal elements read a default-only field.
+//     self.cells = [self.n, int32(1)]  # tpyc: ok
+//     self.boxes = [Cell(self.n)]  # tpyc: ok
 inline Grid::Grid() {
-    // # The subject: literal elements read a default-only field.
-    // self.cells = [self.n, int32(1)]  # tpyc: ok
     this->cells = {this->n, 1};
-    // self.boxes = [Cell(self.n)]  # tpyc: ok
     this->boxes = {Cell(this->n)};
 }
 void __tpy_init();

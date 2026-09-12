@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Headers()
+//     print(getattr(h, "host", "fallback"))      # dunder -> "example.com"
+//     print(getattr(h, "absent", "fallback"))    # dunder raises -> "fallback"
 void main() {
-    // h = Headers()
     Headers h = Headers();
-    // print(getattr(h, "host", "fallback"))      # dunder -> "example.com"
     std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__("host")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
-    // print(getattr(h, "absent", "fallback"))    # dunder raises -> "fallback"
     std::cout << ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__("absent")); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); }) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

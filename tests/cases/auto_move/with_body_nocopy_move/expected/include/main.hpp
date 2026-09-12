@@ -15,6 +15,7 @@ struct Guard;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Guard:
@@ -36,14 +37,14 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 
 // def __enter__(self) -> int32:
+//     return 1
 inline int32_t Guard::__enter__() const {
-    // return 1
     return 1;
 }
 
 // def __exit__(self, et, ev, tb) -> bool:
+//     return False
 inline bool Guard::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // return False
     return false;
 }
 void __tpy_init();

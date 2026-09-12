@@ -5,8 +5,8 @@ namespace tpyapp::counters {
 
 
 // def bump_from_other_module() -> None:
+//     Counters.total += 100
 void bump_from_other_module() {
-    // Counters.total += 100
     Counters::total = ::tpy::add_check<int32_t>(Counters::total, 100);
 }
 

@@ -5,67 +5,67 @@ namespace tpyapp::main {
 
 
 // def modify_inner(p: Ptr[Inner]) -> None:
+//     p.x = 999
 void modify_inner(Inner* p) {
-    // p.x = 999
     ::tpy::deref_check(p).x = 999;
 }
 
 // def read_inner(p: Ptr[readonly[Inner]]) -> int32:
+//     return p.x
 int32_t read_inner(const Inner* p) {
-    // return p.x
     return ::tpy::deref_check(p).x;
 }
 
 // def test_field_to_ptr() -> None:
+//     outer: Outer = Outer(42)
+//     # obj.field -> Ptr coercion
+//     modify_inner(outer.inner)
+//     print(outer.inner.x)
 void test_field_to_ptr() {
-    // outer: Outer = Outer(42)
     Outer outer = Outer(42);
-    // # obj.field -> Ptr coercion
-    // modify_inner(outer.inner)
     modify_inner(&outer.inner);
-    // print(outer.inner.x)
     std::cout << outer.inner.x << "\n";
 }
 
 // def test_field_to_const_ptr() -> None:
+//     outer: Outer = Outer(100)
+//     # obj.field -> Ptr[readonly[...]] coercion
+//     result: int32 = read_inner(outer.inner)
+//     print(result)
 void test_field_to_const_ptr() {
-    // outer: Outer = Outer(100)
     Outer outer = Outer(100);
-    // # obj.field -> Ptr[readonly[...]] coercion
-    // result: int32 = read_inner(outer.inner)
     int32_t result = read_inner(&outer.inner);
-    // print(result)
     std::cout << result << "\n";
 }
 
 // def test_subscript_to_ptr() -> None:
+//     arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
+//     # arr[i] -> Ptr coercion
+//     modify_inner(arr[1])
+//     print(arr[1].x)
 void test_subscript_to_ptr() {
-    // arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
     std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
-    // # arr[i] -> Ptr coercion
-    // modify_inner(arr[1])
     modify_inner(&::tpy::__getitem__(arr, 1));
-    // print(arr[1].x)
     std::cout << ::tpy::__getitem__(arr, 1).x << "\n";
 }
 
+// # Run tests
+// print("=== field to ptr ===")
+// test_field_to_ptr()
+// print("=== field to const ptr ===")
+// test_field_to_const_ptr()
+// print("=== subscript to ptr ===")
+// test_subscript_to_ptr()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Run tests
-    // print("=== field to ptr ===")
     std::cout << "=== field to ptr ===" << "\n";
-    // test_field_to_ptr()
     test_field_to_ptr();
-    // print("=== field to const ptr ===")
     std::cout << "=== field to const ptr ===" << "\n";
-    // test_field_to_const_ptr()
     test_field_to_const_ptr();
-    // print("=== subscript to ptr ===")
     std::cout << "=== subscript to ptr ===" << "\n";
-    // test_subscript_to_ptr()
     test_subscript_to_ptr();
 }
 

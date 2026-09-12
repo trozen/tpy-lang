@@ -6,63 +6,63 @@ namespace tpyapp::main {
 
 // # Annotated str locals resolve to StrView when view-safe (never mutated)
 // def literal_view() -> None:
+//     a: str = "hello"  # tpyc: type(StrView)
+//     print(a)
 void literal_view() {
-    // a: str = "hello"  # tpyc: type(StrView)
     std::string_view a = "hello";
-    // print(a)
     std::cout << a << "\n";
 }
 
 // def literal_promote_augassign() -> None:
+//     b: str = "hello"  # tpyc: type(str)
+//     b += " world"
+//     print(b)
 void literal_promote_augassign() {
-    // b: str = "hello"  # tpyc: type(str)
     std::string b = "hello";
-    // b += " world"
     b += " world";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def literal_promote_reassign() -> None:
+//     c: str = "start"  # tpyc: type(str)
+//     c = c + " end"
+//     print(c)
 void literal_promote_reassign() {
-    // c: str = "start"  # tpyc: type(str)
     std::string c = "start";
-    // c = c + " end"
     c += " end";
-    // print(c)
     std::cout << c << "\n";
 }
 
 // def multiple_views() -> None:
+//     x: str = "one"  # tpyc: type(StrView)
+//     y: str = "two"  # tpyc: type(StrView)
+//     print(x)
+//     print(y)
 void multiple_views() {
-    // x: str = "one"  # tpyc: type(StrView)
     std::string_view x = "one";
-    // y: str = "two"  # tpyc: type(StrView)
     std::string_view y = "two";
-    // print(x)
     std::cout << x << "\n";
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def main() -> None:
+//     literal_view()
+//     literal_promote_augassign()
+//     literal_promote_reassign()
+//     multiple_views()
 void main() {
-    // literal_view()
     literal_view();
-    // literal_promote_augassign()
     literal_promote_augassign();
-    // literal_promote_reassign()
     literal_promote_reassign();
-    // multiple_views()
     multiple_views();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

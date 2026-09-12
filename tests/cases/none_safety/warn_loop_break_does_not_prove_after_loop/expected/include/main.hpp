@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def after_break(x: int32 | None, flag: bool) -> int32:
 int32_t after_break(std::optional<int32_t> x, bool flag);
 
 void __tpy_init();

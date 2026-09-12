@@ -12,8 +12,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(a: Dog | Cat) -> str:
 std::string describe(::tpy::Union<const Cat*, const Dog*> a);
+// def classify(a: Dog | Cat) -> str:
 std::string classify(::tpy::Union<const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // # match/case with wildcard and capture patterns
@@ -51,9 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

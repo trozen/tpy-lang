@@ -14,7 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_steps;
 
+// def steps(start: int32) -> Iterator[int32]:
 __gen_steps steps(int32_t start);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -58,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: steps
+// def steps(start: int32) -> Iterator[int32]:
 struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     int32_t __state;
     int32_t start;
@@ -86,27 +88,29 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32):
+//     self.item = Item(n)
 inline Holder::Holder(int32_t n) : item(Item(n)) {}
 
 // def __enter__(self) -> Item:
+//     tmp = self.item  # the hop that hides `self` from the return expression
+//     return tmp
 inline Item& Holder::__enter__() {
-    // tmp = self.item  # the hop that hides `self` from the return expression
     Item& tmp = this->item;
-    // return tmp
     return tmp;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Holder::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 
 // def total(self) -> int32:
+//     return self.item.n
 inline int32_t Holder::total() const {
-    // return self.item.n
     return this->item.n;
 }
 void __tpy_init();

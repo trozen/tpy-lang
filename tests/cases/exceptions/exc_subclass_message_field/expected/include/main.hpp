@@ -11,6 +11,7 @@ struct AppError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # `message` is a field of the builtin Exception base; a subclass assigning
@@ -38,14 +39,14 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 
 
 // def __init__(self, message: str):
+//     self.message = message
 inline AppError::AppError(std::string_view message) {
-    // self.message = message
     this->message = message;
 }
 
 // def detail(self) -> str:
+//     return self.message
 inline std::string AppError::detail() const {
-    // return self.message
     return this->message;
 }
 void __tpy_init();

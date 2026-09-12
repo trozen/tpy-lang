@@ -6,56 +6,61 @@ namespace tpyapp::main {
 
 // # else block runs only when no exception is raised
 // def fail(do_raise: bool) -> None:
+//     if do_raise:
+//         raise ValueError("fail")
 void fail(bool do_raise) {
-    // if do_raise:
     if (do_raise) {
-        // raise ValueError("fail")
         throw ::tpy::ValueError("fail");
     }
 }
 
 // def main() -> None:
+//     # Success: else runs
+//     try:
+//         fail(False)
+//     except ValueError:
+//         print("caught")
+//     else:
+//         print("else 1")
+//
+//     # Error: else does NOT run
+//     try:
+//         fail(True)
+//     except ValueError:
+//         print("caught")
+//     else:
+//         print("else 2")
 void main() {
-    // # Success: else runs
-    // try:
     {
         try {
-            // fail(False)
             fail(false);
         } catch (const ::tpy::ValueError&) {
-            // print("caught")
             std::cout << "caught" << "\n";
             goto __after_else_1;
         }
         // else:
-        // print("else 1")
         std::cout << "else 1" << "\n";
         __after_else_1:;
     }
-    // # Error: else does NOT run
-    // try:
     {
         try {
-            // fail(True)
             fail(true);
         } catch (const ::tpy::ValueError&) {
-            // print("caught")
             std::cout << "caught" << "\n";
             goto __after_else_2;
         }
         // else:
-        // print("else 2")
         std::cout << "else 2" << "\n";
         __after_else_2:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

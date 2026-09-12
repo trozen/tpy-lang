@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = MyTask[int32]()
+//     print(use_shadowed(a).is_pending())
+//     b = MyTask[int32]()
+//     print(use_renamed(b).is_pending())
 void main() {
-    // a = MyTask[int32]()
     MyTask<int32_t> a = MyTask<int32_t>();
-    // print(use_shadowed(a).is_pending())
     std::cout << ::tpy::print_bool(use_shadowed<int32_t>(a).is_pending()) << "\n";
-    // b = MyTask[int32]()
     MyTask<int32_t> b = MyTask<int32_t>();
-    // print(use_renamed(b).is_pending())
     std::cout << ::tpy::print_bool(use_renamed<int32_t>(b).is_pending()) << "\n";
 }
 
+// from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_pending
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_pending
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

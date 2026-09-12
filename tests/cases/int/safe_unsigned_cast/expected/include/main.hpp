@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_assert_non_negative() -> None:
 void test_assert_non_negative();
+// def test_if_positive() -> None:
 void test_if_positive();
+// def test_no_elision_unchecked() -> None:
 void test_no_elision_unchecked();
+// def test_no_elision_narrowing() -> None:
 void test_no_elision_narrowing();
+// def test_no_elision_after_reassign() -> None:
 void test_no_elision_after_reassign();
+// def test_for_range_index() -> None:
 void test_for_range_index();
+// def test_int64_to_uint64() -> None:
 void test_int64_to_uint64();
 
 void __tpy_init();

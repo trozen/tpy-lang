@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def view_of(b: bytes) -> BytesView:
+//     return b
 ::tpy::BytesView view_of(::tpy::BytesView b) {
-    // return b
     return b;
 }
 
 // def main() -> None:
+//     s = Sink()
+//     s.add_view(b"ab")
+//     s.add_owned(b"cd")
+//     # The element is an independent copy, so the container outlives the view.
+//     print(len(s.chunks), s.chunks[0], s.owned[0])
 void main() {
-    // s = Sink()
     Sink s = Sink();
-    // s.add_view(b"ab")
     s.add_view(::tpy::bytes_literal("ab", 2));
-    // s.add_owned(b"cd")
     s.add_owned(::tpy::bytes_literal("cd", 2));
-    // # The element is an independent copy, so the container outlives the view.
-    // print(len(s.chunks), s.chunks[0], s.owned[0])
     std::cout << ::tpy::__len__(s.chunks) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(s.chunks, 0)) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(s.owned, 0)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

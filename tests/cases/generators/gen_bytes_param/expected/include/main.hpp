@@ -9,16 +9,20 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
+// def byte_vals(data: bytes) -> Iterator[int]:
+//     i = 0
+//     while i < len(data):
+//         yield data[i]
+//         i += 1
 inline auto byte_vals(::tpy::BytesView data) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<::tpy::BigInt>(
         [data = ::tpy::Bytes(data), i]() mutable -> std::optional<::tpy::BigInt> {
             while ((i < ::tpy::__len__(data))) {
                 auto __val = ::tpy::BigInt(data[static_cast<std::size_t>(i)]);
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<::tpy::BigInt>(__val);
             }

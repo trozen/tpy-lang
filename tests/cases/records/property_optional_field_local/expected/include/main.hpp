@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Inner:
@@ -52,22 +53,24 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, value: str) -> None:
+//     self.value = value
 inline Inner::Inner(std::string_view value) : value(value) {}
 
 // def __init__(self, inner: Optional[Inner]) -> None:
+//     self._inner = inner
 inline Holder::Holder(const Inner* inner) : _inner(::tpy::ptr_to_optional(inner)) {}
 
 // @property
 // def value(self) -> Optional[str]:
+//     sub = self._inner
+//     if sub is None:
+//         return None
+//     return sub.value
 inline std::optional<std::string> Holder::value() const {
-    // sub = self._inner
     const Inner* sub = ::tpy::optional_to_ptr(this->_inner);
-    // if sub is None:
     if ((sub == nullptr)) {
-        // return None
         return std::nullopt;
     }
-    // return sub.value
     return sub->value;
 }
 void __tpy_init();

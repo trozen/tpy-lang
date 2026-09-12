@@ -11,7 +11,9 @@ struct Storage;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(s: Own[Storage]) -> int32:
 int32_t consume(Storage&& s);
+// def main():
 void main();
 
 // class Storage:
@@ -43,8 +45,9 @@ inline std::ostream& operator<<(std::ostream& os, const Storage& obj) {
 
 
 // def __init__(self):
+//     self.buf = UninitHeapStorage[int32](uint32(1))
+//     self.buf.init0(42)
 inline Storage::Storage() : buf(::tpy::UninitHeapStorage<int32_t>(1)) {
-    // self.buf.init0(42)
     this->buf.init0(42);
 }
 
@@ -60,15 +63,15 @@ inline Storage& Storage::operator=(Storage&& other) noexcept {
 }
 
 // def __del__(self):
+//     self.buf.drop0()
 inline Storage::~Storage() {
     if (!this->__tpy_owned_) return;
-    // self.buf.drop0()
     this->buf.drop0();
 }
 
 // def get(self) -> int32:
+//     return self.buf.load0()
 inline int32_t Storage::get() const {
-    // return self.buf.load0()
     return this->buf.load0();
 }
 void __tpy_init();

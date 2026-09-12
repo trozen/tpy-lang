@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(7)
+//     q = p.origin()
+//     print(p.x, q.x)
 void main() {
-    // p = Point(7)
     Point p = Point(7);
-    // q = p.origin()
     Point q = p.origin();
-    // print(p.x, q.x)
     std::cout << p.x << " " << q.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

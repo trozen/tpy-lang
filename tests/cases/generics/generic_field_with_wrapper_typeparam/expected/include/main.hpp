@@ -11,6 +11,7 @@ template<typename T> struct W;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class W[T]:
@@ -30,6 +31,7 @@ struct W {
     T direct;
 
     // def __init__(self, t: int32) -> None:
+    //     self.tag = t
     W() = default;
     explicit W(int32_t t) : tag(t) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.W";

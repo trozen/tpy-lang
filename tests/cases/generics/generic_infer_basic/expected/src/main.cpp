@@ -3,33 +3,31 @@
 
 namespace tpyapp::main {
 
-// # Inference from int literal -> Box[int]
-// box = Box(42)
 Box<int32_t>* box{};
-// # Inference from int32 -> Box[int32]
-// x: int32 = 10
 int32_t x{};
-// box32 = Box(x)
 Box<int32_t>* box32{};
 
+// """Test basic type inference for user-defined generic classes."""
+//
+// # Inference from int literal -> Box[int]
+// box = Box(42)
+// print(box.value)
+//
+// # Inference from int32 -> Box[int32]
+// x: int32 = 10
+// box32 = Box(x)
+// print(box32.value)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Inference from int literal -> Box[int]
-    // box = Box(42)
     static Box<int32_t> __global_slot_1 = Box<int32_t>(42);
     box = &__global_slot_1;
-    // print(box.value)
     std::cout << box->value << "\n";
-    // # Inference from int32 -> Box[int32]
-    // x: int32 = 10
     x = 10;
-    // box32 = Box(x)
     static Box<int32_t> __global_slot_2 = Box<int32_t>(x);
     box32 = &__global_slot_2;
-    // print(box32.value)
     std::cout << box32->value << "\n";
 }
 

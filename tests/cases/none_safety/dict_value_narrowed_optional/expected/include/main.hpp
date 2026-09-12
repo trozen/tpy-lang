@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def store_str(a: str | None) -> None:
 void store_str(std::optional<std::string_view> a);
+// def store_bytes(a: bytes | None) -> None:
 void store_bytes(std::optional<::tpy::BytesView> a);
+// def store_list(a: str | None) -> None:
 void store_list(std::optional<std::string_view> a);
+// def store_optional_value(a: str | None) -> None:
 void store_optional_value(std::optional<std::string_view> a);
+// def main() -> None:
 void main();
 
 void __tpy_init();

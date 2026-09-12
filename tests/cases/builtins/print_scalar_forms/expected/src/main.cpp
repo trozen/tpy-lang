@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def show(n: int32, ok: bool, ratio: float, small: uint8) -> None:
+//     print("n =", n)
+//     print(n, ok, ratio)
+//     print(small)          # 8-bit -> static_cast<int>, prints as a number
+//     print()
+//     banner()              # a bare call statement
 void show(int32_t n, bool ok, double ratio, uint8_t small) {
-    // print("n =", n)
     std::cout << "n =" << " " << n << "\n";
-    // print(n, ok, ratio)
     std::cout << n << " " << ::tpy::print_bool(ok) << " " << ::tpy::print_float(ratio) << "\n";
-    // print(small)          # 8-bit -> static_cast<int>, prints as a number
     std::cout << static_cast<int>(small) << "\n";
-    // print()
     std::cout << "\n";
-    // banner()              # a bare call statement
     banner();
 }
 
 // def banner() -> None:
+//     print("----")
 void banner() {
-    // print("----")
     std::cout << "----" << "\n";
 }
 
 // def main() -> None:
+//     show(42, True, 2.5, 200)
+//     show(-7, False, 0.0, 0)
 void main() {
-    // show(42, True, 2.5, 200)
     show(42, true, 2.5, 200);
-    // show(-7, False, 0.0, 0)
     show(-7, false, 0.0, 0);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

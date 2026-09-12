@@ -5,49 +5,49 @@ namespace tpyapp::main {
 
 
 // def bump_all(*items: Box) -> None:
+//     for b in items:
+//         b.val += 1
 void bump_all(::tpy::varargs<Box> items) {
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
-        // b.val += 1
         b.val = ::tpy::add_check<int32_t>(b.val, 1);
     }
 }
 
 // def via_three(a: Box, b: Box, c: Box) -> None:  # tpyc: ok
+//     bump_all(a, b, c)
 void via_three(Box& a, Box& b, Box& c) {
-    // bump_all(a, b, c)
     std::array<Box*, 3> __tmp_1{&a, &b, &c};
     bump_all(::tpy::varargs<Box>(__tmp_1));
 }
 
 // def main() -> None:
+//     x = Box(1)
+//     y = Box(2)
+//     z = Box(3)
+//     via_three(x, y, z)
+//     print(x.val)
+//     print(y.val)
+//     print(z.val)
 void main() {
-    // x = Box(1)
     Box x = Box(1);
-    // y = Box(2)
     Box y = Box(2);
-    // z = Box(3)
     Box z = Box(3);
-    // via_three(x, y, z)
     via_three(x, y, z);
-    // print(x.val)
     std::cout << x.val << "\n";
-    // print(y.val)
     std::cout << y.val << "\n";
-    // print(z.val)
     std::cout << z.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

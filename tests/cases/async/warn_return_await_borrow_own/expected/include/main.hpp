@@ -19,8 +19,11 @@ struct __coro_take_copy;
 struct __coro_amain;
 struct __coro_Holder_borrow;
 
+// async def take(h: Holder) -> Own[Payload]:
 __coro_take take(Holder& h);
+// async def take_copy(h: Holder) -> Own[Payload]:
 __coro_take_copy take_copy(Holder& h);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Payload:
@@ -57,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: Holder.borrow
+// async def borrow(self) -> Payload:
 struct __coro_Holder_borrow {
     int32_t __state;
     bool __cancel_pending;
@@ -83,7 +86,7 @@ inline __coro_Holder_borrow Holder::borrow() {
     return __coro_Holder_borrow(*this);
 }
 
-// Async coroutine: take
+// async def take(h: Holder) -> Own[Payload]:
 struct __coro_take {
     int32_t __state;
     bool __cancel_pending;
@@ -107,7 +110,7 @@ struct __coro_take {
     }
 };
 
-// Async coroutine: take_copy
+// async def take_copy(h: Holder) -> Own[Payload]:
 struct __coro_take_copy {
     int32_t __state;
     bool __cancel_pending;
@@ -132,7 +135,7 @@ struct __coro_take_copy {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -162,9 +165,11 @@ struct __coro_amain {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.p = Payload(v)
 inline Holder::Holder(int32_t v) : p(Payload(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

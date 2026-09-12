@@ -20,8 +20,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_waiter;
 struct __coro_main_coro;
 
+// async def waiter(f: Future[Tracked]) -> Own[Tracked]:
 __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Tracked:
@@ -47,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracked& obj) {
     return os;
 }
 
-// Async coroutine: waiter
+// async def waiter(f: Future[Tracked]) -> Own[Tracked]:
 struct __coro_waiter {
     int32_t __state;
     bool __cancel_pending;
@@ -71,7 +74,7 @@ struct __coro_waiter {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -100,6 +103,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Tracked::Tracked(std::string_view label) : label(label) {}
 
 inline Tracked::Tracked(Tracked&& other) noexcept : label(std::move(other.label)) {
@@ -114,9 +118,9 @@ inline Tracked& Tracked::operator=(Tracked&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     dropped.append(self.label)
 inline Tracked::~Tracked() {
     if (!this->__tpy_owned_) return;
-    // dropped.append(self.label)
     std::string __tmp_1{this->label};
     dropped->push_back(std::move(__tmp_1));
 }

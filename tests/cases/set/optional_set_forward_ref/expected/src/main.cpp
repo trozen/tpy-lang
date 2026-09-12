@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     initial: set[Point] = set()
+//     initial.add(Point(1))
+//     initial.add(Point(2))
+//     initial.add(Point(1))
+//     h = Holder()
+//     h.s = initial
+//     assert h.s is not None
+//     print(len(h.s))
 void main() {
-    // initial: set[Point] = set()
     ::tpy::ordered_set<Point> initial = ::tpy::ordered_set<Point>();
-    // initial.add(Point(1))
     initial.insert(Point(1));
-    // initial.add(Point(2))
     initial.insert(Point(2));
-    // initial.add(Point(1))
     initial.insert(Point(1));
-    // h = Holder()
     Holder h = Holder();
-    // h.s = initial
     h.s = std::move(initial);
-    // assert h.s is not None
     if (!((h.s.has_value()))) ::tpy::raise_assertion_error();
-    // print(len(h.s))
     std::cout << ::tpy::__len__((*h.s)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

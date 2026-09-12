@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def return_from_try() -> int32:
+//     try:
+//         return 42
+//     finally:
+//         print("finally 1")
 int32_t return_from_try() {
-    // try:
     {
         bool __fin_ran_1 = false;
         try {
-            // return 42
             int32_t __tpy_ret_0 = 42;
             __fin_ran_1 = true;
-            // print("finally 1")
             std::cout << "finally 1" << "\n";
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_1) {
-                // print("finally 1")
                 std::cout << "finally 1" << "\n";
             }
             throw;
@@ -27,25 +27,26 @@ int32_t return_from_try() {
 }
 
 // def return_from_except() -> int32:
+//     try:
+//         raise ValueError("err")
+//     except ValueError:
+//         return 99
+//     finally:
+//         print("finally 2")
 int32_t return_from_except() {
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
             try {
-                // raise ValueError("err")
                 throw ::tpy::ValueError("err");
             } catch (const ::tpy::ValueError&) {
-                // return 99
                 int32_t __tpy_ret_0 = 99;
                 __fin_ran_2 = true;
-                // print("finally 2")
                 std::cout << "finally 2" << "\n";
                 return __tpy_ret_0;
             }
         } catch (...) {
             if (!__fin_ran_2) {
-                // print("finally 2")
                 std::cout << "finally 2" << "\n";
             }
             throw;
@@ -54,41 +55,39 @@ int32_t return_from_except() {
 }
 
 // def return_from_multiple_paths(flag: bool) -> str:
+//     try:
+//         if flag:
+//             return "yes"
+//         for i in range(3):
+//             if i == 1:
+//                 return "loop"
+//         return "default"
+//     finally:
+//         print("finally 3")
 std::string return_from_multiple_paths(bool flag) {
-    // try:
     {
         bool __fin_ran_3 = false;
         try {
-            // if flag:
             if (flag) {
-                // return "yes"
                 std::string __tpy_ret_0 = "yes";
                 __fin_ran_3 = true;
-                // print("finally 3")
                 std::cout << "finally 3" << "\n";
                 return __tpy_ret_0;
             }
-            // for i in range(3):
             for (int32_t i = 0; i < 3; ++i) {
-                // if i == 1:
                 if ((i == 1)) {
-                    // return "loop"
                     std::string __tpy_ret_2 = "loop";
                     __fin_ran_3 = true;
-                    // print("finally 3")
                     std::cout << "finally 3" << "\n";
                     return __tpy_ret_2;
                 }
             }
-            // return "default"
             std::string __tpy_ret_3 = "default";
             __fin_ran_3 = true;
-            // print("finally 3")
             std::cout << "finally 3" << "\n";
             return __tpy_ret_3;
         } catch (...) {
             if (!__fin_ran_3) {
-                // print("finally 3")
                 std::cout << "finally 3" << "\n";
             }
             throw;
@@ -97,29 +96,29 @@ std::string return_from_multiple_paths(bool flag) {
 }
 
 // def return_optional(flag: bool) -> int32 | None:
+//     """Value-type Optional return with try/finally."""
+//     try:
+//         if flag:
+//             return int32(7)
+//         return None
+//     finally:
+//         print("finally 4")
 std::optional<int32_t> return_optional(bool flag) {
-    // try:
     {
         bool __fin_ran_4 = false;
         try {
-            // if flag:
             if (flag) {
-                // return int32(7)
                 std::optional<int32_t> __tpy_ret_0 = 7;
                 __fin_ran_4 = true;
-                // print("finally 4")
                 std::cout << "finally 4" << "\n";
                 return __tpy_ret_0;
             }
-            // return None
             std::optional<int32_t> __tpy_ret_1 = std::nullopt;
             __fin_ran_4 = true;
-            // print("finally 4")
             std::cout << "finally 4" << "\n";
             return __tpy_ret_1;
         } catch (...) {
             if (!__fin_ran_4) {
-                // print("finally 4")
                 std::cout << "finally 4" << "\n";
             }
             throw;
@@ -128,37 +127,37 @@ std::optional<int32_t> return_optional(bool flag) {
 }
 
 // def main() -> None:
+//     print(return_from_try())
+//     print(return_from_except())
+//     print(return_from_multiple_paths(True))
+//     print(return_from_multiple_paths(False))
+//     r = return_optional(True)
+//     if r is not None:
+//         print(r)
+//     r2 = return_optional(False)
+//     if r2 is None:
+//         print("none")
 void main() {
-    // print(return_from_try())
     std::cout << return_from_try() << "\n";
-    // print(return_from_except())
     std::cout << return_from_except() << "\n";
-    // print(return_from_multiple_paths(True))
     std::cout << return_from_multiple_paths(true) << "\n";
-    // print(return_from_multiple_paths(False))
     std::cout << return_from_multiple_paths(false) << "\n";
-    // r = return_optional(True)
     std::optional<int32_t> r = return_optional(true);
-    // if r is not None:
     if ((r.has_value())) {
-        // print(r)
         std::cout << ::tpy::print_optional_val(r) << "\n";
     }
-    // r2 = return_optional(False)
     std::optional<int32_t> r2 = return_optional(false);
-    // if r2 is None:
     if ((!r2.has_value())) {
-        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t: T2[int] = [1, [2, 3], 4]  # tpyc: type(/T2/)
+//     print(leaf_count(t))
+//     leaf: T2[int] = 7
+//     print(leaf_count(leaf))
 void main() {
-    // t: T2[int] = [1, [2, 3], 4]  # tpyc: type(/T2/)
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
-    // print(leaf_count(t))
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n";
-    // leaf: T2[int] = 7
     ::tpyapp::treelib::Tree<::tpy::BigInt> leaf = 7;
-    // print(leaf_count(leaf))
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(leaf) << "\n";
 }
 
+// # Aliased cross-module import of a generic recursive alias:
+// # `from treelib import Tree as T2`, then `T2[int]` at use sites. The use site
+// # must resolve under the local spelling `T2`, and the wrapper body's
+// # self-reference -- which carries treelib's own short name `Tree` -- must still
+// # render the same qualified C++ wrapper as the use-site instance. Read-only
+// # traversal is intentional: this targets resolution, not value-vs-reference.
+// from treelib import Tree as T2, leaf_count
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Aliased cross-module import of a generic recursive alias:
-    // # `from treelib import Tree as T2`, then `T2[int]` at use sites. The use site
-    // # must resolve under the local spelling `T2`, and the wrapper body's
-    // # self-reference -- which carries treelib's own short name `Tree` -- must still
-    // # render the same qualified C++ wrapper as the use-site instance. Read-only
-    // # traversal is intentional: this targets resolution, not value-vs-reference.
-    // from treelib import Tree as T2, leaf_count
     ::tpyapp::treelib::__tpy_init();
-    // main()
     main();
 }
 

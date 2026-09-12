@@ -11,7 +11,9 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v);
+// def main() -> None:
 void main();
 
 // class C:
@@ -37,22 +39,24 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 42
 inline C::C() : n(42) {}
 
 // def peek(self, k: int32) -> int32:
+//     def get(x: int32) -> int32:
+//         return x + self.n
+//
+//     return get(k)
 inline int32_t C::peek(int32_t k) const {
-    // def get(x: int32) -> int32:
     auto get = [this](int32_t x) -> int32_t {
-        // return x + self.n
         return (::tpy::add_check<int32_t>(x, this->n));
     };
-    // return get(k)
     return get(k);
 }
 
 // def scaled(self, k: int32) -> int32:
+//     return apply(lambda x: x * self.n, k)
 inline int32_t C::scaled(int32_t k) const {
-    // return apply(lambda x: x * self.n, k)
     return apply([this](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, this->n)); }, k);
 }
 void __tpy_init();

@@ -43,41 +43,42 @@ namespace tpyapp::main {
 
 
 // def native_label(c: NativeColor) -> str:
+//     if c == NativeColor.RED:
+//         return "native-red"
+//     return "native-green"
 std::string native_label(::lib::Color c) {
-    // if c == NativeColor.RED:
     if ((c == ::lib::Color::RED)) {
-        // return "native-red"
         return "native-red";
     }
-    // return "native-green"
     return "native-green";
 }
 
 // def main() -> None:
+//     print(native_label(NativeColor.RED))
+//     print(native_label(NativeColor.GREEN))
+//     print(NativeColor.RED.value)
+//     local: Color = Color.CYAN
+//     print(local.name, local.value)
 void main() {
-    // print(native_label(NativeColor.RED))
     std::cout << native_label(::lib::Color::RED) << "\n";
-    // print(native_label(NativeColor.GREEN))
     std::cout << native_label(::lib::Color::GREEN) << "\n";
-    // print(NativeColor.RED.value)
     std::cout << static_cast<int32_t>(::lib::Color::RED) << "\n";
-    // local: Color = Color.CYAN
     Color local = Color::CYAN;
-    // print(local.name, local.value)
     std::cout << ::tpy::EnumUtil<Color>::name(local) << " " << static_cast<int32_t>(local) << "\n";
 }
 
+// # Regression: a @native-bound imported enum aliased to dodge a clash with a
+// # same-named LOCAL enum keeps its native C++ spelling (lib::Color), distinct.
+// from enum import IntEnum
+// from nativelib import Color as NativeColor
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: a @native-bound imported enum aliased to dodge a clash with a
-    // # same-named LOCAL enum keeps its native C++ spelling (lib::Color), distinct.
-    // from enum import IntEnum
-    // from nativelib import Color as NativeColor
     ::tpyapp::nativelib::__tpy_init();
-    // main()
     main();
 }
 

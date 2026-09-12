@@ -5,60 +5,60 @@ namespace tpyapp::main {
 
 
 // def first(items: list[int32]) -> int32:
+//     return items[0]
 int32_t first(const std::vector<int32_t>& items) {
-    // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 
 // def at(items: list[int32], i: int32) -> int32:
+//     return items[i]
 int32_t at(const std::vector<int32_t>& items, int32_t i) {
-    // return items[i]
     return ::tpy::__getitem__(items, i);
 }
 
 // def sum_two(items: list[int32], i: int32, j: int32) -> int32:
+//     return items[i] + items[j]
 int32_t sum_two(const std::vector<int32_t>& items, int32_t i, int32_t j) {
-    // return items[i] + items[j]
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(items, i), ::tpy::__getitem__(items, j)));
 }
 
 // def dget(d: dict[int32, int32], k: int32) -> int32:
+//     return d[k]
 int32_t dget(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
-    // return d[k]
     return ::tpy::__getitem__(d, k);
 }
 
 // def read_through_call(b: Box) -> int32:
+//     return b.get()[0]  # tpyc: ok -- the receiver is a CALL, not a name
 int32_t read_through_call(Box& b) {
-    // return b.get()[0]  # tpyc: ok -- the receiver is a CALL, not a name
     return ::tpy::__getitem__(b.get(), 0);
 }
 
 // def main() -> None:
+//     xs = [10, 20, 30]
+//     print(first(xs))
+//     print(at(xs, 2))
+//     print(sum_two(xs, 0, 1))
+//     scores = {1: 100, 2: 200}
+//     print(dget(scores, 2))
+//     print(read_through_call(Box()))
 void main() {
-    // xs = [10, 20, 30]
     std::vector<int32_t> xs = {10, 20, 30};
-    // print(first(xs))
     std::cout << first(xs) << "\n";
-    // print(at(xs, 2))
     std::cout << at(xs, 2) << "\n";
-    // print(sum_two(xs, 0, 1))
     std::cout << sum_two(xs, 0, 1) << "\n";
-    // scores = {1: 100, 2: 200}
     ::tpy::ordered_map<int32_t, int32_t> scores = ::tpy::ordered_map<int32_t, int32_t>({{1, 100}, {2, 200}});
-    // print(dget(scores, 2))
     std::cout << dget(scores, 2) << "\n";
-    // print(read_through_call(Box()))
     Box __tmp_1 = Box();
     std::cout << read_through_call(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

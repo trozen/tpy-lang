@@ -3,19 +3,17 @@
 
 namespace tpyapp::main {
 
-// limit: int32 = int32(3)
 int32_t limit{};
-// scale: int32 = int32(2)
 int32_t scale{};
 
 // def bump() -> int32:
+//     global limit
+//     limit = int32(4)
+//     # The subject: the filter reads the `global`-declared name, and the
+//     # element expression reads a module global the function only reads.
+//     return sum(i * scale for i in range(6) if i < limit)  # tpyc: ok
 int32_t bump() {
-    // global limit
-    // limit = int32(4)
     limit = 4;
-    // # The subject: the filter reads the `global`-declared name, and the
-    // # element expression reads a module global the function only reads.
-    // return sum(i * scale for i in range(6) if i < limit)  # tpyc: ok
     return ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
         [__i = int32_t(0), __stop = static_cast<int32_t>(6)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -30,21 +28,22 @@ int32_t bump() {
 }
 
 // def main() -> None:
+//     print(bump(), limit)
 void main() {
-    // print(bump(), limit)
     std::cout << bump() << " " << limit << "\n";
 }
 
+// limit: int32 = int32(3)
+// scale: int32 = int32(2)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // limit: int32 = int32(3)
     limit = 3;
-    // scale: int32 = int32(2)
     scale = 2;
-    // main()
     main();
 }
 

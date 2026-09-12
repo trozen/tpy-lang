@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def add_one(n: int) -> int:
+//     return n + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_add_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,12 +26,15 @@ __coro_add_one add_one(::tpy::BigInt n) {
 }
 
 // async def main_coro() -> None:
+//     c = add_one(1)
+//     print(await c)
+//     w = Counter(10)
+//     m = w.bump(5)
+//     print(await m)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = add_one(1)
         c.emplace(add_one(::tpy::BigInt(1)));
-        // print(await c)
         __state = S_RESUME_0;
         continue;
     }
@@ -40,13 +43,9 @@ __coro_add_one add_one(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         c.reset();
-        // print(await c)
         std::cout << __await_lift_0 << "\n";
-        // w = Counter(10)
         w.emplace(Counter(::tpy::BigInt(10)));
-        // m = w.bump(5)
         m.emplace((*w).bump(5));
-        // print(await m)
         __state = S_RESUME_1;
         continue;
     }
@@ -55,7 +54,6 @@ __coro_add_one add_one(::tpy::BigInt n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         m.reset();
-        // print(await m)
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -72,17 +70,17 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def bump(self, n: int) -> int:
+//     return self.base + n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter_bump::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return self.base + n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((__self.base) + (n));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -93,16 +91,17 @@ void main() {
 }
 
 
+// # `await c` on a bound coroutine (erased await through the owned handle);
+// # covers free-function and method coroutines. The await consumes the handle.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await c` on a bound coroutine (erased await through the owned handle);
-    // # covers free-function and method coroutines. The await consumes the handle.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

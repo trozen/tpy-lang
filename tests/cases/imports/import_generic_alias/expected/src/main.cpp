@@ -3,22 +3,21 @@
 
 namespace tpyapp::main {
 
-// x: Arr[int32, 3] = [1, 2, 3]
 std::array<int32_t, 3>* x{};
 
+// x: Arr[int32, 3] = [1, 2, 3]
+// print(len(x))
+// print(x[0])
+// print(x[1])
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: Arr[int32, 3] = [1, 2, 3]
     static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
     x = &__global_slot_1;
-    // print(len(x))
     std::cout << ::tpy::__len__((*x)) << "\n";
-    // print(x[0])
     std::cout << ::tpy::__getitem__((*x), 0) << "\n";
-    // print(x[1])
     std::cout << ::tpy::__getitem__((*x), 1) << "\n";
 }
 

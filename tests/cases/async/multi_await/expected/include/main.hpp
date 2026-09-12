@@ -15,11 +15,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_add_one;
 struct __coro_caller;
 
+// async def add_one(x: int32) -> int32:
 __coro_add_one add_one(int32_t x);
+// async def caller() -> int32:
 __coro_caller caller();
+// def main() -> None:
 void main();
 
-// Async coroutine: add_one
+// async def add_one(x: int32) -> int32:
 struct __coro_add_one {
     int32_t __state;
     bool __cancel_pending;
@@ -41,7 +44,7 @@ struct __coro_add_one {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> int32:
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;

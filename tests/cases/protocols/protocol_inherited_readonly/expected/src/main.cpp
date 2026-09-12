@@ -3,20 +3,19 @@
 
 namespace tpyapp::main {
 
-// obj = Impl(42)
 Impl* obj{};
 
+// obj = Impl(42)
+// print(read_via_child(obj))
+// print(read_via_bound(obj))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // obj = Impl(42)
     static Impl __global_slot_1 = Impl(42);
     obj = &__global_slot_1;
-    // print(read_via_child(obj))
     std::cout << read_via_child((*obj)) << "\n";
-    // print(read_via_bound(obj))
     std::cout << read_via_bound<Impl>((*obj)) << "\n";
 }
 

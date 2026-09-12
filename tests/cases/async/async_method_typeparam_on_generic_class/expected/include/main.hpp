@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename T, typename U>
 struct __coro_Box_with_label;
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -25,6 +26,7 @@ struct Box {
     T val;
 
     // def __init__(self, v: T) -> None:
+    //     self.val = v
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
 
@@ -39,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// Async coroutine: Box.with_label
+// async def with_label[U](self, label: U) -> U:
 template <typename T, typename U>
 struct __coro_Box_with_label {
     int32_t __state;
@@ -64,12 +66,12 @@ struct __coro_Box_with_label {
 };
 
 // async def with_label[U](self, label: U) -> U:
+//     return label
 template <typename T, typename U>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>> __coro_Box_with_label<T, U>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return label
         __state = S_DONE;
         ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(::tpy::param_to_return<U>(label));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>>::ready(std::move(__tpy_async_ret));

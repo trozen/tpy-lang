@@ -5,12 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     with Tracker() as a:
+//         print(f"body a={a}")
+//     print("---")
+//     try:
+//         with Tracker() as b:
+//             print(f"body b={b}")
+//             raise ValueError("explicit")
+//     except ValueError as e:
+//         print(f"outer caught: {str(e)}")
 void main() {
-    // with Tracker() as a:
     auto __ctx_1 = Tracker();
     auto a = __ctx_1.__enter__();
     try {
-        // print(f"body a={a}")
         std::cout << std::format("body a={}", (a).to_string()) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -22,18 +29,13 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // print("---")
     std::cout << "---" << "\n";
-    // try:
     {
         try {
-            // with Tracker() as b:
             auto __ctx_2 = Tracker();
             auto b = __ctx_2.__enter__();
             try {
-                // print(f"body b={b}")
                 std::cout << std::format("body b={}", (b).to_string()) << "\n";
-                // raise ValueError("explicit")
                 throw ::tpy::ValueError("explicit");
             } catch (::tpy::BaseException& __exc_2) {
                 __ctx_2.__exit__({}, &__exc_2, {});
@@ -43,18 +45,17 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::ValueError& e) {
-            // print(f"outer caught: {str(e)}")
             std::cout << std::format("outer caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

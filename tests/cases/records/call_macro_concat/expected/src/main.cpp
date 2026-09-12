@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = concat("hello", "world")
+//     print(s)
+//     x: int32 = 42
+//     s2 = concat("x", x, sep="=")
+//     print(s2)
+//     s3 = concat("a", "b", "c", sep=", ")
+//     print(s3)
+//     s4 = concat("hello", "world", sep=", ", quote_str=True)
+//     print(s4)
 void main() {
-    // s = concat("hello", "world")
     ::tpy::String s = (::tpy::str_concat("hello", (::tpy::str_concat(" ", "world"))));
-    // print(s)
     std::cout << s << "\n";
-    // x: int32 = 42
     int32_t x = 42;
-    // s2 = concat("x", x, sep="=")
     ::tpy::String s2 = (::tpy::str_concat("x", (::tpy::str_concat("=", ::tpy::fixed_to_str<int32_t>(x)))));
-    // print(s2)
     std::cout << s2 << "\n";
-    // s3 = concat("a", "b", "c", sep=", ")
     ::tpy::String s3 = (::tpy::str_concat((::tpy::str_concat("a", (::tpy::str_concat(", ", "b")))), (::tpy::str_concat(", ", "c"))));
-    // print(s3)
     std::cout << s3 << "\n";
-    // s4 = concat("hello", "world", sep=", ", quote_str=True)
     ::tpy::String s4 = (::tpy::str_concat((::tpy::str_concat("'", (::tpy::str_concat("hello", "'")))), (::tpy::str_concat(", ", (::tpy::str_concat("'", (::tpy::str_concat("world", "'"))))))));
-    // print(s4)
     std::cout << s4 << "\n";
 }
 
+// # Test call-site macro with *args, sep= and quote_str= kwargs
+// from strutil import concat
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test call-site macro with *args, sep= and quote_str= kwargs
-    // from strutil import concat
-    // main()
     main();
 }
 

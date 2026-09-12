@@ -43,45 +43,47 @@ namespace tpyapp::main {
 
 
 // def make(n: int) -> Own[Rec]:
+//     return Rec(n)
 Rec make(const ::tpy::BigInt& n) {
-    // return Rec(n)
     return Rec(n);
 }
 
 // def pick() -> Color:
+//     return Color.GREEN
 Color pick() {
-    // return Color.GREEN
     return Color::GREEN;
 }
 
 // def main() -> None:
+//     if (r := make(7)):
+//         print("record walrus:", r.v)
+//
+//     if (c := pick()):
+//         print("enum walrus:", c.name)
 void main() {
-    // if (r := make(7)):
     std::optional<Rec> r;
     if ((static_cast<void>((r = make(::tpy::BigInt(7)), *r)), true)) {
-        // print("record walrus:", r.v)
         std::cout << "record walrus:" << " " << (*r).v << "\n";
     }
-    // if (c := pick()):
     Color c;
     if ((static_cast<void>((c = pick())), true)) {
-        // print("enum walrus:", c.name)
         std::cout << "enum walrus:" << " " << ::tpy::EnumUtil<Color>::name(c) << "\n";
     }
 }
 
+// # A walrus in an always-true truthiness position. The operand's render carries
+// # the ASSIGNMENT, so folding the operand away dropped the binding and left the
+// # target default-constructed -- a silently wrong VALUE, not merely a missing
+// # side effect. Both always-true arms are covered: a plain record and a plain
+// # enum.
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A walrus in an always-true truthiness position. The operand's render carries
-    // # the ASSIGNMENT, so folding the operand away dropped the binding and left the
-    // # target default-constructed -- a silently wrong VALUE, not merely a missing
-    // # side effect. Both always-true arms are covered: a plain record and a plain
-    // # enum.
-    // from enum import Enum
-    // main()
     main();
 }
 

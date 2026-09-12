@@ -11,6 +11,7 @@ struct Stack;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Stack:
@@ -61,58 +62,59 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = []
 inline Stack::Stack() : _data(std::vector<int32_t>{}) {}
 
 // def push(self, val: int32) -> None:
+//     self._data.append(val)
 inline void Stack::push(int32_t val) {
-    // self._data.append(val)
     this->_data.push_back(val);
 }
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<int32_t> Stack::__span__() {
-    // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<const int32_t> Stack::__span__() const {
-    // return self._data
     return ::tpy::as_span(this->_data);
 }
 
 // @auto_readonly
 // def __iter__(self) -> SpanIter[auto_readonly[int32]]:
+//     return SpanIter(self.__span__())
 inline ::tpy::SpanIter<int32_t> Stack::__iter__() {
-    // return SpanIter(self.__span__())
     return ::tpy::SpanIter<int32_t>(this->__span__());
 }
 
 // @auto_readonly
 // def __iter__(self) -> SpanIter[auto_readonly[int32]]:
+//     return SpanIter(self.__span__())
 inline ::tpy::SpanIter<const int32_t> Stack::__iter__() const {
-    // return SpanIter(self.__span__())
     return ::tpy::SpanIter<const int32_t>(this->__span__());
 }
 
 // @readonly
 // def sum(self) -> int32:
+//     total: int32 = 0
+//     for x in self:
+//         total += x
+//     return total
 inline int32_t Stack::sum() const {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in self:
     auto& __src_0 = (*this);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 void __tpy_init();

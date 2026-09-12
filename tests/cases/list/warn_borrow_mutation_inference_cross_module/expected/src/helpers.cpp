@@ -5,37 +5,41 @@ namespace tpyapp::helpers {
 
 
 // def sum_points(items: list[Point]) -> int32:
+//     """Reads only -- mutated_params = {}."""
+//     total: int32 = 0
+//     for p in items:
+//         total += p.x
+//     return total
 int32_t sum_points(const std::vector<Point>& items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // total += p.x
         total = ::tpy::add_check<int32_t>(total, p.x);
     }
-    // return total
     return total;
 }
 
 // def add_point(items: list[Point], p: Point) -> None:
+//     """Mutates via append -- mutated_params = {0}."""
+//     items.append(p)
 void add_point(std::vector<Point>& items, const Point& p) {
-    // items.append(p)
     items.push_back(p);
 }
 
 // def add_point_wrapper(items: list[Point], p: Point) -> None:
+//     """Transitively mutates via add_point -- mutated_params = {0}."""
+//     add_point(items, p)
 void add_point_wrapper(std::vector<Point>& items, const Point& p) {
-    // add_point(items, p)
     add_point(items, p);
 }
 
 // def read_wrapper(items: list[Point]) -> int32:
+//     """Transitively reads via sum_points -- mutated_params = {}."""
+//     return sum_points(items)
 int32_t read_wrapper(const std::vector<Point>& items) {
-    // return sum_points(items)
     return sum_points(items);
 }
 

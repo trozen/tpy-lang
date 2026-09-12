@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Classifier()
+//     d: Dog | Cat = Dog()
+//     print(c.which(d))
+//     t: Dog | Cat = Cat()
+//     print(c.which(t))
 void main() {
-    // c = Classifier()
     Classifier c = Classifier();
-    // d: Dog | Cat = Dog()
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // print(c.which(d))
     std::cout << c.which(d.as_const()) << "\n";
-    // t: Dog | Cat = Cat()
     ::tpy::Union<Cat, Dog> __slot_2 = Cat();
     ::tpy::Union<Cat*, Dog*> t = ::tpy::to_ptr_variant(__slot_2);
-    // print(c.which(t))
     std::cout << c.which(t.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

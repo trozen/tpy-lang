@@ -22,27 +22,61 @@ struct Match;
 struct Pattern;
 
 inline constexpr std::string_view __name__ = "re";
+// # User-facing flags are `int32`: the total bit surface is tiny (max 256),
+// # negative values are never valid, and int32 is TPy's DefaultInt so users
+// # don't need to write `uint32(...)` when mixing flags with bare literals.
+// # Internally `_to_pcre2_opts` translates to PCRE2's `uint32` flag space
+// # where top-bit values like pcre2.PCRE2_ANCHORED require the wider unsigned range.
+// NOFLAG:     Final[int32] = 0
 inline constexpr int32_t NOFLAG = 0;
+// IGNORECASE: Final[int32] = 2
 inline constexpr int32_t IGNORECASE = 2;
+// MULTILINE:  Final[int32] = 8
 inline constexpr int32_t MULTILINE = 8;
+// DOTALL:     Final[int32] = 16
 inline constexpr int32_t DOTALL = 16;
+// VERBOSE:    Final[int32] = 64
 inline constexpr int32_t VERBOSE = 64;
+// ASCII:      Final[int32] = 256
 inline constexpr int32_t ASCII = 256;
+// # Short aliases (CPython exposes both forms).
+// I: Final[int32] = IGNORECASE
 inline constexpr int32_t I = IGNORECASE;
+// M: Final[int32] = MULTILINE
 inline constexpr int32_t M = MULTILINE;
+// S: Final[int32] = DOTALL
 inline constexpr int32_t S = DOTALL;
+// X: Final[int32] = VERBOSE
 inline constexpr int32_t X = VERBOSE;
+// A: Final[int32] = ASCII
 inline constexpr int32_t A = ASCII;
 
+// def _pcre2_error_msg(errcode: int32) -> str:
 std::string _pcre2_error_msg(int32_t errcode);
+// def _utf8_advance(data: Ptr[readonly[uint8]], offset: uint64,
+//                   length: uint64) -> uint64:
 uint64_t _utf8_advance(const uint8_t* data, uint64_t offset, uint64_t length);
+// def _to_pcre2_opts(flags: int32) -> uint32:
 uint32_t _to_pcre2_opts(int32_t flags);
+// def compile(pattern: str, flags: int32 = NOFLAG) -> Own[Pattern]:
 Pattern compile(std::string_view pattern, int32_t flags = NOFLAG);
+// def search(pattern: str, subject: str,
+//            flags: int32 = NOFLAG) -> Optional[Own[Match]]:
 std::optional<Match> search(std::string_view pattern, std::string_view subject, int32_t flags = NOFLAG);
+// def match(pattern: str, subject: str,
+//           flags: int32 = NOFLAG) -> Optional[Own[Match]]:
 std::optional<Match> match(std::string_view pattern, std::string_view subject, int32_t flags = NOFLAG);
+// def fullmatch(pattern: str, subject: str,
+//               flags: int32 = NOFLAG) -> Optional[Own[Match]]:
 std::optional<Match> fullmatch(std::string_view pattern, std::string_view subject, int32_t flags = NOFLAG);
+// def findall(pattern: str, subject: str,
+//             flags: int32 = NOFLAG) -> Own[list[str]]:
 std::vector<std::string> findall(std::string_view pattern, std::string_view subject, int32_t flags = NOFLAG);
+// def sub(pattern: str, repl: str, subject: str, count: int32 = 0,
+//         flags: int32 = NOFLAG) -> str:
 std::string sub(std::string_view pattern, std::string_view repl, std::string_view subject, int32_t count = 0, int32_t flags = NOFLAG);
+// def split(pattern: str, subject: str, maxsplit: int32 = int32(0),
+//           flags: int32 = NOFLAG) -> Own[list[str]]:
 std::vector<std::string> split(std::string_view pattern, std::string_view subject, int32_t maxsplit = 0, int32_t flags = NOFLAG);
 
 // # ---------- RAII wrappers for PCRE2 handles ----------
@@ -176,7 +210,7 @@ struct Match {
     int32_t _ngroups;
 
     // def __init__(self, md: Own[_OwnedMatchData], subject: str,
-    // ngroups: int32) -> None:
+    //              ngroups: int32) -> None:
     explicit Match(_OwnedMatchData&& md, std::string_view subject, int32_t ngroups);
     // non-copyable (field '_md')
     Match(const Match&) = delete;
@@ -230,7 +264,7 @@ struct Pattern {
     Pattern& operator=(Pattern&&) = default;
 
     // def _do_match(self, subject: str, start_offset: uint64,
-    // opts: uint32) -> Optional[Own[Match]]:
+    //               opts: uint32) -> Optional[Own[Match]]:
     std::optional<Match> _do_match(std::string_view subject, uint64_t start_offset, uint32_t opts) const;
 
     // def search(self, subject: str) -> Optional[Own[Match]]:
@@ -243,53 +277,62 @@ struct Pattern {
     std::optional<Match> fullmatch(std::string_view subject) const;
 
     // def finditer(self, subject: str) -> Iterator[Own[Match]]:
+    //     """All non-overlapping matches, yielded lazily (like CPython).
+    //
+    //     Yields `Own[Match]` -- a Match owns its PCRE2 match-data, so it
+    //     moves out of the generator by value rather than borrowing a frame
+    //     local."""
+    //     offset: uint64 = 0
+    //     sub_len = uint64(len(subject))
+    //     s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
+    //     while offset <= sub_len:
+    //         md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
+    //         if md_raw is None:
+    //             raise error("out of memory allocating match data")
+    //         md = _OwnedMatchData(md_raw)
+    //         rc = pcre2.match(self._code.get(), s_data, sub_len, offset,
+    //                          0, md.get(), self._mctx.get())
+    //         if rc < 0:
+    //             if rc == pcre2.PCRE2_ERROR_NOMATCH:
+    //                 break          # md drops at end of iteration
+    //             raise error(_pcre2_error_msg(rc))   # md drops
+    //         ovec = pcre2.get_ovector_pointer(md.get())
+    //         mstart = unsafe_load(ovec, 0)
+    //         mend = unsafe_load(ovec, 1)
+    //         # mstart/mend are read before the yield moves `md` into the
+    //         # Match, so the post-resume bump-along still has the offsets.
+    //         yield Match(md, subject, rc)
+    //         # Bump-along on zero-width match to avoid an infinite loop.
+    //         if mend == mstart:
+    //             offset = _utf8_advance(s_data, mend, sub_len)
+    //         else:
+    //             offset = mend
     auto finditer(std::string_view subject) const {
-        // offset: uint64 = 0
         uint64_t offset = 0;
-        // sub_len = uint64(len(subject))
         uint64_t sub_len = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject));
-        // s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
         const uint8_t* s_data = reinterpret_cast<const uint8_t*>(subject.data());
         return ::tpy::make_generator<Match>(
             [this, subject = std::string(subject), offset, sub_len, s_data]() mutable -> std::optional<Match> {
                 while ((offset <= sub_len)) {
-                    // md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
                     ::pcre2_match_data_8* md_raw = ::pcre2_match_data_create_from_pattern_8((*this)._code.get(), nullptr);
-                    // if md_raw is None:
                     if ((md_raw == nullptr)) {
-                        // raise error("out of memory allocating match data")
                         throw error("out of memory allocating match data");
                     }
-                    // md = _OwnedMatchData(md_raw)
                     _OwnedMatchData md = _OwnedMatchData(md_raw);
-                    // rc = pcre2.match(self._code.get(), s_data, sub_len, offset,
-                    // 0, md.get(), self._mctx.get())
                     int32_t rc = ::pcre2_match_8((*this)._code.get(), s_data, sub_len, offset, 0, md.get(), (*this)._mctx.get());
-                    // if rc < 0:
                     if ((rc < 0)) {
-                        // if rc == pcre2.PCRE2_ERROR_NOMATCH:
                         if ((rc == ::tpystd::_bindings::pcre2::PCRE2_ERROR_NOMATCH)) {
-                            // break          # md drops at end of iteration
                             break;
                         }
-                        // raise error(_pcre2_error_msg(rc))   # md drops
                         throw error(_pcre2_error_msg(rc));
                     }
-                    // ovec = pcre2.get_ovector_pointer(md.get())
                     const uint64_t* ovec = ::pcre2_get_ovector_pointer_8(md.get());
-                    // mstart = unsafe_load(ovec, 0)
                     uint64_t mstart = ovec[0];
-                    // mend = unsafe_load(ovec, 1)
                     uint64_t mend = ovec[1];
                     auto __val = Match(std::move(md), subject, rc);
-                    // # Bump-along on zero-width match to avoid an infinite loop.
-                    // if mend == mstart:
                     if ((mend == mstart)) {
-                        // offset = _utf8_advance(s_data, mend, sub_len)
                         offset = _utf8_advance(s_data, mend, sub_len);
-                    // else:
                     } else {
-                        // offset = mend
                         offset = mend;
                     }
                     return std::optional<Match>(std::move(__val));
@@ -303,7 +346,7 @@ struct Pattern {
     std::vector<std::string> findall(std::string_view subject) const;
 
     // def _substitute(self, repl: str, subject: str, opts: uint32,
-    // md: Ptr[pcre2.MatchData]) -> str:
+    //                 md: Ptr[pcre2.MatchData]) -> str:
     std::string _substitute(std::string_view repl, std::string_view subject, uint32_t opts, ::pcre2_match_data_8* md) const;
 
     // def sub(self, repl: str, subject: str, count: int32 = 0) -> str:
@@ -321,6 +364,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pattern& obj) {
 
 
 // def __init__(self, p: Ptr[pcre2.MatchData]) -> None:
+//     self._p = p
 inline _OwnedMatchData::_OwnedMatchData(::pcre2_match_data_8* p) : _p(p) {}
 
 inline _OwnedMatchData::_OwnedMatchData(_OwnedMatchData&& other) noexcept : _p(std::move(other._p)) {
@@ -335,19 +379,20 @@ inline _OwnedMatchData& _OwnedMatchData::operator=(_OwnedMatchData&& other) noex
 }
 
 // def __del__(self) -> None:
+//     pcre2.match_data_free(self._p)
 inline _OwnedMatchData::~_OwnedMatchData() {
     if (!this->__tpy_owned_) return;
-    // pcre2.match_data_free(self._p)
     ::pcre2_match_data_free_8(this->_p);
 }
 
 // def get(self) -> Ptr[pcre2.MatchData]:
+//     return self._p
 inline ::pcre2_match_data_8* _OwnedMatchData::get() const {
-    // return self._p
     return this->_p;
 }
 
 // def __init__(self, pattern: str, flags: int32) -> None:
+//     self._p = _OwnedCode._compile(pattern, flags)
 inline _OwnedCode::_OwnedCode(std::string_view pattern, int32_t flags) : _p(_OwnedCode::_compile(pattern, flags)) {}
 
 inline _OwnedCode::_OwnedCode(_OwnedCode&& other) noexcept : _p(std::move(other._p)) {
@@ -362,19 +407,20 @@ inline _OwnedCode& _OwnedCode::operator=(_OwnedCode&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     pcre2.code_free(self._p)
 inline _OwnedCode::~_OwnedCode() {
     if (!this->__tpy_owned_) return;
-    // pcre2.code_free(self._p)
     ::pcre2_code_free_8(this->_p);
 }
 
 // def get(self) -> Ptr[pcre2.Code]:
+//     return self._p
 inline ::pcre2_code_8* _OwnedCode::get() const {
-    // return self._p
     return this->_p;
 }
 
 // def __init__(self) -> None:
+//     self._p = pcre2.match_context_create(None)
 inline _OwnedMatchContext::_OwnedMatchContext() : _p(::pcre2_match_context_create_8(nullptr)) {}
 
 inline _OwnedMatchContext::_OwnedMatchContext(_OwnedMatchContext&& other) noexcept : _p(std::move(other._p)) {
@@ -389,123 +435,151 @@ inline _OwnedMatchContext& _OwnedMatchContext::operator=(_OwnedMatchContext&& ot
 }
 
 // def __del__(self) -> None:
+//     pcre2.match_context_free(self._p)
 inline _OwnedMatchContext::~_OwnedMatchContext() {
     if (!this->__tpy_owned_) return;
-    // pcre2.match_context_free(self._p)
     ::pcre2_match_context_free_8(this->_p);
 }
 
 // def get(self) -> Ptr[pcre2.MatchContext]:
+//     return self._p
 inline ::pcre2_match_context_8* _OwnedMatchContext::get() const {
-    // return self._p
     return this->_p;
 }
 
 // def __init__(self, md: Own[_OwnedMatchData], subject: str,
-// ngroups: int32) -> None:
+//              ngroups: int32) -> None:
+//     self._md = md
+//     self._subject = subject
+//     self._ngroups = ngroups
 inline Match::Match(_OwnedMatchData&& md, std::string_view subject, int32_t ngroups) : _md(std::move(md)), _subject(subject), _ngroups(ngroups) {}
 
 // def _ovec_load(self, i: uint32) -> uint64:
+//     ovec = pcre2.get_ovector_pointer(self._md.get())
+//     return unsafe_load(ovec, i)
 inline uint64_t Match::_ovec_load(uint32_t i) const {
-    // ovec = pcre2.get_ovector_pointer(self._md.get())
     const uint64_t* ovec = ::pcre2_get_ovector_pointer_8(this->_md.get());
-    // return unsafe_load(ovec, i)
     return ovec[i];
 }
 
 // def span(self, group: int32 = 0) -> tuple[int32, int32]:
+//     """(start, end) byte offsets of `group` in the subject. (-1, -1)
+//     means the group did not participate.
+//
+//     TODO(v2): non-participating group should surface as `(-1, -1)` to
+//     match CPython; today returns `(0, 0)`. Trivial to fix once the
+//     Match accessor APIs commit to either int32 or BigInt return type
+//     (-1 needs a signed type)."""
+//     if group < 0 or group >= self._ngroups:
+//         raise error(f"no such group: {group}")
+//     start = self._ovec_load(uint32.trunc(group * 2))
+//     end = self._ovec_load(uint32.trunc(group * 2 + 1))
+//     if start == pcre2.PCRE2_UNSET or end == pcre2.PCRE2_UNSET:
+//         return (0, 0)
+//     return (int32.trunc(start), int32.trunc(end))
 inline std::tuple<int32_t, int32_t> Match::span(int32_t group) const {
-    // if group < 0 or group >= self._ngroups:
     if (((group < 0) || (group >= this->_ngroups))) {
-        // raise error(f"no such group: {group}")
         throw error(std::format("no such group: {}", group));
     }
-    // start = self._ovec_load(uint32.trunc(group * 2))
     uint64_t start = this->_ovec_load(static_cast<uint32_t>((::tpy::mul_check<int32_t>(group, 2))));
-    // end = self._ovec_load(uint32.trunc(group * 2 + 1))
     uint64_t end = this->_ovec_load(static_cast<uint32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(group, 2)), 1))));
-    // if start == pcre2.PCRE2_UNSET or end == pcre2.PCRE2_UNSET:
     if (((start == ::tpystd::_bindings::pcre2::PCRE2_UNSET) || (end == ::tpystd::_bindings::pcre2::PCRE2_UNSET))) {
-        // return (0, 0)
         return std::tuple<int32_t, int32_t>{0, 0};
     }
-    // return (int32.trunc(start), int32.trunc(end))
     return std::tuple<int32_t, int32_t>{static_cast<int32_t>(start), static_cast<int32_t>(end)};
 }
 
 // def start(self, group: int32 = 0) -> int32:
+//     return self.span(group)[0]
 inline int32_t Match::start(int32_t group) const {
-    // return self.span(group)[0]
     return std::get<0>(this->span(group));
 }
 
 // def end(self, group: int32 = 0) -> int32:
+//     return self.span(group)[1]
 inline int32_t Match::end(int32_t group) const {
-    // return self.span(group)[1]
     return std::get<1>(this->span(group));
 }
 
 // def group(self, i: int32 = 0) -> str:
+//     """Substring of the subject for `group` (0 = full match)."""
+//     s, e = self.span(i)
+//     return self._subject[s:e]
 inline std::string Match::group(int32_t i) const {
-    // s, e = self.span(i)
     auto __tup_1 = this->span(i);
     int32_t s = std::get<0>(__tup_1);
     int32_t e = std::get<1>(__tup_1);
-    // return self._subject[s:e]
     return std::string(::tpy::str_slice(this->_subject, ::tpy::BasicSlice{s, e}));
 }
 
 // def groups(self) -> Own[list[str]]:
+//     """All capture groups as a list (excluding group 0).
+//
+//     TODO(v2): return `tuple[str, ...]` to match CPython instead of
+//     list. Blocked on varadic-tuple support in TPy."""
+//     out: list[str] = []
+//     for i in range(1, self._ngroups):
+//         out.append(self.group(i))
+//     return out
 inline std::vector<std::string> Match::groups() const {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // for i in range(1, self._ngroups):
     int32_t __stop_0 = this->_ngroups;
     for (int32_t i = 1; i < __stop_0; ++i) {
-        // out.append(self.group(i))
         out.push_back(this->group(i));
     }
-    // return out
     return out;
 }
 
 // def __init__(self, pattern: str, flags: int32 = NOFLAG) -> None:
+//     # Both field initializers reference only ctor params / module-level
+//     # names -- no body-locals -- so they MIL-hoist into move-construction
+//     # (safe on @nocopy+__del__ fields).
+//     self._code = _OwnedCode(pattern, flags)
+//     self._mctx = _OwnedMatchContext()
+//     # JIT-compile for ~10x match speedup. Failure here is non-fatal --
+//     # PCRE2 falls back to interpreted matching on patterns the JIT
+//     # can't handle.
+//     pcre2.jit_compile(self._code.get(), pcre2.PCRE2_JIT_COMPLETE)
+//     self.pattern = pattern
+//     self.flags = flags
 inline Pattern::Pattern(std::string_view pattern, int32_t flags) : _code(_OwnedCode(pattern, flags)), _mctx(_OwnedMatchContext()) {
-    // # JIT-compile for ~10x match speedup. Failure here is non-fatal --
-    // # PCRE2 falls back to interpreted matching on patterns the JIT
-    // # can't handle.
-    // pcre2.jit_compile(self._code.get(), pcre2.PCRE2_JIT_COMPLETE)
     ::pcre2_jit_compile_8(this->_code.get(), ::tpystd::_bindings::pcre2::PCRE2_JIT_COMPLETE);
-    // self.pattern = pattern
     this->pattern = pattern;
-    // self.flags = flags
     this->flags = flags;
 }
 
 // def search(self, subject: str) -> Optional[Own[Match]]:
+//     return self._do_match(subject, 0, 0)
 inline std::optional<Match> Pattern::search(std::string_view subject) const {
-    // return self._do_match(subject, 0, 0)
     return this->_do_match(subject, 0, 0);
 }
 
 // def match(self, subject: str) -> Optional[Own[Match]]:
+//     return self._do_match(subject, 0, pcre2.PCRE2_ANCHORED)
 inline std::optional<Match> Pattern::match(std::string_view subject) const {
-    // return self._do_match(subject, 0, pcre2.PCRE2_ANCHORED)
     return this->_do_match(subject, 0, ::tpystd::_bindings::pcre2::PCRE2_ANCHORED);
 }
 
 // def fullmatch(self, subject: str) -> Optional[Own[Match]]:
+//     return self._do_match(subject, 0,
+//                           pcre2.PCRE2_ANCHORED | pcre2.PCRE2_ENDANCHORED)
 inline std::optional<Match> Pattern::fullmatch(std::string_view subject) const {
-    // return self._do_match(subject, 0,
-    // pcre2.PCRE2_ANCHORED | pcre2.PCRE2_ENDANCHORED)
     return this->_do_match(subject, 0, (static_cast<uint32_t>(::tpystd::_bindings::pcre2::PCRE2_ANCHORED | ::tpystd::_bindings::pcre2::PCRE2_ENDANCHORED)));
 }
 
 // def findall(self, subject: str) -> Own[list[str]]:
+//     """All non-overlapping match strings (group 0).
+//
+//     TODO(v2): for patterns with capture groups, CPython returns a list
+//     of capture-tuples (or single captures for one-group patterns), not
+//     the whole-match string. Today we always return group(0) regardless
+//     of pattern shape -- divergence flagged in `no_cpython.txt`."""
+//     out: list[str] = []
+//     for m in self.finditer(subject):
+//         out.append(m.group(int32(0)))
+//     return out
 inline std::vector<std::string> Pattern::findall(std::string_view subject) const {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // for m in self.finditer(subject):
     {
         auto __src_0 = this->finditer(subject);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -513,11 +587,9 @@ inline std::vector<std::string> Pattern::findall(std::string_view subject) const
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& m = ::tpy::unwrap_ref(*__r_1);
-        // out.append(m.group(int32(0)))
         out.push_back(m.group(0));
         }
     }
-    // return out
     return out;
 }
 void __tpy_init();

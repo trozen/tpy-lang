@@ -11,6 +11,7 @@ struct WidePages;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class WidePages:
@@ -40,17 +41,18 @@ inline std::ostream& operator<<(std::ostream& os, const WidePages& obj) {
 
 
 // def __init__(self):
+//     self.data = {}
 inline WidePages::WidePages() : data(::tpy::ordered_map<int64_t, int32_t>()) {}
 
 // def __getitem__(self, key: int64) -> int32:
+//     return self.data.get(key, 0)
 inline int32_t WidePages::__getitem__(int64_t key) const {
-    // return self.data.get(key, 0)
     return ::tpy::dict_get_default(this->data, key, 0);
 }
 
 // def __setitem__(self, key: int64, value: int32) -> None:
+//     self.data[key] = value
 inline void WidePages::__setitem__(int64_t key, int32_t value) {
-    // self.data[key] = value
     ::tpy::__setitem__(this->data, key, value);
 }
 void __tpy_init();

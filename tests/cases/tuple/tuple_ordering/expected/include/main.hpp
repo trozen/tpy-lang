@@ -11,7 +11,9 @@ struct Rank;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
+// def test_nocopy_ordering() -> None:
 void test_nocopy_ordering();
 
 // @nocopy
@@ -73,35 +75,36 @@ inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Rank::Rank(int32_t v) : val(v) {}
 
 // def __eq__(self, other: Rank) -> bool:
+//     return self.val == other.val
 inline bool Rank::__eq__(const Rank& other) const {
-    // return self.val == other.val
     return (this->val == other.val);
 }
 
 // def __lt__(self, other: Rank) -> bool:
+//     return self.val < other.val
 inline bool Rank::__lt__(const Rank& other) const {
-    // return self.val < other.val
     return (this->val < other.val);
 }
 
 // def __le__(self, other: Rank) -> bool:
+//     return self.val <= other.val
 inline bool Rank::__le__(const Rank& other) const {
-    // return self.val <= other.val
     return (this->val <= other.val);
 }
 
 // def __gt__(self, other: Rank) -> bool:
+//     return self.val > other.val
 inline bool Rank::__gt__(const Rank& other) const {
-    // return self.val > other.val
     return (this->val > other.val);
 }
 
 // def __ge__(self, other: Rank) -> bool:
+//     return self.val >= other.val
 inline bool Rank::__ge__(const Rank& other) const {
-    // return self.val >= other.val
     return (this->val >= other.val);
 }
 void __tpy_init();

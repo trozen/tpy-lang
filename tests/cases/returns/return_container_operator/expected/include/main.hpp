@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def cat(a: list[int32], b: list[int32]) -> Own[list[int32]]:
 std::vector<int32_t> cat(const std::vector<int32_t>& a, const std::vector<int32_t>& b);
+// def uni(a: set[int32], b: set[int32]) -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> uni(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b);
+// def inter(a: set[int32], b: set[int32]) -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> inter(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b);
+// def diff(a: set[int32], b: set[int32]) -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> diff(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b);
+// def sym(a: set[int32], b: set[int32]) -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> sym(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b);
+// def main():
 void main();
 
 void __tpy_init();

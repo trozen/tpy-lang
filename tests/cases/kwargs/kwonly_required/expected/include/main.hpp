@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def format_value(value: int32, *, width: int32, fill: str = " ") -> str:
 std::string format_value(int32_t value, int32_t width, std::string_view fill = " ");
+// def main() -> None:
 void main();
 
 void __tpy_init();

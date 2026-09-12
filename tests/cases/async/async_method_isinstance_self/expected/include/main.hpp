@@ -35,7 +35,9 @@ struct __coro_describe_via_pet;
 struct __coro_amain;
 struct __coro_Pet_describe;
 
+// async def describe_via_pet(p: Pet) -> str:
 __coro_describe_via_pet describe_via_pet(Pet& p);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Pet(Tagged):
@@ -95,7 +97,7 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 
 namespace tpyapp::main {
 
-// Async coroutine: Pet.describe
+// async def describe(self) -> str:
 struct __coro_Pet_describe {
     int32_t __state;
     bool __cancel_pending;
@@ -123,7 +125,7 @@ inline __coro_Pet_describe Pet::describe() const {
     return __coro_Pet_describe(*this);
 }
 
-// Async coroutine: describe_via_pet
+// async def describe_via_pet(p: Pet) -> str:
 struct __coro_describe_via_pet {
     int32_t __state;
     bool __cancel_pending;
@@ -147,7 +149,7 @@ struct __coro_describe_via_pet {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -178,22 +180,24 @@ struct __coro_amain {
 
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Pet::Pet(std::string_view n) : _name(n) {}
 
 // @readonly
 // def name(self) -> str:
+//     return self._name
 inline std::string Pet::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline Dog::Dog(std::string_view n) : Pet(n) {}
 
 // @readonly
 // def bark(self) -> str:
+//     return "woof from " + self._name
 inline std::string Dog::bark() const {
-    // return "woof from " + self._name
     return (::tpy::str_concat("woof from ", this->_name));
 }
 void __tpy_init();

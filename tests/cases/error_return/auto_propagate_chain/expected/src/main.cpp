@@ -6,75 +6,88 @@ namespace tpyapp::main {
 
 // @error_return(NotFound)
 // def lookup(items: list[int32], target: int32) -> int32:
+//     for i in range(len(items)):
+//         if items[i] == target:
+//             return i
+//     raise NotFound
 std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32_t target) {
-    // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if items[i] == target:
         if ((items[static_cast<std::size_t>(i)] == target)) {
-            // return i
             return i;
         }
     }
-    // raise NotFound
     return ::tpy::make_unexpected(NotFound{});
 }
 
 // @error_return(NotFound)
 // def lookup_twice(items: list[int32], a: int32, b: int32) -> int32:
+//     ia = lookup(items, a)
+//     ib = lookup(items, b)
+//     return ia + ib
 std::expected<int32_t, NotFound> lookup_twice(const std::vector<int32_t>& items, int32_t a, int32_t b) {
-    // ia = lookup(items, a)
     int32_t ia;
     {
         auto __try_tmp_1 = lookup(items, a);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         ia = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
-    // ib = lookup(items, b)
     int32_t ib;
     {
         auto __try_tmp_2 = lookup(items, b);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
         ib = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
-    // return ia + ib
     return (::tpy::add_check<int32_t>(ia, ib));
 }
 
 // @error_return(NotFound)
 // def lookup_sum(items: list[int32], targets: list[int32]) -> int32:
+//     total: int32 = 0
+//     for t in targets:
+//         idx = lookup_twice(items, t, t)
+//         total += idx
+//     return total
 std::expected<int32_t, NotFound> lookup_sum(const std::vector<int32_t>& items, const std::vector<int32_t>& targets) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for t in targets:
     auto& __obj_0 = targets;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t t = *__beg_0;
-        // idx = lookup_twice(items, t, t)
         int32_t idx;
         {
             auto __try_tmp_3 = lookup_twice(items, t, t);
             if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
             idx = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        // total += idx
         total = ::tpy::add_check<int32_t>(total, idx);
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     items: list[int32] = [10, 20, 30]
+//
+//     # All found
+//     try:
+//         v = lookup_sum(items, [10, 20])
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(v)
+//
+//     # Second target missing
+//     try:
+//         v2 = lookup_sum(items, [10, 99])
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(v2)
 void main() {
-    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // # All found
-    // try:
     int32_t v;
     {
-        // v = lookup_sum(items, [10, 20])
         std::vector<int32_t> __tmp_1 = {10, 20};
         {
             auto __try_tmp_5 = lookup_sum(items, __tmp_1);
@@ -82,20 +95,15 @@ void main() {
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_4;
         // except NotFound:
         __except_4:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_4:;
     }
-    // # Second target missing
-    // try:
     int32_t v2;
     {
-        // v2 = lookup_sum(items, [10, 99])
         std::vector<int32_t> __tmp_2 = {10, 99};
         {
             auto __try_tmp_7 = lookup_sum(items, __tmp_2);
@@ -103,23 +111,21 @@ void main() {
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_6;
         // except NotFound:
         __except_6:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_6:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

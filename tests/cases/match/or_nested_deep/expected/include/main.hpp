@@ -14,8 +14,11 @@ struct D;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(x: A | B | C | D) -> str:
 std::string pick(::tpy::Union<const A*, const B*, const C*, const D*> x);
+// def value(x: A | B | C | D) -> int:
 ::tpy::BigInt value(::tpy::Union<const A*, const B*, const C*, const D*> x);
+// def main() -> None:
 void main();
 
 // @dataclass

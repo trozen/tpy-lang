@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(5)
+//     print(b.double())
+//     b.delete()
+//     print(b.n)
 void main() {
-    // b = Box(5)
     Box b = Box(5);
-    // print(b.double())
     std::cout << b.double_() << "\n";
-    // b.delete()
     b.delete_();
-    // print(b.n)
     std::cout << b.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

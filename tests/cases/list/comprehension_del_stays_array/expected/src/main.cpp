@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs = [Res(i) for i in range(4)]  # tpyc: type(/Array\[Res, 4\]/)
+//     total = 0
+//     for r in xs:
+//         total += r.v
+//     print(total)
+//     ws = [Wrap(i) for i in range(3)]  # tpyc: type(/Array\[Wrap, 3\]/)
+//     print(ws[0].tag, ws[2].res.v)
 void main() {
-    // xs = [Res(i) for i in range(4)]  # tpyc: type(/Array\[Res, 4\]/)
     std::array<Res, 4> xs = ::tpy::array_from_index<Res, 4>([&](std::size_t __i_0) -> Res {
         int32_t i = int32_t(__i_0);
         return Res(i);
     });
-    // total = 0
     int32_t total = 0;
-    // for r in xs:
     auto& __obj_1 = xs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& r = *__beg_1;
-        // total += r.v
         total = ::tpy::add_check<int32_t>(total, r.v);
     }
-    // print(total)
     std::cout << total << "\n";
-    // ws = [Wrap(i) for i in range(3)]  # tpyc: type(/Array\[Wrap, 3\]/)
     std::array<Wrap, 3> ws = ::tpy::array_from_index<Wrap, 3>([&](std::size_t __i_2) -> Wrap {
         int32_t i = int32_t(__i_2);
         return Wrap(i);
     });
-    // print(ws[0].tag, ws[2].res.v)
     std::cout << ::tpy::__getitem__(ws, 0).tag << " " << ::tpy::__getitem__(ws, 2).res.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

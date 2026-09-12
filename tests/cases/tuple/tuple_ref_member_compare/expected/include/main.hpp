@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -66,35 +67,36 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __eq__(self, other: "Box") -> bool:
+//     return self.val == other.val
 inline bool Box::__eq__(const Box& other) const {
-    // return self.val == other.val
     return (this->val == other.val);
 }
 
 // def __lt__(self, other: "Box") -> bool:
+//     return self.val < other.val
 inline bool Box::__lt__(const Box& other) const {
-    // return self.val < other.val
     return (this->val < other.val);
 }
 
 // def __le__(self, other: "Box") -> bool:
+//     return self.val <= other.val
 inline bool Box::__le__(const Box& other) const {
-    // return self.val <= other.val
     return (this->val <= other.val);
 }
 
 // def __gt__(self, other: "Box") -> bool:
+//     return self.val > other.val
 inline bool Box::__gt__(const Box& other) const {
-    // return self.val > other.val
     return (this->val > other.val);
 }
 
 // def __ge__(self, other: "Box") -> bool:
+//     return self.val >= other.val
 inline bool Box::__ge__(const Box& other) const {
-    // return self.val >= other.val
     return (this->val >= other.val);
 }
 void __tpy_init();

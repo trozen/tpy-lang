@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def doubled(n: int) -> int:
+//     return n * 2
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_doubled::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n * 2
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) * (::tpy::BigInt(2)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,13 @@ __coro_doubled doubled(::tpy::BigInt n) {
 }
 
 // async def total(c: Counts) -> int:
+//     s = 0
+//     async for x in c:
+//         s += await doubled(x)
+//     return s
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s = 0
         s = 0;
         __for_itr_0.emplace((c).__aiter__());
         __state = S_JOIN_0;
@@ -57,14 +60,12 @@ __coro_doubled doubled(::tpy::BigInt n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         __await_lift_0 = std::move(__r1).value();
         __sub_1.reset();
-        // s += await doubled(x)
         s = ::tpy::add_check<int32_t>(s, (__await_lift_0).to_fixed_check<int32_t>());
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         try {
-            // async for x in c:
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -76,13 +77,11 @@ __coro_doubled doubled(::tpy::BigInt n) {
         }
     }
     case S_JOIN_1: {
-        // s += await doubled(x)
         __sub_1.emplace(x);
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_2: {
-        // return s
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(s);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -99,12 +98,12 @@ __coro_total total(Counts& c) {
 }
 
 // async def main() -> None:
+//     c = Counts(3)
+//     print(await total(c))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counts(3)
         c.emplace(Counts(::tpy::BigInt(3)));
-        // print(await total(c))
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -114,7 +113,6 @@ __coro_total total(Counts& c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await total(c))
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -131,18 +129,18 @@ __coro_main main() {
 }
 
 // async def __anext__(self) -> int:
+//     if self.n >= self.limit:
+//         raise StopAsyncIteration
+//     self.n += 1
+//     return self.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if self.n >= self.limit:
         if ((__self.n >= __self.limit)) {
-            // raise StopAsyncIteration
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.n += 1
         __self.n = (__self.n) + (::tpy::BigInt(1));
-        // return self.n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -153,17 +151,18 @@ __coro_main main() {
 }
 
 
+// # An additional `await` inside an `async for` body. Verifies the
+// # resume-bind path for __anext__ composes with user awaits in the body
+// # (each iteration runs two suspensions: __anext__ + body await).
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An additional `await` inside an `async for` body. Verifies the
-    // # resume-bind path for __anext__ composes with user awaits in the body
-    // # (each iteration runs two suspensions: __anext__ + body await).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

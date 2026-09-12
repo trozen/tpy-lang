@@ -5,70 +5,71 @@ namespace tpyapp::main {
 
 
 // def mk(tag: str, n: int) -> Fixed:
+//     print("eval " + tag)
+//     return Fixed(n)
 Fixed mk(std::string_view tag, const ::tpy::BigInt& n) {
-    // print("eval " + tag)
     std::cout << (::tpy::str_concat("eval ", tag)) << "\n";
-    // return Fixed(n)
     return Fixed((n).to_fixed_check<int32_t>());
 }
 
 // def take(pair: tuple[Box, int32]) -> int:
+//     return int(pair[0].v) + int(pair[1])
 ::tpy::BigInt take(const std::tuple<const Box*, int32_t>& pair) {
-    // return int(pair[0].v) + int(pair[1])
     return ((::tpy::BigInt(static_cast<int64_t>(std::get<0>(pair)->v))) + (::tpy::BigInt(static_cast<int64_t>(std::get<1>(pair)))));
 }
 
 // def take2(pair: tuple[Box, Box]) -> int:
+//     return int(pair[0].v) + int(pair[1].v)
 ::tpy::BigInt take2(const std::tuple<const Box*, const Box*>& pair) {
-    // return int(pair[0].v) + int(pair[1].v)
     return ((::tpy::BigInt(static_cast<int64_t>(std::get<0>(pair)->v))) + (::tpy::BigInt(static_cast<int64_t>(std::get<1>(pair)->v))));
 }
 
 // def take_opt(pair: tuple[Box | None, int32]) -> int:
+//     # Reads only the int32 slot: reading the Optional-Box element hits a
+//     # separate pre-existing const-propagation bug (BUGS.md). The point here
+//     # is the CONSTRUCTION of the rvalue element into the Optional-borrow
+//     # slot, which exercises the fix's elem_target.inner unwrap arm.
+//     return int(pair[1])
 ::tpy::BigInt take_opt(const std::tuple<const Box*, int32_t>& pair) {
-    // # Reads only the int32 slot: reading the Optional-Box element hits a
-    // # separate pre-existing const-propagation bug (BUGS.md). The point here
-    // # is the CONSTRUCTION of the rvalue element into the Optional-borrow
-    // # slot, which exercises the fix's elem_target.inner unwrap arm.
-    // return int(pair[1])
     return ::tpy::BigInt(static_cast<int64_t>(std::get<1>(pair)));
 }
 
 // def main() -> None:
+//     # Rvalue Box(mk(...)) element in a borrow-slot tuple: inner mk() once.
+//     print(take((Box(mk("fixed", 3)), 5)))
+//     # Two rvalue-into-borrow elements: each inner call once.
+//     print(take2((Box(mk("a", 4)), Box(mk("b", 6)))))
+//     # Rvalue into an Optional-borrow slot (tuple[Box | None, ...]): exercises
+//     # the elem_target.inner unwrap; inner mk() once.
+//     print(take_opt((Box(mk("opt", 8)), 4)))
+//     # Zone arm through the same shape (no mk print): value flows correctly.
+//     print(take((Box(Zone(7)), 2)))
 void main() {
-    // # Rvalue Box(mk(...)) element in a borrow-slot tuple: inner mk() once.
-    // print(take((Box(mk("fixed", 3)), 5)))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = mk("fixed", ::tpy::BigInt(3));
     std::cout << take(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_1), 5})) << "\n";
-    // # Two rvalue-into-borrow elements: each inner call once.
-    // print(take2((Box(mk("a", 4)), Box(mk("b", 6)))))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = mk("a", ::tpy::BigInt(4));
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_3 = mk("b", ::tpy::BigInt(6));
     std::cout << take2(::tpy::tuple_value_to_borrow<std::tuple<Box*, Box*>>(std::tuple<Box, Box>{Box(__tmp_2), Box(__tmp_3)})) << "\n";
-    // # Rvalue into an Optional-borrow slot (tuple[Box | None, ...]): exercises
-    // # the elem_target.inner unwrap; inner mk() once.
-    // print(take_opt((Box(mk("opt", 8)), 4)))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = mk("opt", ::tpy::BigInt(8));
     std::cout << take_opt(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_4), 4})) << "\n";
-    // # Zone arm through the same shape (no mk print): value flows correctly.
-    // print(take((Box(Zone(7)), 2)))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_5 = Zone(7);
     std::cout << take(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_5), 2})) << "\n";
 }
 
+// # A tuple LITERAL element that is a value-union-param call, where the tuple
+// # crosses a borrow boundary (a tuple param binds by reference, routing rvalue
+// # elements through tuple_value_to_borrow), must evaluate that inner call once
+// # (regression: the borrow path rendered the element twice -- borrow form then
+// # value form -- doubling side effects and leaking a hoisted temp; the
+// # tuple-literal analog of the method-arg double-eval). Each "eval <tag>" once.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A tuple LITERAL element that is a value-union-param call, where the tuple
-    // # crosses a borrow boundary (a tuple param binds by reference, routing rvalue
-    // # elements through tuple_value_to_borrow), must evaluate that inner call once
-    // # (regression: the borrow path rendered the element twice -- borrow form then
-    // # value form -- doubling side effects and leaking a hoisted temp; the
-    // # tuple-literal analog of the method-arg double-eval). Each "eval <tag>" once.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

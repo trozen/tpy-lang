@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     def double(x: int32) -> int32:
+//         return x * 2
+//     def quadruple(x: int32) -> int32:
+//         return double(double(x))
+//     print(quadruple(3))
 void main() {
-    // def double(x: int32) -> int32:
     auto double_ = [](int32_t x) -> int32_t {
-        // return x * 2
         return (::tpy::mul_check<int32_t>(x, 2));
     };
-    // def quadruple(x: int32) -> int32:
     auto quadruple = [&double_](int32_t x) -> int32_t {
-        // return double(double(x))
         return double_(double_(x));
     };
-    // print(quadruple(3))
     std::cout << quadruple(3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

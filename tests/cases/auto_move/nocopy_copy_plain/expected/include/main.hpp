@@ -11,6 +11,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Counter:
@@ -39,6 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, count: int32):
+//     self.count = count
 inline Counter::Counter(int32_t count) : count(count) {}
 
 inline Counter::Counter(const Counter& other) : Counter(other.__copy__()) {}
@@ -48,8 +50,8 @@ inline Counter& Counter::operator=(const Counter& other) {
 }
 
 // def __copy__(self) -> Own[Counter]:
+//     return Counter(self.count * 2)
 inline Counter Counter::__copy__() const {
-    // return Counter(self.count * 2)
     return Counter((::tpy::mul_check<int32_t>(this->count, 2)));
 }
 void __tpy_init();

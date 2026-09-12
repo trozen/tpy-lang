@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def double_all(xs: Array[int32, 4]) -> None:
 void double_all(const std::array<int32_t, 4>& xs);
+// def pass_through(xs: Array[int32, 4]) -> None:
 void pass_through(const std::array<int32_t, 4>& xs);
+// def sum_pairs(ps: Array[tuple[int32, int32], 3]) -> None:
 void sum_pairs(const std::array<std::tuple<int32_t, int32_t>, 3>& ps);
+// def main():
 void main();
 
 void __tpy_init();

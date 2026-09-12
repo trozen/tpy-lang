@@ -5,157 +5,157 @@ namespace tpyapp::main {
 
 
 // def test_in_total_true() -> None:
+//     r = Required(name="Alice", age=int32(30))
+//     print("name" in r)   # always True for total=True
+//     print("age" in r)
+//     print("name" not in r)  # always False
 void test_in_total_true() {
-    // r = Required(name="Alice", age=int32(30))
     Required r = Required("Alice", 30);
-    // print("name" in r)   # always True for total=True
     std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n";
-    // print("age" in r)
     std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n";
-    // print("name" not in r)  # always False
     std::cout << ::tpy::print_bool((static_cast<void>(r), false)) << "\n";
 }
 
 // def test_in_nullable_field() -> None:
+//     # total=True with Optional[T] field -- key is always present
+//     n = NullableField(name=None, count=int32(1))
+//     print("name" in n)   # True (field present, even though value is None)
+//     print("count" in n)  # True
 void test_in_nullable_field() {
-    // # total=True with Optional[T] field -- key is always present
-    // n = NullableField(name=None, count=int32(1))
     NullableField n = NullableField(std::nullopt, 1);
-    // print("name" in n)   # True (field present, even though value is None)
     std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n";
-    // print("count" in n)  # True
     std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n";
 }
 
 // def test_in_total_false() -> None:
+//     full = Partial(name="Bob", age=int32(25))
+//     empty = Partial()
+//     partial = Partial(name="Carol")
+//     print("name" in full)      # True
+//     print("age" in full)       # True
+//     print("name" in empty)     # False
+//     print("age" in empty)      # False
+//     print("name" in partial)   # True
+//     print("age" in partial)    # False
+//     print("name" not in empty) # True
 void test_in_total_false() {
-    // full = Partial(name="Bob", age=int32(25))
     Partial full = Partial("Bob", 25);
-    // empty = Partial()
     Partial empty = Partial();
-    // partial = Partial(name="Carol")
     Partial partial = Partial("Carol");
-    // print("name" in full)      # True
     std::cout << ::tpy::print_bool(full.name.has_value()) << "\n";
-    // print("age" in full)       # True
     std::cout << ::tpy::print_bool(full.age.has_value()) << "\n";
-    // print("name" in empty)     # False
     std::cout << ::tpy::print_bool(empty.name.has_value()) << "\n";
-    // print("age" in empty)      # False
     std::cout << ::tpy::print_bool(empty.age.has_value()) << "\n";
-    // print("name" in partial)   # True
     std::cout << ::tpy::print_bool(partial.name.has_value()) << "\n";
-    // print("age" in partial)    # False
     std::cout << ::tpy::print_bool(partial.age.has_value()) << "\n";
-    // print("name" not in empty) # True
     std::cout << ::tpy::print_bool((!empty.name.has_value())) << "\n";
 }
 
 // def test_get_total_true() -> None:
+//     r = Required(name="Alice", age=int32(30))
+//     # get without default -> Optional[T]
+//     v = r.get("name")
+//     if v is not None:
+//         print(v)
+//     # get with default -> T
+//     print(r.get("name", "default"))
+//     print(r.get("age", int32(0)))
 void test_get_total_true() {
-    // r = Required(name="Alice", age=int32(30))
     Required r = Required("Alice", 30);
-    // # get without default -> Optional[T]
-    // v = r.get("name")
     std::optional<std::string> v = std::make_optional(r.name);
-    // if v is not None:
     if ((v.has_value())) {
-        // print(v)
         std::cout << ::tpy::print_optional_val(v) << "\n";
     }
-    // # get with default -> T
-    // print(r.get("name", "default"))
     std::cout << ((void)"default", r.name) << "\n";
-    // print(r.get("age", int32(0)))
     std::cout << ((void)0, r.age) << "\n";
 }
 
 // def test_get_nullable_field() -> None:
+//     # total=True with Optional[T] field -- get returns Optional[T]
+//     n = NullableField(name=None, count=int32(1))
+//     v = n.get("name")
+//     if v is not None:
+//         print("unexpected")
+//     else:
+//         print("None")
+//     # get with default -- field is present with None value, returns None (not default)
+//     print(n.get("name", "fallback"))
+//     print(n.get("count", int32(0)))
 void test_get_nullable_field() {
-    // # total=True with Optional[T] field -- get returns Optional[T]
-    // n = NullableField(name=None, count=int32(1))
     NullableField n = NullableField(std::nullopt, 1);
-    // v = n.get("name")
     std::optional<std::string> v = n.name;
-    // if v is not None:
     if ((v.has_value())) {
-        // print("unexpected")
         std::cout << "unexpected" << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
-    // # get with default -- field is present with None value, returns None (not default)
-    // print(n.get("name", "fallback"))
     std::cout << ::tpy::print_optional_val(((void)"fallback", n.name)) << "\n";
-    // print(n.get("count", int32(0)))
     std::cout << ((void)0, n.count) << "\n";
 }
 
 // def test_get_total_false() -> None:
+//     full = Partial(name="Bob", age=int32(25))
+//     empty = Partial()
+//     # get without default -> Optional[T] (may be None)
+//     v = full.get("name")
+//     if v is not None:
+//         print(v)
+//     v2 = empty.get("name")
+//     if v2 is not None:
+//         print("unexpected")
+//     else:
+//         print("None")
+//     # get with default -> T
+//     print(full.get("name", "fallback"))
+//     print(empty.get("name", "fallback"))
+//     print(full.get("age", int32(99)))
+//     print(empty.get("age", int32(99)))
 void test_get_total_false() {
-    // full = Partial(name="Bob", age=int32(25))
     Partial full = Partial("Bob", 25);
-    // empty = Partial()
     Partial empty = Partial();
-    // # get without default -> Optional[T] (may be None)
-    // v = full.get("name")
     std::optional<std::string> v = full.name;
-    // if v is not None:
     if ((v.has_value())) {
-        // print(v)
         std::cout << ::tpy::print_optional_val(v) << "\n";
     }
-    // v2 = empty.get("name")
     std::optional<std::string> v2 = empty.name;
-    // if v2 is not None:
     if ((v2.has_value())) {
-        // print("unexpected")
         std::cout << "unexpected" << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
-    // # get with default -> T
-    // print(full.get("name", "fallback"))
     std::cout << full.name.value_or(std::string("fallback")) << "\n";
-    // print(empty.get("name", "fallback"))
     std::cout << empty.name.value_or(std::string("fallback")) << "\n";
-    // print(full.get("age", int32(99)))
     std::cout << full.age.value_or(99) << "\n";
-    // print(empty.get("age", int32(99)))
     std::cout << empty.age.value_or(99) << "\n";
 }
 
 // def test_get_str_param_default(s: str) -> None:
+//     # Ensure string_view default compiles with value_or
+//     empty = Partial()
+//     print(empty.get("name", s))
 void test_get_str_param_default(std::string_view s) {
-    // # Ensure string_view default compiles with value_or
-    // empty = Partial()
     Partial empty = Partial();
-    // print(empty.get("name", s))
     std::cout << empty.name.value_or(std::string(s)) << "\n";
 }
 
+// test_in_total_true()
+// test_in_nullable_field()
+// test_in_total_false()
+// test_get_total_true()
+// test_get_nullable_field()
+// test_get_total_false()
+// test_get_str_param_default("param_default")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_in_total_true()
     test_in_total_true();
-    // test_in_nullable_field()
     test_in_nullable_field();
-    // test_in_total_false()
     test_in_total_false();
-    // test_get_total_true()
     test_get_total_true();
-    // test_get_nullable_field()
     test_get_nullable_field();
-    // test_get_total_false()
     test_get_total_false();
-    // test_get_str_param_default("param_default")
     test_get_str_param_default("param_default");
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Client(name="MyClient")
+//     opts = Options(host="example.com", port=int32(443))
+//     c.connect(**opts)
 void main() {
-    // c = Client(name="MyClient")
     Client c = Client("MyClient");
-    // opts = Options(host="example.com", port=int32(443))
     Options opts = Options("example.com", 443);
-    // c.connect(**opts)
     c.connect(opts);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = IntStr(5, "zz")
+//     print(show_v(p))            # V = str
+//     print(show_k(p) + 1)        # K = int, distinct from V
 void main() {
-    // p = IntStr(5, "zz")
     IntStr p = IntStr(::tpy::BigInt(5), "zz");
-    // print(show_v(p))            # V = str
     std::cout << show_v<::tpy::BigInt, std::string>(p) << "\n";
-    // print(show_k(p) + 1)        # K = int, distinct from V
     std::cout << ((show_k<::tpy::BigInt, std::string>(p)) + (::tpy::BigInt(1))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

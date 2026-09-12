@@ -12,6 +12,7 @@ template<::tpystd::tpy::Stringable T> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pair:
@@ -42,18 +43,19 @@ struct Wrapper {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Wrapper() = default;
     explicit Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def __str__(self) -> str:
+    //     return f"Wrapper({self.value})"
     std::string __str__() const {
-        // return f"Wrapper({self.value})"
         return std::format("Wrapper({})", ::tpy::__str__(this->value));
     }
 
     // def __repr__(self) -> str:
+    //     return f"Wrapper(value={self.value})"
     std::string __repr__() const {
-        // return f"Wrapper(value={self.value})"
         return std::format("Wrapper(value={})", ::tpy::__str__(this->value));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
@@ -67,11 +69,13 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Pair::Pair(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __str__(self) -> str:
+//     return f"({self.x}, {self.y})"
 inline std::string Pair::__str__() const {
-    // return f"({self.x}, {self.y})"
     return std::format("({}, {})", this->x, this->y);
 }
 void __tpy_init();

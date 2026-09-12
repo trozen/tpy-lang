@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def head(t: Tree) -> int32:
+//     match t:
+//         case Leaf():
+//             return t.v
+//         case _:
+//             return -1
 int32_t head(const Tree& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case Leaf():
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1.value);
-        // return t.v
         return __case_0.v;
         break;
     }
-    // case _:
     default: {
-        // return -1
         return -1;
         break;
     }
@@ -27,24 +27,24 @@ int32_t head(const Tree& t) {
 }
 
 // def main() -> None:
+//     a: Tree = Leaf(42)
+//     b: list[Tree] = [Leaf(1)]
+//     print(head(a))
+//     print(head(b))
 void main() {
-    // a: Tree = Leaf(42)
     Tree a = Leaf(42);
-    // b: list[Tree] = [Leaf(1)]
     std::vector<Tree> b = {Leaf(1)};
-    // print(head(a))
     std::cout << head(a) << "\n";
-    // print(head(b))
     Tree __tmp_1 = std::move(b);
     std::cout << head(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

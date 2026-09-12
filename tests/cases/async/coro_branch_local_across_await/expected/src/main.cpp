@@ -5,19 +5,20 @@ namespace tpyapp::main {
 
 
 // async def coro_if(n: int) -> int:
+//     if n == 0:
+//         r = 100
+//     else:
+//         r = n + 1
+//     await asyncio.sleep(0)
+//     return r + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_if::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if n == 0:
         if ((n == 0)) {
-            // r = 100
             r = 100;
-        // else:
         } else {
-            // r = n + 1
             r = ((n) + (::tpy::BigInt(1)));
         }
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -27,7 +28,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return r + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((r) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -44,23 +44,24 @@ __coro_coro_if coro_if(::tpy::BigInt n) {
 }
 
 // async def coro_elif(n: int) -> int:
+//     if n == 0:
+//         r = 1
+//     elif n == 1:
+//         r = 2
+//     else:
+//         r = n + 10
+//     await asyncio.sleep(0)
+//     return r + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_elif::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if n == 0:
         if ((n == 0)) {
-            // r = 1
             r = 1;
-        // elif n == 1:
         } else if ((n == 1)) {
-            // r = 2
             r = 2;
-        // else:
         } else {
-            // r = n + 10
             r = ((n) + (::tpy::BigInt(10)));
         }
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -70,7 +71,6 @@ __coro_coro_if coro_if(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return r + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((r) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -87,21 +87,22 @@ __coro_coro_elif coro_elif(::tpy::BigInt n) {
 }
 
 // async def coro_match(n: int) -> int:
+//     match n:
+//         case 0:
+//             r = 100
+//         case _:
+//             r = n + 1
+//     await asyncio.sleep(0)
+//     return r + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_match::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // match n:
         auto& __match_subject_1 = n;
-        // case 0:
         if (__match_subject_1 == 0) {
-            // r = 100
             r = 100;
-        // case _:
         } else {
-            // r = n + 1
             r = ((n) + (::tpy::BigInt(1)));
         }
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -111,7 +112,6 @@ __coro_coro_elif coro_elif(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return r + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((r) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -128,27 +128,28 @@ __coro_coro_match coro_match(::tpy::BigInt n) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(coro_if(5)))
+//     print(asyncio.run(coro_if(0)))
+//     print(asyncio.run(coro_elif(7)))
+//     print(asyncio.run(coro_match(5)))
 void main() {
-    // print(asyncio.run(coro_if(5)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(coro_if(::tpy::BigInt(5)))) << "\n";
-    // print(asyncio.run(coro_if(0)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(coro_if(::tpy::BigInt(0)))) << "\n";
-    // print(asyncio.run(coro_elif(7)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(coro_elif(::tpy::BigInt(7)))) << "\n";
-    // print(asyncio.run(coro_match(5)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(coro_match(::tpy::BigInt(5)))) << "\n";
 }
 
+// # A plain local first-assigned inside an if/elif/else/match branch and read
+// # across an await must survive the coroutine state-machine split (frame field).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A plain local first-assigned inside an if/elif/else/match branch and read
-    // # across an await must survive the coroutine state-machine split (frame field).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

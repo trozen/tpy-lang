@@ -5,90 +5,93 @@ namespace tpyapp::main {
 
 
 // def merge_and_clear() -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+//     s = requests.Session()
+//     s.headers = {"X-App": "demo-app", "Accept": "application/json",
+//                  "User-Agent": "test-agent"}
+//     s.params = {"db": "das"}
+//     s.auth = ("user", "pw")
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.get("http://api.test/v1/tables", {"limit": "10"}, {"X-App": "override"})
+//     print(r.status_code)
+//     print(b.recv(65536))
+//     if s._connection is None:
+//         print("connection cleared")
+//     b.close()
 void merge_and_clear() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"X-App": "demo-app", "Accept": "application/json",
-    // "User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"X-App", "demo-app"}, {"Accept", "application/json"}, {"User-Agent", "test-agent"}});
-    // s.params = {"db": "das"}
     s.params = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
-    // s.auth = ("user", "pw")
     s.auth = std::tuple<std::string, std::string>{"user", "pw"};
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.get("http://api.test/v1/tables", {"limit": "10"}, {"X-App": "override"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"limit", "10"}});
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"X-App", "override"}});
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/tables", &(__tmp_1), &(__tmp_2));
-    // print(r.status_code)
     std::cout << r.status_code << "\n";
-    // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // if s._connection is None:
     if ((!s._connection.has_value())) {
-        // print("connection cleared")
         std::cout << "connection cleared" << "\n";
     }
-    // b.close()
     b.close();
 }
 
 // def session_post() -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.post("http://api.test/v1/items", b"payload")
+//     print(r.status_code)
+//     print(b.recv(65536))
+//     b.close()
 void session_post() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 201 Created\r\nContent-Length: 2\r\n\r\nok", 45));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.post("http://api.test/v1/items", b"payload")
     ::tpy::Bytes __tmp_3 = ::tpy::bytes_literal_owned("payload", 7);
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_3});
-    // print(r.status_code)
     std::cout << r.status_code << "\n";
-    // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // b.close()
     b.close();
 }
 
 // def context_manager_closes() -> None:
+//     a, b = socket.socketpair()
+//     with requests.Session() as s:
+//         conn = HTTPConnection("api.test", 80)
+//         conn.sock = a
+//         s._connection = Box(conn)
+//     # __exit__ closed the still-set connection; the peer now sees EOF.
+//     print(b.recv(10))
+//     b.close()
 void context_manager_closes() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // with requests.Session() as s:
     std::optional<::tpystd::http::client::HTTPConnection> conn;
     auto __ctx_1 = ::tpystd::tplib::requests::Session();
     auto& s = __ctx_1.__enter__();
     try {
-        // conn = HTTPConnection("api.test", 80)
         conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-        // conn.sock = a
         conn->sock = std::move(a);
-        // s._connection = Box(conn)
         s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move((*conn)));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -100,45 +103,43 @@ void context_manager_closes() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # __exit__ closed the still-set connection; the peer now sees EOF.
-    // print(b.recv(10))
     std::cout << ::tpy::BytesPrinter(b.recv(10)) << "\n";
-    // b.close()
     b.close();
 }
 
 // def main() -> None:
+//     merge_and_clear()
+//     session_post()
+//     context_manager_closes()
 void main() {
-    // merge_and_clear()
     merge_and_clear();
-    // session_post()
     session_post();
-    // context_manager_closes()
     context_manager_closes();
 }
 
+// # tplib.requests Session: default headers/params merge into each request (with
+// # per-call override), a default auth is applied, the injected connection is
+// # cleared after the request (so a regression that drops the clear is caught),
+// # Session.post sends a body, and `with Session()` closes a still-set connection
+// # on exit (observed as EOF on the socketpair peer). A fixed User-Agent is pinned
+// # so the sent-bytes snapshots don't churn on a compiler version bump; the auto
+// # default lives in requests_default_user_agent.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests Session: default headers/params merge into each request (with
-    // # per-call override), a default auth is applied, the injected connection is
-    // # cleared after the request (so a regression that drops the clear is caught),
-    // # Session.post sends a body, and `with Session()` closes a still-set connection
-    // # on exit (observed as EOF on the socketpair peer). A fixed User-Agent is pinned
-    // # so the sent-bytes snapshots don't churn on a compiler version bump; the auto
-    // # default lives in requests_default_user_agent.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

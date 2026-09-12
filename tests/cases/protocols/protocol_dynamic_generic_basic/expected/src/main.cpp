@@ -5,56 +5,56 @@ namespace tpyapp::main {
 
 
 // def show(c: Container[int32]) -> None:
+//     print(c.get())
 void show(Container<int32_t>& c) {
-    // print(c.get())
     std::cout << c.get() << "\n";
 }
 
 // def bump(c: Container[int32]) -> None:
+//     c.set(c.get() + 1)
 void bump(Container<int32_t>& c) {
-    // c.set(c.get() + 1)
     c.set((::tpy::add_check<int32_t>(c.get(), 1)));
 }
 
 // def main() -> None:
+//     c: Container[int32] = Box(7)
+//     print(c.get())
+//     bump(c)
+//     print(c.get())
+//     c = Ratio(42)
+//     print(c.get())
+//     show(Box(100))
+//     r = Ratio(99)
+//     show(r)
+//     bump(r)
+//     show(r)
 void main() {
     std::optional<::tpy::Adapter<Container<int32_t>, Ratio>> __slot_2;
-    // c: Container[int32] = Box(7)
     ::tpy::Adapter<Container<int32_t>, Box> __slot_1{Box(7)};
     Container<int32_t>* c = &__slot_1;
-    // print(c.get())
     std::cout << c->get() << "\n";
-    // bump(c)
     bump((*c));
-    // print(c.get())
     std::cout << c->get() << "\n";
-    // c = Ratio(42)
     __slot_2.emplace(Ratio(42));
     c = &*__slot_2;
-    // print(c.get())
     std::cout << c->get() << "\n";
-    // show(Box(100))
     ::tpy::Adapter<Container<int32_t>, Box> __tmp_1{Box(100)};
     show(__tmp_1);
-    // r = Ratio(99)
     Ratio r = Ratio(99);
-    // show(r)
     ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_2{r};
     show(__tmp_2);
-    // bump(r)
     ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_3{r};
     bump(__tmp_3);
-    // show(r)
     ::tpy::RefAdapter<Container<int32_t>, Ratio> __tmp_4{r};
     show(__tmp_4);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

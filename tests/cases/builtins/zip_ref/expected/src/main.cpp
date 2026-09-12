@@ -5,12 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     points = [Point(1, 2), Point(3, 4)]
+//     scales = [10, 20]
+//     for p, s in zip(points, scales):
+//         p.x *= s
+//         p.y *= s
+//     for p in points:
+//         print(p.x, p.y)
 void main() {
-    // points = [Point(1, 2), Point(3, 4)]
     std::array<Point, 2> points = {Point(1, 2), Point(3, 4)};
-    // scales = [10, 20]
     std::array<int32_t, 2> scales = {10, 20};
-    // for p, s in zip(points, scales):
     {
         auto __src_0 = ::tpy::builtin_zip<Point, int32_t>(points, scales);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -18,33 +22,28 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for p, s in zip(points, scales):
         auto& __tup_1 = __for_tup_0;
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         int32_t s = std::get<1>(__tup_1);
-        // p.x *= s
         p.x = ::tpy::mul_check<int32_t>(p.x, s);
-        // p.y *= s
         p.y = ::tpy::mul_check<int32_t>(p.y, s);
         }
     }
-    // for p in points:
     auto& __obj_2 = points;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& p = *__beg_2;
-        // print(p.x, p.y)
         std::cout << p.x << " " << p.y << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

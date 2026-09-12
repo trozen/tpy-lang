@@ -47,29 +47,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Color = Color.Green
+//     print(c.name)
+//     print(c.value)
+//     c = Color.Blue
+//     print(c.name)
+//     print(c.value)
 void main() {
-    // c: Color = Color.Green
     Color c = Color::Green;
-    // print(c.name)
     std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n";
-    // print(c.value)
     std::cout << static_cast<int32_t>(c) << "\n";
-    // c = Color.Blue
     c = Color::Blue;
-    // print(c.name)
     std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n";
-    // print(c.value)
     std::cout << static_cast<int32_t>(c) << "\n";
 }
 
+// # Enum .name and .value properties
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum .name and .value properties
-    // from enum import Enum
-    // main()
     main();
 }
 

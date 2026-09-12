@@ -11,23 +11,38 @@ template<typename T> struct Peeker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def has_item[T](xs: list[T], v: T) -> bool:
 template<typename T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+// def has_item_str(xs: list[str], v: str) -> bool:
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v);
+// def has_item_string(xs: list[String], v: String) -> bool:
 bool has_item_string(const std::vector<::tpy::String>& xs, const ::tpy::String& v);
+// def has_item_bytes(xs: list[bytes], v: bytes) -> bool:
 bool has_item_bytes(const std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v);
+// def size_of(p: bytes) -> int32:
 int32_t size_of(::tpy::BytesView p);
+// def echo_ref[T](v: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> echo_ref(::tpy::param_val_or_ref_t<T> v);
+// def store[T](xs: list[T], v: T) -> None:
 template<typename T>
 void store(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+// def store_str(xs: list[str], v: str) -> None:
 void store_str(std::vector<std::string>& xs, std::string_view v);
+// def store_bytes(xs: list[bytes], v: bytes) -> None:
 void store_bytes(std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v);
+// def str_family(k: str) -> None:
 void str_family(std::string_view k);
+// def bytes_family(p: bytes) -> None:
 void bytes_family(::tpy::BytesView p);
+// def u8_list() -> None:
 void u8_list();
+// def storing(k: str, p: bytes) -> None:
 void storing(std::string_view k, ::tpy::BytesView p);
+// def readonly_method(k: str) -> None:
 void readonly_method(std::string_view k);
+// def main() -> None:
 void main();
 
 // class Peeker[T]:
@@ -36,23 +51,23 @@ struct Peeker {
 
 
     // def peek(self, xs: list[T], v: readonly[T]) -> bool:
+    //     # a `readonly[T]` METHOD slot renders `readonly_form_t<T>` -- the same
+    //     # parameter form, const-qualified only where it is a mutable reference,
+    //     # so a view binds here as bare as at the plain `T` slot
+    //     for x in xs:
+    //         if x == v:
+    //             return True
+    //     return False
     bool peek(const std::vector<T>& xs, ::tpy::readonly_form_t<T> v) const {
-        // # a `readonly[T]` METHOD slot renders `readonly_form_t<T>` -- the same
-        // # parameter form, const-qualified only where it is a mutable reference,
-        // # so a view binds here as bare as at the plain `T` slot
-        // for x in xs:
         auto& __obj_0 = xs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& x = *__beg_0;
-            // if x == v:
             if (::tpy::eq(x, v)) {
-                // return True
                 return true;
             }
         }
-        // return False
         return false;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Peeker";
@@ -65,39 +80,39 @@ inline std::ostream& operator<<(std::ostream& os, const Peeker<T>& obj) {
 }
 
 // def has_item[T](xs: list[T], v: T) -> bool:
+//     for x in xs:
+//         # the open-`T` compare: the element is `T` storage and `v` the slot's
+//         # parameter form, which at bytes are two different C++ types
+//         if x == v:
+//             return True
+//     return False
 template<typename T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        // # the open-`T` compare: the element is `T` storage and `v` the slot's
-        // # parameter form, which at bytes are two different C++ types
-        // if x == v:
         if (::tpy::eq(x, v)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 // def echo_ref[T](v: T) -> T:
+//     # a by-value `T` return of a `T` param: `val_or_ref_t<T>` is `T` at a value
+//     # instantiation (so the view is constructed into it) and `T&` at a
+//     # reference one (so the borrow passes through)
+//     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> echo_ref(::tpy::param_val_or_ref_t<T> v) {
-    // # a by-value `T` return of a `T` param: `val_or_ref_t<T>` is `T` at a value
-    // # instantiation (so the view is constructed into it) and `T&` at a
-    // # reference one (so the borrow passes through)
-    // return v
     return ::tpy::param_to_return<T>(v);
 }
 // def store[T](xs: list[T], v: T) -> None:
+//     # the body position a view slot cannot serve: a store into `T` storage
+//     xs.append(v)
 template<typename T>
 void store(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
-    // # the body position a view slot cannot serve: a store into `T` storage
-    // xs.append(v)
     xs.push_back(::tpy::param_to_storage<T>(v));
 }
 

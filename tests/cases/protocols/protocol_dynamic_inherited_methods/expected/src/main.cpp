@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def greet(n: DynNamed) -> None:
+//     print(n.name())
 void greet(DynNamed& n) {
-    // print(n.name())
     std::cout << n.name() << "\n";
 }
 
 // def main() -> None:
+//     greet(Dog())
+//     greet(Cat())
 void main() {
-    // greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    // greet(Cat())
     ::tpy::Adapter<DynNamed, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

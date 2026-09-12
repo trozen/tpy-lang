@@ -11,6 +11,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass
@@ -49,16 +50,16 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 inline Rect::Rect(int32_t width, int32_t height) : width(width), height(height) {}
 
 // def area(self) -> int32:
+//     return self.width * self.height
 inline int32_t Rect::area() const {
-    // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width, this->height));
 }
 
 // def scale(self, factor: int32) -> None:
+//     self.width = self.width * factor
+//     self.height = self.height * factor
 inline void Rect::scale(int32_t factor) {
-    // self.width = self.width * factor
     this->width = (::tpy::mul_check<int32_t>(this->width, factor));
-    // self.height = self.height * factor
     this->height = (::tpy::mul_check<int32_t>(this->height, factor));
 }
 

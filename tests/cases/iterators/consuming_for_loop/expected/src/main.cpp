@@ -5,97 +5,97 @@ namespace tpyapp::main {
 
 
 // def test_own_iter_explicit() -> None:
+//     src: list[Node] = [Node(1), Node(2), Node(3)]
+//     oi = own_iter(src)  # tpyc: type(/OwnIter\[Node\]/)
+//     total: int32 = 0
+//     for x in oi:
+//         total += x.val
+//     print(total)
 void test_own_iter_explicit() {
-    // src: list[Node] = [Node(1), Node(2), Node(3)]
     std::vector<Node> src = {Node(1), Node(2), Node(3)};
-    // oi = own_iter(src)  # tpyc: type(/OwnIter\[Node\]/)
     auto oi = ::tpy::own_iter(std::move(src));
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in oi:
     auto& __obj_0 = oi;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def test_own_iter_value_type() -> None:
+//     src: list[int32] = [10, 20, 30]
+//     total: int32 = 0
+//     for x in own_iter(src):
+//         total += x
+//     print(total)
 void test_own_iter_value_type() {
-    // src: list[int32] = [10, 20, 30]
     std::vector<int32_t> src = {10, 20, 30};
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in own_iter(src):
     auto __obj_0 = ::tpy::own_iter(std::move(src));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def test_borrowing_default() -> None:
+//     src: list[Node] = [Node(10), Node(20)]
+//     total: int32 = 0
+//     for x in src:
+//         total += x.val
+//     print(total)
+//     print(len(src))
 void test_borrowing_default() {
-    // src: list[Node] = [Node(10), Node(20)]
     std::vector<Node> src = {Node(10), Node(20)};
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in src:
     auto& __obj_0 = src;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    // print(total)
     std::cout << total << "\n";
-    // print(len(src))
     std::cout << ::tpy::__len__(src) << "\n";
 }
 
 // def test_value_type_borrowing() -> None:
+//     src: list[int32] = [1, 2, 3]
+//     total: int32 = 0
+//     for x in src:
+//         total += x
+//     print(total)
 void test_value_type_borrowing() {
-    // src: list[int32] = [1, 2, 3]
     std::vector<int32_t> src = {1, 2, 3};
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in src:
     auto& __obj_0 = src;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// test_own_iter_explicit()
+// test_own_iter_value_type()
+// test_borrowing_default()
+// test_value_type_borrowing()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_own_iter_explicit()
     test_own_iter_explicit();
-    // test_own_iter_value_type()
     test_own_iter_value_type();
-    // test_borrowing_default()
     test_borrowing_default();
-    // test_value_type_borrowing()
     test_value_type_borrowing();
 }
 

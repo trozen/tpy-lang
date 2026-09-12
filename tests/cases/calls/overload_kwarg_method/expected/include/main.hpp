@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -39,19 +40,20 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Box::Box(int32_t base) : base(base) {}
 
 // @dispatch
 // def apply(self, x: int32, *, tag: str = "") -> str:
+//     return tag + ":" + str(self.base + x)
 inline std::string Box::apply(int32_t x, std::string_view tag) {
-    // return tag + ":" + str(self.base + x)
     return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(this->base, x)))));
 }
 
 // @dispatch
 // def apply(self, x: int32, *, tag: int32 = 0) -> int32:
+//     return self.base + x + tag
 inline int32_t Box::apply(int32_t x, int32_t tag) {
-    // return self.base + x + tag
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), tag));
 }
 void __tpy_init();

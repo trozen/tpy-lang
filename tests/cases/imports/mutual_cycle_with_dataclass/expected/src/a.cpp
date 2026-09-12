@@ -7,8 +7,8 @@ namespace tpyapp::a {
 
 // # Real cycle edge: a calls into b's sum_pair, b takes a's Pair.
 // def add_pair(p: Pair) -> int32:
+//     return sum_pair(p) + 1
 int32_t add_pair(Pair& p) {
-    // return sum_pair(p) + 1
     return (::tpy::add_check<int32_t>(::tpyapp::b::sum_pair(p), 1));
 }
 
@@ -22,13 +22,13 @@ bool Pair::__eq__(const Pair& other) const {
 std::string Pair::__repr__() const {
     return std::format("Pair(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
+// from dataclasses import dataclass
+// from b import sum_pair
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from dataclasses import dataclass
-    // from b import sum_pair
     ::tpyapp::b::__tpy_init();
 }
 

@@ -5,6 +5,10 @@ namespace tpyapp::main {
 
 
 // async def worker() -> None:
+//     try:
+//         await asyncio.sleep(10)
+//     finally:
+//         print("worker cleanup")
 ::tpystd::tpy::Poll<::std::monostate> __coro_worker::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -37,7 +41,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.sleep(10)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(10))));
             __state = S_RESUME_0;
             continue;
@@ -56,7 +59,6 @@ namespace tpyapp::main {
 }
 
 void __coro_worker::__finally_0() {
-    // print("worker cleanup")
     std::cout << "worker cleanup" << "\n";
 }
 
@@ -66,12 +68,13 @@ __coro_worker worker() {
 }
 
 // async def main_coro() -> None:
+//     t = asyncio.create_task(worker())
+//     await asyncio.sleep(0)
+//     print("main done")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = asyncio.create_task(worker())
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(worker())));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -81,7 +84,6 @@ __coro_worker worker() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("main done")
         std::cout << "main done" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -98,23 +100,24 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
+//     print("after run")
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
-    // print("after run")
     std::cout << "after run" << "\n";
 }
 
+// # A coroutine frame dropped mid-suspension (task never completed before
+// # the loop drained) runs its pending finally, like CPython's GC close.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A coroutine frame dropped mid-suspension (task never completed before
-    // # the loop drained) runs its pending finally, like CPython's GC close.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -3,92 +3,95 @@
 
 namespace tpyapp::main {
 
-// g_anchor = T(99)
 T* g_anchor{};
-// g_pair: tuple[T | None, T | None] = (g_anchor, None)
 std::tuple<std::optional<T>, std::optional<T>> g_pair;
 
 // def main() -> None:
+//     t1 = T(1)
+//     t2 = T(2)
+//     h = Holder()
+//     h.update((t1, t2))
+//     a, b = h.pair
+//     if a is not None:
+//         print(a.x)
+//     if b is not None:
+//         print(b.x)
+//
+//     items: list[tuple[T | None, T | None]] = [(t1, None)]
+//     h.copy_from_subscript(items)
+//     a2, _ = h.pair
+//     if a2 is not None:
+//         print(a2.x)
+//
+//     h2 = Holder()
+//     h2.copy_from_field(h)
+//     a3, _ = h2.pair
+//     if a3 is not None:
+//         print(a3.x)
+//
+//     gc = GlobalCopier()
+//     a4, _ = gc.pair
+//     if a4 is not None:
+//         print(a4.x)
+//
+//     sc = SubscriptCtor(items)
+//     a5, _ = sc.pair
+//     if a5 is not None:
+//         print(a5.x)
 void main() {
-    // t1 = T(1)
     T t1 = T(1);
-    // t2 = T(2)
     T t2 = T(2);
-    // h = Holder()
     Holder h = Holder();
-    // h.update((t1, t2))
     h.update(std::tuple<T*, T*>{&(t1), &(t2)});
-    // a, b = h.pair
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(h.pair);
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.x)
         std::cout << b->x << "\n";
     }
-    // items: list[tuple[T | None, T | None]] = [(t1, None)]
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr})};
-    // h.copy_from_subscript(items)
     h.copy_from_subscript(items);
-    // a2, _ = h.pair
     auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(h.pair);
     T* a2 = std::get<0>(__tup_2);
-    // if a2 is not None:
     if ((a2 != nullptr)) {
-        // print(a2.x)
         std::cout << a2->x << "\n";
     }
-    // h2 = Holder()
     Holder h2 = Holder();
-    // h2.copy_from_field(h)
     h2.copy_from_field(h);
-    // a3, _ = h2.pair
     auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(h2.pair);
     T* a3 = std::get<0>(__tup_3);
-    // if a3 is not None:
     if ((a3 != nullptr)) {
-        // print(a3.x)
         std::cout << a3->x << "\n";
     }
-    // gc = GlobalCopier()
     GlobalCopier gc = GlobalCopier();
-    // a4, _ = gc.pair
     auto __tup_4 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(gc.pair);
     T* a4 = std::get<0>(__tup_4);
-    // if a4 is not None:
     if ((a4 != nullptr)) {
-        // print(a4.x)
         std::cout << a4->x << "\n";
     }
-    // sc = SubscriptCtor(items)
     SubscriptCtor sc = SubscriptCtor(items);
-    // a5, _ = sc.pair
     auto __tup_5 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(sc.pair);
     T* a5 = std::get<0>(__tup_5);
-    // if a5 is not None:
     if ((a5 != nullptr)) {
-        // print(a5.x)
         std::cout << a5->x << "\n";
     }
 }
 
+// g_anchor = T(99)
+// g_pair: tuple[T | None, T | None] = (g_anchor, None)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g_anchor = T(99)
     static T __global_slot_1 = T(99);
     g_anchor = &__global_slot_1;
-    // g_pair: tuple[T | None, T | None] = (g_anchor, None)
     g_pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{g_anchor, nullptr});
-    // main()
     main();
 }
 

@@ -13,12 +13,19 @@ struct Plain;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bool_if(c: Flag | None) -> int:
 ::tpy::BigInt bool_if(const Flag* c);
+// def bool_not(c: Flag | None) -> int:
 ::tpy::BigInt bool_not(const Flag* c);
+// def bool_while(c: Flag | None) -> int:
 ::tpy::BigInt bool_while(const Flag* c);
+// def bool_and(c: Flag | None, d: Flag | None) -> int:
 ::tpy::BigInt bool_and(const Flag* c, const Flag* d);
+// def len_if(b: Bag | None) -> int:
 ::tpy::BigInt len_if(const Bag* b);
+// def plain_if(p: Plain | None) -> int:
 ::tpy::BigInt plain_if(const Plain* p);
+// def main():
 void main();
 
 // # Truthiness of a pointer-repr Optional[record] narrowed past None must
@@ -88,24 +95,27 @@ inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
 
 
 // def __init__(self, on: bool):
+//     self.on = on
 inline Flag::Flag(bool on) : on(on) {}
 
 // def __bool__(self) -> bool:
+//     return self.on
 inline bool Flag::__bool__() const {
-    // return self.on
     return this->on;
 }
 
 // def __init__(self, n: int):
+//     self.n = n
 inline Bag::Bag(const ::tpy::BigInt& n) : n(n) {}
 
 // def __len__(self) -> int:
+//     return self.n
 inline ::tpy::BigInt Bag::__len__() const {
-    // return self.n
     return this->n;
 }
 
 // def __init__(self, v: int):
+//     self.v = v
 inline Plain::Plain(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

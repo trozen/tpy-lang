@@ -6,32 +6,34 @@ namespace tpyapp::main {
 
 // # Iterate keys via d.keys(), check len() and 'in' operator
 // def main() -> None:
+//     d = {"a": 1, "b": 2, "c": 3}
+//
+//     for k in d.keys():
+//         print(k)
+//
+//     print(len(d.keys()))
+//     print("b" in d.keys())
+//     print("z" in d.keys())
 void main() {
-    // d = {"a": 1, "b": 2, "c": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    // for k in d.keys():
     auto __obj_0 = ::tpy::dict_keys(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // print(k)
         std::cout << k << "\n";
     }
-    // print(len(d.keys()))
     std::cout << ::tpy::__len__(::tpy::dict_keys(d)) << "\n";
-    // print("b" in d.keys())
     std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains("b"))) << "\n";
-    // print("z" in d.keys())
     std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains("z"))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,20 +3,19 @@
 
 namespace tpyapp::main {
 
-// w: Wrapper[str] = Wrapper[str]("hello", int32(42))
 Wrapper<std::string>* w{};
 
+// w: Wrapper[str] = Wrapper[str]("hello", int32(42))
+// print(w.get_value())
+// print(w.get_extra())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // w: Wrapper[str] = Wrapper[str]("hello", int32(42))
     static Wrapper<std::string> __global_slot_1 = Wrapper<std::string>("hello", 42);
     w = &__global_slot_1;
-    // print(w.get_value())
     std::cout << w->get_value() << "\n";
-    // print(w.get_extra())
     std::cout << w->get_extra() << "\n";
 }
 

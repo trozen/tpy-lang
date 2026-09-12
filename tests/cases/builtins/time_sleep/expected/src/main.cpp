@@ -5,34 +5,35 @@ namespace tpyapp::main {
 
 
 // def main():
+//     start = time.time()
+//     time.sleep(0.1)  # Sleep for 100ms
+//     end = time.time()
+//     elapsed = end - start
+//     # Check that at least 0.05 seconds passed (allowing for timer variance)
+//     if elapsed >= 0.05:
+//         print("ok")
+//     else:
+//         print("error: sleep too short")
 void main() {
-    // start = time.time()
     double start = ::tpy::time_time();
-    // time.sleep(0.1)  # Sleep for 100ms
     ::tpy::time_sleep(0.1);
-    // end = time.time()
     double end = ::tpy::time_time();
-    // elapsed = end - start
     double elapsed = ((end) - (start));
-    // # Check that at least 0.05 seconds passed (allowing for timer variance)
-    // if elapsed >= 0.05:
     if ((elapsed >= 0.05)) {
-        // print("ok")
         std::cout << "ok" << "\n";
-    // else:
     } else {
-        // print("error: sleep too short")
         std::cout << "error: sleep too short" << "\n";
     }
 }
 
+// import time
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import time
-    // main()
     main();
 }
 

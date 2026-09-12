@@ -12,13 +12,21 @@ struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_try(h: H) -> None:
 void in_try(H& h);
+// def er_value(h: H) -> None:
 void er_value(H& h);
+// def in_while(h: H) -> None:
 void in_while(H& h);
+// def in_if(h: H) -> None:
 void in_if(H& h);
+// def readonly_walrus(h: H) -> None:
 void readonly_walrus(const H& h);
+// def make() -> Own[list[int32]]:
 std::vector<int32_t> make();
+// def owned_walrus() -> None:
 void owned_walrus();
+// def main() -> None:
 void main();
 
 // class E(Exception, ReturnException):
@@ -69,32 +77,33 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2]
 inline H::H() : items(std::vector<int32_t>{1, 2}) {}
 
 // def view(self) -> list[int32]:
+//     return self.items
 inline std::vector<int32_t>& H::view() {
-    // return self.items
     return this->items;
 }
 
 // @readonly
 // def rview(self) -> list[int32]:
+//     return self.items
 inline const std::vector<int32_t>& H::rview() const {
-    // return self.items
     return this->items;
 }
 
 // @error_return(E)
 // def poke(self) -> int32:
+//     return 1
 inline std::expected<int32_t, E> H::poke() const {
-    // return 1
     return 1;
 }
 
 // @error_return(E)
 // def er_view(self) -> list[int32]:
+//     return self.items
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, E> H::er_view() {
-    // return self.items
     return this->items;
 }
 void __tpy_init();

@@ -4,16 +4,16 @@
 namespace tpyapp::main {
 
 
+// # Exit value would be -2147483649 (INT32_MIN - 1) — must panic
+// for i in range(int32(-2147483647), int32(-2147483648), int32(-2)):
+//     print(i)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Exit value would be -2147483649 (INT32_MIN - 1) — must panic
-    // for i in range(int32(-2147483647), int32(-2147483648), int32(-2)):
     ::tpy::range_check_overflow<int32_t>(-2147483647, -2147483648, -2);
     for (int32_t i = -2147483647; i > -2147483648; i += -2) {
-        // print(i)
         std::cout << i << "\n";
     }
 }

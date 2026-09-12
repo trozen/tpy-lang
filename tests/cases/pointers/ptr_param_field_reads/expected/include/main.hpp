@@ -13,12 +13,19 @@ struct Seg;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_elem(sector: Ptr[Sector], i: int32) -> int32:
 int32_t read_elem(Sector* sector, int32_t i);
+// def read_cond(sector: Ptr[Sector], i: int32) -> int32:
 int32_t read_cond(Sector* sector, int32_t i);
+// def grow(sector: Ptr[Sector]) -> int32:
 int32_t grow(Sector* sector);
+// def count_readonly(sector: Ptr[readonly[Sector]]) -> int32:
 int32_t count_readonly(const Sector* sector);
+// def pic_width(seg: Seg) -> int32:
 int32_t pic_width(Seg& seg);
+// def has_pic(seg: Seg) -> bool:
 bool has_pic(const Seg& seg);
+// def main():
 void main();
 
 // class Picture:
@@ -75,12 +82,17 @@ inline std::ostream& operator<<(std::ostream& os, const Seg& obj) {
 
 
 // def __init__(self, width: int32) -> None:
+//     self.width = width
 inline Picture::Picture(int32_t width) : width(width) {}
 
 // def __init__(self, width: int32) -> None:
+//     self.flags = [True, False, True]
+//     self.nums = [4, 5, 6]
+//     self.ceil_pic = Picture(width)
 inline Sector::Sector(int32_t width) : flags(std::vector<bool>{true, false, true}), nums(std::vector<int32_t>{4, 5, 6}), ceil_pic(Picture(width)) {}
 
 // def __init__(self, sector_front: Ptr[Sector]) -> None:
+//     self.sector_front = sector_front
 inline Seg::Seg(Sector* sector_front) : sector_front(sector_front) {}
 void __tpy_init();
 } // namespace tpyapp::main

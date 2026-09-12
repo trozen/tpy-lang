@@ -6,54 +6,56 @@ namespace tpyapp::main {
 
 
 
+// def process(mode: str) -> str:
+//     if mode == "r" or mode == "w":
+//         return "text:" + mode
+//     return "binary:" + mode
 // @overload
 // def process(mode: Literal["r", "w"]) -> str: ...
 std::string process__lit_r__w(std::string_view mode) {
-    // return "text:" + mode
     return (::tpy::str_concat("text:", mode));
 }
 
 // @overload
 // def process(mode: Literal["rb", "wb"]) -> str: ...
 std::string process__lit_rb__wb(std::string_view mode) {
-    // return "binary:" + mode
     return (::tpy::str_concat("binary:", mode));
 }
 
 
 // def dispatch(mode: Literal["r", "w", "rb", "wb"]) -> None:
+//     match mode:
+//         case "r" | "w":
+//             print(process(mode))
+//         case "rb" | "wb":
+//             print(process(mode))
 void dispatch(std::string_view mode) {
-    // match mode:
     auto& __match_subject_1 = mode;
-    // case "r" | "w":
     if ((__match_subject_1 == "r" || __match_subject_1 == "w")) {
-        // print(process(mode))
         std::cout << process__lit_r__w(mode) << "\n";
-    // case "rb" | "wb":
     } else if ((__match_subject_1 == "rb" || __match_subject_1 == "wb")) {
-        // print(process(mode))
         std::cout << process__lit_rb__wb(mode) << "\n";
     }
 }
 
 // def main() -> None:
+//     dispatch("r")
+//     dispatch("rb")
+//     dispatch("w")
+//     dispatch("wb")
 void main() {
-    // dispatch("r")
     dispatch("r");
-    // dispatch("rb")
     dispatch("rb");
-    // dispatch("w")
     dispatch("w");
-    // dispatch("wb")
     dispatch("wb");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

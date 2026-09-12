@@ -13,21 +13,24 @@ using ::tpyapp::helper::triple;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  }
-int32_t apply(__F0&& f, int32_t x);
-std::string apply_str(const std::function<std::string(std::string_view)>& f, std::string_view s);
-void main();
-
 // def apply(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
+int32_t apply(__F0&& f, int32_t x);
+// def apply_str(f: Callable[[str], str], s: str) -> str:
+std::string apply_str(const std::function<std::string(std::string_view)>& f, std::string_view s);
+// def main() -> None:
+void main();
+
+// def apply(f: Fn[[int32], int32], x: int32) -> int32:
+//     return f(x)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
 int32_t apply(__F0&& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 

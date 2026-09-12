@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     print(__name__)
+//     print(get_name())
+//     return int32(0)
 int32_t main() {
-    // print(__name__)
     std::cout << __name__ << "\n";
-    // print(get_name())
     std::cout << ::tpyapp::utils::get_name() << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from utils import get_name
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from utils import get_name
     ::tpyapp::utils::__tpy_init();
-    // main()
     main();
 }
 

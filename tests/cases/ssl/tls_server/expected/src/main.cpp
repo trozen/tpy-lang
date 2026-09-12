@@ -5,22 +5,24 @@ namespace tpyapp::main {
 
 
 // def tls_ver(v: str) -> str:
+//     # Version-robust: bundled mbedTLS 3.6 negotiates TLSv1.3, system 2.28 (the
+//     # mainstream-LTS branch) negotiates TLSv1.2. Both are a good modern
+//     # handshake, and the minor version is an mbedTLS property, not TPy's --
+//     # collapse it so output.txt matches under either --mbedtls mode.
+//     return "TLSv1.2+" if v in ("TLSv1.2", "TLSv1.3") else v
 std::string tls_ver(std::string_view v) {
-    // # Version-robust: bundled mbedTLS 3.6 negotiates TLSv1.3, system 2.28 (the
-    // # mainstream-LTS branch) negotiates TLSv1.2. Both are a good modern
-    // # handshake, and the minor version is an mbedTLS property, not TPy's --
-    // # collapse it so output.txt matches under either --mbedtls mode.
-    // return "TLSv1.2+" if v in ("TLSv1.2", "TLSv1.3") else v
     return std::string(((((v == "TLSv1.2") || (v == "TLSv1.3"))) ? ("TLSv1.2+") : (v)));
 }
 
 // def write_fixtures() -> None:
+//     with open(CERT_PATH, "w") as f:
+//         f.write(CERT_PEM)
+//     with open(KEY_PATH, "w") as f:
+//         f.write(KEY_PEM)
 void write_fixtures() {
-    // with open(CERT_PATH, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(CERT_PATH, "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // f.write(CERT_PEM)
         f->write(CERT_PEM);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -32,11 +34,9 @@ void write_fixtures() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(KEY_PATH, "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode(KEY_PATH, "w");
     f = &(__ctx_2.__enter__());
     try {
-        // f.write(KEY_PEM)
         f->write(KEY_PEM);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -51,117 +51,133 @@ void write_fixtures() {
 }
 
 // def drive(cli: SSLSocket, srv: SSLSocket) -> bool:
+//     """Alternate handshake steps until both sides complete (non-blocking)."""
+//     cdone = False
+//     sdone = False
+//     i = 0
+//     while i < 500 and not (cdone and sdone):
+//         if not sdone and srv.do_handshake():
+//             sdone = True
+//         if not cdone and cli.do_handshake():
+//             cdone = True
+//         i += 1
+//     return cdone and sdone
 bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv) {
-    // cdone = False
     bool cdone = false;
-    // sdone = False
     bool sdone = false;
-    // i = 0
     int32_t i = 0;
-    // while i < 500 and not (cdone and sdone):
     while (((i < 500) && (!((cdone && sdone))))) {
-        // if not sdone and srv.do_handshake():
         if (((!(sdone)) && srv.do_handshake())) {
-            // sdone = True
             sdone = true;
         }
-        // if not cdone and cli.do_handshake():
         if (((!(cdone)) && cli.do_handshake())) {
-            // cdone = True
             cdone = true;
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return cdone and sdone
     return (cdone && sdone);
 }
 
 // def server_roundtrip() -> None:
+//     a, b = socket.socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//
+//     cctx = ssl.create_default_context()
+//     cctx.load_verify_locations(CERT_PATH)
+//     cli = cctx.wrap_socket(a, "localhost", False)
+//
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+//
+//     if not drive(cli, srv):
+//         print("FAIL: handshake did not converge")
+//         return
+//     print("server handshake:", tls_ver(srv.version()))
+//
+//     cli.setblocking(True)
+//     srv.setblocking(True)
+//     cli.sendall(b"ping from client")
+//     print("server recv:", srv.recv(64).decode())
+//     srv.sendall(b"pong from server")
+//     print("client recv:", cli.recv(64).decode())
+//
+//     # Server close_notify -> the client's next recv is a clean EOF (b"").
+//     srv.close()
+//     print("client eof:", len(cli.recv(64)) == 0)
+//     cli.close()
 void server_roundtrip() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.setblocking(False)
     a.setblocking(false);
-    // b.setblocking(False)
     b.setblocking(false);
-    // cctx = ssl.create_default_context()
     ::tpystd::ssl::SSLContext cctx = ::tpystd::ssl::create_default_context();
-    // cctx.load_verify_locations(CERT_PATH)
     cctx.load_verify_locations(CERT_PATH);
-    // cli = cctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = cctx.wrap_socket(std::move(a), "localhost", false);
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    // if not drive(cli, srv):
     if ((!(drive(cli, srv)))) {
-        // print("FAIL: handshake did not converge")
         std::cout << "FAIL: handshake did not converge" << "\n";
-        // return
         return;
     }
-    // print("server handshake:", tls_ver(srv.version()))
     std::cout << "server handshake:" << " " << tls_ver(srv.version()) << "\n";
-    // cli.setblocking(True)
     cli.setblocking(true);
-    // srv.setblocking(True)
     srv.setblocking(true);
-    // cli.sendall(b"ping from client")
     cli.sendall(::tpy::bytes_literal("ping from client", 16));
-    // print("server recv:", srv.recv(64).decode())
     std::cout << "server recv:" << " " << ::tpy::bytes_decode(srv.recv(64)) << "\n";
-    // srv.sendall(b"pong from server")
     srv.sendall(::tpy::bytes_literal("pong from server", 16));
-    // print("client recv:", cli.recv(64).decode())
     std::cout << "client recv:" << " " << ::tpy::bytes_decode(cli.recv(64)) << "\n";
-    // # Server close_notify -> the client's next recv is a clean EOF (b"").
-    // srv.close()
     srv.close();
-    // print("client eof:", len(cli.recv(64)) == 0)
     std::cout << "client eof:" << " " << ::tpy::print_bool((::tpy::__len__(cli.recv(64)) == 0)) << "\n";
-    // cli.close()
     cli.close();
 }
 
 // def missing_cert_chain() -> None:
+//     # server_side=True without a prior load_cert_chain must raise, and before
+//     # any socket I/O (the config step fails first).
+//     a, b = socket.socketpair()
+//     sctx = ssl.SSLContext()
+//     try:
+//         srv = sctx.wrap_socket(b, server_side=True,
+//                                do_handshake_on_connect=False)
+//         print("FAIL: expected SSLError, got", srv.version())
+//     except ssl.SSLError:
+//         print("no cert chain rejected")
 void missing_cert_chain() {
-    // # server_side=True without a prior load_cert_chain must raise, and before
-    // # any socket I/O (the config step fails first).
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // try:
     {
         try {
-            // srv = sctx.wrap_socket(b, server_side=True,
-            // do_handshake_on_connect=False)
             ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-            // print("FAIL: expected SSLError, got", srv.version())
             std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n";
         } catch (const ::tpystd::ssl::SSLError&) {
-            // print("no cert chain rejected")
             std::cout << "no cert chain rejected" << "\n";
         }
     }
 }
 
 // def malformed_cert() -> None:
+//     # A cert file that isn't valid PEM: tls_config_server fails -> SSLError.
+//     with open(BAD_CERT_PATH, "w") as f:
+//         f.write("not a certificate\n")
+//     a, b = socket.socketpair()
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(BAD_CERT_PATH, BAD_CERT_PATH)
+//     try:
+//         srv = sctx.wrap_socket(b, server_side=True,
+//                                do_handshake_on_connect=False)
+//         print("FAIL: expected SSLError, got", srv.version())
+//     except ssl.SSLError:
+//         print("malformed cert rejected")
 void malformed_cert() {
-    // # A cert file that isn't valid PEM: tls_config_server fails -> SSLError.
-    // with open(BAD_CERT_PATH, "w") as f:
     auto __ctx_3 = ::tpy::builtin_open_mode(BAD_CERT_PATH, "w");
     auto& f = __ctx_3.__enter__();
     try {
-        // f.write("not a certificate\n")
         f.write("not a certificate\n");
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -173,79 +189,98 @@ void malformed_cert() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(BAD_CERT_PATH, BAD_CERT_PATH)
     sctx.load_cert_chain(BAD_CERT_PATH, BAD_CERT_PATH);
-    // try:
     {
         try {
-            // srv = sctx.wrap_socket(b, server_side=True,
-            // do_handshake_on_connect=False)
             ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-            // print("FAIL: expected SSLError, got", srv.version())
             std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n";
         } catch (const ::tpystd::ssl::SSLError&) {
-            // print("malformed cert rejected")
             std::cout << "malformed cert rejected" << "\n";
         }
     }
 }
 
 // def server_hostname_rejected() -> None:
+//     # server_hostname is client-only; passing it with server_side=True raises
+//     # (CPython raises ValueError; TPy has no ValueError base -> SSLError).
+//     a, b = socket.socketpair()
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     try:
+//         srv = sctx.wrap_socket(b, "localhost", False, True)
+//         print("FAIL: expected SSLError, got", srv.version())
+//     except ssl.SSLError:
+//         print("server_hostname with server_side rejected")
 void server_hostname_rejected() {
-    // # server_hostname is client-only; passing it with server_side=True raises
-    // # (CPython raises ValueError; TPy has no ValueError base -> SSLError).
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // try:
     {
         try {
-            // srv = sctx.wrap_socket(b, "localhost", False, True)
             ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "localhost", false, true);
-            // print("FAIL: expected SSLError, got", srv.version())
             std::cout << "FAIL: expected SSLError, got" << " " << srv.version() << "\n";
         } catch (const ::tpystd::ssl::SSLError&) {
-            // print("server_hostname with server_side rejected")
             std::cout << "server_hostname with server_side rejected" << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     write_fixtures()
+//     server_roundtrip()
+//     missing_cert_chain()
+//     malformed_cert()
+//     server_hostname_rejected()
 void main() {
-    // write_fixtures()
     write_fixtures();
-    // server_roundtrip()
     server_roundtrip();
-    // missing_cert_chain()
     missing_cert_chain();
-    // malformed_cert()
     malformed_cert();
-    // server_hostname_rejected()
     server_hostname_rejected();
 }
 
+// import ssl
+//
+// import socket
+//
+// CERT_PEM: Final[str] = """-----BEGIN CERTIFICATE-----
+// MIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw
+// FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1
+// MTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO
+// PQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE
+// tP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN
+// WGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD
+// VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID
+// SAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW
+// Ddslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==
+// -----END CERTIFICATE-----
+// """
+//
+// KEY_PEM: Final[str] = """-----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg2kn/USvpv4Ilspd2
+// xfLz4BM0UjqqhFJndB7QYY+ijAihRANCAATi4r8fZOEM8tz66TgRALGG7z33xtTC
+// AHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq
+// -----END PRIVATE KEY-----
+// """
+//
+// CERT_PATH: Final[str] = "tpy_test_ssl_server_cert.pem"
+// KEY_PATH: Final[str] = "tpy_test_ssl_server_key.pem"
+// BAD_CERT_PATH: Final[str] = "tpy_test_ssl_server_bad.pem"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import ssl
     ::tpystd::ssl::__tpy_init();
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

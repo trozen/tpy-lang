@@ -6,54 +6,55 @@ namespace tpyapp::main {
 
 // # For-loop str variable inferred as string_view when read-only
 // def main() -> None:
+//     words: list[str] = ["hello", "world", "foo"]
+//
+//     # Read-only iteration -> string_view
+//     for w in words:
+//         print(w)
+//
+//     # Dict key iteration -> string_view
+//     d: dict[str, int] = {"a": 1, "b": 2}
+//     for k in d:
+//         print(k)
+//
+//     # Dict items -> tuple unpack, str key is string_view
+//     for k, v in d.items():
+//         print(k, v)
 void main() {
-    // words: list[str] = ["hello", "world", "foo"]
     std::vector<std::string> words = {"hello", "world", "foo"};
-    // # Read-only iteration -> string_view
-    // for w in words:
     auto& __obj_0 = words;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view w = *__beg_0;
-        // print(w)
         std::cout << w << "\n";
     }
-    // # Dict key iteration -> string_view
-    // d: dict[str, int] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
-    // for k in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // print(k)
         std::cout << k << "\n";
     }
-    // # Dict items -> tuple unpack, str key is string_view
-    // for k, v in d.items():
     auto __obj_2 = ::tpy::dict_items(d);
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& __for_tup_0 = *__beg_2;
-        // # Dict items -> tuple unpack, str key is string_view
-        // for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
         const ::tpy::BigInt& v = std::get<1>(__tup_1);
-        // print(k, v)
         std::cout << k << " " << v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

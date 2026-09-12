@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def f(l: readonly[list[int32]]) -> None:
+//     print(len(l))
 void f(const std::vector<int32_t>& l) {
-    // print(len(l))
     std::cout << ::tpy::__len__(l) << "\n";
 }
 
 // def main() -> None:
+//     f(list())
+//     f([])
 void main() {
-    // f(list())
     f(std::vector<int32_t>());
-    // f([])
     f(std::vector<int32_t>{});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

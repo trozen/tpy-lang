@@ -5,6 +5,12 @@ namespace tpyapp::main {
 
 
 // async def serve() -> int:
+//     try:
+//         raise_signal(SIGINT)
+//         await asyncio.sleep(10.0)
+//         return 1
+//     except CancelledError:
+//         return 42
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_serve::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -17,13 +23,11 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // return 1
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 1;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::CancelledError&) {
             __sub_0.reset();
-            // return 42
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -34,14 +38,11 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         try {
-            // raise_signal(SIGINT)
             ::tpystd::signal::raise_signal(::tpy_const_sigint);
-            // await asyncio.sleep(10.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(10.0)));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
-            // return 42
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -61,25 +62,27 @@ __coro_serve serve() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(serve()))
 void main() {
-    // print(asyncio.run(serve()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(serve())) << "\n";
 }
 
+// # Regression: when the SIGINT-cancelled root coroutine CATCHES its
+// # CancelledError and returns a value, asyncio.run must return that value -- not
+// # raise KeyboardInterrupt. (CPython's asyncio.run cancels the root on Ctrl-C; a
+// # root that suppresses the cancel and returns normally yields its value.)
+// import asyncio
+//
+// from signal import raise_signal, SIGINT
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: when the SIGINT-cancelled root coroutine CATCHES its
-    // # CancelledError and returns a value, asyncio.run must return that value -- not
-    // # raise KeyboardInterrupt. (CPython's asyncio.run cancels the root on Ctrl-C; a
-    // # root that suppresses the cancel and returns normally yields its value.)
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from signal import raise_signal, SIGINT
     ::tpystd::signal::__tpy_init();
-    // main()
     main();
 }
 

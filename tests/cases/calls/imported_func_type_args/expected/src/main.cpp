@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = make_default[int32]()
+//     print(a)
+//
+//     b: str = make_default()
+//     print(repr(b))
 void main() {
-    // a = make_default[int32]()
     int32_t a = int32_t{};
-    // print(a)
     std::cout << a << "\n";
-    // b: str = make_default()
     std::string b = std::string{};
-    // print(repr(b))
     std::cout << ::tpy::repr_of(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

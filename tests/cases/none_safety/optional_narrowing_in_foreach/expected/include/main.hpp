@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_items(items: list[int32], bonus: int32 | None) -> int32:
 int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonus);
+// def assert_then_loop(x: int32 | None, items: list[int32]) -> int32:
 int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& items);
 
 void __tpy_init();

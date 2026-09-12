@@ -12,23 +12,41 @@ struct Noisy;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(p: Pinned | None) -> int32:
 int32_t take(const Pinned* p);
+// def and_rhs(flag: bool) -> bool:
 bool and_rhs(bool flag);
+// def and_rhs_hatch(flag: bool) -> bool:
 bool and_rhs_hatch(bool flag);
+// def or_rhs(flag: bool) -> bool:
 bool or_rhs(bool flag);
+// def or_rhs_hatch(flag: bool) -> bool:
 bool or_rhs_hatch(bool flag);
+// def ternary_arm(flag: bool) -> int32:
 int32_t ternary_arm(bool flag);
+// def ternary_arm_hatch(flag: bool) -> int32:
 int32_t ternary_arm_hatch(bool flag);
+// def chained(a: int32, b: int32) -> bool:
 bool chained(int32_t a, int32_t b);
+// def chained_hatch(a: int32, b: int32) -> bool:
 bool chained_hatch(int32_t a, int32_t b);
+// def take_ref(p: Pinned) -> int32:
 int32_t take_ref(const Pinned& p);
+// def ref_param(flag: bool) -> bool:
 bool ref_param(bool flag);
+// def ref_param_hatch(flag: bool) -> bool:
 bool ref_param_hatch(bool flag);
+// def take_own(p: Own[Pinned]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t take_own(Pinned&& p);
+// def own_param(flag: bool) -> bool:
 bool own_param(bool flag);
+// def use(p: Noisy) -> int32:
 int32_t use(const Noisy& p);
+// def comp_rhs(flag: bool) -> bool:
 bool comp_rhs(bool flag);
+// def left_operand(flag: bool) -> bool:
 bool left_operand(bool flag);
+// def main() -> None:
 void main();
 
 // @nomove
@@ -81,31 +99,32 @@ inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Pinned::Pinned(int32_t n) : n(n) {}
 
 // def __del__(self) -> None:
+//     # A __del__ is what makes codegen emit the deleted move ctor at all;
+//     # without it the record keeps an implicit (usable) move.
+//     self.n = 0
 inline Pinned::~Pinned() {
     if (!this->__tpy_owned_) return;
-    // # A __del__ is what makes codegen emit the deleted move ctor at all;
-    // # without it the record keeps an implicit (usable) move.
-    // self.n = 0
     this->n = 0;
 }
 
 // def __init__(self, n: int32) -> None:
+//     # Prints from the CONSTRUCTION itself, so a temp hoisted ahead of the
+//     # guard would show as a "built" line under the SKIPPED call.
+//     print("  built", n)
+//     self.n = n
 inline Noisy::Noisy(int32_t n) {
-    // # Prints from the CONSTRUCTION itself, so a temp hoisted ahead of the
-    // # guard would show as a "built" line under the SKIPPED call.
-    // print("  built", n)
     std::cout << "  built" << " " << n << "\n";
-    // self.n = n
     this->n = n;
 }
 
 // def __del__(self) -> None:
+//     self.n = 0
 inline Noisy::~Noisy() {
     if (!this->__tpy_owned_) return;
-    // self.n = 0
     this->n = 0;
 }
 void __tpy_init();

@@ -5,65 +5,70 @@ namespace tpyapp::main {
 
 
 // def validate(x: int32) -> None:
+//     if x < 0:
+//         raise AppError(1, "negative value")
+//     if x > 100:
+//         raise AppError(2, "too large")
 void validate(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // raise AppError(1, "negative value")
         throw AppError(1, "negative value");
     }
-    // if x > 100:
     if ((x > 100)) {
-        // raise AppError(2, "too large")
         throw AppError(2, "too large");
     }
 }
 
 // def main() -> None:
+//     try:
+//         validate(-5)
+//     except AppError as e:
+//         print(e.code)
+//         print(e.detail)
+//
+//     try:
+//         validate(200)
+//     except AppError as e:
+//         print(e.code)
+//         print(e.detail)
+//
+//     try:
+//         validate(50)
+//         print("ok")
+//     except AppError as e:
+//         print(e.detail)
 void main() {
-    // try:
     {
         try {
-            // validate(-5)
             validate(-5);
         } catch (const AppError& e) {
-            // print(e.code)
             std::cout << e.code << "\n";
-            // print(e.detail)
             std::cout << e.detail << "\n";
         }
     }
-    // try:
     {
         try {
-            // validate(200)
             validate(200);
         } catch (const AppError& e) {
-            // print(e.code)
             std::cout << e.code << "\n";
-            // print(e.detail)
             std::cout << e.detail << "\n";
         }
     }
-    // try:
     {
         try {
-            // validate(50)
             validate(50);
-            // print("ok")
             std::cout << "ok" << "\n";
         } catch (const AppError& e) {
-            // print(e.detail)
             std::cout << e.detail << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

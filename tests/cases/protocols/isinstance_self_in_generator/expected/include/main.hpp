@@ -31,6 +31,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_Pet_ro_names;
 struct __gen_Pet_counts;
 
+// def main() -> None:
 void main();
 
 // class Pet(Tagged):
@@ -86,7 +87,7 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 
 namespace tpyapp::main {
 
-// Generator: Pet.ro_names
+// def ro_names(self) -> Iterator[str]:
 struct __gen_Pet_ro_names : public ::tpy::next_iter_mixin<__gen_Pet_ro_names, std::string> {
     int32_t __state;
     const Pet& __self;
@@ -114,7 +115,7 @@ inline __gen_Pet_ro_names Pet::ro_names() const {
     return __gen_Pet_ro_names(*this);
 }
 
-// Generator: Pet.counts
+// def counts(self) -> Iterator[int]:
 struct __gen_Pet_counts : public ::tpy::next_iter_mixin<__gen_Pet_counts, ::tpy::BigInt> {
     int32_t __state;
     Pet& __self;
@@ -145,9 +146,12 @@ inline __gen_Pet_counts Pet::counts() {
 
 
 // def __init__(self, nm: str) -> None:
+//     self._name = nm
+//     self._n = 0
 inline Pet::Pet(std::string_view nm) : _name(nm), _n(::tpy::BigInt(0)) {}
 
 // def __init__(self, nm: str) -> None:
+//     super().__init__(nm)
 inline Dog::Dog(std::string_view nm) : Pet(nm) {}
 void __tpy_init();
 } // namespace tpyapp::main

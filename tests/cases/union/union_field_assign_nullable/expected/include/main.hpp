@@ -13,7 +13,9 @@ struct Shelter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity(pet: Dog | Cat | None) -> Dog | Cat | None:
 ::tpy::Union<std::monostate, Cat*, Dog*> identity(::tpy::Union<std::monostate, Cat*, Dog*> pet);
+// def main() -> None:
 void main();
 
 // # Nullable union field assignment: pointer-variant with None (monostate)
@@ -66,12 +68,15 @@ inline std::ostream& operator<<(std::ostream& os, const Shelter& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat | None) -> None:
+//     self.pet = pet  # tpyc: warning(/copies/)
 inline Shelter::Shelter(::tpy::Union<std::monostate, const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(pet)) {}
 void __tpy_init();
 } // namespace tpyapp::main

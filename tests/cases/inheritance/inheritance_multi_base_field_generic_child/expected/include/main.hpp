@@ -13,6 +13,7 @@ template<typename U> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -48,17 +49,17 @@ template<typename U>
 struct Container : Box<U>, Label {
 
     // def __init__(self, v: U, label: str) -> None:
+    //     Box.value = v
+    //     Label.value = label
     Container() = default;
     explicit Container(::tpy::readonly_form_t<U> v, std::string_view label) {
-        // Box.value = v
         this->Box<U>::value = ::tpy::param_to_storage<U>(v);
-        // Label.value = label
         this->Label::value = label;
     }
 
     // def tagged(self) -> str:
+    //     return Label.value + "=" + str(Box.value)
     std::string tagged() const {
-        // return Label.value + "=" + str(Box.value)
         return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), std::string(::tpy::__str__(this->Box<U>::value))));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

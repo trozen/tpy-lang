@@ -13,8 +13,11 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f() -> None:
 void f();
+// def g(a: C) -> None:
 void g(const C& a);
+// def main() -> None:
 void main();
 
 // # Assignment narrowing in one function must not leak into another
@@ -68,12 +71,15 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, x: float) -> None:
+//     self.x = x
 inline A::A(double x) : x(x) {}
 
 // def __init__(self, y: float) -> None:
+//     self.y = y
 inline B::B(double y) : y(y) {}
 
 // def __init__(self, x: float) -> None:
+//     self.x = x
 inline C::C(double x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

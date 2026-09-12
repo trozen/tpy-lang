@@ -5,9 +5,12 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Two instantiations to exercise template monomorphization twice.
+//     for x in two_yields(1, 2):
+//         print(x)
+//     for s in two_yields("x", "y"):
+//         print(s)
 void main() {
-    // # Two instantiations to exercise template monomorphization twice.
-    // for x in two_yields(1, 2):
     {
         int32_t __tmp_1 = 1;
         int32_t __tmp_2 = 2;
@@ -17,11 +20,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for s in two_yields("x", "y"):
     {
         std::string __tmp_3 = "x";
         std::string __tmp_4 = "y";
@@ -31,18 +32,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

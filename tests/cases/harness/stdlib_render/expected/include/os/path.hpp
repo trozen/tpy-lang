@@ -21,33 +21,60 @@ namespace tpystd::os::path {
 using ::tpystd::os::_types::stat_result;
 
 inline constexpr std::string_view __name__ = "os.path";
+// sep: Final[str] = "/"
 inline constexpr std::string_view sep = "/";
+// pathsep: Final[str] = ":"
 inline constexpr std::string_view pathsep = ":";
+// extsep: Final[str] = "."
 inline constexpr std::string_view extsep = ".";
+// curdir: Final[str] = "."
 inline constexpr std::string_view curdir = ".";
+// pardir: Final[str] = ".."
 inline constexpr std::string_view pardir = "..";
+// defpath: Final[str] = "/bin:/usr/bin"
 inline constexpr std::string_view defpath = "/bin:/usr/bin";
+// devnull: Final[str] = "/dev/null"
 inline constexpr std::string_view devnull = "/dev/null";
 
+// def isabs(p: str) -> bool:
 bool isabs(std::string_view p);
+// def basename(p: str) -> str:
 std::string basename(std::string_view p);
+// def dirname(p: str) -> str:
 std::string dirname(std::string_view p);
+// def split(p: str) -> tuple[str, str]:
 std::tuple<std::string, std::string> split(std::string_view p);
+// def splitext(p: str) -> tuple[str, str]:
 std::tuple<std::string, std::string> splitext(std::string_view p);
+// def splitdrive(p: str) -> tuple[str, str]:
 std::tuple<std::string, std::string> splitdrive(std::string_view p);
+// def _join2(a: str, b: str) -> str:
 std::string _join2(std::string_view a, std::string_view b);
+// def join(a: str, *paths: str) -> str:
 std::string join(std::string_view a, ::tpy::varargs<const std::string> paths);
+// def normpath(p: str) -> str:
 std::string normpath(std::string_view p);
+// def commonprefix(m: list[str]) -> str:
 std::string commonprefix(const std::vector<std::string>& m);
+// def commonpath(paths: list[str]) -> str:
 std::string commonpath(const std::vector<std::string>& paths);
+// def normcase(p: str) -> str:
 std::string normcase(std::string_view p);
+// def samestat(s1: stat_result, s2: stat_result) -> bool:
 bool samestat(const ::tpystd::os::_types::stat_result& s1, const ::tpystd::os::_types::stat_result& s2);
+// def abspath(p: str) -> str:
 std::string abspath(std::string_view p);
+// def _split_parts(s: str) -> Own[list[str]]:
 std::vector<std::string> _split_parts(std::string_view s);
+// def relpath(p: str, start: str = ".") -> str:
 std::string relpath(std::string_view p, std::string_view start = ".");
+// def _is_var_char(c: char) -> bool:
 bool _is_var_char(char c);
+// def expandvars(p: str) -> str:
 std::string expandvars(std::string_view p);
+// def _rstrip_slashes(s: str) -> str:
 std::string _rstrip_slashes(std::string_view s);
+// def expanduser(p: str) -> str:
 std::string expanduser(std::string_view p);
 
 void __tpy_init();

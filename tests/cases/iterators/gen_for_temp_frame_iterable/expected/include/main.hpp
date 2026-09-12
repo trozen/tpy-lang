@@ -14,8 +14,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_g_resumable;
 struct __gen_Holder___iter__;
 
+// def make() -> Own[Holder]:
 Holder make();
+// def g_resumable() -> Iterator[int32]:
 __gen_g_resumable g_resumable();
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -35,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: Holder.__iter__
+// def __iter__(self) -> Iterator[int32]:
 struct __gen_Holder___iter__ : public ::tpy::next_iter_mixin<__gen_Holder___iter__, int32_t> {
     int32_t __state;
     const Holder& __self;
@@ -66,7 +69,7 @@ inline __gen_Holder___iter__ Holder::__iter__() const {
     return __gen_Holder___iter__(*this);
 }
 
-// Generator: g_resumable
+// def g_resumable() -> Iterator[int32]:
 struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int32_t> {
     int32_t __state;
     int32_t x;
@@ -95,6 +98,7 @@ struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int3
 
 
 // def __init__(self) -> None:
+//     self.items = [5, 6]
 inline Holder::Holder() : items(std::vector<int32_t>{5, 6}) {}
 void __tpy_init();
 } // namespace tpyapp::main

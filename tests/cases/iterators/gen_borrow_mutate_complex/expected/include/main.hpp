@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_doubled;
 
+// def doubled(items: list[int32]) -> Iterator[int32]:
 __gen_doubled doubled(std::vector<int32_t>& items);
+// def main():
 void main();
 
-// Generator: doubled
+// def doubled(items: list[int32]) -> Iterator[int32]:
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;

@@ -17,6 +17,7 @@ template<typename R> struct JoinHandle;
 
 inline constexpr std::string_view __name__ = "tpy.thread";
 
+// def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]:
 template<typename R, ::tpystd::tpy::thread::ThreadTask<R> T>
 JoinHandle<R> spawn(::tpy::own_param_t<T> task);
 
@@ -31,6 +32,8 @@ struct JoinHandle {
     bool __tpy_owned_ = true;
 
     // def __init__(self, raw: Own[_RawJoin[R]]) -> None:
+    //     self._raw = raw
+    //     self._consumed = False
     explicit JoinHandle(::tpy::JoinHandle<R>&& raw) : _raw(std::move(raw)), _consumed(false) {}
     // non-copyable (@nocopy)
     JoinHandle(const JoinHandle&) = delete;
@@ -47,40 +50,40 @@ struct JoinHandle {
     }
 
     // def __del__(self) -> None:
+    //     if not self._consumed:
+    //         _abort_dropped_unconsumed()
     ~JoinHandle() {
         if (!this->__tpy_owned_) return;
-        // if not self._consumed:
         if ((!(this->_consumed))) {
-            // _abort_dropped_unconsumed()
             ::tpy::join_handle_dropped_unconsumed();
         }
     }
 
     // def join(self) -> R:
+    //     if self._consumed:
+    //         raise RuntimeError("JoinHandle.join(): handle already consumed")
+    //     # Set before the call so a re-raised task exception does not re-trip
+    //     # the abort-on-drop check when this handle unwinds.
+    //     self._consumed = True
+    //     return self._raw.join()
     ::tpy::val_or_ref_t<R> join() {
-        // if self._consumed:
         if (this->_consumed) {
-            // raise RuntimeError("JoinHandle.join(): handle already consumed")
             throw ::tpy::RuntimeError("JoinHandle.join(): handle already consumed");
         }
-        // # Set before the call so a re-raised task exception does not re-trip
-        // # the abort-on-drop check when this handle unwinds.
-        // self._consumed = True
         this->_consumed = true;
-        // return self._raw.join()
         return this->_raw.join();
     }
 
     // def detach(self) -> None:
+    //     if self._consumed:
+    //         raise RuntimeError("JoinHandle.detach(): handle already consumed")
+    //     self._consumed = True
+    //     self._raw.detach()
     void detach() {
-        // if self._consumed:
         if (this->_consumed) {
-            // raise RuntimeError("JoinHandle.detach(): handle already consumed")
             throw ::tpy::RuntimeError("JoinHandle.detach(): handle already consumed");
         }
-        // self._consumed = True
         this->_consumed = true;
-        // self._raw.detach()
         this->_raw.detach();
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.thread.JoinHandle";
@@ -93,9 +96,9 @@ inline std::ostream& operator<<(std::ostream& os, const JoinHandle<R>& obj) {
 }
 
 // def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]:
+//     return JoinHandle[R](_spawn_native[R, T](task))
 template<typename R, ::tpystd::tpy::thread::ThreadTask<R> T>
 JoinHandle<R> spawn(::tpy::own_param_t<T> task) {
-    // return JoinHandle[R](_spawn_native[R, T](task))
     return JoinHandle<R>(::tpy::spawn_thread(std::move(task)));
 }
 

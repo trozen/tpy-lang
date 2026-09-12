@@ -6,26 +6,26 @@ namespace tpyapp::main {
 
 // # str->StrView promoted local must not become string_view in a tuple's str slot
 // def pick(flag: bool) -> tuple[int, str]:
+//     label: str = "no"
+//     if flag:
+//         label = "yes"
+//     return 0, label
 std::tuple<::tpy::BigInt, std::string> pick(bool flag) {
-    // label: str = "no"
     std::string_view label = "no";
-    // if flag:
     if (flag) {
-        // label = "yes"
         label = "yes";
     }
-    // return 0, label
     return std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(0), std::string(label)};
 }
 
+// print(pick(True))
+// print(pick(False))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(pick(True))
     std::cout << ::tpy::TuplePrinter(pick(true)) << "\n";
-    // print(pick(False))
     std::cout << ::tpy::TuplePrinter(pick(false)) << "\n";
 }
 

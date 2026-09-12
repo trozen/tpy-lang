@@ -20,12 +20,13 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get_value(self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> get_value() {
-        // return self.value
         return this->value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -44,15 +45,16 @@ struct Wrapper : Container<T> {
     int32_t extra;
 
     // def __init__(self, value: T, extra: int32) -> None:
+    //     self.value = value
+    //     self.extra = extra
     Wrapper() = default;
     explicit Wrapper(::tpy::readonly_form_t<T> value, int32_t extra) : extra(extra) {
-        // self.value = value
         this->value = ::tpy::param_to_storage<T>(value);
     }
 
     // def get_extra(self) -> int32:
+    //     return self.extra
     int32_t get_extra() const {
-        // return self.extra
         return this->extra;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";

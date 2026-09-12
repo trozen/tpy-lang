@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1)
+//     tg = Tag(7)
+//     ptr: Ptr[Tag] = tg
+//     h1 = Holder((p, ptr))
+//     h2 = Holder((None, ptr))
+//     print(h1.pair[1].name)
+//     print(h2.pair[1].name)
+//     tg.name = 99
+//     print(h1.pair[1].name)
 void main() {
-    // p = Point(1)
     Point p = Point(1);
-    // tg = Tag(7)
     Tag tg = Tag(7);
-    // ptr: Ptr[Tag] = tg
     Tag* ptr = &tg;
-    // h1 = Holder((p, ptr))
     Holder h1 = Holder(std::tuple<Point*, Tag*>{&(p), ptr});
-    // h2 = Holder((None, ptr))
     Holder h2 = Holder(std::tuple<Point*, Tag*>{nullptr, ptr});
-    // print(h1.pair[1].name)
     std::cout << ::tpy::deref_check(std::get<1>(h1.pair)).name << "\n";
-    // print(h2.pair[1].name)
     std::cout << ::tpy::deref_check(std::get<1>(h2.pair)).name << "\n";
-    // tg.name = 99
     tg.name = 99;
-    // print(h1.pair[1].name)
     std::cout << ::tpy::deref_check(std::get<1>(h1.pair)).name << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

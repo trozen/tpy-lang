@@ -9,8 +9,12 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
+// def doubled(items: list[int32]) -> Iterator[int32]:
+//     for x in items:
+//         yield x * 2
 inline auto doubled(std::vector<int32_t>& items) {
     return ::tpy::make_generator<int32_t>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<int32_t> {

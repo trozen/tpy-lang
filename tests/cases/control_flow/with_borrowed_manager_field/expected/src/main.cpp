@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o = Owner()
+//     o.work()
+//     o.work_raises()
 void main() {
-    // o = Owner()
     Owner o = Owner();
-    // o.work()
     o.work();
-    // o.work_raises()
     o.work_raises();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

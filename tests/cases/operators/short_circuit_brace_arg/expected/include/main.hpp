@@ -17,42 +17,78 @@ struct Bx;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(t: Tally) -> int64:
 int64_t bump(Tally& t);
+// def take_i64(o: list[int64]) -> int64:
 int64_t take_i64(std::vector<int64_t>& o);
+// def take_i32(o: list[int32]) -> int32:
 int32_t take_i32(std::vector<int32_t>& o);
+// def take_i8(o: list[int8]) -> int8:
 int8_t take_i8(std::vector<int8_t>& o);
+// def take_f32(o: list[float32]) -> float32:
 float take_f32(std::vector<float>& o);
+// def take_f64(o: list[float64]) -> float64:
 double take_f64(std::vector<double>& o);
+// def take_arr(o: Array[int64, 3]) -> int64:
 int64_t take_arr(std::array<int64_t, 3>& o);
+// def take_nested(o: list[list[int64]]) -> int64:
 int64_t take_nested(std::vector<std::vector<int64_t>>& o);
+// def take_dict(o: dict[int64, int64]) -> int64:
 int64_t take_dict(::tpy::ordered_map<int64_t, int64_t>& o);
+// def take_set(o: set[int64]) -> int64:
 int64_t take_set(::tpy::ordered_set<int64_t>& o);
+// def take_any[T](o: T) -> int64:
 template<typename T>
 int64_t take_any(::tpy::param_val_or_ref_t<T> o);
+// def free_call(flag: bool) -> int64:
 int64_t free_call(bool flag);
+// def user_ctor() -> int64:
 int64_t user_ctor();
+// def generic_ctor(flag: bool) -> int64:
 int64_t generic_ctor(bool flag);
+// def free_type_param(flag: bool) -> int64:
 int64_t free_type_param(bool flag);
+// def free_generator(flag: bool) -> int64:
 int64_t free_generator(bool flag);
+// def method_generator(bx: Bx, flag: bool) -> int64:
 int64_t method_generator(Bx& bx, bool flag);
+// def protocol_union(flag: bool) -> int64:
 int64_t protocol_union(bool flag);
+// def narrow_int(flag: bool) -> bool:
 bool narrow_int(bool flag);
+// def narrow_float(flag: bool) -> float32:
 float narrow_float(bool flag);
+// def fixed_array(flag: bool) -> int64:
 int64_t fixed_array(bool flag);
+// def nested_list(flag: bool) -> int64:
 int64_t nested_list(bool flag);
+// def same_width_int(flag: bool) -> int32:
 int32_t same_width_int(bool flag);
+// def same_width_float(flag: bool) -> float64:
 double same_width_float(bool flag);
+// def empty_literal(flag: bool) -> int64:
 int64_t empty_literal(bool flag);
+// def repeat_literal(flag: bool, n: int32) -> int64:
 int64_t repeat_literal(bool flag, int32_t n);
+// def dict_literal(flag: bool) -> int64:
 int64_t dict_literal(bool flag);
+// def set_literal(flag: bool) -> int64:
 int64_t set_literal(bool flag);
+// def and_rhs(flag: bool) -> bool:
 bool and_rhs(bool flag);
+// def or_rhs(flag: bool) -> bool:
 bool or_rhs(bool flag);
+// def ternary_then(flag: bool) -> int64:
 int64_t ternary_then(bool flag);
+// def ternary_else(flag: bool) -> int64:
 int64_t ternary_else(bool flag);
+// def chained(a: int64, b: int64) -> bool:
 bool chained(int64_t a, int64_t b);
+// def relocated_decl(flag: bool) -> int64:
 int64_t relocated_decl(bool flag);
+// def side_effect(t: Tally, flag: bool) -> int64:
 int64_t side_effect(Tally& t, bool flag);
+// def main() -> None:
 void main();
 
 // class Tally:
@@ -93,11 +129,11 @@ struct Boxed {
     int64_t n;
 
     // def __init__(self, o: list[int64]) -> None:
+    //     o.append(4)
+    //     self.n = o[0]
     Boxed() = default;
     explicit Boxed(std::vector<int64_t>& o) {
-        // o.append(4)
         o.push_back(4);
-        // self.n = o[0]
         this->n = ::tpy::__getitem__(o, 0);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boxed";
@@ -118,6 +154,8 @@ struct Bx {
     Bx();
 
     // def gen(self, o: list[int64]) -> Iterator[int64]:
+    //     for x in o:
+    //         yield x
     auto gen(std::vector<int64_t>& o) const {
         return ::tpy::make_generator<int64_t>(
             [this, &o, __beg = decltype((o).begin())(), __end = decltype((o).begin())(), __init = false]() mutable -> std::optional<int64_t> {
@@ -141,24 +179,29 @@ inline std::ostream& operator<<(std::ostream& os, const Bx& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Tally::Tally() : n(0) {}
 
 // def __init__(self, o: list[int64]) -> None:
+//     o.append(4)
+//     self.n = o[0]
 inline Holder::Holder(std::vector<int64_t>& o) {
-    // o.append(4)
     o.push_back(4);
-    // self.n = o[0]
     this->n = ::tpy::__getitem__(o, 0);
 }
 
 // def __init__(self) -> None:
+//     self.tag = 0
 inline Bx::Bx() : tag(0) {}
 // def take_any[T](o: T) -> int64:
+//     return 1
 template<typename T>
 int64_t take_any(::tpy::param_val_or_ref_t<T> o) {
-    // return 1
     return 1;
 }
+// def gen(o: list[int64]) -> Iterator[int64]:
+//     for x in o:
+//         yield x
 inline auto gen(std::vector<int64_t>& o) {
     return ::tpy::make_generator<int64_t>(
         [&o, __beg = decltype((o).begin())(), __end = decltype((o).begin())(), __init = false]() mutable -> std::optional<int64_t> {

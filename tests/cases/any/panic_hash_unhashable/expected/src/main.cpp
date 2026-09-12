@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: Any = [int32(1), int32(2), int32(3)]
+//     print(hash(x))
 void main() {
-    // x: Any = [int32(1), int32(2), int32(3)]
     ::tpy::Any x = ::tpy::make_any(std::vector<int32_t>{1, 2, 3});
-    // print(hash(x))
     std::cout << ::tpy::__hash__(x) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

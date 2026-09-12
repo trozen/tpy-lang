@@ -3,35 +3,40 @@
 
 namespace tpyapp::main {
 
-// action: IntAction;
 std::function<void(int32_t)> action;
 
+// procedure shout(n: integer);
+// begin
+//   writeln('shout: ', n);
+// end;
 void shout(int32_t n) {
-    // writeln('shout: ', n);
     std::cout << "shout: ";
-    // writeln('shout: ', n);
     std::cout << n << "\n";
 }
 
+// procedure whisper(n: integer);
+// begin
+//   writeln('whisper: ', n);
+// end;
 void whisper(int32_t n) {
-    // writeln('whisper: ', n);
     std::cout << "whisper: ";
-    // writeln('whisper: ', n);
     std::cout << n << "\n";
 }
 
+// action: IntAction;
+//
+// action := shout;
+// action(1);
+// action := whisper;
+// action(2);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // action := shout;
     action = shout;
-    // action(1);
     action(1);
-    // action := whisper;
     action = whisper;
-    // action(2);
     action(2);
 }
 

@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Node:
@@ -48,9 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self, n: Own[Node | None]) -> None:
+//     self.found = n.v if n is not None else -1
 inline Holder::Holder(std::optional<Node>&& n) : found((((n.has_value())) ? (n->v) : (::tpy::BigInt(-1)))) {}
 void __tpy_init();
 } // namespace tpyapp::main

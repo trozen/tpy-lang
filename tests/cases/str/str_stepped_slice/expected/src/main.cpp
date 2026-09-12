@@ -6,32 +6,37 @@ namespace tpyapp::main {
 
 // # Stepped string slicing: s[start:stop:step] returns a new str.
 // def main() -> None:
+//     s: str = "hello world"
+//
+//     # Every other char
+//     print(s[::2])
+//
+//     # Reverse
+//     print(s[::-1])
+//
+//     # Reverse with bounds
+//     print(s[4:0:-1])
+//
+//     # Step with start
+//     print(s[1::3])
+//
+//     # Edge: very negative start with negative step -> empty
+//     print(repr(s[-100::-1]))
 void main() {
-    // s: str = "hello world"
     std::string_view s = "hello world";
-    // # Every other char
-    // print(s[::2])
     std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, 2}) << "\n";
-    // # Reverse
-    // print(s[::-1])
     std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, -1}) << "\n";
-    // # Reverse with bounds
-    // print(s[4:0:-1])
     std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{4, 0, -1}) << "\n";
-    // # Step with start
-    // print(s[1::3])
     std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{1, std::nullopt, 3}) << "\n";
-    // # Edge: very negative start with negative step -> empty
-    // print(repr(s[-100::-1]))
     std::cout << ::tpy::repr_of(::tpy::str_stepped_slice(s, ::tpy::Slice{-100, std::nullopt, -1})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,11 +11,17 @@ struct Tag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick_list(a: list[Tag], b: list[Tag]) -> int32:
 int32_t pick_list(std::vector<Tag>& a, std::vector<Tag>& b);
+// def pick_dict(a: dict[str, Tag], b: dict[str, Tag]) -> int32:
 int32_t pick_dict(::tpy::ordered_map<std::string, Tag>& a, ::tpy::ordered_map<std::string, Tag>& b);
+// def pick_set(a: set[int32], b: set[int32]) -> int32:
 int32_t pick_set(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b);
+// def pick_bytearray(a: bytearray, b: bytearray) -> int32:
 int32_t pick_bytearray(::tpy::ByteArray& a, ::tpy::ByteArray& b);
+// def pick_array(a: Array[int32, 2], b: Array[int32, 2]) -> int32:
 int32_t pick_array(std::array<int32_t, 2>& a, std::array<int32_t, 2>& b);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -42,6 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tag::Tag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

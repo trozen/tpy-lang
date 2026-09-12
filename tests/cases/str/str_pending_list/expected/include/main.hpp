@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_list() -> Own[list[str]]:
 std::vector<std::string> in_list();
+// def in_tuple_list() -> Own[list[tuple[int, str]]]:
 std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list();
+// def in_list_var() -> Own[list[str]]:
 std::vector<std::string> in_list_var();
+// def in_tuple_list_var() -> Own[list[tuple[int, str]]]:
 std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list_var();
+// def in_list_repeat() -> Own[list[str]]:
 std::vector<std::string> in_list_repeat();
+// def in_list_comp() -> Own[list[str]]:
 std::vector<std::string> in_list_comp();
+// def in_nested_tuple_list() -> Own[list[tuple[str, tuple[str, int]]]]:
 std::vector<std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>> in_nested_tuple_list();
 
 void __tpy_init();

@@ -3,25 +3,25 @@
 
 namespace tpyapp::main {
 
-// x = None
 Point* x{};
 
+// x = None
+// for i in range(0, 2):
+//     x = Point(i)
+//
+// if x is not None:
+//     print(x.x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = None
     x = nullptr;
-    // for i in range(0, 2):
     for (int32_t i = 0; i < 2; ++i) {
-        // x = Point(i)
         Point __global_slot_1 = Point(i);
         x = &__global_slot_1;
     }
-    // if x is not None:
     if ((x != nullptr)) {
-        // print(x.x)
         std::cout << x->x << "\n";
     }
 }

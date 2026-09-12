@@ -5,24 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(prog="prog")
+//     parser.add_argument("-v", "--verbose", action="store_true")
+//
+//     sub = parser.add_subparsers(dest="cmd", required=True)
+//     a = sub.add_parser("a")
+//     a.add_argument("--x")
+//     b = sub.add_parser("b")
+//     b.add_argument("--y")
+//
+//     args = parser.parse_args(["-v", "a", "--x", "hello"])
+//     print("verbose=" + str(args.verbose))
+//     print("cmd=" + args.cmd)
+//     # args.x is set under both backends because sub "a" was chosen.
+//     # Don't read args.y here -- under CPython argparse only the
+//     # chosen sub's attributes exist, while TPy populates every
+//     # per-sub field as Optional[T] on the top namespace.
+//     if args.x is not None:
+//         print("x=" + args.x)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["-v", "a", "--x", "hello"])
     std::vector<std::string> __tmp_1 = {"-v", "a", "--x", "hello"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print("verbose=" + str(args.verbose))
     std::cout << (::tpy::str_concat("verbose=", std::string(::tpy::bool_to_str(args.verbose)))) << "\n";
-    // print("cmd=" + args.cmd)
     std::cout << (::tpy::str_concat("cmd=", args.cmd)) << "\n";
-    // # args.x is set under both backends because sub "a" was chosen.
-    // # Don't read args.y here -- under CPython argparse only the
-    // # chosen sub's attributes exist, while TPy populates every
-    // # per-sub field as Optional[T] on the top namespace.
-    // if args.x is not None:
     if ((args.x.has_value())) {
-        // print("x=" + args.x)
         std::cout << (::tpy::str_concat("x=", (*args.x))) << "\n";
     }
-    // return 0
     return 0;
 }
 
@@ -127,14 +136,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(verbose, __tpy_argparse_cmd, __tpy_argparse_flat_x, __tpy_argparse_flat_y);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

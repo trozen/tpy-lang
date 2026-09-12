@@ -29,6 +29,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, msg: str):
+//     self.msg = msg
 inline Box::Box(std::string_view msg) : msg(msg) {}
 void __tpy_init();
 } // namespace tpyapp::pb

@@ -5,15 +5,18 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser()
+//     parser.add_argument("--name", default="world")
+//     parser.add_argument("--count", type=int, default=1)
+//     args = parser.parse_args()
+//     print(args.name)
+//     print(args.count)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args()
     std::vector<std::string> __tmp_1 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice((*::tpystd::sys::argv), ::tpy::BasicSlice{1, std::nullopt}));
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.name)
     std::cout << args.name << "\n";
-    // print(args.count)
     std::cout << args.count << "\n";
-    // return 0
     return 0;
 }
 
@@ -60,14 +63,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(name, count);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

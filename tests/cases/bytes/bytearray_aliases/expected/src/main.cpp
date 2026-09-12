@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def main():
+//     ba = bytearray(b"ab")
+//     x = ba              # local bind aliases the buffer
+//     x.append(99)
+//     print(len(ba))      # 3 -- mutation through x is visible on ba
+//
+//     h = Holder(bytearray(b"xy"))
+//     y = h.data          # field read aliases the field's buffer
+//     y.append(7)
+//     print(len(h.data))  # 3 -- mutation through y is visible on the field
 void main() {
-    // ba = bytearray(b"ab")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    // x = ba              # local bind aliases the buffer
     ::tpy::ByteArray& x = ba;
-    // x.append(99)
     x.push_back(99);
-    // print(len(ba))      # 3 -- mutation through x is visible on ba
     std::cout << ::tpy::__len__(ba) << "\n";
-    // h = Holder(bytearray(b"xy"))
     Holder h = Holder(::tpy::ByteArray(::tpy::bytes_literal("xy", 2)));
-    // y = h.data          # field read aliases the field's buffer
     ::tpy::ByteArray& y = h.data;
-    // y.append(7)
     y.push_back(7);
-    // print(len(h.data))  # 3 -- mutation through y is visible on the field
     std::cout << ::tpy::__len__(h.data) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

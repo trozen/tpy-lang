@@ -12,6 +12,7 @@ struct ScaleBy;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Negate:
@@ -60,18 +61,19 @@ inline std::ostream& operator<<(std::ostream& os, const ScaleBy& obj) {
 
 // @readonly
 // def __call__(self, x: int32) -> int32:
+//     return -x
 inline int32_t Negate::__call__(int32_t x) const {
-    // return -x
     return ::tpy::neg_check<int32_t>(x);
 }
 
 // def __init__(self, factor: int32):
+//     self.factor = factor
 inline ScaleBy::ScaleBy(int32_t factor) : factor(factor) {}
 
 // @readonly
 // def __call__(self, x: int32) -> int32:
+//     return x * self.factor
 inline int32_t ScaleBy::__call__(int32_t x) const {
-    // return x * self.factor
     return (::tpy::mul_check<int32_t>(x, this->factor));
 }
 void __tpy_init();

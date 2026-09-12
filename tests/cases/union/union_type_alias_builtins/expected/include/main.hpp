@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show_num(x: Num) -> None:
 void show_num(const ::tpy::Union<bool, ::tpy::BigInt>& x);
+// def main() -> None:
 void main();
 
 using Num = ::tpy::Union<bool, ::tpy::BigInt>;

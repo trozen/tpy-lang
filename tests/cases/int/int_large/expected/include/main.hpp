@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def factorial(n: int) -> int:
 ::tpy::BigInt factorial(const ::tpy::BigInt& n);
 
 void __tpy_init();

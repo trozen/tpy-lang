@@ -11,8 +11,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_box(b: Box, offset: int32) -> int32:
 int32_t read_box(const Box& b, int32_t offset);
+// def sum_list(items: list[int32]) -> int32:
 int32_t sum_list(const std::vector<int32_t>& items);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -37,12 +40,13 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Box::Box(int32_t value) : value(value) {}
 
 // @readonly
 // def get_value(self) -> int32:
+//     return self.value
 inline int32_t Box::get_value() const {
-    // return self.value
     return this->value;
 }
 void __tpy_init();

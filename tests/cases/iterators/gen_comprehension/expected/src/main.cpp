@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def two_then(n: int32) -> Iterator[int32]:
+//     yield 0
+//     i: int32 = 1
+//     while i <= n:
+//         yield i
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_two_then::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
-        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i <= n)) {
-            // yield i
             __state = S_RESUME_1;
             return i;
         } else {
@@ -46,28 +47,29 @@ __gen_two_then two_then(int32_t n) {
 }
 
 // def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
+//     yield (0, 0)
+//     i: int32 = 1
+//     while i < n:
+//         yield (i, i * i)
+//         i += 1
 std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield (0, 0)
         __state = S_RESUME_0;
         return std::tuple<int32_t, int32_t>{0, 0};
     }
     case S_RESUME_0: {
-        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            // yield (i, i * i)
             __state = S_RESUME_1;
             return std::tuple<int32_t, int32_t>{i, (::tpy::mul_check<int32_t>(i, i))};
         } else {
@@ -87,28 +89,29 @@ __gen_pairs pairs(int32_t n) {
 }
 
 // def make_nodes(n: int32) -> Iterator[Own[Node]]:
+//     yield Node(0)
+//     i: int32 = 1
+//     while i < n:
+//         yield Node(i)
+//         i += 1
 std::expected<Node, ::tpy::StopIteration> __gen_make_nodes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield Node(0)
         __state = S_RESUME_0;
         return Node(0);
     }
     case S_RESUME_0: {
-        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            // yield Node(i)
             __state = S_RESUME_1;
             return Node(i);
         } else {
@@ -128,8 +131,26 @@ __gen_make_nodes make_nodes(int32_t n) {
 }
 
 // def main() -> None:
+//     print([x for x in two_then(3)])               # [0, 1, 2, 3]
+//     print([x for x in two_then(4) if x % 2 == 0])  # [0, 2, 4]
+//     nums: list[int32] = [10, 20, 30, 40]
+//     print([x for x in head(nums, 2)])             # [10, 20]
+//     s = {x for x in two_then(2)}
+//     print(len(s))                                 # 3
+//     d = {x: x * x for x in two_then(2)}
+//     print(d[2])                                   # 4
+//     print([x for x in simple(3)])                 # [0, 1, 2]
+//
+//     # generator method
+//     print([x for x in Counter(10).around()])      # [9, 10, 11]
+//     # tuple yield, unpacked in the comprehension
+//     print([a + b for a, b in pairs(3)])           # [0, 2, 6]
+//     # generator that yields nothing past the first element
+//     print([x for x in head(nums, 0)])             # []
+//     # reference-type (Own) yield collected into a list
+//     xs = [node for node in make_nodes(3)]
+//     print(len(xs), xs[2].v)                       # 3 2
 void main() {
-    // print([x for x in two_then(3)])               # [0, 1, 2, 3]
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_0 = two_then(3);
@@ -141,7 +162,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([x for x in two_then(4) if x % 2 == 0])  # [0, 2, 4]
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_1 = two_then(4);
@@ -155,9 +175,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // nums: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
-    // print([x for x in head(nums, 2)])             # [10, 20]
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_2 = head<int32_t>(nums, 2);
@@ -169,7 +187,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // s = {x for x in two_then(2)}
     ::tpy::ordered_set<int32_t> s = ({
         ::tpy::ordered_set<int32_t> __result;
         auto __obj_3 = two_then(2);
@@ -181,9 +198,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(s))                                 # 3
     std::cout << ::tpy::__len__(s) << "\n";
-    // d = {x: x * x for x in two_then(2)}
     ::tpy::ordered_map<int32_t, int32_t> d = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         auto __obj_4 = two_then(2);
@@ -195,9 +210,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(d[2])                                   # 4
     std::cout << ::tpy::__getitem__(d, 2) << "\n";
-    // print([x for x in simple(3)])                 # [0, 1, 2]
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_5 = simple(3);
@@ -209,8 +222,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # generator method
-    // print([x for x in Counter(10).around()])      # [9, 10, 11]
     Counter __tmp_1 = Counter(10);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
@@ -223,8 +234,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # tuple yield, unpacked in the comprehension
-    // print([a + b for a, b in pairs(3)])           # [0, 2, 6]
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_7 = pairs(3);
@@ -238,8 +247,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # generator that yields nothing past the first element
-    // print([x for x in head(nums, 0)])             # []
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto __obj_8 = head<int32_t>(nums, 0);
@@ -251,8 +258,6 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # reference-type (Own) yield collected into a list
-    // xs = [node for node in make_nodes(3)]
     std::vector<Node> xs = ({
         std::vector<Node> __result;
         auto __obj_9 = make_nodes(3);
@@ -264,25 +269,24 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(xs), xs[2].v)                       # 3 2
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 2).v << "\n";
 }
 
 // def around(self) -> Iterator[int32]:
+//     yield self.base - 1
+//     yield self.base
+//     yield self.base + 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_around::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.base - 1
         __state = S_RESUME_0;
         return (::tpy::sub_check<int32_t>(__self.base, 1));
     }
     case S_RESUME_0: {
-        // yield self.base
         __state = S_RESUME_1;
         return __self.base;
     }
     case S_RESUME_1: {
-        // yield self.base + 1
         __state = S_RESUME_2;
         return (::tpy::add_check<int32_t>(__self.base, 1));
     }
@@ -296,12 +300,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_around::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

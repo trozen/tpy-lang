@@ -12,8 +12,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def positive(p: Point) -> Point:
 std::expected<::tpy::val_or_ref<Point>, E> positive(Point& p);
+// def modify(p: Point) -> Point:
 std::expected<::tpy::val_or_ref<Point>, E> modify(Point& p);
+// def main() -> None:
 void main();
 
 // class E(Exception, ReturnException):
@@ -55,15 +58,17 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def updated(self) -> Self:
+//     self.x += 1
+//     self.y += 1
+//     return self
 inline Point& Point::updated() {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
-    // self.y += 1
     this->y = ::tpy::add_check<int32_t>(this->y, 1);
-    // return self
     return (*this);
 }
 void __tpy_init();

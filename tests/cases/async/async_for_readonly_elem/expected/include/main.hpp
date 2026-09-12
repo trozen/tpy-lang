@@ -16,8 +16,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_step;
 struct __coro_total;
 
+// async def step(n: int32) -> int32:
 __coro_step step(int32_t n);
+// async def total(ps: readonly[list[Point]]) -> int32:
 __coro_total total(const std::vector<Point>& ps);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -42,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// Async coroutine: step
+// async def step(n: int32) -> int32:
 struct __coro_step {
     int32_t __state;
     bool __cancel_pending;
@@ -64,7 +67,7 @@ struct __coro_step {
     }
 };
 
-// Async coroutine: total
+// async def total(ps: readonly[list[Point]]) -> int32:
 struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
@@ -96,6 +99,7 @@ struct __coro_total {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

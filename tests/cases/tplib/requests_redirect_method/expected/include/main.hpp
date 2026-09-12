@@ -19,8 +19,11 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run_redirect(status_line: bytes) -> tuple[bytes, bool, bool]:
 std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line);
+// def report(status_line: bytes) -> None:
 void report(::tpy::BytesView status_line);
+// def main() -> None:
 void main();
 
 void __tpy_init();

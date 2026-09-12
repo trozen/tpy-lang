@@ -5,62 +5,62 @@ namespace tpyapp::main {
 
 
 // def greet(name: Optional[str]) -> None:
+//     if name is None:
+//         return
+//     print(f"hello, {name}")
 void greet(std::optional<std::string_view> name) {
-    // if name is None:
     if ((!name.has_value())) {
-        // return
         return;
     }
-    // print(f"hello, {name}")
     std::cout << std::format("hello, {}", (*name)) << "\n";
 }
 
 // def show_int(x: Optional[int32]) -> None:
+//     if x is None:
+//         return
+//     print(f"value is {x}")
 void show_int(std::optional<int32_t> x) {
-    // if x is None:
     if ((!x.has_value())) {
-        // return
         return;
     }
-    // print(f"value is {x}")
     std::cout << std::format("value is {}", (*x)) << "\n";
 }
 
 // def show_if_else(x: Optional[str]) -> None:
+//     if x is not None:
+//         print(f"got: {x}")
+//     else:
+//         print("nothing")
 void show_if_else(std::optional<std::string_view> x) {
-    // if x is not None:
     if ((x.has_value())) {
-        // print(f"got: {x}")
         std::cout << std::format("got: {}", (*x)) << "\n";
-    // else:
     } else {
-        // print("nothing")
         std::cout << "nothing" << "\n";
     }
 }
 
 // def main() -> None:
+//     greet("world")
+//     greet(None)
+//     show_int(int32(42))
+//     show_int(None)
+//     show_if_else("test")
+//     show_if_else(None)
 void main() {
-    // greet("world")
     greet("world");
-    // greet(None)
     greet(std::nullopt);
-    // show_int(int32(42))
     show_int(42);
-    // show_int(None)
     show_int(std::nullopt);
-    // show_if_else("test")
     show_if_else("test");
-    // show_if_else(None)
     show_if_else(std::nullopt);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

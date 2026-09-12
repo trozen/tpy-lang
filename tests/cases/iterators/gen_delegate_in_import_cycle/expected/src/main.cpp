@@ -5,8 +5,12 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     for v in moda.free_delegator():
+//         print("free:", v)
+//     for v in moda.method_delegator(moda.Src(7)):
+//         print("method:", v)
+//     print("cycle:", moda.ping(3))
 void main() {
-    // for v in moda.free_delegator():
     {
         auto __src_0 = ::tpyapp::moda::free_delegator();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -14,11 +18,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print("free:", v)
         std::cout << "free:" << " " << v << "\n";
         }
     }
-    // for v in moda.method_delegator(moda.Src(7)):
     {
         ::tpyapp::moda::Src __tmp_1 = ::tpyapp::moda::Src(7);
         auto __src_2 = ::tpyapp::moda::method_delegator(__tmp_1);
@@ -27,25 +29,24 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print("method:", v)
         std::cout << "method:" << " " << v << "\n";
         }
     }
-    // print("cycle:", moda.ping(3))
     std::cout << "cycle:" << " " << ::tpyapp::moda::ping(3) << "\n";
 }
 
+// # A SAME-module generator delegation inside a module that participates in an
+// # admissible import cycle. `cycle_peers` is self-inclusive, so the gate that
+// # rejects a mutually-infinite-size cross-module delegation must not fire here.
+// import moda
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A SAME-module generator delegation inside a module that participates in an
-    // # admissible import cycle. `cycle_peers` is self-inclusive, so the gate that
-    // # rejects a mutually-infinite-size cross-module delegation must not fire here.
-    // import moda
     ::tpyapp::moda::__tpy_init();
-    // main()
     main();
 }
 

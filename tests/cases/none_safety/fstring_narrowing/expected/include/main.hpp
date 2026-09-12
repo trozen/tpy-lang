@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(name: Optional[str]) -> None:
 void greet(std::optional<std::string_view> name);
+// def show_int(x: Optional[int32]) -> None:
 void show_int(std::optional<int32_t> x);
+// def show_if_else(x: Optional[str]) -> None:
 void show_if_else(std::optional<std::string_view> x);
+// def main() -> None:
 void main();
 
 void __tpy_init();

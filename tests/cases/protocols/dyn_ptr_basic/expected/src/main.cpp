@@ -8,55 +8,60 @@ namespace tpyapp::main {
 // # CONCRETE-record param so the coerce happens at the call site, not
 // # inside the body.
 // def fire_direct(exec: ExecutorA, tid: int32) -> None:
+//     n = Notifier()
+//     n.aim(exec, tid)  # record exec -> Ptr[Awaker] arg
+//     n.fire()
 void fire_direct(ExecutorA& exec, int32_t tid) {
-    // n = Notifier()
     Notifier n = Notifier();
-    // n.aim(exec, tid)  # record exec -> Ptr[Awaker] arg
     n.aim(&exec, tid);
-    // n.fire()
     n.fire();
 }
 
 // def main() -> None:
+//     a = ExecutorA()
+//     b = ExecutorB()
+//     n = Notifier()
+//
+//     # record -> Ptr[Awaker] direct upcast at the arg site (UPCAST_TO_PTR).
+//     n.aim(a, 5)
+//     n.fire()
+//
+//     # Same upcast works for ExecutorB -- polymorphic dispatch.
+//     n.aim(b, 7)
+//     n.fire()
+//
+//     # Same upcast through a function-param boundary.
+//     fire_direct(a, 11)
+//
+//     # record -> Ptr[readonly[Awaker]] readonly-target upcast (sema-only;
+//     # protocol's mark() isn't @readonly so we can't dispatch through a
+//     # readonly pointer, but the coercion must compile).
+//     ro_ptr: Ptr[readonly[Awaker]] = a  # tpyc: ok
+//
+//     print(a.log)
+//     print(b.log)
+//     print(ro_ptr is not None)
 void main() {
-    // a = ExecutorA()
     ExecutorA a = ExecutorA();
-    // b = ExecutorB()
     ExecutorB b = ExecutorB();
-    // n = Notifier()
     Notifier n = Notifier();
-    // # record -> Ptr[Awaker] direct upcast at the arg site (UPCAST_TO_PTR).
-    // n.aim(a, 5)
     n.aim(&a, 5);
-    // n.fire()
     n.fire();
-    // # Same upcast works for ExecutorB -- polymorphic dispatch.
-    // n.aim(b, 7)
     n.aim(&b, 7);
-    // n.fire()
     n.fire();
-    // # Same upcast through a function-param boundary.
-    // fire_direct(a, 11)
     fire_direct(a, 11);
-    // # record -> Ptr[readonly[Awaker]] readonly-target upcast (sema-only;
-    // # protocol's mark() isn't @readonly so we can't dispatch through a
-    // # readonly pointer, but the coercion must compile).
-    // ro_ptr: Ptr[readonly[Awaker]] = a  # tpyc: ok
     auto ro_ptr = &a;
-    // print(a.log)
     std::cout << ::tpy::ListPrinter(a.log) << "\n";
-    // print(b.log)
     std::cout << ::tpy::ListPrinter(b.log) << "\n";
-    // print(ro_ptr is not None)
     std::cout << ::tpy::print_bool((ro_ptr != nullptr)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

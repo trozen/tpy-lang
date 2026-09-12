@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Packet(b"hello")
+//     print(p.data)
+//
+//     m = MultiField("test", b"\x01\x02\x03")
+//     print(m.name)
+//     print(m.payload)
 void main() {
-    // p = Packet(b"hello")
     Packet p = Packet(::tpy::bytes_literal("hello", 5));
-    // print(p.data)
     std::cout << ::tpy::BytesPrinter(p.data) << "\n";
-    // m = MultiField("test", b"\x01\x02\x03")
     MultiField m = MultiField("test", ::tpy::bytes_literal("\x01\x02\x03", 3));
-    // print(m.name)
     std::cout << m.name << "\n";
-    // print(m.payload)
     std::cout << ::tpy::BytesPrinter(m.payload) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

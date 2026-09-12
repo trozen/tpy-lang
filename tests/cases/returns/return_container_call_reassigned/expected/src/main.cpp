@@ -5,58 +5,58 @@ namespace tpyapp::main {
 
 
 // def gen(n: int32) -> Own[list[int32]]:
+//     out: list[int32] = []
+//     for i in range(n):
+//         out.append(i)
+//     return out
 std::vector<int32_t> gen(int32_t n) {
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // out.append(i)
         out.push_back(i);
     }
-    // return out
     return out;
 }
 
 // def longest(n: int32) -> Own[list[int32]]:
+//     best = gen(0)  # tpyc: ok
+//     for i in range(n):
+//         cur = gen(i)
+//         if len(cur) > len(best):
+//             best = copy(cur)
+//     return best
 std::vector<int32_t> longest(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_2;
-    // best = gen(0)  # tpyc: ok
     std::vector<int32_t> __slot_1 = gen(0);
     std::vector<int32_t>* best = &__slot_1;
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // cur = gen(i)
         std::vector<int32_t> cur = gen(i);
-        // if len(cur) > len(best):
         if ((::tpy::__len__(cur) > ::tpy::__len__((*best)))) {
-            // best = copy(cur)
             best = &*(__slot_2 = std::vector<int32_t>(cur));
         }
     }
-    // return best
     return std::move((*best));
 }
 
 // def main():
+//     got = longest(4)
+//     # The returned container is the caller's own storage: the append after the
+//     # boundary must land on it, not on a copy the callee still owns.
+//     got.append(99)
+//     print(len(got), got[-1])
 void main() {
-    // got = longest(4)
     std::vector<int32_t> got = longest(4);
-    // # The returned container is the caller's own storage: the append after the
-    // # boundary must land on it, not on a copy the callee still owns.
-    // got.append(99)
     got.push_back(99);
-    // print(len(got), got[-1])
     std::cout << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, -1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

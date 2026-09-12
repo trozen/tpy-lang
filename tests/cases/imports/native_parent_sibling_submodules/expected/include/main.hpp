@@ -14,6 +14,7 @@ inline auto& VAL_B = ::sibling_submod::pkg::leaf_b::VAL_B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

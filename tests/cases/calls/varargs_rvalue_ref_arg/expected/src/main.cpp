@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def sum_all(*items: Box) -> int32:
+//     n: int32 = 0
+//     for b in items:
+//         n += b.val
+//     return n
 int32_t sum_all(::tpy::varargs<const Box> items) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // n += b.val
         n = ::tpy::add_check<int32_t>(n, b.val);
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     print(sum_all(Box(3), Box(4)))  # tpyc: ok
 void main() {
-    // print(sum_all(Box(3), Box(4)))  # tpyc: ok
     const Box __tmp_1 = Box(3);
     const Box __tmp_2 = Box(4);
     std::array<const Box*, 2> __tmp_3{&__tmp_1, &__tmp_2};
     std::cout << sum_all(::tpy::varargs<const Box>(__tmp_3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

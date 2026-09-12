@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def same(a: int32 | float64, b: int32 | float64) -> bool:
 bool same(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+// def widened() -> bool:
 bool widened();
+// def started_none() -> bool:
 bool started_none();
+// def main() -> None:
 void main();
 
 void __tpy_init();

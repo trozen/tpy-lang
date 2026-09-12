@@ -15,10 +15,12 @@ inline constexpr std::string_view __name__ = "helper";
 struct __coro_step;
 struct __coro_other;
 
+// async def step() -> int32:
 __coro_step step();
+// async def other() -> int32:
 __coro_other other();
 
-// Async coroutine: step
+// async def step() -> int32:
 struct __coro_step {
     int32_t __state;
     bool __cancel_pending;
@@ -41,7 +43,7 @@ struct __coro_step {
     }
 };
 
-// Async coroutine: other
+// async def other() -> int32:
 struct __coro_other {
     int32_t __state;
     bool __cancel_pending;

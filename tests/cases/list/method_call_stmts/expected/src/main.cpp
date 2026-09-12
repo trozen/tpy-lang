@@ -5,78 +5,78 @@ namespace tpyapp::main {
 
 
 // def grow(xs: list[int32], n: int32) -> None:
+//     xs.append(5)
+//     xs.append(n)
+//     xs.insert(0, 7)
+//     xs.pop(0)
+//     xs.reverse()
+//     xs.sort()
+//     xs.remove(5)
 void grow(std::vector<int32_t>& xs, int32_t n) {
-    // xs.append(5)
     xs.push_back(5);
-    // xs.append(n)
     xs.push_back(n);
-    // xs.insert(0, 7)
     ::tpy::list_insert(xs, 0, 7);
-    // xs.pop(0)
     ::tpy::list_pop_at(xs, 0);
-    // xs.reverse()
     ::tpy::list_reverse(xs);
-    // xs.sort()
     ::tpy::sort_in_place(xs);
-    // xs.remove(5)
     ::tpy::list_remove(xs, 5);
 }
 
 // def take_two(xs: list[int32]) -> int32:
+//     a = xs.pop()
+//     return a + xs.pop()
 int32_t take_two(std::vector<int32_t>& xs) {
-    // a = xs.pop()
     int32_t a = ::tpy::pop_back(xs);
-    // return a + xs.pop()
     return (::tpy::add_check<int32_t>(a, ::tpy::pop_back(xs)));
 }
 
 // def wipe(xs: list[int32]) -> None:
+//     xs.clear()
 void wipe(std::vector<int32_t>& xs) {
-    // xs.clear()
     xs.clear();
 }
 
 // def show_last(xs: list[int32]) -> None:
+//     print(xs.pop())
 void show_last(std::vector<int32_t>& xs) {
-    // print(xs.pop())
     std::cout << ::tpy::pop_back(xs) << "\n";
 }
 
 // def main() -> None:
+//     xs = [3, 1]
+//     grow(xs, 9)
+//     show_last(xs)
+//     print(len(xs))
+//     for x in xs:
+//         print(x)
+//     print(take_two(xs))
+//     print(len(xs))
+//     wipe(xs)
+//     print(len(xs))
 void main() {
-    // xs = [3, 1]
     std::vector<int32_t> xs = {3, 1};
-    // grow(xs, 9)
     grow(xs, 9);
-    // show_last(xs)
     show_last(xs);
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
-    // print(take_two(xs))
     std::cout << take_two(xs) << "\n";
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
-    // wipe(xs)
     wipe(xs);
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

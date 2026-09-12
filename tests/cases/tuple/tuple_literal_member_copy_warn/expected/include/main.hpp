@@ -11,11 +11,17 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def list_literal(items: list[tuple[int32, P]]) -> None:
 void list_literal(const std::vector<std::tuple<int32_t, P>>& items);
+// def dict_value(items: list[tuple[int32, P]]) -> None:
 void dict_value(const std::vector<std::tuple<int32_t, P>>& items);
+// def via_append(items: list[tuple[int32, P]]) -> None:
 void via_append(const std::vector<std::tuple<int32_t, P>>& items);
+// def exempt_fresh(n: int32) -> None:
 void exempt_fresh(int32_t n);
+// def exempt_copy(p: P) -> None:
 void exempt_copy(const P& p);
+// def main() -> None:
 void main();
 
 // class P:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

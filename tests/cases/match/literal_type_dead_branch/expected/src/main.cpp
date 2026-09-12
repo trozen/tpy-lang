@@ -7,63 +7,66 @@ namespace tpyapp::main {
 
 
 
+// def process(mode: str) -> str:
+//     if mode == "r":
+//         return "read"
+//     if mode == "w":
+//         return "write"
+//     return "binary"
 // @overload
 // def process(mode: Literal["r"]) -> str: ...
 std::string process__lit_r(std::string_view mode) {
-    // return "read"
     return "read";
 }
 
 // @overload
 // def process(mode: Literal["w"]) -> str: ...
 std::string process__lit_w(std::string_view mode) {
-    // return "write"
     return "write";
 }
 
 // @overload
 // def process(mode: Literal["rb"]) -> str: ...
 std::string process__lit_rb(std::string_view mode) {
-    // return "binary"
     return "binary";
 }
 
 
 // def dispatch(mode: Literal["r", "w", "rb"]) -> None:
+//     match mode:
+//         case "r":
+//             print(process(mode))
+//         case "w":
+//             print(process(mode))
+//         case "rb":
+//             print(process(mode))
 void dispatch(std::string_view mode) {
-    // match mode:
     auto& __match_subject_1 = mode;
-    // case "r":
     if (__match_subject_1 == "r") {
-        // print(process(mode))
         std::cout << process__lit_r(mode) << "\n";
-    // case "w":
     } else if (__match_subject_1 == "w") {
-        // print(process(mode))
         std::cout << process__lit_w(mode) << "\n";
-    // case "rb":
     } else if (__match_subject_1 == "rb") {
-        // print(process(mode))
         std::cout << process__lit_rb(mode) << "\n";
     }
 }
 
 // def main() -> None:
+//     dispatch("r")
+//     dispatch("w")
+//     dispatch("rb")
 void main() {
-    // dispatch("r")
     dispatch("r");
-    // dispatch("w")
     dispatch("w");
-    // dispatch("rb")
     dispatch("rb");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

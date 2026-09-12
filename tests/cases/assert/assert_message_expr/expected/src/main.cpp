@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def check_positive(n: int32, msg: str) -> int32:
+//     assert n > 0, msg
+//     return n
 int32_t check_positive(int32_t n, std::string_view msg) {
-    // assert n > 0, msg
     if (!((n > 0))) {
         ::tpy::raise_assertion_error(msg);
     }
-    // return n
     return n;
 }
 
 // def check_error(n: int32, e: Error) -> int32:
+//     assert n > 0, e.message
+//     return n
 int32_t check_error(int32_t n, const Error& e) {
-    // assert n > 0, e.message
     if (!((n > 0))) {
         ::tpy::raise_assertion_error(e.message);
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     print(check_positive(5, "must be positive"))
+//     print(check_error(3, Error("bad value")))
 void main() {
-    // print(check_positive(5, "must be positive"))
     std::cout << check_positive(5, "must be positive") << "\n";
-    // print(check_error(3, Error("bad value")))
     Error __tmp_1 = Error("bad value");
     std::cout << check_error(3, __tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

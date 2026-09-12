@@ -5,55 +5,56 @@ namespace tpyapp::main {
 
 
 // def read_g() -> int32:
+//     return G + 1
 int32_t read_g() {
-    // return G + 1
     return (::tpy::add_check<int32_t>(::tpyapp::helper::G, 1));
 }
 
 // def read_final() -> int32:
+//     return BIG
 int32_t read_final() {
-    // return BIG
     return ::tpyapp::helper::BIG;
 }
 
 // def label_owned() -> str:
+//     return label  # a borrow-form view global copied into an owned str
 std::string label_owned() {
-    // return label  # a borrow-form view global copied into an owned str
     return std::string(::tpyapp::helper::label);
 }
 
 // def read_items() -> int32:
+//     return items[0]
 int32_t read_items() {
-    // return items[0]
     return ::tpy::__getitem__((*::tpyapp::helper::items), 0);
 }
 
 // def shadow() -> int32:
+//     G = 7  # a local of the same name -- the import is not seeded in this body
+//     return G
 int32_t shadow() {
-    // G = 7  # a local of the same name -- the import is not seeded in this body
     int32_t G = 7;
-    // return G
     return G;
 }
 
 // def main() -> None:
+//     c = C()
+//     print(read_g(), read_final(), label_owned())
+//     print(read_items(), shadow(), c.m())
 void main() {
-    // c = C()
     C c = C();
-    // print(read_g(), read_final(), label_owned())
     std::cout << read_g() << " " << read_final() << " " << label_owned() << "\n";
-    // print(read_items(), shadow(), c.m())
     std::cout << read_items() << " " << shadow() << " " << c.m() << "\n";
 }
 
+// from helper import G, label, BIG, items
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from helper import G, label, BIG, items
     ::tpyapp::helper::__tpy_init();
-    // main()
     main();
 }
 

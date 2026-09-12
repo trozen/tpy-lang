@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t: Tag = Tag("hello")
+//     print(repr(t))
+//     print(f"{t!r}")
+//     print(t)
+//     print(str(t))
+//     print(f"{t}")
+//     print(f"{t!s}")
 void main() {
-    // t: Tag = Tag("hello")
     Tag t = Tag("hello");
-    // print(repr(t))
     std::cout << ::tpy::repr_of(t) << "\n";
-    // print(f"{t!r}")
     std::cout << std::format("{}", ::tpy::repr_of(t)) << "\n";
-    // print(t)
     std::cout << t << "\n";
-    // print(str(t))
     std::cout << std::string(::tpy::__str__(t)) << "\n";
-    // print(f"{t}")
     std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
-    // print(f"{t!s}")
     std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

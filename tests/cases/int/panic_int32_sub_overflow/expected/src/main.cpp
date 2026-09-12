@@ -3,21 +3,21 @@
 
 namespace tpyapp::main {
 
-// x: int32 = -2147483648  # INT32_MIN
 int32_t x{};
-// y: int32 = x - 1        # Should panic
 int32_t y{};
 
+// """Test int32 subtraction overflow panic at runtime."""
+//
+// x: int32 = -2147483648  # INT32_MIN
+// y: int32 = x - 1        # Should panic
+// print(y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 = -2147483648  # INT32_MIN
     x = -2147483648;
-    // y: int32 = x - 1        # Should panic
     y = (::tpy::sub_check<int32_t>(x, 1));
-    // print(y)
     std::cout << y << "\n";
 }
 

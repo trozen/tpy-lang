@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def sum_all(*items: Box) -> int32:  # tpyc: ok
+//     n: int32 = 0
+//     for b in items:
+//         n += b.val
+//     return n
 int32_t sum_all(::tpy::varargs<const Box> items) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // n += b.val
         n = ::tpy::add_check<int32_t>(n, b.val);
     }
-    // return n
     return n;
 }
 
 // def via_param(b: Box, c: Box) -> int32:
+//     return sum_all(b, c)
 int32_t via_param(const Box& b, const Box& c) {
-    // return sum_all(b, c)
     std::array<const Box*, 2> __tmp_1{&b, &c};
     return sum_all(::tpy::varargs<const Box>(__tmp_1));
 }
 
 // def main() -> None:
+//     x = Box(3)
+//     y = Box(4)
+//     print(via_param(x, y))
 void main() {
-    // x = Box(3)
     Box x = Box(3);
-    // y = Box(4)
     Box y = Box(4);
-    // print(via_param(x, y))
     std::cout << via_param(x, y) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

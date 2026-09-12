@@ -30,6 +30,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Pet_describe;
 
+// def main() -> None:
 void main();
 
 // class Pet(Tagged):
@@ -83,7 +84,7 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 
 namespace tpyapp::main {
 
-// Generator: Pet.describe
+// def describe(self) -> Iterator[str]:
 struct __gen_Pet_describe : public ::tpy::next_iter_mixin<__gen_Pet_describe, std::string> {
     int32_t __state;
     const Pet& __self;
@@ -116,9 +117,12 @@ inline __gen_Pet_describe Pet::describe() const {
 
 
 // def __init__(self, nm: str) -> None:
+//     self.name = nm
 inline Pet::Pet(std::string_view nm) : name(nm) {}
 
 // def __init__(self, nm: str, breed: str) -> None:
+//     super().__init__(nm)
+//     self.breed = breed
 inline Dog::Dog(std::string_view nm, std::string_view breed) : Pet(nm), breed(breed) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def test_literal_infers_str() -> None:
+//     x = identity("hello")  # tpyc: type(/str|PendingStr/)
+//     print(x)
+//     y = first("hello", "world")  # tpyc: type(/str|PendingStr/)
+//     print(y)
 void test_literal_infers_str() {
-    // x = identity("hello")  # tpyc: type(/str|PendingStr/)
     std::string x = identity<std::string>("hello");
-    // print(x)
     std::cout << x << "\n";
-    // y = first("hello", "world")  # tpyc: type(/str|PendingStr/)
     std::string y = first<std::string>("hello", "world");
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_explicit_str() -> None:
+//     x = identity[str]("hello")
+//     print(x)
 void test_explicit_str() {
-    // x = identity[str]("hello")
     std::string x = identity<std::string>("hello");
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_explicit_strview() -> None:
+//     x: StrView = identity[StrView]("hello")
+//     print(x)
 void test_explicit_strview() {
-    // x: StrView = identity[StrView]("hello")
     std::string_view x = identity<std::string_view>("hello");
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def make_str() -> str:
+//     return "hi"
 std::string make_str() {
-    // return "hi"
     return "hi";
 }
 
 // def test_non_literal_str() -> None:
+//     x = first(make_str(), make_str())  # tpyc: type(str)
+//     print(x)
 void test_non_literal_str() {
-    // x = first(make_str(), make_str())  # tpyc: type(str)
     std::string x = first<std::string>(make_str(), make_str());
-    // print(x)
     std::cout << x << "\n";
 }
 
+// test_literal_infers_str()
+// test_explicit_str()
+// test_explicit_strview()
+// test_non_literal_str()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_literal_infers_str()
     test_literal_infers_str();
-    // test_explicit_str()
     test_explicit_str();
-    // test_explicit_strview()
     test_explicit_strview();
-    // test_non_literal_str()
     test_non_literal_str();
 }
 

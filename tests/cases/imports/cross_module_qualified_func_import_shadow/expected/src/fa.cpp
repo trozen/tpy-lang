@@ -5,8 +5,8 @@ namespace tpyapp::fa {
 
 
 // def make(n: int) -> int:
+//     return n + 1000
 ::tpy::BigInt make(const ::tpy::BigInt& n) {
-    // return n + 1000
     return ((n) + (::tpy::BigInt(1000)));
 }
 

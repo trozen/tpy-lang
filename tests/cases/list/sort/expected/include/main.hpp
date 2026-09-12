@@ -15,13 +15,21 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_list_sort() -> None:
 void test_list_sort();
+// def test_arraylist_sort() -> None:
 void test_arraylist_sort();
+// def test_user_type_sort() -> None:
 void test_user_type_sort();
+// def test_stable_sort() -> None:
 void test_stable_sort();
+// def test_span_sort() -> None:
 void test_span_sort();
+// def key() -> int32:
 int32_t key();
+// def test_sort_receiver_evaluated_once() -> None:
 void test_sort_receiver_evaluated_once();
+// def main() -> None:
 void main();
 
 // class Pair:
@@ -54,17 +62,19 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 
 
 // def __init__(self, key: int32, tag: int32) -> None:
+//     self.key = key
+//     self.tag = tag
 inline Pair::Pair(int32_t key, int32_t tag) : key(key), tag(tag) {}
 
 // def __lt__(self, other: Pair) -> bool:
+//     return self.key < other.key
 inline bool Pair::__lt__(const Pair& other) const {
-    // return self.key < other.key
     return (this->key < other.key);
 }
 
 // def __repr__(self) -> str:
+//     return str(self.key) + ":" + str(self.tag)
 inline std::string Pair::__repr__() const {
-    // return str(self.key) + ":" + str(self.tag)
     return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->key), ":")), ::tpy::fixed_to_str<int32_t>(this->tag)));
 }
 void __tpy_init();

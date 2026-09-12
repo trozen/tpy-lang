@@ -5,34 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: int32 = 42
+//     cp: Ptr[readonly[int32]] = take_ptr(x)
+//     print(cp.__deref__())
+//
+//     pt: Point = Point(10, 20)
+//     cpp: Ptr[readonly[Point]] = take_ptr(pt)
+//     print(cpp.__deref__().x)
+//     print(cpp.__deref__().y)
+//     # Field access through Ptr[readonly[Point]] auto-deref
+//     print(cpp.x)
+//     print(cpp.y)
 void main() {
-    // x: int32 = 42
     int32_t x = 42;
-    // cp: Ptr[readonly[int32]] = take_ptr(x)
     const int32_t* cp = &x;
-    // print(cp.__deref__())
     std::cout << ::tpy::deref_check(cp) << "\n";
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // cpp: Ptr[readonly[Point]] = take_ptr(pt)
     const Point* cpp = &pt;
-    // print(cpp.__deref__().x)
     std::cout << ::tpy::deref_check(cpp).x << "\n";
-    // print(cpp.__deref__().y)
     std::cout << ::tpy::deref_check(cpp).y << "\n";
-    // # Field access through Ptr[readonly[Point]] auto-deref
-    // print(cpp.x)
     std::cout << cpp->x << "\n";
-    // print(cpp.y)
     std::cout << cpp->y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

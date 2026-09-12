@@ -13,8 +13,11 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(v: A | B | C) -> str:
 std::string classify(::tpy::Union<const A*, const B*, const C*> v);
+// def excluded(v: A | B | C) -> int32:
 int32_t excluded(::tpy::Union<const A*, const B*, const C*> v);
+// def main() -> None:
 void main();
 
 // class A:
@@ -67,12 +70,15 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, tag: int32) -> None:
+//     self.tag = tag
 inline A::A(int32_t tag) : tag(tag) {}
 
 // def __init__(self, tag: int32) -> None:
+//     self.tag = tag
 inline B::B(int32_t tag) : tag(tag) {}
 
 // def __init__(self, z: int32) -> None:
+//     self.z = z
 inline C::C(int32_t z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

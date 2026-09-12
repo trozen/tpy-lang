@@ -15,7 +15,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen() -> Iterator[str]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class Animal:
@@ -62,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     int32_t __state;
     Animal* p = nullptr;
@@ -90,23 +92,24 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
 
 
 // def __init__(self) -> None:
+//     self.kind = "animal"
 inline Animal::Animal() : kind("animal") {}
 
 // def name(self) -> str:
+//     return self.kind
 inline std::string Animal::name() const {
-    // return self.kind
     return this->kind;
 }
 
 // def __init__(self) -> None:
+//     self.kind = "dog"
 inline Dog::Dog() {
-    // self.kind = "dog"
     this->kind = "dog";
 }
 
 // def __init__(self) -> None:
+//     self.kind = "cat"
 inline Cat::Cat() {
-    // self.kind = "cat"
     this->kind = "cat";
 }
 void __tpy_init();

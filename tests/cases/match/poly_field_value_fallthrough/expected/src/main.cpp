@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def describe(p: Pet) -> str:
+//     match p:
+//         case Dog(legs=4) if p.weight > 10:  # tpyc: ok
+//             return "big quad dog"
+//         case Dog(legs=4):  # tpyc: ok
+//             return "small quad dog"
+//         case Dog(legs=3):  # tpyc: ok
+//             return "tripod dog"
+//         case Dog():
+//             return "odd dog"
+//         case _:
+//             return "not a dog"
 std::string describe(const Pet& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Dog(legs=4) if p.weight > 10:  # tpyc: ok
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
         if (__case_0.legs == 4 && (__case_0.weight > 10)) {
-            // return "big quad dog"
             return "big quad dog";
             goto __match_end_2;
         }
     }
-    // case Dog(legs=4):  # tpyc: ok
     if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_1 = *__mpoly_1;
         if (__case_1.legs == 4) {
-            // return "small quad dog"
             return "small quad dog";
             goto __match_end_2;
         }
     }
-    // case Dog(legs=3):  # tpyc: ok
     if (const Dog* __mpoly_2 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_2 = *__mpoly_2;
         if (__case_2.legs == 3) {
-            // return "tripod dog"
             return "tripod dog";
             goto __match_end_2;
         }
     }
-    // case Dog():
     if (const Dog* __mpoly_3 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_3 = *__mpoly_3;
-        // return "odd dog"
         return "odd dog";
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "not a dog"
         return "not a dog";
     }
     __match_end_2:;
@@ -52,27 +52,27 @@ std::string describe(const Pet& p) {
 }
 
 // def main() -> None:
+//     print(describe(Dog(4, 20)))
+//     print(describe(Dog(4, 5)))
+//     print(describe(Dog(3, 5)))
+//     print(describe(Dog(2, 5)))
 void main() {
-    // print(describe(Dog(4, 20)))
     Dog __tmp_1{Dog(::tpy::BigInt(4), ::tpy::BigInt(20))};
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Dog(4, 5)))
     Dog __tmp_2{Dog(::tpy::BigInt(4), ::tpy::BigInt(5))};
     std::cout << describe(__tmp_2) << "\n";
-    // print(describe(Dog(3, 5)))
     Dog __tmp_3{Dog(::tpy::BigInt(3), ::tpy::BigInt(5))};
     std::cout << describe(__tmp_3) << "\n";
-    // print(describe(Dog(2, 5)))
     Dog __tmp_4{Dog(::tpy::BigInt(2), ::tpy::BigInt(5))};
     std::cout << describe(__tmp_4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

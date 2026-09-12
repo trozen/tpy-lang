@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child({"key": "value"})
+//     print(c.key)
 void main() {
-    // c = Child({"key": "value"})
     Child c = Child(::tpy::ordered_map<std::string, std::string>({{"key", "value"}}));
-    // print(c.key)
     std::cout << c.__getattr__("key") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

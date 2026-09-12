@@ -12,6 +12,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class CounterIter:
@@ -58,29 +59,32 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, limit: int32) -> None:
+//     self.current = 0
+//     self.limit = limit
 inline CounterIter::CounterIter(int32_t limit) : current(0), limit(limit) {}
 
 // def __next__(self) -> int32:
+//     if self.current < self.limit:
+//         result = self.current
+//         self.current += 1
+//         return result
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // result = self.current
         int32_t result = this->current;
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return result
         return result;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def __init__(self, limit: int32) -> None:
+//     self.limit = limit
 inline Counter::Counter(int32_t limit) : limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:
+//     return CounterIter(self.limit)
 inline CounterIter Counter::__iter__() const {
-    // return CounterIter(self.limit)
     return CounterIter(this->limit);
 }
 void __tpy_init();

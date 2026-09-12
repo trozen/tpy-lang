@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def gen3() -> Iterator[int32]:
+//     yield 10
+//     yield 20
+//     yield 30
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen3::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 10
         __state = S_RESUME_0;
         return 10;
     }
     case S_RESUME_0: {
-        // yield 20
         __state = S_RESUME_1;
         return 20;
     }
     case S_RESUME_1: {
-        // yield 30
         __state = S_RESUME_2;
         return 30;
     }
@@ -38,85 +38,89 @@ __gen_gen3 gen3() {
 }
 
 // def main() -> None:
+//     # Every other element
+//     a: list[int32] = [1, 2, 3, 4, 5]
+//     a[::2] = [10, 20, 30]
+//     for x in a:
+//         print(x)
+//
+//     # Negative step: reverse order positions
+//     b: list[int32] = [1, 2, 3, 4, 5]
+//     b[::-2] = [50, 30, 10]
+//     for x in b:
+//         print(x)
+//
+//     # Step with start/stop
+//     c: list[int32] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+//     c[1:8:3] = [100, 200, 300]
+//     for x in c:
+//         print(x)
+//
+//     # Step=1 allows resize (same as basic slice)
+//     d: list[int32] = [1, 2, 3, 4, 5]
+//     d[1:4:1] = [10, 20]
+//     for x in d:
+//         print(x)
+//
+//     # Generator as RHS
+//     e: list[int32] = [1, 2, 3, 4, 5]
+//     e[::2] = gen3()
+//     for x in e:
+//         print(x)
 void main() {
-    // # Every other element
-    // a: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
-    // a[::2] = [10, 20, 30]
     ::tpy::list_set_stepped_slice(a, ::tpy::Slice{std::nullopt, std::nullopt, 2}, std::vector<int32_t>{10, 20, 30});
-    // for x in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Negative step: reverse order positions
-    // b: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> b = {1, 2, 3, 4, 5};
-    // b[::-2] = [50, 30, 10]
     ::tpy::list_set_stepped_slice(b, ::tpy::Slice{std::nullopt, std::nullopt, -2}, std::vector<int32_t>{50, 30, 10});
-    // for x in b:
     auto& __obj_1 = b;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Step with start/stop
-    // c: list[int32] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     std::vector<int32_t> c = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    // c[1:8:3] = [100, 200, 300]
     ::tpy::list_set_stepped_slice(c, ::tpy::Slice{1, 8, 3}, std::vector<int32_t>{100, 200, 300});
-    // for x in c:
     auto& __obj_2 = c;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Step=1 allows resize (same as basic slice)
-    // d: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> d = {1, 2, 3, 4, 5};
-    // d[1:4:1] = [10, 20]
     ::tpy::list_set_stepped_slice(d, ::tpy::Slice{1, 4, 1}, std::vector<int32_t>{10, 20});
-    // for x in d:
     auto& __obj_3 = d;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t x = *__beg_3;
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Generator as RHS
-    // e: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> e = {1, 2, 3, 4, 5};
-    // e[::2] = gen3()
     ::tpy::list_set_stepped_slice(e, ::tpy::Slice{std::nullopt, std::nullopt, 2}, gen3());
-    // for x in e:
     auto& __obj_4 = e;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t x = *__beg_4;
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

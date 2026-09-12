@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def use(a: A, k: int32, f: float64) -> int32:
+//     # Each scalar argument hoists its own variant temp.
+//     r = a.tag(k)
+//     r = a.tag(f)
+//     return r
 int32_t use(A& a, int32_t k, double f) {
-    // # Each scalar argument hoists its own variant temp.
-    // r = a.tag(k)
     ::tpy::Union<double, int32_t> __tmp_1 = k;
     int32_t r = a.tag(__tmp_1);
-    // r = a.tag(f)
     ::tpy::Union<double, int32_t> __tmp_2 = f;
     r = a.tag(__tmp_2);
-    // return r
     return r;
 }
 
 // def use_inherited(c: Child, k: int32) -> int32:
+//     return c.tag(k)
 int32_t use_inherited(Child& c, int32_t k) {
-    // return c.tag(k)
     ::tpy::Union<double, int32_t> __tmp_3 = k;
     return c.tag(__tmp_3);
 }
 
 // def use_lit(a: A) -> int32:
+//     # A coerced literal needs no temp.
+//     return a.tag(5)
 int32_t use_lit(A& a) {
-    // # A coerced literal needs no temp.
-    // return a.tag(5)
     return a.tag(5);
 }
 
 // def main() -> None:
+//     a = A(10)
+//     print(use(a, 2, 0.5))
+//     print(use_inherited(Child(3), 4))
+//     print(use_lit(a))
+//     print(a.outer())
 void main() {
-    // a = A(10)
     A a = A(10);
-    // print(use(a, 2, 0.5))
     std::cout << use(a, 2, 0.5) << "\n";
-    // print(use_inherited(Child(3), 4))
     Child __tmp_4 = Child(3);
     std::cout << use_inherited(__tmp_4, 4) << "\n";
-    // print(use_lit(a))
     std::cout << use_lit(a) << "\n";
-    // print(a.outer())
     std::cout << a.outer() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

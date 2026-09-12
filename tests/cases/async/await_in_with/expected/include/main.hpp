@@ -16,8 +16,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_value;
 struct __coro_caller;
 
+// async def value(n: int) -> int:
 __coro_value value(::tpy::BigInt n);
+// async def caller() -> int:
 __coro_caller caller();
+// def main() -> None:
 void main();
 
 // class Tracer:
@@ -42,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracer& obj) {
     return os;
 }
 
-// Async coroutine: value
+// async def value(n: int) -> int:
 struct __coro_value {
     int32_t __state;
     bool __cancel_pending;
@@ -64,7 +67,7 @@ struct __coro_value {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> int:
 struct __coro_caller {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -108,17 +111,18 @@ struct __coro_caller {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Tracer::Tracer(std::string_view label) : label(label) {}
 
 // def __enter__(self) -> None:
+//     print(f"enter {self.label}")
 inline void Tracer::__enter__() const {
-    // print(f"enter {self.label}")
     std::cout << std::format("enter {}", this->label) << "\n";
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print(f"exit {self.label}")
 inline void Tracer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print(f"exit {self.label}")
     std::cout << std::format("exit {}", this->label) << "\n";
 }
 void __tpy_init();

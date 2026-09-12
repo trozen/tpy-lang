@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def classify(v: int32 | None) -> str:
+//     match v:
+//         # Same alternatives as the flat `case None | 1 | 2:`.
+//         case (None | 1) | 2:
+//             return "none-or-small"
+//         case 3 | (4 | 5):
+//             return "medium"
+//         case _:
+//             return "other"
 std::string classify(std::optional<int32_t> v) {
-    // match v:
     auto& __match_subject_1 = v;
-    // case (None | 1) | 2:
     if (!__match_subject_1.has_value() || (__match_subject_1.has_value() && (*__match_subject_1) == 1) || (__match_subject_1.has_value() && (*__match_subject_1) == 2)) {
-        // return "none-or-small"
         return "none-or-small";
-    // case 3 | (4 | 5):
     } else if ((__match_subject_1.has_value() && (*__match_subject_1) == 3) || (__match_subject_1.has_value() && (*__match_subject_1) == 4) || (__match_subject_1.has_value() && (*__match_subject_1) == 5)) {
-        // return "medium"
         return "medium";
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
-    // # Same alternatives as the flat `case None | 1 | 2:`.
 }
 
 // def main() -> None:
+//     print(classify(None))
+//     print(classify(1))
+//     print(classify(2))
+//     print(classify(4))
+//     print(classify(9))
 void main() {
-    // print(classify(None))
     std::cout << classify(std::nullopt) << "\n";
-    // print(classify(1))
     std::cout << classify(1) << "\n";
-    // print(classify(2))
     std::cout << classify(2) << "\n";
-    // print(classify(4))
     std::cout << classify(4) << "\n";
-    // print(classify(9))
     std::cout << classify(9) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def observe(items: readonly[list[int32]]) -> None:
+//     print(get_len(items))
+//     print(get_first(items))
 void observe(const std::vector<int32_t>& items) {
-    // print(get_len(items))
     std::cout << get_len(items) << "\n";
-    // print(get_first(items))
     std::cout << get_first(items) << "\n";
 }
 
 // def main() -> None:
+//     xs: list[int32] = [int32(10), int32(20), int32(30)]
+//     observe(xs)
 void main() {
-    // xs: list[int32] = [int32(10), int32(20), int32(30)]
     std::vector<int32_t> xs = {10, 20, 30};
-    // observe(xs)
     observe(xs);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

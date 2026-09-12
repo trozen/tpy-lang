@@ -6,45 +6,45 @@ namespace tpyapp::main {
 
 // @error_return(MyErr)
 // def fallible(x: int32) -> int32:
+//     if x < 0:
+//         raise MyErr
+//     return x * 2
 std::expected<int32_t, MyErr> fallible(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // raise MyErr
         return ::tpy::make_unexpected(MyErr{});
     }
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // @error_return(MyErr)
 // def caller(x: int32) -> int32:
+//     """Propagate-out: finally runs even when the call errors."""
+//     try:
+//         y = fallible(x)
+//         return y
+//     finally:
+//         print("cleanup-1")
 std::expected<int32_t, MyErr> caller(int32_t x) {
-    // try:
     int32_t y;
     {
         bool __fin_ran_1 = false;
         try {
-            // y = fallible(x)
             {
                 auto __try_tmp_1 = fallible(x);
                 if (!__try_tmp_1.has_value()) {
                     std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_1.error());
                     __fin_ran_1 = true;
-                    // print("cleanup-1")
                     std::cout << "cleanup-1" << "\n";
                     return __tpy_ret_0;
                 }
                 y = ::tpy::unwrap_ref_move(*__try_tmp_1);
             }
-            // return y
             std::expected<int32_t, MyErr> __tpy_ret_1 = y;
             __fin_ran_1 = true;
-            // print("cleanup-1")
             std::cout << "cleanup-1" << "\n";
             return __tpy_ret_1;
         } catch (...) {
             if (!__fin_ran_1) {
-                // print("cleanup-1")
                 std::cout << "cleanup-1" << "\n";
             }
             throw;
@@ -54,34 +54,34 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
 
 // @error_return(MyErr)
 // def caller_assign(x: int32) -> int32:
+//     """Propagate-out via assignment to existing var."""
+//     z: int32 = 0
+//     try:
+//         z = fallible(x)
+//         return z
+//     finally:
+//         print("cleanup-2")
 std::expected<int32_t, MyErr> caller_assign(int32_t x) {
-    // z: int32 = 0
     int32_t z = 0;
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
-            // z = fallible(x)
             {
                 auto __try_tmp_2 = fallible(x);
                 if (!__try_tmp_2.has_value()) {
                     std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_2.error());
                     __fin_ran_2 = true;
-                    // print("cleanup-2")
                     std::cout << "cleanup-2" << "\n";
                     return __tpy_ret_0;
                 }
                 z = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
-            // return z
             std::expected<int32_t, MyErr> __tpy_ret_1 = z;
             __fin_ran_2 = true;
-            // print("cleanup-2")
             std::cout << "cleanup-2" << "\n";
             return __tpy_ret_1;
         } catch (...) {
             if (!__fin_ran_2) {
-                // print("cleanup-2")
                 std::cout << "cleanup-2" << "\n";
             }
             throw;
@@ -91,95 +91,106 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
 
 // @error_return(MyErr)
 // def caller_stmt(x: int32) -> None:
+//     """Propagate-out via statement-level call (result discarded)."""
+//     try:
+//         fallible(x)
+//     finally:
+//         print("cleanup-3")
 std::expected<void, MyErr> caller_stmt(int32_t x) {
-    // try:
     {
         bool __fin_ran_3 = false;
         try {
-            // fallible(x)
             {
                 auto __try_tmp_3 = fallible(x);
                 if (!__try_tmp_3.has_value()) {
                     std::expected<void, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_3.error());
                     __fin_ran_3 = true;
-                    // print("cleanup-3")
                     std::cout << "cleanup-3" << "\n";
                     return __tpy_ret_0;
                 }
             }
         } catch (...) {
             if (!__fin_ran_3) {
-                // print("cleanup-3")
                 std::cout << "cleanup-3" << "\n";
             }
             throw;
         }
-        // print("cleanup-3")
         std::cout << "cleanup-3" << "\n";
     }
     return {};
 }
 
 // def main() -> None:
+//     try:
+//         v = caller(-1)
+//     except MyErr:
+//         print("error-1")
+//     else:
+//         print(v)
+//
+//     try:
+//         v = caller(3)
+//     except MyErr:
+//         print("error-1")
+//     else:
+//         print(v)
+//
+//     try:
+//         v = caller_assign(-1)
+//     except MyErr:
+//         print("error-2")
+//     else:
+//         print(v)
+//
+//     try:
+//         caller_stmt(-1)
+//     except MyErr:
+//         print("error-3")
 void main() {
-    // try:
     int32_t v;
     {
-        // v = caller(-1)
         {
             auto __try_tmp_5 = caller(-1);
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_4;
         // except MyErr:
         __except_4:;
-        // print("error-1")
         std::cout << "error-1" << "\n";
         __after_try_4:;
     }
-    // try:
     {
-        // v = caller(3)
         {
             auto __try_tmp_7 = caller(3);
             if (!__try_tmp_7.has_value()) goto __except_6;
             v = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_6;
         // except MyErr:
         __except_6:;
-        // print("error-1")
         std::cout << "error-1" << "\n";
         __after_try_6:;
     }
-    // try:
     {
-        // v = caller_assign(-1)
         {
             auto __try_tmp_9 = caller_assign(-1);
             if (!__try_tmp_9.has_value()) goto __except_8;
             v = ::tpy::unwrap_ref_move(*__try_tmp_9);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_8;
         // except MyErr:
         __except_8:;
-        // print("error-2")
         std::cout << "error-2" << "\n";
         __after_try_8:;
     }
-    // try:
     {
-        // caller_stmt(-1)
         {
             auto __try_tmp_11 = caller_stmt(-1);
             if (!__try_tmp_11.has_value()) goto __except_10;
@@ -187,18 +198,17 @@ void main() {
         goto __after_try_10;
         // except MyErr:
         __except_10:;
-        // print("error-3")
         std::cout << "error-3" << "\n";
         __after_try_10:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,121 +5,131 @@ namespace tpyapp::main {
 
 
 // def show(u: str) -> None:
+//     p = urlsplit(u)
+//     print(p.scheme + " | " + p.netloc + " | " + p.path + " | " + p.query
+//           + " | " + p.fragment)
 void show(std::string_view u) {
-    // p = urlsplit(u)
     ::tpystd::urllib::parse::SplitResult p = ::tpystd::urllib::parse::urlsplit(u);
-    // print(p.scheme + " | " + p.netloc + " | " + p.path + " | " + p.query
-    // + " | " + p.fragment)
     std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(p.scheme, " | ")), p.netloc)), " | ")), p.path)), " | ")), p.query)), " | ")), p.fragment)) << "\n";
 }
 
 // def main() -> None:
+//     show("http://10.72.70.1:8002/das/tables?fmt=json#sec")
+//     show("https://user:pw@example.com/a/b")
+//     show("/relative/only?x=1")
+//     show("//netloc-only/p")
+//     show("HTTPS://CAPS.Example.COM/Path")
+//     show("")
+//
+//     full = urlsplit("http://user:secret@Host.Example:8002/p?q=1#f")
+//     host = full.hostname
+//     print("hostname=" + (host if host is not None else "None"))
+//     port = full.port
+//     if port is None:
+//         print("port=None")
+//     else:
+//         print("port=", port)
+//     user = full.username
+//     print("user=" + (user if user is not None else "None"))
+//     pw = full.password
+//     print("pass=" + (pw if pw is not None else "None"))
+//     print("geturl=" + full.geturl())
+//
+//     # No userinfo / no port -> None.
+//     bare = urlsplit("http://plainhost/p")
+//     print("bare-port-none=", bare.port is None)
+//     print("bare-user-none=", bare.username is None)
+//
+//     # urlparse splits the legacy ;params segment off the last path element.
+//     pr = urlparse("http://h/a/b;type=d?q=1#f")
+//     print("params=" + pr.params + " path=" + pr.path)
+//     print("rebuilt=" + pr.geturl())
+//
+//     print(urlunsplit(("http", "h:9", "/p", "a=b", "frag")))
+//     print(urlunparse(("http", "h", "/p", "k=v", "q=1", "f")))
+//
+//     # IPv6 bracketed host; unbalanced brackets raise ValueError (CPython parity).
+//     v6 = urlsplit("http://[::1]:9000/v6")
+//     vh = v6.hostname
+//     print("v6=" + (vh if vh is not None else "None"))
+//     try:
+//         bad = urlsplit("http://[::1/x")
+//         print("no-raise " + bad.netloc)
+//     except ValueError:
+//         print("ipv6-ValueError")
+//
+//     # Non-numeric port raises ValueError (CPython parity).
+//     try:
+//         bp = urlsplit("http://h:zz/x").port
+//         print("no-raise port")
+//     except ValueError:
+//         print("port-ValueError")
+//
+//     # Leading whitespace lstripped, interior tab removed, trailing kept.
+//     print("[" + urlsplit("  http://h/a\tb/p  ").path + "]")
 void main() {
-    // show("http://10.72.70.1:8002/das/tables?fmt=json#sec")
     show("http://10.72.70.1:8002/das/tables?fmt=json#sec");
-    // show("https://user:pw@example.com/a/b")
     show("https://user:pw@example.com/a/b");
-    // show("/relative/only?x=1")
     show("/relative/only?x=1");
-    // show("//netloc-only/p")
     show("//netloc-only/p");
-    // show("HTTPS://CAPS.Example.COM/Path")
     show("HTTPS://CAPS.Example.COM/Path");
-    // show("")
     show("");
-    // full = urlsplit("http://user:secret@Host.Example:8002/p?q=1#f")
     ::tpystd::urllib::parse::SplitResult full = ::tpystd::urllib::parse::urlsplit("http://user:secret@Host.Example:8002/p?q=1#f");
-    // host = full.hostname
     std::optional<std::string> host = full.hostname();
-    // print("hostname=" + (host if host is not None else "None"))
     std::cout << (::tpy::str_concat("hostname=", (((host.has_value())) ? ((*host)) : ("None")))) << "\n";
-    // port = full.port
     std::optional<::tpy::BigInt> port = full.port();
-    // if port is None:
     if ((!port.has_value())) {
-        // print("port=None")
         std::cout << "port=None" << "\n";
-    // else:
     } else {
-        // print("port=", port)
         std::cout << "port=" << " " << ::tpy::print_optional_val(port) << "\n";
     }
-    // user = full.username
     std::optional<std::string> user = full.username();
-    // print("user=" + (user if user is not None else "None"))
     std::cout << (::tpy::str_concat("user=", (((user.has_value())) ? ((*user)) : ("None")))) << "\n";
-    // pw = full.password
     std::optional<std::string> pw = full.password();
-    // print("pass=" + (pw if pw is not None else "None"))
     std::cout << (::tpy::str_concat("pass=", (((pw.has_value())) ? ((*pw)) : ("None")))) << "\n";
-    // print("geturl=" + full.geturl())
     std::cout << (::tpy::str_concat("geturl=", full.geturl())) << "\n";
-    // # No userinfo / no port -> None.
-    // bare = urlsplit("http://plainhost/p")
     ::tpystd::urllib::parse::SplitResult bare = ::tpystd::urllib::parse::urlsplit("http://plainhost/p");
-    // print("bare-port-none=", bare.port is None)
     std::cout << "bare-port-none=" << " " << ::tpy::print_bool((!bare.port().has_value())) << "\n";
-    // print("bare-user-none=", bare.username is None)
     std::cout << "bare-user-none=" << " " << ::tpy::print_bool((!bare.username().has_value())) << "\n";
-    // # urlparse splits the legacy ;params segment off the last path element.
-    // pr = urlparse("http://h/a/b;type=d?q=1#f")
     ::tpystd::urllib::parse::ParseResult pr = ::tpystd::urllib::parse::urlparse("http://h/a/b;type=d?q=1#f");
-    // print("params=" + pr.params + " path=" + pr.path)
     std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("params=", pr.params)), " path=")), pr.path)) << "\n";
-    // print("rebuilt=" + pr.geturl())
     std::cout << (::tpy::str_concat("rebuilt=", pr.geturl())) << "\n";
-    // print(urlunsplit(("http", "h:9", "/p", "a=b", "frag")))
     std::cout << ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{"http", "h:9", "/p", "a=b", "frag"}) << "\n";
-    // print(urlunparse(("http", "h", "/p", "k=v", "q=1", "f")))
     std::cout << ::tpystd::urllib::parse::urlunparse(std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>{"http", "h", "/p", "k=v", "q=1", "f"}) << "\n";
-    // # IPv6 bracketed host; unbalanced brackets raise ValueError (CPython parity).
-    // v6 = urlsplit("http://[::1]:9000/v6")
     ::tpystd::urllib::parse::SplitResult v6 = ::tpystd::urllib::parse::urlsplit("http://[::1]:9000/v6");
-    // vh = v6.hostname
     std::optional<std::string> vh = v6.hostname();
-    // print("v6=" + (vh if vh is not None else "None"))
     std::cout << (::tpy::str_concat("v6=", (((vh.has_value())) ? ((*vh)) : ("None")))) << "\n";
-    // try:
     {
         try {
-            // bad = urlsplit("http://[::1/x")
             ::tpystd::urllib::parse::SplitResult bad = ::tpystd::urllib::parse::urlsplit("http://[::1/x");
-            // print("no-raise " + bad.netloc)
             std::cout << (::tpy::str_concat("no-raise ", bad.netloc)) << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("ipv6-ValueError")
             std::cout << "ipv6-ValueError" << "\n";
         }
     }
-    // # Non-numeric port raises ValueError (CPython parity).
-    // try:
     {
         try {
-            // bp = urlsplit("http://h:zz/x").port
             std::optional<::tpy::BigInt> bp = ::tpystd::urllib::parse::urlsplit("http://h:zz/x").port();
-            // print("no-raise port")
             std::cout << "no-raise port" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("port-ValueError")
             std::cout << "port-ValueError" << "\n";
         }
     }
-    // # Leading whitespace lstripped, interior tab removed, trailing kept.
-    // print("[" + urlsplit("  http://h/a\tb/p  ").path + "]")
     std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::urllib::parse::urlsplit("  http://h/a\tb/p  ").path)), "]")) << "\n";
 }
 
+// # urllib.parse: urlsplit/urlparse components, the netloc-derived
+// # .hostname/.port/.username/.password accessors, geturl(), urlunsplit/urlunparse.
+// from urllib.parse import urlsplit, urlparse, urlunsplit, urlunparse
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # urllib.parse: urlsplit/urlparse components, the netloc-derived
-    // # .hostname/.port/.username/.password accessors, geturl(), urlunsplit/urlunparse.
-    // from urllib.parse import urlsplit, urlparse, urlunsplit, urlunparse
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
-    // main()
     main();
 }
 

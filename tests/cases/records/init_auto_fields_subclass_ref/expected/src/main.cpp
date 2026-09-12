@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int] = [1, 2]
+//     b = Bag(xs)
+//     b.items.append(3)
+//     print(len(b.items))
+//     print(b.items[2])
 void main() {
-    // xs: list[int] = [1, 2]
     std::vector<::tpy::BigInt> xs = {1, 2};
-    // b = Bag(xs)
     Bag b = Bag(xs);
-    // b.items.append(3)
     b.items.push_back(3);
-    // print(len(b.items))
     std::cout << ::tpy::__len__(b.items) << "\n";
-    // print(b.items[2])
     std::cout << ::tpy::__getitem__(b.items, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

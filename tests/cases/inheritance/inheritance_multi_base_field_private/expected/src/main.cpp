@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Service()
+//     s.tick_request()
+//     s.tick_request()
+//     s.tick_cache()
+//     print(s.report())
 void main() {
-    // s = Service()
     Service s = Service();
-    // s.tick_request()
     s.tick_request();
-    // s.tick_request()
     s.tick_request();
-    // s.tick_cache()
     s.tick_cache();
-    // print(s.report())
     std::cout << s.report() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

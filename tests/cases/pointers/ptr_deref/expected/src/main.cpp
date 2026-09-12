@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: int32 = 42
+//     p: Ptr[int32] = take_ptr(x)
+//     print(p.__deref__())
+//
+//     pt: Point = Point(10, 20)
+//     pp: Ptr[Point] = take_ptr(pt)
+//     print(pp.__deref__().x)
+//     print(pp.__deref__().y)
 void main() {
-    // x: int32 = 42
     int32_t x = 42;
-    // p: Ptr[int32] = take_ptr(x)
     int32_t* p = &x;
-    // print(p.__deref__())
     std::cout << ::tpy::deref_check(p) << "\n";
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // pp: Ptr[Point] = take_ptr(pt)
     Point* pp = &pt;
-    // print(pp.__deref__().x)
     std::cout << ::tpy::deref_check(pp).x << "\n";
-    // print(pp.__deref__().y)
     std::cout << ::tpy::deref_check(pp).y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

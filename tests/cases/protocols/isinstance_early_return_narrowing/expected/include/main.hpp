@@ -32,22 +32,39 @@ struct CM;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bare_negative(p: Pet) -> str:
 std::string bare_negative(const Pet& p);
+// def bare_raise(p: Pet) -> str:
 std::string bare_raise(const Pet& p);
+// def bare_const(p: readonly[Pet]) -> str:
 std::string bare_const(const Pet& p);
+// def optional_negative(p: Optional[Pet]) -> str:
 std::string optional_negative(const Pet* p);
+// def positive_then_more(p: Pet) -> str:
 std::string positive_then_more(const Pet& p);
+// def sequential_negative(p: Pet) -> str:
 std::string sequential_negative(const Pet& p);
+// def triple_chain(p: Pet) -> str:
 std::string triple_chain(const Pet& p);
+// def assert_then_assert(p: Pet) -> str:
 std::string assert_then_assert(const Pet& p);
+// def assert_then_early_return(p: Pet) -> str:
 std::string assert_then_early_return(const Pet& p);
+// def sibling_vars(p: Pet, q: Pet) -> str:
 std::string sibling_vars(const Pet& p, const Pet& q);
+// def narrow_in_for_body(p: Pet, n: int) -> str:
 std::string narrow_in_for_body(const Pet& p, const ::tpy::BigInt& n);
+// def narrow_in_while_body(p: Pet) -> str:
 std::string narrow_in_while_body(const Pet& p);
+// def narrow_in_try_body(p: Pet) -> str:
 std::string narrow_in_try_body(const Pet& p);
+// def narrow_in_match_case(p: Pet, label: int) -> str:
 std::string narrow_in_match_case(const Pet& p, const ::tpy::BigInt& label);
+// def narrow_in_with_body(p: Pet) -> str:
 std::string narrow_in_with_body(const Pet& p);
+// def safe_raise(p: Pet) -> str:
 std::string safe_raise(const Pet& p);
+// def main() -> None:
 void main();
 
 // class Pet(Tagged):
@@ -176,58 +193,63 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Pet::Pet(std::string_view n) : _name(n) {}
 
 // @readonly
 // def name(self) -> str:
+//     return self._name
 inline std::string Pet::name() const {
-    // return self._name
     return this->_name;
 }
 
 // # Minimal context manager used by narrow_in_with_body. No state -- the
 // # interesting part is the `with` block's C++ scope, not the manager.
 // def __enter__(self) -> "CM":
+//     return self
 inline CM& CM::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, et, exc_val, etb) -> None:
+//     pass
 inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* exc_val, std::monostate etb) const {
-    // pass
 }
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline Dog::Dog(std::string_view n) : Pet(n) {}
 
 // @readonly
 // def bark(self) -> str:
+//     return "woof from " + self._name
 inline std::string Dog::bark() const {
-    // return "woof from " + self._name
     return (::tpy::str_concat("woof from ", this->_name));
 }
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline Cat::Cat(std::string_view n) : Pet(n) {}
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline WatchDog::WatchDog(std::string_view n) : Dog(n) {}
 
 // @readonly
 // def alert(self) -> str:
+//     return "ALERT from " + self._name
 inline std::string WatchDog::alert() const {
-    // return "ALERT from " + self._name
     return (::tpy::str_concat("ALERT from ", this->_name));
 }
 
 // def __init__(self, n: str) -> None:
+//     super().__init__(n)
 inline GuardDog::GuardDog(std::string_view n) : WatchDog(n) {}
 
 // @readonly
 // def patrol(self) -> str:
+//     return "PATROL by " + self._name
 inline std::string GuardDog::patrol() const {
-    // return "PATROL by " + self._name
     return (::tpy::str_concat("PATROL by ", this->_name));
 }
 void __tpy_init();

@@ -11,6 +11,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -34,22 +35,23 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, label: int32) -> None:
+//     self.label = label
 inline Counter::Counter(int32_t label) : label(label) {}
 
 // def total(self, base: int32, *values: int32, multiplier: int32 = int32(1)) -> int32:
+//     result: int32 = self.label + base
+//     for v in values:
+//         result += v
+//     return result * multiplier
 inline int32_t Counter::total(int32_t base, ::tpy::varargs<const int32_t> values, int32_t multiplier) const {
-    // result: int32 = self.label + base
     int32_t result = (::tpy::add_check<int32_t>(this->label, base));
-    // for v in values:
     auto& __obj_0 = values;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // result += v
         result = ::tpy::add_check<int32_t>(result, v);
     }
-    // return result * multiplier
     return (::tpy::mul_check<int32_t>(result, multiplier));
 }
 void __tpy_init();

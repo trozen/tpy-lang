@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def show_num(x: Num) -> None:
+//     if isinstance(x, bool):
+//         print("bool")
+//     else:
+//         print("int")
 void show_num(const Num& x) {
-    // if isinstance(x, bool):
     if (std::holds_alternative<bool>(x)) {
         const auto& __x = std::get<bool>(x);
-        // print("bool")
         std::cout << "bool" << "\n";
-    // else:
     } else {
         const auto& __x = std::get<::tpy::BigInt>(x);
-        // print("int")
         std::cout << "int" << "\n";
     }
 }
 
 // def main() -> None:
+//     a: Num = 42
+//     b: Num = True
+//     show_num(a)
+//     show_num(b)
 void main() {
-    // a: Num = 42
     Num a = 42;
-    // b: Num = True
     Num b = true;
-    // show_num(a)
     show_num(a);
-    // show_num(b)
     show_num(b);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

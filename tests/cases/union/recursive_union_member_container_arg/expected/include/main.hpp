@@ -11,7 +11,9 @@ struct V;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first_kind(v: V) -> str:
 std::string first_kind(const V& v);
+// def main() -> None:
 void main();
 
 struct V {

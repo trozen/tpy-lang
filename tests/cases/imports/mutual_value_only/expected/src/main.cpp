@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(K())
+//     print(H())
+//     print(K_then_H())
 void main() {
-    // print(K())
     std::cout << ::tpyapp::a::K() << "\n";
-    // print(H())
     std::cout << ::tpyapp::b::H() << "\n";
-    // print(K_then_H())
     std::cout << ::tpyapp::a::K_then_H() << "\n";
 }
 
+// # Pure value-level mutual reference. a.py defines K(), imports H from b
+// # and uses it; b.py defines H(), imports K from a and uses it. Both
+// # modules call across the cycle. Sema accepts via skeletal FunctionInfo
+// # pre-registration; the C++ build uses fwd.hpp to break the
+// # complete-type cyclic include.
+// from a import K, K_then_H
+// from b import H
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Pure value-level mutual reference. a.py defines K(), imports H from b
-    // # and uses it; b.py defines H(), imports K from a and uses it. Both
-    // # modules call across the cycle. Sema accepts via skeletal FunctionInfo
-    // # pre-registration; the C++ build uses fwd.hpp to break the
-    // # complete-type cyclic include.
-    // from a import K, K_then_H
     ::tpyapp::a::__tpy_init();
-    // from b import H
     ::tpyapp::b::__tpy_init();
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ inline auto& shared_value = ::tpyapp::mod_c::shared_value;
 
 inline constexpr std::string_view __name__ = "mod_b";
 
+// def func_b() -> None:
 void func_b();
 
 void __tpy_init();

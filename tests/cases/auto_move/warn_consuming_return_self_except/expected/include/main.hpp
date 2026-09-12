@@ -11,6 +11,7 @@ struct Widget;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Widget:
@@ -34,27 +35,29 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Widget::Widget(int32_t n) : n(n) {}
 
 // def consume(self: Own[Self]) -> Own[Self]:
+//     try:
+//         if self.n > 0:
+//             raise ValueError("bad")
+//         # The handler below reads `self` again, so this is not a last
+//         # use and the owning return copies.
+//         return self  # tpyc: warning(/copies Widget into owned storage/)
+//     except ValueError:
+//         print("handler sees", self.n)
+//         # The last use on this path: moves, no diagnostic.
+//         return self  # tpyc: ok
 inline Widget Widget::consume() && {
-    // try:
     {
         try {
-            // if self.n > 0:
             if ((this->n > 0)) {
-                // raise ValueError("bad")
                 throw ::tpy::ValueError("bad");
             }
-            // # The handler below reads `self` again, so this is not a last
-            // # use and the owning return copies.
-            // return self  # tpyc: warning(/copies Widget into owned storage/)
             return Widget((*this));
         } catch (const ::tpy::ValueError&) {
-            // print("handler sees", self.n)
             std::cout << "handler sees" << " " << this->n << "\n";
-            // # The last use on this path: moves, no diagnostic.
-            // return self  # tpyc: ok
             return std::move((*this));
         }
     }

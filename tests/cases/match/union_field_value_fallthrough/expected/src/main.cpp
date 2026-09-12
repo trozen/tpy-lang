@@ -5,23 +5,29 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> str:
+//     match a:
+//         case Dog(legs=4):  # tpyc: ok
+//             return "quad dog"
+//         case Dog(legs=3):  # tpyc: ok
+//             return "tripod dog"
+//         case Dog():
+//             return "some dog"
+//         case Cat(name="rex"):  # tpyc: ok
+//             return "rex cat"
+//         case Cat():
+//             return "cat"
 std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // case Cat(name="rex"):  # tpyc: ok
         {
             if (__case_0.name == "rex") {
-                // return "rex cat"
                 return "rex cat";
                 goto __match_end_2;
             }
         }
-        // case Cat():
         {
-            // return "cat"
             return "cat";
             goto __match_end_2;
         }
@@ -29,25 +35,19 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Dog(legs=4):  # tpyc: ok
         {
             if (__case_1.legs == 4) {
-                // return "quad dog"
                 return "quad dog";
                 goto __match_end_2;
             }
         }
-        // case Dog(legs=3):  # tpyc: ok
         {
             if (__case_1.legs == 3) {
-                // return "tripod dog"
                 return "tripod dog";
                 goto __match_end_2;
             }
         }
-        // case Dog():
         {
-            // return "some dog"
             return "some dog";
             goto __match_end_2;
         }
@@ -59,30 +59,28 @@ __match_end_2:;
 }
 
 // def either(a: Dog | Cat) -> str:
+//     match a:
+//         case Dog(legs=4) | Cat():  # tpyc: ok
+//             return "quaddog-or-cat"
+//         case _:
+//             return "other"
 std::string either(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 0: {
-        // case Dog(legs=4) | Cat():  # tpyc: ok
-        // return "quaddog-or-cat"
         return "quaddog-or-cat";
         goto __match_end_2;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Dog(legs=4) | Cat():  # tpyc: ok
         {
             if (__case_1.legs == 4) {
-                // return "quaddog-or-cat"
                 return "quaddog-or-cat";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // return "other"
             return "other";
             goto __match_end_2;
         }
@@ -94,39 +92,39 @@ __match_end_2:;
 }
 
 // def main() -> None:
+//     print(describe(Dog(4)))
+//     print(describe(Dog(3)))
+//     print(describe(Dog(2)))
+//     print(describe(Cat("rex")))
+//     print(describe(Cat("x")))
+//     print(either(Dog(4)))
+//     print(either(Dog(2)))
+//     print(either(Cat("x")))
 void main() {
-    // print(describe(Dog(4)))
     Dog __tmp_1 = Dog(::tpy::BigInt(4));
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
-    // print(describe(Dog(3)))
     Dog __tmp_2 = Dog(::tpy::BigInt(3));
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
-    // print(describe(Dog(2)))
     Dog __tmp_3 = Dog(::tpy::BigInt(2));
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n";
-    // print(describe(Cat("rex")))
     Cat __tmp_4 = Cat("rex");
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}) << "\n";
-    // print(describe(Cat("x")))
     Cat __tmp_5 = Cat("x");
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_5}) << "\n";
-    // print(either(Dog(4)))
     Dog __tmp_6 = Dog(::tpy::BigInt(4));
     std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_6}) << "\n";
-    // print(either(Dog(2)))
     Dog __tmp_7 = Dog(::tpy::BigInt(2));
     std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_7}) << "\n";
-    // print(either(Cat("x")))
     Cat __tmp_8 = Cat("x");
     std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_8}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

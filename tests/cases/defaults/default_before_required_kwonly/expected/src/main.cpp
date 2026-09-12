@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def f(a: int64, b: int64 = 10, *, c: int64) -> int64:
+//     return a * 100 + b * 10 + c
 int64_t f(int64_t a, int64_t b, int64_t c) {
-    // return a * 100 + b * 10 + c
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 100)), (::tpy::mul_check<int64_t>(b, 10)))), c));
 }
 
 // def g(a: int64, b: int64 = 1, c: int64 = 2, *, d: int64, e: int64 = 5) -> int64:
+//     return a * 10000 + b * 1000 + c * 100 + d * 10 + e
 int64_t g(int64_t a, int64_t b, int64_t c, int64_t d, int64_t e) {
-    // return a * 10000 + b * 1000 + c * 100 + d * 10 + e
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10000)), (::tpy::mul_check<int64_t>(b, 1000)))), (::tpy::mul_check<int64_t>(c, 100)))), (::tpy::mul_check<int64_t>(d, 10)))), e));
 }
 
 // def main() -> None:
+//     print(f(1, c=3))
+//     print(f(1, 2, c=3))
+//
+//     print(g(1, d=4))
+//     print(g(1, 7, d=4))
+//     print(g(1, 7, 8, d=4, e=9))
 void main() {
-    // print(f(1, c=3))
     std::cout << f(1, 10, 3) << "\n";
-    // print(f(1, 2, c=3))
     std::cout << f(1, 2, 3) << "\n";
-    // print(g(1, d=4))
     std::cout << g(1, 1, 2, 4) << "\n";
-    // print(g(1, 7, d=4))
     std::cout << g(1, 7, 2, 4) << "\n";
-    // print(g(1, 7, 8, d=4, e=9))
     std::cout << g(1, 7, 8, 4, 9) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

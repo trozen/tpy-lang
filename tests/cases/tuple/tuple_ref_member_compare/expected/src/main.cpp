@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Box(5)
+//     b = Box(5)
+//     c = Box(7)
+//     print((1, a) == (1, b))
+//     print((1, a) != (1, b))
+//     print((1, a) == (2, a))
+//     print((1, a) < (1, c))
+//     print((1, c) <= (1, a))
+//     print((2, a) > (1, c))
+//     print((1, a) >= (1, b))
+//     ts = [(1, a), (2, c)]
+//     print((1, b) in ts)
+//     print((2, b) in ts)
+//     print((2, c) not in ts)
 void main() {
-    // a = Box(5)
     Box a = Box(5);
-    // b = Box(5)
     Box b = Box(5);
-    // c = Box(7)
     Box c = Box(7);
-    // print((1, a) == (1, b))
     std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)})) << "\n";
-    // print((1, a) != (1, b))
     std::cout << ::tpy::print_bool((!::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)}))) << "\n";
-    // print((1, a) == (2, a))
     std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{2, &(a)})) << "\n";
-    // print((1, a) < (1, c))
     std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(c)})) << "\n";
-    // print((1, c) <= (1, a))
     std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(c)}))) << "\n";
-    // print((2, a) > (1, c))
     std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(c)}, std::tuple<int32_t, Box*>{2, &(a)})) << "\n";
-    // print((1, a) >= (1, b))
     std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)}))) << "\n";
-    // ts = [(1, a), (2, c)]
     std::array<std::tuple<int32_t, Box>, 2> ts = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{1, &(a)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{2, &(c)})};
-    // print((1, b) in ts)
     std::cout << ::tpy::print_bool(std::ranges::contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{1, &(b)}))) << "\n";
-    // print((2, b) in ts)
     std::cout << ::tpy::print_bool(std::ranges::contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{2, &(b)}))) << "\n";
-    // print((2, c) not in ts)
     std::cout << ::tpy::print_bool(!std::ranges::contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{2, &(c)}))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

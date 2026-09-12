@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Explicit type args: a generic function isn't subscriptable under CPython
+//     # (see no_cpython.txt), mirroring tpy.thread.spawn's call form.
+//     kept = dispatch[Token](Token(42))
+//     print("kept:", kept.value())
 void main() {
-    // # Explicit type args: a generic function isn't subscriptable under CPython
-    // # (see no_cpython.txt), mirroring tpy.thread.spawn's call form.
-    // kept = dispatch[Token](Token(42))
     Token kept = dispatch<Token>(Token(42));
-    // print("kept:", kept.value())
     std::cout << "kept:" << " " << kept.value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

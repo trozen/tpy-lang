@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(transform(lambda s: s + "!", "hello"))
+//     print(transform(lambda s: s + s, "ab"))
 void main() {
-    // print(transform(lambda s: s + "!", "hello"))
     std::cout << transform([](std::string_view s) -> std::string { return (::tpy::str_concat(s, "!")); }, "hello") << "\n";
-    // print(transform(lambda s: s + s, "ab"))
     std::cout << transform([](std::string_view s) -> std::string { return (::tpy::str_concat(s, s)); }, "ab") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

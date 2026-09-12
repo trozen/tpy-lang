@@ -35,11 +35,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def mag(self) -> int32:
+//     return self.x + self.y
 inline int32_t Point::mag() const {
-    // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
 void __tpy_init();

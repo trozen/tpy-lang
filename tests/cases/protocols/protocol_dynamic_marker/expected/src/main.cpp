@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def classify(r: Optional[Root]) -> str:
+//     if r is None:
+//         return "<none>"
+//     if isinstance(r, Sub):  # tpyc: ok -- dynamic_cast through Tagged-rooted chain
+//         narrowed = r  # tpyc: type(Sub)
+//         return f"sub:{narrowed.name}:{narrowed.extra}"
+//     return "root:" + r.name
 std::string classify(const Root* r) {
-    // if r is None:
     if ((r == nullptr)) {
-        // return "<none>"
         return "<none>";
     }
-    // if isinstance(r, Sub):  # tpyc: ok -- dynamic_cast through Tagged-rooted chain
     if (const Sub* __r_ptr = dynamic_cast<const Sub*>(r); (__r_ptr != nullptr)) {
-        // narrowed = r  # tpyc: type(Sub)
         const Sub& narrowed = (*__r_ptr);
-        // return f"sub:{narrowed.name}:{narrowed.extra}"
         return std::format("sub:{}:{}", narrowed.name, (narrowed.extra).to_string());
     }
-    // return "root:" + r.name
     return (::tpy::str_concat("root:", r->name));
 }
 
 // def main() -> None:
+//     # rvalue construction into Optional[Root] -- preserved as Sub via no-slice
+//     print(classify(Sub("a", 7)))
+//     print(classify(Root("b")))
+//     print(classify(None))
 void main() {
-    // # rvalue construction into Optional[Root] -- preserved as Sub via no-slice
-    // print(classify(Sub("a", 7)))
     Sub __tmp_1 = Sub("a", ::tpy::BigInt(7));
     std::cout << classify(&(__tmp_1)) << "\n";
-    // print(classify(Root("b")))
     Root __tmp_2 = Root("b");
     std::cout << classify(&(__tmp_2)) << "\n";
-    // print(classify(None))
     std::cout << classify(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

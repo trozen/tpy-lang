@@ -5,48 +5,50 @@ namespace tpyapp::main {
 
 
 // def f(p: Point) -> int32:
+//     match p:  # tpyc: warning(/non\-exhaustive\ match\ on\ 'Point';\ no\ unconditional/)
+//         case Point(x=1, y=0):
+//             return 5
+//         # The wildcard alternative makes the whole arm unconditional.
+//         case Point(x=0, y=0) | _:
+//             p.y = 7
+//             return 1
+//     return 9
 int32_t f(Point& p) {
-    // match p:  # tpyc: warning(/non\-exhaustive\ match\ on\ 'Point';\ no\ unconditional/)
     auto& __match_subject_1 = p;
-    // case Point(x=1, y=0):
     if (__match_subject_1.x == 1 && __match_subject_1.y == 0) {
-        // return 5
         return 5;
-    // case Point(x=0, y=0) | _:
     } else {
-        // p.y = 7
         p.y = 7;
-        // return 1
         return 1;
     }
-    // return 9
     return 9;
 }
 
 // def main() -> None:
+//     print(f(Point(1, 0)))
+//     pt = Point(2, 3)
+//     print(f(pt))
+//     print(pt.y)
 void main() {
-    // print(f(Point(1, 0)))
     Point __tmp_1 = Point(1, 0);
     std::cout << f(__tmp_1) << "\n";
-    // pt = Point(2, 3)
     Point pt = Point(2, 3);
-    // print(f(pt))
     std::cout << f(pt) << "\n";
-    // print(pt.y)
     std::cout << pt.y << "\n";
 }
 
+// # A record arm whose or-alternatives include a bare wildcard: the arm always
+// # matches, so it carries no field conditions at all. The non-exhaustive
+// # warning it still draws is a filed defect
+// # (BUGS.md#match-exhaustiveness-or-wildcard); this case pins it.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A record arm whose or-alternatives include a bare wildcard: the arm always
-    // # matches, so it carries no field conditions at all. The non-exhaustive
-    // # warning it still draws is a filed defect
-    // # (BUGS.md#match-exhaustiveness-or-wildcard); this case pins it.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

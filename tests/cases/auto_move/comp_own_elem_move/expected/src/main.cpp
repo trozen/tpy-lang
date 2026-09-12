@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // def collect_list_nocopy() -> int:
+//     # Only compiles because the element moves -- a copy of @nocopy Widget is
+//     # a hard error.
+//     xs = [w for w in widgets(3)]  # tpyc: ok
+//     return len(xs)
 ::tpy::BigInt collect_list_nocopy() {
-    // # Only compiles because the element moves -- a copy of @nocopy Widget is
-    // # a hard error.
-    // xs = [w for w in widgets(3)]  # tpyc: ok
     std::vector<Widget> xs = ({
         std::vector<Widget> __result;
         auto __obj_0 = widgets(::tpy::BigInt(3));
@@ -20,13 +21,13 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // return len(xs)
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
 // def collect_set() -> int:
+//     s = {n for n in nodes(3)}  # tpyc: ok
+//     return len(s)
 ::tpy::BigInt collect_set() {
-    // s = {n for n in nodes(3)}  # tpyc: ok
     ::tpy::ordered_set<Node> s = ({
         ::tpy::ordered_set<Node> __result;
         auto __obj_0 = nodes(::tpy::BigInt(3));
@@ -38,15 +39,15 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // return len(s)
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 
 // def borrow_source_copies(src: list[Node]) -> int:
+//     # Borrowed (list) source: the element is not owned, so it copies (warns),
+//     # proving the move is gated on an Own[T]-yielding source.
+//     ys = [n for n in src]  # tpyc: warning(/copies Node into owned storage/)
+//     return len(ys)
 ::tpy::BigInt borrow_source_copies(const std::vector<Node>& src) {
-    // # Borrowed (list) source: the element is not owned, so it copies (warns),
-    // # proving the move is gated on an Own[T]-yielding source.
-    // ys = [n for n in src]  # tpyc: warning(/copies Node into owned storage/)
     std::vector<Node> ys = ({
         std::vector<Node> __result;
         auto& __obj_0 = src;
@@ -59,17 +60,17 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // return len(ys)
     return ::tpy::BigInt(::tpy::__len__(ys));
 }
 
 // def filtered_moves() -> int:
+//     # The element is the comprehension's last sink: even with the loop var also
+//     # read in the filter, it is structurally the last use (the filter ran
+//     # first), so the element moves. @nocopy makes this self-evidencing -- the
+//     # case only compiles because the filtered element moves (a copy is an error).
+//     ys = [w for w in widgets(3) if w.id > 0]  # tpyc: ok
+//     return len(ys)
 ::tpy::BigInt filtered_moves() {
-    // # The element is the comprehension's last sink: even with the loop var also
-    // # read in the filter, it is structurally the last use (the filter ran
-    // # first), so the element moves. @nocopy makes this self-evidencing -- the
-    // # case only compiles because the filtered element moves (a copy is an error).
-    // ys = [w for w in widgets(3) if w.id > 0]  # tpyc: ok
     std::vector<Widget> ys = ({
         std::vector<Widget> __result;
         auto __obj_0 = widgets(::tpy::BigInt(3));
@@ -83,30 +84,29 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // return len(ys)
     return ::tpy::BigInt(::tpy::__len__(ys));
 }
 
 // def main() -> None:
+//     print(collect_list_nocopy())
+//     print(collect_set())
+//     src = [Node(1), Node(2)]
+//     print(borrow_source_copies(src), len(src))
+//     print(filtered_moves())
 void main() {
-    // print(collect_list_nocopy())
     std::cout << collect_list_nocopy() << "\n";
-    // print(collect_set())
     std::cout << collect_set() << "\n";
-    // src = [Node(1), Node(2)]
     std::vector<Node> src = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2))};
-    // print(borrow_source_copies(src), len(src))
     std::cout << borrow_source_copies(src) << " " << ::tpy::__len__(src) << "\n";
-    // print(filtered_moves())
     std::cout << filtered_moves() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

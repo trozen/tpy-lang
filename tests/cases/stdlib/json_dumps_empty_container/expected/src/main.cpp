@@ -5,38 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(json.dumps([]))
+//     print(json.dumps({}))
+//     print(json.dumps([[], {}]))
+//     print(json.dumps({"a": [], "b": {}}))
+//     print(json.dumps([1, [], 3]))
 void main() {
-    // print(json.dumps([]))
     ::tpystd::json::JsonValue __tmp_1 = std::vector<::tpystd::json::JsonValue>{};
     std::cout << ::tpystd::json::dumps(__tmp_1, 0, false) << "\n";
-    // print(json.dumps({}))
     ::tpystd::json::JsonValue __tmp_2 = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>();
     std::cout << ::tpystd::json::dumps(__tmp_2, 0, false) << "\n";
-    // print(json.dumps([[], {}]))
     ::tpystd::json::JsonValue __tmp_3 = std::vector<::tpystd::json::JsonValue>{std::vector<::tpystd::json::JsonValue>{}, ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>()};
     std::cout << ::tpystd::json::dumps(__tmp_3, 0, false) << "\n";
-    // print(json.dumps({"a": [], "b": {}}))
     ::tpystd::json::JsonValue __tmp_4 = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", std::vector<::tpystd::json::JsonValue>{}}, {"b", ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>()}});
     std::cout << ::tpystd::json::dumps(__tmp_4, 0, false) << "\n";
-    // print(json.dumps([1, [], 3]))
     ::tpystd::json::JsonValue __tmp_5 = std::vector<::tpystd::json::JsonValue>{1, std::vector<::tpystd::json::JsonValue>{}, 3};
     std::cout << ::tpystd::json::dumps(__tmp_5, 0, false) << "\n";
 }
 
+// # An empty list/dict literal coerced into the recursive-union JsonValue
+// # param of json.dumps serializes as [] / {}, including when nested inside
+// # another container (no JsonValue import; literals are freshly built and
+// # consumed by dumps, so copy semantics at the boundary are intended). The
+// # annotated-local path (x: JsonValue = []) is covered, CPython-compatibly,
+// # by union/recursive_union_empty_list.
+// import json
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An empty list/dict literal coerced into the recursive-union JsonValue
-    // # param of json.dumps serializes as [] / {}, including when nested inside
-    // # another container (no JsonValue import; literals are freshly built and
-    // # consumed by dumps, so copy semantics at the boundary are intended). The
-    // # annotated-local path (x: JsonValue = []) is covered, CPython-compatibly,
-    // # by union/recursive_union_empty_list.
-    // import json
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ template<typename T, std::size_t N> struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Grid[T, N: int]:
@@ -20,18 +21,19 @@ struct Grid {
     T _value;
 
     // def __init__(self, value: T) -> None:
+    //     self._value = value
     Grid() = default;
     explicit Grid(::tpy::readonly_form_t<T> value) : _value(value) {}
 
     // def copy(self) -> Own[Grid[T, N]]:
+    //     return Grid[T, N](self._value)
     Grid<T, N> copy() const {
-        // return Grid[T, N](self._value)
         return Grid<T, N>(this->_value);
     }
 
     // def with_value(self, value: T) -> Own[Grid[T, N]]:
+    //     return Grid[T, N](value)
     Grid<T, N> with_value(::tpy::readonly_form_t<T> value) const {
-        // return Grid[T, N](value)
         return Grid<T, N>(value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";

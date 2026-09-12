@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def fail(tag: int32) -> int32:
+//     await asyncio.sleep(0.001)
+//     raise ValueError(f"boom-{tag}")
 ::tpystd::tpy::Poll<int32_t> __coro_fail::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // raise ValueError(f"boom-{tag}")
         throw ::tpy::ValueError(std::format("boom-{}", tag));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -33,18 +33,27 @@ __coro_fail fail(int32_t tag) {
 }
 
 // async def main_coro() -> None:
+//     tasks: list[asyncio.Task[int32]] = []
+//     tasks.append(asyncio.create_task(fail(int32(0))))
+//     tasks.append(asyncio.create_task(fail(int32(1))))
+//     tasks.append(asyncio.create_task(fail(int32(2))))
+//     results = await asyncio.gather_list_settled(tasks)
+//     print("count", len(results))
+//     for r in results:
+//         if r.exception is not None:
+//             try:
+//                 raise r.exception
+//             except BaseException as e:
+//                 print("exc:", e.message)
+//         elif r.value is not None:
+//             print("unexpected ok:", r.value.get())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // tasks.append(asyncio.create_task(fail(int32(0))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fail(0))));
-        // tasks.append(asyncio.create_task(fail(int32(1))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fail(1))));
-        // tasks.append(asyncio.create_task(fail(int32(2))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fail(2))));
-        // results = await asyncio.gather_list_settled(tasks)
         __sub_0.emplace((*tasks));
         __state = S_RESUME_0;
         continue;
@@ -54,29 +63,21 @@ __coro_fail fail(int32_t tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // print("count", len(results))
         std::cout << "count" << " " << ::tpy::__len__((*results)) << "\n";
-        // for r in results:
         auto& __obj_0 = (*results);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& r = *__beg_0;
-            // if r.exception is not None:
             if ((r.exception.has_value())) {
-                // try:
                 {
                     try {
-                        // raise r.exception
                         (*r.exception).__deref__().__raise__();
                     } catch (const ::tpy::BaseException& e) {
-                        // print("exc:", e.message)
                         std::cout << "exc:" << " " << e.message << "\n";
                     }
                 }
-            // elif r.value is not None:
             } else if ((r.value.has_value())) {
-                // print("unexpected ok:", r.value.get())
                 std::cout << "unexpected ok:" << " " << (*r.value).get() << "\n";
             }
         }
@@ -95,24 +96,25 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.gather_list_settled: every task raises. Exercises the assembly
+// # path where `_result_indices` stays empty and only `_exc_indices` is
+// # populated -- the result is N Settled entries all with `exception` set.
+// # Distinct exception messages per index verify the arrival-order arrays
+// # reassemble by input index correctly.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.gather_list_settled: every task raises. Exercises the assembly
-    // # path where `_result_indices` stays empty and only `_exc_indices` is
-    // # populated -- the result is N Settled entries all with `exception` set.
-    // # Distinct exception messages per index verify the arrival-order arrays
-    // # reassemble by input index correctly.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

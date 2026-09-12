@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def take(h: Own[Holder]) -> None:
+//     print("taken", h._r.id, "tag", h.tag)
 void take(Holder&& h) {
-    // print("taken", h._r.id, "tag", h.tag)
     std::cout << "taken" << " " << h._r.id << " " << "tag" << " " << h.tag << "\n";
 }
 
 // def main() -> None:
+//     h = Holder(int32(1), int32(42))
+//     print("held", h._r.id, "tag", h.tag)
+//     take(h)
+//     print("after take")
 void main() {
-    // h = Holder(int32(1), int32(42))
     Holder h = Holder(1, 42);
-    // print("held", h._r.id, "tag", h.tag)
     std::cout << "held" << " " << h._r.id << " " << "tag" << " " << h.tag << "\n";
-    // take(h)
     take(std::move(h));
-    // print("after take")
     std::cout << "after take" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

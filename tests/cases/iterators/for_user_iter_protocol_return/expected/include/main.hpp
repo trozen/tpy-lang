@@ -11,6 +11,7 @@ struct Stack;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Stack:
@@ -33,11 +34,12 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2, 3]
 inline Stack::Stack() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __iter__(self) -> Iterator[int32]:
+//     return iter(self.items)
 inline auto Stack::__iter__() const {
-    // return iter(self.items)
     return ::tpy::__iter__(this->items);
 }
 void __tpy_init();

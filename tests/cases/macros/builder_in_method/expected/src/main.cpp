@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     h = Holder()
+//     print(h.make())
+//     return 0
 int32_t main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(h.make())
     std::cout << h.make() << "\n";
-    // return 0
     return 0;
 }
 
@@ -19,13 +19,14 @@ __tpy_builder_counter_1 __tpy_builder_build_counter_1() {
     return __tpy_builder_counter_1(7, 35);
 }
 
+// from _method_builder import Counter
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from _method_builder import Counter
-    // main()
     main();
 }
 

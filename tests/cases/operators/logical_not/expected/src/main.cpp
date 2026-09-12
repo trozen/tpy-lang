@@ -6,176 +6,197 @@ namespace tpyapp::main {
 
 // # Test the 'not' logical operator
 // def test_not_with_bool_literals() -> None:
+//     """Test 'not' with bool literals."""
+//     a: bool = True
+//     b: bool = False
+//
+//     # Direct negation
+//     if not a:
+//         print("not True: yes")
+//     else:
+//         print("not True: no")
+//
+//     if not b:
+//         print("not False: yes")
+//     else:
+//         print("not False: no")
 void test_not_with_bool_literals() {
-    // a: bool = True
     bool a = true;
-    // b: bool = False
     bool b = false;
-    // # Direct negation
-    // if not a:
     if ((!(a))) {
-        // print("not True: yes")
         std::cout << "not True: yes" << "\n";
-    // else:
     } else {
-        // print("not True: no")
         std::cout << "not True: no" << "\n";
     }
-    // if not b:
     if ((!(b))) {
-        // print("not False: yes")
         std::cout << "not False: yes" << "\n";
-    // else:
     } else {
-        // print("not False: no")
         std::cout << "not False: no" << "\n";
     }
 }
 
 // def test_not_with_comparisons() -> None:
+//     """Test 'not' with comparison expressions."""
+//     x: int32 = 5
+//     y: int32 = 10
+//
+//     # not with comparison
+//     if not (x > y):
+//         print("not (5 > 10): yes")
+//
+//     if not (x == y):
+//         print("not (5 == 10): yes")
+//
+//     if not (x < 0):
+//         print("not (5 < 0): yes")
 void test_not_with_comparisons() {
-    // x: int32 = 5
     int32_t x = 5;
-    // y: int32 = 10
     int32_t y = 10;
-    // # not with comparison
-    // if not (x > y):
     if ((!((x > y)))) {
-        // print("not (5 > 10): yes")
         std::cout << "not (5 > 10): yes" << "\n";
     }
-    // if not (x == y):
     if ((!((x == y)))) {
-        // print("not (5 == 10): yes")
         std::cout << "not (5 == 10): yes" << "\n";
     }
-    // if not (x < 0):
     if ((!((x < 0)))) {
-        // print("not (5 < 0): yes")
         std::cout << "not (5 < 0): yes" << "\n";
     }
 }
 
 // def test_not_in_conditions() -> None:
+//     """Test 'not' combined with other logical operators."""
+//     a: bool = True
+//     b: bool = False
+//
+//     # not with and
+//     if not a and b:
+//         print("not True and False: yes")
+//     else:
+//         print("not True and False: no")
+//
+//     # not with or
+//     if not b or a:
+//         print("not False or True: yes")
+//
+//     # Parenthesized not
+//     if not (a and b):
+//         print("not (True and False): yes")
+//
+//     if not (a or b):
+//         print("not (True or False): yes")
+//     else:
+//         print("not (True or False): no")
 void test_not_in_conditions() {
-    // a: bool = True
     bool a = true;
-    // b: bool = False
     bool b = false;
-    // # not with and
-    // if not a and b:
     if (((!(a)) && b)) {
-        // print("not True and False: yes")
         std::cout << "not True and False: yes" << "\n";
-    // else:
     } else {
-        // print("not True and False: no")
         std::cout << "not True and False: no" << "\n";
     }
-    // # not with or
-    // if not b or a:
     if (((!(b)) || a)) {
-        // print("not False or True: yes")
         std::cout << "not False or True: yes" << "\n";
     }
-    // # Parenthesized not
-    // if not (a and b):
     if ((!((a && b)))) {
-        // print("not (True and False): yes")
         std::cout << "not (True and False): yes" << "\n";
     }
-    // if not (a or b):
     if ((!((a || b)))) {
-        // print("not (True or False): yes")
         std::cout << "not (True or False): yes" << "\n";
-    // else:
     } else {
-        // print("not (True or False): no")
         std::cout << "not (True or False): no" << "\n";
     }
 }
 
 // def test_double_negation() -> None:
+//     """Test double negation."""
+//     flag: bool = True
+//
+//     if not not flag:
+//         print("not not True: yes")
+//
+//     if not not False:
+//         print("not not False: yes")
+//     else:
+//         print("not not False: no")
 void test_double_negation() {
-    // flag: bool = True
     bool flag = true;
-    // if not not flag:
     if ((!((!(flag))))) {
-        // print("not not True: yes")
         std::cout << "not not True: yes" << "\n";
     }
-    // if not not False:
     if ((!((!(false))))) {
-        // print("not not False: yes")
         std::cout << "not not False: yes" << "\n";
-    // else:
     } else {
-        // print("not not False: no")
         std::cout << "not not False: no" << "\n";
     }
 }
 
 // def is_valid(x: int32) -> bool:
+//     """Helper function returning bool."""
+//     return x > 0
 bool is_valid(int32_t x) {
-    // return x > 0
     return (x > 0);
 }
 
 // def test_not_with_function_call() -> None:
+//     """Test 'not' with function return value."""
+//     if not is_valid(-5):
+//         print("not is_valid(-5): yes")
+//
+//     if not is_valid(5):
+//         print("not is_valid(5): yes")
+//     else:
+//         print("not is_valid(5): no")
 void test_not_with_function_call() {
-    // if not is_valid(-5):
     if ((!(is_valid(-5)))) {
-        // print("not is_valid(-5): yes")
         std::cout << "not is_valid(-5): yes" << "\n";
     }
-    // if not is_valid(5):
     if ((!(is_valid(5)))) {
-        // print("not is_valid(5): yes")
         std::cout << "not is_valid(5): yes" << "\n";
-    // else:
     } else {
-        // print("not is_valid(5): no")
         std::cout << "not is_valid(5): no" << "\n";
     }
 }
 
 // def test_not_in_while() -> None:
+//     """Test 'not' in while condition."""
+//     done: bool = False
+//     count: int32 = 0
+//
+//     while not done:
+//         count += 1
+//         if count >= 3:
+//             done = True
+//
+//     print(count)
 void test_not_in_while() {
-    // done: bool = False
     bool done = false;
-    // count: int32 = 0
     int32_t count = 0;
-    // while not done:
     while ((!(done))) {
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
-        // if count >= 3:
         if ((count >= 3)) {
-            // done = True
             done = true;
         }
     }
-    // print(count)
     std::cout << count << "\n";
 }
 
+// # Run all tests
+// test_not_with_bool_literals()
+// test_not_with_comparisons()
+// test_not_in_conditions()
+// test_double_negation()
+// test_not_with_function_call()
+// test_not_in_while()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Run all tests
-    // test_not_with_bool_literals()
     test_not_with_bool_literals();
-    // test_not_with_comparisons()
     test_not_with_comparisons();
-    // test_not_in_conditions()
     test_not_in_conditions();
-    // test_double_negation()
     test_double_negation();
-    // test_not_with_function_call()
     test_not_with_function_call();
-    // test_not_in_while()
     test_not_in_while();
 }
 

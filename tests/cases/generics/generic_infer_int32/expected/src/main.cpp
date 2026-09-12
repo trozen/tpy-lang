@@ -3,37 +3,35 @@
 
 namespace tpyapp::main {
 
-// # Test order: literal first, int32 second -> should infer Same[int32]
-// x: int32 = 10
 int32_t x{};
-// same1 = Same(1, x)
 Same<int32_t>* same1{};
-// # Test order: int32 first, literal second -> should also infer Same[int32]
-// same2 = Same(x, 2)
 Same<int32_t>* same2{};
 
+// """Test that inference upgrades IntLiteralType to concrete int type."""
+//
+// # Test order: literal first, int32 second -> should infer Same[int32]
+// x: int32 = 10
+// same1 = Same(1, x)
+// print(same1.a)
+// print(same1.b)
+//
+// # Test order: int32 first, literal second -> should also infer Same[int32]
+// same2 = Same(x, 2)
+// print(same2.a)
+// print(same2.b)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test order: literal first, int32 second -> should infer Same[int32]
-    // x: int32 = 10
     x = 10;
-    // same1 = Same(1, x)
     static Same<int32_t> __global_slot_1 = Same<int32_t>(1, x);
     same1 = &__global_slot_1;
-    // print(same1.a)
     std::cout << same1->a << "\n";
-    // print(same1.b)
     std::cout << same1->b << "\n";
-    // # Test order: int32 first, literal second -> should also infer Same[int32]
-    // same2 = Same(x, 2)
     static Same<int32_t> __global_slot_2 = Same<int32_t>(x, 2);
     same2 = &__global_slot_2;
-    // print(same2.a)
     std::cout << same2->a << "\n";
-    // print(same2.b)
     std::cout << same2->b << "\n";
 }
 

@@ -13,9 +13,13 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(b: Own[bytearray]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t consume(::tpy::ByteArray&& b);
+// def consume_list(xs: Own[list[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t consume_list(std::vector<int32_t>&& xs);
+// def consume_boxes(bs: Own[list[Box[int32]]]) -> int32:  # tpyc: ok
 int32_t consume_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& bs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

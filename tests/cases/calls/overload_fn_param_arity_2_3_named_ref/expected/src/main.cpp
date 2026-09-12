@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def add(x: int32, y: int32) -> int32:
+//     return x + y
 int32_t add(int32_t x, int32_t y) {
-    // return x + y
     return (::tpy::add_check<int32_t>(x, y));
 }
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3, 4]
+//     print(f(add, xs, int32(0)))  # 3-arg form: returns init = 0
+//     print(f(add, xs))             # 2-arg form: was the BUGS.md failure
 void main() {
-    // xs: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> xs = {1, 2, 3, 4};
-    // print(f(add, xs, int32(0)))  # 3-arg form: returns init = 0
     std::cout << f<int32_t, int32_t>(add, xs, 0) << "\n";
-    // print(f(add, xs))             # 2-arg form: was the BUGS.md failure
     std::cout << f<int32_t>(add, xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = Tally()
+//     print(bump(t))
 void main() {
-    // t = Tally()
     Tally t = Tally();
-    // print(bump(t))
     std::cout << bump(t) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

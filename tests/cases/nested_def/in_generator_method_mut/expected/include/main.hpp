@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Tally_steps;
 
+// def main() -> None:
 void main();
 
 // class Tally:
@@ -32,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
     return os;
 }
 
-// Generator: Tally.steps
+// def steps(self, k: int32) -> Iterator[int32]:
 struct __gen_Tally_steps : public ::tpy::next_iter_mixin<__gen_Tally_steps, int32_t> {
     int32_t __state;
     Tally& __self;
@@ -66,6 +67,7 @@ inline __gen_Tally_steps Tally::steps(int32_t k) {
 
 
 // def __init__(self) -> None:
+//     self.total = 0
 inline Tally::Tally() : total(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

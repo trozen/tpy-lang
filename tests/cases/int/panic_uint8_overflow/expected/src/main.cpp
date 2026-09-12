@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: uint8 = uint8(255)
+//     b: uint8 = a + uint8(1)
+//     print(b)
 void main() {
-    // a: uint8 = uint8(255)
     uint8_t a = 255;
-    // b: uint8 = a + uint8(1)
     uint8_t b = (::tpy::add_check<uint8_t>(a, 1));
-    // print(b)
     std::cout << static_cast<int>(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

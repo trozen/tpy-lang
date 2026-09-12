@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = [1, 2, 3]
+//     print("ok")
 void main() {
-    // a: Any = [1, 2, 3]
     ::tpy::Any a = ::tpy::make_any(std::vector<int32_t>{1, 2, 3});
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,30 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # C aggregate init is positional; the rename only affects field access.
+//     a = SockAddr(uint16(2), uint16(443))
+//     print(a.family)
+//     print(a.port)
+//     a.port = uint16(8080)
+//     print(a.port)
 void main() {
-    // # C aggregate init is positional; the rename only affects field access.
-    // a = SockAddr(uint16(2), uint16(443))
     ::sockaddr_like a = ::sockaddr_like{2, 443};
-    // print(a.family)
     std::cout << a.sin_family << "\n";
-    // print(a.port)
     std::cout << a.sin_port << "\n";
-    // a.port = uint16(8080)
     a.sin_port = 8080;
-    // print(a.port)
     std::cout << a.sin_port << "\n";
 }
 
+// # native_field() on a @native(binding="C") struct -- matches the _bindings/ use
+// # case where a C struct (e.g. struct timeval with tv_sec/tv_usec) is exposed
+// # under friendlier Python field names.
+// from tpy.extern import native, native_field
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # native_field() on a @native(binding="C") struct -- matches the _bindings/ use
-    // # case where a C struct (e.g. struct timeval with tv_sec/tv_usec) is exposed
-    // # under friendlier Python field names.
-    // from tpy.extern import native, native_field
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ template<typename T, typename U> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pair[T, U]:
@@ -22,39 +23,39 @@ struct Pair {
     U b;
 
     // def __init__(self) -> None:
+    //     pass
     Pair() {
-        // pass
     }
 
     // def set_a(self, val: T) -> None:
+    //     self.a = val
     void set_a(::tpy::param_val_or_ref_t<T> val) {
-        // self.a = val
         this->a = ::tpy::param_to_storage<T>(val);
     }
 
     // def set_b(self, val: U) -> None:
+    //     self.b = val
     void set_b(::tpy::param_val_or_ref_t<U> val) {
-        // self.b = val
         this->b = ::tpy::param_to_storage<U>(val);
     }
 
     // def set_both(self, a: T, b: U) -> None:
+    //     self.a = a
+    //     self.b = b
     void set_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-        // self.a = a
         this->a = ::tpy::param_to_storage<T>(a);
-        // self.b = b
         this->b = ::tpy::param_to_storage<U>(b);
     }
 
     // def get_a(self) -> T:
+    //     return self.a
     ::tpy::val_or_ref_t<T> get_a() {
-        // return self.a
         return this->a;
     }
 
     // def get_b(self) -> U:
+    //     return self.b
     ::tpy::val_or_ref_t<U> get_b() {
-        // return self.b
         return this->b;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";

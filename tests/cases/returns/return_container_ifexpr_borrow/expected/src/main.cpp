@@ -5,67 +5,67 @@ namespace tpyapp::main {
 
 
 // def longer(a: list[int32], b: list[int32]) -> list[int32]:
+//     # Both arms are plain lvalue names, so the ternary returns bare.
+//     return a if len(a) >= len(b) else b  # tpyc: ok
 std::vector<int32_t>& longer(std::vector<int32_t>& a, std::vector<int32_t>& b) {
-    // # Both arms are plain lvalue names, so the ternary returns bare.
-    // return a if len(a) >= len(b) else b  # tpyc: ok
     return (((::tpy::__len__(a) >= ::tpy::__len__(b))) ? (a) : (b));
 }
 
 // def wider(a: dict[int32, int32], b: dict[int32, int32]) -> dict[int32, int32]:
+//     # The same arm over a dict.
+//     return a if len(a) >= len(b) else b  # tpyc: ok
 ::tpy::ordered_map<int32_t, int32_t>& wider(::tpy::ordered_map<int32_t, int32_t>& a, ::tpy::ordered_map<int32_t, int32_t>& b) {
-    // # The same arm over a dict.
-    // return a if len(a) >= len(b) else b  # tpyc: ok
     return (((::tpy::__len__(a) >= ::tpy::__len__(b))) ? (a) : (b));
 }
 
 // def fuller(a: set[int32], b: set[int32]) -> set[int32]:
+//     # ... and over a set.
+//     return a if len(a) >= len(b) else b  # tpyc: ok
 ::tpy::ordered_set<int32_t>& fuller(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
-    // # ... and over a set.
-    // return a if len(a) >= len(b) else b  # tpyc: ok
     return (((::tpy::__len__(a) >= ::tpy::__len__(b))) ? (a) : (b));
 }
 
 // def main() -> None:
+//     la: list[int32] = [1, 2, 3]
+//     lb: list[int32] = [4]
+//     got = longer(la, lb)
+//     # The borrow return aliases the argument -- a copy would leave 3 here.
+//     got.append(99)
+//     print(len(la), la[3])
+//     da: dict[int32, int32] = {1: 1, 2: 2}
+//     db: dict[int32, int32] = {3: 3}
+//     d = wider(da, db)
+//     d[7] = 7
+//     print(len(da), da[7])
+//     sa: set[int32] = {1, 2}
+//     sb: set[int32] = {3}
+//     s = fuller(sa, sb)
+//     s.add(9)
+//     print(len(sa))
 void main() {
-    // la: list[int32] = [1, 2, 3]
     std::vector<int32_t> la = {1, 2, 3};
-    // lb: list[int32] = [4]
     std::vector<int32_t> lb = {4};
-    // got = longer(la, lb)
     std::vector<int32_t>& got = longer(la, lb);
-    // # The borrow return aliases the argument -- a copy would leave 3 here.
-    // got.append(99)
     got.push_back(99);
-    // print(len(la), la[3])
     std::cout << ::tpy::__len__(la) << " " << ::tpy::__getitem__(la, 3) << "\n";
-    // da: dict[int32, int32] = {1: 1, 2: 2}
     ::tpy::ordered_map<int32_t, int32_t> da = ::tpy::ordered_map<int32_t, int32_t>({{1, 1}, {2, 2}});
-    // db: dict[int32, int32] = {3: 3}
     ::tpy::ordered_map<int32_t, int32_t> db = ::tpy::ordered_map<int32_t, int32_t>({{3, 3}});
-    // d = wider(da, db)
     ::tpy::ordered_map<int32_t, int32_t>& d = wider(da, db);
-    // d[7] = 7
     ::tpy::__setitem__(d, 7, 7);
-    // print(len(da), da[7])
     std::cout << ::tpy::__len__(da) << " " << ::tpy::__getitem__(da, 7) << "\n";
-    // sa: set[int32] = {1, 2}
     ::tpy::ordered_set<int32_t> sa = ::tpy::ordered_set<int32_t>({1, 2});
-    // sb: set[int32] = {3}
     ::tpy::ordered_set<int32_t> sb = ::tpy::ordered_set<int32_t>({3});
-    // s = fuller(sa, sb)
     ::tpy::ordered_set<int32_t>& s = fuller(sa, sb);
-    // s.add(9)
     s.insert(9);
-    // print(len(sa))
     std::cout << ::tpy::__len__(sa) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

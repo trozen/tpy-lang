@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper(42)
+//     result = w.take()
+//     print(result)
+//
+//     # Calling on a temporary should also work
+//     print(Wrapper(99).take())
 void main() {
-    // w = Wrapper(42)
     Wrapper w = Wrapper(::tpy::BigInt(42));
-    // result = w.take()
     ::tpy::BigInt result = std::move(w).take();
-    // print(result)
     std::cout << result << "\n";
-    // # Calling on a temporary should also work
-    // print(Wrapper(99).take())
     std::cout << Wrapper(::tpy::BigInt(99)).take() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

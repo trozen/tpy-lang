@@ -13,15 +13,19 @@ template<typename T> struct GenericContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count_items(items: Sized, extra: Optional[Sized] = None) -> int:
 template<::tpystd::typing::Sized T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
 ::tpy::BigInt count_items(const T_items& items, const T_extra* extra = nullptr);
+// def only_optional(items: Optional[Sized] = None) -> int:
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt only_optional(const T_items* items = nullptr);
+// def sum_optional(items: Sequence[int], extra: Optional[Sequence[int]] = None) -> int:
 template<::tpystd::typing::Sequence<::tpy::BigInt> T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sequence<T_extra, ::tpy::BigInt>)
 ::tpy::BigInt sum_optional(const T_items& items, const T_extra* extra = nullptr);
+// def main() -> None:
 void main();
 
 // class Container:
@@ -30,30 +34,30 @@ struct Container {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Optional[Sized] = None) -> None:
+    //     if items is not None:
+    //         self.count = len(items)
+    //     else:
+    //         self.count = 0
     Container();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
     explicit Container(const T_items* items = nullptr) {
-        // if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            // self.count = len(items)
             this->count = ::tpy::BigInt(::tpy::__len__((*items)));
-        // else:
         } else {
-            // self.count = 0
             this->count = ::tpy::BigInt(0);
         }
     }
 
     // def update(self, items: Sized, extra: Optional[Sized] = None) -> None:
+    //     self.count = len(items)
+    //     if extra is not None:
+    //         self.count = self.count + len(extra)
     template<::tpystd::typing::Sized T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
     void update(const T_items& items, const T_extra* extra = nullptr) {
-        // self.count = len(items)
         this->count = ::tpy::BigInt(::tpy::__len__(items));
-        // if extra is not None:
         if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-            // self.count = self.count + len(extra)
             this->count = ((this->count) + (::tpy::BigInt(::tpy::__len__((*extra)))));
         }
     }
@@ -72,13 +76,14 @@ struct MixedContainer {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Sized, extra: Optional[Sized] = None) -> None:
+    //     self.count = len(items)
+    //     if extra is not None:
+    //         self.count = self.count + len(extra)
     MixedContainer() = default;
     template<::tpystd::typing::Sized T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
     explicit MixedContainer(const T_items& items, const T_extra* extra = nullptr) : count(::tpy::BigInt(::tpy::__len__(items))) {
-        // if extra is not None:
         if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-            // self.count = self.count + len(extra)
             this->count = ((this->count) + (::tpy::BigInt(::tpy::__len__((*extra)))));
         }
     }
@@ -98,17 +103,17 @@ struct GenericContainer {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Optional[Sized] = None) -> None:
+    //     if items is not None:
+    //         self.count = len(items)
+    //     else:
+    //         self.count = 0
     GenericContainer() : GenericContainer(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
     explicit GenericContainer(const T_items* items = nullptr) {
-        // if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            // self.count = len(items)
             this->count = ::tpy::BigInt(::tpy::__len__((*items)));
-        // else:
         } else {
-            // self.count = 0
             this->count = ::tpy::BigInt(0);
         }
     }
@@ -124,60 +129,60 @@ inline std::ostream& operator<<(std::ostream& os, const GenericContainer<T>& obj
 
 inline Container::Container() : Container(static_cast<std::nullptr_t*>(nullptr)) {}
 // def count_items(items: Sized, extra: Optional[Sized] = None) -> int:
+//     result: int = len(items)
+//     if extra is not None:
+//         result = result + len(extra)
+//     return result
 template<::tpystd::typing::Sized T_items, typename T_extra>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
 ::tpy::BigInt count_items(const T_items& items, const T_extra* extra) {
-    // result: int = len(items)
     ::tpy::BigInt result = ::tpy::BigInt(::tpy::__len__(items));
-    // if extra is not None:
     if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-        // result = result + len(extra)
         result = ((result) + (::tpy::BigInt(::tpy::__len__((*extra)))));
     }
-    // return result
     return result;
 }
 // def only_optional(items: Optional[Sized] = None) -> int:
+//     if items is not None:
+//         return len(items)
+//     return 0
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt only_optional(const T_items* items) {
-    // if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // return len(items)
         return ::tpy::BigInt(::tpy::__len__((*items)));
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 // # Generic Optional[Protocol] param: Optional[Sequence[int]]
 // def sum_optional(items: Sequence[int], extra: Optional[Sequence[int]] = None) -> int:
+//     result: int = 0
+//     i: int = 0
+//     while i < len(items):
+//         result = result + items[i]
+//         i = i + 1
+//     if extra is not None:
+//         j: int = 0
+//         while j < len(extra):
+//             result = result + extra[j]
+//             j = j + 1
+//     return result
 template<::tpystd::typing::Sequence<::tpy::BigInt> T_items, typename T_extra>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sequence<T_extra, ::tpy::BigInt>)
 ::tpy::BigInt sum_optional(const T_items& items, const T_extra* extra) {
-    // result: int = 0
     ::tpy::BigInt result = ::tpy::BigInt(0);
-    // i: int = 0
     ::tpy::BigInt i = ::tpy::BigInt(0);
-    // while i < len(items):
     while ((i < ::tpy::BigInt(::tpy::__len__(items)))) {
-        // result = result + items[i]
         result = ((result) + (items[static_cast<std::size_t>(i.to_fixed_check<int32_t>())]));
-        // i = i + 1
         i = ((i) + (::tpy::BigInt(1)));
     }
-    // if extra is not None:
     if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-        // j: int = 0
         ::tpy::BigInt j = ::tpy::BigInt(0);
-        // while j < len(extra):
         while ((j < ::tpy::BigInt(::tpy::__len__((*extra))))) {
-            // result = result + extra[j]
             result = ((result) + ((*extra)[static_cast<std::size_t>(j.to_fixed_check<int32_t>())]));
-            // j = j + 1
             j = ((j) + (::tpy::BigInt(1)));
         }
     }
-    // return result
     return result;
 }
 

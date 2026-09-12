@@ -9,15 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show[T](x: T) -> None:
 template<typename T>
 void show(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // # Generic function print should display bool as True/False, not 1/0
 // def show[T](x: T) -> None:
+//     print(x)
 template<typename T>
 void show(::tpy::param_val_or_ref_t<T> x) {
-    // print(x)
     std::cout << ::tpy::ValuePrinter(x) << "\n";
 }
 

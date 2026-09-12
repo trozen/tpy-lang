@@ -24,6 +24,7 @@ struct Condvar;
 
 inline constexpr std::string_view __name__ = "tpy.sync";
 
+// def _require_locked(locked: bool) -> None:
 void _require_locked(bool locked);
 
 // # The heap cell holding the lock next to its payload. Reached only through the
@@ -41,6 +42,8 @@ struct _MutexCell {
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
+    //     self._mu = _RawMutex()
+    //     self.storage = UninitStorage[T]()
     _MutexCell() : _mu(::tpy::MovableMutex()), storage(::tpy::UninitStorage<T>()) {}
     // non-copyable (@nocopy)
     _MutexCell(const _MutexCell&) = delete;
@@ -57,21 +60,21 @@ struct _MutexCell {
     }
 
     // def __del__(self) -> None:
+    //     self.storage.reset()
     ~_MutexCell() {
         if (!this->__tpy_owned_) return;
-        // self.storage.reset()
         this->storage.reset();
     }
 
     // def lock(self) -> None:
+    //     self._mu.lock()
     void lock() {
-        // self._mu.lock()
         this->_mu.lock();
     }
 
     // def unlock(self) -> None:
+    //     self._mu.unlock()
     void unlock() {
-        // self._mu.unlock()
         this->_mu.unlock();
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.sync._MutexCell";
@@ -94,6 +97,8 @@ struct _RwLockCell {
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
+    //     self._mu = _RawSharedMutex()
+    //     self.storage = UninitStorage[T]()
     _RwLockCell() : _mu(::tpy::MovableSharedMutex()), storage(::tpy::UninitStorage<T>()) {}
     // non-copyable (@nocopy)
     _RwLockCell(const _RwLockCell&) = delete;
@@ -110,33 +115,33 @@ struct _RwLockCell {
     }
 
     // def __del__(self) -> None:
+    //     self.storage.reset()
     ~_RwLockCell() {
         if (!this->__tpy_owned_) return;
-        // self.storage.reset()
         this->storage.reset();
     }
 
     // def lock(self) -> None:
+    //     self._mu.lock()
     void lock() {
-        // self._mu.lock()
         this->_mu.lock();
     }
 
     // def unlock(self) -> None:
+    //     self._mu.unlock()
     void unlock() {
-        // self._mu.unlock()
         this->_mu.unlock();
     }
 
     // def lock_shared(self) -> None:
+    //     self._mu.lock_shared()
     void lock_shared() {
-        // self._mu.lock_shared()
         this->_mu.lock_shared();
     }
 
     // def unlock_shared(self) -> None:
+    //     self._mu.unlock_shared()
     void unlock_shared() {
-        // self._mu.unlock_shared()
         this->_mu.unlock_shared();
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.sync._RwLockCell";
@@ -166,14 +171,14 @@ struct Mutex {
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Own[T]) -> None:
+    //     cell = unsafe_take(_MutexCell[T]())
+    //     cell.storage.construct(value)
+    //     self._cell = cell
+    //     self._payload = cell.storage.ptr()
     explicit Mutex(::tpy::own_param_t<T> value) {
-        // cell = unsafe_take(_MutexCell[T]())
         _MutexCell<T>* cell = ::tpy::heap_take(_MutexCell<T>());
-        // cell.storage.construct(value)
         ::tpy::deref_check(cell).storage.construct(std::move(value));
-        // self._cell = cell
         this->_cell = cell;
-        // self._payload = cell.storage.ptr()
         this->_payload = cell->storage.ptr();
     }
     // non-copyable (@nocopy)
@@ -191,23 +196,23 @@ struct Mutex {
     }
 
     // def __del__(self) -> None:
+    //     unsafe_release(self._cell)
     ~Mutex() {
         if (!this->__tpy_owned_) return;
-        // unsafe_release(self._cell)
         ::tpy::heap_release(this->_cell);
     }
 
     // @staticmethod
     // def new(value: Own[T]) -> Own[Mutex[T]]:
+    //     return Mutex[T](value)
     static Mutex<T> new_(::tpy::own_param_t<T> value) {
-        // return Mutex[T](value)
         return Mutex<T>(std::move(value));
     }
 
     // @readonly
     // def lock(self) -> Own[MutexGuard[T]]:
+    //     return MutexGuard[T](self._cell, self._payload)
     MutexGuard<T> lock() const {
-        // return MutexGuard[T](self._cell, self._payload)
         return MutexGuard<T>(this->_cell, this->_payload);
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.sync.Mutex";
@@ -238,6 +243,10 @@ struct MutexGuard {
     ::tpy::MovableMutex* _raw_mu;
 
     // def __init__(self, cell: Ptr[_MutexCell[T]], payload: Ptr[T]) -> None:
+    //     self._cell = cell
+    //     self._payload = payload
+    //     self._locked = False
+    //     self._raw_mu = take_ptr(cell._mu)
     MutexGuard() = default;
     explicit MutexGuard(_MutexCell<T>* cell, T* payload) : _cell(cell), _payload(payload), _locked(false), _raw_mu(&::tpy::deref_check(cell)._mu) {}
     // non-copyable (@nocopy)
@@ -250,44 +259,44 @@ struct MutexGuard {
     // # blocks, so a stray `g = m.lock()` outside a `with` holds no lock -- and
     // # `_locked` stays False, so any payload access on it aborts.
     // def __enter__(self) -> Self:
+    //     self._cell.lock()
+    //     self._locked = True
+    //     return self
     MutexGuard<T>& __enter__() {
-        // self._cell.lock()
         ::tpy::deref_check(this->_cell).lock();
-        // self._locked = True
         this->_locked = true;
-        // return self
         return (*this);
     }
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    //     self._locked = False
+    //     self._cell.unlock()
     void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-        // self._locked = False
         this->_locked = false;
-        // self._cell.unlock()
         ::tpy::deref_check(this->_cell).unlock();
     }
 
     // def __deref__(self) -> T:
+    //     _require_locked(self._locked)
+    //     return self._payload
     ::tpy::val_or_ref_t<T> __deref__() {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
     // def __deref__(self) -> T:
+    //     _require_locked(self._locked)
+    //     return self._payload
     ::tpy::val_or_cref_t<T> __deref__() const {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
     // def get(self) -> T:
+    //     _require_locked(self._locked)
+    //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -295,10 +304,10 @@ struct MutexGuard {
     // # reference payload would be copied where CPython aliases the passed object.
     // # Moving in consumes the source, so the two models are indistinguishable.
     // def set(self, value: Own[T]) -> None:
+    //     _require_locked(self._locked)
+    //     unsafe_store(self._payload, uint32(0), value)
     void set(::tpy::own_param_t<T> value) const {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // unsafe_store(self._payload, uint32(0), value)
         this->_payload[0] = std::move(value);
     }
 
@@ -309,13 +318,13 @@ struct MutexGuard {
     // # RwLock's shared_mutex guards don't (a condvar pairs with an exclusive lock).
     // @readonly
     // def _raw_mutex(self) -> Ptr[_RawMutex]:
+    //     # Gated like every other accessor: handing out the raw lock from a guard
+    //     # that never acquired it would let Condvar.wait unlock a std::mutex this
+    //     # thread doesn't hold (UB), instead of a loud RuntimeError.
+    //     _require_locked(self._locked)
+    //     return self._raw_mu
     ::tpy::MovableMutex* _raw_mutex() const {
-        // # Gated like every other accessor: handing out the raw lock from a guard
-        // # that never acquired it would let Condvar.wait unlock a std::mutex this
-        // # thread doesn't hold (UB), instead of a loud RuntimeError.
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._raw_mu
         return this->_raw_mu;
     }
 
@@ -354,14 +363,14 @@ struct RwLock {
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Own[T]) -> None:
+    //     cell = unsafe_take(_RwLockCell[T]())
+    //     cell.storage.construct(value)
+    //     self._cell = cell
+    //     self._payload = cell.storage.ptr()
     explicit RwLock(::tpy::own_param_t<T> value) {
-        // cell = unsafe_take(_RwLockCell[T]())
         _RwLockCell<T>* cell = ::tpy::heap_take(_RwLockCell<T>());
-        // cell.storage.construct(value)
         ::tpy::deref_check(cell).storage.construct(std::move(value));
-        // self._cell = cell
         this->_cell = cell;
-        // self._payload = cell.storage.ptr()
         this->_payload = cell->storage.ptr();
     }
     // non-copyable (@nocopy)
@@ -379,30 +388,30 @@ struct RwLock {
     }
 
     // def __del__(self) -> None:
+    //     unsafe_release(self._cell)
     ~RwLock() {
         if (!this->__tpy_owned_) return;
-        // unsafe_release(self._cell)
         ::tpy::heap_release(this->_cell);
     }
 
     // @staticmethod
     // def new(value: Own[T]) -> Own[RwLock[T]]:
+    //     return RwLock[T](value)
     static RwLock<T> new_(::tpy::own_param_t<T> value) {
-        // return RwLock[T](value)
         return RwLock<T>(std::move(value));
     }
 
     // @readonly
     // def read(self) -> Own[ReadGuard[T]]:
+    //     return ReadGuard[T](self._cell, self._payload)
     ReadGuard<T> read() const {
-        // return ReadGuard[T](self._cell, self._payload)
         return ReadGuard<T>(this->_cell, this->_payload);
     }
 
     // @readonly
     // def write(self) -> Own[WriteGuard[T]]:
+    //     return WriteGuard[T](self._cell, self._payload)
     WriteGuard<T> write() const {
-        // return WriteGuard[T](self._cell, self._payload)
         return WriteGuard<T>(this->_cell, this->_payload);
     }
     static constexpr std::string_view __tpy_class_name__ = "tpy.sync.RwLock";
@@ -426,6 +435,9 @@ struct ReadGuard {
     bool _locked;
 
     // def __init__(self, cell: Ptr[_RwLockCell[T]], payload: Ptr[readonly[T]]) -> None:
+    //     self._cell = cell
+    //     self._payload = payload
+    //     self._locked = False
     ReadGuard() = default;
     explicit ReadGuard(_RwLockCell<T>* cell, const T* payload) : _cell(cell), _payload(payload), _locked(false) {}
     // non-copyable (@nocopy)
@@ -435,37 +447,37 @@ struct ReadGuard {
     ReadGuard& operator=(ReadGuard&&) = default;
 
     // def __enter__(self) -> Self:
+    //     self._cell.lock_shared()
+    //     self._locked = True
+    //     return self
     ReadGuard<T>& __enter__() {
-        // self._cell.lock_shared()
         ::tpy::deref_check(this->_cell).lock_shared();
-        // self._locked = True
         this->_locked = true;
-        // return self
         return (*this);
     }
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    //     self._locked = False
+    //     self._cell.unlock_shared()
     void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-        // self._locked = False
         this->_locked = false;
-        // self._cell.unlock_shared()
         ::tpy::deref_check(this->_cell).unlock_shared();
     }
 
     // def __deref__(self) -> readonly[T]:
+    //     _require_locked(self._locked)
+    //     return self._payload
     ::tpy::val_or_cref_t<T> __deref__() const {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
     // @readonly
     // def get(self) -> readonly[T]:
+    //     _require_locked(self._locked)
+    //     return self._payload
     ::tpy::val_or_cref_t<T> get() const {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -493,6 +505,9 @@ struct WriteGuard {
     bool _locked;
 
     // def __init__(self, cell: Ptr[_RwLockCell[T]], payload: Ptr[T]) -> None:
+    //     self._cell = cell
+    //     self._payload = payload
+    //     self._locked = False
     WriteGuard() = default;
     explicit WriteGuard(_RwLockCell<T>* cell, T* payload) : _cell(cell), _payload(payload), _locked(false) {}
     // non-copyable (@nocopy)
@@ -502,44 +517,44 @@ struct WriteGuard {
     WriteGuard& operator=(WriteGuard&&) = default;
 
     // def __enter__(self) -> Self:
+    //     self._cell.lock()
+    //     self._locked = True
+    //     return self
     WriteGuard<T>& __enter__() {
-        // self._cell.lock()
         ::tpy::deref_check(this->_cell).lock();
-        // self._locked = True
         this->_locked = true;
-        // return self
         return (*this);
     }
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    //     self._locked = False
+    //     self._cell.unlock()
     void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-        // self._locked = False
         this->_locked = false;
-        // self._cell.unlock()
         ::tpy::deref_check(this->_cell).unlock();
     }
 
     // def __deref__(self) -> T:
+    //     _require_locked(self._locked)
+    //     return self._payload
     ::tpy::val_or_ref_t<T> __deref__() {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
     // def __deref__(self) -> T:
+    //     _require_locked(self._locked)
+    //     return self._payload
     ::tpy::val_or_cref_t<T> __deref__() const {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
     // def get(self) -> T:
+    //     _require_locked(self._locked)
+    //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -547,10 +562,10 @@ struct WriteGuard {
     // # reference payload would be copied where CPython aliases the passed object.
     // # Moving in consumes the source, so the two models are indistinguishable.
     // def set(self, value: Own[T]) -> None:
+    //     _require_locked(self._locked)
+    //     unsafe_store(self._payload, uint32(0), value)
     void set(::tpy::own_param_t<T> value) const {
-        // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // unsafe_store(self._payload, uint32(0), value)
         this->_payload[0] = std::move(value);
     }
 
@@ -605,9 +620,9 @@ struct Condvar {
     // # never appears in the signature. Spurious wakeups possible -> loop.
     // @readonly
     // def wait(self, lock: _CondvarLock) -> None:
+    //     self._cv.wait(lock._raw_mutex())
     template<::tpystd::tpy::sync::_CondvarLock T_lock>
     void wait(const T_lock& lock) const {
-        // self._cv.wait(lock._raw_mutex())
         ::tpy::deref_check(this->_cv).wait(lock._raw_mutex());
     }
 
@@ -628,6 +643,7 @@ inline std::ostream& operator<<(std::ostream& os, const Condvar& obj) {
 
 
 // def __init__(self) -> None:
+//     self._cv = unsafe_take(_RawCondvar())
 inline Condvar::Condvar() : _cv(::tpy::heap_take(::tpy::MovableConditionVariable())) {}
 
 inline Condvar::Condvar(Condvar&& other) noexcept : _cv(std::move(other._cv)) {
@@ -642,23 +658,23 @@ inline Condvar& Condvar::operator=(Condvar&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     unsafe_release(self._cv)
 inline Condvar::~Condvar() {
     if (!this->__tpy_owned_) return;
-    // unsafe_release(self._cv)
     ::tpy::heap_release(this->_cv);
 }
 
 // @readonly
 // def notify_one(self) -> None:
+//     self._cv.notify_one()
 inline void Condvar::notify_one() const {
-    // self._cv.notify_one()
     ::tpy::deref_check(this->_cv).notify_one();
 }
 
 // @readonly
 // def notify_all(self) -> None:
+//     self._cv.notify_all()
 inline void Condvar::notify_all() const {
-    // self._cv.notify_all()
     ::tpy::deref_check(this->_cv).notify_all();
 }
 void __tpy_init();

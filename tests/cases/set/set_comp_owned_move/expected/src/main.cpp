@@ -5,14 +5,15 @@ namespace tpyapp::main {
 
 
 // def is_small(b: Box[int32]) -> bool:
+//     return b < Box(3)
 bool is_small(const ::tpystd::tplib::box::Box<int32_t>& b) {
-    // return b < Box(3)
     return ((b) < (::tpystd::tplib::box::Box<int32_t>(3)));
 }
 
 // def main(n: int32) -> None:
+//     s = {i for i in range(n) if is_small(Box(i))}
+//     print(len(s))
 void main(int32_t n) {
-    // s = {i for i in range(n) if is_small(Box(i))}
     ::tpy::ordered_set<int32_t> s = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = n;
@@ -25,19 +26,19 @@ void main(int32_t n) {
         }
         std::move(__result);
     });
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
+// from tplib.box import Box
+//
+// main(6)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main(6)
     main(6);
 }
 

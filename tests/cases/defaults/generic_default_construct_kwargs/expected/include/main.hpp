@@ -9,18 +9,20 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def three_params[T](a: T, b: T = T(), c: T = T()) -> None:
 template<typename T>
 void three_params(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b = T{}, ::tpy::param_val_or_ref_t<T> c = T{});
+// def main() -> None:
 void main();
 
 // def three_params[T](a: T, b: T = T(), c: T = T()) -> None:
+//     print(a)
+//     print(b)
+//     print(c)
 template<typename T>
 void three_params(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, ::tpy::param_val_or_ref_t<T> c) {
-    // print(a)
     std::cout << ::tpy::ValuePrinter(a) << "\n";
-    // print(b)
     std::cout << ::tpy::ValuePrinter(b) << "\n";
-    // print(c)
     std::cout << ::tpy::ValuePrinter(c) << "\n";
 }
 

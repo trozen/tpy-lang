@@ -43,40 +43,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     match h.pet:
+//         case Dog(shade=s):
+//             h.pet = Cat(9)  # destroys the Dog; s is a copy of the enum
+//             print(s == Color.RED)
+//         case Cat(age=a):
+//             print("cat", a)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // match h.pet:
     auto& __match_subject_1 = h.pet;
     switch (__match_subject_1.index()) {
-    // case Dog(shade=s):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto s = __case_0.shade;
-        // h.pet = Cat(9)  # destroys the Dog; s is a copy of the enum
         h.pet = Cat(9);
-        // print(s == Color.RED)
         std::cout << ::tpy::print_bool((s == Color::RED)) << "\n";
         break;
     }
-    // case Cat(age=a):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        // print("cat", a)
         std::cout << "cat" << " " << a << "\n";
         break;
     }
     }
 }
 
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
-    // main()
     main();
 }
 

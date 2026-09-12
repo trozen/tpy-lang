@@ -8,33 +8,33 @@ namespace tpyapp::main {
 // # subscript check inside it when the body shrinks the container: the
 // # back-edge re-enters with the fact stale (runtime bounds check).
 // def main():
+//     xs = [10, 20, 30]
+//     i = 2
+//     if i < len(xs):
+//         j = 0
+//         while j < 3:
+//             print(xs[i])
+//             xs.pop()
+//             j += 1
 void main() {
-    // xs = [10, 20, 30]
     std::vector<int32_t> xs = {10, 20, 30};
-    // i = 2
     int32_t i = 2;
-    // if i < len(xs):
     if ((i < ::tpy::__len__(xs))) {
-        // j = 0
         int32_t j = 0;
-        // while j < 3:
         while ((j < 3)) {
-            // print(xs[i])
             std::cout << ::tpy::__getitem__(xs, i) << "\n";
-            // xs.pop()
             ::tpy::pop_back(xs);
-            // j += 1
             j = ::tpy::add_check<int32_t>(j, 1);
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

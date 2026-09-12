@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper[Pet]()
+//     r: Rc[Box[Pet]] = w.wrap(Box(Dog("Buddy")))  # tpyc: type(Rc[Box[Pet]])
+//     print(r.get().get().name())
 void main() {
-    // w = Wrapper[Pet]()
     Wrapper<Pet> w = Wrapper<Pet>();
-    // r: Rc[Box[Pet]] = w.wrap(Box(Dog("Buddy")))  # tpyc: type(Rc[Box[Pet]])
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = w.wrap(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Buddy"))));
-    // print(r.get().get().name())
     std::cout << r.get().get().name() << "\n";
 }
 
+// from tplib import Box, Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box, Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

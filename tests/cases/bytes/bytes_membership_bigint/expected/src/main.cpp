@@ -8,35 +8,36 @@ namespace tpyapp::main {
 // # out-of-range needle raises ValueError (matching CPython), including a
 // # BigInt needle beyond int32.
 // def main():
+//     b = b"ABC"
+//     k: int = 66
+//     print(k in b)
+//     print(200 in b)
+//     big: int = 1099511627776  # 2**40
+//     try:
+//         print(big in b)
+//     except ValueError:
+//         print("out of byte range")
 void main() {
-    // b = b"ABC"
     ::tpy::BytesView b = ::tpy::bytes_literal("ABC", 3);
-    // k: int = 66
     ::tpy::BigInt k = ::tpy::BigInt(66);
-    // print(k in b)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, k))) << "\n";
-    // print(200 in b)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, 200))) << "\n";
-    // big: int = 1099511627776  # 2**40
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
-    // try:
     {
         try {
-            // print(big in b)
             std::cout << ::tpy::print_bool((::tpy::bytes_contains(b, big))) << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("out of byte range")
             std::cout << "out of byte range" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

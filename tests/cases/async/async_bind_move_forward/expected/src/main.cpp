@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def add_one(n: int) -> int:
+//     return n + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_add_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,10 @@ __coro_add_one add_one(::tpy::BigInt n) {
 }
 
 // async def consume(c: Own[Cancellable[int]]) -> int:
+//     return await c
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_consume::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await c
         __sub_0 = c.get();
         __state = S_RESUME_0;
         continue;
@@ -54,15 +54,17 @@ __coro_consume consume(std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt
 }
 
 // async def main_coro() -> None:
+//     c = add_one(1)
+//     d = c
+//     print(await d)
+//     e = add_one(9)
+//     print(await consume(e))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = add_one(1)
         c.emplace(add_one(::tpy::BigInt(1)));
-        // d = c
         d.emplace(std::move(*c));
         c.reset();
-        // print(await d)
         __state = S_RESUME_0;
         continue;
     }
@@ -71,11 +73,8 @@ __coro_consume consume(std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         d.reset();
-        // print(await d)
         std::cout << __await_lift_0 << "\n";
-        // e = add_one(9)
         e.emplace(add_one(::tpy::BigInt(9)));
-        // print(await consume(e))
         __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(e))));
         __state = S_RESUME_1;
         continue;
@@ -85,7 +84,6 @@ __coro_consume consume(std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await consume(e))
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -102,24 +100,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Ownership-transfer forms of a bound coroutine: binding by name at the
+// # source's last use moves the handle; an Own[Cancellable[T]] param both
+// # receives a bound handle and awaits it directly.
+// import asyncio
+//
+// from tpy.coro import Cancellable
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Ownership-transfer forms of a bound coroutine: binding by name at the
-    // # source's last use moves the handle; an Own[Cancellable[T]] param both
-    // # receives a bound handle and awaits it directly.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Cancellable
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

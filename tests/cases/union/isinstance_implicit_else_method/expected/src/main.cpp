@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def show(x: Cat | Dog) -> int:
+//     if isinstance(x, Cat):
+//         return x.speak()
+//     return x.speak()        # x is Dog here; resolves Dog.speak via the narrowed alias
 ::tpy::BigInt show(::tpy::Union<Cat*, Dog*> x) {
-    // if isinstance(x, Cat):
     if (std::holds_alternative<Cat*>(x)) {
         auto& __x = *std::get<Cat*>(x);
-        // return x.speak()
         return __x.speak();
     }
     auto& __x = *std::get<Dog*>(x);
-    // return x.speak()        # x is Dog here; resolves Dog.speak via the narrowed alias
     return __x.speak();
 }
 
 // def main() -> None:
+//     print(show(Cat(1)))
+//     print(show(Dog(2)))
 void main() {
-    // print(show(Cat(1)))
     Cat __tmp_1 = Cat(::tpy::BigInt(1));
     std::cout << show(::tpy::Union<Cat*, Dog*>{&__tmp_1}) << "\n";
-    // print(show(Dog(2)))
     Dog __tmp_2 = Dog(::tpy::BigInt(2));
     std::cout << show(::tpy::Union<Cat*, Dog*>{&__tmp_2}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

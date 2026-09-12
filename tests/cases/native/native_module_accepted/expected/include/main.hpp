@@ -12,6 +12,7 @@ extern "C" int32_t native_c_func(int32_t x);
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

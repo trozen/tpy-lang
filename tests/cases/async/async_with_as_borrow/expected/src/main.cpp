@@ -5,13 +5,15 @@ namespace tpyapp::main {
 
 
 // async def main() -> None:
+//     server = Server()
+//     async with server as s:
+//         s.n = 7
+//     print(server.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // server = Server()
         server.emplace(Server());
         __with_ctx_0 = &((*server));
-        // async with server as s:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -38,20 +40,17 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_0: {
-        // async with server as s:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_1: {
-        // print(server.n)
         std::cout << (*server).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_2: {
         try {
-            // s.n = 7
             s->n = ::tpy::BigInt(7);
             __state = S_JOIN_0;
             continue;
@@ -73,10 +72,11 @@ __coro_main main() {
 }
 
 // async def __aenter__(self) -> "Server":
+//     await asyncio.sleep(0)
+//     return self
 ::tpystd::tpy::Poll<Server*> __coro_Server___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -86,7 +86,6 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Server*>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self
         __state = S_DONE;
         Server* __tpy_async_ret = &(__self);
         return ::tpystd::tpy::Poll<Server*>::ready(std::move(__tpy_async_ret));
@@ -98,11 +97,12 @@ __coro_main main() {
 
 
 // async def __aexit__(self, exc_type: None, exc_val: None,
-// exc_tb: None) -> None:
+//                     exc_tb: None) -> None:
+//     await asyncio.sleep(0)
+//     print("exit", self.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_Server___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -112,7 +112,6 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("exit", self.n)
         std::cout << "exit" << " " << __self.n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -123,17 +122,18 @@ __coro_main main() {
 }
 
 
+// # `async with server as s`: __aenter__ returning `self` is a borrow
+// # (pointer Poll payload), so `s` ALIASES the manager -- mutations through
+// # the as-binding are visible on the original and in __aexit__ (CPython).
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `async with server as s`: __aenter__ returning `self` is a borrow
-    // # (pointer Poll payload), so `s` ALIASES the manager -- mutations through
-    // # the as-binding are visible on the original and in __aexit__ (CPython).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

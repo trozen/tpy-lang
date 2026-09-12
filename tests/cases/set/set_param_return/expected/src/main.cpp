@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def make_set() -> Own[set[int32]]:
+//     return {1, 2, 3}
 ::tpy::ordered_set<int32_t> make_set() {
-    // return {1, 2, 3}
     return ::tpy::ordered_set<int32_t>({1, 2, 3});
 }
 
 // def add_to_set(s: set[int32], val: int32) -> None:
+//     s.add(val)
 void add_to_set(::tpy::ordered_set<int32_t>& s, int32_t val) {
-    // s.add(val)
     s.insert(val);
 }
 
 // def get_size(s: set[int32]) -> int32:
+//     return len(s)
 int32_t get_size(const ::tpy::ordered_set<int32_t>& s) {
-    // return len(s)
     return ::tpy::__len__(s);
 }
 
 // def main() -> None:
+//     s = make_set()
+//     print(s)
+//     add_to_set(s, 4)
+//     print(s)
+//     print(get_size(s))
 void main() {
-    // s = make_set()
     ::tpy::ordered_set<int32_t> s = make_set();
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // add_to_set(s, 4)
     add_to_set(s, 4);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // print(get_size(s))
     std::cout << get_size(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

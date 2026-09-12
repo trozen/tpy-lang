@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def inner(p: tuple[T | None, T | None]) -> None:  # tpyc: ok
+//     a, b = p
+//     if a is not None:
+//         a.x = a.x + 100
 void inner(const std::tuple<T*, T*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // a.x = a.x + 100
         a->x = (::tpy::add_check<int32_t>(a->x, 100));
     }
 }
 
 // def outer(p: tuple[T | None, T | None]) -> None:  # tpyc: ok
+//     # outer doesn't mutate p directly, but inner does -- transitive
+//     # mutation must propagate, otherwise const slots would be inferred
+//     # and break this call.
+//     inner(p)
 void outer(const std::tuple<T*, T*>& p) {
-    // # outer doesn't mutate p directly, but inner does -- transitive
-    // # mutation must propagate, otherwise const slots would be inferred
-    // # and break this call.
-    // inner(p)
     inner(p);
 }
 
 // def main() -> None:
+//     t1 = T(1)
+//     t2 = T(2)
+//     outer((t1, t2))
+//     print(t1.x)
 void main() {
-    // t1 = T(1)
     T t1 = T(1);
-    // t2 = T(2)
     T t2 = T(2);
-    // outer((t1, t2))
     outer(std::tuple<T*, T*>{&(t1), &(t2)});
-    // print(t1.x)
     std::cout << t1.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

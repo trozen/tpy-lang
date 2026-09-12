@@ -3,38 +3,37 @@
 
 namespace tpyapp::main {
 
-// g = Point()
 Point* g{};
 
 // def consume(p: Own[Point]) -> int32:
+//     return p.x
 int32_t consume(Point&& p) {
-    // return p.x
     return p.x;
 }
 
 // def test() -> int32:
+//     p = Point()
+//     p.x = 10
+//     p = g  # rebind to global alias -> lvalue reassignment
+//     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
 int32_t test() {
-    // p = Point()
     Point __slot_1 = Point();
     Point* p = &__slot_1;
-    // p.x = 10
     p->x = 10;
-    // p = g  # rebind to global alias -> lvalue reassignment
     p = g;
-    // return consume(p)  # tpyc: warning(/copies.*into owned storage/)
     Point __tmp_1 = (*p);
     return consume(std::move(__tmp_1));
 }
 
+// g = Point()
+// g.x = 99
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g = Point()
     static Point __global_slot_1 = Point();
     g = &__global_slot_1;
-    // g.x = 99
     g->x = 99;
 }
 

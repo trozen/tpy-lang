@@ -9,13 +9,21 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_text(k: int32) -> str | None:
 std::optional<std::string> maybe_text(int32_t k);
+// def maybe_blob(k: int32) -> bytes | None:
 std::optional<::tpy::Bytes> maybe_blob(int32_t k);
+// def text_len(k: int32) -> int32:
 int32_t text_len(int32_t k);
+// def blob_len(k: int32) -> int32:
 int32_t blob_len(int32_t k);
+// def from_text_param(t: str | None) -> int32:
 int32_t from_text_param(std::optional<std::string_view> t);
+// def from_blob_param(t: bytes | None) -> int32:
 int32_t from_blob_param(std::optional<::tpy::BytesView> t);
+// def reassigned(k: int32) -> int32:
 int32_t reassigned(int32_t k);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -16,12 +16,16 @@ struct __coro_slow;
 struct __coro_gather_helper;
 struct __coro_main_coro;
 
+// async def slow() -> int32:
 __coro_slow slow();
+// async def gather_helper() -> Own[list[int32]]:
 __coro_gather_helper gather_helper();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: slow
+// async def slow() -> int32:
 struct __coro_slow {
     int32_t __state;
     bool __cancel_pending;
@@ -45,7 +49,7 @@ struct __coro_slow {
     }
 };
 
-// Async coroutine: gather_helper
+// async def gather_helper() -> Own[list[int32]]:
 struct __coro_gather_helper {
     int32_t __state;
     bool __cancel_pending;
@@ -69,7 +73,7 @@ struct __coro_gather_helper {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

@@ -12,6 +12,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Wrapper:
@@ -55,33 +56,34 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def build(self, n: int32) -> Own['Point']:
+//     # Own RETURN slot, forward-declared callee.
+//     return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 inline Point Wrapper::build(int32_t n) const {
-    // # Own RETURN slot, forward-declared callee.
-    // return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
     return Point(n).updated();
 }
 
 // def build_copy(self, n: int32) -> Own['Point']:
+//     return copy(Point(n).updated())  # tpyc: ok
 inline Point Wrapper::build_copy(int32_t n) const {
-    // return copy(Point(n).updated())  # tpyc: ok
     return Point(Point(n).updated());
 }
 
 // def collect(self, n: int32, xs: list['Point']) -> None:
+//     # Element slot, same forward-declared callee.
+//     xs.append(Point(n).updated())  # tpyc: warning(/copies Point into owned storage/)
 inline void Wrapper::collect(int32_t n, std::vector<Point>& xs) const {
-    // # Element slot, same forward-declared callee.
-    // xs.append(Point(n).updated())  # tpyc: warning(/copies Point into owned storage/)
     xs.push_back(Point(n).updated());
 }
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def updated(self) -> 'Point':
+//     self.x += 1
+//     return self
 inline Point& Point::updated() {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
-    // return self
     return (*this);
 }
 void __tpy_init();

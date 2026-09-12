@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = make_producer[int32]()
+//     print(p.capacity())
 void main() {
-    // p = make_producer[int32]()
     ::tpyapp::achan::Producer<int32_t> p = ::tpyapp::achan::make_producer<int32_t>();
-    // print(p.capacity())
     std::cout << p.capacity() << "\n";
 }
 
+// from achan import make_producer
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from achan import make_producer
     ::tpyapp::achan::__tpy_init();
-    // main()
     main();
 }
 

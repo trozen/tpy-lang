@@ -3,39 +3,34 @@
 
 namespace tpyapp::main {
 
-// x, y: integer;
 int32_t x{};
-// x, y: integer;
 int32_t y{};
 
+// x, y: integer;
+//
+// x := 7;
+// y := 42;
+// writeln('x=', x, ' y=', y);
+// write('a=', x);
+// write(' b=', y);
+// writeln;
+// writeln('done');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x := 7;
     x = 7;
-    // y := 42;
     y = 42;
-    // writeln('x=', x, ' y=', y);
     std::cout << "x=";
-    // writeln('x=', x, ' y=', y);
     std::cout << x;
-    // writeln('x=', x, ' y=', y);
     std::cout << " y=";
-    // writeln('x=', x, ' y=', y);
     std::cout << y << "\n";
-    // write('a=', x);
     std::cout << "a=";
-    // write('a=', x);
     std::cout << x;
-    // write(' b=', y);
     std::cout << " b=";
-    // write(' b=', y);
     std::cout << y;
-    // writeln;
     std::cout << "\n";
-    // writeln('done');
     std::cout << "done" << "\n";
 }
 

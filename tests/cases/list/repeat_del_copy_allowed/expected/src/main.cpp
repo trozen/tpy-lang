@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main():
+//     rs = [Res(7)] * 3
+//     print(len(rs), rs[0].v, rs[2].v)
 void main() {
-    // rs = [Res(7)] * 3
     std::array<Res, 3> rs = ({
         Res __rep_0 = Res(7);
         ::tpy::array_from_index<Res, 3>([&](std::size_t) -> Res { return __rep_0; });
     });
-    // print(len(rs), rs[0].v, rs[2].v)
     std::cout << ::tpy::__len__(rs) << " " << ::tpy::__getitem__(rs, 0).v << " " << ::tpy::__getitem__(rs, 2).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

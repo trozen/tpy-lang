@@ -13,8 +13,11 @@ struct Either;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_pair(t: tuple[int32, int32]) -> int32:
 int32_t sum_pair(const std::tuple<int32_t, int32_t>& t);
+// def first_byte(b: bytes) -> int32:
 int32_t first_byte(::tpy::BytesView b);
+// def main() -> None:
 void main();
 
 // class Pair:
@@ -82,49 +85,52 @@ inline std::ostream& operator<<(std::ostream& os, const Either& obj) {
 
 
 // def __init__(self, a: int32, b: int32) -> None:
+//     self.a = a
+//     self.b = b
 inline Pair::Pair(int32_t a, int32_t b) : a(a), b(b) {}
 
 // def __enter__(self) -> tuple[int32, int32]:
+//     return (self.a, self.b)
 inline std::tuple<int32_t, int32_t> Pair::__enter__() const {
-    // return (self.a, self.b)
     return std::tuple<int32_t, int32_t>{this->a, this->b};
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("pair exit")
 inline void Pair::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("pair exit")
     std::cout << "pair exit" << "\n";
 }
 
 // def __enter__(self) -> bytes:
+//     return b"abc"
 inline ::tpy::Bytes Blob::__enter__() const {
-    // return b"abc"
     return ::tpy::bytes_literal_owned("abc", 3);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("blob exit")
 inline void Blob::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("blob exit")
     std::cout << "blob exit" << "\n";
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Either::Either(int32_t n) : n(n) {}
 
 // def __enter__(self) -> int32 | StrView:
+//     if self.n > 0:
+//         return self.n
+//     return "zero"
 inline ::tpy::Union<std::string_view, int32_t> Either::__enter__() const {
-    // if self.n > 0:
     if ((this->n > 0)) {
-        // return self.n
         return this->n;
     }
-    // return "zero"
     return "zero";
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("either exit")
 inline void Either::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("either exit")
     std::cout << "either exit" << "\n";
 }
 void __tpy_init();

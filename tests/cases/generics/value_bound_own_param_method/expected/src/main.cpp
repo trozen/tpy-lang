@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Cell[int32] = Cell[int32](11)
+//     print(c.item)
+//     c.replace(22)
+//     print(c.item)
 void main() {
-    // c: Cell[int32] = Cell[int32](11)
     Cell<int32_t> c = Cell<int32_t>(11);
-    // print(c.item)
     std::cout << c.item << "\n";
-    // c.replace(22)
     c.replace(22);
-    // print(c.item)
     std::cout << c.item << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

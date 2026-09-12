@@ -77,39 +77,40 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Direct()
+//     print(d.e)
+//     fm = FromModule()
+//     print(fm.n >= 1)
+//     fi = FromImport()
+//     print(fi.c)
+//     fn = FromNested()
+//     print(fn.k)
 void main() {
-    // d = Direct()
     Direct d = Direct();
-    // print(d.e)
     std::cout << d.e << "\n";
-    // fm = FromModule()
     FromModule fm = FromModule();
-    // print(fm.n >= 1)
     std::cout << ::tpy::print_bool((fm.n >= 1)) << "\n";
-    // fi = FromImport()
     FromImport fi = FromImport();
-    // print(fi.c)
     std::cout << fi.c << "\n";
-    // fn = FromNested()
     FromNested fn = FromNested();
-    // print(fn.k)
     std::cout << fn.k << "\n";
 }
 
+// # Field-init RHS in __init__ exercises binding-based dispatch in expression
+// # codegen. MIL hoist must install the constructor's namespace, otherwise
+// # ENUM/MODULE/IMPORTED_NAME/RECORD bindings silently fall through and crash.
+// from enum import Enum
+// import sys
+// from helper import Color
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Field-init RHS in __init__ exercises binding-based dispatch in expression
-    // # codegen. MIL hoist must install the constructor's namespace, otherwise
-    // # ENUM/MODULE/IMPORTED_NAME/RECORD bindings silently fall through and crash.
-    // from enum import Enum
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // from helper import Color
     ::tpyapp::helper::__tpy_init();
-    // main()
     main();
 }
 

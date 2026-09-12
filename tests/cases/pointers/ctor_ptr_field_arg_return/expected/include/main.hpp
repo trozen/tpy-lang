@@ -12,9 +12,13 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def addr(n: Node) -> Ptr[Node]:
 Node* addr(Node& n);
+// def rewrap(h: Handle) -> Own[Handle]:
 Handle rewrap(const Handle& h);
+// def make_handle(n: Node) -> Own[Handle]:
 Handle make_handle(Node& n);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -51,9 +55,11 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self, p: Ptr[Node]) -> None:
+//     self.p = p
 inline Handle::Handle(Node* p) : p(p) {}
 void __tpy_init();
 } // namespace tpyapp::main

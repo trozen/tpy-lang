@@ -5,46 +5,46 @@ namespace tpyapp::main {
 
 
 // def bump_all(*items: Box) -> None:
+//     for b in items:
+//         b.val += 1
 void bump_all(::tpy::varargs<Box> items) {
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
-        // b.val += 1
         b.val = ::tpy::add_check<int32_t>(b.val, 1);
     }
 }
 
 // def via_unpack(xs: list[Box]) -> None:  # tpyc: ok
+//     bump_all(*xs)
 void via_unpack(std::vector<Box>& xs) {
-    // bump_all(*xs)
     bump_all(::tpy::varargs<Box>(::tpy::as_mut_span(xs)));
 }
 
 // def main() -> None:
+//     items: list[Box] = []
+//     items.append(Box(5))
+//     items.append(Box(6))
+//     via_unpack(items)
+//     print(items[0].val)
+//     print(items[1].val)
 void main() {
-    // items: list[Box] = []
     std::vector<Box> items = std::vector<Box>{};
-    // items.append(Box(5))
     items.push_back(Box(5));
-    // items.append(Box(6))
     items.push_back(Box(6));
-    // via_unpack(items)
     via_unpack(items);
-    // print(items[0].val)
     std::cout << ::tpy::__getitem__(items, 0).val << "\n";
-    // print(items[1].val)
     std::cout << ::tpy::__getitem__(items, 1).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

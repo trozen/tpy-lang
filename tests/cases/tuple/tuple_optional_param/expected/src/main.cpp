@@ -5,51 +5,52 @@ namespace tpyapp::main {
 
 
 // def show(p: tuple[T | None, T | None]) -> None:
+//     a, b = p
+//     if a is not None:
+//         print(a.x)
+//     else:
+//         print("None")
+//     if b is not None:
+//         print(b.x)
+//     else:
+//         print("None")
 void show(const std::tuple<const T*, const T*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.x)
         std::cout << b->x << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
 }
 
 // def main() -> None:
+//     a = T(10)
+//     b = T(20)
+//
+//     show((a, b))
+//     show((a, None))
+//     show((None, None))
 void main() {
-    // a = T(10)
     T a = T(10);
-    // b = T(20)
     T b = T(20);
-    // show((a, b))
     show(std::tuple<T*, T*>{&(a), &(b)});
-    // show((a, None))
     show(std::tuple<T*, T*>{&(a), nullptr});
-    // show((None, None))
     show(std::tuple<T*, T*>{nullptr, nullptr});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

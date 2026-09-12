@@ -5,37 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = (int32(10), "hello", True)
+//
+//     # Positive indexing
+//     a = t[0]
+//     b = t[1]
+//     c = t[2]
+//     print(a)
+//     print(b)
+//     print(c)
+//
+//     # Negative indexing
+//     print(t[-1])
+//     print(t[-2])
+//     print(t[-3])
 void main() {
-    // t = (int32(10), "hello", True)
     std::tuple<int32_t, std::string, bool> t = std::tuple<int32_t, std::string, bool>{10, "hello", true};
-    // # Positive indexing
-    // a = t[0]
     int32_t a = std::get<0>(t);
-    // b = t[1]
     std::string_view b = std::get<1>(t);
-    // c = t[2]
     bool c = std::get<2>(t);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
-    // print(c)
     std::cout << ::tpy::print_bool(c) << "\n";
-    // # Negative indexing
-    // print(t[-1])
     std::cout << ::tpy::print_bool(std::get<2>(t)) << "\n";
-    // print(t[-2])
     std::cout << std::get<1>(t) << "\n";
-    // print(t[-3])
     std::cout << std::get<0>(t) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -15,9 +15,13 @@ struct State;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use(r: Rc[State]) -> None:
 void use(const ::tpystd::tplib::rc::Rc<State>& r);
+// def single_owner() -> None:
 void single_owner();
+// def shared_via_clone() -> None:
 void shared_via_clone();
+// def main() -> None:
 void main();
 
 // class State:
@@ -45,8 +49,9 @@ inline std::ostream& operator<<(std::ostream& os, const State& obj) {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
+//     print("init", label)
 inline State::State(std::string_view label) : label(label) {
-    // print("init", label)
     std::cout << "init" << " " << label << "\n";
 }
 
@@ -62,9 +67,9 @@ inline State& State::operator=(State&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("del", self.label)
 inline State::~State() {
     if (!this->__tpy_owned_) return;
-    // print("del", self.label)
     std::cout << "del" << " " << this->label << "\n";
 }
 void __tpy_init();

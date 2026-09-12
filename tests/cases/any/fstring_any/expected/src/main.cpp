@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = 42
+//     b: Any = "hello"
+//     c: Any = True
+//     print(f"a={a} b={b} c={c}")
 void main() {
-    // a: Any = 42
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(42));
-    // b: Any = "hello"
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
-    // c: Any = True
     ::tpy::Any c = ::tpy::make_any(true);
-    // print(f"a={a} b={b} c={c}")
     std::cout << std::format("a={} b={} c={}", a, b, c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

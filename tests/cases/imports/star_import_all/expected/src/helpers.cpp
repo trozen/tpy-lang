@@ -5,14 +5,14 @@ namespace tpyapp::helpers {
 
 
 // def public_add(a: int32, b: int32) -> int32:
+//     return a + b
 int32_t public_add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def not_exported(x: int32) -> int32:
+//     return x + int32(100)
 int32_t not_exported(int32_t x) {
-    // return x + int32(100)
     return (::tpy::add_check<int32_t>(x, 100));
 }
 

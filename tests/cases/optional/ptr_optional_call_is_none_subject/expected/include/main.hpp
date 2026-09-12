@@ -11,8 +11,11 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find(xs: list[Rec], want: int32) -> Rec | None:
 Rec* find(std::vector<Rec>& xs, int32_t want);
+// def passthrough(x: Rec | None) -> Rec | None:
 Rec* passthrough(Rec* x);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Rec::Rec(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

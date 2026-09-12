@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def slow() -> int:
+//     await asyncio.sleep(1.0)
+//     return 42
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(1.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 42
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -35,6 +35,11 @@ __coro_slow slow() {
 }
 
 // async def zero_timeout() -> None:
+//     try:
+//         await asyncio.wait_for(slow(), 0.0)
+//         print("not reached")
+//     except TimeoutError:
+//         print("zero")
 ::tpystd::tpy::Poll<::std::monostate> __coro_zero_timeout::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -47,13 +52,11 @@ __coro_slow slow() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("not reached")
             std::cout << "not reached" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
             __sub_0.reset();
-            // print("zero")
             std::cout << "zero" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -68,12 +71,10 @@ __coro_slow slow() {
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.wait_for(slow(), 0.0)
             __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(slow()), 0.0);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
-            // print("zero")
             std::cout << "zero" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -93,10 +94,10 @@ __coro_zero_timeout zero_timeout() {
 }
 
 // async def main_coro() -> None:
+//     await zero_timeout()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await zero_timeout()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -121,22 +122,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Non-positive timeout: triggers the deadline check on the first poll
+// # (matches CPython). The inner sleep never gets to register its timer
+// # before wait_for cancels it.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Non-positive timeout: triggers the deadline check on the first poll
-    // # (matches CPython). The inner sleep never gets to register its timer
-    // # before wait_for cancels it.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

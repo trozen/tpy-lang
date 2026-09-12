@@ -10,14 +10,15 @@ namespace tpyapp::main {
 extern std::vector<int32_t>* items;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_len(s: Sized) -> int32:
 template<::tpystd::typing::Sized T_s>
 int32_t get_len(const T_s& s);
 
 // @readonly
 // def get_len(s: Sized) -> int32:
+//     return len(s)  # tpyc: ok
 template<::tpystd::typing::Sized T_s>
 int32_t get_len(const T_s& s) {
-    // return len(s)  # tpyc: ok
     return ::tpy::__len__(s);
 }
 

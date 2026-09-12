@@ -47,28 +47,31 @@ namespace tpyapp::main {
 
 
 // def gen(c: Color) -> Iterator[int]:
+//     match c:
+//         case Color.RED:
+//             yield 1
+//             yield 2
+//         case Color.GREEN:
+//             yield 3
+//         case Color.BLUE:
+//             yield 4
+//     yield 100
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = c;
         switch (__match_subject_1) {
-        // case Color.RED:
         case Color::RED: {
-            // yield 1
             __state = S_RESUME_0;
             return ::tpy::BigInt(1);
             break;
         }
-        // case Color.GREEN:
         case Color::GREEN: {
-            // yield 3
             __state = S_RESUME_2;
             return ::tpy::BigInt(3);
             break;
         }
-        // case Color.BLUE:
         case Color::BLUE: {
-            // yield 4
             __state = S_RESUME_3;
             return ::tpy::BigInt(4);
             break;
@@ -78,7 +81,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield 2
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
@@ -99,7 +101,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield 100
         __state = S_RESUME_4;
         return ::tpy::BigInt(100);
     }
@@ -115,8 +116,12 @@ __gen_gen gen(Color c) {
 }
 
 // def main() -> None:
+//     for v in gen(Color.RED):
+//         print(v)
+//     print("--")
+//     for v in gen(Color.BLUE):
+//         print(v)
 void main() {
-    // for v in gen(Color.RED):
     {
         auto __src_0 = gen(Color::RED);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -124,13 +129,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in gen(Color.BLUE):
     {
         auto __src_2 = gen(Color::BLUE);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -138,19 +140,19 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
-    // main()
     main();
 }
 

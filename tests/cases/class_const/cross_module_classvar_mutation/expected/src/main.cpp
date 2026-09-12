@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     Counters.total = 1
+//     bump_from_other_module()
+//     Counters.total += 5
+//     print(Counters.total)
 void main() {
-    // Counters.total = 1
     ::tpyapp::counters::Counters::total = 1;
-    // bump_from_other_module()
     ::tpyapp::counters::bump_from_other_module();
-    // Counters.total += 5
     ::tpyapp::counters::Counters::total = ::tpy::add_check<int32_t>(::tpyapp::counters::Counters::total, 5);
-    // print(Counters.total)
     std::cout << ::tpyapp::counters::Counters::total << "\n";
 }
 
+// # Mutable ClassVar across translation units: writes from one module hit the
+// # same `static inline` slot read from another. Exercises the C++17+ cross-TU
+// # guarantee that `static inline` gives the storage one address program-wide.
+// from counters import Counters, bump_from_other_module
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Mutable ClassVar across translation units: writes from one module hit the
-    // # same `static inline` slot read from another. Exercises the C++17+ cross-TU
-    // # guarantee that `static inline` gives the storage one address program-wide.
-    // from counters import Counters, bump_from_other_module
     ::tpyapp::counters::__tpy_init();
-    // main()
     main();
 }
 

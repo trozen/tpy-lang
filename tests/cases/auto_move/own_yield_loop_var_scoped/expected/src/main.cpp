@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[Own[int32]]:
+//     yield 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -33,10 +33,12 @@ __gen_gen gen() {
 }
 
 // def collect_scoped() -> None:
+//     out: list[int32] = []
+//     for x in gen():  # tpyc: ok -- the loop-scoped binding, moved per element
+//         out.append(x)
+//     print(out)
 void collect_scoped() {
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for x in gen():  # tpyc: ok -- the loop-scoped binding, moved per element
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -44,26 +46,24 @@ void collect_scoped() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // out.append(x)
         out.push_back(std::move(x));
         }
     }
-    // print(out)
     std::cout << ::tpy::ListPrinter(out) << "\n";
 }
 
 // def main() -> None:
+//     collect_scoped()
 void main() {
-    // collect_scoped()
     collect_scoped();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

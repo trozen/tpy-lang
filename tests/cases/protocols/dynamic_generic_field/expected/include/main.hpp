@@ -31,6 +31,7 @@ struct Owner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Tagged[T]:
@@ -40,6 +41,7 @@ struct Tagged {
     int32_t tag;
 
     // def __init__(self, tag: int32):
+    //     self.tag = tag
     Tagged() = default;
     explicit Tagged(int32_t tag) : tag(tag) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
@@ -88,6 +90,7 @@ namespace tpyapp::main {
 
 
 // def __init__(self, item: Own[Tagged[Greeter]]):
+//     self.item = item
 inline Owner::Owner(Tagged<Greeter>&& item) : item(std::move(item)) {}
 void __tpy_init();
 } // namespace tpyapp::main

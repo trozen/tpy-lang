@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     tasks: list[asyncio.Task[int32]] = []
+//     results = await asyncio.gather_list(tasks)
+//     print("len:", len(results))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // results = await asyncio.gather_list(tasks)
         __sub_0.emplace((*tasks));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +21,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // print("len:", len(results))
         std::cout << "len:" << " " << ::tpy::__len__((*results)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,22 +37,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.gather_list with an empty task list returns [] immediately on
+// # first poll -- no executor work, no suspension, no allocations beyond
+// # the empty result list.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.gather_list with an empty task list returns [] immediately on
-    // # first poll -- no executor work, no suspension, no allocations beyond
-    // # the empty result list.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

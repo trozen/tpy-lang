@@ -14,6 +14,7 @@ struct Boom;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Boom:
@@ -32,8 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const Boom& obj) {
 
 
 // def run(self) -> int:
+//     raise ValueError("boom on the worker thread")
 inline ::tpy::BigInt Boom::run() const {
-    // raise ValueError("boom on the worker thread")
     throw ::tpy::ValueError("boom on the worker thread");
 }
 void __tpy_init();

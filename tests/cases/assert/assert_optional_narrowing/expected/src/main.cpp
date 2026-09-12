@@ -3,36 +3,35 @@
 
 namespace tpyapp::main {
 
-// q: Point | None = Point(7)
 Point* q{};
 
 // def get_x(p: Point | None) -> int32:
+//     assert p is not None
+//     return p.x
 int32_t get_x(const Point* p) {
-    // assert p is not None
     if (!((p != nullptr))) ::tpy::raise_assertion_error();
-    // return p.x
     return p->x;
 }
 
 // def get_mag(p: Point | None) -> int32:
+//     assert p is not None, "point required"
+//     return p.mag()
 int32_t get_mag(Point* p) {
-    // assert p is not None, "point required"
     if (!((p != nullptr))) ::tpy::raise_assertion_error("point required");
-    // return p.mag()
     return p->mag();
 }
 
+// q: Point | None = Point(7)
+// print(get_x(q))
+// print(get_mag(q))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // q: Point | None = Point(7)
     static Point __global_slot_1 = Point(7);
     q = &__global_slot_1;
-    // print(get_x(q))
     std::cout << get_x(q) << "\n";
-    // print(get_mag(q))
     std::cout << get_mag(q) << "\n";
 }
 

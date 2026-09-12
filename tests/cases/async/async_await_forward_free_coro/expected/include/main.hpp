@@ -16,12 +16,16 @@ struct __coro_driver;
 struct __coro_helper;
 struct __coro_main_coro;
 
+// async def driver() -> None:
 __coro_driver driver();
+// async def helper() -> int32:
 __coro_helper helper();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: helper
+// async def helper() -> int32:
 struct __coro_helper {
     int32_t __state;
     bool __cancel_pending;
@@ -44,7 +48,7 @@ struct __coro_helper {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -68,7 +72,7 @@ struct __coro_driver {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

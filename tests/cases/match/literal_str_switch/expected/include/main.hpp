@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(s: str) -> str:
 std::string classify(std::string_view s);
+// def with_guard(cmd: str, verbose: bool) -> str:
 std::string with_guard(std::string_view cmd, bool verbose);
+// def with_or(s: str) -> str:
 std::string with_or(std::string_view s);
+// def by_length(s: str) -> str:
 std::string by_length(std::string_view s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

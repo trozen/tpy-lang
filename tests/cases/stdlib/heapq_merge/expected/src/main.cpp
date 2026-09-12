@@ -5,16 +5,57 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: list[int32] = [1, 4, 7]
+//     b: list[int32] = [2, 5]
+//     c: list[int32] = [3, 6, 8]
+//     r1: list[int32] = []
+//     for x in heapq.merge(a, b, c):
+//         r1.append(x)
+//     print(r1)
+//
+//     # some inputs empty
+//     empty: list[int32] = []
+//     r2: list[int32] = []
+//     for x in heapq.merge(empty, b, empty):
+//         r2.append(x)
+//     print(r2)
+//
+//     # all inputs empty -> empty stream (post-init heap is empty)
+//     r2b: list[int32] = []
+//     for x in heapq.merge(empty, empty):
+//         r2b.append(x)
+//     print(r2b)
+//
+//     # single input
+//     one: list[int32] = [5]
+//     r3: list[int32] = []
+//     for x in heapq.merge(one):
+//         r3.append(x)
+//     print(r3)
+//
+//     # duplicates across inputs
+//     d1: list[int32] = [1, 1, 3]
+//     d2: list[int32] = [1, 2]
+//     r4: list[int32] = []
+//     for x in heapq.merge(d1, d2):
+//         r4.append(x)
+//     print(r4)
+//
+//     # materialize the lazy result directly
+//     print(list(heapq.merge(a, b, c)))
+//
+//     # reference-type elements: Own[T] yield collects into a list with no
+//     # implicit-copy warning; read back in merged order.
+//     ia: list[Item] = [Item(1, 10), Item(4, 40)]
+//     ib: list[Item] = [Item(2, 20), Item(3, 30)]
+//     merged: list[Item] = list(heapq.merge(ia, ib))
+//     for it in merged:
+//         print(it.key, it.tag)
 void main() {
-    // a: list[int32] = [1, 4, 7]
     std::vector<int32_t> a = {1, 4, 7};
-    // b: list[int32] = [2, 5]
     std::vector<int32_t> b = {2, 5};
-    // c: list[int32] = [3, 6, 8]
     std::vector<int32_t> c = {3, 6, 8};
-    // r1: list[int32] = []
     std::vector<int32_t> r1 = std::vector<int32_t>{};
-    // for x in heapq.merge(a, b, c):
     {
         std::array<const std::vector<int32_t>*, 3> __tmp_1{&a, &b, &c};
         auto __src_0 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
@@ -23,18 +64,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // r1.append(x)
         r1.push_back(std::move(x));
         }
     }
-    // print(r1)
     std::cout << ::tpy::ListPrinter(r1) << "\n";
-    // # some inputs empty
-    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    // r2: list[int32] = []
     std::vector<int32_t> r2 = std::vector<int32_t>{};
-    // for x in heapq.merge(empty, b, empty):
     {
         std::array<const std::vector<int32_t>*, 3> __tmp_2{&empty, &b, &empty};
         auto __src_2 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_2));
@@ -43,16 +78,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // r2.append(x)
         r2.push_back(std::move(x));
         }
     }
-    // print(r2)
     std::cout << ::tpy::ListPrinter(r2) << "\n";
-    // # all inputs empty -> empty stream (post-init heap is empty)
-    // r2b: list[int32] = []
     std::vector<int32_t> r2b = std::vector<int32_t>{};
-    // for x in heapq.merge(empty, empty):
     {
         std::array<const std::vector<int32_t>*, 2> __tmp_3{&empty, &empty};
         auto __src_4 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_3));
@@ -61,18 +91,12 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_5);
-        // r2b.append(x)
         r2b.push_back(std::move(x));
         }
     }
-    // print(r2b)
     std::cout << ::tpy::ListPrinter(r2b) << "\n";
-    // # single input
-    // one: list[int32] = [5]
     std::vector<int32_t> one = {5};
-    // r3: list[int32] = []
     std::vector<int32_t> r3 = std::vector<int32_t>{};
-    // for x in heapq.merge(one):
     {
         std::array<const std::vector<int32_t>*, 1> __tmp_4{&one};
         auto __src_6 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_4));
@@ -81,20 +105,13 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_7);
-        // r3.append(x)
         r3.push_back(std::move(x));
         }
     }
-    // print(r3)
     std::cout << ::tpy::ListPrinter(r3) << "\n";
-    // # duplicates across inputs
-    // d1: list[int32] = [1, 1, 3]
     std::vector<int32_t> d1 = {1, 1, 3};
-    // d2: list[int32] = [1, 2]
     std::vector<int32_t> d2 = {1, 2};
-    // r4: list[int32] = []
     std::vector<int32_t> r4 = std::vector<int32_t>{};
-    // for x in heapq.merge(d1, d2):
     {
         std::array<const std::vector<int32_t>*, 2> __tmp_5{&d1, &d2};
         auto __src_8 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_5));
@@ -103,46 +120,36 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_9);
-        // r4.append(x)
         r4.push_back(std::move(x));
         }
     }
-    // print(r4)
     std::cout << ::tpy::ListPrinter(r4) << "\n";
-    // # materialize the lazy result directly
-    // print(list(heapq.merge(a, b, c)))
     std::array<const std::vector<int32_t>*, 3> __tmp_6{&a, &b, &c};
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_6)))) << "\n";
-    // # reference-type elements: Own[T] yield collects into a list with no
-    // # implicit-copy warning; read back in merged order.
-    // ia: list[Item] = [Item(1, 10), Item(4, 40)]
     std::vector<Item> ia = {Item(1, 10), Item(4, 40)};
-    // ib: list[Item] = [Item(2, 20), Item(3, 30)]
     std::vector<Item> ib = {Item(2, 20), Item(3, 30)};
-    // merged: list[Item] = list(heapq.merge(ia, ib))
     std::array<const std::vector<Item>*, 2> __tmp_7{&ia, &ib};
     std::vector<Item> merged = ::tpy::construct<std::vector<Item>>(::tpystd::heapq::merge<Item>(::tpy::varargs<const std::vector<Item>>(__tmp_7)));
-    // for it in merged:
     auto& __obj_10 = merged;
     auto __beg_10 = __obj_10.begin();
     auto __end_10 = __obj_10.end();
     for (; __beg_10 != __end_10; ++__beg_10) {
         const auto& it = *__beg_10;
-        // print(it.key, it.tag)
         std::cout << it.key << " " << it.tag << "\n";
     }
 }
 
+// # heapq.merge: lazily merge pre-sorted list[T] inputs into one sorted stream.
+// # Yields Own[T], so a reference-type result collects into a list cleanly.
+// import heapq
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # heapq.merge: lazily merge pre-sorted list[T] inputs into one sorted stream.
-    // # Yields Own[T], so a reference-type result collects into a list cleanly.
-    // import heapq
     ::tpystd::heapq::__tpy_init();
-    // main()
     main();
 }
 

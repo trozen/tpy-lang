@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def run_handler(h: Handler) -> None:
+//     h.cb(1)
 void run_handler(const Handler& h) {
-    // h.cb(1)
     h.cb(1);
 }
 
 // def main() -> None:
+//     h = Handler(lambda n: print("cb", n))
+//     run_handler(h)
 void main() {
-    // h = Handler(lambda n: print("cb", n))
     Handler h = Handler([](int32_t n) { std::cout << "cb" << " " << n << "\n"; });
-    // run_handler(h)
     run_handler(h);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

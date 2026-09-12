@@ -10,8 +10,11 @@ namespace tpyapp::main {
 extern std::vector<std::optional<int32_t>>* l;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_list() -> Own[list[int32 | None]]:
 std::vector<std::optional<int32_t>> make_list();
+// def mut() -> None:
 void mut();
+// def f(items: list[int32 | None]) -> None:
 void f(const std::vector<std::optional<int32_t>>& items);
 
 void __tpy_init();

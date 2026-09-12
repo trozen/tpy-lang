@@ -5,34 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: Array[int32, 3] = [10, 20, 30]
+//     np: Ptr[int32] = unsafe_ptr(nums)
+//     store_at(np, uint32(1), int32(99))
+//     print(unsafe_load(np, uint32(1)))
+//
+//     pts: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
+//     pp: Ptr[Point] = unsafe_ptr(pts)
+//     store_at(pp, uint32(0), Point(10, 20))
+//     print(unsafe_load(pp, uint32(0)).x)
+//     print(unsafe_load(pp, uint32(0)).y)
 void main() {
-    // nums: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> nums = {10, 20, 30};
-    // np: Ptr[int32] = unsafe_ptr(nums)
     int32_t* np = nums.data();
-    // store_at(np, uint32(1), int32(99))
     store_at<int32_t>(np, 1, 99);
-    // print(unsafe_load(np, uint32(1)))
     std::cout << np[1] << "\n";
-    // pts: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
-    // pp: Ptr[Point] = unsafe_ptr(pts)
     Point* pp = pts.data();
-    // store_at(pp, uint32(0), Point(10, 20))
     store_at<Point>(pp, 0, Point(10, 20));
-    // print(unsafe_load(pp, uint32(0)).x)
     std::cout << pp[0].x << "\n";
-    // print(unsafe_load(pp, uint32(0)).y)
     std::cout << pp[0].y << "\n";
 }
 
+// from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
-    // main()
     main();
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = Dog("Rex")
+//     parent = cast(Animal, a)
+//     print(parent.name)
 void main() {
-    // a: Any = Dog("Rex")
     ::tpy::Any a = ::tpy::make_any(Dog("Rex"));
-    // parent = cast(Animal, a)
     Animal parent = ::tpy::any_cast_or_panic<Animal>(a);
-    // print(parent.name)
     std::cout << parent.name << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

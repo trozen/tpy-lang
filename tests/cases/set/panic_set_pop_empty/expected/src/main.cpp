@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: set[int32] = set()
+//     s.pop()
 void main() {
-    // s: set[int32] = set()
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // s.pop()
     ::tpy::set_pop(s);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

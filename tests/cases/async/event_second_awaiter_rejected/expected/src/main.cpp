@@ -5,39 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     e = Event()
+//     poll_once(e)
+//     try:
+//         poll_once(e)
+//         print("ERROR: second poll should have raised")
+//     except ValueError as ex:
+//         print("caught:", ex)
 void main() {
-    // e = Event()
     ::tpystd::asyncio::Event e = ::tpystd::asyncio::Event();
-    // poll_once(e)
     ::tpystd::coro::poll_once<std::monostate>(e);
-    // try:
     {
         try {
-            // poll_once(e)
             ::tpystd::coro::poll_once<std::monostate>(e);
-            // print("ERROR: second poll should have raised")
             std::cout << "ERROR: second poll should have raised" << "\n";
         } catch (const ::tpy::ValueError& ex) {
-            // print("caught:", ex)
             std::cout << "caught:" << " " << ex << "\n";
         }
     }
 }
 
+// # Event is single-awaiter in v1 (matches Future): a second poll while
+// # a waker is already registered raises ValueError. Driven via
+// # `tpy.coro.poll_once` so the raise happens at the test level rather
+// # than inside a spawned task (where exceptions are swallowed in v1).
+// from asyncio import Event
+// from tpy.coro import poll_once
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Event is single-awaiter in v1 (matches Future): a second poll while
-    // # a waker is already registered raises ValueError. Driven via
-    // # `tpy.coro.poll_once` so the raise happens at the test level rather
-    // # than inside a spawned task (where exceptions are swallowed in v1).
-    // from asyncio import Event
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import poll_once
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

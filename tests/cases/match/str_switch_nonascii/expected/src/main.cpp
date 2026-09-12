@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def classify(s: str) -> int32:
+//     match s:
+//         case "x":
+//             return 1
+//         case "xy":
+//             return 2
+//         case "xyz":
+//             return 3
+//         case "wxyz":
+//             return 4
+//         case "caf\u00e9":
+//             return 5
+//         case _:
+//             return 0
 int32_t classify(std::string_view s) {
-    // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.size()) {
     case 1: {
-        // case "x":
         if (__match_subject_1 == "x") {
-            // return 1
             return 1;
             goto __match_end_2;
         }
         break;
     }
     case 2: {
-        // case "xy":
         if (__match_subject_1 == "xy") {
-            // return 2
             return 2;
             goto __match_end_2;
         }
         break;
     }
     case 3: {
-        // case "xyz":
         if (__match_subject_1 == "xyz") {
-            // return 3
             return 3;
             goto __match_end_2;
         }
         break;
     }
     case 4: {
-        // case "wxyz":
         if (__match_subject_1 == "wxyz") {
-            // return 4
             return 4;
             goto __match_end_2;
         }
         break;
     }
     case 5: {
-        // case "caf\u00e9":
         if (__match_subject_1 == "caf\xc3\xa9") {
-            // return 5
             return 5;
             goto __match_end_2;
         }
         break;
     }
     }
-    // case _:
     {
-        // return 0
         return 0;
         goto __match_end_2;
     }
@@ -66,21 +66,21 @@ int32_t classify(std::string_view s) {
 }
 
 // def main() -> None:
+//     print(classify("x"))
+//     print(classify("caf\u00e9"))
+//     print(classify("nope"))
 void main() {
-    // print(classify("x"))
     std::cout << classify("x") << "\n";
-    // print(classify("caf\u00e9"))
     std::cout << classify("caf\xc3\xa9") << "\n";
-    // print(classify("nope"))
     std::cout << classify("nope") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

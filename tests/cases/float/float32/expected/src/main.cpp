@@ -5,201 +5,203 @@ namespace tpyapp::main {
 
 
 // def test_construction() -> None:
+//     a = float32(3.14)  # tpyc: type(float32)
+//     b = float32(0.0)  # tpyc: type(float32)
+//     c = float32(int32(42))  # tpyc: type(float32)
+//     d = float32(True)  # tpyc: type(float32)
+//     e = float32("2.5")  # tpyc: type(float32)
+//     print(a)
+//     print(b)
+//     print(c)
+//     print(d)
+//     print(e)
 void test_construction() {
-    // a = float32(3.14)  # tpyc: type(float32)
     float a = 3.14f;
-    // b = float32(0.0)  # tpyc: type(float32)
     float b = 0.0f;
-    // c = float32(int32(42))  # tpyc: type(float32)
     float c = static_cast<float>(42);
-    // d = float32(True)  # tpyc: type(float32)
     float d = static_cast<float>(true);
-    // e = float32("2.5")  # tpyc: type(float32)
     float e = ::tpy::float32_from_str("2.5");
-    // print(a)
     std::cout << ::tpy::print_float(static_cast<double>(a)) << "\n";
-    // print(b)
     std::cout << ::tpy::print_float(static_cast<double>(b)) << "\n";
-    // print(c)
     std::cout << ::tpy::print_float(static_cast<double>(c)) << "\n";
-    // print(d)
     std::cout << ::tpy::print_float(static_cast<double>(d)) << "\n";
-    // print(e)
     std::cout << ::tpy::print_float(static_cast<double>(e)) << "\n";
 }
 
 // def test_literal_coercion() -> None:
+//     # float literal -> float32 via coercion
+//     x: float32 = 1.5
+//     print(x)
+//
+//     # int literal -> float32 via coercion
+//     y: float32 = 10
+//     print(y)
 void test_literal_coercion() {
-    // # float literal -> float32 via coercion
-    // x: float32 = 1.5
     float x = 1.5f;
-    // print(x)
     std::cout << ::tpy::print_float(static_cast<double>(x)) << "\n";
-    // # int literal -> float32 via coercion
-    // y: float32 = 10
     float y = static_cast<float>(10);
-    // print(y)
     std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n";
 }
 
 // def test_arithmetic() -> None:
+//     a: float32 = float32(3.0)
+//     b: float32 = float32(2.0)
+//
+//     # float32 + float32 -> float32
+//     print(a + b)
+//     print(a - b)
+//     print(a * b)
+//     print(a / b)
+//     print(a // b)
+//     print(a % b)
+//     print(a ** b)
 void test_arithmetic() {
-    // a: float32 = float32(3.0)
     float a = 3.0f;
-    // b: float32 = float32(2.0)
     float b = 2.0f;
-    // # float32 + float32 -> float32
-    // print(a + b)
     std::cout << ::tpy::print_float(static_cast<double>(((a) + (b)))) << "\n";
-    // print(a - b)
     std::cout << ::tpy::print_float(static_cast<double>(((a) - (b)))) << "\n";
-    // print(a * b)
     std::cout << ::tpy::print_float(static_cast<double>(((a) * (b)))) << "\n";
-    // print(a / b)
     std::cout << ::tpy::print_float(static_cast<double>((::tpy::truediv_f32(a, b)))) << "\n";
-    // print(a // b)
     std::cout << ::tpy::print_float(static_cast<double>((::tpy::floordiv_f32(a, b)))) << "\n";
-    // print(a % b)
     std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(a, b)))) << "\n";
-    // print(a ** b)
     std::cout << ::tpy::print_float(static_cast<double>((std::pow(a, static_cast<float>(b))))) << "\n";
 }
 
 // def test_negation() -> None:
+//     x: float32 = float32(5.0)
+//     print(-x)
 void test_negation() {
-    // x: float32 = float32(5.0)
     float x = 5.0f;
-    // print(-x)
     std::cout << ::tpy::print_float(static_cast<double>(-(x))) << "\n";
 }
 
 // def test_mixed_with_float() -> None:
+//     # float32 + float -> float (widening)
+//     a: float32 = float32(1.5)
+//     b: float = a + 1.0
+//     print(b)
 void test_mixed_with_float() {
-    // # float32 + float -> float (widening)
-    // a: float32 = float32(1.5)
     float a = 1.5f;
-    // b: float = a + 1.0
     double b = static_cast<double>(((a) + (1.0f)));
-    // print(b)
     std::cout << ::tpy::print_float(b) << "\n";
 }
 
 // def test_mixed_with_int() -> None:
+//     # float32 + int32 -> float32
+//     a: float32 = float32(2.5)
+//     b: float32 = a + int32(1)
+//     print(b)
 void test_mixed_with_int() {
-    // # float32 + int32 -> float32
-    // a: float32 = float32(2.5)
     float a = 2.5f;
-    // b: float32 = a + int32(1)
     float b = ((a) + static_cast<float>(1));
-    // print(b)
     std::cout << ::tpy::print_float(static_cast<double>(b)) << "\n";
 }
 
 // def test_augmented_assignment() -> None:
+//     x: float32 = float32(1.0)
+//     x += float32(0.5)
+//     print(x)
+//     x *= float32(2.0)
+//     print(x)
 void test_augmented_assignment() {
-    // x: float32 = float32(1.0)
     float x = 1.0f;
-    // x += float32(0.5)
     x = (x) + (0.5f);
-    // print(x)
     std::cout << ::tpy::print_float(static_cast<double>(x)) << "\n";
-    // x *= float32(2.0)
     x = (x) * (2.0f);
-    // print(x)
     std::cout << ::tpy::print_float(static_cast<double>(x)) << "\n";
 }
 
 // def test_conversions() -> None:
+//     a: float32 = float32(3.14)
+//     # float32 -> float
+//     b: float = float(a)
+//     print(b)
+//     # float32 -> str
+//     print(str(a))
+//     # float32 -> bool
+//     print(bool(a))
+//     print(bool(float32(0.0)))
 void test_conversions() {
-    // a: float32 = float32(3.14)
     float a = 3.14f;
-    // # float32 -> float
-    // b: float = float(a)
     double b = static_cast<double>(a);
-    // print(b)
     std::cout << ::tpy::print_float(b) << "\n";
-    // # float32 -> str
-    // print(str(a))
     std::cout << ::tpy::float_to_str(static_cast<double>(a)) << "\n";
-    // # float32 -> bool
-    // print(bool(a))
     std::cout << ::tpy::print_bool((a != 0.0f)) << "\n";
-    // print(bool(float32(0.0)))
     std::cout << ::tpy::print_bool((0.0f != 0.0f)) << "\n";
 }
 
 // def test_comparison() -> None:
+//     print(float32(1.0) < float32(2.0))
+//     print(float32(2.0) == float32(2.0))
+//     print(float32(3.0) > float32(1.0))
 void test_comparison() {
-    // print(float32(1.0) < float32(2.0))
     std::cout << ::tpy::print_bool((1.0f < 2.0f)) << "\n";
-    // print(float32(2.0) == float32(2.0))
     std::cout << ::tpy::print_bool((2.0f == 2.0f)) << "\n";
-    // print(float32(3.0) > float32(1.0))
     std::cout << ::tpy::print_bool((3.0f > 1.0f)) << "\n";
 }
 
 // def test_fstring() -> None:
+//     v: float32 = float32(2.5)
+//     print(f"value={v}")
 void test_fstring() {
-    // v: float32 = float32(2.5)
     float v = 2.5f;
-    // print(f"value={v}")
     std::cout << std::format("value={}", ::tpy::float_to_str(static_cast<double>(v))) << "\n";
 }
 
 // def test_float64_alias() -> None:
+//     # float64 is a type alias for float
+//     x: float64 = 3.14
+//     y: float64 = float64(2.0)
+//     print(x)
+//     print(y)
+//     print(x + y)
+//     # Constructor from fixed-width int types
+//     print(float64(int32(42)))
+//     print(float64(int64(100)))
+//     print(float64(uint32(7)))
 void test_float64_alias() {
-    // # float64 is a type alias for float
-    // x: float64 = 3.14
     double x = 3.14;
-    // y: float64 = float64(2.0)
     double y = 2.0;
-    // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
-    // print(y)
     std::cout << ::tpy::print_float(y) << "\n";
-    // print(x + y)
     std::cout << ::tpy::print_float(((x) + (y))) << "\n";
-    // # Constructor from fixed-width int types
-    // print(float64(int32(42)))
     std::cout << ::tpy::print_float(static_cast<double>(42)) << "\n";
-    // print(float64(int64(100)))
     std::cout << ::tpy::print_float(static_cast<double>(100)) << "\n";
-    // print(float64(uint32(7)))
     std::cout << ::tpy::print_float(static_cast<double>(7)) << "\n";
 }
 
 // def main() -> None:
+//     test_construction()
+//     test_literal_coercion()
+//     test_arithmetic()
+//     test_negation()
+//     test_mixed_with_float()
+//     test_mixed_with_int()
+//     test_augmented_assignment()
+//     test_conversions()
+//     test_comparison()
+//     test_fstring()
+//     test_float64_alias()
 void main() {
-    // test_construction()
     test_construction();
-    // test_literal_coercion()
     test_literal_coercion();
-    // test_arithmetic()
     test_arithmetic();
-    // test_negation()
     test_negation();
-    // test_mixed_with_float()
     test_mixed_with_float();
-    // test_mixed_with_int()
     test_mixed_with_int();
-    // test_augmented_assignment()
     test_augmented_assignment();
-    // test_conversions()
     test_conversions();
-    // test_comparison()
     test_comparison();
-    // test_fstring()
     test_fstring();
-    // test_float64_alias()
     test_float64_alias();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

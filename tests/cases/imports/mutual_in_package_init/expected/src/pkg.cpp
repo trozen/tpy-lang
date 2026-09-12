@@ -5,14 +5,14 @@
 namespace tpyapp::pkg {
 
 
+// from pkg.helper import Boosted
+// from pkg.user import use_pkg
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pkg.helper import Boosted
     ::tpyapp::pkg::helper::__tpy_init();
-    // from pkg.user import use_pkg
     ::tpyapp::pkg::user::__tpy_init();
 }
 

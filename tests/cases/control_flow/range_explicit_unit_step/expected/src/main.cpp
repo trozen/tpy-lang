@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def up(n: int32) -> int32:
+//     acc = 0
+//     for i in range(0, n, 1):  # a literal +1 step
+//         acc = acc + i
+//     return acc
 int32_t up(int32_t n) {
-    // acc = 0
     int32_t acc = 0;
-    // for i in range(0, n, 1):  # a literal +1 step
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // acc = acc + i
         acc = (::tpy::add_check<int32_t>(acc, i));
     }
-    // return acc
     return acc;
 }
 
 // def down(n: int32) -> int32:
+//     acc = 0
+//     for i in range(n, 0, -1):  # a literal -1 step
+//         acc = acc + i
+//     return acc
 int32_t down(int32_t n) {
-    // acc = 0
     int32_t acc = 0;
-    // for i in range(n, 0, -1):  # a literal -1 step
     int32_t __start_0 = n;
     for (int32_t i = __start_0; i > 0; --i) {
-        // acc = acc + i
         acc = (::tpy::add_check<int32_t>(acc, i));
     }
-    // return acc
     return acc;
 }
 
 // def main() -> None:
+//     print(up(5), down(5))
 void main() {
-    // print(up(5), down(5))
     std::cout << up(5) << " " << down(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

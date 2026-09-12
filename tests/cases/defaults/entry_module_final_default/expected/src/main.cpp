@@ -5,27 +5,29 @@ namespace tpyapp::main {
 
 
 // def spaced(a: int64, b: int64 = STEP, *, c: int64) -> int64:
+//     return a * 10000 + b * 100 + c
 int64_t spaced(int64_t a, int64_t b, int64_t c) {
-    // return a * 10000 + b * 100 + c
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10000)), (::tpy::mul_check<int64_t>(b, 100)))), c));
 }
 
 // def main() -> None:
+//     print(spaced(1, c=3))
+//     print(spaced(1, 7, c=3))
+//     print(Holder(tag=1).n)
 void main() {
-    // print(spaced(1, c=3))
     std::cout << spaced(1, STEP, 3) << "\n";
-    // print(spaced(1, 7, c=3))
     std::cout << spaced(1, 7, 3) << "\n";
-    // print(Holder(tag=1).n)
     std::cout << Holder(STEP, 1).n << "\n";
 }
 
+// STEP: Final[int64] = 42
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

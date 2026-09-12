@@ -5,83 +5,85 @@ namespace tpyapp::main {
 
 
 // def strview_pinned_alias_warns() -> None:
+//     s = "hello" + "world"
+//     view: StrView = s
+//     print(view)
+//     s = "other"  # tpyc: warning(/Mutation of 's'.*reassignment invalidates view 'view'/)
+//     # `view` is dangling here; don't read it. Print s instead to verify the
+//     # rebind ran.
+//     print(s)
 void strview_pinned_alias_warns() {
-    // s = "hello" + "world"
     ::tpy::String s = (::tpy::str_concat("hello", "world"));
-    // view: StrView = s
     std::string_view view = s;
-    // print(view)
     std::cout << view << "\n";
-    // s = "other"  # tpyc: warning(/Mutation of 's'.*reassignment invalidates view 'view'/)
     s = "other";
-    // # `view` is dangling here; don't read it. Print s instead to verify the
-    // # rebind ran.
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def bytesview_pinned_alias_warns() -> None:
+//     b = b"hello" + b"world"
+//     bv: BytesView = b
+//     print(len(bv))
+//     b = b"other"  # tpyc: warning(/Mutation of 'b'.*reassignment invalidates view 'bv'/)
+//     print(len(b))
 void bytesview_pinned_alias_warns() {
-    // b = b"hello" + b"world"
     ::tpy::Bytes b = (::tpy::bytes_concat(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)));
-    // bv: BytesView = b
     ::tpy::BytesView bv = b;
-    // print(len(bv))
     std::cout << ::tpy::__len__(bv) << "\n";
-    // b = b"other"  # tpyc: warning(/Mutation of 'b'.*reassignment invalidates view 'bv'/)
     b = ::tpy::bytes_literal_owned("other", 5);
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def view_rebind_clears_pinned_alias() -> None:
+//     """Rebinding the view itself clears the pinned-alias entry on its old source."""
+//     s1 = "hello" + "world"
+//     s2 = "foo" + "bar"
+//     view: StrView = s1
+//     view = s2  # view now aliases s2; the alias on s1 is cleared
+//     s1 = "other"  # tpyc: ok -- view no longer borrows s1
+//     print(view)
+//     print(s1)
 void view_rebind_clears_pinned_alias() {
-    // s1 = "hello" + "world"
     ::tpy::String s1 = (::tpy::str_concat("hello", "world"));
-    // s2 = "foo" + "bar"
     ::tpy::String s2 = (::tpy::str_concat("foo", "bar"));
-    // view: StrView = s1
     std::string_view view = s1;
-    // view = s2  # view now aliases s2; the alias on s1 is cleared
     view = s2;
-    // s1 = "other"  # tpyc: ok -- view no longer borrows s1
     s1 = "other";
-    // print(view)
     std::cout << view << "\n";
-    // print(s1)
     std::cout << s1 << "\n";
 }
 
 // def multiple_pinned_views_per_source() -> None:
+//     """Source reassignment warns once per pinned-view borrower in sorted order."""
+//     s = "hello" + "world"
+//     alpha: StrView = s
+//     beta: StrView = s
+//     print(len(alpha))
+//     print(len(beta))
+//     s = "other"  # tpyc: warning(/'alpha'/) warning(/'beta'/)
+//     print(s)
 void multiple_pinned_views_per_source() {
-    // s = "hello" + "world"
     ::tpy::String s = (::tpy::str_concat("hello", "world"));
-    // alpha: StrView = s
     std::string_view alpha = s;
-    // beta: StrView = s
     std::string_view beta = s;
-    // print(len(alpha))
     std::cout << ::tpy::__len__(alpha) << "\n";
-    // print(len(beta))
     std::cout << ::tpy::__len__(beta) << "\n";
-    // s = "other"  # tpyc: warning(/'alpha'/) warning(/'beta'/)
     s = "other";
-    // print(s)
     std::cout << s << "\n";
 }
 
+// strview_pinned_alias_warns()
+// bytesview_pinned_alias_warns()
+// view_rebind_clears_pinned_alias()
+// multiple_pinned_views_per_source()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // strview_pinned_alias_warns()
     strview_pinned_alias_warns();
-    // bytesview_pinned_alias_warns()
     bytesview_pinned_alias_warns();
-    // view_rebind_clears_pinned_alias()
     view_rebind_clears_pinned_alias();
-    // multiple_pinned_views_per_source()
     multiple_pinned_views_per_source();
 }
 

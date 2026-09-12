@@ -9,49 +9,49 @@ namespace tpyapp::main {
 // # aliases the caller's dict, no copy). Keys are longer than the SSO buffer so
 // # a view into a dead temporary reads garbage instead of accidentally passing.
 // def scan(d: dict[str, str] | None) -> int:
+//     n = 0
+//     if d is not None:
+//         for k in d:
+//             if k.lower() == "transfer-encoding-extension":
+//                 n += 1
+//         d["seen-by-the-key-iteration-scan"] = "yes"
+//     return n
 ::tpy::BigInt scan(::tpy::ordered_map<std::string, std::string>* d) {
-    // n = 0
     int32_t n = 0;
-    // if d is not None:
     if ((d != nullptr)) {
-        // for k in d:
         auto& __src_0 = (*d);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view k = ::tpy::unwrap_ref(*__r_1);
-            // if k.lower() == "transfer-encoding-extension":
             if ((::tpy::str_lower(k) == "transfer-encoding-extension")) {
-                // n += 1
                 n = ::tpy::add_check<int32_t>(n, 1);
             }
         }
-        // d["seen-by-the-key-iteration-scan"] = "yes"
         ::tpy::__setitem__((*d), "seen-by-the-key-iteration-scan", "yes");
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def main() -> None:
+//     headers = {"Transfer-Encoding-Extension": "chunked", "X-Short": "1"}
+//     print(scan(headers))
+//     print(scan(None))
+//     print(headers["seen-by-the-key-iteration-scan"])
 void main() {
-    // headers = {"Transfer-Encoding-Extension": "chunked", "X-Short": "1"}
     ::tpy::ordered_map<std::string, std::string> headers = ::tpy::ordered_map<std::string, std::string>({{"Transfer-Encoding-Extension", "chunked"}, {"X-Short", "1"}});
-    // print(scan(headers))
     std::cout << scan(&(headers)) << "\n";
-    // print(scan(None))
     std::cout << scan(nullptr) << "\n";
-    // print(headers["seen-by-the-key-iteration-scan"])
     std::cout << ::tpy::__getitem__(headers, "seen-by-the-key-iteration-scan") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -34,16 +35,17 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def bump(self) -> int32:
+//     # The tuple's second element is `self` itself.
+//     t = (1, self)
+//     t[1].val += 1
+//     return t[1].val
 inline int32_t Box::bump() {
-    // # The tuple's second element is `self` itself.
-    // t = (1, self)
     auto t = std::tuple<int32_t, Box*>{1, this};
-    // t[1].val += 1
     std::get<1>(t)->val = ::tpy::add_check<int32_t>(std::get<1>(t)->val, 1);
-    // return t[1].val
     return std::get<1>(t)->val;
 }
 void __tpy_init();

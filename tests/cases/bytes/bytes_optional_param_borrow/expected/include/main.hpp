@@ -13,12 +13,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def first_or_empty(b: bytes | None) -> bytes:
 ::tpy::Bytes first_or_empty(std::optional<::tpy::BytesView> b);
+// def collect(b: bytes | None) -> int:
 ::tpy::BigInt collect(std::optional<::tpy::BytesView> b);
+// def reassigned(b: bytes | None) -> int:
 ::tpy::BigInt reassigned(std::optional<::tpy::BytesView> __param_b);
+// def reassigned_plain(b: bytes, c: bool) -> int:
 ::tpy::BigInt reassigned_plain(::tpy::BytesView __param_b, bool c);
+// def forward(data: bytes) -> int:
 ::tpy::BigInt forward(::tpy::BytesView data);
+// def gen(b: bytes | None) -> Iterator[int]:
 __gen_gen gen(std::optional<::tpy::BytesView> b);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -39,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen(b: bytes | None) -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
     std::optional<::tpy::Bytes> b;
@@ -65,13 +72,14 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
 
 
 // def __init__(self):
+//     self.data = b""
 inline Holder::Holder() : data(::tpy::Bytes{}) {}
 
 // def store(self, b: bytes | None) -> None:
+//     if b is not None:
+//         self.data = b         # narrowed bytes|None param -> bare bytes field
 inline void Holder::store(std::optional<::tpy::BytesView> b) {
-    // if b is not None:
     if ((b.has_value())) {
-        // self.data = b         # narrowed bytes|None param -> bare bytes field
         this->data = ::tpy::Bytes((*b));
     }
 }

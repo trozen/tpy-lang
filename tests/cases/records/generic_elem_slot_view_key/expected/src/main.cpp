@@ -5,216 +5,224 @@ namespace tpyapp::main {
 
 
 // def drop_from(al: ArrayList[int32, 4], k: int32) -> None:
+//     al.remove(k)  # tpyc: ok -- the library generic record's T slot
 void drop_from(::tpystd::tplib::array_list::ArrayList<int32_t, 4>& al, int32_t k) {
-    // al.remove(k)  # tpyc: ok -- the library generic record's T slot
     al.remove(k);
 }
 
 // def drop_literal(al: ArrayList[int32, 4]) -> None:
+//     al.remove(3)  # tpyc: ok
 void drop_literal(::tpystd::tplib::array_list::ArrayList<int32_t, 4>& al) {
-    // al.remove(3)  # tpyc: ok
     al.remove(3);
 }
 
 // def drop_from_record(box: Labels[int32, 4], k: int32) -> None:
+//     box.drop(k)  # tpyc: ok -- a user generic record's T slot
 void drop_from_record(Labels<int32_t, 4>& box, int32_t k) {
-    // box.drop(k)  # tpyc: ok -- a user generic record's T slot
     box.drop(k);
 }
 
 // def drop_str_param(al: ArrayList[str, 4], k: str) -> None:
+//     # A str PARAM (a std::string_view) at the library record's T slot.
+//     al.remove(k)  # tpyc: ok
 void drop_str_param(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view k) {
-    // # A str PARAM (a std::string_view) at the library record's T slot.
-    // al.remove(k)  # tpyc: ok
     al.remove(k);
 }
 
 // def drop_str_local(al: ArrayList[str, 4]) -> None:
+//     # A str LOCAL bound from a literal is a view too.
+//     k = "b"
+//     al.remove(k)  # tpyc: ok
 void drop_str_local(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al) {
-    // # A str LOCAL bound from a literal is a view too.
-    // k = "b"
     std::string_view k = "b";
-    // al.remove(k)  # tpyc: ok
     al.remove(k);
 }
 
 // def drop_str_slice(al: ArrayList[str, 4], src: str) -> None:
+//     # A SLICE result is a view with no owning buffer of its own.
+//     al.remove(src[0:1])  # tpyc: ok
 void drop_str_slice(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view src) {
-    // # A SLICE result is a view with no owning buffer of its own.
-    // al.remove(src[0:1])  # tpyc: ok
     al.remove(::tpy::str_slice(src, ::tpy::BasicSlice{0, 1}));
 }
 
 // def drop_bytes(al: ArrayList[bytes, 4], k: bytes) -> None:
+//     # The bytes twin: the slot wants std::vector<uint8_t>, the key is a span.
+//     al.remove(k)  # tpyc: ok
 void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, ::tpy::BytesView k) {
-    // # The bytes twin: the slot wants std::vector<uint8_t>, the key is a span.
-    // al.remove(k)  # tpyc: ok
     al.remove(k);
 }
 
 // def has_str(box: Labels[str, 4], k: str) -> bool:
+//     # The readonly `const T&` spelling, fed a view.
+//     return box.has(k)  # tpyc: ok
 bool has_str(Labels<std::string, 4>& box, std::string_view k) {
-    // # The readonly `const T&` spelling, fed a view.
-    // return box.has(k)  # tpyc: ok
     return box.has(k);
 }
 
 // def has_item_str(xs: list[str], v: str) -> bool:
+//     # The monomorphic twin of has_item[str]: `v` is spelled std::string_view.
+//     for x in xs:
+//         if x == v:
+//             return True
+//     return False
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v) {
-    // # The monomorphic twin of has_item[str]: `v` is spelled std::string_view.
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view x = *__beg_0;
-        // if x == v:
         if ((x == v)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 
 // def main() -> None:
+//     al = ArrayList[int32, 4]()
+//     al.append(1)
+//     al.append(2)
+//     al.append(3)
+//     drop_from(al, 2)
+//     print("scalar", len(al), al[0], al[1])
+//     drop_literal(al)
+//     print("scalar", len(al), al[0])
+//
+//     box = Labels[int32, 4]()
+//     box.add(7)
+//     box.add(8)
+//     drop_from_record(box, 7)
+//     print("scalar", len(box.items), box.items[0])
+//     print("scalar", box.tag_len("abcd"))
+//
+//     # Library generic record at str, one source form per call.
+//     sl = ArrayList[str, 4]()
+//     sl.append("a")
+//     sl.append("b")
+//     sl.append("c")
+//     drop_str_param(sl, "a")
+//     print("lib_str", len(sl), sl[0])
+//     drop_str_local(sl)
+//     print("lib_str", len(sl), sl[0])
+//     drop_str_slice(sl, "cd")
+//     print("lib_str", len(sl))
+//
+//     # ... and the twin, which spells the same slot `std::string_view`.
+//     tl = ArrayList[str, 4]()
+//     tl.append("a")
+//     tl.append("b")
+//     tl.append("c")
+//     tl.remove("a")
+//     print("lib_str", len(tl), tl[0])
+//     tl.remove("b")
+//     print("lib_str", len(tl), tl[0])
+//     tl.remove("c")
+//     print("lib_str", len(tl))
+//
+//     # User generic record at str: the mutating slot and the readonly one.
+//     ul = Labels[str, 4]()
+//     ul.add("x")
+//     ul.add("y")
+//     key = "x"
+//     print("user_str", has_str(ul, key))
+//     ul.drop(key)
+//     print("user_str", len(ul.items), ul.items[0], has_str(ul, key))
+//
+//     tu = StrLabels()
+//     tu.add("x")
+//     tu.add("y")
+//     print("user_str", tu.has(key))
+//     tu.drop(key)
+//     print("user_str", len(tu.items), tu.items[0], tu.has(key))
+//
+//     # Library generic record at bytes: the slot is a mutable reference there.
+//     bl = ArrayList[bytes, 4]()
+//     bl.append(b"a")
+//     bl.append(b"b")
+//     bk = b"a"
+//     drop_bytes(bl, bk)
+//     print("lib_bytes", len(bl), bl[0])
+//
+//     # A generic FREE function's T slot, both instantiations plus the twin.
+//     names = ["p", "q"]
+//     nk = "p"
+//     print("free_fn", has_item(names, nk))
+//     print("free_fn", has_item_str(names, nk))
+//     keys = [b"p", b"q"]
+//     bnk = b"p"
+//     print("free_fn", has_item(keys, bnk))
 void main() {
-    // al = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
-    // al.append(1)
     al.append(1);
-    // al.append(2)
     al.append(2);
-    // al.append(3)
     al.append(3);
-    // drop_from(al, 2)
     drop_from(al, 2);
-    // print("scalar", len(al), al[0], al[1])
     std::cout << "scalar" << " " << ::tpy::__len__(al) << " " << al[0] << " " << al[1] << "\n";
-    // drop_literal(al)
     drop_literal(al);
-    // print("scalar", len(al), al[0])
     std::cout << "scalar" << " " << ::tpy::__len__(al) << " " << al[0] << "\n";
-    // box = Labels[int32, 4]()
     Labels<int32_t, 4> box = Labels<int32_t, 4>();
-    // box.add(7)
     box.add(7);
-    // box.add(8)
     box.add(8);
-    // drop_from_record(box, 7)
     drop_from_record(box, 7);
-    // print("scalar", len(box.items), box.items[0])
     std::cout << "scalar" << " " << ::tpy::__len__(box.items) << " " << box.items[0] << "\n";
-    // print("scalar", box.tag_len("abcd"))
     std::cout << "scalar" << " " << box.tag_len("abcd") << "\n";
-    // # Library generic record at str, one source form per call.
-    // sl = ArrayList[str, 4]()
     ::tpystd::tplib::array_list::ArrayList<std::string, 4> sl = ::tpystd::tplib::array_list::ArrayList<std::string, 4>();
-    // sl.append("a")
     sl.append("a");
-    // sl.append("b")
     sl.append("b");
-    // sl.append("c")
     sl.append("c");
-    // drop_str_param(sl, "a")
     drop_str_param(sl, "a");
-    // print("lib_str", len(sl), sl[0])
     std::cout << "lib_str" << " " << ::tpy::__len__(sl) << " " << sl[0] << "\n";
-    // drop_str_local(sl)
     drop_str_local(sl);
-    // print("lib_str", len(sl), sl[0])
     std::cout << "lib_str" << " " << ::tpy::__len__(sl) << " " << sl[0] << "\n";
-    // drop_str_slice(sl, "cd")
     drop_str_slice(sl, "cd");
-    // print("lib_str", len(sl))
     std::cout << "lib_str" << " " << ::tpy::__len__(sl) << "\n";
-    // # ... and the twin, which spells the same slot `std::string_view`.
-    // tl = ArrayList[str, 4]()
     ::tpystd::tplib::array_list::ArrayList<std::string, 4> tl = ::tpystd::tplib::array_list::ArrayList<std::string, 4>();
-    // tl.append("a")
     tl.append("a");
-    // tl.append("b")
     tl.append("b");
-    // tl.append("c")
     tl.append("c");
-    // tl.remove("a")
     tl.remove("a");
-    // print("lib_str", len(tl), tl[0])
     std::cout << "lib_str" << " " << ::tpy::__len__(tl) << " " << tl[0] << "\n";
-    // tl.remove("b")
     tl.remove("b");
-    // print("lib_str", len(tl), tl[0])
     std::cout << "lib_str" << " " << ::tpy::__len__(tl) << " " << tl[0] << "\n";
-    // tl.remove("c")
     tl.remove("c");
-    // print("lib_str", len(tl))
     std::cout << "lib_str" << " " << ::tpy::__len__(tl) << "\n";
-    // # User generic record at str: the mutating slot and the readonly one.
-    // ul = Labels[str, 4]()
     Labels<std::string, 4> ul = Labels<std::string, 4>();
-    // ul.add("x")
     ul.add("x");
-    // ul.add("y")
     ul.add("y");
-    // key = "x"
     std::string_view key = "x";
-    // print("user_str", has_str(ul, key))
     std::cout << "user_str" << " " << ::tpy::print_bool(has_str(ul, key)) << "\n";
-    // ul.drop(key)
     ul.drop(key);
-    // print("user_str", len(ul.items), ul.items[0], has_str(ul, key))
     std::cout << "user_str" << " " << ::tpy::__len__(ul.items) << " " << ul.items[0] << " " << ::tpy::print_bool(has_str(ul, key)) << "\n";
-    // tu = StrLabels()
     StrLabels tu = StrLabels();
-    // tu.add("x")
     tu.add("x");
-    // tu.add("y")
     tu.add("y");
-    // print("user_str", tu.has(key))
     std::cout << "user_str" << " " << ::tpy::print_bool(tu.has(key)) << "\n";
-    // tu.drop(key)
     tu.drop(key);
-    // print("user_str", len(tu.items), tu.items[0], tu.has(key))
     std::cout << "user_str" << " " << ::tpy::__len__(tu.items) << " " << tu.items[0] << " " << ::tpy::print_bool(tu.has(key)) << "\n";
-    // # Library generic record at bytes: the slot is a mutable reference there.
-    // bl = ArrayList[bytes, 4]()
     ::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4> bl = ::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>();
-    // bl.append(b"a")
     bl.append(::tpy::bytes_literal_owned("a", 1));
-    // bl.append(b"b")
     bl.append(::tpy::bytes_literal_owned("b", 1));
-    // bk = b"a"
     ::tpy::BytesView bk = ::tpy::bytes_literal("a", 1);
-    // drop_bytes(bl, bk)
     drop_bytes(bl, bk);
-    // print("lib_bytes", len(bl), bl[0])
     std::cout << "lib_bytes" << " " << ::tpy::__len__(bl) << " " << ::tpy::BytesPrinter(bl[0]) << "\n";
-    // # A generic FREE function's T slot, both instantiations plus the twin.
-    // names = ["p", "q"]
     std::vector<std::string> names = {"p", "q"};
-    // nk = "p"
     std::string_view nk = "p";
-    // print("free_fn", has_item(names, nk))
     std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<std::string>(names, nk)) << "\n";
-    // print("free_fn", has_item_str(names, nk))
     std::cout << "free_fn" << " " << ::tpy::print_bool(has_item_str(names, nk)) << "\n";
-    // keys = [b"p", b"q"]
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("p", 1), ::tpy::bytes_literal_owned("q", 1)};
-    // bnk = b"p"
     ::tpy::BytesView bnk = ::tpy::bytes_literal("p", 1);
-    // print("free_fn", has_item(keys, bnk))
     std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<::tpy::Bytes>(keys, bnk)) << "\n";
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

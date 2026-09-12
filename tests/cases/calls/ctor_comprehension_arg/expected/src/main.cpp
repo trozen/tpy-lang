@@ -3,30 +3,29 @@
 
 namespace tpyapp::main {
 
-// # Module-level statement.
-// top = Flat([bytes([i]) for i in range(3)])  # tpyc: ok
 Flat* top{};
 
 // def take_own(data: Own[list[bytes]]) -> Own[list[bytes]]:
+//     data.append(b"z")
+//     return data
 std::vector<::tpy::Bytes> take_own(std::vector<::tpy::Bytes>&& data) {
-    // data.append(b"z")
     data.push_back(::tpy::bytes_literal_owned("z", 1));
-    // return data
     return data;
 }
 
 // def use_flat(f: Flat) -> int32:
+//     return f.n
 int32_t use_flat(const Flat& f) {
-    // return f.n
     return f.n;
 }
 
 // # Borrow slot at a local decl (the doom shape: dict reads in the element).
 // def ctor_borrow(d: dict[bytes, bytes]) -> None:
+//     names = [b"A", b"B"]
+//     f = Flat([d[k] for k in names])  # tpyc: ok
+//     print("ctor_borrow", f.n)
 void ctor_borrow(const ::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes>& d) {
-    // names = [b"A", b"B"]
     std::array<::tpy::Bytes, 2> names = {::tpy::bytes_literal_owned("A", 1), ::tpy::bytes_literal_owned("B", 1)};
-    // f = Flat([d[k] for k in names])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_3 = ({
         std::vector<::tpy::Bytes> __result;
         auto& __obj_0 = names;
@@ -40,14 +39,14 @@ void ctor_borrow(const ::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes>& d) {
         std::move(__result);
     });
     Flat f = Flat(__tmp_3);
-    // print("ctor_borrow", f.n)
     std::cout << "ctor_borrow" << " " << f.n << "\n";
 }
 
 // # A slot the constructor MUTATES: the hoisted temp is an lvalue.
 // def ctor_mutated_slot() -> None:
+//     g = Grow([bytes([i]) for i in range(3)])  # tpyc: ok
+//     print("ctor_mutated_slot", g.n)
 void ctor_mutated_slot() {
-    // g = Grow([bytes([i]) for i in range(3)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_4 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = 3;
@@ -58,14 +57,14 @@ void ctor_mutated_slot() {
         std::move(__result);
     });
     Grow g = Grow(__tmp_4);
-    // print("ctor_mutated_slot", g.n)
     std::cout << "ctor_mutated_slot" << " " << g.n << "\n";
 }
 
 // # Set and dict comprehensions at their slots.
 // def ctor_set_dict() -> None:
+//     t = Tally({str(i): i for i in range(3)}, {i * 2 for i in range(4)})  # tpyc: ok
+//     print("ctor_set_dict", t.n)
 void ctor_set_dict() {
-    // t = Tally({str(i): i for i in range(3)}, {i * 2 for i in range(4)})  # tpyc: ok
     ::tpy::ordered_map<std::string, int32_t> __tmp_5 = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -83,14 +82,13 @@ void ctor_set_dict() {
         std::move(__result);
     });
     Tally t = Tally(__tmp_5, __tmp_6);
-    // print("ctor_set_dict", t.n)
     std::cout << "ctor_set_dict" << " " << t.n << "\n";
 }
 
 // # The constructor call nested in another call's argument.
 // def ctor_nested_call() -> None:
+//     print("ctor_nested_call", use_flat(Flat([bytes([i]) for i in range(2)])))  # tpyc: ok
 void ctor_nested_call() {
-    // print("ctor_nested_call", use_flat(Flat([bytes([i]) for i in range(2)])))  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_7 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = 2;
@@ -106,8 +104,8 @@ void ctor_nested_call() {
 
 // # ... as a return value.
 // def make(k: int32) -> Own[Flat]:
+//     return Flat([bytes([i]) for i in range(k)])  # tpyc: ok
 Flat make(int32_t k) {
-    // return Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_9 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = k;
@@ -122,8 +120,11 @@ Flat make(int32_t k) {
 
 // # ... as a list-literal element, and in a condition.
 // def ctor_element_and_condition() -> None:
+//     fs = [Flat([bytes([i]) for i in range(2)]), Flat([b"x"])]  # tpyc: ok
+//     print("ctor_element", fs[0].n, fs[1].n)
+//     if Flat([bytes([i]) for i in range(2)]).n > 1:  # tpyc: ok
+//         print("ctor_condition yes")
 void ctor_element_and_condition() {
-    // fs = [Flat([bytes([i]) for i in range(2)]), Flat([b"x"])]  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_10 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = 2;
@@ -134,9 +135,7 @@ void ctor_element_and_condition() {
         std::move(__result);
     });
     std::array<Flat, 2> fs = {Flat(__tmp_10), Flat({::tpy::bytes_literal_owned("x", 1)})};
-    // print("ctor_element", fs[0].n, fs[1].n)
     std::cout << "ctor_element" << " " << ::tpy::__getitem__(fs, 0).n << " " << ::tpy::__getitem__(fs, 1).n << "\n";
-    // if Flat([bytes([i]) for i in range(2)]).n > 1:  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_11 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_1 = 2;
@@ -147,7 +146,6 @@ void ctor_element_and_condition() {
         std::move(__result);
     });
     if ((Flat(__tmp_11).n > 1)) {
-        // print("ctor_condition yes")
         std::cout << "ctor_condition yes" << "\n";
     }
 }
@@ -155,8 +153,14 @@ void ctor_element_and_condition() {
 // # Own slot at a constructor, a method and a free function; the stored list is
 // # grown after each transfer.
 // def own_slots() -> None:
+//     k = Keep([bytes([i]) for i in range(3)])  # tpyc: ok
+//     k.data.append(b"q")
+//     print("own_ctor", len(k.data))
+//     k.reset([bytes([i]) for i in range(5)])  # tpyc: ok
+//     k.data.append(b"q")
+//     print("own_method", len(k.data))
+//     print("own_free", len(take_own([bytes([i]) for i in range(2)])))  # tpyc: ok
 void own_slots() {
-    // k = Keep([bytes([i]) for i in range(3)])  # tpyc: ok
     Keep k = Keep(({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = 3;
@@ -166,11 +170,8 @@ void own_slots() {
         }
         std::move(__result);
     }));
-    // k.data.append(b"q")
     k.data.push_back(::tpy::bytes_literal_owned("q", 1));
-    // print("own_ctor", len(k.data))
     std::cout << "own_ctor" << " " << ::tpy::__len__(k.data) << "\n";
-    // k.reset([bytes([i]) for i in range(5)])  # tpyc: ok
     k.reset(({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_1 = 5;
@@ -180,11 +181,8 @@ void own_slots() {
         }
         std::move(__result);
     }));
-    // k.data.append(b"q")
     k.data.push_back(::tpy::bytes_literal_owned("q", 1));
-    // print("own_method", len(k.data))
     std::cout << "own_method" << " " << ::tpy::__len__(k.data) << "\n";
-    // print("own_free", len(take_own([bytes([i]) for i in range(2)])))  # tpyc: ok
     std::cout << "own_free" << " " << ::tpy::__len__(take_own(({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_2 = 2;
@@ -200,10 +198,16 @@ void own_slots() {
 // # move the stmt-expr in; the stored lists are grown afterwards (the
 // # setdefault result aliases the stored list).
 // def own_stub_elem() -> None:
+//     table: list[list[float]] = []
+//     table.append([2.0 * float(i) for i in range(3)])  # tpyc: ok
+//     table[0].append(9.0)
+//     print("own_stub_elem", len(table), table[0])
+//     d: dict[int32, list[int32]] = {}
+//     got = d.setdefault(1, [x for x in range(3)])  # tpyc: ok
+//     got.append(7)
+//     print("own_stub_elem", d[1], len(got))
 void own_stub_elem() {
-    // table: list[list[float]] = []
     std::vector<std::vector<double>> table = std::vector<std::vector<double>>{};
-    // table.append([2.0 * float(i) for i in range(3)])  # tpyc: ok
     table.push_back(({
         std::vector<double> __result;
         const int32_t __stop_0 = 3;
@@ -213,13 +217,9 @@ void own_stub_elem() {
         }
         std::move(__result);
     }));
-    // table[0].append(9.0)
     ::tpy::__getitem__(table, 0).push_back(9.0);
-    // print("own_stub_elem", len(table), table[0])
     std::cout << "own_stub_elem" << " " << ::tpy::__len__(table) << " " << ::tpy::ListPrinter(::tpy::__getitem__(table, 0)) << "\n";
-    // d: dict[int32, list[int32]] = {}
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>();
-    // got = d.setdefault(1, [x for x in range(3)])  # tpyc: ok
     std::vector<int32_t>& got = ::tpy::dict_setdefault(d, 1, ({
         std::vector<int32_t> __result;
         const int32_t __stop_1 = 3;
@@ -229,9 +229,7 @@ void own_stub_elem() {
         }
         std::move(__result);
     }));
-    // got.append(7)
     got.push_back(7);
-    // print("own_stub_elem", d[1], len(got))
     std::cout << "own_stub_elem" << " " << ::tpy::ListPrinter(::tpy::__getitem__(d, 1)) << " " << ::tpy::__len__(got) << "\n";
 }
 
@@ -239,8 +237,14 @@ void own_stub_elem() {
 // # slot off a literal-seeded receiver (`rows = []`), the literal twin's two
 // # other homes.
 // def own_marker_and_pending() -> None:
+//     r = Rc.new([x * 2 for x in range(3)])  # tpyc: ok
+//     r.get().append(9)
+//     print("own_marker", r.get())
+//     rows = []
+//     rows.append([x for x in range(3)])  # tpyc: ok
+//     rows[0].append(7)
+//     print("own_pending_elem", rows)
 void own_marker_and_pending() {
-    // r = Rc.new([x * 2 for x in range(3)])  # tpyc: ok
     ::tpystd::tplib::rc::Rc<std::vector<int32_t>> r = Rc<std::vector<int32_t>>::new_<std::vector<int32_t>>(({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -250,13 +254,9 @@ void own_marker_and_pending() {
         }
         std::move(__result);
     }));
-    // r.get().append(9)
     r.get().push_back(9);
-    // print("own_marker", r.get())
     std::cout << "own_marker" << " " << ::tpy::ListPrinter(r.get()) << "\n";
-    // rows = []
     std::vector<std::vector<int32_t>> rows = std::vector<std::vector<int32_t>>{};
-    // rows.append([x for x in range(3)])  # tpyc: ok
     rows.push_back(({
         std::vector<int32_t> __result;
         const int32_t __stop_1 = 3;
@@ -266,18 +266,19 @@ void own_marker_and_pending() {
         }
         std::move(__result);
     }));
-    // rows[0].append(7)
     ::tpy::__getitem__(rows, 0).push_back(7);
-    // print("own_pending_elem", rows)
     std::cout << "own_pending_elem" << " " << ::tpy::ListPrinter(rows) << "\n";
 }
 
 // # An rvalue-reassigned local: the temp lands before the rebind-slot
 // # declaration and before each in-place slot rewrite.
 // def rebind_slot_reseat(k: int32) -> None:
+//     f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
+//     print("rebind_slot_reseat", f.n)
+//     f = Flat([bytes([i]) for i in range(k + 1)])  # tpyc: ok
+//     print("rebind_slot_reseat", f.n)
 void rebind_slot_reseat(int32_t k) {
     std::optional<Flat> __slot_2;
-    // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_12 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = k;
@@ -289,9 +290,7 @@ void rebind_slot_reseat(int32_t k) {
     });
     Flat __slot_1 = Flat(__tmp_12);
     Flat* f = &__slot_1;
-    // print("rebind_slot_reseat", f.n)
     std::cout << "rebind_slot_reseat" << " " << f->n << "\n";
-    // f = Flat([bytes([i]) for i in range(k + 1)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_13 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_1 = (::tpy::add_check<int32_t>(k, 1));
@@ -302,17 +301,18 @@ void rebind_slot_reseat(int32_t k) {
         std::move(__result);
     });
     f = &*(__slot_2 = Flat(__tmp_13));
-    // print("rebind_slot_reseat", f.n)
     std::cout << "rebind_slot_reseat" << " " << f->n << "\n";
 }
 
 // # Closure body (a literal element: `bytes([i])` inside a nested def is its
 // # own gap, BUGS.md#nested-def-native-call-list-literal-arg).
 // def closure() -> None:
+//     def inner(k: int32) -> int32:
+//         return Flat([b"x" for i in range(k)]).n  # tpyc: ok
+//
+//     print("closure", inner(3))
 void closure() {
-    // def inner(k: int32) -> int32:
     auto inner = [](int32_t k) -> int32_t {
-        // return Flat([b"x" for i in range(k)]).n  # tpyc: ok
         std::vector<::tpy::Bytes> __tmp_14 = ({
             std::vector<::tpy::Bytes> __result;
             const int32_t __stop_0 = k;
@@ -324,20 +324,31 @@ void closure() {
         });
         return Flat(__tmp_14).n;
     };
-    // print("closure", inner(3))
     std::cout << "closure" << " " << inner(3) << "\n";
 }
 
 // # With body, try body, match arm.
 // def blocks(k: int32) -> None:
+//     with CM() as n:
+//         f = Flat([bytes([i]) for i in range(n)])  # tpyc: ok
+//         print("with_body", f.n)
+//     try:
+//         f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
+//         print("try_body", f.n)
+//     except ValueError:
+//         print("try_body err")
+//     match k:
+//         case 3:
+//             f = Flat([bytes([i]) for i in range(k + 1)])  # tpyc: ok
+//             print("match_arm", f.n)
+//         case _:
+//             print("match_arm other")
 void blocks(int32_t k) {
     std::optional<Flat> __slot_1;
-    // with CM() as n:
     Flat* f;
     auto __ctx_1 = CM();
     auto n = __ctx_1.__enter__();
     try {
-        // f = Flat([bytes([i]) for i in range(n)])  # tpyc: ok
         std::vector<::tpy::Bytes> __tmp_15 = ({
             std::vector<::tpy::Bytes> __result;
             const int32_t __stop_0 = n;
@@ -348,7 +359,6 @@ void blocks(int32_t k) {
             std::move(__result);
         });
         f = &*(__slot_1 = Flat(__tmp_15));
-        // print("with_body", f.n)
         std::cout << "with_body" << " " << f->n << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -360,10 +370,8 @@ void blocks(int32_t k) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // try:
     {
         try {
-            // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
             std::vector<::tpy::Bytes> __tmp_16 = ({
                 std::vector<::tpy::Bytes> __result;
                 const int32_t __stop_1 = k;
@@ -374,19 +382,14 @@ void blocks(int32_t k) {
                 std::move(__result);
             });
             f = &*(__slot_1 = Flat(__tmp_16));
-            // print("try_body", f.n)
             std::cout << "try_body" << " " << f->n << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("try_body err")
             std::cout << "try_body err" << "\n";
         }
     }
-    // match k:
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
-    // case 3:
     case 3: {
-        // f = Flat([bytes([i]) for i in range(k + 1)])  # tpyc: ok
         std::vector<::tpy::Bytes> __tmp_17 = ({
             std::vector<::tpy::Bytes> __result;
             const int32_t __stop_2 = (::tpy::add_check<int32_t>(k, 1));
@@ -397,13 +400,10 @@ void blocks(int32_t k) {
             std::move(__result);
         });
         f = &*(__slot_1 = Flat(__tmp_17));
-        // print("match_arm", f.n)
         std::cout << "match_arm" << " " << f->n << "\n";
         break;
     }
-    // case _:
     default: {
-        // print("match_arm other")
         std::cout << "match_arm other" << "\n";
         break;
     }
@@ -413,16 +413,18 @@ void blocks(int32_t k) {
 // # A reseat of a with-hoisted, reassigned record: the argument temp must land
 // # BEFORE the rebind write (every valued reseat kind flushes first).
 // def hoisted_reseat(k: int32) -> None:
+//     with CM() as n:
+//         f = Flat([b"a"])
+//         print("hoisted_reseat", f.n)
+//     f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
+//     print("hoisted_reseat", f.n)
 void hoisted_reseat(int32_t k) {
     std::optional<Flat> __slot_1;
-    // with CM() as n:
     Flat* f;
     auto __ctx_2 = CM();
     auto n = __ctx_2.__enter__();
     try {
-        // f = Flat([b"a"])
         f = &*(__slot_1 = Flat({::tpy::bytes_literal_owned("a", 1)}));
-        // print("hoisted_reseat", f.n)
         std::cout << "hoisted_reseat" << " " << f->n << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -434,7 +436,6 @@ void hoisted_reseat(int32_t k) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_18 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = k;
@@ -445,42 +446,42 @@ void hoisted_reseat(int32_t k) {
         std::move(__result);
     });
     f = &*(__slot_1 = Flat(__tmp_18));
-    // print("hoisted_reseat", f.n)
     std::cout << "hoisted_reseat" << " " << f->n << "\n";
 }
 
 // def label(k: int32) -> str:
+//     if k == 0:
+//         return ""
+//     return "k"
 std::string label(int32_t k) {
-    // if k == 0:
     if ((k == 0)) {
-        // return ""
         return "";
     }
-    // return "k"
     return "k";
 }
 
 // # The str in-place append drains its value's temp first (the `or` operand
 // # materializes one).
 // def str_append_temp(k: int32) -> None:
+//     s = "start"
+//     s += label(k) or "none"  # tpyc: ok
+//     s += label(0) or "none"  # tpyc: ok
+//     print("str_append_temp", s)
 void str_append_temp(int32_t k) {
-    // s = "start"
     std::string s = "start";
-    // s += label(k) or "none"  # tpyc: ok
     auto&& __tmp_19 = label(k);
     s += ((!__tmp_19.empty()) ? __tmp_19 : std::string(std::string_view("none")));
-    // s += label(0) or "none"  # tpyc: ok
     auto&& __tmp_20 = label(0);
     s += ((!__tmp_20.empty()) ? __tmp_20 : std::string(std::string_view("none")));
-    // print("str_append_temp", s)
     std::cout << "str_append_temp" << " " << s << "\n";
 }
 
 // # @error_return body.
 // @error_return(MyErr)
 // def error_return_body(k: int32) -> int32:
+//     f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
+//     return f.n
 std::expected<int32_t, MyErr> error_return_body(int32_t k) {
-    // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_21 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = k;
@@ -491,71 +492,74 @@ std::expected<int32_t, MyErr> error_return_body(int32_t k) {
         std::move(__result);
     });
     Flat f = Flat(__tmp_21);
-    // return f.n
     return f.n;
 }
 
 // def main() -> None:
+//     ctor_borrow({b"A": b"x", b"B": b"y"})
+//     ctor_mutated_slot()
+//     ctor_set_dict()
+//     ctor_nested_call()
+//     print("ctor_return", make(4).n)
+//     ctor_element_and_condition()
+//     own_slots()
+//     own_stub_elem()
+//     own_marker_and_pending()
+//     rebind_slot_reseat(3)
+//     str_append_temp(2)
+//     s = Site(2)
+//     s.bump(3)
+//     print("ctor_method_body", s.n)
+//     closure()
+//     blocks(3)
+//     hoisted_reseat(3)
+//     try:
+//         print("error_return_body", error_return_body(2))
+//     except MyErr:
+//         print("error_return_body err")
 void main() {
-    // ctor_borrow({b"A": b"x", b"B": b"y"})
     ::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes> __tmp_22 = ::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes>({{::tpy::bytes_literal_owned("A", 1), ::tpy::bytes_literal_owned("x", 1)}, {::tpy::bytes_literal_owned("B", 1), ::tpy::bytes_literal_owned("y", 1)}});
     ctor_borrow(__tmp_22);
-    // ctor_mutated_slot()
     ctor_mutated_slot();
-    // ctor_set_dict()
     ctor_set_dict();
-    // ctor_nested_call()
     ctor_nested_call();
-    // print("ctor_return", make(4).n)
     std::cout << "ctor_return" << " " << make(4).n << "\n";
-    // ctor_element_and_condition()
     ctor_element_and_condition();
-    // own_slots()
     own_slots();
-    // own_stub_elem()
     own_stub_elem();
-    // own_marker_and_pending()
     own_marker_and_pending();
-    // rebind_slot_reseat(3)
     rebind_slot_reseat(3);
-    // str_append_temp(2)
     str_append_temp(2);
-    // s = Site(2)
     Site s = Site(2);
-    // s.bump(3)
     s.bump(3);
-    // print("ctor_method_body", s.n)
     std::cout << "ctor_method_body" << " " << s.n << "\n";
-    // closure()
     closure();
-    // blocks(3)
     blocks(3);
-    // hoisted_reseat(3)
     hoisted_reseat(3);
-    // try:
     {
-        // print("error_return_body", error_return_body(2))
         std::cout << "error_return_body" << " " << ({ auto __er_2 = error_return_body(2); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except MyErr:
         __except_1:;
-        // print("error_return_body err")
         std::cout << "error_return_body err" << "\n";
         __after_try_1:;
     }
 }
 
+// from tplib import Rc
+//
+// main()
+//
+// # Module-level statement.
+// top = Flat([bytes([i]) for i in range(3)])  # tpyc: ok
+// print("module_level", top.n)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
-    // # Module-level statement.
-    // top = Flat([bytes([i]) for i in range(3)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_23 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = 3;
@@ -567,7 +571,6 @@ void __tpy_init() {
     });
     static Flat __global_slot_1 = Flat(__tmp_23);
     top = &__global_slot_1;
-    // print("module_level", top.n)
     std::cout << "module_level" << " " << top->n << "\n";
 }
 

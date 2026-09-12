@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def take(rows: list[Row]) -> Own[Row]:
+//     # The receiver is a temporary, but the borrow reaches past it into `rows`.
+//     return Picker().pick(rows)  # tpyc: warning(/copies Row into owned storage/)
 Row take(std::vector<Row>& rows) {
-    // # The receiver is a temporary, but the borrow reaches past it into `rows`.
-    // return Picker().pick(rows)  # tpyc: warning(/copies Row into owned storage/)
     return Picker().pick(rows);
 }
 
 // def take_copy(rows: list[Row]) -> Own[Row]:
+//     return copy(Picker().pick(rows))  # tpyc: ok
 Row take_copy(std::vector<Row>& rows) {
-    // return copy(Picker().pick(rows))  # tpyc: ok
     return Row(Picker().pick(rows));
 }
 
 // def main() -> None:
+//     rows = [Row(1)]
+//     print(take(rows).v, take_copy(rows).v, rows[0].v)
 void main() {
-    // rows = [Row(1)]
     std::vector<Row> rows = {Row(1)};
-    // print(take(rows).v, take_copy(rows).v, rows[0].v)
     std::cout << take(rows).v << " " << take_copy(rows).v << " " << ::tpy::__getitem__(rows, 0).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

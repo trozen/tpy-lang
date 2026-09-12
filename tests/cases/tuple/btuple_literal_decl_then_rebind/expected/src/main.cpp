@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def use(h: Holder, b: Box) -> int32:
+//     t = (1, b)  # the borrow-tuple literal declaration
+//     first = t[1].val
+//     t = h.pair
+//     t[1].val = 42  # writes through the rebound alias
+//     return first
 int32_t use(Holder& h, Box& b) {
-    // t = (1, b)  # the borrow-tuple literal declaration
     std::tuple<int32_t, Box*> t = std::tuple<int32_t, Box*>{1, &(b)};
-    // first = t[1].val
     int32_t first = std::get<1>(t)->val;
-    // t = h.pair
     t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
-    // t[1].val = 42  # writes through the rebound alias
     std::get<1>(t)->val = 42;
-    // return first
     return first;
 }
 
 // def main() -> None:
+//     h = Holder(Box(5))
+//     first = use(h, Box(3))
+//     print(first, h.pair[1].val)
 void main() {
-    // h = Holder(Box(5))
     Holder h = Holder(Box(5));
-    // first = use(h, Box(3))
     Box __tmp_1 = Box(3);
     int32_t first = use(h, __tmp_1);
-    // print(first, h.pair[1].val)
     std::cout << first << " " << std::get<1>(h.pair).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

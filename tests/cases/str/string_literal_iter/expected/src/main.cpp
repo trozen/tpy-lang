@@ -7,75 +7,75 @@ namespace tpyapp::main {
 // # Test that iterating over string literals produces the same result as string variables,
 // # without including the null terminator.
 // def test_literal_iter() -> None:
+//     for ch in "abc":
+//         print(ch)
 void test_literal_iter() {
-    // for ch in "abc":
     auto __obj_0 = std::string_view("abc");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // print(ch)
         std::cout << ch << "\n";
     }
 }
 
 // def test_var_iter() -> None:
+//     s = "abc"
+//     for ch in s:
+//         print(ch)
 void test_var_iter() {
-    // s = "abc"
     std::string_view s = "abc";
-    // for ch in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // print(ch)
         std::cout << ch << "\n";
     }
 }
 
 // def test_empty_literal() -> None:
+//     count = 0
+//     for ch in "":
+//         count += 1
+//     print("empty:", count)
 void test_empty_literal() {
-    // count = 0
     int32_t count = 0;
-    // for ch in "":
     auto __obj_0 = std::string_view("");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    // print("empty:", count)
     std::cout << "empty:" << " " << count << "\n";
 }
 
 // def test_single_char() -> None:
+//     for ch in "x":
+//         print(ch)
 void test_single_char() {
-    // for ch in "x":
     auto __obj_0 = std::string_view("x");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // print(ch)
         std::cout << ch << "\n";
     }
 }
 
+// test_literal_iter()
+// test_var_iter()
+// test_empty_literal()
+// test_single_char()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_literal_iter()
     test_literal_iter();
-    // test_var_iter()
     test_var_iter();
-    // test_empty_literal()
     test_empty_literal();
-    // test_single_char()
     test_single_char();
 }
 

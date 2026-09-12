@@ -6,20 +6,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n = wide_count()  # tpyc: type(int32)
+//     print(n)
 void main() {
-    // n = wide_count()  # tpyc: type(int32)
     int32_t n = static_cast<int32_t>(::nx::wide_count());
-    // print(n)
     std::cout << n << "\n";
 }
 
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
-    // main()
     main();
 }
 

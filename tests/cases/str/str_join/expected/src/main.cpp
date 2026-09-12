@@ -6,44 +6,48 @@ namespace tpyapp::main {
 
 // # Test str.join() -- join strings from a list
 // def main() -> None:
+//     # Basic join
+//     result = ",".join(["a", "b", "c"])
+//     print(result)
+//
+//     # Empty separator
+//     together = "".join(["a", "b", "c"])
+//     print(together)
+//
+//     # Single element
+//     single = ",".join(["only"])
+//     print(single)
+//
+//     # Empty list
+//     empty_items: list[str] = []
+//     empty = ",".join(empty_items)
+//     print("empty:", len(empty))
+//
+//     # Join with variable separator
+//     sep = " - "
+//     items = ["one", "two", "three"]
+//     print(sep.join(items))
 void main() {
-    // # Basic join
-    // result = ",".join(["a", "b", "c"])
     std::string result = ::tpy::str_join(",", std::array<std::string, 3>{"a", "b", "c"});
-    // print(result)
     std::cout << result << "\n";
-    // # Empty separator
-    // together = "".join(["a", "b", "c"])
     std::string together = ::tpy::str_join("", std::array<std::string, 3>{"a", "b", "c"});
-    // print(together)
     std::cout << together << "\n";
-    // # Single element
-    // single = ",".join(["only"])
     std::string single = ::tpy::str_join(",", std::array<std::string, 1>{"only"});
-    // print(single)
     std::cout << single << "\n";
-    // # Empty list
-    // empty_items: list[str] = []
     std::vector<std::string> empty_items = std::vector<std::string>{};
-    // empty = ",".join(empty_items)
     std::string empty = ::tpy::str_join(",", empty_items);
-    // print("empty:", len(empty))
     std::cout << "empty:" << " " << ::tpy::__len__(empty) << "\n";
-    // # Join with variable separator
-    // sep = " - "
     std::string_view sep = " - ";
-    // items = ["one", "two", "three"]
     std::array<std::string, 3> items = {"one", "two", "three"};
-    // print(sep.join(items))
     std::cout << ::tpy::str_join(sep, items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

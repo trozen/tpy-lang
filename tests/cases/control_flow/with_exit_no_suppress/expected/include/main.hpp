@@ -11,6 +11,7 @@ struct Bouncer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # __exit__ returning False (or None) does NOT suppress; the exception propagates
@@ -34,25 +35,25 @@ inline std::ostream& operator<<(std::ostream& os, const Bouncer& obj) {
 
 
 // def __enter__(self) -> int:
+//     print("enter")
+//     return 1
 inline ::tpy::BigInt Bouncer::__enter__() const {
-    // print("enter")
     std::cout << "enter" << "\n";
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is not None:
+//         print(f"exit saw: {str(exc_val)}")
+//     else:
+//         print("exit clean")
+//     return False
 inline bool Bouncer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is not None:
     if ((exc_val != nullptr)) {
-        // print(f"exit saw: {str(exc_val)}")
         std::cout << std::format("exit saw: {}", std::string(::tpy::__str__((*exc_val)))) << "\n";
-    // else:
     } else {
-        // print("exit clean")
         std::cout << "exit clean" << "\n";
     }
-    // return False
     return false;
 }
 void __tpy_init();

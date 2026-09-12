@@ -11,10 +11,13 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mutate_via_iterable(items: Iterable[Point]) -> None:
 template<::tpystd::typing::Iterable<Point> T_items>
 void mutate_via_iterable(T_items& items);
+// def mutate_via_iterator(it: Iterator[Point]) -> None:
 template<::tpystd::typing::Iterator<Point> T_it>
 void mutate_via_iterator(T_it& it);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -37,35 +40,41 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 // def mutate_via_iterable(items: Iterable[Point]) -> None:
+//     for p in items:
+//         p.x += 100
 template<::tpystd::typing::Iterable<Point> T_items>
 void mutate_via_iterable(T_items& items) {
-    // for p in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& p = ::tpy::unwrap_ref(*__r_1);
-        // p.x += 100
         p.x = (p.x) + (::tpy::BigInt(100));
     }
 }
 // def mutate_via_iterator(it: Iterator[Point]) -> None:
+//     for p in it:
+//         p.y += 200
 template<::tpystd::typing::Iterator<Point> T_it>
 void mutate_via_iterator(T_it& it) {
-    // for p in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& p = ::tpy::unwrap_ref(*__r_1);
-        // p.y += 200
         p.y = (p.y) + (::tpy::BigInt(200));
     }
 }
+// def gen_double_x(items: Iterable[Point]) -> Iterator[int]:
+//     for p in items:
+//         p.x *= 2
+//         yield p.x
 template<::tpystd::typing::Iterable<Point> T_items>
 inline auto gen_double_x(T_items& items) {
     return ::tpy::make_generator<::tpy::BigInt>(
@@ -75,7 +84,6 @@ inline auto gen_double_x(T_items& items) {
             if (!__r.has_value()) return std::nullopt;
             {
                 auto&& p = ::tpy::unwrap_ref(*__r);
-                // p.x *= 2
                 p.x = (p.x) * (::tpy::BigInt(2));
                 auto __val = p.x;
                 return std::optional<::tpy::BigInt>(__val);

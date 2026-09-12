@@ -12,7 +12,9 @@ using C = ::tpyapp::palette::Color;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def label(c: C | None) -> str:
 std::string label(std::optional<::tpyapp::palette::Color> c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

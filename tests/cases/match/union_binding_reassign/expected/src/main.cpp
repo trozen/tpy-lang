@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> str:
+//     match a:
+//         case Dog(name=n):
+//             n = "dog:" + n
+//         case Cat(name=n):
+//             n = "cat:" + n
+//     return n
 std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     std::string n;
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog(name=n):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         n = __case_0.name;
-        // n = "dog:" + n
         n = (::tpy::str_concat("dog:", n));
         break;
     }
-    // case Cat(name=n):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         n = __case_1.name;
-        // n = "cat:" + n
         n = (::tpy::str_concat("cat:", n));
         break;
     }
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     d: Dog | Cat = Dog("Rex")
+//     c: Dog | Cat = Cat("Whiskers")
+//     print(describe(d))
+//     print(describe(c))
 void main() {
-    // d: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat = Cat("Whiskers")
     ::tpy::Union<Cat, Dog> __slot_2 = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // print(describe(d))
     std::cout << describe(d.as_const()) << "\n";
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

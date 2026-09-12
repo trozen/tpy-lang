@@ -12,10 +12,15 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p);
+// def read_inner(p: Ptr[readonly[Inner]]) -> int32:
 int32_t read_inner(const Inner* p);
+// def test_field_to_ptr() -> None:
 void test_field_to_ptr();
+// def test_field_to_const_ptr() -> None:
 void test_field_to_const_ptr();
+// def test_subscript_to_ptr() -> None:
 void test_subscript_to_ptr();
 
 // class Inner:
@@ -52,9 +57,11 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Inner::Inner(int32_t x) : x(x) {}
 
 // def __init__(self, x: int32) -> None:
+//     self.inner = Inner(x)
 inline Outer::Outer(int32_t x) : inner(Inner(x)) {}
 void __tpy_init();
 } // namespace tpyapp::main

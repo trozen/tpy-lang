@@ -17,7 +17,9 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_observer_with_dead_target() -> Own[Observer]:
 Observer make_observer_with_dead_target();
+// def main() -> None:
 void main();
 
 // class Observer:
@@ -61,22 +63,24 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, target: Own[Weak[Counter]]) -> None:
+//     self.target = target
 inline Observer::Observer(::tpystd::tplib::rc::Weak<Counter>&& target) : target(std::move(target)) {}
 
 // def read(self) -> int32:
+//     upgraded = self.target.upgrade()
+//     if upgraded is None:
+//         return int32(-1)
+//     return upgraded.get().value
 inline int32_t Observer::read() {
-    // upgraded = self.target.upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Counter>> upgraded = this->target.upgrade();
-    // if upgraded is None:
     if ((!upgraded.has_value())) {
-        // return int32(-1)
         return -1;
     }
-    // return upgraded.get().value
     return (*upgraded).get().value;
 }
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Counter::Counter(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

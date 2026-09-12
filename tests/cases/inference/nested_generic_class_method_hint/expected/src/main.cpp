@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Container[int32] = Container(0)
+//     r: Rc[Box[Greeter]] = c.wrap(Box(Cat("Whiskers")))  # tpyc: type(Rc[Box[Greeter]])
+//     print(r.get().get().greet())
 void main() {
-    // c: Container[int32] = Container(0)
     Container<int32_t> c = Container<int32_t>(0);
-    // r: Rc[Box[Greeter]] = c.wrap(Box(Cat("Whiskers")))  # tpyc: type(Rc[Box[Greeter]])
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> r = c.wrap<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Cat("Whiskers"))));
-    // print(r.get().get().greet())
     std::cout << r.get().get().greet() << "\n";
 }
 
+// from tplib import Box, Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box, Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

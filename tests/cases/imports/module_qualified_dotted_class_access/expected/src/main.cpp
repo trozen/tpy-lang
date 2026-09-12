@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = pkg.sub.Widget.make(13)  # tpyc: ok
+//     print(w.value)
+//     print(pkg.sub.Widget.SIZE)  # tpyc: ok
 void main() {
-    // w = pkg.sub.Widget.make(13)  # tpyc: ok
     ::tpyapp::pkg::sub::Widget w = ::tpyapp::pkg::sub::Widget::make(13);
-    // print(w.value)
     std::cout << w.value << "\n";
-    // print(pkg.sub.Widget.SIZE)  # tpyc: ok
     std::cout << ::tpyapp::pkg::sub::Widget::SIZE << "\n";
 }
 
+// # Regression: `import pkg.sub` followed by `pkg.sub.Cls.method()` and
+// # `pkg.sub.Cls.CONST` works. The dotted-module case walks two TpyFieldAccess
+// # layers to recover the module name, then looks up the class.
+// import pkg.sub
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `import pkg.sub` followed by `pkg.sub.Cls.method()` and
-    // # `pkg.sub.Cls.CONST` works. The dotted-module case walks two TpyFieldAccess
-    // # layers to recover the module name, then looks up the class.
-    // import pkg.sub
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::sub::__tpy_init();
-    // main()
     main();
 }
 

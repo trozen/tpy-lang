@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -46,6 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
+//     self.value = int32(0)
 inline Box::Box() : value(0) {}
 
 // # @auto_readonly generates a const-qualified clone alongside the
@@ -54,8 +56,8 @@ inline Box::Box() : value(0) {}
 // # is the synthesised `is_readonly` flag.
 // @auto_readonly
 // def get(self) -> int32:
+//     return self.value
 inline int32_t Box::get() {
-    // return self.value
     return this->value;
 }
 
@@ -65,8 +67,8 @@ inline int32_t Box::get() {
 // # is the synthesised `is_readonly` flag.
 // @auto_readonly
 // def get(self) -> int32:
+//     return self.value
 inline int32_t Box::get() const {
-    // return self.value
     return this->value;
 }
 void __tpy_init();

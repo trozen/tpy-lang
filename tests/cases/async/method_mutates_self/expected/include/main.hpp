@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_Counter_bump;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
 
 // class Counter:
@@ -35,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: Counter.bump
+// async def bump(self, by: int32) -> int32:
 struct __coro_Counter_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -62,7 +63,7 @@ inline __coro_Counter_bump Counter::bump(int32_t by) {
     return __coro_Counter_bump(*this, by);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -92,6 +93,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.count = 0
 inline Counter::Counter() : count(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

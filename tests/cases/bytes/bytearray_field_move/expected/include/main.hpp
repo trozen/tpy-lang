@@ -15,6 +15,7 @@ struct Buf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Buf:
@@ -52,30 +53,33 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 
 
 // def __init__(self) -> None:
+//     self.data = bytearray()
+//     self.tags = []
+//     self.boxes = []
 inline Buf::Buf() : data(::tpy::ByteArray()), tags(std::vector<int32_t>{}), boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>{}) {}
 
 // def reset(self, n: int32) -> None:
+//     fresh = bytearray(n)
+//     self.data = fresh  # tpyc: ok -- the moved bytes-family name
 inline void Buf::reset(int32_t n) {
-    // fresh = bytearray(n)
     ::tpy::ByteArray fresh = ::tpy::bytearray_from_size(n);
-    // self.data = fresh  # tpyc: ok -- the moved bytes-family name
     this->data = std::move(fresh);
 }
 
 // def retag(self, n: int32) -> None:
+//     fresh: list[int32] = [n]
+//     self.tags = fresh  # tpyc: ok -- the same row, container leg
 inline void Buf::retag(int32_t n) {
-    // fresh: list[int32] = [n]
     std::vector<int32_t> fresh = {n};
-    // self.tags = fresh  # tpyc: ok -- the same row, container leg
     this->tags = std::move(fresh);
 }
 
 // def rebox(self, n: int32) -> None:
+//     fresh: list[Box[int32]] = [Box(n)]
+//     self.boxes = fresh  # tpyc: ok -- a copy here would not compile
 inline void Buf::rebox(int32_t n) {
-    // fresh: list[Box[int32]] = [Box(n)]
     int32_t __tmp_1 = n;
     std::vector<::tpystd::tplib::box::Box<int32_t>> fresh = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1)));
-    // self.boxes = fresh  # tpyc: ok -- a copy here would not compile
     this->boxes = std::move(fresh);
 }
 void __tpy_init();

@@ -11,9 +11,13 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def stepped(lo: int, step: int) -> Own[list[int32]]:
 std::vector<int32_t> stepped(const ::tpy::BigInt& lo, const ::tpy::BigInt& step);
+// def basic(lo: int, hi: int) -> Own[list[int32]]:
 std::vector<int32_t> basic(const ::tpy::BigInt& lo, const ::tpy::BigInt& hi);
+// def upper_only(hi: int) -> Own[list[int32]]:
 std::vector<int32_t> upper_only(const ::tpy::BigInt& hi);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -36,11 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.xs = list(range(0, 10))
 inline Holder::Holder() : xs(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 10))) {}
 
 // def blank(self, lo: int, step: int) -> None:
+//     self.xs[lo::step] = [0, 0]  # tpyc: ok
 inline void Holder::blank(const ::tpy::BigInt& lo, const ::tpy::BigInt& step) {
-    // self.xs[lo::step] = [0, 0]  # tpyc: ok
     ::tpy::list_set_stepped_slice(this->xs, ::tpy::Slice{lo.to_fixed_check<int32_t>(), std::nullopt, step.to_fixed_check<int32_t>()}, std::vector<int32_t>{0, 0});
 }
 void __tpy_init();

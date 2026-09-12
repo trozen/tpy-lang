@@ -43,33 +43,34 @@ namespace tpyapp::main {
 
 
 // def neg(p: Prio) -> int32:
+//     m = -p
+//     return m
 int32_t neg(Prio p) {
-    // m = -p
     int32_t m = (-static_cast<int32_t>(p));
-    // return m
     return m;
 }
 
 // def main() -> None:
+//     p = Prio.HIGH
+//     print(-p)
+//     print(neg(Prio.LOW))
+//     print(f"m={-p}")
 void main() {
-    // p = Prio.HIGH
     Prio p = Prio::HIGH;
-    // print(-p)
     std::cout << (-static_cast<int32_t>(p)) << "\n";
-    // print(neg(Prio.LOW))
     std::cout << neg(Prio::LOW) << "\n";
-    // print(f"m={-p}")
     std::cout << std::format("m={}", (-static_cast<int32_t>(p))) << "\n";
 }
 
+// # IntEnum unary minus: -p negates the underlying value (result is int, not Prio).
+// from enum import IntEnum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # IntEnum unary minus: -p negates the underlying value (result is int, not Prio).
-    // from enum import IntEnum
-    // main()
     main();
 }
 

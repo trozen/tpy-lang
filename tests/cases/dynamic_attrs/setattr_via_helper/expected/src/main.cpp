@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def populate(b: Bag) -> None:
+//     b.tag = "alpha"
+//     b.count = 1
 void populate(Bag& b) {
-    // b.tag = "alpha"
     b.__setattr__("tag", ::tpy::make_any(std::string("alpha")));
-    // b.count = 1
     b.__setattr__("count", ::tpy::make_any(::tpy::BigInt(1)));
 }
 
 // def main() -> None:
+//     b = Bag()
+//     populate(b)
+//     print(len(b._data))
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // populate(b)
     populate(b);
-    // print(len(b._data))
     std::cout << ::tpy::__len__(b._data) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

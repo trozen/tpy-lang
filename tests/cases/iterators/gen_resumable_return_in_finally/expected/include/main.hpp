@@ -13,12 +13,16 @@ struct __gen_gen_return_normal;
 struct __gen_gen_return_suppresses_exc;
 struct __gen_gen_return_in_loop;
 
+// def gen_return_normal() -> Iterator[int]:
 __gen_gen_return_normal gen_return_normal();
+// def gen_return_suppresses_exc() -> Iterator[int]:
 __gen_gen_return_suppresses_exc gen_return_suppresses_exc();
+// def gen_return_in_loop() -> Iterator[int]:
 __gen_gen_return_in_loop gen_return_in_loop();
+// def main():
 void main();
 
-// Generator: gen_return_normal
+// def gen_return_normal() -> Iterator[int]:
 struct __gen_gen_return_normal : public ::tpy::next_iter_mixin<__gen_gen_return_normal, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     bool __finally_stop = false;
@@ -57,7 +61,7 @@ struct __gen_gen_return_normal : public ::tpy::next_iter_mixin<__gen_gen_return_
     }
 };
 
-// Generator: gen_return_suppresses_exc
+// def gen_return_suppresses_exc() -> Iterator[int]:
 struct __gen_gen_return_suppresses_exc : public ::tpy::next_iter_mixin<__gen_gen_return_suppresses_exc, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     bool __finally_stop = false;
@@ -95,7 +99,7 @@ struct __gen_gen_return_suppresses_exc : public ::tpy::next_iter_mixin<__gen_gen
     }
 };
 
-// Generator: gen_return_in_loop
+// def gen_return_in_loop() -> Iterator[int]:
 struct __gen_gen_return_in_loop : public ::tpy::next_iter_mixin<__gen_gen_return_in_loop, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     int32_t i;

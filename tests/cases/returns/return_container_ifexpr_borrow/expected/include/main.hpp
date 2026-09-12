@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def longer(a: list[int32], b: list[int32]) -> list[int32]:
 std::vector<int32_t>& longer(std::vector<int32_t>& a, std::vector<int32_t>& b);
+// def wider(a: dict[int32, int32], b: dict[int32, int32]) -> dict[int32, int32]:
 ::tpy::ordered_map<int32_t, int32_t>& wider(::tpy::ordered_map<int32_t, int32_t>& a, ::tpy::ordered_map<int32_t, int32_t>& b);
+// def fuller(a: set[int32], b: set[int32]) -> set[int32]:
 ::tpy::ordered_set<int32_t>& fuller(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -6,23 +6,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(platform_value())
 void main() {
-    // print(platform_value())
     std::cout << ::platform_value() << "\n";
 }
 
+// # Test platform-filtered include directive
+// # The unconditional include should always be emitted,
+// # the windows-only include should be skipped on non-windows
+// # tpy: include("native_types.hpp")
+// # tpy: include("windows_only.hpp", platform="windows")
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test platform-filtered include directive
-    // # The unconditional include should always be emitted,
-    // # the windows-only include should be skipped on non-windows
-    // # tpy: include("native_types.hpp")
-    // # tpy: include("windows_only.hpp", platform="windows")
-    // from tpy.extern import native
-    // main()
     main();
 }
 

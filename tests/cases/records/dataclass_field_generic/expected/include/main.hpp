@@ -12,6 +12,7 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pair[T]:
@@ -23,11 +24,13 @@ struct Pair {
     T second;
 
     // def __init__(self, first: T = T(), second: T = T()) -> None:
+    //     self.first = first
+    //     self.second = second
     explicit Pair(::tpy::readonly_form_t<T> first = T{}, ::tpy::readonly_form_t<T> second = T{}) : first(first), second(second) {}
 
     // def __eq__(self, other: Pair[T]) -> bool:
+    //     return self.first == other.first and self.second == other.second
     bool __eq__(const Pair<T>& other) const {
-        // return self.first == other.first and self.second == other.second
         return (::tpy::eq(this->first, other.first) && ::tpy::eq(this->second, other.second));
     }
 

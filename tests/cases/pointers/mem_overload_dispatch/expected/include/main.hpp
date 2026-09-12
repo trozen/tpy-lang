@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_array_overload() -> None:
 void test_array_overload();
+// def test_list_overload() -> None:
 void test_list_overload();
+// def test_str_overload() -> None:
 void test_str_overload();
+// def test_store_and_load() -> None:
 void test_store_and_load();
 
 void __tpy_init();

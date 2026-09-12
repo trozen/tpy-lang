@@ -39,44 +39,45 @@ namespace tpyapp::main {
 
 
 // def local_roundtrip(c: Color) -> Color:
+//     return c
 Color local_roundtrip(Color c) {
-    // return c
     return c;
 }
 
 // def foreign_roundtrip(c: ForeignColor) -> ForeignColor:
+//     return c
 ::tpyapp::colors::Color foreign_roundtrip(::tpyapp::colors::Color c) {
-    // return c
     return c;
 }
 
 // def main() -> None:
+//     local: Color = Color.BLUE
+//     foreign: ForeignColor = ForeignColor.RED
+//     print(local.name, local.value)
+//     print(foreign.name, foreign.value)
+//     print(local_roundtrip(Color.BLUE).name, local_roundtrip(Color.BLUE).value)
+//     print(foreign_roundtrip(ForeignColor.GREEN).name, foreign_roundtrip(ForeignColor.GREEN).value)
 void main() {
-    // local: Color = Color.BLUE
     Color local = Color::BLUE;
-    // foreign: ForeignColor = ForeignColor.RED
     ::tpyapp::colors::Color foreign = ::tpyapp::colors::Color::RED;
-    // print(local.name, local.value)
     std::cout << ::tpy::EnumUtil<Color>::name(local) << " " << static_cast<int32_t>(local) << "\n";
-    // print(foreign.name, foreign.value)
     std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(foreign) << " " << static_cast<int32_t>(foreign) << "\n";
-    // print(local_roundtrip(Color.BLUE).name, local_roundtrip(Color.BLUE).value)
     std::cout << ::tpy::EnumUtil<Color>::name(local_roundtrip(Color::BLUE)) << " " << static_cast<int32_t>(local_roundtrip(Color::BLUE)) << "\n";
-    // print(foreign_roundtrip(ForeignColor.GREEN).name, foreign_roundtrip(ForeignColor.GREEN).value)
     std::cout << ::tpy::EnumUtil<::tpyapp::colors::Color>::name(foreign_roundtrip(::tpyapp::colors::Color::GREEN)) << " " << static_cast<int32_t>(foreign_roundtrip(::tpyapp::colors::Color::GREEN)) << "\n";
 }
 
+// # An aliased-imported enum must not be confused with an unrelated LOCAL
+// # enum of the same declared name, as params/returns/var-decls.
+// from enum import IntEnum
+// from colors import Color as ForeignColor
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An aliased-imported enum must not be confused with an unrelated LOCAL
-    // # enum of the same declared name, as params/returns/var-decls.
-    // from enum import IntEnum
-    // from colors import Color as ForeignColor
     ::tpyapp::colors::__tpy_init();
-    // main()
     main();
 }
 

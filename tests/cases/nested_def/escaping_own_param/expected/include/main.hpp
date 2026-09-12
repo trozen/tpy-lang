@@ -12,9 +12,13 @@ struct Pt;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_getter(cfg: Own[Config]) -> Callable[[], int32]:
 std::function<int32_t()> make_getter(Config&& cfg);
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v);
+// def own_value(p: Own[Pt]) -> int32:  # tpyc: ok
 int32_t own_value(Pt p);
+// def main() -> None:
 void main();
 
 // class Config:
@@ -57,9 +61,11 @@ namespace tpyapp::main {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Config::Config(int32_t v) : value(v) {}
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Pt::Pt(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

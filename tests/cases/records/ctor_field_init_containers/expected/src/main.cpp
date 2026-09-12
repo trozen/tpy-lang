@@ -5,43 +5,56 @@ namespace tpyapp::main {
 
 
 // def main():
+//     h = Holder("pre", Point(7), Point(9), [40, 41])
+//     # Mutate the field-owned containers after construction and observe.
+//     h.items.append(3)
+//     h.tags.add(30)
+//     h.grid[0].append(6)
+//     h.empty_l.append(99)
+//     print(h.items, len(h.empty_l), len(h.empty_d))
+//     print(h.names[0], h.names[1], h.counts["k"] + h.counts["j"])
+//     print(sorted(h.tags), h.arr[0] + h.arr[2])
+//     print(h.pts[0].v, h.pts[1].v, h.moved[0].v)
+//     print(h.grid[0], h.grid[1], h.copied)
+//     h.ones.append(2)
+//     print("ones", h.ones, len(h.ones), "one_arr", h.one_arr)
 void main() {
-    // h = Holder("pre", Point(7), Point(9), [40, 41])
     Holder h = Holder("pre", Point(7), Point(9), {40, 41});
-    // # Mutate the field-owned containers after construction and observe.
-    // h.items.append(3)
     h.items.push_back(3);
-    // h.tags.add(30)
     h.tags.insert(30);
-    // h.grid[0].append(6)
     ::tpy::__getitem__(h.grid, 0).push_back(6);
-    // h.empty_l.append(99)
     h.empty_l.push_back(99);
-    // print(h.items, len(h.empty_l), len(h.empty_d))
     std::cout << ::tpy::ListPrinter(h.items) << " " << ::tpy::__len__(h.empty_l) << " " << ::tpy::__len__(h.empty_d) << "\n";
-    // print(h.names[0], h.names[1], h.counts["k"] + h.counts["j"])
     std::cout << ::tpy::__getitem__(h.names, 0) << " " << ::tpy::__getitem__(h.names, 1) << " " << (::tpy::add_check<int32_t>(::tpy::__getitem__(h.counts, "k"), ::tpy::__getitem__(h.counts, "j"))) << "\n";
-    // print(sorted(h.tags), h.arr[0] + h.arr[2])
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(h.tags)) << " " << (::tpy::add_check<int32_t>(::tpy::__getitem__(h.arr, 0), ::tpy::__getitem__(h.arr, 2))) << "\n";
-    // print(h.pts[0].v, h.pts[1].v, h.moved[0].v)
     std::cout << ::tpy::__getitem__(h.pts, 0).v << " " << ::tpy::__getitem__(h.pts, 1).v << " " << ::tpy::__getitem__(h.moved, 0).v << "\n";
-    // print(h.grid[0], h.grid[1], h.copied)
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(h.grid, 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__(h.grid, 1)) << " " << ::tpy::ListPrinter(h.copied) << "\n";
-    // h.ones.append(2)
     h.ones.push_back(2);
-    // print("ones", h.ones, len(h.ones), "one_arr", h.one_arr)
     std::cout << "ones" << " " << ::tpy::ListPrinter(h.ones) << " " << ::tpy::__len__(h.ones) << " " << "one_arr" << " " << ::tpy::ListPrinter(h.one_arr) << "\n";
 }
 
 
 // def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[int32]):
+//     self.items = [1, 2]
+//     self.names = [prefix, "lit"]
+//     self.counts = {"k": 1, "j": 2}
+//     self.tags = {10, 20}
+//     self.arr = [3, 4, 5]
+//     self.pts = [Point(1), p]  # tpyc: warning(/copies Point into owned storage/)
+//     self.grid = [[1], [2, 3]]
+//     self.empty_l = []
+//     self.empty_d = {}
+//     self.moved = [q]
+//     self.copied = copied  # tpyc: warning(/copies list\[int32\] into field/)
+//     self.ones = [1]  # tpyc: ok -- one BigInt element: must not become a size
+//     self.one_arr = [1]  # tpyc: ok -- the Array sibling of the same shape
 Holder::Holder(std::string_view prefix, const Point& p, Point&& q, const std::vector<int32_t>& copied) : items(std::vector<int32_t>{1, 2}), names(std::vector<std::string>{std::string(prefix), "lit"}), counts(::tpy::ordered_map<std::string, int32_t>({{"k", 1}, {"j", 2}})), tags(::tpy::ordered_set<int32_t>({10, 20})), arr(std::array<int32_t, 3>{3, 4, 5}), pts(std::vector<Point>{Point(1), p}), grid(std::vector<std::vector<int32_t>>{{1}, {2, 3}}), empty_l(std::vector<int32_t>{}), empty_d(::tpy::ordered_map<int32_t, int32_t>()), moved(::tpy::make_vector<Point>(std::move(q))), copied(copied), ones(std::vector<::tpy::BigInt>{1}), one_arr(std::array<::tpy::BigInt, 1>{::tpy::BigInt(1)}) {}
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

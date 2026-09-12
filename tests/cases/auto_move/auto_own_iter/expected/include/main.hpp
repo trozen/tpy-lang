@@ -11,6 +11,7 @@ struct Stack;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Stack:
@@ -36,45 +37,46 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2, 3]
 inline Stack::Stack() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def consume(self: auto_own[Self]) -> auto_own[int32]:
+//     it = iter(self.items)
+//     total: int32 = 0
+//     for x in it:
+//         total += x
+//     return total
 inline int32_t Stack::consume() const & {
-    // it = iter(self.items)
     auto it = ::tpy::__iter__(this->items);
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 
 // def consume(self: auto_own[Self]) -> auto_own[int32]:
+//     it = iter(self.items)
+//     total: int32 = 0
+//     for x in it:
+//         total += x
+//     return total
 inline int32_t Stack::consume() const && {
-    // it = iter(self.items)
     auto it = ::tpy::__iter__(this->items);
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 void __tpy_init();

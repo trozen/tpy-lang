@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     one()
+//     two()
 void main() {
-    // one()
     ::tpyapp::explib::one();
-    // two()
     ::tpyapp::explib::two();
 }
 
+// # __all__ += [...] extends the star-import export set (literal
+// # concatenation at parse time; __all__ itself emits no runtime code).
+// from explib import *
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # __all__ += [...] extends the star-import export set (literal
-    // # concatenation at parse time; __all__ itself emits no runtime code).
-    // from explib import *
     ::tpyapp::explib::__tpy_init();
-    // main()
     main();
 }
 

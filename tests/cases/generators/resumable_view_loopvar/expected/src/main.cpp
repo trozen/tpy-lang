@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def words_gen(words: list[str]) -> Iterator[int32]:
+//     i = 0
+//     while i < 2:
+//         yield i
+//         yield i + 1            # second yield forces the resumable-frame path
+//         for w in words:
+//             print(w)
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_words_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // yield i + 1            # second yield forces the resumable-frame path
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(i, 1));
     }
     case S_RESUME_1: {
-        // for w in words:
         auto& __obj_0 = words;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             std::string w = *__beg_0;
-            // print(w)
             std::cout << w << "\n";
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // yield i
             __state = S_RESUME_0;
             return i;
         } else {
@@ -55,37 +56,38 @@ __gen_words_gen words_gen(std::vector<std::string>& words) {
 }
 
 // def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
+//     i = 0
+//     while i < 2:
+//         yield i
+//         yield i + 1
+//         for b in blobs:
+//             print(len(b))
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_blobs_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // yield i + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(i, 1));
     }
     case S_RESUME_1: {
-        // for b in blobs:
         auto& __obj_0 = blobs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             ::tpy::Bytes b = *__beg_0;
-            // print(len(b))
             std::cout << ::tpy::__len__(b) << "\n";
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // yield i
             __state = S_RESUME_0;
             return i;
         } else {
@@ -105,41 +107,41 @@ __gen_blobs_gen blobs_gen(std::vector<::tpy::Bytes>& blobs) {
 }
 
 // def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
+//     i = 0
+//     while i < 2:
+//         yield i
+//         yield i + 1
+//         for name, n in pairs:
+//             print(name, n)
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_pairs_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // yield i + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(i, 1));
     }
     case S_RESUME_1: {
-        // for name, n in pairs:
         auto& __obj_0 = pairs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_0 = *__beg_0;
-            // for name, n in pairs:
             const auto& __tup_1 = __for_tup_0;
             std::string name = std::get<0>(__tup_1);
             int32_t n = std::get<1>(__tup_1);
-            // print(name, n)
             std::cout << name << " " << n << "\n";
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // yield i
             __state = S_RESUME_0;
             return i;
         } else {
@@ -159,16 +161,35 @@ __gen_pairs_gen pairs_gen(std::vector<std::tuple<std::string, int32_t>>& pairs) 
 }
 
 // def main() -> None:
+//     ws: list[str] = []
+//     ws.append("a")
+//     ws.append("bb")
+//     seen = 0
+//     for v in words_gen(ws):
+//         seen += 1
+//         if seen >= 4:
+//             break
+//
+//     bs: list[bytes] = []
+//     bs.append(b"xyz")
+//     seen = 0
+//     for v in blobs_gen(bs):
+//         seen += 1
+//         if seen >= 4:
+//             break
+//
+//     ps: list[tuple[str, int32]] = []
+//     ps.append(("k", 9))
+//     seen = 0
+//     for v in pairs_gen(ps):
+//         seen += 1
+//         if seen >= 4:
+//             break
 void main() {
-    // ws: list[str] = []
     std::vector<std::string> ws = std::vector<std::string>{};
-    // ws.append("a")
     ws.push_back("a");
-    // ws.append("bb")
     ws.push_back("bb");
-    // seen = 0
     int32_t seen = 0;
-    // for v in words_gen(ws):
     {
         auto __src_0 = words_gen(ws);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -176,22 +197,15 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // seen += 1
         seen = ::tpy::add_check<int32_t>(seen, 1);
-        // if seen >= 4:
         if ((seen >= 4)) {
-            // break
             break;
         }
         }
     }
-    // bs: list[bytes] = []
     std::vector<::tpy::Bytes> bs = std::vector<::tpy::Bytes>{};
-    // bs.append(b"xyz")
     bs.push_back(::tpy::bytes_literal_owned("xyz", 3));
-    // seen = 0
     seen = 0;
-    // for v in blobs_gen(bs):
     {
         auto __src_2 = blobs_gen(bs);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -199,22 +213,15 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // seen += 1
         seen = ::tpy::add_check<int32_t>(seen, 1);
-        // if seen >= 4:
         if ((seen >= 4)) {
-            // break
             break;
         }
         }
     }
-    // ps: list[tuple[str, int32]] = []
     std::vector<std::tuple<std::string, int32_t>> ps = std::vector<std::tuple<std::string, int32_t>>{};
-    // ps.append(("k", 9))
     ps.push_back(std::tuple<std::string, int32_t>{"k", 9});
-    // seen = 0
     seen = 0;
-    // for v in pairs_gen(ps):
     {
         auto __src_4 = pairs_gen(ps);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -222,23 +229,20 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // seen += 1
         seen = ::tpy::add_check<int32_t>(seen, 1);
-        // if seen >= 4:
         if ((seen >= 4)) {
-            // break
             break;
         }
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <::tpy::NativeIterable<int32_t> T>
 struct __gen_Wrap_summary;
 
+// def main() -> None:
 void main();
 
 // class Wrap[T: NativeIterable[int32]]:
@@ -23,6 +24,7 @@ struct Wrap {
     T items;
 
     // def __init__(self, items: T) -> None:
+    //     self.items = items
     Wrap() = default;
     explicit Wrap(::tpy::readonly_form_t<T> items) : items(items) {}
 
@@ -36,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
     return os;
 }
 
-// Generator: Wrap.summary
+// def summary(self) -> Iterator[int32]:
 template <::tpy::NativeIterable<int32_t> T>
 struct __gen_Wrap_summary : public ::tpy::next_iter_mixin<__gen_Wrap_summary<T>, int32_t> {
     int32_t __state;
@@ -64,31 +66,31 @@ struct __gen_Wrap_summary : public ::tpy::next_iter_mixin<__gen_Wrap_summary<T>,
 };
 
 // def summary(self) -> Iterator[int32]:
+//     total: int32 = 0
+//     count: int32 = 0
+//     for x in self.items:
+//         total += x
+//         count += 1
+//     yield total
+//     yield count
 template <::tpy::NativeIterable<int32_t> T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Wrap_summary<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total: int32 = 0
         total = 0;
-        // count: int32 = 0
         count = 0;
-        // for x in self.items:
         auto& __obj_0 = __self.items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
-            // count += 1
             count = ::tpy::add_check<int32_t>(count, 1);
         }
-        // yield total
         __state = S_RESUME_0;
         return total;
     }
     case S_RESUME_0: {
-        // yield count
         __state = S_RESUME_1;
         return count;
     }

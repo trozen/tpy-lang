@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = factory.Counter.make(7)  # tpyc: ok
+//     print(c.value)
+//     print(factory.Counter.LIMIT)  # tpyc: ok
 void main() {
-    // c = factory.Counter.make(7)  # tpyc: ok
     ::tpyapp::factory::Counter c = ::tpyapp::factory::Counter::make(7);
-    // print(c.value)
     std::cout << c.value << "\n";
-    // print(factory.Counter.LIMIT)  # tpyc: ok
     std::cout << ::tpyapp::factory::Counter::LIMIT << "\n";
 }
 
+// # Regression: `import m` followed by `m.Cls.method()` and `m.Cls.CONST` works.
+// # Previously the static-method dispatcher only handled bare-name TpyName
+// # receivers; TpyFieldAccess(module_var, ClassName) fell through every branch
+// # and surfaced as "'<module>' is not a variable".
+// import factory
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `import m` followed by `m.Cls.method()` and `m.Cls.CONST` works.
-    // # Previously the static-method dispatcher only handled bare-name TpyName
-    // # receivers; TpyFieldAccess(module_var, ClassName) fell through every branch
-    // # and surfaced as "'<module>' is not a variable".
-    // import factory
     ::tpyapp::factory::__tpy_init();
-    // main()
     main();
 }
 

@@ -15,6 +15,7 @@ struct Initial;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Tag:
@@ -140,53 +141,58 @@ inline std::ostream& operator<<(std::ostream& os, const Initial& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Tag::Tag(std::string_view name) : name(name) {}
 
 // def __eq__(self, other: str) -> bool:
+//     return self.name == other
 inline bool Tag::__eq__(std::string_view other) const {
-    // return self.name == other
     return (this->name == other);
 }
 
 // def __lt__(self, other: str) -> bool:
+//     return self.name < other
 inline bool Tag::__lt__(std::string_view other) const {
-    // return self.name < other
     return (this->name < other);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Count::Count(int32_t n) : n(n) {}
 
 // def __eq__(self, other: int32) -> bool:
+//     return self.n == other
 inline bool Count::__eq__(int32_t other) const {
-    // return self.n == other
     return (this->n == other);
 }
 
 // def __init__(self, data: bytes) -> None:
+//     self.data = data
 inline Blob::Blob(::tpy::BytesView data) : data(::tpy::Bytes(data)) {}
 
 // def __eq__(self, other: bytes) -> bool:
+//     return self.data == other
 inline bool Blob::__eq__(::tpy::BytesView other) const {
-    // return self.data == other
     return (this->data == other);
 }
 
 // def __init__(self, r: float64) -> None:
+//     self.r = r
 inline Ratio::Ratio(double r) : r(r) {}
 
 // def __eq__(self, other: float64) -> bool:
+//     return self.r == other
 inline bool Ratio::__eq__(double other) const {
-    // return self.r == other
     return (this->r == other);
 }
 
 // def __init__(self, c: char) -> None:
+//     self.c = c
 inline Initial::Initial(char c) : c(c) {}
 
 // def __eq__(self, other: char) -> bool:
+//     return self.c == other
 inline bool Initial::__eq__(char other) const {
-    // return self.c == other
     return (this->c == other);
 }
 void __tpy_init();

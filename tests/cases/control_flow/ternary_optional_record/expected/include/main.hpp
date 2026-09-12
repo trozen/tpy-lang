@@ -11,9 +11,13 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_or_none(flag: bool, p: Point) -> Optional[Point]:
 Point* get_or_none(bool flag, Point& p);
+// def pick(flag: bool, a: Optional[Point], b: Optional[Point]) -> Optional[Point]:
 Point* pick(bool flag, Point* a, Point* b);
+// def narrowed_field(p: Optional[Point]) -> int:
 ::tpy::BigInt narrowed_field(const Point* p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -36,6 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -3,22 +3,20 @@
 
 namespace tpyapp::main {
 
-// # global: a module-global argument outlives every frame that borrows it.
-// GLOBAL_SRC = Impl(80)
 Impl* GLOBAL_SRC{};
 
 // def free_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
+//     yield s.get()
+//     s.bump()
+//     yield s.get()
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s.get()
         __state = S_RESUME_0;
         return s.get();
     }
     case S_RESUME_0: {
-        // s.bump()
         s.bump();
-        // yield s.get()
         __state = S_RESUME_1;
         return s.get();
     }
@@ -38,15 +36,15 @@ __gen_free_gen free_gen(Src& s) {
 }
 
 // def ro_gen(s: readonly[RoSrc]) -> Iterator[int32]:  # tpyc: ok
+//     yield s.get()
+//     yield s.get() * 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_ro_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s.get()
         __state = S_RESUME_0;
         return s.get();
     }
     case S_RESUME_0: {
-        // yield s.get() * 2
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(s.get(), 2));
     }
@@ -66,17 +64,17 @@ __gen_ro_gen ro_gen(const RoSrc& s) {
 }
 
 // def generic_gen(s: Src2[int32]) -> Iterator[int32]:  # tpyc: ok
+//     yield s.get()
+//     s.bump()
+//     yield s.get()
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s.get()
         __state = S_RESUME_0;
         return s.get();
     }
     case S_RESUME_0: {
-        // s.bump()
         s.bump();
-        // yield s.get()
         __state = S_RESUME_1;
         return s.get();
     }
@@ -96,10 +94,13 @@ __gen_generic_gen generic_gen(Src2<int32_t>& s) {
 }
 
 // def forward_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
+//     yield s.get()
+//     for n in free_gen(s):
+//         yield n
+//     yield s.get()
 std::expected<int32_t, ::tpy::StopIteration> __gen_forward_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s.get()
         __state = S_RESUME_0;
         return s.get();
     }
@@ -119,12 +120,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_forward_gen::__next__() {
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
-            // yield s.get()
             __state = S_RESUME_2;
             return s.get();
         }
         n = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield n
         __state = S_RESUME_1;
         return n;
     }
@@ -140,17 +139,17 @@ __gen_forward_gen forward_gen(Src& s) {
 }
 
 // def own_gen(s: Own[Src]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
+//     yield s.get()
+//     s.bump()
+//     yield s.get()
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s.get()
         __state = S_RESUME_0;
         return s->get();
     }
     case S_RESUME_0: {
-        // s.bump()
         s->bump();
-        // yield s.get()
         __state = S_RESUME_1;
         return s->get();
     }
@@ -170,10 +169,57 @@ __gen_own_gen own_gen(std::unique_ptr<Src> s) {
 }
 
 // def main() -> None:
+//     free_src = Impl(7)
+//     for n in free_gen(free_src):
+//         print("free", n)
+//     print("free after", free_src.get())
+//
+//     meth_src = Impl(20)
+//     holder = Holder(1)
+//     for n in holder.walk(meth_src):
+//         print("method", n)
+//     print("method after", meth_src.get())
+//
+//     ro_src = Impl(5)
+//     for n in ro_gen(ro_src):
+//         print("readonly", n)
+//
+//     gen_src = Impl(30)
+//     for n in generic_gen(gen_src):
+//         print("generic", n)
+//     print("generic after", gen_src.get())
+//
+//     # inherit: an inheritance conformer and a structural one through the SAME
+//     # generator, both mutated and observed.
+//     inh_src = Inh(40)
+//     for n in free_gen(inh_src):
+//         print("inherit", n)
+//     print("inherit after", inh_src.get())
+//
+//     struct_src = Impl(50)
+//     for n in free_gen(struct_src):
+//         print("inherit struct", n)
+//     print("inherit struct after", struct_src.get())
+//
+//     for n in own_gen(Impl(60)):
+//         print("own", n)
+//
+//     # rvalue: a structural conformer passed as an RVALUE -- the call site owns
+//     # an `Adapter<Src, Impl>` temp the frame borrows. The bump between the two
+//     # yields is observable in the second yielded value, not after the loop.
+//     for n in free_gen(Impl(99)):
+//         print("rvalue", n)
+//
+//     fwd_src = Impl(90)
+//     for n in forward_gen(fwd_src):
+//         print("forward", n)
+//     print("forward after", fwd_src.get())
+//
+//     for n in free_gen(GLOBAL_SRC):
+//         print("global", n)
+//     print("global after", GLOBAL_SRC.get())
 void main() {
-    // free_src = Impl(7)
     Impl free_src = Impl(7);
-    // for n in free_gen(free_src):
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_1{free_src};
         auto __src_0 = free_gen(__tmp_1);
@@ -182,17 +228,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        // print("free", n)
         std::cout << "free" << " " << n << "\n";
         }
     }
-    // print("free after", free_src.get())
     std::cout << "free after" << " " << free_src.get() << "\n";
-    // meth_src = Impl(20)
     Impl meth_src = Impl(20);
-    // holder = Holder(1)
     Holder holder = Holder(1);
-    // for n in holder.walk(meth_src):
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_2{meth_src};
         auto __src_2 = holder.walk(__tmp_2);
@@ -201,15 +242,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-        // print("method", n)
         std::cout << "method" << " " << n << "\n";
         }
     }
-    // print("method after", meth_src.get())
     std::cout << "method after" << " " << meth_src.get() << "\n";
-    // ro_src = Impl(5)
     Impl ro_src = Impl(5);
-    // for n in ro_gen(ro_src):
     {
         ::tpy::RefAdapter<RoSrc, Impl> __tmp_3{ro_src};
         auto __src_4 = ro_gen(__tmp_3);
@@ -218,13 +255,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-        // print("readonly", n)
         std::cout << "readonly" << " " << n << "\n";
         }
     }
-    // gen_src = Impl(30)
     Impl gen_src = Impl(30);
-    // for n in generic_gen(gen_src):
     {
         ::tpy::RefAdapter<Src2<int32_t>, Impl> __tmp_4{gen_src};
         auto __src_6 = generic_gen(__tmp_4);
@@ -233,17 +267,11 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_7);
-        // print("generic", n)
         std::cout << "generic" << " " << n << "\n";
         }
     }
-    // print("generic after", gen_src.get())
     std::cout << "generic after" << " " << gen_src.get() << "\n";
-    // # inherit: an inheritance conformer and a structural one through the SAME
-    // # generator, both mutated and observed.
-    // inh_src = Inh(40)
     Inh inh_src = Inh(40);
-    // for n in free_gen(inh_src):
     {
         auto __src_8 = free_gen(inh_src);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -251,15 +279,11 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_9);
-        // print("inherit", n)
         std::cout << "inherit" << " " << n << "\n";
         }
     }
-    // print("inherit after", inh_src.get())
     std::cout << "inherit after" << " " << inh_src.get() << "\n";
-    // struct_src = Impl(50)
     Impl struct_src = Impl(50);
-    // for n in free_gen(struct_src):
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_5{struct_src};
         auto __src_10 = free_gen(__tmp_5);
@@ -268,13 +292,10 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_11);
-        // print("inherit struct", n)
         std::cout << "inherit struct" << " " << n << "\n";
         }
     }
-    // print("inherit struct after", struct_src.get())
     std::cout << "inherit struct after" << " " << struct_src.get() << "\n";
-    // for n in own_gen(Impl(60)):
     {
         auto __src_12 = own_gen(::tpy::make_adapter<Src>(Impl(60)));
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -282,14 +303,9 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_13);
-        // print("own", n)
         std::cout << "own" << " " << n << "\n";
         }
     }
-    // # rvalue: a structural conformer passed as an RVALUE -- the call site owns
-    // # an `Adapter<Src, Impl>` temp the frame borrows. The bump between the two
-    // # yields is observable in the second yielded value, not after the loop.
-    // for n in free_gen(Impl(99)):
     {
         ::tpy::Adapter<Src, Impl> __tmp_6{Impl(99)};
         auto __src_14 = free_gen(__tmp_6);
@@ -298,13 +314,10 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_15);
-        // print("rvalue", n)
         std::cout << "rvalue" << " " << n << "\n";
         }
     }
-    // fwd_src = Impl(90)
     Impl fwd_src = Impl(90);
-    // for n in forward_gen(fwd_src):
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_7{fwd_src};
         auto __src_16 = forward_gen(__tmp_7);
@@ -313,13 +326,10 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_17);
-        // print("forward", n)
         std::cout << "forward" << " " << n << "\n";
         }
     }
-    // print("forward after", fwd_src.get())
     std::cout << "forward after" << " " << fwd_src.get() << "\n";
-    // for n in free_gen(GLOBAL_SRC):
     {
         ::tpy::RefAdapter<Src, Impl> __tmp_8{(*GLOBAL_SRC)};
         auto __src_18 = free_gen(__tmp_8);
@@ -328,26 +338,24 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_19);
-        // print("global", n)
         std::cout << "global" << " " << n << "\n";
         }
     }
-    // print("global after", GLOBAL_SRC.get())
     std::cout << "global after" << " " << GLOBAL_SRC->get() << "\n";
 }
 
 // def walk(self, s: Src) -> Iterator[int32]:  # tpyc: ok
+//     yield s.get() + self.tag
+//     s.bump()
+//     yield s.get() + self.tag
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s.get() + self.tag
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(s.get(), __self.tag));
     }
     case S_RESUME_0: {
-        // s.bump()
         s.bump();
-        // yield s.get() + self.tag
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(s.get(), __self.tag));
     }
@@ -361,16 +369,17 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
 }
 
 
+// # global: a module-global argument outlives every frame that borrows it.
+// GLOBAL_SRC = Impl(80)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # global: a module-global argument outlives every frame that borrows it.
-    // GLOBAL_SRC = Impl(80)
     static Impl __global_slot_1 = Impl(80);
     GLOBAL_SRC = &__global_slot_1;
-    // main()
     main();
 }
 

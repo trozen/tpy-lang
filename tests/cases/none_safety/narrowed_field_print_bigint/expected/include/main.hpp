@@ -11,6 +11,7 @@ struct Stats;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: print() on a narrowed value-Optional BigInt field. The print
@@ -41,22 +42,24 @@ inline std::ostream& operator<<(std::ostream& os, const Stats& obj) {
 
 
 // def __init__(self, total: int | None, label: int | None) -> None:
+//     self.total = total
+//     self.label = label
 inline Stats::Stats(std::optional<::tpy::BigInt> total, std::optional<::tpy::BigInt> label) : total(total), label(label) {}
 
 // def show(self) -> None:
+//     if self.total is None:
+//         print("no total")
+//     else:
+//         print(self.total)
+//     if self.label is not None:
+//         print(self.label, self.total)
 inline void Stats::show() const {
-    // if self.total is None:
     if ((!this->total.has_value())) {
-        // print("no total")
         std::cout << "no total" << "\n";
-    // else:
     } else {
-        // print(self.total)
         std::cout << (*this->total) << "\n";
     }
-    // if self.label is not None:
     if ((this->label.has_value())) {
-        // print(self.label, self.total)
         std::cout << (*this->label) << " " << ::tpy::print_optional_val(this->total) << "\n";
     }
 }

@@ -12,6 +12,7 @@ struct Mixed;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -49,17 +50,19 @@ inline std::ostream& operator<<(std::ostream& os, const Mixed& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
+//     a = Point(int32(1), int32(2))
+//     b = Point(int32(3), int32(4))
+//     self.pp = (a, b)  # tpyc: warning(/copies Point into field \(tuple element 0\)/)
+//     print(a.x)  # later use of `a` -- forces element 0 to copy
 inline Mixed::Mixed() {
-    // a = Point(int32(1), int32(2))
     Point a = Point(1, 2);
-    // b = Point(int32(3), int32(4))
     Point b = Point(3, 4);
-    // self.pp = (a, b)  # tpyc: warning(/copies Point into field \(tuple element 0\)/)
     this->pp = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{a, std::move(b)});
-    // print(a.x)  # later use of `a` -- forces element 0 to copy
     std::cout << a.x << "\n";
 }
 void __tpy_init();

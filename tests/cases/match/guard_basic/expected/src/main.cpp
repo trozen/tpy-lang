@@ -5,24 +5,29 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> str:
+//     match a:
+//         case Dog(name=n) if n == "Rex":
+//             return "Rex the dog!"
+//         case Dog():
+//             return "some dog"
+//         case Cat(name=n) if n == "Whiskers":
+//             return "Whiskers the cat!"
+//         case _:
+//             return "other"
+//     return ""
 std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // case Cat(name=n) if n == "Whiskers":
         {
             auto& n = __case_0.name;
             if ((n == "Whiskers")) {
-                // return "Whiskers the cat!"
                 return "Whiskers the cat!";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // return "other"
             return "other";
             goto __match_end_2;
         }
@@ -30,18 +35,14 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Dog(name=n) if n == "Rex":
         {
             auto& n = __case_1.name;
             if ((n == "Rex")) {
-                // return "Rex the dog!"
                 return "Rex the dog!";
                 goto __match_end_2;
             }
         }
-        // case Dog():
         {
-            // return "some dog"
             return "some dog";
             goto __match_end_2;
         }
@@ -50,42 +51,42 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     }
 __match_end_2:;
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     d1: Dog | Cat = Dog("Rex")
+//     d2: Dog | Cat = Dog("Buddy")
+//     c1: Dog | Cat = Cat("Whiskers")
+//     c2: Dog | Cat = Cat("Luna")
+//     print(describe(d1))
+//     print(describe(d2))
+//     print(describe(c1))
+//     print(describe(c2))
 void main() {
-    // d1: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
-    // d2: Dog | Cat = Dog("Buddy")
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("Buddy");
     ::tpy::Union<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
-    // c1: Dog | Cat = Cat("Whiskers")
     ::tpy::Union<Cat, Dog> __slot_3 = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*> c1 = ::tpy::to_ptr_variant(__slot_3);
-    // c2: Dog | Cat = Cat("Luna")
     ::tpy::Union<Cat, Dog> __slot_4 = Cat("Luna");
     ::tpy::Union<Cat*, Dog*> c2 = ::tpy::to_ptr_variant(__slot_4);
-    // print(describe(d1))
     std::cout << describe(d1.as_const()) << "\n";
-    // print(describe(d2))
     std::cout << describe(d2.as_const()) << "\n";
-    // print(describe(c1))
     std::cout << describe(c1.as_const()) << "\n";
-    // print(describe(c2))
     std::cout << describe(c2.as_const()) << "\n";
 }
 
+// # match/case with guard clauses (if conditions)
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case with guard clauses (if conditions)
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

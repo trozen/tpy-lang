@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d: dict[str, Any] = {"name": "tpy", "version": 1, "debug": True}
+//     lst: list[Any] = [1, "hi", None, 2.5]
+//     print(d)
+//     print(lst)
 void main() {
-    // d: dict[str, Any] = {"name": "tpy", "version": 1, "debug": True}
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"name", ::tpy::make_any(std::string("tpy"))}, {"version", ::tpy::make_any(::tpy::BigInt(1))}, {"debug", ::tpy::make_any(true)}});
-    // lst: list[Any] = [1, "hi", None, 2.5]
     std::vector<::tpy::Any> lst = {::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(std::string("hi")), ::tpy::make_any(nullptr), ::tpy::make_any(static_cast<double>(2.5))};
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(lst)
     std::cout << ::tpy::ListPrinter(lst) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

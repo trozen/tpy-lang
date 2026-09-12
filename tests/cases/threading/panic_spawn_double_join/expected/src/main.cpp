@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = spawn[int, One](One())
+//     print(h.join())
+//     print(h.join())   # panic: handle already consumed
 void main() {
-    // h = spawn[int, One](One())
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> h = ::tpystd::tpy::thread::spawn<::tpy::BigInt, One>(One());
-    // print(h.join())
     std::cout << h.join() << "\n";
-    // print(h.join())   # panic: handle already consumed
     std::cout << h.join() << "\n";
 }
 
+// # Consuming a JoinHandle twice is a runtime panic (the handle is spent after the
+// # first join()).
+// from tpy.thread import spawn
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Consuming a JoinHandle twice is a runtime panic (the handle is spent after the
-    // # first join()).
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // main()
     main();
 }
 

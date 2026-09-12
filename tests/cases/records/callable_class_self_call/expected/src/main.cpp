@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main():
+//     r = Recursive()
+//     print(r(5))
+//     print(r(0))
+//
+//     f = Fibonacci()
+//     print(f(10))
 void main() {
-    // r = Recursive()
     Recursive r = Recursive();
-    // print(r(5))
     std::cout << r.__call__(5) << "\n";
-    // print(r(0))
     std::cout << r.__call__(0) << "\n";
-    // f = Fibonacci()
     Fibonacci f = Fibonacci();
-    // print(f(10))
     std::cout << f.__call__(10) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Payload:
@@ -50,14 +51,16 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.p = Payload(42)
 inline Holder::Holder() : p(Payload(42)) {}
 
 // def borrow(self) -> Payload:
+//     return self.p
 inline Payload& Holder::borrow() {
-    // return self.p
     return this->p;
 }
 void __tpy_init();

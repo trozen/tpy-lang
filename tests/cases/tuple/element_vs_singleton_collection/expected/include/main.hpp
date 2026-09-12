@@ -11,11 +11,17 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_borrow(b: Box) -> tuple[Box, Box]:
 std::tuple<Box*, Box*> make_borrow(Box& b);
+// def singleton_append(b: Box) -> int32:
 int32_t singleton_append(const Box& b);
+// def tuple_append(b: Box) -> int32:
 int32_t tuple_append(Box& b);
+// def singleton_dict(b: Box) -> int32:
 int32_t singleton_dict(const Box& b);
+// def tuple_dict(b: Box) -> int32:
 int32_t tuple_dict(Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Box::Box(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

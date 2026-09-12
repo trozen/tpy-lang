@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def total(t: "Tree") -> int32:
+//     s = t.value
+//     for c in t.children:
+//         s = s + total(c)
+//     return s
 int32_t total(const Tree& t) {
-    // s = t.value
     int32_t s = t.value;
-    // for c in t.children:
     auto& __obj_0 = t.children;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& c = *__beg_0;
-        // s = s + total(c)
         s = (::tpy::add_check<int32_t>(s, total(c)));
     }
-    // return s
     return s;
 }
 
 // def main() -> None:
+//     root = Tree(int32(10), None)
+//     root.children.append(Tree(int32(1), int32(10)))
+//     root.children.append(Tree(int32(2), int32(10)))
+//     print(total(root))
 void main() {
-    // root = Tree(int32(10), None)
     Tree root = Tree(10, std::nullopt);
-    // root.children.append(Tree(int32(1), int32(10)))
     root.children.push_back(Tree(1, 10));
-    // root.children.append(Tree(int32(2), int32(10)))
     root.children.push_back(Tree(2, 10));
-    // print(total(root))
     std::cout << total(root) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

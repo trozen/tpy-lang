@@ -11,8 +11,11 @@ struct V;
 
 inline constexpr std::string_view __name__ = "pkg_v";
 
+// def make_int() -> Own[V]:
 V make_int();
+// def make_dict() -> Own[V]:
 V make_dict();
+// def kind(v: V) -> str:
 std::string kind(const V& v);
 
 struct V {

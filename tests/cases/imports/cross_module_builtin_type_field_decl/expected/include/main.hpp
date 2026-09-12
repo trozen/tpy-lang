@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -36,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.last = Poll[int32].pending()  # tpyc: ok
 inline Holder::Holder() : last(::tpystd::tpy::Poll<int32_t>::pending()) {}
 void __tpy_init();
 } // namespace tpyapp::main

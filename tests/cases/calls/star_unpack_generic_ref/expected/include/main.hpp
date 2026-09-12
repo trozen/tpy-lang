@@ -11,8 +11,10 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_all[T](*boxes: Box[T]) -> int32:
 template<typename T>
 int32_t take_all(::tpy::varargs<const Box<T>> boxes);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -23,6 +25,7 @@ struct Box {
     T val;
 
     // def __init__(self, v: T) -> None:
+    //     self.val = v
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
     // non-copyable (@nocopy)
@@ -40,20 +43,20 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 }
 
 // def take_all[T](*boxes: Box[T]) -> int32:
+//     n: int32 = 0
+//     for b in boxes:
+//         n += 1
+//     return n
 template<typename T>
 int32_t take_all(::tpy::varargs<const Box<T>> boxes) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for b in boxes:
     auto& __obj_0 = boxes;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // return n
     return n;
 }
 

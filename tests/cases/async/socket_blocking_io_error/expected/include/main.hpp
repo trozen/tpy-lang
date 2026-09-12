@@ -12,7 +12,9 @@ using ::tpystd::socket::socketpair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def trigger() -> None:
 void trigger();
+// def main() -> None:
 void main();
 
 void __tpy_init();

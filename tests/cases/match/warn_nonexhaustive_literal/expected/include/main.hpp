@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def incomplete(mode: Literal["r", "w", "rb"]) -> None:
 void incomplete(std::string_view mode);
+// def main() -> None:
 void main();
 
 void __tpy_init();

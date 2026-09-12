@@ -5,50 +5,52 @@ namespace tpyapp::main {
 
 
 // def make_xs() -> Own[list[int32]]:
+//     return [1, 2, 3]
 std::vector<int32_t> make_xs() {
-    // return [1, 2, 3]
     return {1, 2, 3};
 }
 
 // def make_ys() -> Own[list[int32]]:
+//     return [10, 20, 30]
 std::vector<int32_t> make_ys() {
-    // return [10, 20, 30]
     return {10, 20, 30};
 }
 
 // def add(a: int32, b: int32) -> int32:
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main() -> None:
+//     # Both rvalue
+//     result = list(map(add, make_xs(), make_ys()))
+//     print(result)
+//
+//     # Mixed: lvalue + rvalue
+//     xs = [1, 2, 3]
+//     result2 = list(map(add, xs, make_ys()))
+//     print(result2)
+//
+//     # Rvalue with lambda
+//     result3 = list(map(lambda a, b: a * b, make_xs(), make_ys()))
+//     print(result3)
 void main() {
-    // # Both rvalue
-    // result = list(map(add, make_xs(), make_ys()))
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, make_xs(), make_ys()));
-    // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
-    // # Mixed: lvalue + rvalue
-    // xs = [1, 2, 3]
     std::array<int32_t, 3> xs = {1, 2, 3};
-    // result2 = list(map(add, xs, make_ys()))
     std::vector<int32_t> result2 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>(add, xs, make_ys()));
-    // print(result2)
     std::cout << ::tpy::ListPrinter(result2) << "\n";
-    // # Rvalue with lambda
-    // result3 = list(map(lambda a, b: a * b, make_xs(), make_ys()))
     std::vector<int32_t> result3 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, make_xs(), make_ys()));
-    // print(result3)
     std::cout << ::tpy::ListPrinter(result3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,95 +5,103 @@ namespace tpyapp::main {
 
 
 // def make_error(code: int32) -> Own[AppError]:
+//     return AppError(code)
 AppError make_error(int32_t code) {
-    // return AppError(code)
     return AppError(code);
 }
 
 // def test_raise_variable() -> None:
+//     """Raise a pre-constructed exception variable."""
+//     try:
+//         e = AppError(10)
+//         raise e
+//     except AppError as caught:
+//         print(caught.code)
 void test_raise_variable() {
-    // try:
     {
         try {
-            // e = AppError(10)
             AppError e = AppError(10);
-            // raise e
             e.__raise__();
         } catch (const AppError& caught) {
-            // print(caught.code)
             std::cout << caught.code << "\n";
         }
     }
 }
 
 // def test_raise_reassigned() -> None:
+//     """Raise after conditional reassignment."""
+//     try:
+//         e = AppError(1)
+//         e = AppError(2)
+//         raise e
+//     except AppError as caught:
+//         print(caught.code)
 void test_raise_reassigned() {
     std::optional<AppError> __slot_2;
-    // try:
     {
         try {
-            // e = AppError(1)
             AppError __slot_1 = AppError(1);
             AppError* e = &__slot_1;
-            // e = AppError(2)
             e = &*(__slot_2 = AppError(2));
-            // raise e
             (*e).__raise__();
         } catch (const AppError& caught) {
-            // print(caught.code)
             std::cout << caught.code << "\n";
         }
     }
 }
 
 // def test_raise_different_types() -> None:
+//     """Raise different exception types from variables."""
+//     try:
+//         e = OtherError("first")
+//         raise e
+//     except OtherError as caught:
+//         print(caught.tag)
 void test_raise_different_types() {
-    // try:
     {
         try {
-            // e = OtherError("first")
             OtherError e = OtherError("first");
-            // raise e
             e.__raise__();
         } catch (const OtherError& caught) {
-            // print(caught.tag)
             std::cout << caught.tag << "\n";
         }
     }
 }
 
 // def test_raise_function_result() -> None:
+//     """Raise the result of a function call."""
+//     try:
+//         raise make_error(7)
+//     except AppError as caught:
+//         print(caught.code)
 void test_raise_function_result() {
-    // try:
     {
         try {
-            // raise make_error(7)
             make_error(7).__raise__();
         } catch (const AppError& caught) {
-            // print(caught.code)
             std::cout << caught.code << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     test_raise_variable()
+//     test_raise_reassigned()
+//     test_raise_different_types()
+//     test_raise_function_result()
 void main() {
-    // test_raise_variable()
     test_raise_variable();
-    // test_raise_reassigned()
     test_raise_reassigned();
-    // test_raise_different_types()
     test_raise_different_types();
-    // test_raise_function_result()
     test_raise_function_result();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

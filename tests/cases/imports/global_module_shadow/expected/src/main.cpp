@@ -3,27 +3,28 @@
 
 namespace tpyapp::main {
 
-// time: Timer = Timer()
 Timer* time{};
 
 // def f():
+//     print(time.x)
 void f() {
-    // print(time.x)
     std::cout << time->x << "\n";
 }
 
+// import time
+//
+// time: Timer = Timer()
+// time.x = 99
+//
+// f()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import time
-    // time: Timer = Timer()
     static Timer __global_slot_1 = Timer();
     time = &__global_slot_1;
-    // time.x = 99
     time->x = 99;
-    // f()
     f();
 }
 

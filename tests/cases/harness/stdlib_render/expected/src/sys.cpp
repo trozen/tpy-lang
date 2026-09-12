@@ -3,37 +3,44 @@
 
 namespace tpystd::sys {
 
-// argv: list[str] = _get_sys_argv()
 std::vector<std::string>* argv{};
-// stdout: _StdStream = _get_sys_stdout()
 ::tpy::StdStream* stdout{};
-// stderr: _StdStream = _get_sys_stderr()
 ::tpy::StdStream* stderr{};
+// maxsize: Final[int] = 9223372036854775807
 const ::tpy::BigInt maxsize = ::tpy::BigInt(static_cast<int64_t>(9223372036854775807LL));
+// maxunicode: Final[int] = 0x10FFFF
 const ::tpy::BigInt maxunicode = ::tpy::BigInt(1114111);
 
 
 
 
 
+// from tpy.extern import native
+//
+// argv: list[str] = _get_sys_argv()
+//
+// # CPython's value on 64-bit platforms (2**63 - 1). TPy targets 64-bit;
+// # a 32-bit target would need a per-target constant.
+// maxsize: Final[int] = 9223372036854775807
+//
+// # TPy targets little-endian (x86-64 / ARM64), same assumption as maxsize.
+// byteorder: Final[str] = "little"
+//
+// # U+10FFFF -- fixed by the Unicode standard, so target-independent (unlike
+// # maxsize / byteorder).
+// maxunicode: Final[int] = 0x10FFFF
+//
+// stdout: _StdStream = _get_sys_stdout()
+// stderr: _StdStream = _get_sys_stderr()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
-    // argv: list[str] = _get_sys_argv()
     static std::vector<std::string> __global_slot_1 = ::tpy::get_sys_argv();
     argv = &__global_slot_1;
-    // # CPython's value on 64-bit platforms (2**63 - 1). TPy targets 64-bit;
-    // # a 32-bit target would need a per-target constant.
-    // # TPy targets little-endian (x86-64 / ARM64), same assumption as maxsize.
-    // # U+10FFFF -- fixed by the Unicode standard, so target-independent (unlike
-    // # maxsize / byteorder).
-    // stdout: _StdStream = _get_sys_stdout()
     static ::tpy::StdStream __global_slot_2 = ::tpy::get_sys_stdout();
     stdout = &__global_slot_2;
-    // stderr: _StdStream = _get_sys_stderr()
     static ::tpy::StdStream __global_slot_3 = ::tpy::get_sys_stderr();
     stderr = &__global_slot_3;
 }

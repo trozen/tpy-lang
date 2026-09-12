@@ -11,6 +11,7 @@ template<typename T, std::size_t N> struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Buffer[T, N: int]:
@@ -20,19 +21,19 @@ struct Buffer {
     std::array<T, N> data;
 
     // def __init__(self) -> None:
+    //     pass
     Buffer() {
-        // pass
     }
 
     // def set(self, idx: int32, val: T) -> None:
+    //     self.data[idx] = val
     void set(int32_t idx, ::tpy::param_val_or_ref_t<T> val) {
-        // self.data[idx] = val
         ::tpy::__setitem__(this->data, idx, val);
     }
 
     // def get(self, idx: int32) -> T:
+    //     return self.data[idx]
     ::tpy::val_or_ref_t<T> get(int32_t idx) {
-        // return self.data[idx]
         return ::tpy::__getitem__(this->data, idx);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";

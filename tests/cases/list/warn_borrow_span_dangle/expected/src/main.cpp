@@ -5,91 +5,97 @@ namespace tpyapp::main {
 
 
 // def test_span_append_warns() -> None:
+//     """Span borrows the list; append may reallocate."""
+//     items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4)), Point(int32(5), int32(6))]
+//     span = items[int32(1):int32(3)]
+//     items.append(Point(int32(9), int32(9)))  # tpyc: warning(/Mutation of 'items'/)
+//     print(len(items))
 void test_span_append_warns() {
-    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4)), Point(int32(5), int32(6))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
-    // span = items[int32(1):int32(3)]
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{1, 3});
-    // items.append(Point(int32(9), int32(9)))  # tpyc: warning(/Mutation of 'items'/)
     items.push_back(Point(9, 9));
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_span_subscript_write_ok() -> None:
+//     """Span borrows the list; subscript write is in-place (no reallocation, no dangling)."""
+//     items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
+//     span = items[int32(0):int32(2)]
+//     items[int32(0)] = Point(int32(9), int32(9))  # tpyc: ok
+//     print(items[int32(0)].x)
 void test_span_subscript_write_ok() {
-    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // span = items[int32(0):int32(2)]
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    // items[int32(0)] = Point(int32(9), int32(9))  # tpyc: ok
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_span_del_warns() -> None:
+//     """Span borrows the list; del invalidates."""
+//     items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
+//     span = items[int32(0):int32(2)]
+//     del items[int32(0)]  # tpyc: warning(/Mutation of 'items'/)
+//     print(len(items))
 void test_span_del_warns() {
-    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // span = items[int32(0):int32(2)]
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    // del items[int32(0)]  # tpyc: warning(/Mutation of 'items'/)
     ::tpy::__delitem__(items, 0);
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_span_no_mutation_no_warn() -> None:
+//     """Span borrows the list; reading is safe."""
+//     items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
+//     span = items[int32(0):int32(2)]
+//     print(span[int32(0)].x)
+//     print(len(items))
 void test_span_no_mutation_no_warn() {
-    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // span = items[int32(0):int32(2)]
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    // print(span[int32(0)].x)
     std::cout << ::tpy::__getitem__(span, 0).x << "\n";
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_no_span_no_warn() -> None:
+//     """No span active; mutation is fine."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     items.append(Point(int32(3), int32(4)))  # tpyc: ok
+//     print(len(items))
 void test_no_span_no_warn() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // items.append(Point(int32(3), int32(4)))  # tpyc: ok
     items.push_back(Point(3, 4));
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_value_type_span_warns() -> None:
+//     """Span borrows even for value-type elements (view into container memory)."""
+//     items: list[int32] = [int32(1), int32(2), int32(3)]
+//     span = items[int32(0):int32(2)]
+//     items.append(int32(9))  # tpyc: warning(/Mutation of 'items'/)
+//     print(len(items))
 void test_value_type_span_warns() {
-    // items: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // span = items[int32(0):int32(2)]
     std::span<int32_t> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    // items.append(int32(9))  # tpyc: warning(/Mutation of 'items'/)
     items.push_back(9);
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
+// test_span_append_warns()
+// test_span_subscript_write_ok()
+// test_span_del_warns()
+// test_span_no_mutation_no_warn()
+// test_no_span_no_warn()
+// test_value_type_span_warns()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_span_append_warns()
     test_span_append_warns();
-    // test_span_subscript_write_ok()
     test_span_subscript_write_ok();
-    // test_span_del_warns()
     test_span_del_warns();
-    // test_span_no_mutation_no_warn()
     test_span_no_mutation_no_warn();
-    // test_no_span_no_warn()
     test_no_span_no_warn();
-    // test_value_type_span_warns()
     test_value_type_span_warns();
 }
 

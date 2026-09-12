@@ -11,6 +11,7 @@ struct NumberList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class NumberList:
@@ -42,23 +43,25 @@ inline std::ostream& operator<<(std::ostream& os, const NumberList& obj) {
 
 
 // def __init__(self, label: str) -> None:
+//     self._items = []
+//     self._label = label
 inline NumberList::NumberList(std::string_view label) : _items(std::vector<int32_t>{}), _label(label) {}
 
 // def add(self, val: int32) -> None:
+//     self._items.append(val)
 inline void NumberList::add(int32_t val) {
-    // self._items.append(val)
     this->_items.push_back(val);
 }
 
 // def set_label(self, label: str) -> None:
+//     self._label = label
 inline void NumberList::set_label(std::string_view label) {
-    // self._label = label
     this->_label = label;
 }
 
 // def __iter__(self) -> Iterator[int32]:
+//     return iter(self._items)
 inline auto NumberList::__iter__() const {
-    // return iter(self._items)
     return ::tpy::__iter__(this->_items);
 }
 void __tpy_init();

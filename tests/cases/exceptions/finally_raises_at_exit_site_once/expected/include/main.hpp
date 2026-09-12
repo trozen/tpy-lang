@@ -12,11 +12,17 @@ struct Err;
 extern int32_t _code;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump() -> int:
 ::tpy::BigInt bump();
+// def ret_out(n: int) -> int:
 ::tpy::BigInt ret_out(const ::tpy::BigInt& n);
+// def brk_out() -> None:
 void brk_out();
+// def cont_out() -> None:
 void cont_out();
+// def nested_ret() -> int:
 ::tpy::BigInt nested_ret();
+// def main() -> None:
 void main();
 
 // class Err(Exception):
@@ -41,6 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
 
 
 // def __init__(self, code: int) -> None:
+//     self.code = code
 inline Err::Err(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

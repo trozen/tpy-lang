@@ -3,30 +3,32 @@
 
 namespace tpyapp::main {
 
-// # Call static method via instance (also valid)
-// c = Counter(100)
 Counter* c{};
 
+// """Test @staticmethod decorator on class methods."""
+//
+// # Call static method via class name
+// print(Counter.zero())
+// print(Counter.add(10, 20))
+//
+// # Call static method via instance (also valid)
+// c = Counter(100)
+// print(c.zero())
+// print(c.add(3, 4))
+//
+// # Regular instance method still works
+// print(c.get())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Call static method via class name
-    // print(Counter.zero())
     std::cout << Counter::zero() << "\n";
-    // print(Counter.add(10, 20))
     std::cout << Counter::add(10, 20) << "\n";
-    // # Call static method via instance (also valid)
-    // c = Counter(100)
     static Counter __global_slot_1 = Counter(100);
     c = &__global_slot_1;
-    // print(c.zero())
     std::cout << c->zero() << "\n";
-    // print(c.add(3, 4))
     std::cout << c->add(3, 4) << "\n";
-    // # Regular instance method still works
-    // print(c.get())
     std::cout << c->get() << "\n";
 }
 

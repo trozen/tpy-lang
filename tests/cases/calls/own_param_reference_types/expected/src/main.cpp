@@ -5,57 +5,58 @@ namespace tpyapp::main {
 
 
 // def consume(b: Own[bytearray]) -> int32:  # tpyc: warning(/never consumed/)
+//     b.append(90)                 # the owned buffer is mutable in the callee
+//     return len(b)                # the bare Own[bytearray] name read
 int32_t consume(::tpy::ByteArray&& b) {
-    // b.append(90)                 # the owned buffer is mutable in the callee
     b.push_back(90);
-    // return len(b)                # the bare Own[bytearray] name read
     return ::tpy::__len__(b);
 }
 
 // def consume_list(xs: Own[list[int32]]) -> int32:  # tpyc: warning(/never consumed/)
+//     xs.append(3)
+//     return len(xs)               # the same shape one family over
 int32_t consume_list(std::vector<int32_t>&& xs) {
-    // xs.append(3)
     xs.push_back(3);
-    // return len(xs)               # the same shape one family over
     return ::tpy::__len__(xs);
 }
 
 // def consume_boxes(bs: Own[list[Box[int32]]]) -> int32:  # tpyc: ok
+//     # The @nocopy leg: this slot has to MOVE, a copy would not compile. It
+//     # draws no "never consumed" warning where its two siblings do, because a
+//     # noncopyable payload leaves the caller nothing to keep either way.
+//     bs.append(Box(4))
+//     return len(bs)
 int32_t consume_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& bs) {
-    // # The @nocopy leg: this slot has to MOVE, a copy would not compile. It
-    // # draws no "never consumed" warning where its two siblings do, because a
-    // # noncopyable payload leaves the caller nothing to keep either way.
-    // bs.append(Box(4))
     bs.push_back(::tpystd::tplib::box::Box<int32_t>(4));
-    // return len(bs)
     return ::tpy::__len__(bs);
 }
 
 // def main() -> None:
+//     ba = bytearray(b"abc")
+//     print(consume(ba))  # tpyc: ok
+//     ls: list[int32] = [1, 2]
+//     print(consume_list(ls))  # tpyc: ok
+//     boxes: list[Box[int32]] = [Box(1)]
+//     print(consume_boxes(boxes))  # tpyc: ok
 void main() {
-    // ba = bytearray(b"abc")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    // print(consume(ba))  # tpyc: ok
     std::cout << consume(std::move(ba)) << "\n";
-    // ls: list[int32] = [1, 2]
     std::vector<int32_t> ls = {1, 2};
-    // print(consume_list(ls))  # tpyc: ok
     std::cout << consume_list(std::move(ls)) << "\n";
-    // boxes: list[Box[int32]] = [Box(1)]
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1));
-    // print(consume_boxes(boxes))  # tpyc: ok
     std::cout << consume_boxes(std::move(boxes)) << "\n";
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

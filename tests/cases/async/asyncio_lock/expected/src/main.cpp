@@ -5,11 +5,14 @@ namespace tpyapp::main {
 
 
 // async def worker(lock: Lock, box: Box) -> None:
+//     async with lock:
+//         tmp = box.n
+//         await asyncio.sleep(0.001)
+//         box.n = tmp + 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_worker::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0 = &(lock);
-        // async with lock:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -28,7 +31,6 @@ namespace tpyapp::main {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r1).value();
             __sub_1.reset();
-            // box.n = tmp + 1
             box.n = (::tpy::add_check<int32_t>(tmp, 1));
             __state = S_JOIN_0;
             continue;
@@ -53,7 +55,6 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_0: {
-        // async with lock:
         __sub_2.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_2;
         continue;
@@ -64,9 +65,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            // tmp = box.n
             tmp = box.n;
-            // await asyncio.sleep(0.001)
             __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
             __state = S_RESUME_1;
             continue;
@@ -88,6 +87,11 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
 }
 
 // async def raise_holding(lock: Lock) -> None:
+//     try:
+//         async with lock:
+//             raise ValueError("boom")
+//     except ValueError:
+//         print("caught, locked:", lock.locked())
 ::tpystd::tpy::Poll<::std::monostate> __coro_raise_holding::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -104,7 +108,6 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            // print("caught, locked:", lock.locked())
             std::cout << "caught, locked:" << " " << ::tpy::print_bool(lock.locked()) << "\n";
             __state = S_JOIN_0;
             continue;
@@ -128,7 +131,6 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_1.reset();
-            // print("caught, locked:", lock.locked())
             std::cout << "caught, locked:" << " " << ::tpy::print_bool(lock.locked()) << "\n";
             __state = S_JOIN_0;
             continue;
@@ -144,12 +146,10 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
     case S_JOIN_1: {
         try {
             __with_ctx_0 = &(lock);
-            // async with lock:
             __sub_0.emplace((*__with_ctx_0));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // print("caught, locked:", lock.locked())
             std::cout << "caught, locked:" << " " << ::tpy::print_bool(lock.locked()) << "\n";
             __state = S_JOIN_0;
             continue;
@@ -162,7 +162,6 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // print("caught, locked:", lock.locked())
             std::cout << "caught, locked:" << " " << ::tpy::print_bool(lock.locked()) << "\n";
             __state = S_JOIN_0;
             continue;
@@ -173,7 +172,6 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
     case S_JOIN_3: {
         try {
             try {
-                // raise ValueError("boom")
                 throw ::tpy::ValueError("boom");
             } catch (...) {
                 this->__finally_exc_0 = std::current_exception();
@@ -181,7 +179,6 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
                 continue;
             }
         } catch (const ::tpy::ValueError&) {
-            // print("caught, locked:", lock.locked())
             std::cout << "caught, locked:" << " " << ::tpy::print_bool(lock.locked()) << "\n";
             __state = S_JOIN_0;
             continue;
@@ -190,7 +187,6 @@ __coro_worker worker(::tpystd::asyncio::Lock& lock, Box& box) {
         }
     }
     case S_JOIN_4: {
-        // async with lock:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
@@ -207,16 +203,37 @@ __coro_raise_holding raise_holding(::tpystd::asyncio::Lock& lock) {
 }
 
 // async def main_coro() -> None:
+//     lock = Lock()
+//     box = Box()
+//     print("locked0:", lock.locked())
+//     await lock.acquire()
+//     print("locked1:", lock.locked())
+//     lock.release()
+//     print("locked2:", lock.locked())
+//
+//     try:
+//         lock.release()
+//         print("no error")
+//     except RuntimeError:
+//         print("caught release-unheld")
+//
+//     # __aexit__ releases on the throw path, so the lock is free afterward.
+//     await raise_holding(lock)
+//     print("after raise:", lock.locked())
+//
+//     tasks: list[asyncio.Task[None]] = []
+//     i = 0
+//     while i < 5:
+//         tasks.append(asyncio.create_task(worker(lock, box)))
+//         i += 1
+//     await asyncio.gather(*tasks)
+//     print("count:", box.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // lock = Lock()
         lock.emplace(::tpystd::asyncio::Lock());
-        // box = Box()
         box.emplace(Box());
-        // print("locked0:", lock.locked())
         std::cout << "locked0:" << " " << ::tpy::print_bool((*lock).locked()) << "\n";
-        // await lock.acquire()
         __sub_0.emplace((*lock));
         __state = S_RESUME_0;
         continue;
@@ -226,25 +243,17 @@ __coro_raise_holding raise_holding(::tpystd::asyncio::Lock& lock) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("locked1:", lock.locked())
         std::cout << "locked1:" << " " << ::tpy::print_bool((*lock).locked()) << "\n";
-        // lock.release()
         (*lock).release();
-        // print("locked2:", lock.locked())
         std::cout << "locked2:" << " " << ::tpy::print_bool((*lock).locked()) << "\n";
-        // try:
         {
             try {
-                // lock.release()
                 (*lock).release();
-                // print("no error")
                 std::cout << "no error" << "\n";
             } catch (const ::tpy::RuntimeError&) {
-                // print("caught release-unheld")
                 std::cout << "caught release-unheld" << "\n";
             }
         }
-        // await raise_holding(lock)
         __sub_1.emplace((*lock));
         __state = S_RESUME_1;
         continue;
@@ -254,20 +263,13 @@ __coro_raise_holding raise_holding(::tpystd::asyncio::Lock& lock) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // print("after raise:", lock.locked())
         std::cout << "after raise:" << " " << ::tpy::print_bool((*lock).locked()) << "\n";
-        // tasks: list[asyncio.Task[None]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>{});
-        // i = 0
         i = 0;
-        // while i < 5:
         while ((i < 5)) {
-            // tasks.append(asyncio.create_task(worker(lock, box)))
             (*tasks).push_back(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(worker((*lock), (*box)))));
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         }
-        // await asyncio.gather(*tasks)
         __sub_2.emplace(std::move(::tpystd::asyncio::gather<std::monostate>(::tpy::varargs<::tpystd::asyncio::_executor::Task<std::monostate>>(::tpy::as_mut_span((*tasks))))));
         __state = S_RESUME_2;
         continue;
@@ -277,7 +279,6 @@ __coro_raise_holding raise_holding(::tpystd::asyncio::Lock& lock) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
         __sub_2.reset();
-        // print("count:", box.n)
         std::cout << "count:" << " " << (*box).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -294,21 +295,22 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.Lock: serializes a read-modify-write across an await (count=5, not
+// # 1), plus acquire/release/locked, release-on-throw, and release-when-unheld.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.Lock: serializes a read-modify-write across an await (count=5, not
-    // # 1), plus acquire/release/locked, release-on-throw, and release-when-unheld.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Window;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Window:
@@ -24,33 +25,20 @@ struct Window {
     // @overload
     // def __getitem__(self, index: basic_slice) -> Span[readonly[int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::BasicSlice index) const {
-        // # Basic: return contiguous subspan
-        // s_start = index.start
         std::optional<int32_t> s_start = index.start;
-        // s_stop = index.stop
         std::optional<int32_t> s_stop = index.stop;
-        // start: int32 = s_start if s_start is not None else 0
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        // stop: int32 = s_stop if s_stop is not None else len(self._data)
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        // return self._data[start:stop]
         return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
     }
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::Slice index) const {
-        // # Stepped: access .step to prove we received a slice, not basic_slice
-        // s_step = index.step
         std::optional<int32_t> s_step = index.step;
-        // step: int32 = s_step if s_step is not None else 1
         int32_t step = (((s_step.has_value())) ? ((*s_step)) : (1));
-        // print(step)
         std::cout << step << "\n";
-        // # Return full span (step logic deferred to caller for this test)
-        // return self._data[0:len(self._data)]
         return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{0, ::tpy::__len__(this->_data)});
-        // # Basic: return contiguous subspan
     }
 
     std::span<const int32_t> operator[](::tpy::BasicSlice index) const {
@@ -70,6 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Window& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = [10, 20, 30, 40, 50]
 inline Window::Window() : _data(std::vector<int32_t>{10, 20, 30, 40, 50}) {}
 void __tpy_init();
 } // namespace tpyapp::main

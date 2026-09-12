@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def consume(v: Own[A | B]) -> int32:
+//     sink = Sink(v)
+//     w = sink.u
+//     if isinstance(w, A):
+//         return w.x
+//     return w.y
 int32_t consume(::tpy::Union<A, B>&& v) {
-    // sink = Sink(v)
     Sink sink = Sink(std::move(v));
-    // w = sink.u
     ::tpy::Union<A*, B*> w = ::tpy::to_ptr_variant(sink.u);
-    // if isinstance(w, A):
     if (std::holds_alternative<A*>(w)) {
         auto& __w = *std::get<A*>(w);
-        // return w.x
         return __w.x;
     }
     auto& __w = *std::get<B*>(w);
-    // return w.y
     return __w.y;
 }
 
@@ -25,43 +25,43 @@ int32_t consume(::tpy::Union<A, B>&& v) {
 // # arg narrows identically on both runtimes (isinstance(3, int32) would be
 // # False under CPython, where the literal is a plain int).
 // def pick(v: int32 | float64) -> int32:
+//     if isinstance(v, float64):
+//         return -1
+//     return v
 int32_t pick(const ::tpy::Union<double, int32_t>& v) {
-    // if isinstance(v, float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
-        // return -1
         return -1;
     }
     const auto& __v = std::get<int32_t>(v);
-    // return v
     return __v;
 }
 
 // def main() -> None:
+//     print(consume(A(7)))
+//     print(consume(B(20)))
+//     print(pick(3))
+//     t = 0
+//     while consume(A(2)) > t:
+//         t = t + 1
+//     print(t)
 void main() {
-    // print(consume(A(7)))
     std::cout << consume(A(7)) << "\n";
-    // print(consume(B(20)))
     std::cout << consume(B(20)) << "\n";
-    // print(pick(3))
     std::cout << pick(3) << "\n";
-    // t = 0
     int32_t t = 0;
-    // while consume(A(2)) > t:
     while ((consume(A(2)) > t)) {
-        // t = t + 1
         t = (::tpy::add_check<int32_t>(t, 1));
     }
-    // print(t)
     std::cout << t << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

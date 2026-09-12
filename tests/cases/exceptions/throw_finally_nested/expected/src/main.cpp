@@ -5,27 +5,29 @@ namespace tpyapp::main {
 
 
 // def nested_return() -> int32:
+//     """Return propagates through nested finally blocks."""
+//     try:
+//         try:
+//             return 10
+//         finally:
+//             print("inner")
+//     finally:
+//         print("outer")
 int32_t nested_return() {
-    // try:
     {
         bool __fin_ran_1 = false;
         try {
-            // try:
             {
                 bool __fin_ran_2 = false;
                 try {
-                    // return 10
                     int32_t __tpy_ret_0 = 10;
                     __fin_ran_2 = true;
-                    // print("inner")
                     std::cout << "inner" << "\n";
                     __fin_ran_1 = true;
-                    // print("outer")
                     std::cout << "outer" << "\n";
                     return __tpy_ret_0;
                 } catch (...) {
                     if (!__fin_ran_2) {
-                        // print("inner")
                         std::cout << "inner" << "\n";
                     }
                     throw;
@@ -33,7 +35,6 @@ int32_t nested_return() {
             }
         } catch (...) {
             if (!__fin_ran_1) {
-                // print("outer")
                 std::cout << "outer" << "\n";
             }
             throw;
@@ -42,51 +43,55 @@ int32_t nested_return() {
 }
 
 // def nested_raise() -> None:
+//     """Exception propagates through nested finally blocks."""
+//     try:
+//         try:
+//             try:
+//                 raise ValueError("deep")
+//             finally:
+//                 print("innermost")
+//         finally:
+//             print("middle")
+//     except ValueError:
+//         print("caught")
 void nested_raise() {
-    // try:
     {
         try {
-            // try:
             {
                 try {
-                    // try:
                     {
                         try {
-                            // raise ValueError("deep")
                             throw ::tpy::ValueError("deep");
                         } catch (...) {
-                            // print("innermost")
                             std::cout << "innermost" << "\n";
                             throw;
                         }
                     }
                 } catch (...) {
-                    // print("middle")
                     std::cout << "middle" << "\n";
                     throw;
                 }
             }
         } catch (const ::tpy::ValueError&) {
-            // print("caught")
             std::cout << "caught" << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     print(nested_return())
+//     nested_raise()
 void main() {
-    // print(nested_return())
     std::cout << nested_return() << "\n";
-    // nested_raise()
     nested_raise();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

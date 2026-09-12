@@ -15,6 +15,7 @@ struct ReadyAwaitable;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class ReadyAwaitable(Awaitable[int32]):
@@ -38,11 +39,12 @@ inline std::ostream& operator<<(std::ostream& os, const ReadyAwaitable& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline ReadyAwaitable::ReadyAwaitable(int32_t value) : value(value) {}
 
 // def __poll__(self, waker: Waker) -> Own[Poll[int32]]:
+//     return poll_ready(self.value)
 inline ::tpystd::tpy::Poll<int32_t> ReadyAwaitable::__poll__(::tpystd::coro::Waker waker) const {
-    // return poll_ready(self.value)
     int32_t __tmp_1 = this->value;
     return ::tpystd::coro::poll_ready<int32_t>(std::move(__tmp_1));
 }

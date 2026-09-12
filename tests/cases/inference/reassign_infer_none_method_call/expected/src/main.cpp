@@ -3,24 +3,22 @@
 
 namespace tpyapp::main {
 
-// b = Box(int32(123))
 Box* b{};
-// x = None
 std::optional<int32_t> x;
 
+// b = Box(int32(123))
+// x = None
+// x = b.get()
+// print(x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // b = Box(int32(123))
     static Box __global_slot_1 = Box(123);
     b = &__global_slot_1;
-    // x = None
     x = std::nullopt;
-    // x = b.get()
     x = b->get();
-    // print(x)
     std::cout << ::tpy::print_optional_val(x) << "\n";
 }
 

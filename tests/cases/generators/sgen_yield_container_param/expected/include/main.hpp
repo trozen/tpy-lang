@@ -9,16 +9,20 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
+// def repeat_list(xs: list[int32], n: int32) -> Iterator[list[int32]]:  # tpyc: ok
+//     i = 0
+//     while i < n:
+//         yield xs  # tpyc: ok
+//         i += 1
 inline auto repeat_list(std::vector<int32_t>& xs, int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<::tpy::val_or_ref<std::vector<int32_t>>>(
         [&xs, n, i]() mutable -> std::optional<::tpy::val_or_ref<std::vector<int32_t>>> {
             while ((i < n)) {
                 auto&& __val = xs;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<::tpy::val_or_ref<std::vector<int32_t>>>(__val);
             }
@@ -27,14 +31,17 @@ inline auto repeat_list(std::vector<int32_t>& xs, int32_t n) {
     );
 }
 
+// def repeat_dict(d: dict[str, int32], n: int32) -> Iterator[dict[str, int32]]:  # tpyc: ok
+//     i = 0
+//     while i < n:
+//         yield d  # tpyc: ok
+//         i += 1
 inline auto repeat_dict(::tpy::ordered_map<std::string, int32_t>& d, int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>>(
         [&d, n, i]() mutable -> std::optional<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>> {
             while ((i < n)) {
                 auto&& __val = d;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>>(__val);
             }
@@ -43,14 +50,17 @@ inline auto repeat_dict(::tpy::ordered_map<std::string, int32_t>& d, int32_t n) 
     );
 }
 
+// def repeat_set(s: set[int32], n: int32) -> Iterator[set[int32]]:  # tpyc: ok
+//     i = 0
+//     while i < n:
+//         yield s  # tpyc: ok
+//         i += 1
 inline auto repeat_set(::tpy::ordered_set<int32_t>& s, int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>>(
         [&s, n, i]() mutable -> std::optional<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>> {
             while ((i < n)) {
                 auto&& __val = s;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>>(__val);
             }
@@ -59,14 +69,17 @@ inline auto repeat_set(::tpy::ordered_set<int32_t>& s, int32_t n) {
     );
 }
 
+// def repeat_buf(b: bytearray, n: int32) -> Iterator[bytearray]:  # tpyc: ok
+//     i = 0
+//     while i < n:
+//         yield b  # tpyc: ok
+//         i += 1
 inline auto repeat_buf(::tpy::ByteArray& b, int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<::tpy::val_or_ref<::tpy::ByteArray>>(
         [&b, n, i]() mutable -> std::optional<::tpy::val_or_ref<::tpy::ByteArray>> {
             while ((i < n)) {
                 auto&& __val = b;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<::tpy::val_or_ref<::tpy::ByteArray>>(__val);
             }
@@ -75,14 +88,17 @@ inline auto repeat_buf(::tpy::ByteArray& b, int32_t n) {
     );
 }
 
+// def repeat_arr(a: Array[int32, 2], n: int32) -> Iterator[Array[int32, 2]]:  # tpyc: ok
+//     i = 0
+//     while i < n:
+//         yield a  # tpyc: ok
+//         i += 1
 inline auto repeat_arr(std::array<int32_t, 2>& a, int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<::tpy::val_or_ref<std::array<int32_t, 2>>>(
         [&a, n, i]() mutable -> std::optional<::tpy::val_or_ref<std::array<int32_t, 2>>> {
             while ((i < n)) {
                 auto&& __val = a;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<::tpy::val_or_ref<std::array<int32_t, 2>>>(__val);
             }

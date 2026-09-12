@@ -9,6 +9,8 @@ namespace tpyapp::net {
 
 inline constexpr std::string_view __name__ = "net";
 
+// def request(url: str, auth: tuple[str, str] | None = None,
+//             timeout: float | None = None) -> int:
 ::tpy::BigInt request(std::string_view url, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt, std::optional<double> timeout = std::nullopt);
 
 void __tpy_init();

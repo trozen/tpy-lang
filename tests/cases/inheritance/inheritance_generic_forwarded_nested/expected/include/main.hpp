@@ -22,12 +22,13 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get_value(self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> get_value() {
-        // return self.value
         return this->value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -46,15 +47,16 @@ struct Child : Container<std::vector<T>> {
     int32_t extra;
 
     // def __init__(self, value: list[T], extra: int32) -> None:
+    //     self.value = value
+    //     self.extra = extra
     Child() = default;
     explicit Child(const std::vector<T>& value, int32_t extra) : extra(extra) {
-        // self.value = value
         this->value = value;
     }
 
     // def get_extra(self) -> int32:
+    //     return self.extra
     int32_t get_extra() const {
-        // return self.extra
         return this->extra;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";

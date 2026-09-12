@@ -12,6 +12,7 @@ struct Square;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Shape:
@@ -57,31 +58,32 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
 
 
 // def area(self) -> int32:
+//     return int32(0)
 inline int32_t Shape::area() const {
-    // return int32(0)
     return 0;
 }
 
 // def describe(self) -> str:
+//     return "shape"
 inline std::string Shape::describe() const {
-    // return "shape"
     return "shape";
 }
 
 // def __init__(self, side: int32) -> None:
+//     self.side = side
 inline Square::Square(int32_t side) : side(side) {}
 
 // @override
 // def area(self) -> int32:  # tpyc: warning(/non-polymorphic/)
+//     return self.side * self.side
 inline int32_t Square::area() const {
-    // return self.side * self.side
     return (::tpy::mul_check<int32_t>(this->side, this->side));
 }
 
 // @override
 // def describe(self) -> str:  # tpyc: warning(/non-polymorphic/)
+//     return "square"
 inline std::string Square::describe() const {
-    // return "square"
     return "square";
 }
 void __tpy_init();

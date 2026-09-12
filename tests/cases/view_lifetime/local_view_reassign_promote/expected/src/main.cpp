@@ -12,35 +12,35 @@ namespace tpyapp::main {
 // # string_view and the first print would read freed storage (cpy phase catches the
 // # garbage). The read of `v` after the mutation proves the value survived.
 // def make() -> str:
+//     return "padded long string that dodges the small-string buffer optimization"
 std::string make() {
-    // return "padded long string that dodges the small-string buffer optimization"
     return "padded long string that dodges the small-string buffer optimization";
 }
 
 // def main() -> None:
+//     a = make()
+//     b = make()
+//     v = a
+//     a += " appended text that forces a's buffer to reallocate somewhere new"
+//     print(len(v))   # v aliased a (now reallocated) -> v must be owned
+//     v = b
+//     print(len(v))
 void main() {
-    // a = make()
     std::string a = make();
-    // b = make()
     std::string b = make();
-    // v = a
     std::string v = a;
-    // a += " appended text that forces a's buffer to reallocate somewhere new"
     a += " appended text that forces a's buffer to reallocate somewhere new";
-    // print(len(v))   # v aliased a (now reallocated) -> v must be owned
     std::cout << ::tpy::__len__(v) << "\n";
-    // v = b
     v = b;
-    // print(len(v))
     std::cout << ::tpy::__len__(v) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

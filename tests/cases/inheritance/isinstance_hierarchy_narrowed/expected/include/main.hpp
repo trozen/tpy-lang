@@ -14,8 +14,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def upcast_in_branch(x: Dog | Cat) -> bool:
 bool upcast_in_branch(::tpy::Union<const Cat*, const Dog*> x);
+// def downcast_in_branch(x: Dog | Cat) -> bool:
 bool downcast_in_branch(::tpy::Union<const Cat*, const Dog*> x);
+// def main() -> None:
 void main();
 
 // # Inside a narrowing branch, isinstance checks against ancestors or
@@ -87,15 +90,21 @@ inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def __init__(self) -> None:
+//     self.whiskers = 6
 inline Cat::Cat() : whiskers(::tpy::BigInt(6)) {}
 
 // def __init__(self, name: str, breed: str) -> None:
+//     super().__init__(name)
+//     self.breed = breed
 inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
 // def __init__(self, name: str, breed: str, age: int) -> None:
+//     super().__init__(name, breed)
+//     self.age = age
 inline Puppy::Puppy(std::string_view name, std::string_view breed, const ::tpy::BigInt& age) : Dog(name, breed), age(age) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def g(items: list[Box]) -> Iterator[int]:
+//     a = items[0]
+//     yield a.n
+//     a.n += 10
+//     yield a.n
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = items[0]
         a = &(::tpy::__getitem__(items, 0));
-        // yield a.n
         __state = S_RESUME_0;
         return a->n;
     }
     case S_RESUME_0: {
-        // a.n += 10
         a->n = (a->n) + (::tpy::BigInt(10));
-        // yield a.n
         __state = S_RESUME_1;
         return a->n;
     }
@@ -37,10 +37,12 @@ __gen_g g(std::vector<Box>& items) {
 }
 
 // def main() -> None:
+//     items = [Box(1)]
+//     for v in g(items):
+//         print(v)
+//     print(items[0].n)
 void main() {
-    // items = [Box(1)]
     std::vector<Box> items = {Box(::tpy::BigInt(1))};
-    // for v in g(items):
     {
         auto __src_0 = g(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -48,20 +50,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(items[0].n)
     std::cout << ::tpy::__getitem__(items, 0).n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,25 @@ namespace tpyapp::main {
 
 
 // def probe(flag: bool) -> int32:
+//     if flag:
+//         with Reg(11) as g:
+//             pass
+//     else:
+//         with Reg(22) as g:
+//             pass
+//
+//     g = g.next()  # the read of the old `g` happens before the rebind
+//     return g.n
 int32_t probe(bool flag) {
     std::optional<Reg> __slot_2;
     std::optional<Reg> __slot_3;
     std::optional<Reg> __slot_1;
-    // if flag:
     Reg* g;
     if (flag) {
-        // with Reg(11) as g:
         __slot_2.emplace(Reg(11));
         auto& __ctx_1 = (*__slot_2);
         g = &(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -28,14 +34,11 @@ int32_t probe(bool flag) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-    // else:
     } else {
-        // with Reg(22) as g:
         __slot_3.emplace(Reg(22));
         auto& __ctx_2 = (*__slot_3);
         g = &(__ctx_2.__enter__());
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -47,26 +50,24 @@ int32_t probe(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // g = g.next()  # the read of the old `g` happens before the rebind
     g = &*(__slot_1 = g->next());
-    // return g.n
     return g->n;
 }
 
 // def main() -> None:
+//     print(probe(True))
+//     print(probe(False))
 void main() {
-    // print(probe(True))
     std::cout << probe(true) << "\n";
-    // print(probe(False))
     std::cout << probe(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

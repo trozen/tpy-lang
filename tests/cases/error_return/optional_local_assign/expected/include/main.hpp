@@ -12,8 +12,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def decode(ok: bool) -> Own[Box]:
 std::expected<Box, Bad> decode(bool ok);
+// def run(ok: bool) -> int32:
 int32_t run(bool ok);
+// def main() -> None:
 void main();
 
 // class Bad(Exception, ReturnException):
@@ -56,6 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Box::Box(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

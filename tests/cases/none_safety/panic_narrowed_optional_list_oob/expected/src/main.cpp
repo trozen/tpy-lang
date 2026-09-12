@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def read_oob(lst: list[int32] | None) -> None:
+//     if lst is None:
+//         return
+//     print("before")
+//     print(lst[10])          # the subject: bounds check must fire
 void read_oob(const std::vector<int32_t>* lst) {
-    // if lst is None:
     if ((lst == nullptr)) {
-        // return
         return;
     }
-    // print("before")
     std::cout << "before" << "\n";
-    // print(lst[10])          # the subject: bounds check must fire
     std::cout << ::tpy::__getitem__((*lst), 10) << "\n";
 }
 
 // def main() -> None:
+//     read_oob([1, 2, 3])
 void main() {
-    // read_oob([1, 2, 3])
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2, 3};
     read_oob(&(__tmp_1));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

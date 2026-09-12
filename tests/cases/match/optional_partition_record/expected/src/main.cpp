@@ -5,58 +5,58 @@ namespace tpyapp::main {
 
 
 // def show(x: Leaf | None) -> None:
+//     match x:
+//         case None:
+//             print("none")
+//         case Leaf():
+//             print(x.n)
 void show(const Leaf* x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // print("none")
         std::cout << "none" << "\n";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case Leaf():
         {
-            // print(x.n)
             std::cout << x->n << "\n";
         }
     }
 }
 
 // def bump_and_peek(x: Leaf | None) -> None:
+//     match x:
+//         case None:
+//             print("none")
+//         case v:
+//             x.n += 10
+//             print(v.n)
 void bump_and_peek(Leaf* x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // print("none")
         std::cout << "none" << "\n";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case v:
         {
             auto& v = __match_inner_1;
-            // x.n += 10
             x->n = ::tpy::add_check<int32_t>(x->n, 10);
-            // print(v.n)
             std::cout << v.n << "\n";
         }
     }
 }
 
 // def label(x: Leaf | None) -> int32:
+//     match x:
+//         case None:
+//             return -1
+//         case Leaf() as v:
+//             return v.n
 int32_t label(const Leaf* x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // return -1
         return -1;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case Leaf() as v:
         {
             auto& v = __match_inner_1;
-            // return v.n
             return v.n;
         }
     }
@@ -64,73 +64,73 @@ int32_t label(const Leaf* x) {
 }
 
 // def peek(x: Leaf | None) -> None:
+//     match x:  # tpyc: warning(/non-exhaustive/)
+//         case Leaf():
+//             print(x.n)
 void peek(const Leaf* x) {
-    // match x:  # tpyc: warning(/non-exhaustive/)
     auto& __match_subject_1 = x;
     if (__match_subject_1 != nullptr) {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case Leaf():
         {
-            // print(x.n)
             std::cout << x->n << "\n";
         }
     }
 }
 
 // def from_field(h: Holder) -> None:
+//     q = h.opt
+//     match q:
+//         case None:
+//             print("empty")
+//         case Leaf():
+//             print(q.n)
 void from_field(const Holder& h) {
-    // q = h.opt
     const Leaf* q = ::tpy::optional_to_ptr(h.opt);
-    // match q:
     auto& __match_subject_1 = q;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // print("empty")
         std::cout << "empty" << "\n";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case Leaf():
         {
-            // print(q.n)
             std::cout << q->n << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     leaf = Leaf(3)
+//     show(leaf)
+//     show(None)
+//     bump_and_peek(leaf)
+//     print(leaf.n)
+//     print(label(leaf))
+//     print(label(None))
+//     peek(leaf)
+//     h = Holder()
+//     from_field(h)
+//     h.opt = Leaf(7)
+//     from_field(h)
 void main() {
-    // leaf = Leaf(3)
     Leaf leaf = Leaf(3);
-    // show(leaf)
     show(&(leaf));
-    // show(None)
     show(nullptr);
-    // bump_and_peek(leaf)
     bump_and_peek(&(leaf));
-    // print(leaf.n)
     std::cout << leaf.n << "\n";
-    // print(label(leaf))
     std::cout << label(&(leaf)) << "\n";
-    // print(label(None))
     std::cout << label(nullptr) << "\n";
-    // peek(leaf)
     peek(&(leaf));
-    // h = Holder()
     Holder h = Holder();
-    // from_field(h)
     from_field(h);
-    // h.opt = Leaf(7)
     h.opt = Leaf(7);
-    // from_field(h)
     from_field(h);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

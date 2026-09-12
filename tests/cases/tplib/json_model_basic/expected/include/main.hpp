@@ -23,13 +23,21 @@ struct User;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_deserialize() -> None:
 void test_deserialize();
+// def test_optional_missing() -> None:
 void test_optional_missing();
+// def test_optional_null() -> None:
 void test_optional_null();
+// def test_serialize() -> None:
 void test_serialize();
+// def test_serialize_null() -> None:
 void test_serialize_null();
+// def test_roundtrip() -> None:
 void test_roundtrip();
+// def test_skip_unknown() -> None:
 void test_skip_unknown();
+// def test_pretty() -> None:
 void test_pretty();
 
 // @model
@@ -125,12 +133,9 @@ inline std::string User::to_json(int32_t indent) const {
 }
 
 inline void User::save_json(std::string_view __path, int32_t indent) const {
-    // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
     auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
     auto& __f = __ctx_1.__enter__();
     try {
-        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -145,13 +150,10 @@ inline void User::save_json(std::string_view __path, int32_t indent) const {
 }
 
 inline User User::load_json(std::string_view __path) {
-    // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        // from tpy import int32
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -163,18 +165,14 @@ inline User User::load_json(std::string_view __path) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // from tplib.json.model import model
     return User::from_json(__data);
 }
 
 inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_load_json(std::string_view __path) {
-    // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        // from tpy import int32
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -186,7 +184,6 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // from tplib.json.model import model
     return User::try_from_json(__data);
 }
 void __tpy_init();

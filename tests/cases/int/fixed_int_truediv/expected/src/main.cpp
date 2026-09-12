@@ -5,42 +5,45 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: int32 = int32(10)
+//     b: int32 = int32(3)
+//     r1: float = a / b  # tpyc: type(float)
+//     print(r1)
+//
+//     c: int64 = int64(100)
+//     d: int64 = int64(7)
+//     print(c / d)
+//
+//     e: uint32 = uint32(15)
+//     f: uint32 = uint32(4)
+//     print(e / f)
+//
+//     # Exact division
+//     g: int32 = int32(10)
+//     h: int32 = int32(5)
+//     print(g / h)
 void main() {
-    // a: int32 = int32(10)
     int32_t a = 10;
-    // b: int32 = int32(3)
     int32_t b = 3;
-    // r1: float = a / b  # tpyc: type(float)
     double r1 = (::tpy::truediv(static_cast<int64_t>(a), static_cast<int64_t>(b)));
-    // print(r1)
     std::cout << ::tpy::print_float(r1) << "\n";
-    // c: int64 = int64(100)
     int64_t c = 100;
-    // d: int64 = int64(7)
     int64_t d = 7;
-    // print(c / d)
     std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n";
-    // e: uint32 = uint32(15)
     uint32_t e = 15;
-    // f: uint32 = uint32(4)
     uint32_t f = 4;
-    // print(e / f)
     std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(e), static_cast<int64_t>(f)))) << "\n";
-    // # Exact division
-    // g: int32 = int32(10)
     int32_t g = 10;
-    // h: int32 = int32(5)
     int32_t h = 5;
-    // print(g / h)
     std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(g), static_cast<int64_t>(h)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

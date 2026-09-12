@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper()
+//     print(w.node is None)
+//     w.node = Node(42)
+//     n = w.node
+//     if n is not None:
+//         print(n.val)
+//     w.node = None
+//     print(w.node is None)
 void main() {
-    // w = Wrapper()
     Wrapper w = Wrapper();
-    // print(w.node is None)
     std::cout << ::tpy::print_bool((!w.node().has_value())) << "\n";
-    // w.node = Node(42)
     w.set_node(Node(42));
-    // n = w.node
     Node* n = ::tpy::optional_to_ptr(w.node());
-    // if n is not None:
     if ((n != nullptr)) {
-        // print(n.val)
         std::cout << n->val << "\n";
     }
-    // w.node = None
     w.set_node(std::nullopt);
-    // print(w.node is None)
     std::cout << ::tpy::print_bool((!w.node().has_value())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

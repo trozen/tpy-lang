@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Base(1, tag=3).v)
+//     print(Sub(4).v)
+//     print(Passing(6).v)
 void main() {
-    // print(Base(1, tag=3).v)
     std::cout << Base(1, std::nullopt, 3).v << "\n";
-    // print(Sub(4).v)
     std::cout << Sub(4).v << "\n";
-    // print(Passing(6).v)
     std::cout << Passing(6).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

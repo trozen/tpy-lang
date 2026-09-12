@@ -11,6 +11,7 @@ struct Res;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Res:
@@ -38,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 
 
 // def __init__(self, fd: int32) -> None:
+//     self.fd = fd
 inline Res::Res(int32_t fd) : fd(fd) {}
 
 inline Res::Res(Res&& other) noexcept : fd(std::move(other.fd)) {
@@ -52,12 +54,15 @@ inline Res& Res::operator=(Res&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     # Side-effect-free: present only to make Res non-copyable. A printing
+//     # __del__ would diverge between C++ scope-based and CPython GC timing.
+//     pass
 inline Res::~Res() {
     if (!this->__tpy_owned_) return;
-    // # Side-effect-free: present only to make Res non-copyable. A printing
-    // # __del__ would diverge between C++ scope-based and CPython GC timing.
-    // pass
 }
+// def gen(items: list[Res]) -> Iterator[Res]:  # tpyc: ok
+//     for r in items:
+//         yield r
 inline auto gen(std::vector<Res>& items) {
     return ::tpy::make_generator<::tpy::val_or_ref<Res>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Res>> {

@@ -11,8 +11,11 @@ struct Json;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def build_obj() -> Own[Json]:
 Json build_obj();
+// def build_arr() -> Own[Json]:
 Json build_arr();
+// def main() -> None:
 void main();
 
 struct Json {

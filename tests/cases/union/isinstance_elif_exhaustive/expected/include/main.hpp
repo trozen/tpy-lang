@@ -12,8 +12,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def by_field(pet: Dog | Cat) -> int:
 ::tpy::BigInt by_field(::tpy::Union<const Cat*, const Dog*> pet);
+// def by_method(pet: Dog | Cat) -> int:
 ::tpy::BigInt by_method(::tpy::Union<Cat*, Dog*> pet);
+// def main() -> None:
 void main();
 
 // # A 2-member union exhausted by an if/elif: the elif's isinstance folds to a
@@ -59,20 +62,22 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, n: int):
+//     self.n = n
 inline Dog::Dog(const ::tpy::BigInt& n) : n(n) {}
 
 // def sound(self) -> int:
+//     return self.n + 100
 inline ::tpy::BigInt Dog::sound() const {
-    // return self.n + 100
     return ((this->n) + (::tpy::BigInt(100)));
 }
 
 // def __init__(self, n: int):
+//     self.n = n
 inline Cat::Cat(const ::tpy::BigInt& n) : n(n) {}
 
 // def sound(self) -> int:
+//     return self.n + 200
 inline ::tpy::BigInt Cat::sound() const {
-    // return self.n + 200
     return ((this->n) + (::tpy::BigInt(200)));
 }
 void __tpy_init();

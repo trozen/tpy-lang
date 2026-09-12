@@ -5,18 +5,20 @@ namespace tpyapp::main {
 
 
 // def gen(n: int) -> Iterator[int]:
+//     match n:  # tpyc: ok
+//         case 0:
+//             yield 10
+//             yield 20
+//         case _:
+//             yield 30
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = n;
-        // case 0:
         if (__match_subject_1 == 0) {
-            // yield 10
             __state = S_RESUME_0;
             return ::tpy::BigInt(10);
-        // case _:
         } else {
-            // yield 30
             __state = S_RESUME_2;
             return ::tpy::BigInt(30);
         }
@@ -24,7 +26,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield 20
         __state = S_RESUME_1;
         return ::tpy::BigInt(20);
     }
@@ -52,8 +53,12 @@ __gen_gen gen(::tpy::BigInt n) {
 }
 
 // def main() -> None:
+//     for v in gen(0):
+//         print(v)
+//     print("--")
+//     for v in gen(7):
+//         print(v)
 void main() {
-    // for v in gen(0):
     {
         auto __src_0 = gen(::tpy::BigInt(0));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -61,13 +66,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in gen(7):
     {
         auto __src_2 = gen(::tpy::BigInt(7));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -75,18 +77,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

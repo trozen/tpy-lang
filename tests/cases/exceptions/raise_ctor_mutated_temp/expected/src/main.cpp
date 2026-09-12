@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         raise BErr(Bag([1, 2]))
+//     except BErr as e:
+//         print(e.total)
 void main() {
-    // try:
     {
         try {
-            // raise BErr(Bag([1, 2]))
             Bag __tmp_1 = Bag({1, 2});
             throw BErr(__tmp_1);
         } catch (const BErr& e) {
-            // print(e.total)
             std::cout << e.total << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

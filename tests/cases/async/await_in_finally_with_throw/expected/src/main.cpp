@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def boom() -> int:
+//     raise ValueError("inside boom")
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_boom::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // raise ValueError("inside boom")
         throw ::tpy::ValueError("inside boom");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -24,11 +24,11 @@ __coro_boom boom() {
 }
 
 // async def cleanup() -> None:
+//     print("cleanup")
 ::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("cleanup")
         std::cout << "cleanup" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -45,6 +45,15 @@ __coro_cleanup cleanup() {
 }
 
 // async def caller() -> int:
+//     try:
+//         try:
+//             x = await boom()
+//         finally:
+//             await cleanup()
+//     except ValueError:
+//         print("caught")
+//         return 42
+//     return 0
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -68,9 +77,7 @@ __coro_cleanup cleanup() {
             }
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            // print("caught")
             std::cout << "caught" << "\n";
-            // return 42
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -89,9 +96,7 @@ __coro_cleanup cleanup() {
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_1.reset();
-            // print("caught")
             std::cout << "caught" << "\n";
-            // return 42
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -101,7 +106,6 @@ __coro_cleanup cleanup() {
         }
     }
     case S_JOIN_0: {
-        // return 0
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -111,9 +115,7 @@ __coro_cleanup cleanup() {
             __state = S_JOIN_4;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // print("caught")
             std::cout << "caught" << "\n";
-            // return 42
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -131,9 +133,7 @@ __coro_cleanup cleanup() {
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
-            // print("caught")
             std::cout << "caught" << "\n";
-            // return 42
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 42;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -142,13 +142,11 @@ __coro_cleanup cleanup() {
         }
     }
     case S_JOIN_3: {
-        // await cleanup()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_4: {
-        // x = await boom()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -165,24 +163,25 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # `await` in finally with a throw from the try body. The catch in
+// # the try-body case saves the exception via std::current_exception()
+// # to a frame field; the finally body suspends on cleanup, then
+// # AsyncFinallyExit rethrows the saved exception. An outer except
+// # handler catches it.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` in finally with a throw from the try body. The catch in
-    // # the try-body case saves the exception via std::current_exception()
-    // # to a frame field; the finally body suspends on cleanup, then
-    // # AsyncFinallyExit rethrows the saved exception. An outer except
-    // # handler catches it.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

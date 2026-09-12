@@ -3,48 +3,48 @@
 
 namespace tpyapp::main {
 
-// self = Box(0)
 Box* self{};
 
 // @export
 // def identity(b: Box) -> Box:
+//     return b  # tpyc: ok
 Box& identity(Box& b) {
-    // return b  # tpyc: ok
     return b;
 }
 
 // @export
 // def through_param(b: Box) -> Inner:
+//     # A never-reassigned field of a PARAM is view-safe too (owner = the
+//     # param's PyObject, found by the address-range scan).
+//     return b._inner  # tpyc: ok
 Inner& through_param(Box& b) {
-    // # A never-reassigned field of a PARAM is view-safe too (owner = the
-    // # param's PyObject, found by the address-range scan).
-    // return b._inner  # tpyc: ok
     return b._inner;
 }
 
 // @export
 // def get_global() -> Box:
+//     # A free function has no receiver: a module global -- even one named
+//     # `self` -- is not a glue candidate, so this copies and warns.
+//     return self  # tpyc: warning(/no live object behind it/)
 Box& get_global() {
-    // # A free function has no receiver: a module global -- even one named
-    // # `self` -- is not a glue candidate, so this copies and warns.
-    // return self  # tpyc: warning(/no live object behind it/)
     return (*self);
 }
 
 // @export
 // def fresh(v: int64) -> Own[Box]:
+//     return Box(v)  # tpyc: ok
 Box fresh(int64_t v) {
-    // return Box(v)  # tpyc: ok
     return Box(v);
 }
 
+// from tpy.extern import export
+//
+// self = Box(0)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import export
-    // self = Box(0)
     static Box __global_slot_1 = Box(0);
     self = &__global_slot_1;
 }

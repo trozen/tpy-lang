@@ -11,7 +11,9 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def leaf_count(t: Tree[int32 | str]) -> int32:
 int32_t leaf_count(const Tree<::tpy::Union<int32_t, std::string>>& t);
+// def main() -> None:
 void main();
 
 template<typename T>

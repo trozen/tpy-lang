@@ -6,34 +6,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     v = Vec2(int32(3), int32(7))
+//     print(v.x)
+//     print(vec2_sum(v))
+//     print(v.sum())
+//
+//     r = MyRect(int32(0), int32(0), int32(40), int32(30))
+//     print(r.w)
+//     print(rect_area(r))
+//     print(r.area())
 void main() {
-    // v = Vec2(int32(3), int32(7))
     ::ns::Vec2 v = ::ns::Vec2(3, 7);
-    // print(v.x)
     std::cout << v.x << "\n";
-    // print(vec2_sum(v))
     std::cout << ::vec2_sum(&v) << "\n";
-    // print(v.sum())
     std::cout << v.sum() << "\n";
-    // r = MyRect(int32(0), int32(0), int32(40), int32(30))
     ::Rect r = ::Rect{0, 0, 40, 30};
-    // print(r.w)
     std::cout << r.w << "\n";
-    // print(rect_area(r))
     std::cout << rect_area(&r) << "\n";
-    // print(r.area())
     std::cout << r.area() << "\n";
 }
 
+// from tpy.extern import native
+//
+// from lib import Vec2, MyRect, rect_area
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
-    // from lib import Vec2, MyRect, rect_area
     ::tpyapp::lib::__tpy_init();
-    // main()
     main();
 }
 

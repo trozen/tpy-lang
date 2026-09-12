@@ -5,11 +5,11 @@ namespace tpyapp::helper {
 
 
 // async def compute(n: int) -> int:  # tpyc: ok
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,8 +26,8 @@ __coro_compute compute(::tpy::BigInt n) {
 }
 
 // def loaded() -> str:
+//     return "loaded"
 std::string loaded() {
-    // return "loaded"
     return "loaded";
 }
 

@@ -3,30 +3,30 @@
 
 namespace tpyapp::main {
 
-// # First assignment (creates global slot)
-// c = Container(1)
 Container* c{};
 
+// # First assignment (creates global slot)
+// c = Container(1)
+// print(c.value)
+//
+// # Rvalue reassignment (was generating invalid &* on plain T slot)
+// c = Container(2)
+// print(c.value)
+//
+// # Another reassignment
+// c = Container(3)
+// print(c.value)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # First assignment (creates global slot)
-    // c = Container(1)
     static Container __global_slot_1 = Container(1);
     c = &__global_slot_1;
-    // print(c.value)
     std::cout << c->value << "\n";
-    // # Rvalue reassignment (was generating invalid &* on plain T slot)
-    // c = Container(2)
     c = &(__global_slot_1 = Container(2));
-    // print(c.value)
     std::cout << c->value << "\n";
-    // # Another reassignment
-    // c = Container(3)
     c = &(__global_slot_1 = Container(3));
-    // print(c.value)
     std::cout << c->value << "\n";
 }
 

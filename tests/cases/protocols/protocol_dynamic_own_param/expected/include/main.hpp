@@ -48,12 +48,19 @@ struct Tabby;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_parrot() -> Own[Pet]:
 std::unique_ptr<Pet> make_parrot();
+// def make_dog() -> Own[Pet]:
 std::unique_ptr<Pet> make_dog();
+// def make_tabby() -> Own[NamedPet]:
 std::unique_ptr<NamedPet> make_tabby();
+// def widen_to_pet(np: Own[NamedPet]) -> Own[Pet]:
 std::unique_ptr<Pet> widen_to_pet(std::unique_ptr<NamedPet> np);
+// def speak_and_forward(p: Own[Pet]) -> Own[Pet]:
 std::unique_ptr<Pet> speak_and_forward(std::unique_ptr<Pet> p);
+// def pick(use_parrot: bool) -> Own[Pet]:
 std::unique_ptr<Pet> pick(bool use_parrot);
+// def main() -> None:
 void main();
 
 // class Parrot:
@@ -154,35 +161,38 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Parrot::Parrot(std::string_view n) : _name(n) {}
 
 // def name(self) -> StrView:
+//     return self._name
 inline std::string_view Parrot::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Dog::Dog(std::string_view n) : _name(n) {}
 
 // def name(self) -> StrView:
+//     return self._name
 inline std::string_view Dog::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Tabby::Tabby(std::string_view n) : _name(n) {}
 
 // def name(self) -> StrView:
+//     return self._name
 inline std::string_view Tabby::name() const {
-    // return self._name
     return this->_name;
 }
 
 // def species(self) -> StrView:
+//     return "cat"
 inline std::string_view Tabby::species() const {
-    // return "cat"
     return "cat";
 }
 void __tpy_init();

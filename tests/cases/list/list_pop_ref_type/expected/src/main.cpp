@@ -5,47 +5,49 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     heap: list[Box] = [Box(3), Box(1), Box(2)]
+//     heapq.heapify(heap)
+//     top = heapq.heappop(heap)
+//     print(top.val)
+//     second = heap.pop()
+//     print(second.val)
+//
+//     items: list[Box] = [Box(10), Box(20), Box(30), Box(40)]
+//     middle = items.pop(1)
+//     print(middle.val)
+//     last = items.pop(-1)
+//     print(last.val)
+//     print(len(items))
 void main() {
-    // heap: list[Box] = [Box(3), Box(1), Box(2)]
     std::vector<Box> heap = {Box(::tpy::BigInt(3)), Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2))};
-    // heapq.heapify(heap)
     ::tpystd::heapq::heapify<Box>(heap);
-    // top = heapq.heappop(heap)
     Box top = ::tpystd::heapq::heappop<Box>(heap);
-    // print(top.val)
     std::cout << top.val << "\n";
-    // second = heap.pop()
     Box second = ::tpy::pop_back(heap);
-    // print(second.val)
     std::cout << second.val << "\n";
-    // items: list[Box] = [Box(10), Box(20), Box(30), Box(40)]
     std::vector<Box> items = {Box(::tpy::BigInt(10)), Box(::tpy::BigInt(20)), Box(::tpy::BigInt(30)), Box(::tpy::BigInt(40))};
-    // middle = items.pop(1)
     Box middle = ::tpy::list_pop_at(items, 1);
-    // print(middle.val)
     std::cout << middle.val << "\n";
-    // last = items.pop(-1)
     Box last = ::tpy::list_pop_at(items, -1);
-    // print(last.val)
     std::cout << last.val << "\n";
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
+// # Regression: list[RefType].pop() in a generic context. Previously failed
+// # because `list.pop` returned bare `T` and codegen emitted
+// # `val_or_ref_t<T> lastelt = pop_back(heap)` -- for non-value T this
+// # resolves to `T&` and can't bind to pop_back's rvalue return. Fixed by
+// # annotating `list.pop` to return `Own[T]`, making the ownership transfer
+// # explicit (codegen routes Own[T] returns to plain T storage).
+// import heapq
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: list[RefType].pop() in a generic context. Previously failed
-    // # because `list.pop` returned bare `T` and codegen emitted
-    // # `val_or_ref_t<T> lastelt = pop_back(heap)` -- for non-value T this
-    // # resolves to `T&` and can't bind to pop_back's rvalue return. Fixed by
-    // # annotating `list.pop` to return `Own[T]`, making the ownership transfer
-    // # explicit (codegen routes Own[T] returns to plain T storage).
-    // import heapq
     ::tpystd::heapq::__tpy_init();
-    // main()
     main();
 }
 

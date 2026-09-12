@@ -8,13 +8,20 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// T: Final[bool] = True
 inline constexpr bool T = true;
+// F: Final[bool] = False
 inline constexpr bool F = false;
+// AND_: Final[bool] = T and F
 inline constexpr bool AND_ = (T && F);
+// OR_: Final[bool] = T or F
 inline constexpr bool OR_ = (T || F);
+// EQ: Final[bool] = T == F
 inline constexpr bool EQ = (T == F);
+// NE: Final[bool] = T != F
 inline constexpr bool NE = (T != F);
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

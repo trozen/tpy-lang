@@ -11,6 +11,7 @@ struct Logged;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Logged:
@@ -38,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Logged& obj) {
 
 
 // def __init__(self, id: int32):
+//     self._id = id
 inline Logged::Logged(int32_t id) : _id(id) {}
 
 inline Logged::Logged(Logged&& other) noexcept : _id(std::move(other._id)) {
@@ -52,20 +54,20 @@ inline Logged& Logged::operator=(Logged&& other) noexcept {
 }
 
 // def __del__(self):
+//     try:
+//         print("body", self._id)
+//     finally:
+//         print("finally", self._id)
 inline Logged::~Logged() {
     if (!this->__tpy_owned_) return;
     try {
-        // try:
         {
             try {
-                // print("body", self._id)
                 std::cout << "body" << " " << this->_id << "\n";
             } catch (...) {
-                // print("finally", self._id)
                 std::cout << "finally" << " " << this->_id << "\n";
                 throw;
             }
-            // print("finally", self._id)
             std::cout << "finally" << " " << this->_id << "\n";
         }
     } catch (const std::exception& __del_exc) {

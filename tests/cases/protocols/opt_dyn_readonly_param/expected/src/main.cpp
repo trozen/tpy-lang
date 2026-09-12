@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def greet(p: readonly[Optional[Pet]]) -> str:
+//     if p is None:                 # tpyc: ok
+//         return "<none>"
+//     return p.name()
 std::string greet(const Pet* p) {
-    // if p is None:                 # tpyc: ok
     if ((p == nullptr)) {
-        // return "<none>"
         return "<none>";
     }
-    // return p.name()
     return p->name();
 }
 
 // def main() -> None:
+//     print(greet(Dog("rex")))
+//     print(greet(None))
 void main() {
-    // print(greet(Dog("rex")))
     Dog __tmp_1 = Dog("rex");
     std::cout << greet(&(__tmp_1)) << "\n";
-    // print(greet(None))
     std::cout << greet(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

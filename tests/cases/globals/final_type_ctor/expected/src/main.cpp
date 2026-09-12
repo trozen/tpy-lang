@@ -3,36 +3,47 @@
 
 namespace tpyapp::main {
 
+// WIDE: Final[int] = int(SMALL)
 const ::tpy::BigInt WIDE = ::tpy::BigInt(static_cast<int64_t>(SMALL));
 
 // def main() -> None:
+//     print(SMALL)
+//     print(BIG)
+//     print(BYTE)
+//     print(HALF)
+//     print(NEG)
+//     print(WIDE)
+//     print(DBL)
+//     print(FLAG)
+//     print(CH)
 void main() {
-    // print(SMALL)
     std::cout << SMALL << "\n";
-    // print(BIG)
     std::cout << BIG << "\n";
-    // print(BYTE)
     std::cout << static_cast<int>(BYTE) << "\n";
-    // print(HALF)
     std::cout << ::tpy::print_float(static_cast<double>(HALF)) << "\n";
-    // print(NEG)
     std::cout << NEG << "\n";
-    // print(WIDE)
     std::cout << WIDE << "\n";
-    // print(DBL)
     std::cout << ::tpy::print_float(DBL) << "\n";
-    // print(FLAG)
     std::cout << ::tpy::print_bool(FLAG) << "\n";
-    // print(CH)
     std::cout << CH << "\n";
 }
 
+// SMALL: Final[int32] = int32(42)
+// BIG: Final[int64] = int64(SMALL)
+// BYTE: Final[uint8] = uint8(255)
+// HALF: Final[float32] = float32(0.5)
+// NEG: Final[int32] = int32(-1)
+// WIDE: Final[int] = int(SMALL)
+// DBL: Final[float] = float(SMALL)
+// FLAG: Final[bool] = bool(1)
+// CH: Final[char] = char(65)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

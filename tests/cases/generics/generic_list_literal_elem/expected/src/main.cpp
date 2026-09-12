@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     cells = wrap(Cell(1))
+//     cells[0].n += 10        # the moved cell lives in the list
+//     print(cells[0].n, len(cells))
+//     print(len(twice(3)))
 void main() {
-    // cells = wrap(Cell(1))
     std::vector<Cell> cells = wrap<Cell>(Cell(::tpy::BigInt(1)));
-    // cells[0].n += 10        # the moved cell lives in the list
     ::tpy::__getitem__(cells, 0).n = (::tpy::__getitem__(cells, 0).n) + (::tpy::BigInt(10));
-    // print(cells[0].n, len(cells))
     std::cout << ::tpy::__getitem__(cells, 0).n << " " << ::tpy::__len__(cells) << "\n";
-    // print(len(twice(3)))
     std::cout << ::tpy::__len__(twice<int32_t>(3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

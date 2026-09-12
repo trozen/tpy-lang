@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_set() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> make_set();
+// def add_to_set(s: set[int32], val: int32) -> None:
 void add_to_set(::tpy::ordered_set<int32_t>& s, int32_t val);
+// def get_size(s: set[int32]) -> int32:
 int32_t get_size(const ::tpy::ordered_set<int32_t>& s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p = Point()
+//     p.x = int32(1)
+//     p.y = int32(2)
+//     w = Wrapper(p, int32(42))
+//     print(w.tag)
 void main() {
-    // p = Point()
     Point p = Point();
-    // p.x = int32(1)
     p.x = 1;
-    // p.y = int32(2)
     p.y = 2;
-    // w = Wrapper(p, int32(42))
     Wrapper w = Wrapper(std::move(p), 42);
-    // print(w.tag)
     std::cout << w.tag << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

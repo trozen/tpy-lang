@@ -16,6 +16,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -60,15 +61,18 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.value = int32(0)
 inline Counter::Counter() : value(0) {}
 
 // def bump(self) -> None:
+//     self.value += int32(1)
 inline void Counter::bump() {
-    // self.value += int32(1)
     this->value = ::tpy::add_check<int32_t>(this->value, 1);
 }
 
 // def __init__(self, name: str, shared: Own[Rc[Counter]]) -> None:
+//     self.name = name
+//     self.shared = shared
 inline Holder::Holder(std::string_view name, ::tpystd::tplib::rc::Rc<Counter>&& shared) : name(name), shared(std::move(shared)) {}
 void __tpy_init();
 } // namespace tpyapp::main

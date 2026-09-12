@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def inner() -> None:
+//     print("inner start")
 ::tpystd::tpy::Poll<::std::monostate> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("inner start")
         std::cout << "inner start" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,11 +26,11 @@ __coro_inner inner() {
 }
 
 // async def outer() -> None:
+//     asyncio.run(inner())  # second run while one is already active
 ::tpystd::tpy::Poll<::std::monostate> __coro_outer::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // asyncio.run(inner())  # second run while one is already active
         ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(inner()));
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -47,24 +47,25 @@ __coro_outer outer() {
 }
 
 // def main() -> None:
+//     asyncio.run(outer())
 void main() {
-    // asyncio.run(outer())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(outer()));
 }
 
+// # Nested asyncio.run raises RuntimeError (mirrors CPython's "asyncio.run()
+// # cannot be called from a running event loop"). This case verifies the
+// # *uncaught* path: the exception is not caught, so the program terminates
+// # via tpy_terminate_handler. Companion `run_reentry_caught` covers the
+// # catchable-exception path. Per docs/ASYNC_DESIGN.md "Context propagation".
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Nested asyncio.run raises RuntimeError (mirrors CPython's "asyncio.run()
-    // # cannot be called from a running event loop"). This case verifies the
-    // # *uncaught* path: the exception is not caught, so the program terminates
-    // # via tpy_terminate_handler. Companion `run_reentry_caught` covers the
-    // # catchable-exception path. Per docs/ASYNC_DESIGN.md "Context propagation".
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

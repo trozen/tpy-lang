@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[int] = [1, 2, 3]
+//     by_key: dict[str, int32] = {"a": 1}
+//     # Single-element set to avoid TPy vs CPython set-ordering differences.
+//     elems: set[int32] = {7}
+//     Bag(items, by_key, elems, (10, 20)).show()
+//     Bag(None, None, None, None).show()
 void main() {
-    // items: list[int] = [1, 2, 3]
     std::vector<::tpy::BigInt> items = {1, 2, 3};
-    // by_key: dict[str, int32] = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> by_key = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // # Single-element set to avoid TPy vs CPython set-ordering differences.
-    // elems: set[int32] = {7}
     ::tpy::ordered_set<int32_t> elems = ::tpy::ordered_set<int32_t>({7});
-    // Bag(items, by_key, elems, (10, 20)).show()
     Bag(&(items), &(by_key), &(elems), std::tuple<int32_t, int32_t>{10, 20}).show();
-    // Bag(None, None, None, None).show()
     Bag(nullptr, nullptr, nullptr, std::nullopt).show();
 }
 
 
 // def show(self) -> None:
+//     if self.items is not None:
+//         print(self.items)
+//     if self.by_key is not None:
+//         print(self.by_key)
+//     if self.elems is not None:
+//         print(self.elems)
+//     if self.tup is not None:
+//         print(self.tup)
 void Bag::show() const {
-    // if self.items is not None:
     if ((this->items.has_value())) {
-        // print(self.items)
         std::cout << ::tpy::print_optional_val<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(this->items) << "\n";
     }
-    // if self.by_key is not None:
     if ((this->by_key.has_value())) {
-        // print(self.by_key)
         std::cout << ::tpy::print_optional_val<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(this->by_key) << "\n";
     }
-    // if self.elems is not None:
     if ((this->elems.has_value())) {
-        // print(self.elems)
         std::cout << ::tpy::print_optional_val<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(this->elems) << "\n";
     }
-    // if self.tup is not None:
     if ((this->tup.has_value())) {
-        // print(self.tup)
         std::cout << ::tpy::print_optional_val<::tpy::TuplePrinter<::tpy::BigInt, int32_t>, std::tuple<::tpy::BigInt, int32_t>>(this->tup) << "\n";
     }
 }
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

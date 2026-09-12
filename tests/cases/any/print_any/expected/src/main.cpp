@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = 42
+//     b: Any = "hello"
+//     c: Any = 3.14
+//     d: Any = None
+//     e: Any = True
+//     print(a)
+//     print(b)
+//     print(c)
+//     print(d)
+//     print(e)
 void main() {
-    // a: Any = 42
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(42));
-    // b: Any = "hello"
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
-    // c: Any = 3.14
     ::tpy::Any c = ::tpy::make_any(static_cast<double>(3.14));
-    // d: Any = None
     ::tpy::Any d = ::tpy::make_any(std::monostate{});
-    // e: Any = True
     ::tpy::Any e = ::tpy::make_any(true);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
-    // print(c)
     std::cout << c << "\n";
-    // print(d)
     std::cout << d << "\n";
-    // print(e)
     std::cout << e << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

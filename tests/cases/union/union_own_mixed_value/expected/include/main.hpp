@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -41,31 +42,36 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [10, 20, 30, 40, 50]
+//     self._dummy = 0
 inline Box::Box() : items(std::vector<int32_t>{10, 20, 30, 40, 50}), _dummy(0) {}
 
 // def get_span(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
+//     """basic_slice produces Span (value type) -- allowed as Own return."""
+//     self._dummy += 1
+//     return self.items[1:4]  # tpyc: ok
 inline ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> Box::get_span() {
-    // self._dummy += 1
     this->_dummy = ::tpy::add_check<int32_t>(this->_dummy, 1);
-    // return self.items[1:4]  # tpyc: ok
     return ::tpy::list_slice(this->items, ::tpy::BasicSlice{1, 4});
 }
 
 // def get_list(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
+//     """stepped slice produces Own[list] -- allowed as Own return."""
+//     self._dummy += 1
+//     return self.items[0:4:2]  # tpyc: ok
 inline ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> Box::get_list() {
-    // self._dummy += 1
     this->_dummy = ::tpy::add_check<int32_t>(this->_dummy, 1);
-    // return self.items[0:4:2]  # tpyc: ok
     return ::tpy::list_stepped_slice(this->items, ::tpy::Slice{0, 4, 2});
 }
 
 // def get_via_var(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
+//     """Intermediate value-type variable returned as Own[union]."""
+//     self._dummy += 1
+//     result = self.items[0:3]  # tpyc: ok
+//     return result  # tpyc: ok
 inline ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> Box::get_via_var() {
-    // self._dummy += 1
     this->_dummy = ::tpy::add_check<int32_t>(this->_dummy, 1);
-    // result = self.items[0:3]  # tpyc: ok
     std::span<int32_t> result = ::tpy::list_slice(this->items, ::tpy::BasicSlice{0, 3});
-    // return result  # tpyc: ok
     return result;
 }
 void __tpy_init();

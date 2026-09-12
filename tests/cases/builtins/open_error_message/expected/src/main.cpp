@@ -6,29 +6,30 @@ namespace tpyapp::main {
 
 // # Test FileNotFoundError.message field and str() conversion
 // def main() -> None:
+//     try:
+//         f = open("/nonexistent/path/file.txt")
+//         f.close()
+//     except FileNotFoundError as e:
+//         print(e.message)
+//         print(str(e))
 void main() {
-    // try:
     {
         try {
-            // f = open("/nonexistent/path/file.txt")
             ::tpy::TextFile f = ::tpy::builtin_open("/nonexistent/path/file.txt");
-            // f.close()
             f.close();
         } catch (const ::tpy::FileNotFoundError& e) {
-            // print(e.message)
             std::cout << e.message << "\n";
-            // print(str(e))
             std::cout << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

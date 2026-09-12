@@ -34,8 +34,11 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(n: int) -> Own[Rec]:
 Rec make(const ::tpy::BigInt& n);
+// def pick() -> Color:
 Color pick();
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -56,6 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline Rec::Rec(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

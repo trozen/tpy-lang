@@ -5,31 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Child passed to Iterator[T] param
+//     print(consume(DoubleCounter(3)))
+//
+//     # Grandchild passed to Iterator[T] param
+//     print(consume(GrandChild(2)))
+//
+//     # list() from inherited iterator
+//     print(list(DoubleCounter(2)))
+//
+//     # set() from inherited iterator
+//     s = set(DoubleCounter(2))
+//     print(len(s))
 void main() {
-    // # Child passed to Iterator[T] param
-    // print(consume(DoubleCounter(3)))
     auto __tmp_1 = DoubleCounter(3);
     std::cout << consume(__tmp_1) << "\n";
-    // # Grandchild passed to Iterator[T] param
-    // print(consume(GrandChild(2)))
     auto __tmp_2 = GrandChild(2);
     std::cout << consume(__tmp_2) << "\n";
-    // # list() from inherited iterator
-    // print(list(DoubleCounter(2)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(DoubleCounter(2))) << "\n";
-    // # set() from inherited iterator
-    // s = set(DoubleCounter(2))
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(DoubleCounter(2));
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

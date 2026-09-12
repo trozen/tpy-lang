@@ -19,8 +19,10 @@ struct BoxContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(h: HasValue) -> None:
 template<HasValue T_h>
 void show(T_h& h);
+// def main() -> None:
 void main();
 
 // class IntBox:
@@ -76,34 +78,36 @@ inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline IntBox::IntBox(int32_t v) : v(v) {}
 
 // def get(self) -> int32:
+//     return self.v
 inline int32_t IntBox::get() const {
-    // return self.v
     return this->v;
 }
 
 // def __init__(self) -> None:
+//     self.items = [IntBox(10), IntBox(20), IntBox(30)]
 inline BoxContainer::BoxContainer() : items(std::vector<IntBox>{IntBox(10), IntBox(20), IntBox(30)}) {}
 
 // @auto_readonly
 // def __getitem__(self, i: int32) -> IntBox:
+//     return self.items[i]
 inline IntBox& BoxContainer::__getitem__(int32_t i) {
-    // return self.items[i]
     return ::tpy::__getitem__(this->items, i);
 }
 
 // @auto_readonly
 // def __getitem__(self, i: int32) -> IntBox:
+//     return self.items[i]
 inline const IntBox& BoxContainer::__getitem__(int32_t i) const {
-    // return self.items[i]
     return ::tpy::__getitem__(this->items, i);
 }
 // def show(h: HasValue) -> None:
+//     print(h.get())
 template<HasValue T_h>
 void show(T_h& h) {
-    // print(h.get())
     std::cout << h.get() << "\n";
 }
 

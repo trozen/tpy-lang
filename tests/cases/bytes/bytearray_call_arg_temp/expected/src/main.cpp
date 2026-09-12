@@ -8,36 +8,36 @@ namespace tpyapp::main {
 // # argument lands in a temp. The named leg proves the parameter aliases the
 // # caller's buffer rather than copying it.
 // def show(b: bytearray) -> None:
+//     print(len(b))
 void show(const ::tpy::ByteArray& b) {
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def grow(b: bytearray) -> None:
+//     b.append(120)
 void grow(::tpy::ByteArray& b) {
-    // b.append(120)
     b.push_back(120);
 }
 
 // def main() -> None:
+//     show(bytearray(b"abc"))  # rvalue call at a bytearray slot -> argument temp
+//     named = bytearray(b"ab")
+//     grow(named)
+//     print(len(named), named[2])
 void main() {
-    // show(bytearray(b"abc"))  # rvalue call at a bytearray slot -> argument temp
     ::tpy::ByteArray __tmp_1 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     show(__tmp_1);
-    // named = bytearray(b"ab")
     ::tpy::ByteArray named = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    // grow(named)
     grow(named);
-    // print(len(named), named[2])
     std::cout << ::tpy::__len__(named) << " " << static_cast<int>(::tpy::bytes_getitem(named, 2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

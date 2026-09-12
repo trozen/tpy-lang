@@ -17,9 +17,12 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(x: Animal) -> str:  # tpyc: ok
 template<Animal T_x>
 std::string describe(T_x& x);
+// def describe(x: Dog) -> str:  # tpyc: ok
 std::string describe(Dog& x);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -40,20 +43,20 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Dog::Dog() {
-    // pass
 }
 
 // def name(self) -> str:
+//     return "Rex"
 inline std::string Dog::name() const {
-    // return "Rex"
     return "Rex";
 }
 // @dispatch
 // def describe(x: Animal) -> str:  # tpyc: ok
+//     return "animal: " + x.name()
 template<Animal T_x>
 std::string describe(T_x& x) {
-    // return "animal: " + x.name()
     return (::tpy::str_concat("animal: ", x.name()));
 }
 

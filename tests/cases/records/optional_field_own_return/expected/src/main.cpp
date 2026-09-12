@@ -3,61 +3,63 @@
 
 namespace tpyapp::main {
 
-// # Global-scope field assignment from Own[T] | None
-// h = Holder()
 Holder* h{};
 
 // # Own[T] | None returns std::optional<T> by value — no aliasing concern
 // def maybe_make(x: int32) -> Own[Point] | None:
+//     if x > 0:
+//         return Point(x, x)
+//     return None
 std::optional<Point> maybe_make(int32_t x) {
-    // if x > 0:
     if ((x > 0)) {
-        // return Point(x, x)
         return Point(x, x);
     }
-    // return None
     return std::nullopt;
 }
 
 // # Function-scope field assignment from Own[T] | None
 // def test() -> None:
+//     h2 = Holder()
+//
+//     h2.value = maybe_make(3)   # tpyc: ok
+//     print(h2.value is None)
+//     print(h2.value.x)
+//
+//     h2.value = maybe_make(-1)  # tpyc: ok
+//     print(h2.value is None)
 void test() {
-    // h2 = Holder()
     Holder h2 = Holder();
-    // h2.value = maybe_make(3)   # tpyc: ok
     h2.value = maybe_make(3);
-    // print(h2.value is None)
     std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n";
-    // print(h2.value.x)
     std::cout << ::tpy::deref_optional_check(h2.value).x << "\n";
-    // h2.value = maybe_make(-1)  # tpyc: ok
     h2.value = maybe_make(-1);
-    // print(h2.value is None)
     std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n";
 }
 
+// # Global-scope field assignment from Own[T] | None
+// h = Holder()
+// h.value = maybe_make(5)   # tpyc: ok
+// print(h.value is None)
+// print(h.value.x)
+// print(h.value.y)
+//
+// h.value = maybe_make(-1)  # tpyc: ok
+// print(h.value is None)
+//
+// test()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Global-scope field assignment from Own[T] | None
-    // h = Holder()
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    // h.value = maybe_make(5)   # tpyc: ok
     h->value = maybe_make(5);
-    // print(h.value is None)
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
-    // print(h.value.x)
     std::cout << ::tpy::deref_optional_check(h->value).x << "\n";
-    // print(h.value.y)
     std::cout << ::tpy::deref_optional_check(h->value).y << "\n";
-    // h.value = maybe_make(-1)  # tpyc: ok
     h->value = maybe_make(-1);
-    // print(h.value is None)
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
-    // test()
     test();
 }
 

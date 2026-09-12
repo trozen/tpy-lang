@@ -10,37 +10,37 @@ namespace tpyapp::main {
 // # coercion used to skip the wrap for rvalues (lvalues went through a different
 // # codegen path that materialized correctly).
 // def first_word(s: str) -> str:
+//     return s[:5]
 std::string first_word(std::string_view s) {
-    // return s[:5]
     return std::string(::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, 5}));
 }
 
 // def main() -> None:
+//     items: list[str] = []
+//     subject = "hello world"
+//     items.append(subject[:5])
+//     items.append(subject[6:])
+//     items.append(first_word(subject))
+//     items.insert(1, subject[4:5])
+//     items[0] = subject[6:]
+//     print(items)
 void main() {
-    // items: list[str] = []
     std::vector<std::string> items = std::vector<std::string>{};
-    // subject = "hello world"
     std::string_view subject = "hello world";
-    // items.append(subject[:5])
     items.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{std::nullopt, 5})));
-    // items.append(subject[6:])
     items.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{6, std::nullopt})));
-    // items.append(first_word(subject))
     items.push_back(first_word(subject));
-    // items.insert(1, subject[4:5])
     ::tpy::list_insert(items, 1, std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{4, 5})));
-    // items[0] = subject[6:]
     ::tpy::__setitem__(items, 0, std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{6, std::nullopt})));
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

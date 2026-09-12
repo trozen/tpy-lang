@@ -11,6 +11,7 @@ struct Tag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Test __repr__ fallback: str()/print()/f-string fall back to __repr__ when no __str__
@@ -35,11 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Tag::Tag(std::string_view label) : label(label) {}
 
 // def __repr__(self) -> str:
+//     return "Tag(" + self.label + ")"
 inline std::string Tag::__repr__() const {
-    // return "Tag(" + self.label + ")"
     return (::tpy::str_concat((::tpy::str_concat("Tag(", this->label)), ")"));
 }
 void __tpy_init();

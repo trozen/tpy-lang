@@ -53,9 +53,13 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(c: Color) -> Color:
 Color pick(Color c);
+// def prios(p: Prio, n: int32) -> bool:
 bool prios(Prio p, int32_t n);
+// def flip(h: Holder) -> Color:
 Color flip(Holder& h);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -75,6 +79,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.c = Color.RED
 inline Holder::Holder() : c(Color::RED) {}
 void __tpy_init();
 } // namespace tpyapp::main

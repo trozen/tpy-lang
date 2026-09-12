@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main():
+//     a = Counter(5)
+//     b = copy(a)
+//     print(a.count)
+//     print(b.count)
 void main() {
-    // a = Counter(5)
     Counter a = Counter(5);
-    // b = copy(a)
     Counter b = Counter(a);
-    // print(a.count)
     std::cout << a.count << "\n";
-    // print(b.count)
     std::cout << b.count << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

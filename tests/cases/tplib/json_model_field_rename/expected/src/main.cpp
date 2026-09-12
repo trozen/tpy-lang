@@ -5,43 +5,47 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Serialize: Python field names -> JSON aliases
+//     u = User("Alice", "Smith", 30)
+//     s = u.to_json()
+//     print(s)
+//
+//     # Deserialize: JSON aliases -> Python field names
+//     u2 = User.from_json('{"firstName": "Bob", "lastName": "Jones", "age": 25}')
+//     print(u2.first_name, u2.last_name, u2.age)
+//
+//     # Round-trip
+//     u3 = User.from_json(u.to_json())
+//     print(u == u3)
+//
+//     # Alias with default, field(default=None)
+//     w = WithDefault()
+//     print(w.to_json())
+//     w2 = WithDefault.from_json('{"lbl": "hi", "score": 7}')
+//     print(w2.label, w2.note, w2.score)
+//
+//     # Inherited alias
+//     e = Extended(42, "hello")
+//     s2 = e.to_json()
+//     print(s2)
+//     e2 = Extended.from_json('{"id": 99, "label": "world"}')
+//     print(e2.item_id, e2.label)
 void main() {
-    // # Serialize: Python field names -> JSON aliases
-    // u = User("Alice", "Smith", 30)
     User u = User("Alice", "Smith", 30);
-    // s = u.to_json()
     std::string s = u.to_json();
-    // print(s)
     std::cout << s << "\n";
-    // # Deserialize: JSON aliases -> Python field names
-    // u2 = User.from_json('{"firstName": "Bob", "lastName": "Jones", "age": 25}')
     User u2 = User::from_json("{\"firstName\": \"Bob\", \"lastName\": \"Jones\", \"age\": 25}");
-    // print(u2.first_name, u2.last_name, u2.age)
     std::cout << u2.first_name << " " << u2.last_name << " " << u2.age << "\n";
-    // # Round-trip
-    // u3 = User.from_json(u.to_json())
     User u3 = User::from_json(u.to_json());
-    // print(u == u3)
     std::cout << ::tpy::print_bool(((u) == (u3))) << "\n";
-    // # Alias with default, field(default=None)
-    // w = WithDefault()
     WithDefault w = WithDefault();
-    // print(w.to_json())
     std::cout << w.to_json() << "\n";
-    // w2 = WithDefault.from_json('{"lbl": "hi", "score": 7}')
     WithDefault w2 = WithDefault::from_json("{\"lbl\": \"hi\", \"score\": 7}");
-    // print(w2.label, w2.note, w2.score)
     std::cout << w2.label << " " << ::tpy::print_optional_val(w2.note) << " " << w2.score << "\n";
-    // # Inherited alias
-    // e = Extended(42, "hello")
     Extended e = Extended(42, "hello");
-    // s2 = e.to_json()
     std::string s2 = e.to_json();
-    // print(s2)
     std::cout << s2 << "\n";
-    // e2 = Extended.from_json('{"id": 99, "label": "world"}')
     Extended e2 = Extended::from_json("{\"id\": 99, \"label\": \"world\"}");
-    // print(e2.item_id, e2.label)
     std::cout << e2.item_id << " " << e2.label << "\n";
 }
 
@@ -273,6 +277,9 @@ std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extended::__js
     }
     return Extended(item_id, label);
 }
+// from tplib.json.model import model, field
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -282,8 +289,6 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // from tplib.json.model import model, field
-    // main()
     main();
 }
 

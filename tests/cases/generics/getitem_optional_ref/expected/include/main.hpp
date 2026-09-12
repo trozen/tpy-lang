@@ -14,7 +14,9 @@ struct SubBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def peek(b: readonly[Box]) -> None:
 void peek(const Box& b);
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -72,28 +74,30 @@ struct GenBox {
     V _v;
 
     // def __init__(self, k: K, v: V):
+    //     self._k = k
+    //     self._v = v
     GenBox() = default;
     explicit GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : _k(k), _v(v) {}
 
     // def __getitem__(self, want: int32) -> V | None:
+    //     if want > 0:
+    //         return self._v
+    //     return None
     V* __getitem__(int32_t want) {
-        // if want > 0:
         if ((want > 0)) {
-            // return self._v
             return &(this->_v);
         }
-        // return None
         return nullptr;
     }
 
     // def __getitem__(self, want: int32) -> V | None:
+    //     if want > 0:
+    //         return self._v
+    //     return None
     const V* __getitem__(int32_t want) const {
-        // if want > 0:
         if ((want > 0)) {
-            // return self._v
             return &(this->_v);
         }
-        // return None
         return nullptr;
     }
 
@@ -127,30 +131,32 @@ inline std::ostream& operator<<(std::ostream& os, const SubBox& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Rec::Rec(int32_t x) : x(x) {}
 
 // def __init__(self, v: Rec):
+//     self._v = v
 inline Box::Box(const Rec& v) : _v(v) {}
 
 // def __getitem__(self, want: int32) -> Rec | None:
+//     if want > 0:
+//         return self._v
+//     return None
 inline Rec* Box::__getitem__(int32_t want) {
-    // if want > 0:
     if ((want > 0)) {
-        // return self._v
         return &(this->_v);
     }
-    // return None
     return nullptr;
 }
 
 // def __getitem__(self, want: int32) -> Rec | None:
+//     if want > 0:
+//         return self._v
+//     return None
 inline const Rec* Box::__getitem__(int32_t want) const {
-    // if want > 0:
     if ((want > 0)) {
-        // return self._v
         return &(this->_v);
     }
-    // return None
     return nullptr;
 }
 void __tpy_init();

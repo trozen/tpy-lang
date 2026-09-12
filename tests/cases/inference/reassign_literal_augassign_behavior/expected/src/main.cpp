@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x = 0
+//     x += int32(5)
+//     print(x)
 void main() {
-    // x = 0
     int32_t x = 0;
-    // x += int32(5)
     x = ::tpy::add_check<int32_t>(x, 5);
-    // print(x)
     std::cout << x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,42 @@ namespace tpyapp::main {
 
 
 // def identity(p: Point) -> Point:
+//     return p
 Point& identity(Point& p) {
-    // return p
     return p;
 }
 
 // def double(v: int32) -> int32:
+//     return v * 2
 int32_t double_(int32_t v) {
-    // return v * 2
     return (::tpy::mul_check<int32_t>(v, 2));
 }
 
 // def main() -> None:
+//     pts1: list[Point] = [Point(1, 2), Point(3, 4)]
+//     pts2: list[Point] = [Point(5, 6), Point(7, 8)]
+//     vals: list[int32] = [10, 20]
+//
+//     # Non-value types through map
+//     for a, b in zip(map(identity, pts1), map(identity, pts2)):
+//         print(a, b)
+//
+//     # Mixed: non-value and value types
+//     for p, v in zip(map(identity, pts1), map(double, vals)):
+//         print(p, v)
+//
+//     # Mutation through composed references proves no copy
+//     for a, b in zip(map(identity, pts1), map(identity, pts2)):
+//         a.x += 100
+//         b.y += 200
+//     for pt in pts1:
+//         print(pt)
+//     for pt in pts2:
+//         print(pt)
 void main() {
-    // pts1: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts1 = {Point(1, 2), Point(3, 4)};
-    // pts2: list[Point] = [Point(5, 6), Point(7, 8)]
     std::vector<Point> pts2 = {Point(5, 6), Point(7, 8)};
-    // vals: list[int32] = [10, 20]
     std::vector<int32_t> vals = {10, 20};
-    // # Non-value types through map
-    // for a, b in zip(map(identity, pts1), map(identity, pts2)):
     {
         auto __src_0 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -33,17 +48,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // # Non-value types through map
-        // for a, b in zip(map(identity, pts1), map(identity, pts2)):
         auto& __tup_1 = __for_tup_0;
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        // print(a, b)
         std::cout << a << " " << b << "\n";
         }
     }
-    // # Mixed: non-value and value types
-    // for p, v in zip(map(identity, pts1), map(double, vals)):
     {
         auto __src_2 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, int32_t>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<int32_t, int32_t>(double_, vals));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -51,17 +61,12 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-        // # Mixed: non-value and value types
-        // for p, v in zip(map(identity, pts1), map(double, vals)):
         auto& __tup_2 = __for_tup_1;
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
         int32_t v = std::get<1>(__tup_2);
-        // print(p, v)
         std::cout << p << " " << v << "\n";
         }
     }
-    // # Mutation through composed references proves no copy
-    // for a, b in zip(map(identity, pts1), map(identity, pts2)):
     {
         auto __src_4 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -69,43 +74,35 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-        // # Mutation through composed references proves no copy
-        // for a, b in zip(map(identity, pts1), map(identity, pts2)):
         auto& __tup_3 = __for_tup_2;
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
-        // a.x += 100
         a.x = ::tpy::add_check<int32_t>(a.x, 100);
-        // b.y += 200
         b.y = ::tpy::add_check<int32_t>(b.y, 200);
         }
     }
-    // for pt in pts1:
     auto& __obj_6 = pts1;
     auto __beg_6 = __obj_6.begin();
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         const auto& pt = *__beg_6;
-        // print(pt)
         std::cout << pt << "\n";
     }
-    // for pt in pts2:
     auto& __obj_7 = pts2;
     auto __beg_7 = __obj_7.begin();
     auto __end_7 = __obj_7.end();
     for (; __beg_7 != __end_7; ++__beg_7) {
         const auto& pt = *__beg_7;
-        // print(pt)
         std::cout << pt << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,56 +5,57 @@ namespace tpyapp::main {
 
 
 // def identity(pet: Dog | Cat) -> Dog | Cat:
+//     return pet
 ::tpy::Union<Cat*, Dog*> identity(::tpy::Union<Cat*, Dog*> pet) {
-    // return pet
     return pet;
 }
 
 // def get_name(pet: Dog | Cat) -> str:
+//     if isinstance(pet, Dog):
+//         return pet.name
+//     if isinstance(pet, Cat):
+//         return pet.name
+//     return ""
 std::string get_name(::tpy::Union<const Cat*, const Dog*> pet) {
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<const Dog*>(pet)) {
         auto& __pet = *std::get<const Dog*>(pet);
-        // return pet.name
         return __pet.name;
     }
     auto& __pet = *std::get<const Cat*>(pet);
-    // if isinstance(pet, Cat):
     if (true) {
         auto& __pet = *std::get<const Cat*>(pet);
-        // return pet.name
         return __pet.name;
     }
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     d = Dog("Rex", 5)
+//     pet: Dog | Cat = d
+//     result = identity(pet)
+//     print(get_name(result))
+//
+//     c = Cat("Whiskers", 9)
+//     pet2: Dog | Cat = c
+//     result2 = identity(pet2)
+//     print(get_name(result2))
 void main() {
-    // d = Dog("Rex", 5)
     Dog d = Dog("Rex", 5);
-    // pet: Dog | Cat = d
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
-    // result = identity(pet)
     ::tpy::Union<Cat*, Dog*> result = identity(pet);
-    // print(get_name(result))
     std::cout << get_name(result.as_const()) << "\n";
-    // c = Cat("Whiskers", 9)
     Cat c = Cat("Whiskers", 9);
-    // pet2: Dog | Cat = c
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
-    // result2 = identity(pet2)
     ::tpy::Union<Cat*, Dog*> result2 = identity(pet2);
-    // print(get_name(result2))
     std::cout << get_name(result2.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

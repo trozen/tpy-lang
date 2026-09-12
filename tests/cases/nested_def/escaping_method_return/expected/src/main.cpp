@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f = Factory()
+//     add5 = f.make_adder(5)
+//     print(add5(10))
+//     add100 = f.make_adder(100)
+//     print(add100(42))
 void main() {
-    // f = Factory()
     Factory f = Factory();
-    // add5 = f.make_adder(5)
     std::function<int32_t(int32_t)> add5 = f.make_adder(5);
-    // print(add5(10))
     std::cout << add5(10) << "\n";
-    // add100 = f.make_adder(100)
     std::function<int32_t(int32_t)> add100 = f.make_adder(100);
-    // print(add100(42))
     std::cout << add100(42) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,67 +5,67 @@ namespace tpyapp::pkg_v {
 
 
 // def make_int() -> Own[V]:
+//     return 7
 V make_int() {
-    // return 7
     return 7;
 }
 
 // def make_dict() -> Own[V]:
+//     d: dict[str, V] = {"k": 1, "n": None, "items": [1, None, "x"]}
+//     return d
 V make_dict() {
-    // d: dict[str, V] = {"k": 1, "n": None, "items": [1, None, "x"]}
     ::tpy::ordered_map<std::string, V> d = ::tpy::ordered_map<std::string, V>({{"k", 1}, {"n", std::monostate{}}, {"items", std::vector<V>{1, std::monostate{}, "x"}}});
-    // return d
     return d;
 }
 
 // def kind(v: V) -> str:
+//     match v:
+//         case None:
+//             return "null"
+//         case bool() as b:
+//             return "bool"
+//         case int() as n:
+//             return "int"
+//         case str() as s:
+//             return "str"
+//         case list() as items:
+//             return "list"
+//         case dict() as d:
+//             return "dict"
 std::string kind(const V& v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.value.index()) {
-    // case None:
     case 0: {
-        // return "null"
         return "null";
         break;
     }
-    // case bool() as b:
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto b = __case_1;
-        // return "bool"
         return "bool";
         break;
     }
-    // case int() as n:
     case 3: {
         auto& __case_2 = std::get<3>(__match_subject_1.value);
         auto& n = __case_2;
-        // return "int"
         return "int";
         break;
     }
-    // case str() as s:
     case 5: {
         auto& __case_3 = std::get<5>(__match_subject_1.value);
         auto& s = __case_3;
-        // return "str"
         return "str";
         break;
     }
-    // case list() as items:
     case 4: {
         auto& __case_4 = std::get<4>(__match_subject_1.value);
         auto& items = __case_4;
-        // return "list"
         return "list";
         break;
     }
-    // case dict() as d:
     case 2: {
         auto& __case_5 = std::get<2>(__match_subject_1.value);
         auto& d = __case_5;
-        // return "dict"
         return "dict";
         break;
     }

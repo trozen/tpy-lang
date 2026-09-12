@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def classify(n: int32) -> str:
+//     match n:
+//         case 0:
+//             return "zero"
+//         case 1:
+//             return "one"
+//         case x:
+//             return "other"
 std::string classify(int32_t n) {
-    // match n:
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case 0:
     case 0: {
-        // return "zero"
         return "zero";
         break;
     }
-    // case 1:
     case 1: {
-        // return "one"
         return "one";
         break;
     }
-    // case x:
     default: {
         auto x = __match_subject_1;
-        // return "other"
         return "other";
         break;
     }
@@ -33,21 +33,21 @@ std::string classify(int32_t n) {
 }
 
 // def main() -> None:
+//     print(classify(0))
+//     print(classify(1))
+//     print(classify(42))
 void main() {
-    // print(classify(0))
     std::cout << classify(0) << "\n";
-    // print(classify(1))
     std::cout << classify(1) << "\n";
-    // print(classify(42))
     std::cout << classify(42) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

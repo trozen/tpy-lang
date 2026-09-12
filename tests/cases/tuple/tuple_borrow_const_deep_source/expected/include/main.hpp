@@ -12,8 +12,11 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def weight_of(t: tuple[int32, Box]) -> int32:
 int32_t weight_of(const std::tuple<int32_t, const Box*>& t);
+// def first_weight(rows: list[tuple[int32, Box]], again: bool) -> int32:
 int32_t first_weight(const std::vector<std::tuple<int32_t, Box>>& rows, bool again);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -62,43 +65,45 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, a: Box, b: Box) -> None:
+//     self.store = {"a": (40, a), "b": (41, b)}  # tpyc: warning(/copies Box into owned storage/) warning(/copies Box into owned storage/)
 inline Holder::Holder(const Box& a, const Box& b) : store(::tpy::ordered_map<std::string, std::tuple<int32_t, Box>>({{"a", ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{40, &(a)})}, {"b", ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{41, &(b)})}})) {}
 
 // def get_weight(self, k: str) -> int32:
+//     pair = self.store[k]
+//     if pair[0] < 0:
+//         pair = self.store["a"]
+//     return pair[0]
 inline int32_t Holder::get_weight(std::string_view k) const {
-    // pair = self.store[k]
     std::tuple<int32_t, const Box*> pair = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(this->store, k));
-    // if pair[0] < 0:
     if ((std::get<0>(pair) < 0)) {
-        // pair = self.store["a"]
         pair = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(this->store, "a"));
     }
-    // return pair[0]
     return std::get<0>(pair);
 }
 
 // def peek(self) -> int32:
+//     pair = self.store["a"]
+//     return pair[0]
 inline int32_t Holder::peek() const {
-    // pair = self.store["a"]
     auto&& pair = ::tpy::__getitem__(this->store, "a");
-    // return pair[0]
     return std::get<0>(pair);
 }
 
 // def arg_weight(self, k: str) -> int32:
+//     return weight_of(self.store[k])
 inline int32_t Holder::arg_weight(std::string_view k) const {
-    // return weight_of(self.store[k])
     return weight_of(::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(this->store, k)));
 }
 
 // def bump(self, k: str) -> None:
+//     pair = self.store[k]
+//     pair[1].val = pair[1].val + 1
 inline void Holder::bump(std::string_view k) {
-    // pair = self.store[k]
     auto&& pair = ::tpy::__getitem__(this->store, k);
-    // pair[1].val = pair[1].val + 1
     std::get<1>(pair).val = (::tpy::add_check<int32_t>(std::get<1>(pair).val, 1));
 }
 void __tpy_init();

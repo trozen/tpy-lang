@@ -5,10 +5,16 @@ namespace tpyapp::main {
 
 
 // def gen(xs: list[int32], brk: int32) -> Iterator[int32]:
+//     yield 0
+//     for x in xs:
+//         if x == brk:
+//             break
+//     else:
+//         yield -1
+//     yield -2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -28,7 +34,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
@@ -42,7 +47,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         }
     }
     case S_JOIN_1: {
-        // yield -2
         __state = S_RESUME_2;
         return -2;
     }
@@ -58,10 +62,14 @@ __gen_gen gen(std::vector<int32_t>& xs, int32_t brk) {
 }
 
 // def main() -> None:
+//     print("no break:")
+//     for v in gen([1, 2, 3], 99):
+//         print(v)
+//     print("break:")
+//     for v in gen([1, 2, 3], 2):
+//         print(v)
 void main() {
-    // print("no break:")
     std::cout << "no break:" << "\n";
-    // for v in gen([1, 2, 3], 99):
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3};
         auto __src_0 = gen(__tmp_1, 99);
@@ -70,13 +78,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("break:")
     std::cout << "break:" << "\n";
-    // for v in gen([1, 2, 3], 2):
     {
         std::vector<int32_t> __tmp_2 = {1, 2, 3};
         auto __src_2 = gen(__tmp_2, 2);
@@ -85,18 +90,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

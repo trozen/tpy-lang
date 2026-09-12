@@ -11,11 +11,17 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first(items: list[int32]) -> int32:
 int32_t first(const std::vector<int32_t>& items);
+// def at(items: list[int32], i: int32) -> int32:
 int32_t at(const std::vector<int32_t>& items, int32_t i);
+// def sum_two(items: list[int32], i: int32, j: int32) -> int32:
 int32_t sum_two(const std::vector<int32_t>& items, int32_t i, int32_t j);
+// def dget(d: dict[int32, int32], k: int32) -> int32:
 int32_t dget(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k);
+// def read_through_call(b: Box) -> int32:
 int32_t read_through_call(Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -38,11 +44,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
+//     self.xs = [1, 2, 3]
 inline Box::Box() : xs(std::vector<int32_t>{1, 2, 3}) {}
 
 // def get(self) -> list[int32]:
+//     return self.xs
 inline std::vector<int32_t>& Box::get() {
-    // return self.xs
     return this->xs;
 }
 void __tpy_init();

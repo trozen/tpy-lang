@@ -3,33 +3,33 @@
 
 namespace tpyapp::main {
 
-// g: Any = 42
 ::tpy::Any g;
 
 // def main() -> None:
+//     if isinstance(g, int):
+//         print(g + 1)
+//     if isinstance(g, str):
+//         print("never")
 void main() {
-    // if isinstance(g, int):
     if ((g.value.has_value() && g.value.type() == typeid(::tpy::BigInt))) {
         const ::tpy::BigInt& __g = std::any_cast<const ::tpy::BigInt&>(g.value);
-        // print(g + 1)
         std::cout << ((__g) + (::tpy::BigInt(1))) << "\n";
     }
-    // if isinstance(g, str):
     if ((g.value.has_value() && g.value.type() == typeid(std::string))) {
         const std::string& __g = std::any_cast<const std::string&>(g.value);
-        // print("never")
         std::cout << "never" << "\n";
     }
 }
 
+// g: Any = 42
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g: Any = 42
     g = ::tpy::make_any(::tpy::BigInt(42));
-    // main()
     main();
 }
 

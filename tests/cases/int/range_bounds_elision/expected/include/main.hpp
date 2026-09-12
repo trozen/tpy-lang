@@ -9,13 +9,21 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_for_range_len_array() -> None:
 void test_for_range_len_array();
+// def test_for_range_len_list() -> None:
 void test_for_range_len_list();
+// def test_no_elision_unknown_index() -> None:
 void test_no_elision_unknown_index();
+// def test_no_elision_different_container() -> None:
 void test_no_elision_different_container();
+// def test_assert_non_negative_only() -> None:
 void test_assert_non_negative_only();
+// def test_for_range_literal() -> None:
 void test_for_range_literal();
+// def test_write_subscript_elision() -> None:
 void test_write_subscript_elision();
+// def test_no_elision_after_method_call() -> None:
 void test_no_elision_after_method_call();
 
 void __tpy_init();

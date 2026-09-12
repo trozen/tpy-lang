@@ -12,23 +12,41 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def warn_record_not_last_use() -> None:
 void warn_record_not_last_use();
+// def no_warn_record_last_use() -> None:
 void no_warn_record_last_use();
+// def no_warn_record_explicit_copy() -> None:
 void no_warn_record_explicit_copy();
+// def no_warn_record_rvalue() -> None:
 void no_warn_record_rvalue();
+// def warn_list_not_last_use() -> None:
 void warn_list_not_last_use();
+// def warn_dict_not_last_use() -> None:
 void warn_dict_not_last_use();
+// def warn_set_not_last_use() -> None:
 void warn_set_not_last_use();
+// def no_warn_str_not_last_use() -> None:
 void no_warn_str_not_last_use();
+// def no_warn_int_not_last_use() -> None:
 void no_warn_int_not_last_use();
+// def takes_any(a: Any) -> None:
 void takes_any(::tpy::Any a);
+// def warn_arg_coerce_not_last_use() -> None:
 void warn_arg_coerce_not_last_use();
+// def returns_any(n: Node) -> Any:
 ::tpy::Any returns_any(const Node& n);
+// def exercise_returns_any() -> None:
 void exercise_returns_any();
+// def warn_list_literal_element() -> None:
 void warn_list_literal_element();
+// def warn_dict_literal_value() -> None:
 void warn_dict_literal_value();
+// def warn_subscript_assign_dict_any() -> None:
 void warn_subscript_assign_dict_any();
+// def warn_field_assign_any() -> None:
 void warn_field_assign_any();
+// def main() -> None:
 void main();
 
 // class Node:
@@ -64,9 +82,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Node::Node(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.payload = None
 inline Holder::Holder() : payload(::tpy::make_any(std::monostate{})) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,9 +12,13 @@ struct TagError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(t: Tag) -> str:
 std::string describe(const Tag& t);
+// def fail_nested() -> None:
 void fail_nested();
+// def fail_direct() -> None:
 void fail_direct();
+// def main() -> None:
 void main();
 
 // # A record rvalue passed to a reference-typed parameter inside a raise's
@@ -58,9 +62,12 @@ inline std::ostream& operator<<(std::ostream& os, const TagError& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Tag::Tag(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, t: Tag) -> None:
+//     super().__init__("tag" + str(t.n))
+//     self.n = t.n
 inline TagError::TagError(const Tag& t) : ::tpy::Exception((::tpy::str_concat("tag", (t.n).to_string()))), n(t.n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -3,54 +3,54 @@
 
 namespace tpyapp::main {
 
-// # Module-level storage has a distinct lowering route from function locals.
-// global_text = union_text(True)
 ::tpy::Union<int32_t, std::string> global_text;
 
 // # Free functions: original subjects, isinstance twins, and runtime BigInt indices.
 // def string_reads(x: str | int32, index: int) -> None:
+//     match x:
+//         case str():
+//             print("str-match", x[0], x[-1], x[index])  # tpyc: ok
+//             print("str-slice", x[1:])  # tpyc: ok
+//             try:
+//                 print(x[index + 10])  # tpyc: ok
+//             except IndexError:
+//                 print("str-match-bounds")
+//         case _:
+//             print("str-other")
+//     if isinstance(x, str):
+//         print("str-isinstance", x[0], x[-1], x[index])  # tpyc: ok
+//         try:
+//             print(x[-10])  # tpyc: ok
+//         except IndexError:
+//             print("str-isinstance-bounds")
 void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigInt& index) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case str():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // print("str-match", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "str-match" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << " " << ::tpy::__getitem__(__case_0, index.to_fixed_check<int32_t>()) << "\n";
-        // print("str-slice", x[1:])  # tpyc: ok
         std::cout << "str-slice" << " " << ::tpy::str_slice(__case_0, ::tpy::BasicSlice{1, std::nullopt}) << "\n";
-        // try:
         {
             try {
-                // print(x[index + 10])  # tpyc: ok
                 std::cout << ::tpy::__getitem__(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>()) << "\n";
             } catch (const ::tpy::IndexError&) {
-                // print("str-match-bounds")
                 std::cout << "str-match-bounds" << "\n";
             }
         }
         break;
     }
-    // case _:
     default: {
-        // print("str-other")
         std::cout << "str-other" << "\n";
         break;
     }
     }
-    // if isinstance(x, str):
     if (std::holds_alternative<std::string>(x)) {
         const auto& __x = std::get<std::string>(x);
-        // print("str-isinstance", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "str-isinstance" << " " << ::tpy::__getitem__(__x, 0) << " " << ::tpy::__getitem__(__x, -1) << " " << ::tpy::__getitem__(__x, index.to_fixed_check<int32_t>()) << "\n";
-        // try:
         {
             try {
-                // print(x[-10])  # tpyc: ok
                 std::cout << ::tpy::__getitem__(__x, -10) << "\n";
             } catch (const ::tpy::IndexError&) {
-                // print("str-isinstance-bounds")
                 std::cout << "str-isinstance-bounds" << "\n";
             }
         }
@@ -58,106 +58,109 @@ void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigI
 }
 
 // def bytes_reads(x: bytes | Indexed, index: int) -> None:
+//     match x:
+//         case bytes():
+//             print("bytes-match", x[0], x[-1], x[index])  # tpyc: ok
+//             print("bytes-slice", x[1:])  # tpyc: ok
+//             try:
+//                 print(x[index + 10])  # tpyc: ok
+//             except IndexError:
+//                 print("bytes-match-bounds")
+//         case _:
+//             print("bytes-other")
+//     if isinstance(x, bytes):
+//         print("bytes-isinstance", x[0], x[-1], x[index])  # tpyc: ok
 void bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*> x, const ::tpy::BigInt& index) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case bytes():
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
-        // print("bytes-match", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "bytes-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n";
-        // print("bytes-slice", x[1:])  # tpyc: ok
         std::cout << "bytes-slice" << " " << ::tpy::BytesPrinter(::tpy::bytes_slice(__case_0, ::tpy::BasicSlice{1, std::nullopt})) << "\n";
-        // try:
         {
             try {
-                // print(x[index + 10])  # tpyc: ok
                 std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>())) << "\n";
             } catch (const ::tpy::IndexError&) {
-                // print("bytes-match-bounds")
                 std::cout << "bytes-match-bounds" << "\n";
             }
         }
         break;
     }
-    // case _:
     default: {
-        // print("bytes-other")
         std::cout << "bytes-other" << "\n";
         break;
     }
     }
-    // if isinstance(x, bytes):
     if (std::holds_alternative<const ::tpy::Bytes*>(x)) {
         auto& __x = *std::get<const ::tpy::Bytes*>(x);
-        // print("bytes-isinstance", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "bytes-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n";
     }
 }
 
 // # BUGS.md#bytes-value-union-boundary-rejects blocks callers; this body still builds.
 // def bytes_value_union(x: bytes | int32) -> None:
+//     match x:
+//         case bytes():
+//             print("bytes-value-union", x[0])  # tpyc: ok
+//         case _:
+//             pass
 void bytes_value_union(const ::tpy::Union<::tpy::Bytes, int32_t>& x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case bytes():
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1);
-        // print("bytes-value-union", x[0])  # tpyc: ok
         std::cout << "bytes-value-union" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << "\n";
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
 }
 
 // def bytearray_reads(x: bytearray | int32, index: int) -> None:
+//     match x:
+//         case bytearray():
+//             print("bytearray-match", x[0], x[-1], x[index])  # tpyc: ok
+//             try:
+//                 print(x[index + 10])  # tpyc: ok
+//             except IndexError:
+//                 print("bytearray-match-bounds")
+//         case _:
+//             print("bytearray-other")
+//     if isinstance(x, bytearray):
+//         print("bytearray-isinstance", x[0], x[-1], x[index])  # tpyc: ok
+//         try:
+//             print(x[-10])  # tpyc: ok
+//         except IndexError:
+//             print("bytearray-isinstance-bounds")
 void bytearray_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x, const ::tpy::BigInt& index) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case bytearray():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // print("bytearray-match", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "bytearray-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n";
-        // try:
         {
             try {
-                // print(x[index + 10])  # tpyc: ok
                 std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>())) << "\n";
             } catch (const ::tpy::IndexError&) {
-                // print("bytearray-match-bounds")
                 std::cout << "bytearray-match-bounds" << "\n";
             }
         }
         break;
     }
-    // case _:
     default: {
-        // print("bytearray-other")
         std::cout << "bytearray-other" << "\n";
         break;
     }
     }
-    // if isinstance(x, bytearray):
     if (std::holds_alternative<const ::tpy::ByteArray*>(x)) {
         auto& __x = *std::get<const ::tpy::ByteArray*>(x);
-        // print("bytearray-isinstance", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "bytearray-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n";
-        // try:
         {
             try {
-                // print(x[-10])  # tpyc: ok
                 std::cout << static_cast<int>(::tpy::bytes_getitem(__x, -10)) << "\n";
             } catch (const ::tpy::IndexError&) {
-                // print("bytearray-isinstance-bounds")
                 std::cout << "bytearray-isinstance-bounds" << "\n";
             }
         }
@@ -166,32 +169,30 @@ void bytearray_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x, co
 
 // # As-captures and guarded arms use different narrowing producers.
 // def capture_reads(x: str | int32, allowed: bool) -> None:
+//     match x:
+//         case str() as captured if allowed:
+//             print("capture", captured[0], captured[-1])  # tpyc: ok
+//         case _:
+//             print("capture-other")
 void capture_reads(const ::tpy::Union<int32_t, std::string>& x, bool allowed) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
-        // case str() as captured if allowed:
         {
             auto& captured = __case_1;
             if (allowed) {
-                // print("capture", captured[0], captured[-1])  # tpyc: ok
                 std::cout << "capture" << " " << ::tpy::__getitem__(captured, 0) << " " << ::tpy::__getitem__(captured, -1) << "\n";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // print("capture-other")
             std::cout << "capture-other" << "\n";
             goto __match_end_2;
         }
         break;
     }
     default: {
-        // case _:
-        // print("capture-other")
         std::cout << "capture-other" << "\n";
         goto __match_end_2;
         break;
@@ -202,68 +203,70 @@ __match_end_2:;
 
 // # A generic enclosing body and scalar/tuple sinks keep the same indexed value.
 // def monomorphic_read(marker: int32) -> None:
+//     x = union_text(True)
+//     match x:
+//         case str():
+//             print("monomorphic", x[0], marker)  # tpyc: ok
+//         case _:
+//             pass
 void monomorphic_read(int32_t marker) {
-    // x = union_text(True)
     ::tpy::Union<int32_t, std::string> x = union_text(true);
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case str():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // print("monomorphic", x[0], marker)  # tpyc: ok
         std::cout << "monomorphic" << " " << ::tpy::__getitem__(__case_0, 0) << " " << marker << "\n";
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
 }
 
 // def tuple_reads(x: bytearray | int32) -> None:
+//     match x:
+//         case bytearray():
+//             one = (x[0],)  # tpyc: ok
+//             two = (x[0], x[-1])  # tpyc: ok
+//             print("tuple", x[0], one[0], two[0], two[1])
+//         case _:
+//             pass
 void tuple_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case bytearray():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // one = (x[0],)  # tpyc: ok
         std::tuple<uint8_t> one = std::tuple<uint8_t>(::tpy::bytes_getitem(__case_0, 0));
-        // two = (x[0], x[-1])  # tpyc: ok
         std::tuple<uint8_t, uint8_t> two = std::tuple<uint8_t, uint8_t>{::tpy::bytes_getitem(__case_0, 0), ::tpy::bytes_getitem(__case_0, -1)};
-        // print("tuple", x[0], one[0], two[0], two[1])
         std::cout << "tuple" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(std::get<0>(one)) << " " << static_cast<int>(std::get<0>(two)) << " " << static_cast<int>(std::get<1>(two)) << "\n";
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
 }
 
 // def generate(x: bytearray | int32) -> Iterator[int32]:
+//     match x:
+//         case bytearray():
+//             yield x[0]  # tpyc: ok
+//             yield x[-1]  # tpyc: ok
+//         case _:
+//             yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = x;
         switch (__match_subject_1.index()) {
-        // case bytearray():
         case 0: {
             auto& __case_0 = *std::get<0>(__match_subject_1);
-            // yield x[0]  # tpyc: ok
             __state = S_RESUME_0;
             return static_cast<int32_t>(::tpy::bytes_getitem(__case_0, 0));
             break;
         }
-        // case _:
         default: {
-            // yield -1
             __state = S_RESUME_2;
             return -1;
             break;
@@ -274,7 +277,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
     }
     case S_RESUME_0: {
         auto& __x = *std::get<const ::tpy::ByteArray*>(x);
-        // yield x[-1]  # tpyc: ok
         __state = S_RESUME_1;
         return static_cast<int32_t>(::tpy::bytes_getitem(__x, -1));
     }
@@ -303,25 +305,27 @@ __gen_generate generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x)
 }
 
 // async def async_read(x: bytearray | int32) -> int32:
+//     match x:
+//         case bytearray():
+//             first = x[0]  # tpyc: ok
+//             await asyncio.sleep(0)
+//             return first + x[-1]  # tpyc: ok
+//         case _:
+//             return -1
 ::tpystd::tpy::Poll<int32_t> __coro_async_read::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = x;
         switch (__match_subject_1.index()) {
-        // case bytearray():
         case 0: {
             auto& __case_0 = *std::get<0>(__match_subject_1);
-            // first = x[0]  # tpyc: ok
             first = ::tpy::bytes_getitem(__case_0, 0);
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
             break;
         }
-        // case _:
         default: {
-            // return -1
             __state = S_DONE;
             int32_t __tpy_async_ret = -1;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -337,7 +341,6 @@ __gen_generate generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x)
         (void)std::move(__r0).value();
         __sub_0.reset();
         auto& __x = *std::get<const ::tpy::ByteArray*>(x);
-        // return first + x[-1]  # tpyc: ok
         __state = S_DONE;
         int32_t __tpy_async_ret = static_cast<int32_t>((::tpy::add_check<uint8_t>(first, ::tpy::bytes_getitem(__x, -1))));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -355,84 +358,91 @@ __coro_async_read async_read(::tpy::Union<const ::tpy::ByteArray*, const int32_t
 
 // # Comprehension: each element consumes the scalar, not the original union.
 // def comprehension(x: bytearray | int32) -> None:
+//     match x:
+//         case bytearray():
+//             values = [x[i] for i in range(3)]  # tpyc: ok
+//             print("comprehension", values)
+//         case _:
+//             pass
 void comprehension(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case bytearray():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // values = [x[i] for i in range(3)]  # tpyc: ok
         std::array<uint8_t, 3> values = ::tpy::array_from_index<uint8_t, 3>([&](std::size_t __i_0) -> uint8_t {
             int32_t i = int32_t(__i_0);
             return ::tpy::bytes_getitem(__case_0, i);
         });
-        // print("comprehension", values)
         std::cout << "comprehension" << " " << ::tpy::ListPrinter(values) << "\n";
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
 }
 
 // def union_text(choose_text: bool) -> str | int32:
+//     if choose_text:
+//         return "abc"
+//     return 1
 ::tpy::Union<int32_t, std::string> union_text(bool choose_text) {
-    // if choose_text:
     if (choose_text) {
-        // return "abc"
         return "abc";
     }
-    // return 1
     return 1;
 }
 
 // # Closure: a local union keeps narrowing inside the nested body.
 // # Union parameters reject here: BUGS.md#nested-def-optional-param.
 // def closure(choose_text: bool) -> None:
+//     def read() -> None:
+//         y = union_text(choose_text)
+//         match y:
+//             case str():
+//                 print("closure", y[-1])  # tpyc: ok
+//             case _:
+//                 pass
+//
+//     read()
 void closure(bool choose_text) {
-    // def read() -> None:
     auto read = [&choose_text]() {
-        // y = union_text(choose_text)
         ::tpy::Union<int32_t, std::string> y = union_text(choose_text);
-        // match y:
         auto& __match_subject_1 = y;
         switch (__match_subject_1.index()) {
-        // case str():
         case 1: {
             auto& __case_0 = std::get<1>(__match_subject_1);
-            // print("closure", y[-1])  # tpyc: ok
             std::cout << "closure" << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
             break;
         }
-        // case _:
         default: {
-            // pass
             break;
         }
         }
     };
-    // read()
     read();
 }
 
 // # Context-manager, try and finally bodies preserve the extraction alias.
 // def cleanup_reads(x: str | int32) -> None:
+//     match x:
+//         case str():
+//             with Guard():
+//                 print("context", x[0])  # tpyc: ok
+//             try:
+//                 print("try", x[1])  # tpyc: ok
+//             finally:
+//                 print("finally", x[-1])  # tpyc: ok
+//         case _:
+//             pass
 void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case str():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // with Guard():
         auto __ctx_1 = Guard();
         __ctx_1.__enter__();
         try {
-            // print("context", x[0])  # tpyc: ok
             std::cout << "context" << " " << ::tpy::__getitem__(__case_0, 0) << "\n";
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -444,24 +454,18 @@ void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // try:
         {
             try {
-                // print("try", x[1])  # tpyc: ok
                 std::cout << "try" << " " << ::tpy::__getitem__(__case_0, 1) << "\n";
             } catch (...) {
-                // print("finally", x[-1])  # tpyc: ok
                 std::cout << "finally" << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
                 throw;
             }
-            // print("finally", x[-1])  # tpyc: ok
             std::cout << "finally" << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
         }
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
@@ -470,20 +474,20 @@ void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
 // # Error-return body: the normal result remains a scalar value.
 // @error_return(Err)
 // def error_read(x: bytearray | int32) -> int32:
+//     match x:
+//         case bytearray():
+//             return x[1]  # tpyc: ok
+//         case _:
+//             raise Err
 std::expected<int32_t, Err> error_read(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case bytearray():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // return x[1]  # tpyc: ok
         return static_cast<int32_t>(::tpy::bytes_getitem(__case_0, 1));
         break;
     }
-    // case _:
     default: {
-        // raise Err
         return ::tpy::make_unexpected(Err{});
         break;
     }
@@ -493,26 +497,26 @@ std::expected<int32_t, Err> error_read(::tpy::Union<const ::tpy::ByteArray*, con
 
 // # Conditional operands: skipped reads cannot throw or evaluate their index.
 // def conditional_reads(x: str | int32, counter: Counter) -> None:
+//     match x:
+//         case str():
+//             print("and", False and x[99] == "x")  # tpyc: ok
+//             print("or", True or x[99] == "x")  # tpyc: ok
+//             print("ternary", x[counter.index()] if counter.calls == 0 else x[99])  # tpyc: ok
+//             print("index-calls", counter.calls)
+//         case _:
+//             pass
 void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& counter) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case str():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // print("and", False and x[99] == "x")  # tpyc: ok
         std::cout << "and" << " " << ::tpy::print_bool((false && (::tpy::__getitem__(__case_0, 99) == 'x'))) << "\n";
-        // print("or", True or x[99] == "x")  # tpyc: ok
         std::cout << "or" << " " << ::tpy::print_bool((true || (::tpy::__getitem__(__case_0, 99) == 'x'))) << "\n";
-        // print("ternary", x[counter.index()] if counter.calls == 0 else x[99])  # tpyc: ok
         std::cout << "ternary" << " " << (((counter.calls == 0)) ? (::tpy::__getitem__(__case_0, counter.index())) : (::tpy::__getitem__(__case_0, 99))) << "\n";
-        // print("index-calls", counter.calls)
         std::cout << "index-calls" << " " << counter.calls << "\n";
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
@@ -520,136 +524,154 @@ void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& cou
 
 // # Sibling controls: container and record dispatch already admit narrowed reads.
 // def list_read(x: list[int32] | int32) -> None:
+//     match x:
+//         case list():
+//             print("list", x[0], x[-1])  # tpyc: ok
+//             try:
+//                 print(x[99])  # tpyc: ok
+//             except IndexError:
+//                 print("list-bounds")
+//         case _:
+//             pass
 void list_read(::tpy::Union<const int32_t*, const std::vector<int32_t>*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case list():
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
-        // print("list", x[0], x[-1])  # tpyc: ok
         std::cout << "list" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
-        // try:
         {
             try {
-                // print(x[99])  # tpyc: ok
                 std::cout << ::tpy::__getitem__(__case_0, 99) << "\n";
             } catch (const ::tpy::IndexError&) {
-                // print("list-bounds")
                 std::cout << "list-bounds" << "\n";
             }
         }
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
 }
 
 // def dict_read(x: dict[int32, int32] | int32) -> None:
+//     match x:
+//         case dict():
+//             print("dict", x[0])  # tpyc: ok
+//             try:
+//                 print(x[99])  # tpyc: ok
+//             except KeyError:
+//                 print("dict-missing")
+//         case _:
+//             pass
 void dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case dict():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // print("dict", x[0])  # tpyc: ok
         std::cout << "dict" << " " << ::tpy::__getitem__(__case_0, 0) << "\n";
-        // try:
         {
             try {
-                // print(x[99])  # tpyc: ok
                 std::cout << ::tpy::__getitem__(__case_0, 99) << "\n";
             } catch (const ::tpy::KeyError&) {
-                // print("dict-missing")
                 std::cout << "dict-missing" << "\n";
             }
         }
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
 }
 
 // def record_read(x: Indexed | int32) -> None:
+//     match x:
+//         case Indexed():
+//             print("record", x[0])  # tpyc: ok
+//         case _:
+//             pass
 void record_read(::tpy::Union<const Indexed*, const int32_t*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case Indexed():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // print("record", x[0])  # tpyc: ok
         std::cout << "record" << " " << __case_0[0] << "\n";
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
 }
 
 // def make_buffer() -> Own[bytearray | int32]:
+//     buffer = bytearray(b"abc")
+//     return buffer
 ::tpy::Union<::tpy::ByteArray, int32_t> make_buffer() {
-    // buffer = bytearray(b"abc")
     ::tpy::ByteArray buffer = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    // return buffer
     return buffer;
 }
 
 // def make_list() -> Own[list[int32] | int32]:
+//     items: list[int32] = [10, 20]
+//     return items
 ::tpy::Union<int32_t, std::vector<int32_t>> make_list() {
-    // items: list[int32] = [10, 20]
     std::vector<int32_t> items = {10, 20};
-    // return items
     return items;
 }
 
 // def main() -> None:
+//     text: str | int32 = "abc"
+//     buffer = make_buffer()
+//     index = int("1")
+//     string_reads(text, index)
+//     bytes_reads(b"abc", index)
+//     bytearray_reads(buffer, index)
+//     capture_reads(text, True)
+//     capture_reads(text, False)
+//     marker = 7
+//     generic_read(marker)  # tpyc: ok
+//     monomorphic_read(marker)
+//     tuple_reads(buffer)
+//     reader = Reader(text)
+//     print("constructor", reader.value)
+//     print("method", reader.read(text))
+//     for value in generate(buffer):
+//         print("generator", value)
+//     print("async", asyncio.run(async_read(buffer)))
+//     comprehension(buffer)
+//     closure(True)
+//     cleanup_reads(text)
+//     try:
+//         print("error-return", error_read(buffer))
+//     except Err:
+//         print("error-return-other")
+//     counter = Counter()
+//     conditional_reads(text, counter)
+//     items = make_list()
+//     indexed = Indexed()
+//     list_read(items)
+//     dict_read({0: 30})
+//     record_read(indexed)
 void main() {
-    // text: str | int32 = "abc"
     ::tpy::Union<int32_t, std::string> text = "abc";
-    // buffer = make_buffer()
     ::tpy::Union<::tpy::ByteArray, int32_t> __slot_1 = make_buffer();
     ::tpy::Union<::tpy::ByteArray*, int32_t*> buffer = ::tpy::to_ptr_variant(__slot_1);
-    // index = int("1")
     ::tpy::BigInt index = ::tpy::BigInt::from_str("1");
-    // string_reads(text, index)
     string_reads(text, index);
-    // bytes_reads(b"abc", index)
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("abc", 3);
     bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*>{&__tmp_1}, index);
-    // bytearray_reads(buffer, index)
     bytearray_reads(buffer.as_const(), index);
-    // capture_reads(text, True)
     capture_reads(text, true);
-    // capture_reads(text, False)
     capture_reads(text, false);
-    // marker = 7
     int32_t marker = 7;
-    // generic_read(marker)  # tpyc: ok
     generic_read<int32_t>(marker);
-    // monomorphic_read(marker)
     monomorphic_read(marker);
-    // tuple_reads(buffer)
     tuple_reads(buffer.as_const());
-    // reader = Reader(text)
     Reader reader = Reader(text);
-    // print("constructor", reader.value)
     std::cout << "constructor" << " " << reader.value << "\n";
-    // print("method", reader.read(text))
     std::cout << "method" << " " << reader.read(text) << "\n";
-    // for value in generate(buffer):
     {
         auto __src_0 = generate(buffer.as_const());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -657,74 +679,61 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t value = ::tpy::unwrap_ref(*__r_1);
-        // print("generator", value)
         std::cout << "generator" << " " << value << "\n";
         }
     }
-    // print("async", asyncio.run(async_read(buffer)))
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_read(buffer.as_const()))) << "\n";
-    // comprehension(buffer)
     comprehension(buffer.as_const());
-    // closure(True)
     closure(true);
-    // cleanup_reads(text)
     cleanup_reads(text);
-    // try:
     {
-        // print("error-return", error_read(buffer))
         std::cout << "error-return" << " " << ({ auto __er_2 = error_read(buffer.as_const()); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except Err:
         __except_1:;
-        // print("error-return-other")
         std::cout << "error-return-other" << "\n";
         __after_try_1:;
     }
-    // counter = Counter()
     Counter counter = Counter();
-    // conditional_reads(text, counter)
     conditional_reads(text, counter);
-    // items = make_list()
     ::tpy::Union<int32_t, std::vector<int32_t>> __slot_2 = make_list();
     ::tpy::Union<int32_t*, std::vector<int32_t>*> items = ::tpy::to_ptr_variant(__slot_2);
-    // indexed = Indexed()
     Indexed indexed = Indexed();
-    // list_read(items)
     list_read(items.as_const());
-    // dict_read({0: 30})
     ::tpy::ordered_map<int32_t, int32_t> __tmp_2 = ::tpy::ordered_map<int32_t, int32_t>({{0, 30}});
     dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*>{&__tmp_2});
-    // record_read(indexed)
     record_read(::tpy::Union<const Indexed*, const int32_t*>{&(indexed)});
 }
 
+// # Narrowed union provenance must preserve member-specific checked indexing.
+// # Scalar reads keep value semantics in ordinary and resumable bodies.
+// import asyncio
+//
+// main()
+//
+// # Module-level storage has a distinct lowering route from function locals.
+// global_text = union_text(True)
+// match global_text:
+//     case str():
+//         print("module", global_text[0], global_text[-1])  # tpyc: ok
+//     case _:
+//         pass
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Narrowed union provenance must preserve member-specific checked indexing.
-    // # Scalar reads keep value semantics in ordinary and resumable bodies.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
-    // # Module-level storage has a distinct lowering route from function locals.
-    // global_text = union_text(True)
     global_text = union_text(true);
-    // match global_text:
     auto& __match_subject_1 = global_text;
     switch (__match_subject_1.index()) {
-    // case str():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // print("module", global_text[0], global_text[-1])  # tpyc: ok
         std::cout << "module" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << "\n";
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }

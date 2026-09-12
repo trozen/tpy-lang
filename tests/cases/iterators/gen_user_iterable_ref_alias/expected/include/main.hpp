@@ -14,7 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_bump;
 
+// def bump(bag: Bag) -> Iterator[int32]:
 __gen_bump bump(Bag& bag);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -43,6 +45,8 @@ struct Bag {
     explicit Bag(std::vector<Point>&& items);
 
     // def __iter__(self) -> Iterator[Point]:
+    //     for p in self.items:
+    //         yield p
     auto __iter__() {
         return ::tpy::make_generator<::tpy::val_or_ref<Point>>(
             [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Point>> {
@@ -64,7 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
-// Generator: bump
+// def bump(bag: Bag) -> Iterator[int32]:
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     int32_t __state;
     Bag& bag;
@@ -93,9 +97,11 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, items: Own[list[Point]]) -> None:
+//     self.items = items
 inline Bag::Bag(std::vector<Point>&& items) : items(std::move(items)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <::tpystd::typing::Iterable<int32_t> T>
 struct __coro_Summer_total;
 
+// def main() -> None:
 void main();
 
 // class Summer[T: Iterable[int32]]:
@@ -25,6 +26,7 @@ struct Summer {
     T items;
 
     // def __init__(self, items: T) -> None:
+    //     self.items = items
     Summer() = default;
     explicit Summer(::tpy::readonly_form_t<T> items) : items(items) {}
 
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
     return os;
 }
 
-// Async coroutine: Summer.total
+// async def total(self) -> int32:
 template <::tpystd::typing::Iterable<int32_t> T>
 struct __coro_Summer_total {
     int32_t __state;
@@ -64,24 +66,24 @@ struct __coro_Summer_total {
 };
 
 // async def total(self) -> int32:
+//     result: int32 = 0
+//     for x in self.items:
+//         result += x
+//     return result
 template <::tpystd::typing::Iterable<int32_t> T>
 ::tpystd::tpy::Poll<int32_t> __coro_Summer_total<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // result: int32 = 0
         result = 0;
-        // for x in self.items:
         auto& __src_0 = __self.items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-            // result += x
             result = ::tpy::add_check<int32_t>(result, x);
         }
-        // return result
         __state = S_DONE;
         int32_t __tpy_async_ret = result;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));

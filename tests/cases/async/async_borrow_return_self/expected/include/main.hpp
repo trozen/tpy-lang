@@ -19,6 +19,7 @@ struct __coro_main;
 struct __coro_Wrap_me;
 struct __coro_Wrap_unwrap;
 
+// async def main() -> None:
 __coro_main main();
 
 // class Server:
@@ -55,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
     return os;
 }
 
-// Async coroutine: Wrap.me
+// async def me(self) -> "Wrap":
 struct __coro_Wrap_me {
     int32_t __state;
     bool __cancel_pending;
@@ -83,7 +84,7 @@ inline __coro_Wrap_me Wrap::me() {
     return __coro_Wrap_me(*this);
 }
 
-// Async coroutine: Wrap.unwrap
+// async def unwrap(self) -> Server:
 struct __coro_Wrap_unwrap {
     int32_t __state;
     bool __cancel_pending;
@@ -111,7 +112,7 @@ inline __coro_Wrap_unwrap Wrap::unwrap() {
     return __coro_Wrap_unwrap(*this);
 }
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -141,9 +142,11 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     self.n = 1
 inline Server::Server() : n(::tpy::BigInt(1)) {}
 
 // def __init__(self) -> None:
+//     self.inner = Server()
 inline Wrap::Wrap() : inner(Server()) {}
 void __tpy_init();
 } // namespace tpyapp::main

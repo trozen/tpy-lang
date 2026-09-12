@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Box_gen_reassigned;
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -33,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Generator: Box.gen_reassigned
+// def gen_reassigned(self) -> Iterator[str]:
 struct __gen_Box_gen_reassigned : public ::tpy::next_iter_mixin<__gen_Box_gen_reassigned, std::string> {
     int32_t __state;
     const Box& __self;
@@ -63,6 +64,7 @@ inline __gen_Box_gen_reassigned Box::gen_reassigned() const {
 
 
 // def __init__(self, v: str | None) -> None:
+//     self.s = v
 inline Box::Box(std::optional<std::string_view> v) : s(v ? std::make_optional(std::string(*v)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

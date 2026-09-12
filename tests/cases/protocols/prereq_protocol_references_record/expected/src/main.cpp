@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     factory = DefaultWrapperMaker()
+//     container = Container(factory)
+//     wrapper = container.create_wrapper("test")
+//     result = wrapper.get_result()
+//     print(result.value)
 void main() {
-    // factory = DefaultWrapperMaker()
     DefaultWrapperMaker factory = DefaultWrapperMaker();
-    // container = Container(factory)
     Container<DefaultWrapperMaker> container = Container<DefaultWrapperMaker>(factory);
-    // wrapper = container.create_wrapper("test")
     Wrapper<Message> wrapper = container.create_wrapper("test");
-    // result = wrapper.get_result()
     Result result = wrapper.get_result();
-    // print(result.value)
     std::cout << result.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

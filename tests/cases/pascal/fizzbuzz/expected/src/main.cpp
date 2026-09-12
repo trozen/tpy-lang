@@ -3,32 +3,36 @@
 
 namespace tpyapp::main {
 
-// i: integer;
 int32_t i{};
 
+// i: integer;
+//
+// for i := 1 to 15 do
+// begin
+//   if i mod 15 = 0 then
+//     writeln('FizzBuzz')
+//   else if i mod 3 = 0 then
+//     writeln('Fizz')
+//   else if i mod 5 = 0 then
+//     writeln('Buzz')
+//   else
+//     writeln(i);
+// end;
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // for i := 1 to 15 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(15, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        // if i mod 15 = 0 then
         if (((::tpy::mod_floor<int32_t>(i, 15)) == 0)) {
-            // writeln('FizzBuzz')
             std::cout << "FizzBuzz" << "\n";
         } else {
-            // else if i mod 3 = 0 then
             if (((::tpy::mod_floor<int32_t>(i, 3)) == 0)) {
-                // writeln('Fizz')
                 std::cout << "Fizz" << "\n";
-            // else if i mod 5 = 0 then
             } else if (((::tpy::mod_floor<int32_t>(i, 5)) == 0)) {
-                // writeln('Buzz')
                 std::cout << "Buzz" << "\n";
             } else {
-                // writeln(i);
                 std::cout << i << "\n";
             }
         }

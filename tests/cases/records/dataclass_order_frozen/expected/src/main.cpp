@@ -5,42 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     v1 = Version(1, 0, 0)
+//     v2 = Version(2, 0, 0)
+//     v3 = Version(1, 1, 0)
+//     # Ordering
+//     print(v1 < v2)
+//     print(v1 < v3)
+//     print(v2 > v3)
+//     # Equality
+//     print(v1 == Version(1, 0, 0))
+//     print(v1 != v2)
+//     # Hash (from frozen) -- usable as dict key
+//     d: dict[Version, str] = {v1: "one", v2: "two"}
+//     print(d[v1])
+//     print(d[v2])
 void main() {
-    // v1 = Version(1, 0, 0)
     Version v1 = Version(1, 0, 0);
-    // v2 = Version(2, 0, 0)
     Version v2 = Version(2, 0, 0);
-    // v3 = Version(1, 1, 0)
     Version v3 = Version(1, 1, 0);
-    // # Ordering
-    // print(v1 < v2)
     std::cout << ::tpy::print_bool(((v1) < (v2))) << "\n";
-    // print(v1 < v3)
     std::cout << ::tpy::print_bool(((v1) < (v3))) << "\n";
-    // print(v2 > v3)
     std::cout << ::tpy::print_bool(((v2) > (v3))) << "\n";
-    // # Equality
-    // print(v1 == Version(1, 0, 0))
     std::cout << ::tpy::print_bool(((v1) == (Version(1, 0, 0)))) << "\n";
-    // print(v1 != v2)
     std::cout << ::tpy::print_bool((v1 != v2)) << "\n";
-    // # Hash (from frozen) -- usable as dict key
-    // d: dict[Version, str] = {v1: "one", v2: "two"}
     ::tpy::ordered_map<Version, std::string> d = ::tpy::ordered_map<Version, std::string>({{v1, "one"}, {v2, "two"}});
-    // print(d[v1])
     std::cout << ::tpy::__getitem__(d, v1) << "\n";
-    // print(d[v2])
     std::cout << ::tpy::__getitem__(d, v2) << "\n";
 }
 
+// # @dataclass(frozen=True, order=True) combines ordering, equality, and hashing
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass(frozen=True, order=True) combines ordering, equality, and hashing
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

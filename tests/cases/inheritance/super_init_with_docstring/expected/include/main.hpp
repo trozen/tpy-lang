@@ -48,9 +48,13 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Parent::Parent(const ::tpy::BigInt& value) : value(value) {}
 
 // def __init__(self, value: int, extra: int) -> None:
+//     """Initialize Child with value and extra."""
+//     super().__init__(value)
+//     self.extra = extra
 inline Child::Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Parent(value), extra(extra) {
 }
 void __tpy_init();

@@ -11,12 +11,19 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
 std::tuple<Box, Box*> make_mixed(Box& b);
+// def rebind(b: Box, c: Box) -> int32:
 int32_t rebind(Box& b, Box& c);
+// def branch_hoisted(b: Box, c: Box, pick: bool) -> int32:
 int32_t branch_hoisted(Box& b, Box& c, bool pick);
+// def loop_carried(b: Box, c: Box) -> int32:
 int32_t loop_carried(Box& b, Box& c);
+// def try_hoisted(b: Box) -> int32:
 int32_t try_hoisted(Box& b);
+// def walrus(b: Box) -> int32:
 int32_t walrus(Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -37,6 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Box::Box(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

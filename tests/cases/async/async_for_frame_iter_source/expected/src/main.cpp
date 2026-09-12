@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // async def bump(bag: Bag) -> int32:
+//     total = 0
+//     for p in bag:
+//         await asyncio.sleep(0)
+//         p.x += 10
+//         total += p.x
+//     return total
 ::tpystd::tpy::Poll<int32_t> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         ::tpy::resumable_iter_init(__for_itr_0, bag);
         __state = S_JOIN_0;
@@ -19,9 +24,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // p.x += 10
         (*p).x = ::tpy::add_check<int32_t>((*p).x, 10);
-        // total += p.x
         total = ::tpy::add_check<int32_t>(total, (*p).x);
         __state = S_JOIN_0;
         continue;
@@ -29,13 +32,11 @@ namespace tpyapp::main {
     case S_JOIN_0: {
         __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, bag));
         if (!(*__for_r_0).has_value()) {
-            // return total
             __state = S_DONE;
             int32_t __tpy_async_ret = total;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         p.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -52,12 +53,13 @@ __coro_bump bump(Bag& bag) {
 }
 
 // async def amain() -> None:
+//     bag = Bag([Point(1), Point(2)])
+//     print(await bump(bag))
+//     print("mutations reached the bag:", bag.items[0].x, bag.items[1].x)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // bag = Bag([Point(1), Point(2)])
         bag.emplace(Bag({Point(1), Point(2)}));
-        // print(await bump(bag))
         __sub_0.emplace((*bag));
         __state = S_RESUME_0;
         continue;
@@ -67,9 +69,7 @@ __coro_bump bump(Bag& bag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await bump(bag))
         std::cout << __await_lift_0 << "\n";
-        // print("mutations reached the bag:", bag.items[0].x, bag.items[1].x)
         std::cout << "mutations reached the bag:" << " " << ::tpy::__getitem__((*bag).items, 0).x << " " << ::tpy::__getitem__((*bag).items, 1).x << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -86,6 +86,9 @@ __coro_amain amain() {
 }
 
 // def __iter__(self) -> Iterator[Point]:
+//     for p in self.items:
+//         yield p
+//         yield p
 std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -95,7 +98,6 @@ std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__
         continue;
     }
     case S_RESUME_0: {
-        // yield p
         __state = S_RESUME_1;
         return (*p);
     }
@@ -109,7 +111,6 @@ std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         p = &(*((*__for_it_0))++);
-        // yield p
         __state = S_RESUME_0;
         return (*p);
     }
@@ -119,18 +120,19 @@ std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__
 }
 
 
+// # The async sibling: a sync `for` with an `await` in its body shares the
+// # iter_next for-strategy with generators, so an async coro embeds the source's
+// # frame-emitted __iter__ struct the same way. Async units are seeded BEFORE
+// # generator methods, so this one is mis-ordered whatever the declaration order.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The async sibling: a sync `for` with an `await` in its body shares the
-    // # iter_next for-strategy with generators, so an async coro embeds the source's
-    // # frame-emitted __iter__ struct the same way. Async units are seeded BEFORE
-    // # generator methods, so this one is mis-ordered whatever the declaration order.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

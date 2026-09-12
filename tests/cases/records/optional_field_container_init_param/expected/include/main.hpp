@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -31,14 +32,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, items: Optional[list[int32]]) -> None:
+//     if items is not None:
+//         self.items = items
+//     else:
+//         self.items = []
 inline Holder::Holder(const std::vector<int32_t>* items) {
-    // if items is not None:
     if ((items != nullptr)) {
-        // self.items = items
         this->items = (*items);
-    // else:
     } else {
-        // self.items = []
         this->items = std::vector<int32_t>{};
     }
 }

@@ -13,6 +13,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -65,12 +66,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, name: int32) -> None:
+//     self.name = name
 inline Tag::Tag(int32_t name) : name(name) {}
 
 // def __init__(self, pair: tuple[Point | None, Ptr[Tag]]) -> None:
+//     self.pair = pair  # tpyc: warning(/copies/)
 inline Holder::Holder(const std::tuple<const Point*, Tag*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Point>, Tag*>>(pair)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -18,14 +18,20 @@ struct __coro_canceller;
 struct __coro_gather_helper;
 struct __coro_main_coro;
 
+// async def slow() -> int32:
 __coro_slow slow();
+// async def fast() -> int32:
 __coro_fast fast();
+// async def canceller(target: Own[asyncio.Task[int32]]) -> None:
 __coro_canceller canceller(::tpystd::asyncio::_executor::Task<int32_t> target);
+// async def gather_helper() -> Own[list[asyncio.Settled[int32]]]:
 __coro_gather_helper gather_helper();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: slow
+// async def slow() -> int32:
 struct __coro_slow {
     int32_t __state;
     bool __cancel_pending;
@@ -49,7 +55,7 @@ struct __coro_slow {
     }
 };
 
-// Async coroutine: fast
+// async def fast() -> int32:
 struct __coro_fast {
     int32_t __state;
     bool __cancel_pending;
@@ -72,7 +78,7 @@ struct __coro_fast {
     }
 };
 
-// Async coroutine: canceller
+// async def canceller(target: Own[asyncio.Task[int32]]) -> None:
 struct __coro_canceller {
     int32_t __state;
     bool __cancel_pending;
@@ -96,7 +102,7 @@ struct __coro_canceller {
     }
 };
 
-// Async coroutine: gather_helper
+// async def gather_helper() -> Own[list[asyncio.Settled[int32]]]:
 struct __coro_gather_helper {
     int32_t __state;
     bool __cancel_pending;
@@ -122,7 +128,7 @@ struct __coro_gather_helper {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

@@ -17,6 +17,7 @@ extern std::vector<int32_t>* r6;
 extern std::array<::tpy::BigInt, 5>* r7;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -12,9 +12,13 @@ template<typename T> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def unwrap(x: Box[str] | Box[int32]) -> str:
 std::string unwrap(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x);
+// def describe(x: Box[str] | Box[int32]) -> str:
 std::string describe(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x);
+// def mixed(x: Pair[str] | Pair[int32]) -> str:
 std::string mixed(::tpy::Union<const Pair<int32_t>*, const Pair<std::string>*> x);
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -24,6 +28,7 @@ struct Box {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
+    //     self.value = value
     Box() = default;
     explicit Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -45,6 +50,8 @@ struct Pair {
     std::string second;
 
     // def __init__(self, first: Own[T], second: str) -> None:
+    //     self.first = first
+    //     self.second = second
     Pair() = default;
     explicit Pair(::tpy::own_param_t<T> first, std::string_view second) : first(std::move(first)), second(second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";

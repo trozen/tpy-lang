@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def mutate_all(*items: Box) -> None:
+//     for b in items:
+//         b.val += 10
 void mutate_all(::tpy::varargs<Box> items) {
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
-        // b.val += 10
         b.val = ::tpy::add_check<int32_t>(b.val, 10);
     }
 }
 
 // def outer(*xs: Box) -> None:  # tpyc: ok
+//     mutate_all(*xs)
 void outer(::tpy::varargs<Box> xs) {
-    // mutate_all(*xs)
     mutate_all(::tpy::varargs<Box>(xs));
 }
 
 // def main() -> None:
+//     a = Box(1)
+//     b = Box(2)
+//     outer(a, b)
+//     print(a.val)
+//     print(b.val)
 void main() {
-    // a = Box(1)
     Box a = Box(1);
-    // b = Box(2)
     Box b = Box(2);
-    // outer(a, b)
     std::array<Box*, 2> __tmp_1{&a, &b};
     outer(::tpy::varargs<Box>(__tmp_1));
-    // print(a.val)
     std::cout << a.val << "\n";
-    // print(b.val)
     std::cout << b.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

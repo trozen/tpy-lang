@@ -5,44 +5,46 @@ namespace tpyapp::main {
 
 
 // def main():
+//     groups: dict[str, list[int32]] = {}
+//     groups.setdefault("a", []).append(1)
+//     groups.setdefault("a", []).append(2)
+//     groups.setdefault("b", []).append(3)
+//     print(len(groups["a"]), len(groups["b"]))
+//     print(groups["a"])
+//
+//     # Binding form: the result aliases the stored value (CPython identity).
+//     d: dict[str, list[int32]] = {}
+//     lst = d.setdefault("k", [])
+//     lst.append(42)
+//     print(d["k"])
+//
+//     counts: dict[str, int32] = {}
+//     n = counts.setdefault("hits", 5)
+//     n = n + 1
+//     print(n, counts["hits"])
 void main() {
-    // groups: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> groups = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // groups.setdefault("a", []).append(1)
     ::tpy::dict_setdefault(groups, "a", std::vector<int32_t>{}).push_back(1);
-    // groups.setdefault("a", []).append(2)
     ::tpy::dict_setdefault(groups, "a", std::vector<int32_t>{}).push_back(2);
-    // groups.setdefault("b", []).append(3)
     ::tpy::dict_setdefault(groups, "b", std::vector<int32_t>{}).push_back(3);
-    // print(len(groups["a"]), len(groups["b"]))
     std::cout << ::tpy::__len__(::tpy::__getitem__(groups, "a")) << " " << ::tpy::__len__(::tpy::__getitem__(groups, "b")) << "\n";
-    // print(groups["a"])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(groups, "a")) << "\n";
-    // # Binding form: the result aliases the stored value (CPython identity).
-    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // lst = d.setdefault("k", [])
     std::vector<int32_t>& lst = ::tpy::dict_setdefault(d, "k", std::vector<int32_t>{});
-    // lst.append(42)
     lst.push_back(42);
-    // print(d["k"])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "k")) << "\n";
-    // counts: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> counts = ::tpy::ordered_map<std::string, int32_t>();
-    // n = counts.setdefault("hits", 5)
     int32_t n = ::tpy::dict_setdefault(counts, "hits", 5);
-    // n = n + 1
     n = (::tpy::add_check<int32_t>(n, 1));
-    // print(n, counts["hits"])
     std::cout << n << " " << ::tpy::__getitem__(counts, "hits") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,121 +5,126 @@ namespace tpyapp::main {
 
 
 // def boom(which: int) -> None:
+//     if which == 0:
+//         raise AErr(10)
+//     if which == 1:
+//         raise BErr(20)
+//     raise CErr()
 void boom(const ::tpy::BigInt& which) {
-    // if which == 0:
     if ((which == 0)) {
-        // raise AErr(10)
         throw AErr(::tpy::BigInt(10));
     }
-    // if which == 1:
     if ((which == 1)) {
-        // raise BErr(20)
         throw BErr(::tpy::BigInt(20));
     }
-    // raise CErr()
     throw CErr{};
 }
 
 // def with_binding(which: int) -> None:
+//     try:
+//         boom(which)
+//     except (AErr, BErr) as e:  # tpyc: ok
+//         print("tuple arm, code =", e.code)
+//     except CErr:
+//         # A sibling clause after the tuple form still matches in source order.
+//         print("sibling C arm")
 void with_binding(const ::tpy::BigInt& which) {
-    // try:
     {
         try {
-            // boom(which)
             boom(which);
         } catch (const AErr& e) {
-            // print("tuple arm, code =", e.code)
             std::cout << "tuple arm, code =" << " " << e.code << "\n";
         } catch (const BErr& e) {
-            // print("tuple arm, code =", e.code)
             std::cout << "tuple arm, code =" << " " << e.code << "\n";
         } catch (const CErr&) {
-            // # A sibling clause after the tuple form still matches in source order.
-            // print("sibling C arm")
             std::cout << "sibling C arm" << "\n";
         }
     }
 }
 
 // def without_binding(which: int) -> None:
+//     try:
+//         boom(which)
+//     except (AErr, BErr):  # tpyc: ok
+//         print("no binding, caught", which)
+//     except CErr:
+//         print("no binding, C")
 void without_binding(const ::tpy::BigInt& which) {
-    // try:
     {
         try {
-            // boom(which)
             boom(which);
         } catch (const AErr&) {
-            // print("no binding, caught", which)
             std::cout << "no binding, caught" << " " << which << "\n";
         } catch (const BErr&) {
-            // print("no binding, caught", which)
             std::cout << "no binding, caught" << " " << which << "\n";
         } catch (const CErr&) {
-            // print("no binding, C")
             std::cout << "no binding, C" << "\n";
         }
     }
 }
 
 // def single_element(which: int) -> None:
+//     # A one-element tuple is just the plain form.
+//     try:
+//         boom(which)
+//     except (AErr,):  # tpyc: ok
+//         print("single-element tuple")
+//     except Exception:
+//         print("fell through")
 void single_element(const ::tpy::BigInt& which) {
-    // # A one-element tuple is just the plain form.
-    // try:
     {
         try {
-            // boom(which)
             boom(which);
         } catch (const AErr&) {
-            // print("single-element tuple")
             std::cout << "single-element tuple" << "\n";
         } catch (const ::tpy::Exception&) {
-            // print("fell through")
             std::cout << "fell through" << "\n";
         }
     }
 }
 
 // def repeated() -> None:
+//     # A type repeated in one tuple collapses to a single catch arm.
+//     try:
+//         raise AErr(1)
+//     except (AErr, AErr):  # tpyc: ok
+//         print("repeated element")
 void repeated() {
-    // # A type repeated in one tuple collapses to a single catch arm.
-    // try:
     {
         try {
-            // raise AErr(1)
             throw AErr(::tpy::BigInt(1));
         } catch (const AErr&) {
-            // print("repeated element")
             std::cout << "repeated element" << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     for i in range(3):
+//         with_binding(i)
+//     for i in range(3):
+//         without_binding(i)
+//     single_element(0)
+//     single_element(1)
+//     repeated()
 void main() {
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // with_binding(i)
         with_binding(::tpy::BigInt(i));
     }
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // without_binding(i)
         without_binding(::tpy::BigInt(i));
     }
-    // single_element(0)
     single_element(::tpy::BigInt(0));
-    // single_element(1)
     single_element(::tpy::BigInt(1));
-    // repeated()
     repeated();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

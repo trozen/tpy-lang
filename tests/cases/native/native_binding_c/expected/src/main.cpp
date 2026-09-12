@@ -7,22 +7,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(my_abs(int32(-42)))
+//     print(add(int32(10), int32(32)))
 void main() {
-    // print(my_abs(int32(-42)))
     std::cout << native_abs(-42) << "\n";
-    // print(add(int32(10), int32(32)))
     std::cout << native_add(10, 32) << "\n";
 }
 
+// # Test @native(binding="C") for C function imports with explicit symbol names
+// # tpy: include("native_types.hpp")
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test @native(binding="C") for C function imports with explicit symbol names
-    // # tpy: include("native_types.hpp")
-    // from tpy.extern import native
-    // main()
     main();
 }
 

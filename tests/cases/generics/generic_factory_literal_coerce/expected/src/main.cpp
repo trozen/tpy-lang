@@ -5,52 +5,63 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Symmetric inference: literal first, concrete second. T promotes from
+//     # FloatLiteralType to float64 (mirrors the long-standing IntLiteralType
+//     # promote rule).
+//     pair(1.5, float64(2.5))
+//     pair(float64(3.5), 4.5)
+//
+//     # Generic record constructor: int and float literals.
+//     bi = Box(42)
+//     bf = Box(2.71)
+//     print(bi.get())
+//     print(bf.get())
+//
+//     # Generic static-method factory: int and float literals.
+//     ri = Rc.new(7)
+//     rf = Rc.new(3.14)
+//     print(ri.get())
+//     print(rf.get())
+//
+//     # Generic method on a non-generic class: int and float literals.
+//     c = Converter()
+//     print(c.identity(42))
+//     print(c.identity(2.5))
 void main() {
-    // # Symmetric inference: literal first, concrete second. T promotes from
-    // # FloatLiteralType to float64 (mirrors the long-standing IntLiteralType
-    // # promote rule).
-    // pair(1.5, float64(2.5))
     pair<double>(1.5, 2.5);
-    // pair(float64(3.5), 4.5)
     pair<double>(3.5, 4.5);
-    // # Generic record constructor: int and float literals.
-    // bi = Box(42)
     ::tpystd::tplib::box::Box<int32_t> bi = ::tpystd::tplib::box::Box<int32_t>(42);
-    // bf = Box(2.71)
     ::tpystd::tplib::box::Box<double> bf = ::tpystd::tplib::box::Box<double>(2.71);
-    // print(bi.get())
     std::cout << bi.get() << "\n";
-    // print(bf.get())
     std::cout << ::tpy::print_float(bf.get()) << "\n";
-    // # Generic static-method factory: int and float literals.
-    // ri = Rc.new(7)
     ::tpystd::tplib::rc::Rc<int32_t> ri = Rc<int32_t>::new_<int32_t>(7);
-    // rf = Rc.new(3.14)
     ::tpystd::tplib::rc::Rc<double> rf = Rc<double>::new_<double>(3.14);
-    // print(ri.get())
     std::cout << ri.get() << "\n";
-    // print(rf.get())
     std::cout << ::tpy::print_float(rf.get()) << "\n";
-    // # Generic method on a non-generic class: int and float literals.
-    // c = Converter()
     Converter c = Converter();
-    // print(c.identity(42))
     std::cout << c.identity<int32_t>(42) << "\n";
-    // print(c.identity(2.5))
     std::cout << ::tpy::print_float(c.identity<double>(2.5)) << "\n";
 }
 
+// """
+// Bare literal arguments to generic factories / constructors / methods reach
+// codegen as concrete types, not as literal-value C++ template args like
+// Box<3.14>(...), Rc<7>::new_(...), or method<3.14>(...). All four sites that
+// bind inferred_type_args (overload, single function, record ctor, method)
+// share one resolution helper; this guards against regressions on any of them.
+// """
+// from tplib.box import Box
+// from tplib.rc import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // from tplib.rc import Rc
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

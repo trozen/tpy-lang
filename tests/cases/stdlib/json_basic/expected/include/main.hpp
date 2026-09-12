@@ -12,7 +12,9 @@ using ::tpystd::json::JSONDecodeError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def roundtrip(s: str) -> str:
 std::string roundtrip(std::string_view s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,48 +5,49 @@ namespace tpyapp::main {
 
 
 // def cap(n: int32 = V) -> int32:
+//     return n
 int32_t cap(int32_t n) {
-    // return n
     return n;
 }
 
 // def takes_greeter(g: Greeter) -> int32:
+//     return g.greet()
 int32_t takes_greeter(::tpyapp::pkg::b::Greeter& g) {
-    // return g.greet()
     return g.greet();
 }
 
 // def main() -> None:
+//     a = A()
+//     b = B()
+//     box = Container(int32(42))
+//     print(a.value() + b.value() + V + f(int32(5)))
+//     print(K.ONE)
+//     print(cap())
+//     print(cap(int32(10)))
+//     print(box.get())
+//     print(takes_greeter(b))
 void main() {
-    // a = A()
     ::tpyapp::pkg::a::A a = ::tpyapp::pkg::a::A();
-    // b = B()
     ::tpyapp::pkg::b::B b = ::tpyapp::pkg::b::B();
-    // box = Container(int32(42))
     ::tpyapp::pkg::a::Container<int32_t> box = ::tpyapp::pkg::a::Container<int32_t>(42);
-    // print(a.value() + b.value() + V + f(int32(5)))
     std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a.value(), b.value())), ::tpyapp::pkg::b::V)), ::tpyapp::pkg::a::f(5))) << "\n";
-    // print(K.ONE)
     std::cout << ::tpyapp::pkg::b::K::ONE << "\n";
-    // print(cap())
     std::cout << cap() << "\n";
-    // print(cap(int32(10)))
     std::cout << cap(10) << "\n";
-    // print(box.get())
     std::cout << box.get() << "\n";
-    // print(takes_greeter(b))
     ::tpy::RefAdapter<::tpyapp::pkg::b::Greeter, ::tpyapp::pkg::b::B> __tmp_1{b};
     std::cout << takes_greeter(__tmp_1) << "\n";
 }
 
+// from pkg import A, B, Container, Greeter, K, V, f
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pkg import A, B, Container, Greeter, K, V, f
     ::tpyapp::pkg::__tpy_init();
-    // main()
     main();
 }
 

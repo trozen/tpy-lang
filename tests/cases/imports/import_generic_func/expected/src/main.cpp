@@ -3,31 +3,31 @@
 
 namespace tpyapp::main {
 
-// nums: list[int32] = [int32(10), int32(20), int32(30)]
 std::vector<int32_t>* nums{};
-// words: list[str] = ["hello", "world"]
 std::vector<std::string>* words{};
 
+// from helpers import first, length
+//
+// nums: list[int32] = [int32(10), int32(20), int32(30)]
+// print(first(nums))
+// print(length(nums))
+//
+// words: list[str] = ["hello", "world"]
+// print(first(words))
+// print(length(words))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from helpers import first, length
     ::tpyapp::helpers::__tpy_init();
-    // nums: list[int32] = [int32(10), int32(20), int32(30)]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    // print(first(nums))
     std::cout << ::tpyapp::helpers::first<int32_t>((*nums)) << "\n";
-    // print(length(nums))
     std::cout << ::tpyapp::helpers::length<int32_t>((*nums)) << "\n";
-    // words: list[str] = ["hello", "world"]
     static std::vector<std::string> __global_slot_2 = {"hello", "world"};
     words = &__global_slot_2;
-    // print(first(words))
     std::cout << ::tpyapp::helpers::first<std::string>((*words)) << "\n";
-    // print(length(words))
     std::cout << ::tpyapp::helpers::length<std::string>((*words)) << "\n";
 }
 

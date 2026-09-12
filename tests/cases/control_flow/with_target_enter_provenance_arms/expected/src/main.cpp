@@ -5,18 +5,23 @@ namespace tpyapp::main {
 
 
 // def read_nested(flag: bool) -> int32:
+//     if flag:
+//         with ViaNestedDef() as c:
+//             pass
+//     else:
+//         with ViaNestedDef() as c:
+//             pass
+//     c.n += 10
+//     return c.n
 int32_t read_nested(bool flag) {
     std::optional<ViaNestedDef> __slot_2;
     std::optional<ViaNestedDef> __slot_3;
-    // if flag:
     Item* c;
     if (flag) {
-        // with ViaNestedDef() as c:
         __slot_2.emplace(ViaNestedDef());
         auto& __ctx_1 = (*__slot_2);
         c = &(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -27,14 +32,11 @@ int32_t read_nested(bool flag) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-    // else:
     } else {
-        // with ViaNestedDef() as c:
         __slot_3.emplace(ViaNestedDef());
         auto& __ctx_2 = (*__slot_3);
         c = &(__ctx_2.__enter__());
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -46,25 +48,28 @@ int32_t read_nested(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // c.n += 10
     c->n = ::tpy::add_check<int32_t>(c->n, 10);
-    // return c.n
     return c->n;
 }
 
 // def read_two_returns(flag: bool) -> int32:
+//     if flag:
+//         with ViaTwoReturns() as d:
+//             pass
+//     else:
+//         with ViaTwoReturns() as d:
+//             pass
+//     d.n += 10
+//     return d.n
 int32_t read_two_returns(bool flag) {
     std::optional<ViaTwoReturns> __slot_2;
     std::optional<ViaTwoReturns> __slot_3;
-    // if flag:
     Item* d;
     if (flag) {
-        // with ViaTwoReturns() as d:
         __slot_2.emplace(ViaTwoReturns());
         auto& __ctx_3 = (*__slot_2);
         d = &(__ctx_3.__enter__());
         try {
-            // pass
             goto __with_exit_3;
         } catch (::tpy::BaseException& __exc_3) {
             __ctx_3.__exit__({}, &__exc_3, {});
@@ -75,14 +80,11 @@ int32_t read_two_returns(bool flag) {
         }
         __with_exit_3:
         __ctx_3.__exit__({}, nullptr, {});
-    // else:
     } else {
-        // with ViaTwoReturns() as d:
         __slot_3.emplace(ViaTwoReturns());
         auto& __ctx_4 = (*__slot_3);
         d = &(__ctx_4.__enter__());
         try {
-            // pass
             goto __with_exit_4;
         } catch (::tpy::BaseException& __exc_4) {
             __ctx_4.__exit__({}, &__exc_4, {});
@@ -94,26 +96,24 @@ int32_t read_two_returns(bool flag) {
         __with_exit_4:
         __ctx_4.__exit__({}, nullptr, {});
     }
-    // d.n += 10
     d->n = ::tpy::add_check<int32_t>(d->n, 10);
-    // return d.n
     return d->n;
 }
 
 // def main() -> None:
+//     print(read_nested(True))
+//     print(read_two_returns(True))
 void main() {
-    // print(read_nested(True))
     std::cout << read_nested(true) << "\n";
-    // print(read_two_returns(True))
     std::cout << read_two_returns(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

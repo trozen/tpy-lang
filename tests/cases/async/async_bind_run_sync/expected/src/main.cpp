@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def add_one(n: int) -> int:
+//     return n + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_add_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,23 +26,24 @@ __coro_add_one add_one(::tpy::BigInt n) {
 }
 
 // def main() -> None:
+//     c = add_one(41)
+//     print(asyncio.run(c))
 void main() {
-    // c = add_one(41)
     std::optional<__coro_add_one> c = add_one(::tpy::BigInt(41));
-    // print(asyncio.run(c))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))) << "\n";
 }
 
+// # Binding a coroutine in a sync context (plain unique_ptr local, no frame)
+// # and driving it with asyncio.run.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Binding a coroutine in a sync context (plain unique_ptr local, no frame)
-    // # and driving it with asyncio.run.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

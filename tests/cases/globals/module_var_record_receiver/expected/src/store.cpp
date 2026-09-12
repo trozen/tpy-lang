@@ -3,15 +3,14 @@
 
 namespace tpyapp::store {
 
-// env: Env = Env()
 Env* env{};
 
+// env: Env = Env()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // env: Env = Env()
     static Env __global_slot_1 = Env();
     env = &__global_slot_1;
 }

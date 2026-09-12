@@ -5,54 +5,55 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(urljoin("http://h/a/b/c", "d"))
+//     print(urljoin("http://h/a/b/", "d"))
+//     print(urljoin("http://h/a/b/c", "../d"))
+//     print(urljoin("http://h/a/b/c", "../../d"))
+//     print(urljoin("http://h/a/b/c", "../../../../d"))   # ".." past root clamps
+//     print(urljoin("http://h/a/b/c", "."))
+//     print(urljoin("http://h/a/b/c", "./d"))
+//     print(urljoin("http://h/a/b/c", "/abs/path"))
+//     print(urljoin("http://h/a/b/c", "?just=query"))
+//     print(urljoin("http://h/a/b/c", "#frag"))
+//     print(urljoin("http://h/a/b/c", ""))
+//     print(urljoin("http://h/a/b/c", "//other/x"))
+//     print(urljoin("http://h/a/b/c", "https://full/url"))
+//     print(urljoin("", "rel"))
+//     print(urljoin("http://base/x", ""))
+//     print(urljoin("http://h/a//b/c", "g"))              # collapses // in middle
+//     print(urljoin("file:///etc/", "hosts"))             # non-http scheme resolves
 void main() {
-    // print(urljoin("http://h/a/b/c", "d"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "d") << "\n";
-    // print(urljoin("http://h/a/b/", "d"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/", "d") << "\n";
-    // print(urljoin("http://h/a/b/c", "../d"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../d") << "\n";
-    // print(urljoin("http://h/a/b/c", "../../d"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../../d") << "\n";
-    // print(urljoin("http://h/a/b/c", "../../../../d"))   # ".." past root clamps
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "../../../../d") << "\n";
-    // print(urljoin("http://h/a/b/c", "."))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", ".") << "\n";
-    // print(urljoin("http://h/a/b/c", "./d"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "./d") << "\n";
-    // print(urljoin("http://h/a/b/c", "/abs/path"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "/abs/path") << "\n";
-    // print(urljoin("http://h/a/b/c", "?just=query"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "?just=query") << "\n";
-    // print(urljoin("http://h/a/b/c", "#frag"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "#frag") << "\n";
-    // print(urljoin("http://h/a/b/c", ""))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "") << "\n";
-    // print(urljoin("http://h/a/b/c", "//other/x"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "//other/x") << "\n";
-    // print(urljoin("http://h/a/b/c", "https://full/url"))
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a/b/c", "https://full/url") << "\n";
-    // print(urljoin("", "rel"))
     std::cout << ::tpystd::urllib::parse::urljoin("", "rel") << "\n";
-    // print(urljoin("http://base/x", ""))
     std::cout << ::tpystd::urllib::parse::urljoin("http://base/x", "") << "\n";
-    // print(urljoin("http://h/a//b/c", "g"))              # collapses // in middle
     std::cout << ::tpystd::urllib::parse::urljoin("http://h/a//b/c", "g") << "\n";
-    // print(urljoin("file:///etc/", "hosts"))             # non-http scheme resolves
     std::cout << ::tpystd::urllib::parse::urljoin("file:///etc/", "hosts") << "\n";
 }
 
+// # urllib.parse.urljoin: RFC 3986 relative-reference resolution -- relative/abs
+// # segments, "."/".." (incl. past-root), query/fragment-only, scheme-relative.
+// from urllib.parse import urljoin
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # urllib.parse.urljoin: RFC 3986 relative-reference resolution -- relative/abs
-    // # segments, "."/".." (incl. past-root), query/fragment-only, scheme-relative.
-    // from urllib.parse import urljoin
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
-    // main()
     main();
 }
 

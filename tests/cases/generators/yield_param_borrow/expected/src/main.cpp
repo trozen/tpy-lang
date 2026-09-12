@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def each(xs: list[int32]) -> Iterator[list[int32]]:
+//     yield xs  # the list param handed out by reference, twice
+//     yield xs
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield xs  # the list param handed out by reference, twice
         __state = S_RESUME_0;
         return xs;
     }
     case S_RESUME_0: {
-        // yield xs
         __state = S_RESUME_1;
         return xs;
     }
@@ -33,15 +33,15 @@ __gen_each each(std::vector<int32_t>& xs) {
 }
 
 // def rep(b: P) -> Iterator[P]:
+//     yield b  # the record param handed out by reference
+//     yield b
 std::expected<::tpy::val_or_ref<P>, ::tpy::StopIteration> __gen_rep::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield b  # the record param handed out by reference
         __state = S_RESUME_0;
         return b;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return b;
     }
@@ -61,15 +61,15 @@ __gen_rep rep(P& b) {
 }
 
 // def pairs(d: dict[str, int32]) -> Iterator[dict[str, int32]]:
+//     yield d
+//     yield d
 std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield d
         __state = S_RESUME_0;
         return d;
     }
     case S_RESUME_0: {
-        // yield d
         __state = S_RESUME_1;
         return d;
     }
@@ -89,11 +89,11 @@ __gen_pairs pairs(::tpy::ordered_map<std::string, int32_t>& d) {
 }
 
 // async def step(n: int32) -> int32:
+//     return n + 1
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 1
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(n, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -110,10 +110,15 @@ __coro_step step(int32_t n) {
 }
 
 // async def late() -> int32:
+//     x: int32  # annotation only: the frame already declares the field
+//     s: str  # same for a str slot -- no default-construct line either
+//     await step(0)
+//     x = 1
+//     s = "hi"
+//     return x + len(s)
 ::tpystd::tpy::Poll<int32_t> __coro_late::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await step(0)
         __sub_0.emplace(0);
         __state = S_RESUME_0;
         continue;
@@ -123,11 +128,8 @@ __coro_step step(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // x = 1
         x = 1;
-        // s = "hi"
         s = "hi";
-        // return x + len(s)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(x, ::tpy::__len__(s)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -144,17 +146,18 @@ __coro_late late() {
 }
 
 // def late_gen() -> Iterator[int32]:
+//     n: int32  # the generator flavor of the same annotation-only decl
+//     yield 0
+//     n = 5
+//     yield n
 std::expected<int32_t, ::tpy::StopIteration> __gen_late_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
-        // n = 5
         n = 5;
-        // yield n
         __state = S_RESUME_1;
         return n;
     }
@@ -174,10 +177,10 @@ __gen_late_gen late_gen() {
 }
 
 // async def amain() -> None:
+//     print(await late())
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await late())
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -187,7 +190,6 @@ __gen_late_gen late_gen() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await late())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -204,10 +206,29 @@ __coro_amain amain() {
 }
 
 // def main() -> None:
+//     xs = [1, 2]
+//     for got in each(xs):
+//         # A mutation through the yielded borrow is visible on the caller's
+//         # list -- a copy would hide the second round's growth.
+//         got.append(9)
+//         print(len(xs), xs[len(xs) - 1])
+//
+//     p = P(1)
+//     for gotp in rep(p):
+//         gotp.x += 10
+//         print(p.x)
+//
+//     d = {"a": 1}
+//     for gotd in pairs(d):
+//         gotd["b"] = 2
+//         print(len(d))
+//
+//     for got_n in late_gen():
+//         print(got_n)
+//
+//     asyncio.run(amain())
 void main() {
-    // xs = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // for got in each(xs):
     {
         auto __src_0 = each(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -215,17 +236,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& got = ::tpy::unwrap_ref(*__r_1);
-        // # A mutation through the yielded borrow is visible on the caller's
-        // # list -- a copy would hide the second round's growth.
-        // got.append(9)
         got.push_back(9);
-        // print(len(xs), xs[len(xs) - 1])
         std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1))) << "\n";
         }
     }
-    // p = P(1)
     P p = P(1);
-    // for gotp in rep(p):
     {
         auto __src_2 = rep(p);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -233,15 +248,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& gotp = ::tpy::unwrap_ref(*__r_3);
-        // gotp.x += 10
         gotp.x = ::tpy::add_check<int32_t>(gotp.x, 10);
-        // print(p.x)
         std::cout << p.x << "\n";
         }
     }
-    // d = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // for gotd in pairs(d):
     {
         auto __src_4 = pairs(d);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -249,13 +260,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& gotd = ::tpy::unwrap_ref(*__r_5);
-        // gotd["b"] = 2
         ::tpy::__setitem__(gotd, "b", 2);
-        // print(len(d))
         std::cout << ::tpy::__len__(d) << "\n";
         }
     }
-    // for got_n in late_gen():
     {
         auto __src_6 = late_gen();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -263,25 +271,24 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t got_n = ::tpy::unwrap_ref(*__r_7);
-        // print(got_n)
         std::cout << got_n << "\n";
         }
     }
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 
+// # Yielding a PARAM at a container / record yield slot, and an annotation-only
+// # local decl in a resumable body: the frame captures such a param as a
+// # reference member, so the bare name read is already the borrow the slot wants.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Yielding a PARAM at a container / record yield slot, and an annotation-only
-    // # local decl in a resumable body: the frame captures such a param as a
-    // # reference member, so the bare name read is already the borrow the slot wants.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

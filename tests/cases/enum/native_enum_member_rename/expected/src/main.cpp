@@ -47,25 +47,25 @@ namespace tpyapp::main {
 
 
 // def describe(m: Mode) -> str:
+//     match m:
+//         case Mode.NONE_MODE:
+//             return "off"
+//         case Mode.AUTO:
+//             return "auto"
+//         case Mode.MANUAL:
+//             return "manual"
 std::string describe(::cfg::Mode m) {
-    // match m:
     auto& __match_subject_1 = m;
     switch (__match_subject_1) {
-    // case Mode.NONE_MODE:
     case ::cfg::Mode::None: {
-        // return "off"
         return "off";
         break;
     }
-    // case Mode.AUTO:
     case ::cfg::Mode::Auto: {
-        // return "auto"
         return "auto";
         break;
     }
-    // case Mode.MANUAL:
     case ::cfg::Mode::Manual: {
-        // return "manual"
         return "manual";
         break;
     }
@@ -74,34 +74,35 @@ std::string describe(::cfg::Mode m) {
 }
 
 // def main() -> None:
+//     print(Mode.NONE_MODE)
+//     print(Mode.AUTO)
+//     print(Mode.MANUAL)
+//     print(describe(Mode.NONE_MODE))
+//     print(describe(Mode.AUTO))
+//     print(Mode.MANUAL.name)
+//     print(Mode.MANUAL.value)
 void main() {
-    // print(Mode.NONE_MODE)
     std::cout << ::tpy::__repr__(::cfg::Mode::None) << "\n";
-    // print(Mode.AUTO)
     std::cout << ::tpy::__repr__(::cfg::Mode::Auto) << "\n";
-    // print(Mode.MANUAL)
     std::cout << ::tpy::__repr__(::cfg::Mode::Manual) << "\n";
-    // print(describe(Mode.NONE_MODE))
     std::cout << describe(::cfg::Mode::None) << "\n";
-    // print(describe(Mode.AUTO))
     std::cout << describe(::cfg::Mode::Auto) << "\n";
-    // print(Mode.MANUAL.name)
     std::cout << ::tpy::EnumUtil<::cfg::Mode>::name(::cfg::Mode::Manual) << "\n";
-    // print(Mode.MANUAL.value)
     std::cout << static_cast<int32_t>(::cfg::Mode::Manual) << "\n";
 }
 
+// # @native enum where one C++ member name (None) is a Python keyword.
+// # Uses native_member("None") to alias the TPy-side name to the C++ symbol.
+// # tpy: include("native_types.hpp")
+// from enum import Enum, auto
+// from tpy.extern import native, native_member
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @native enum where one C++ member name (None) is a Python keyword.
-    // # Uses native_member("None") to alias the TPy-side name to the C++ symbol.
-    // # tpy: include("native_types.hpp")
-    // from enum import Enum, auto
-    // from tpy.extern import native, native_member
-    // main()
     main();
 }
 

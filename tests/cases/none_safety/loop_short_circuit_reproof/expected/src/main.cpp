@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def shrink(x: int32 | None) -> int32:
+//     while x is not None and x > 0:
+//         x = x - 1  # tpyc: ok
+//     return 0
 int32_t shrink(std::optional<int32_t> x) {
-    // while x is not None and x > 0:
     while (((x.has_value()) && ((*x) > 0))) {
-        // x = x - 1  # tpyc: ok
         x = (::tpy::sub_check<int32_t>((*x), 1));
     }
-    // return 0
     return 0;
 }
 
+// print(shrink(2))
+// print(shrink(0))
+// print(shrink(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(shrink(2))
     std::cout << shrink(2) << "\n";
-    // print(shrink(0))
     std::cout << shrink(0) << "\n";
-    // print(shrink(None))
     std::cout << shrink(std::nullopt) << "\n";
 }
 

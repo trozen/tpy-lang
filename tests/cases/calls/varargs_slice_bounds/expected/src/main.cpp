@@ -5,61 +5,61 @@ namespace tpyapp::main {
 
 
 // def sum_slice(start: int32, stop: int32, *items: Box) -> int32:
+//     n: int32 = 0
+//     for b in items[start:stop]:
+//         n += b.val
+//     return n
 int32_t sum_slice(int32_t start, int32_t stop, ::tpy::varargs<const Box> items) {
-    // n: int32 = 0
     int32_t n = 0;
-    // for b in items[start:stop]:
     auto __obj_0 = ::tpy::list_slice(items, ::tpy::BasicSlice{start, stop});
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // n += b.val
         n = ::tpy::add_check<int32_t>(n, b.val);
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     # items = [Box(1), Box(2), Box(3), Box(4)]
+//     print(sum_slice(0, 4, Box(1), Box(2), Box(3), Box(4)))  # 10 -- full
+//     print(sum_slice(1, 3, Box(1), Box(2), Box(3), Box(4)))  # 5 -- [1:3]
+//     print(sum_slice(-2, 4, Box(1), Box(2), Box(3), Box(4)))  # 7 -- last two
+//     print(sum_slice(2, 100, Box(1), Box(2), Box(3), Box(4)))  # 7 -- clamp upper
+//     print(sum_slice(3, 1, Box(1), Box(2), Box(3), Box(4)))  # 0 -- empty (i>=j)
+//     print(sum_slice(-2, -1, Box(1), Box(2), Box(3), Box(4)))  # 3 -- both negative
 void main() {
-    // # items = [Box(1), Box(2), Box(3), Box(4)]
-    // print(sum_slice(0, 4, Box(1), Box(2), Box(3), Box(4)))  # 10 -- full
     const Box __tmp_1 = Box(1);
     const Box __tmp_2 = Box(2);
     const Box __tmp_3 = Box(3);
     const Box __tmp_4 = Box(4);
     std::array<const Box*, 4> __tmp_5{&__tmp_1, &__tmp_2, &__tmp_3, &__tmp_4};
     std::cout << sum_slice(0, 4, ::tpy::varargs<const Box>(__tmp_5)) << "\n";
-    // print(sum_slice(1, 3, Box(1), Box(2), Box(3), Box(4)))  # 5 -- [1:3]
     const Box __tmp_6 = Box(1);
     const Box __tmp_7 = Box(2);
     const Box __tmp_8 = Box(3);
     const Box __tmp_9 = Box(4);
     std::array<const Box*, 4> __tmp_10{&__tmp_6, &__tmp_7, &__tmp_8, &__tmp_9};
     std::cout << sum_slice(1, 3, ::tpy::varargs<const Box>(__tmp_10)) << "\n";
-    // print(sum_slice(-2, 4, Box(1), Box(2), Box(3), Box(4)))  # 7 -- last two
     const Box __tmp_11 = Box(1);
     const Box __tmp_12 = Box(2);
     const Box __tmp_13 = Box(3);
     const Box __tmp_14 = Box(4);
     std::array<const Box*, 4> __tmp_15{&__tmp_11, &__tmp_12, &__tmp_13, &__tmp_14};
     std::cout << sum_slice(-2, 4, ::tpy::varargs<const Box>(__tmp_15)) << "\n";
-    // print(sum_slice(2, 100, Box(1), Box(2), Box(3), Box(4)))  # 7 -- clamp upper
     const Box __tmp_16 = Box(1);
     const Box __tmp_17 = Box(2);
     const Box __tmp_18 = Box(3);
     const Box __tmp_19 = Box(4);
     std::array<const Box*, 4> __tmp_20{&__tmp_16, &__tmp_17, &__tmp_18, &__tmp_19};
     std::cout << sum_slice(2, 100, ::tpy::varargs<const Box>(__tmp_20)) << "\n";
-    // print(sum_slice(3, 1, Box(1), Box(2), Box(3), Box(4)))  # 0 -- empty (i>=j)
     const Box __tmp_21 = Box(1);
     const Box __tmp_22 = Box(2);
     const Box __tmp_23 = Box(3);
     const Box __tmp_24 = Box(4);
     std::array<const Box*, 4> __tmp_25{&__tmp_21, &__tmp_22, &__tmp_23, &__tmp_24};
     std::cout << sum_slice(3, 1, ::tpy::varargs<const Box>(__tmp_25)) << "\n";
-    // print(sum_slice(-2, -1, Box(1), Box(2), Box(3), Box(4)))  # 3 -- both negative
     const Box __tmp_26 = Box(1);
     const Box __tmp_27 = Box(2);
     const Box __tmp_28 = Box(3);
@@ -68,12 +68,12 @@ void main() {
     std::cout << sum_slice(-2, -1, ::tpy::varargs<const Box>(__tmp_30)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

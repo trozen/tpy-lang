@@ -5,14 +5,21 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int32]:
+//     with Label() as s:
+//         pass
+//     with Blob() as b:
+//         pass
+//     yield 1
+//     print(s)
+//     print(len(s))
+//     print(b[0])
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // with Label() as s:
         auto __ctx_1 = Label();
         s = __ctx_1.__enter__();
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -23,11 +30,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // with Blob() as b:
         auto __ctx_2 = Blob();
         b = __ctx_2.__enter__();
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -38,18 +43,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         }
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // print(s)
         std::cout << s << "\n";
-        // print(len(s))
         std::cout << ::tpy::__len__(s) << "\n";
-        // print(b[0])
         std::cout << static_cast<int>(::tpy::bytes_getitem(b, 0)) << "\n";
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -69,8 +69,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for v in gen():
+//         print(v)
 void main() {
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -78,18 +79,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

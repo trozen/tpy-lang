@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def cross_statement(p: Ptr[A]) -> None:
+//     # First statement checks; subsequent statements elide.
+//     print(p.x)  # tpyc: nullable(p)
+//     print(p.y)  # tpyc: non_null(p)
+//     print(p.x + p.y)  # tpyc: non_null(p)
 void cross_statement(A* p) {
-    // # First statement checks; subsequent statements elide.
-    // print(p.x)  # tpyc: nullable(p)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    // print(p.y)  # tpyc: non_null(p)
     std::cout << p->y << "\n";
-    // print(p.x + p.y)  # tpyc: non_null(p)
     std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n";
 }
 
 // def within_expression(p: Ptr[A]) -> None:
+//     # First use of p across all statements in this function:
+//     # both operands must check -- evaluation order unspecified.
+//     print(p.x + p.y)  # tpyc: nullable(p)
+//     # Now p is proven non-null; subsequent accesses elide.
+//     print(p.x + p.y)  # tpyc: non_null(p)
 void within_expression(A* p) {
-    // # First use of p across all statements in this function:
-    // # both operands must check -- evaluation order unspecified.
-    // print(p.x + p.y)  # tpyc: nullable(p)
     std::cout << (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y)) << "\n";
-    // # Now p is proven non-null; subsequent accesses elide.
-    // print(p.x + p.y)  # tpyc: non_null(p)
     std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n";
 }
 
 // def assign_first(p: Ptr[A]) -> None:
+//     # RHS evaluated before LHS, but it's the first use overall:
+//     # both sides must check. After this statement, p is non-null.
+//     p.x = p.y + 1  # tpyc: nullable(p)
+//     p.x = p.y + 2  # tpyc: non_null(p)
 void assign_first(A* p) {
-    // # RHS evaluated before LHS, but it's the first use overall:
-    // # both sides must check. After this statement, p is non-null.
-    // p.x = p.y + 1  # tpyc: nullable(p)
     ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).y, 1));
-    // p.x = p.y + 2  # tpyc: non_null(p)
     p->x = (::tpy::add_check<int32_t>(p->y, 2));
 }
 
 // def main() -> None:
+//     a = A(10, 20)
+//     p: Ptr[A] = a
+//     cross_statement(p)
+//     within_expression(p)
+//     assign_first(p)
+//     print(a.x, a.y)
 void main() {
-    // a = A(10, 20)
     A a = A(10, 20);
-    // p: Ptr[A] = a
     A* p = &a;
-    // cross_statement(p)
     cross_statement(p);
-    // within_expression(p)
     within_expression(p);
-    // assign_first(p)
     assign_first(p);
-    // print(a.x, a.y)
     std::cout << a.x << " " << a.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

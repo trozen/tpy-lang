@@ -12,8 +12,11 @@ extern int32_t n;
 extern int32_t count2;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_stop_snapshot() -> None:
 void test_stop_snapshot();
+// def test_all_args_snapshot() -> None:
 void test_all_args_snapshot();
+// def get_stop(n: int32) -> int32:
 int32_t get_stop(int32_t n);
 
 void __tpy_init();

@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     data: list[int32] = [1, 2, 3]
+//     await consume(data)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // data: list[int32] = [1, 2, 3]
         data.emplace(std::vector<int32_t>{1, 2, 3});
-        // await consume(data)
         __sub_0.emplace((*data));
         __state = S_RESUME_0;
         continue;
@@ -35,23 +35,24 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Awaiting a protocol-param coroutine with a collection: bind the literal to a
+// # local first, then await -- the form the await-arg-literal reject points users
+// # to. The bound local is hoisted into the resumable frame, so its deferred
+// # element type must resolve before the frame field is rendered.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Awaiting a protocol-param coroutine with a collection: bind the literal to a
-    // # local first, then await -- the form the await-arg-literal reject points users
-    // # to. The bound local is hoisted into the resumable frame, so its deferred
-    // # element type must resolve before the frame field is rendered.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -13,9 +13,13 @@ struct FancyCounter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def combine(a: Counter, b: Counter) -> int32:
 int32_t combine(Counter& a, const Counter& b);
+// def narrowed_receiver(v: Counter | Label) -> int32:
 int32_t narrowed_receiver(::tpy::Union<Counter*, Label*> v);
+// def inherited(f: FancyCounter, k: int32) -> int32:
 int32_t inherited(FancyCounter& f, int32_t k);
+// def main():
 void main();
 
 // class Counter:
@@ -78,36 +82,39 @@ inline std::ostream& operator<<(std::ostream& os, const FancyCounter& obj) {
 
 
 // def __init__(self, start: int32):
+//     self.value = start
 inline Counter::Counter(int32_t start) : value(start) {}
 
 // def bump(self) -> None:
+//     self.value += 1
 inline void Counter::bump() {
-    // self.value += 1
     this->value = ::tpy::add_check<int32_t>(this->value, 1);
 }
 
 // def add_from(self, other: "Counter") -> None:
+//     self.value += other.value
 inline void Counter::add_from(const Counter& other) {
-    // self.value += other.value
     this->value = ::tpy::add_check<int32_t>(this->value, other.value);
 }
 
 // def diff(self, other: "Counter") -> int32:
+//     return self.value - other.value
 inline int32_t Counter::diff(const Counter& other) const {
-    // return self.value - other.value
     return (::tpy::sub_check<int32_t>(this->value, other.value));
 }
 
 // def get(self) -> int32:
+//     return self.value
 inline int32_t Counter::get() const {
-    // return self.value
     return this->value;
 }
 
 // def __init__(self, name: str):
+//     self.name = name
 inline Label::Label(std::string_view name) : name(name) {}
 
 // def __init__(self, start: int32):
+//     super().__init__(start)
 inline FancyCounter::FancyCounter(int32_t start) : Counter(start) {}
 void __tpy_init();
 } // namespace tpyapp::main

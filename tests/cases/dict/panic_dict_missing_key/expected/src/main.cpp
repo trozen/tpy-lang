@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Subscript access on missing key should panic
 // def main() -> None:
+//     d = {"x": 1}
+//     print(d["missing"])
 void main() {
-    // d = {"x": 1}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}});
-    // print(d["missing"])
     std::cout << ::tpy::__getitem__(d, "missing") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

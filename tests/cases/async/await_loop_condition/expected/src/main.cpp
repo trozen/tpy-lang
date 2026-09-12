@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def below(i: int, limit: int) -> bool:
+//     return i < limit
 ::tpystd::tpy::Poll<bool> __coro_below::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return i < limit
         __state = S_DONE;
         bool __tpy_async_ret = (i < limit);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,16 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
 }
 
 // async def main() -> None:
+//     i = 0
+//     while await below(i, 4):
+//         i += 1
+//         if i == 2:
+//             continue
+//         print("body", i)
+//     print("done", i)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -40,13 +46,11 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         if (__await_lift_0) {
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
             if ((i == 2)) {
                 __state = S_JOIN_0;
                 continue;
             } else {
-                // print("body", i)
                 std::cout << "body" << " " << i << "\n";
                 __state = S_JOIN_0;
                 continue;
@@ -58,7 +62,6 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
     }
     case S_JOIN_0: {
         if (true) {
-            // while await below(i, 4):
             __sub_0.emplace(::tpy::BigInt(i), ::tpy::BigInt(4));
             __state = S_RESUME_0;
             continue;
@@ -68,7 +71,6 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
         }
     }
     case S_JOIN_1: {
-        // print("done", i)
         std::cout << "done" << " " << i << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -84,17 +86,18 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # `while await cond():` must re-evaluate the awaited condition every
+// # iteration, and `continue` must re-enter the condition. Exercises the
+// # awaited loop condition plus continue in the body.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `while await cond():` must re-evaluate the awaited condition every
-    // # iteration, and `continue` must re-enter the condition. Exercises the
-    // # awaited loop condition plus continue in the body.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

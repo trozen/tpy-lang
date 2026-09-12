@@ -11,9 +11,13 @@ struct A;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def cross_statement(p: Ptr[A]) -> None:
 void cross_statement(A* p);
+// def within_expression(p: Ptr[A]) -> None:
 void within_expression(A* p);
+// def assign_first(p: Ptr[A]) -> None:
 void assign_first(A* p);
+// def main() -> None:
 void main();
 
 // class A:
@@ -36,6 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline A::A(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,7 +11,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(p: Point) -> int32:
 int32_t f(Point& p);
+// def main() -> None:
 void main();
 
 // @dataclass

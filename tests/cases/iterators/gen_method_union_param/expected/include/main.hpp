@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_Zoo_voices;
 struct __gen_Zoo_names;
 
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -69,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
     return os;
 }
 
-// Generator: Zoo.voices
+// def voices(self, a: Dog | Cat) -> Iterator[str]:
 struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::string> {
     int32_t __state;
     Zoo& __self;
@@ -99,7 +100,7 @@ inline __gen_Zoo_voices Zoo::voices(::tpy::Union<Cat*, Dog*> a) {
     return __gen_Zoo_voices(*this, a);
 }
 
-// Generator: Zoo.names
+// def names(self, a: readonly[Dog | Cat]) -> Iterator[str]:
 struct __gen_Zoo_names : public ::tpy::next_iter_mixin<__gen_Zoo_names, std::string> {
     int32_t __state;
     Zoo& __self;
@@ -131,28 +132,29 @@ inline __gen_Zoo_names Zoo::names(::tpy::Union<const Cat*, const Dog*> a) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Dog::Dog() {
-    // pass
 }
 
 // def speak(self) -> str:
+//     return "woof"
 inline std::string Dog::speak() const {
-    // return "woof"
     return "woof";
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Cat::Cat() {
-    // pass
 }
 
 // def speak(self) -> str:
+//     return "meow"
 inline std::string Cat::speak() const {
-    // return "meow"
     return "meow";
 }
 
 // def __init__(self) -> None:
+//     self.seen = 0
 inline Zoo::Zoo() : seen(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

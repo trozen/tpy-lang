@@ -5,6 +5,11 @@ namespace tpyapp::main {
 
 
 // async def serve() -> None:
+//     try:
+//         raise_signal(SIGINT)
+//         await asyncio.sleep(10.0)
+//     finally:
+//         raise ValueError("cleanup failed")
 ::tpystd::tpy::Poll<::std::monostate> __coro_serve::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -37,9 +42,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // raise_signal(SIGINT)
             ::tpystd::signal::raise_signal(::tpy_const_sigint);
-            // await asyncio.sleep(10.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(10.0)));
             __state = S_RESUME_0;
             continue;
@@ -58,7 +61,6 @@ namespace tpyapp::main {
 }
 
 void __coro_serve::__finally_0() {
-    // raise ValueError("cleanup failed")
     throw ::tpy::ValueError("cleanup failed");
 }
 
@@ -68,36 +70,39 @@ __coro_serve serve() {
 }
 
 // def main() -> None:
+//     try:
+//         asyncio.run(serve())
+//     except ValueError as e:
+//         print("caught ValueError: " + str(e))
+//     except KeyboardInterrupt:
+//         print("caught KeyboardInterrupt (WRONG)")
 void main() {
-    // try:
     {
         try {
-            // asyncio.run(serve())
             ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(serve()));
         } catch (const ::tpy::ValueError& e) {
-            // print("caught ValueError: " + str(e))
             std::cout << (::tpy::str_concat("caught ValueError: ", std::string(::tpy::__str__(e)))) << "\n";
         } catch (const ::tpy::KeyboardInterrupt&) {
-            // print("caught KeyboardInterrupt (WRONG)")
             std::cout << "caught KeyboardInterrupt (WRONG)" << "\n";
         }
     }
 }
 
+// # Regression: when the SIGINT-cancelled root raises a DIFFERENT exception while
+// # unwinding (here from its finally), asyncio.run must propagate THAT exception,
+// # not replace it with KeyboardInterrupt -- i.e. the shutdown path must never
+// # swallow a real cleanup error. Matches CPython.
+// import asyncio
+// from signal import raise_signal, SIGINT
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: when the SIGINT-cancelled root raises a DIFFERENT exception while
-    // # unwinding (here from its finally), asyncio.run must propagate THAT exception,
-    // # not replace it with KeyboardInterrupt -- i.e. the shutdown path must never
-    // # swallow a real cleanup error. Matches CPython.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from signal import raise_signal, SIGINT
     ::tpystd::signal::__tpy_init();
-    // main()
     main();
 }
 

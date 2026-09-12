@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def describe(o: Outer) -> str:
+//     match o:
+//         case Outer(inner=Inner(child=None)):  # tpyc: ok
+//             return "empty inner"
+//         case _:
+//             return "full inner"
 std::string describe(const Outer& o) {
-    // match o:
     auto& __match_subject_1 = o;
-    // case Outer(inner=Inner(child=None)):  # tpyc: ok
     if (!__match_subject_1.inner.child.has_value()) {
-        // return "empty inner"
         return "empty inner";
-    // case _:
     } else {
-        // return "full inner"
         return "full inner";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(describe(Outer(Inner(None))))
+//     print(describe(Outer(Inner("hi"))))
 void main() {
-    // print(describe(Outer(Inner(None))))
     Outer __tmp_1 = Outer(Inner(std::nullopt));
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Outer(Inner("hi"))))
     Outer __tmp_2 = Outer(Inner("hi"));
     std::cout << describe(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

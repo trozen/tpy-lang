@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     print(h.probe())
+//     h.bump()
+//     print(h.probe())
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(h.probe())
     std::cout << h.probe() << "\n";
-    // h.bump()
     h.bump();
-    // print(h.probe())
     std::cout << h.probe() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

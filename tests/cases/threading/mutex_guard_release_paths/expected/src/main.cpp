@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def append_then_return(m: Mutex[list[int32]]) -> None:
+//     with m.lock() as g:
+//         g.append(1)
+//         return  # early return -- __exit__ must still release
 void append_then_return(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& m) {
-    // with m.lock() as g:
     auto __ctx_1 = m.lock();
     auto& g = __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        // g.append(1)
         g.__deref__().push_back(1);
-        // return  # early return -- __exit__ must still release
         __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
         return;
@@ -29,17 +29,19 @@ void append_then_return(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& 
 }
 
 // def append_then_raise(m: Mutex[list[int32]]) -> None:
+//     try:
+//         with m.lock() as g:
+//             g.append(2)
+//             raise ValueError("boom")  # exception path -- __exit__ must release
+//     except ValueError:
+//         pass
 void append_then_raise(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& m) {
-    // try:
     {
         try {
-            // with m.lock() as g:
             auto __ctx_2 = m.lock();
             auto& g = __ctx_2.__enter__();
             try {
-                // g.append(2)
                 g.__deref__().push_back(2);
-                // raise ValueError("boom")  # exception path -- __exit__ must release
                 throw ::tpy::ValueError("boom");
             } catch (::tpy::BaseException& __exc_2) {
                 __ctx_2.__exit__({}, &__exc_2, {});
@@ -49,41 +51,40 @@ void append_then_raise(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& m
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
-            // pass
         }
     }
 }
 
 // def main() -> None:
+//     m = Mutex.new([0])
+//     append_then_return(m)   # would deadlock the next lock if the lock leaked
+//     append_then_raise(m)
+//     with m.lock() as g:     # re-acquires only if both prior guards released
+//         n = 0
+//         total = 0
+//         for v in g.get():
+//             n += 1
+//             total += v
+//         print(n, total)     # 3 elements; 0 + 1 + 2 = 3
 void main() {
-    // m = Mutex.new([0])
     ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({0});
-    // append_then_return(m)   # would deadlock the next lock if the lock leaked
     append_then_return(m);
-    // append_then_raise(m)
     append_then_raise(m);
-    // with m.lock() as g:     # re-acquires only if both prior guards released
     int32_t n;
     int32_t total;
     auto __ctx_3 = m.lock();
     auto& g = __ctx_3.__enter__();
     try {
-        // n = 0
         n = 0;
-        // total = 0
         total = 0;
-        // for v in g.get():
         auto& __obj_0 = g.get();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t v = *__beg_0;
-            // n += 1
             n = ::tpy::add_check<int32_t>(n, 1);
-            // total += v
             total = ::tpy::add_check<int32_t>(total, v);
         }
-        // print(n, total)     # 3 elements; 0 + 1 + 2 = 3
         std::cout << n << " " << total << "\n";
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -97,14 +98,15 @@ void main() {
     __ctx_3.__exit__({}, nullptr, {});
 }
 
+// from tpy.sync import Mutex
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.sync import Mutex
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

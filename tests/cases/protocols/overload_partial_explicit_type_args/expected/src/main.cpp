@@ -6,25 +6,25 @@ namespace tpyapp::main {
 
 // @dispatch
 // def stub(val: str) -> str:
+//     return val
 std::string stub(std::string_view val) {
-    // return val
     return std::string(val);
 }
 
 // def main() -> None:
+//     r: int32 = stub[int32](lambda x: x * int32(2))
+//     print(r)
 void main() {
-    // r: int32 = stub[int32](lambda x: x * int32(2))
     int32_t r = stub<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); });
-    // print(r)
     std::cout << r << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,10 +11,14 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump_first(p: tuple[Item, int32]) -> None:
 void bump_first(const std::tuple<Item*, int32_t>& p);
+// def read_pair(p: tuple[Item, int32]) -> int32:
 int32_t read_pair(const std::tuple<const Item*, int32_t>& p);
+// def relay[T](p: tuple[T, int32]) -> int32:
 template<typename T>
 int32_t relay(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -35,11 +39,12 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 // def relay[T](p: tuple[T, int32]) -> int32:
+//     return p[1]
 template<typename T>
 int32_t relay(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) {
-    // return p[1]
     return std::get<1>(p);
 }
 

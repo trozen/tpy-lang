@@ -3,57 +3,56 @@
 
 namespace tpyapp::main {
 
-// _ptr_g: Ptr[Holder] = None
 Holder* _ptr_g{};
-// _opt_int_g: int | None = None
 std::optional<::tpy::BigInt> _opt_int_g;
 
 // def update(h: Ptr[Holder], v: int, attach: bool) -> None:
+//     global _ptr_g, _opt_int_g
+//     if attach:
+//         _ptr_g = h
+//         _opt_int_g = v
+//     else:
+//         _ptr_g = None
+//         _opt_int_g = None
 void update(Holder* h, const ::tpy::BigInt& v, bool attach) {
-    // global _ptr_g, _opt_int_g
-    // if attach:
     if (attach) {
-        // _ptr_g = h
         _ptr_g = h;
-        // _opt_int_g = v
         _opt_int_g = v;
-    // else:
     } else {
-        // _ptr_g = None
         _ptr_g = nullptr;
-        // _opt_int_g = None
         _opt_int_g = std::nullopt;
     }
 }
 
 // def main() -> None:
+//     h = Holder(7)
+//     update(take_ptr(h), 42, True)
+//     print(_ptr_g is not None)
+//     print(_opt_int_g is not None)
+//     update(take_ptr(h), 0, False)
+//     print(_ptr_g is None)
+//     print(_opt_int_g is None)
 void main() {
-    // h = Holder(7)
     Holder h = Holder(::tpy::BigInt(7));
-    // update(take_ptr(h), 42, True)
     update(&h, ::tpy::BigInt(42), true);
-    // print(_ptr_g is not None)
     std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n";
-    // print(_opt_int_g is not None)
     std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n";
-    // update(take_ptr(h), 0, False)
     update(&h, ::tpy::BigInt(0), false);
-    // print(_ptr_g is None)
     std::cout << ::tpy::print_bool((_ptr_g == nullptr)) << "\n";
-    // print(_opt_int_g is None)
     std::cout << ::tpy::print_bool((!_opt_int_g.has_value())) << "\n";
 }
 
+// _ptr_g: Ptr[Holder] = None
+// _opt_int_g: int | None = None
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // _ptr_g: Ptr[Holder] = None
     _ptr_g = nullptr;
-    // _opt_int_g: int | None = None
     _opt_int_g = std::nullopt;
-    // main()
     main();
 }
 

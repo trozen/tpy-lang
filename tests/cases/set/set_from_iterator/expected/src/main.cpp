@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = set(Counter(5))
+//     print(s)
+//     print(len(s))
 void main() {
-    // s = set(Counter(5))
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(Counter(5));
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

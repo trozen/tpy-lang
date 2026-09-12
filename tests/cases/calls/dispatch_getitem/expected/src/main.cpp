@@ -6,58 +6,58 @@ namespace tpyapp::main {
 
 // # readonly receiver: the const operator serves both index types
 // def read_store(s: readonly[Store[int32]]) -> None:
+//     first = s[0]
+//     win = s[1:3]
+//     print("const:", first, win[0], win[1])
 void read_store(const Store<int32_t>& s) {
-    // first = s[0]
     int32_t first = s[0];
-    // win = s[1:3]
     std::span<const int32_t> win = s.__getitem__(::tpy::BasicSlice{1, 3});
-    // print("const:", first, win[0], win[1])
     std::cout << "const:" << " " << first << " " << ::tpy::__getitem__(win, 0) << " " << ::tpy::__getitem__(win, 1) << "\n";
 }
 
 // def main() -> None:
+//     s = Store[Cell]()
+//     s.add(Cell(1))
+//     s.add(Cell(2))
+//     s.add(Cell(3))
+//     # mutable receiver: the element comes back by reference, so the store sees the write
+//     s[0].v = 10
+//     win = s[1:3]
+//     win[0].v = 20
+//     print("mutable:", s[0].v, s[1].v, s[2].v)
+//     n = Store[int32]()
+//     n.add(7)
+//     n.add(8)
+//     n.add(9)
+//     read_store(n)
+//     d = Digits()
+//     tail = d[1:3]
+//     print("scalar:", d[2], tail[0], len(tail))
 void main() {
-    // s = Store[Cell]()
     Store<Cell> s = Store<Cell>();
-    // s.add(Cell(1))
     s.add(Cell(1));
-    // s.add(Cell(2))
     s.add(Cell(2));
-    // s.add(Cell(3))
     s.add(Cell(3));
-    // # mutable receiver: the element comes back by reference, so the store sees the write
-    // s[0].v = 10
     s[0].v = 10;
-    // win = s[1:3]
     std::span<Cell> win = s.__getitem__(::tpy::BasicSlice{1, 3});
-    // win[0].v = 20
     ::tpy::__getitem__(win, 0).v = 20;
-    // print("mutable:", s[0].v, s[1].v, s[2].v)
     std::cout << "mutable:" << " " << s[0].v << " " << s[1].v << " " << s[2].v << "\n";
-    // n = Store[int32]()
     Store<int32_t> n = Store<int32_t>();
-    // n.add(7)
     n.add(7);
-    // n.add(8)
     n.add(8);
-    // n.add(9)
     n.add(9);
-    // read_store(n)
     read_store(n);
-    // d = Digits()
     Digits d = Digits();
-    // tail = d[1:3]
     std::span<const int32_t> tail = d.__getitem__(::tpy::BasicSlice{1, 3});
-    // print("scalar:", d[2], tail[0], len(tail))
     std::cout << "scalar:" << " " << d[2] << " " << ::tpy::__getitem__(tail, 0) << " " << ::tpy::__len__(tail) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

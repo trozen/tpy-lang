@@ -5,42 +5,46 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Non-generic record constructor: hint from __init__ param flows to inner call
+//     h = Holder(wrap(int32(42)))
+//     print(h.box.val)
+//
+//     # Same with bare literal: hint chain infers int32, coerces literal
+//     h2 = Holder(wrap(99))
+//     print(h2.box.val)
+//
+//     # Generic record with explicit type args: hint flows to inner call
+//     outer = Box[Box[int32]](wrap(int32(10)))
+//     print(outer.val.val)
+//
+//     # Same with bare literal
+//     outer2 = Box[Box[int32]](wrap(20))
+//     print(outer2.val.val)
+//
+//     # Annotation-driven: no explicit type args on Box(), inferred from LHS
+//     outer3: Box[Box[int32]] = Box(wrap(30))
+//     print(outer3.val.val)
+//     print("done")
 void main() {
-    // # Non-generic record constructor: hint from __init__ param flows to inner call
-    // h = Holder(wrap(int32(42)))
     Holder h = Holder(wrap<int32_t>(42));
-    // print(h.box.val)
     std::cout << h.box.val << "\n";
-    // # Same with bare literal: hint chain infers int32, coerces literal
-    // h2 = Holder(wrap(99))
     Holder h2 = Holder(wrap<int32_t>(99));
-    // print(h2.box.val)
     std::cout << h2.box.val << "\n";
-    // # Generic record with explicit type args: hint flows to inner call
-    // outer = Box[Box[int32]](wrap(int32(10)))
     Box<Box<int32_t>> outer = Box<Box<int32_t>>(wrap<int32_t>(10));
-    // print(outer.val.val)
     std::cout << outer.val.val << "\n";
-    // # Same with bare literal
-    // outer2 = Box[Box[int32]](wrap(20))
     Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(wrap<int32_t>(20));
-    // print(outer2.val.val)
     std::cout << outer2.val.val << "\n";
-    // # Annotation-driven: no explicit type args on Box(), inferred from LHS
-    // outer3: Box[Box[int32]] = Box(wrap(30))
     Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(wrap<int32_t>(30));
-    // print(outer3.val.val)
     std::cout << outer3.val.val << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

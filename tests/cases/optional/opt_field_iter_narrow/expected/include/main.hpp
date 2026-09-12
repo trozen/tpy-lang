@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -48,88 +49,92 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self):
+//     self.d = {"transfer-encoding-extension": "1", "b": "2"}
+//     self.lst = [1, 2, 3]
+//     self.st = {40}
+//     self.s = "xy"
 inline Holder::Holder() : d(::tpy::ordered_map<std::string, std::string>({{"transfer-encoding-extension", "1"}, {"b", "2"}})), lst(std::vector<int32_t>{1, 2, 3}), st(::tpy::ordered_set<int32_t>({40})), s("xy") {}
 
 // def scan_dict(self) -> int32:
+//     n = 0
+//     if self.d is not None:
+//         for k in self.d:
+//             if k == "transfer-encoding-extension":
+//                 n += 1
+//     return n
 inline int32_t Holder::scan_dict() const {
-    // n = 0
     int32_t n = 0;
-    // if self.d is not None:
     if ((this->d.has_value())) {
-        // for k in self.d:
         auto& __obj_0 = (*this->d);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             std::string_view k = *__beg_0;
-            // if k == "transfer-encoding-extension":
             if ((k == "transfer-encoding-extension")) {
-                // n += 1
                 n = ::tpy::add_check<int32_t>(n, 1);
             }
         }
     }
-    // return n
     return n;
 }
 
 // def sum_list(self) -> int32:
+//     n = 0
+//     if self.lst is not None:
+//         for x in self.lst:
+//             n += x
+//     return n
 inline int32_t Holder::sum_list() const {
-    // n = 0
     int32_t n = 0;
-    // if self.lst is not None:
     if ((this->lst.has_value())) {
-        // for x in self.lst:
         auto& __obj_0 = (*this->lst);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // n += x
             n = ::tpy::add_check<int32_t>(n, x);
         }
     }
-    // return n
     return n;
 }
 
 // def sum_set(self) -> int32:
+//     n = 0
+//     if self.st is not None:
+//         for x in self.st:
+//             n += x
+//     return n
 inline int32_t Holder::sum_set() const {
-    // n = 0
     int32_t n = 0;
-    // if self.st is not None:
     if ((this->st.has_value())) {
-        // for x in self.st:
         auto& __obj_0 = (*this->st);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // n += x
             n = ::tpy::add_check<int32_t>(n, x);
         }
     }
-    // return n
     return n;
 }
 
 // def count_str(self) -> int32:
+//     n = 0
+//     if self.s is not None:
+//         for c in self.s:
+//             n += 1
+//     return n
 inline int32_t Holder::count_str() const {
-    // n = 0
     int32_t n = 0;
-    // if self.s is not None:
     if ((this->s.has_value())) {
-        // for c in self.s:
         auto& __obj_0 = (*this->s);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             char c = *__beg_0;
-            // n += 1
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    // return n
     return n;
 }
 void __tpy_init();

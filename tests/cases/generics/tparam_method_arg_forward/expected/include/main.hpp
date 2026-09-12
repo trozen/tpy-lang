@@ -12,6 +12,7 @@ template<typename T> struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Inner[T]:
@@ -21,12 +22,13 @@ struct Inner {
     T v;
 
     // def __init__(self, v: T) -> None:
+    //     self.v = v  # tpyc: warning(/may copy T into field/)
     Inner() = default;
     explicit Inner(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // def put(self, value: T) -> None:
+    //     self.v = value  # tpyc: warning(/may copy T into field/)
     void put(::tpy::param_val_or_ref_t<T> value) {
-        // self.v = value  # tpyc: warning(/may copy T into field/)
         this->v = ::tpy::param_to_storage<T>(value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
@@ -45,12 +47,13 @@ struct Outer {
     Inner<T> _in;
 
     // def __init__(self, v: T) -> None:
+    //     self._in = Inner[T](v)
     Outer() = default;
     explicit Outer(::tpy::readonly_form_t<T> v) : _in(Inner<T>(v)) {}
 
     // def put(self, value: T) -> None:
+    //     self._in.put(value)  # tpyc: ok -- both sides spell the same open T
     void put(::tpy::param_val_or_ref_t<T> value) {
-        // self._in.put(value)  # tpyc: ok -- both sides spell the same open T
         this->_in.put(value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";

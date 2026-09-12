@@ -31,8 +31,11 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def generic_on_optional(b: Bag | None) -> int32:
 int32_t generic_on_optional(Bag* b);
+// def dyn_on_optional(p: Pet | None) -> int32:
 int32_t dyn_on_optional(Pet* p);
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -45,9 +48,9 @@ struct Bag {
     explicit Bag(int32_t n);
 
     // def conv[T](self, x: T) -> T:
+    //     return x
     template<typename T>
     ::tpy::val_or_cref_t<T> conv(::tpy::readonly_form_t<T> x) const {
-        // return x
         return ::tpy::param_to_return<T>(x);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
@@ -93,11 +96,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Bag::Bag(int32_t n) : n(n) {}
 
 // def sound(self) -> int32:
+//     return 7
 inline int32_t Dog::sound() {
-    // return 7
     return 7;
 }
 void __tpy_init();

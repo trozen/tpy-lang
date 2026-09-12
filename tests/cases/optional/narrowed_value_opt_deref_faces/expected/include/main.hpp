@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def reassign(p: int32 | None) -> int32:
 int32_t reassign(std::optional<int32_t> p);
+// def reassign_view(p: str | None) -> str:
 std::string reassign_view(std::optional<std::string_view> p);
+// def aug_param(p: int32 | None) -> int32:
 int32_t aug_param(std::optional<int32_t> p);
+// def aug_loopvar(d: dict[str, int32 | None]) -> int32:
 int32_t aug_loopvar(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d);
+// def whole_copy(p: int32 | None) -> int32:
 int32_t whole_copy(std::optional<int32_t> p);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -3,31 +3,28 @@
 
 namespace tpyapp::main {
 
-// items: list[str] = ["hello", "world"]
 std::vector<std::string>* items{};
-// c: Child[str] = Child[str](items, int32(42))
 Child<std::string>* c{};
-// val: list[str] = c.get_value()
 std::vector<std::string>* val{};
 
+// items: list[str] = ["hello", "world"]
+// c: Child[str] = Child[str](items, int32(42))
+// val: list[str] = c.get_value()
+// print(val[0])
+// print(val[1])
+// print(c.get_extra())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // items: list[str] = ["hello", "world"]
     static std::vector<std::string> __global_slot_1 = {"hello", "world"};
     items = &__global_slot_1;
-    // c: Child[str] = Child[str](items, int32(42))
     static Child<std::string> __global_slot_2 = Child<std::string>((*items), 42);
     c = &__global_slot_2;
-    // val: list[str] = c.get_value()
     val = &(c->get_value());
-    // print(val[0])
     std::cout << ::tpy::__getitem__((*val), 0) << "\n";
-    // print(val[1])
     std::cout << ::tpy::__getitem__((*val), 1) << "\n";
-    // print(c.get_extra())
     std::cout << c->get_extra() << "\n";
 }
 

@@ -5,306 +5,352 @@ namespace tpystd::socket {
 
 
 // def _strerror(err: int32) -> str:
+//     return unsafe_str_from_cstr(posix_socket.strerror(err))
 std::string _strerror(int32_t err) {
-    // return unsafe_str_from_cstr(posix_socket.strerror(err))
     return std::string(reinterpret_cast<const char*>(::strerror(err)));
 }
 
 // def _maybe_raise_connection_error(err: int32, strerr: str) -> None:
+//     """Raise the PEP 3151 ConnectionError subclass for a connection-related
+//     errno; return if `err` is none of them, so the caller falls back to the
+//     generic SocketError. Mirrors CPython, which raises these subclasses (all
+//     OSError) for the same errno on socket I/O. The errno-taking ctors fill
+//     `.errno` / `.strerror` and the CPython-exact "[Errno N] ..." message."""
+//     if err == _EPIPE:
+//         raise BrokenPipeError(err, strerr)
+//     if err == _ECONNRESET:
+//         raise ConnectionResetError(err, strerr)
+//     if err == _ECONNREFUSED:
+//         raise ConnectionRefusedError(err, strerr)
+//     if err == _ECONNABORTED:
+//         raise ConnectionAbortedError(err, strerr)
 void _maybe_raise_connection_error(int32_t err, std::string_view strerr) {
-    // if err == _EPIPE:
     if ((err == ::tpy_const_epipe)) {
-        // raise BrokenPipeError(err, strerr)
         throw ::tpy::BrokenPipeError(err, strerr);
     }
-    // if err == _ECONNRESET:
     if ((err == ::tpy_const_econnreset)) {
-        // raise ConnectionResetError(err, strerr)
         throw ::tpy::ConnectionResetError(err, strerr);
     }
-    // if err == _ECONNREFUSED:
     if ((err == ::tpy_const_econnrefused)) {
-        // raise ConnectionRefusedError(err, strerr)
         throw ::tpy::ConnectionRefusedError(err, strerr);
     }
-    // if err == _ECONNABORTED:
     if ((err == ::tpy_const_econnaborted)) {
-        // raise ConnectionAbortedError(err, strerr)
         throw ::tpy::ConnectionAbortedError(err, strerr);
     }
 }
 
 // def _raise_errno() -> None:
+//     """Raise the errno-keyed OSError subclass: BlockingIOError on
+//     EAGAIN/EWOULDBLOCK/EINPROGRESS (so the asyncio reactor can park on fd
+//     readiness), a ConnectionError subclass on a connection errno, else
+//     SocketError."""
+//     err = posix_socket.tpy_errno()
+//     msg = _strerror(err)
+//     if err == _EAGAIN or err == _EINPROGRESS:
+//         raise BlockingIOError(err, msg)
+//     _maybe_raise_connection_error(err, msg)
+//     raise SocketError(err, msg)
 void _raise_errno() {
-    // err = posix_socket.tpy_errno()
     int32_t err = ::tpy_errno();
-    // msg = _strerror(err)
     std::string msg = _strerror(err);
-    // if err == _EAGAIN or err == _EINPROGRESS:
     if (((err == ::tpy_const_eagain) || (err == ::tpy_const_einprogress))) {
-        // raise BlockingIOError(err, msg)
         throw ::tpy::BlockingIOError(err, msg);
     }
-    // _maybe_raise_connection_error(err, msg)
     _maybe_raise_connection_error(err, msg);
-    // raise SocketError(err, msg)
     throw SocketError(err, msg);
 }
 
 // def _raise_resolve_error() -> None:
+//     """Raise gaierror from the last getaddrinfo failure: the EAI_* code in
+//     `.errno`, the gai_strerror message in `.strerror` (CPython-shaped)."""
+//     code = posix_socket.tpy_last_resolve_code()
+//     msg = unsafe_str_from_cstr(posix_socket.tpy_last_resolve_error())
+//     raise gaierror(code, msg)
 void _raise_resolve_error() {
-    // code = posix_socket.tpy_last_resolve_code()
     int32_t code = ::tpy_last_resolve_code();
-    // msg = unsafe_str_from_cstr(posix_socket.tpy_last_resolve_error())
     std::string msg = std::string(reinterpret_cast<const char*>(::tpy_last_resolve_error()));
-    // raise gaierror(code, msg)
     throw gaierror(code, msg);
 }
 
 // # ---------- Address helpers ----------
 // def gethostbyname(hostname: str) -> str:
+//     """Resolve a hostname to the first IPv4 dotted-quad string."""
+//     host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
+//     out = UninitArrayStorage[uint8, 4]()
+//     rc = posix_socket.tpy_resolve_ipv4(host_ptr, uint64(len(hostname)), out.ptr())
+//     if rc != 0:
+//         _raise_resolve_error()
+//     return _ipv4_to_str(out.ptr())
 std::string gethostbyname(std::string_view hostname) {
-    // host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
     const uint8_t* host_ptr = reinterpret_cast<const uint8_t*>(hostname.data());
-    // out = UninitArrayStorage[uint8, 4]()
     ::tpy::UninitArrayStorage<uint8_t, 4> out = ::tpy::UninitArrayStorage<uint8_t, 4>();
-    // rc = posix_socket.tpy_resolve_ipv4(host_ptr, uint64(len(hostname)), out.ptr())
     int32_t rc = ::tpy_resolve_ipv4(host_ptr, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(hostname)), out.ptr());
-    // if rc != 0:
     if ((rc != 0)) {
-        // _raise_resolve_error()
         _raise_resolve_error();
     }
-    // return _ipv4_to_str(out.ptr())
     return _ipv4_to_str(out.ptr());
 }
 
 // def _ipv4_to_str(addr_bytes: Ptr[uint8]) -> str:
+//     # INET_ADDRSTRLEN = 16 ("255.255.255.255\0").
+//     buf = UninitArrayStorage[uint8, 16]()
+//     if posix_socket.inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) is None:
+//         _raise_errno()
+//     return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
 std::string _ipv4_to_str(uint8_t* addr_bytes) {
-    // # INET_ADDRSTRLEN = 16 ("255.255.255.255\0").
-    // buf = UninitArrayStorage[uint8, 16]()
     ::tpy::UninitArrayStorage<uint8_t, 16> buf = ::tpy::UninitArrayStorage<uint8_t, 16>();
-    // if posix_socket.inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) is None:
     if ((::inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) == nullptr)) {
-        // _raise_errno()
         _raise_errno();
     }
-    // return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(buf.ptr())));
 }
 
 // def _build_sockaddr_in(host: str, port: int32) -> Own[SockaddrIn]:
+//     """Pack (host, port) into a sockaddr_in for bind/connect.
+//
+//     Empty `host` means INADDR_ANY; otherwise tried as a dotted-quad
+//     (inet_pton) first, then resolved via getaddrinfo. sin_port and
+//     sin_addr are in network byte order; sin_family is host order.
+//
+//     The 3-arg SockaddrIn(...) relies on C++ aggregate init zero-filling
+//     sin_zero[8] -- POSIX requires those bytes zero on kernel entry, and
+//     un-zeroed padding can make bind return EINVAL. Do not switch to an
+//     init style that skips zero-fill.
+//     """
+//     port_no = posix_socket.htons(uint16.trunc(port))
+//     if len(hostname := host) == 0:
+//         return SockaddrIn(uint16.trunc(AF_INET), port_no, 0)
+//
+//     addr_bytes = UninitArrayStorage[uint8, 4]()
+//     host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
+//     rc = posix_socket.inet_pton(AF_INET, host_ptr, addr_bytes.ptr())
+//     if rc != 1:
+//         rc2 = posix_socket.tpy_resolve_ipv4(host_ptr, uint64(len(hostname)),
+//                                 addr_bytes.ptr())
+//         if rc2 != 0:
+//             _raise_resolve_error()
+//
+//     addr_u32_ptr: Ptr[uint32] = unsafe_cast(addr_bytes.ptr())
+//     return SockaddrIn(uint16.trunc(AF_INET), port_no,
+//                       unsafe_load(addr_u32_ptr, 0))
 ::sockaddr_in _build_sockaddr_in(std::string_view host, int32_t port) {
-    // port_no = posix_socket.htons(uint16.trunc(port))
     uint16_t port_no = ::htons(static_cast<uint16_t>(port));
-    // if len(hostname := host) == 0:
     std::string hostname;
     if ((::tpy::__len__((hostname = host)) == 0)) {
-        // return SockaddrIn(uint16.trunc(AF_INET), port_no, 0)
         return ::sockaddr_in{static_cast<uint16_t>(AF_INET), port_no, 0};
     }
-    // addr_bytes = UninitArrayStorage[uint8, 4]()
     ::tpy::UninitArrayStorage<uint8_t, 4> addr_bytes = ::tpy::UninitArrayStorage<uint8_t, 4>();
-    // host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
     const uint8_t* host_ptr = reinterpret_cast<const uint8_t*>(hostname.data());
-    // rc = posix_socket.inet_pton(AF_INET, host_ptr, addr_bytes.ptr())
     int32_t rc = ::inet_pton(AF_INET, host_ptr, addr_bytes.ptr());
-    // if rc != 1:
     if ((rc != 1)) {
-        // rc2 = posix_socket.tpy_resolve_ipv4(host_ptr, uint64(len(hostname)),
-        // addr_bytes.ptr())
         int32_t rc2 = ::tpy_resolve_ipv4(host_ptr, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(hostname)), addr_bytes.ptr());
-        // if rc2 != 0:
         if ((rc2 != 0)) {
-            // _raise_resolve_error()
             _raise_resolve_error();
         }
     }
-    // addr_u32_ptr: Ptr[uint32] = unsafe_cast(addr_bytes.ptr())
     uint32_t* addr_u32_ptr = reinterpret_cast<uint32_t*>(addr_bytes.ptr());
-    // return SockaddrIn(uint16.trunc(AF_INET), port_no,
-    // unsafe_load(addr_u32_ptr, 0))
     return ::sockaddr_in{static_cast<uint16_t>(AF_INET), port_no, addr_u32_ptr[0]};
 }
 
 // # ---------- Module-level factories ----------
 // def socketpair(family: int32 = AF_UNIX, type_: int32 = SOCK_STREAM,
-// proto: int32 = int32(0)) -> tuple[Own[socket], Own[socket]]:
+//                proto: int32 = int32(0)) -> tuple[Own[socket], Own[socket]]:
+//     """Create a pair of connected sockets via `::socketpair`.
+//
+//     Defaults match CPython: AF_UNIX + SOCK_STREAM. Useful for in-process
+//     full-duplex pipes; AF_UNIX is POSIX-only (no Windows support yet)."""
+//     sv = UninitArrayStorage[int32, 2]()
+//     if posix_socket.socketpair(family, type_, proto, sv.ptr()) < int32(0):
+//         _raise_errno()
+//     a = socket(int32(0), int32(0), int32(0), fileno=unsafe_load(sv.ptr(), 0))
+//     b = socket(int32(0), int32(0), int32(0), fileno=unsafe_load(sv.ptr(), 1))
+//     return (a, b)
 std::tuple<socket, socket> socketpair(int32_t family, int32_t type_, int32_t proto) {
-    // sv = UninitArrayStorage[int32, 2]()
     ::tpy::UninitArrayStorage<int32_t, 2> sv = ::tpy::UninitArrayStorage<int32_t, 2>();
-    // if posix_socket.socketpair(family, type_, proto, sv.ptr()) < int32(0):
     if ((::socketpair(family, type_, proto, sv.ptr()) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
-    // a = socket(int32(0), int32(0), int32(0), fileno=unsafe_load(sv.ptr(), 0))
     socket a = socket(0, 0, 0, sv.ptr()[0]);
-    // b = socket(int32(0), int32(0), int32(0), fileno=unsafe_load(sv.ptr(), 1))
     socket b = socket(0, 0, 0, sv.ptr()[1]);
-    // return (a, b)
     return std::tuple<socket, socket>{std::move(a), std::move(b)};
 }
 
 // def create_connection(address: tuple[str, int32],
-// timeout: float | None = None) -> Own[socket]:
+//                       timeout: float | None = None) -> Own[socket]:
+//     """TCP client convenience: socket + connect. A `timeout` (seconds) is
+//     applied before connect so connect/recv/send all honor it (CPython parity);
+//     None leaves the socket blocking."""
+//     s = socket(AF_INET, SOCK_STREAM, int32(0))
+//     if timeout is not None:
+//         s.settimeout(timeout)
+//     s.connect(address)
+//     return s
 socket create_connection(const std::tuple<std::string, int32_t>& address, std::optional<double> timeout) {
-    // s = socket(AF_INET, SOCK_STREAM, int32(0))
     socket s = socket(AF_INET, SOCK_STREAM, 0);
-    // if timeout is not None:
     if ((timeout.has_value())) {
-        // s.settimeout(timeout)
         s.settimeout(timeout);
     }
-    // s.connect(address)
     s.connect(address);
-    // return s
     return s;
 }
 
 // def create_server(address: tuple[str, int32],
-// backlog: int32 = int32(128),
-// reuse_addr: bool = True) -> Own[socket]:
+//                   backlog: int32 = int32(128),
+//                   reuse_addr: bool = True) -> Own[socket]:
+//     """TCP server convenience: socket + SO_REUSEADDR + bind + listen.
+//     Caller loops on accept() to serve connections."""
+//     s = socket(AF_INET, SOCK_STREAM, int32(0))
+//     if reuse_addr:
+//         s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, int32(1))
+//     s.bind(address)
+//     s.listen(backlog)
+//     return s
 socket create_server(const std::tuple<std::string, int32_t>& address, int32_t backlog, bool reuse_addr) {
-    // s = socket(AF_INET, SOCK_STREAM, int32(0))
     socket s = socket(AF_INET, SOCK_STREAM, 0);
-    // if reuse_addr:
     if (reuse_addr) {
-        // s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, int32(1))
         s.setsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr, 1);
     }
-    // s.bind(address)
     s.bind(address);
-    // s.listen(backlog)
     s.listen(backlog);
-    // return s
     return s;
 }
 
 
 // def _raise_io(self) -> None:
+//     """Like the module-level `_raise_errno`, but timeout-aware: in timeout
+//     mode an EAGAIN/EWOULDBLOCK means the SO_*TIMEO window elapsed, so raise
+//     TimeoutError("timed out") to match CPython's socket.timeout. In
+//     non-blocking mode the same errno is a genuine would-block ->
+//     BlockingIOError (the asyncio reactor parks on it). Other errno ->
+//     SocketError."""
+//     err = posix_socket.tpy_errno()
+//     msg = _strerror(err)
+//     if err == _EAGAIN or err == _EINPROGRESS:
+//         if self._timeout > 0.0:
+//             # CPython's socket.timeout carries no errno (it is None
+//             # there); leave the unset 0 / "" defaults.
+//             raise TimeoutError("timed out")
+//         raise BlockingIOError(err, msg)
+//     _maybe_raise_connection_error(err, msg)
+//     raise SocketError(err, msg)
 void socket::_raise_io() const {
-    // err = posix_socket.tpy_errno()
     int32_t err = ::tpy_errno();
-    // msg = _strerror(err)
     std::string msg = _strerror(err);
-    // if err == _EAGAIN or err == _EINPROGRESS:
     if (((err == ::tpy_const_eagain) || (err == ::tpy_const_einprogress))) {
-        // if self._timeout > 0.0:
         if ((this->_timeout > 0.0)) {
-            // # CPython's socket.timeout carries no errno (it is None
-            // # there); leave the unset 0 / "" defaults.
-            // raise TimeoutError("timed out")
             throw ::tpy::TimeoutError("timed out");
         }
-        // raise BlockingIOError(err, msg)
         throw ::tpy::BlockingIOError(err, msg);
     }
-    // _maybe_raise_connection_error(err, msg)
     _maybe_raise_connection_error(err, msg);
-    // raise SocketError(err, msg)
     throw SocketError(err, msg);
 }
 
 // def settimeout(self, value: float | None) -> None:
+//     """Set the socket's timeout mode (CPython parity):
+//       * None  -> blocking forever (clears any timeout).
+//       * 0.0   -> non-blocking (same as setblocking(False)).
+//       * > 0   -> recv/send/connect raise TimeoutError after `value` secs.
+//     recv/send use SO_RCVTIMEO/SO_SNDTIMEO; connect uses a poll-based wait
+//     (see connect()). A negative value is a ValueError."""
+//     if value is None:
+//         self._timeout = -1.0
+//         if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
+//             _raise_errno()
+//         if posix_socket.tpy_set_timeout(self.fd, 0.0) < int32(0):
+//             _raise_errno()
+//         return
+//     # Reject non-finite before the C helper casts to time_t / int (a NaN
+//     # or inf cast is undefined behavior). CPython raises these exact types.
+//     # NaN must be tested before the inf test (NaN also fails value-value).
+//     if value != value:
+//         raise ValueError("Invalid value NaN (not a number)")
+//     if value - value != 0.0:
+//         raise OverflowError("timestamp out of range for platform time_t")
+//     if value < 0.0:
+//         raise ValueError("Timeout value out of range")
+//     if value == 0.0:
+//         self._timeout = 0.0
+//         if posix_socket.tpy_set_nonblocking(self.fd, int32(1)) < int32(0):
+//             _raise_errno()
+//         if posix_socket.tpy_set_timeout(self.fd, 0.0) < int32(0):
+//             _raise_errno()
+//         return
+//     self._timeout = value
+//     # Timeout mode stays blocking at the OS level (SO_*TIMEO enforce the
+//     # window); getblocking() therefore reports True, as in CPython.
+//     if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
+//         _raise_errno()
+//     if posix_socket.tpy_set_timeout(self.fd, value) < int32(0):
+//         _raise_errno()
 void socket::settimeout(std::optional<double> value) {
-    // if value is None:
     if ((!value.has_value())) {
-        // self._timeout = -1.0
         this->_timeout = -(1.0);
-        // if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
         if ((::tpy_set_nonblocking(this->fd, 0) < 0)) {
-            // _raise_errno()
             _raise_errno();
         }
-        // if posix_socket.tpy_set_timeout(self.fd, 0.0) < int32(0):
         if ((::tpy_set_timeout(this->fd, 0.0) < 0)) {
-            // _raise_errno()
             _raise_errno();
         }
-        // return
         return;
     }
-    // # Reject non-finite before the C helper casts to time_t / int (a NaN
-    // # or inf cast is undefined behavior). CPython raises these exact types.
-    // # NaN must be tested before the inf test (NaN also fails value-value).
-    // if value != value:
     if (((*value) != (*value))) {
-        // raise ValueError("Invalid value NaN (not a number)")
         throw ::tpy::ValueError("Invalid value NaN (not a number)");
     }
-    // if value - value != 0.0:
     if (((((*value)) - ((*value))) != 0.0)) {
-        // raise OverflowError("timestamp out of range for platform time_t")
         throw ::tpy::OverflowError("timestamp out of range for platform time_t");
     }
-    // if value < 0.0:
     if (((*value) < 0.0)) {
-        // raise ValueError("Timeout value out of range")
         throw ::tpy::ValueError("Timeout value out of range");
     }
-    // if value == 0.0:
     if (((*value) == 0.0)) {
-        // self._timeout = 0.0
         this->_timeout = 0.0;
-        // if posix_socket.tpy_set_nonblocking(self.fd, int32(1)) < int32(0):
         if ((::tpy_set_nonblocking(this->fd, 1) < 0)) {
-            // _raise_errno()
             _raise_errno();
         }
-        // if posix_socket.tpy_set_timeout(self.fd, 0.0) < int32(0):
         if ((::tpy_set_timeout(this->fd, 0.0) < 0)) {
-            // _raise_errno()
             _raise_errno();
         }
-        // return
         return;
     }
-    // self._timeout = value
     this->_timeout = (*value);
-    // # Timeout mode stays blocking at the OS level (SO_*TIMEO enforce the
-    // # window); getblocking() therefore reports True, as in CPython.
-    // if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
     if ((::tpy_set_nonblocking(this->fd, 0) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
-    // if posix_socket.tpy_set_timeout(self.fd, value) < int32(0):
     if ((::tpy_set_timeout(this->fd, (*value)) < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
 }
 
 // def connect(self, address: tuple[str, int32]) -> None:
+//     host, port = address
+//     addr = _build_sockaddr_in(host, port)
+//     # SO_*TIMEO does not cover connect(), so timeout mode routes through the
+//     # poll-based helper (non-blocking connect + poll + SO_ERROR); -2 means
+//     # the wait elapsed. Blocking / non-blocking modes use the plain connect.
+//     if self._timeout > 0.0:
+//         rc = posix_socket.tpy_connect_timeout(self.fd, take_ptr(addr),
+//                                               _SOCKADDR_IN_LEN, self._timeout)
+//         if rc == int32(-2):
+//             raise TimeoutError("timed out")
+//         if rc != int32(0):
+//             self._raise_io()
+//     elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
+//         self._raise_io()
 void socket::connect(const std::tuple<std::string, int32_t>& address) const {
-    // host, port = address
     const auto& __tup_1 = address;
     std::string_view host = std::get<0>(__tup_1);
     int32_t port = std::get<1>(__tup_1);
-    // addr = _build_sockaddr_in(host, port)
     ::sockaddr_in addr = _build_sockaddr_in(host, port);
-    // # SO_*TIMEO does not cover connect(), so timeout mode routes through the
-    // # poll-based helper (non-blocking connect + poll + SO_ERROR); -2 means
-    // # the wait elapsed. Blocking / non-blocking modes use the plain connect.
-    // if self._timeout > 0.0:
     if ((this->_timeout > 0.0)) {
-        // rc = posix_socket.tpy_connect_timeout(self.fd, take_ptr(addr),
-        // _SOCKADDR_IN_LEN, self._timeout)
         int32_t rc = ::tpy_connect_timeout(this->fd, &addr, _SOCKADDR_IN_LEN, this->_timeout);
-        // if rc == int32(-2):
         if ((rc == -2)) {
-            // raise TimeoutError("timed out")
             throw ::tpy::TimeoutError("timed out");
         }
-        // if rc != int32(0):
         if ((rc != 0)) {
-            // self._raise_io()
             this->_raise_io();
         }
-    // elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
     } else if ((::connect(this->fd, &addr, _SOCKADDR_IN_LEN) < 0)) {
-        // self._raise_io()
         this->_raise_io();
     }
 }
@@ -317,128 +363,249 @@ void socket::connect(const std::tuple<std::string, int32_t>& address) const {
 // # is still naked (not yet owned by a `socket`), so close it on failure to
 // # avoid leaking the accepted descriptor.
 // def _accept_fd(self) -> tuple[int32, tuple[str, int32]]:
+//     addr = SockaddrIn(0, 0, 0)
+//     addrlen: uint32 = _SOCKADDR_IN_LEN
+//     new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
+//     if new_fd < int32(0):
+//         _raise_errno()
+//     try:
+//         peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
+//                 int32.trunc(posix_socket.ntohs(addr.sin_port)))
+//     except OSError:
+//         posix_socket.close(new_fd)
+//         raise
+//     return (new_fd, peer)
 std::tuple<int32_t, std::tuple<std::string, int32_t>> socket::_accept_fd() const {
-    // addr = SockaddrIn(0, 0, 0)
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
-    // addrlen: uint32 = _SOCKADDR_IN_LEN
     uint32_t addrlen = _SOCKADDR_IN_LEN;
-    // new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
     int32_t new_fd = ::accept(this->fd, &addr, &addrlen);
-    // if new_fd < int32(0):
     if ((new_fd < 0)) {
-        // _raise_errno()
         _raise_errno();
     }
-    // try:
     std::tuple<std::string, int32_t> peer;
     {
         try {
-            // peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-            // int32.trunc(posix_socket.ntohs(addr.sin_port)))
             peer = std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
         } catch (const ::tpy::OSError&) {
-            // posix_socket.close(new_fd)
             ::close(new_fd);
-            // raise
             throw;
         }
     }
-    // return (new_fd, peer)
     return std::tuple<int32_t, std::tuple<std::string, int32_t>>{new_fd, peer};
 }
 
 // def sendall(self, data: bytes) -> None:
+//     """Send every byte in `data` (loops over send)."""
+//     total: uint64 = uint64(len(data))
+//     sent: uint64 = 0
+//     data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
+//     while sent < total:
+//         chunk = posix_socket.send(self.fd,
+//                           unsafe_ptr_add(data_ptr, int64.trunc(sent)),
+//                           total - sent, int32(0))
+//         if chunk < int64(0):
+//             self._raise_io()
+//         if chunk == int64(0):
+//             # A zero-byte send means the peer went away; CPython's next
+//             # send() would fail with EPIPE, so surface the same class.
+//             raise BrokenPipeError(_EPIPE, _strerror(_EPIPE))
+//         sent = sent + uint64(chunk)
 void socket::sendall(::tpy::BytesView data) const {
-    // total: uint64 = uint64(len(data))
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data));
-    // sent: uint64 = 0
     uint64_t sent = 0;
-    // data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
     const uint8_t* data_ptr = data.data();
-    // while sent < total:
     while ((sent < total)) {
-        // chunk = posix_socket.send(self.fd,
-        // unsafe_ptr_add(data_ptr, int64.trunc(sent)),
-        // total - sent, int32(0))
         int64_t chunk = ::send(this->fd, (data_ptr + static_cast<int64_t>(sent)), (::tpy::sub_check<uint64_t>(total, sent)), 0);
-        // if chunk < int64(0):
         if ((chunk < 0)) {
-            // self._raise_io()
             this->_raise_io();
         }
-        // if chunk == int64(0):
         if ((chunk == 0)) {
-            // # A zero-byte send means the peer went away; CPython's next
-            // # send() would fail with EPIPE, so surface the same class.
-            // raise BrokenPipeError(_EPIPE, _strerror(_EPIPE))
             throw ::tpy::BrokenPipeError(::tpy_const_epipe, _strerror(::tpy_const_epipe));
         }
-        // sent = sent + uint64(chunk)
         sent = (::tpy::add_check<uint64_t>(sent, ::tpy::int_cast_check<uint64_t>(chunk)));
     }
 }
 
 // def recv(self, bufsize: int32) -> bytes:
+//     """Receive up to `bufsize` bytes. Empty bytes means peer closed."""
+//     if bufsize < int32(0):
+//         # Matches CPython's sock.recv(n): negative size is an error, not
+//         # a zero-length read. The asyncio sock_recv path relies on this.
+//         raise ValueError("negative buffersize in recv")
+//     if bufsize == int32(0):
+//         return bytes()
+//     buf = UninitHeapStorage[uint8](uint32.trunc(bufsize))
+//     n = posix_socket.recv(self.fd, buf.ptr(), uint64(bufsize), int32(0))
+//     if n < int64(0):
+//         self._raise_io()
+//     return unsafe_bytes_from_buf(buf.ptr(), uint64(n))
 ::tpy::Bytes socket::recv(int32_t bufsize) const {
-    // if bufsize < int32(0):
     if ((bufsize < 0)) {
-        // # Matches CPython's sock.recv(n): negative size is an error, not
-        // # a zero-length read. The asyncio sock_recv path relies on this.
-        // raise ValueError("negative buffersize in recv")
         throw ::tpy::ValueError("negative buffersize in recv");
     }
-    // if bufsize == int32(0):
     if ((bufsize == 0)) {
-        // return bytes()
         return ::tpy::Bytes();
     }
-    // buf = UninitHeapStorage[uint8](uint32.trunc(bufsize))
     ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(bufsize));
-    // n = posix_socket.recv(self.fd, buf.ptr(), uint64(bufsize), int32(0))
     int64_t n = ::recv(this->fd, buf.ptr(), ::tpy::int_cast_check<uint64_t>(bufsize), 0);
-    // if n < int64(0):
     if ((n < 0)) {
-        // self._raise_io()
         this->_raise_io();
     }
-    // return unsafe_bytes_from_buf(buf.ptr(), uint64(n))
     return ::tpy::bytes_from_buf(buf.ptr(), ::tpy::int_cast_check<uint64_t>(n));
 }
+// # tpy: cpp_namespace("tpystd::socket")
+// """POSIX-sockets module, CPython-compatible surface.
+//
+// Backed by `_bindings.posix_socket` (raw @native bindings) + three out-of-line
+// helpers in runtime/cpp/src/stdlib/socket_impl.cpp for DNS resolution and
+// errno access. All Python semantics (error wrapping, address-tuple packing,
+// RAII of fd lifetimes) live in this file, not in C++.
+//
+// Phase 1 scope:
+//   * IPv4 TCP client/server (blocking I/O, single connection at a time).
+//   * Hostname resolution via getaddrinfo (behind tpy_resolve_ipv4).
+//   * with-statement support (context manager).
+//   * Errors surface as SocketError (wraps errno + strerror).
+//
+// TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
+//
+//   * **IPv6.** AF_INET6 = 10 is declared below but there's no SockaddrIn6
+//     binding yet. Needs a second @native(binding="C") struct mirroring
+//     sockaddr_in6 (28 bytes, POSIX-stable).
+//
+//   * **getaddrinfo with multiple results.** tpy_resolve_ipv4 returns only
+//     the first A record; real DNS often returns several, and Happy-
+//     Eyeballs-style connect wants to try each. Needs a helper variant
+//     that returns a list of addresses + types. Also want getnameinfo for
+//     reverse lookup.
+//
+//   * **Windows (Winsock2).** `SOCKET` is unsigned with `INVALID_SOCKET`
+//     sentinel (not -1), `closesocket` instead of `close`, errors via
+//     `WSAGetLastError` not errno, WSAStartup/WSACleanup init required,
+//     links `-lws2_32`. All goes in socket_impl.cpp behind `#ifdef _WIN32`;
+//     TPy-side API stays the same. Blocker: no Windows CI yet.
+//
+//   * **macOS portability.** The divergent wire constants (SOL_SOCKET,
+//     SO_*, AF_INET6) and errno values (EAGAIN, EINPROGRESS) are read from
+//     the system headers via `native_global` bindings to the `tpy_const_*`
+//     globals in socket_impl.cpp, so they are platform-correct. Remaining
+//     macOS gaps are the same feature follow-ups as on Linux (IPv6
+//     sockaddr binding, struct-valued setsockopt, etc.), not portability.
+//
+//   * **Non-blocking I/O.** `setblocking(False)` is done (toggles O_NONBLOCK
+//     via fcntl); the EAGAIN/EWOULDBLOCK + selector handling lives in the
+//     asyncio epoll reactor (`get_running_loop().sock_recv`/`sock_sendall`).
+//     `settimeout(sec)` is also done: recv/send use SO_RCVTIMEO/SO_SNDTIMEO
+//     (the timeval is built in tpy_set_timeout, not a @native struct), and
+//     connect() uses a poll-based wait (tpy_connect_timeout). A timed-out op
+//     raises TimeoutError ("timed out"), matching CPython's socket.timeout.
+//     Not reproduced: the process-wide `setdefaulttimeout()` /
+//     `_GLOBAL_DEFAULT_TIMEOUT` sentinel (default is plain blocking), and
+//     accept() under a timeout (server-side, not needed for the client).
+//
+//   * **setsockopt with struct values.** SO_RCVTIMEO / SO_SNDTIMEO are handled
+//     via the dedicated tpy_set_timeout helper (timeval built C-side). SO_LINGER
+//     (struct linger) is still int-only -- add an @native(binding="C") struct +
+//     another setsockopt overload when needed.
+//
+//   * **sendto / recvfrom / recv_into.** Phase 1 supports `send` / `recv`
+//     on an already-connected socket only. Datagram-style sendto/recvfrom
+//     needs an out-addr sockaddr_in parameter; recv_into needs a mutable
+//     buffer parameter (writing into a caller-provided bytearray rather
+//     than allocating a new bytes).
+//
+//   * **SOCK_DGRAM.** Declared but effectively untested -- without
+//     sendto/recvfrom the only usable pattern is `connect` + `send`/`recv`
+//     on a datagram socket, rare in practice. Land with sendto/recvfrom.
+//
+//   * **AF_UNIX (Unix-domain sockets).** A third @native(binding="C")
+//     struct (sockaddr_un, 110-byte path field). Useful for IPC.
+//
+//   * **TLS / ssl module.** Phase 3 work, needs a TLS library (mbedTLS
+//     vendored is the current lean -- see the project roadmap).
+//
+//   * **SocketError vs OSError hierarchy.** SocketError subclasses OSError,
+//     so `except OSError` catches socket failures (CPython-faithful).
+//     `_raise_errno`/`_raise_io` raise `BlockingIOError` on
+//     EAGAIN/EWOULDBLOCK/EINPROGRESS (the asyncio reactor parks on it) and the
+//     PEP 3151 `ConnectionError` subclasses on the connection errno
+//     (EPIPE -> BrokenPipeError, ECONNRESET -> ConnectionResetError,
+//     ECONNREFUSED -> ConnectionRefusedError, ECONNABORTED ->
+//     ConnectionAbortedError); every other errno falls through to SocketError.
+//     All carry the structured `.errno` / `.strerror` OSError attributes
+//     (compare `.errno` against the `errno` module's constants) with the
+//     CPython-exact "[Errno N] strerror" message, and name-resolution
+//     failures raise a distinct `gaierror` whose `.errno` is the EAI_* code.
+//
+//   * **gethostbyname_ex, gethostbyaddr, getservbyname.** CPython legacy
+//     DNS APIs; low priority.
+//
+//   * **Typed address record.** A typed record (`InetAddress(host: str,
+//     port: int32)`) would read better than a bare tuple. Tabled until we
+//     decide on the module's record shapes overall.
+//
+//   * **struct hostent / addrinfo accessors.** We only expose the flat
+//     tpy_resolve_ipv4 helper today. A proper getaddrinfo wrapper that
+//     surfaces the full result set wants typed TPy records; blocked on
+//     the same portability concern that drove the helper approach.
+// """
+//
+// from tpy.extern import native_global
+// from tpy.mem import UninitArrayStorage, UninitHeapStorage
+// from tpy.unsafe import (
+//     unsafe_cast, unsafe_ptr, unsafe_ptr_add, unsafe_load,
+//     unsafe_str_from_cstr, unsafe_bytes_from_buf,
+// )
+//
+// from _bindings import posix_socket
+// from _bindings.posix_socket import SockaddrIn
+//
+// import os
+// from io import FileIO, BufferedReader, DEFAULT_BUFFER_SIZE
+//
+// AF_INET:     Final[int32] = 2
+// AF_UNIX:     Final[int32] = 1    # Not yet usable (no sockaddr_un binding).
+// # Linux 10, macOS/BSD 30. Not yet usable (no sockaddr_in6 binding).
+// AF_INET6:    Final[int32] = native_global("tpy_const_af_inet6", binding="C")
+//
+// SOCK_STREAM: Final[int32] = 1
+// SOCK_DGRAM:  Final[int32] = 2
+//
+// # Linux 1, BSD/macOS 0xffff.
+// SOL_SOCKET:   Final[int32] = native_global("tpy_const_sol_socket", binding="C")
+// SO_REUSEADDR: Final[int32] = native_global("tpy_const_so_reuseaddr", binding="C")
+// SO_KEEPALIVE: Final[int32] = native_global("tpy_const_so_keepalive", binding="C")
+// SO_ERROR:     Final[int32] = native_global("tpy_const_so_error", binding="C")
+//
+// IPPROTO_TCP: Final[int32] = 6
+// IPPROTO_UDP: Final[int32] = 17
+//
+// TCP_NODELAY: Final[int32] = 1
+//
+// SHUT_RD:   Final[int32] = 0
+// SHUT_WR:   Final[int32] = 1
+// SHUT_RDWR: Final[int32] = 2
+//
+// # errno values diverge across platforms (Linux EAGAIN 11 / EINPROGRESS 115;
+// # macOS 35 / 36), so source them from <errno.h> via native globals. EAGAIN ==
+// # EWOULDBLOCK on both Linux and macOS; EINPROGRESS is a non-blocking connect's
+// # "in progress" result.
+// _EAGAIN: Final[int32] = native_global("tpy_const_eagain", binding="C")
+// _EINPROGRESS: Final[int32] = native_global("tpy_const_einprogress", binding="C")
+// # Connection-error errno values, also platform-divergent (see socket_impl.cpp).
+// _EPIPE: Final[int32] = native_global("tpy_const_epipe", binding="C")
+// _ECONNRESET: Final[int32] = native_global("tpy_const_econnreset", binding="C")
+// _ECONNREFUSED: Final[int32] = native_global("tpy_const_econnrefused", binding="C")
+// _ECONNABORTED: Final[int32] = native_global("tpy_const_econnaborted", binding="C")
+//
+// _SOCKADDR_IN_LEN: Final[uint32] = 16
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: cpp_namespace("tpystd::socket")
-    // from tpy.extern import native_global
-    // from tpy.mem import UninitArrayStorage, UninitHeapStorage
-    // from tpy.unsafe import (
-    // unsafe_cast, unsafe_ptr, unsafe_ptr_add, unsafe_load,
-    // unsafe_str_from_cstr, unsafe_bytes_from_buf,
-    // )
-    // from _bindings import posix_socket
-    // from _bindings.posix_socket import SockaddrIn
-    // import os
     ::tpystd::os::__tpy_init();
-    // from io import FileIO, BufferedReader, DEFAULT_BUFFER_SIZE
     ::tpystd::io::__tpy_init();
-    // # ---------- Wire constants ----------
-    // # Values identical across Linux and macOS/BSD are literals; the ones that
-    // # diverge (SOL_SOCKET, SO_*, AF_INET6) are sourced from the system headers
-    // # via posix_socket.tpy_const_* getters so the same source builds correctly on
-    // # either platform. Sourced from `<sys/socket.h>`, `<netinet/in.h>`,
-    // # `<netinet/tcp.h>`.
-    // # Linux 10, macOS/BSD 30. Not yet usable (no sockaddr_in6 binding).
-    // # Linux 1, BSD/macOS 0xffff.
-    // # errno values diverge across platforms (Linux EAGAIN 11 / EINPROGRESS 115;
-    // # macOS 35 / 36), so source them from <errno.h> via native globals. EAGAIN ==
-    // # EWOULDBLOCK on both Linux and macOS; EINPROGRESS is a non-blocking connect's
-    // # "in progress" result.
-    // # Connection-error errno values, also platform-divergent (see socket_impl.cpp).
-    // # ---------- socket class ----------
-    // # Class name is lowercase `socket` to match CPython's `socket.socket`
-    // # exactly, so user code (and the asyncio reactor's sock_* helpers) ports to
-    // # CPython unchanged and the test cpy phase can run on CPython's real socket.
 }
 
 } // namespace tpystd::socket

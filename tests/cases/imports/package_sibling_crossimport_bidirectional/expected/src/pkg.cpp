@@ -4,17 +4,17 @@
 namespace tpyapp::pkg {
 
 
+// # Both siblings re-exported from a package whose submodules
+// # bidirectionally cross-import. Exercises the descendant-submodule
+// # suppression on every re-export kind under cycle-peer conditions.
+// from pkg.a import A, with_b
+// from pkg.b import B
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Both siblings re-exported from a package whose submodules
-    // # bidirectionally cross-import. Exercises the descendant-submodule
-    // # suppression on every re-export kind under cycle-peer conditions.
-    // from pkg.a import A, with_b
     ::tpyapp::pkg::a::__tpy_init();
-    // from pkg.b import B
     ::tpyapp::pkg::b::__tpy_init();
 }
 

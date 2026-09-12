@@ -11,7 +11,9 @@ struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def total(t: "Tree") -> int32:
 int32_t total(const Tree& t);
+// def main() -> None:
 void main();
 
 // class Tree:
@@ -36,6 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tree& obj) {
 
 
 // def __init__(self, value: int32, parent_value: Optional["int32"]) -> None:
+//     self.value = value
+//     self.parent_value = parent_value
+//     self.children = []
 inline Tree::Tree(int32_t value, std::optional<int32_t> parent_value) : value(value), parent_value(parent_value), children(std::vector<Tree>{}) {}
 void __tpy_init();
 } // namespace tpyapp::main

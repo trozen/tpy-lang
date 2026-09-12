@@ -5,18 +5,23 @@ namespace tpyapp::main {
 
 
 // async def w() -> None:
+//     nums = [1, 2, 3]
+//     d = {1: 10, 2: 20}
+//     s = {7, 8}
+//     empty: list[int32] = []
+//     await asyncio.sleep(0)
+//     for n in nums:
+//         print(n)
+//     print(len(d))
+//     print(len(s))
+//     print(len(empty))
 ::tpystd::tpy::Poll<::std::monostate> __coro_w::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // nums = [1, 2, 3]
         nums.emplace(std::array<int32_t, 3>{1, 2, 3});
-        // d = {1: 10, 2: 20}
         d.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}}));
-        // s = {7, 8}
         s.emplace(::tpy::ordered_set<int32_t>({7, 8}));
-        // empty: list[int32] = []
         empty.emplace(std::vector<int32_t>{});
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -26,20 +31,15 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // for n in nums:
         auto& __obj_0 = (*nums);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t n = *__beg_0;
-            // print(n)
             std::cout << n << "\n";
         }
-        // print(len(d))
         std::cout << ::tpy::__len__((*d)) << "\n";
-        // print(len(s))
         std::cout << ::tpy::__len__((*s)) << "\n";
-        // print(len(empty))
         std::cout << ::tpy::__len__((*empty)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -56,23 +56,24 @@ __coro_w w() {
 }
 
 // def main() -> None:
+//     asyncio.run(w())
 void main() {
-    // asyncio.run(w())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(w()));
 }
 
+// # Collection literals assigned to locals inside a coroutine body are hoisted
+// # into the resumable frame. Their deferred element-type inference (Pending*
+// # types) must be resolved before the frame-field type is rendered -- list,
+// # dict, set, and an annotated empty list, each used across an await.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Collection literals assigned to locals inside a coroutine body are hoisted
-    // # into the resumable frame. Their deferred element-type inference (Pending*
-    // # types) must be resolved before the frame-field type is rendered -- list,
-    // # dict, set, and an annotated empty list, each used across an await.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

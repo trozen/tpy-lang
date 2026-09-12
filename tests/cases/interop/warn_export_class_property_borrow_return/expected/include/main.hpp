@@ -81,78 +81,82 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
+//     self.x = 0
 inline Inner::Inner() : x(0) {}
 
 // def __init__(self) -> None:
+//     self._items = [1, 2]
+//     self._inner = Inner()
+//     self._alt = Inner()
 inline Box::Box() : _items(std::vector<int64_t>{1, 2}), _inner(Inner()), _alt(Inner()) {}
 
 // def rebind_alt(self) -> None:
+//     self._alt = Inner()
 inline void Box::rebind_alt() {
-    // self._alt = Inner()
     this->_alt = Inner();
 }
 
 // @property
 // def items(self) -> list[int64]:
+//     return self._items  # tpyc: warning(/property 'items': returns a list by reference.*copied across the CPython boundary.*return Own/)
 inline std::vector<int64_t>& Box::items() {
-    // return self._items  # tpyc: warning(/property 'items': returns a list by reference.*copied across the CPython boundary.*return Own/)
     return this->_items;
 }
 
 // @property
 // def items(self) -> list[int64]:
+//     return self._items  # tpyc: warning(/property 'items': returns a list by reference.*copied across the CPython boundary.*return Own/)
 inline const std::vector<int64_t>& Box::items() const {
-    // return self._items  # tpyc: warning(/property 'items': returns a list by reference.*copied across the CPython boundary.*return Own/)
     return this->_items;
 }
 
 // @property
 // def inner(self) -> Inner:
+//     # `_inner` is never reassigned outside __init__: crosses as an
+//     # aliasing borrow view, so nothing copies and nothing warns.
+//     return self._inner  # tpyc: ok
 inline Inner& Box::inner() {
-    // # `_inner` is never reassigned outside __init__: crosses as an
-    // # aliasing borrow view, so nothing copies and nothing warns.
-    // return self._inner  # tpyc: ok
     return this->_inner;
 }
 
 // @property
 // def inner(self) -> Inner:
+//     # `_inner` is never reassigned outside __init__: crosses as an
+//     # aliasing borrow view, so nothing copies and nothing warns.
+//     return self._inner  # tpyc: ok
 inline const Inner& Box::inner() const {
-    // # `_inner` is never reassigned outside __init__: crosses as an
-    // # aliasing borrow view, so nothing copies and nothing warns.
-    // return self._inner  # tpyc: ok
     return this->_inner;
 }
 
 // @property
 // def alt(self) -> Inner:
+//     return self._alt  # tpyc: warning(/property 'alt': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
 inline Inner& Box::alt() {
-    // return self._alt  # tpyc: warning(/property 'alt': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
     return this->_alt;
 }
 
 // @property
 // def alt(self) -> Inner:
+//     return self._alt  # tpyc: warning(/property 'alt': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
 inline const Inner& Box::alt() const {
-    // return self._alt  # tpyc: warning(/property 'alt': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
     return this->_alt;
 }
 
 // @property
 // def snapshot(self) -> Own[list[int64]]:  # tpyc: ok
+//     out: list[int64] = []
+//     for x in self._items:
+//         out.append(x)
+//     return out
 inline std::vector<int64_t> Box::snapshot() const {
-    // out: list[int64] = []
     std::vector<int64_t> out = std::vector<int64_t>{};
-    // for x in self._items:
     auto& __obj_0 = this->_items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int64_t x = *__beg_0;
-        // out.append(x)
         out.push_back(x);
     }
-    // return out
     return out;
 }
 void __tpy_init();

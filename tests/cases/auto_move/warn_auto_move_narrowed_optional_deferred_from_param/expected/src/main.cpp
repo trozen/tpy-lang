@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def consume(p: Own[Point]) -> int32:
+//     return p.x
 int32_t consume(Point&& p) {
-    // return p.x
     return p.x;
 }
 
 // def test(a: Point | None) -> int32:
+//     q: Point | None
+//     q = a
+//     assert q is not None
+//     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
 int32_t test(Point* a) {
-    // q: Point | None
     Point* q = nullptr;
-    // q = a
     q = a;
-    // assert q is not None
     if (!((q != nullptr))) ::tpy::raise_assertion_error();
-    // return consume(q)  # tpyc: warning(/copies.*into owned storage/)
     Point __tmp_1 = (*q);
     return consume(std::move(__tmp_1));
 }

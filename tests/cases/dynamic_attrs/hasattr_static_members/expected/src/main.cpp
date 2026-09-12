@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(5)
+//     print(hasattr(b, "width"))    # declared field -> compile-time True
+//     print(hasattr(b, "doubled"))  # property -> compile-time True
+//     print(hasattr(b, "label"))    # method -> compile-time True
+//     print(hasattr(b, "KIND"))     # class constant -> compile-time True
+//     print(hasattr(b, "zzz"))      # not declared, dunder raises -> False at runtime
 void main() {
-    // b = Box(5)
     Box b = Box(::tpy::BigInt(5));
-    // print(hasattr(b, "width"))    # declared field -> compile-time True
     std::cout << ::tpy::print_bool(true) << "\n";
-    // print(hasattr(b, "doubled"))  # property -> compile-time True
     std::cout << ::tpy::print_bool(true) << "\n";
-    // print(hasattr(b, "label"))    # method -> compile-time True
     std::cout << ::tpy::print_bool(true) << "\n";
-    // print(hasattr(b, "KIND"))     # class constant -> compile-time True
     std::cout << ::tpy::print_bool(true) << "\n";
-    // print(hasattr(b, "zzz"))      # not declared, dunder raises -> False at runtime
     std::cout << ::tpy::print_bool(({ bool __ok = true; try { (void)(b.__getattr__("zzz")); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; })) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

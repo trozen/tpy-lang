@@ -6,36 +6,36 @@ namespace tpyapp::main {
 
 // @readonly
 // def pick(a: Box, b: Box, flag: bool) -> int32:
+//     x = a
+//     if flag:
+//         x = b
+//     return x.get_value()
 int32_t pick(const Box& a, const Box& b, bool flag) {
-    // x = a
     const Box* x = &(a);
-    // if flag:
     if (flag) {
-        // x = b
         x = &(b);
     }
-    // return x.get_value()
     return x->get_value();
 }
 
 // def main() -> None:
+//     a = Box(int32(10))
+//     b = Box(int32(20))
+//     print(pick(a, b, True))
+//     print(pick(a, b, False))
 void main() {
-    // a = Box(int32(10))
     Box a = Box(10);
-    // b = Box(int32(20))
     Box b = Box(20);
-    // print(pick(a, b, True))
     std::cout << pick(a, b, true) << "\n";
-    // print(pick(a, b, False))
     std::cout << pick(a, b, false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

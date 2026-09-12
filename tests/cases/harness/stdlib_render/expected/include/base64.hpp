@@ -26,31 +26,57 @@ extern int32_t _NEWLINE;
 extern int32_t _MIME_LINE;
 inline constexpr std::string_view __name__ = "base64";
 
+// def _b64_encode(data: bytes, alphabet: bytes) -> bytes:
 ::tpy::Bytes _b64_encode(::tpy::BytesView data, ::tpy::BytesView alphabet);
+// def _b64_char_to_value(c: int32, c62: int32, c63: int32) -> int32:
 int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63);
+// def _b64_decode(data: bytes, c62: int32, c63: int32) -> bytes:
 ::tpy::Bytes _b64_decode(::tpy::BytesView data, int32_t c62, int32_t c63);
+// def _build_altchars_alphabet(altchars: bytes) -> bytes:
 ::tpy::Bytes _build_altchars_alphabet(::tpy::BytesView altchars);
+// def _filter_b64_input(data: bytes, c62: int32, c63: int32) -> bytes:
 ::tpy::Bytes _filter_b64_input(::tpy::BytesView data, int32_t c62, int32_t c63);
+// def b64encode(data: bytes, altchars: bytes | None = None) -> bytes:
 ::tpy::Bytes b64encode(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars = std::nullopt);
+// def b64decode(data: bytes, altchars: bytes | None = None, validate: bool = False) -> bytes:
 ::tpy::Bytes b64decode(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars = std::nullopt, bool validate = false);
+// def b64decode(data: str, altchars: bytes | None = None, validate: bool = False) -> bytes:
 ::tpy::Bytes b64decode(std::string_view data, std::optional<::tpy::BytesView> altchars = std::nullopt, bool validate = false);
+// def standard_b64encode(data: bytes) -> bytes:
 ::tpy::Bytes standard_b64encode(::tpy::BytesView data);
+// def standard_b64decode(data: bytes) -> bytes:
 ::tpy::Bytes standard_b64decode(::tpy::BytesView data);
+// def standard_b64decode(data: str) -> bytes:
 ::tpy::Bytes standard_b64decode(std::string_view data);
+// def urlsafe_b64encode(data: bytes) -> bytes:
 ::tpy::Bytes urlsafe_b64encode(::tpy::BytesView data);
+// def urlsafe_b64decode(data: bytes) -> bytes:
 ::tpy::Bytes urlsafe_b64decode(::tpy::BytesView data);
+// def urlsafe_b64decode(data: str) -> bytes:
 ::tpy::Bytes urlsafe_b64decode(std::string_view data);
+// def b16encode(data: bytes) -> bytes:
 ::tpy::Bytes b16encode(::tpy::BytesView data);
+// def _b16_char_to_value(c: int32, casefold: bool) -> int32:
 int32_t _b16_char_to_value(int32_t c, bool casefold);
+// def b16decode(data: bytes, casefold: bool = False) -> bytes:
 ::tpy::Bytes b16decode(::tpy::BytesView data, bool casefold = false);
+// def b16decode(data: str, casefold: bool = False) -> bytes:
 ::tpy::Bytes b16decode(std::string_view data, bool casefold = false);
+// def b32encode(data: bytes) -> bytes:
 ::tpy::Bytes b32encode(::tpy::BytesView data);
+// def _b32_char_to_value(c: int32) -> int32:
 int32_t _b32_char_to_value(int32_t c);
+// def _b32_preprocess(data: bytes, casefold: bool, map01: bytes | None) -> bytes:
 ::tpy::Bytes _b32_preprocess(::tpy::BytesView data, bool casefold, std::optional<::tpy::BytesView> map01);
+// def b32decode(data: bytes, casefold: bool = False, map01: bytes | None = None) -> bytes:
 ::tpy::Bytes b32decode(::tpy::BytesView data, bool casefold = false, std::optional<::tpy::BytesView> map01 = std::nullopt);
+// def b32decode(data: str, casefold: bool = False, map01: bytes | None = None) -> bytes:
 ::tpy::Bytes b32decode(std::string_view data, bool casefold = false, std::optional<::tpy::BytesView> map01 = std::nullopt);
+// def _b32decode_impl(data: bytes) -> bytes:
 ::tpy::Bytes _b32decode_impl(::tpy::BytesView data);
+// def encodebytes(data: bytes) -> bytes:
 ::tpy::Bytes encodebytes(::tpy::BytesView data);
+// def decodebytes(data: bytes) -> bytes:
 ::tpy::Bytes decodebytes(::tpy::BytesView data);
 
 void __tpy_init();

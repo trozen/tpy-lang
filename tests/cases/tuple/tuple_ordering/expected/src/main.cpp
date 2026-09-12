@@ -5,69 +5,73 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = (1, 2, 3)
+//     b = (1, 2, 4)
+//     c = (1, 2, 3)
+//
+//     print(a < b)
+//     print(a > b)
+//     print(a <= c)
+//     print(a >= c)
+//     print(b > a)
+//     print(b <= a)
+//
+//     # String tuples
+//     x = ("apple", "banana")
+//     y = ("apple", "cherry")
+//     print(x < y)
+//     print(x >= y)
+//
+//     # Mixed comparison in conditional
+//     if (1, 0) < (1, 1):
+//         print("less")
+//
+//     # @nocopy element -- ordering must not copy
+//     test_nocopy_ordering()
 void main() {
-    // a = (1, 2, 3)
     std::tuple<int32_t, int32_t, int32_t> a = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
-    // b = (1, 2, 4)
     std::tuple<int32_t, int32_t, int32_t> b = std::tuple<int32_t, int32_t, int32_t>{1, 2, 4};
-    // c = (1, 2, 3)
     std::tuple<int32_t, int32_t, int32_t> c = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
-    // print(a < b)
     std::cout << ::tpy::print_bool((a < b)) << "\n";
-    // print(a > b)
     std::cout << ::tpy::print_bool((a > b)) << "\n";
-    // print(a <= c)
     std::cout << ::tpy::print_bool((a <= c)) << "\n";
-    // print(a >= c)
     std::cout << ::tpy::print_bool((a >= c)) << "\n";
-    // print(b > a)
     std::cout << ::tpy::print_bool((b > a)) << "\n";
-    // print(b <= a)
     std::cout << ::tpy::print_bool((b <= a)) << "\n";
-    // # String tuples
-    // x = ("apple", "banana")
     std::tuple<std::string, std::string> x = std::tuple<std::string, std::string>{"apple", "banana"};
-    // y = ("apple", "cherry")
     std::tuple<std::string, std::string> y = std::tuple<std::string, std::string>{"apple", "cherry"};
-    // print(x < y)
     std::cout << ::tpy::print_bool((x < y)) << "\n";
-    // print(x >= y)
     std::cout << ::tpy::print_bool((x >= y)) << "\n";
-    // # Mixed comparison in conditional
-    // if (1, 0) < (1, 1):
     if ((std::tuple<int32_t, int32_t>{1, 0} < std::tuple<int32_t, int32_t>{1, 1})) {
-        // print("less")
         std::cout << "less" << "\n";
     }
-    // # @nocopy element -- ordering must not copy
-    // test_nocopy_ordering()
     test_nocopy_ordering();
 }
 
 // def test_nocopy_ordering() -> None:
+//     r1 = Rank(1)
+//     r2 = Rank(2)
+//     r3 = Rank(3)
+//     print((r1, r2) < (r1, r3))
+//     print((r1, r2) >= (r1, r3))
+//     print((r1, r2, r3) >= (r1, r2, r3))
+//     print((r1, r2, r3) == (r1, r2, r3))
 void test_nocopy_ordering() {
-    // r1 = Rank(1)
     Rank r1 = Rank(1);
-    // r2 = Rank(2)
     Rank r2 = Rank(2);
-    // r3 = Rank(3)
     Rank r3 = Rank(3);
-    // print((r1, r2) < (r1, r3))
     std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<Rank*, Rank*>{&(r1), &(r2)}, std::tuple<Rank*, Rank*>{&(r1), &(r3)})) << "\n";
-    // print((r1, r2) >= (r1, r3))
     std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<Rank*, Rank*>{&(r1), &(r2)}, std::tuple<Rank*, Rank*>{&(r1), &(r3)}))) << "\n";
-    // print((r1, r2, r3) >= (r1, r2, r3))
     std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}, std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}))) << "\n";
-    // print((r1, r2, r3) == (r1, r2, r3))
     std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}, std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

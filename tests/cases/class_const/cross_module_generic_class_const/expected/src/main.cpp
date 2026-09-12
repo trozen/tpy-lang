@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box[int32]()
+//     print(b.CAPACITY)
+//     c = Box[float]()
+//     print(c.CAPACITY)
 void main() {
-    // b = Box[int32]()
     ::tpyapp::box::Box<int32_t> b = ::tpyapp::box::Box<int32_t>();
-    // print(b.CAPACITY)
     std::cout << ::tpyapp::box::Box<int32_t>::CAPACITY << "\n";
-    // c = Box[float]()
     ::tpyapp::box::Box<double> c = ::tpyapp::box::Box<double>();
-    // print(c.CAPACITY)
     std::cout << ::tpyapp::box::Box<double>::CAPACITY << "\n";
 }
 
+// # Cross-module: generic class with class constant in `box.py`, accessed via
+// # instance from `main.py`. Codegen must qualify both the namespace
+// # (`tpyapp::box`) and the type-args (`<int32_t>`) at the access site.
+// from box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module: generic class with class constant in `box.py`, accessed via
-    // # instance from `main.py`. Codegen must qualify both the namespace
-    // # (`tpyapp::box`) and the type-args (`<int32_t>`) at the access site.
-    // from box import Box
     ::tpyapp::box::__tpy_init();
-    // main()
     main();
 }
 

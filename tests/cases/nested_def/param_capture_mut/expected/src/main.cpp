@@ -5,34 +5,35 @@ namespace tpyapp::main {
 
 
 // def fill(xs: list[int32], v: int32) -> None:
+//     def add() -> None:
+//         xs.append(v)
+//
+//     add()
+//     add()
 void fill(std::vector<int32_t>& xs, int32_t v) {
-    // def add() -> None:
     auto add = [&v, &xs]() {
-        // xs.append(v)
         xs.push_back(v);
     };
-    // add()
     add();
-    // add()
     add();
 }
 
 // def main() -> None:
+//     xs: list[int32] = []
+//     fill(xs, 7)
+//     print(xs)
 void main() {
-    // xs: list[int32] = []
     std::vector<int32_t> xs = std::vector<int32_t>{};
-    // fill(xs, 7)
     fill(xs, 7);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

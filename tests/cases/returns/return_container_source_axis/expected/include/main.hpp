@@ -13,10 +13,15 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fresh_array() -> Own[Array[int32, 3]]:
 std::array<int32_t, 3> fresh_array();
+// def grow_bytes(n: int32) -> Own[bytearray]:
 ::tpy::ByteArray grow_bytes(int32_t n);
+// def grow_list(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> grow_list(int32_t n);
+// def grow_boxes(n: int32) -> Own[list[Box[int32]]]:
 std::vector<::tpystd::tplib::box::Box<int32_t>> grow_boxes(int32_t n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

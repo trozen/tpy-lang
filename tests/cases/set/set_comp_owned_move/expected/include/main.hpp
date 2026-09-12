@@ -13,7 +13,9 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def is_small(b: Box[int32]) -> bool:
 bool is_small(const ::tpystd::tplib::box::Box<int32_t>& b);
+// def main(n: int32) -> None:
 void main(int32_t n);
 
 void __tpy_init();

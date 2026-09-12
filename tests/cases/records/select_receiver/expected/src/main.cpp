@@ -5,67 +5,67 @@ namespace tpyapp::main {
 
 
 // def ternary_record(c: bool) -> None:
+//     a = Counter(1)
+//     b = Counter(10)
+//     print((a if c else b).bump())  # the chosen operand is mutated in place
+//     print(a.n, b.n)
 void ternary_record(bool c) {
-    // a = Counter(1)
     Counter a = Counter(1);
-    // b = Counter(10)
     Counter b = Counter(10);
-    // print((a if c else b).bump())  # the chosen operand is mutated in place
     std::cout << ((c) ? (a) : (b)).bump() << "\n";
-    // print(a.n, b.n)
     std::cout << a.n << " " << b.n << "\n";
 }
 
 // def walrus_record() -> None:
+//     a = Counter(5)
+//     print((q := a).bump())  # the walrus binds an alias, not a copy
+//     print(q.bump(), a.n)
 void walrus_record() {
-    // a = Counter(5)
     Counter a = Counter(5);
-    // print((q := a).bump())  # the walrus binds an alias, not a copy
     Counter* q = nullptr;
     std::cout << (q = &(a), *q).bump() << "\n";
-    // print(q.bump(), a.n)
     std::cout << q->bump() << " " << a.n << "\n";
 }
 
 // def ternary_str(c: bool) -> None:
+//     s = "ab"
+//     t = "cd"
+//     print((s if c else t).upper())
 void ternary_str(bool c) {
-    // s = "ab"
     std::string_view s = "ab";
-    // t = "cd"
     std::string_view t = "cd";
-    // print((s if c else t).upper())
     std::cout << ::tpy::str_upper(((c) ? (s) : (t))) << "\n";
 }
 
 // def walrus_str() -> None:
+//     print((w := "xy").upper(), w)
 void walrus_str() {
-    // print((w := "xy").upper(), w)
     std::string w;
     std::cout << ::tpy::str_upper((w = "xy")) << " " << w << "\n";
 }
 
 // def main() -> None:
+//     ternary_record(True)
+//     ternary_record(False)
+//     walrus_record()
+//     ternary_str(True)
+//     ternary_str(False)
+//     walrus_str()
 void main() {
-    // ternary_record(True)
     ternary_record(true);
-    // ternary_record(False)
     ternary_record(false);
-    // walrus_record()
     walrus_record();
-    // ternary_str(True)
     ternary_str(true);
-    // ternary_str(False)
     ternary_str(false);
-    // walrus_str()
     walrus_str();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

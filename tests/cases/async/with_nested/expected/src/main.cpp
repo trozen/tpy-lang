@@ -5,11 +5,12 @@ namespace tpyapp::main {
 
 
 // async def inner() -> None:
+//     async with CM("inner") as b:
+//         print(f"inner body {b}")
 ::tpystd::tpy::Poll<::std::monostate> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(CM("inner"));
-        // async with CM("inner") as b:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -36,7 +37,6 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_0: {
-        // async with CM("inner") as b:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
@@ -47,7 +47,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            // print(f"inner body {b}")
             std::cout << std::format("inner body {}", b) << "\n";
             __state = S_JOIN_0;
             continue;
@@ -69,11 +68,13 @@ __coro_inner inner() {
 }
 
 // async def main_coro() -> None:
+//     async with CM("outer") as a:
+//         print(f"outer body {a}")
+//         await inner()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(CM("outer"));
-        // async with CM("outer") as a:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -115,7 +116,6 @@ __coro_inner inner() {
         continue;
     }
     case S_JOIN_0: {
-        // async with CM("outer") as a:
         __sub_2.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_2;
         continue;
@@ -126,9 +126,7 @@ __coro_inner inner() {
     }
     case S_JOIN_2: {
         try {
-            // print(f"outer body {a}")
             std::cout << std::format("outer body {}", a) << "\n";
-            // await inner()
             __sub_1.emplace();
             __state = S_RESUME_1;
             continue;
@@ -150,13 +148,13 @@ __coro_main_coro main_coro() {
 }
 
 // async def __aenter__(self) -> str:
+//     print(f"aenter {self.name}")
+//     return self.name
 ::tpystd::tpy::Poll<std::string> __coro_CM___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print(f"aenter {self.name}")
         std::cout << std::format("aenter {}", __self.name) << "\n";
-        // return self.name
         __state = S_DONE;
         std::string __tpy_async_ret = __self.name;
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -168,11 +166,11 @@ __coro_main_coro main_coro() {
 
 
 // async def __aexit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
+//     print(f"aexit {self.name}")
 ::tpystd::tpy::Poll<::std::monostate> __coro_CM___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print(f"aexit {self.name}")
         std::cout << std::format("aexit {}", __self.name) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -183,19 +181,20 @@ __coro_main_coro main_coro() {
 }
 
 
+// # Nested async-with via a helper async def: each `async with` lives in
+// # its own CFG, so the inner's TryRegion doesn't collide with the
+// # outer's. (Direct nesting `async with X: async with Y:` in the same
+// # function is still rejected by the `_build_async_with` guard --
+// # tracked separately.)
+// import asyncio
+//
+// asyncio.run(main_coro())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Nested async-with via a helper async def: each `async with` lives in
-    // # its own CFG, so the inner's TryRegion doesn't collide with the
-    // # outer's. (Direct nesting `async with X: async with Y:` in the same
-    // # function is still rejected by the `_build_async_with` guard --
-    // # tracked separately.)
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 

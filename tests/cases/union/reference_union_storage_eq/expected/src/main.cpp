@@ -3,36 +3,33 @@
 
 namespace tpyapp::main {
 
-// MOD_A: list[Mixed] = [1]
 std::vector<Mixed>* MOD_A{};
-// MOD_B: list[Mixed] = [1.0]
 std::vector<Mixed>* MOD_B{};
-// module_eq = MOD_A == MOD_B  # module-level statement  # tpyc: ok
 bool module_eq{};
 
 // def mixed_list_eq(xs: list[Mixed], ys: list[Mixed]) -> bool:  # free function
+//     return xs == ys  # tpyc: ok
 bool mixed_list_eq(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
-    // return xs == ys  # tpyc: ok
     return (xs == ys);
 }
 
 // def pet_list_eq(xs: list[Pet], ys: list[Pet]) -> bool:  # free function
+//     return xs == ys  # tpyc: ok
 bool pet_list_eq(const std::vector<Pet>& xs, const std::vector<Pet>& ys) {
-    // return xs == ys  # tpyc: ok
     return (xs == ys);
 }
 
 // def tag_list_ne(xs: list[Labelled], ys: list[Labelled]) -> bool:  # free function
+//     return xs != ys  # tpyc: ok
 bool tag_list_ne(const std::vector<Labelled>& xs, const std::vector<Labelled>& ys) {
-    // return xs != ys  # tpyc: ok
     return (xs != ys);
 }
 
 // def gen_eq(xs: list[Mixed], ys: list[Mixed]) -> Iterator[bool]:  # generator
+//     yield xs == ys  # tpyc: ok
 std::expected<bool, ::tpy::StopIteration> __gen_gen_eq::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield xs == ys  # tpyc: ok
         __state = S_RESUME_0;
         return (xs == ys);
     }
@@ -52,22 +49,23 @@ __gen_gen_eq gen_eq(std::vector<Mixed>& xs, std::vector<Mixed>& ys) {
 }
 
 // def in_closure(xs: list[Mixed], ys: list[Mixed]) -> bool:  # closure
+//     def inner() -> bool:
+//         return xs == ys  # tpyc: ok
+//
+//     return inner()
 bool in_closure(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
-    // def inner() -> bool:
     auto inner = [&xs, &ys]() -> bool {
-        // return xs == ys  # tpyc: ok
         return (xs == ys);
     };
-    // return inner()
     return inner();
 }
 
 // async def in_async(xs: list[Mixed], ys: list[Mixed]) -> bool:  # async
+//     return xs == ys  # tpyc: ok
 ::tpystd::tpy::Poll<bool> __coro_in_async::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return xs == ys  # tpyc: ok
         __state = S_DONE;
         bool __tpy_async_ret = (xs == ys);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -84,13 +82,13 @@ __coro_in_async in_async(std::vector<Mixed>& xs, std::vector<Mixed>& ys) {
 }
 
 // def in_with(xs: list[Mixed], ys: list[Mixed]) -> bool:  # with body
+//     with Guard():
+//         return xs == ys  # tpyc: ok
 bool in_with(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
-    // with Guard():
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        // return xs == ys  # tpyc: ok
         bool __tpy_ret_0 = (xs == ys);
         __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
@@ -107,19 +105,19 @@ bool in_with(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
 }
 
 // def in_try(xs: list[Mixed], ys: list[Mixed]) -> bool:  # try/finally
+//     try:
+//         return xs == ys  # tpyc: ok
+//     finally:
+//         pass
 bool in_try(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
-            // return xs == ys  # tpyc: ok
             bool __tpy_ret_0 = (xs == ys);
             __fin_ran_2 = true;
-            // pass
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_2) {
-                // pass
             }
             throw;
         }
@@ -128,27 +126,27 @@ bool in_try(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
 
 // @error_return(Boom)
 // def in_error_return(xs: list[Mixed], ys: list[Mixed]) -> bool:  # @error_return
+//     return xs == ys  # tpyc: ok
 std::expected<bool, Boom> in_error_return(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
-    // return xs == ys  # tpyc: ok
     return (xs == ys);
 }
 
 // def in_match(xs: list[Mixed], ys: list[Mixed]) -> bool:  # match arm
+//     tag: int32 = 1
+//     match tag:
+//         case 1:
+//             return xs == ys  # tpyc: ok
+//         case _:
+//             return False
 bool in_match(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
-    // tag: int32 = 1
     int32_t tag = 1;
-    // match tag:
     auto& __match_subject_1 = tag;
     switch (__match_subject_1) {
-    // case 1:
     case 1: {
-        // return xs == ys  # tpyc: ok
         return (xs == ys);
         break;
     }
-    // case _:
     default: {
-        // return False
         return false;
         break;
     }
@@ -161,8 +159,9 @@ bool in_match(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
 // # not -- a plain `[e + 1 for e in xs]` over `list[int32]` rejects the same
 // # way -- so the local is what reaches the comprehension body.
 // def in_comprehension(xs: list[Mixed], ys: list[Mixed]) -> int32:  # comprehension
+//     flags = [xs == ys for _ in [1, 2]]  # tpyc: ok
+//     return len(flags) if flags[0] else 0
 int32_t in_comprehension(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
-    // flags = [xs == ys for _ in [1, 2]]  # tpyc: ok
     std::vector<bool> flags = ({
         std::vector<bool> __result;
         auto __obj_0 = {1, 2};
@@ -175,29 +174,28 @@ int32_t in_comprehension(const std::vector<Mixed>& xs, const std::vector<Mixed>&
         }
         std::move(__result);
     });
-    // return len(flags) if flags[0] else 0
     return ((::tpy::__getitem__(flags, 0)) ? (::tpy::__len__(flags)) : (0));
 }
 
 // def nullable_eq(xs: list[Dog | Cat | None],
-// ys: list[Dog | Cat | None]) -> bool:  # nullable alternatives
+//                 ys: list[Dog | Cat | None]) -> bool:  # nullable alternatives
+//     return xs == ys  # tpyc: ok
 bool nullable_eq(const std::vector<::tpy::Union<std::monostate, Cat, Dog>>& xs, const std::vector<::tpy::Union<std::monostate, Cat, Dog>>& ys) {
-    // return xs == ys  # tpyc: ok
     return (xs == ys);
 }
 
 // def crate_pet_n(c: Crate) -> int32:
+//     p = c.pet
+//     if isinstance(p, Dog):
+//         return p.n
+//     return -1
 int32_t crate_pet_n(const Crate& c) {
-    // p = c.pet
     ::tpy::Union<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(c.pet);
-    // if isinstance(p, Dog):
     if (std::holds_alternative<const Dog*>(p)) {
         auto& __p = *std::get<const Dog*>(p);
-        // return p.n
         return __p.n;
     }
     auto& __p = *std::get<const Cat*>(p);
-    // return -1
     return -1;
 }
 
@@ -205,37 +203,37 @@ int32_t crate_pet_n(const Crate& c) {
 // # is visible in the container -- if the read had copied, the bump would be
 // # lost.
 // def bump_first(xs: list[Pet]) -> None:
+//     e = xs[0]
+//     if isinstance(e, Dog):
+//         e.n += 1
 void bump_first(std::vector<Pet>& xs) {
-    // e = xs[0]
     ::tpy::Union<Cat*, Dog*> e = ::tpy::to_ptr_variant(::tpy::__getitem__(xs, 0));
-    // if isinstance(e, Dog):
     if (std::holds_alternative<Dog*>(e)) {
         auto& __e = *std::get<Dog*>(e);
-        // e.n += 1
         __e.n = ::tpy::add_check<int32_t>(__e.n, 1);
     }
 }
 
 // def first_n(xs: list[Pet]) -> int32:
+//     e = xs[0]
+//     if isinstance(e, Dog):
+//         return e.n
+//     return -1
 int32_t first_n(const std::vector<Pet>& xs) {
-    // e = xs[0]
     ::tpy::Union<const Cat*, const Dog*> e = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 0));
-    // if isinstance(e, Dog):
     if (std::holds_alternative<const Dog*>(e)) {
         auto& __e = *std::get<const Dog*>(e);
-        // return e.n
         return __e.n;
     }
     auto& __e = *std::get<const Cat*>(e);
-    // return -1
     return -1;
 }
 
 // async def amain(xs: list[Mixed], ys: list[Mixed]) -> None:
+//     print("async", await in_async(xs, ys))
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print("async", await in_async(xs, ys))
         __sub_0.emplace(xs, ys);
         __state = S_RESUME_0;
         continue;
@@ -245,7 +243,6 @@ int32_t first_n(const std::vector<Pet>& xs) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print("async", await in_async(xs, ys))
         std::cout << "async" << " " << ::tpy::print_bool(__await_lift_0) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -262,20 +259,66 @@ __coro_amain amain(std::vector<Mixed>& xs, std::vector<Mixed>& ys) {
 }
 
 // def main() -> None:
+//     mi: list[Mixed] = [1]
+//     mf: list[Mixed] = [1.0]
+//     m2: list[Mixed] = [2]
+//     print("module", module_eq)
+//     print("free_fn", mixed_list_eq(mi, mf), mixed_list_eq(mi, m2))
+//     print("ctor", Kennel(mi, mf).flag)
+//     for g in gen_eq(mi, mf):
+//         print("generator", g)
+//     print("closure", in_closure(mi, mf))
+//     print("with", in_with(mi, mf))
+//     print("try", in_try(mi, mf))
+//     try:
+//         print("error_return", in_error_return(mi, mf))
+//     except Boom:
+//         print("error_return boom")
+//     print("match", in_match(mi, mf))
+//     print("comprehension", in_comprehension(mi, mf))
+//     asyncio.run(amain(mi, mf))
+//
+//     dm1: dict[str, Mixed] = {"k": 1}
+//     dm2: dict[str, Mixed] = {"k": 1.0}
+//     dm3: dict[str, Mixed] = {"k": 2}
+//     k = Kennel(mi, mi)
+//     print("dict value", k.dict_eq(dm1, dm2), k.dict_eq(dm1, dm3))
+//
+//     d1: list[Pet] = [Dog(1)]
+//     d2: list[Pet] = [Dog(1)]
+//     d3: list[Pet] = [Dog(2)]
+//     c1: list[Pet] = [Cat(1)]
+//     print("record same alternative", pet_list_eq(d1, d2), pet_list_eq(d1, d3))
+//     t1: list[Labelled] = [Tag(1)]
+//     t2: list[Labelled] = [Tag(1)]
+//     t3: list[Labelled] = [Tag(2)]
+//     print("container ne", tag_list_ne(t1, t2), tag_list_ne(t1, t3))
+//     print("record cross alternative", pet_list_eq(d1, c1))
+//     pd1: dict[str, Pet] = {"k": Dog(3)}
+//     pd2: dict[str, Pet] = {"k": Dog(3)}
+//     pd3: dict[str, Pet] = {"k": Cat(3)}
+//     # Same alternative, DIFFERING value -- the dunder is reached and answers
+//     # False, which the cross-alternative pair below never gets to do.
+//     pd4: dict[str, Pet] = {"k": Dog(4)}
+//     print("record dict", k.pet_dict_eq(pd1, pd2), k.pet_dict_eq(pd1, pd4),
+//           k.pet_dict_eq(pd1, pd3))
+//
+//     nn1: list[Dog | Cat | None] = [None]
+//     nn2: list[Dog | Cat | None] = [None]
+//     nd: list[Dog | Cat | None] = [Dog(1)]
+//     print("nullable", nullable_eq(nn1, nn2), nullable_eq(nn1, nd))
+//
+//     print("field", crate_pet_n(Crate(Dog(7))))
+//
+//     bump_first(d1)
+//     print("mutate through element", first_n(d1), pet_list_eq(d1, d2))
 void main() {
-    // mi: list[Mixed] = [1]
     std::vector<Mixed> mi = {1};
-    // mf: list[Mixed] = [1.0]
     std::vector<Mixed> mf = {1.0};
-    // m2: list[Mixed] = [2]
     std::vector<Mixed> m2 = {2};
-    // print("module", module_eq)
     std::cout << "module" << " " << ::tpy::print_bool(module_eq) << "\n";
-    // print("free_fn", mixed_list_eq(mi, mf), mixed_list_eq(mi, m2))
     std::cout << "free_fn" << " " << ::tpy::print_bool(mixed_list_eq(mi, mf)) << " " << ::tpy::print_bool(mixed_list_eq(mi, m2)) << "\n";
-    // print("ctor", Kennel(mi, mf).flag)
     std::cout << "ctor" << " " << ::tpy::print_bool(Kennel(mi, mf).flag) << "\n";
-    // for g in gen_eq(mi, mf):
     {
         auto __src_0 = gen_eq(mi, mf);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -283,116 +326,78 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             bool g = ::tpy::unwrap_ref(*__r_1);
-        // print("generator", g)
         std::cout << "generator" << " " << ::tpy::print_bool(g) << "\n";
         }
     }
-    // print("closure", in_closure(mi, mf))
     std::cout << "closure" << " " << ::tpy::print_bool(in_closure(mi, mf)) << "\n";
-    // print("with", in_with(mi, mf))
     std::cout << "with" << " " << ::tpy::print_bool(in_with(mi, mf)) << "\n";
-    // print("try", in_try(mi, mf))
     std::cout << "try" << " " << ::tpy::print_bool(in_try(mi, mf)) << "\n";
-    // try:
     {
-        // print("error_return", in_error_return(mi, mf))
         std::cout << "error_return" << " " << ::tpy::print_bool(({ auto __er_2 = in_error_return(mi, mf); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); })) << "\n";
         goto __after_try_1;
         // except Boom:
         __except_1:;
-        // print("error_return boom")
         std::cout << "error_return boom" << "\n";
         __after_try_1:;
     }
-    // print("match", in_match(mi, mf))
     std::cout << "match" << " " << ::tpy::print_bool(in_match(mi, mf)) << "\n";
-    // print("comprehension", in_comprehension(mi, mf))
     std::cout << "comprehension" << " " << in_comprehension(mi, mf) << "\n";
-    // asyncio.run(amain(mi, mf))
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain(mi, mf)));
-    // dm1: dict[str, Mixed] = {"k": 1}
     ::tpy::ordered_map<std::string, Mixed> dm1 = ::tpy::ordered_map<std::string, Mixed>({{"k", 1}});
-    // dm2: dict[str, Mixed] = {"k": 1.0}
     ::tpy::ordered_map<std::string, Mixed> dm2 = ::tpy::ordered_map<std::string, Mixed>({{"k", 1.0}});
-    // dm3: dict[str, Mixed] = {"k": 2}
     ::tpy::ordered_map<std::string, Mixed> dm3 = ::tpy::ordered_map<std::string, Mixed>({{"k", 2}});
-    // k = Kennel(mi, mi)
     Kennel k = Kennel(mi, mi);
-    // print("dict value", k.dict_eq(dm1, dm2), k.dict_eq(dm1, dm3))
     std::cout << "dict value" << " " << ::tpy::print_bool(k.dict_eq(dm1, dm2)) << " " << ::tpy::print_bool(k.dict_eq(dm1, dm3)) << "\n";
-    // d1: list[Pet] = [Dog(1)]
     std::vector<Pet> d1 = {Dog(1)};
-    // d2: list[Pet] = [Dog(1)]
     std::vector<Pet> d2 = {Dog(1)};
-    // d3: list[Pet] = [Dog(2)]
     std::vector<Pet> d3 = {Dog(2)};
-    // c1: list[Pet] = [Cat(1)]
     std::vector<Pet> c1 = {Cat(1)};
-    // print("record same alternative", pet_list_eq(d1, d2), pet_list_eq(d1, d3))
     std::cout << "record same alternative" << " " << ::tpy::print_bool(pet_list_eq(d1, d2)) << " " << ::tpy::print_bool(pet_list_eq(d1, d3)) << "\n";
-    // t1: list[Labelled] = [Tag(1)]
     std::vector<Labelled> t1 = {Tag(1)};
-    // t2: list[Labelled] = [Tag(1)]
     std::vector<Labelled> t2 = {Tag(1)};
-    // t3: list[Labelled] = [Tag(2)]
     std::vector<Labelled> t3 = {Tag(2)};
-    // print("container ne", tag_list_ne(t1, t2), tag_list_ne(t1, t3))
     std::cout << "container ne" << " " << ::tpy::print_bool(tag_list_ne(t1, t2)) << " " << ::tpy::print_bool(tag_list_ne(t1, t3)) << "\n";
-    // print("record cross alternative", pet_list_eq(d1, c1))
     std::cout << "record cross alternative" << " " << ::tpy::print_bool(pet_list_eq(d1, c1)) << "\n";
-    // pd1: dict[str, Pet] = {"k": Dog(3)}
     ::tpy::ordered_map<std::string, Pet> pd1 = ::tpy::ordered_map<std::string, Pet>({{"k", Dog(3)}});
-    // pd2: dict[str, Pet] = {"k": Dog(3)}
     ::tpy::ordered_map<std::string, Pet> pd2 = ::tpy::ordered_map<std::string, Pet>({{"k", Dog(3)}});
-    // pd3: dict[str, Pet] = {"k": Cat(3)}
     ::tpy::ordered_map<std::string, Pet> pd3 = ::tpy::ordered_map<std::string, Pet>({{"k", Cat(3)}});
-    // # Same alternative, DIFFERING value -- the dunder is reached and answers
-    // # False, which the cross-alternative pair below never gets to do.
-    // pd4: dict[str, Pet] = {"k": Dog(4)}
     ::tpy::ordered_map<std::string, Pet> pd4 = ::tpy::ordered_map<std::string, Pet>({{"k", Dog(4)}});
-    // print("record dict", k.pet_dict_eq(pd1, pd2), k.pet_dict_eq(pd1, pd4),
-    // k.pet_dict_eq(pd1, pd3))
     std::cout << "record dict" << " " << ::tpy::print_bool(k.pet_dict_eq(pd1, pd2)) << " " << ::tpy::print_bool(k.pet_dict_eq(pd1, pd4)) << " " << ::tpy::print_bool(k.pet_dict_eq(pd1, pd3)) << "\n";
-    // nn1: list[Dog | Cat | None] = [None]
     std::vector<::tpy::Union<std::monostate, Cat, Dog>> nn1 = {std::monostate{}};
-    // nn2: list[Dog | Cat | None] = [None]
     std::vector<::tpy::Union<std::monostate, Cat, Dog>> nn2 = {std::monostate{}};
-    // nd: list[Dog | Cat | None] = [Dog(1)]
     std::vector<::tpy::Union<std::monostate, Cat, Dog>> nd = {Dog(1)};
-    // print("nullable", nullable_eq(nn1, nn2), nullable_eq(nn1, nd))
     std::cout << "nullable" << " " << ::tpy::print_bool(nullable_eq(nn1, nn2)) << " " << ::tpy::print_bool(nullable_eq(nn1, nd)) << "\n";
-    // print("field", crate_pet_n(Crate(Dog(7))))
     Dog __tmp_1 = Dog(7);
     Crate __tmp_2 = Crate(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     std::cout << "field" << " " << crate_pet_n(__tmp_2) << "\n";
-    // bump_first(d1)
     bump_first(d1);
-    // print("mutate through element", first_n(d1), pet_list_eq(d1, d2))
     std::cout << "mutate through element" << " " << first_n(d1) << " " << ::tpy::print_bool(pet_list_eq(d1, d2)) << "\n";
 }
 
+// # A REFERENCE union at a storage position (a container element) compares BY
+// # VALUE across alternatives, as CPython does: `Dog | int32 | float64` holding 1
+// # equals one holding 1.0. Each section names the position it covers; the
+// # container compares are the subject lines. A union of two records that define
+// # no `__eq__` is NOT a section: it stays a toolchain-level refusal with no TPy
+// # location (BUGS.md#container-compare-record-without-eq).
+// import asyncio
+//
+// MOD_A: list[Mixed] = [1]
+// MOD_B: list[Mixed] = [1.0]
+// module_eq = MOD_A == MOD_B  # module-level statement  # tpyc: ok
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A REFERENCE union at a storage position (a container element) compares BY
-    // # VALUE across alternatives, as CPython does: `Dog | int32 | float64` holding 1
-    // # equals one holding 1.0. Each section names the position it covers; the
-    // # container compares are the subject lines. A union of two records that define
-    // # no `__eq__` is NOT a section: it stays a toolchain-level refusal with no TPy
-    // # location (BUGS.md#container-compare-record-without-eq).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // MOD_A: list[Mixed] = [1]
     static std::vector<Mixed> __global_slot_1 = {1};
     MOD_A = &__global_slot_1;
-    // MOD_B: list[Mixed] = [1.0]
     static std::vector<Mixed> __global_slot_2 = {1.0};
     MOD_B = &__global_slot_2;
-    // module_eq = MOD_A == MOD_B  # module-level statement  # tpyc: ok
     module_eq = ((*MOD_A) == (*MOD_B));
-    // main()
     main();
 }
 

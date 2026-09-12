@@ -5,84 +5,87 @@ namespace tpyapp::main {
 
 
 // def refused() -> None:
+//     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+//     # A bound timeout guards against a host that DROPs (rather than REJECTs)
+//     # loopback; the refused connect returns ECONNREFUSED well before it.
+//     s.settimeout(5.0)
+//     try:
+//         s.connect(("127.0.0.1", 1))
+//         print("NO ERROR")
+//     except OSError as e:
+//         print("refused:", e.errno == errno.ECONNREFUSED, e.strerror in str(e))
+//     s.close()
 void refused() {
-    // s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ::tpystd::socket::socket s = ::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM);
-    // # A bound timeout guards against a host that DROPs (rather than REJECTs)
-    // # loopback; the refused connect returns ECONNREFUSED well before it.
-    // s.settimeout(5.0)
     s.settimeout(5.0);
-    // try:
     {
         try {
-            // s.connect(("127.0.0.1", 1))
             s.connect(std::tuple<std::string, int32_t>{"127.0.0.1", 1});
-            // print("NO ERROR")
             std::cout << "NO ERROR" << "\n";
         } catch (const ::tpy::OSError& e) {
-            // print("refused:", e.errno == errno.ECONNREFUSED, e.strerror in str(e))
             std::cout << "refused:" << " " << ::tpy::print_bool((e.error_number == ::tpy_const_econnrefused)) << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find(e.strerror_text) != std::string::npos)) << "\n";
         }
     }
-    // s.close()
     s.close();
 }
 
 // def resolve_failure() -> None:
+//     # "bad name!" is not a legal hostname; getaddrinfo rejects it with
+//     # EAI_NONAME (no listener or network involved, deterministic).
+//     try:
+//         socket.gethostbyname("bad name!")
+//         print("NO ERROR")
+//     except gaierror as e:
+//         print("gaierror:", e.errno != 0, len(e.strerror) > 0,
+//               e.strerror in str(e))
 void resolve_failure() {
-    // # "bad name!" is not a legal hostname; getaddrinfo rejects it with
-    // # EAI_NONAME (no listener or network involved, deterministic).
-    // try:
     {
         try {
-            // socket.gethostbyname("bad name!")
             ::tpystd::socket::gethostbyname("bad name!");
-            // print("NO ERROR")
             std::cout << "NO ERROR" << "\n";
         } catch (const ::tpystd::socket::gaierror& e) {
-            // print("gaierror:", e.errno != 0, len(e.strerror) > 0,
-            // e.strerror in str(e))
             std::cout << "gaierror:" << " " << ::tpy::print_bool((e.error_number != 0)) << " " << ::tpy::print_bool((::tpy::__len__(e.strerror_text) > 0)) << " " << ::tpy::print_bool((std::string(::tpy::__str__(e)).find(e.strerror_text) != std::string::npos)) << "\n";
         }
     }
 }
 
 // def unset_defaults() -> None:
+//     # A hand-constructed OSError carries the unset defaults (0 / "" in TPy;
+//     # CPython has None there, so compare via truthiness-equivalent checks
+//     # that hold for both).
+//     e = OSError("plain")
+//     print("unset:", not e.errno, not e.strerror)
 void unset_defaults() {
-    // # A hand-constructed OSError carries the unset defaults (0 / "" in TPy;
-    // # CPython has None there, so compare via truthiness-equivalent checks
-    // # that hold for both).
-    // e = OSError("plain")
     ::tpy::OSError e = ::tpy::OSError("plain");
-    // print("unset:", not e.errno, not e.strerror)
     std::cout << "unset:" << " " << ::tpy::print_bool((!(e.error_number))) << " " << ::tpy::print_bool((!((!e.strerror_text.empty())))) << "\n";
 }
 
 // def main() -> None:
+//     refused()
+//     resolve_failure()
+//     unset_defaults()
 void main() {
-    // refused()
     refused();
-    // resolve_failure()
     resolve_failure();
-    // unset_defaults()
     unset_defaults();
 }
 
+// # Structured OSError attributes (CPython parity): a refused connect carries
+// # `.errno` (== errno.ECONNREFUSED) and `.strerror`; a failed name resolution
+// # raises socket.gaierror (an OSError) with the EAI_* code in `.errno`. Raw
+// # errno / EAI values are host-divergent, so only comparisons are printed.
+// # str(e) formats differ between TPy and CPython, so assert containment only.
+// import errno
+// import socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Structured OSError attributes (CPython parity): a refused connect carries
-    // # `.errno` (== errno.ECONNREFUSED) and `.strerror`; a failed name resolution
-    // # raises socket.gaierror (an OSError) with the EAI_* code in `.errno`. Raw
-    // # errno / EAI values are host-divergent, so only comparisons are printed.
-    // # str(e) formats differ between TPy and CPython, so assert containment only.
-    // import errno
     ::tpystd::errno_mod::__tpy_init();
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

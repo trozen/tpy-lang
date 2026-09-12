@@ -9,14 +9,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def or_skips_fallible(c: list[int], d: list[int]) -> int:
 ::tpy::BigInt or_skips_fallible(const std::vector<::tpy::BigInt>& c, const std::vector<::tpy::BigInt>& d);
+// def and_skips_fallible(c: list[int], d: list[int]) -> int:
 ::tpy::BigInt and_skips_fallible(const std::vector<::tpy::BigInt>& c, const std::vector<::tpy::BigInt>& d);
+// def logged(log: list[int], v: int) -> int:
 ::tpy::BigInt logged(std::vector<::tpy::BigInt>& log, const ::tpy::BigInt& v);
+// def or_skips_side_effect(log: list[int]) -> int:
 ::tpy::BigInt or_skips_side_effect(std::vector<::tpy::BigInt>& log);
+// def and_skips_side_effect(log: list[int]) -> int:
 ::tpy::BigInt and_skips_side_effect(std::vector<::tpy::BigInt>& log);
+// def and_runs_rhs_when_truthy(log: list[int]) -> int:
 ::tpy::BigInt and_runs_rhs_when_truthy(std::vector<::tpy::BigInt>& log);
+// def chained_or_skips_tail(c: list[int]) -> int:
 ::tpy::BigInt chained_or_skips_tail(const std::vector<::tpy::BigInt>& c);
+// def chained_and_skips_tail(c: list[int]) -> int:
 ::tpy::BigInt chained_and_skips_tail(const std::vector<::tpy::BigInt>& c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

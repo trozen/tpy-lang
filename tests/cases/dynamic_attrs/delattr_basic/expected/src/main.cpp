@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     b.x = "hello"
+//     print(cast(str, b.x))
+//     del b.x
+//     print(len(b._data))
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // b.x = "hello"
     b.__setattr__("x", ::tpy::make_any(std::string("hello")));
-    // print(cast(str, b.x))
     std::cout << ::tpy::any_cast_or_panic<std::string>(b.__getattr__("x")) << "\n";
-    // del b.x
     b.__delattr__("x");
-    // print(len(b._data))
     std::cout << ::tpy::__len__(b._data) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

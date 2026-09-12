@@ -7,71 +7,80 @@ namespace tpyapp::main {
 // # Dict miss / set.remove(missing) / set.pop() empty all throw KeyError --
 // # catchable in user code.
 // def main() -> None:
+//     d: dict[str, int] = {"a": 1}
+//     try:
+//         print(d["missing"])
+//     except KeyError as e:
+//         print("caught:", str(e))
+//
+//     try:
+//         d.pop("missing")
+//     except KeyError as e:
+//         print("caught:", str(e))
+//
+//     try:
+//         del d["missing"]
+//     except KeyError as e:
+//         print("caught:", str(e))
+//
+//     s: set[int] = {1, 2, 3}
+//     try:
+//         s.remove(99)
+//     except KeyError as e:
+//         print("caught:", str(e))
+//
+//     empty: set[int] = set()
+//     try:
+//         empty.pop()
+//     except KeyError as e:
+//         print("caught:", str(e))
 void main() {
-    // d: dict[str, int] = {"a": 1}
     ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}});
-    // try:
     {
         try {
-            // print(d["missing"])
             std::cout << ::tpy::__getitem__(d, "missing") << "\n";
         } catch (const ::tpy::KeyError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // d.pop("missing")
             ::tpy::dict_pop(d, "missing");
         } catch (const ::tpy::KeyError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // del d["missing"]
             ::tpy::__delitem__(d, "missing");
         } catch (const ::tpy::KeyError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // s: set[int] = {1, 2, 3}
     ::tpy::ordered_set<::tpy::BigInt> s = ::tpy::ordered_set<::tpy::BigInt>({::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)});
-    // try:
     {
         try {
-            // s.remove(99)
             ::tpy::set_remove(s, ::tpy::BigInt(99));
         } catch (const ::tpy::KeyError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // empty: set[int] = set()
     ::tpy::ordered_set<::tpy::BigInt> empty = ::tpy::ordered_set<::tpy::BigInt>();
-    // try:
     {
         try {
-            // empty.pop()
             ::tpy::set_pop(empty);
         } catch (const ::tpy::KeyError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

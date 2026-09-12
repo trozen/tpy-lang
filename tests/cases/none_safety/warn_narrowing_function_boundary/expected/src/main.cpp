@@ -3,27 +3,26 @@
 
 namespace tpyapp::main {
 
-// x: int32 | None = None
 std::optional<int32_t> x;
 
 // def prove() -> None:
+//     assert x is not None
 void prove() {
-    // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
 }
 
 // def use() -> int32:
+//     return x + 1  # tpyc: warning(/Potential None access/)
 int32_t use() {
-    // return x + 1  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1));
 }
 
+// x: int32 | None = None
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 | None = None
     x = std::nullopt;
 }
 

@@ -16,12 +16,15 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __coro_consume;
 struct __coro_main_coro;
 
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __coro_consume<T_it> consume(T_it&& it);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: consume
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __coro_consume {
     int32_t __state;
@@ -50,6 +53,9 @@ struct __coro_consume {
     }
 };
 // async def consume(it: Iterable[int32]) -> None:
+//     for x in it:
+//         await asyncio.sleep(0)
+//         print(x)
 template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -63,7 +69,6 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print(x)
         std::cout << x << "\n";
         __state = S_JOIN_0;
         continue;
@@ -75,7 +80,6 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -92,7 +96,7 @@ __coro_consume<T_it> consume(T_it&& it) {
     return __coro_consume<T_it>(std::forward<T_it>(it));
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

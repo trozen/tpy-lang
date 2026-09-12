@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int]:
+//     rows = [[i, i + 1] for i in range(3) if i > 0]
+//     for r in rows:
+//         yield r[0]
+//         yield r[1]
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // rows = [[i, i + 1] for i in range(3) if i > 0]
         rows.emplace(({
             std::vector<std::array<int32_t, 2>> __result;
             const int32_t __stop_0 = 3;
@@ -26,7 +29,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield r[1]
         __state = S_RESUME_1;
         return ::tpy::BigInt(::tpy::__getitem__((*r), 1));
     }
@@ -40,7 +42,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         r = &(*((*__for_it_0))++);
-        // yield r[0]
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__getitem__((*r), 0));
     }
@@ -56,8 +57,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for v in gen():
+//         print(v)
 void main() {
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -65,18 +67,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -32,7 +32,9 @@ struct OsErr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def report(e: BaseExc) -> str:  # tpyc: ok
 std::string report(BaseExc& e);
+// def main() -> None:
 void main();
 
 // class BaseExc(Throwable):
@@ -109,29 +111,32 @@ namespace tpyapp::main {
 
 
 // def __init__(self, msg: str) -> None:
+//     self.message = msg
 inline BaseExc::BaseExc(std::string_view msg) : message(msg) {}
 
 // def what(self) -> str:
+//     return "[base] " + self.message
 inline std::string BaseExc::what() {
-    // return "[base] " + self.message
     return (::tpy::str_concat("[base] ", this->message));
 }
 
 // def __init__(self, msg: str) -> None:
+//     super().__init__(msg)
 inline ValErr::ValErr(std::string_view msg) : BaseExc(msg) {}
 
 // def what(self) -> str:
+//     return "[val] " + self.message
 inline std::string ValErr::what() {
-    // return "[val] " + self.message
     return (::tpy::str_concat("[val] ", this->message));
 }
 
 // def __init__(self, msg: str) -> None:
+//     super().__init__(msg)
 inline OsErr::OsErr(std::string_view msg) : BaseExc(msg) {}
 
 // def what(self) -> str:
+//     return "[os] " + self.message
 inline std::string OsErr::what() {
-    // return "[os] " + self.message
     return (::tpy::str_concat("[os] ", this->message));
 }
 void __tpy_init();

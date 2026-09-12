@@ -12,8 +12,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def update_same_name(a: int32, b: int32) -> None:
 void update_same_name(int32_t a, int32_t b);
+// def update_renamed(a: int32, b: int32) -> None:
 void update_renamed(int32_t a, int32_t b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

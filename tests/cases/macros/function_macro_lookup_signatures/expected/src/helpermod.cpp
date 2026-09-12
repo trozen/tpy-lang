@@ -43,19 +43,19 @@ namespace tpyapp::helpermod {
 
 
 // def paint(c: Color) -> bool:
+//     return c == Color.RED
 bool paint(Color c) {
-    // return c == Color.RED
     return (c == Color::RED);
 }
 
+// # `paint` carries an enum param, so a cross-module param-type lookup must
+// # resolve the enum type.
+// from enum import Enum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `paint` carries an enum param, so a cross-module param-type lookup must
-    // # resolve the enum type.
-    // from enum import Enum
 }
 
 } // namespace tpyapp::helpermod

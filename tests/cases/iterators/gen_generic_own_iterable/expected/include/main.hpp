@@ -9,11 +9,16 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
+// def indexed[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
+//     i: int32 = 0
+//     for item in items:
+//         yield (i, item)
+//         i += 1
 template<typename T, ::tpystd::typing::Iterable<T> T_items>
 inline auto indexed(T_items&& items) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
         [items, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(items))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
@@ -23,7 +28,6 @@ inline auto indexed(T_items&& items) {
             {
                 auto&& item = ::tpy::unwrap_ref(*__r);
                 auto __val = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(item)};
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(__val);
             }

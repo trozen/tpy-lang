@@ -22,6 +22,7 @@ struct Inner {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Inner() = default;
     explicit Inner(::tpy::readonly_form_t<T> value) : value(value) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
@@ -40,6 +41,7 @@ struct Outer {
     T inner;
 
     // def __init__(self, inner: T) -> None:
+    //     self.inner = inner
     Outer() = default;
     explicit Outer(::tpy::readonly_form_t<T> inner) : inner(inner) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";

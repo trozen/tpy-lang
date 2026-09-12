@@ -8,29 +8,29 @@ namespace tpyapp::main {
 // # (a,) for a single element (singleton trailing comma), () for empty.
 // # (Regression guard: it must reach the printer, not a C++ operator<< error.)
 // def show(*xs: int) -> None:
+//     print(xs)
 void show(::tpy::varargs<const ::tpy::BigInt> xs) {
-    // print(xs)
     std::cout << ::tpy::VarargsPrinter(xs) << "\n";
 }
 
 // def main() -> None:
+//     show(1, 2, 3)
+//     show(7)
+//     show()
 void main() {
-    // show(1, 2, 3)
     std::array<const ::tpy::BigInt, 3> __tmp_1{1, 2, 3};
     show(::tpy::varargs<const ::tpy::BigInt>(__tmp_1));
-    // show(7)
     std::array<const ::tpy::BigInt, 1> __tmp_2{7};
     show(::tpy::varargs<const ::tpy::BigInt>(__tmp_2));
-    // show()
     show(::tpy::varargs<const ::tpy::BigInt>());
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

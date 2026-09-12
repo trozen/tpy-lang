@@ -4,37 +4,50 @@
 namespace tpyapp::main {
 
 
+// procedure outer(start: integer);
+//   function helper(n: integer): integer;
+//   begin
+//     helper := n * n;
+//   end;
+//   procedure print_pair(a, b: integer);
+//   begin
+//     writeln(a, '->', b);
+//   end;
+// begin
+//   print_pair(start, helper(start));
+//   print_pair(start + 1, helper(start + 1));
+// end;
 void outer(int32_t start) {
-    // print_pair(start, helper(start));
     outer__print_pair(start, outer__helper(start));
-    // print_pair(start + 1, helper(start + 1));
     outer__print_pair((::tpy::add_check<int32_t>(start, 1)), outer__helper((::tpy::add_check<int32_t>(start, 1))));
 }
 
+// function helper(n: integer): integer;
+// begin
+//   helper := n * n;
+// end;
 int32_t outer__helper(int32_t n) {
-    // function helper(n: integer): integer;
     int32_t __pascal_result = 0;
-    // helper := n * n;
     __pascal_result = (::tpy::mul_check<int32_t>(n, n));
-    // function helper(n: integer): integer;
     return __pascal_result;
 }
 
+// procedure print_pair(a, b: integer);
+// begin
+//   writeln(a, '->', b);
+// end;
 void outer__print_pair(int32_t a, int32_t b) {
-    // writeln(a, '->', b);
     std::cout << a;
-    // writeln(a, '->', b);
     std::cout << "->";
-    // writeln(a, '->', b);
     std::cout << b << "\n";
 }
 
+// outer(5);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // outer(5);
     outer(5);
 }
 

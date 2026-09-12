@@ -5,27 +5,36 @@ namespace tpyapp::main {
 
 
 // def sum_pair(t: tuple[int32, int32]) -> int32:
+//     return t[0] + t[1]
 int32_t sum_pair(const std::tuple<int32_t, int32_t>& t) {
-    // return t[0] + t[1]
     return (::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t)));
 }
 
 // def first_byte(b: bytes) -> int32:
+//     return b[0]
 int32_t first_byte(::tpy::BytesView b) {
-    // return b[0]
     return static_cast<int32_t>(::tpy::bytes_getitem(b, 0));
 }
 
 // def main() -> None:
+//     # A tuple enter target: the copied tuple reads by index and passes on.
+//     with Pair(3, 4) as t:  # tpyc: ok
+//         print(t[0], t[1])
+//         print(sum_pair(t))
+//     # A bytes enter target.
+//     with Blob() as b:  # tpyc: ok
+//         print(len(b))
+//         print(first_byte(b))
+//     # A value-union enter target, one case per alternative.
+//     with Either(5) as u:  # tpyc: ok
+//         print(u)
+//     with Either(0) as u2:  # tpyc: ok
+//         print(u2)
 void main() {
-    // # A tuple enter target: the copied tuple reads by index and passes on.
-    // with Pair(3, 4) as t:  # tpyc: ok
     auto __ctx_1 = Pair(3, 4);
     auto t = __ctx_1.__enter__();
     try {
-        // print(t[0], t[1])
         std::cout << std::get<0>(t) << " " << std::get<1>(t) << "\n";
-        // print(sum_pair(t))
         std::cout << sum_pair(t) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -37,14 +46,10 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # A bytes enter target.
-    // with Blob() as b:  # tpyc: ok
     auto __ctx_2 = Blob();
     auto b = __ctx_2.__enter__();
     try {
-        // print(len(b))
         std::cout << ::tpy::__len__(b) << "\n";
-        // print(first_byte(b))
         std::cout << first_byte(b) << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -56,12 +61,9 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // # A value-union enter target, one case per alternative.
-    // with Either(5) as u:  # tpyc: ok
     auto __ctx_3 = Either(5);
     auto u = __ctx_3.__enter__();
     try {
-        // print(u)
         std::cout << ::tpy::__str__(u) << "\n";
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -73,11 +75,9 @@ void main() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // with Either(0) as u2:  # tpyc: ok
     auto __ctx_4 = Either(0);
     auto u2 = __ctx_4.__enter__();
     try {
-        // print(u2)
         std::cout << ::tpy::__str__(u2) << "\n";
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -91,12 +91,12 @@ void main() {
     __ctx_4.__exit__({}, nullptr, {});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

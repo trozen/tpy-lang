@@ -5,140 +5,138 @@ namespace tpyapp::main {
 
 
 // def read_list(lst: list[int32] | None) -> None:
+//     if lst is None:
+//         return
+//     print(lst[-1])          # negative index must normalize (was: garbage)
+//     i = -2
+//     print(lst[i])           # same via a variable index
 void read_list(const std::vector<int32_t>* lst) {
-    // if lst is None:
     if ((lst == nullptr)) {
-        // return
         return;
     }
-    // print(lst[-1])          # negative index must normalize (was: garbage)
     std::cout << ::tpy::__getitem__((*lst), -1) << "\n";
-    // i = -2
     int32_t i = -2;
-    // print(lst[i])           # same via a variable index
     std::cout << ::tpy::__getitem__((*lst), i) << "\n";
 }
 
 // def aug_assign(lst: list[int32] | None) -> None:
+//     if lst is None:
+//         return
+//     lst[-1] += 5            # the READ half of the read-modify-write was raw
+//     print(lst[0], lst[1], lst[2])
 void aug_assign(std::vector<int32_t>* lst) {
-    // if lst is None:
     if ((lst == nullptr)) {
-        // return
         return;
     }
-    // lst[-1] += 5            # the READ half of the read-modify-write was raw
     ::tpy::__setitem__((*lst), -1, ::tpy::add_check<int32_t>(::tpy::__getitem__((*lst), -1), 5));
-    // print(lst[0], lst[1], lst[2])
     std::cout << ::tpy::__getitem__((*lst), 0) << " " << ::tpy::__getitem__((*lst), 1) << " " << ::tpy::__getitem__((*lst), 2) << "\n";
 }
 
 // def read_dict(d: dict[int32, int32] | None) -> None:
+//     if d is None:
+//         return
+//     try:
+//         print(d[99])        # missing key must raise, not default-insert
+//     except KeyError:
+//         print("KeyError")
+//     print(len(d))           # guards the silent insert: stays 2
 void read_dict(const ::tpy::ordered_map<int32_t, int32_t>* d) {
-    // if d is None:
     if ((d == nullptr)) {
-        // return
         return;
     }
-    // try:
     {
         try {
-            // print(d[99])        # missing key must raise, not default-insert
             std::cout << ::tpy::__getitem__((*d), 99) << "\n";
         } catch (const ::tpy::KeyError&) {
-            // print("KeyError")
             std::cout << "KeyError" << "\n";
         }
     }
-    // print(len(d))           # guards the silent insert: stays 2
     std::cout << ::tpy::__len__((*d)) << "\n";
 }
 
 // def read_dict_readonly(d: readonly[dict[int32, int32]] | None) -> None:
+//     if d is None:
+//         return
+//     # A const receiver: the raw `operator[]` fallback was ill-formed C++.
+//     print(d[1])  # tpyc: ok
 void read_dict_readonly(const ::tpy::ordered_map<int32_t, int32_t>* d) {
-    // if d is None:
     if ((d == nullptr)) {
-        // return
         return;
     }
-    // # A const receiver: the raw `operator[]` fallback was ill-formed C++.
-    // print(d[1])  # tpyc: ok
     std::cout << ::tpy::__getitem__((*d), 1) << "\n";
 }
 
 // def read_bytearray(b: bytearray | None) -> None:
+//     if b is None:
+//         return
+//     print(b[-1])            # bytearray shares the pointer-repr receiver shape
 void read_bytearray(const ::tpy::ByteArray* b) {
-    // if b is None:
     if ((b == nullptr)) {
-        // return
         return;
     }
-    // print(b[-1])            # bytearray shares the pointer-repr receiver shape
     std::cout << static_cast<int>(::tpy::bytes_getitem((*b), -1)) << "\n";
 }
 
 // def read_nested(rows: list[list[int32]] | None) -> None:
+//     if rows is None:
+//         return
+//     print(rows[-1][-1])     # the OUTER subscript is the narrowed one
 void read_nested(const std::vector<std::vector<int32_t>>* rows) {
-    // if rows is None:
     if ((rows == nullptr)) {
-        // return
         return;
     }
-    // print(rows[-1][-1])     # the OUTER subscript is the narrowed one
     std::cout << ::tpy::__getitem__(::tpy::__getitem__((*rows), -1), -1) << "\n";
 }
 
 // def read_user_record(g: Doubler | None) -> None:
+//     if g is None:
+//         return
+//     for i in range(len(g)):
+//         # Bounds-proven index on a user record: the receiver type now resolves
+//         # to the record, so no gratuitous size_t cast (matches the non-Optional
+//         # sibling's render).
+//         print(g[i])
 void read_user_record(const Doubler* g) {
-    // if g is None:
     if ((g == nullptr)) {
-        // return
         return;
     }
-    // for i in range(len(g)):
     int32_t __stop_0 = ::tpy::__len__((*g));
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // # Bounds-proven index on a user record: the receiver type now resolves
-        // # to the record, so no gratuitous size_t cast (matches the non-Optional
-        // # sibling's render).
-        // print(g[i])
         std::cout << (*g)[i] << "\n";
     }
-    // # Bounds-proven index on a user record: the receiver type now resolves
-    // # to the record, so no gratuitous size_t cast (matches the non-Optional
-    // # sibling's render).
 }
 
 // def main() -> None:
+//     read_list([1, 2, 3])
+//     aug_assign([1, 2, 3])
+//     read_dict({1: 10, 2: 20})
+//     read_dict_readonly({1: 10, 2: 20})
+//     read_bytearray(bytearray(b"abc"))
+//     read_nested([[1, 2], [3, 4]])
+//     read_user_record(Doubler())
 void main() {
-    // read_list([1, 2, 3])
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{1, 2, 3};
     read_list(&(__tmp_1));
-    // aug_assign([1, 2, 3])
     std::vector<int32_t> __tmp_2 = std::vector<int32_t>{1, 2, 3};
     aug_assign(&(__tmp_2));
-    // read_dict({1: 10, 2: 20})
     ::tpy::ordered_map<int32_t, int32_t> __tmp_3 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
     read_dict(&(__tmp_3));
-    // read_dict_readonly({1: 10, 2: 20})
     ::tpy::ordered_map<int32_t, int32_t> __tmp_4 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
     read_dict_readonly(&(__tmp_4));
-    // read_bytearray(bytearray(b"abc"))
     ::tpy::ByteArray __tmp_5 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     read_bytearray(&(__tmp_5));
-    // read_nested([[1, 2], [3, 4]])
     std::vector<std::vector<int32_t>> __tmp_6 = std::vector<std::vector<int32_t>>{{1, 2}, {3, 4}};
     read_nested(&(__tmp_6));
-    // read_user_record(Doubler())
     Doubler __tmp_7 = Doubler();
     read_user_record(&(__tmp_7));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

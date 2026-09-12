@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     b: Box[int32] = Box(int32(42))
+//     print(b.value)
+//     return int32(0)
 int32_t main() {
-    // b: Box[int32] = Box(int32(42))
     ::tpyapp::container::Box<int32_t> b = ::tpyapp::container::Box<int32_t>(42);
-    // print(b.value)
     std::cout << b.value << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from container import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from container import Box
     ::tpyapp::container::__tpy_init();
-    // main()
     main();
 }
 

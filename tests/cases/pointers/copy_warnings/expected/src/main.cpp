@@ -5,68 +5,69 @@ namespace tpyapp::main {
 
 
 // def find_point(pts: list[Point], x: int32) -> Point | None:
+//     for p in pts:
+//         if p.x == x:
+//             return p
+//     return None
 Point* find_point(std::vector<Point>& pts, int32_t x) {
-    // for p in pts:
     auto& __obj_0 = pts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // if p.x == x:
         if ((p.x == x)) {
-            // return p
             return &(p);
         }
     }
-    // return None
     return nullptr;
 }
 
 // def main() -> None:
+//     r: Rect = Rect()
+//     p: Point = Point()
+//     r.corner = p                  # tpyc: warning(/copies Point into field/)
+//     r.corner = copy(p)            # tpyc: ok
+//     r.corner = Point()            # tpyc: ok
+//     r.width = 10                  # tpyc: ok
+//
+//     # Optional field: function returning T | None
+//     h: OptHolder = OptHolder()
+//     pts: list[Point] = list()
+//     h.value = find_point(pts, 1)  # tpyc: warning(/copies Point | None into field/)
+//     h.value = copy(find_point(pts, 1))  # tpyc: ok
+//     # Optional field: field-to-field (lvalue)
+//     h.value = h.value             # tpyc: warning(/copies Point | None into field/)
+//     h.value = copy(h.value)       # tpyc: ok
+//     # `Holder[Point]` keeps a reference instantiation in the case: the hedge
+//     # on the body line stands either way, but the non-copyable error leg
+//     # needs a route to reach the body through.
+//     hp: Holder[Point] = Holder()
+//     hp.set_value(p)               # tpyc: ok
+//     print(r.width)
 void main() {
-    // r: Rect = Rect()
     Rect r = Rect();
-    // p: Point = Point()
     Point p = Point();
-    // r.corner = p                  # tpyc: warning(/copies Point into field/)
     r.corner = p;
-    // r.corner = copy(p)            # tpyc: ok
     r.corner = Point(p);
-    // r.corner = Point()            # tpyc: ok
     r.corner = Point();
-    // r.width = 10                  # tpyc: ok
     r.width = 10;
-    // # Optional field: function returning T | None
-    // h: OptHolder = OptHolder()
     OptHolder h = OptHolder();
-    // pts: list[Point] = list()
     std::vector<Point> pts = std::vector<Point>();
-    // h.value = find_point(pts, 1)  # tpyc: warning(/copies Point | None into field/)
     h.value = ::tpy::ptr_to_optional(find_point(pts, 1));
-    // h.value = copy(find_point(pts, 1))  # tpyc: ok
     h.value = ::tpy::ptr_to_optional(find_point(pts, 1));
-    // # Optional field: field-to-field (lvalue)
-    // h.value = h.value             # tpyc: warning(/copies Point | None into field/)
     h.value = h.value;
-    // h.value = copy(h.value)       # tpyc: ok
     h.value = h.value;
-    // # `Holder[Point]` keeps a reference instantiation in the case: the hedge
-    // # on the body line stands either way, but the non-copyable error leg
-    // # needs a route to reach the body through.
-    // hp: Holder[Point] = Holder()
     Holder<Point> hp = Holder<Point>();
-    // hp.set_value(p)               # tpyc: ok
     hp.set_value(p);
-    // print(r.width)
     std::cout << r.width << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

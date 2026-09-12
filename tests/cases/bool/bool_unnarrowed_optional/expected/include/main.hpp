@@ -14,16 +14,27 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def if_test(c: Flag | None) -> int:
 ::tpy::BigInt if_test(const Flag* c);
+// def not_test(c: Flag | None) -> int:
 ::tpy::BigInt not_test(const Flag* c);
+// def and_test(c: Flag | None, d: Flag | None) -> int:
 ::tpy::BigInt and_test(const Flag* c, const Flag* d);
+// def while_test(c: Flag | None) -> int:
 ::tpy::BigInt while_test(Flag* c);
+// def len_test(b: Bag | None) -> int:
 ::tpy::BigInt len_test(const Bag* b);
+// def observe(cnt: Counter, f: Flag) -> Flag | None:
 Flag* observe(Counter& cnt, Flag& f);
+// def call_test(f: Flag) -> int:
 ::tpy::BigInt call_test(Flag& f);
+// def str_test(s: str | None) -> int:
 ::tpy::BigInt str_test(std::optional<std::string_view> s);
+// def field_test(h: Holder) -> int:
 ::tpy::BigInt field_test(const Holder& h);
+// def elem_test(xs: list[Flag | None]) -> int:
 ::tpy::BigInt elem_test(const std::vector<std::optional<Flag>>& xs);
+// def main():
 void main();
 
 // # Truthiness of an un-narrowed pointer-repr Optional[record] is CPython's
@@ -115,27 +126,31 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, on: bool):
+//     self.on = on
 inline Flag::Flag(bool on) : on(on) {}
 
 // def __bool__(self) -> bool:
+//     return self.on
 inline bool Flag::__bool__() const {
-    // return self.on
     return this->on;
 }
 
 // def __init__(self, f: Flag | None):
+//     self.f = f
 inline Holder::Holder(const Flag* f) : f(::tpy::ptr_to_optional(f)) {}
 
 // def __init__(self, n: int):
+//     self.n = n
 inline Bag::Bag(const ::tpy::BigInt& n) : n(n) {}
 
 // def __len__(self) -> int:
+//     return self.n
 inline ::tpy::BigInt Bag::__len__() const {
-    // return self.n
     return this->n;
 }
 
 // def __init__(self):
+//     self.n = 0
 inline Counter::Counter() : n(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

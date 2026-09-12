@@ -11,16 +11,27 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def area(w: int32) -> int32:  # tpyc: ok
 int32_t area(int32_t w);
+// def area(w: int32, h: int32) -> int32:
 int32_t area(int32_t w, int32_t h);
+// def tag(x: int32) -> str:  # tpyc: ok
 std::string tag(int32_t x);
+// def tag(x: str) -> int32:
 int32_t tag(std::string_view x);
+// def kind(x: str) -> str:  # tpyc: ok
 std::string kind(std::string_view x);
+// def kind(x: int32) -> str:
 std::string kind(int32_t x);
+// def push(xs: list[int32]) -> None:  # tpyc: ok
 void push(std::vector<int32_t>& xs);
+// def push(xs: list[int32], v: int32) -> None:
 void push(std::vector<int32_t>& xs, int32_t v);
+// def show(x: int) -> str: ...
 std::string show(const ::tpy::BigInt& x);
+// def show(x: str) -> str: ...
 std::string show(std::string_view x);
+// def main() -> None:
 void main();
 
 // # method: variants on one receiver
@@ -49,19 +60,20 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self) -> None:
+//     self.total = 0
 inline Acc::Acc() : total(0) {}
 
 // @dispatch
 // def add(self, x: int32) -> None:  # tpyc: ok
+//     self.total += x
 inline void Acc::add(int32_t x) {
-    // self.total += x
     this->total = ::tpy::add_check<int32_t>(this->total, x);
 }
 
 // @dispatch
 // def add(self, x: str) -> None:
+//     self.total += len(x)
 inline void Acc::add(std::string_view x) {
-    // self.total += len(x)
     this->total = ::tpy::add_check<int32_t>(this->total, ::tpy::__len__(x));
 }
 void __tpy_init();

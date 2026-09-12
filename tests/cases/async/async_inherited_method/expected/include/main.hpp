@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_Pet_feed;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Pet:
@@ -45,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// Async coroutine: Pet.feed
+// async def feed(self, n: int32) -> int32:
 struct __coro_Pet_feed {
     int32_t __state;
     bool __cancel_pending;
@@ -74,7 +76,7 @@ inline __coro_Pet_feed Pet::feed(int32_t n) const {
     return __coro_Pet_feed(*this, n);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

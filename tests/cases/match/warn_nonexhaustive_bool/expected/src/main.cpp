@@ -6,32 +6,32 @@ namespace tpyapp::main {
 
 // # warning: non-exhaustive match on bool (missing False)
 // def describe(b: bool) -> str:
+//     match b:  # tpyc: warning(/non-exhaustive match.*missing: False.*case _:/)
+//         case True:
+//             return "yes"
+//     return "unknown"
 std::string describe(bool b) {
-    // match b:  # tpyc: warning(/non-exhaustive match.*missing: False.*case _:/)
     auto& __match_subject_1 = b;
-    // case True:
     if (__match_subject_1 == true) {
-        // return "yes"
         return "yes";
     }
-    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
+//     print(describe(True))
+//     print(describe(False))
 void main() {
-    // print(describe(True))
     std::cout << describe(true) << "\n";
-    // print(describe(False))
     std::cout << describe(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

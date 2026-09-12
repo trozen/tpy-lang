@@ -22,32 +22,56 @@ struct __coro_echo;
 struct __gen_gen_body;
 struct __coro_async_main;
 
+// def anyslot[T](name: str, v: T) -> bool:
 template<typename T>
 bool anyslot(std::string_view name, ::tpy::param_val_or_ref_t<T> v);
+// def anyslot_i32(name: str, v: int32) -> bool:
 bool anyslot_i32(std::string_view name, int32_t v);
+// def pass_through[T](v: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> pass_through(::tpy::param_val_or_ref_t<T> v);
+// def mk_cell() -> Own[Cell]:
 Cell mk_cell();
+// async def echo[T](value: T) -> T:
 template <typename T>
 __coro_echo<T> echo(::tpy::param_val_or_ref_t<T> value);
+// def free_positions() -> None:
 void free_positions();
+// def view_source(k: str) -> None:
 void view_source(std::string_view k);
+// def ref_rvalue() -> None:
 void ref_rvalue();
+// def ref_lvalue() -> None:
 void ref_lvalue();
+// def method_and_ctor() -> None:
 void method_and_ctor();
+// def comprehension() -> None:
 void comprehension();
+// def closure() -> None:
 void closure();
+// def cond_operand(flag: bool) -> bool:
 bool cond_operand(bool flag);
+// def while_condition() -> int32:
 int32_t while_condition();
+// def match_arm(tag: int32) -> bool:
 bool match_arm(int32_t tag);
+// def try_finally() -> None:
 void try_finally();
+// def with_body() -> None:
 void with_body();
+// def gen_body() -> Iterator[int32]:
 __gen_gen_body gen_body();
+// def er_body(n: int32) -> int32:
 std::expected<int32_t, Missing> er_body(int32_t n);
+// def error_return_body() -> None:
 void error_return_body();
+// def generator_body() -> None:
 void generator_body();
+// def generator_factory() -> None:
 void generator_factory();
+// async def async_main() -> int32:
 __coro_async_main async_main();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -79,12 +103,13 @@ struct Boxed {
     T v;
 
     // def __init__(self, v: T) -> None:
+    //     self.v = copy(v)
     Boxed() = default;
     explicit Boxed(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // def holds(self, other: T) -> bool:  # tpyc: ok
+    //     return True
     bool holds(::tpy::readonly_form_t<T> other) const {
-        // return True
         return true;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boxed";
@@ -134,7 +159,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
     return os;
 }
 
-// Async coroutine: echo
+// async def echo[T](value: T) -> T:
 template <typename T>
 struct __coro_echo {
     int32_t __state;
@@ -157,12 +182,12 @@ struct __coro_echo {
     }
 };
 // async def echo[T](value: T) -> T:
+//     return value
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_echo<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return value
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -179,7 +204,7 @@ __coro_echo<T> echo(::tpy::param_val_or_ref_t<T> value) {
     return __coro_echo<T>(value);
 }
 
-// Async coroutine: async_main
+// async def async_main() -> int32:
 struct __coro_async_main {
     int32_t __state;
     bool __cancel_pending;
@@ -202,7 +227,7 @@ struct __coro_async_main {
     }
 };
 
-// Generator: gen_body
+// def gen_body() -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     int32_t __state;
     int32_t n;
@@ -228,45 +253,50 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Guard::Guard(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> str:
+//     return self.name
 inline std::string Guard::__enter__() const {
-    // return self.name
     return this->name;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("with_body_exit")
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("with_body_exit")
     std::cout << "with_body_exit" << "\n";
 }
 // def anyslot[T](name: str, v: T) -> bool:
+//     return name != ""
 template<typename T>
 bool anyslot(std::string_view name, ::tpy::param_val_or_ref_t<T> v) {
-    // return name != ""
     return (name != "");
 }
 // def pass_through[T](v: T) -> T:
+//     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> pass_through(::tpy::param_val_or_ref_t<T> v) {
-    // return v
     return ::tpy::param_to_return<T>(v);
 }
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+//     # A SIMPLE generator: the peephole's lambda captures the slot by reference,
+//     # so its argument keeps the temp at every instantiation.
+//     i = 0
+//     while i < count:
+//         yield value
+//         i += 1
 template<typename T>
 inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
-    // # A SIMPLE generator: the peephole's lambda captures the slot by reference,
-    // # so its argument keeps the temp at every instantiation.
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<T>(
         [&value, count, i]() mutable -> std::optional<T> {
             while ((i < count)) {
                 auto __val = value;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<T>(__val);
             }

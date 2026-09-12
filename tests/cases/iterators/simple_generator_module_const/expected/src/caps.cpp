@@ -4,6 +4,7 @@
 namespace tpyapp::caps {
 
 
+// CAP: Final[int32] = 4
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

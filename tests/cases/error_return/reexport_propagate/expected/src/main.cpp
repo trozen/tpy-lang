@@ -6,36 +6,38 @@ namespace tpyapp::main {
 
 // @error_return(AppError)
 // def run(n: int32) -> int32:
+//     return check(n)
 std::expected<int32_t, ::tpyapp::errdef::AppError> run(int32_t n) {
-    // return check(n)
     return ::tpyapp::errdef::check(n);
 }
 
 // def main() -> None:
+//     try:
+//         print(run(5))
+//         print(run(-1))
+//     except AppError:
+//         print("caught")
 void main() {
-    // try:
     {
-        // print(run(5))
         std::cout << ({ auto __er_2 = run(5); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
-        // print(run(-1))
         std::cout << ({ auto __er_3 = run(-1); if (!__er_3.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
         goto __after_try_1;
         // except AppError:
         __except_1:;
-        // print("caught")
         std::cout << "caught" << "\n";
         __after_try_1:;
     }
 }
 
+// from facade import AppError, check
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from facade import AppError, check
     ::tpyapp::facade::__tpy_init();
-    // main()
     main();
 }
 

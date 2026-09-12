@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def driver() -> None:
+//     c = Container()
+//     print(await c.total())
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Container()
         c.emplace(Container());
-        // print(await c.total())
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +20,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await c.total())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,12 +36,15 @@ __coro_driver driver() {
 }
 
 // async def total(self) -> int32:
+//     s: int32 = 0
+//     await asyncio.sleep(0)
+//     for it in self.items:
+//         s += it.n
+//     return s
 ::tpystd::tpy::Poll<int32_t> __coro_Container_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s: int32 = 0
         s = 0;
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -52,16 +54,13 @@ __coro_driver driver() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // for it in self.items:
         auto& __obj_0 = __self.items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& it = *__beg_0;
-            // s += it.n
             s = ::tpy::add_check<int32_t>(s, it.n);
         }
-        // return s
         __state = S_DONE;
         int32_t __tpy_async_ret = s;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -72,24 +71,25 @@ __coro_driver driver() {
 }
 
 
+// # Regression: guards two fixes that interlock at the same emit site.
+// # (1) `compute_body_const_sets` populates `const_ref_params={'self'}`
+// #     for @readonly async methods so `iteration_yields_const` fires for
+// #     `self.field` -> loop var binds as `const auto& it` (const ref).
+// # (2) `frame_field_shadows` suppresses the `(*it)` peel that would
+// #     otherwise misfire because sema added `it` to `generator_locals`
+// #     while codegen emits it as a C++-scoped local.
+// # Both fixes are required for this body to compile and emit correct
+// # const code; the `const auto& it = *__beg_0;` line in the snapshot is
+// # the load-bearing assertion.
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: guards two fixes that interlock at the same emit site.
-    // # (1) `compute_body_const_sets` populates `const_ref_params={'self'}`
-    // #     for @readonly async methods so `iteration_yields_const` fires for
-    // #     `self.field` -> loop var binds as `const auto& it` (const ref).
-    // # (2) `frame_field_shadows` suppresses the `(*it)` peel that would
-    // #     otherwise misfire because sema added `it` to `generator_locals`
-    // #     while codegen emits it as a C++-scoped local.
-    // # Both fixes are required for this body to compile and emit correct
-    // # const code; the `const auto& it = *__beg_0;` line in the snapshot is
-    // # the load-bearing assertion.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

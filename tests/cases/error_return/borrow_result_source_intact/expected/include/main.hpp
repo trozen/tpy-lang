@@ -13,6 +13,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class E(Exception, ReturnException):
@@ -72,23 +73,28 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = [1, 2, 3]
 inline Source::Source() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __init__(self) -> None:
+//     self.src = Source()
+//     self.dest = Source()
 inline Holder::Holder() : src(Source()), dest(Source()) {}
 
 // @error_return(E)
 // def view(self) -> Source:
+//     return self.src
 inline std::expected<::tpy::val_or_ref<Source>, E> Holder::view() {
-    // return self.src
     return this->src;
 }
 
 // def grab(self) -> None:
+//     try:
+//         self.dest = self.view()  # tpyc: warning(/copies Source into field/)
+//     except E:
+//         print("error")
 inline void Holder::grab() {
-    // try:
     {
-        // self.dest = self.view()  # tpyc: warning(/copies Source into field/)
         {
             auto __try_tmp_2 = this->view();
             if (!__try_tmp_2.has_value()) goto __except_1;
@@ -97,7 +103,6 @@ inline void Holder::grab() {
         goto __after_try_1;
         // except E:
         __except_1:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_1:;
     }

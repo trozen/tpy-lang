@@ -14,6 +14,7 @@ struct Full;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class NegBig:
@@ -98,26 +99,26 @@ inline std::ostream& operator<<(std::ostream& os, const Full& obj) {
 
 
 // def __len__(self) -> int:
+//     return -1
 inline ::tpy::BigInt NegBig::__len__() const {
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def __len__(self) -> int32:
+//     return -1
 inline int32_t NegI32::__len__() const {
-    // return -1
     return -1;
 }
 
 // def __len__(self) -> int:
+//     return 0
 inline ::tpy::BigInt Empty::__len__() const {
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def __len__(self) -> int32:
+//     return 3
 inline int32_t Full::__len__() const {
-    // return 3
     return 3;
 }
 void __tpy_init();

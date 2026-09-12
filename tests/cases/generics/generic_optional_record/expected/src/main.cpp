@@ -5,54 +5,56 @@ namespace tpyapp::main {
 
 
 // def accept_opt(p: Point | None) -> None:
+//     if p is not None:
+//         print(p.x)
 void accept_opt(const Point* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // print(p.x)
         std::cout << p->x << "\n";
     }
 }
 
 // def main() -> None:
+//     c = Container[Point](Point(1, 2))
+//     p = c.get()
+//     # Field access on narrowed std::optional
+//     if p is not None:
+//         print(p.x)
+//         print(p.y)
+//         # Method call on narrowed std::optional
+//         print(p.sum())
+//
+//     # Pass generic Optional return to function expecting Optional[Point]
+//     p2 = c.get()
+//     accept_opt(p2)
+//
+//     # Also test with value type (should still work)
+//     c2 = Container[int](42)
+//     v = c2.get()
+//     if v is not None:
+//         print(v)
 void main() {
-    // c = Container[Point](Point(1, 2))
     Container<Point> c = Container<Point>(Point(::tpy::BigInt(1), ::tpy::BigInt(2)));
-    // p = c.get()
     Point* p = c.get();
-    // # Field access on narrowed std::optional
-    // if p is not None:
     if ((p != nullptr)) {
-        // print(p.x)
         std::cout << p->x << "\n";
-        // print(p.y)
         std::cout << p->y << "\n";
-        // # Method call on narrowed std::optional
-        // print(p.sum())
         std::cout << p->sum() << "\n";
     }
-    // # Pass generic Optional return to function expecting Optional[Point]
-    // p2 = c.get()
     Point* p2 = c.get();
-    // accept_opt(p2)
     accept_opt(p2);
-    // # Also test with value type (should still work)
-    // c2 = Container[int](42)
     Container<::tpy::BigInt> c2 = Container<::tpy::BigInt>(42);
-    // v = c2.get()
     ::tpy::BigInt* v = c2.get();
-    // if v is not None:
     if ((v != nullptr)) {
-        // print(v)
         std::cout << ::tpy::print_optional(v) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

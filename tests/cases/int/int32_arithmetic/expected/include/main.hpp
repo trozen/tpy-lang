@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_binary_ops():
 void test_binary_ops();
+// def test_unary_neg():
 void test_unary_neg();
+// def test_mixed_literals():
 void test_mixed_literals();
+// def test_negative_division():
 void test_negative_division();
 
 void __tpy_init();

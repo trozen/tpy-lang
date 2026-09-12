@@ -38,13 +38,14 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self):
+//     self.total = 0
 inline Acc::Acc() : total(0) {}
 
 // def __iadd__(self, n: int32) -> "Acc":  # tpyc: ok
+//     self.total += n
+//     return self
 inline Acc& Acc::__iadd__(int32_t n) {
-    // self.total += n
     this->total = ::tpy::add_check<int32_t>(this->total, n);
-    // return self
     return (*this);
 }
 void __tpy_init();

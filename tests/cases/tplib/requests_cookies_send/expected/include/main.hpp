@@ -19,8 +19,12 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def _send(headers: dict[str, str] | None,
+//           cookies: dict[str, str] | None) -> bytes:
 ::tpy::Bytes _send(const ::tpy::ordered_map<std::string, std::string>* headers, const ::tpy::ordered_map<std::string, std::string>* cookies);
+// def _cookie_line(sent: bytes) -> None:
 void _cookie_line(::tpy::BytesView sent);
+// def main() -> None:
 void main();
 
 void __tpy_init();

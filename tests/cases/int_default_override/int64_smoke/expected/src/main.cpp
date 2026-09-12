@@ -3,50 +3,46 @@
 
 namespace tpyapp::main {
 
-// # int64 default: in-range literals should stay fixed-int.
-// a = 2 ** 40
 int64_t a{};
-// # Still supports regular arithmetic in fixed-int mode.
-// b = 10
 int64_t b{};
-// # Out-of-range literal should promote to BigInt with warning.
-// c = 2 ** 70  # tpyc: warning(/outside default int64 range/)
 ::tpy::BigInt c;
-// # List literal elements should be int64.
-// items = [10, 20, 30]
 std::vector<int64_t>* items{};
 
+// # int64 default: in-range literals should stay fixed-int.
+// a = 2 ** 40
+// print(a)
+//
+// # Still supports regular arithmetic in fixed-int mode.
+// b = 10
+// print(a + b)
+//
+// # Out-of-range literal should promote to BigInt with warning.
+// c = 2 ** 70  # tpyc: warning(/outside default int64 range/)
+// print(c)
+//
+// # range() should use int64 loop variable.
+// for i in range(3):
+//     print(i)
+//
+// # List literal elements should be int64.
+// items = [10, 20, 30]
+// print(items[0])
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # int64 default: in-range literals should stay fixed-int.
-    // a = 2 ** 40
     a = ::tpy::pow_check<int64_t>(2, 40);
-    // print(a)
     std::cout << a << "\n";
-    // # Still supports regular arithmetic in fixed-int mode.
-    // b = 10
     b = 10;
-    // print(a + b)
     std::cout << (::tpy::add_check<int64_t>(a, b)) << "\n";
-    // # Out-of-range literal should promote to BigInt with warning.
-    // c = 2 ** 70  # tpyc: warning(/outside default int64 range/)
     c = ((::tpy::BigInt(2)).pow(::tpy::BigInt(70)));
-    // print(c)
     std::cout << c << "\n";
-    // # range() should use int64 loop variable.
-    // for i in range(3):
     for (int64_t i = 0; i < 3; ++i) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // # List literal elements should be int64.
-    // items = [10, 20, 30]
     static std::vector<int64_t> __global_slot_1 = {10, 20, 30};
     items = &__global_slot_1;
-    // print(items[0])
     std::cout << ::tpy::__getitem__((*items), 0) << "\n";
 }
 

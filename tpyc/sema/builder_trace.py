@@ -623,8 +623,8 @@ def _strip_fragment_locs(stmts: list[TpyStmt]) -> None:
 
     Quoted-fragment stmts carry locs whose line numbers index the
     fragment source, not the user module's source -- if those flow
-    through to codegen unchanged, ``emit_inline_comments`` indexes
-    out of bounds. Clearing matches the implicit contract for
+    through to codegen unchanged, the source echo indexes out of
+    bounds. Clearing matches the implicit contract for
     ``ast.*``-built stmts (which never set loc in the first place).
     """
     for stmt in stmts:

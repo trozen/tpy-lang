@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1, 2)
+//     print(hasattr(p, "x"))     # declared -> True
+//     print(hasattr(p, "y"))     # declared -> True
+//     print(hasattr(p, "z"))     # absent + no dunder -> False (compile-time)
 void main() {
-    // p = Point(1, 2)
     Point p = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
-    // print(hasattr(p, "x"))     # declared -> True
     std::cout << ::tpy::print_bool(true) << "\n";
-    // print(hasattr(p, "y"))     # declared -> True
     std::cout << ::tpy::print_bool(true) << "\n";
-    // print(hasattr(p, "z"))     # absent + no dunder -> False (compile-time)
     std::cout << ::tpy::print_bool(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

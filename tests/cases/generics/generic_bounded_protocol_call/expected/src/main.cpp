@@ -5,67 +5,77 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Test 1: len() on list (builtin Sized)
+//     items = [1, 2, 3, 4, 5]
+//     print(get_length(items))  # 5
+//
+//     # Test 1b: len() on str (builtin Sized)
+//     msg = "hello"
+//     print(get_length(msg))  # 5
+//
+//     # Test 2: User-defined protocol method
+//     v = MyValue(42)
+//     print(stringify(v))  # value
+//
+//     # Test 3: MyValue satisfies Sized too (has __len__)
+//     print(get_length(v))  # 42
+//
+//     # Test 4: Generic class calling method on bounded type param
+//     printer = Printer[MyValue]()
+//     print(printer.get_str(v))  # value
+//
+//     # Test 4b: Same generic class with different type
+//     point_printer = Printer[Point]()
+//     print(point_printer.get_str(Point(10, 20)))  # Point
+//
+//     # Test 6: Multiple type params with different bounds
+//     print(process_both(items, v))  # value, then 5
+//
+//     # Test 7: Protocol with multiple methods
+//     w = Widget("test", 99)
+//     use_multi(w)  # test, then 99
+//
+//     # Test 8: Nested bounded calls
+//     print(outer_len(items))  # 5
+//
+//     # Test 9: User protocol with Self - clone returns T (Box), not Clonable
+//     box = Box(123)
+//     cloned = clone_it(box)  # cloned should be Box, not Clonable
+//     print(cloned.value)  # 123 - accessing Box.value proves type is Box
+//
+//     # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
+//     print(is_less(1, 2))  # True
+//     print(is_less(5, 3))  # False
 void main() {
-    // # Test 1: len() on list (builtin Sized)
-    // items = [1, 2, 3, 4, 5]
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
-    // print(get_length(items))  # 5
     std::cout << get_length<std::vector<int32_t>>(items) << "\n";
-    // # Test 1b: len() on str (builtin Sized)
-    // msg = "hello"
     std::string_view msg = "hello";
-    // print(get_length(msg))  # 5
     std::cout << get_length<std::string_view>(msg) << "\n";
-    // # Test 2: User-defined protocol method
-    // v = MyValue(42)
     MyValue v = MyValue(42);
-    // print(stringify(v))  # value
     std::cout << stringify<MyValue>(v) << "\n";
-    // # Test 3: MyValue satisfies Sized too (has __len__)
-    // print(get_length(v))  # 42
     std::cout << get_length<MyValue>(v) << "\n";
-    // # Test 4: Generic class calling method on bounded type param
-    // printer = Printer[MyValue]()
     Printer<MyValue> printer = Printer<MyValue>();
-    // print(printer.get_str(v))  # value
     std::cout << printer.get_str(v) << "\n";
-    // # Test 4b: Same generic class with different type
-    // point_printer = Printer[Point]()
     Printer<Point> point_printer = Printer<Point>();
-    // print(point_printer.get_str(Point(10, 20)))  # Point
     Point __tmp_1 = Point(10, 20);
     std::cout << point_printer.get_str(__tmp_1) << "\n";
-    // # Test 6: Multiple type params with different bounds
-    // print(process_both(items, v))  # value, then 5
     std::cout << process_both<std::vector<int32_t>, MyValue>(items, v) << "\n";
-    // # Test 7: Protocol with multiple methods
-    // w = Widget("test", 99)
     Widget w = Widget("test", 99);
-    // use_multi(w)  # test, then 99
     use_multi<Widget>(w);
-    // # Test 8: Nested bounded calls
-    // print(outer_len(items))  # 5
     std::cout << outer_len<std::vector<int32_t>>(items) << "\n";
-    // # Test 9: User protocol with Self - clone returns T (Box), not Clonable
-    // box = Box(123)
     Box box = Box(123);
-    // cloned = clone_it(box)  # cloned should be Box, not Clonable
     Box cloned = clone_it<Box>(box);
-    // print(cloned.value)  # 123 - accessing Box.value proves type is Box
     std::cout << cloned.value << "\n";
-    // # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
-    // print(is_less(1, 2))  # True
     std::cout << ::tpy::print_bool(is_less<int32_t>(1, 2)) << "\n";
-    // print(is_less(5, 3))  # False
     std::cout << ::tpy::print_bool(is_less<int32_t>(5, 3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

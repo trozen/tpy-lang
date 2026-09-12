@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(drain(Int32One()))
+//     drain(Nothing())
+//     print("done")
 void main() {
-    // print(drain(Int32One()))
     auto __tmp_1 = Int32One();
     std::cout << drain<int32_t>(__tmp_1) << "\n";
-    // drain(Nothing())
     auto __tmp_2 = Nothing();
     drain<std::monostate>(__tmp_2);
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_ready, poll_ready_none
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_ready, poll_ready_none
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

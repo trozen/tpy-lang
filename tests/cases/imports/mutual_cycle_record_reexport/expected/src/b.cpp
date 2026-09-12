@@ -7,19 +7,20 @@ namespace tpyapp::b {
 
 
 // def __init__(self) -> None:
+//     self.tag = int32(7)
 BType::BType() : tag(7) {}
 
 // def use_a(self, a: AType) -> int32:
+//     return self.tag
 int32_t BType::use_a(const ::tpyapp::a::AType& a) const {
-    // return self.tag
     return this->tag;
 }
+// from a import AType
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import AType
     ::tpyapp::a::__tpy_init();
 }
 

@@ -5,104 +5,104 @@ namespace tpyapp::main {
 
 
 // def pick(c: Counter) -> Counter:
+//     return c
 Counter& pick(Counter& c) {
-    // return c
     return c;
 }
 
 // def alias_survives_rebind() -> None:
+//     c = Counter(1)
+//     alias = c
+//     c = Counter(10)  # tpyc: ok
+//     alias.bump()
+//     print("alias:", alias.n, "c:", c.n)
 void alias_survives_rebind() {
     std::optional<Counter> __slot_2;
-    // c = Counter(1)
     Counter __slot_1 = Counter(1);
     Counter* c = &__slot_1;
-    // alias = c
     Counter& alias = (*c);
-    // c = Counter(10)  # tpyc: ok
     c = &*(__slot_2 = Counter(10));
-    // alias.bump()
     alias.bump();
-    // print("alias:", alias.n, "c:", c.n)
     std::cout << "alias:" << " " << alias.n << " " << "c:" << " " << c->n << "\n";
 }
 
 // def rebind_in_loop() -> None:
+//     c = Counter(0)
+//     first = c
+//     i = 0
+//     while i < 3:
+//         c = Counter(i)  # tpyc: ok
+//         i += 1
+//     first.bump()
+//     print("first:", first.n, "c:", c.n)
 void rebind_in_loop() {
     std::optional<Counter> __slot_2;
-    // c = Counter(0)
     Counter __slot_1 = Counter(0);
     Counter* c = &__slot_1;
-    // first = c
     Counter& first = (*c);
-    // i = 0
     int32_t i = 0;
-    // while i < 3:
     while ((i < 3)) {
-        // c = Counter(i)  # tpyc: ok
         c = &*(__slot_2 = Counter(i));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // first.bump()
     first.bump();
-    // print("first:", first.n, "c:", c.n)
     std::cout << "first:" << " " << first.n << " " << "c:" << " " << c->n << "\n";
 }
 
 // def borrow_call_rebind(seed: Counter) -> None:
+//     result = seed
+//     i = 0
+//     while i < 2:
+//         result = pick(seed)
+//         i += 1
+//     result.bump()
+//     print("seed:", seed.n, "result:", result.n)
 void borrow_call_rebind(Counter& seed) {
-    // result = seed
     Counter* result = &(seed);
-    // i = 0
     int32_t i = 0;
-    // while i < 2:
     while ((i < 2)) {
-        // result = pick(seed)
         result = &(pick(seed));
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // result.bump()
     result->bump();
-    // print("seed:", seed.n, "result:", result.n)
     std::cout << "seed:" << " " << seed.n << " " << "result:" << " " << result->n << "\n";
 }
 
 // def none_reassign(flag: bool) -> None:
+//     c: Counter | None = Counter(5)
+//     if flag:
+//         c = None
+//     print("none:" if c is None else "some:", 0 if c is None else c.n)
 void none_reassign(bool flag) {
-    // c: Counter | None = Counter(5)
     Counter __slot_1 = Counter(5);
     Counter* c = &__slot_1;
-    // if flag:
     if (flag) {
-        // c = None
         c = nullptr;
     }
-    // print("none:" if c is None else "some:", 0 if c is None else c.n)
     std::cout << (((c == nullptr)) ? ("none:") : ("some:")) << " " << (((c == nullptr)) ? (0) : (c->n)) << "\n";
 }
 
 // def main() -> None:
+//     alias_survives_rebind()
+//     rebind_in_loop()
+//     borrow_call_rebind(Counter(7))
+//     none_reassign(True)
+//     none_reassign(False)
 void main() {
-    // alias_survives_rebind()
     alias_survives_rebind();
-    // rebind_in_loop()
     rebind_in_loop();
-    // borrow_call_rebind(Counter(7))
     Counter __tmp_1 = Counter(7);
     borrow_call_rebind(__tmp_1);
-    // none_reassign(True)
     none_reassign(true);
-    // none_reassign(False)
     none_reassign(false);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

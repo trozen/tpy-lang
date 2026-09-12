@@ -15,7 +15,9 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def build_clones() -> Own[list[Rc[Node]]]:
 std::vector<::tpystd::tplib::rc::Rc<Node>> build_clones();
+// def main() -> None:
 void main();
 
 // class Node:
@@ -36,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Node::Node(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

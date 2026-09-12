@@ -3,54 +3,55 @@
 
 namespace tpyapp::main {
 
-// i, total, ascending, descending: integer;
 int32_t i{};
-// i, total, ascending, descending: integer;
 int32_t total{};
-// i, total, ascending, descending: integer;
 int32_t ascending{};
-// i, total, ascending, descending: integer;
 int32_t descending{};
 
+// i, total, ascending, descending: integer;
+//
+// total := 0;
+// i := 1;
+// while i <= 5 do
+// begin
+//   total := total + i;
+//   i := i + 1;
+// end;
+// ascending := total;
+//
+// total := 0;
+// i := 5;
+// repeat
+//   total := total + i;
+//   i := i - 1;
+// until i = 0;
+// descending := total;
+//
+// writeln(ascending);
+// writeln(descending);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // total := 0;
     total = 0;
-    // i := 1;
     i = 1;
-    // while i <= 5 do
     while ((i <= 5)) {
-        // total := total + i;
         total = (::tpy::add_check<int32_t>(total, i));
-        // i := i + 1;
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    // ascending := total;
     ascending = total;
-    // total := 0;
     total = 0;
-    // i := 5;
     i = 5;
-    // repeat
     while (true) {
-        // total := total + i;
         total = (::tpy::add_check<int32_t>(total, i));
-        // i := i - 1;
         i = (::tpy::sub_check<int32_t>(i, 1));
-        // repeat
         if ((i == 0)) {
-            // repeat
             break;
         }
     }
-    // descending := total;
     descending = total;
-    // writeln(ascending);
     std::cout << ascending << "\n";
-    // writeln(descending);
     std::cout << descending << "\n";
 }
 

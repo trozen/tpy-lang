@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def cleanup() -> None:
+//     print("cleanup")
 ::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("cleanup")
         std::cout << "cleanup" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,6 +26,11 @@ __coro_cleanup cleanup() {
 }
 
 // async def caller() -> int:
+//     try:
+//         await cleanup()
+//     finally:
+//         await cleanup()
+//     return 7
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -61,19 +66,16 @@ __coro_cleanup cleanup() {
             this->__finally_exc_0 = nullptr;
             std::rethrow_exception(__tmp);
         }
-        // return 7
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {
-        // await cleanup()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_2: {
-        // await cleanup()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -90,23 +92,24 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # `await` inside a `finally` body (v1.5 M3.3). The finally body
+// # runs as a CFG region; any in-flight exception from the try body
+// # lives in a `__finally_exc_<n>` std::exception_ptr frame slot and
+// # is rethrown after the finally completes.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` inside a `finally` body (v1.5 M3.3). The finally body
-    // # runs as a CFG region; any in-flight exception from the try body
-    // # lives in a `__finally_exc_<n>` std::exception_ptr frame slot and
-    // # is rethrown after the finally completes.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

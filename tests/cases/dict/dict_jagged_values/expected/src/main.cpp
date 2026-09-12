@@ -7,23 +7,23 @@ namespace tpyapp::main {
 // # A dict literal whose list values have different lengths: the peer values
 // # reconcile to list[int] rather than being rejected as mixed value types.
 // def main() -> None:
+//     d = {1: [1, 2], 2: [3, 4, 5]}  # tpyc: ok
+//     print(d)
+//     d[1].append(9)  # stored value is a real container -> change observed
+//     print(d)
 void main() {
-    // d = {1: [1, 2], 2: [3, 4, 5]}  # tpyc: ok
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>({{1, {1, 2}}, {2, {3, 4, 5}}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // d[1].append(9)  # stored value is a real container -> change observed
     ::tpy::__getitem__(d, 1).push_back(9);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

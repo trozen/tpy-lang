@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     partial = Info(name="Alice")
+//     try:
+//         print(partial["age"])
+//     except KeyError as e:
+//         print("caught:", str(e))
 void main() {
-    // partial = Info(name="Alice")
     Info partial = Info("Alice");
-    // try:
     {
         try {
-            // print(partial["age"])
             std::cout << ::tpy::typed_dict_field_check(partial.age) << "\n";
         } catch (const ::tpy::KeyError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

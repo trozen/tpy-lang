@@ -5,16 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     m = Mutex.new([1, 2])
+//     with m.lock() as g:
+//         g.set([7, 8, 9])            # rvalue moved into the lock's storage
+//         g.append(10)                # mutate the moved-in payload through the guard
+//     with m.lock() as g2:
+//         print(g2.get())             # [7, 8, 9, 10] -- the append hit the stored list
+//
+//     rw = RwLock.new([1, 2])
+//     with rw.write() as w:
+//         w.set([20, 30])
+//         w.append(40)
+//     with rw.read() as r:
+//         print(r.get())              # [20, 30, 40]
 void main() {
-    // m = Mutex.new([1, 2])
     ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2});
-    // with m.lock() as g:
     auto __ctx_1 = m.lock();
     auto& g = __ctx_1.__enter__();
     try {
-        // g.set([7, 8, 9])            # rvalue moved into the lock's storage
         g.set({7, 8, 9});
-        // g.append(10)                # mutate the moved-in payload through the guard
         g.__deref__().push_back(10);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -26,11 +35,9 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with m.lock() as g2:
     auto __ctx_2 = m.lock();
     auto& g2 = __ctx_2.__enter__();
     try {
-        // print(g2.get())             # [7, 8, 9, 10] -- the append hit the stored list
         std::cout << ::tpy::ListPrinter(g2.get()) << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -42,15 +49,11 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // rw = RwLock.new([1, 2])
     ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({1, 2});
-    // with rw.write() as w:
     auto __ctx_3 = rw.write();
     auto& w = __ctx_3.__enter__();
     try {
-        // w.set([20, 30])
         w.set({20, 30});
-        // w.append(40)
         w.__deref__().push_back(40);
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -62,11 +65,9 @@ void main() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // with rw.read() as r:
     auto __ctx_4 = rw.read();
     auto& r = __ctx_4.__enter__();
     try {
-        // print(r.get())              # [20, 30, 40]
         std::cout << ::tpy::ListPrinter(r.get()) << "\n";
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -80,18 +81,19 @@ void main() {
     __ctx_4.__exit__({}, nullptr, {});
 }
 
+// # MutexGuard.set() / WriteGuard.set() take Own[T]: a fresh reference-type value
+// # is moved into the lock's storage, then mutated through the guard and observed
+// # through a later lock -- proving set() writes into the lock's live storage (an
+// # alias), not a throwaway copy. Byte-parity with CPython (which rebinds).
+// from tpy.sync import Mutex, RwLock
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # MutexGuard.set() / WriteGuard.set() take Own[T]: a fresh reference-type value
-    // # is moved into the lock's storage, then mutated through the guard and observed
-    // # through a later lock -- proving set() writes into the lock's live storage (an
-    // # alias), not a throwaway copy. Byte-parity with CPython (which rebinds).
-    // from tpy.sync import Mutex, RwLock
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

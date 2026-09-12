@@ -11,6 +11,7 @@ struct PairIter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class PairIter:
@@ -39,28 +40,30 @@ inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {
 
 
 // def __init__(self, limit: int32) -> None:
+//     self.current = 0
+//     self.limit = limit
 inline PairIter::PairIter(int32_t limit) : current(0), limit(limit) {}
 
 // def __iter__(self) -> PairIter:
+//     return self
 inline PairIter& PairIter::__iter__() {
-    // return self
     return (*this);
 }
 
 // def __next__(self) -> tuple[str, int32]:
+//     if self.current < self.limit:
+//         key = str(self.current)
+//         val = self.current * 10
+//         self.current += 1
+//         return (key, val)
+//     raise StopIteration
 inline std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> PairIter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // key = str(self.current)
         std::string key = ::tpy::fixed_to_str<int32_t>(this->current);
-        // val = self.current * 10
         int32_t val = (::tpy::mul_check<int32_t>(this->current, 10));
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return (key, val)
         return std::tuple<std::string, int32_t>{key, val};
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 void __tpy_init();

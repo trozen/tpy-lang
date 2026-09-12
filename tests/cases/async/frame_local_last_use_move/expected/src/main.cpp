@@ -5,18 +5,21 @@ namespace tpyapp::main {
 
 
 // async def collect(n: int) -> int:
+//     out: list[list[int32]] = []
+//     seen: list[bytes] = []
+//     buf = [1, 2, 3, 4]
+//     ba = bytearray(b"abcd")
+//     await asyncio.sleep(0)
+//     out.append(buf)  # the frame slot, moved at its last use
+//     seen.append(bytes(ba))  # the written copy into a `bytes` element slot
+//     return len(out) + len(out[0]) + len(seen[0]) + n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_collect::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // out: list[list[int32]] = []
         out.emplace(std::vector<std::vector<int32_t>>{});
-        // seen: list[bytes] = []
         seen.emplace(std::vector<::tpy::Bytes>{});
-        // buf = [1, 2, 3, 4]
         buf.emplace(std::vector<int32_t>{1, 2, 3, 4});
-        // ba = bytearray(b"abcd")
         ba.emplace(::tpy::ByteArray(::tpy::bytes_literal("abcd", 4)));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -26,11 +29,8 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // out.append(buf)  # the frame slot, moved at its last use
         (*out).push_back(std::move((*buf)));
-        // seen.append(bytes(ba))  # the written copy into a `bytes` element slot
         (*seen).push_back(::tpy::Bytes((*ba)));
-        // return len(out) + len(out[0]) + len(seen[0]) + n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((::tpy::BigInt((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__len__((*out)), ::tpy::__len__(::tpy::__getitem__((*out), 0)))), ::tpy::__len__(::tpy::__getitem__((*seen), 0)))))) + (n));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -47,10 +47,10 @@ __coro_collect collect(::tpy::BigInt n) {
 }
 
 // async def amain() -> None:
+//     print(await collect(1))
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await collect(1))
         __sub_0.emplace(::tpy::BigInt(1));
         __state = S_RESUME_0;
         continue;
@@ -60,7 +60,6 @@ __coro_collect collect(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await collect(1))
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -76,24 +75,25 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # The async sibling of generators/frame_local_last_use_move: a movable local at
+// # its last use inside a resumable frame. Both spellings share the frame_slot
+// # machinery, so both render `(*buf)` -- which must not be read as a
+// # materialized temporary, or the last-use move is silently dropped. The second
+// # append is the contrast: `bytearray` and `bytes` are distinct types, so an
+// # owning `bytes` sink refuses a bytearray outright and the copy is WRITTEN --
+// # `bytes(ba)`, which is never a move. The moved local is a `list[int32]` rather
+// # than the bytearray it used to be for the same reason: that pair no longer
+// # reaches the move arm at all. What the written copy does to the two objects is
+// # pinned in tests/cases/bytes/bytearray_copy_into_bytes_sink.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The async sibling of generators/frame_local_last_use_move: a movable local at
-    // # its last use inside a resumable frame. Both spellings share the frame_slot
-    // # machinery, so both render `(*buf)` -- which must not be read as a
-    // # materialized temporary, or the last-use move is silently dropped. The second
-    // # append is the contrast: `bytearray` and `bytes` are distinct types, so an
-    // # owning `bytes` sink refuses a bytearray outright and the copy is WRITTEN --
-    // # `bytes(ba)`, which is never a move. The moved local is a `list[int32]` rather
-    // # than the bytearray it used to be for the same reason: that pair no longer
-    // # reaches the move arm at all. What the written copy does to the two objects is
-    // # pinned in tests/cases/bytes/bytearray_copy_into_bytes_sink.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

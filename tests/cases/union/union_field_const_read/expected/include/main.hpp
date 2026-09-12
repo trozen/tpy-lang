@@ -13,11 +13,17 @@ struct Zoo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_pet_name(z: Zoo) -> str:
 std::string get_pet_name(const Zoo& z);
+// def get_pet_name_ro(z: Zoo) -> str:
 std::string get_pet_name_ro(const Zoo& z);
+// def greet_pet(pet: Dog | Cat) -> str:
 std::string greet_pet(::tpy::Union<const Cat*, const Dog*> pet);
+// def show_dog(d: Dog) -> str:
 std::string show_dog(const Dog& d);
+// def forward_pet(pet: Dog | Cat) -> str:
 std::string forward_pet(::tpy::Union<const Cat*, const Dog*> pet);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -71,12 +77,16 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat, tag: str) -> None:
+//     self.pet = pet
+//     self.tag = tag
 inline Zoo::Zoo(::tpy::Union<const Cat*, const Dog*> pet, std::string_view tag) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

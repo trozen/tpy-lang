@@ -7,30 +7,30 @@ namespace tpyapp::main {
 // # free function: variants differ by arity
 // @dispatch
 // def area(w: int32) -> int32:  # tpyc: ok
+//     return w * w
 int32_t area(int32_t w) {
-    // return w * w
     return (::tpy::mul_check<int32_t>(w, w));
 }
 
 // @dispatch
 // def area(w: int32, h: int32) -> int32:
+//     return w * h
 int32_t area(int32_t w, int32_t h) {
-    // return w * h
     return (::tpy::mul_check<int32_t>(w, h));
 }
 
 // # free function: variants differ by type, with different return types
 // @dispatch
 // def tag(x: int32) -> str:  # tpyc: ok
+//     return "int"
 std::string tag(int32_t x) {
-    // return "int"
     return "int";
 }
 
 // @dispatch
 // def tag(x: str) -> int32:
+//     return len(x)
 int32_t tag(std::string_view x) {
-    // return len(x)
     return ::tpy::__len__(x);
 }
 
@@ -39,85 +39,87 @@ int32_t tag(std::string_view x) {
 // # a plain int against int32, so its matcher fits the literal to the slot)
 // @dispatch
 // def kind(x: str) -> str:  # tpyc: ok
+//     return "str"
 std::string kind(std::string_view x) {
-    // return "str"
     return "str";
 }
 
 // @dispatch
 // def kind(x: int32) -> str:
+//     return "int"
 std::string kind(int32_t x) {
-    // return "int"
     return "int";
 }
 
 // # reference type: a variant mutates the list it is handed, visible to the caller
 // @dispatch
 // def push(xs: list[int32]) -> None:  # tpyc: ok
+//     xs.append(0)
 void push(std::vector<int32_t>& xs) {
-    // xs.append(0)
     xs.push_back(0);
 }
 
 // @dispatch
 // def push(xs: list[int32], v: int32) -> None:
+//     xs.append(v)
 void push(std::vector<int32_t>& xs, int32_t v) {
-    // xs.append(v)
     xs.push_back(v);
 }
 
 
 
+// def show(x: int | str) -> str:  # tpyc: ok
+//     if isinstance(x, int):
+//         return "n=" + str(x)
+//     return "s=" + x
 // # typing.overload in the same module keeps its stubs-plus-implementation form
 // @overload
 // def show(x: int) -> str: ...
 std::string show(const ::tpy::BigInt& x) {
-    // return "n=" + str(x)
     return (::tpy::str_concat("n=", (x).to_string()));
 }
 
 // @overload
 // def show(x: str) -> str: ...
 std::string show(std::string_view x) {
-    // return "s=" + x
     return (::tpy::str_concat("s=", x));
 }
 
 
 // def main() -> None:
+//     print("free_arity:", area(3), area(2, 5))
+//     print("free_type:", tag(1), tag("abc"))
+//     print("free_order:", kind(3), kind("s"))
+//     a = Acc()
+//     a.add(2)
+//     a.add("xyz")
+//     print("method:", a.total)
+//     xs: list[int32] = []
+//     push(xs)
+//     push(xs, 7)
+//     print("reference:", xs)
+//     print("overload:", show(7), show("q"))
 void main() {
-    // print("free_arity:", area(3), area(2, 5))
     std::cout << "free_arity:" << " " << area(3) << " " << area(2, 5) << "\n";
-    // print("free_type:", tag(1), tag("abc"))
     std::cout << "free_type:" << " " << tag(1) << " " << tag(std::string_view("abc")) << "\n";
-    // print("free_order:", kind(3), kind("s"))
     std::cout << "free_order:" << " " << kind(3) << " " << kind(std::string_view("s")) << "\n";
-    // a = Acc()
     Acc a = Acc();
-    // a.add(2)
     a.add(2);
-    // a.add("xyz")
     a.add(std::string_view("xyz"));
-    // print("method:", a.total)
     std::cout << "method:" << " " << a.total << "\n";
-    // xs: list[int32] = []
     std::vector<int32_t> xs = std::vector<int32_t>{};
-    // push(xs)
     push(xs);
-    // push(xs, 7)
     push(xs, 7);
-    // print("reference:", xs)
     std::cout << "reference:" << " " << ::tpy::ListPrinter(xs) << "\n";
-    // print("overload:", show(7), show("q"))
     std::cout << "overload:" << " " << show(::tpy::BigInt(7)) << " " << show(std::string_view("q")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Accumulator;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Counter:
@@ -61,24 +62,26 @@ inline std::ostream& operator<<(std::ostream& os, const Accumulator& obj) {
 
 
 // def __init__(self):
+//     self.count = 0
 inline Counter::Counter() : count(0) {}
 
 // def __call__(self, inc: int32) -> int32:
+//     self.count += inc
+//     return self.count
 inline int32_t Counter::__call__(int32_t inc) {
-    // self.count += inc
     this->count = ::tpy::add_check<int32_t>(this->count, inc);
-    // return self.count
     return this->count;
 }
 
 // def __init__(self, initial: float):
+//     self.total = initial
 inline Accumulator::Accumulator(double initial) : total(initial) {}
 
 // def __call__(self, value: float) -> float:
+//     self.total += value
+//     return self.total
 inline double Accumulator::__call__(double value) {
-    // self.total += value
     this->total = (this->total) + (value);
-    // return self.total
     return this->total;
 }
 void __tpy_init();

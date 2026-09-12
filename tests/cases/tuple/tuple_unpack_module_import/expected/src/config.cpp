@@ -3,23 +3,21 @@
 
 namespace tpyapp::config {
 
-// lo, hi = get_bounds()
 int32_t lo{};
-// lo, hi = get_bounds()
 int32_t hi{};
 
 // def get_bounds() -> tuple[int32, int32]:
+//     return (int32(10), int32(20))
 std::tuple<int32_t, int32_t> get_bounds() {
-    // return (int32(10), int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
+// lo, hi = get_bounds()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // lo, hi = get_bounds()
     auto __tup_1 = get_bounds();
     lo = std::get<0>(__tup_1);
     hi = std::get<1>(__tup_1);

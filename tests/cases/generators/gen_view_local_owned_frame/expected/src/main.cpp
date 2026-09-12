@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def pair(n: int32) -> tuple[str, str]:
+//     return ("host-" + str(n), "port-" + str(n))
 std::tuple<std::string, std::string> pair(int32_t n) {
-    // return ("host-" + str(n), "port-" + str(n))
     return std::tuple<std::string, std::string>{(::tpy::str_concat("host-", ::tpy::fixed_to_str<int32_t>(n))), (::tpy::str_concat("port-", ::tpy::fixed_to_str<int32_t>(n)))};
 }
 
 // def unpack_across_yield() -> Iterator[int32]:
+//     # The tuple temp dies at the first yield; the promoted owned fields
+//     # must survive to the post-suspension read.
+//     host, port = pair(7)
+//     yield 1
+//     print(host, port)
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The tuple temp dies at the first yield; the promoted owned fields
-        // # must survive to the post-suspension read.
-        // host, port = pair(7)
         auto __tup_1 = pair(7);
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // print(host, port)
         std::cout << host << " " << port << "\n";
-        // yield 2
         __state = S_RESUME_1;
         return 2;
     }
@@ -47,6 +47,11 @@ __gen_unpack_across_yield unpack_across_yield() {
 }
 
 // def dict_keys(d: dict[str, int32]) -> Iterator[str]:
+//     # A dict-key loop var yielded into an owned Iterator[str] slot: the
+//     # promoted local converts cleanly where a view field failed the build.
+//     for k in d:
+//         yield k
+//     yield "end"
 std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -65,12 +70,10 @@ std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield "end"
             __state = S_RESUME_1;
             return "end";
         }
         k = *((*__for_it_0))++;
-        // yield k
         __state = S_RESUME_0;
         return k;
     }
@@ -86,6 +89,12 @@ __gen_dict_keys dict_keys(::tpy::ordered_map<std::string, int32_t>& d) {
 }
 
 // def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
+//     # bytes sibling: a container-element view local crossing a yield.
+//     for b in blobs:
+//         yield len(b)
+//     total = blobs[0]  # tpyc: type(bytes)
+//     yield 100
+//     yield len(total)
 std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -99,7 +108,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
         continue;
     }
     case S_RESUME_1: {
-        // yield len(total)
         __state = S_RESUME_2;
         return ::tpy::__len__(total);
     }
@@ -109,14 +117,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // total = blobs[0]  # tpyc: type(bytes)
             total = ::tpy::__getitem__(blobs, 0);
-            // yield 100
             __state = S_RESUME_1;
             return 100;
         }
         b = *((*__for_it_0))++;
-        // yield len(b)
         __state = S_RESUME_0;
         return ::tpy::__len__(b);
     }
@@ -132,20 +137,20 @@ __gen_blob_slices blob_slices(std::vector<::tpy::Bytes>& blobs) {
 }
 
 // def static_sources() -> Iterator[int32]:
+//     # A literal-sourced local has static storage: stays a zero-copy view.
+//     lit = "static"  # tpyc: type(StrView)
+//     view: StrView = "explicit"  # tpyc: type(StrView)
+//     yield 1
+//     print(lit, view)
 std::expected<int32_t, ::tpy::StopIteration> __gen_static_sources::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # A literal-sourced local has static storage: stays a zero-copy view.
-        // lit = "static"  # tpyc: type(StrView)
         lit = "static";
-        // view: StrView = "explicit"  # tpyc: type(StrView)
         view = "explicit";
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // print(lit, view)
         std::cout << lit << " " << view << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -162,8 +167,16 @@ __gen_static_sources static_sources() {
 }
 
 // def main() -> None:
+//     for v in unpack_across_yield():
+//         print(v)
+//     d = {"a": 1, "b": 2}
+//     for k in dict_keys(d):
+//         print(k)
+//     for n in blob_slices([b"xy", b"z"]):
+//         print(n)
+//     for v in static_sources():
+//         print(v)
 void main() {
-    // for v in unpack_across_yield():
     {
         auto __src_0 = unpack_across_yield();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -171,13 +184,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // d = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // for k in dict_keys(d):
     {
         auto __src_2 = dict_keys(d);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -185,11 +195,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view k = ::tpy::unwrap_ref(*__r_3);
-        // print(k)
         std::cout << k << "\n";
         }
     }
-    // for n in blob_slices([b"xy", b"z"]):
     {
         std::vector<::tpy::Bytes> __tmp_1 = {::tpy::bytes_literal_owned("xy", 2), ::tpy::bytes_literal_owned("z", 1)};
         auto __src_4 = blob_slices(__tmp_1);
@@ -198,11 +206,9 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-        // print(n)
         std::cout << n << "\n";
         }
     }
-    // for v in static_sources():
     {
         auto __src_6 = static_sources();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -210,18 +216,17 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

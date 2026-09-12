@@ -5,6 +5,11 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int32]:
+//     with Fresh() as a:
+//         yield a.v
+//         a.v += 1
+//         yield a.v
+//     yield a.v
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
@@ -16,9 +21,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {
         try {
-            // a.v += 1
             (*a).v = ::tpy::add_check<int32_t>((*a).v, 1);
-            // yield a.v
             __state = S_RESUME_1;
             return (*a).v;
         } catch (::tpy::BaseException& __exc_0) {
@@ -51,13 +54,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield a.v
         __state = S_RESUME_2;
         return (*a).v;
     }
     case S_JOIN_1: {
         try {
-            // yield a.v
             __state = S_RESUME_0;
             return (*a).v;
         } catch (::tpy::BaseException& __exc_0) {
@@ -84,8 +85,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for x in gen():
+//         print(x)
 void main() {
-    // for x in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -93,18 +95,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

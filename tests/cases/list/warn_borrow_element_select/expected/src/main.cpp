@@ -5,95 +5,100 @@ namespace tpyapp::main {
 
 
 // def both_element_arms(rs: list[Rec], c: bool) -> None:
+//     """Both arms are elements of one container: the append warns."""
+//     r = rs[0] if c else rs[1]
+//     r.n += 1                       # the write lands on the picked element
+//     rs.append(Rec(9))              # tpyc: warning(/Mutation of 'rs' while borrowed/)
+//     print(rs[0].n, len(rs))
 void both_element_arms(std::vector<Rec>& rs, bool c) {
-    // r = rs[0] if c else rs[1]
     Rec& r = ((c) ? (::tpy::__getitem__(rs, 0)) : (::tpy::__getitem__(rs, 1)));
-    // r.n += 1                       # the write lands on the picked element
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
-    // rs.append(Rec(9))              # tpyc: warning(/Mutation of 'rs' while borrowed/)
     rs.push_back(Rec(9));
-    // print(rs[0].n, len(rs))
     std::cout << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(rs) << "\n";
 }
 
 // def two_containers(xs: list[Rec], ys: list[Rec], c: bool) -> None:
+//     """Arms in different containers: either one can be the live borrow, so both warn."""
+//     r = xs[0] if c else ys[0]
+//     r.n += 10
+//     xs.append(Rec(7))              # tpyc: warning(/Mutation of 'xs' while borrowed/)
+//     ys.append(Rec(8))              # tpyc: warning(/Mutation of 'ys' while borrowed/)
+//     print(xs[0].n, ys[0].n)
 void two_containers(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c) {
-    // r = xs[0] if c else ys[0]
     Rec& r = ((c) ? (::tpy::__getitem__(xs, 0)) : (::tpy::__getitem__(ys, 0)));
-    // r.n += 10
     r.n = ::tpy::add_check<int32_t>(r.n, 10);
-    // xs.append(Rec(7))              # tpyc: warning(/Mutation of 'xs' while borrowed/)
     xs.push_back(Rec(7));
-    // ys.append(Rec(8))              # tpyc: warning(/Mutation of 'ys' while borrowed/)
     ys.push_back(Rec(8));
-    // print(xs[0].n, ys[0].n)
     std::cout << ::tpy::__getitem__(xs, 0).n << " " << ::tpy::__getitem__(ys, 0).n << "\n";
 }
 
 // def optional_arm(rs: list[Rec], c: bool) -> None:
+//     """A None arm loans nothing, the element arm still does."""
+//     # The copy warning is spurious -- the select takes the element's address
+//     # (BUGS.md#spurious-alias-warnings-select-and-own-literal).
+//     p = rs[0] if c else None       # tpyc: warning(/ternary copies a reference type/)
+//     if p is not None:
+//         p.n += 100
+//     rs.append(Rec(5))              # tpyc: warning(/Mutation of 'rs' while borrowed/)
+//     print(rs[0].n)
 void optional_arm(std::vector<Rec>& rs, bool c) {
-    // # The copy warning is spurious -- the select takes the element's address
-    // # (BUGS.md#spurious-alias-warnings-select-and-own-literal).
-    // p = rs[0] if c else None       # tpyc: warning(/ternary copies a reference type/)
     Rec* p = ((c) ? (&(::tpy::__getitem__(rs, 0))) : (nullptr));
-    // if p is not None:
     if ((p != nullptr)) {
-        // p.n += 100
         p->n = ::tpy::add_check<int32_t>(p->n, 100);
     }
-    // rs.append(Rec(5))              # tpyc: warning(/Mutation of 'rs' while borrowed/)
     rs.push_back(Rec(5));
-    // print(rs[0].n)
     std::cout << ::tpy::__getitem__(rs, 0).n << "\n";
 }
 
 // def alias_arms(xs: list[Rec], ys: list[Rec], c: bool) -> None:
+//     """Whole-container arms are ALIAS borrows -- safe through a structural mutation."""
+//     picked = xs if c else ys
+//     xs.append(Rec(3))              # tpyc: ok
+//     print(len(picked))
 void alias_arms(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c) {
-    // picked = xs if c else ys
     std::vector<Rec>& picked = ((c) ? (xs) : (ys));
-    // xs.append(Rec(3))              # tpyc: ok
     xs.push_back(Rec(3));
-    // print(len(picked))
     std::cout << ::tpy::__len__(picked) << "\n";
 }
 
 // def value_elements(ns: list[int32], c: bool) -> None:
+//     """A value element is copied out, so no borrow and no warning."""
+//     v = ns[0] if c else ns[1]
+//     ns.append(6)                   # tpyc: ok
+//     print(v)
 void value_elements(std::vector<int32_t>& ns, bool c) {
-    // v = ns[0] if c else ns[1]
     int32_t v = ((c) ? (::tpy::__getitem__(ns, 0)) : (::tpy::__getitem__(ns, 1)));
-    // ns.append(6)                   # tpyc: ok
     ns.push_back(6);
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def main() -> None:
+//     rs = [Rec(1), Rec(2), Rec(3)]
+//     both_element_arms(rs, True)
+//     two_containers([Rec(1)], [Rec(2)], False)
+//     optional_arm(rs, True)
+//     alias_arms([Rec(1)], [Rec(2)], True)
+//     value_elements([1, 2], True)
 void main() {
-    // rs = [Rec(1), Rec(2), Rec(3)]
     std::vector<Rec> rs = {Rec(1), Rec(2), Rec(3)};
-    // both_element_arms(rs, True)
     both_element_arms(rs, true);
-    // two_containers([Rec(1)], [Rec(2)], False)
     std::vector<Rec> __tmp_1 = {Rec(1)};
     std::vector<Rec> __tmp_2 = {Rec(2)};
     two_containers(__tmp_1, __tmp_2, false);
-    // optional_arm(rs, True)
     optional_arm(rs, true);
-    // alias_arms([Rec(1)], [Rec(2)], True)
     std::vector<Rec> __tmp_3 = {Rec(1)};
     std::vector<Rec> __tmp_4 = {Rec(2)};
     alias_arms(__tmp_3, __tmp_4, true);
-    // value_elements([1, 2], True)
     std::vector<int32_t> __tmp_5 = {1, 2};
     value_elements(__tmp_5, true);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

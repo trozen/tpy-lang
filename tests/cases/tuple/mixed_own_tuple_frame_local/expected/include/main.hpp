@@ -17,9 +17,13 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen;
 struct __coro_coro;
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
 std::tuple<Box, Box*> make_mixed(Box& b);
+// def gen(b: Box) -> Iterator[int32]:
 __gen_gen gen(Box& b);
+// async def coro(b: Box) -> int32:
 __coro_coro coro(Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -38,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: coro
+// async def coro(b: Box) -> int32:
 struct __coro_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +67,7 @@ struct __coro_coro {
     }
 };
 
-// Generator: gen
+// def gen(b: Box) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     Box& b;
@@ -89,6 +93,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Box::Box(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

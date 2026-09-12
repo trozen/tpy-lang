@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def total(a: Acc, b: Acc) -> int32:
+//     return a.__add__(b)  # the record arg interpolates into the + template
 int32_t total(const Acc& a, const Acc& b) {
-    // return a.__add__(b)  # the record arg interpolates into the + template
     return (a) + (b);
 }
 
 // def same(a: Acc, b: Acc) -> bool:
+//     return a.__eq__(b)
 bool same(const Acc& a, const Acc& b) {
-    // return a.__eq__(b)
     return (a) == (b);
 }
 
 // def main() -> None:
+//     x = Acc(1)
+//     y = Acc(2)
+//     print(total(x, y))
+//     print(same(x, y), same(x, Acc(1)))
 void main() {
-    // x = Acc(1)
     Acc x = Acc(1);
-    // y = Acc(2)
     Acc y = Acc(2);
-    // print(total(x, y))
     std::cout << total(x, y) << "\n";
-    // print(same(x, y), same(x, Acc(1)))
     Acc __tmp_1 = Acc(1);
     std::cout << ::tpy::print_bool(same(x, y)) << " " << ::tpy::print_bool(same(x, __tmp_1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -16,12 +16,16 @@ struct __coro_normal_exit;
 struct __coro_break_exit;
 struct __coro_main;
 
+// async def below(i: int, limit: int) -> bool:
 __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit);
+// async def normal_exit() -> None:
 __coro_normal_exit normal_exit();
+// async def break_exit() -> None:
 __coro_break_exit break_exit();
+// async def main() -> None:
 __coro_main main();
 
-// Async coroutine: below
+// async def below(i: int, limit: int) -> bool:
 struct __coro_below {
     int32_t __state;
     bool __cancel_pending;
@@ -44,7 +48,7 @@ struct __coro_below {
     }
 };
 
-// Async coroutine: normal_exit
+// async def normal_exit() -> None:
 struct __coro_normal_exit {
     int32_t __state;
     bool __cancel_pending;
@@ -71,7 +75,7 @@ struct __coro_normal_exit {
     }
 };
 
-// Async coroutine: break_exit
+// async def break_exit() -> None:
 struct __coro_break_exit {
     int32_t __state;
     bool __cancel_pending;
@@ -98,7 +102,7 @@ struct __coro_break_exit {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;

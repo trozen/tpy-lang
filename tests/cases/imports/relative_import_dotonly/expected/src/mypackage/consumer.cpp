@@ -5,8 +5,8 @@ namespace tpyapp::mypackage::consumer {
 
 
 // def compute() -> int32:
+//     return utils.add(int32(7), int32(8))
 int32_t compute() {
-    // return utils.add(int32(7), int32(8))
     return ::tpyapp::mypackage::utils::add(7, 8);
 }
 

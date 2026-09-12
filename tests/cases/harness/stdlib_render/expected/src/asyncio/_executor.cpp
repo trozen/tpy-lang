@@ -3,73 +3,68 @@
 
 namespace tpystd::asyncio::_executor {
 
-// # --- Current-executor global + helpers ---------------------------------
-// # Defined after `Executor` so signatures can spell the concrete
-// # `Ptr[Executor]` without a forward-reference string. Plain (non-
-// # thread-local) global; v1 asyncio is single-executor per process.
-// _current_executor: Ptr[Executor] = None
 Executor* _current_executor{};
 
 // # --- Awaker-side helpers (call sites inside Executor) -------------------
 // def _make_waker(handle: Awaker, task_id: int32,
-// generation: int32) -> Waker:
+//                 generation: int32) -> Waker:
+//     return Waker(handle, task_id, generation)
 ::tpystd::coro::Waker _make_waker(::tpystd::coro::Awaker& handle, int32_t task_id, int32_t generation) {
-    // return Waker(handle, task_id, generation)
     return ::tpystd::coro::Waker(&handle, task_id, generation);
 }
 
 // def _get_current_executor() -> Ptr[Executor]:
+//     return _current_executor
 Executor* _get_current_executor() {
-    // return _current_executor
     return _current_executor;
 }
 
 // def _set_current_executor(handle: Ptr[Executor]) -> None:
+//     global _current_executor
+//     _current_executor = handle
 void _set_current_executor(Executor* handle) {
-    // global _current_executor
-    // _current_executor = handle
     _current_executor = handle;
 }
 
 // def _clear_current_executor() -> None:
+//     global _current_executor
+//     _current_executor = None
 void _clear_current_executor() {
-    // global _current_executor
-    // _current_executor = None
     _current_executor = nullptr;
 }
 
 
 // def poll(self, timeout_ms: int32) -> None:
+//     if len(self._waiters) == 0:
+//         return
+//     n = posix_epoll.epoll_wait(self._epfd, unsafe_ptr(self._out_fds),
+//                                unsafe_ptr(self._out_events),
+//                                _REACTOR_BATCH, timeout_ms)
+//     i: int32 = 0
+//     while i < n:
+//         fd = unsafe_load(unsafe_ptr(self._out_fds), uint32(i))
+//         # Disarm before waking (one-shot): the awaitable re-registers
+//         # on its next would-block.
+//         posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)
+//         if fd in self._waiters:
+//             w = self._waiters[fd]
+//             del self._waiters[fd]
+//             w.wake()
+//         i += 1
 void EpollReactor::poll(int32_t timeout_ms) {
-    // if len(self._waiters) == 0:
     if ((::tpy::__len__(this->_waiters) == 0)) {
-        // return
         return;
     }
-    // n = posix_epoll.epoll_wait(self._epfd, unsafe_ptr(self._out_fds),
-    // unsafe_ptr(self._out_events),
-    // _REACTOR_BATCH, timeout_ms)
     int32_t n = ::tpy_epoll_wait(this->_epfd, this->_out_fds.data(), this->_out_events.data(), _REACTOR_BATCH, timeout_ms);
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // fd = unsafe_load(unsafe_ptr(self._out_fds), uint32(i))
         int32_t fd = this->_out_fds.data()[::tpy::int_cast_check<uint32_t>(i)];
-        // # Disarm before waking (one-shot): the awaitable re-registers
-        // # on its next would-block.
-        // posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)
         ::tpy_epoll_ctl(this->_epfd, _EPOLL_CTL_DEL, fd, 0);
-        // if fd in self._waiters:
         if ((this->_waiters.contains(fd))) {
-            // w = self._waiters[fd]
             ::tpystd::coro::Waker w = ::tpy::__getitem__(this->_waiters, fd);
-            // del self._waiters[fd]
             ::tpy::__delitem__(this->_waiters, fd);
-            // w.wake()
             w.wake();
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
@@ -79,232 +74,247 @@ void EpollReactor::poll(int32_t timeout_ms) {
 // # due, else the rounded-up delta. Capped to keep the int32 from
 // # overflowing on far-future deadlines.
 // def _next_timer_timeout_ms(self) -> int32:
+//     if len(self.timer_heap) == 0:
+//         return -1
+//     delta = self.timer_heap[0].deadline - monotonic()
+//     if delta <= 0.0:
+//         return 0
+//     ms = delta * 1000.0
+//     if ms >= 2000000000.0:
+//         return 2000000000
+//     return int32(ms) + 1
 int32_t Executor::_next_timer_timeout_ms() const {
-    // if len(self.timer_heap) == 0:
     if ((::tpy::__len__(this->timer_heap) == 0)) {
-        // return -1
         return -1;
     }
-    // delta = self.timer_heap[0].deadline - monotonic()
     double delta = ((::tpy::__getitem__(this->timer_heap, 0).deadline) - (::tpy::stdlib::time::monotonic()));
-    // if delta <= 0.0:
     if ((delta <= 0.0)) {
-        // return 0
         return 0;
     }
-    // ms = delta * 1000.0
     double ms = ((delta) * (1000.0));
-    // if ms >= 2000000000.0:
     if ((ms >= 2000000000.0)) {
-        // return 2000000000
         return 2000000000;
     }
-    // return int32(ms) + 1
     return (::tpy::add_check<int32_t>(::tpy::from_float_check<int32_t>(ms), 1));
 }
 
 // def poll_slot(self, slot_id: int32) -> bool:
+//     if slot_id >= len(self.slots):
+//         return False
+//     if not self.slots[slot_id].runnable or self.slots[slot_id].is_done():
+//         return False
+//     self.slots[slot_id].runnable = False
+//     gen = self.slots[slot_id].generation
+//     waker = _make_waker(self, slot_id, gen)
+//     # poll_any may recursively spawn new tasks which can reallocate
+//     # the slots vector. Hold no Slot reference across the call --
+//     # re-index after it returns. The AnyTask object lives on the
+//     # heap and is stable; only the vector storage moves.
+//     box = self.slots[slot_id].box
+//     if box is None:
+//         return False
+//     if box.get().poll_any(waker):
+//         self.slots[slot_id].box = None
+//         self.slots[slot_id].generation += 1
+//     return True
 bool Executor::poll_slot(int32_t slot_id) {
-    // if slot_id >= len(self.slots):
     if ((slot_id >= ::tpy::__len__(this->slots))) {
-        // return False
         return false;
     }
-    // if not self.slots[slot_id].runnable or self.slots[slot_id].is_done():
     if (((!(::tpy::__getitem__(this->slots, slot_id).runnable)) || ::tpy::__getitem__(this->slots, slot_id).is_done())) {
-        // return False
         return false;
     }
-    // self.slots[slot_id].runnable = False
     ::tpy::__getitem__(this->slots, slot_id).runnable = false;
-    // gen = self.slots[slot_id].generation
     int32_t gen = ::tpy::__getitem__(this->slots, slot_id).generation;
-    // waker = _make_waker(self, slot_id, gen)
     ::tpystd::coro::Waker waker = _make_waker((*this), slot_id, gen);
-    // # poll_any may recursively spawn new tasks which can reallocate
-    // # the slots vector. Hold no Slot reference across the call --
-    // # re-index after it returns. The AnyTask object lives on the
-    // # heap and is stable; only the vector storage moves.
-    // box = self.slots[slot_id].box
     ::tpystd::tplib::box::Box<AnyTask>* box = ::tpy::optional_to_ptr(::tpy::__getitem__(this->slots, slot_id).box);
-    // if box is None:
     if ((box == nullptr)) {
-        // return False
         return false;
     }
-    // if box.get().poll_any(waker):
     if (box->get().poll_any(waker)) {
-        // self.slots[slot_id].box = None
         ::tpy::__getitem__(this->slots, slot_id).box = std::nullopt;
-        // self.slots[slot_id].generation += 1
         ::tpy::__getitem__(this->slots, slot_id).generation = ::tpy::add_check<int32_t>(::tpy::__getitem__(this->slots, slot_id).generation, 1);
     }
-    // return True
     return true;
 }
 
 // def wait_for_event(self) -> bool:
+//     has_timer = len(self.timer_heap) > 0
+//     reactor = self.reactor
+//     fd_count: int32 = 0
+//     if reactor is not None:
+//         fd_count = reactor.count()
+//     if not has_timer and fd_count == 0:
+//         return False
+//     if reactor is not None and fd_count > 0:
+//         # Block in epoll_wait, bounded by the nearest timer (-1 ==
+//         # forever when only fds are pending). Ready fds' wakers are
+//         # woken inside poll(), marking their slots runnable for the
+//         # next drain.
+//         reactor.poll(self._next_timer_timeout_ms())
+//     else:
+//         sleep_until_steady(self.timer_heap[0].deadline)
+//     now = monotonic()
+//     while len(self.timer_heap) > 0 and self.timer_heap[0].deadline <= now:
+//         entry = heapq.heappop(self.timer_heap)
+//         entry.waker.wake()
+//     return True
 bool Executor::wait_for_event() {
-    // has_timer = len(self.timer_heap) > 0
     bool has_timer = (::tpy::__len__(this->timer_heap) > 0);
-    // reactor = self.reactor
     EpollReactor* reactor = ::tpy::optional_to_ptr(this->reactor);
-    // fd_count: int32 = 0
     int32_t fd_count = 0;
-    // if reactor is not None:
     if ((reactor != nullptr)) {
-        // fd_count = reactor.count()
         fd_count = reactor->count();
     }
-    // if not has_timer and fd_count == 0:
     if (((!(has_timer)) && (fd_count == 0))) {
-        // return False
         return false;
     }
-    // if reactor is not None and fd_count > 0:
     if (((reactor != nullptr) && (fd_count > 0))) {
-        // # Block in epoll_wait, bounded by the nearest timer (-1 ==
-        // # forever when only fds are pending). Ready fds' wakers are
-        // # woken inside poll(), marking their slots runnable for the
-        // # next drain.
-        // reactor.poll(self._next_timer_timeout_ms())
         reactor->poll(this->_next_timer_timeout_ms());
-    // else:
     } else {
-        // sleep_until_steady(self.timer_heap[0].deadline)
         ::tpy::stdlib::time::sleep_until_steady(::tpy::__getitem__(this->timer_heap, 0).deadline);
     }
-    // now = monotonic()
     double now = ::tpy::stdlib::time::monotonic();
-    // while len(self.timer_heap) > 0 and self.timer_heap[0].deadline <= now:
     while (((::tpy::__len__(this->timer_heap) > 0) && (::tpy::__getitem__(this->timer_heap, 0).deadline <= now))) {
-        // entry = heapq.heappop(self.timer_heap)
         TimerEntry entry = ::tpystd::heapq::heappop<TimerEntry>(this->timer_heap);
-        // entry.waker.wake()
         entry.waker.wake();
     }
-    // return True
     return true;
 }
 
 // # Returns True if a SIGINT interrupted the run (root cancelled for graceful
 // # shutdown), False on normal completion.
 // def run_until(self, main_id: int32) -> bool:
+//     interrupted = False
+//     while True:
+//         if self.slot_done(main_id):
+//             return interrupted
+//         if self.drain_runnable():
+//             interrupted = self._check_shutdown_signal(main_id, interrupted)
+//             continue
+//         if self.slot_done(main_id):
+//             return interrupted
+//         if not self.wait_for_event():
+//             raise RuntimeError(
+//                 "asyncio.run: no progress possible (a coroutine "
+//                 "returned Pending with no pending timers and no "
+//                 "registered I/O)")
+//         interrupted = self._check_shutdown_signal(main_id, interrupted)
 bool Executor::run_until(int32_t main_id) {
-    // interrupted = False
     bool interrupted = false;
-    // while True:
     while (true) {
-        // if self.slot_done(main_id):
         if (this->slot_done(main_id)) {
-            // return interrupted
             return interrupted;
         }
-        // if self.drain_runnable():
         if (this->drain_runnable()) {
-            // interrupted = self._check_shutdown_signal(main_id, interrupted)
             interrupted = this->_check_shutdown_signal(main_id, interrupted);
-            // continue
             continue;
         }
-        // if self.slot_done(main_id):
         if (this->slot_done(main_id)) {
-            // return interrupted
             return interrupted;
         }
-        // if not self.wait_for_event():
         if ((!(this->wait_for_event()))) {
-            // raise RuntimeError(
-            // "asyncio.run: no progress possible (a coroutine "
-            // "returned Pending with no pending timers and no "
-            // "registered I/O)")
             throw ::tpy::RuntimeError("asyncio.run: no progress possible (a coroutine returned Pending with no pending timers and no registered I/O)");
         }
-        // interrupted = self._check_shutdown_signal(main_id, interrupted)
         interrupted = this->_check_shutdown_signal(main_id, interrupted);
     }
 }
 
 // def drain_spawned_with_cancel(self, skip_id: int32,
-// max_polls: int32 = 8) -> None:
+//                               max_polls: int32 = 8) -> None:
+//     n = len(self.slots)
+//     i: int32 = 0
+//     while i < n:
+//         if i != skip_id and not self.slots[i].is_done():
+//             box = self.slots[i].box
+//             if box is not None:
+//                 box.get().cancel_any()
+//         i += 1
+//     attempt: int32 = 0
+//     while attempt < max_polls and self.has_live_tasks(skip_id):
+//         j: int32 = 0
+//         n2 = len(self.slots)
+//         while j < n2:
+//             if j != skip_id and not self.slots[j].is_done():
+//                 self.mark_runnable(j, self.slots[j].generation)
+//             j += 1
+//         if not self.drain_runnable():
+//             break
+//         attempt += 1
 void Executor::drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls) {
-    // n = len(self.slots)
     int32_t n = ::tpy::__len__(this->slots);
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // if i != skip_id and not self.slots[i].is_done():
         if (((i != skip_id) && (!(::tpy::__getitem__(this->slots, i).is_done())))) {
-            // box = self.slots[i].box
             ::tpystd::tplib::box::Box<AnyTask>* box = ::tpy::optional_to_ptr(::tpy::__getitem__(this->slots, i).box);
-            // if box is not None:
             if ((box != nullptr)) {
-                // box.get().cancel_any()
                 box->get().cancel_any();
             }
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // attempt: int32 = 0
     int32_t attempt = 0;
-    // while attempt < max_polls and self.has_live_tasks(skip_id):
     while (((attempt < max_polls) && this->has_live_tasks(skip_id))) {
-        // j: int32 = 0
         int32_t j = 0;
-        // n2 = len(self.slots)
         int32_t n2 = ::tpy::__len__(this->slots);
-        // while j < n2:
         while ((j < n2)) {
-            // if j != skip_id and not self.slots[j].is_done():
             if (((j != skip_id) && (!(::tpy::__getitem__(this->slots, j).is_done())))) {
-                // self.mark_runnable(j, self.slots[j].generation)
                 this->mark_runnable(j, ::tpy::__getitem__(this->slots, j).generation);
             }
-            // j += 1
             j = ::tpy::add_check<int32_t>(j, 1);
         }
-        // if not self.drain_runnable():
         if ((!(this->drain_runnable()))) {
-            // break
             break;
         }
-        // attempt += 1
         attempt = ::tpy::add_check<int32_t>(attempt, 1);
     }
 }
+// # tpy: cpp_namespace("tpystd::asyncio::_executor")
+// # tpy: include("<tpy/async.hpp>")
+// # tpy: include("<tpy/stdlib/time.hpp>")
+// """Internal asyncio scaffolding -- the TPy executor and the small
+// helpers it needs. Not part of the public asyncio API; imported only
+// by `lib/tpy/asyncio/` modules. See `docs/ASYNC_DESIGN.md` for the
+// dispatch model and `docs/ASYNC_PROGRESS.md` for port history.
+//
+// `Waker` (defined in `tpy.coro`) holds a `Ptr[Awaker]` to the running
+// executor; `Waker.wake()` dispatches `mark_runnable` through the
+// `@dynamic Awaker` vtable. `Executor` inherits `Awaker` so it provides
+// the vtable slot directly -- no C++ ExecutorOps table, no templated
+// thunks, no thread-local handle.
+// """
+// import heapq
+//
+// from time import monotonic, sleep_until_steady
+//
+// from tpy.extern import builtin_type, cpp_template
+// from tpy.coro import Awaker, Cancellable, Poll, Waker, poll_ready, poll_pending
+// from tpy.mem import UninitStorage
+// from tpy.unsafe import unsafe_load, unsafe_ptr
+// from tplib import Box
+// from tplib.rc import Rc
+// from _bindings import posix_epoll, posix_socket, posix_signal
+//
+// # epoll_ctl ops + the reactor's drain-batch size. Kept here (not in
+// # posix_epoll.py, which stays declaration-only) the way socket.py hardcodes
+// # the AF_* wire values. The EPOLLIN / EPOLLOUT interest masks live in
+// # `asyncio/__init__.py` next to the fd-awaitable that passes them. The
+// # batch size must equal kMaxBatch in runtime/cpp/src/stdlib/epoll_impl.cpp.
+// _EPOLL_CTL_ADD: Final[int32] = 1
+// _EPOLL_CTL_DEL: Final[int32] = 2
+// _EPOLL_CTL_MOD: Final[int32] = 3
+// _REACTOR_BATCH: Final[int32] = 64
+//
+// _current_executor: Ptr[Executor] = None
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: cpp_namespace("tpystd::asyncio::_executor")
-    // # tpy: include("<tpy/async.hpp>")
-    // # tpy: include("<tpy/stdlib/time.hpp>")
-    // import heapq
     ::tpystd::heapq::__tpy_init();
-    // from time import monotonic, sleep_until_steady
-    // from tpy.extern import builtin_type, cpp_template
-    // from tpy.coro import Awaker, Cancellable, Poll, Waker, poll_ready, poll_pending
     ::tpystd::coro::__tpy_init();
-    // from tpy.mem import UninitStorage
-    // from tpy.unsafe import unsafe_load, unsafe_ptr
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // from tplib.rc import Rc
     ::tpystd::tplib::rc::__tpy_init();
-    // from _bindings import posix_epoll, posix_socket, posix_signal
-    // # epoll_ctl ops + the reactor's drain-batch size. Kept here (not in
-    // # posix_epoll.py, which stays declaration-only) the way socket.py hardcodes
-    // # the AF_* wire values. The EPOLLIN / EPOLLOUT interest masks live in
-    // # `asyncio/__init__.py` next to the fd-awaitable that passes them. The
-    // # batch size must equal kMaxBatch in runtime/cpp/src/stdlib/epoll_impl.cpp.
-    // # --- Current-executor global + helpers ---------------------------------
-    // # Defined after `Executor` so signatures can spell the concrete
-    // # `Ptr[Executor]` without a forward-reference string. Plain (non-
-    // # thread-local) global; v1 asyncio is single-executor per process.
-    // _current_executor: Ptr[Executor] = None
     _current_executor = nullptr;
 }
 

@@ -9,20 +9,26 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def repr_and_str(s: String) -> None:
 void repr_and_str(const ::tpy::String& s);
+// def fstring(s: String) -> None:
 void fstring(const ::tpy::String& s);
+// def container_element(s: String) -> None:
 void container_element(const ::tpy::String& s);
+// def show[T](v: T) -> None:
 template<typename T>
 void show(::tpy::param_val_or_ref_t<T> v);
+// def dict_key(s: String) -> None:
 void dict_key(const ::tpy::String& s);
+// def main() -> None:
 void main();
 
 // def show[T](v: T) -> None:
+//     # ValuePrinter inside a generic body: a String is a range, so without its
+//     # own arm it would print as a char list
+//     print("generic", v)
 template<typename T>
 void show(::tpy::param_val_or_ref_t<T> v) {
-    // # ValuePrinter inside a generic body: a String is a range, so without its
-    // # own arm it would print as a char list
-    // print("generic", v)
     std::cout << "generic" << " " << ::tpy::ValuePrinter(v) << "\n";
 }
 

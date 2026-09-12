@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3, 4, 5]
+//     s = Summer(xs)
+//     print(asyncio.run(s.total()))
 void main() {
-    // xs: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
-    // s = Summer(xs)
     Summer<std::vector<int32_t>> s = Summer<std::vector<int32_t>>(xs);
-    // print(asyncio.run(s.total()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(s.total())) << "\n";
 }
 
+// # Async method on a generic class with a BOUNDED type param. The
+// # out-of-class factory definition has to spell the same constraint as the
+// # in-class declaration (`Iterable<int32> T`, not bare `typename T`), and
+// # the body's for-loop has to see the bound to pick the iteration strategy.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async method on a generic class with a BOUNDED type param. The
-    // # out-of-class factory definition has to spell the same constraint as the
-    // # in-class declaration (`Iterable<int32> T`, not bare `typename T`), and
-    // # the body's for-loop has to see the bound to pick the iteration strategy.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

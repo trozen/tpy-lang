@@ -5,38 +5,42 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: int32 = make_default[int32]()
+//     print(a)
+//
+//     b: str = make_default[str]()
+//     print(b)
+//     print(len(b))
+//
+//     c: bool = make_default[bool]()
+//     print(c)
+//
+//     d: int32 = make_default[int32](42)
+//     print(d)
+//
+//     # T inferred from arg
+//     e: int32 = make_default(42)
+//     print(e)
 void main() {
-    // a: int32 = make_default[int32]()
     int32_t a = make_default<int32_t>();
-    // print(a)
     std::cout << a << "\n";
-    // b: str = make_default[str]()
     std::string b = make_default<std::string>();
-    // print(b)
     std::cout << b << "\n";
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    // c: bool = make_default[bool]()
     bool c = make_default<bool>();
-    // print(c)
     std::cout << ::tpy::print_bool(c) << "\n";
-    // d: int32 = make_default[int32](42)
     int32_t d = make_default<int32_t>(42);
-    // print(d)
     std::cout << d << "\n";
-    // # T inferred from arg
-    // e: int32 = make_default(42)
     int32_t e = make_default<int32_t>(42);
-    // print(e)
     std::cout << e << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

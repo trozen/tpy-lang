@@ -15,10 +15,12 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_pick;
 struct __coro_drive;
 
+// async def pick(n: int) -> int:
 __coro_pick pick(::tpy::BigInt n);
+// async def drive() -> None:
 __coro_drive drive();
 
-// Async coroutine: pick
+// async def pick(n: int) -> int:
 struct __coro_pick {
     int32_t __state;
     bool __cancel_pending;
@@ -43,7 +45,7 @@ struct __coro_pick {
     }
 };
 
-// Async coroutine: drive
+// async def drive() -> None:
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;

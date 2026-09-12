@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(h: Own[Holder]) -> None:
 void take(Holder&& h);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -68,6 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, id: int32) -> None:
+//     self.id = id
 inline Resource::Resource(int32_t id) : id(id) {}
 
 inline Resource::Resource(Resource&& other) noexcept : id(std::move(other.id)) {
@@ -82,22 +85,24 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("drop", self.id)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    // print("drop", self.id)
     std::cout << "drop" << " " << this->id << "\n";
 }
 
 // @staticmethod
 // def make(seed: int32) -> Own[Resource]:
+//     base = seed + int32(100)
+//     return Resource(base)
 inline Resource Resource::make(int32_t seed) {
-    // base = seed + int32(100)
     int32_t base = (::tpy::add_check<int32_t>(seed, 100));
-    // return Resource(base)
     return Resource(base);
 }
 
 // def __init__(self, seed: int32, tag: int32) -> None:
+//     self._r = Resource.make(seed)
+//     self.tag = tag
 inline Holder::Holder(int32_t seed, int32_t tag) : _r(Resource::make(seed)), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

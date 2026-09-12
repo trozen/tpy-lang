@@ -3,26 +3,25 @@
 
 namespace tpyapp::main {
 
-// x = None
 Product* x{};
 
 // def get_factory() -> Own[Factory]:
+//     return Factory()
 Factory get_factory() {
-    // return Factory()
     return Factory();
 }
 
+// x = None
+// x = get_factory().create()
+// print(x.value)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = None
     x = nullptr;
-    // x = get_factory().create()
     static Product __global_slot_1 = get_factory().create();
     x = &__global_slot_1;
-    // print(x.value)
     std::cout << x->value << "\n";
 }
 

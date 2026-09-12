@@ -5,32 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser()
+//     parser.add_argument("--tag", action="append")
+//     parser.add_argument("--num", action="append", type=int)
+//     parser.add_argument("--mode", action="store_const", const="fast", default="slow")
+//     args = parser.parse_args(
+//         ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+//     )
+//     assert args.tag is not None
+//     assert args.num is not None
+//     print(args.tag[0])
+//     print(args.tag[1])
+//     print(args.num[0])
+//     print(args.num[1])
+//     print(args.mode)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(
-    // ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
-    // )
     std::vector<std::string> __tmp_1 = {"--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // assert args.tag is not None
     if (!((args.tag.has_value()))) ::tpy::raise_assertion_error();
-    // assert args.num is not None
     if (!((args.num.has_value()))) ::tpy::raise_assertion_error();
-    // print(args.tag[0])
     std::cout << ::tpy::__getitem__((*args.tag), 0) << "\n";
-    // print(args.tag[1])
     std::cout << ::tpy::__getitem__((*args.tag), 1) << "\n";
-    // print(args.num[0])
     std::cout << ::tpy::__getitem__((*args.num), 0) << "\n";
-    // print(args.num[1])
     std::cout << ::tpy::__getitem__((*args.num), 1) << "\n";
-    // print(args.mode)
     std::cout << args.mode << "\n";
-    // return 0
     return 0;
 }
 
 // args = parser.parse_args(
-// ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+//     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
 // )
 void __tpy_builder_argparse_help_1() {
     std::cout << "usage: prog [-h] [--tag TAG] [--num NUM] [--mode]\n\noptions:\n  -h, --help  show this help message and exit\n  --tag TAG\n  --num NUM\n  --mode" << "\n";
@@ -38,7 +42,7 @@ void __tpy_builder_argparse_help_1() {
 }
 
 // args = parser.parse_args(
-// ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+//     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
 // )
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
     std::optional<std::vector<std::string>> __slot_1;
@@ -94,14 +98,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(std::move(tag ? std::optional<std::vector<std::string>>(std::move(*tag)) : std::nullopt), std::move(num ? std::optional<std::vector<::tpy::BigInt>>(std::move(*num)) : std::nullopt), mode);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

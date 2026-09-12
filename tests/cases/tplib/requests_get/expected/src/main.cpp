@@ -5,85 +5,86 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+//               b"Content-Length: 24\r\n\r\n"
+//               b'{"name": "t", "rows": 3}')
+//     s = requests.Session()
+//     # Pin the User-Agent so the sent-bytes snapshot doesn't churn on a compiler
+//     # version bump (the auto default is version-derived; covered version-
+//     # agnostically in requests_default_user_agent).
+//     s.headers = {"User-Agent": "test-agent"}
+//     # Inject the pre-bound socket via the public sock field, then box the
+//     # fresh-constructed local (the offline test seam).
+//     conn = HTTPConnection("api.test", 8002)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     r = s.get("http://api.test:8002/v1/tables", {"db": "das"})
+//     print(r.status_code, r.ok, r.reason)
+//     print(r.text)
+//     print(r.headers["Content-Type"])
+//     r.raise_for_status()            # 200 -> no raise
+//     d = r.json()
+//     if isinstance(d, dict):
+//         v: JsonValue = d["rows"]
+//         if isinstance(v, int):
+//             print("rows =", v)
+//     print(b.recv(65536))
+//     b.close()
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
-    // b"Content-Length: 24\r\n\r\n"
-    // b'{"name": "t", "rows": 3}')
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 24\r\n\r\n{\"name\": \"t\", \"rows\": 3}", 95));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // # Pin the User-Agent so the sent-bytes snapshot doesn't churn on a compiler
-    // # version bump (the auto default is version-derived; covered version-
-    // # agnostically in requests_default_user_agent).
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // # Inject the pre-bound socket via the public sock field, then box the
-    // # fresh-constructed local (the offline test seam).
-    // conn = HTTPConnection("api.test", 8002)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // r = s.get("http://api.test:8002/v1/tables", {"db": "das"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
     ::tpystd::tplib::requests::Response r = s.get("http://api.test:8002/v1/tables", &(__tmp_1));
-    // print(r.status_code, r.ok, r.reason)
     std::cout << r.status_code << " " << ::tpy::print_bool(r.ok()) << " " << r.reason << "\n";
-    // print(r.text)
     std::cout << r.text() << "\n";
-    // print(r.headers["Content-Type"])
     std::cout << r.headers["Content-Type"] << "\n";
-    // r.raise_for_status()            # 200 -> no raise
     r.raise_for_status();
-    // d = r.json()
     ::tpystd::json::JsonValue d = r.json();
-    // if isinstance(d, dict):
     if (std::holds_alternative<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value)) {
         auto& __d = std::get<::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>>(d.value);
-        // v: JsonValue = d["rows"]
         ::tpystd::json::JsonValue& v = ::tpy::__getitem__(__d, "rows");
-        // if isinstance(v, int):
         if (std::holds_alternative<::tpy::BigInt>(v.value)) {
             auto& __v = std::get<::tpy::BigInt>(v.value);
-            // print("rows =", v)
             std::cout << "rows =" << " " << ::tpy::__str__(__v) << "\n";
         }
     }
-    // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // b.close()
     b.close();
 }
 
+// # tplib.requests GET: params appended to the query, status/ok/reason/text,
+// # headers collected into a dict, and the untyped .json() result narrowed (deep
+// # narrow needs `v: JsonValue = d[k]` first -- the recursive-union storage form).
+// # Driven over a socketpair: the response is pre-buffered, then the injected
+// # socket is moved into the connection (socket is @nocopy, so the move is real
+// # -- a silent copy would be a compile error). The request bytes are inspected
+// # to confirm the query string and auto headers.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+// from json import JsonValue
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests GET: params appended to the query, status/ok/reason/text,
-    // # headers collected into a dict, and the untyped .json() result narrowed (deep
-    // # narrow needs `v: JsonValue = d[k]` first -- the recursive-union storage form).
-    // # Driven over a socketpair: the response is pre-buffered, then the injected
-    // # socket is moved into the connection (socket is @nocopy, so the move is real
-    // # -- a silent copy would be a compile error). The request bytes are inspected
-    // # to confirm the query string and auto headers.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // from json import JsonValue
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

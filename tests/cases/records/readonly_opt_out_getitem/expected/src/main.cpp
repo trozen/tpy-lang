@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: CachingContainer = CachingContainer(42)
+//     print(c[0])
+//     print(c.last_access)
 void main() {
-    // c: CachingContainer = CachingContainer(42)
     CachingContainer c = CachingContainer(42);
-    // print(c[0])
     std::cout << c[0] << "\n";
-    // print(c.last_access)
     std::cout << c.last_access << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,136 +5,138 @@ namespace tpyapp::main {
 
 
 // def show(s: str, f: str) -> None:
+//     try:
+//         print(repr(datetime.strptime(s, f)))
+//     except ValueError:
+//         print("ValueError")
 void show(std::string_view s, std::string_view f) {
-    // try:
     {
         try {
-            // print(repr(datetime.strptime(s, f)))
             std::cout << ::tpy::repr_of(datetime::strptime(s, f)) << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError")
             std::cout << "ValueError" << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     show("05/03/21 14:30", "%d/%m/%y %H:%M")
+//     show("2021-03-05T14:30:15.5", "%Y-%m-%dT%H:%M:%S.%f")
+//     show("2021-03-05 14:30:15.1234567", "%Y-%m-%d %H:%M:%S.%f")
+//     show("Fri Mar  5 14:30:15 2021", "%c")
+//     show("fri MAR  5 14:30:15 2021", "%c")
+//     show("03/05/21", "%x")
+//     show("14:30:15", "%X")
+//     show("5 March 2021", "%d %B %Y")
+//     show("March 5", "%B %d")
+//     show("Wednesday, July 14, 2021", "%A, %B %d, %Y")
+//     show("00", "%y")
+//     show("68", "%y")
+//     show("69", "%y")
+//     show("99", "%y")
+//     show("12 AM", "%I %p")
+//     show("12 PM", "%I %p")
+//     show("01 pm", "%I %p")
+//     show("7 am", "%I %p")
+//     show("2021 065", "%Y %j")
+//     show("2021 09 3", "%Y %U %w")
+//     show("2021 09 3", "%Y %W %w")
+//     show("2021 09", "%Y %U")     # week number without weekday is discarded
+//     show("2019 01 1", "%G %V %u")
+//     show("2020 53 4", "%G %V %u")
+//     show("2021 53 1", "%G %V %u")  # 2021 has no ISO week 53
+//     show("2021+0530", "%Y%z")
+//     show("2021+05:30", "%Y%z")
+//     show("2021+05:30:15", "%Y%z")
+//     show("2021+053015", "%Y%z")
+//     show("2021+05:30:15.250000", "%Y%z")
+//     show("2021Z", "%Y%z")
+//     show("2021z", "%Y%z")
+//     show("2021-0430", "%Y%z")
+//     show("2021+05:3015", "%Y%z")
+//     show("2021 UTC", "%Y %Z")
+//     show("2021 gmt", "%Y %Z")
+//     show("2021 +0000 UTC", "%Y %z %Z")
+//     show("2021 EST", "%Y %Z")
+//     show("29 February", "%d %B")   # no year: computed as 1904, restored 1900
+//     show("28 February", "%d %B")
+//     show("2021-03-05 extra", "%Y-%m-%d")
+//     show("2021-03-05", "%Y-%m-%Q")
+//     show("2021-03-05", "%Y-%m-%d%")
+//     show("  2021", " %Y")
+//     show(" 5", "%d")
+//     show("36 7", "%j %w")
+//     show("2021 366", "%Y %j")
+//     show("2020 366", "%Y %j")
+//     show("2021 060 5", "%Y %j %w")
 void main() {
-    // show("05/03/21 14:30", "%d/%m/%y %H:%M")
     show("05/03/21 14:30", "%d/%m/%y %H:%M");
-    // show("2021-03-05T14:30:15.5", "%Y-%m-%dT%H:%M:%S.%f")
     show("2021-03-05T14:30:15.5", "%Y-%m-%dT%H:%M:%S.%f");
-    // show("2021-03-05 14:30:15.1234567", "%Y-%m-%d %H:%M:%S.%f")
     show("2021-03-05 14:30:15.1234567", "%Y-%m-%d %H:%M:%S.%f");
-    // show("Fri Mar  5 14:30:15 2021", "%c")
     show("Fri Mar  5 14:30:15 2021", "%c");
-    // show("fri MAR  5 14:30:15 2021", "%c")
     show("fri MAR  5 14:30:15 2021", "%c");
-    // show("03/05/21", "%x")
     show("03/05/21", "%x");
-    // show("14:30:15", "%X")
     show("14:30:15", "%X");
-    // show("5 March 2021", "%d %B %Y")
     show("5 March 2021", "%d %B %Y");
-    // show("March 5", "%B %d")
     show("March 5", "%B %d");
-    // show("Wednesday, July 14, 2021", "%A, %B %d, %Y")
     show("Wednesday, July 14, 2021", "%A, %B %d, %Y");
-    // show("00", "%y")
     show("00", "%y");
-    // show("68", "%y")
     show("68", "%y");
-    // show("69", "%y")
     show("69", "%y");
-    // show("99", "%y")
     show("99", "%y");
-    // show("12 AM", "%I %p")
     show("12 AM", "%I %p");
-    // show("12 PM", "%I %p")
     show("12 PM", "%I %p");
-    // show("01 pm", "%I %p")
     show("01 pm", "%I %p");
-    // show("7 am", "%I %p")
     show("7 am", "%I %p");
-    // show("2021 065", "%Y %j")
     show("2021 065", "%Y %j");
-    // show("2021 09 3", "%Y %U %w")
     show("2021 09 3", "%Y %U %w");
-    // show("2021 09 3", "%Y %W %w")
     show("2021 09 3", "%Y %W %w");
-    // show("2021 09", "%Y %U")     # week number without weekday is discarded
     show("2021 09", "%Y %U");
-    // show("2019 01 1", "%G %V %u")
     show("2019 01 1", "%G %V %u");
-    // show("2020 53 4", "%G %V %u")
     show("2020 53 4", "%G %V %u");
-    // show("2021 53 1", "%G %V %u")  # 2021 has no ISO week 53
     show("2021 53 1", "%G %V %u");
-    // show("2021+0530", "%Y%z")
     show("2021+0530", "%Y%z");
-    // show("2021+05:30", "%Y%z")
     show("2021+05:30", "%Y%z");
-    // show("2021+05:30:15", "%Y%z")
     show("2021+05:30:15", "%Y%z");
-    // show("2021+053015", "%Y%z")
     show("2021+053015", "%Y%z");
-    // show("2021+05:30:15.250000", "%Y%z")
     show("2021+05:30:15.250000", "%Y%z");
-    // show("2021Z", "%Y%z")
     show("2021Z", "%Y%z");
-    // show("2021z", "%Y%z")
     show("2021z", "%Y%z");
-    // show("2021-0430", "%Y%z")
     show("2021-0430", "%Y%z");
-    // show("2021+05:3015", "%Y%z")
     show("2021+05:3015", "%Y%z");
-    // show("2021 UTC", "%Y %Z")
     show("2021 UTC", "%Y %Z");
-    // show("2021 gmt", "%Y %Z")
     show("2021 gmt", "%Y %Z");
-    // show("2021 +0000 UTC", "%Y %z %Z")
     show("2021 +0000 UTC", "%Y %z %Z");
-    // show("2021 EST", "%Y %Z")
     show("2021 EST", "%Y %Z");
-    // show("29 February", "%d %B")   # no year: computed as 1904, restored 1900
     show("29 February", "%d %B");
-    // show("28 February", "%d %B")
     show("28 February", "%d %B");
-    // show("2021-03-05 extra", "%Y-%m-%d")
     show("2021-03-05 extra", "%Y-%m-%d");
-    // show("2021-03-05", "%Y-%m-%Q")
     show("2021-03-05", "%Y-%m-%Q");
-    // show("2021-03-05", "%Y-%m-%d%")
     show("2021-03-05", "%Y-%m-%d%");
-    // show("  2021", " %Y")
     show("  2021", " %Y");
-    // show(" 5", "%d")
     show(" 5", "%d");
-    // show("36 7", "%j %w")
     show("36 7", "%j %w");
-    // show("2021 366", "%Y %j")
     show("2021 366", "%Y %j");
-    // show("2020 366", "%Y %j")
     show("2020 366", "%Y %j");
-    // show("2021 060 5", "%Y %j %w")
     show("2021 060 5", "%Y %j %w");
 }
 
+// # datetime v3 strptime: directive acceptance rules ported from CPython's
+// # _strptime.py -- %y century pivot, %f right-padding (7+ digits leave
+// # unconverted data), %z forms incl. case-sensitive Z and colon-consistency
+// # errors, %Z UTC/GMT tokens, case-insensitive names and literals, week
+// # resolution (%U/%W with a weekday, ISO %G/%V/%u, %j), space-padded %d,
+// # defaults (1900, Feb-29-without-year rejection) and error cases (printed
+// # as stable tokens; CPython messages are not byte-compared, types are).
+// from datetime import datetime
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime v3 strptime: directive acceptance rules ported from CPython's
-    // # _strptime.py -- %y century pivot, %f right-padding (7+ digits leave
-    // # unconverted data), %z forms incl. case-sensitive Z and colon-consistency
-    // # errors, %Z UTC/GMT tokens, case-insensitive names and literals, week
-    // # resolution (%U/%W with a weekday, ISO %G/%V/%u, %j), space-padded %d,
-    // # defaults (1900, Feb-29-without-year rejection) and error cases (printed
-    // # as stable tokens; CPython messages are not byte-compared, types are).
-    // from datetime import datetime
     ::tpystd::datetime::__tpy_init();
-    // main()
     main();
 }
 

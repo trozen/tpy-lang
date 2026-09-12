@@ -13,7 +13,9 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(s: Child | Other) -> None:
 void describe(::tpy::Union<const Child*, const Other*> s);
+// def main() -> None:
 void main();
 
 // @dataclass

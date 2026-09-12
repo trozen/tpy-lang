@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def test_branch(flag: bool) -> None:
+//     w = Wrapper(42)
+//     if flag:
+//         result = w.take()
+//         print(result)
+//     else:
+//         print(w.get())
 void test_branch(bool flag) {
-    // w = Wrapper(42)
     Wrapper w = Wrapper(::tpy::BigInt(42));
-    // if flag:
     if (flag) {
-        // result = w.take()
         ::tpy::BigInt result = std::move(w).take();
-        // print(result)
         std::cout << result << "\n";
-    // else:
     } else {
-        // print(w.get())
         std::cout << w.get() << "\n";
     }
 }
 
+// test_branch(True)
+// test_branch(False)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_branch(True)
     test_branch(true);
-    // test_branch(False)
     test_branch(false);
 }
 

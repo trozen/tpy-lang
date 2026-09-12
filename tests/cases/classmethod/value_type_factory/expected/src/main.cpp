@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     z = Vec2.zero()
+//     d = Vec2.diagonal(4)
+//     print(z.x, z.y, d.x, d.y)
 void main() {
-    // z = Vec2.zero()
     Vec2 z = Vec2::zero();
-    // d = Vec2.diagonal(4)
     Vec2 d = Vec2::diagonal(4);
-    // print(z.x, z.y, d.x, d.y)
     std::cout << z.x << " " << z.y << " " << d.x << " " << d.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

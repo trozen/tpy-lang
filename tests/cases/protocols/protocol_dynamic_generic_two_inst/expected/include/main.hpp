@@ -33,8 +33,11 @@ struct StrBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show_int(c: Container[int32]) -> None:
 void show_int(Container<int32_t>& c);
+// def show_str(c: Container[str]) -> None:
 void show_str(Container<std::string>& c);
+// def main() -> None:
 void main();
 
 // class IntBox:
@@ -86,14 +89,14 @@ namespace tpyapp::main {
 
 
 // def get(self) -> int32:
+//     return 5
 inline int32_t IntBox::get() const {
-    // return 5
     return 5;
 }
 
 // def get(self) -> str:
+//     return "hi"
 inline std::string StrBox::get() const {
-    // return "hi"
     return "hi";
 }
 void __tpy_init();

@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def fetch(n: int32, delay: float) -> int32:
+//     await asyncio.sleep(delay)
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(delay)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(delay)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return n
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,18 +35,23 @@ __coro_fetch fetch(int32_t n, double delay) {
 }
 
 // async def main_coro() -> None:
+//     tasks: list[asyncio.Task[int32]] = []
+//     tasks.append(asyncio.create_task(fetch(int32(0), 0.005)))   # settles last
+//     tasks.append(asyncio.create_task(fetch(int32(1), 0.003)))   # settles middle
+//     tasks.append(asyncio.create_task(fetch(int32(2), 0.001)))   # settles first
+//     results = await asyncio.gather_list_settled(tasks)
+//     for r in results:
+//         if r.value is not None:
+//             print("ok:", r.value.get())
+//         else:
+//             print("unexpected exc-slot")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // tasks.append(asyncio.create_task(fetch(int32(0), 0.005)))   # settles last
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(0, 0.005))));
-        // tasks.append(asyncio.create_task(fetch(int32(1), 0.003)))   # settles middle
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(1, 0.003))));
-        // tasks.append(asyncio.create_task(fetch(int32(2), 0.001)))   # settles first
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(2, 0.001))));
-        // results = await asyncio.gather_list_settled(tasks)
         __sub_0.emplace((*tasks));
         __state = S_RESUME_0;
         continue;
@@ -56,19 +61,14 @@ __coro_fetch fetch(int32_t n, double delay) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // for r in results:
         auto& __obj_0 = (*results);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& r = *__beg_0;
-            // if r.value is not None:
             if ((r.value.has_value())) {
-                // print("ok:", r.value.get())
                 std::cout << "ok:" << " " << (*r.value).get() << "\n";
-            // else:
             } else {
-                // print("unexpected exc-slot")
                 std::cout << "unexpected exc-slot" << "\n";
             }
         }
@@ -87,27 +87,28 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.gather_list_settled: results returned in INPUT order even when
+// # sub-tasks SETTLE in a different (non-monotonic) order. Sleep durations are
+// # inverted vs input position (index 0 sleeps longest, index 2 shortest), so
+// # the arrival-order `_result_indices` array fills as [2, 1, 0] -- the assembly
+// # walk must reorder back to input order [0, 1, 2]. The other settled tests use
+// # uniform sleeps (arrival == input), so none of them actually stress the
+// # input-order reassembly with a permuted arrival array. Deadlines are absolute
+// # (executor min-heap), so the settle order is deterministic, not load-sensitive.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.gather_list_settled: results returned in INPUT order even when
-    // # sub-tasks SETTLE in a different (non-monotonic) order. Sleep durations are
-    // # inverted vs input position (index 0 sleeps longest, index 2 shortest), so
-    // # the arrival-order `_result_indices` array fills as [2, 1, 0] -- the assembly
-    // # walk must reorder back to input order [0, 1, 2]. The other settled tests use
-    // # uniform sleeps (arrival == input), so none of them actually stress the
-    // # input-order reassembly with a permuted arrival array. Deadlines are absolute
-    // # (executor min-heap), so the settle order is deterministic, not load-sensitive.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

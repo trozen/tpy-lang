@@ -11,8 +11,11 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own["Container"]:
 Container make();
+// def show(c: "Container") -> None:
 void show(const Container& c);
+// def main() -> None:
 void main();
 
 // class Container:
@@ -36,11 +39,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Container::Container(int32_t value) : value(value) {}
 
 // def clone(self) -> Own["Container"]:
+//     return Container(self.value)
 inline Container Container::clone() const {
-    // return Container(self.value)
     return Container(this->value);
 }
 void __tpy_init();

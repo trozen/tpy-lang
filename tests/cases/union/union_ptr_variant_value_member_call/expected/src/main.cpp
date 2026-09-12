@@ -5,97 +5,99 @@ namespace tpyapp::main {
 
 
 // def make_bytes(s: str) -> Own[bytes]:
+//     return s.encode()
 ::tpy::Bytes make_bytes(std::string_view s) {
-    // return s.encode()
     return ::tpy::bytes_from_str(s);
 }
 
 // def make_str(s: str) -> Own[str]:
+//     return s + "!"
 std::string make_str(std::string_view s) {
-    // return s + "!"
     return (::tpy::str_concat(s, "!"));
 }
 
 // def show(v: bytes | dict[str, str] | None) -> str:
+//     if v is None:
+//         return "none"
+//     if isinstance(v, bytes):
+//         return str(len(v))
+//     return "dict"
 std::string show(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*> v) {
-    // if v is None:
     if ((std::holds_alternative<std::monostate>(v))) {
-        // return "none"
         return "none";
     }
-    // if isinstance(v, bytes):
     if (std::holds_alternative<const ::tpy::Bytes*>(v)) {
         auto& __v = *std::get<const ::tpy::Bytes*>(v);
-        // return str(len(v))
         return ::tpy::fixed_to_str<int32_t>(::tpy::__len__(__v));
     }
     auto& __v = *std::get<const ::tpy::ordered_map<std::string, std::string>*>(v);
-    // return "dict"
     return "dict";
 }
 
 // def main():
+//     body: bytes | dict[str, str] | None = None
+//     print(show(body))
+//     # A METHOD-call rvalue at a bytes member slot.
+//     body = "ab".encode()
+//     print(show(body))
+//     # A FREE-call rvalue at the same slot.
+//     body = make_bytes("cde")
+//     print(show(body))
+//
+//     text: str | dict[str, str] | None = None
+//     # The str member: the variant member spells the owned std::string, so
+//     # a view-returning method still copies into the slot.
+//     text = make_str("x")
+//     if isinstance(text, str):
+//         print(text)
+//     text = "hi".upper()
+//     if isinstance(text, str):
+//         print(text)
+//
+//     # The dict member is a reference type: mutate through the union binding
+//     # and read it back off the source, so a silent copy would show.
+//     d = {"k": "v"}
+//     holder: bytes | dict[str, str] | None = d
+//     if isinstance(holder, dict):
+//         holder["k"] = "w"
+//     print(d["k"])
 void main() {
-    // body: bytes | dict[str, str] | None = None
     ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> body = std::monostate{};
-    // print(show(body))
     std::cout << show(body.as_const()) << "\n";
-    // # A METHOD-call rvalue at a bytes member slot.
-    // body = "ab".encode()
     ::tpy::Union<std::monostate, ::tpy::Bytes, ::tpy::ordered_map<std::string, std::string>> __slot_1 = ::tpy::bytes_from_str("ab");
     body = ::tpy::to_ptr_variant(__slot_1);
-    // print(show(body))
     std::cout << show(body.as_const()) << "\n";
-    // # A FREE-call rvalue at the same slot.
-    // body = make_bytes("cde")
     ::tpy::Union<std::monostate, ::tpy::Bytes, ::tpy::ordered_map<std::string, std::string>> __slot_2 = make_bytes("cde");
     body = ::tpy::to_ptr_variant(__slot_2);
-    // print(show(body))
     std::cout << show(body.as_const()) << "\n";
-    // text: str | dict[str, str] | None = None
     ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>*, std::string*> text = std::monostate{};
-    // # The str member: the variant member spells the owned std::string, so
-    // # a view-returning method still copies into the slot.
-    // text = make_str("x")
     ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_3 = make_str("x");
     text = ::tpy::to_ptr_variant(__slot_3);
-    // if isinstance(text, str):
     if (std::holds_alternative<std::string*>(text)) {
         auto& __text = *std::get<std::string*>(text);
-        // print(text)
         std::cout << ::tpy::__str__(__text) << "\n";
     }
-    // text = "hi".upper()
     ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_4 = ::tpy::str_upper("hi");
     text = ::tpy::to_ptr_variant(__slot_4);
-    // if isinstance(text, str):
     if (std::holds_alternative<std::string*>(text)) {
         auto& __text = *std::get<std::string*>(text);
-        // print(text)
         std::cout << ::tpy::__str__(__text) << "\n";
     }
-    // # The dict member is a reference type: mutate through the union binding
-    // # and read it back off the source, so a silent copy would show.
-    // d = {"k": "v"}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"k", "v"}});
-    // holder: bytes | dict[str, str] | None = d
     ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> holder{&(d)};
-    // if isinstance(holder, dict):
     if (std::holds_alternative<::tpy::ordered_map<std::string, std::string>*>(holder)) {
         auto& __holder = *std::get<::tpy::ordered_map<std::string, std::string>*>(holder);
-        // holder["k"] = "w"
         ::tpy::__setitem__(__holder, "k", "w");
     }
-    // print(d["k"])
     std::cout << ::tpy::__getitem__(d, "k") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

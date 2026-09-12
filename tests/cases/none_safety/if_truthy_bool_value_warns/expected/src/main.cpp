@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def pick(x: bool | None) -> int32:
+//     if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
+//         return 1
+//     return 0
 int32_t pick(std::optional<bool> x) {
-    // if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
     if (::tpy::is_truthy(x)) {
-        // return 1
         return 1;
     }
-    // return 0
     return 0;
 }
 
+// print(pick(True))
+// print(pick(False))
+// print(pick(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(pick(True))
     std::cout << pick(true) << "\n";
-    // print(pick(False))
     std::cout << pick(false) << "\n";
-    // print(pick(None))
     std::cout << pick(std::nullopt) << "\n";
 }
 

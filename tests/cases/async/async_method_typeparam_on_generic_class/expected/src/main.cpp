@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(42)
+//     print(asyncio.run(b.with_label("hello")))
+//     print(asyncio.run(b.with_label(99)))
 void main() {
-    // b = Box(42)
     Box<int32_t> b = Box<int32_t>(42);
-    // print(asyncio.run(b.with_label("hello")))
     std::string __tmp_1 = "hello";
     std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(b.with_label<std::string>(__tmp_1))) << "\n";
-    // print(asyncio.run(b.with_label(99)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(b.with_label<int32_t>(99))) << "\n";
 }
 
+// # Method with its own type param `[U]` on a generic class `Box[T]`. The
+// # coro struct's template header carries both (record first, then method:
+// # `template <typename T, typename U>`); a swapped order would deduce
+// # `Box<U>&` and miscompile.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Method with its own type param `[U]` on a generic class `Box[T]`. The
-    // # coro struct's template header carries both (record first, then method:
-    // # `template <typename T, typename U>`); a swapped order would deduce
-    // # `Box<U>&` and miscompile.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,18 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser()
+//     parser.add_argument("name", nargs="?", default="anon")
+//     a1 = parser.parse_args([])
+//     print(a1.name)
+//
+//     parser2 = ArgumentParser()
+//     parser2.add_argument("name", nargs="?", default="anon")
+//     a2 = parser2.parse_args(["alice"])
+//     print(a2.name)
+//     return 0
 int32_t main() {
-    // a1 = parser.parse_args([])
     std::vector<std::string> __tmp_1 = std::vector<std::string>{};
     __tpy_builder_argparse_args_1 a1 = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(a1.name)
     std::cout << a1.name << "\n";
-    // a2 = parser2.parse_args(["alice"])
     std::vector<std::string> __tmp_2 = {"alice"};
     __tpy_builder_argparse_args_2 a2 = __tpy_builder_argparse_parse_2(__tmp_2);
-    // print(a2.name)
     std::cout << a2.name << "\n";
-    // return 0
     return 0;
 }
 
@@ -90,14 +95,15 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
     return __tpy_builder_argparse_args_2(name);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

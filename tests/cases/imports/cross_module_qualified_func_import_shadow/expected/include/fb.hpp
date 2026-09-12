@@ -9,6 +9,7 @@ namespace tpyapp::fb {
 
 inline constexpr std::string_view __name__ = "fb";
 
+// def make(s: str) -> int:
 ::tpy::BigInt make(std::string_view s);
 
 void __tpy_init();

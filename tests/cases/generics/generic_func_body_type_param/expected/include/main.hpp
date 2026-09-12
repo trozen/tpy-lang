@@ -11,8 +11,10 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def collect[T](a: T, b: T) -> Own[list[T]]:
 template<typename T>
 std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -33,17 +35,18 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Box::Box(int32_t value) : value(value) {}
 // def collect[T](a: T, b: T) -> Own[list[T]]:
+//     result: list[T] = []
+//     result.append(a)
+//     result.append(b)
+//     return result
 template<typename T>
 std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
-    // result.append(a)
     result.push_back(::tpy::param_to_storage<T>(a));
-    // result.append(b)
     result.push_back(::tpy::param_to_storage<T>(b));
-    // return result
     return result;
 }
 

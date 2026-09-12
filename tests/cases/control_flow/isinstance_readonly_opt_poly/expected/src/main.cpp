@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def classify(e: readonly[Optional[BaseException]]) -> str:
+//     if e is None:
+//         return "<none>"
+//     if isinstance(e, ValueError):
+//         return "VE"
+//     if isinstance(e, (OSError, RuntimeError)):
+//         return "OS_OR_RT"
+//     return "OTHER"
 std::string classify(const ::tpy::BaseException* e) {
-    // if e is None:
     if ((e == nullptr)) {
-        // return "<none>"
         return "<none>";
     }
-    // if isinstance(e, ValueError):
     if (const ::tpy::ValueError* __e_ptr = dynamic_cast<const ::tpy::ValueError*>(e); (__e_ptr != nullptr)) {
-        // return "VE"
         return "VE";
     }
-    // if isinstance(e, (OSError, RuntimeError)):
     if (((dynamic_cast<const ::tpy::OSError*>(e) != nullptr) || (dynamic_cast<const ::tpy::RuntimeError*>(e) != nullptr))) {
-        // return "OS_OR_RT"
         return "OS_OR_RT";
     }
-    // return "OTHER"
     return "OTHER";
 }
 
 // def main() -> None:
+//     print(classify(None))
+//     print(classify(ValueError("v")))
+//     print(classify(OSError("o")))
+//     print(classify(RuntimeError("r")))
+//     print(classify(KeyError("k")))
 void main() {
-    // print(classify(None))
     std::cout << classify(nullptr) << "\n";
-    // print(classify(ValueError("v")))
     ::tpy::ValueError __tmp_1 = ::tpy::ValueError("v");
     std::cout << classify(&(__tmp_1)) << "\n";
-    // print(classify(OSError("o")))
     ::tpy::OSError __tmp_2 = ::tpy::OSError("o");
     std::cout << classify(&(__tmp_2)) << "\n";
-    // print(classify(RuntimeError("r")))
     ::tpy::RuntimeError __tmp_3 = ::tpy::RuntimeError("r");
     std::cout << classify(&(__tmp_3)) << "\n";
-    // print(classify(KeyError("k")))
     ::tpy::KeyError __tmp_4 = ::tpy::KeyError("k");
     std::cout << classify(&(__tmp_4)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,19 +9,19 @@ namespace tpyapp::b {
 // # close the import cycle; structural conformance to Greeter is
 // # checked at the use site (use_proto(Counter()) in main.py).
 // def counter_zero() -> int:
+//     c: Counter = Counter()
+//     return 0
 ::tpy::BigInt counter_zero() {
-    // c: Counter = Counter()
     ::tpyapp::a::Counter c = ::tpyapp::a::Counter();
-    // return 0
     return ::tpy::BigInt(0);
 }
 
+// from a import Counter
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import Counter
     ::tpyapp::a::__tpy_init();
 }
 

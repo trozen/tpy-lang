@@ -13,6 +13,7 @@ struct TaggedBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -60,11 +61,12 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedBox& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Box::Box(int32_t value) : value(value) {}
 
 // def get(self) -> int32:
+//     return self.value
 inline int32_t Box::get() const {
-    // return self.value
     return this->value;
 }
 void __tpy_init();

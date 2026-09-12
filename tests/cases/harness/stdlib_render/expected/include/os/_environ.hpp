@@ -108,67 +108,68 @@ inline std::ostream& operator<<(std::ostream& os, const _Environ& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = {}
+//     for k in environ_keys():
+//         self._data[k] = env_get(k)
 inline _Environ::_Environ() : _data(::tpy::ordered_map<std::string, std::string>()) {
-    // for k in environ_keys():
     auto __obj_0 = ::tpy::stdlib::os::environ_keys();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // self._data[k] = env_get(k)
         ::tpy::__setitem__(this->_data, k, ::tpy::stdlib::os::env_get(k));
     }
 }
 
 // def __getitem__(self, key: str) -> str:
+//     if key not in self._data:
+//         raise KeyError(key)
+//     return self._data[key]
 inline std::string _Environ::__getitem__(std::string_view key) const {
-    // if key not in self._data:
     if (!std::ranges::contains(this->_data, key)) {
-        // raise KeyError(key)
         throw ::tpy::KeyError(key);
     }
-    // return self._data[key]
     return ::tpy::__getitem__(this->_data, key);
 }
 
 // # CPython raises ValueError on an embedded NUL in key/value; we don't check
 // # (setenv would truncate at the NUL) -- env names/values never contain NUL.
 // def __setitem__(self, key: str, value: str) -> None:
+//     self._data[key] = value
+//     _setenv(key, value)
 inline void _Environ::__setitem__(std::string_view key, std::string_view value) {
-    // self._data[key] = value
     ::tpy::__setitem__(this->_data, key, std::string(value));
-    // _setenv(key, value)
     ::tpy::stdlib::os::setenv(key, value);
 }
 
 // def __delitem__(self, key: str) -> None:
+//     if key not in self._data:
+//         raise KeyError(key)
+//     del self._data[key]
+//     _unsetenv(key)
 inline void _Environ::__delitem__(std::string_view key) {
-    // if key not in self._data:
     if ((!(this->_data.contains(key)))) {
-        // raise KeyError(key)
         throw ::tpy::KeyError(key);
     }
-    // del self._data[key]
     ::tpy::__delitem__(this->_data, key);
-    // _unsetenv(key)
     ::tpy::stdlib::os::unsetenv(key);
 }
 
 // def __contains__(self, key: str) -> bool:
+//     return key in self._data
 inline bool _Environ::__contains__(std::string_view key) const {
-    // return key in self._data
     return std::ranges::contains(this->_data, key);
 }
 
 // def __len__(self) -> int32:
+//     return len(self._data)
 inline int32_t _Environ::__len__() const {
-    // return len(self._data)
     return ::tpy::__len__(this->_data);
 }
 
 // def __iter__(self) -> Iterator[str]:
+//     return iter(self._data)
 inline auto _Environ::__iter__() const {
-    // return iter(self._data)
     return ::tpy::__iter__(this->_data);
 }
 
@@ -178,53 +179,53 @@ inline auto _Environ::__iter__() const {
 // # lost is live reflection and set ops (uncommon for os.environ, itself a
 // # snapshot). See STDLIB_ROADMAP.md.
 // def keys(self) -> Own[list[str]]:
+//     out: list[str] = []
+//     for k in self._data:
+//         out.append(k)
+//     return out
 inline std::vector<std::string> _Environ::keys() const {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // for k in self._data:
     auto& __obj_0 = this->_data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // out.append(k)
         out.push_back(std::string(k));
     }
-    // return out
     return out;
 }
 
 // def values(self) -> Own[list[str]]:
+//     out: list[str] = []
+//     for k in self._data:
+//         out.append(self._data[k])
+//     return out
 inline std::vector<std::string> _Environ::values() const {
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // for k in self._data:
     auto& __obj_0 = this->_data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // out.append(self._data[k])
         out.push_back(::tpy::__getitem__(this->_data, k));
     }
-    // return out
     return out;
 }
 
 // def items(self) -> Own[list[tuple[str, str]]]:
+//     out: list[tuple[str, str]] = []
+//     for k in self._data:
+//         out.append((k, self._data[k]))
+//     return out
 inline std::vector<std::tuple<std::string, std::string>> _Environ::items() const {
-    // out: list[tuple[str, str]] = []
     std::vector<std::tuple<std::string, std::string>> out = std::vector<std::tuple<std::string, std::string>>{};
-    // for k in self._data:
     auto& __obj_0 = this->_data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // out.append((k, self._data[k]))
         out.push_back(std::tuple<std::string, std::string>{std::string(k), ::tpy::__getitem__(this->_data, k)});
     }
-    // return out
     return out;
 }
 
@@ -232,13 +233,13 @@ inline std::vector<std::tuple<std::string, std::string>> _Environ::items() const
 // # overloaded method on a cross-module-imported type does not resolve (see
 // # BUGS.md), and os.environ.get is always called from a downstream module.
 // def get(self, key: str, default: str | None = None) -> str | None:
+//     if key in self._data:
+//         return self._data[key]
+//     return default
 inline std::optional<std::string> _Environ::get(std::string_view key, std::optional<std::string_view> default_) const {
-    // if key in self._data:
     if ((this->_data.contains(key))) {
-        // return self._data[key]
         return ::tpy::__getitem__(this->_data, key);
     }
-    // return default
     return default_ ? std::make_optional(std::string(*default_)) : std::nullopt;
 }
 
@@ -246,95 +247,95 @@ inline std::optional<std::string> _Environ::get(std::string_view key, std::optio
 // # typeshed pop(key)-raises / pop(key, default) pair -- same cross-module
 // # overload limitation as get (BUGS.md); bare pop(key) is deferred.
 // def pop(self, key: str, default: str) -> str:
+//     if key in self._data:
+//         value = self._data[key]
+//         del self._data[key]
+//         _unsetenv(key)
+//         return value
+//     return default
 inline std::string _Environ::pop(std::string_view key, std::string_view default_) {
-    // if key in self._data:
     if ((this->_data.contains(key))) {
-        // value = self._data[key]
         std::string value = ::tpy::__getitem__(this->_data, key);
-        // del self._data[key]
         ::tpy::__delitem__(this->_data, key);
-        // _unsetenv(key)
         ::tpy::stdlib::os::unsetenv(key);
-        // return value
         return value;
     }
-    // return default
     return std::string(default_);
 }
 
 // def setdefault(self, key: str, default: str) -> str:
+//     if key in self._data:
+//         return self._data[key]
+//     self._data[key] = default
+//     _setenv(key, default)
+//     return default
 inline std::string _Environ::setdefault(std::string_view key, std::string_view default_) {
-    // if key in self._data:
     if ((this->_data.contains(key))) {
-        // return self._data[key]
         return ::tpy::__getitem__(this->_data, key);
     }
-    // self._data[key] = default
     ::tpy::__setitem__(this->_data, key, std::string(default_));
-    // _setenv(key, default)
     ::tpy::stdlib::os::setenv(key, default_);
-    // return default
     return std::string(default_);
 }
 
 // def update(self, other: dict[str, str]) -> None:
+//     for k in other:
+//         value = other[k]
+//         self._data[k] = value
+//         _setenv(k, value)
 inline void _Environ::update(const ::tpy::ordered_map<std::string, std::string>& other) {
-    // for k in other:
     auto& __obj_0 = other;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // value = other[k]
         std::string_view value = ::tpy::__getitem__(other, k);
-        // self._data[k] = value
         ::tpy::__setitem__(this->_data, k, std::string(value));
-        // _setenv(k, value)
         ::tpy::stdlib::os::setenv(k, value);
     }
 }
 
 // def clear(self) -> None:
+//     # Collect first: unsetenv-while-iterating the same dict is unsafe.
+//     keys: list[str] = []
+//     for k in self._data:
+//         keys.append(k)
+//     for k in keys:
+//         _unsetenv(k)
+//     self._data.clear()
 inline void _Environ::clear() {
-    // # Collect first: unsetenv-while-iterating the same dict is unsafe.
-    // keys: list[str] = []
     std::vector<std::string> keys = std::vector<std::string>{};
-    // for k in self._data:
     auto& __obj_0 = this->_data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // keys.append(k)
         keys.push_back(std::string(k));
     }
-    // for k in keys:
     auto& __obj_1 = keys;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // _unsetenv(k)
         ::tpy::stdlib::os::unsetenv(k);
     }
-    // self._data.clear()
     this->_data.clear();
 }
 
 // def copy(self) -> Own[dict[str, str]]:
+//     out: dict[str, str] = {}
+//     for k in self._data:
+//         out[k] = self._data[k]
+//     return out
 inline ::tpy::ordered_map<std::string, std::string> _Environ::copy() const {
-    // out: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> out = ::tpy::ordered_map<std::string, std::string>();
-    // for k in self._data:
     auto& __obj_0 = this->_data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // out[k] = self._data[k]
         ::tpy::__setitem__(out, k, ::tpy::__getitem__(this->_data, k));
     }
-    // return out
     return out;
 }
 void __tpy_init();

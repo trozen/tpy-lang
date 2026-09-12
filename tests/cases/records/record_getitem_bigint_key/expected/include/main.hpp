@@ -11,6 +11,7 @@ struct SparseCounter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class SparseCounter:
@@ -40,17 +41,18 @@ inline std::ostream& operator<<(std::ostream& os, const SparseCounter& obj) {
 
 
 // def __init__(self):
+//     self.data = {}
 inline SparseCounter::SparseCounter() : data(::tpy::ordered_map<::tpy::BigInt, int32_t>()) {}
 
 // def __getitem__(self, key: int) -> int32:
+//     return self.data.get(key, 0)
 inline int32_t SparseCounter::__getitem__(const ::tpy::BigInt& key) const {
-    // return self.data.get(key, 0)
     return ::tpy::dict_get_default(this->data, key, 0);
 }
 
 // def __setitem__(self, key: int, value: int32) -> None:
+//     self.data[key] = value
 inline void SparseCounter::__setitem__(const ::tpy::BigInt& key, int32_t value) {
-    // self.data[key] = value
     ::tpy::__setitem__(this->data, key, value);
 }
 void __tpy_init();

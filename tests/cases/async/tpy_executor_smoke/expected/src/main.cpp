@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def returns_value(x: int) -> int:
+//     return x + 100
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_returns_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return x + 100
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((x) + (::tpy::BigInt(100)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,11 @@ __coro_returns_value returns_value(::tpy::BigInt x) {
 }
 
 // async def void_coro() -> None:
+//     return None
 ::tpystd::tpy::Poll<::std::monostate> __coro_void_coro::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return None
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -46,156 +46,159 @@ __coro_void_coro void_coro() {
 }
 
 // def test_spawn_and_run() -> None:
+//     e = Executor()
+//     box = _make_any_task_for_test(returns_value(7))
+//     sid = e.spawn(box)
+//     print("spawn id:", sid)
+//     print("len slots:", len(e.slots))
+//     print("len runnable_q:", len(e.runnable_q))
+//     print("slot_done before drain:", e.slot_done(sid))
+//
+//     e.run_until(sid)
+//     print("slot_done after run:", e.slot_done(sid))
+//     # No live tasks remain (the main coro is done; nothing to skip).
+//     print("has_live skip=ff:", e.has_live_tasks(-1))
 void test_spawn_and_run() {
-    // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // box = _make_any_task_for_test(returns_value(7))
     ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::_make_any_task_for_test<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(returns_value(::tpy::BigInt(7))));
-    // sid = e.spawn(box)
     int32_t sid = e.spawn(std::move(box));
-    // print("spawn id:", sid)
     std::cout << "spawn id:" << " " << sid << "\n";
-    // print("len slots:", len(e.slots))
     std::cout << "len slots:" << " " << ::tpy::__len__(e.slots) << "\n";
-    // print("len runnable_q:", len(e.runnable_q))
     std::cout << "len runnable_q:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
-    // print("slot_done before drain:", e.slot_done(sid))
     std::cout << "slot_done before drain:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
-    // e.run_until(sid)
     e.run_until(sid);
-    // print("slot_done after run:", e.slot_done(sid))
     std::cout << "slot_done after run:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
-    // # No live tasks remain (the main coro is done; nothing to skip).
-    // print("has_live skip=ff:", e.has_live_tasks(-1))
     std::cout << "has_live skip=ff:" << " " << ::tpy::print_bool(e.has_live_tasks(-1)) << "\n";
 }
 
 // def test_multiple_spawns() -> None:
+//     e = Executor()
+//     a = e.spawn(_make_any_task_for_test(void_coro()))
+//     b = e.spawn(_make_any_task_for_test(returns_value(42)))
+//     print("two slots:", len(e.slots))
+//     print("two runnable:", len(e.runnable_q))
+//     polled = e.drain_runnable()
+//     print("drained:", polled)
+//     print("a done:", e.slot_done(a))
+//     print("b done:", e.slot_done(b))
+//     print("has_live skip a:", e.has_live_tasks(a))
 void test_multiple_spawns() {
-    // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // a = e.spawn(_make_any_task_for_test(void_coro()))
     int32_t a = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(void_coro())));
-    // b = e.spawn(_make_any_task_for_test(returns_value(42)))
     int32_t b = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(returns_value(::tpy::BigInt(42)))));
-    // print("two slots:", len(e.slots))
     std::cout << "two slots:" << " " << ::tpy::__len__(e.slots) << "\n";
-    // print("two runnable:", len(e.runnable_q))
     std::cout << "two runnable:" << " " << ::tpy::__len__(e.runnable_q) << "\n";
-    // polled = e.drain_runnable()
     bool polled = e.drain_runnable();
-    // print("drained:", polled)
     std::cout << "drained:" << " " << ::tpy::print_bool(polled) << "\n";
-    // print("a done:", e.slot_done(a))
     std::cout << "a done:" << " " << ::tpy::print_bool(e.slot_done(a)) << "\n";
-    // print("b done:", e.slot_done(b))
     std::cout << "b done:" << " " << ::tpy::print_bool(e.slot_done(b)) << "\n";
-    // print("has_live skip a:", e.has_live_tasks(a))
     std::cout << "has_live skip a:" << " " << ::tpy::print_bool(e.has_live_tasks(a)) << "\n";
 }
 
 // def test_timer_fires_immediately() -> None:
+//     # Register a past-deadline timer; wait_for_event pops it.
+//     # The waker points at slot 0 generation 0, which doesn't exist
+//     # (no spawn), so mark_runnable inside wait_for_event no-ops on the
+//     # out-of-range slot id. We're testing the timer-heap mechanics
+//     # only here.
+//     e = Executor()
+//     w = _make_waker(e, 0, 0)
+//     e.register_timer(monotonic() - 0.5, w)
+//     print("timer count before:", len(e.timer_heap))
+//     print("wait fired:", e.wait_for_event())
+//     print("timer count after:", len(e.timer_heap))
 void test_timer_fires_immediately() {
-    // # Register a past-deadline timer; wait_for_event pops it.
-    // # The waker points at slot 0 generation 0, which doesn't exist
-    // # (no spawn), so mark_runnable inside wait_for_event no-ops on the
-    // # out-of-range slot id. We're testing the timer-heap mechanics
-    // # only here.
-    // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // w = _make_waker(e, 0, 0)
     ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(e, 0, 0);
-    // e.register_timer(monotonic() - 0.5, w)
     e.register_timer(((::tpy::stdlib::time::monotonic()) - (0.5)), w);
-    // print("timer count before:", len(e.timer_heap))
     std::cout << "timer count before:" << " " << ::tpy::__len__(e.timer_heap) << "\n";
-    // print("wait fired:", e.wait_for_event())
     std::cout << "wait fired:" << " " << ::tpy::print_bool(e.wait_for_event()) << "\n";
-    // print("timer count after:", len(e.timer_heap))
     std::cout << "timer count after:" << " " << ::tpy::__len__(e.timer_heap) << "\n";
 }
 
 // def test_drain_with_no_tasks() -> None:
+//     e = Executor()
+//     print("idle drain:", e.drain_runnable())
+//     e.drain_spawned_with_cancel(-1)
+//     print("idle drain after cancel:", e.drain_runnable())
 void test_drain_with_no_tasks() {
-    // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // print("idle drain:", e.drain_runnable())
     std::cout << "idle drain:" << " " << ::tpy::print_bool(e.drain_runnable()) << "\n";
-    // e.drain_spawned_with_cancel(-1)
     e.drain_spawned_with_cancel(-1);
-    // print("idle drain after cancel:", e.drain_runnable())
     std::cout << "idle drain after cancel:" << " " << ::tpy::print_bool(e.drain_runnable()) << "\n";
 }
 
 // def test_drain_cancels_live_task() -> None:
+//     # Live-task branch of drain_spawned_with_cancel: spawn a task that
+//     # parks forever, drain (it stays parked), then cancel-drain with a
+//     # skip_id that doesn't match. The task should observe __cancel_pending
+//     # on the next poll, raise CancelledError, and finish.
+//     e = Executor()
+//     sid = e.spawn(_make_any_task_for_test(CancellableForever()))
+//     e.drain_runnable()
+//     print("parked, slot done:", e.slot_done(sid))
+//     print("has live before cancel:", e.has_live_tasks(-1))
+//     e.drain_spawned_with_cancel(-1)
+//     print("after cancel, slot done:", e.slot_done(sid))
+//     print("has live after cancel:", e.has_live_tasks(-1))
 void test_drain_cancels_live_task() {
-    // # Live-task branch of drain_spawned_with_cancel: spawn a task that
-    // # parks forever, drain (it stays parked), then cancel-drain with a
-    // # skip_id that doesn't match. The task should observe __cancel_pending
-    // # on the next poll, raise CancelledError, and finish.
-    // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // sid = e.spawn(_make_any_task_for_test(CancellableForever()))
     int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(CancellableForever())));
-    // e.drain_runnable()
     e.drain_runnable();
-    // print("parked, slot done:", e.slot_done(sid))
     std::cout << "parked, slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
-    // print("has live before cancel:", e.has_live_tasks(-1))
     std::cout << "has live before cancel:" << " " << ::tpy::print_bool(e.has_live_tasks(-1)) << "\n";
-    // e.drain_spawned_with_cancel(-1)
     e.drain_spawned_with_cancel(-1);
-    // print("after cancel, slot done:", e.slot_done(sid))
     std::cout << "after cancel, slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
-    // print("has live after cancel:", e.has_live_tasks(-1))
     std::cout << "has live after cancel:" << " " << ::tpy::print_bool(e.has_live_tasks(-1)) << "\n";
 }
 
 // def main() -> None:
+//     test_spawn_and_run()
+//     print("---")
+//     test_multiple_spawns()
+//     print("---")
+//     test_timer_fires_immediately()
+//     print("---")
+//     test_drain_with_no_tasks()
+//     print("---")
+//     test_drain_cancels_live_task()
 void main() {
-    // test_spawn_and_run()
     test_spawn_and_run();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_multiple_spawns()
     test_multiple_spawns();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_timer_fires_immediately()
     test_timer_fires_immediately();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_drain_with_no_tasks()
     test_drain_with_no_tasks();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_drain_cancels_live_task()
     test_drain_cancels_live_task();
 }
 
+// # TPy-side Executor class driven directly (no asyncio.run, no C++
+// # Executor involvement). Validates spawn / drain_runnable / run_until /
+// # slot_done / has_live_tasks / register_timer / wait_for_event on a
+// # coroutine that returns immediately. Tests here use either coroutines
+// # that complete on first poll or directly-pushed runnable ids;
+// # external wake dispatch is in tpy_executor_wake_dispatch.
+// from asyncio._executor import (
+//     AnyTask,
+//     Executor,
+//     _make_any_task_for_test,
+//     _make_waker,
+// )
+// from time import monotonic
+//
+// from tpy.coro import Poll, Waker, poll_pending
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # TPy-side Executor class driven directly (no asyncio.run, no C++
-    // # Executor involvement). Validates spawn / drain_runnable / run_until /
-    // # slot_done / has_live_tasks / register_timer / wait_for_event on a
-    // # coroutine that returns immediately. Tests here use either coroutines
-    // # that complete on first poll or directly-pushed runnable ids;
-    // # external wake dispatch is in tpy_executor_wake_dispatch.
-    // from asyncio._executor import (
-    // AnyTask,
-    // Executor,
-    // _make_any_task_for_test,
-    // _make_waker,
-    // )
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
-    // from time import monotonic
-    // from tpy.coro import Poll, Waker, poll_pending
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

@@ -18,14 +18,20 @@ struct __coro_shared;
 struct __coro_driver;
 struct __coro_main_coro;
 
+// async def a() -> int32:
 __coro_a a();
+// async def b() -> int32:
 __coro_b b();
+// async def shared() -> int32:
 __coro_shared shared();
+// async def driver() -> None:
 __coro_driver driver();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: shared
+// async def shared() -> int32:
 struct __coro_shared {
     int32_t __state;
     bool __cancel_pending;
@@ -48,7 +54,7 @@ struct __coro_shared {
     }
 };
 
-// Async coroutine: a
+// async def a() -> int32:
 struct __coro_a {
     int32_t __state;
     bool __cancel_pending;
@@ -71,7 +77,7 @@ struct __coro_a {
     }
 };
 
-// Async coroutine: b
+// async def b() -> int32:
 struct __coro_b {
     int32_t __state;
     bool __cancel_pending;
@@ -94,7 +100,7 @@ struct __coro_b {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -121,7 +127,7 @@ struct __coro_driver {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

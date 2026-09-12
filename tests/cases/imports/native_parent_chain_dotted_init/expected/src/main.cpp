@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(COUNTER)
+//     print(COUNTER + int32(1))
 void main() {
-    // print(COUNTER)
     std::cout << ::dotted_init::pkg::inner::leaf::COUNTER << "\n";
-    // print(COUNTER + int32(1))
     std::cout << (::tpy::add_check<int32_t>(::dotted_init::pkg::inner::leaf::COUNTER, 1)) << "\n";
 }
 
+// # Non-native leaf reached through a dotted chain whose parent packages
+// # are `# tpy: native_module`. Before the fix, the codegen parent-walk
+// # emitted __tpy_init() calls for the native parents; their namespaces
+// # are undeclared (no .cpp output), failing the C++ build. The fix
+// # skips parent-init emission for modules without a runtime init.
+// from pkg.inner.leaf import COUNTER
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Non-native leaf reached through a dotted chain whose parent packages
-    // # are `# tpy: native_module`. Before the fix, the codegen parent-walk
-    // # emitted __tpy_init() calls for the native parents; their namespaces
-    // # are undeclared (no .cpp output), failing the C++ build. The fix
-    // # skips parent-init emission for modules without a runtime init.
-    // from pkg.inner.leaf import COUNTER
     ::dotted_init::pkg::inner::leaf::__tpy_init();
-    // main()
     main();
 }
 

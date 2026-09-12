@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def take(b: bytes) -> int:
+//     return len(b)
 ::tpy::BigInt take(::tpy::BytesView b) {
-    // return len(b)
     return ::tpy::BigInt(::tpy::__len__(b));
 }
 
 // def render(n: int) -> bytes:
+//     # Return sink for the f-string-receiver method result.
+//     return f"<p>{n}</p>".encode()  # tpyc: ok
 ::tpy::Bytes render(const ::tpy::BigInt& n) {
-    // # Return sink for the f-string-receiver method result.
-    // return f"<p>{n}</p>".encode()  # tpyc: ok
     return ::tpy::bytes_from_str(std::format("<p>{}</p>", (n).to_string()));
 }
 
 // def main() -> None:
+//     n = 42
+//     # Local sink: the owned-bytes result of a method on an f-string receiver.
+//     body = f"<p>epoch: {n}</p>".encode()  # tpyc: ok
+//     print(len(body))
+//     # str-returning methods over the same receiver shape.
+//     print(f"a-{n}-b".upper())  # tpyc: ok
+//     print(len(f"a-{n}-b".split("-")))  # tpyc: ok
+//     print(f"key={n}".startswith("key"))  # tpyc: ok
+//     # Return sink feeding a free-function arg sink.
+//     print(take(render(n)))  # tpyc: ok
+//     # Field sink.
+//     p = Page()
+//     p.body = f"<h1>{n}</h1>".encode()  # tpyc: ok
+//     print(p.size())
+//     # Container-element sink.
+//     parts = [f"<i>{n}</i>".encode()]  # tpyc: ok
+//     parts.append(f"<b>{n}</b>".encode())
+//     print(len(parts), len(parts[0]))
 void main() {
-    // n = 42
     int32_t n = 42;
-    // # Local sink: the owned-bytes result of a method on an f-string receiver.
-    // body = f"<p>epoch: {n}</p>".encode()  # tpyc: ok
     ::tpy::Bytes body = ::tpy::bytes_from_str(std::format("<p>epoch: {}</p>", n));
-    // print(len(body))
     std::cout << ::tpy::__len__(body) << "\n";
-    // # str-returning methods over the same receiver shape.
-    // print(f"a-{n}-b".upper())  # tpyc: ok
     std::cout << ::tpy::str_upper(std::format("a-{}-b", n)) << "\n";
-    // print(len(f"a-{n}-b".split("-")))  # tpyc: ok
     std::cout << ::tpy::__len__(::tpy::str_split(std::format("a-{}-b", n), "-")) << "\n";
-    // print(f"key={n}".startswith("key"))  # tpyc: ok
     std::cout << ::tpy::print_bool(::tpy::str_startswith(std::format("key={}", n), "key")) << "\n";
-    // # Return sink feeding a free-function arg sink.
-    // print(take(render(n)))  # tpyc: ok
     std::cout << take(render(::tpy::BigInt(n))) << "\n";
-    // # Field sink.
-    // p = Page()
     Page p = Page();
-    // p.body = f"<h1>{n}</h1>".encode()  # tpyc: ok
     p.body = ::tpy::bytes_from_str(std::format("<h1>{}</h1>", n));
-    // print(p.size())
     std::cout << p.size() << "\n";
-    // # Container-element sink.
-    // parts = [f"<i>{n}</i>".encode()]  # tpyc: ok
     std::vector<::tpy::Bytes> parts = {::tpy::bytes_from_str(std::format("<i>{}</i>", n))};
-    // parts.append(f"<b>{n}</b>".encode())
     parts.push_back(::tpy::bytes_from_str(std::format("<b>{}</b>", n)));
-    // print(len(parts), len(parts[0]))
     std::cout << ::tpy::__len__(parts) << " " << ::tpy::__len__(::tpy::__getitem__(parts, 0)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

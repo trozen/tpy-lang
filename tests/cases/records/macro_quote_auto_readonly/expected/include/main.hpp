@@ -11,7 +11,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def touch_readonly(h: readonly[Holder]) -> int32:
 int32_t touch_readonly(const Holder& h);
+// def main() -> None:
 void main();
 
 // @ro_getter
@@ -41,19 +43,20 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
+// from tpy import int32, readonly
 inline Holder::Holder(int32_t value) : value(value) {}
 
 // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
 // from tpy import int32, readonly
+// from ro_getter import ro_getter
 inline int32_t Holder::first() {
-    // from ro_getter import ro_getter
     return this->value;
 }
 
 // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
 // from tpy import int32, readonly
+// from ro_getter import ro_getter
 inline int32_t Holder::first() const {
-    // from ro_getter import ro_getter
     return this->value;
 }
 void __tpy_init();

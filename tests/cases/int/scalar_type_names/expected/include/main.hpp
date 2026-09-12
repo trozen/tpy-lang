@@ -36,20 +36,34 @@ extern int32_t uint16;
 extern double float64;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def widths(a: int8, b: int64, c: uint32, d: uint64) -> int64:
 int64_t widths(int8_t a, int64_t b, uint32_t c, uint64_t d);
+// def same[T: AnyFixedInt](v: T) -> T:
 template<::tpy::AnyFixedInt T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> v);
+// def shadowed(uint8: uint8) -> uint8:  # tpyc: warning(/'uint8' shadows the tpy type 'uint8'/)
 uint8_t shadowed(uint8_t uint8);
+// def shadowed_local(s: str) -> str:
 std::string shadowed_local(std::string_view s);
+// def shadowed_unpack(p: tuple[int32, int32]) -> int32:
 int32_t shadowed_unpack(const std::tuple<int32_t, int32_t>& p);
+// def shadowed_walrus(n: int32) -> int32:
 int32_t shadowed_walrus(int32_t n);
+// def shadowed_for(xs: list[int32]) -> int32:
 int32_t shadowed_for(const std::vector<int32_t>& xs);
+// def shadowed_with() -> int32:
 int32_t shadowed_with();
+// def shadowed_nested() -> int32:
 int32_t shadowed_nested();
+// def shadowed_comp(xs: list[int32]) -> int32:
 int32_t shadowed_comp(const std::vector<int32_t>& xs);
+// def shadowed_except(n: int32) -> int32:
 int32_t shadowed_except(int32_t n);
+// def alias_free() -> int32:
 int32_t alias_free();
+// def alias_shadow() -> int32:
 int32_t alias_shadow();
+// def main() -> None:
 void main();
 
 // class Ctx:
@@ -71,22 +85,25 @@ inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
 
 
 // def __enter__(self) -> int32:
+//     return 3
 inline int32_t Ctx::__enter__() const {
-    // return 3
     return 3;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Ctx::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 // # generic bound: the protocol names stay CapWords
 // def same[T: AnyFixedInt](v: T) -> T:
+//     return v
 template<::tpy::AnyFixedInt T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> v) {
-    // return v
     return ::tpy::param_to_return<T>(v);
 }
+// def bytes_of(n: int32) -> Iterator[uint8]:
+//     for i in range(n):
+//         yield uint8(i)
 inline auto bytes_of(int32_t n) {
     return ::tpy::make_generator<uint8_t>(
         [n, __i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<uint8_t> {

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Calc.add(1, 2))
+//     print(Calc.add(1, b=3))
 void main() {
-    // print(Calc.add(1, 2))
     std::cout << Calc::add(1, 2) << "\n";
-    // print(Calc.add(1, b=3))
     std::cout << Calc::add(1, 3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

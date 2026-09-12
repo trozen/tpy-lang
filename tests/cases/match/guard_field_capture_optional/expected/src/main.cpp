@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def f(p: Point | None) -> None:
+//     match p:
+//         case None:
+//             print("none")
+//         case Point(x=n) if n > 10:
+//             print("big", n)
+//         case Point(x=n):
+//             print("small", n)
 void f(const Point* p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // print("none")
         std::cout << "none" << "\n";
         goto __match_end_2;
     }
-    // case Point(x=n) if n > 10:
     if (__match_subject_1 != nullptr) {
         auto n = (*__match_subject_1).x;
         if ((n > 10)) {
-            // print("big", n)
             std::cout << "big" << " " << n << "\n";
             goto __match_end_2;
         }
     }
-    // case Point(x=n):
     if (__match_subject_1 != nullptr) {
         auto n = (*__match_subject_1).x;
-        // print("small", n)
         std::cout << "small" << " " << n << "\n";
         goto __match_end_2;
     }
@@ -34,23 +34,23 @@ void f(const Point* p) {
 }
 
 // def main() -> None:
+//     f(Point(50))
+//     f(Point(2))
+//     f(None)
 void main() {
-    // f(Point(50))
     Point __tmp_1 = Point(50);
     f(&(__tmp_1));
-    // f(Point(2))
     Point __tmp_2 = Point(2);
     f(&(__tmp_2));
-    // f(None)
     f(nullptr);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

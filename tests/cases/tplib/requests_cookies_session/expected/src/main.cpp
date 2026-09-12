@@ -5,147 +5,153 @@ namespace tpyapp::main {
 
 
 // def _cookie_line(sent: bytes) -> None:
+//     for line in sent.split(b"\r\n"):
+//         if line.startswith(b"Cookie:"):
+//             print(line)
+//             return
+//     print(b"<no Cookie header>")
 void _cookie_line(::tpy::BytesView sent) {
-    // for line in sent.split(b"\r\n"):
     auto __obj_0 = ::tpy::bytes_split(sent, ::tpy::bytes_literal("\r\n", 2));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView line = *__beg_0;
-        // if line.startswith(b"Cookie:"):
         if (::tpy::bytes_startswith(line, ::tpy::bytes_literal("Cookie:", 7))) {
-            // print(line)
             std::cout << ::tpy::BytesPrinter(line) << "\n";
-            // return
             return;
         }
     }
-    // print(b"<no Cookie header>")
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_literal_owned("<no Cookie header>", 18)) << "\n";
 }
 
 // def cookies_arg_not_persisted() -> None:
+//     # A per-call cookies= dict is sent on that call but NOT stored in the
+//     # Session jar (matches requests), so a later call without cookies= sends none.
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "t"}
+//
+//     a1, b1 = socket.socketpair()
+//     b1.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+//     c1 = HTTPConnection("api.test", 80)
+//     c1.sock = a1
+//     s._connection = Box(c1)
+//     s.get("http://api.test/one", None, None, None, True, True, {"tok": "1"})
+//     _cookie_line(b1.recv(65536))
+//     b1.close()
+//
+//     a2, b2 = socket.socketpair()
+//     b2.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+//     c2 = HTTPConnection("api.test", 80)
+//     c2.sock = a2
+//     s._connection = Box(c2)
+//     s.get("http://api.test/two")
+//     _cookie_line(b2.recv(65536))
+//     b2.close()
+//     print("tok" in s.cookies)
 void cookies_arg_not_persisted() {
-    // # A per-call cookies= dict is sent on that call but NOT stored in the
-    // # Session jar (matches requests), so a later call without cookies= sends none.
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "t"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});
-    // a1, b1 = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a1 = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b1 = std::move(std::get<1>(__tup_1));
-    // b1.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
     b1.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 38));
-    // c1 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection c1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // c1.sock = a1
     c1.sock = std::move(a1);
-    // s._connection = Box(c1)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c1));
-    // s.get("http://api.test/one", None, None, None, True, True, {"tok": "1"})
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"tok", "1"}});
     s.get("http://api.test/one", nullptr, nullptr, std::nullopt, true, __tmp_1, &(__tmp_2));
-    // _cookie_line(b1.recv(65536))
     _cookie_line(b1.recv(65536));
-    // b1.close()
     b1.close();
-    // a2, b2 = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket b2 = std::move(std::get<1>(__tup_2));
-    // b2.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
     b2.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 38));
-    // c2 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection c2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // c2.sock = a2
     c2.sock = std::move(a2);
-    // s._connection = Box(c2)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c2));
-    // s.get("http://api.test/two")
     s.get("http://api.test/two");
-    // _cookie_line(b2.recv(65536))
     _cookie_line(b2.recv(65536));
-    // b2.close()
     b2.close();
-    // print("tok" in s.cookies)
     std::cout << ::tpy::print_bool((s.cookies.__contains__("tok"))) << "\n";
 }
 
 // def main() -> None:
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "t"}
+//
+//     a1, b1 = socket.socketpair()
+//     b1.sendall(b"HTTP/1.1 200 OK\r\nSet-Cookie: sid=xyz; Path=/\r\n"
+//                b"Content-Length: 2\r\n\r\nok")
+//     c1 = HTTPConnection("api.test", 80)
+//     c1.sock = a1
+//     s._connection = Box(c1)
+//     r1 = s.get("http://api.test/login")
+//     print(r1.status_code)
+//     # The login request itself sends no Cookie (jar was empty).
+//     _cookie_line(b1.recv(65536))
+//     b1.close()
+//
+//     a2, b2 = socket.socketpair()
+//     b2.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+//     c2 = HTTPConnection("api.test", 80)
+//     c2.sock = a2
+//     s._connection = Box(c2)
+//     r2 = s.get("http://api.test/profile")
+//     print(r2.status_code)
+//     # The persisted cookie is resent automatically.
+//     _cookie_line(b2.recv(65536))
+//     b2.close()
+//
+//     cookies_arg_not_persisted()
 void main() {
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "t"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});
-    // a1, b1 = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a1 = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b1 = std::move(std::get<1>(__tup_1));
-    // b1.sendall(b"HTTP/1.1 200 OK\r\nSet-Cookie: sid=xyz; Path=/\r\n"
-    // b"Content-Length: 2\r\n\r\nok")
     b1.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=xyz; Path=/\r\nContent-Length: 2\r\n\r\nok", 69));
-    // c1 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection c1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // c1.sock = a1
     c1.sock = std::move(a1);
-    // s._connection = Box(c1)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c1));
-    // r1 = s.get("http://api.test/login")
     ::tpystd::tplib::requests::Response r1 = s.get("http://api.test/login");
-    // print(r1.status_code)
     std::cout << r1.status_code << "\n";
-    // # The login request itself sends no Cookie (jar was empty).
-    // _cookie_line(b1.recv(65536))
     _cookie_line(b1.recv(65536));
-    // b1.close()
     b1.close();
-    // a2, b2 = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket b2 = std::move(std::get<1>(__tup_2));
-    // b2.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     b2.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // c2 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection c2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // c2.sock = a2
     c2.sock = std::move(a2);
-    // s._connection = Box(c2)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(c2));
-    // r2 = s.get("http://api.test/profile")
     ::tpystd::tplib::requests::Response r2 = s.get("http://api.test/profile");
-    // print(r2.status_code)
     std::cout << r2.status_code << "\n";
-    // # The persisted cookie is resent automatically.
-    // _cookie_line(b2.recv(65536))
     _cookie_line(b2.recv(65536));
-    // b2.close()
     b2.close();
-    // cookies_arg_not_persisted()
     cookies_arg_not_persisted();
 }
 
+// # A Session persists Set-Cookie across requests: the first response sets a
+// # cookie, and the second request to the same host resends it in a Cookie header
+// # automatically. The second connection is injected fresh (the _connection seam
+// # is single-use, so it is reassigned before the second call).
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A Session persists Set-Cookie across requests: the first response sets a
-    // # cookie, and the second request to the same host resends it in a Cookie header
-    // # automatically. The second connection is injected fresh (the _connection seam
-    // # is single-use, so it is reassigned before the second call).
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,68 +5,70 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # next() with try/except
+//     c = Counter(3)
+//     it = iter(c)
+//     try:
+//         v = next(it)
+//         print(v)
+//         v = next(it)
+//         print(v)
+//         v = next(it)
+//         print(v)
+//         v = next(it)
+//         print(v)
+//     except StopIteration:
+//         print("done")
+//
+//     # next() on protocol-typed Iterator[T] parameter
+//     c2 = Counter(5)
+//     consume_two(iter(c2))
 void main() {
-    // # next() with try/except
-    // c = Counter(3)
     Counter c = Counter(3);
-    // it = iter(c)
     auto it = ::tpy::__iter__(c);
-    // try:
     int32_t v;
     {
-        // v = next(it)
         {
             auto __try_tmp_5 = ::tpy::next(it);
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
-        // print(v)
         std::cout << v << "\n";
-        // v = next(it)
         {
             auto __try_tmp_6 = ::tpy::next(it);
             if (!__try_tmp_6.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
-        // print(v)
         std::cout << v << "\n";
-        // v = next(it)
         {
             auto __try_tmp_7 = ::tpy::next(it);
             if (!__try_tmp_7.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
-        // print(v)
         std::cout << v << "\n";
-        // v = next(it)
         {
             auto __try_tmp_8 = ::tpy::next(it);
             if (!__try_tmp_8.has_value()) goto __except_4;
             v = ::tpy::unwrap_ref_move(*__try_tmp_8);
         }
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_4;
         // except StopIteration:
         __except_4:;
-        // print("done")
         std::cout << "done" << "\n";
         __after_try_4:;
     }
-    // # next() on protocol-typed Iterator[T] parameter
-    // c2 = Counter(5)
     Counter c2 = Counter(5);
-    // consume_two(iter(c2))
     auto __tmp_1 = ::tpy::__iter__(c2);
     consume_two(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

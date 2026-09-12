@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def main():
+//     xs = [1, 2, 3]
+//     n = count(xs)
+//     print(drop(xs))  # tpyc: ok
+//     print(n)
 void main() {
-    // xs = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // n = count(xs)
     int32_t n = count(xs);
-    // print(drop(xs))  # tpyc: ok
     std::cout << drop(std::move(xs)) << "\n";
-    // print(n)
     std::cout << n << "\n";
 }
 
 // def count(xs: list[int32]) -> int32:
+//     return len(xs)
 int32_t count(const std::vector<int32_t>& xs) {
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 
 // def drop(xs: Own[list[int32]]) -> int32:
+//     store: list[list[int32]] = []
+//     store.append(xs)
+//     return len(store)
 int32_t drop(std::vector<int32_t>&& xs) {
-    // store: list[list[int32]] = []
     std::vector<std::vector<int32_t>> store = std::vector<std::vector<int32_t>>{};
-    // store.append(xs)
     store.push_back(std::move(xs));
-    // return len(store)
     return ::tpy::__len__(store);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

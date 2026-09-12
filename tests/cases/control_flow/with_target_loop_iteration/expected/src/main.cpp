@@ -5,13 +5,20 @@ namespace tpyapp::main {
 
 
 // def run() -> int32:
+//     with Reg(100) as g:
+//         pass
+//
+//     total = 0
+//     for i in range(3):
+//         total += g.n  # the previous iteration's target (or the pre-loop one)
+//         with Reg(i) as g:
+//             pass
+//     return total
 int32_t run() {
     std::optional<Reg> __slot_1;
-    // with Reg(100) as g:
     auto __ctx_1 = Reg(100);
     Reg* g = &(__ctx_1.__enter__());
     try {
-        // pass
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -22,18 +29,13 @@ int32_t run() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // total = 0
     int32_t total = 0;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // total += g.n  # the previous iteration's target (or the pre-loop one)
         total = ::tpy::add_check<int32_t>(total, g->n);
-        // with Reg(i) as g:
         __slot_1.emplace(Reg(i));
         auto& __ctx_2 = (*__slot_1);
         g = &(__ctx_2.__enter__());
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -45,22 +47,21 @@ int32_t run() {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     print(run())
 void main() {
-    // print(run())
     std::cout << run() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

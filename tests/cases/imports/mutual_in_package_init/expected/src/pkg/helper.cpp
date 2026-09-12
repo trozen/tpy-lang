@@ -7,19 +7,20 @@ namespace tpyapp::pkg::helper {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 Boosted::Boosted(int32_t v) : val(v) {}
 
 // def boost(self) -> int32:
+//     return self.val + use_pkg()
 int32_t Boosted::boost() const {
-    // return self.val + use_pkg()
     return (::tpy::add_check<int32_t>(this->val, ::tpyapp::pkg::user::use_pkg()));
 }
+// from pkg import use_pkg
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pkg import use_pkg
     ::tpyapp::pkg::__tpy_init();
 }
 

@@ -12,6 +12,7 @@ struct Acc;
 extern int32_t SCALE;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Acc:
@@ -34,10 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self, base: int32) -> None:
+//     self.total = base
+//     self.label = int32(1)
+//     # The subject: a second assignment to an already-initialized field,
+//     # reading the value the member init gave it.
+//     self.total = self.total * SCALE  # tpyc: ok
 inline Acc::Acc(int32_t base) : total(base), label(1) {
-    // # The subject: a second assignment to an already-initialized field,
-    // # reading the value the member init gave it.
-    // self.total = self.total * SCALE  # tpyc: ok
     this->total = (::tpy::mul_check<int32_t>(this->total, SCALE));
 }
 void __tpy_init();

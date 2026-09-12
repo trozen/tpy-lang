@@ -9,57 +9,61 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def collect_items(items: Iterable[str]) -> None:
 template<::tpystd::typing::Iterable<std::string> T_items>
 void collect_items(T_items& items);
+// def collect_ints(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void collect_ints(T_items& items);
+// def collect_pairs(items: Iterable[tuple[str, int32]]) -> None:
 template<::tpystd::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items);
+// def main() -> None:
 void main();
 
 // def collect_items(items: Iterable[str]) -> None:
+//     for x in items:
+//         print(x)
 template<::tpystd::typing::Iterable<std::string> T_items>
 void collect_items(T_items& items) {
-    // for x in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
 }
 // def collect_ints(items: Iterable[int32]) -> None:
+//     for x in items:
+//         print(x)
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
-    // for x in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
 }
 // def collect_pairs(items: Iterable[tuple[str, int32]]) -> None:
+//     for pair in items:
+//         k, v = pair
+//         print(k, v)
 template<::tpystd::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
-    // for pair in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& pair = ::tpy::unwrap_ref(*__r_1);
-        // k, v = pair
         const auto& __tup_1 = pair;
         std::string_view k = std::get<0>(__tup_1);
         int32_t v = std::get<1>(__tup_1);
-        // print(k, v)
         std::cout << k << " " << v << "\n";
     }
 }

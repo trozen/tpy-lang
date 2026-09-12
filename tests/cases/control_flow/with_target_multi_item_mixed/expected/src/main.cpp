@@ -3,14 +3,18 @@
 
 namespace tpyapp::main {
 
-// SHARED: Item = Item(7)
 Item* SHARED{};
 
 // def steps() -> Iterator[int32]:
+//     with Owner(5) as owned, Delegator() as lent:
+//         pass
+//     yield 0
+//     owned.n += 1  # mutating through the kept manager's storage, post-suspension
+//     yield owned.n
+//     yield lent.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // with Owner(5) as owned, Delegator() as lent:
         __with_ctx_0.emplace(Owner(5));
         auto& __ctx_1 = (*__with_ctx_0);
         owned.emplace(__ctx_1.__enter__());
@@ -18,7 +22,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
         lent.emplace(__ctx_2.__enter__());
         try {
             try {
-                // pass
                 goto __with_exit_2;
             } catch (::tpy::BaseException& __exc_2) {
                 __ctx_2.__exit__({}, &__exc_2, {});
@@ -39,19 +42,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
-        // owned.n += 1  # mutating through the kept manager's storage, post-suspension
         (*owned).n = ::tpy::add_check<int32_t>((*owned).n, 1);
-        // yield owned.n
         __state = S_RESUME_1;
         return (*owned).n;
     }
     case S_RESUME_1: {
-        // yield lent.n
         __state = S_RESUME_2;
         return (*lent).n;
     }
@@ -71,8 +70,10 @@ __gen_steps steps() {
 }
 
 // def main() -> None:
+//     for v in steps():
+//         print(v)
+//     print(SHARED.n)
 void main() {
-    // for v in steps():
     {
         auto __src_0 = steps();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -80,23 +81,22 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(SHARED.n)
     std::cout << SHARED->n << "\n";
 }
 
+// SHARED: Item = Item(7)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // SHARED: Item = Item(7)
     static Item __global_slot_1 = Item(7);
     SHARED = &__global_slot_1;
-    // main()
     main();
 }
 

@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def has(h: Headers, name: str) -> bool:
+//     return hasattr(h, name)
 bool has(const Headers& h, std::string_view name) {
-    // return hasattr(h, name)
     return ({ bool __ok = true; try { (void)(h.__getattr__(name)); } catch (const ::tpy::AttributeError&) { __ok = false; } __ok; });
 }
 
 // def main() -> None:
+//     h = Headers()
+//     for k in ["host", "missing"]:
+//         print(k, has(h, k))
 void main() {
-    // h = Headers()
     Headers h = Headers();
-    // for k in ["host", "missing"]:
     auto __obj_0 = {"host", "missing"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // print(k, has(h, k))
         std::cout << k << " " << ::tpy::print_bool(has(h, k)) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

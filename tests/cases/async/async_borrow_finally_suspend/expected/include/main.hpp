@@ -17,6 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main;
 struct __coro_Counter_grab;
 
+// async def main() -> None:
 __coro_main main();
 
 // class Counter:
@@ -36,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: Counter.grab
+// async def grab(self) -> "Counter":
 struct __coro_Counter_grab {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +71,7 @@ inline __coro_Counter_grab Counter::grab() {
     return __coro_Counter_grab(*this);
 }
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -97,6 +98,7 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     self.n = 1
 inline Counter::Counter() : n(::tpy::BigInt(1)) {}
 void __tpy_init();
 } // namespace tpyapp::main

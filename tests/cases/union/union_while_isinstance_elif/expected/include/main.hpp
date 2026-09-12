@@ -13,7 +13,9 @@ struct Triangle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(s: Circle | Rect | Triangle) -> None:
 void describe(::tpy::Union<const Circle*, const Rect*, const Triangle*> s);
+// def main() -> None:
 void main();
 
 // class Circle:
@@ -68,12 +70,16 @@ inline std::ostream& operator<<(std::ostream& os, const Triangle& obj) {
 
 
 // def __init__(self, radius: float) -> None:
+//     self.radius = radius
 inline Circle::Circle(double radius) : radius(radius) {}
 
 // def __init__(self, width: float, height: float) -> None:
+//     self.width = width
+//     self.height = height
 inline Rect::Rect(double width, double height) : width(width), height(height) {}
 
 // def __init__(self, base: float) -> None:
+//     self.base = base
 inline Triangle::Triangle(double base) : base(base) {}
 void __tpy_init();
 } // namespace tpyapp::main

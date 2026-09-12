@@ -18,8 +18,11 @@ struct ExprBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_lit(v: int) -> Own[Expr]:
 Expr make_lit(const ::tpy::BigInt& v);
+// def eval_expr(e: Expr) -> int:
 ::tpy::BigInt eval_expr(const Expr& e);
+// def main() -> None:
 void main();
 
 // class Lit:
@@ -85,12 +88,17 @@ inline std::ostream& operator<<(std::ostream& os, const ExprBox& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 
 // def __init__(self, left: Own[Box[Expr]], op: str, right: Own[Box[Expr]]) -> None:
+//     self.left = left
+//     self.op = op
+//     self.right = right
 inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), op(op), right(std::move(right)) {}
 
 // def __init__(self, expr: Own[Box[Expr]]) -> None:
+//     self.expr = expr
 inline ExprBox::ExprBox(::tpystd::tplib::box::Box<Expr>&& expr) : expr(std::move(expr)) {}
 struct Expr {
     using variant_type = ::tpy::Union<BinOp, Lit>;

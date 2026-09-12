@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Processor(10)
+//     print(p.apply(lambda x: x * 2))
+//     print(p.apply(lambda x: x + 5))
+//     print(p.apply_binary(3, lambda x, y: x + y))
 void main() {
-    // p = Processor(10)
     Processor p = Processor(10);
-    // print(p.apply(lambda x: x * 2))
     std::cout << p.apply([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); }) << "\n";
-    // print(p.apply(lambda x: x + 5))
     std::cout << p.apply([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 5)); }) << "\n";
-    // print(p.apply_binary(3, lambda x, y: x + y))
     std::cout << p.apply_binary(3, [](int32_t x, int32_t y) -> int32_t { return (::tpy::add_check<int32_t>(x, y)); }) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

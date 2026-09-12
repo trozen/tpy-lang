@@ -66,25 +66,26 @@ inline std::ostream& operator<<(std::ostream& os, const Score& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Score::Score(int32_t v) : val(v) {}
 
 // def __eq__(self, other: "Score") -> bool:
+//     return self.val == other.val
 inline bool Score::__eq__(const Score& other) const {
-    // return self.val == other.val
     return (this->val == other.val);
 }
 
 // def __lt__(self, other: "Score") -> bool:
+//     return self.val < other.val
 inline bool Score::__lt__(const Score& other) const {
-    // return self.val < other.val
     return (this->val < other.val);
 }
 
 // def __ge__(self, other: "Score") -> bool:
+//     # Sentinel to verify this body wasn't overwritten by macro.
+//     # User's __ge__ should win; the macro should NOT re-synthesize.
+//     return self.val >= other.val
 inline bool Score::__ge__(const Score& other) const {
-    // # Sentinel to verify this body wasn't overwritten by macro.
-    // # User's __ge__ should win; the macro should NOT re-synthesize.
-    // return self.val >= other.val
     return (this->val >= other.val);
 }
 

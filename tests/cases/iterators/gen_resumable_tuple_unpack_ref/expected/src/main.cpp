@@ -5,6 +5,10 @@ namespace tpyapp::main {
 
 
 // def process(rows: list[tuple[int32, Item]]) -> Iterator[int32]:  # tpyc: ok
+//     for idx, it in rows:
+//         it.n = idx * 100      # mutate the reference element
+//         yield idx             # suspend; idx (value) and it (ref) must survive
+//         it.n = it.n + idx     # read + mutate the same element after resume
 std::expected<int32_t, ::tpy::StopIteration> __gen_process::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -14,7 +18,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_process::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // it.n = it.n + idx     # read + mutate the same element after resume
         it->n = (::tpy::add_check<int32_t>(it->n, idx));
         __state = S_JOIN_0;
         continue;
@@ -25,13 +28,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_process::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = &(*((*__for_it_0))++);
-        // for idx, it in rows:
         auto& __tup_1 = (*__for_tup_0);
         idx = std::get<0>(__tup_1);
         it = &(std::get<1>(__tup_1));
-        // it.n = idx * 100      # mutate the reference element
         it->n = (::tpy::mul_check<int32_t>(idx, 100));
-        // yield idx             # suspend; idx (value) and it (ref) must survive
         __state = S_RESUME_0;
         return idx;
     }
@@ -47,10 +47,13 @@ __gen_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
 }
 
 // def main() -> None:
+//     rows: list[tuple[int32, Item]] = [(1, Item(0)), (2, Item(0))]
+//     for v in process(rows):
+//         print(v)
+//     # Mutations through the unpacked reference propagated to the source.
+//     print(rows[0][1].n, rows[1][1].n)
 void main() {
-    // rows: list[tuple[int32, Item]] = [(1, Item(0)), (2, Item(0))]
     std::vector<std::tuple<int32_t, Item>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{1, Item(0)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{2, Item(0)})};
-    // for v in process(rows):
     {
         auto __src_0 = process(rows);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -58,21 +61,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // # Mutations through the unpacked reference propagated to the source.
-    // print(rows[0][1].n, rows[1][1].n)
     std::cout << std::get<1>(::tpy::__getitem__(rows, 0)).n << " " << std::get<1>(::tpy::__getitem__(rows, 1)).n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

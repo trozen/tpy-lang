@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[A]:
+//     return A(7)
 A make() {
-    // return A(7)
     return A(7);
 }
 
 // def make_pair() -> Own[tuple[A, int32]]:
+//     return (A(7), 3)
 std::tuple<A, int32_t> make_pair() {
-    // return (A(7), 3)
     return std::tuple<A, int32_t>{A(7), 3};
 }
 
 // # per-element ownership in the return type, not `Own[tuple[...]]`
 // def own_elem_pair() -> tuple[Own[A], int32]:
+//     return (A(7), 3)
 std::tuple<A, int32_t> own_elem_pair() {
-    // return (A(7), 3)
     return std::tuple<A, int32_t>{A(7), 3};
 }
 
 // def fresh() -> Iterator[int32]:
+//     t = (A(1), 2)  # tpyc: ok
+//     yield t[0].v
+//     t[0].v = 42
+//     yield t[0].v + t[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_fresh::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (A(1), 2)  # tpyc: ok
         t.emplace(std::tuple<A, int32_t>{A(1), 2});
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {
-        // t[0].v = 42
         std::get<0>((*t)).v = 42;
-        // yield t[0].v + t[1]
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(std::get<0>((*t)).v, std::get<1>((*t))));
     }
@@ -56,19 +56,19 @@ __gen_fresh fresh() {
 }
 
 // def own_call() -> Iterator[int32]:
+//     t = (1, make())  # tpyc: ok
+//     yield t[1].v
+//     t[1].v = 42
+//     yield t[1].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (1, make())  # tpyc: ok
         t.emplace(std::tuple<int32_t, A>{1, make()});
-        // yield t[1].v
         __state = S_RESUME_0;
         return std::get<1>((*t)).v;
     }
     case S_RESUME_0: {
-        // t[1].v = 42
         std::get<1>((*t)).v = 42;
-        // yield t[1].v
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
@@ -88,19 +88,19 @@ __gen_own_call own_call() {
 }
 
 // def lvalue(a: A) -> Iterator[int32]:
+//     t = (a, 2)  # tpyc: ok
+//     yield t[0].v
+//     a.v = 99
+//     yield t[0].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_lvalue::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (a, 2)  # tpyc: ok
         t = std::tuple<A*, int32_t>{&(a), 2};
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>(t)->v;
     }
     case S_RESUME_0: {
-        // a.v = 99
         a.v = 99;
-        // yield t[0].v
         __state = S_RESUME_1;
         return std::get<0>(t)->v;
     }
@@ -120,19 +120,19 @@ __gen_lvalue lvalue(A& a) {
 }
 
 // def mixed_fresh_first(a: A) -> Iterator[int32]:
+//     t = (A(1), a)  # tpyc: ok
+//     yield t[0].v
+//     a.v = 99
+//     yield t[1].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_fresh_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (A(1), a)  # tpyc: ok
         t.emplace(std::tuple<A, A*>{A(1), &(a)});
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {
-        // a.v = 99
         a.v = 99;
-        // yield t[1].v
         __state = S_RESUME_1;
         return std::get<1>((*t))->v;
     }
@@ -152,19 +152,19 @@ __gen_mixed_fresh_first mixed_fresh_first(A& a) {
 }
 
 // def mixed_lvalue_first(a: A) -> Iterator[int32]:
+//     t = (a, A(1))  # tpyc: ok
+//     yield t[1].v
+//     a.v = 99
+//     yield t[0].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_lvalue_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (a, A(1))  # tpyc: ok
         t.emplace(std::tuple<A*, A>{&(a), A(1)});
-        // yield t[1].v
         __state = S_RESUME_0;
         return std::get<1>((*t)).v;
     }
     case S_RESUME_0: {
-        // a.v = 99
         a.v = 99;
-        // yield t[0].v
         __state = S_RESUME_1;
         return std::get<0>((*t))->v;
     }
@@ -184,19 +184,19 @@ __gen_mixed_lvalue_first mixed_lvalue_first(A& a) {
 }
 
 // def moved_last_use() -> Iterator[int32]:
+//     a = A(1)
+//     t = (A(2), a)  # tpyc: ok
+//     yield t[0].v
+//     yield t[1].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_moved_last_use::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = A(1)
         a.emplace(A(1));
-        // t = (A(2), a)  # tpyc: ok
         t.emplace(std::tuple<A, A>{A(2), std::move((*a))});
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {
-        // yield t[1].v
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
@@ -216,32 +216,33 @@ __gen_moved_last_use moved_last_use() {
 }
 
 // def loop_reassigned() -> Iterator[int32]:
+//     i = 0
+//     while i < 2:
+//         t = (i, A(i * 10))  # tpyc: ok
+//         yield t[0]
+//         t[1].v += 1
+//         yield t[1].v
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_loop_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // t[1].v += 1
         std::get<1>((*t)).v = ::tpy::add_check<int32_t>(std::get<1>((*t)).v, 1);
-        // yield t[1].v
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // t = (i, A(i * 10))  # tpyc: ok
             t.emplace(std::tuple<int32_t, A>{i, A((::tpy::mul_check<int32_t>(i, 10)))});
-            // yield t[0]
             __state = S_RESUME_0;
             return std::get<0>((*t));
         } else {
@@ -261,26 +262,26 @@ __gen_loop_reassigned loop_reassigned() {
 }
 
 // def literal_then_call(c: bool) -> Iterator[int32]:
+//     if c:
+//         t = (A(1), 2)  # tpyc: ok
+//     else:
+//         t = make_pair()  # tpyc: ok
+//     yield t[0].v
+//     t[0].v = 42
+//     yield t[0].v + t[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_literal_then_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if c:
         if (c) {
-            // t = (A(1), 2)  # tpyc: ok
             t.emplace(std::tuple<A, int32_t>{A(1), 2});
-        // else:
         } else {
-            // t = make_pair()  # tpyc: ok
             t.emplace(make_pair());
         }
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {
-        // t[0].v = 42
         std::get<0>((*t)).v = 42;
-        // yield t[0].v + t[1]
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(std::get<0>((*t)).v, std::get<1>((*t))));
     }
@@ -300,26 +301,26 @@ __gen_literal_then_call literal_then_call(bool c) {
 }
 
 // def call_then_literal(c: bool) -> Iterator[int32]:
+//     if c:
+//         t = make_pair()  # tpyc: ok
+//     else:
+//         t = (A(1), 2)  # tpyc: ok
+//     yield t[0].v
+//     t[0].v = 42
+//     yield t[0].v + t[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_call_then_literal::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // if c:
         if (c) {
-            // t = make_pair()  # tpyc: ok
             t.emplace(make_pair());
-        // else:
         } else {
-            // t = (A(1), 2)  # tpyc: ok
             t.emplace(std::tuple<A, int32_t>{A(1), 2});
         }
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {
-        // t[0].v = 42
         std::get<0>((*t)).v = 42;
-        // yield t[0].v + t[1]
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(std::get<0>((*t)).v, std::get<1>((*t))));
     }
@@ -339,21 +340,21 @@ __gen_call_then_literal call_then_literal(bool c) {
 }
 
 // def call_reassigned() -> Iterator[int32]:
+//     t = make_pair()  # tpyc: ok
+//     yield t[0].v
+//     t = make_pair()
+//     t[0].v += 1
+//     yield t[0].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_call_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = make_pair()  # tpyc: ok
         t.emplace(make_pair());
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {
-        // t = make_pair()
         t.emplace(make_pair());
-        // t[0].v += 1
         std::get<0>((*t)).v = ::tpy::add_check<int32_t>(std::get<0>((*t)).v, 1);
-        // yield t[0].v
         __state = S_RESUME_1;
         return std::get<0>((*t)).v;
     }
@@ -373,19 +374,19 @@ __gen_call_reassigned call_reassigned() {
 }
 
 // def own_elem_call() -> Iterator[int32]:
+//     t = own_elem_pair()  # tpyc: ok
+//     yield t[0].v
+//     t[0].v = 42
+//     yield t[0].v + t[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_elem_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = own_elem_pair()  # tpyc: ok
         t.emplace(own_elem_pair());
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {
-        // t[0].v = 42
         std::get<0>((*t)).v = 42;
-        // yield t[0].v + t[1]
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(std::get<0>((*t)).v, std::get<1>((*t))));
     }
@@ -405,6 +406,13 @@ __gen_own_elem_call own_elem_call() {
 }
 
 // def try_body() -> Iterator[int32]:
+//     try:
+//         t = (A(1), 2)  # tpyc: ok
+//         yield t[0].v
+//         t[0].v = 42
+//         yield t[0].v
+//     finally:
+//         print("try_body finally")
 std::expected<int32_t, ::tpy::StopIteration> __gen_try_body::__next__() {
     try {
     while (true) switch (__state) {
@@ -414,9 +422,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_try_body::__next__() {
     }
     case S_RESUME_0: {
         try {
-            // t[0].v = 42
             std::get<0>((*t)).v = 42;
-            // yield t[0].v
             __state = S_RESUME_1;
             return std::get<0>((*t)).v;
         } catch (...) {
@@ -444,9 +450,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_try_body::__next__() {
     }
     case S_JOIN_1: {
         try {
-            // t = (A(1), 2)  # tpyc: ok
             t.emplace(std::tuple<A, int32_t>{A(1), 2});
-            // yield t[0].v
             __state = S_RESUME_0;
             return std::get<0>((*t)).v;
         } catch (...) {
@@ -464,7 +468,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_try_body::__next__() {
 }
 
 void __gen_try_body::__finally_0() {
-    // print("try_body finally")
     std::cout << "try_body finally" << "\n";
 }
 
@@ -474,12 +477,14 @@ __gen_try_body try_body() {
 }
 
 // async def coro(a: A) -> int32:
+//     t = (A(1), a)  # tpyc: ok
+//     await asyncio.sleep(0)
+//     t[0].v = 42
+//     return t[0].v + t[1].v
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (A(1), a)  # tpyc: ok
         t.emplace(std::tuple<A, A*>{A(1), &(a)});
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -489,9 +494,7 @@ __gen_try_body try_body() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // t[0].v = 42
         std::get<0>((*t)).v = 42;
-        // return t[0].v + t[1].v
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(std::get<0>((*t)).v, std::get<1>((*t))->v));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -508,12 +511,12 @@ __coro_coro coro(A& a) {
 }
 
 // async def async_section() -> None:
+//     a = A(5)
+//     print("async", await coro(a))
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a = A(5)
         a.emplace(A(5));
-        // print("async", await coro(a))
         __sub_0.emplace((*a));
         __state = S_RESUME_0;
         continue;
@@ -523,7 +526,6 @@ __coro_coro coro(A& a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print("async", await coro(a))
         std::cout << "async" << " " << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -540,8 +542,57 @@ __coro_async_section async_section() {
 }
 
 // def main() -> None:
+//     for n in fresh():
+//         print("fresh", n)
+//
+//     for n in own_call():
+//         print("own_call", n)
+//
+//     a = A(1)
+//     for n in lvalue(a):
+//         print("lvalue", n)
+//
+//     b = A(5)
+//     for n in mixed_fresh_first(b):
+//         print("mixed_fresh_first", n)
+//
+//     c = A(5)
+//     for n in mixed_lvalue_first(c):
+//         print("mixed_lvalue_first", n)
+//
+//     for n in moved_last_use():
+//         print("moved", n)
+//
+//     for n in loop_reassigned():
+//         print("loop", n)
+//
+//     for n in literal_then_call(True):
+//         print("literal_then_call literal", n)
+//
+//     for n in literal_then_call(False):
+//         print("literal_then_call call", n)
+//
+//     for n in call_then_literal(True):
+//         print("call_then_literal call", n)
+//
+//     for n in call_then_literal(False):
+//         print("call_then_literal literal", n)
+//
+//     for n in call_reassigned():
+//         print("call_reassigned", n)
+//
+//     for n in own_elem_call():
+//         print("own_elem_call", n)
+//
+//     for n in try_body():
+//         print("try", n)
+//
+//     h = H(1)
+//     for n in h.g():
+//         print("method", n)
+//
+//     asyncio.run(async_section())
 void main() {
-    // for n in fresh():
     {
         auto __src_0 = fresh();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -549,11 +600,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_1);
-        // print("fresh", n)
         std::cout << "fresh" << " " << n << "\n";
         }
     }
-    // for n in own_call():
     {
         auto __src_2 = own_call();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -561,13 +610,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_3);
-        // print("own_call", n)
         std::cout << "own_call" << " " << n << "\n";
         }
     }
-    // a = A(1)
     A a = A(1);
-    // for n in lvalue(a):
     {
         auto __src_4 = lvalue(a);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -575,13 +621,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_5);
-        // print("lvalue", n)
         std::cout << "lvalue" << " " << n << "\n";
         }
     }
-    // b = A(5)
     A b = A(5);
-    // for n in mixed_fresh_first(b):
     {
         auto __src_6 = mixed_fresh_first(b);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -589,13 +632,10 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_7);
-        // print("mixed_fresh_first", n)
         std::cout << "mixed_fresh_first" << " " << n << "\n";
         }
     }
-    // c = A(5)
     A c = A(5);
-    // for n in mixed_lvalue_first(c):
     {
         auto __src_8 = mixed_lvalue_first(c);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -603,11 +643,9 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_9);
-        // print("mixed_lvalue_first", n)
         std::cout << "mixed_lvalue_first" << " " << n << "\n";
         }
     }
-    // for n in moved_last_use():
     {
         auto __src_10 = moved_last_use();
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
@@ -615,11 +653,9 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_11);
-        // print("moved", n)
         std::cout << "moved" << " " << n << "\n";
         }
     }
-    // for n in loop_reassigned():
     {
         auto __src_12 = loop_reassigned();
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
@@ -627,11 +663,9 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_13);
-        // print("loop", n)
         std::cout << "loop" << " " << n << "\n";
         }
     }
-    // for n in literal_then_call(True):
     {
         auto __src_14 = literal_then_call(true);
         auto&& __itr_14 = ::tpy::__iter__(__src_14);
@@ -639,11 +673,9 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_15);
-        // print("literal_then_call literal", n)
         std::cout << "literal_then_call literal" << " " << n << "\n";
         }
     }
-    // for n in literal_then_call(False):
     {
         auto __src_16 = literal_then_call(false);
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
@@ -651,11 +683,9 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_17);
-        // print("literal_then_call call", n)
         std::cout << "literal_then_call call" << " " << n << "\n";
         }
     }
-    // for n in call_then_literal(True):
     {
         auto __src_18 = call_then_literal(true);
         auto&& __itr_18 = ::tpy::__iter__(__src_18);
@@ -663,11 +693,9 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_19);
-        // print("call_then_literal call", n)
         std::cout << "call_then_literal call" << " " << n << "\n";
         }
     }
-    // for n in call_then_literal(False):
     {
         auto __src_20 = call_then_literal(false);
         auto&& __itr_20 = ::tpy::__iter__(__src_20);
@@ -675,11 +703,9 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_21);
-        // print("call_then_literal literal", n)
         std::cout << "call_then_literal literal" << " " << n << "\n";
         }
     }
-    // for n in call_reassigned():
     {
         auto __src_22 = call_reassigned();
         auto&& __itr_22 = ::tpy::__iter__(__src_22);
@@ -687,11 +713,9 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_23);
-        // print("call_reassigned", n)
         std::cout << "call_reassigned" << " " << n << "\n";
         }
     }
-    // for n in own_elem_call():
     {
         auto __src_24 = own_elem_call();
         auto&& __itr_24 = ::tpy::__iter__(__src_24);
@@ -699,11 +723,9 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_25);
-        // print("own_elem_call", n)
         std::cout << "own_elem_call" << " " << n << "\n";
         }
     }
-    // for n in try_body():
     {
         auto __src_26 = try_body();
         auto&& __itr_26 = ::tpy::__iter__(__src_26);
@@ -711,13 +733,10 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_27);
-        // print("try", n)
         std::cout << "try" << " " << n << "\n";
         }
     }
-    // h = H(1)
     H h = H(1);
-    // for n in h.g():
     {
         auto __src_28 = h.g();
         auto&& __itr_28 = ::tpy::__iter__(__src_28);
@@ -725,28 +744,26 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             int32_t n = ::tpy::unwrap_ref(*__r_29);
-        // print("method", n)
         std::cout << "method" << " " << n << "\n";
         }
     }
-    // asyncio.run(async_section())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_section()));
 }
 
 // def g(self) -> Iterator[int32]:
+//     t = (A(self.n), 2)  # tpyc: ok
+//     yield t[0].v
+//     t[0].v = 42
+//     yield t[0].v
 std::expected<int32_t, ::tpy::StopIteration> __gen_H_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (A(self.n), 2)  # tpyc: ok
         t.emplace(std::tuple<A, int32_t>{A(__self.n), 2});
-        // yield t[0].v
         __state = S_RESUME_0;
         return std::get<0>((*t)).v;
     }
     case S_RESUME_0: {
-        // t[0].v = 42
         std::get<0>((*t)).v = 42;
-        // yield t[0].v
         __state = S_RESUME_1;
         return std::get<0>((*t)).v;
     }
@@ -760,20 +777,21 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_H_g::__next__() {
 }
 
 
+// # A tuple bound to a local of a resumable frame: ownership of each element comes
+// # from what the INIT does with it, not from the tuple type. A fresh element (a
+// # literal's rvalue, or any element of an owning call's result) is storage the
+// # frame owns; an lvalue element stays a pointer at the caller's object, so a
+// # mutation made after the suspension is read back through the tuple. The
+// # lvalue-only sections pin the borrow field as unchanged.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A tuple bound to a local of a resumable frame: ownership of each element comes
-    // # from what the INIT does with it, not from the tuple type. A fresh element (a
-    // # literal's rvalue, or any element of an owning call's result) is storage the
-    // # frame owns; an lvalue element stays a pointer at the caller's object, so a
-    // # mutation made after the suspension is read back through the tuple. The
-    // # lvalue-only sections pin the borrow field as unchanged.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

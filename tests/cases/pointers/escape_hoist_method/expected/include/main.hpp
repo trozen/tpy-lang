@@ -51,26 +51,29 @@ inline std::ostream& operator<<(std::ostream& os, const Finder& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
+//     self.result = Point(0, 0)
 inline Finder::Finder() : result(Point(0, 0)) {}
 
 // def find_last(self, n: int32) -> None:
+//     saved: Point = Point(0, 0)
+//     for i in range(n):
+//         p: Point = Point(i, i * 2)
+//         saved = p  # tpyc: warning(/will not keep the object it was given/)
+//     self.result = saved  # tpyc: warning(/copies Point into field/)
 inline void Finder::find_last(int32_t n) {
     std::optional<Point> __slot_2;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // p: Point = Point(i, i * 2)
         Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 2))));
-        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
-    // self.result = saved  # tpyc: warning(/copies Point into field/)
     this->result = (*saved);
 }
 void __tpy_init();

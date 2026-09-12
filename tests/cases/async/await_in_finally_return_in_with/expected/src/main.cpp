@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,11 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def cleanup() -> None:
+//     print("cleanup")
 ::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("cleanup")
         std::cout << "cleanup" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -47,6 +47,12 @@ __coro_cleanup cleanup() {
 }
 
 // async def caller() -> int:
+//     try:
+//         with Tracer("with"):
+//             x = await value(7)
+//             return x
+//     finally:
+//         await cleanup()
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -62,7 +68,6 @@ __coro_cleanup cleanup() {
                 if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
                 x = std::move(__r0).value();
                 __sub_0.reset();
-                // return x
                 this->__finally_ret_0 = x;
                 this->__finally_pending_0 = true;
                 __fin_ran_1 = true;
@@ -108,7 +113,6 @@ __coro_cleanup cleanup() {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_JOIN_1: {
-        // await cleanup()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -126,7 +130,6 @@ __coro_cleanup cleanup() {
         }
     }
     case S_JOIN_3: {
-        // x = await value(7)
         __sub_0.emplace(::tpy::BigInt(7));
         __state = S_RESUME_0;
         continue;
@@ -147,30 +150,31 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # `return` inside a `with` body that is itself nested inside a
+// # `try` / `finally`-with-await (M3.3.2 + WithRegion interaction).
+// # The return must:
+// #   1. Run the with-stmt's `__exit__(None, None, None)` (the
+// #      WithRegion sits above the CFG-finally boundary in the
+// #      pending-return chain).
+// #   2. Park the value in `__finally_ret_<n>` + set the flag.
+// #   3. Transition to the finally entry.
+// #   4. After the finally body runs, AsyncFinallyExit emits the
+// #      deferred Poll::ready.
+// # Expected order: "exit-with" -> "cleanup" -> 7
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `return` inside a `with` body that is itself nested inside a
-    // # `try` / `finally`-with-await (M3.3.2 + WithRegion interaction).
-    // # The return must:
-    // #   1. Run the with-stmt's `__exit__(None, None, None)` (the
-    // #      WithRegion sits above the CFG-finally boundary in the
-    // #      pending-return chain).
-    // #   2. Park the value in `__finally_ret_<n>` + set the flag.
-    // #   3. Transition to the finally entry.
-    // #   4. After the finally body runs, AsyncFinallyExit emits the
-    // #      deferred Poll::ready.
-    // # Expected order: "exit-with" -> "cleanup" -> 7
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

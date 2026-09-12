@@ -14,16 +14,16 @@ namespace tpyapp::main {
 // # tpyc: warning(/invalid namespace/)
 // # tpy: cpp_namespace("1bad-ns")
 // def main() -> None:
+//     pass
 void main() {
-    // pass
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

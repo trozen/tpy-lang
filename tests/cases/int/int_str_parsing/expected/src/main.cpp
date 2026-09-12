@@ -3,67 +3,62 @@
 
 namespace tpyapp::main {
 
-// # Basic parsing
-// a: int = int("42")
 ::tpy::BigInt a;
-// b: int = int("-123")
 ::tpy::BigInt b;
-// c: int = int("+456")
 ::tpy::BigInt c;
-// # Zero
-// d: int = int("0")
 ::tpy::BigInt d;
-// # Leading/trailing whitespace
-// e: int = int("  789  ")
 ::tpy::BigInt e;
-// f: int = int("  -99  ")
 ::tpy::BigInt f;
-// # Large numbers
-// g: int = int("12345678901234567890")
 ::tpy::BigInt g;
-// h: int = int("-12345678901234567890")
 ::tpy::BigInt h;
 
+// # Basic parsing
+// a: int = int("42")
+// print(a)  # 42
+//
+// b: int = int("-123")
+// print(b)  # -123
+//
+// c: int = int("+456")
+// print(c)  # 456
+//
+// # Zero
+// d: int = int("0")
+// print(d)  # 0
+//
+// # Leading/trailing whitespace
+// e: int = int("  789  ")
+// print(e)  # 789
+//
+// f: int = int("  -99  ")
+// print(f)  # -99
+//
+// # Large numbers
+// g: int = int("12345678901234567890")
+// print(g)  # 12345678901234567890
+//
+// h: int = int("-12345678901234567890")
+// print(h)  # -12345678901234567890
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Basic parsing
-    // a: int = int("42")
     a = ::tpy::BigInt::from_str("42");
-    // print(a)  # 42
     std::cout << a << "\n";
-    // b: int = int("-123")
     b = ::tpy::BigInt::from_str("-123");
-    // print(b)  # -123
     std::cout << b << "\n";
-    // c: int = int("+456")
     c = ::tpy::BigInt::from_str("+456");
-    // print(c)  # 456
     std::cout << c << "\n";
-    // # Zero
-    // d: int = int("0")
     d = ::tpy::BigInt::from_str("0");
-    // print(d)  # 0
     std::cout << d << "\n";
-    // # Leading/trailing whitespace
-    // e: int = int("  789  ")
     e = ::tpy::BigInt::from_str("  789  ");
-    // print(e)  # 789
     std::cout << e << "\n";
-    // f: int = int("  -99  ")
     f = ::tpy::BigInt::from_str("  -99  ");
-    // print(f)  # -99
     std::cout << f << "\n";
-    // # Large numbers
-    // g: int = int("12345678901234567890")
     g = ::tpy::BigInt::from_str("12345678901234567890");
-    // print(g)  # 12345678901234567890
     std::cout << g << "\n";
-    // h: int = int("-12345678901234567890")
     h = ::tpy::BigInt::from_str("-12345678901234567890");
-    // print(h)  # -12345678901234567890
     std::cout << h << "\n";
 }
 

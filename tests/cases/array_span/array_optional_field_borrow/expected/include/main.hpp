@@ -11,8 +11,11 @@ struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first_after_bump(g: Grid) -> int32:
 int32_t first_after_bump(Grid& g);
+// def size_of(g: Grid) -> int32:
 int32_t size_of(const Grid& g);
+// def main() -> None:
 void main();
 
 // class Grid:
@@ -35,15 +38,16 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self) -> None:
+//     self.cells = [1, 2]
 inline Grid::Grid() : cells(std::array<int32_t, 2>{1, 2}) {}
 
 // def bump(self) -> None:
+//     a = self.cells
+//     if a is not None:
+//         a[0] = 9
 inline void Grid::bump() {
-    // a = self.cells
     std::array<int32_t, 2>* a = ::tpy::optional_to_ptr(this->cells);
-    // if a is not None:
     if ((a != nullptr)) {
-        // a[0] = 9
         ::tpy::__setitem__((*a), 0, 9);
     }
 }

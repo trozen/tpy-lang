@@ -5,12 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     with Suppress():
+//         raise FileNotFoundError("missing.txt")
+//     print("after FNFE")
+//
+//     with Suppress():
+//         raise OSError("io")
+//     print("after OS")
+//
+//     try:
+//         with Suppress():
+//             raise RuntimeError("re")
+//     except RuntimeError as e:
+//         print("propagated RE: " + str(e))
 void main() {
-    // with Suppress():
     auto __ctx_1 = Suppress();
     __ctx_1.__enter__();
     try {
-        // raise FileNotFoundError("missing.txt")
         throw ::tpy::FileNotFoundError("missing.txt");
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
@@ -18,13 +29,10 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    // print("after FNFE")
     std::cout << "after FNFE" << "\n";
-    // with Suppress():
     auto __ctx_2 = Suppress();
     __ctx_2.__enter__();
     try {
-        // raise OSError("io")
         ::tpy::OSError("io").__raise__();
     } catch (::tpy::BaseException& __exc_2) {
         if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
@@ -32,16 +40,12 @@ void main() {
         __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    // print("after OS")
     std::cout << "after OS" << "\n";
-    // try:
     {
         try {
-            // with Suppress():
             auto __ctx_3 = Suppress();
             __ctx_3.__enter__();
             try {
-                // raise RuntimeError("re")
                 throw ::tpy::RuntimeError("re");
             } catch (::tpy::BaseException& __exc_3) {
                 if (!__ctx_3.__exit__({}, &__exc_3, {})) throw;
@@ -50,7 +54,6 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::RuntimeError& e) {
-            // print("propagated RE: " + str(e))
             std::cout << (::tpy::str_concat("propagated RE: ", std::string(::tpy::__str__(e)))) << "\n";
         }
     }
@@ -58,46 +61,46 @@ void main() {
 
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is None:
+//         return False
+//     # Deep-chain dispatch: FileNotFoundError sits three levels under
+//     # BaseException. Hits before the broader OSError arm.
+//     if isinstance(exc_val, FileNotFoundError):  # tpyc: ok
+//         print("FNFE: " + str(exc_val))
+//         return True
+//     if isinstance(exc_val, OSError):  # tpyc: ok
+//         print("OS: " + str(exc_val))
+//         return True
+//     # Root-class isinstance: same as `is not None` for Optional[BaseException],
+//     # but pins the codegen of dynamic_cast against the root type.
+//     if isinstance(exc_val, BaseException):  # tpyc: ok
+//         print("BASE: " + str(exc_val))
+//         return False  # propagate
+//     return False
 bool Suppress::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is None:
     if ((exc_val == nullptr)) {
-        // return False
         return false;
     }
-    // # Deep-chain dispatch: FileNotFoundError sits three levels under
-    // # BaseException. Hits before the broader OSError arm.
-    // if isinstance(exc_val, FileNotFoundError):  # tpyc: ok
     if (const ::tpy::FileNotFoundError* __exc_val_ptr = dynamic_cast<const ::tpy::FileNotFoundError*>(exc_val); (__exc_val_ptr != nullptr)) {
-        // print("FNFE: " + str(exc_val))
         std::cout << (::tpy::str_concat("FNFE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
-        // return True
         return true;
     }
-    // if isinstance(exc_val, OSError):  # tpyc: ok
     if (const ::tpy::OSError* __exc_val_ptr = dynamic_cast<const ::tpy::OSError*>(exc_val); (__exc_val_ptr != nullptr)) {
-        // print("OS: " + str(exc_val))
         std::cout << (::tpy::str_concat("OS: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
-        // return True
         return true;
     }
-    // # Root-class isinstance: same as `is not None` for Optional[BaseException],
-    // # but pins the codegen of dynamic_cast against the root type.
-    // if isinstance(exc_val, BaseException):  # tpyc: ok
     if ((dynamic_cast<const ::tpy::BaseException*>(exc_val) != nullptr)) {
-        // print("BASE: " + str(exc_val))
         std::cout << (::tpy::str_concat("BASE: ", std::string(::tpy::__str__((*exc_val))))) << "\n";
-        // return False  # propagate
         return false;
     }
-    // return False
     return false;
 }
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

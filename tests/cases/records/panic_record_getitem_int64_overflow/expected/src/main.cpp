@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p = WidePages()
+//     k: int = 1180591620717411303424  # 2**70
+//     p[k] = 9
 void main() {
-    // p = WidePages()
     WidePages p = WidePages();
-    // k: int = 1180591620717411303424  # 2**70
     ::tpy::BigInt k = ::tpy::BigInt::from_str("1180591620717411303424");
-    // p[k] = 9
     ::tpy::__setitem__(p, k.to_fixed_check<int64_t>(), 9);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

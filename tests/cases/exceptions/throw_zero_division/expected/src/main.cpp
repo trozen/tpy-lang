@@ -7,38 +7,39 @@ namespace tpyapp::main {
 // # Explicit `raise ZeroDivisionError(...)` works the same as runtime-thrown
 // # ZeroDivisionError; user code can also subclass it (basic catch shape only).
 // def safe_div(a: int, b: int) -> int:
+//     if b == 0:
+//         raise ZeroDivisionError("custom: cannot divide by zero")
+//     return a // b
 ::tpy::BigInt safe_div(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    // if b == 0:
     if ((b == 0)) {
-        // raise ZeroDivisionError("custom: cannot divide by zero")
         throw ::tpy::ZeroDivisionError("custom: cannot divide by zero");
     }
-    // return a // b
     return ((a) / (b));
 }
 
 // def main() -> None:
+//     print(safe_div(10, 2))
+//     try:
+//         print(safe_div(10, 0))
+//     except ZeroDivisionError as e:
+//         print("caught:", str(e))
 void main() {
-    // print(safe_div(10, 2))
     std::cout << safe_div(::tpy::BigInt(10), ::tpy::BigInt(2)) << "\n";
-    // try:
     {
         try {
-            // print(safe_div(10, 0))
             std::cout << safe_div(::tpy::BigInt(10), ::tpy::BigInt(0)) << "\n";
         } catch (const ::tpy::ZeroDivisionError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -16,9 +16,13 @@ extern std::vector<int32_t>* global_for_span;
 extern std::vector<::tpy::BigInt>* bigint_list;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def local_mixed() -> int32:
 int32_t local_mixed();
+// def sum_span(nums: Span[int32]) -> int32:
 int32_t sum_span(std::span<int32_t> nums);
+// def test_local_span() -> int32:
 int32_t test_local_span();
+// def sum_span_bigint(nums: Span[int]) -> int:
 ::tpy::BigInt sum_span_bigint(std::span<::tpy::BigInt> nums);
 
 void __tpy_init();

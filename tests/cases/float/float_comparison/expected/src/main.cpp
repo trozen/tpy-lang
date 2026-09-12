@@ -3,29 +3,27 @@
 
 namespace tpyapp::main {
 
-// # Comparisons
-// x = 3.14
 double x{};
 
+// # Comparisons
+// x = 3.14
+// print(x > 3.0)
+// print(x == 3.14)
+// print(x < 4.0)
+// print(x >= 3.14)
+// print(x <= 3.14)
+// print(x != 0.0)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Comparisons
-    // x = 3.14
     x = 3.14;
-    // print(x > 3.0)
     std::cout << ::tpy::print_bool((x > 3.0)) << "\n";
-    // print(x == 3.14)
     std::cout << ::tpy::print_bool((x == 3.14)) << "\n";
-    // print(x < 4.0)
     std::cout << ::tpy::print_bool((x < 4.0)) << "\n";
-    // print(x >= 3.14)
     std::cout << ::tpy::print_bool((x >= 3.14)) << "\n";
-    // print(x <= 3.14)
     std::cout << ::tpy::print_bool((x <= 3.14)) << "\n";
-    // print(x != 0.0)
     std::cout << ::tpy::print_bool((x != 0.0)) << "\n";
 }
 

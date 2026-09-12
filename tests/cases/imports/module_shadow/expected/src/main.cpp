@@ -5,22 +5,23 @@ namespace tpyapp::main {
 
 
 // def main():
+//     time: Timer = Timer()
+//     time.x = 42
+//     print(time.x)
 void main() {
-    // time: Timer = Timer()
     Timer time = Timer();
-    // time.x = 42
     time.x = 42;
-    // print(time.x)
     std::cout << time.x << "\n";
 }
 
+// import time
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import time
-    // main()
     main();
 }
 

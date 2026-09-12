@@ -5,73 +5,75 @@ namespace tpyapp::main {
 
 
 // def offset_of(tz: "Fixed | None" = None) -> int64:
+//     if tz is None:
+//         return -1
+//     return tz.off
 int64_t offset_of(std::optional<Fixed> tz) {
-    // if tz is None:
     if ((!tz.has_value())) {
-        // return -1
         return -1;
     }
-    // return tz.off
     return (*tz).off;
 }
 
 // def kind_of(z: "Fixed | Wide | None" = None) -> int64:
+//     if z is None:
+//         return -1
+//     if isinstance(z, Fixed):
+//         return z.off
+//     return z.span
 int64_t kind_of(const ::tpy::Union<std::monostate, Fixed, Wide>& z) {
-    // if z is None:
     if ((std::holds_alternative<std::monostate>(z))) {
-        // return -1
         return -1;
     }
-    // if isinstance(z, Fixed):
     if (std::holds_alternative<Fixed>(z)) {
         const auto& __z = std::get<Fixed>(z);
-        // return z.off
         return __z.off;
     }
     const auto& __z = std::get<Wide>(z);
-    // return z.span
     return __z.span;
 }
 
 // def barks_of(d: "Dog | None" = None) -> int64:
+//     if d is None:
+//         return -1
+//     return d.barks
 int64_t barks_of(const Dog* d) {
-    // if d is None:
     if ((d == nullptr)) {
-        // return -1
         return -1;
     }
-    // return d.barks
     return d->barks;
 }
 
 // def main() -> None:
+//     print(offset_of())
+//     print(offset_of(Fixed(7)))
+//
+//     print(kind_of())
+//     print(kind_of(Fixed(3)))
+//     print(kind_of(Wide(88)))
+//
+//     print(barks_of())
+//     print(barks_of(Dog(2)))
 void main() {
-    // print(offset_of())
     std::cout << offset_of(std::nullopt) << "\n";
-    // print(offset_of(Fixed(7)))
     std::cout << offset_of(Fixed(7)) << "\n";
-    // print(kind_of())
     ::tpy::Union<std::monostate, Fixed, Wide> __tmp_1 = std::monostate{};
     std::cout << kind_of(__tmp_1) << "\n";
-    // print(kind_of(Fixed(3)))
     ::tpy::Union<std::monostate, Fixed, Wide> __tmp_2 = Fixed(3);
     std::cout << kind_of(__tmp_2) << "\n";
-    // print(kind_of(Wide(88)))
     ::tpy::Union<std::monostate, Fixed, Wide> __tmp_3 = Wide(88);
     std::cout << kind_of(__tmp_3) << "\n";
-    // print(barks_of())
     std::cout << barks_of() << "\n";
-    // print(barks_of(Dog(2)))
     Dog __tmp_4 = Dog(2);
     std::cout << barks_of(&(__tmp_4)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

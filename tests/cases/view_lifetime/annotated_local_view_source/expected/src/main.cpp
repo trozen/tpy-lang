@@ -5,80 +5,80 @@ namespace tpyapp::main {
 
 
 // def view_from_param(sv: StrView) -> None:
+//     label: str = sv  # tpyc: ok
+//     print(label, len(label))
 void view_from_param(std::string_view sv) {
-    // label: str = sv  # tpyc: ok
     std::string_view label = sv;
-    // print(label, len(label))
     std::cout << label << " " << ::tpy::__len__(label) << "\n";
 }
 
 // def view_from_borrowing_call(s: str) -> None:
+//     t: str = s.strip()  # tpyc: ok
+//     print(t, len(t))
 void view_from_borrowing_call(std::string_view s) {
-    // t: str = s.strip()  # tpyc: ok
     std::string_view t = ::tpy::str_strip(s);
-    // print(t, len(t))
     std::cout << t << " " << ::tpy::__len__(t) << "\n";
 }
 
 // def bytes_view_from_param(bv: BytesView) -> None:
+//     label: bytes = bv  # tpyc: ok
+//     print(label, len(label))
 void bytes_view_from_param(::tpy::BytesView bv) {
-    // label: bytes = bv  # tpyc: ok
     ::tpy::BytesView label = bv;
-    // print(label, len(label))
     std::cout << ::tpy::BytesPrinter(label) << " " << ::tpy::__len__(label) << "\n";
 }
 
 // def view_reassigned_from_view(sv: StrView, sv2: StrView) -> None:
+//     label: str = sv
+//     label = sv2  # tpyc: ok
+//     print(label)
 void view_reassigned_from_view(std::string_view sv, std::string_view sv2) {
-    // label: str = sv
     std::string_view label = sv;
-    // label = sv2  # tpyc: ok
     label = sv2;
-    // print(label)
     std::cout << label << "\n";
 }
 
 // def mutated_stays_owned(sv: StrView) -> str:
+//     m: str = sv
+//     m += "!"
+//     return m
 std::string mutated_stays_owned(std::string_view sv) {
-    // m: str = sv
     std::string m = std::string(sv);
-    // m += "!"
     m += "!";
-    // return m
     return m;
 }
 
 // def owned_return_still_copies(sv: StrView) -> str:
+//     return sv  # tpyc: ok
 std::string owned_return_still_copies(std::string_view sv) {
-    // return sv  # tpyc: ok
     return std::string(sv);
 }
 
 // def hoisted_branch(sv: StrView, flag: bool) -> None:
+//     if flag:
+//         label: str = sv  # tpyc: ok
+//     else:
+//         label = "other"
+//     print(label)
 void hoisted_branch(std::string_view sv, bool flag) {
-    // if flag:
     std::string_view label;
     if (flag) {
-        // label: str = sv  # tpyc: ok
         label = sv;
-    // else:
     } else {
-        // label = "other"
         label = "other";
     }
-    // print(label)
     std::cout << label << "\n";
 }
 
 // def gen_frame(sv: StrView) -> Iterator[int]:
+//     label: str = sv  # tpyc: ok
+//     print(label)
+//     yield len(label)
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_frame::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // label: str = sv  # tpyc: ok
         label = sv;
-        // print(label)
         std::cout << label << "\n";
-        // yield len(label)
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__len__(label));
     }
@@ -98,24 +98,25 @@ __gen_gen_frame gen_frame(std::string_view sv) {
 }
 
 // def main() -> None:
+//     view_from_param("hello")
+//     view_from_borrowing_call("  hi  ")
+//     bytes_view_from_param(b"abc")
+//     view_reassigned_from_view("one", "two")
+//     print(mutated_stays_owned("own"))
+//     print(owned_return_still_copies("ret"))
+//     hoisted_branch("first", True)
+//     hoisted_branch("first", False)
+//     for n in gen_frame("frame"):
+//         print(n)
 void main() {
-    // view_from_param("hello")
     view_from_param("hello");
-    // view_from_borrowing_call("  hi  ")
     view_from_borrowing_call("  hi  ");
-    // bytes_view_from_param(b"abc")
     bytes_view_from_param(::tpy::bytes_literal("abc", 3));
-    // view_reassigned_from_view("one", "two")
     view_reassigned_from_view("one", "two");
-    // print(mutated_stays_owned("own"))
     std::cout << mutated_stays_owned("own") << "\n";
-    // print(owned_return_still_copies("ret"))
     std::cout << owned_return_still_copies("ret") << "\n";
-    // hoisted_branch("first", True)
     hoisted_branch("first", true);
-    // hoisted_branch("first", False)
     hoisted_branch("first", false);
-    // for n in gen_frame("frame"):
     {
         std::string __tmp_1 = "frame";
         auto __src_0 = gen_frame(__tmp_1);
@@ -124,18 +125,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& n = ::tpy::unwrap_ref(*__r_1);
-        // print(n)
         std::cout << n << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

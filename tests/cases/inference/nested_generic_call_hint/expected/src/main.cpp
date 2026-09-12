@@ -5,28 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Outer Rc.new + inner Box constructor chain.
+//     rc: Rc[Box[Greeter]] = Rc.new(Box(Cat("Whiskers")))  # tpyc: type(Rc[Box[Greeter]])
+//     print(rc.get().get().greet())
+//
+//     # Same chain, second instance -- exercises the seed across repeated
+//     # call sites within one function body.
+//     rc2: Rc[Box[Greeter]] = Rc.new(Box(Cat("Mittens")))  # tpyc: type(Rc[Box[Greeter]])
+//     print(rc2.get().get().greet())
 void main() {
-    // # Outer Rc.new + inner Box constructor chain.
-    // rc: Rc[Box[Greeter]] = Rc.new(Box(Cat("Whiskers")))  # tpyc: type(Rc[Box[Greeter]])
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> rc = Rc<::tpystd::tplib::box::Box<Greeter>>::new_<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Cat("Whiskers"))));
-    // print(rc.get().get().greet())
     std::cout << rc.get().get().greet() << "\n";
-    // # Same chain, second instance -- exercises the seed across repeated
-    // # call sites within one function body.
-    // rc2: Rc[Box[Greeter]] = Rc.new(Box(Cat("Mittens")))  # tpyc: type(Rc[Box[Greeter]])
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> rc2 = Rc<::tpystd::tplib::box::Box<Greeter>>::new_<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Cat("Mittens"))));
-    // print(rc2.get().get().greet())
     std::cout << rc2.get().get().greet() << "\n";
 }
 
+// from tplib import Box, Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box, Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

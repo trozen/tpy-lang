@@ -3,65 +3,64 @@
 
 namespace tpyapp::main {
 
-// a: char = "a"
 char a{};
-// b: char = "b"
 char b{};
-// none_char: char | None = None
 std::optional<char> none_char;
-// some_a: char | None = a
 std::optional<char> some_a;
 
 // def eq_left(o: char | None, c: char) -> bool:
+//     return o == c  # tpyc: ok
 bool eq_left(std::optional<char> o, char c) {
-    // return o == c  # tpyc: ok
     return (o == c);
 }
 
 // def eq_right(c: char, o: char | None) -> bool:
+//     return c == o  # tpyc: ok
 bool eq_right(char c, std::optional<char> o) {
-    // return c == o  # tpyc: ok
     return (c == o);
 }
 
 // def ne_left(o: char | None, c: char) -> bool:
+//     return o != c  # tpyc: ok
 bool ne_left(std::optional<char> o, char c) {
-    // return o != c  # tpyc: ok
     return (o != c);
 }
 
 // def ne_right(c: char, o: char | None) -> bool:
+//     return c != o  # tpyc: ok
 bool ne_right(char c, std::optional<char> o) {
-    // return c != o  # tpyc: ok
     return (c != o);
 }
 
+// a: char = "a"
+// b: char = "b"
+// none_char: char | None = None
+// some_a: char | None = a
+//
+// print(eq_left(some_a, a))
+// print(eq_left(some_a, b))
+// print(eq_left(none_char, a))
+//
+// print(eq_right(a, some_a))
+// print(eq_right(a, none_char))
+//
+// print(ne_left(none_char, a))
+// print(ne_right(a, none_char))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // a: char = "a"
     a = 'a';
-    // b: char = "b"
     b = 'b';
-    // none_char: char | None = None
     none_char = std::nullopt;
-    // some_a: char | None = a
     some_a = a;
-    // print(eq_left(some_a, a))
     std::cout << ::tpy::print_bool(eq_left(some_a, a)) << "\n";
-    // print(eq_left(some_a, b))
     std::cout << ::tpy::print_bool(eq_left(some_a, b)) << "\n";
-    // print(eq_left(none_char, a))
     std::cout << ::tpy::print_bool(eq_left(none_char, a)) << "\n";
-    // print(eq_right(a, some_a))
     std::cout << ::tpy::print_bool(eq_right(a, some_a)) << "\n";
-    // print(eq_right(a, none_char))
     std::cout << ::tpy::print_bool(eq_right(a, none_char)) << "\n";
-    // print(ne_left(none_char, a))
     std::cout << ::tpy::print_bool(ne_left(none_char, a)) << "\n";
-    // print(ne_right(a, none_char))
     std::cout << ::tpy::print_bool(ne_right(a, none_char)) << "\n";
 }
 

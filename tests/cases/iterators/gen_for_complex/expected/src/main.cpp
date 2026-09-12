@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def doubled(items: list[int32]) -> Iterator[int32]:
+//     yield 0
+//     for x in items:
+//         yield x * 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -28,7 +30,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x * 2
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 2));
     }
@@ -44,8 +45,9 @@ __gen_doubled doubled(std::vector<int32_t>& items) {
 }
 
 // def main():
+//     for x in doubled([1, 2, 3]):
+//         print(x)
 void main() {
-    // for x in doubled([1, 2, 3]):
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3};
         auto __src_0 = doubled(__tmp_1);
@@ -54,18 +56,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

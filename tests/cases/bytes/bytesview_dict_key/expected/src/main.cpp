@@ -5,74 +5,74 @@ namespace tpyapp::main {
 
 
 // def test_set_with_literals() -> None:
+//     s: set[BytesView] = set()
+//     s.add(b"hello")
+//     s.add(b"world")
+//     s.add(b"hello")
+//     print(len(s))
+//     print(b"hello" in s)
+//     print(b"missing" in s)
 void test_set_with_literals() {
-    // s: set[BytesView] = set()
     ::tpy::ordered_set<::tpy::BytesView> s = ::tpy::ordered_set<::tpy::BytesView>();
-    // s.add(b"hello")
     s.insert(::tpy::bytes_literal("hello", 5));
-    // s.add(b"world")
     s.insert(::tpy::bytes_literal("world", 5));
-    // s.add(b"hello")
     s.insert(::tpy::bytes_literal("hello", 5));
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // print(b"hello" in s)
     std::cout << ::tpy::print_bool((s.contains(::tpy::bytes_literal("hello", 5)))) << "\n";
-    // print(b"missing" in s)
     std::cout << ::tpy::print_bool((s.contains(::tpy::bytes_literal("missing", 7)))) << "\n";
 }
 
 // def test_dict_with_literals() -> None:
+//     d: dict[BytesView, int] = {}
+//     d[b"alice"] = 1
+//     d[b"bob"] = 2
+//     d[b"alice"] = 10
+//     print(d[b"alice"])
+//     print(d[b"bob"])
+//     print(len(d))
+//     print(b"alice" in d)
+//     print(b"missing" in d)
 void test_dict_with_literals() {
-    // d: dict[BytesView, int] = {}
     ::tpy::ordered_map<::tpy::BytesView, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::BytesView, ::tpy::BigInt>();
-    // d[b"alice"] = 1
     ::tpy::__setitem__(d, ::tpy::bytes_literal("alice", 5), ::tpy::BigInt(1));
-    // d[b"bob"] = 2
     ::tpy::__setitem__(d, ::tpy::bytes_literal("bob", 3), ::tpy::BigInt(2));
-    // d[b"alice"] = 10
     ::tpy::__setitem__(d, ::tpy::bytes_literal("alice", 5), ::tpy::BigInt(10));
-    // print(d[b"alice"])
     std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal("alice", 5)) << "\n";
-    // print(d[b"bob"])
     std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal("bob", 3)) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // print(b"alice" in d)
     std::cout << ::tpy::print_bool((d.contains(::tpy::bytes_literal("alice", 5)))) << "\n";
-    // print(b"missing" in d)
     std::cout << ::tpy::print_bool((d.contains(::tpy::bytes_literal("missing", 7)))) << "\n";
 }
 
 // def test_dict_with_bytes_keys() -> None:
+//     # The idiomatic form -- bytes elevates to owned vector at storage.
+//     d: dict[bytes, int] = {}
+//     d[b"a"] = 1
+//     d[b"b"] = 2
+//     d[b"a"] = 10
+//     print(d[b"a"])
+//     print(d[b"b"])
+//     print(len(d))
 void test_dict_with_bytes_keys() {
-    // # The idiomatic form -- bytes elevates to owned vector at storage.
-    // d: dict[bytes, int] = {}
     ::tpy::ordered_map<::tpy::Bytes, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::Bytes, ::tpy::BigInt>();
-    // d[b"a"] = 1
     ::tpy::__setitem__(d, ::tpy::bytes_literal_owned("a", 1), ::tpy::BigInt(1));
-    // d[b"b"] = 2
     ::tpy::__setitem__(d, ::tpy::bytes_literal_owned("b", 1), ::tpy::BigInt(2));
-    // d[b"a"] = 10
     ::tpy::__setitem__(d, ::tpy::bytes_literal_owned("a", 1), ::tpy::BigInt(10));
-    // print(d[b"a"])
     std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("a", 1)) << "\n";
-    // print(d[b"b"])
     std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("b", 1)) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// test_set_with_literals()
+// test_dict_with_literals()
+// test_dict_with_bytes_keys()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_set_with_literals()
     test_set_with_literals();
-    // test_dict_with_literals()
     test_dict_with_literals();
-    // test_dict_with_bytes_keys()
     test_dict_with_bytes_keys();
 }
 

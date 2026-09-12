@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[int32] = [1]
+//     items.pop()  # Remove the only element
+//     x: int32 = items.pop()  # Should panic: pop from empty list
+//     print(x)
 void main() {
-    // items: list[int32] = [1]
     std::vector<int32_t> items = {1};
-    // items.pop()  # Remove the only element
     ::tpy::pop_back(items);
-    // x: int32 = items.pop()  # Should panic: pop from empty list
     int32_t x = ::tpy::pop_back(items);
-    // print(x)
     std::cout << x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

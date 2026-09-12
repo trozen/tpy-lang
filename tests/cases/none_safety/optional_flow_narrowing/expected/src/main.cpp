@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def score(x: int32 | None) -> int32:
+//     if x is not None and x > 3:
+//         return x + 10
+//     if x is None or x < 0:
+//         return 0
+//     return x + 1
 int32_t score(std::optional<int32_t> x) {
-    // if x is not None and x > 3:
     if (((x.has_value()) && ((*x) > 3))) {
-        // return x + 10
         return (::tpy::add_check<int32_t>((*x), 10));
     }
-    // if x is None or x < 0:
     if (((!x.has_value()) || ((*x) < 0))) {
-        // return 0
         return 0;
     }
-    // return x + 1
     return (::tpy::add_check<int32_t>((*x), 1));
 }
 
+// print(score(5))
+// print(score(1))
+// print(score(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(score(5))
     std::cout << score(5) << "\n";
-    // print(score(1))
     std::cout << score(1) << "\n";
-    // print(score(None))
     std::cout << score(std::nullopt) << "\n";
 }
 

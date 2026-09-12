@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Slot()
+//     if s.p is None:
+//         print("null")
+//     print(s.tag)
 void main() {
-    // s = Slot()
     Slot s = Slot();
-    // if s.p is None:
     if ((s.p == nullptr)) {
-        // print("null")
         std::cout << "null" << "\n";
     }
-    // print(s.tag)
     std::cout << s.tag << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

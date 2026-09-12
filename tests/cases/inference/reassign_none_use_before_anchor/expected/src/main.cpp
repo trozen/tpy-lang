@@ -3,22 +3,21 @@
 
 namespace tpyapp::main {
 
-// x = None
 Point* x{};
 
+// x = None
+// print(x)
+// x = Point(int32(7))
+// print(x.x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = None
     x = nullptr;
-    // print(x)
     std::cout << ::tpy::print_optional(x) << "\n";
-    // x = Point(int32(7))
     static Point __global_slot_1 = Point(7);
     x = &__global_slot_1;
-    // print(x.x)
     std::cout << x->x << "\n";
 }
 

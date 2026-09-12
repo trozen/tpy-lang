@@ -18,14 +18,20 @@ struct __coro_pending_slot;
 struct __coro_opt_ternary;
 struct __coro_main_coro;
 
+// async def direct(tag: str) -> str:
 __coro_direct direct(std::string_view tag);
+// async def in_finally(tag: str) -> str:
 __coro_in_finally in_finally(std::string_view tag);
+// async def pending_slot(tag: str) -> str:
 __coro_pending_slot pending_slot(std::string_view tag);
+// async def opt_ternary(tag: Optional[str]) -> str:
 __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: direct
+// async def direct(tag: str) -> str:
 struct __coro_direct {
     int32_t __state;
     bool __cancel_pending;
@@ -47,7 +53,7 @@ struct __coro_direct {
     }
 };
 
-// Async coroutine: in_finally
+// async def in_finally(tag: str) -> str:
 struct __coro_in_finally {
     int32_t __state;
     bool __cancel_pending;
@@ -69,7 +75,7 @@ struct __coro_in_finally {
     }
 };
 
-// Async coroutine: pending_slot
+// async def pending_slot(tag: str) -> str:
 struct __coro_pending_slot {
     int32_t __state;
     bool __cancel_pending;
@@ -99,7 +105,7 @@ struct __coro_pending_slot {
     }
 };
 
-// Async coroutine: opt_ternary
+// async def opt_ternary(tag: Optional[str]) -> str:
 struct __coro_opt_ternary {
     int32_t __state;
     bool __cancel_pending;
@@ -121,7 +127,7 @@ struct __coro_opt_ternary {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

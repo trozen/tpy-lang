@@ -13,7 +13,9 @@ inline auto& NOFLAG = ::tpyapp::consts::NOFLAG;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use(flags: uint32 = CASELESS) -> int32:
 int32_t use(uint32_t flags = ::tpyapp::consts::CASELESS);
+// def main() -> None:
 void main();
 
 void __tpy_init();

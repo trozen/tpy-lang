@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(int32(1), int32(2))
+//     c = ContainerOk(p, int32(42))
+//     print(c.data[0].x, c.data[1])
 void main() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // c = ContainerOk(p, int32(42))
     ContainerOk c = ContainerOk(p, 42);
-    // print(c.data[0].x, c.data[1])
     std::cout << std::get<0>(c.data).x << " " << std::get<1>(c.data) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

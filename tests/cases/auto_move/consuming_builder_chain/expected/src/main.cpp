@@ -5,57 +5,57 @@ namespace tpyapp::main {
 
 
 // def make(n: int32) -> Own[Point]:
+//     return Point(n).updated()  # tpyc: ok
 Point make(int32_t n) {
-    // return Point(n).updated()  # tpyc: ok
     return Point(n).updated();
 }
 
 // def owned(n: int32) -> Own[Point]:
+//     return make(n).updated()  # tpyc: ok
 Point owned(int32_t n) {
-    // return make(n).updated()  # tpyc: ok
     return make(n).updated();
 }
 
 // def owned_method(f: Factory) -> Own[Point]:
+//     return f.make().updated()  # tpyc: ok
 Point owned_method(Factory& f) {
-    // return f.make().updated()  # tpyc: ok
     return f.make().updated();
 }
 
 // def issue(n: int32) -> Own[Ticket]:
+//     return Ticket(n).stamped()  # tpyc: ok
 Ticket issue(int32_t n) {
-    // return Ticket(n).stamped()  # tpyc: ok
     return Ticket(n).stamped();
 }
 
 // def main() -> None:
+//     p = make(1)
+//     # The returned value is the frame's own object, so a mutation after the
+//     # boundary is what both sides read back.
+//     p.x = 10
+//     print(p.x, owned(1).x, owned_method(Factory(5)).x)
+//     # Chained steps accumulate on one object.
+//     print(Point(1).updated().updated().x)
+//     t = issue(7)
+//     t.id += 1
+//     print(t.id)
 void main() {
-    // p = make(1)
     Point p = make(1);
-    // # The returned value is the frame's own object, so a mutation after the
-    // # boundary is what both sides read back.
-    // p.x = 10
     p.x = 10;
-    // print(p.x, owned(1).x, owned_method(Factory(5)).x)
     Factory __tmp_1 = Factory(5);
     std::cout << p.x << " " << owned(1).x << " " << owned_method(__tmp_1).x << "\n";
-    // # Chained steps accumulate on one object.
-    // print(Point(1).updated().updated().x)
     std::cout << Point(1).updated().updated().x << "\n";
-    // t = issue(7)
     Ticket t = issue(7);
-    // t.id += 1
     t.id = ::tpy::add_check<int32_t>(t.id, 1);
-    // print(t.id)
     std::cout << t.id << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

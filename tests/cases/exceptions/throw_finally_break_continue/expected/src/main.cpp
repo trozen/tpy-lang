@@ -5,126 +5,126 @@ namespace tpyapp::main {
 
 
 // def test_break() -> None:
+//     """Break in try body -- finally runs before exiting loop."""
+//     for i in range(5):
+//         try:
+//             if i == 2:
+//                 break
+//             print(i)
+//         finally:
+//             print("cleanup", i)
 void test_break() {
-    // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        // try:
         {
             bool __fin_ran_1 = false;
             try {
-                // if i == 2:
                 if ((i == 2)) {
-                    // break
                     __fin_ran_1 = true;
-                    // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                     break;
                 }
-                // print(i)
                 std::cout << i << "\n";
             } catch (...) {
                 if (!__fin_ran_1) {
-                    // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                 }
                 throw;
             }
-            // print("cleanup", i)
             std::cout << "cleanup" << " " << i << "\n";
         }
     }
 }
 
 // def test_continue() -> None:
+//     """Continue in try body -- finally runs before next iteration."""
+//     for i in range(5):
+//         try:
+//             if i == 2:
+//                 continue
+//             print(i)
+//         finally:
+//             print("cleanup", i)
 void test_continue() {
-    // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        // try:
         {
             bool __fin_ran_2 = false;
             try {
-                // if i == 2:
                 if ((i == 2)) {
-                    // continue
                     __fin_ran_2 = true;
-                    // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                     continue;
                 }
-                // print(i)
                 std::cout << i << "\n";
             } catch (...) {
                 if (!__fin_ran_2) {
-                    // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                 }
                 throw;
             }
-            // print("cleanup", i)
             std::cout << "cleanup" << " " << i << "\n";
         }
     }
 }
 
 // def test_break_for_else() -> None:
+//     """Break in try body with for-else -- else should be skipped."""
+//     for i in range(5):
+//         try:
+//             if i == 2:
+//                 break
+//             print(i)
+//         finally:
+//             print("cleanup", i)
+//     else:
+//         print("else ran")
+//     print("after loop")
 void test_break_for_else() {
-    // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        // try:
         {
             bool __fin_ran_3 = false;
             try {
-                // if i == 2:
                 if ((i == 2)) {
-                    // break
                     __fin_ran_3 = true;
-                    // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                     goto __after_else_0;
                 }
-                // print(i)
                 std::cout << i << "\n";
             } catch (...) {
                 if (!__fin_ran_3) {
-                    // print("cleanup", i)
                     std::cout << "cleanup" << " " << i << "\n";
                 }
                 throw;
             }
-            // print("cleanup", i)
             std::cout << "cleanup" << " " << i << "\n";
         }
     }
-    // else:
     {
-        // print("else ran")
         std::cout << "else ran" << "\n";
     }
     __after_else_0:;
-    // print("after loop")
     std::cout << "after loop" << "\n";
 }
 
 // def main() -> None:
+//     test_break()
+//     print("---")
+//     test_continue()
+//     print("---")
+//     test_break_for_else()
 void main() {
-    // test_break()
     test_break();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_continue()
     test_continue();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_break_for_else()
     test_break_for_else();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs = IntList([10, 20, 30])
+//     # Borrowing iteration (xs still alive after)
+//     total: int32 = 0
+//     for x in xs:
+//         total += x
+//     print(total)
+//     # xs at last use (borrowing -- for-loop consuming disabled)
+//     for x in xs:
+//         print(x)
 void main() {
-    // xs = IntList([10, 20, 30])
     IntList xs = IntList({10, 20, 30});
-    // # Borrowing iteration (xs still alive after)
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in xs:
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
-    // # xs at last use (borrowing -- for-loop consuming disabled)
-    // for x in xs:
     auto& __src_2 = xs;
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

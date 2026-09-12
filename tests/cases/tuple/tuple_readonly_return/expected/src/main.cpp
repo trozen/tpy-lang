@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def pick(items: list[P]) -> readonly[tuple[P, P]]:
+//     return (items[0], items[1])
 std::tuple<const P*, const P*> pick(const std::vector<P>& items) {
-    // return (items[0], items[1])
     return std::tuple<const P*, const P*>{&(::tpy::__getitem__(items, 0)), &(::tpy::__getitem__(items, 1))};
 }
 
 // def main() -> None:
+//     items = [P(1), P(2), P(3)]
+//     pair = pick(items)
+//     print(pair[0].x)
+//     print(pair[1].x)
+//     # The tuple is readonly, so the mutation goes SOURCE -> alias: 99 proves
+//     # the tuple holds `const P*` into items; a deep copy would still read 1.
+//     items[0].x = 99
+//     print(pair[0].x)
 void main() {
-    // items = [P(1), P(2), P(3)]
     std::vector<P> items = {P(1), P(2), P(3)};
-    // pair = pick(items)
     auto pair = pick(items);
-    // print(pair[0].x)
     std::cout << std::get<0>(pair)->x << "\n";
-    // print(pair[1].x)
     std::cout << std::get<1>(pair)->x << "\n";
-    // # The tuple is readonly, so the mutation goes SOURCE -> alias: 99 proves
-    // # the tuple holds `const P*` into items; a deep copy would still read 1.
-    // items[0].x = 99
     ::tpy::__getitem__(items, 0).x = 99;
-    // print(pair[0].x)
     std::cout << std::get<0>(pair)->x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

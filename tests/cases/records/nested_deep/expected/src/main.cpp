@@ -5,27 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o = Outer(1)
+//     print(o.x)
+//
+//     m = Outer.Mid("hello")
+//     print(m.name)
+//
+//     d = Outer.Mid.Deep(99)
+//     print(d.val)
 void main() {
-    // o = Outer(1)
     Outer o = Outer(1);
-    // print(o.x)
     std::cout << o.x << "\n";
-    // m = Outer.Mid("hello")
     Outer::Mid m = Outer::Mid("hello");
-    // print(m.name)
     std::cout << m.name << "\n";
-    // d = Outer.Mid.Deep(99)
     Outer::Mid::Deep d = Outer::Mid::Deep(99);
-    // print(d.val)
     std::cout << d.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

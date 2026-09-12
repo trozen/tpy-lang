@@ -46,13 +46,13 @@ std::optional<::tpyapp::colors::Color> EnumUtil<::tpyapp::colors::Color>::try_pa
 namespace tpyapp::colors {
 
 
+// # Defines an enum type for cross-module import
+// from enum import Enum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Defines an enum type for cross-module import
-    // from enum import Enum
 }
 
 } // namespace tpyapp::colors

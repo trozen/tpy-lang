@@ -14,6 +14,7 @@ struct Work;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Work:
@@ -37,11 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Work& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Work::Work(const ::tpy::BigInt& n) : n(n) {}
 
 // def run(self) -> int:
+//     return self.n * 2
 inline ::tpy::BigInt Work::run() const {
-    // return self.n * 2
     return ((this->n) * (::tpy::BigInt(2)));
 }
 void __tpy_init();

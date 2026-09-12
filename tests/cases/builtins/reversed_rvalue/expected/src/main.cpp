@@ -5,15 +5,20 @@ namespace tpyapp::main {
 
 
 // def make_nums() -> Own[list[int]]:
+//     return [3, 1, 4, 1, 5]
 std::vector<::tpy::BigInt> make_nums() {
-    // return [3, 1, 4, 1, 5]
     return {3, 1, 4, 1, 5};
 }
 
 // def main() -> None:
+//     # rvalue: function call result passed directly
+//     for x in reversed(make_nums()):
+//         print(x)
+//
+//     # rvalue: sorted() returns Own[list[T]]
+//     for x in reversed(sorted(make_nums())):
+//         print(x)
 void main() {
-    // # rvalue: function call result passed directly
-    // for x in reversed(make_nums()):
     {
         auto __src_0 = ::tpy::builtin_reversed<::tpy::BigInt>(make_nums());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -21,12 +26,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // # rvalue: sorted() returns Own[list[T]]
-    // for x in reversed(sorted(make_nums())):
     {
         auto __src_2 = ::tpy::builtin_reversed<::tpy::BigInt>(::tpy::builtin_sorted<::tpy::BigInt>(make_nums()));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -34,18 +36,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

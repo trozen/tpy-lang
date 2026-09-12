@@ -5,19 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     assert_send[int32]()        # tpyc: ok
+//     assert_sync[int32]()        # tpyc: ok
+//     assert_send[Trade]()        # tpyc: ok
+//     assert_send[list[int32]]()  # tpyc: ok
+//     t = Trade(5)
+//     print(t.qty)
 void main() {
-    // t = Trade(5)
     Trade t = Trade(5);
-    // print(t.qty)
     std::cout << t.qty << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

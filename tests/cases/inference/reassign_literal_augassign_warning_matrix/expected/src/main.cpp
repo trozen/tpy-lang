@@ -5,45 +5,48 @@ namespace tpyapp::main {
 
 
 // def ret_i32() -> int32:
+//     return int32(7)
 int32_t ret_i32() {
-    // return int32(7)
     return 7;
 }
 
 // def main() -> None:
+//     x = 0
+//     x += int32(5)  # tpyc: ok
+//     print(x)
+//
+//     y = 0
+//     y += ret_i32()  # tpyc: ok
+//     print(y)
+//
+//     z: int = 0
+//     z += int32(5)  # tpyc: ok
+//     print(z)
+//
+//     w = int(0)
+//     w += int32(5)  # tpyc: ok
+//     print(w)
 void main() {
-    // x = 0
     int32_t x = 0;
-    // x += int32(5)  # tpyc: ok
     x = ::tpy::add_check<int32_t>(x, 5);
-    // print(x)
     std::cout << x << "\n";
-    // y = 0
     int32_t y = 0;
-    // y += ret_i32()  # tpyc: ok
     y = ::tpy::add_check<int32_t>(y, ret_i32());
-    // print(y)
     std::cout << y << "\n";
-    // z: int = 0
     ::tpy::BigInt z = ::tpy::BigInt(0);
-    // z += int32(5)  # tpyc: ok
     z = (z) + (::tpy::BigInt(5));
-    // print(z)
     std::cout << z << "\n";
-    // w = int(0)
     ::tpy::BigInt w = ::tpy::BigInt(0);
-    // w += int32(5)  # tpyc: ok
     w = (w) + (::tpy::BigInt(5));
-    // print(w)
     std::cout << w << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

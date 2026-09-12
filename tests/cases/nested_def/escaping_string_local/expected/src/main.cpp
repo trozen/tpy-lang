@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def make_greeter(name: str) -> Callable[[], None]:
+//     owned_name = String(name)
+//     def greet() -> None:  # tpyc: ok
+//         print("Hello, " + owned_name)
+//     return greet
 std::function<void()> make_greeter(std::string_view name) {
-    // owned_name = String(name)
     ::tpy::String owned_name = ::tpy::String(name);
-    // def greet() -> None:  # tpyc: ok
     auto greet = [owned_name = std::move(owned_name)]() {
-        // print("Hello, " + owned_name)
         std::cout << (::tpy::str_concat("Hello, ", owned_name)) << "\n";
     };
-    // return greet
     return greet;
 }
 
 // def main() -> None:
+//     greeter = make_greeter("world")
+//     greeter()
 void main() {
-    // greeter = make_greeter("world")
     std::function<void()> greeter = make_greeter("world");
-    // greeter()
     greeter();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def classify(v: int32 | None) -> None:
+//     match v:
+//         case x if x is not None and x > 5:
+//             print("big", x)
+//         case None:
+//             print("none")
+//         case _:
+//             print("small")
 void classify(std::optional<int32_t> v) {
-    // match v:
     auto& __match_subject_1 = v;
-    // case x if x is not None and x > 5:
     {
         auto& x = __match_subject_1;
         if (((x.has_value()) && ((*x) > 5))) {
-            // print("big", x)
             std::cout << "big" << " " << ::tpy::print_optional_val(x) << "\n";
             goto __match_end_2;
         }
     }
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // print("none")
         std::cout << "none" << "\n";
         goto __match_end_2;
     }
-    // case _:
     {
-        // print("small")
         std::cout << "small" << "\n";
         goto __match_end_2;
     }
@@ -33,21 +33,21 @@ void classify(std::optional<int32_t> v) {
 }
 
 // def main() -> None:
+//     classify(7)
+//     classify(None)
+//     classify(1)
 void main() {
-    // classify(7)
     classify(7);
-    // classify(None)
     classify(std::nullopt);
-    // classify(1)
     classify(1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

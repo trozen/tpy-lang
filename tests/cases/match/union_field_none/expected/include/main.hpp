@@ -12,7 +12,9 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(w: Wrapper | Other) -> str:
 std::string describe(::tpy::Union<const Other*, const Wrapper*> w);
+// def main() -> None:
 void main();
 
 // # `field=None` on a union subject: the None check must run, not match every
@@ -51,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 
 
 // def __init__(self, child: "str | None") -> None:
+//     self.child = child
 inline Wrapper::Wrapper(std::optional<std::string_view> child) : child(child ? std::make_optional(std::string(*child)) : std::nullopt) {}
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Other::Other(const ::tpy::BigInt& x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

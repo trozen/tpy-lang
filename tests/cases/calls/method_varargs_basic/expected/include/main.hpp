@@ -11,6 +11,7 @@ struct Calculator;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Calculator:
@@ -34,22 +35,23 @@ inline std::ostream& operator<<(std::ostream& os, const Calculator& obj) {
 
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Calculator::Calculator(int32_t base) : base(base) {}
 
 // def sum_with_base(self, *xs: int32) -> int32:
+//     total: int32 = self.base
+//     for x in xs:
+//         total += x
+//     return total
 inline int32_t Calculator::sum_with_base(::tpy::varargs<const int32_t> xs) const {
-    // total: int32 = self.base
     int32_t total = this->base;
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 void __tpy_init();

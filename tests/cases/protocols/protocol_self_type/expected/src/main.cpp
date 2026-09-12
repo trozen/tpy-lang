@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: int32 = 21
+//     b: int32 = 21
+//     add_values(a, b)
 void main() {
-    // a: int32 = 21
     int32_t a = 21;
-    // b: int32 = 21
     int32_t b = 21;
-    // add_values(a, b)
     add_values(a, b);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

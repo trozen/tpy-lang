@@ -11,6 +11,7 @@ template<typename T> struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cell[T]:
@@ -20,13 +21,14 @@ struct Cell {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
+    //     self.value = value
     Cell() = default;
     explicit Cell(::tpy::own_param_t<T> value) : value(std::move(value)) {}
 
     // def duplicate[T: Copyable](self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> duplicate()
       requires ::tpy::Copyable<T> {
-        // return self.value
         return this->value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";

@@ -11,9 +11,13 @@ struct Buf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mk_arr() -> Own[Array[int32, 4]]:
 std::array<int32_t, 4> mk_arr();
+// def mk_ba() -> Own[bytearray]:
 ::tpy::ByteArray mk_ba();
+// def borrow_arr(x: Array[int32, 4]) -> Array[int32, 4]:
 std::array<int32_t, 4>& borrow_arr(std::array<int32_t, 4>& x);
+// def main() -> None:
 void main();
 
 // class Buf:
@@ -49,38 +53,39 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 
 
 // def __init__(self, k: int32) -> None:
+//     self.n = k
+//     # The raise keeps the field writes in the ctor BODY rather than the
+//     # member-init list, whose nominal-call row still rejects them.
+//     if k < 0:
+//         raise ValueError("neg")
+//     self.a = Array[int32, 4]()
+//     self.ba = bytearray()
 inline Buf::Buf(int32_t k) : n(k) {
-    // # The raise keeps the field writes in the ctor BODY rather than the
-    // # member-init list, whose nominal-call row still rejects them.
-    // if k < 0:
     if ((k < 0)) {
-        // raise ValueError("neg")
         throw ::tpy::ValueError("neg");
     }
-    // self.a = Array[int32, 4]()
     this->a = std::array<int32_t, 4>();
-    // self.ba = bytearray()
     this->ba = ::tpy::ByteArray();
 }
 
 // def load(self, src: bytes) -> None:
+//     # The converting construction: `this->ba = ::tpy::ByteArray(src);`
+//     self.ba = bytearray(src)
 inline void Buf::load(::tpy::BytesView src) {
-    // # The converting construction: `this->ba = ::tpy::ByteArray(src);`
-    // self.ba = bytearray(src)
     this->ba = ::tpy::ByteArray(src);
 }
 
 // def own_call(self) -> None:
+//     self.a = mk_arr()
+//     self.ba = mk_ba()
 inline void Buf::own_call() {
-    // self.a = mk_arr()
     this->a = mk_arr();
-    // self.ba = mk_ba()
     this->ba = mk_ba();
 }
 
 // def repeat(self) -> None:
+//     self.a = [3] * 4
 inline void Buf::repeat() {
-    // self.a = [3] * 4
     this->a = ({
         int32_t __rep_0 = 3;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t) -> int32_t { return __rep_0; });
@@ -88,11 +93,11 @@ inline void Buf::repeat() {
 }
 
 // def alias(self, x: Array[int32, 4]) -> None:
+//     # A borrow-returning call COPIES into the field; sema warns it, so the
+//     # copy is declared rather than silent. The caller does not observe the
+//     # copy-vs-alias split, which CPython would resolve the other way.
+//     self.a = borrow_arr(x)  # tpyc: warning(/copies Array\[int32, 4\] into field/)
 inline void Buf::alias(std::array<int32_t, 4>& x) {
-    // # A borrow-returning call COPIES into the field; sema warns it, so the
-    // # copy is declared rather than silent. The caller does not observe the
-    // # copy-vs-alias split, which CPython would resolve the other way.
-    // self.a = borrow_arr(x)  # tpyc: warning(/copies Array\[int32, 4\] into field/)
     this->a = borrow_arr(x);
 }
 void __tpy_init();

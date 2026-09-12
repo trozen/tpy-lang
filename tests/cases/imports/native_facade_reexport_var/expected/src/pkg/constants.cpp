@@ -4,6 +4,8 @@
 namespace repro::pkg::constants {
 
 
+// VERSION: Final[str] = "1.2.3"
+// LIMIT: Final[int32] = 16
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

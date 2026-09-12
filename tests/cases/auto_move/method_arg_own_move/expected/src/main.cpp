@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def forward(s: Sink, p: Own[Payload]) -> None:
+//     # p is an Own[Payload] param at its last use -> the method call moves it.
+//     s.absorb(p)
 void forward(Sink& s, Payload&& p) {
-    // # p is an Own[Payload] param at its last use -> the method call moves it.
-    // s.absorb(p)
     s.absorb(std::move(p));
 }
 
 // def main() -> None:
+//     s = Sink()
+//     forward(s, Payload(5))
+//     forward(s, Payload(7))
+//     print(s.total)
 void main() {
-    // s = Sink()
     Sink s = Sink();
-    // forward(s, Payload(5))
     forward(s, Payload(5));
-    // forward(s, Payload(7))
     forward(s, Payload(7));
-    // print(s.total)
     std::cout << s.total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

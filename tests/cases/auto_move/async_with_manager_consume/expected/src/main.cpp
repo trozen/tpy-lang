@@ -5,15 +5,16 @@ namespace tpyapp::main {
 
 
 // async def runner() -> None:
+//     k = K()
+//     g = Guard()
+//     async with g:
+//         k.take(g)  # tpyc: warning(/copies/)
 ::tpystd::tpy::Poll<::std::monostate> __coro_runner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // k = K()
         k.emplace(K());
-        // g = Guard()
         g.emplace(Guard());
         __with_ctx_0 = &((*g));
-        // async with g:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -40,7 +41,6 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_0: {
-        // async with g:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
@@ -51,7 +51,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            // k.take(g)  # tpyc: warning(/copies/)
             Guard __tmp_1 = (*g);
             (*k).take(std::move(__tmp_1));
             __state = S_JOIN_0;
@@ -74,17 +73,17 @@ __coro_runner runner() {
 }
 
 // def main():
+//     asyncio.run(runner())
 void main() {
-    // asyncio.run(runner())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(runner()));
 }
 
 // async def __aenter__(self) -> None:
+//     pass
 ::tpystd::tpy::Poll<::std::monostate> __coro_Guard___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // pass
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -95,11 +94,11 @@ void main() {
 
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
+//     print("exit sees", len(self.vals))
 ::tpystd::tpy::Poll<::std::monostate> __coro_Guard___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("exit sees", len(self.vals))
         std::cout << "exit sees" << " " << ::tpy::__len__(__self.vals) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -110,17 +109,18 @@ void main() {
 }
 
 
+// # async-with sibling of with_manager_consume: __aexit__ runs on the
+// # manager after the body, so a consume inside the body must copy (with
+// # warning), not move.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # async-with sibling of with_manager_consume: __aexit__ runs on the
-    // # manager after the body, so a consume inside the body must copy (with
-    // # warning), not move.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def shout(a: str, b: str, c: bool) -> int32:
+//     n = (a + b).upper()         # tpyc: ok -- a concat receiver
+//     m = (a if c else b).upper()  # tpyc: ok -- a select receiver
+//     print(n, m)
+//     return len(n) + len(m)
 int32_t shout(std::string_view a, std::string_view b, bool c) {
-    // n = (a + b).upper()         # tpyc: ok -- a concat receiver
     std::string n = ::tpy::str_upper((::tpy::str_concat(a, b)));
-    // m = (a if c else b).upper()  # tpyc: ok -- a select receiver
     std::string m = ::tpy::str_upper(((c) ? (a) : (b)));
-    // print(n, m)
     std::cout << n << " " << m << "\n";
-    // return len(n) + len(m)
     return (::tpy::add_check<int32_t>(::tpy::__len__(n), ::tpy::__len__(m)));
 }
 
 // def main() -> None:
+//     print(shout("ab", "cd", True))
 void main() {
-    // print(shout("ab", "cd", True))
     std::cout << shout("ab", "cd", true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

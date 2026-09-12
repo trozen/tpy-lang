@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def is_large(x: int32 | None) -> int32:
+//     assert x is not None
+//     if x > 10:  # tpyc: ok
+//         return 1
+//     return 0
 int32_t is_large(std::optional<int32_t> x) {
-    // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
-    // if x > 10:  # tpyc: ok
     if (((*x) > 10)) {
-        // return 1
         return 1;
     }
-    // return 0
     return 0;
 }
 
+// print(is_large(20))
+// print(is_large(5))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(is_large(20))
     std::cout << is_large(20) << "\n";
-    // print(is_large(5))
     std::cout << is_large(5) << "\n";
 }
 

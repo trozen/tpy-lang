@@ -5,19 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(SUM, DIFF, PROD)
+//     print(QUOT, FLR, MODR)
 void main() {
-    // print(SUM, DIFF, PROD)
     std::cout << ::tpy::print_float(SUM) << " " << ::tpy::print_float(DIFF) << " " << ::tpy::print_float(PROD) << "\n";
-    // print(QUOT, FLR, MODR)
     std::cout << ::tpy::print_float(QUOT) << " " << ::tpy::print_float(FLR) << " " << ::tpy::print_float(MODR) << "\n";
 }
 
+// A: Final[float] = 1.5
+// B: Final[float] = 2.5
+// SUM: Final[float] = A + B
+// DIFF: Final[float] = A - B
+// PROD: Final[float] = A * B
+// QUOT: Final[float] = A / B
+// FLR: Final[float] = A // B
+// MODR: Final[float] = A % B
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

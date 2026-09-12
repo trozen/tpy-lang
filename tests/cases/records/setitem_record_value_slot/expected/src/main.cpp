@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def fill(s: Slots) -> None:
+//     z = Data(5)
+//     s[0] = z  # tpyc: warning(/copies Data into container/)  the misattributed one
+//     s[1] = Data(9)  # a ctor rvalue binds the same slot
+//     print(z.value)
 void fill(Slots& s) {
-    // z = Data(5)
     Data z = Data(5);
-    // s[0] = z  # tpyc: warning(/copies Data into container/)  the misattributed one
     ::tpy::__setitem__(s, 0, z);
-    // s[1] = Data(9)  # a ctor rvalue binds the same slot
     ::tpy::__setitem__(s, 1, Data(9));
-    // print(z.value)
     std::cout << z.value << "\n";
 }
 
 // def main() -> None:
+//     s = Slots()
+//     fill(s)
+//     print(s[0].value, s[1].value)
 void main() {
-    // s = Slots()
     Slots s = Slots();
-    // fill(s)
     fill(s);
-    // print(s[0].value, s[1].value)
     std::cout << s[0].value << " " << s[1].value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

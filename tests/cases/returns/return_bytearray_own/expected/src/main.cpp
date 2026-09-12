@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def make(n: int32) -> Own[bytearray]:
+//     buf = bytearray(n)
+//     buf[0] = 7
+//     return buf  # tpyc: ok
 ::tpy::ByteArray make(int32_t n) {
-    // buf = bytearray(n)
     ::tpy::ByteArray buf = ::tpy::bytearray_from_size(n);
-    // buf[0] = 7
     ::tpy::bytearray_setitem(buf, 0, 7);
-    // return buf  # tpyc: ok
     return buf;
 }
 
 // def main() -> None:
+//     b = make(4)
+//     # The moved-out buffer is the caller's to mutate.
+//     b[1] = 9
+//     for v in b:
+//         print(v)
+//     d = Canvas(5).draw(3)
+//     for v in d:
+//         print(v)
 void main() {
-    // b = make(4)
     ::tpy::ByteArray b = make(4);
-    // # The moved-out buffer is the caller's to mutate.
-    // b[1] = 9
     ::tpy::bytearray_setitem(b, 1, 9);
-    // for v in b:
     auto& __obj_0 = b;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         uint8_t v = *__beg_0;
-        // print(v)
         std::cout << static_cast<int>(v) << "\n";
     }
-    // d = Canvas(5).draw(3)
     ::tpy::ByteArray d = Canvas(5).draw(3);
-    // for v in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         uint8_t v = *__beg_1;
-        // print(v)
         std::cout << static_cast<int>(v) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

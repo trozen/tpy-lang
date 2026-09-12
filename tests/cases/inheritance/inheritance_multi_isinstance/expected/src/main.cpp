@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Widget("x", int32(1))
+//     # Both folds resolve at compile time via MRO membership.
+//     if isinstance(w, Named):  # tpyc: ok
+//         print("isa Named")
+//     if isinstance(w, Counted):  # tpyc: ok
+//         print("isa Counted")
+//     if isinstance(w, Widget):  # tpyc: ok
+//         print("isa Widget")
 void main() {
-    // w = Widget("x", int32(1))
     Widget w = Widget("x", 1);
-    // # Both folds resolve at compile time via MRO membership.
-    // if isinstance(w, Named):  # tpyc: ok
     if (true) {
-        // print("isa Named")
         std::cout << "isa Named" << "\n";
     }
-    // if isinstance(w, Counted):  # tpyc: ok
     if (true) {
-        // print("isa Counted")
         std::cout << "isa Counted" << "\n";
     }
-    // if isinstance(w, Widget):  # tpyc: ok
     if (true) {
-        // print("isa Widget")
         std::cout << "isa Widget" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

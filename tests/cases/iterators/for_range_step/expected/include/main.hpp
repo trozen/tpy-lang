@@ -10,6 +10,7 @@ namespace tpyapp::main {
 extern int32_t n;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_range_step(start: int32, stop: int32, step: int32) -> int32:
 int32_t sum_range_step(int32_t start, int32_t stop, int32_t step);
 
 void __tpy_init();

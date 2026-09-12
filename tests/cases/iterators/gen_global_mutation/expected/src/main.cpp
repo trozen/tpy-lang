@@ -3,12 +3,12 @@
 
 namespace tpyapp::main {
 
-// seen: int = 0
 ::tpy::BigInt seen;
 
 // def main() -> None:
+//     for x in counter():
+//         print("x =", x, "seen =", seen)
 void main() {
-    // for x in counter():
     {
         auto __src_0 = counter();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,20 +16,20 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // print("x =", x, "seen =", seen)
         std::cout << "x =" << " " << x << " " << "seen =" << " " << seen << "\n";
         }
     }
 }
 
+// seen: int = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // seen: int = 0
     seen = ::tpy::BigInt(0);
-    // main()
     main();
 }
 

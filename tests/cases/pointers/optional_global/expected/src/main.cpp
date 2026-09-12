@@ -3,26 +3,26 @@
 
 namespace tpyapp::main {
 
-// g: Point | None = None
 Point* g{};
 
+// g: Point | None = None
+// print(g is None)
+//
+// g = Point(3, 4)
+// print(g is None)
+// print(g.x)
+// print(g.mag())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g: Point | None = None
     g = nullptr;
-    // print(g is None)
     std::cout << ::tpy::print_bool((g == nullptr)) << "\n";
-    // g = Point(3, 4)
     static Point __global_slot_1 = Point(3, 4);
     g = &__global_slot_1;
-    // print(g is None)
     std::cout << ::tpy::print_bool((g == nullptr)) << "\n";
-    // print(g.x)
     std::cout << g->x << "\n";
-    // print(g.mag())
     std::cout << g->mag() << "\n";
 }
 

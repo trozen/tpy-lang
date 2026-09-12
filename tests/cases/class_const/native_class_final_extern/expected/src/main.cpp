@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(BuildOpts.FLAG)
+//     print(BuildOpts.MAX_RETRIES)
+//     print(BuildOpts.RELEASE_TAG)
 void main() {
-    // print(BuildOpts.FLAG)
     std::cout << ::tpy::print_bool(::BuildOpts::FLAG) << "\n";
-    // print(BuildOpts.MAX_RETRIES)
     std::cout << ::BuildOpts::MAX_RETRIES << "\n";
-    // print(BuildOpts.RELEASE_TAG)
     std::cout << ::BuildOpts::RELEASE_TAG << "\n";
 }
 
+// # @native class with `Final[T]` (no value): bind to C++ static members.
+// # TPy emits no struct body; use sites resolve to <native_name>::<member>.
+// # tpy: include("native_types.hpp")
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @native class with `Final[T]` (no value): bind to C++ static members.
-    // # TPy emits no struct body; use sites resolve to <native_name>::<member>.
-    // # tpy: include("native_types.hpp")
-    // from tpy.extern import native
-    // main()
     main();
 }
 

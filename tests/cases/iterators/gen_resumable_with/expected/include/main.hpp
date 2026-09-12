@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_with_yield;
 
+// def gen_with_yield(xs: list[int]) -> Iterator[int]:
 __gen_gen_with_yield gen_with_yield(std::vector<::tpy::BigInt>& xs);
+// def main():
 void main();
 
 // class Tracer:
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracer& obj) {
     return os;
 }
 
-// Generator: gen_with_yield
+// def gen_with_yield(xs: list[int]) -> Iterator[int]:
 struct __gen_gen_with_yield : public ::tpy::next_iter_mixin<__gen_gen_with_yield, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     std::vector<::tpy::BigInt>& xs;
@@ -84,17 +86,18 @@ struct __gen_gen_with_yield : public ::tpy::next_iter_mixin<__gen_gen_with_yield
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Tracer::Tracer(std::string_view label) : label(label) {}
 
 // def __enter__(self) -> None:
+//     print("enter", self.label)
 inline void Tracer::__enter__() const {
-    // print("enter", self.label)
     std::cout << "enter" << " " << this->label << "\n";
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("exit", self.label)
 inline void Tracer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("exit", self.label)
     std::cout << "exit" << " " << this->label << "\n";
 }
 void __tpy_init();

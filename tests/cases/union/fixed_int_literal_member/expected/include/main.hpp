@@ -11,17 +11,29 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fits() -> None:
 void fits();
+// def overflows() -> None:
 void overflows();
+// def narrow_fits() -> None:
 void narrow_fits();
+// def narrow_signed() -> None:
 void narrow_signed();
+// def wide_unsigned() -> None:
 void wide_unsigned();
+// def wide_fits() -> None:
 void wide_fits();
+// def exact_param(u: int32 | int) -> None:
 void exact_param(const ::tpy::Union<::tpy::BigInt, int32_t>& u);
+// def widen_param(u: int64 | int) -> None:
 void widen_param(const ::tpy::Union<::tpy::BigInt, int64_t>& u);
+// def exact_return(v: int32) -> int32 | int:
 ::tpy::Union<::tpy::BigInt, int32_t> exact_return(int32_t v);
+// def check_return() -> None:
 void check_return();
+// def field_slot() -> None:
 void field_slot();
+// def main() -> None:
 void main();
 
 // # field slot: a literal stored through a record field (a typed VALUE written
@@ -43,6 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.v = 9
 inline Holder::Holder() : v(9) {}
 void __tpy_init();
 } // namespace tpyapp::main

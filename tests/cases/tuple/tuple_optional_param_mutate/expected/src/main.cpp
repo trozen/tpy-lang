@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def bump_first(p: tuple[T | None, T | None]) -> None:  # tpyc: ok
+//     a, _ = p
+//     if a is not None:
+//         a.x = a.x + 100
 void bump_first(const std::tuple<T*, T*>& p) {
-    // a, _ = p
     auto& __tup_1 = p;
     T* a = std::get<0>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // a.x = a.x + 100
         a->x = (::tpy::add_check<int32_t>(a->x, 100));
     }
 }
 
 // def main() -> None:
+//     t1 = T(1)
+//     t2 = T(2)
+//     bump_first((t1, t2))
+//     print(t1.x)
+//     print(t2.x)
 void main() {
-    // t1 = T(1)
     T t1 = T(1);
-    // t2 = T(2)
     T t2 = T(2);
-    // bump_first((t1, t2))
     bump_first(std::tuple<T*, T*>{&(t1), &(t2)});
-    // print(t1.x)
     std::cout << t1.x << "\n";
-    // print(t2.x)
     std::cout << t2.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

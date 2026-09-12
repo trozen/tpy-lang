@@ -11,11 +11,17 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def two_lists() -> tuple[Own[list[float]], Own[list[int32]]]:
 std::tuple<std::vector<double>, std::vector<int32_t>> two_lists();
+// def mixed() -> tuple[Own[list[float]], int32]:
 std::tuple<std::vector<double>, int32_t> mixed();
+// def dict_and_set() -> tuple[Own[dict[int32, int32]], Own[set[int32]]]:
 std::tuple<::tpy::ordered_map<int32_t, int32_t>, ::tpy::ordered_set<int32_t>> dict_and_set();
+// def two_recs() -> tuple[Own[Rec], Own[Rec]]:
 std::tuple<Rec, Rec> two_recs();
+// def recs_and_count() -> tuple[Own[list[Rec]], int32]:
 std::tuple<std::vector<Rec>, int32_t> recs_and_count();
+// def main() -> None:
 void main();
 
 // # @nocopy: an Own transfer that copied instead would fail to compile.
@@ -43,6 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Rec::Rec(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

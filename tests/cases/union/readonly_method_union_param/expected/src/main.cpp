@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Speaker()
+//     d: Dog | Cat = Dog()
+//     print(s.voice(d))
+//     c: Dog | Cat = Cat()
+//     print(s.voice(c))
 void main() {
-    // s = Speaker()
     Speaker s = Speaker();
-    // d: Dog | Cat = Dog()
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // print(s.voice(d))
     std::cout << s.voice(d) << "\n";
-    // c: Dog | Cat = Cat()
     ::tpy::Union<Cat, Dog> __slot_2 = Cat();
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // print(s.voice(c))
     std::cout << s.voice(c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def step() -> int32:
+//     return 1
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return 1
         __state = S_DONE;
         int32_t __tpy_async_ret = 1;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,17 @@ __coro_step step() {
 }
 
 // async def ret_after_await() -> Own[Box]:
+//     b = Box()
+//     try:
+//         b.n += await step()
+//         # The return value is captured here, but the finally runs first.
+//         return b
+//     finally:
+//         b.n += 1
 ::tpystd::tpy::Poll<Box> __coro_ret_after_await::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = Box()
         b.emplace(Box());
         __state = S_JOIN_0;
         continue;
@@ -42,10 +48,7 @@ __coro_step step() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box>::pending();
             __await_lift_0 = std::move(__r0).value();
             __sub_0.reset();
-            // b.n += await step()
             (*b).n = ::tpy::add_check<int32_t>((*b).n, __await_lift_0);
-            // # The return value is captured here, but the finally runs first.
-            // return b
             auto* __tpy_retp_0 = &((*b));
             __fin_ran_1 = true;
             this->__finally_0();
@@ -60,7 +63,6 @@ __coro_step step() {
         }
     }
     case S_JOIN_0: {
-        // b.n += await step()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -75,7 +77,6 @@ __coro_step step() {
 }
 
 void __coro_ret_after_await::__finally_0() {
-    // b.n += 1
     (*b).n = ::tpy::add_check<int32_t>((*b).n, 1);
 }
 
@@ -85,10 +86,10 @@ __coro_ret_after_await ret_after_await() {
 }
 
 // async def driver() -> None:
+//     print((await ret_after_await()).n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print((await ret_after_await()).n)
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -98,7 +99,6 @@ __coro_ret_after_await ret_after_await() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // print((await ret_after_await()).n)
         std::cout << (*__await_lift_0).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -115,22 +115,23 @@ __coro_driver driver() {
 }
 
 // def main() -> None:
+//     asyncio.run(driver())
 void main() {
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 
+// # A coroutine returning an owned record from inside a `try` whose body
+// # SUSPENDS: the finally becomes a frame helper, so the return value is
+// # captured before the helper runs and moved out after it.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A coroutine returning an owned record from inside a `try` whose body
-    // # SUSPENDS: the finally becomes a frame helper, so the return value is
-    // # captured before the helper runs and moved out after it.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

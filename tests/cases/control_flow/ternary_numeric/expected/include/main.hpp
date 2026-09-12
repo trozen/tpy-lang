@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def wider(flag: bool, a: int32, b: int64) -> int64:
 int64_t wider(bool flag, int32_t a, int64_t b);
+// def literal_with_typed(flag: bool, x: int32) -> int32:
 int32_t literal_with_typed(bool flag, int32_t x);
+// def both_literals(flag: bool) -> None:
 void both_literals(bool flag);
+// def main() -> None:
 void main();
 
 void __tpy_init();

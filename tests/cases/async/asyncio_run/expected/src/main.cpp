@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def hello() -> None:
+//     print("hello async world")
 ::tpystd::tpy::Poll<::std::monostate> __coro_hello::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("hello async world")
         std::cout << "hello async world" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,19 +26,20 @@ __coro_hello hello() {
 }
 
 // def main() -> None:
+//     asyncio.run(hello())
 void main() {
-    // asyncio.run(hello())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(hello()));
 }
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

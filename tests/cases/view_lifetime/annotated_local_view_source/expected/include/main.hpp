@@ -11,17 +11,26 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_frame;
 
+// def view_from_param(sv: StrView) -> None:
 void view_from_param(std::string_view sv);
+// def view_from_borrowing_call(s: str) -> None:
 void view_from_borrowing_call(std::string_view s);
+// def bytes_view_from_param(bv: BytesView) -> None:
 void bytes_view_from_param(::tpy::BytesView bv);
+// def view_reassigned_from_view(sv: StrView, sv2: StrView) -> None:
 void view_reassigned_from_view(std::string_view sv, std::string_view sv2);
+// def mutated_stays_owned(sv: StrView) -> str:
 std::string mutated_stays_owned(std::string_view sv);
+// def owned_return_still_copies(sv: StrView) -> str:
 std::string owned_return_still_copies(std::string_view sv);
+// def hoisted_branch(sv: StrView, flag: bool) -> None:
 void hoisted_branch(std::string_view sv, bool flag);
+// def gen_frame(sv: StrView) -> Iterator[int]:
 __gen_gen_frame gen_frame(std::string_view sv);
+// def main() -> None:
 void main();
 
-// Generator: gen_frame
+// def gen_frame(sv: StrView) -> Iterator[int]:
 struct __gen_gen_frame : public ::tpy::next_iter_mixin<__gen_gen_frame, ::tpy::BigInt> {
     int32_t __state;
     std::string_view sv;

@@ -6,17 +6,17 @@ namespace tpyapp::b {
 
 
 // def H() -> int32:
+//     return K()
 int32_t H() {
-    // return K()
     return ::tpyapp::a::K();
 }
 
+// from a import K
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import K
     ::tpyapp::a::__tpy_init();
 }
 

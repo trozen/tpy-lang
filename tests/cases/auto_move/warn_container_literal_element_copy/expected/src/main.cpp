@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p = P(1)
+//     a = [p]            # tpyc: warning(/copies P into owned storage/)
+//     b: list[P] = [p]   # tpyc: warning(/copies P into owned storage/)
+//     d = {"k": p}       # tpyc: warning(/copies P into owned storage/)
+//     e = [P(2)]         # tpyc: ok
+//     f = [copy(p)]      # tpyc: ok
+//     k = K(7)
+//     s = {k}            # tpyc: warning(/copies K into owned storage/)
+//     # p and k still live below, so the stores above are copies, not last-use moves.
+//     print(len(a) + len(b) + len(d) + len(e) + len(f) + len(s) + p.v + k.v)
 void main() {
-    // p = P(1)
     P p = P(::tpy::BigInt(1));
-    // a = [p]            # tpyc: warning(/copies P into owned storage/)
     std::array<P, 1> a = {p};
-    // b: list[P] = [p]   # tpyc: warning(/copies P into owned storage/)
     std::vector<P> b = {p};
-    // d = {"k": p}       # tpyc: warning(/copies P into owned storage/)
     ::tpy::ordered_map<std::string, P> d = ::tpy::ordered_map<std::string, P>({{"k", p}});
-    // e = [P(2)]         # tpyc: ok
     std::array<P, 1> e = {P(::tpy::BigInt(2))};
-    // f = [copy(p)]      # tpyc: ok
     std::array<P, 1> f = {P(p)};
-    // k = K(7)
     K k = K(::tpy::BigInt(7));
-    // s = {k}            # tpyc: warning(/copies K into owned storage/)
     ::tpy::ordered_set<K> s = ::tpy::ordered_set<K>({k});
-    // # p and k still live below, so the stores above are copies, not last-use moves.
-    // print(len(a) + len(b) + len(d) + len(e) + len(f) + len(s) + p.v + k.v)
     std::cout << ((((::tpy::BigInt((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__len__(a), ::tpy::__len__(b))), ::tpy::__len__(d))), ::tpy::__len__(e))), ::tpy::__len__(f))), ::tpy::__len__(s))))) + (p.v))) + (k.v)) << "\n";
 }
 
+// # A reference-type lvalue stored as a list/set/dict literal element copies into
+// # the container's owned storage (storage form) and warns like .append/.insert.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A reference-type lvalue stored as a list/set/dict literal element copies into
-    // # the container's owned storage (storage form) and warns like .append/.insert.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

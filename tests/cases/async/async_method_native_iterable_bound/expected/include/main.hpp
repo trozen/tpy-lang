@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <::tpy::NativeIterable<int32_t> T>
 struct __coro_Wrap_total;
 
+// def main() -> None:
 void main();
 
 // class Wrap[T: NativeIterable[int32]]:
@@ -25,6 +26,7 @@ struct Wrap {
     T items;
 
     // def __init__(self, items: T) -> None:
+    //     self.items = items
     Wrap() = default;
     explicit Wrap(::tpy::readonly_form_t<T> items) : items(items) {}
 
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
     return os;
 }
 
-// Async coroutine: Wrap.total
+// async def total(self) -> int32:
 template <::tpy::NativeIterable<int32_t> T>
 struct __coro_Wrap_total {
     int32_t __state;
@@ -64,23 +66,23 @@ struct __coro_Wrap_total {
 };
 
 // async def total(self) -> int32:
+//     result: int32 = 0
+//     for x in self.items:
+//         result += x
+//     return result
 template <::tpy::NativeIterable<int32_t> T>
 ::tpystd::tpy::Poll<int32_t> __coro_Wrap_total<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // result: int32 = 0
         result = 0;
-        // for x in self.items:
         auto& __obj_0 = __self.items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // result += x
             result = ::tpy::add_check<int32_t>(result, x);
         }
-        // return result
         __state = S_DONE;
         int32_t __tpy_async_ret = result;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));

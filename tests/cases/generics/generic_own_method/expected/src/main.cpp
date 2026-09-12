@@ -5,38 +5,42 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Test method calls on Own[T] return value
+//     # Use separate instances to avoid copy-vs-reference semantic differences
+//
+//     # Test 1: Chained method call compiles and runs
+//     b1: Box[list[int32]] = Box[list[int32]]([1, 2, 3])
+//     b1.take().append(4)
+//     print("chained call ok")
+//
+//     # Test 2: Assign to variable, then call method
+//     b2: Box[list[int32]] = Box[list[int32]]([10, 20, 30])
+//     c: list[int32] = b2.take()
+//     c.append(40)
+//     for x in c:
+//         print(x)
 void main() {
-    // # Test 1: Chained method call compiles and runs
-    // b1: Box[list[int32]] = Box[list[int32]]([1, 2, 3])
     Box<std::vector<int32_t>> b1 = Box<std::vector<int32_t>>({1, 2, 3});
-    // b1.take().append(4)
     b1.take().push_back(4);
-    // print("chained call ok")
     std::cout << "chained call ok" << "\n";
-    // # Test 2: Assign to variable, then call method
-    // b2: Box[list[int32]] = Box[list[int32]]([10, 20, 30])
     Box<std::vector<int32_t>> b2 = Box<std::vector<int32_t>>({10, 20, 30});
-    // c: list[int32] = b2.take()
     std::vector<int32_t> c = b2.take();
-    // c.append(40)
     c.push_back(40);
-    // for x in c:
     auto& __obj_0 = c;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // print(x)
         std::cout << x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

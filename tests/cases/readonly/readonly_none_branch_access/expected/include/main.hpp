@@ -11,7 +11,9 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def observe_field(flag: bool, p: Box) -> None:
 void observe_field(bool flag, const Box& p);
+// def observe_method(flag: bool, p: Box) -> None:
 void observe_method(bool flag, const Box& p);
 
 // class Box:
@@ -36,12 +38,13 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Box::Box(int32_t v) : v(v) {}
 
 // @readonly
 // def get_v(self) -> int32:
+//     return self.v
 inline int32_t Box::get_v() const {
-    // return self.v
     return this->v;
 }
 void __tpy_init();

@@ -4,20 +4,22 @@
 namespace tpyapp::main {
 
 
+// from mod_a import func_a
+// from mod_b import func_b
+//
+// print("main init")
+//
+// func_a()
+// func_b()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mod_a import func_a
     ::tpyapp::mod_a::__tpy_init();
-    // from mod_b import func_b
     ::tpyapp::mod_b::__tpy_init();
-    // print("main init")
     std::cout << "main init" << "\n";
-    // func_a()
     ::tpyapp::mod_a::func_a();
-    // func_b()
     ::tpyapp::mod_b::func_b();
 }
 

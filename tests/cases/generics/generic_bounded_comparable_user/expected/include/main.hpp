@@ -11,10 +11,13 @@ struct MyInt;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def is_less[T: Comparable](a: T, b: T) -> bool:
 template<::tpystd::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def find_min[T: Comparable](a: T, b: T) -> T:
 template<::tpystd::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> find_min(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
 // class MyInt:
@@ -49,34 +52,35 @@ inline std::ostream& operator<<(std::ostream& os, const MyInt& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.value = v
 inline MyInt::MyInt(int32_t v) : value(v) {}
 
 // def __lt__(self, other: MyInt) -> bool:
+//     return self.value < other.value
 inline bool MyInt::__lt__(const MyInt& other) const {
-    // return self.value < other.value
     return (this->value < other.value);
 }
 
 // def __eq__(self, other: MyInt) -> bool:
+//     return self.value == other.value
 inline bool MyInt::__eq__(const MyInt& other) const {
-    // return self.value == other.value
     return (this->value == other.value);
 }
 // def is_less[T: Comparable](a: T, b: T) -> bool:
+//     return a < b
 template<::tpystd::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // return a < b
     return (a < b);
 }
 // def find_min[T: Comparable](a: T, b: T) -> T:
+//     if a < b:
+//         return a
+//     return b
 template<::tpystd::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> find_min(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // if a < b:
     if ((a < b)) {
-        // return a
         return ::tpy::param_to_return<T>(a);
     }
-    // return b
     return ::tpy::param_to_return<T>(b);
 }
 

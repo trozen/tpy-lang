@@ -5,30 +5,29 @@ namespace tpyapp::main {
 
 
 // async def make(v: int32) -> Own[Box]:
+//     b = Box(v)
+//     try:
+//         return b
+//     finally:
+//         b.v += 10
+//         print(b.v)
 ::tpystd::tpy::Poll<Box> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // b = Box(v)
         b.emplace(Box(v));
-        // try:
         {
             bool __fin_ran_1 = false;
             try {
-                // return b
                 auto* __tpy_retp_0 = &((*b));
                 __fin_ran_1 = true;
-                // b.v += 10
                 (*b).v = ::tpy::add_check<int32_t>((*b).v, 10);
-                // print(b.v)
                 std::cout << (*b).v << "\n";
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
             } catch (...) {
                 if (!__fin_ran_1) {
-                    // b.v += 10
                     (*b).v = ::tpy::add_check<int32_t>((*b).v, 10);
-                    // print(b.v)
                     std::cout << (*b).v << "\n";
                 }
                 throw;
@@ -48,10 +47,11 @@ __coro_make make(int32_t v) {
 }
 
 // async def driver() -> int32:
+//     b = await make(7)
+//     return b.v
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = await make(7)
         __sub_0.emplace(7);
         __state = S_RESUME_0;
         continue;
@@ -61,7 +61,6 @@ __coro_make make(int32_t v) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         b.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // return b.v
         __state = S_DONE;
         int32_t __tpy_async_ret = (*b).v;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -78,22 +77,23 @@ __coro_driver driver() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(driver()))
 void main() {
-    // print(asyncio.run(driver()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(driver())) << "\n";
 }
 
+// # An async Own[T] return of a local under try/finally: the finally reads
+// # (and mutates) the local, so the return must not move it early -- the
+// # deferred capture materializes after the finally, CPython-identical.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async Own[T] return of a local under try/finally: the finally reads
-    // # (and mutates) the local, so the return must not move it early -- the
-    // # deferred capture materializes after the finally, CPython-identical.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -13,7 +13,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def poke(h: Holder) -> None:
 void poke(Holder& h);
+// def main() -> None:
 void main();
 
 // class Big:
@@ -65,12 +67,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Big::Big(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Small::Small(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.item = Small(3)
 inline Holder::Holder() : item(Small(3)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,65 +5,72 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # int8 boundaries: -128 to 127
+//     print(int8(-128.0))
+//     print(int8(127.0))
+//     print(int8(0.0))
+//     print(int8(-1.9))  # truncates to -1
+//     print(int8(1.9))   # truncates to 1
+//
+//     # uint8 boundaries: 0 to 255
+//     print(uint8(0.0))
+//     print(uint8(255.0))
+//     print(uint8(1.7))  # truncates to 1
+//
+//     # int16 boundaries: -32768 to 32767
+//     print(int16(-32768.0))
+//     print(int16(32767.0))
+//
+//     # uint16 boundaries: 0 to 65535
+//     print(uint16(0.0))
+//     print(uint16(65535.0))
+//
+//     # int32 boundaries: -2147483648 to 2147483647
+//     print(int32(-2147483648.0))
+//     print(int32(2147483647.0))
+//
+//     # uint32 boundaries: 0 to 4294967295
+//     print(uint32(0.0))
+//     print(uint32(4294967295.0))
+//
+//     # int64: large values representable by double
+//     print(int64(0.0))
+//     print(int64(-1000000000000.0))
+//     print(int64(1000000000000.0))
+//
+//     # uint64: large values representable by double
+//     print(uint64(0.0))
+//     print(uint64(1000000000000.0))
 void main() {
-    // # int8 boundaries: -128 to 127
-    // print(int8(-128.0))
     std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(-(128.0))) << "\n";
-    // print(int8(127.0))
     std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(127.0)) << "\n";
-    // print(int8(0.0))
     std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(0.0)) << "\n";
-    // print(int8(-1.9))  # truncates to -1
     std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(-(1.9))) << "\n";
-    // print(int8(1.9))   # truncates to 1
     std::cout << static_cast<int>(::tpy::from_float_check<int8_t>(1.9)) << "\n";
-    // # uint8 boundaries: 0 to 255
-    // print(uint8(0.0))
     std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(0.0)) << "\n";
-    // print(uint8(255.0))
     std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(255.0)) << "\n";
-    // print(uint8(1.7))  # truncates to 1
     std::cout << static_cast<int>(::tpy::from_float_check<uint8_t>(1.7)) << "\n";
-    // # int16 boundaries: -32768 to 32767
-    // print(int16(-32768.0))
     std::cout << ::tpy::from_float_check<int16_t>(-(32768.0)) << "\n";
-    // print(int16(32767.0))
     std::cout << ::tpy::from_float_check<int16_t>(32767.0) << "\n";
-    // # uint16 boundaries: 0 to 65535
-    // print(uint16(0.0))
     std::cout << ::tpy::from_float_check<uint16_t>(0.0) << "\n";
-    // print(uint16(65535.0))
     std::cout << ::tpy::from_float_check<uint16_t>(65535.0) << "\n";
-    // # int32 boundaries: -2147483648 to 2147483647
-    // print(int32(-2147483648.0))
     std::cout << ::tpy::from_float_check<int32_t>(-(2147483648.0)) << "\n";
-    // print(int32(2147483647.0))
     std::cout << ::tpy::from_float_check<int32_t>(2147483647.0) << "\n";
-    // # uint32 boundaries: 0 to 4294967295
-    // print(uint32(0.0))
     std::cout << ::tpy::from_float_check<uint32_t>(0.0) << "\n";
-    // print(uint32(4294967295.0))
     std::cout << ::tpy::from_float_check<uint32_t>(4294967295.0) << "\n";
-    // # int64: large values representable by double
-    // print(int64(0.0))
     std::cout << ::tpy::from_float_check<int64_t>(0.0) << "\n";
-    // print(int64(-1000000000000.0))
     std::cout << ::tpy::from_float_check<int64_t>(-(1000000000000.0)) << "\n";
-    // print(int64(1000000000000.0))
     std::cout << ::tpy::from_float_check<int64_t>(1000000000000.0) << "\n";
-    // # uint64: large values representable by double
-    // print(uint64(0.0))
     std::cout << ::tpy::from_float_check<uint64_t>(0.0) << "\n";
-    // print(uint64(1000000000000.0))
     std::cout << ::tpy::from_float_check<uint64_t>(1000000000000.0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

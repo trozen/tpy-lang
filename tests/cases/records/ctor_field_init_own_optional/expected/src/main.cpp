@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Holder(Node(5)).found)
+//     print(Holder(None).found)
 void main() {
-    // print(Holder(Node(5)).found)
     std::cout << Holder(Node(::tpy::BigInt(5))).found << "\n";
-    // print(Holder(None).found)
     std::cout << Holder(std::nullopt).found << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

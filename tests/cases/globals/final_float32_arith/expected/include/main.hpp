@@ -8,15 +8,24 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// A: Final[float32] = float32(1.5)
 inline constexpr float A = 1.5f;
+// B: Final[float32] = float32(2.5)
 inline constexpr float B = 2.5f;
+// SUM: Final[float32] = A + B
 inline constexpr float SUM = ((A) + (B));
+// DIFF: Final[float32] = A - B
 inline constexpr float DIFF = ((A) - (B));
+// PROD: Final[float32] = A * B
 inline constexpr float PROD = ((A) * (B));
+// QUOT: Final[float32] = A / B
 inline constexpr float QUOT = (::tpy::truediv_f32(A, B));
+// FLR: Final[float32] = A // B
 inline constexpr float FLR = (::tpy::floordiv_f32(A, B));
+// MODR: Final[float32] = A % B
 inline constexpr float MODR = (::tpy::fmod_f32(A, B));
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

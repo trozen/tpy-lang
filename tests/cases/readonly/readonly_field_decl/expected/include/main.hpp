@@ -11,6 +11,7 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Config:
@@ -35,11 +36,13 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, name: str, value: int) -> None:
+//     self.name = name
+//     self.value = value
 inline Config::Config(std::string_view name, const ::tpy::BigInt& value) : name(name), value(value) {}
 
 // def inc(self) -> None:
+//     self.value += 1
 inline void Config::inc() {
-    // self.value += 1
     this->value = (this->value) + (::tpy::BigInt(1));
 }
 void __tpy_init();

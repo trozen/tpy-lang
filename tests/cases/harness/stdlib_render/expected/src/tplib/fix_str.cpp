@@ -4,13 +4,13 @@
 namespace tpystd::tplib::fix_str {
 
 
+// from tpy.unsafe import unsafe_load, unsafe_str_view
+// from tpy.mem import UninitArrayStorage
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_load, unsafe_str_view
-    // from tpy.mem import UninitArrayStorage
 }
 
 } // namespace tpystd::tplib::fix_str

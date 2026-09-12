@@ -5,46 +5,51 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         raise MyError("first")
+//     except MyError:
+//         print("caught MyError")
+//
+//     try:
+//         raise Outer("nested")
+//     except MyError:
+//         print("caught Outer as MyError")
+//
+//     # Inherited __init__ also accepts the default empty message.
+//     try:
+//         raise MyError
+//     except MyError:
+//         print("bare")
 void main() {
-    // try:
     {
         try {
-            // raise MyError("first")
             throw MyError("first");
         } catch (const MyError&) {
-            // print("caught MyError")
             std::cout << "caught MyError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise Outer("nested")
             throw Outer("nested");
         } catch (const MyError&) {
-            // print("caught Outer as MyError")
             std::cout << "caught Outer as MyError" << "\n";
         }
     }
-    // # Inherited __init__ also accepts the default empty message.
-    // try:
     {
         try {
-            // raise MyError
             throw MyError{};
         } catch (const MyError&) {
-            // print("bare")
             std::cout << "bare" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

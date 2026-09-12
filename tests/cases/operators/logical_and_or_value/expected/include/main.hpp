@@ -12,26 +12,47 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_or_int() -> None:
 void test_or_int();
+// def test_and_int() -> None:
 void test_and_int();
+// def test_or_str() -> None:
 void test_or_str();
+// def test_and_str() -> None:
 void test_and_str();
+// def test_or_float() -> None:
 void test_or_float();
+// def test_and_float() -> None:
 void test_and_float();
+// def test_or_bigint() -> None:
 void test_or_bigint();
+// def test_chained() -> None:
 void test_chained();
+// def test_or_with_literal() -> None:
 void test_or_with_literal();
+// def accepts_int(v: int32) -> None:
 void accepts_int(int32_t v);
+// def returns_int(a: int32, b: int32) -> int32:
 int32_t returns_int(int32_t a, int32_t b);
+// def test_as_arg_and_return() -> None:
 void test_as_arg_and_return();
+// def test_bool_operands(flag: bool, other: bool) -> bool:
 bool test_bool_operands(bool flag, bool other);
+// def test_mixed_returns_bool() -> None:
 void test_mixed_returns_bool();
+// def test_condition_context() -> None:
 void test_condition_context();
+// def test_record_with_bool() -> None:
 void test_record_with_bool();
+// def test_record_without_bool() -> None:
 void test_record_without_bool();
+// def test_record_or_constructor() -> None:
 void test_record_or_constructor();
+// def test_annotated() -> None:
 void test_annotated();
+// def test_literal_or_literal() -> None:
 void test_literal_or_literal();
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -73,15 +94,18 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.count = n
 inline Counter::Counter(int32_t n) : count(n) {}
 
 // def __bool__(self) -> bool:
+//     return self.count != 0
 inline bool Counter::__bool__() const {
-    // return self.count != 0
     return (this->count != 0);
 }
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

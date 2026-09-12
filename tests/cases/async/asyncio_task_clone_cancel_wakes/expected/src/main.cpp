@@ -5,6 +5,12 @@ namespace tpyapp::main {
 
 
 // async def waiter() -> None:
+//     try:
+//         await asyncio.sleep(100.0)
+//         print("waiter not cancelled (unexpected)")
+//     except asyncio.CancelledError:
+//         print("waiter cancelled")
+//         raise
 ::tpystd::tpy::Poll<::std::monostate> __coro_waiter::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -17,15 +23,12 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("waiter not cancelled (unexpected)")
             std::cout << "waiter not cancelled (unexpected)" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_0.reset();
-            // print("waiter cancelled")
             std::cout << "waiter cancelled" << "\n";
-            // raise
             throw;
         } catch (...) {
             __sub_0.reset();
@@ -38,14 +41,11 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.sleep(100.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(100.0)));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
-            // print("waiter cancelled")
             std::cout << "waiter cancelled" << "\n";
-            // raise
             throw;
         } catch (...) {
             throw;
@@ -63,14 +63,21 @@ __coro_waiter waiter() {
 }
 
 // async def main_coro() -> None:
+//     task = asyncio.create_task(waiter())
+//     dup = task.clone()
+//     # Park waiter on its sleep before we cancel via the clone.
+//     await asyncio.sleep(0.001)
+//     dup.cancel()
+//     try:
+//         await task
+//         print("main not cancelled (unexpected)")
+//     except asyncio.CancelledError:
+//         print("main caught")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // task = asyncio.create_task(waiter())
         task.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(waiter())));
-        // dup = task.clone()
         dup.emplace((*task).clone());
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -80,7 +87,6 @@ __coro_waiter waiter() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // dup.cancel()
         (*dup).cancel();
         __state = S_JOIN_1;
         continue;
@@ -91,13 +97,11 @@ __coro_waiter waiter() {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r1).value();
             __sub_1 = nullptr;
-            // print("main not cancelled (unexpected)")
             std::cout << "main not cancelled (unexpected)" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            // print("main caught")
             std::cout << "main caught" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -111,7 +115,6 @@ __coro_waiter waiter() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        // await task
         __sub_1 = &((*task));
         __state = S_RESUME_1;
         continue;
@@ -128,26 +131,27 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Task.clone() propagates the Waker stamped at create_task time, so
+// # `cancel()` on the clone wakes the same slot as `cancel()` on the
+// # original. Pins the M10 invariant load-bearing for gather_list's
+// # cancel propagation: gather Rc-clones each user Task into its own
+// # list and calls cancel() on the clone -- if the clone's Waker were
+// # null, the runnable-mark would never fire and gather would hang on
+// # any sub-task with no natural wake.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Task.clone() propagates the Waker stamped at create_task time, so
-    // # `cancel()` on the clone wakes the same slot as `cancel()` on the
-    // # original. Pins the M10 invariant load-bearing for gather_list's
-    // # cancel propagation: gather Rc-clones each user Task into its own
-    // # list and calls cancel() on the clone -- if the clone's Waker were
-    // # null, the runnable-mark would never fire and gather would hang on
-    // # any sub-task with no natural wake.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

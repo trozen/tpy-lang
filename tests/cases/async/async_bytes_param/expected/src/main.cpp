@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def consume(data: bytes) -> int:
+//     await asyncio.sleep(0.0)
+//     return len(data)
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_consume::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return len(data)
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(::tpy::__len__(data));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -35,10 +35,11 @@ __coro_consume consume(::tpy::BytesView data) {
 }
 
 // async def head(data: bytes) -> int:
+//     await asyncio.sleep(0.0)
+//     return data[0]
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_head::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -48,7 +49,6 @@ __coro_consume consume(::tpy::BytesView data) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return data[0]
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(::tpy::bytes_getitem(data, 0));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -65,11 +65,12 @@ __coro_head head(::tpy::BytesView data) {
 }
 
 // async def main() -> None:
+//     print(await consume(b"hello"))
+//     print(await head(b"ABC"))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = ::tpy::bytes_literal_owned("hello", 5);
-        // print(await consume(b"hello"))
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
@@ -79,10 +80,8 @@ __coro_head head(::tpy::BytesView data) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await consume(b"hello"))
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1 = ::tpy::bytes_literal_owned("ABC", 3);
-        // print(await head(b"ABC"))
         __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
@@ -92,7 +91,6 @@ __coro_head head(::tpy::BytesView data) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await head(b"ABC"))
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -108,16 +106,17 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # A bytes parameter of an async def is captured owned in the coro frame, so it
+// # survives a suspension even when the argument is a temporary.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A bytes parameter of an async def is captured owned in the coro frame, so it
-    // # survives a suspension even when the argument is a temporary.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

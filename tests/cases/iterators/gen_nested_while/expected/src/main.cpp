@@ -5,23 +5,27 @@ namespace tpyapp::main {
 
 
 // def matrix() -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < 3:
+//         j: int32 = 0
+//         while j < 2:
+//             yield i * 10 + j
+//             j += 1
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // j += 1
         j = ::tpy::add_check<int32_t>(j, 1);
         __state = S_JOIN_1;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 3)) {
-            // j: int32 = 0
             j = 0;
             __state = S_JOIN_1;
             continue;
@@ -32,11 +36,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     }
     case S_JOIN_1: {
         if ((j < 2)) {
-            // yield i * 10 + j
             __state = S_RESUME_0;
             return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), j));
         } else {
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;
             continue;
@@ -54,8 +56,9 @@ __gen_matrix matrix() {
 }
 
 // def main():
+//     for x in matrix():
+//         print(x)
 void main() {
-    // for x in matrix():
     {
         auto __src_0 = matrix();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -63,18 +66,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

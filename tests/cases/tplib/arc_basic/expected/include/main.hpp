@@ -16,6 +16,7 @@ struct State;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class State:
@@ -39,11 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const State& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline State::State(int32_t x) : x(x) {}
 
 // def doubled(self) -> int32:
+//     return self.x * 2
 inline int32_t State::doubled() const {
-    // return self.x * 2
     return (::tpy::mul_check<int32_t>(this->x, 2));
 }
 void __tpy_init();

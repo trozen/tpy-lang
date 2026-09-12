@@ -11,21 +11,37 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def seen(tag: str, o: Own[list[int32]]) -> bool:
 bool seen(std::string_view tag, std::vector<int32_t>&& o);
+// def seen_n(tag: str, o: Own[list[int32]]) -> int32:
 int32_t seen_n(std::string_view tag, std::vector<int32_t>&& o);
+// def seen_rec(tag: str, b: Own[Bag]) -> bool:
 bool seen_rec(std::string_view tag, Bag&& b);
+// def seen_str(tag: str, s: Own[str]) -> bool:
 bool seen_str(std::string_view tag, std::string s);
+// def seen_bag(tag: str, b: Bag) -> bool:
 bool seen_bag(std::string_view tag, const Bag& b);
+// def or_rhs(xs: list[int32]) -> bool:
 bool or_rhs(std::vector<int32_t>& xs);
+// def and_rhs(xs: list[int32]) -> bool:
 bool and_rhs(std::vector<int32_t>& xs);
+// def nested(xs: list[int32], flag: bool) -> bool:
 bool nested(std::vector<int32_t>& xs, bool flag);
+// def ternary(xs: list[int32]) -> bool:
 bool ternary(std::vector<int32_t>& xs);
+// def chained(xs: list[int32]) -> bool:
 bool chained(std::vector<int32_t>& xs);
+// def value_select(xs: list[int32]) -> int32:
 int32_t value_select(std::vector<int32_t>& xs);
+// def record_payload(xs: list[int32]) -> bool:
 bool record_payload(const std::vector<int32_t>& xs);
+// def own_str_name(xs: list[int32], tail: str) -> bool:
 bool own_str_name(std::vector<int32_t>& xs, std::string_view tail);
+// def ref_param_rvalue(flag: bool) -> bool:
 bool ref_param_rvalue(bool flag);
+// def left_operand(xs: list[int32]) -> bool:
 bool left_operand(std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -46,11 +62,11 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self, vals: list[int32]) -> None:
+//     # The print makes a constructor run in a SKIPPED branch visible.
+//     print("bag", len(vals))
+//     self.vals = vals
 inline Bag::Bag(const std::vector<int32_t>& vals) {
-    // # The print makes a constructor run in a SKIPPED branch visible.
-    // print("bag", len(vals))
     std::cout << "bag" << " " << ::tpy::__len__(vals) << "\n";
-    // self.vals = vals
     this->vals = vals;
 }
 void __tpy_init();

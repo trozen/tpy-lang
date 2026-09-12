@@ -5,34 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Test forwarding int param through inheritance chain
+//     b: Base[str, 10] = Base[str, 10]("base")
+//     print(b.value)
+//
+//     c: Child[str, 20] = Child[str, 20]("child", int32(42))
+//     print(c.value)
+//     print(c.extra)
+//
+//     g: GrandChild[str, 30] = GrandChild[str, 30]("grand", int32(100), "test")
+//     print(g.value)
+//     print(g.extra)
+//     print(g.name)
 void main() {
-    // # Test forwarding int param through inheritance chain
-    // b: Base[str, 10] = Base[str, 10]("base")
     Base<std::string, 10> b = Base<std::string, 10>("base");
-    // print(b.value)
     std::cout << b.value << "\n";
-    // c: Child[str, 20] = Child[str, 20]("child", int32(42))
     Child<std::string, 20> c = Child<std::string, 20>("child", 42);
-    // print(c.value)
     std::cout << c.value << "\n";
-    // print(c.extra)
     std::cout << c.extra << "\n";
-    // g: GrandChild[str, 30] = GrandChild[str, 30]("grand", int32(100), "test")
     GrandChild<std::string, 30> g = GrandChild<std::string, 30>("grand", 100, "test");
-    // print(g.value)
     std::cout << g.value << "\n";
-    // print(g.extra)
     std::cout << g.extra << "\n";
-    // print(g.name)
     std::cout << g.name << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

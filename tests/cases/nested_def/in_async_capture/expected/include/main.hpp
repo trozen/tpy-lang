@@ -19,10 +19,15 @@ struct __coro_across_await;
 struct __coro_lambda_capture;
 struct __coro_main;
 
+// async def capture_mutate() -> Own[Box]:
 __coro_capture_mutate capture_mutate();
+// async def across_await() -> int32:
 __coro_across_await across_await();
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v);
+// async def lambda_capture(n: int32) -> int32:
 __coro_lambda_capture lambda_capture(int32_t n);
+// async def main() -> None:
 __coro_main main();
 
 // class Box:
@@ -40,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: capture_mutate
+// async def capture_mutate() -> Own[Box]:
 struct __coro_capture_mutate {
     int32_t __state;
     bool __cancel_pending;
@@ -65,7 +70,7 @@ struct __coro_capture_mutate {
     }
 };
 
-// Async coroutine: across_await
+// async def across_await() -> int32:
 struct __coro_across_await {
     int32_t __state;
     bool __cancel_pending;
@@ -91,7 +96,7 @@ struct __coro_across_await {
     }
 };
 
-// Async coroutine: lambda_capture
+// async def lambda_capture(n: int32) -> int32:
 struct __coro_lambda_capture {
     int32_t __state;
     bool __cancel_pending;
@@ -116,7 +121,7 @@ struct __coro_lambda_capture {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -148,6 +153,7 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline Box::Box() : n(10) {}
 void __tpy_init();
 } // namespace tpyapp::main

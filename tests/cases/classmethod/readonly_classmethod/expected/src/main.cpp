@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Limits.base())
+//     print(Limits.doubled())
 void main() {
-    // print(Limits.base())
     std::cout << Limits::base() << "\n";
-    // print(Limits.doubled())
     std::cout << Limits::doubled() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

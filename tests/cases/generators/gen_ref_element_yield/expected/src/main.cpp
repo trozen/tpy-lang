@@ -5,6 +5,9 @@ namespace tpyapp::main {
 
 
 // def each_list(xs: list[list[int32]]) -> Iterator[list[int32]]:
+//     for s in xs:
+//         yield s  # tpyc: ok
+//         yield s
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -14,7 +17,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         continue;
     }
     case S_RESUME_0: {
-        // yield s
         __state = S_RESUME_1;
         return (*s);
     }
@@ -28,7 +30,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         s = &(*((*__for_it_0))++);
-        // yield s  # tpyc: ok
         __state = S_RESUME_0;
         return (*s);
     }
@@ -44,6 +45,9 @@ __gen_each_list each_list(std::vector<std::vector<int32_t>>& xs) {
 }
 
 // def each_rec(xs: list[Box]) -> Iterator[Box]:
+//     for b in xs:
+//         yield b  # tpyc: ok
+//         yield b
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_rec::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -53,7 +57,6 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_rec::__ne
         continue;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return (*b);
     }
@@ -67,7 +70,6 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_rec::__ne
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         b = &(*((*__for_it_0))++);
-        // yield b  # tpyc: ok
         __state = S_RESUME_0;
         return (*b);
     }
@@ -83,6 +85,9 @@ __gen_each_rec each_rec(std::vector<Box>& xs) {
 }
 
 // def each_pack(*xs: list[int32]) -> Iterator[list[int32]]:
+//     for s in xs:
+//         yield s  # tpyc: ok
+//         yield s
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_pack::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -92,7 +97,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         continue;
     }
     case S_RESUME_0: {
-        // yield s
         __state = S_RESUME_1;
         return (*s);
     }
@@ -106,7 +110,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         s = &(*((*__for_it_0))++);
-        // yield s  # tpyc: ok
         __state = S_RESUME_0;
         return (*s);
     }
@@ -122,10 +125,14 @@ __gen_each_pack each_pack(::tpy::varargs<std::vector<int32_t>> xs) {
 }
 
 // def each_local() -> Iterator[list[int32]]:
+//     own: list[list[int32]] = [[1], [2]]
+//     for s in own:
+//         yield s  # tpyc: ok
+//         yield s
+//     print("framelocal-inner", len(own[0]), len(own[1]))
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // own: list[list[int32]] = [[1], [2]]
         own.emplace(std::vector<std::vector<int32_t>>{{1}, {2}});
         __for_it_0.emplace(((*own)).begin());
         __for_end_0.emplace(((*own)).end());
@@ -133,7 +140,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         continue;
     }
     case S_RESUME_0: {
-        // yield s
         __state = S_RESUME_1;
         return (*s);
     }
@@ -143,13 +149,11 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // print("framelocal-inner", len(own[0]), len(own[1]))
             std::cout << "framelocal-inner" << " " << ::tpy::__len__(::tpy::__getitem__((*own), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*own), 1)) << "\n";
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         s = &(*((*__for_it_0))++);
-        // yield s  # tpyc: ok
         __state = S_RESUME_0;
         return (*s);
     }
@@ -165,17 +169,17 @@ __gen_each_local each_local() {
 }
 
 // def each_alias(xs: list[Box]) -> Iterator[Box]:
+//     b = xs[0]
+//     yield b  # tpyc: ok
+//     yield b
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = xs[0]
         b = &(::tpy::__getitem__(xs, 0));
-        // yield b  # tpyc: ok
         __state = S_RESUME_0;
         return (*b);
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return (*b);
     }
@@ -195,24 +199,24 @@ __gen_each_alias each_alias(std::vector<Box>& xs) {
 }
 
 // def each_ternary(flag: bool) -> Iterator[Box]:
+//     p = Box(1)
+//     q = Box(2)
+//     yield p if flag else q  # tpyc: ok
+//     yield p if flag else q
+//     print("ternary-inner", p.v, q.v)
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_ternary::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // p = Box(1)
         p.emplace(Box(1));
-        // q = Box(2)
         q.emplace(Box(2));
-        // yield p if flag else q  # tpyc: ok
         __state = S_RESUME_0;
         return ((flag) ? ((*p)) : ((*q)));
     }
     case S_RESUME_0: {
-        // yield p if flag else q
         __state = S_RESUME_1;
         return ((flag) ? ((*p)) : ((*q)));
     }
     case S_RESUME_1: {
-        // print("ternary-inner", p.v, q.v)
         std::cout << "ternary-inner" << " " << (*p).v << " " << (*q).v << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -229,6 +233,9 @@ __gen_each_ternary each_ternary(bool flag) {
 }
 
 // def each_dict(xs: list[dict[int32, int32]]) -> Iterator[dict[int32, int32]]:
+//     for d in xs:
+//         yield d  # tpyc: ok
+//         yield d
 std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::tpy::StopIteration> __gen_each_dict::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -238,7 +245,6 @@ std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::tpy::St
         continue;
     }
     case S_RESUME_0: {
-        // yield d
         __state = S_RESUME_1;
         return (*d);
     }
@@ -252,7 +258,6 @@ std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::tpy::St
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         d = &(*((*__for_it_0))++);
-        // yield d  # tpyc: ok
         __state = S_RESUME_0;
         return (*d);
     }
@@ -268,6 +273,9 @@ __gen_each_dict each_dict(std::vector<::tpy::ordered_map<int32_t, int32_t>>& xs)
 }
 
 // def each_set(xs: list[set[int32]]) -> Iterator[set[int32]]:
+//     for s in xs:
+//         yield s  # tpyc: ok
+//         yield s
 std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIteration> __gen_each_set::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -277,7 +285,6 @@ std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIterati
         continue;
     }
     case S_RESUME_0: {
-        // yield s
         __state = S_RESUME_1;
         return (*s);
     }
@@ -291,7 +298,6 @@ std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIterati
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         s = &(*((*__for_it_0))++);
-        // yield s  # tpyc: ok
         __state = S_RESUME_0;
         return (*s);
     }
@@ -307,6 +313,10 @@ __gen_each_set each_set(std::vector<::tpy::ordered_set<int32_t>>& xs) {
 }
 
 // def each_with(xs: list[list[int32]]) -> Iterator[list[int32]]:
+//     with Guard():
+//         for s in xs:
+//             yield s  # tpyc: ok
+//             yield s
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_with::__next__() {
     try {
     while (true) switch (__state) {
@@ -318,7 +328,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     }
     case S_RESUME_0: {
         try {
-            // yield s
             __state = S_RESUME_1;
             return (*s);
         } catch (::tpy::BaseException& __exc_0) {
@@ -353,7 +362,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
                 continue;
             }
             s = &(*((*__for_it_0))++);
-            // yield s  # tpyc: ok
             __state = S_RESUME_0;
             return (*s);
         } catch (::tpy::BaseException& __exc_0) {
@@ -402,6 +410,12 @@ __gen_each_with each_with(std::vector<std::vector<int32_t>>& xs) {
 }
 
 // def each_finally(xs: list[list[int32]]) -> Iterator[list[int32]]:
+//     try:
+//         print("finally-try")
+//     finally:
+//         for s in xs:
+//             yield s  # tpyc: warning(/'yield' inside 'finally'/)
+//             yield s
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_finally::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -409,7 +423,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         continue;
     }
     case S_RESUME_0: {
-        // yield s
         __state = S_RESUME_1;
         return (*s);
     }
@@ -423,7 +436,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             continue;
         }
         s = &(*((*__for_it_0))++);
-        // yield s  # tpyc: warning(/'yield' inside 'finally'/)
         __state = S_RESUME_0;
         return (*s);
     }
@@ -444,7 +456,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     }
     case S_JOIN_3: {
         try {
-            // print("finally-try")
             std::cout << "finally-try" << "\n";
             __state = S_JOIN_2;
             continue;
@@ -466,6 +477,9 @@ __gen_each_finally each_finally(std::vector<std::vector<int32_t>>& xs) {
 }
 
 // def boxes(xs: list[Box]) -> Iterator[Box]:
+//     for b in xs:
+//         yield b  # tpyc: ok
+//         yield b
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -475,7 +489,6 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::__next_
         continue;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return (*b);
     }
@@ -489,7 +502,6 @@ std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::__next_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         b = &(*((*__for_it_0))++);
-        // yield b  # tpyc: ok
         __state = S_RESUME_0;
         return (*b);
     }
@@ -505,12 +517,14 @@ __gen_boxes boxes(std::vector<Box>& xs) {
 }
 
 // def sec_freelist() -> None:
+//     # A bare `[[1], [2]]` would infer Array, not list
+//     # (BUGS.md#copy-array-literal-into-list-slot).
+//     a: list[list[int32]] = [[1], [2]]
+//     for s in each_list(a):
+//         s.append(9)
+//     print("freelist", len(a[0]), len(a[1]))
 void sec_freelist() {
-    // # A bare `[[1], [2]]` would infer Array, not list
-    // # (BUGS.md#copy-array-literal-into-list-slot).
-    // a: list[list[int32]] = [[1], [2]]
     std::vector<std::vector<int32_t>> a = {{1}, {2}};
-    // for s in each_list(a):
     {
         auto __src_0 = each_list(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -518,19 +532,19 @@ void sec_freelist() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& s = ::tpy::unwrap_ref(*__r_1);
-        // s.append(9)
         s.push_back(9);
         }
     }
-    // print("freelist", len(a[0]), len(a[1]))
     std::cout << "freelist" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
 }
 
 // def sec_freerec() -> None:
+//     a = [Box(1), Box(2)]
+//     for b in each_rec(a):
+//         b.v += 10
+//     print("freerec", a[0].v, a[1].v)
 void sec_freerec() {
-    // a = [Box(1), Box(2)]
     std::vector<Box> a = {Box(1), Box(2)};
-    // for b in each_rec(a):
     {
         auto __src_0 = each_rec(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -538,19 +552,19 @@ void sec_freerec() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& b = ::tpy::unwrap_ref(*__r_1);
-        // b.v += 10
         b.v = ::tpy::add_check<int32_t>(b.v, 10);
         }
     }
-    // print("freerec", a[0].v, a[1].v)
     std::cout << "freerec" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n";
 }
 
 // def sec_method() -> None:
+//     a: list[list[int32]] = [[1], [2]]
+//     for s in Rows().each(a):
+//         s.append(9)
+//     print("method", len(a[0]), len(a[1]))
 void sec_method() {
-    // a: list[list[int32]] = [[1], [2]]
     std::vector<std::vector<int32_t>> a = {{1}, {2}};
-    // for s in Rows().each(a):
     {
         Rows __tmp_1 = Rows();
         auto __src_0 = __tmp_1.each(a);
@@ -559,21 +573,21 @@ void sec_method() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& s = ::tpy::unwrap_ref(*__r_1);
-        // s.append(9)
         s.push_back(9);
         }
     }
-    // print("method", len(a[0]), len(a[1]))
     std::cout << "method" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
 }
 
 // def sec_pack() -> None:
+//     a: list[int32] = [1]
+//     b: list[int32] = [2]
+//     for s in each_pack(a, b):
+//         s.append(9)
+//     print("pack", len(a), len(b))
 void sec_pack() {
-    // a: list[int32] = [1]
     std::vector<int32_t> a = {1};
-    // b: list[int32] = [2]
     std::vector<int32_t> b = {2};
-    // for s in each_pack(a, b):
     {
         std::array<std::vector<int32_t>*, 2> __tmp_2{&a, &b};
         auto __src_0 = each_pack(::tpy::varargs<std::vector<int32_t>>(__tmp_2));
@@ -582,19 +596,19 @@ void sec_pack() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& s = ::tpy::unwrap_ref(*__r_1);
-        // s.append(9)
         s.push_back(9);
         }
     }
-    // print("pack", len(a), len(b))
     std::cout << "pack" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << "\n";
 }
 
 // def sec_selffield() -> None:
+//     r = Rows()
+//     for s in r.field_twice():
+//         s.append(9)
+//     print("selffield", len(r.buf))
 void sec_selffield() {
-    // r = Rows()
     Rows r = Rows();
-    // for s in r.field_twice():
     {
         auto __src_0 = r.field_twice();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -602,17 +616,17 @@ void sec_selffield() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& s = ::tpy::unwrap_ref(*__r_1);
-        // s.append(9)
         s.push_back(9);
         }
     }
-    // print("selffield", len(r.buf))
     std::cout << "selffield" << " " << ::tpy::__len__(r.buf) << "\n";
 }
 
 // def sec_framelocal() -> None:
+//     for s in each_local():
+//         s.append(9)
+//     print("framelocal", "done")
 void sec_framelocal() {
-    // for s in each_local():
     {
         auto __src_0 = each_local();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -620,19 +634,19 @@ void sec_framelocal() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& s = ::tpy::unwrap_ref(*__r_1);
-        // s.append(9)
         s.push_back(9);
         }
     }
-    // print("framelocal", "done")
     std::cout << "framelocal" << " " << "done" << "\n";
 }
 
 // def sec_alias() -> None:
+//     a = [Box(1), Box(2)]
+//     for b in each_alias(a):
+//         b.v += 10
+//     print("alias", a[0].v, a[1].v)
 void sec_alias() {
-    // a = [Box(1), Box(2)]
     std::vector<Box> a = {Box(1), Box(2)};
-    // for b in each_alias(a):
     {
         auto __src_0 = each_alias(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -640,17 +654,17 @@ void sec_alias() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& b = ::tpy::unwrap_ref(*__r_1);
-        // b.v += 10
         b.v = ::tpy::add_check<int32_t>(b.v, 10);
         }
     }
-    // print("alias", a[0].v, a[1].v)
     std::cout << "alias" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n";
 }
 
 // def sec_ternary() -> None:
+//     for c in each_ternary(True):
+//         c.v += 10
+//     print("ternary", "done")
 void sec_ternary() {
-    // for c in each_ternary(True):
     {
         auto __src_0 = each_ternary(true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -658,19 +672,19 @@ void sec_ternary() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& c = ::tpy::unwrap_ref(*__r_1);
-        // c.v += 10
         c.v = ::tpy::add_check<int32_t>(c.v, 10);
         }
     }
-    // print("ternary", "done")
     std::cout << "ternary" << " " << "done" << "\n";
 }
 
 // def sec_dict() -> None:
+//     a = [{1: 1}, {2: 2}]
+//     for d in each_dict(a):
+//         d[9] = 9
+//     print("dict", len(a[0]), len(a[1]))
 void sec_dict() {
-    // a = [{1: 1}, {2: 2}]
     std::vector<::tpy::ordered_map<int32_t, int32_t>> a = {::tpy::ordered_map<int32_t, int32_t>({{1, 1}}), ::tpy::ordered_map<int32_t, int32_t>({{2, 2}})};
-    // for d in each_dict(a):
     {
         auto __src_0 = each_dict(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -678,19 +692,19 @@ void sec_dict() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& d = ::tpy::unwrap_ref(*__r_1);
-        // d[9] = 9
         ::tpy::__setitem__(d, 9, 9);
         }
     }
-    // print("dict", len(a[0]), len(a[1]))
     std::cout << "dict" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
 }
 
 // def sec_set() -> None:
+//     a = [{1}, {2}]
+//     for s in each_set(a):
+//         s.add(9)
+//     print("set", len(a[0]), len(a[1]))
 void sec_set() {
-    // a = [{1}, {2}]
     std::vector<::tpy::ordered_set<int32_t>> a = {::tpy::ordered_set<int32_t>({1}), ::tpy::ordered_set<int32_t>({2})};
-    // for s in each_set(a):
     {
         auto __src_0 = each_set(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -698,19 +712,19 @@ void sec_set() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& s = ::tpy::unwrap_ref(*__r_1);
-        // s.add(9)
         s.insert(9);
         }
     }
-    // print("set", len(a[0]), len(a[1]))
     std::cout << "set" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
 }
 
 // def sec_with() -> None:
+//     a: list[list[int32]] = [[1], [2]]
+//     for s in each_with(a):
+//         s.append(9)
+//     print("with", len(a[0]), len(a[1]))
 void sec_with() {
-    // a: list[list[int32]] = [[1], [2]]
     std::vector<std::vector<int32_t>> a = {{1}, {2}};
-    // for s in each_with(a):
     {
         auto __src_0 = each_with(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -718,19 +732,19 @@ void sec_with() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& s = ::tpy::unwrap_ref(*__r_1);
-        // s.append(9)
         s.push_back(9);
         }
     }
-    // print("with", len(a[0]), len(a[1]))
     std::cout << "with" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
 }
 
 // def sec_finally() -> None:
+//     a: list[list[int32]] = [[1], [2]]
+//     for s in each_finally(a):
+//         s.append(9)
+//     print("finally", len(a[0]), len(a[1]))
 void sec_finally() {
-    // a: list[list[int32]] = [[1], [2]]
     std::vector<std::vector<int32_t>> a = {{1}, {2}};
-    // for s in each_finally(a):
     {
         auto __src_0 = each_finally(a);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -738,19 +752,22 @@ void sec_finally() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& s = ::tpy::unwrap_ref(*__r_1);
-        // s.append(9)
         s.push_back(9);
         }
     }
-    // print("finally", len(a[0]), len(a[1]))
     std::cout << "finally" << " " << ::tpy::__len__(::tpy::__getitem__(a, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(a, 1)) << "\n";
 }
 
 // def sec_readonly() -> None:
+//     h = ROBag()
+//     for s in h.twice():
+//         # Mutating the SOURCE between pulls is visible through the const
+//         # borrow, as in CPython; the value slot this used to spell copied at
+//         # the pull and printed the pre-mutation length.
+//         h.buf.append(7)
+//         print("readonly", len(s))
 void sec_readonly() {
-    // h = ROBag()
     ROBag h = ROBag();
-    // for s in h.twice():
     {
         auto __src_0 = h.twice();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -758,25 +775,19 @@ void sec_readonly() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& s = ::tpy::unwrap_ref(*__r_1);
-        // # Mutating the SOURCE between pulls is visible through the const
-        // # borrow, as in CPython; the value slot this used to spell copied at
-        // # the pull and printed the pre-mutation length.
-        // h.buf.append(7)
         h.buf.push_back(7);
-        // print("readonly", len(s))
         std::cout << "readonly" << " " << ::tpy::__len__(s) << "\n";
         }
     }
-    // # Mutating the SOURCE between pulls is visible through the const
-    // # borrow, as in CPython; the value slot this used to spell copied at
-    // # the pull and printed the pre-mutation length.
 }
 
 // def sec_iterparam() -> None:
+//     a = [Box(1), Box(2)]
+//     for v in relay(boxes(a)):
+//         print("iterparam", v)
+//     print("iterparam-src", a[0].v, a[1].v)
 void sec_iterparam() {
-    // a = [Box(1), Box(2)]
     std::vector<Box> a = {Box(1), Box(2)};
-    // for v in relay(boxes(a)):
     {
         auto __tmp_3 = boxes(a);
         auto __src_0 = relay(__tmp_3);
@@ -785,47 +796,48 @@ void sec_iterparam() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print("iterparam", v)
         std::cout << "iterparam" << " " << v << "\n";
         }
     }
-    // print("iterparam-src", a[0].v, a[1].v)
     std::cout << "iterparam-src" << " " << ::tpy::__getitem__(a, 0).v << " " << ::tpy::__getitem__(a, 1).v << "\n";
 }
 
 // def main() -> None:
+//     sec_freelist()
+//     sec_freerec()
+//     sec_method()
+//     sec_pack()
+//     sec_selffield()
+//     sec_framelocal()
+//     sec_alias()
+//     sec_ternary()
+//     sec_dict()
+//     sec_set()
+//     sec_with()
+//     sec_finally()
+//     sec_readonly()
+//     sec_iterparam()
 void main() {
-    // sec_freelist()
     sec_freelist();
-    // sec_freerec()
     sec_freerec();
-    // sec_method()
     sec_method();
-    // sec_pack()
     sec_pack();
-    // sec_selffield()
     sec_selffield();
-    // sec_framelocal()
     sec_framelocal();
-    // sec_alias()
     sec_alias();
-    // sec_ternary()
     sec_ternary();
-    // sec_dict()
     sec_dict();
-    // sec_set()
     sec_set();
-    // sec_with()
     sec_with();
-    // sec_finally()
     sec_finally();
-    // sec_readonly()
     sec_readonly();
-    // sec_iterparam()
     sec_iterparam();
 }
 
 // def each(self, xs: list[list[int32]]) -> Iterator[list[int32]]:
+//     for s in xs:
+//         yield s  # tpyc: ok
+//         yield s
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Rows_each::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -835,7 +847,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
         continue;
     }
     case S_RESUME_0: {
-        // yield s
         __state = S_RESUME_1;
         return (*s);
     }
@@ -849,7 +860,6 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         s = &(*((*__for_it_0))++);
-        // yield s  # tpyc: ok
         __state = S_RESUME_0;
         return (*s);
     }
@@ -860,15 +870,15 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 
 
 // def field_twice(self) -> Iterator[list[int32]]:
+//     yield self.buf  # tpyc: ok
+//     yield self.buf
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Rows_field_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.buf  # tpyc: ok
         __state = S_RESUME_0;
         return __self.buf;
     }
     case S_RESUME_0: {
-        // yield self.buf
         __state = S_RESUME_1;
         return __self.buf;
     }
@@ -883,15 +893,15 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 
 
 // def twice(self) -> Iterator[readonly[list[int32]]]:
+//     yield self.buf  # tpyc: ok
+//     yield self.buf
 std::expected<::tpy::val_or_ref<const std::vector<int32_t>>, ::tpy::StopIteration> __gen_ROBag_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.buf  # tpyc: ok
         __state = S_RESUME_0;
         return __self.buf;
     }
     case S_RESUME_0: {
-        // yield self.buf
         __state = S_RESUME_1;
         return __self.buf;
     }
@@ -905,12 +915,12 @@ std::expected<::tpy::val_or_ref<const std::vector<int32_t>>, ::tpy::StopIteratio
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

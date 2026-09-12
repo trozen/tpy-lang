@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def bump_all(*items: Box) -> None:  # tpyc: ok
+//     for b in items:
+//         b.val += 1
 void bump_all(::tpy::varargs<Box> items) {
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
-        // b.val += 1
         b.val = ::tpy::add_check<int32_t>(b.val, 1);
     }
 }
 
 // def main() -> None:
+//     a = Box(3)
+//     b = Box(4)
+//     bump_all(a, b)
+//     print(a.val)
+//     print(b.val)
 void main() {
-    // a = Box(3)
     Box a = Box(3);
-    // b = Box(4)
     Box b = Box(4);
-    // bump_all(a, b)
     std::array<Box*, 2> __tmp_1{&a, &b};
     bump_all(::tpy::varargs<Box>(__tmp_1));
-    // print(a.val)
     std::cout << a.val << "\n";
-    // print(b.val)
     std::cout << b.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

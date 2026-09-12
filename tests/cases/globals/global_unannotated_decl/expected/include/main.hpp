@@ -12,8 +12,11 @@ struct P;
 extern int32_t count;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump():
 void bump();
+// def reset():
 void reset();
+// def main():
 void main();
 
 // class P:
@@ -35,17 +38,17 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self):
+//     global count
+//     count += 1
 inline P::P() {
-    // global count
-    // count += 1
     count = ::tpy::add_check<int32_t>(count, 1);
 }
 
 // @staticmethod
 // def boost():
+//     global count
+//     count += 10
 inline void P::boost() {
-    // global count
-    // count += 10
     count = ::tpy::add_check<int32_t>(count, 10);
 }
 void __tpy_init();

@@ -5,70 +5,76 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     vals = [0.0, -0.0, 0.5, 1.5, 2.0, 0.1, -0.25, 100.0, 3.141592653589793, 1e300]
+//     for v in vals:
+//         num, den = v.as_integer_ratio()
+//         print(num, den)
+//
+//     ns: list[int] = [0, 10, -7, 1234567890123456789]
+//     for n in ns:
+//         print(n.as_integer_ratio())
+//
+//     inf = math.inf
+//     try:
+//         inf.as_integer_ratio()
+//     except OverflowError as e:
+//         print("overflow:", e)
+//
+//     nan = math.nan
+//     try:
+//         nan.as_integer_ratio()
+//     except ValueError as e:
+//         print("value:", e)
 void main() {
-    // vals = [0.0, -0.0, 0.5, 1.5, 2.0, 0.1, -0.25, 100.0, 3.141592653589793, 1e300]
     std::array<double, 10> vals = {0.0, -(0.0), 0.5, 1.5, 2.0, 0.1, -(0.25), 100.0, 3.141592653589793, 1e+300};
-    // for v in vals:
     auto& __obj_0 = vals;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         double v = *__beg_0;
-        // num, den = v.as_integer_ratio()
         auto __tup_1 = ::tpy::float_as_integer_ratio(v);
         const ::tpy::BigInt& num = std::get<0>(__tup_1);
         const ::tpy::BigInt& den = std::get<1>(__tup_1);
-        // print(num, den)
         std::cout << num << " " << den << "\n";
     }
-    // ns: list[int] = [0, 10, -7, 1234567890123456789]
     std::vector<::tpy::BigInt> ns = {0, 10, -7, static_cast<int64_t>(1234567890123456789)};
-    // for n in ns:
     auto& __obj_1 = ns;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& n = *__beg_1;
-        // print(n.as_integer_ratio())
         std::cout << ::tpy::TuplePrinter(::tpy::bigint_as_integer_ratio(n)) << "\n";
     }
-    // inf = math.inf
     double inf = ::tpystd::math::inf;
-    // try:
     {
         try {
-            // inf.as_integer_ratio()
             ::tpy::float_as_integer_ratio(inf);
         } catch (const ::tpy::OverflowError& e) {
-            // print("overflow:", e)
             std::cout << "overflow:" << " " << e << "\n";
         }
     }
-    // nan = math.nan
     double nan = ::tpystd::math::nan;
-    // try:
     {
         try {
-            // nan.as_integer_ratio()
             ::tpy::float_as_integer_ratio(nan);
         } catch (const ::tpy::ValueError& e) {
-            // print("value:", e)
             std::cout << "value:" << " " << e << "\n";
         }
     }
 }
 
+// # float.as_integer_ratio() -> exact (numerator, denominator) in lowest terms,
+// # and int.as_integer_ratio() -> (self, 1). Byte-parity with CPython, including
+// # the inexact-binary case (0.1) and huge exponents; inf/nan raise like CPython.
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # float.as_integer_ratio() -> exact (numerator, denominator) in lowest terms,
-    // # and int.as_integer_ratio() -> (self, 1). Byte-parity with CPython, including
-    // # the inexact-binary case (0.1) and huge exponents; inf/nan raise like CPython.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

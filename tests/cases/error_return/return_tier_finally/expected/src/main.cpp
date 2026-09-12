@@ -6,82 +6,87 @@ namespace tpyapp::main {
 
 // @error_return(NotFound)
 // def lookup(key: str) -> int32:
+//     if key == "x":
+//         return 42
+//     raise NotFound
 std::expected<int32_t, NotFound> lookup(std::string_view key) {
-    // if key == "x":
     if ((key == "x")) {
-        // return 42
         return 42;
     }
-    // raise NotFound
     return ::tpy::make_unexpected(NotFound{});
 }
 
 // def main() -> None:
+//     # Success path: finally runs after try+else
+//     try:
+//         v = lookup("x")
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(v)
+//     finally:
+//         print("finally 1")
+//
+//     # Error path: finally runs after except
+//     try:
+//         v2 = lookup("y")
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(v2)
+//     finally:
+//         print("finally 2")
 void main() {
-    // # Success path: finally runs after try+else
-    // try:
     int32_t v;
     {
         try {
-            // v = lookup("x")
             {
                 auto __try_tmp_2 = lookup("x");
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 v = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
             // else:
-            // print(v)
             std::cout << v << "\n";
             goto __after_try_1;
             // except NotFound:
             __except_1:;
-            // print("not found")
             std::cout << "not found" << "\n";
             __after_try_1:;
         } catch (...) {
-            // print("finally 1")
             std::cout << "finally 1" << "\n";
             throw;
         }
-        // print("finally 1")
         std::cout << "finally 1" << "\n";
     }
-    // # Error path: finally runs after except
-    // try:
     int32_t v2;
     {
         try {
-            // v2 = lookup("y")
             {
                 auto __try_tmp_4 = lookup("y");
                 if (!__try_tmp_4.has_value()) goto __except_3;
                 v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
             }
             // else:
-            // print(v2)
             std::cout << v2 << "\n";
             goto __after_try_3;
             // except NotFound:
             __except_3:;
-            // print("not found")
             std::cout << "not found" << "\n";
             __after_try_3:;
         } catch (...) {
-            // print("finally 2")
             std::cout << "finally 2" << "\n";
             throw;
         }
-        // print("finally 2")
         std::cout << "finally 2" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

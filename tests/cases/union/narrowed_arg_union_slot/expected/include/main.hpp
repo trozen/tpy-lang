@@ -33,55 +33,105 @@ struct __gen_gen_total;
 struct __coro_async_total;
 struct __coro_async_main;
 
+// def bump(u: A | B) -> None:
 void bump(::tpy::Union<A*, B*> u);
+// def peek(u: readonly[A | B]) -> int32:
 int32_t peek(::tpy::Union<const A*, const B*> u);
+// def free(v: A | B) -> int32:
 int32_t free(::tpy::Union<A*, B*> v);
+// def comprehension(v: A | B) -> int32:
 int32_t comprehension(::tpy::Union<A*, B*> v);
+// def bump_and_read(u: A | B) -> int32:
 int32_t bump_and_read(::tpy::Union<A*, B*> u);
+// def with_body(v: A | B) -> int32:
 int32_t with_body(::tpy::Union<A*, B*> v);
+// def try_finally(v: A | B) -> int32:
 int32_t try_finally(::tpy::Union<A*, B*> v);
+// def error_body(v: A | B) -> int32:
 std::expected<int32_t, Err> error_body(::tpy::Union<A*, B*> v);
+// def match_arm(v: A | B) -> int32:
 int32_t match_arm(::tpy::Union<A*, B*> v);
+// def match_capture(v: A | B) -> int32:
 int32_t match_capture(::tpy::Union<A*, B*> v);
+// def gen_body(v: A | B) -> Iterator[int32]:
 __gen_gen_body gen_body(::tpy::Union<A*, B*> v);
+// def gen_match(v: A | B) -> Iterator[int32]:
 __gen_gen_match gen_match(::tpy::Union<A*, B*> v);
+// async def async_body(v: A | B) -> int32:
 __coro_async_body async_body(::tpy::Union<A*, B*> v);
+// async def async_match(v: A | B) -> int32:
 __coro_async_match async_match(::tpy::Union<A*, B*> v);
+// def inline(v: A | B) -> int32:
 int32_t inline_(::tpy::Union<A*, B*> v);
+// def walrus(v: A | B) -> int32:
 int32_t walrus(::tpy::Union<A*, B*> v);
+// def readonly_slot(v: A | B) -> int32:
 int32_t readonly_slot(::tpy::Union<const A*, const B*> v);
+// def loop_var(xs: list[A | B]) -> int32:
 int32_t loop_var(const std::vector<::tpy::Union<A, B>>& xs);
+// def ctor_slot(v: A | B) -> int32:
 int32_t ctor_slot(::tpy::Union<A*, B*> v);
+// def str_member(v: A | str) -> int32:
 int32_t str_member(::tpy::Union<const A*, const std::string*> v);
+// def str_total(u: A | str) -> int32:
 int32_t str_total(::tpy::Union<const A*, const std::string*> u);
+// def total(u: A | B) -> int32:
 int32_t total(::tpy::Union<const A*, const B*> u);
+// def const_member(a: A) -> int32:
 int32_t const_member(const A& a);
+// def ctor_call_arg(a: A) -> int32:
 int32_t ctor_call_arg(const A& a);
+// def own_forward(u: Own[A | B]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t own_forward(::tpy::Union<A, B>&& u);
+// def loop_const(xs: list[A | B]) -> int32:
 int32_t loop_const(const std::vector<::tpy::Union<A, B>>& xs);
+// def gen_total(v: A | B) -> Iterator[int32]:
 __gen_gen_total gen_total(::tpy::Union<const A*, const B*> v);
+// async def async_total(v: A | B) -> int32:
 __coro_async_total async_total(::tpy::Union<const A*, const B*> v);
+// def loop_method(xs: list[A | B], r: Reader) -> int32:
 int32_t loop_method(const std::vector<::tpy::Union<A, B>>& xs, Reader& r);
+// def closure_narrow(u: A | B) -> int32:
 int32_t closure_narrow(::tpy::Union<const A*, const B*> u);
+// def closure_forward(u: A | B) -> int32:
 int32_t closure_forward(::tpy::Union<const A*, const B*> u);
+// def wrap_then_mutate(u: A | B) -> int32:
 int32_t wrap_then_mutate(::tpy::Union<A*, B*> u);
+// def forward_union(u: A | B) -> int32:
 int32_t forward_union(::tpy::Union<const A*, const B*> u);
+// def pick_isinstance(v: A | B) -> A | B:
 ::tpy::Union<A*, B*> pick_isinstance(::tpy::Union<A*, B*> v);
+// def pick_match(v: A | B) -> A | B:
 ::tpy::Union<A*, B*> pick_match(::tpy::Union<A*, B*> v);
+// def value_union(v: int32 | float64) -> int32:
 int32_t value_union(const ::tpy::Union<double, int32_t>& v);
+// def value_union_match(v: int32 | float64) -> int32:
 int32_t value_union_match(const ::tpy::Union<double, int32_t>& v);
+// def vu_total(u: int32 | float64) -> int32:
 int32_t vu_total(const ::tpy::Union<double, int32_t>& u);
+// def vu_peek(u: readonly[int32 | float64]) -> int32:
 int32_t vu_peek(const ::tpy::Union<double, int32_t>& u);
+// def value_union_method(v: int32 | float64, box: VuBox) -> int32:
 int32_t value_union_method(const ::tpy::Union<double, int32_t>& v, VuBox& box);
+// def value_union_ctor(v: int32 | float64) -> int32:
 int32_t value_union_ctor(const ::tpy::Union<double, int32_t>& v);
+// def value_union_comp(v: int32 | float64) -> int32:
 int32_t value_union_comp(const ::tpy::Union<double, int32_t>& v);
+// def value_union_readonly(v: int32 | float64) -> int32:
 int32_t value_union_readonly(const ::tpy::Union<double, int32_t>& v);
+// def big_total(u: int | float64) -> int:
 ::tpy::BigInt big_total(const ::tpy::Union<double, ::tpy::BigInt>& u);
+// def value_union_big(v: int | float64) -> int:
 ::tpy::BigInt value_union_big(const ::tpy::Union<double, ::tpy::BigInt>& v);
+// def pt_total(u: Pt | float64) -> int32:
 int32_t pt_total(const ::tpy::Union<Pt, double>& u);
+// def value_union_record(v: Pt | float64) -> int32:
 int32_t value_union_record(const ::tpy::Union<Pt, double>& v);
+// def assign_narrowed() -> int32:
 int32_t assign_narrowed();
+// async def async_main() -> None:
 __coro_async_main async_main();
+// def main() -> None:
 void main();
 
 // class A:
@@ -281,7 +331,7 @@ template<> struct tpy::is_value_type<::tpyapp::main::Pt> : std::true_type {};
 namespace tpyapp::main {
 
 
-// Async coroutine: async_body
+// async def async_body(v: A | B) -> int32:
 struct __coro_async_body {
     int32_t __state;
     bool __cancel_pending;
@@ -305,7 +355,7 @@ struct __coro_async_body {
     }
 };
 
-// Async coroutine: async_match
+// async def async_match(v: A | B) -> int32:
 struct __coro_async_match {
     int32_t __state;
     bool __cancel_pending;
@@ -329,7 +379,7 @@ struct __coro_async_match {
     }
 };
 
-// Async coroutine: async_total
+// async def async_total(v: A | B) -> int32:
 struct __coro_async_total {
     int32_t __state;
     bool __cancel_pending;
@@ -353,7 +403,7 @@ struct __coro_async_total {
     }
 };
 
-// Async coroutine: async_main
+// async def async_main() -> None:
 struct __coro_async_main {
     int32_t __state;
     bool __cancel_pending;
@@ -386,7 +436,7 @@ struct __coro_async_main {
     }
 };
 
-// Generator: gen_body
+// def gen_body(v: A | B) -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     int32_t __state;
     ::tpy::Union<A*, B*> v;
@@ -410,7 +460,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     }
 };
 
-// Generator: gen_match
+// def gen_match(v: A | B) -> Iterator[int32]:
 struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, int32_t> {
     int32_t __state;
     ::tpy::Union<A*, B*> v;
@@ -435,7 +485,7 @@ struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, int32_t>
     }
 };
 
-// Generator: gen_total
+// def gen_total(v: A | B) -> Iterator[int32]:
 struct __gen_gen_total : public ::tpy::next_iter_mixin<__gen_gen_total, int32_t> {
     int32_t __state;
     ::tpy::Union<const A*, const B*> v;
@@ -460,41 +510,45 @@ struct __gen_gen_total : public ::tpy::next_iter_mixin<__gen_gen_total, int32_t>
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline A::A(int32_t n) : n(n) {}
 
 // def __init__(self, m: int32) -> None:
+//     self.m = m
 inline B::B(int32_t m) : m(m) {}
 
 // def __init__(self, u: A | B) -> None:
+//     self.k = 0
+//     if isinstance(u, A):
+//         self.k = u.n
+//     bump(u)
 inline Sink::Sink(::tpy::Union<A*, B*> u) : k(0) {
-    // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
-        // self.k = u.n
         this->k = __u.n;
     }
-    // bump(u)
     bump(u);
 }
 
 // def __enter__(self) -> "Guard":
+//     return self
 inline Guard& Guard::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 
 // def __init__(self, v: A | B) -> None:
+//     self.hits = 0
+//     # constructor body
+//     if isinstance(v, A):
+//         bump(v)  # tpyc: ok
 inline Relay::Relay(::tpy::Union<A*, B*> v) : hits(0) {
-    // # constructor body
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__v)});
     }
 }
@@ -502,64 +556,69 @@ inline Relay::Relay(::tpy::Union<A*, B*> v) : hits(0) {
 // # method body (the method mutates self, so its union param is not
 // # inferred deep-const)
 // def go(self, v: A | B) -> int32:
+//     self.hits = self.hits + 1
+//     if isinstance(v, A):
+//         bump(v)  # tpyc: ok
+//         return v.n
+//     return -1
 inline int32_t Relay::go(::tpy::Union<A*, B*> v) {
-    // self.hits = self.hits + 1
     this->hits = (::tpy::add_check<int32_t>(this->hits, 1));
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__v)});
-        // return v.n
         return __v.n;
     }
     auto& __v = *std::get<B*>(v);
-    // return -1
     return -1;
 }
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Reader::Reader(int32_t base) : base(base) {}
 
 // # method body: the method mutates nothing, so its narrowed subject binds
 // # `const A&` and its own union param is deep-const too
 // def read(self, v: A | B) -> int32:
+//     if isinstance(v, A):
+//         return self.base + total(v)  # tpyc: ok
+//     return -1
 inline int32_t Reader::read(::tpy::Union<const A*, const B*> v) const {
-    // if isinstance(v, A):
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        // return self.base + total(v)  # tpyc: ok
         return (::tpy::add_check<int32_t>(this->base, total(::tpy::Union<const A*, const B*>{&(__v)})));
     }
     auto& __v = *std::get<const B*>(v);
-    // return -1
     return -1;
 }
 
 // # constructor parameter, forwarded to a second deep-const slot
 // def __init__(self, u: A | B) -> None:
+//     self.k = total(u)  # tpyc: ok
 inline Tally::Tally(::tpy::Union<const A*, const B*> u) : k(total(u)) {}
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline VuBox::VuBox(int32_t base) : base(base) {}
 
 // def go(self, u: int32 | float64) -> int32:
+//     if isinstance(u, int32):
+//         return self.base + u
+//     return -2
 inline int32_t VuBox::go(const ::tpy::Union<double, int32_t>& u) const {
-    // if isinstance(u, int32):
     if (std::holds_alternative<int32_t>(u)) {
         const auto& __u = std::get<int32_t>(u);
-        // return self.base + u
         return (::tpy::add_check<int32_t>(this->base, __u));
     }
     const auto& __u = std::get<double>(u);
-    // return -2
     return -2;
 }
 
 // def __init__(self, u: int32 | float64) -> None:
+//     self.k = vu_total(u)
 inline VuSink::VuSink(const ::tpy::Union<double, int32_t>& u) : k(vu_total(u)) {}
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Pt::Pt(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

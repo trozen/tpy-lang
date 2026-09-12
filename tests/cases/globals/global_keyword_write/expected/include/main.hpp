@@ -10,6 +10,7 @@ namespace tpyapp::main {
 extern ::tpy::BigInt x;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def increment() -> None:
 void increment();
 
 void __tpy_init();

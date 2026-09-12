@@ -6,27 +6,28 @@ namespace tpyapp::main {
 
 // @trace
 // def add(a: int32, b: int32) -> int32:  # tpyc: warning(/function macro saw add\(a, b\) -> int32/)
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main() -> None:
+//     print(add(2, 3))
 void main() {
-    // print(add(2, 3))
     std::cout << add(2, 3) << "\n";
 }
 
+// # A @function_macro runs at compile time on the decorated function: it reads
+// # the function's params / return / body and emits a diagnostic. The function
+// # still compiles and runs normally (the macro decorator is stripped).
+// from tracemod import trace
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @function_macro runs at compile time on the decorated function: it reads
-    // # the function's params / return / body and emits a diagnostic. The function
-    // # still compiles and runs normally (the macro decorator is stripped).
-    // from tracemod import trace
-    // main()
     main();
 }
 

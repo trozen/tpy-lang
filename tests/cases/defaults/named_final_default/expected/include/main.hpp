@@ -10,10 +10,14 @@ namespace tpyapp::main {
 struct Engine;
 
 inline constexpr std::string_view __name__ = "__main__";
+// NOFLAG: Final[uint32] = uint32(0)
 inline constexpr uint32_t NOFLAG = 0;
+// DEFAULT_LIMIT: Final[int32] = 16
 inline constexpr int32_t DEFAULT_LIMIT = 16;
 
+// def fn(flags: uint32 = NOFLAG, limit: int32 = DEFAULT_LIMIT) -> int32:
 int32_t fn(uint32_t flags = NOFLAG, int32_t limit = DEFAULT_LIMIT);
+// def main() -> None:
 void main();
 
 // class Engine:
@@ -32,8 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Engine& obj) {
 
 
 // def run(self, flags: uint32 = NOFLAG, limit: int32 = DEFAULT_LIMIT) -> int32:
+//     return limit + int32(flags)
 inline int32_t Engine::run(uint32_t flags, int32_t limit) const {
-    // return limit + int32(flags)
     return (::tpy::add_check<int32_t>(limit, ::tpy::int_cast_check<int32_t>(flags)));
 }
 void __tpy_init();

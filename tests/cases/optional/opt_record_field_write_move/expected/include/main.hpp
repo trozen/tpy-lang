@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -67,31 +68,33 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Inner::Inner(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.opt = None
 inline Holder::Holder() : opt(std::nullopt) {}
 
 // def set_name(self, p: Own[Inner]) -> None:
+//     self.opt = p
 inline void Holder::set_name(Inner&& p) {
-    // self.opt = p
     this->opt = std::move(p);
 }
 
 // def set_rvalue(self, v: int32) -> None:
+//     self.opt = Inner(v)
 inline void Holder::set_rvalue(int32_t v) {
-    // self.opt = Inner(v)
     this->opt = Inner(v);
 }
 
 // def get(self) -> int32:
+//     if self.opt is not None:
+//         return self.opt.v
+//     return -1
 inline int32_t Holder::get() const {
-    // if self.opt is not None:
     if ((this->opt.has_value())) {
-        // return self.opt.v
         return (*this->opt).v;
     }
-    // return -1
     return -1;
 }
 void __tpy_init();

@@ -6,33 +6,36 @@ namespace tpyapp::main {
 
 // # Inline list literals passed directly to builtin functions with protocol params
 // def main() -> None:
+//     # all/any
+//     print(all([True, True, True]))
+//     print(all([True, False, True]))
+//     print(any([False, False, False]))
+//     print(any([False, True, False]))
+//
+//     # sum
+//     print(sum([1, 2, 3, 4]))
+//
+//     # sorted
+//     print(sorted([3, 1, 4, 1, 5]))
+//
+//     # str.join with inline literal
+//     print(",".join(["a", "b", "c"]))
 void main() {
-    // # all/any
-    // print(all([True, True, True]))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(std::array<bool, 3>{true, true, true})) << "\n";
-    // print(all([True, False, True]))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(std::array<bool, 3>{true, false, true})) << "\n";
-    // print(any([False, False, False]))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(std::array<bool, 3>{false, false, false})) << "\n";
-    // print(any([False, True, False]))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(std::array<bool, 3>{false, true, false})) << "\n";
-    // # sum
-    // print(sum([1, 2, 3, 4]))
     std::cout << ::tpy::builtin_sum<int32_t>(std::array<int32_t, 4>{1, 2, 3, 4}) << "\n";
-    // # sorted
-    // print(sorted([3, 1, 4, 1, 5]))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::array<int32_t, 5>{3, 1, 4, 1, 5})) << "\n";
-    // # str.join with inline literal
-    // print(",".join(["a", "b", "c"]))
     std::cout << ::tpy::str_join(",", std::array<std::string, 3>{"a", "b", "c"}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -8,7 +8,9 @@
 namespace tpyapp::consts {
 
 inline constexpr std::string_view __name__ = "consts";
+// NOFLAG: Final[uint32] = uint32(0)
 inline constexpr uint32_t NOFLAG = 0;
+// CASELESS: Final[uint32] = uint32(8)
 inline constexpr uint32_t CASELESS = 8;
 
 void __tpy_init();

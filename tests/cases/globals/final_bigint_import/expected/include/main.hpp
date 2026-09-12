@@ -12,6 +12,7 @@ inline auto& BIG_VALUE = ::tpyapp::constants::BIG_VALUE;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

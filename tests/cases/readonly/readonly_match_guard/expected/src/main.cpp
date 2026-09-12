@@ -6,34 +6,34 @@ namespace tpyapp::main {
 
 // @readonly
 // def describe(pet: Dog | Cat) -> str:
+//     match pet:
+//         case Dog(name=n) if len(n) > 3:
+//             return "long-named dog: " + n
+//         case Dog(name=n):
+//             return "dog: " + n
+//         case Cat(name=n):
+//             return "cat: " + n
 std::string describe(::tpy::Union<const Cat*, const Dog*> pet) {
-    // match pet:
     auto& __match_subject_1 = pet;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // case Cat(name=n):
         auto& n = __case_0.name;
-        // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
         goto __match_end_2;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Dog(name=n) if len(n) > 3:
         {
             auto& n = __case_1.name;
             if ((::tpy::__len__(n) > 3)) {
-                // return "long-named dog: " + n
                 return (::tpy::str_concat("long-named dog: ", n));
                 goto __match_end_2;
             }
         }
-        // case Dog(name=n):
         {
             auto& n = __case_1.name;
-            // return "dog: " + n
             return (::tpy::str_concat("dog: ", n));
             goto __match_end_2;
         }
@@ -45,24 +45,24 @@ __match_end_2:;
 }
 
 // def main() -> None:
+//     print(describe(Dog("Buddy")))
+//     print(describe(Dog("Rex")))
+//     print(describe(Cat("Whiskers")))
 void main() {
-    // print(describe(Dog("Buddy")))
     Dog __tmp_1 = Dog("Buddy");
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
-    // print(describe(Dog("Rex")))
     Dog __tmp_2 = Dog("Rex");
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
-    // print(describe(Cat("Whiskers")))
     Cat __tmp_3 = Cat("Whiskers");
     std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

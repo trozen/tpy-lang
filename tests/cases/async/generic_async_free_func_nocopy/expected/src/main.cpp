@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     box = Box(int32(99))
+//     result = await unwrap(box)  # tpyc: type(int32)
+//     print(result)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // box = Box(int32(99))
         box.emplace(::tpystd::tplib::box::Box<int32_t>(99));
-        // result = await unwrap(box)  # tpyc: type(int32)
         __sub_0.emplace((*box));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +21,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         result = std::move(__r0).value();
         __sub_0.reset();
-        // print(result)
         std::cout << result << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,26 +37,28 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Generic async free function over a non-value type (Box[T] is @nocopy):
+// # the coro struct must use `val_or_ref_t<T>` for fields and
+// # `param_val_or_ref_t<T>` for ctor params so non-value Ts pass and
+// # store by reference without triggering the deleted copy. Mirrors the
+// # task_generic_param_nocopy precedent on the sync side.
+// import asyncio
+//
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Generic async free function over a non-value type (Box[T] is @nocopy):
-    // # the coro struct must use `val_or_ref_t<T>` for fields and
-    // # `param_val_or_ref_t<T>` for ctor params so non-value Ts pass and
-    // # store by reference without triggering the deleted copy. Mirrors the
-    // # task_generic_param_nocopy precedent on the sync side.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def takes_string(s: String) -> None:
+//     print(s)
 void takes_string(const ::tpy::String& s) {
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_string_param() -> None:
+//     s = "hello"  # tpyc: type(str)
+//     takes_string(s)
+//     print(s)
 void test_string_param() {
-    // s = "hello"  # tpyc: type(str)
     std::string s = "hello";
-    // takes_string(s)
     takes_string(s);
-    // print(s)
     std::cout << s << "\n";
 }
 
+// test_string_param()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_string_param()
     test_string_param();
 }
 

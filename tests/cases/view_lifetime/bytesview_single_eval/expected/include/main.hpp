@@ -12,11 +12,17 @@ struct Holder;
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> bytes:
 ::tpy::Bytes make();
+// def single_eval_into_list() -> None:
 void single_eval_into_list();
+// def single_eval_into_field() -> None:
 void single_eval_into_field();
+// def single_eval_into_bytearray() -> None:
 void single_eval_into_bytearray();
+// def single_eval_into_any() -> None:
 void single_eval_into_any();
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -44,17 +50,19 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self):
+//     self.b = b""
+//     self.s = ""
 inline Holder::Holder() : b(::tpy::Bytes{}), s("") {}
 
 // def set_bytes(self, x: bytes) -> None:
+//     self.b = x[1:3]
 inline void Holder::set_bytes(::tpy::BytesView x) {
-    // self.b = x[1:3]
     this->b = ::tpy::Bytes(::tpy::bytes_slice(x, ::tpy::BasicSlice{1, 3}));
 }
 
 // def set_str(self, x: str) -> None:
+//     self.s = x[1:3]
 inline void Holder::set_str(std::string_view x) {
-    // self.s = x[1:3]
     this->s = std::string(::tpy::str_slice(x, ::tpy::BasicSlice{1, 3}));
 }
 void __tpy_init();

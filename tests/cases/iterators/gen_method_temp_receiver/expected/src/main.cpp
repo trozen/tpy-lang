@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def clobber() -> int:
+//     x = 0
+//     for i in range(50):
+//         x = x + i * 7
+//     return x
 ::tpy::BigInt clobber() {
-    // x = 0
     int32_t x = 0;
-    // for i in range(50):
     for (int32_t i = 0; i < 50; ++i) {
-        // x = x + i * 7
         x = (::tpy::add_check<int32_t>(x, (::tpy::mul_check<int32_t>(i, 7))));
     }
-    // return x
     return ::tpy::BigInt(x);
 }
 
 // def main() -> None:
+//     it = Box(11, 22, 33).vals()
+//     print(clobber())
+//     for v in it:
+//         print(v)
 void main() {
-    // it = Box(11, 22, 33).vals()
     Box __tmp_1 = Box(::tpy::BigInt(11), ::tpy::BigInt(22), ::tpy::BigInt(33));
     auto it = __tmp_1.vals();
-    // print(clobber())
     std::cout << clobber() << "\n";
-    // for v in it:
     auto& __src_0 = it;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
 // def vals(self) -> Iterator[int]:
+//     yield self.a
+//     yield self.b
+//     yield self.c
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Box_vals::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.a
         __state = S_RESUME_0;
         return __self.a;
     }
     case S_RESUME_0: {
-        // yield self.b
         __state = S_RESUME_1;
         return __self.b;
     }
     case S_RESUME_1: {
-        // yield self.c
         __state = S_RESUME_2;
         return __self.c;
     }
@@ -64,12 +64,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Box_vals::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

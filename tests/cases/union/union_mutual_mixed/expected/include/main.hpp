@@ -16,7 +16,9 @@ struct Neg;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(v: Value) -> str:
 std::string show(const Value& v);
+// def main() -> None:
 void main();
 
 // class Neg:

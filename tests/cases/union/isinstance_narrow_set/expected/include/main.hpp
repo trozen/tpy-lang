@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(x: int | set[int]) -> None:
 void f(::tpy::Union<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> x);
+// def main() -> None:
 void main();
 
 void __tpy_init();

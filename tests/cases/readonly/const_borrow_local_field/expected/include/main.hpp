@@ -12,7 +12,9 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_only(o: Outer) -> int:   # o inferred `const Outer&`; free-function param face
 ::tpy::BigInt read_only(const Outer& o);
+// def main() -> None:
 void main();
 
 // # A reference-type borrow-local from a field/container-field read off an inferred-const
@@ -62,32 +64,35 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Inner::Inner(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, x: int) -> None:
+//     self.inner = Inner(x)
+//     self.tags = []
 inline Outer::Outer(const ::tpy::BigInt& x) : inner(Inner(x)), tags(std::vector<::tpy::BigInt>{}) {}
 
 // def peek_x(self) -> int:      # inferred const receiver; plain field borrow-local
+//     r = self.inner
+//     return r.x
 inline ::tpy::BigInt Outer::peek_x() const {
-    // r = self.inner
     const Inner& r = this->inner;
-    // return r.x
     return r.x;
 }
 
 // def tag_count(self) -> int:   # inferred const receiver; container-field borrow-local
+//     xs = self.tags
+//     return len(xs)
 inline ::tpy::BigInt Outer::tag_count() const {
-    // xs = self.tags
     const std::vector<::tpy::BigInt>& xs = this->tags;
-    // return len(xs)
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
 // def bump(self) -> None:       # inverse: mutates via the borrow-local -> non-const receiver
+//     r = self.inner
+//     r.x += 1
 inline void Outer::bump() {
-    // r = self.inner
     Inner& r = this->inner;
-    // r.x += 1
     r.x = (r.x) + (::tpy::BigInt(1));
 }
 void __tpy_init();

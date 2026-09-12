@@ -5,17 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(prog="prog")
+//     sub = parser.add_subparsers(dest="cmd")
+//     a = sub.add_parser("a")
+//     a.add_argument("--x")
+//
+//     args = parser.parse_args([])
+//     # cmd defaults to None under both backends when required=False
+//     # and no sub-parser was chosen. Per-sub fields aren't read here:
+//     # under CPython argparse they don't exist on the Namespace at all
+//     # when no sub matched, while TPy stores them as None.
+//     print("cmd is None: " + str(args.cmd is None))
+//     return 0
 int32_t main() {
-    // args = parser.parse_args([])
     std::vector<std::string> __tmp_1 = std::vector<std::string>{};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // # cmd defaults to None under both backends when required=False
-    // # and no sub-parser was chosen. Per-sub fields aren't read here:
-    // # under CPython argparse they don't exist on the Namespace at all
-    // # when no sub matched, while TPy stores them as None.
-    // print("cmd is None: " + str(args.cmd is None))
     std::cout << (::tpy::str_concat("cmd is None: ", std::string(::tpy::bool_to_str((!args.cmd.has_value()))))) << "\n";
-    // return 0
     return 0;
 }
 
@@ -81,14 +86,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(__tpy_argparse_cmd, __tpy_argparse_flat_x);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

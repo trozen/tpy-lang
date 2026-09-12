@@ -18,7 +18,9 @@ struct __coro_main_coro;
 struct __coro_Counter___aenter__;
 struct __coro_Counter___aexit__;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -40,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: Counter.__aenter__
+// async def __aenter__(self) -> int32:
 struct __coro_Counter___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -66,7 +68,8 @@ inline __coro_Counter___aenter__ Counter::__aenter__() {
     return __coro_Counter___aenter__(*this);
 }
 
-// Async coroutine: Counter.__aexit__
+// async def __aexit__(self, exc_type: None, exc_val: None,
+//                     exc_tb: None) -> None:
 struct __coro_Counter___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -95,7 +98,7 @@ inline __coro_Counter___aexit__ Counter::__aexit__(std::monostate exc_type, std:
     return __coro_Counter___aexit__(*this, exc_type, exc_val, exc_tb);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -138,6 +141,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.opens = 0
 inline Counter::Counter() : opens(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

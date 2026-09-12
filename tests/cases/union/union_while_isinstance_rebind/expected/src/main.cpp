@@ -5,138 +5,138 @@ namespace tpyapp::main {
 
 
 // def drain(seed: Own[list[int]]) -> int:
+//     # entry-narrowed to A, then rebound off A in the body -> must exit.
+//     t: A | B = A(seed)
+//     total = 0
+//     while isinstance(t, A):
+//         total += len(t.items)
+//         t = B("done")
+//     return total
 ::tpy::BigInt drain(std::vector<::tpy::BigInt>&& seed) {
     std::optional<::tpy::Union<A, B>> __slot_2;
-    // # entry-narrowed to A, then rebound off A in the body -> must exit.
-    // t: A | B = A(seed)
     ::tpy::Union<A, B> __slot_1 = A(std::move(seed));
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
-    // total = 0
     int32_t total = 0;
-    // while isinstance(t, A):
     while (std::holds_alternative<A*>(t)) {
         auto& __t = *std::get<A*>(t);
-        // total += len(t.items)
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__(__t.items));
-        // t = B("done")
         __slot_2.emplace(B("done"));
         t = ::tpy::to_ptr_variant(*__slot_2);
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 
 // def invariant(seed: Own[list[int]]) -> int:
+//     # entry-narrowed to A, never rebound -> fold stays valid; break exits.
+//     t: A | B = A(seed)
+//     n = 0
+//     while isinstance(t, A):
+//         n += len(t.items)
+//         break
+//     return n
 ::tpy::BigInt invariant(std::vector<::tpy::BigInt>&& seed) {
-    // # entry-narrowed to A, never rebound -> fold stays valid; break exits.
-    // t: A | B = A(seed)
     ::tpy::Union<A, B> __slot_1 = A(std::move(seed));
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
-    // n = 0
     int32_t n = 0;
-    // while isinstance(t, A):
     while (true) {
         auto& __t = *std::get<A*>(t);
-        // n += len(t.items)
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(__t.items));
-        // break
         break;
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def compound(seed: Own[list[int]], flag: bool) -> int:
+//     # isinstance under `and`, subject rebound -> the nested fold must drop too.
+//     t: A | B = A(seed)
+//     total = 0
+//     while isinstance(t, A) and flag:
+//         total += len(t.items)
+//         t = B("x")
+//     return total
 ::tpy::BigInt compound(std::vector<::tpy::BigInt>&& seed, bool flag) {
     std::optional<::tpy::Union<A, B>> __slot_2;
-    // # isinstance under `and`, subject rebound -> the nested fold must drop too.
-    // t: A | B = A(seed)
     ::tpy::Union<A, B> __slot_1 = A(std::move(seed));
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
-    // total = 0
     int32_t total = 0;
-    // while isinstance(t, A) and flag:
     while ((std::holds_alternative<A*>(t) && flag)) {
         auto& __t = *std::get<A*>(t);
-        // total += len(t.items)
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__(__t.items));
-        // t = B("x")
         __slot_2.emplace(B("x"));
         t = ::tpy::to_ptr_variant(*__slot_2);
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 
 // def or_rebind() -> int:
+//     # isinstance under `or`, subject rebound -> the `||` arm's fold must drop.
+//     t: A | B = A([1])
+//     keep = True
+//     n = 0
+//     while isinstance(t, A) or keep:
+//         n += 1
+//         t = B("x")
+//         keep = False
+//     return n
 ::tpy::BigInt or_rebind() {
     std::optional<::tpy::Union<A, B>> __slot_2;
-    // # isinstance under `or`, subject rebound -> the `||` arm's fold must drop.
-    // t: A | B = A([1])
     ::tpy::Union<A, B> __slot_1 = A({1});
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
-    // keep = True
     bool keep = true;
-    // n = 0
     int32_t n = 0;
-    // while isinstance(t, A) or keep:
     while ((std::holds_alternative<A*>(t) || keep)) {
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
-        // t = B("x")
         __slot_2.emplace(B("x"));
         t = ::tpy::to_ptr_variant(*__slot_2);
-        // keep = False
         keep = false;
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def not_rebind() -> int:
+//     # isinstance under `not`, subject rebound -> the `!` operand's fold must drop.
+//     t: A | B = A([1, 2])
+//     n = 0
+//     while not isinstance(t, B):
+//         n += 1
+//         t = B("x")
+//     return n
 ::tpy::BigInt not_rebind() {
     std::optional<::tpy::Union<A, B>> __slot_2;
-    // # isinstance under `not`, subject rebound -> the `!` operand's fold must drop.
-    // t: A | B = A([1, 2])
     ::tpy::Union<A, B> __slot_1 = A({1, 2});
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
-    // n = 0
     int32_t n = 0;
-    // while not isinstance(t, B):
     while ((!(std::holds_alternative<B*>(t)))) {
         auto& __t = *std::get<A*>(t);
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
-        // t = B("x")
         __slot_2.emplace(B("x"));
         t = ::tpy::to_ptr_variant(*__slot_2);
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def main() -> None:
+//     print(drain([1, 2, 3]))
+//     print(invariant([7, 8]))
+//     print(compound([4, 5], True))
+//     print(compound([4, 5], False))
+//     print(or_rebind())
+//     print(not_rebind())
 void main() {
-    // print(drain([1, 2, 3]))
     std::cout << drain({1, 2, 3}) << "\n";
-    // print(invariant([7, 8]))
     std::cout << invariant({7, 8}) << "\n";
-    // print(compound([4, 5], True))
     std::cout << compound({4, 5}, true) << "\n";
-    // print(compound([4, 5], False))
     std::cout << compound({4, 5}, false) << "\n";
-    // print(or_rebind())
     std::cout << or_rebind() << "\n";
-    // print(not_rebind())
     std::cout << not_rebind() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

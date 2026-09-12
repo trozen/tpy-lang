@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def log(x: float, base: float) -> float:  # tpyc: ok
 double log(double x, double base);
+// def main() -> None:
 void main();
 
 void __tpy_init();

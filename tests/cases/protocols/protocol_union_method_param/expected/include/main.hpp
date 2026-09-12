@@ -25,6 +25,7 @@ struct Walker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Processor:
@@ -36,16 +37,16 @@ struct Processor {
     Processor();
 
     // def process(self, items: Measurable | Walkable) -> None:
+    //     if isinstance(items, Measurable):
+    //         self.count = items.measure()
+    //     elif isinstance(items, Walkable):
+    //         self.count = items.walk()
     template<typename T_items>
   requires (Measurable<T_items> || Walkable<T_items>)
     void process(T_items& items) {
-        // if isinstance(items, Measurable):
         if constexpr (Measurable<T_items>) {
-            // self.count = items.measure()
             this->count = items.measure();
-        // elif isinstance(items, Walkable):
         } else if constexpr (Walkable<T_items>) {
-            // self.count = items.walk()
             this->count = items.walk();
         }
     }
@@ -87,17 +88,18 @@ inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
 
 
 // def __init__(self) -> None:
+//     self.count = 0
 inline Processor::Processor() : count(::tpy::BigInt(0)) {}
 
 // def measure(self) -> int:
+//     return 5
 inline ::tpy::BigInt Ruler::measure() const {
-    // return 5
     return ::tpy::BigInt(5);
 }
 
 // def walk(self) -> int:
+//     return 99
 inline ::tpy::BigInt Walker::walk() const {
-    // return 99
     return ::tpy::BigInt(99);
 }
 void __tpy_init();

@@ -12,8 +12,10 @@ template<typename T> struct Owned;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def grab[T](src: list[T]) -> Own[Owned[T]]:
 template<typename T>
 Owned<T> grab(const std::vector<T>& src);
+// def main() -> None:
 void main();
 
 // class R:
@@ -39,6 +41,7 @@ struct Owned {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
+    //     self.v = v
     Owned() = default;
     explicit Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owned";
@@ -52,13 +55,14 @@ inline std::ostream& operator<<(std::ostream& os, const Owned<T>& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline R::R(const ::tpy::BigInt& n) : n(n) {}
 // def grab[T](src: list[T]) -> Own[Owned[T]]:
+//     o = Owned(copy(src[0]))  # tpyc: type(/Owned\[T\]/)
+//     return o
 template<typename T>
 Owned<T> grab(const std::vector<T>& src) {
-    // o = Owned(copy(src[0]))  # tpyc: type(/Owned\[T\]/)
     Owned<T> o = Owned<T>(T(::tpy::__getitem__(src, 0)));
-    // return o
     return o;
 }
 

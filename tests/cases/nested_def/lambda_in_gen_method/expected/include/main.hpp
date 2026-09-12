@@ -21,18 +21,27 @@ struct __gen_ref_capture;
 struct __gen_own_capture;
 struct __gen_D_emit;
 
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v);
+// def apply_fn(f: Fn[[int32], int32], v: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 int32_t apply_fn(__F0&& f, int32_t v);
+// def push(ys: list[int32], v: int32) -> int32:
 int32_t push(std::vector<int32_t>& ys, int32_t v);
+// def two_yield(n: int32) -> Iterator[int32]:
 __gen_two_yield two_yield(int32_t n);
+// def store(n: int32, r: Registry) -> Iterator[int32]:
 __gen_store store(int32_t n, Registry& r);
+// def cell() -> Iterator[int32]:
 __gen_cell cell();
+// def ref_capture(xs: list[int32]) -> Iterator[int32]:
 __gen_ref_capture ref_capture(std::vector<int32_t>& xs);
+// def own_capture(p: Own[Pt]) -> Iterator[int32]:
 __gen_own_capture own_capture(Pt p);
+// def main() -> None:
 void main();
 
 // class Pt(ValueType):
@@ -84,6 +93,8 @@ struct C {
     C();
 
     // def emit(self, k: int32) -> Iterator[int32]:
+    //     for i in range(k):
+    //         yield apply(lambda x: x + self.n, i)  # tpyc: ok
     auto emit(int32_t k) const {
         return ::tpy::make_generator<int32_t>(
             [this, k, __i = int32_t(0), __stop = static_cast<int32_t>(k)]() mutable -> std::optional<int32_t> {
@@ -121,7 +132,7 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
     return os;
 }
 
-// Generator: two_yield
+// def two_yield(n: int32) -> Iterator[int32]:
 struct __gen_two_yield : public ::tpy::next_iter_mixin<__gen_two_yield, int32_t> {
     int32_t __state;
     int32_t n;
@@ -144,7 +155,7 @@ struct __gen_two_yield : public ::tpy::next_iter_mixin<__gen_two_yield, int32_t>
     }
 };
 
-// Generator: store
+// def store(n: int32, r: Registry) -> Iterator[int32]:
 struct __gen_store : public ::tpy::next_iter_mixin<__gen_store, int32_t> {
     int32_t __state;
     int32_t n;
@@ -168,7 +179,7 @@ struct __gen_store : public ::tpy::next_iter_mixin<__gen_store, int32_t> {
     }
 };
 
-// Generator: cell
+// def cell() -> Iterator[int32]:
 struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
     int32_t __state;
     int32_t step;
@@ -192,7 +203,7 @@ struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
     }
 };
 
-// Generator: ref_capture
+// def ref_capture(xs: list[int32]) -> Iterator[int32]:
 struct __gen_ref_capture : public ::tpy::next_iter_mixin<__gen_ref_capture, int32_t> {
     int32_t __state;
     std::vector<int32_t>& xs;
@@ -215,7 +226,7 @@ struct __gen_ref_capture : public ::tpy::next_iter_mixin<__gen_ref_capture, int3
     }
 };
 
-// Generator: own_capture
+// def own_capture(p: Own[Pt]) -> Iterator[int32]:
 struct __gen_own_capture : public ::tpy::next_iter_mixin<__gen_own_capture, int32_t> {
     int32_t __state;
     Pt p;
@@ -238,7 +249,7 @@ struct __gen_own_capture : public ::tpy::next_iter_mixin<__gen_own_capture, int3
     }
 };
 
-// Generator: D.emit
+// def emit(self) -> Iterator[int32]:
 struct __gen_D_emit : public ::tpy::next_iter_mixin<__gen_D_emit, int32_t> {
     int32_t __state;
     D& __self;
@@ -267,29 +278,33 @@ inline __gen_D_emit D::emit() {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Pt::Pt(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.cb = lambda x: x
 inline Registry::Registry() : cb([](int32_t x) -> int32_t { return x; }) {}
 
 // def register(self, f: Callable[[int32], int32]) -> None:
+//     self.cb = f
 inline void Registry::register_(const std::function<int32_t(int32_t)>& f) {
-    // self.cb = f
     this->cb = f;
 }
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline C::C() : n(10) {}
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline D::D() : n(10) {}
 // def apply_fn(f: Fn[[int32], int32], v: int32) -> int32:
+//     return f(v)
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 int32_t apply_fn(__F0&& f, int32_t v) {
-    // return f(v)
     return f(v);
 }
 

@@ -17,9 +17,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_amain;
 
+// async def amain() -> None:
 __coro_amain amain();
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;

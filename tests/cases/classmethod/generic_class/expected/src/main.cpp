@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n = Box.of(7)
+//     s = Box.of("hi")
+//     print(n.v, s.v)
 void main() {
-    // n = Box.of(7)
     Box<int32_t> n = Box<int32_t>::of(7);
-    // s = Box.of("hi")
     Box<std::string> s = Box<std::string>::of("hi");
-    // print(n.v, s.v)
     std::cout << n.v << " " << s.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

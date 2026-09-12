@@ -13,8 +13,15 @@ struct __tpy_builder_argparse_args_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
+// args = parser.parse_args(
+//     ["--include", "core", "--include", "extra",
+//      "--paths", "a", "b", "c"])
 void __tpy_builder_argparse_help_1();
+// args = parser.parse_args(
+//     ["--include", "core", "--include", "extra",
+//      "--paths", "a", "b", "c"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
 
 // class Tag:
@@ -41,15 +48,15 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 }
 
 // args = parser.parse_args(
-// ["--include", "core", "--include", "extra",
-// "--paths", "a", "b", "c"])
+//     ["--include", "core", "--include", "extra",
+//      "--paths", "a", "b", "c"])
 struct __tpy_builder_argparse_args_1 {
     std::optional<std::vector<Tag>> include;
     std::optional<std::vector<Tag>> paths;
 
     // args = parser.parse_args(
-    // ["--include", "core", "--include", "extra",
-    // "--paths", "a", "b", "c"])
+    //     ["--include", "core", "--include", "extra",
+    //      "--paths", "a", "b", "c"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::optional<std::vector<Tag>>&& include, std::optional<std::vector<Tag>>&& paths);
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";
@@ -62,24 +69,25 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // def __init__(self, raw: str) -> None:
+//     self.raw = raw
 inline Tag::Tag(std::string_view raw) : raw(raw) {}
 
 // @staticmethod
 // def from_arg(s: str) -> Own[Tag]:
+//     return Tag(s)
 inline Tag Tag::from_arg(std::string_view s) {
-    // return Tag(s)
     return Tag(s);
 }
 
 // def __repr__(self) -> str:
+//     return f"Tag({self.raw})"
 inline std::string Tag::__repr__() const {
-    // return f"Tag({self.raw})"
     return std::format("Tag({})", this->raw);
 }
 
 // args = parser.parse_args(
-// ["--include", "core", "--include", "extra",
-// "--paths", "a", "b", "c"])
+//     ["--include", "core", "--include", "extra",
+//      "--paths", "a", "b", "c"])
 inline __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::vector<Tag>>&& include, std::optional<std::vector<Tag>>&& paths) : include(std::move(include)), paths(std::move(paths)) {}
 void __tpy_init();
 } // namespace tpyapp::main

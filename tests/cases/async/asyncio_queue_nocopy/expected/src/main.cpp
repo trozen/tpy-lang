@@ -5,12 +5,16 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     q: Queue[Box[int32]] = Queue(0)
+//     await q.put(Box(int32(10)))
+//     q.put_nowait(Box(int32(20)))
+//     a = await q.get()
+//     b = q.get_nowait()
+//     print(a.get(), b.get())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // q: Queue[Box[int32]] = Queue(0)
         q.emplace(::tpystd::asyncio::Queue<::tpystd::tplib::box::Box<int32_t>>(0));
-        // await q.put(Box(int32(10)))
         __sub_0.emplace((*q), ::tpystd::tplib::box::Box<int32_t>(10));
         __state = S_RESUME_0;
         continue;
@@ -20,9 +24,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // q.put_nowait(Box(int32(20)))
         (*q).put_nowait(::tpystd::tplib::box::Box<int32_t>(20));
-        // a = await q.get()
         __sub_1.emplace((*q));
         __state = S_RESUME_1;
         continue;
@@ -32,9 +34,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a.emplace(std::move(__r1).value());
         __sub_1.reset();
-        // b = q.get_nowait()
         b.emplace((*q).get_nowait());
-        // print(a.get(), b.get())
         std::cout << (*a).get() << " " << (*b).get() << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -51,23 +51,25 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Queue of a @nocopy element (Box): get must MOVE the element out of the
+// # buffer, not copy it (guards the Own[T] move-out path for reference T).
+// import asyncio
+//
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Queue of a @nocopy element (Box): get must MOVE the element out of the
-    // # buffer, not copy it (guards the Own[T] move-out path for reference T).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

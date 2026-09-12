@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_double(x: Opt[int32]) -> int32:
 int32_t maybe_double(std::optional<int32_t> x);
+// def main():
 void main();
 
 void __tpy_init();

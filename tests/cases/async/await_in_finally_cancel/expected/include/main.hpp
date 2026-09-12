@@ -16,12 +16,16 @@ struct __coro_cleanup;
 struct __coro_coro;
 struct __coro_main_coro;
 
+// async def cleanup() -> None:
 __coro_cleanup cleanup();
+// async def coro() -> int:
 __coro_coro coro();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: cleanup
+// async def cleanup() -> None:
 struct __coro_cleanup {
     int32_t __state;
     bool __cancel_pending;
@@ -42,7 +46,7 @@ struct __coro_cleanup {
     }
 };
 
-// Async coroutine: coro
+// async def coro() -> int:
 struct __coro_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -73,7 +77,7 @@ struct __coro_coro {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

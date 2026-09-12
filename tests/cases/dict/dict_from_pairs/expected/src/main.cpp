@@ -5,85 +5,85 @@ namespace tpyapp::main {
 
 
 // def from_list_of_tuples() -> None:
+//     pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
+//     d = dict(pairs)
+//     print(d)
+//     print(len(d))
+//     print(d["a"])
+//     print(d["c"])
 void from_list_of_tuples() {
-    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
-    // d = dict(pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // print(d["a"])
     std::cout << ::tpy::__getitem__(d, "a") << "\n";
-    // print(d["c"])
     std::cout << ::tpy::__getitem__(d, "c") << "\n";
 }
 
 // def from_items_view() -> None:
+//     original: dict[str, int32] = {"x": 10, "y": 20, "z": 30}
+//     d = dict(original.items())
+//     print(d)
+//     print(d["x"])
+//     print(d["z"])
 void from_items_view() {
-    // original: dict[str, int32] = {"x": 10, "y": 20, "z": 30}
     ::tpy::ordered_map<std::string, int32_t> original = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
-    // d = dict(original.items())
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::dict_items(original));
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(d["x"])
     std::cout << ::tpy::__getitem__(d, "x") << "\n";
-    // print(d["z"])
     std::cout << ::tpy::__getitem__(d, "z") << "\n";
 }
 
 // def from_empty_list() -> None:
+//     pairs: list[tuple[str, int32]] = []
+//     d = dict(pairs)
+//     print(d)
+//     print(len(d))
 void from_empty_list() {
-    // pairs: list[tuple[str, int32]] = []
     std::vector<std::tuple<std::string, int32_t>> pairs = std::vector<std::tuple<std::string, int32_t>>{};
-    // d = dict(pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def with_int_keys() -> None:
+//     pairs: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
+//     d = dict(pairs)
+//     print(d)
+//     print(d[1])
 void with_int_keys() {
-    // pairs: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> pairs = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
-    // d = dict(pairs)
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::dict_construct<int32_t, std::string>(::tpy::own_iter(std::move(pairs)));
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(d[1])
     std::cout << ::tpy::__getitem__(d, 1) << "\n";
 }
 
 // def with_duplicate_keys() -> None:
+//     pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("a", 99)]
+//     d = dict(pairs)
+//     print(d)
+//     print(d["a"])
 void with_duplicate_keys() {
-    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("a", 99)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"a", 99}};
-    // d = dict(pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(d["a"])
     std::cout << ::tpy::__getitem__(d, "a") << "\n";
 }
 
+// from_list_of_tuples()
+// from_items_view()
+// from_empty_list()
+// with_int_keys()
+// with_duplicate_keys()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from_list_of_tuples()
     from_list_of_tuples();
-    // from_items_view()
     from_items_view();
-    // from_empty_list()
     from_empty_list();
-    // with_int_keys()
     with_int_keys();
-    // with_duplicate_keys()
     with_duplicate_keys();
 }
 

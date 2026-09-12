@@ -7,37 +7,37 @@ namespace tpyapp::main {
 // # The lvalue branch terminates (continue), so only the rvalue path
 // # reaches the escape point. Hoisting is safe.
 // def terminated_branch() -> None:
+//     saved: Point = Point(0, 0)
+//     for i in range(3):
+//         items: list[Point] = [Point(99, 99)]
+//         p: Point = Point(i, i)
+//         if i == 0:
+//             p = items[0]
+//             continue
+//         saved = p  # tpyc: warning(/will not keep the object it was given/)
+//     print(saved.x, saved.y)
 void terminated_branch() {
     std::optional<Point> __slot_2;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // items: list[Point] = [Point(99, 99)]
         std::vector<Point> items = {Point(99, 99)};
-        // p: Point = Point(i, i)
         Point* p = &*(__slot_2 = Point(i, i));
-        // if i == 0:
         if ((i == 0)) {
-            // p = items[0]
             p = &(::tpy::__getitem__(items, 0));
-            // continue
             continue;
         }
-        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// terminated_branch()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // terminated_branch()
     terminated_branch();
 }
 

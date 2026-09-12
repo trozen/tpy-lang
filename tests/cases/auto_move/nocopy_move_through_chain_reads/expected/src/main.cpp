@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def chain_reads() -> Own[Handle]:
+//     h = Handle(33)
+//     a = h
+//     print(a.fd)
+//     b = a
+//     return b
 Handle chain_reads() {
-    // h = Handle(33)
     Handle h = Handle(33);
-    // a = h
     Handle a = std::move(h);
-    // print(a.fd)
     std::cout << a.fd << "\n";
-    // b = a
     Handle b = std::move(a);
-    // return b
     return b;
 }
 
 // def main():
+//     r = chain_reads()
+//     print(r.fd)
 void main() {
-    // r = chain_reads()
     Handle r = chain_reads();
-    // print(r.fd)
     std::cout << r.fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

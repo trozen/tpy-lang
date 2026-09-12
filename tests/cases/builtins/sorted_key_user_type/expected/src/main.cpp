@@ -5,43 +5,45 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items = [Item("c", Score(3)), Item("a", Score(1)), Item("b", Score(2))]
+//
+//     # sorted by user-defined Comparable key
+//     result = sorted(items, key=lambda it: it.score)
+//     for r in result:
+//         print(r.name)
+//
+//     # stability: equal scores preserve original order
+//     items2 = [Item("x", Score(1)), Item("y", Score(1)), Item("z", Score(1))]
+//     result2 = sorted(items2, key=lambda it: it.score)
+//     for r in result2:
+//         print(r.name)
 void main() {
-    // items = [Item("c", Score(3)), Item("a", Score(1)), Item("b", Score(2))]
     std::array<Item, 3> items = {Item("c", Score(3)), Item("a", Score(1)), Item("b", Score(2))};
-    // # sorted by user-defined Comparable key
-    // result = sorted(items, key=lambda it: it.score)
     std::vector<Item> result = ::tpy::builtin_sorted_key<Item>(items, [](const Item& it) -> const Score& { return it.score; });
-    // for r in result:
     auto& __obj_0 = result;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& r = *__beg_0;
-        // print(r.name)
         std::cout << r.name << "\n";
     }
-    // # stability: equal scores preserve original order
-    // items2 = [Item("x", Score(1)), Item("y", Score(1)), Item("z", Score(1))]
     std::array<Item, 3> items2 = {Item("x", Score(1)), Item("y", Score(1)), Item("z", Score(1))};
-    // result2 = sorted(items2, key=lambda it: it.score)
     std::vector<Item> result2 = ::tpy::builtin_sorted_key<Item>(items2, [](const Item& it) -> const Score& { return it.score; });
-    // for r in result2:
     auto& __obj_1 = result2;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& r = *__beg_1;
-        // print(r.name)
         std::cout << r.name << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

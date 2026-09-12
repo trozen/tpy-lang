@@ -6,59 +6,59 @@ namespace tpyapp::main {
 
 // @export
 // def scale(xs: Span[int32], factor: int32) -> None:  # tpyc: warning(/Span parameter 'xs' is copied in.*not visible to the caller/)
+//     for i in range(len(xs)):
+//         xs[i] = xs[i] * factor
 void scale(std::span<int32_t> xs, int32_t factor) {
-    // for i in range(len(xs)):
     int32_t __stop_0 = ::tpy::__len__(xs);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // xs[i] = xs[i] * factor
         xs[static_cast<std::size_t>(i)] = (::tpy::mul_check<int32_t>(xs[static_cast<std::size_t>(i)], factor));
     }
 }
 
 // @export
 // def total(xs: Span[readonly[int32]]) -> int32:  # tpyc: ok
+//     s: int32 = 0
+//     for x in xs:
+//         s += x
+//     return s
 int32_t total(std::span<const int32_t> xs) {
-    // s: int32 = 0
     int32_t s = 0;
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s += x
         s = ::tpy::add_check<int32_t>(s, x);
     }
-    // return s
     return s;
 }
 
 // @export
 // def peek(xs: Span[int32]) -> int32:  # tpyc: ok
+//     # Mutable-typed but never mutated: no observable divergence, stays quiet
+//     # (unlike `scale` above, which writes through xs and warns).
+//     s: int32 = 0
+//     for x in xs:
+//         s += x
+//     return s
 int32_t peek(std::span<int32_t> xs) {
-    // # Mutable-typed but never mutated: no observable divergence, stays quiet
-    // # (unlike `scale` above, which writes through xs and warns).
-    // s: int32 = 0
     int32_t s = 0;
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // s += x
         s = ::tpy::add_check<int32_t>(s, x);
     }
-    // return s
     return s;
 }
 
+// from tpy.extern import export
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import export
 }
 
 } // namespace tpyapp::main

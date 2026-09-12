@@ -11,11 +11,13 @@ struct Doubler;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def apply_and_discard(f: Fn[[int32], None], x: int32) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);
   }
 void apply_and_discard(__F0&& f, int32_t x);
+// def main():
 void main();
 
 // class Doubler:
@@ -38,17 +40,17 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
 
 
 // def __call__(self, x: int32) -> int32:
+//     return x * 2
 inline int32_t Doubler::__call__(int32_t x) const {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 // def apply_and_discard(f: Fn[[int32], None], x: int32) -> None:
+//     f(x)
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);
   }
 void apply_and_discard(__F0&& f, int32_t x) {
-    // f(x)
     f(x);
 }
 

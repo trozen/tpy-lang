@@ -14,6 +14,7 @@ struct Passing;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Fixed(ValueType):
@@ -84,15 +85,19 @@ inline std::ostream& operator<<(std::ostream& os, const Passing& obj) {
 
 
 // def __init__(self, off: int64) -> None:
+//     self.off = off
 inline Fixed::Fixed(int64_t off) : off(off) {}
 
 // def __init__(self, a: int64, tz: "Fixed | None" = None, *, tag: int64) -> None:
+//     self.v = a * 100 + (0 if tz is None else tz.off) * 10 + tag
 inline Base::Base(int64_t a, std::optional<Fixed> tz, int64_t tag) : v((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 100)), (::tpy::mul_check<int64_t>((((!tz.has_value())) ? (0) : ((*tz).off)), 10)))), tag))) {}
 
 // def __init__(self, a: int64) -> None:
+//     super().__init__(a, tag=1)
 inline Sub::Sub(int64_t a) : Base(a, std::nullopt, 1) {}
 
 // def __init__(self, a: int64) -> None:
+//     super().__init__(a, Fixed(5), tag=2)
 inline Passing::Passing(int64_t a) : Base(a, Fixed(5), 2) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -6,119 +6,119 @@ namespace tpyapp::main {
 
 // # String slicing with Python semantics (clamping, negative indices).
 // def test_basic() -> None:
+//     s: str = "hello world"
+//     print(s[0:5])
+//     print(s[6:11])
+//     print(s[6:])
+//     print(s[:5])
+//     print(s[:])
 void test_basic() {
-    // s: str = "hello world"
     std::string_view s = "hello world";
-    // print(s[0:5])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 5}) << "\n";
-    // print(s[6:11])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{6, 11}) << "\n";
-    // print(s[6:])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{6, std::nullopt}) << "\n";
-    // print(s[:5])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, 5}) << "\n";
-    // print(s[:])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, std::nullopt}) << "\n";
 }
 
 // def test_negative() -> None:
+//     s: str = "abcdef"
+//     print(s[-3:])
+//     print(s[:-2])
+//     print(s[-4:-1])
+//     print(s[-6:])
 void test_negative() {
-    // s: str = "abcdef"
     std::string_view s = "abcdef";
-    // print(s[-3:])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-3, std::nullopt}) << "\n";
-    // print(s[:-2])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{std::nullopt, -2}) << "\n";
-    // print(s[-4:-1])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-4, -1}) << "\n";
-    // print(s[-6:])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-6, std::nullopt}) << "\n";
 }
 
 // def test_clamping() -> None:
+//     s: str = "hello"
+//     print(s[0:100])
+//     print(s[-100:3])
+//     print(s[-100:100])
+//     print(s[10:20])
 void test_clamping() {
-    // s: str = "hello"
     std::string_view s = "hello";
-    // print(s[0:100])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 100}) << "\n";
-    // print(s[-100:3])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-100, 3}) << "\n";
-    // print(s[-100:100])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-100, 100}) << "\n";
-    // print(s[10:20])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{10, 20}) << "\n";
 }
 
 // def test_empty() -> None:
+//     s: str = "hello"
+//     print(len(s[3:1]))
+//     print(len(s[5:5]))
+//     print(len(s[2:2]))
 void test_empty() {
-    // s: str = "hello"
     std::string_view s = "hello";
-    // print(len(s[3:1]))
     std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{3, 1})) << "\n";
-    // print(len(s[5:5]))
     std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{5, 5})) << "\n";
-    // print(len(s[2:2]))
     std::cout << ::tpy::__len__(::tpy::str_slice(s, ::tpy::BasicSlice{2, 2})) << "\n";
 }
 
 // def test_param(s: str) -> None:
+//     r = s[1:4]  # tpyc: type(StrView)
+//     print(r)
 void test_param(std::string_view s) {
-    // r = s[1:4]  # tpyc: type(StrView)
     std::string_view r = ::tpy::str_slice(s, ::tpy::BasicSlice{1, 4});
-    // print(r)
     std::cout << r << "\n";
 }
 
 // def test_local_type() -> None:
+//     s: str = "abcdef"
+//     r = s[1:3]  # tpyc: type(StrView)
+//     print(r)
 void test_local_type() {
-    // s: str = "abcdef"
     std::string_view s = "abcdef";
-    // r = s[1:3]  # tpyc: type(StrView)
     std::string_view r = ::tpy::str_slice(s, ::tpy::BasicSlice{1, 3});
-    // print(r)
     std::cout << r << "\n";
 }
 
 // def test_single_char() -> None:
+//     s: str = "hello"
+//     print(s[0:1])
+//     print(s[-1:])
 void test_single_char() {
-    // s: str = "hello"
     std::string_view s = "hello";
-    // print(s[0:1])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{0, 1}) << "\n";
-    // print(s[-1:])
     std::cout << ::tpy::str_slice(s, ::tpy::BasicSlice{-1, std::nullopt}) << "\n";
 }
 
+// test_basic()
+// print("---")
+// test_negative()
+// print("---")
+// test_clamping()
+// print("---")
+// test_empty()
+// print("---")
+// test_param("abcdef")
+// print("---")
+// test_local_type()
+// print("---")
+// test_single_char()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_basic()
     test_basic();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_negative()
     test_negative();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_clamping()
     test_clamping();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_empty()
     test_empty();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_param("abcdef")
     test_param("abcdef");
-    // print("---")
     std::cout << "---" << "\n";
-    // test_local_type()
     test_local_type();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_single_char()
     test_single_char();
 }
 

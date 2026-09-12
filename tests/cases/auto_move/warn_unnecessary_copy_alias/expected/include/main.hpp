@@ -11,7 +11,9 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(b: Own[Box]) -> int32:
 int32_t consume(Box&& b);
+// def main():
 void main();
 
 // class Box:

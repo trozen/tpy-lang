@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def bump(p: Ptr[Tag]) -> None:
+//     p.n += 1
 void bump(::tpyapp::red::Tag* p) {
-    // p.n += 1
     ::tpy::deref_check(p).n = (::tpy::deref_check(p).n) + (::tpy::BigInt(1));
 }
 
 // def main() -> None:
+//     t = Tag(5)
+//     bump(t)
+//     print(t.n)
+//     b = BlueTag(10)
+//     print(b.n)
 void main() {
-    // t = Tag(5)
     ::tpyapp::red::Tag t = ::tpyapp::red::Tag(::tpy::BigInt(5));
-    // bump(t)
     bump(&t);
-    // print(t.n)
     std::cout << t.n << "\n";
-    // b = BlueTag(10)
     ::tpyapp::blue::Tag b = ::tpyapp::blue::Tag(::tpy::BigInt(10));
-    // print(b.n)
     std::cout << b.n << "\n";
 }
 
+// from red import Tag
+// from blue import Tag as BlueTag
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from red import Tag
     ::tpyapp::red::__tpy_init();
-    // from blue import Tag as BlueTag
     ::tpyapp::blue::__tpy_init();
-    // main()
     main();
 }
 

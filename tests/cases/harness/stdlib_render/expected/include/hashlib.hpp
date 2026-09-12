@@ -19,8 +19,11 @@ extern std::vector<uint32_t>* _SHA256_H0;
 extern std::vector<uint32_t>* _SHA256_K;
 inline constexpr std::string_view __name__ = "hashlib";
 
+// def _load_be32(data: bytes, off: int32) -> uint32:
 uint32_t _load_be32(::tpy::BytesView data, int32_t off);
+// def _pack_be32(out: bytearray, v: uint32) -> None:
 void _pack_be32(::tpy::ByteArray& out, uint32_t v);
+// def sha256(data: bytes = b"") -> Own[SHA256]:
 SHA256 sha256(::tpy::BytesView data = {});
 
 // class SHA256:
@@ -68,27 +71,27 @@ inline std::ostream& operator<<(std::ostream& os, const SHA256& obj) {
 
 
 // def update(self, data: bytes) -> None:
+//     n: int32 = int32(len(data))
+//     self.length = uint64.add_wrap(self.length, uint64(n))
+//     k: int32 = 0
+//     while k < n:
+//         self.buffer.append(data[k])
+//         k += 1
+//     self._drain_blocks()
 inline void SHA256::update(::tpy::BytesView data) {
-    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
-    // self.length = uint64.add_wrap(self.length, uint64(n))
     this->length = static_cast<uint64_t>(this->length + ::tpy::int_cast_check<uint64_t>(n));
-    // k: int32 = 0
     int32_t k = 0;
-    // while k < n:
     while ((k < n)) {
-        // self.buffer.append(data[k])
         this->buffer.push_back(::tpy::bytes_getitem(data, k));
-        // k += 1
         k = ::tpy::add_check<int32_t>(k, 1);
     }
-    // self._drain_blocks()
     this->_drain_blocks();
 }
 
 // def hexdigest(self) -> str:
+//     return self.digest().hex()
 inline std::string SHA256::hexdigest() const {
-    // return self.digest().hex()
     return ::tpy::bytes_hex(this->digest());
 }
 void __tpy_init();

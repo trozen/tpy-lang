@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n1 = Node(42)
+//     print(n1)
+//     n2 = Node(10, "hello")
+//     print(n2)
 void main() {
-    // n1 = Node(42)
     Node n1 = Node(42);
-    // print(n1)
     std::cout << n1 << "\n";
-    // n2 = Node(10, "hello")
     Node n2 = Node(10, "hello");
-    // print(n2)
     std::cout << n2 << "\n";
 }
 
+// # @dataclass with Optional fields and None defaults
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass with Optional fields and None defaults
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

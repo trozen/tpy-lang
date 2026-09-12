@@ -3,9 +3,12 @@
 
 namespace tpyapp::main {
 
-// s: string;
 ::pascal_rt::runtime::strings::PStr<255>* s{};
 
+// s: string;
+//
+// s := 'Hello, World!';
+// writeln(s);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -14,12 +17,9 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::strings::__tpy_init();
-    // s: string;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_1 = ::pascal_rt::runtime::strings::PStr<255>();
     s = &__global_slot_1;
-    // s := 'Hello, World!';
     s->assign("Hello, World!");
-    // writeln(s);
     std::cout << std::string(::tpy::__str__((*s))) << "\n";
 }
 

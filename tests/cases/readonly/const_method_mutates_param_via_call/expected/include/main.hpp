@@ -12,7 +12,9 @@ struct Renderer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def do_mutate(p: Sink, s: str) -> None:
 void do_mutate(Sink& p, std::string_view s);
+// def main() -> None:
 void main();
 
 // # A const (readonly-inferred) method may mutate a reference-type PARAM -- not
@@ -62,34 +64,35 @@ inline std::ostream& operator<<(std::ostream& os, const Renderer& obj) {
 
 
 // def __init__(self) -> None:
+//     self.buf = ""
 inline Sink::Sink() : buf("") {}
 
 // def push(self, s: str) -> None:
+//     self.buf = self.buf + s
 inline void Sink::push(std::string_view s) {
-    // self.buf = self.buf + s
     this->buf = (::tpy::str_concat(this->buf, s));
 }
 
 // # param mutated transitively via a mutating free function: `out` is `Sink&`
 // def via_call(self, out: Sink) -> None:
+//     do_mutate(out, "call;")
 inline void Renderer::via_call(Sink& out) const {
-    // do_mutate(out, "call;")
     do_mutate(out, "call;");
 }
 
 // # param mutated via a direct method call: `out` is `Sink&`
 // def via_method(self, out: Sink) -> None:
+//     out.push("method;")
 inline void Renderer::via_method(Sink& out) const {
-    // out.push("method;")
     out.push("method;");
 }
 
 // # only `out` mutated: `a` stays `const Sink&`
 // def only_second(self, a: Sink, out: Sink) -> None:
+//     out.push(a.buf)
+//     out.push("second;")
 inline void Renderer::only_second(const Sink& a, Sink& out) const {
-    // out.push(a.buf)
     out.push(a.buf);
-    // out.push("second;")
     out.push("second;");
 }
 void __tpy_init();

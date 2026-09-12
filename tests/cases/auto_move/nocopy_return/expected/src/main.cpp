@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def make(val: int32) -> Own[Handle]:
+//     h = Handle()
+//     h.fd = val
+//     return h
 Handle make(int32_t val) {
-    // h = Handle()
     Handle h = Handle();
-    // h.fd = val
     h.fd = val;
-    // return h
     return h;
 }
 
 // def main():
+//     h = make(99)
+//     print(h.fd)
 void main() {
-    // h = make(99)
     Handle h = make(99);
-    // print(h.fd)
     std::cout << h.fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

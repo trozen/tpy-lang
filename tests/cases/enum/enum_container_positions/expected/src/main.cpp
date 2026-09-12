@@ -47,58 +47,59 @@ namespace tpyapp::main {
 
 
 // def weight(m: dict[Color, int64], c: Color) -> int64:
+//     return m[c]                      # enum as a dict key at a subscript read
 int64_t weight(const ::tpy::ordered_map<Color, int64_t>& m, Color c) {
-    // return m[c]                      # enum as a dict key at a subscript read
     return ::tpy::__getitem__(m, c);
 }
 
 // def dedup(cs: list[Color]) -> int64:
+//     out: set[Color] = set()
+//     for c in cs:
+//         out.add(c)                   # enum as a set element
+//     return int64(len(out))
 int64_t dedup(const std::vector<Color>& cs) {
-    // out: set[Color] = set()
     ::tpy::ordered_set<Color> out = ::tpy::ordered_set<Color>();
-    // for c in cs:
     auto& __obj_0 = cs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        // out.add(c)                   # enum as a set element
         out.insert(c);
     }
-    // return int64(len(out))
     return ::tpy::int_cast_check<int64_t>(::tpy::__len__(out));
 }
 
 // def tag_value(t: tuple[Color, int64]) -> int64:
+//     return t[1] if t[0] == Color.Green else 0  # enum as a tuple element
 int64_t tag_value(const std::tuple<Color, int64_t>& t) {
-    // return t[1] if t[0] == Color.Green else 0  # enum as a tuple element
     return (((std::get<0>(t) == Color::Green)) ? (std::get<1>(t)) : (0));
 }
 
 // def main() -> None:
+//     m = {Color.Red: int64(10), Color.Blue: int64(30)}  # enum keys in a literal
+//     print(weight(m, Color.Blue))
+//     print(dedup([Color.Red, Color.Green, Color.Red]))
+//     print(tag_value((Color.Green, 7)))
+//     print(tag_value((Color.Red, 7)))
 void main() {
-    // m = {Color.Red: int64(10), Color.Blue: int64(30)}  # enum keys in a literal
     ::tpy::ordered_map<Color, int64_t> m = ::tpy::ordered_map<Color, int64_t>({{Color::Red, 10}, {Color::Blue, 30}});
-    // print(weight(m, Color.Blue))
     std::cout << weight(m, Color::Blue) << "\n";
-    // print(dedup([Color.Red, Color.Green, Color.Red]))
     std::vector<Color> __tmp_1 = {Color::Red, Color::Green, Color::Red};
     std::cout << dedup(__tmp_1) << "\n";
-    // print(tag_value((Color.Green, 7)))
     std::cout << tag_value(std::tuple<Color, int64_t>{Color::Green, 7}) << "\n";
-    // print(tag_value((Color.Red, 7)))
     std::cout << tag_value(std::tuple<Color, int64_t>{Color::Red, 7}) << "\n";
 }
 
+// # An enum used in the three container positions that had no corpus coverage
+// # at all: a dict KEY, a set ELEMENT, and a value-tuple ELEMENT.
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An enum used in the three container positions that had no corpus coverage
-    // # at all: a dict KEY, a set ELEMENT, and a value-tuple ELEMENT.
-    // from enum import Enum
-    // main()
     main();
 }
 

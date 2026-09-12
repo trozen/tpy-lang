@@ -12,7 +12,9 @@ struct BadKey;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def lookup(key: str) -> int32:
 std::expected<int32_t, NotFound> lookup(std::string_view key);
+// def main() -> None:
 void main();
 
 // class NotFound(Exception, ReturnException):
@@ -53,6 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const BadKey& obj) {
 
 
 // def __init__(self, key: str) -> None:
+//     self.key = key
 inline BadKey::BadKey(std::string_view key) : key(key) {}
 void __tpy_init();
 } // namespace tpyapp::main

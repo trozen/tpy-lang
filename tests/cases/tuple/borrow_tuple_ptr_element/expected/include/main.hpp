@@ -11,11 +11,17 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(t: tuple[Node, int32]) -> None:
 void bump(const std::tuple<Node*, int32_t>& t);
+// def via_local(items: list[Node]) -> int32:
 int32_t via_local(std::vector<Node>& items);
+// def via_param(p: Ptr[Node]) -> None:
 void via_param(Node* p);
+// def via_subscript(ps: list[Ptr[Node]]) -> None:
 void via_subscript(const std::vector<Node*>& ps);
+// def via_plain() -> int32:
 int32_t via_plain();
+// def main() -> None:
 void main();
 
 // class Node:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Node::Node(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

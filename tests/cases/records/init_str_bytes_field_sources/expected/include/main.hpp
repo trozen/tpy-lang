@@ -12,6 +12,7 @@ struct Buf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Meta:
@@ -57,9 +58,16 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 
 
 // def __init__(self, title: str, v: StrView):
+//     self.title = v
+//     self.tag = "fixed"
+//     self.view = title
+//     self.label = "lit"
 inline Meta::Meta(std::string_view title, std::string_view v) : title(std::string(v)), tag("fixed"), view(title), label("lit") {}
 
 // def __init__(self, data: bytes):
+//     self.data = data
+//     self.lit = b"\x01\x02"
+//     self.empty = bytes()
 inline Buf::Buf(::tpy::BytesView data) : data(::tpy::Bytes(data)), lit(::tpy::bytes_literal_owned("\x01\x02", 2)), empty(::tpy::Bytes()) {}
 void __tpy_init();
 } // namespace tpyapp::main

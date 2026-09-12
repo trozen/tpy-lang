@@ -5,20 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(42, 7)
+//     print(c.extra)
 void main() {
-    // c = Child(42, 7)
     Child c = Child(42, 7);
-    // print(c.extra)
     std::cout << c.extra << "\n";
 }
 
+// from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
-    // main()
     main();
 }
 

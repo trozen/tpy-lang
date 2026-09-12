@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     helper()
+//     return int32(0)
 int32_t main() {
-    // helper()
     ::tpyapp::mypackage::utils::helper();
-    // return int32(0)
     return 0;
 }
 
+// # Import submodule - should execute parent __init__ first
+// from mypackage.utils import helper
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Import submodule - should execute parent __init__ first
-    // from mypackage.utils import helper
     ::tpyapp::mypackage::__tpy_init();
     ::tpyapp::mypackage::utils::__tpy_init();
-    // main()
     main();
 }
 

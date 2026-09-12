@@ -7,89 +7,92 @@ namespace tpyapp::main {
 // # Container literals first declared inside branches (if/else, try/except,
 // # with, loop body) resolve via the finalized branch-decl snapshot.
 // def pick_list(c: bool) -> int:
+//     if c:
+//         xs = [1, 2]
+//     else:
+//         xs = [3]
+//     xs.append(9)
+//     return xs[0] + len(xs)
 ::tpy::BigInt pick_list(bool c) {
     std::optional<std::vector<int32_t>> __slot_1;
-    // if c:
     std::vector<int32_t>* xs;
     if (c) {
-        // xs = [1, 2]
         xs = &*(__slot_1 = {1, 2});
-    // else:
     } else {
-        // xs = [3]
         xs = &*(__slot_1 = {3});
     }
-    // xs.append(9)
     xs->push_back(9);
-    // return xs[0] + len(xs)
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
 }
 
 // def pick_dict(c: bool) -> int:
+//     if c:
+//         d = {"a": 1}
+//     else:
+//         d = {"b": 2, "c": 3}
+//     return len(d)
 ::tpy::BigInt pick_dict(bool c) {
     std::optional<::tpy::ordered_map<std::string, int32_t>> __slot_1;
-    // if c:
     ::tpy::ordered_map<std::string, int32_t>* d;
     if (c) {
-        // d = {"a": 1}
         d = &*(__slot_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}}));
-    // else:
     } else {
-        // d = {"b": 2, "c": 3}
         d = &*(__slot_1 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}, {"c", 3}}));
     }
-    // return len(d)
     return ::tpy::BigInt(::tpy::__len__((*d)));
 }
 
 // def pick_set(c: bool) -> int:
+//     if c:
+//         s = {1, 2}
+//     else:
+//         s = {3}
+//     return len(s)
 ::tpy::BigInt pick_set(bool c) {
     std::optional<::tpy::ordered_set<int32_t>> __slot_1;
-    // if c:
     ::tpy::ordered_set<int32_t>* s;
     if (c) {
-        // s = {1, 2}
         s = &*(__slot_1 = ::tpy::ordered_set<int32_t>({1, 2}));
-    // else:
     } else {
-        // s = {3}
         s = &*(__slot_1 = ::tpy::ordered_set<int32_t>({3}));
     }
-    // return len(s)
     return ::tpy::BigInt(::tpy::__len__((*s)));
 }
 
 // def pick_try(c: bool) -> int:
+//     try:
+//         if c:
+//             raise ValueError("x")
+//         xs = [1, 2]
+//     except ValueError:
+//         xs = [3]
+//     return xs[0] + len(xs)
 ::tpy::BigInt pick_try(bool c) {
     std::optional<std::vector<int32_t>> __slot_1;
-    // try:
     std::vector<int32_t>* xs;
     {
         try {
-            // if c:
             if (c) {
-                // raise ValueError("x")
                 throw ::tpy::ValueError("x");
             }
-            // xs = [1, 2]
             xs = &*(__slot_1 = {1, 2});
         } catch (const ::tpy::ValueError&) {
-            // xs = [3]
             xs = &*(__slot_1 = {3});
         }
     }
-    // return xs[0] + len(xs)
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
 }
 
 // def pick_with() -> int:
+//     with Mgr():
+//         xs = [1, 2]
+//     xs.append(8)
+//     return xs[0] + len(xs)
 ::tpy::BigInt pick_with() {
-    // with Mgr():
     std::optional<std::vector<int32_t>> xs;
     auto __ctx_1 = Mgr();
     __ctx_1.__enter__();
     try {
-        // xs = [1, 2]
         xs = {1, 2};
         goto __with_exit_1;
     } catch (...) {
@@ -98,54 +101,52 @@ namespace tpyapp::main {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    // xs.append(8)
     xs->push_back(8);
-    // return xs[0] + len(xs)
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
 }
 
 // def pick_loop() -> int:
+//     for i in range(3):
+//         xs = [1, i]
+//     return xs[0] + len(xs)
 ::tpy::BigInt pick_loop() {
-    // for i in range(3):
     std::optional<std::vector<int32_t>> xs;
     for (int32_t i = 0; i < 3; ++i) {
-        // xs = [1, i]
         xs = {1, i};
     }
-    // return xs[0] + len(xs)
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
 }
 
 // def main() -> None:
+//     print(pick_list(True))
+//     print(pick_list(False))
+//     print(pick_dict(True))
+//     print(pick_dict(False))
+//     print(pick_set(True))
+//     print(pick_set(False))
+//     print(pick_try(False))
+//     print(pick_try(True))
+//     print(pick_with())
+//     print(pick_loop())
 void main() {
-    // print(pick_list(True))
     std::cout << pick_list(true) << "\n";
-    // print(pick_list(False))
     std::cout << pick_list(false) << "\n";
-    // print(pick_dict(True))
     std::cout << pick_dict(true) << "\n";
-    // print(pick_dict(False))
     std::cout << pick_dict(false) << "\n";
-    // print(pick_set(True))
     std::cout << pick_set(true) << "\n";
-    // print(pick_set(False))
     std::cout << pick_set(false) << "\n";
-    // print(pick_try(False))
     std::cout << pick_try(false) << "\n";
-    // print(pick_try(True))
     std::cout << pick_try(true) << "\n";
-    // print(pick_with())
     std::cout << pick_with() << "\n";
-    // print(pick_loop())
     std::cout << pick_loop() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

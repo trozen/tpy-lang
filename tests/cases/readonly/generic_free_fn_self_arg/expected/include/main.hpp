@@ -17,8 +17,10 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def trigger[T: Bumpable](x: T) -> None:
 template<Bumpable T>
 void trigger(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -44,23 +46,24 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Counter::Counter() : n(0) {}
 
 // def bump(self) -> None:
+//     self.n = self.n + 1
 inline void Counter::bump() {
-    // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
 }
 
 // def step(self) -> None:
+//     trigger(self)
 inline void Counter::step() {
-    // trigger(self)
     trigger<Counter>((*this));
 }
 // def trigger[T: Bumpable](x: T) -> None:
+//     x.bump()
 template<Bumpable T>
 void trigger(::tpy::param_val_or_ref_t<T> x) {
-    // x.bump()
     x.bump();
 }
 

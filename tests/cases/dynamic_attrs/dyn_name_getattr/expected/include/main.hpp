@@ -11,7 +11,9 @@ struct Headers;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def lookup(h: Headers, name: str) -> str:
 std::string lookup(const Headers& h, std::string_view name);
+// def main() -> None:
 void main();
 
 // # D16 phase 9: getattr(obj, name_var) with a runtime name -- routes to
@@ -32,18 +34,18 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
 
 
 // def __getattr__(self, name: str) -> str:
+//     if name == "host":
+//         return "example.com"
+//     if name == "port":
+//         return "8080"
+//     raise AttributeError(name)
 inline std::string Headers::__getattr__(std::string_view name) const {
-    // if name == "host":
     if ((name == "host")) {
-        // return "example.com"
         return "example.com";
     }
-    // if name == "port":
     if ((name == "port")) {
-        // return "8080"
         return "8080";
     }
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 void __tpy_init();

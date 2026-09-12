@@ -3,99 +3,89 @@
 
 namespace tpyapp::main {
 
-// # A walrus targeting a `global`-declared name writes the MODULE variable, not a
-// # function-local shadow: the write must be visible to other functions and to a
-// # later module-level read (CPython parity). Wider target shapes (method
-// # receiver, float/bool/str, Optional narrowing) live in global_walrus_shapes.
-// counter = 0
 int32_t counter{};
-// limit = 0
 int32_t limit{};
-// seen = 0
 int32_t seen{};
 
 // def observe() -> int:
+//     return counter
 ::tpy::BigInt observe() {
-    // return counter
     return ::tpy::BigInt(counter);
 }
 
 // def store() -> int:
+//     global counter
+//     v = (counter := 7)  # tpyc: ok
+//     # The same function reads the module variable back, not a shadow.
+//     return v + counter
 ::tpy::BigInt store() {
-    // global counter
-    // v = (counter := 7)  # tpyc: ok
     int32_t v = (counter = 7);
-    // # The same function reads the module variable back, not a shadow.
-    // return v + counter
     return ::tpy::BigInt((::tpy::add_check<int32_t>(v, counter)));
 }
 
 // def loop_until() -> int:
+//     global limit
+//     while (limit := limit + 1) < 4:  # tpyc: ok
+//         pass
+//     return limit
 ::tpy::BigInt loop_until() {
-    // global limit
-    // while (limit := limit + 1) < 4:  # tpyc: ok
     while (((limit = (::tpy::add_check<int32_t>(limit, 1))) < 4)) {
-        // pass
     }
-    // return limit
     return ::tpy::BigInt(limit);
 }
 
 // def then_plain() -> None:
+//     global counter
+//     x = (counter := 10)
+//     counter = x + 5
 void then_plain() {
-    // global counter
-    // x = (counter := 10)
     int32_t x = (counter = 10);
-    // counter = x + 5
     counter = (::tpy::add_check<int32_t>(x, 5));
 }
 
 // def in_comprehension() -> int:
+//     # PEP 572: a comprehension walrus binds in the containing scope, honouring
+//     # its `global` declaration.
+//     global seen
+//     xs = [(seen := i) for i in range(3)]
+//     return len(xs)
 ::tpy::BigInt in_comprehension() {
-    // # PEP 572: a comprehension walrus binds in the containing scope, honouring
-    // # its `global` declaration.
-    // global seen
-    // xs = [(seen := i) for i in range(3)]
     std::array<int32_t, 3> xs = ::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_0) -> int32_t {
         int32_t i = int32_t(__i_0);
         return (seen = i);
     });
-    // return len(xs)
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
 // def main() -> None:
+//     print("store:", store())
+//     print("observed:", observe())
+//     print("loop:", loop_until(), limit)
+//     then_plain()
+//     print("after plain:", counter)
+//     print("comprehension:", in_comprehension(), seen)
 void main() {
-    // print("store:", store())
     std::cout << "store:" << " " << store() << "\n";
-    // print("observed:", observe())
     std::cout << "observed:" << " " << observe() << "\n";
-    // print("loop:", loop_until(), limit)
     std::cout << "loop:" << " " << loop_until() << " " << limit << "\n";
-    // then_plain()
     then_plain();
-    // print("after plain:", counter)
     std::cout << "after plain:" << " " << counter << "\n";
-    // print("comprehension:", in_comprehension(), seen)
     std::cout << "comprehension:" << " " << in_comprehension() << " " << seen << "\n";
 }
 
+// counter = 0
+// limit = 0
+// seen = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A walrus targeting a `global`-declared name writes the MODULE variable, not a
-    // # function-local shadow: the write must be visible to other functions and to a
-    // # later module-level read (CPython parity). Wider target shapes (method
-    // # receiver, float/bool/str, Optional narrowing) live in global_walrus_shapes.
-    // counter = 0
     counter = 0;
-    // limit = 0
     limit = 0;
-    // seen = 0
     seen = 0;
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main():
+//     f = Fussy(9)
+//     print("in main")
 void main() {
-    // f = Fussy(9)
     Fussy f = Fussy(9);
-    // print("in main")
     std::cout << "in main" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

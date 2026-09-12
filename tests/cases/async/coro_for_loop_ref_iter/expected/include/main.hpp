@@ -18,6 +18,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_driver;
 struct __coro_Container_total;
 
+// async def driver() -> None:
 __coro_driver driver();
 
 // class Item:
@@ -53,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// Async coroutine: Container.total
+// async def total(self) -> int32:
 struct __coro_Container_total {
     int32_t __state;
     bool __cancel_pending;
@@ -83,7 +84,7 @@ inline __coro_Container_total Container::total() const {
     return __coro_Container_total(*this);
 }
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -110,15 +111,17 @@ struct __coro_driver {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.items = []
+//     self.items.append(Item(1))
+//     self.items.append(Item(2))
+//     self.items.append(Item(3))
 inline Container::Container() : items(std::vector<Item>{}) {
-    // self.items.append(Item(1))
     this->items.push_back(Item(1));
-    // self.items.append(Item(2))
     this->items.push_back(Item(2));
-    // self.items.append(Item(3))
     this->items.push_back(Item(3));
 }
 void __tpy_init();

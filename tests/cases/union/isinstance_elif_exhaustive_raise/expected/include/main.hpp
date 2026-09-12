@@ -13,7 +13,9 @@ struct PetError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check(pet: Dog | Cat) -> None:
 void check(::tpy::Union<const Cat*, const Dog*> pet);
+// def main() -> None:
 void main();
 
 // # Same static-true exhaustive-elif shape as isinstance_elif_exhaustive, but the
@@ -74,12 +76,15 @@ inline std::ostream& operator<<(std::ostream& os, const PetError& obj) {
 
 
 // def __init__(self, n: int):
+//     self.n = n
 inline Dog::Dog(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, n: int):
+//     self.n = n
 inline Cat::Cat(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, code: int):
+//     self.code = code
 inline PetError::PetError(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

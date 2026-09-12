@@ -16,145 +16,180 @@
 namespace tpystd::math {
 
 inline constexpr std::string_view __name__ = "math";
+// pi: Final[float] = 3.141592653589793
 inline constexpr double pi = 3.141592653589793;
+// tau: Final[float] = 6.283185307179586
 inline constexpr double tau = 6.283185307179586;
+// e: Final[float] = 2.718281828459045
 inline constexpr double e = 2.718281828459045;
+// inf: Final[float] = 1e309
 inline constexpr double inf = std::numeric_limits<double>::infinity();
+// nan: Final[float] = float("nan")
 inline constexpr double nan = std::numeric_limits<double>::quiet_NaN();
 
+// def log(x: float, base: float) -> float:
 double log(double x, double base);
+// def hypot(*coords: float) -> float:
 double hypot(::tpy::varargs<const double> coords);
+// def radians(x: float) -> float:
 double radians(double x);
+// def degrees(x: float) -> float:
 double degrees(double x);
+// def _gcd2(a: int, b: int) -> int:
 ::tpy::BigInt _gcd2(const ::tpy::BigInt& __param_a, const ::tpy::BigInt& __param_b);
+// def gcd(*ints: int) -> int:
 ::tpy::BigInt gcd(::tpy::varargs<const ::tpy::BigInt> ints);
+// def lcm(*ints: int) -> int:
 ::tpy::BigInt lcm(::tpy::varargs<const ::tpy::BigInt> ints);
+// def factorial(n: int) -> int:
 ::tpy::BigInt factorial(const ::tpy::BigInt& n);
+// def isqrt(n: int) -> int:
 ::tpy::BigInt isqrt(const ::tpy::BigInt& n);
+// def perm(n: int) -> int:
 ::tpy::BigInt perm(const ::tpy::BigInt& n);
+// def perm(n: int, k: int) -> int:
 ::tpy::BigInt perm(const ::tpy::BigInt& n, const ::tpy::BigInt& k);
+// def comb(n: int, k: int) -> int:
 ::tpy::BigInt comb(const ::tpy::BigInt& n, const ::tpy::BigInt& __param_k);
+// def isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
 bool isclose(double a, double b, double rel_tol = 1e-09, double abs_tol = 0.0);
+// def prod(iterable: Iterable[int32], *, start: int32 = int32(1)) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_iterable>
 int32_t prod(T_iterable& iterable, int32_t start = 1);
+// def prod(iterable: Iterable[int], *, start: int = 1) -> int:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_iterable>
 ::tpy::BigInt prod(T_iterable& iterable, const ::tpy::BigInt& start = ::tpy::BigInt(1));
+// def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
 template<::tpystd::typing::Iterable<double> T_iterable>
 double prod(T_iterable& iterable, double start = 1.0);
+// def fsum(iterable: Iterable[float]) -> float:
 template<::tpystd::typing::Iterable<double> T_iterable>
 double fsum(T_iterable& iterable);
+// def sumprod(p: Iterable[float], q: Iterable[float]) -> float:
 template<::tpystd::typing::Iterable<double> T_p, ::tpystd::typing::Iterable<double> T_q>
 double sumprod(const T_p& p, const T_q& q);
+// def dist(p: Iterable[float], q: Iterable[float]) -> float:
 template<::tpystd::typing::Iterable<double> T_p, ::tpystd::typing::Iterable<double> T_q>
 double dist(const T_p& p, const T_q& q);
 
 // @dispatch
 // def prod(iterable: Iterable[int32], *, start: int32 = int32(1)) -> int32:
+//     result: int32 = start
+//     for x in iterable:
+//         result = result * x
+//     return result
 template<::tpystd::typing::Iterable<int32_t> T_iterable>
 int32_t prod(T_iterable& iterable, int32_t start) {
-    // result: int32 = start
     int32_t result = start;
-    // for x in iterable:
     auto& __src_0 = iterable;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // result = result * x
         result = (::tpy::mul_check<int32_t>(result, x));
     }
-    // return result
     return result;
 }
 // @dispatch
 // def prod(iterable: Iterable[int], *, start: int = 1) -> int:
+//     result: int = start
+//     for x in iterable:
+//         result = result * x
+//     return result
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_iterable>
 ::tpy::BigInt prod(T_iterable& iterable, const ::tpy::BigInt& start) {
-    // result: int = start
     ::tpy::BigInt result = start;
-    // for x in iterable:
     auto& __src_0 = iterable;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-        // result = result * x
         result = ((result) * (x));
     }
-    // return result
     return result;
 }
 // @dispatch
 // def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
+//     result: float = start
+//     for x in iterable:
+//         result = result * x
+//     return result
 template<::tpystd::typing::Iterable<double> T_iterable>
 double prod(T_iterable& iterable, double start) {
-    // result: float = start
     double result = start;
-    // for x in iterable:
     auto& __src_0 = iterable;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         double x = ::tpy::unwrap_ref(*__r_1);
-        // result = result * x
         result = ((result) * (x));
     }
-    // return result
     return result;
 }
 // def fsum(iterable: Iterable[float]) -> float:
+//     # Neumaier summation: more accurate than naive + compensated for large swings.
+//     s: float = 0.0
+//     c: float = 0.0
+//     for x in iterable:
+//         t: float = s + x
+//         if fabs(s) >= fabs(x):
+//             c = c + ((s - t) + x)
+//         else:
+//             c = c + ((x - t) + s)
+//         s = t
+//     return s + c
 template<::tpystd::typing::Iterable<double> T_iterable>
 double fsum(T_iterable& iterable) {
-    // # Neumaier summation: more accurate than naive + compensated for large swings.
-    // s: float = 0.0
     double s = 0.0;
-    // c: float = 0.0
     double c = 0.0;
-    // for x in iterable:
     auto& __src_0 = iterable;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         double x = ::tpy::unwrap_ref(*__r_1);
-        // t: float = s + x
         double t = ((s) + (x));
-        // if fabs(s) >= fabs(x):
         if ((::std::fabs(s) >= ::std::fabs(x))) {
-            // c = c + ((s - t) + x)
             c = ((c) + (((((s) - (t))) + (x))));
-        // else:
         } else {
-            // c = c + ((x - t) + s)
             c = ((c) + (((((x) - (t))) + (s))));
         }
-        // s = t
         s = t;
     }
-    // return s + c
     return ((s) + (c));
 }
 // def sumprod(p: Iterable[float], q: Iterable[float]) -> float:
+//     # Manual two-iterator drive with length-mismatch detection; CPython uses
+//     # zip(p, q, strict=True) internally. We don't have strict=True yet, so
+//     # open-code it.
+//     s: float = 0.0
+//     ip = iter(p)
+//     iq = iter(q)
+//     while True:
+//         try:
+//             a = next(ip)
+//         except StopIteration:
+//             try:
+//                 next(iq)
+//             except StopIteration:
+//                 return s
+//             raise ValueError("sumprod(): input lengths differ")
+//         try:
+//             b = next(iq)
+//         except StopIteration:
+//             raise ValueError("sumprod(): input lengths differ")
+//         s = s + a * b
 template<::tpystd::typing::Iterable<double> T_p, ::tpystd::typing::Iterable<double> T_q>
 double sumprod(const T_p& p, const T_q& q) {
-    // # Manual two-iterator drive with length-mismatch detection; CPython uses
-    // # zip(p, q, strict=True) internally. We don't have strict=True yet, so
-    // # open-code it.
-    // s: float = 0.0
     double s = 0.0;
-    // ip = iter(p)
     auto ip = ::tpy::__iter__(p);
-    // iq = iter(q)
     auto iq = ::tpy::__iter__(q);
-    // while True:
     while (true) {
-        // try:
         double a;
         {
-            // a = next(ip)
             {
                 auto __try_tmp_2 = ::tpy::next(ip);
                 if (!__try_tmp_2.has_value()) goto __except_1;
@@ -163,9 +198,7 @@ double sumprod(const T_p& p, const T_q& q) {
             goto __after_try_1;
             // except StopIteration:
             __except_1:;
-            // try:
             {
-                // next(iq)
                 {
                     auto __try_tmp_4 = ::tpy::next(iq);
                     if (!__try_tmp_4.has_value()) goto __except_3;
@@ -173,18 +206,14 @@ double sumprod(const T_p& p, const T_q& q) {
                 goto __after_try_3;
                 // except StopIteration:
                 __except_3:;
-                // return s
                 return s;
                 __after_try_3:;
             }
-            // raise ValueError("sumprod(): input lengths differ")
             throw ::tpy::ValueError("sumprod(): input lengths differ");
             __after_try_1:;
         }
-        // try:
         double b;
         {
-            // b = next(iq)
             {
                 auto __try_tmp_6 = ::tpy::next(iq);
                 if (!__try_tmp_6.has_value()) goto __except_5;
@@ -193,30 +222,53 @@ double sumprod(const T_p& p, const T_q& q) {
             goto __after_try_5;
             // except StopIteration:
             __except_5:;
-            // raise ValueError("sumprod(): input lengths differ")
             throw ::tpy::ValueError("sumprod(): input lengths differ");
             __after_try_5:;
         }
-        // s = s + a * b
         s = ((s) + (((a) * (b))));
     }
 }
 // def dist(p: Iterable[float], q: Iterable[float]) -> float:
+//     # Fold via hypot to avoid overflow when coordinates are large: the naive
+//     # sqrt(sum((pi - qi)**2)) overflows when any (pi - qi)**2 exceeds DBL_MAX.
+//     # std::hypot(a, b) is IEEE overflow-safe, and hypot-folding is
+//     # mathematically equivalent: hypot(hypot(d0, d1), d2) == sqrt(d0^2 + d1^2 + d2^2).
+//     ip = iter(p)
+//     iq = iter(q)
+//     # Seed with first pair (or return 0.0 for empty inputs).
+//     try:
+//         p0 = next(ip)
+//     except StopIteration:
+//         try:
+//             next(iq)
+//         except StopIteration:
+//             return 0.0
+//         raise ValueError("dist(): input lengths differ")
+//     try:
+//         q0 = next(iq)
+//     except StopIteration:
+//         raise ValueError("dist(): input lengths differ")
+//     result: float = fabs(p0 - q0)
+//     while True:
+//         try:
+//             pi = next(ip)
+//         except StopIteration:
+//             try:
+//                 next(iq)
+//             except StopIteration:
+//                 return result
+//             raise ValueError("dist(): input lengths differ")
+//         try:
+//             qi = next(iq)
+//         except StopIteration:
+//             raise ValueError("dist(): input lengths differ")
+//         result = _hypot2(result, pi - qi)
 template<::tpystd::typing::Iterable<double> T_p, ::tpystd::typing::Iterable<double> T_q>
 double dist(const T_p& p, const T_q& q) {
-    // # Fold via hypot to avoid overflow when coordinates are large: the naive
-    // # sqrt(sum((pi - qi)**2)) overflows when any (pi - qi)**2 exceeds DBL_MAX.
-    // # std::hypot(a, b) is IEEE overflow-safe, and hypot-folding is
-    // # mathematically equivalent: hypot(hypot(d0, d1), d2) == sqrt(d0^2 + d1^2 + d2^2).
-    // ip = iter(p)
     auto ip = ::tpy::__iter__(p);
-    // iq = iter(q)
     auto iq = ::tpy::__iter__(q);
-    // # Seed with first pair (or return 0.0 for empty inputs).
-    // try:
     double p0;
     {
-        // p0 = next(ip)
         {
             auto __try_tmp_8 = ::tpy::next(ip);
             if (!__try_tmp_8.has_value()) goto __except_7;
@@ -225,9 +277,7 @@ double dist(const T_p& p, const T_q& q) {
         goto __after_try_7;
         // except StopIteration:
         __except_7:;
-        // try:
         {
-            // next(iq)
             {
                 auto __try_tmp_10 = ::tpy::next(iq);
                 if (!__try_tmp_10.has_value()) goto __except_9;
@@ -235,18 +285,14 @@ double dist(const T_p& p, const T_q& q) {
             goto __after_try_9;
             // except StopIteration:
             __except_9:;
-            // return 0.0
             return 0.0;
             __after_try_9:;
         }
-        // raise ValueError("dist(): input lengths differ")
         throw ::tpy::ValueError("dist(): input lengths differ");
         __after_try_7:;
     }
-    // try:
     double q0;
     {
-        // q0 = next(iq)
         {
             auto __try_tmp_12 = ::tpy::next(iq);
             if (!__try_tmp_12.has_value()) goto __except_11;
@@ -255,18 +301,13 @@ double dist(const T_p& p, const T_q& q) {
         goto __after_try_11;
         // except StopIteration:
         __except_11:;
-        // raise ValueError("dist(): input lengths differ")
         throw ::tpy::ValueError("dist(): input lengths differ");
         __after_try_11:;
     }
-    // result: float = fabs(p0 - q0)
     double result = ::std::fabs(((p0) - (q0)));
-    // while True:
     while (true) {
-        // try:
         double pi;
         {
-            // pi = next(ip)
             {
                 auto __try_tmp_14 = ::tpy::next(ip);
                 if (!__try_tmp_14.has_value()) goto __except_13;
@@ -275,9 +316,7 @@ double dist(const T_p& p, const T_q& q) {
             goto __after_try_13;
             // except StopIteration:
             __except_13:;
-            // try:
             {
-                // next(iq)
                 {
                     auto __try_tmp_16 = ::tpy::next(iq);
                     if (!__try_tmp_16.has_value()) goto __except_15;
@@ -285,18 +324,14 @@ double dist(const T_p& p, const T_q& q) {
                 goto __after_try_15;
                 // except StopIteration:
                 __except_15:;
-                // return result
                 return result;
                 __after_try_15:;
             }
-            // raise ValueError("dist(): input lengths differ")
             throw ::tpy::ValueError("dist(): input lengths differ");
             __after_try_13:;
         }
-        // try:
         double qi;
         {
-            // qi = next(iq)
             {
                 auto __try_tmp_18 = ::tpy::next(iq);
                 if (!__try_tmp_18.has_value()) goto __except_17;
@@ -305,11 +340,9 @@ double dist(const T_p& p, const T_q& q) {
             goto __after_try_17;
             // except StopIteration:
             __except_17:;
-            // raise ValueError("dist(): input lengths differ")
             throw ::tpy::ValueError("dist(): input lengths differ");
             __after_try_17:;
         }
-        // result = _hypot2(result, pi - qi)
         result = ::std::hypot(result, ((pi) - (qi)));
     }
 }

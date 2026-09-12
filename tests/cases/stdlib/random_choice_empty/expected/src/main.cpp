@@ -5,47 +5,50 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     empty: list[int32] = []
+//     try:
+//         x = random.choice(empty)
+//         print(x)
+//     except IndexError as e:
+//         print("IndexError:", str(e))
+//     rng = random.Random()
+//     try:
+//         y = rng.choice(empty)
+//         print(y)
+//     except IndexError as e:
+//         print("IndexError:", str(e))
 void main() {
-    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    // try:
     {
         try {
-            // x = random.choice(empty)
             int32_t x = ::tpystd::random::choice<int32_t>(empty);
-            // print(x)
             std::cout << x << "\n";
         } catch (const ::tpy::IndexError& e) {
-            // print("IndexError:", str(e))
             std::cout << "IndexError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // rng = random.Random()
     ::tpystd::random::Random rng = ::tpystd::random::Random();
-    // try:
     {
         try {
-            // y = rng.choice(empty)
             int32_t y = rng.choice<int32_t>(empty);
-            // print(y)
             std::cout << y << "\n";
         } catch (const ::tpy::IndexError& e) {
-            // print("IndexError:", str(e))
             std::cout << "IndexError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// # random.choice on an empty sequence raises IndexError (CPython parity),
+// # via both the module-level function and the Random instance method.
+// import random
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # random.choice on an empty sequence raises IndexError (CPython parity),
-    // # via both the module-level function and the Random instance method.
-    // import random
     ::tpystd::random::__tpy_init();
-    // main()
     main();
 }
 

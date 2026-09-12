@@ -5,47 +5,49 @@ namespace tpyapp::main {
 
 
 // def fail() -> None:
+//     raise MyError(7)
 void fail() {
-    // raise MyError(7)
     throw MyError(7);
 }
 
 // def middle() -> None:
+//     try:
+//         fail()
+//     except MyError as e:
+//         print(e.code)
+//         raise
 void middle() {
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (const MyError& e) {
-            // print(e.code)
             std::cout << e.code << "\n";
-            // raise
             throw;
         }
     }
 }
 
 // def main() -> None:
+//     try:
+//         middle()
+//     except MyError as e:
+//         print(e.code)
 void main() {
-    // try:
     {
         try {
-            // middle()
             middle();
         } catch (const MyError& e) {
-            // print(e.code)
             std::cout << e.code << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

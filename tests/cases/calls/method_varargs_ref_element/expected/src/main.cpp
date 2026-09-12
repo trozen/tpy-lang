@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Pile()
+//     print(p.total())
+//     a = Box(int32(1))
+//     b = Box(int32(2))
+//     c = Box(int32(3))
+//     print(p.total(a, b, c))
 void main() {
-    // p = Pile()
     Pile p = Pile();
-    // print(p.total())
     std::cout << p.total(::tpy::varargs<const Box>()) << "\n";
-    // a = Box(int32(1))
     Box a = Box(1);
-    // b = Box(int32(2))
     Box b = Box(2);
-    // c = Box(int32(3))
     Box c = Box(3);
-    // print(p.total(a, b, c))
     std::array<const Box*, 3> __tmp_1{&a, &b, &c};
     std::cout << p.total(::tpy::varargs<const Box>(__tmp_1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

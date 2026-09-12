@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = storage.Buffer()
+//     s.add("hello")
+//     s.add(" world")
+//     print(s.size())
+//     print(s.dump())
 void main() {
-    // s = storage.Buffer()
     ::tpyapp::storage::Buffer s = ::tpyapp::storage::Buffer();
-    // s.add("hello")
     s.add("hello");
-    // s.add(" world")
     s.add(" world");
-    // print(s.size())
     std::cout << s.size() << "\n";
-    // print(s.dump())
     std::cout << s.dump() << "\n";
 }
 
+// import storage
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import storage
     ::tpyapp::storage::__tpy_init();
-    // main()
     main();
 }
 

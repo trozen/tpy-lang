@@ -5,47 +5,47 @@ namespace tpyapp::main {
 
 
 // def test_binary():
+//     a = Acc(3)
+//     b = Acc(1)
+//     c = a + b
+//     print(c.n)
+//     a.n = 21  # tpyc: warning(/while borrowed/)
+//     print(c.n)
 void test_binary() {
-    // a = Acc(3)
     Acc a = Acc(3);
-    // b = Acc(1)
     Acc b = Acc(1);
-    // c = a + b
     const Acc& c = ((a) + (b));
-    // print(c.n)
     std::cout << c.n << "\n";
-    // a.n = 21  # tpyc: warning(/while borrowed/)
     a.n = 21;
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def test_unary():
+//     a = Acc(2)
+//     c = -a
+//     a.n = 5  # tpyc: warning(/while borrowed/)
+//     print(c.n)
 void test_unary() {
-    // a = Acc(2)
     Acc a = Acc(2);
-    // c = -a
     const Acc& c = -(a);
-    // a.n = 5  # tpyc: warning(/while borrowed/)
     a.n = 5;
-    // print(c.n)
     std::cout << c.n << "\n";
 }
 
 // def main():
+//     test_binary()
+//     test_unary()
 void main() {
-    // test_binary()
     test_binary();
-    // test_unary()
     test_unary();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -18,10 +18,13 @@ struct IntStr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show_v[K, V](x: Pair[K, V]) -> V:    # tpyc: ok
 template<typename K, typename V, Pair<K, V> T_x>
 ::tpy::val_or_ref_t<V> show_v(T_x& x);
+// def show_k[K, V](x: Pair[K, V]) -> K:    # tpyc: ok
 template<typename K, typename V, Pair<K, V> T_x>
 ::tpy::val_or_ref_t<K> show_k(T_x& x);
+// def main() -> None:
 void main();
 
 // class IntStr:
@@ -50,29 +53,31 @@ inline std::ostream& operator<<(std::ostream& os, const IntStr& obj) {
 
 
 // def __init__(self, a: int, b: str):
+//     self.a = a
+//     self.b = b
 inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
 
 // def first(self) -> int:
+//     return self.a
 inline ::tpy::BigInt IntStr::first() const {
-    // return self.a
     return this->a;
 }
 
 // def second(self) -> str:
+//     return self.b
 inline std::string IntStr::second() const {
-    // return self.b
     return this->b;
 }
 // def show_v[K, V](x: Pair[K, V]) -> V:    # tpyc: ok
+//     return x.second()
 template<typename K, typename V, Pair<K, V> T_x>
 ::tpy::val_or_ref_t<V> show_v(T_x& x) {
-    // return x.second()
     return x.second();
 }
 // def show_k[K, V](x: Pair[K, V]) -> K:    # tpyc: ok
+//     return x.first()
 template<typename K, typename V, Pair<K, V> T_x>
 ::tpy::val_or_ref_t<K> show_k(T_x& x) {
-    // return x.first()
     return x.first();
 }
 

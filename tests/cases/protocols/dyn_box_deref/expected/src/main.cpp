@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b1: Box[Pet] = Box(Parrot(label="Polly"))   # inheritance
+//     b2: Box[Pet] = Box(Dog(label="Rex"))         # structural
+//     print(b1.name())                              # deref through inherited vtable
+//     print(b2.name())                              # deref through Adapter's vtable
 void main() {
-    // b1: Box[Pet] = Box(Parrot(label="Polly"))   # inheritance
     ::tpystd::tplib::box::Box<Pet> b1 = ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly"));
-    // b2: Box[Pet] = Box(Dog(label="Rex"))         # structural
     ::tpystd::tplib::box::Box<Pet> b2 = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex")));
-    // print(b1.name())                              # deref through inherited vtable
     std::cout << b1.__deref__().name() << "\n";
-    // print(b2.name())                              # deref through Adapter's vtable
     std::cout << b2.__deref__().name() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

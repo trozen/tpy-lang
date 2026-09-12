@@ -9,13 +9,16 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def apply[T, U](f: Fn[[T], U], xs: list[T]) -> int32:  # tpyc: ok
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
 int32_t apply(__F0&& f, const std::vector<T>& xs);
+// def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
 template<typename T>
 ::tpy::val_or_ref_t<T> apply(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
 // # Two overloads at different arities: the 2-arg `apply` is Fn-bearing
@@ -26,19 +29,19 @@ void main();
 // # inference for U.
 // @dispatch
 // def apply[T, U](f: Fn[[T], U], xs: list[T]) -> int32:  # tpyc: ok
+//     return int32(0)
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
 int32_t apply(__F0&& f, const std::vector<T>& xs) {
-    // return int32(0)
     return 0;
 }
 // @dispatch
 // def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
+//     return a
 template<typename T>
 ::tpy::val_or_ref_t<T> apply(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // return a
     return ::tpy::param_to_return<T>(a);
 }
 

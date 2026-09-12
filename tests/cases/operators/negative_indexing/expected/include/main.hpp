@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_list_negative_indexing() -> None:
 void test_list_negative_indexing();
+// def test_array_negative_indexing() -> None:
 void test_array_negative_indexing();
+// def test_string_negative_indexing() -> None:
 void test_string_negative_indexing();
+// def test_negative_index_assignment() -> None:
 void test_negative_index_assignment();
+// def test_negative_index_in_expression() -> None:
 void test_negative_index_in_expression();
+// def test_array_negative_assignment() -> None:
 void test_array_negative_assignment();
 
 void __tpy_init();

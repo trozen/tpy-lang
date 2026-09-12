@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def check(s: str | None) -> None:
+//     if s is not None:
+//         print(s[0])
+//         print(s[1:4])
+//         print(len(s))
+//     else:
+//         print("none")
 void check(std::optional<std::string_view> s) {
-    // if s is not None:
     if ((s.has_value())) {
-        // print(s[0])
         std::cout << ::tpy::__getitem__((*s), 0) << "\n";
-        // print(s[1:4])
         std::cout << ::tpy::str_slice((*s), ::tpy::BasicSlice{1, 4}) << "\n";
-        // print(len(s))
         std::cout << ::tpy::__len__((*s)) << "\n";
-    // else:
     } else {
-        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
 // def main() -> None:
+//     check("hello")
+//     check(None)
+//     Wrapper("world").first_char()
 void main() {
-    // check("hello")
     check("hello");
-    // check(None)
     check(std::nullopt);
-    // Wrapper("world").first_char()
     Wrapper("world").first_char();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

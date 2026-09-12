@@ -13,6 +13,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T]:
@@ -22,6 +23,7 @@ struct Container {
     T item;
 
     // def __init__(self, item: Own[T]) -> None:
+    //     self.item = item
     Container() = default;
     explicit Container(::tpy::own_param_t<T> item) : item(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -86,21 +88,23 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __hash__(self) -> uint64:
+//     return uint64(self.x)
 inline uint64_t Point::__hash__() const {
-    // return uint64(self.x)
     return ::tpy::int_cast_check<uint64_t>(this->x);
 }
 
 // def __eq__(self, other: "Point") -> bool:
+//     return self.x == other.x
 inline bool Point::__eq__(const Point& other) const {
-    // return self.x == other.x
     return (this->x == other.x);
 }
 
 // def __init__(self) -> None:
+//     self.c = Container(set())
 inline Holder::Holder() : c(Container<::tpy::ordered_set<Point>>(::tpy::ordered_set<Point>())) {}
 void __tpy_init();
 } // namespace tpyapp::main

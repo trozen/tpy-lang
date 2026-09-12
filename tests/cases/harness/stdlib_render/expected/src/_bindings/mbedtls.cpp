@@ -23,15 +23,27 @@ namespace tpystd::_bindings::mbedtls {
 
 
 
+// # tpy: cpp_namespace("tpystd::_bindings::mbedtls")
+// # tpy: include("<tpy/stdlib/mbedtls_h.hpp>")
+// # tpy: link("mbedtls", managed=True)
+// """Raw mbedTLS C bindings. Not for direct user import.
+//
+// The handshake surface is the cohesive `tpy_tls_*` session API implemented
+// in runtime/cpp/src/stdlib/mbedtls_shim.c (see that file + the facade header
+// for why the FFI is shaped as one opaque session rather than per-handle
+// mirrors). The public `ssl` module builds SSLContext / SSLSocket on top of a
+// single `Ptr[Session]`, using __del__ for RAII over the session lifetime.
+//
+// String args follow the socket.py convention: a (view pointer, length) pair
+// that is NOT NUL-terminated; the shim copies + terminates internally.
+// """
+//
+// from tpy.extern import native
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: cpp_namespace("tpystd::_bindings::mbedtls")
-    // # tpy: include("<tpy/stdlib/mbedtls_h.hpp>")
-    // # tpy: link("mbedtls", managed=True)
-    // from tpy.extern import native
 }
 
 } // namespace tpystd::_bindings::mbedtls

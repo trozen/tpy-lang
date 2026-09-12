@@ -11,6 +11,7 @@ struct Stack;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Stack:
@@ -34,11 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 
 
 // def __init__(self, size: int32) -> None:
+//     self.size = size
 inline Stack::Stack(int32_t size) : size(size) {}
 
 // def __len__(self) -> int32:
+//     return self.size
 inline int32_t Stack::__len__() const {
-    // return self.size
     return this->size;
 }
 void __tpy_init();

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Accum(int32(4))
+//     print(a.total)
 void main() {
-    // a = Accum(int32(4))
     Accum a = Accum(4);
-    // print(a.total)
     std::cout << a.total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

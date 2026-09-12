@@ -9,6 +9,7 @@ namespace tpyapp::mypkg::helpers {
 
 inline constexpr std::string_view __name__ = "mypkg.helpers";
 
+// def tag(label: str, value: int32) -> str:
 std::string tag(std::string_view label, int32_t value);
 
 void __tpy_init();

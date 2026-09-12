@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def read_buf(b: readonly[Buffer]) -> None:
+//     items: list[int32] = [int32(99)]
+//     s = b.merge_span(items)  # tpyc: type(Span[readonly[int32]])
+//     print(s[int32(0)])
 void read_buf(const Buffer& b) {
-    // items: list[int32] = [int32(99)]
     std::vector<int32_t> items = {99};
-    // s = b.merge_span(items)  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = b.merge_span(items);
-    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
 }
 
 // def main() -> None:
+//     b = Buffer()
+//     items: list[int32] = [int32(99)]
+//     s = b.merge_span(items)  # tpyc: type(Span[int32])
+//     print(s[int32(0)])
+//     read_buf(b)
 void main() {
-    // b = Buffer()
     Buffer b = Buffer();
-    // items: list[int32] = [int32(99)]
     std::vector<int32_t> items = {99};
-    // s = b.merge_span(items)  # tpyc: type(Span[int32])
     std::span<int32_t> s = b.merge_span(items);
-    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // read_buf(b)
     read_buf(b);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

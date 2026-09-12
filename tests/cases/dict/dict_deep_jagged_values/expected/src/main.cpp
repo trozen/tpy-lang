@@ -9,25 +9,25 @@ namespace tpyapp::main {
 // # jagged innermost level resolves to list[int] and propagates to the equal-size
 // # peer value; mutating it through the dict subscript must be observed.
 // def main() -> None:
+//     d = {1: [[1, 2], [3, 4]], 2: [[5, 6], [7, 8, 9]]}  # tpyc: ok
+//     print(d)
+//     d[2][1].append(99)  # innermost stored value is a real vector -> change observed
+//     d[1][0].append(7)   # the equal-size peer value demoted too, so it grows as well
+//     print(d)
 void main() {
-    // d = {1: [[1, 2], [3, 4]], 2: [[5, 6], [7, 8, 9]]}  # tpyc: ok
     ::tpy::ordered_map<int32_t, std::array<std::vector<int32_t>, 2>> d = ::tpy::ordered_map<int32_t, std::array<std::vector<int32_t>, 2>>({{1, {{{1, 2}, {3, 4}}}}, {2, {{{5, 6}, {7, 8, 9}}}}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // d[2][1].append(99)  # innermost stored value is a real vector -> change observed
     ::tpy::__getitem__(::tpy::__getitem__(d, 2), 1).push_back(99);
-    // d[1][0].append(7)   # the equal-size peer value demoted too, so it grows as well
     ::tpy::__getitem__(::tpy::__getitem__(d, 1), 0).push_back(7);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

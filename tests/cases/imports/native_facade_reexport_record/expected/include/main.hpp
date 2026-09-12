@@ -12,7 +12,9 @@ using ::repro_rec::pkg::types::Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use(c: Counter) -> int32:
 int32_t use(const ::repro_rec::pkg::types::Counter& c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

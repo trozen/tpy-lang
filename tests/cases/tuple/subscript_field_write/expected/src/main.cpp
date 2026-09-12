@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def bump(t: tuple[int32, Leaf]) -> None:
+//     t[1].n = 5
+//     t[1].n += 3
 void bump(const std::tuple<int32_t, Leaf*>& t) {
-    // t[1].n = 5
     std::get<1>(t)->n = 5;
-    // t[1].n += 3
     std::get<1>(t)->n = ::tpy::add_check<int32_t>(std::get<1>(t)->n, 3);
 }
 
 // def main() -> None:
+//     leaf = Leaf(1)
+//     bump((10, leaf))
+//     print(leaf.n)
 void main() {
-    // leaf = Leaf(1)
     Leaf leaf = Leaf(1);
-    // bump((10, leaf))
     bump(std::tuple<int32_t, Leaf*>{10, &(leaf)});
-    // print(leaf.n)
     std::cout << leaf.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -17,8 +17,11 @@ struct __coro_add_one;
 struct __coro_main_coro;
 struct __coro_Counter_bump;
 
+// async def add_one(n: int) -> int:
 __coro_add_one add_one(::tpy::BigInt n);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -39,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: Counter.bump
+// async def bump(self, n: int) -> int:
 struct __coro_Counter_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -66,7 +69,7 @@ inline __coro_Counter_bump Counter::bump(::tpy::BigInt n) const {
     return __coro_Counter_bump(*this, n);
 }
 
-// Async coroutine: add_one
+// async def add_one(n: int) -> int:
 struct __coro_add_one {
     int32_t __state;
     bool __cancel_pending;
@@ -88,7 +91,7 @@ struct __coro_add_one {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -118,6 +121,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self, base: int) -> None:
+//     self.base = base
 inline Counter::Counter(const ::tpy::BigInt& base) : base(base) {}
 void __tpy_init();
 } // namespace tpyapp::main

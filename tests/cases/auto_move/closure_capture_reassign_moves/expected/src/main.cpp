@@ -5,34 +5,36 @@ namespace tpyapp::main {
 
 
 // def main():
+//     s = Sink()
+//     p = Point()
+//
+//     def show():
+//         print(len(p.items))
+//
+//     s.consume(p)  # tpyc: ok -- p is rebound below before show() runs
+//     p = Point()
+//     p.items.append(4)
+//     show()
 void main() {
     std::optional<Point> __slot_2;
-    // s = Sink()
     Sink s = Sink();
-    // p = Point()
     Point __slot_1 = Point();
     Point* p = &__slot_1;
-    // def show():
     auto show = [&p]() {
-        // print(len(p.items))
         std::cout << ::tpy::__len__(p->items) << "\n";
     };
-    // s.consume(p)  # tpyc: ok -- p is rebound below before show() runs
     s.consume(std::move((*p)));
-    // p = Point()
     p = &*(__slot_2 = Point());
-    // p.items.append(4)
     p->items.push_back(4);
-    // show()
     show();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

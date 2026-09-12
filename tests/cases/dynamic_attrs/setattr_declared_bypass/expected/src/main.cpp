@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counted()
+//     c.x = "hello"  # routes via __setattr__, increments counter
+//     c.y = "world"  # routes via __setattr__, increments counter
+//     # Internal field set in __init__ does NOT increment, so counter is 2.
+//     print(c._counter)
+//     print(cast(str, c.x))
 void main() {
-    // c = Counted()
     Counted c = Counted();
-    // c.x = "hello"  # routes via __setattr__, increments counter
     c.__setattr__("x", ::tpy::make_any(std::string("hello")));
-    // c.y = "world"  # routes via __setattr__, increments counter
     c.__setattr__("y", ::tpy::make_any(std::string("world")));
-    // # Internal field set in __init__ does NOT increment, so counter is 2.
-    // print(c._counter)
     std::cout << c._counter << "\n";
-    // print(cast(str, c.x))
     std::cout << ::tpy::any_cast_or_panic<std::string>(c.__getattr__("x")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t: Tree[str] = ["a", ["b", ["c", "d"]], "e"]
+//     print(depth(t))
+//     leaf: Tree[str] = "x"
+//     print(depth(leaf))
 void main() {
-    // t: Tree[str] = ["a", ["b", ["c", "d"]], "e"]
     Tree<std::string> t = std::vector<Tree<std::string>>{"a", std::vector<Tree<std::string>>{"b", std::vector<Tree<std::string>>{"c", "d"}}, "e"};
-    // print(depth(t))
     std::cout << depth<std::string>(t) << "\n";
-    // leaf: Tree[str] = "x"
     Tree<std::string> leaf = "x";
-    // print(depth(leaf))
     std::cout << depth<std::string>(leaf) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

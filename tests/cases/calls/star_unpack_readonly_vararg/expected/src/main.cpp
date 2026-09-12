@@ -5,54 +5,54 @@ namespace tpyapp::main {
 
 
 // def take_ro(*items: readonly[Box]) -> int32:
+//     total: int32 = 0
+//     for b in items:
+//         total += b.val
+//     return total
 int32_t take_ro(::tpy::varargs<const Box> items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // total += b.val
         total = ::tpy::add_check<int32_t>(total, b.val);
     }
-    // return total
     return total;
 }
 
 // def from_ro_span(xs: Span[readonly[Box]]) -> int32:
+//     return take_ro(*xs)
 int32_t from_ro_span(std::span<const Box> xs) {
-    // return take_ro(*xs)
     return take_ro(::tpy::varargs<const Box>(xs));
 }
 
 // def from_mut_span(xs: Span[Box]) -> int32:
+//     return take_ro(*xs)
 int32_t from_mut_span(std::span<Box> xs) {
-    // return take_ro(*xs)
     return take_ro(::tpy::varargs<const Box>(xs));
 }
 
 // def main() -> None:
+//     items: list[Box] = []
+//     items.append(Box(3))
+//     items.append(Box(4))
+//     print(from_ro_span(items))
+//     print(from_mut_span(items))
 void main() {
-    // items: list[Box] = []
     std::vector<Box> items = std::vector<Box>{};
-    // items.append(Box(3))
     items.push_back(Box(3));
-    // items.append(Box(4))
     items.push_back(Box(4));
-    // print(from_ro_span(items))
     std::cout << from_ro_span(::tpy::as_span(items)) << "\n";
-    // print(from_mut_span(items))
     std::cout << from_mut_span(::tpy::as_mut_span(items)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

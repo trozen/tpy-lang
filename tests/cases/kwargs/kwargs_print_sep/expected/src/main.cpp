@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 // # Test print() with sep= keyword argument.
 // def main() -> None:
+//     print("a", "b", "c", sep=",")
+//     print("x", "y", sep="")
+//     print("hello", "world", sep=" -- ")
 void main() {
-    // print("a", "b", "c", sep=",")
     std::cout << "a" << "," << "b" << "," << "c" << "\n";
-    // print("x", "y", sep="")
     std::cout << "x" << "y" << "\n";
-    // print("hello", "world", sep=" -- ")
     std::cout << "hello" << " -- " << "world" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

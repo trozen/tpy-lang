@@ -5,12 +5,16 @@ namespace tpyapp::main {
 
 
 // async def read_after_await() -> None:
+//     saved: Optional[Point] = Point(42)
+//     await asyncio.sleep(0)
+//     saved = Point(7)
+//     await asyncio.sleep(0)
+//     if saved is not None:
+//         print(saved.x)
 ::tpystd::tpy::Poll<::std::monostate> __coro_read_after_await::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // saved: Optional[Point] = Point(42)
         saved = &*(__ptr_slot_f0 = Point(42));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -20,9 +24,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // saved = Point(7)
         saved = &*(__ptr_slot_f1 = Point(7));
-        // await asyncio.sleep(0)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_1;
         continue;
@@ -32,9 +34,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // if saved is not None:
         if ((saved != nullptr)) {
-            // print(saved.x)
             std::cout << saved->x << "\n";
         }
         __state = S_DONE;
@@ -52,21 +52,22 @@ __coro_read_after_await read_after_await() {
 }
 
 // def main() -> None:
+//     asyncio.run(read_after_await())
 void main() {
-    // asyncio.run(read_after_await())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(read_after_await()));
 }
 
+// # Async sibling of generators/gen_ptr_local_rvalue_frame: rvalue writes
+// # into a pointer-form coro-frame local materialize in frame slots.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async sibling of generators/gen_ptr_local_rvalue_frame: rvalue writes
-    // # into a pointer-form coro-frame local materialize in frame slots.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

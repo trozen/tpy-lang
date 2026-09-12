@@ -15,12 +15,16 @@ struct __coro_value;
 struct __coro_fail;
 struct __coro_go;
 
+// async def value(n: int32) -> int32:
 __coro_value value(int32_t n);
+// async def fail() -> int32:
 __coro_fail fail();
+// async def go(should_fail: bool) -> int32:
 __coro_go go(bool should_fail);
+// def main() -> None:
 void main();
 
-// Async coroutine: value
+// async def value(n: int32) -> int32:
 struct __coro_value {
     int32_t __state;
     bool __cancel_pending;
@@ -42,7 +46,7 @@ struct __coro_value {
     }
 };
 
-// Async coroutine: fail
+// async def fail() -> int32:
 struct __coro_fail {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +67,7 @@ struct __coro_fail {
     }
 };
 
-// Async coroutine: go
+// async def go(should_fail: bool) -> int32:
 struct __coro_go {
     ::tpy::frame_state __state;
     bool __cancel_pending;

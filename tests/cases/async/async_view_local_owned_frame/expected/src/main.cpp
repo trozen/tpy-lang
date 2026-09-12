@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def pair(n: int32) -> tuple[str, str]:
+//     return ("host-" + str(n), "port-" + str(n))
 std::tuple<std::string, std::string> pair(int32_t n) {
-    // return ("host-" + str(n), "port-" + str(n))
     return std::tuple<std::string, std::string>{(::tpy::str_concat("host-", ::tpy::fixed_to_str<int32_t>(n))), (::tpy::str_concat("port-", ::tpy::fixed_to_str<int32_t>(n)))};
 }
 
 // async def read_addr() -> None:
+//     # The promoted owned fields must survive the suspension.
+//     host, port = pair(9)
+//     await asyncio.sleep(0)
+//     print(host, port)
 ::tpystd::tpy::Poll<::std::monostate> __coro_read_addr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The promoted owned fields must survive the suspension.
-        // host, port = pair(9)
         auto __tup_1 = pair(9);
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -29,7 +30,6 @@ std::tuple<std::string, std::string> pair(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print(host, port)
         std::cout << host << " " << port << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -46,23 +46,24 @@ __coro_read_addr read_addr() {
 }
 
 // def main() -> None:
+//     asyncio.run(read_addr())
 void main() {
-    // asyncio.run(read_addr())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(read_addr()));
 }
 
+// # A deduced str view local in an async coro frame is promoted to owned
+// # storage: the unpack temp dies before the await, so the post-suspension
+// # read needs the frame to own the copies (async sibling of
+// # generators/gen_view_local_owned_frame).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A deduced str view local in an async coro frame is promoted to owned
-    // # storage: the unpack temp dies before the await, so the post-suspension
-    // # read needs the frame to own the copies (async sibling of
-    // # generators/gen_view_local_owned_frame).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

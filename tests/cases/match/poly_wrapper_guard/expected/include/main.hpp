@@ -35,7 +35,9 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(b: Box[Pet]) -> str:
 std::string describe(::tpystd::tplib::box::Box<Pet>& b);
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -94,22 +96,23 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Dog::Dog(const ::tpy::BigInt& n) : n(n) {}
 
 // def legs(self) -> int:
+//     return 4
 inline ::tpy::BigInt Dog::legs() {
-    // return 4
     return ::tpy::BigInt(4);
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Bird::Bird() {
-    // pass
 }
 
 // def legs(self) -> int:
+//     return 2
 inline ::tpy::BigInt Bird::legs() {
-    // return 2
     return ::tpy::BigInt(2);
 }
 void __tpy_init();

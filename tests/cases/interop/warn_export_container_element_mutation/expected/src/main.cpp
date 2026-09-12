@@ -6,42 +6,42 @@ namespace tpyapp::main {
 
 // @export
 // def bump_all(cs: list[Counter]) -> None:  # tpyc: warning(/list parameter 'cs' is copied in.*not visible to the caller/)
+//     for c in cs:
+//         c.bump()
 void bump_all(std::vector<Counter>& cs) {
-    // for c in cs:
     auto& __obj_0 = cs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& c = *__beg_0;
-        // c.bump()
         c.bump();
     }
 }
 
 // @export
 // def total(cs: list[Counter]) -> int64:  # tpyc: ok
+//     t: int64 = 0
+//     for c in cs:
+//         t += c.value
+//     return t
 int64_t total(const std::vector<Counter>& cs) {
-    // t: int64 = 0
     int64_t t = 0;
-    // for c in cs:
     auto& __obj_0 = cs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& c = *__beg_0;
-        // t += c.value
         t = ::tpy::add_check<int64_t>(t, c.value);
     }
-    // return t
     return t;
 }
 
+// from tpy.extern import export
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import export
 }
 
 } // namespace tpyapp::main

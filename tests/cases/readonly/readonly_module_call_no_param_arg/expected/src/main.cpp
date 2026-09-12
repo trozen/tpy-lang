@@ -6,21 +6,22 @@ namespace tpyapp::main {
 
 // @readonly
 // def ok() -> None:
+//     h.mutate()  # tpyc: ok
 void ok() {
-    // h.mutate()  # tpyc: ok
     ::tpyapp::helpers::mutate();
 }
 
+// import helpers as h
+//
+// ok()
+// print(0)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import helpers as h
     ::tpyapp::helpers::__tpy_init();
-    // ok()
     ok();
-    // print(0)
     std::cout << 0 << "\n";
 }
 

@@ -11,7 +11,9 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_buf(b: readonly[Buffer]) -> None:
 void read_buf(const Buffer& b);
+// def main() -> None:
 void main();
 
 // class Buffer:
@@ -39,19 +41,20 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = [int32(10), int32(20), int32(30)]
 inline Buffer::Buffer() : _data(std::vector<int32_t>{10, 20, 30}) {}
 
 // @auto_readonly
 // def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<int32_t> Buffer::merge_span(std::vector<int32_t>& other) {
-    // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
 // def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<const int32_t> Buffer::merge_span(const std::vector<int32_t>& other) const {
-    // return self._data
     return ::tpy::as_span(this->_data);
 }
 void __tpy_init();

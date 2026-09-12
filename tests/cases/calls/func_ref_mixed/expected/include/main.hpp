@@ -9,38 +9,45 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def to_str(x: int32) -> str:
 std::string to_str(int32_t x);
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x);
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  }
-int32_t apply_fn(__F0&& f, int32_t x);
-int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x);
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<std::string>;
-  }
-std::string transform(__F0&& f, int32_t x);
-std::function<int32_t(int32_t)> get_doubler();
-void main();
-
 // def apply_fn(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
-int32_t apply_fn(__F0&& f, int32_t x) {
-    // return f(x)
-    return f(x);
-}
+int32_t apply_fn(__F0&& f, int32_t x);
+// def apply_callable(f: Callable[[int32], int32], x: int32) -> int32:
+int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x);
 // def transform(f: Fn[[int32], str], x: int32) -> str:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<std::string>;
   }
+std::string transform(__F0&& f, int32_t x);
+// def get_doubler() -> Callable[[int32], int32]:
+std::function<int32_t(int32_t)> get_doubler();
+// def main() -> None:
+void main();
+
+// def apply_fn(f: Fn[[int32], int32], x: int32) -> int32:
+//     return f(x)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply_fn(__F0&& f, int32_t x) {
+    return f(x);
+}
+// def transform(f: Fn[[int32], str], x: int32) -> str:
+//     return f(x)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
 std::string transform(__F0&& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 

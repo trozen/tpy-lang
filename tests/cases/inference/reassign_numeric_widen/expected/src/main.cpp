@@ -5,81 +5,81 @@ namespace tpyapp::main {
 
 
 // def test_int_widen() -> None:
+//     a = int32(1)  # tpyc: type(int64)
+//     a = int64(2)  # tpyc: type(int64)
+//     print(a)
 void test_int_widen() {
-    // a = int32(1)  # tpyc: type(int64)
     int64_t a = 1;
-    // a = int64(2)  # tpyc: type(int64)
     a = 2;
-    // print(a)
     std::cout << a << "\n";
 }
 
 // def test_float_absorbs_int() -> None:
+//     b = int32(1)  # tpyc: type(float)
+//     b = 1.5  # tpyc: type(float)
+//     print(b)
 void test_float_absorbs_int() {
-    // b = int32(1)  # tpyc: type(float)
     double b = 1;
-    // b = 1.5  # tpyc: type(float)
     b = 1.5;
-    // print(b)
     std::cout << ::tpy::print_float(b) << "\n";
 }
 
 // def test_float_stays_float() -> None:
+//     c = 1.5  # tpyc: type(float)
+//     c = int32(1)  # tpyc: type(float)
+//     print(c)
 void test_float_stays_float() {
-    // c = 1.5  # tpyc: type(float)
     double c = 1.5;
-    // c = int32(1)  # tpyc: type(float)
     c = static_cast<double>(1);
-    // print(c)
     std::cout << ::tpy::print_float(c) << "\n";
 }
 
 // def test_bigint_absorbs_fixedint() -> None:
+//     d = int32(1)  # tpyc: type(int)
+//     d = int(2)  # tpyc: type(int)
+//     print(d)
 void test_bigint_absorbs_fixedint() {
-    // d = int32(1)  # tpyc: type(int)
     ::tpy::BigInt d = 1;
-    // d = int(2)  # tpyc: type(int)
     d = ::tpy::BigInt(2);
-    // print(d)
     std::cout << d << "\n";
 }
 
 // def test_unsigned_to_wider_signed() -> None:
+//     e = uint8(1)  # tpyc: type(int32)
+//     e = int32(2)  # tpyc: type(int32)
+//     print(e)
 void test_unsigned_to_wider_signed() {
-    // e = uint8(1)  # tpyc: type(int32)
     int32_t e = 1;
-    // e = int32(2)  # tpyc: type(int32)
     e = 2;
-    // print(e)
     std::cout << e << "\n";
 }
 
 // def test_uint32_to_int64() -> None:
+//     g = uint32(1)  # tpyc: type(int64)
+//     g = int64(2)  # tpyc: type(int64)
+//     print(g)
 void test_uint32_to_int64() {
-    // g = uint32(1)  # tpyc: type(int64)
     int64_t g = 1;
-    // g = int64(2)  # tpyc: type(int64)
     g = 2;
-    // print(g)
     std::cout << g << "\n";
 }
 
+// test_int_widen()
+// test_float_absorbs_int()
+// test_float_stays_float()
+// test_bigint_absorbs_fixedint()
+// test_unsigned_to_wider_signed()
+// test_uint32_to_int64()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_int_widen()
     test_int_widen();
-    // test_float_absorbs_int()
     test_float_absorbs_int();
-    // test_float_stays_float()
     test_float_stays_float();
-    // test_bigint_absorbs_fixedint()
     test_bigint_absorbs_fixedint();
-    // test_unsigned_to_wider_signed()
     test_unsigned_to_wider_signed();
-    // test_uint32_to_int64()
     test_uint32_to_int64();
 }
 

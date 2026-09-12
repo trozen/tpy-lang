@@ -5,58 +5,62 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Single-level inheritance: round-trip
+//     u = User("Alice", 30, "alice@example.com")
+//     s = u.to_json()
+//     print(s)
+//     u2 = User.from_json(s)
+//     print(u2.name, u2.age, u2.email)
+//
+//     # Multi-level inheritance
+//     a = Admin("Bob", 40, "bob@co.com", "superuser")
+//     s2 = a.to_json()
+//     print(s2)
+//     a2 = Admin.from_json(s2)
+//     print(a2.name, a2.age, a2.email, a2.role)
+//
+//     # Defaults: only required field provided
+//     ed = Extended(1)
+//     print(ed.to_json())
+//     # All fields provided
+//     ed2 = Extended(1, 2, 3)
+//     print(ed2.to_json())
+//     # Round-trip with defaults
+//     ed3 = Extended.from_json('{"x": 10}')
+//     print(ed3.x, ed3.y, ed3.z)
+//
+//     # Optional parent fields
+//     sc = Scored("hello", None, 42)
+//     print(sc.to_json())
+//     # Decode with missing optional + default
+//     sc2 = Scored.from_json('{"tag": "hi", "score": 7}')
+//     print(sc2.tag, sc2.note, sc2.score)
+//
+//     # Equality across inherited fields
+//     print(User("A", 1, "a") == User("A", 1, "a"))
+//     print(User("A", 1, "a") == User("A", 1, "b"))
 void main() {
-    // # Single-level inheritance: round-trip
-    // u = User("Alice", 30, "alice@example.com")
     User u = User("Alice", 30, "alice@example.com");
-    // s = u.to_json()
     std::string s = u.to_json();
-    // print(s)
     std::cout << s << "\n";
-    // u2 = User.from_json(s)
     User u2 = User::from_json(s);
-    // print(u2.name, u2.age, u2.email)
     std::cout << u2.name << " " << u2.age << " " << u2.email << "\n";
-    // # Multi-level inheritance
-    // a = Admin("Bob", 40, "bob@co.com", "superuser")
     Admin a = Admin("Bob", 40, "bob@co.com", "superuser");
-    // s2 = a.to_json()
     std::string s2 = a.to_json();
-    // print(s2)
     std::cout << s2 << "\n";
-    // a2 = Admin.from_json(s2)
     Admin a2 = Admin::from_json(s2);
-    // print(a2.name, a2.age, a2.email, a2.role)
     std::cout << a2.name << " " << a2.age << " " << a2.email << " " << a2.role << "\n";
-    // # Defaults: only required field provided
-    // ed = Extended(1)
     Extended ed = Extended(1);
-    // print(ed.to_json())
     std::cout << ed.to_json() << "\n";
-    // # All fields provided
-    // ed2 = Extended(1, 2, 3)
     Extended ed2 = Extended(1, 2, 3);
-    // print(ed2.to_json())
     std::cout << ed2.to_json() << "\n";
-    // # Round-trip with defaults
-    // ed3 = Extended.from_json('{"x": 10}')
     Extended ed3 = Extended::from_json("{\"x\": 10}");
-    // print(ed3.x, ed3.y, ed3.z)
     std::cout << ed3.x << " " << ed3.y << " " << ed3.z << "\n";
-    // # Optional parent fields
-    // sc = Scored("hello", None, 42)
     Scored sc = Scored("hello", std::nullopt, 42);
-    // print(sc.to_json())
     std::cout << sc.to_json() << "\n";
-    // # Decode with missing optional + default
-    // sc2 = Scored.from_json('{"tag": "hi", "score": 7}')
     Scored sc2 = Scored::from_json("{\"tag\": \"hi\", \"score\": 7}");
-    // print(sc2.tag, sc2.note, sc2.score)
     std::cout << sc2.tag << " " << ::tpy::print_optional_val(sc2.note) << " " << sc2.score << "\n";
-    // # Equality across inherited fields
-    // print(User("A", 1, "a") == User("A", 1, "a"))
     std::cout << ::tpy::print_bool(((User("A", 1, "a")) == (User("A", 1, "a")))) << "\n";
-    // print(User("A", 1, "a") == User("A", 1, "b"))
     std::cout << ::tpy::print_bool(((User("A", 1, "a")) == (User("A", 1, "b")))) << "\n";
 }
 
@@ -510,6 +514,9 @@ void Admin::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer)
     __writer.write_str(this->role);
     __writer.object_end();
 }
+// from tplib.json.model import model
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -519,8 +526,6 @@ void __tpy_init() {
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
     ::tpystd::tplib::json::parser::__tpy_init();
-    // from tplib.json.model import model
-    // main()
     main();
 }
 

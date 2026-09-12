@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def area(s: Circle | Rect | Triangle) -> float:
+//     if isinstance(s, Circle):
+//         return 3.14159 * s.radius * s.radius
+//     elif isinstance(s, Rect):
+//         return s.width * s.height
+//     else:
+//         return 0.5 * s.base * s.height
 double area(::tpy::Union<const Circle*, const Rect*, const Triangle*> s) {
-    // if isinstance(s, Circle):
     if (std::holds_alternative<const Circle*>(s)) {
         auto& __s = *std::get<const Circle*>(s);
-        // return 3.14159 * s.radius * s.radius
         return ((((3.14159) * (__s.radius))) * (__s.radius));
-    // elif isinstance(s, Rect):
     } else if (std::holds_alternative<const Rect*>(s)) {
         auto& __s = *std::get<const Rect*>(s);
-        // return s.width * s.height
         return ((__s.width) * (__s.height));
-    // else:
     } else {
         auto& __s = *std::get<const Triangle*>(s);
-        // return 0.5 * s.base * s.height
         return ((((0.5) * (__s.base))) * (__s.height));
     }
 }
 
 // def main() -> None:
+//     c: Circle | Rect | Triangle = Circle(5.0)
+//     print(area(c))
+//     r: Circle | Rect | Triangle = Rect(3.0, 4.0)
+//     print(area(r))
+//     t: Circle | Rect | Triangle = Triangle(6.0, 8.0)
+//     print(area(t))
 void main() {
-    // c: Circle | Rect | Triangle = Circle(5.0)
     ::tpy::Union<Circle, Rect, Triangle> __slot_1 = Circle(5.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> c = ::tpy::to_ptr_variant(__slot_1);
-    // print(area(c))
     std::cout << ::tpy::print_float(area(c.as_const())) << "\n";
-    // r: Circle | Rect | Triangle = Rect(3.0, 4.0)
     ::tpy::Union<Circle, Rect, Triangle> __slot_2 = Rect(3.0, 4.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> r = ::tpy::to_ptr_variant(__slot_2);
-    // print(area(r))
     std::cout << ::tpy::print_float(area(r.as_const())) << "\n";
-    // t: Circle | Rect | Triangle = Triangle(6.0, 8.0)
     ::tpy::Union<Circle, Rect, Triangle> __slot_3 = Triangle(6.0, 8.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> t = ::tpy::to_ptr_variant(__slot_3);
-    // print(area(t))
     std::cout << ::tpy::print_float(area(t.as_const())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

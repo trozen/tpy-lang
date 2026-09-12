@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def print_point(p: Point) -> None:
+//     print(p.x, p.y)
 void print_point(const Point& p) {
-    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
 }
 
 // def test() -> None:
+//     b: Box[Point] = Box(Point(5, 15))
+//     # Field access through generic deref: Box[Point].__deref__() -> Point
+//     print(b.x)
+//     print(b.y)
+//     # Coercion: Box[Point] passed where Point expected
+//     print_point(b)
 void test() {
-    // b: Box[Point] = Box(Point(5, 15))
     Box<Point> b = Box<Point>(Point(5, 15));
-    // # Field access through generic deref: Box[Point].__deref__() -> Point
-    // print(b.x)
     std::cout << b.__deref__().x << "\n";
-    // print(b.y)
     std::cout << b.__deref__().y << "\n";
-    // # Coercion: Box[Point] passed where Point expected
-    // print_point(b)
     Point __tmp_1 = b.__deref__();
     print_point(__tmp_1);
 }
 
+// test()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test()
     test();
 }
 

@@ -3,22 +3,22 @@
 
 namespace tpyapp::main {
 
-// # Redefine the imported MAX - this should work and be used
-// MAX: int32 = int32(42)
 int32_t MAX{};
 
+// from utils import MAX
+//
+// # Redefine the imported MAX - this should work and be used
+// MAX: int32 = int32(42)
+//
+// # Top-level print uses the redefined MAX
+// print(MAX)  # Should print 42
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from utils import MAX
     ::tpyapp::utils::__tpy_init();
-    // # Redefine the imported MAX - this should work and be used
-    // MAX: int32 = int32(42)
     MAX = 42;
-    // # Top-level print uses the redefined MAX
-    // print(MAX)  # Should print 42
     std::cout << MAX << "\n";
 }
 

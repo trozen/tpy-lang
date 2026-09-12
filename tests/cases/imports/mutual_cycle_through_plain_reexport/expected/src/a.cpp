@@ -6,17 +6,17 @@ namespace tpyapp::a {
 
 
 // def aye() -> int32:
+//     return int32(1)
 int32_t aye() {
-    // return int32(1)
     return 1;
 }
 
+// from b import bee_uses_a, cee
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from b import bee_uses_a, cee
     ::tpyapp::b::__tpy_init();
 }
 

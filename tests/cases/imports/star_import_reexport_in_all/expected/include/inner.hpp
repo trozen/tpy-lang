@@ -9,6 +9,7 @@ namespace tpyapp::inner {
 
 inline constexpr std::string_view __name__ = "inner";
 
+// def shared_helper() -> None:
 void shared_helper();
 
 void __tpy_init();

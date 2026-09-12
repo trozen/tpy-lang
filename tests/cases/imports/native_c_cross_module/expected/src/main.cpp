@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Rect(int32(10), int32(20), int32(100), int32(50))
+//     print(r.w)
+//     print(rect_area(r))
 void main() {
-    // r = Rect(int32(10), int32(20), int32(100), int32(50))
     ::c_rect r = ::c_rect{10, 20, 100, 50};
-    // print(r.w)
     std::cout << r.w << "\n";
-    // print(rect_area(r))
     std::cout << rect_area(&r) << "\n";
 }
 
+// # Test: both `import lib` and `from lib import ...` coexist
+// # The named imports must not be dropped when bare import also exists.
+// import lib
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test: both `import lib` and `from lib import ...` coexist
-    // # The named imports must not be dropped when bare import also exists.
-    // import lib
     ::tpyapp::lib::__tpy_init();
-    // main()
     main();
 }
 

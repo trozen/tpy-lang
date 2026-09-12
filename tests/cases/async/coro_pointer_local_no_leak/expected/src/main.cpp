@@ -5,23 +5,26 @@ namespace tpyapp::main {
 
 
 // def maybe_p(items: list[P], i: int32) -> P | None:
+//     if i < len(items):
+//         return items[i]
+//     return None
 P* maybe_p(std::vector<P>& items, int32_t i) {
-    // if i < len(items):
     if ((i < ::tpy::__len__(items))) {
-        // return items[i]
         return &(::tpy::__getitem__(items, i));
     }
-    // return None
     return nullptr;
 }
 
 // async def first(items: list[P], i: int32) -> int32:
+//     x = maybe_p(items, i)  # tpyc: type(P | None)
+//     await asyncio.sleep(0)
+//     if x is not None:
+//         return x.v
+//     return -1
 ::tpystd::tpy::Poll<int32_t> __coro_first::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // x = maybe_p(items, i)  # tpyc: type(P | None)
         x = maybe_p(items, i);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -31,14 +34,11 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if x is not None:
         if ((x != nullptr)) {
-            // return x.v
             __state = S_DONE;
             int32_t __tpy_async_ret = x->v;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
-        // return -1
         __state = S_DONE;
         int32_t __tpy_async_ret = -1;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -55,12 +55,13 @@ __coro_first first(std::vector<P>& items, int32_t i) {
 }
 
 // async def second(n: int32) -> int32:
+//     x = n + 1  # tpyc: type(int32)
+//     await asyncio.sleep(0)
+//     return x
 ::tpystd::tpy::Poll<int32_t> __coro_second::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // x = n + 1  # tpyc: type(int32)
         x = (::tpy::add_check<int32_t>(n, 1));
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -70,7 +71,6 @@ __coro_first first(std::vector<P>& items, int32_t i) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return x
         __state = S_DONE;
         int32_t __tpy_async_ret = x;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -87,14 +87,15 @@ __coro_second second(int32_t n) {
 }
 
 // async def driver() -> None:
+//     items: list[P] = []
+//     items.append(P(42))
+//     print(await first(items, 0))
+//     print(await second(10))
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items: list[P] = []
         items.emplace(std::vector<P>{});
-        // items.append(P(42))
         (*items).push_back(P(42));
-        // print(await first(items, 0))
         __sub_0.emplace((*items), 0);
         __state = S_RESUME_0;
         continue;
@@ -104,9 +105,7 @@ __coro_second second(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await first(items, 0))
         std::cout << __await_lift_0 << "\n";
-        // print(await second(10))
         __sub_1.emplace(10);
         __state = S_RESUME_1;
         continue;
@@ -116,7 +115,6 @@ __coro_second second(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await second(10))
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -132,20 +130,21 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
+// # Regression: two async functions in one module must not share
+// # `pointer_locals` state across body emission. Before the fix, the
+// # pointer-form Optional[NonValue] local `x` in `first` was registered
+// # in `pointer_locals` by the var-decl bridge and never cleared; the
+// # value-typed `x` in `second` then read as `(*x)` (hard C++ build
+// # error: `invalid type argument of unary '*'`).
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: two async functions in one module must not share
-    // # `pointer_locals` state across body emission. Before the fix, the
-    // # pointer-form Optional[NonValue] local `x` in `first` was registered
-    // # in `pointer_locals` by the var-decl bridge and never cleared; the
-    // # value-typed `x` in `second` then read as `(*x)` (hard C++ build
-    // # error: `invalid type argument of unary '*'`).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

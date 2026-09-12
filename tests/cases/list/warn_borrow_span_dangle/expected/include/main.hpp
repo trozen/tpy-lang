@@ -11,11 +11,17 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_span_append_warns() -> None:
 void test_span_append_warns();
+// def test_span_subscript_write_ok() -> None:
 void test_span_subscript_write_ok();
+// def test_span_del_warns() -> None:
 void test_span_del_warns();
+// def test_span_no_mutation_no_warn() -> None:
 void test_span_no_mutation_no_warn();
+// def test_no_span_no_warn() -> None:
 void test_no_span_no_warn();
+// def test_value_type_span_warns() -> None:
 void test_value_type_span_warns();
 
 // class Point:
@@ -38,6 +44,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,6 +11,7 @@ struct Strict;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Strict:
@@ -33,21 +34,21 @@ inline std::ostream& operator<<(std::ostream& os, const Strict& obj) {
 
 
 // def __init__(self) -> None:
+//     d: dict[str, Any] = {"a": 1, "b": 2}
+//     self._data = d
 inline Strict::Strict() {
-    // d: dict[str, Any] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"a", ::tpy::make_any(::tpy::BigInt(1))}, {"b", ::tpy::make_any(::tpy::BigInt(2))}});
-    // self._data = d
     this->_data = std::move(d);
 }
 
 // def __delattr__(self, name: str) -> None:
+//     if name.startswith("_"):
+//         raise AttributeError(name)
+//     del self._data[name]
 inline void Strict::__delattr__(std::string_view name) {
-    // if name.startswith("_"):
     if (::tpy::str_startswith(name, "_")) {
-        // raise AttributeError(name)
         throw ::tpy::AttributeError(name);
     }
-    // del self._data[name]
     ::tpy::__delitem__(this->_data, name);
 }
 void __tpy_init();

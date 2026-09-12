@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o = Outer[int32](1)
+//     o.put(7)
+//     print(o._in.v)
 void main() {
-    // o = Outer[int32](1)
     Outer<int32_t> o = Outer<int32_t>(1);
-    // o.put(7)
     o.put(7);
-    // print(o._in.v)
     std::cout << o._in.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

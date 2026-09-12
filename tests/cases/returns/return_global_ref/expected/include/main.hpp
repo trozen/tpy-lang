@@ -12,7 +12,9 @@ struct Point;
 extern Point* ORIGIN;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_origin() -> Point:
 Point& get_origin();
+// def main():
 void main();
 
 // class Point:

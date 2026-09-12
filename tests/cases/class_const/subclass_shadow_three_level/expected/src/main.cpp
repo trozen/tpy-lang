@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     Grandparent.counter = 1
+//     Parent.counter = 2
+//     Child.counter = 3
+//     print(Grandparent.counter)
+//     print(Parent.counter)
+//     print(Child.counter)
 void main() {
-    // Grandparent.counter = 1
     Grandparent::counter = 1;
-    // Parent.counter = 2
     Parent::counter = 2;
-    // Child.counter = 3
     Child::counter = 3;
-    // print(Grandparent.counter)
     std::cout << Grandparent::counter << "\n";
-    // print(Parent.counter)
     std::cout << Parent::counter << "\n";
-    // print(Child.counter)
     std::cout << Child::counter << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

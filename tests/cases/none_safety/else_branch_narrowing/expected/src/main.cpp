@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def describe(x: int32 | None) -> int32:
+//     if x is None:
+//         return -1
+//     else:
+//         return x + 1
 int32_t describe(std::optional<int32_t> x) {
-    // if x is None:
     if ((!x.has_value())) {
-        // return -1
         return -1;
-    // else:
     } else {
-        // return x + 1
         return (::tpy::add_check<int32_t>((*x), 1));
     }
 }
 
+// print(describe(10))
+// print(describe(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(describe(10))
     std::cout << describe(10) << "\n";
-    // print(describe(None))
     std::cout << describe(std::nullopt) << "\n";
 }
 

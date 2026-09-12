@@ -5,40 +5,41 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[Pool[Item, 4]]:
+//     p = Pool[Item, 4]()
+//     p.push(Item("alpha"))
+//     p.push(Item("beta"))
+//     return p
 Pool<Item, 4> make() {
-    // p = Pool[Item, 4]()
     Pool<Item, 4> p = Pool<Item, 4>();
-    // p.push(Item("alpha"))
     p.push(Item("alpha"));
-    // p.push(Item("beta"))
     p.push(Item("beta"));
-    // return p
     return p;
 }
 
 // def main() -> None:
+//     pool = make()
+//     relocated = pool          # forced last-use move -> runs Pool.__move__
+//     print(relocated.get(0).name, relocated.get(1).name)  # alpha beta
+//     tag = Tagged(7)
+//     moved = tag               # forced last-use move -> runs Tagged.__move__
+//     print("move_raise_guarded", moved.n)
 void main() {
-    // pool = make()
     Pool<Item, 4> pool = make();
-    // relocated = pool          # forced last-use move -> runs Pool.__move__
     Pool<Item, 4> relocated = std::move(pool);
-    // print(relocated.get(0).name, relocated.get(1).name)  # alpha beta
     std::cout << relocated.get(0).name << " " << relocated.get(1).name << "\n";
-    // tag = Tagged(7)
     Tagged tag = Tagged(7);
-    // moved = tag               # forced last-use move -> runs Tagged.__move__
     Tagged moved = std::move(tag);
-    // print("move_raise_guarded", moved.n)
     std::cout << "move_raise_guarded" << " " << moved.n << "\n";
 }
 
+// from tpy.mem import UninitArrayStorage
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitArrayStorage
-    // main()
     main();
 }
 

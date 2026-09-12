@@ -14,7 +14,9 @@ struct D;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(v: A | B | C | D) -> int32:
 int32_t classify(::tpy::Union<A*, B*, C*, D*> v);
+// def main() -> None:
 void main();
 
 // class A:
@@ -83,15 +85,19 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline A::A(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline B::B(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline C::C(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline D::D(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

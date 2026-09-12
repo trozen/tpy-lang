@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def pick(v: Item | Other) -> int32:
+//     match v:
+//         case Item() as Registry:  # tpyc: ok
+//             Registry.code += 1
+//             return Registry.code
+//         case Other() as o:
+//             return o.tag
 int32_t pick(::tpy::Union<Item*, Other*> v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
-    // case Item() as Registry:  # tpyc: ok
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& Registry = __case_0;
-        // Registry.code += 1
         Registry.code = ::tpy::add_check<int32_t>(Registry.code, 1);
-        // return Registry.code
         return Registry.code;
         break;
     }
-    // case Other() as o:
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto& o = __case_1;
-        // return o.tag
         return o.tag;
         break;
     }
@@ -32,23 +32,23 @@ int32_t pick(::tpy::Union<Item*, Other*> v) {
 }
 
 // def main() -> None:
+//     it = Item(6)
+//     print(pick(it))
+//     print(it.code)
+//     print(Registry.code)
 void main() {
-    // it = Item(6)
     Item it = Item(6);
-    // print(pick(it))
     std::cout << pick(::tpy::Union<Item*, Other*>{&(it)}) << "\n";
-    // print(it.code)
     std::cout << it.code << "\n";
-    // print(Registry.code)
     std::cout << Registry::code << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

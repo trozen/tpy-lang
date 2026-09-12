@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Child.LIMIT)
+//     c = Child()
+//     print(c.LIMIT)
 void main() {
-    // print(Child.LIMIT)
     std::cout << ::tpyapp::limits::Parent::LIMIT << "\n";
-    // c = Child()
     ::tpyapp::limits::Child c = ::tpyapp::limits::Child();
-    // print(c.LIMIT)
     std::cout << ::tpyapp::limits::Parent::LIMIT << "\n";
 }
 
+// # Cross-module + Phase 6 MRO walk: importing only `Child` from `limits`,
+// # accessing the constant inherited from `Parent`. The codegen must qualify
+// # the declaring ancestor's namespace even though `Parent` was never imported
+// # into this module.
+// from limits import Child
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module + Phase 6 MRO walk: importing only `Child` from `limits`,
-    // # accessing the constant inherited from `Parent`. The codegen must qualify
-    // # the declaring ancestor's namespace even though `Parent` was never imported
-    // # into this module.
-    // from limits import Child
     ::tpyapp::limits::__tpy_init();
-    // main()
     main();
 }
 

@@ -3,17 +3,55 @@
 
 namespace tpyapp::main {
 
-// f: text;
 ::pascal_rt::runtime::io::TextFile* f{};
-// line: string;
 ::pascal_rt::runtime::strings::PStr<255>* line{};
-// n, sum, i: integer;
 int32_t n{};
-// n, sum, i: integer;
 int32_t sum{};
-// n, sum, i: integer;
 int32_t i{};
 
+// f: text;
+// line: string;
+// n, sum, i: integer;
+//
+// assign(f, 'out.txt');
+// rewrite(f);
+// writeln(f, 'numbers');
+// for i := 1 to 4 do
+//   writeln(f, i * 10);
+// close(f);
+//
+// assign(f, 'out.txt');
+// reset(f);
+// readln(f, line);
+// write('header: ');
+// writeln(line);
+// sum := 0;
+// while not eof(f) do
+// begin
+//   readln(f, n);
+//   sum := sum + n;
+// end;
+// close(f);
+// write('sum: ');
+// writeln(sum);
+//
+// assign(f, 'out.txt');
+// append(f);
+// writeln(f, 50);
+// writeln(f, 'tail');
+// close(f);
+//
+// assign(f, 'out.txt');
+// reset(f);
+// write('lines: ');
+// n := 0;
+// while not eof(f) do
+// begin
+//   readln(f, line);
+//   n := n + 1;
+// end;
+// writeln(n);
+// close(f);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -23,79 +61,45 @@ void __tpy_init() {
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::io::__tpy_init();
     ::pascal_rt::runtime::strings::__tpy_init();
-    // f: text;
     static ::pascal_rt::runtime::io::TextFile __global_slot_1 = ::pascal_rt::runtime::io::TextFile();
     f = &__global_slot_1;
-    // line: string;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_2 = ::pascal_rt::runtime::strings::PStr<255>();
     line = &__global_slot_2;
-    // assign(f, 'out.txt');
     f->assign("out.txt");
-    // rewrite(f);
     f->rewrite();
-    // writeln(f, 'numbers');
     f->writeln_str("numbers");
-    // for i := 1 to 4 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(4, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        // writeln(f, i * 10);
         f->writeln_int((::tpy::mul_check<int32_t>(i, 10)));
     }
-    // close(f);
     f->close();
-    // assign(f, 'out.txt');
     f->assign("out.txt");
-    // reset(f);
     f->reset();
-    // readln(f, line);
     line->assign(f->readln_line());
-    // write('header: ');
     std::cout << "header: ";
-    // writeln(line);
     std::cout << std::string(::tpy::__str__((*line))) << "\n";
-    // sum := 0;
     sum = 0;
-    // while not eof(f) do
     while ((!(f->eof()))) {
-        // readln(f, n);
         n = f->readln_int();
-        // sum := sum + n;
         sum = (::tpy::add_check<int32_t>(sum, n));
     }
-    // close(f);
     f->close();
-    // write('sum: ');
     std::cout << "sum: ";
-    // writeln(sum);
     std::cout << sum << "\n";
-    // assign(f, 'out.txt');
     f->assign("out.txt");
-    // append(f);
     f->append();
-    // writeln(f, 50);
     f->writeln_int(50);
-    // writeln(f, 'tail');
     f->writeln_str("tail");
-    // close(f);
     f->close();
-    // assign(f, 'out.txt');
     f->assign("out.txt");
-    // reset(f);
     f->reset();
-    // write('lines: ');
     std::cout << "lines: ";
-    // n := 0;
     n = 0;
-    // while not eof(f) do
     while ((!(f->eof()))) {
-        // readln(f, line);
         line->assign(f->readln_line());
-        // n := n + 1;
         n = (::tpy::add_check<int32_t>(n, 1));
     }
-    // writeln(n);
     std::cout << n << "\n";
-    // close(f);
     f->close();
 }
 

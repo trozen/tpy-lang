@@ -10,6 +10,7 @@ namespace tpyapp::main {
 extern std::vector<std::optional<int32_t>>* vals;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_after_write(items: list[int32 | None], i: int32) -> int32:
 int32_t use_after_write(std::vector<std::optional<int32_t>>& items, int32_t i);
 
 void __tpy_init();

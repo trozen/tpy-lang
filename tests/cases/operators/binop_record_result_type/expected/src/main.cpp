@@ -5,58 +5,62 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f = Frac(1, 2)
+//     f2 = Frac(1, 3)
+//
+//     # Bare-context div with a record-returning overload arm.
+//     print(f / 2)            # 1/4
+//     # Declaration is another consumer of the derived type.
+//     q = f / 2               # tpyc: type(Frac)
+//     print(q.den)            # 4
+//     # Context form (member access on the binop result).
+//     print((f / 2).num)      # 1
+//     # The float-returning arm really yields float.
+//     r = f / f2              # tpyc: type(float)
+//     print(r)                # 1.5
+//
+//     # Float-operand precedence must not override __mul__/__rmul__ -> Vec.
+//     v = Vec(1.0, 2.0)
+//     print(v * 2.0)          # Vec(2.0, 4.0)
+//     print(2.0 * v)          # Vec(2.0, 4.0)
+//
+//     # BigInt-operand precedence must not override __add__ -> Acc.
+//     a = Acc(10)
+//     n: int = 5
+//     print(a + n)            # Acc(15)
+//
+//     # Inverse: all-numeric division still types as float.
+//     print(7 / 2)            # 3.5
+//     ai: int = 7
+//     bi: int = 2
+//     print(ai / bi)          # 3.5
 void main() {
-    // f = Frac(1, 2)
     Frac f = Frac(::tpy::BigInt(1), ::tpy::BigInt(2));
-    // f2 = Frac(1, 3)
     Frac f2 = Frac(::tpy::BigInt(1), ::tpy::BigInt(3));
-    // # Bare-context div with a record-returning overload arm.
-    // print(f / 2)            # 1/4
     std::cout << ((f) / (::tpy::BigInt(2))) << "\n";
-    // # Declaration is another consumer of the derived type.
-    // q = f / 2               # tpyc: type(Frac)
     Frac q = ((f) / (::tpy::BigInt(2)));
-    // print(q.den)            # 4
     std::cout << q.den << "\n";
-    // # Context form (member access on the binop result).
-    // print((f / 2).num)      # 1
     std::cout << ((f) / (::tpy::BigInt(2))).num << "\n";
-    // # The float-returning arm really yields float.
-    // r = f / f2              # tpyc: type(float)
     double r = ((f) / (f2));
-    // print(r)                # 1.5
     std::cout << ::tpy::print_float(r) << "\n";
-    // # Float-operand precedence must not override __mul__/__rmul__ -> Vec.
-    // v = Vec(1.0, 2.0)
     Vec v = Vec(1.0, 2.0);
-    // print(v * 2.0)          # Vec(2.0, 4.0)
     std::cout << ((v) * (2.0)) << "\n";
-    // print(2.0 * v)          # Vec(2.0, 4.0)
     std::cout << ((2.0) * (v)) << "\n";
-    // # BigInt-operand precedence must not override __add__ -> Acc.
-    // a = Acc(10)
     Acc a = Acc(::tpy::BigInt(10));
-    // n: int = 5
     ::tpy::BigInt n = ::tpy::BigInt(5);
-    // print(a + n)            # Acc(15)
     std::cout << ((a) + (n)) << "\n";
-    // # Inverse: all-numeric division still types as float.
-    // print(7 / 2)            # 3.5
     std::cout << ::tpy::print_float((::tpy::truediv(::tpy::BigInt(7), ::tpy::BigInt(2)))) << "\n";
-    // ai: int = 7
     ::tpy::BigInt ai = ::tpy::BigInt(7);
-    // bi: int = 2
     ::tpy::BigInt bi = ::tpy::BigInt(2);
-    // print(ai / bi)          # 3.5
     std::cout << ::tpy::print_float((::tpy::truediv(ai, bi))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

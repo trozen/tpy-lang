@@ -12,6 +12,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -83,57 +84,63 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
+//     self._name = "hello"
+//     self._items = [1, 2, 3]
+//     self._pt = Point(10, 20)
+//     self._big = 999999999999999999999
 inline Container::Container() : _name("hello"), _items(std::vector<int32_t>{1, 2, 3}), _pt(Point(10, 20)), _big(::tpy::BigInt::from_str("999999999999999999999")) {}
 
 // @property
 // def name(self) -> str:
+//     return self._name
 inline std::string Container::name() const {
-    // return self._name
     return this->_name;
 }
 
 // @name.setter
 // def name(self, v: str) -> None:
+//     self._name = v
 inline void Container::set_name(std::string_view v) {
-    // self._name = v
     this->_name = v;
 }
 
 // @property
 // def items(self) -> list[int32]:
+//     return self._items
 inline std::vector<int32_t>& Container::items() {
-    // return self._items
     return this->_items;
 }
 
 // @property
 // def items(self) -> list[int32]:
+//     return self._items
 inline const std::vector<int32_t>& Container::items() const {
-    // return self._items
     return this->_items;
 }
 
 // @property
 // def pt(self) -> Point:
+//     return self._pt
 inline Point& Container::pt() {
-    // return self._pt
     return this->_pt;
 }
 
 // @property
 // def pt(self) -> Point:
+//     return self._pt
 inline const Point& Container::pt() const {
-    // return self._pt
     return this->_pt;
 }
 
 // @property
 // def big(self) -> int:
+//     return self._big
 inline ::tpy::BigInt Container::big() const {
-    // return self._big
     return this->_big;
 }
 void __tpy_init();

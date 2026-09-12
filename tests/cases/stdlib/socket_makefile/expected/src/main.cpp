@@ -5,60 +5,62 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     a.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
+//     a.close()
+//     f = b.makefile("rb")
+//     print(f.readline())       # b'HTTP/1.1 200 OK\r\n'
+//     print(f.readline())       # b'Content-Length: 5\r\n'
+//     print(f.readline())       # b'\r\n'
+//     print(f.read())           # b'hello'
+//     f.close()
+//     b.close()
+//
+//     # "b" is an accepted binary-read alias of "rb".
+//     c, d = socket.socketpair()
+//     c.sendall(b"ping\n")
+//     c.close()
+//     g = d.makefile("b")
+//     print(g.readline())       # b'ping\n'
+//     g.close()
+//     d.close()
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
     a.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43));
-    // a.close()
     a.close();
-    // f = b.makefile("rb")
     ::tpystd::io::BufferedReader f = b.makefile("rb");
-    // print(f.readline())       # b'HTTP/1.1 200 OK\r\n'
     std::cout << ::tpy::BytesPrinter(f.readline()) << "\n";
-    // print(f.readline())       # b'Content-Length: 5\r\n'
     std::cout << ::tpy::BytesPrinter(f.readline()) << "\n";
-    // print(f.readline())       # b'\r\n'
     std::cout << ::tpy::BytesPrinter(f.readline()) << "\n";
-    // print(f.read())           # b'hello'
     std::cout << ::tpy::BytesPrinter(f.read()) << "\n";
-    // f.close()
     f.close();
-    // b.close()
     b.close();
-    // # "b" is an accepted binary-read alias of "rb".
-    // c, d = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    // c.sendall(b"ping\n")
     c.sendall(::tpy::bytes_literal("ping\n", 5));
-    // c.close()
     c.close();
-    // g = d.makefile("b")
     ::tpystd::io::BufferedReader g = d.makefile("b");
-    // print(g.readline())       # b'ping\n'
     std::cout << ::tpy::BytesPrinter(g.readline()) << "\n";
-    // g.close()
     g.close();
-    // d.close()
     d.close();
 }
 
+// # socket.makefile("rb") -> io.BufferedReader over a socketpair: the server
+// # end sends a canned HTTP-shaped response and closes; the client end reads it
+// # line-by-line then drains the body. The reader owns a dup of the fd, so it
+// # and the socket close independently.
+// import socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # socket.makefile("rb") -> io.BufferedReader over a socketpair: the server
-    // # end sends a canned HTTP-shaped response and closes; the client end reads it
-    // # line-by-line then drains the body. The reader owns a dup of the fd, so it
-    // # and the socket close independently.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

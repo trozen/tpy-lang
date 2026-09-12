@@ -5,42 +5,45 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Slot()
+//     print("done?", s.is_done())
+//     print("runnable?", s.runnable)
+//     print("gen0:", s.generation)
+//
+//     s.runnable = True
+//     s.generation = 3
+//     print("runnable after set?", s.runnable)
+//     print("gen after set:", s.generation)
+//
+//     # Box stays empty (no factory yet), so is_done remains true.
+//     print("done after set?", s.is_done())
 void main() {
-    // s = Slot()
     ::tpystd::asyncio::_executor::Slot s = ::tpystd::asyncio::_executor::Slot();
-    // print("done?", s.is_done())
     std::cout << "done?" << " " << ::tpy::print_bool(s.is_done()) << "\n";
-    // print("runnable?", s.runnable)
     std::cout << "runnable?" << " " << ::tpy::print_bool(s.runnable) << "\n";
-    // print("gen0:", s.generation)
     std::cout << "gen0:" << " " << s.generation << "\n";
-    // s.runnable = True
     s.runnable = true;
-    // s.generation = 3
     s.generation = 3;
-    // print("runnable after set?", s.runnable)
     std::cout << "runnable after set?" << " " << ::tpy::print_bool(s.runnable) << "\n";
-    // print("gen after set:", s.generation)
     std::cout << "gen after set:" << " " << s.generation << "\n";
-    // # Box stays empty (no factory yet), so is_done remains true.
-    // print("done after set?", s.is_done())
     std::cout << "done after set?" << " " << ::tpy::print_bool(s.is_done()) << "\n";
 }
 
+// # Phase 2.1 leaf migration: Slot TPy class. Verifies the slot entry
+// # constructs, is_done() reflects the empty-box state, and the
+// # generation / runnable fields are mutable. No executor yet -- the
+// # class is a leaf data type that Phase 2.2 will compose into the
+// # slot table list.
+// from asyncio._executor import Slot
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Phase 2.1 leaf migration: Slot TPy class. Verifies the slot entry
-    // # constructs, is_done() reflects the empty-box state, and the
-    // # generation / runnable fields are mutable. No executor yet -- the
-    // # class is a leaf data type that Phase 2.2 will compose into the
-    // # slot table list.
-    // from asyncio._executor import Slot
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
-    // main()
     main();
 }
 

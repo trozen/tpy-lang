@@ -5,55 +5,54 @@ namespace tpyapp::main {
 
 
 // def use(r: Rc[State]) -> None:
+//     print("use sees", r.get().label)
 void use(const ::tpystd::tplib::rc::Rc<State>& r) {
-    // print("use sees", r.get().label)
     std::cout << "use sees" << " " << r.get().label << "\n";
 }
 
 // def single_owner() -> None:
+//     r = Rc.new(State("solo"))
+//     use(r)
 void single_owner() {
-    // r = Rc.new(State("solo"))
     ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_<State>(State("solo"));
-    // use(r)
     use(r);
-    // # State("solo") destructs when r goes out of scope.
 }
 
 // def shared_via_clone() -> None:
+//     r1 = Rc.new(State("shared"))
+//     r2 = r1.clone()
+//     use(r1)
+//     use(r2)
 void shared_via_clone() {
-    // r1 = Rc.new(State("shared"))
     ::tpystd::tplib::rc::Rc<State> r1 = Rc<State>::new_<State>(State("shared"));
-    // r2 = r1.clone()
     ::tpystd::tplib::rc::Rc<State> r2 = r1.clone();
-    // use(r1)
     use(r1);
-    // use(r2)
     use(r2);
-    // # both r1 and r2 drop here; State("shared") destructs exactly once.
 }
 
 // def main() -> None:
+//     print("--- single owner ---")
+//     single_owner()
+//     print("--- shared via clone ---")
+//     shared_via_clone()
+//     print("--- done ---")
 void main() {
-    // print("--- single owner ---")
     std::cout << "--- single owner ---" << "\n";
-    // single_owner()
     single_owner();
-    // print("--- shared via clone ---")
     std::cout << "--- shared via clone ---" << "\n";
-    // shared_via_clone()
     shared_via_clone();
-    // print("--- done ---")
     std::cout << "--- done ---" << "\n";
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

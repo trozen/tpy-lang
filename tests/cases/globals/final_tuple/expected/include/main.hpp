@@ -8,11 +8,16 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// VERSION: Final[tuple[int32, int32, int32]] = (1, 2, 3)
 extern const std::tuple<int32_t, int32_t, int32_t> VERSION;
+// PAIR: Final[tuple[str, bool]] = ("hello", True)
 extern const std::tuple<std::string_view, bool> PAIR;
+// ARITH: Final[tuple[int32, int32]] = (10 + 20, 100 - 1)
 extern const std::tuple<int32_t, int32_t> ARITH;
+// NESTED: Final[tuple[tuple[str, int32], str]] = (("inner", 42), "outer")
 extern const std::tuple<std::tuple<std::string_view, int32_t>, std::string_view> NESTED;
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -11,7 +11,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add_one(xs: list[int32]) -> None:
 void add_one(std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -36,11 +38,13 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, cb: Callable[[list[int32]], None]) -> None:
+//     self.data = [0]
+//     self.cb = cb
 inline Holder::Holder(std::function<void(std::vector<int32_t>&)> cb) : data(std::vector<int32_t>{0}), cb(cb) {}
 
 // def poke(self) -> None:
+//     self.cb(self.data)
 inline void Holder::poke() {
-    // self.cb(self.data)
     (*this).cb(this->data);
 }
 void __tpy_init();

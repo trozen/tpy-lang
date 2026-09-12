@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <::tpystd::typing::Iterable<int32_t> T>
 struct __gen_Summer_each_doubled;
 
+// def main() -> None:
 void main();
 
 // class RangeIter:
@@ -69,6 +70,7 @@ struct Summer {
     T items;
 
     // def __init__(self, items: T) -> None:
+    //     self.items = items
     Summer() = default;
     explicit Summer(::tpy::readonly_form_t<T> items) : items(items) {}
 
@@ -82,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
     return os;
 }
 
-// Generator: Summer.each_doubled
+// def each_doubled(self) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T>
 struct __gen_Summer_each_doubled : public ::tpy::next_iter_mixin<__gen_Summer_each_doubled<T>, int32_t> {
     int32_t __state;
@@ -111,6 +113,9 @@ struct __gen_Summer_each_doubled : public ::tpy::next_iter_mixin<__gen_Summer_ea
 };
 
 // def each_doubled(self) -> Iterator[int32]:
+//     for x in self.items:
+//         yield x
+//         yield x * 2
 template <::tpystd::typing::Iterable<int32_t> T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_each_doubled<T>::__next__() {
     while (true) switch (__state) {
@@ -120,7 +125,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_each_doubled<T>::__nex
         continue;
     }
     case S_RESUME_0: {
-        // yield x * 2
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 2));
     }
@@ -135,7 +139,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_each_doubled<T>::__nex
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -152,29 +155,33 @@ inline __gen_Summer_each_doubled<T> Summer<T>::each_doubled() const {
 
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.current = start
+//     self.limit = limit
 inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
 // def __next__(self) -> int32:
+//     if self.current < self.limit:
+//         r = self.current
+//         self.current += 1
+//         return r
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // r = self.current
         int32_t r = this->current;
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return r
         return r;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.start = start
+//     self.limit = limit
 inline MyRange::MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:
+//     return RangeIter(self.start, self.limit)
 inline RangeIter MyRange::__iter__() const {
-    // return RangeIter(self.start, self.limit)
     return RangeIter(this->start, this->limit);
 }
 void __tpy_init();

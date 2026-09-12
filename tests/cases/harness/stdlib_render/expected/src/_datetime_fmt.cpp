@@ -5,304 +5,304 @@ namespace tpystd::_datetime_fmt {
 
 
 // def _strftime(fmt: str, y: int32, mo: int32, d: int32, hh: int32, mm: int32,
-// ss: int32, us: int32, has_tz: bool, off_us: int,
-// zone: str) -> str:
+//               ss: int32, us: int32, has_tz: bool, off_us: int,
+//               zone: str) -> str:
+//     # The shared pure-TPy directive engine. Divergence-relevant facts, all
+//     # verified against CPython 3.12 on glibc: %Y (and %G) are NOT
+//     # zero-padded ('42', not '0042') although isoformat is; unknown
+//     # directives pass through verbatim including the '%'; a trailing lone
+//     # '%' is kept; %z/%Z render empty for naive values.
+//     o = _ymd2ord(int(y), int(mo), int(d))
+//     wd = int32((o + 6) % 7)          # Mon=0
+//     wd_sun0 = int32(o % 7)           # Sun=0
+//     yday0 = int32(o - _days_before_year(int(y)) - 1)
+//     out = ""
+//     i = 0
+//     n = len(fmt)
+//     while i < n:
+//         rel = fmt[i:].find("%")
+//         if rel < 0:
+//             out = out + fmt[i:]
+//             break
+//         j = i + rel
+//         out = out + fmt[i:j]
+//         if j + 1 >= n:
+//             out = out + "%"
+//             break
+//         c = fmt[j + 1]
+//         i = j + 2
+//         if c == "%":
+//             out = out + "%"
+//         elif c == "a":
+//             out = out + _DAY_ABBR[wd]
+//         elif c == "A":
+//             out = out + _DAY_FULL[wd]
+//         elif c == "b":
+//             out = out + _MONTH_ABBR[mo]
+//         elif c == "B":
+//             out = out + _MONTH_FULL[mo]
+//         elif c == "c":
+//             out = out + (f"{_DAY_ABBR[wd]} {_MONTH_ABBR[mo]} {d:2d} "
+//                          f"{hh:02d}:{mm:02d}:{ss:02d} {y}")
+//         elif c == "d":
+//             out = out + f"{d:02d}"
+//         elif c == "f":
+//             out = out + f"{us:06d}"
+//         elif c == "G":
+//             iso_y, iso_w, iso_d = _iso_calendar(int(y), int(mo), int(d))
+//             out = out + f"{iso_y}"
+//         elif c == "H":
+//             out = out + f"{hh:02d}"
+//         elif c == "I":
+//             h12 = hh % 12
+//             if h12 == 0:
+//                 h12 = 12
+//             out = out + f"{h12:02d}"
+//         elif c == "j":
+//             out = out + f"{yday0 + 1:03d}"
+//         elif c == "m":
+//             out = out + f"{mo:02d}"
+//         elif c == "M":
+//             out = out + f"{mm:02d}"
+//         elif c == "p":
+//             out = out + ("AM" if hh < 12 else "PM")
+//         elif c == "S":
+//             out = out + f"{ss:02d}"
+//         elif c == "u":
+//             out = out + f"{wd + 1}"
+//         elif c == "U":
+//             out = out + f"{(yday0 + 7 - wd_sun0) // 7:02d}"
+//         elif c == "V":
+//             iso_y2, iso_w2, iso_d2 = _iso_calendar(int(y), int(mo), int(d))
+//             out = out + f"{int32(iso_w2):02d}"
+//         elif c == "w":
+//             out = out + f"{wd_sun0}"
+//         elif c == "W":
+//             out = out + f"{(yday0 + 7 - wd) // 7:02d}"
+//         elif c == "x":
+//             out = out + f"{mo:02d}/{d:02d}/{y % 100:02d}"
+//         elif c == "X":
+//             out = out + f"{hh:02d}:{mm:02d}:{ss:02d}"
+//         elif c == "y":
+//             out = out + f"{y % 100:02d}"
+//         elif c == "Y":
+//             out = out + f"{y}"
+//         elif c == "z":
+//             if has_tz:
+//                 out = out + _offset_str(off_us, "")
+//         elif c == "Z":
+//             if has_tz:
+//                 out = out + zone
+//         else:
+//             out = out + "%" + c
+//     return out
 std::string _strftime(std::string_view fmt, int32_t y, int32_t mo, int32_t d, int32_t hh, int32_t mm, int32_t ss, int32_t us, bool has_tz, const ::tpy::BigInt& off_us, std::string_view zone) {
-    // # The shared pure-TPy directive engine. Divergence-relevant facts, all
-    // # verified against CPython 3.12 on glibc: %Y (and %G) are NOT
-    // # zero-padded ('42', not '0042') although isoformat is; unknown
-    // # directives pass through verbatim including the '%'; a trailing lone
-    // # '%' is kept; %z/%Z render empty for naive values.
-    // o = _ymd2ord(int(y), int(mo), int(d))
     ::tpy::BigInt o = ::tpystd::_datetime_cal::_ymd2ord(::tpy::BigInt(static_cast<int64_t>(y)), ::tpy::BigInt(static_cast<int64_t>(mo)), ::tpy::BigInt(static_cast<int64_t>(d)));
-    // wd = int32((o + 6) % 7)          # Mon=0
     int32_t wd = (((((o) + (::tpy::BigInt(6)))) % (::tpy::BigInt(7)))).to_fixed_check<int32_t>();
-    // wd_sun0 = int32(o % 7)           # Sun=0
     int32_t wd_sun0 = (((o) % (::tpy::BigInt(7)))).to_fixed_check<int32_t>();
-    // yday0 = int32(o - _days_before_year(int(y)) - 1)
     int32_t yday0 = (((((o) - (::tpystd::_datetime_cal::_days_before_year(::tpy::BigInt(static_cast<int64_t>(y)))))) - (::tpy::BigInt(1)))).to_fixed_check<int32_t>();
-    // out = ""
     std::string out = "";
-    // i = 0
     int32_t i = 0;
-    // n = len(fmt)
     int32_t n = ::tpy::__len__(fmt);
-    // while i < n:
     while ((i < n)) {
-        // rel = fmt[i:].find("%")
         int32_t rel = ::tpy::str_find(::tpy::str_slice(fmt, ::tpy::BasicSlice{i, std::nullopt}), "%");
-        // if rel < 0:
         if ((rel < 0)) {
-            // out = out + fmt[i:]
             out += ::tpy::str_slice(fmt, ::tpy::BasicSlice{i, std::nullopt});
-            // break
             break;
         }
-        // j = i + rel
         int32_t j = (::tpy::add_check<int32_t>(i, rel));
-        // out = out + fmt[i:j]
         out += ::tpy::str_slice(fmt, ::tpy::BasicSlice{i, j});
-        // if j + 1 >= n:
         if (((::tpy::add_check<int32_t>(j, 1)) >= n)) {
-            // out = out + "%"
             out += "%";
-            // break
             break;
         }
-        // c = fmt[j + 1]
         char c = ::tpy::__getitem__(fmt, (::tpy::add_check<int32_t>(j, 1)));
-        // i = j + 2
         i = (::tpy::add_check<int32_t>(j, 2));
-        // if c == "%":
         if ((c == '%')) {
-            // out = out + "%"
             out += "%";
-        // elif c == "a":
         } else if ((c == 'a')) {
-            // out = out + _DAY_ABBR[wd]
             out += ::tpy::__getitem__((*::tpystd::_datetime_cal::_DAY_ABBR), wd);
-        // elif c == "A":
         } else if ((c == 'A')) {
-            // out = out + _DAY_FULL[wd]
             out += ::tpy::__getitem__((*::tpystd::_datetime_cal::_DAY_FULL), wd);
-        // elif c == "b":
         } else if ((c == 'b')) {
-            // out = out + _MONTH_ABBR[mo]
             out += ::tpy::__getitem__((*::tpystd::_datetime_cal::_MONTH_ABBR), mo);
-        // elif c == "B":
         } else if ((c == 'B')) {
-            // out = out + _MONTH_FULL[mo]
             out += ::tpy::__getitem__((*::tpystd::_datetime_cal::_MONTH_FULL), mo);
-        // elif c == "c":
         } else if ((c == 'c')) {
-            // out = out + (f"{_DAY_ABBR[wd]} {_MONTH_ABBR[mo]} {d:2d} "
-            // f"{hh:02d}:{mm:02d}:{ss:02d} {y}")
             out += std::format("{} {} {:2d} {:02d}:{:02d}:{:02d} {}", ::tpy::__getitem__((*::tpystd::_datetime_cal::_DAY_ABBR), wd), ::tpy::__getitem__((*::tpystd::_datetime_cal::_MONTH_ABBR), mo), d, hh, mm, ss, y);
-        // elif c == "d":
         } else if ((c == 'd')) {
-            // out = out + f"{d:02d}"
             out += std::format("{:02d}", d);
-        // elif c == "f":
         } else if ((c == 'f')) {
-            // out = out + f"{us:06d}"
             out += std::format("{:06d}", us);
-        // elif c == "G":
         } else if ((c == 'G')) {
-            // iso_y, iso_w, iso_d = _iso_calendar(int(y), int(mo), int(d))
             auto __tup_1 = ::tpystd::_datetime_cal::_iso_calendar(::tpy::BigInt(static_cast<int64_t>(y)), ::tpy::BigInt(static_cast<int64_t>(mo)), ::tpy::BigInt(static_cast<int64_t>(d)));
             const ::tpy::BigInt& iso_y = std::get<0>(__tup_1);
             const ::tpy::BigInt& iso_w = std::get<1>(__tup_1);
             const ::tpy::BigInt& iso_d = std::get<2>(__tup_1);
-            // out = out + f"{iso_y}"
             out += std::format("{}", (iso_y).to_string());
-        // elif c == "H":
         } else if ((c == 'H')) {
-            // out = out + f"{hh:02d}"
             out += std::format("{:02d}", hh);
-        // elif c == "I":
         } else if ((c == 'I')) {
-            // h12 = hh % 12
             int32_t h12 = (::tpy::mod_floor<int32_t>(hh, 12));
-            // if h12 == 0:
             if ((h12 == 0)) {
-                // h12 = 12
                 h12 = 12;
             }
-            // out = out + f"{h12:02d}"
             out += std::format("{:02d}", h12);
-        // elif c == "j":
         } else if ((c == 'j')) {
-            // out = out + f"{yday0 + 1:03d}"
             out += std::format("{:03d}", (::tpy::add_check<int32_t>(yday0, 1)));
-        // elif c == "m":
         } else if ((c == 'm')) {
-            // out = out + f"{mo:02d}"
             out += std::format("{:02d}", mo);
-        // elif c == "M":
         } else if ((c == 'M')) {
-            // out = out + f"{mm:02d}"
             out += std::format("{:02d}", mm);
-        // elif c == "p":
         } else if ((c == 'p')) {
-            // out = out + ("AM" if hh < 12 else "PM")
             out += (((hh < 12)) ? ("AM") : ("PM"));
-        // elif c == "S":
         } else if ((c == 'S')) {
-            // out = out + f"{ss:02d}"
             out += std::format("{:02d}", ss);
-        // elif c == "u":
         } else if ((c == 'u')) {
-            // out = out + f"{wd + 1}"
             out += std::format("{}", (::tpy::add_check<int32_t>(wd, 1)));
-        // elif c == "U":
         } else if ((c == 'U')) {
-            // out = out + f"{(yday0 + 7 - wd_sun0) // 7:02d}"
             out += std::format("{:02d}", (::tpy::div_floor<int32_t>((::tpy::sub_check<int32_t>((::tpy::add_check<int32_t>(yday0, 7)), wd_sun0)), 7)));
-        // elif c == "V":
         } else if ((c == 'V')) {
-            // iso_y2, iso_w2, iso_d2 = _iso_calendar(int(y), int(mo), int(d))
             auto __tup_2 = ::tpystd::_datetime_cal::_iso_calendar(::tpy::BigInt(static_cast<int64_t>(y)), ::tpy::BigInt(static_cast<int64_t>(mo)), ::tpy::BigInt(static_cast<int64_t>(d)));
             const ::tpy::BigInt& iso_y2 = std::get<0>(__tup_2);
             const ::tpy::BigInt& iso_w2 = std::get<1>(__tup_2);
             const ::tpy::BigInt& iso_d2 = std::get<2>(__tup_2);
-            // out = out + f"{int32(iso_w2):02d}"
             out += std::format("{:02d}", (iso_w2).to_fixed_check<int32_t>());
-        // elif c == "w":
         } else if ((c == 'w')) {
-            // out = out + f"{wd_sun0}"
             out += std::format("{}", wd_sun0);
-        // elif c == "W":
         } else if ((c == 'W')) {
-            // out = out + f"{(yday0 + 7 - wd) // 7:02d}"
             out += std::format("{:02d}", (::tpy::div_floor<int32_t>((::tpy::sub_check<int32_t>((::tpy::add_check<int32_t>(yday0, 7)), wd)), 7)));
-        // elif c == "x":
         } else if ((c == 'x')) {
-            // out = out + f"{mo:02d}/{d:02d}/{y % 100:02d}"
             out += std::format("{:02d}/{:02d}/{:02d}", mo, d, (::tpy::mod_floor<int32_t>(y, 100)));
-        // elif c == "X":
         } else if ((c == 'X')) {
-            // out = out + f"{hh:02d}:{mm:02d}:{ss:02d}"
             out += std::format("{:02d}:{:02d}:{:02d}", hh, mm, ss);
-        // elif c == "y":
         } else if ((c == 'y')) {
-            // out = out + f"{y % 100:02d}"
             out += std::format("{:02d}", (::tpy::mod_floor<int32_t>(y, 100)));
-        // elif c == "Y":
         } else if ((c == 'Y')) {
-            // out = out + f"{y}"
             out += std::format("{}", y);
-        // elif c == "z":
         } else if ((c == 'z')) {
-            // if has_tz:
             if (has_tz) {
-                // out = out + _offset_str(off_us, "")
                 out += _offset_str(off_us, "");
             }
-        // elif c == "Z":
         } else if ((c == 'Z')) {
-            // if has_tz:
             if (has_tz) {
-                // out = out + zone
                 out += zone;
             }
-        // else:
         } else {
-            // out = out + "%" + c
             out = (::tpy::str_concat((::tpy::str_concat(out, "%")), ::tpy::char_to_str(c)));
         }
     }
-    // return out
     return out;
 }
 
 // def _format_time(hh: int32, mm: int32, ss: int32, us: int32,
-// timespec: str = "auto") -> str:
+//                  timespec: str = "auto") -> str:
+//     # 'milliseconds' truncates (never rounds) -- CPython floors the us field.
+//     if timespec == "auto":
+//         s = f"{hh:02d}:{mm:02d}:{ss:02d}"
+//         if us != 0:
+//             s = s + f".{us:06d}"
+//         return s
+//     if timespec == "hours":
+//         return f"{hh:02d}"
+//     if timespec == "minutes":
+//         return f"{hh:02d}:{mm:02d}"
+//     if timespec == "seconds":
+//         return f"{hh:02d}:{mm:02d}:{ss:02d}"
+//     if timespec == "milliseconds":
+//         ms = us // 1000
+//         return f"{hh:02d}:{mm:02d}:{ss:02d}.{ms:03d}"
+//     if timespec == "microseconds":
+//         return f"{hh:02d}:{mm:02d}:{ss:02d}.{us:06d}"
+//     raise ValueError("Unknown timespec value")
 std::string _format_time(int32_t hh, int32_t mm, int32_t ss, int32_t us, std::string_view timespec) {
-    // # 'milliseconds' truncates (never rounds) -- CPython floors the us field.
-    // if timespec == "auto":
     if ((timespec == "auto")) {
-        // s = f"{hh:02d}:{mm:02d}:{ss:02d}"
         std::string s = std::format("{:02d}:{:02d}:{:02d}", hh, mm, ss);
-        // if us != 0:
         if ((us != 0)) {
-            // s = s + f".{us:06d}"
             s += std::format(".{:06d}", us);
         }
-        // return s
         return s;
     }
-    // if timespec == "hours":
     if ((timespec == "hours")) {
-        // return f"{hh:02d}"
         return std::format("{:02d}", hh);
     }
-    // if timespec == "minutes":
     if ((timespec == "minutes")) {
-        // return f"{hh:02d}:{mm:02d}"
         return std::format("{:02d}:{:02d}", hh, mm);
     }
-    // if timespec == "seconds":
     if ((timespec == "seconds")) {
-        // return f"{hh:02d}:{mm:02d}:{ss:02d}"
         return std::format("{:02d}:{:02d}:{:02d}", hh, mm, ss);
     }
-    // if timespec == "milliseconds":
     if ((timespec == "milliseconds")) {
-        // ms = us // 1000
         int32_t ms = (::tpy::div_floor<int32_t>(us, 1000));
-        // return f"{hh:02d}:{mm:02d}:{ss:02d}.{ms:03d}"
         return std::format("{:02d}:{:02d}:{:02d}.{:03d}", hh, mm, ss, ms);
     }
-    // if timespec == "microseconds":
     if ((timespec == "microseconds")) {
-        // return f"{hh:02d}:{mm:02d}:{ss:02d}.{us:06d}"
         return std::format("{:02d}:{:02d}:{:02d}.{:06d}", hh, mm, ss, us);
     }
-    // raise ValueError("Unknown timespec value")
     throw ::tpy::ValueError("Unknown timespec value");
 }
 
 // def _offset_str(off_us: int, sep: str) -> str:
+//     # +HH:MM / +HHMM form; :SS only when the offset has seconds, .ffffff only
+//     # when it has microseconds (CPython appends both lazily in %z, isoformat
+//     # and the synthesized tz name alike).
+//     sign = "+" if off_us >= 0 else "-"
+//     # A valid offset is < 24h in microseconds, so int64 holds it (BigInt
+//     # values do not support format specs).
+//     a = int64(off_us if off_us >= 0 else -off_us)
+//     total_s, us = divmod(a, 1000000)
+//     hh, rem = divmod(total_s, 3600)
+//     mm, ss = divmod(rem, 60)
+//     out = f"{sign}{hh:02d}{sep}{mm:02d}"
+//     if ss != 0 or us != 0:
+//         out = out + f"{sep}{ss:02d}"
+//         if us != 0:
+//             out = out + f".{us:06d}"
+//     return out
 std::string _offset_str(const ::tpy::BigInt& off_us, std::string_view sep) {
-    // # +HH:MM / +HHMM form; :SS only when the offset has seconds, .ffffff only
-    // # when it has microseconds (CPython appends both lazily in %z, isoformat
-    // # and the synthesized tz name alike).
-    // sign = "+" if off_us >= 0 else "-"
     std::string_view sign = (((off_us >= 0)) ? ("+") : ("-"));
-    // # A valid offset is < 24h in microseconds, so int64 holds it (BigInt
-    // # values do not support format specs).
-    // a = int64(off_us if off_us >= 0 else -off_us)
     int64_t a = ((((off_us >= 0)) ? (off_us) : (-(off_us)))).to_fixed_check<int64_t>();
-    // total_s, us = divmod(a, 1000000)
     auto __tup_1 = ::tpy::divmod_fixed<int64_t>(a, 1000000);
     int64_t total_s = std::get<0>(__tup_1);
     int64_t us = std::get<1>(__tup_1);
-    // hh, rem = divmod(total_s, 3600)
     auto __tup_2 = ::tpy::divmod_fixed<int64_t>(total_s, 3600);
     int64_t hh = std::get<0>(__tup_2);
     int64_t rem = std::get<1>(__tup_2);
-    // mm, ss = divmod(rem, 60)
     auto __tup_3 = ::tpy::divmod_fixed<int64_t>(rem, 60);
     int64_t mm = std::get<0>(__tup_3);
     int64_t ss = std::get<1>(__tup_3);
-    // out = f"{sign}{hh:02d}{sep}{mm:02d}"
     std::string out = std::format("{}{:02d}{}{:02d}", sign, hh, sep, mm);
-    // if ss != 0 or us != 0:
     if (((ss != 0) || (us != 0))) {
-        // out = out + f"{sep}{ss:02d}"
         out += std::format("{}{:02d}", sep, ss);
-        // if us != 0:
         if ((us != 0)) {
-            // out = out + f".{us:06d}"
             out += std::format(".{:06d}", us);
         }
     }
-    // return out
     return out;
 }
 
 // def _tz_label(off_us: int) -> str:
+//     # CPython timezone._name_from_offset: the synthesized name for an
+//     # unnamed fixed offset.
+//     if off_us == 0:
+//         return "UTC"
+//     return "UTC" + _offset_str(off_us, ":")
 std::string _tz_label(const ::tpy::BigInt& off_us) {
-    // # CPython timezone._name_from_offset: the synthesized name for an
-    // # unnamed fixed offset.
-    // if off_us == 0:
     if ((off_us == 0)) {
-        // return "UTC"
         return "UTC";
     }
-    // return "UTC" + _offset_str(off_us, ":")
     return (::tpy::str_concat("UTC", _offset_str(off_us, ":")));
 }
 
+// from _datetime_cal import (
+//     _DAY_ABBR, _DAY_FULL, _MONTH_ABBR, _MONTH_FULL,
+//     _ymd2ord, _days_before_year, _iso_calendar,
+// )
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from _datetime_cal import (
-    // _DAY_ABBR, _DAY_FULL, _MONTH_ABBR, _MONTH_FULL,
-    // _ymd2ord, _days_before_year, _iso_calendar,
-    // )
     ::tpystd::_datetime_cal::__tpy_init();
 }
 

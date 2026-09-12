@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def takes_none(x: None) -> None:
+//     local: None = x
+//     print("ran")
 void takes_none(std::monostate x) {
-    // local: None = x
     std::monostate local = x;
-    // print("ran")
     std::cout << "ran" << "\n";
 }
 
 // def main() -> None:
+//     f = Field()
+//     f.take(None)
+//     takes_none(None)
+//     with Guard():
+//         print("body")
 void main() {
-    // f = Field()
     Field f = Field();
-    // f.take(None)
     f.take(std::monostate{});
-    // takes_none(None)
     takes_none(std::monostate{});
-    // with Guard():
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
-        // print("body")
         std::cout << "body" << "\n";
         goto __with_exit_1;
     } catch (...) {
@@ -35,12 +35,12 @@ void main() {
     __ctx_1.__exit__({}, {}, {});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

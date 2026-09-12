@@ -5,10 +5,11 @@ namespace tpyapp::helper {
 
 
 // async def step() -> int32:
+//     await asyncio.sleep(0)
+//     return 1
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::helper {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 1
         __state = S_DONE;
         int32_t __tpy_async_ret = 1;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,10 +35,11 @@ __coro_step step() {
 }
 
 // async def other() -> int32:
+//     await asyncio.sleep(0)
+//     return 2
 ::tpystd::tpy::Poll<int32_t> __coro_other::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -48,7 +49,6 @@ __coro_step step() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 2
         __state = S_DONE;
         int32_t __tpy_async_ret = 2;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -64,14 +64,14 @@ __coro_other other() {
     return __coro_other();
 }
 
+// # Coros whose names deliberately collide with main.py's, to prove the emit-order
+// # edges distinguish a cross-module callee from a same-module one.
+// import asyncio
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Coros whose names deliberately collide with main.py's, to prove the emit-order
-    // # edges distinguish a cross-module callee from a same-module one.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
 }
 

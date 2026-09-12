@@ -5,10 +5,16 @@ namespace tpyapp::main {
 
 
 // def multi(items: list[int32], n: int32) -> Iterator[int32]:
+//     yield -1
+//     for x in items:
+//         yield x * 10
+//     yield -2
+//     for i in range(n):
+//         yield i * i
+//     yield -3
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
@@ -38,23 +44,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield -2
             __state = S_RESUME_2;
             return -2;
         }
         x = *((*__for_it_0))++;
-        // yield x * 10
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 10));
     }
     case S_JOIN_1: {
         if (!((*__for_i_1) < (*__for_stop_1))) {
-            // yield -3
             __state = S_RESUME_4;
             return -3;
         }
         i = ((*__for_i_1))++;
-        // yield i * i
         __state = S_RESUME_3;
         return (::tpy::mul_check<int32_t>(i, i));
     }
@@ -70,8 +72,9 @@ __gen_multi multi(std::vector<int32_t>& items, int32_t n) {
 }
 
 // def main():
+//     for x in multi([1, 2, 3], 4):
+//         print(x)
 void main() {
-    // for x in multi([1, 2, 3], 4):
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3};
         auto __src_0 = multi(__tmp_1, 4);
@@ -80,18 +83,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

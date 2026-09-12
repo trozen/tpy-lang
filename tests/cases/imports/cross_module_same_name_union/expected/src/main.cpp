@@ -5,68 +5,69 @@ namespace tpyapp::main {
 
 
 // def uses_pkg_a(x: Foo) -> int32:
+//     return x.val
 int32_t uses_pkg_a(const ::tpyapp::pkg_a::Foo& x) {
-    // return x.val
     return x.val;
 }
 
 // def describe(u: Foo | Bar) -> str:
+//     # Union with one member each from pkg_a and pkg_b (different
+//     # short names so isinstance narrowing is unambiguous).  Pre-fix
+//     # this compiled the same as today; the test exists to guard
+//     # against future regressions if someone re-collapses the types.
+//     if isinstance(u, Foo):
+//         return name_a(u)
+//     return "bar"
 std::string describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*> u) {
-    // # Union with one member each from pkg_a and pkg_b (different
-    // # short names so isinstance narrowing is unambiguous).  Pre-fix
-    // # this compiled the same as today; the test exists to guard
-    // # against future regressions if someone re-collapses the types.
-    // if isinstance(u, Foo):
     if (std::holds_alternative<const ::tpyapp::pkg_a::Foo*>(u)) {
         auto& __u = *std::get<const ::tpyapp::pkg_a::Foo*>(u);
-        // return name_a(u)
         return ::tpyapp::pkg_a::name_of(__u);
     }
     auto& __u = *std::get<const ::tpyapp::pkg_b::Bar*>(u);
-    // return "bar"
     return "bar";
 }
 
 // def main() -> None:
+//     a = Foo(int32(42))
+//     print(uses_pkg_a(a))
+//     print(name_a(a))
+//     print(name_of_b())
+//     print(describe(a))
+//     print(describe(Bar(int32(7))))
 void main() {
-    // a = Foo(int32(42))
     ::tpyapp::pkg_a::Foo a = ::tpyapp::pkg_a::Foo(42);
-    // print(uses_pkg_a(a))
     std::cout << uses_pkg_a(a) << "\n";
-    // print(name_a(a))
     std::cout << ::tpyapp::pkg_a::name_of(a) << "\n";
-    // print(name_of_b())
     std::cout << ::tpyapp::pkg_b::name_of_b() << "\n";
-    // print(describe(a))
     std::cout << describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&(a)}) << "\n";
-    // print(describe(Bar(int32(7))))
     ::tpyapp::pkg_b::Bar __tmp_1 = ::tpyapp::pkg_b::Bar(7);
     std::cout << describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&__tmp_1}) << "\n";
 }
 
+// # Cross-module same-name identity end-to-end.
+// #
+// # - pkg_a and pkg_b both define a record named `Foo`.
+// # - main.py imports pkg_a.Foo and uses pkg_b.Foo via a pkg_b-local
+// #   function whose return type is `Own[Foo]` (pkg_b's Foo).
+// # - A union `pkg_a.Foo | pkg_b.Bar` exercises the cross-module path
+// #   with non-colliding short names so isinstance narrowing works.
+// #
+// # Pre-fix, `NominalType` equality excluded `_module_qname`; the two
+// # same-name records were indistinguishable in sets / dicts and any
+// # site comparing types via `==` could silently match the wrong one.
+// # This test pins the strict qname-aware identity contract end-to-end
+// # through import, sema, macro expansion, narrowing, and codegen.
+// from pkg_a import Foo, name_of as name_a
+// from pkg_b import name_of_b, Bar
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module same-name identity end-to-end.
-    // #
-    // # - pkg_a and pkg_b both define a record named `Foo`.
-    // # - main.py imports pkg_a.Foo and uses pkg_b.Foo via a pkg_b-local
-    // #   function whose return type is `Own[Foo]` (pkg_b's Foo).
-    // # - A union `pkg_a.Foo | pkg_b.Bar` exercises the cross-module path
-    // #   with non-colliding short names so isinstance narrowing works.
-    // #
-    // # Pre-fix, `NominalType` equality excluded `_module_qname`; the two
-    // # same-name records were indistinguishable in sets / dicts and any
-    // # site comparing types via `==` could silently match the wrong one.
-    // # This test pins the strict qname-aware identity contract end-to-end
-    // # through import, sema, macro expansion, narrowing, and codegen.
-    // from pkg_a import Foo, name_of as name_a
     ::tpyapp::pkg_a::__tpy_init();
-    // from pkg_b import name_of_b, Bar
     ::tpyapp::pkg_b::__tpy_init();
-    // main()
     main();
 }
 

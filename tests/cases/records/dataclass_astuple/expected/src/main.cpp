@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(int32(1), int32(2))
+//     t = astuple(p)
+//     print(t)
 void main() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // t = astuple(p)
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{p.x, p.y};
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
 }
 
+// # Test astuple() on a flat dataclass
+// from dataclasses import dataclass, astuple
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test astuple() on a flat dataclass
-    // from dataclasses import dataclass, astuple
-    // main()
     main();
 }
 

@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def consume(p: Own[Point]) -> int32:
+//     return p.x + p.y
 int32_t consume(Point&& p) {
-    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def main():
+//     p = Point()
+//     p.x = 10
+//     p.y = 32
+//     # p is at last use here -- auto-move, no copy() needed
+//     result = consume(p)
+//     print(result)
 void main() {
-    // p = Point()
     Point p = Point();
-    // p.x = 10
     p.x = 10;
-    // p.y = 32
     p.y = 32;
-    // # p is at last use here -- auto-move, no copy() needed
-    // result = consume(p)
     int32_t result = consume(std::move(p));
-    // print(result)
     std::cout << result << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

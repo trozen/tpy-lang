@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1, 2)
+//     a: Any = p
+//     print(a)              # uses __str__
+//     if a:                 # to_bool fallback -> True (Python default)
+//         print("truthy")
+//     if isinstance(a, Point):
+//         print(a.x + a.y)
 void main() {
-    // p = Point(1, 2)
     Point p = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
-    // a: Any = p
     ::tpy::Any a = ::tpy::make_any(p);
-    // print(a)              # uses __str__
     std::cout << a << "\n";
-    // if a:                 # to_bool fallback -> True (Python default)
     if (::tpy::to_bool(a)) {
-        // print("truthy")
         std::cout << "truthy" << "\n";
     }
-    // if isinstance(a, Point):
     if ((a.value.has_value() && a.value.type() == typeid(Point))) {
         const Point& __a = std::any_cast<const Point&>(a.value);
-        // print(a.x + a.y)
         std::cout << ((__a.x) + (__a.y)) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

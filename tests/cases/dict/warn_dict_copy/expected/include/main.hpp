@@ -13,14 +13,23 @@ extern ::tpy::ordered_map<std::string, Node>* g_a;
 extern ::tpy::ordered_map<std::string, Node>* g_b;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_dict() -> Own[dict[str, Node]]:
 ::tpy::ordered_map<std::string, Node> make_dict();
+// def test_warn_update_not_last_use() -> None:
 void test_warn_update_not_last_use();
+// def test_no_warn_update_last_use() -> None:
 void test_no_warn_update_last_use();
+// def test_no_warn_update_explicit_copy() -> None:
 void test_no_warn_update_explicit_copy();
+// def test_no_warn_update_rvalue() -> None:
 void test_no_warn_update_rvalue();
+// def test_no_warn_update_value_types() -> None:
 void test_no_warn_update_value_types();
+// def test_warn_ior_not_last_use() -> None:
 void test_warn_ior_not_last_use();
+// def test_no_warn_ior_last_use() -> None:
 void test_no_warn_ior_last_use();
+// def test_warn_update_generic[V](a: dict[str, V], b: dict[str, V]) -> None:
 template<typename V>
 void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b);
 
@@ -42,13 +51,15 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Node::Node(int32_t val) : val(val) {}
 // def test_warn_update_generic[V](a: dict[str, V], b: dict[str, V]) -> None:
+//     """Generic V: warn 'may copy' since type may not be value type."""
+//     a.update(b)  # tpyc: warning(/may copy V elements/)
+//     print(len(b))
 template<typename V>
 void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b) {
-    // a.update(b)  # tpyc: warning(/may copy V elements/)
     ::tpy::dict_update(a, b);
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 

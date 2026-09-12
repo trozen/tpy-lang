@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     alice = Owner("Alice", Box(Parrot(label="Polly")))
+//     bob = Owner("Bob", Box(Dog(label="Rex")))
+//     print(alice.name_, alice.pet.get().name())
+//     print(bob.name_, bob.pet.get().name())
 void main() {
-    // alice = Owner("Alice", Box(Parrot(label="Polly")))
     Owner alice = Owner("Alice", ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly")));
-    // bob = Owner("Bob", Box(Dog(label="Rex")))
     Owner bob = Owner("Bob", ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
-    // print(alice.name_, alice.pet.get().name())
     std::cout << alice.name_ << " " << alice.pet.get().name() << "\n";
-    // print(bob.name_, bob.pet.get().name())
     std::cout << bob.name_ << " " << bob.pet.get().name() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Limits.Inner.MAX)
+//     print(Limits.Inner.TAG)
 void main() {
-    // print(Limits.Inner.MAX)
     std::cout << ::tpyapp::limits::Limits::Inner::MAX << "\n";
-    // print(Limits.Inner.TAG)
     std::cout << ::tpyapp::limits::Limits::Inner::TAG << "\n";
 }
 
+// # Class constants on a *nested* record imported from another module.
+// # Codegen must (a) qualify the dotted owner name `Limits.Inner` to
+// # `::tpyapp::limits::Limits::Inner`, and (b) skip the side-effects wrapper
+// # since the receiver `Limits.Inner` is a static type reference, not a
+// # value expression.
+// from limits import Limits
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Class constants on a *nested* record imported from another module.
-    // # Codegen must (a) qualify the dotted owner name `Limits.Inner` to
-    // # `::tpyapp::limits::Limits::Inner`, and (b) skip the side-effects wrapper
-    // # since the receiver `Limits.Inner` is a static type reference, not a
-    // # value expression.
-    // from limits import Limits
     ::tpyapp::limits::__tpy_init();
-    // main()
     main();
 }
 

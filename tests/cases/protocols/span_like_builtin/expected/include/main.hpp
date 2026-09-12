@@ -13,29 +13,35 @@ using ::tpystd::tplib::array_list::ArrayList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_span(c: Spannable[int32]) -> int32:
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c);
+// def test_list() -> None:
 void test_list();
+// def test_array() -> None:
 void test_array();
+// def test_span() -> None:
 void test_span();
+// def test_ro_span() -> None:
 void test_ro_span();
+// def test_arraylist() -> None:
 void test_arraylist();
 
 // def sum_span(c: Spannable[int32]) -> int32:
+//     total: int32 = 0
+//     for x in c:
+//         total += x
+//     return total
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in c:
     auto& __obj_0 = c;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 

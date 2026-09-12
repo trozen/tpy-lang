@@ -3,26 +3,25 @@
 
 namespace tpyapp::main {
 
-// pt: Point = Point(7)
 Point* pt{};
 
 // def get_x(p: Point | None) -> int32:
+//     assert p  # tpyc: ok
+//     return p.x  # tpyc: ok
 int32_t get_x(const Point* p) {
-    // assert p  # tpyc: ok
     if (!(p)) ::tpy::raise_assertion_error();
-    // return p.x  # tpyc: ok
     return p->x;
 }
 
+// pt: Point = Point(7)
+// print(get_x(pt))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // pt: Point = Point(7)
     static Point __global_slot_1 = Point(7);
     pt = &__global_slot_1;
-    // print(get_x(pt))
     std::cout << get_x(pt) << "\n";
 }
 

@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: V = []
+//     match x:
+//         case list() as items:
+//             items.append(1)
+//             items.append(2)
+//         case _:
+//             pass
+//     print(x)
 void main() {
-    // x: V = []
     V x = std::vector<V>{};
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.value.index()) {
-    // case list() as items:
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& items = __case_0;
-        // items.append(1)
         items.push_back(1);
-        // items.append(2)
         items.push_back(2);
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
-    // print(x)
     std::cout << ::tpy::__str__(x) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

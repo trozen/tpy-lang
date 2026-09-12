@@ -5,34 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [10, 20, 30, 40]
+//     print(last(nums))
+//
+//     strs: list[str] = ["a", "b", "c"]
+//     print(last(strs))
+//
+//     # A REFERENCE-type T: the return aliases the last element rather than
+//     # copying it, which the value-typed instantiations above cannot show.
+//     # 99 proves the alias; a copy would leave ps[2] at 30.
+//     ps: list[Point] = [Point(10), Point(20), Point(30)]
+//     r = last(ps)
+//     r.x = 99
+//     print(ps[2].x)
 void main() {
-    // nums: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
-    // print(last(nums))
     std::cout << last<int32_t>(nums) << "\n";
-    // strs: list[str] = ["a", "b", "c"]
     std::vector<std::string> strs = {"a", "b", "c"};
-    // print(last(strs))
     std::cout << last<std::string>(strs) << "\n";
-    // # A REFERENCE-type T: the return aliases the last element rather than
-    // # copying it, which the value-typed instantiations above cannot show.
-    // # 99 proves the alias; a copy would leave ps[2] at 30.
-    // ps: list[Point] = [Point(10), Point(20), Point(30)]
     std::vector<Point> ps = {Point(10), Point(20), Point(30)};
-    // r = last(ps)
     Point& r = last<Point>(ps);
-    // r.x = 99
     r.x = 99;
-    // print(ps[2].x)
     std::cout << ::tpy::__getitem__(ps, 2).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

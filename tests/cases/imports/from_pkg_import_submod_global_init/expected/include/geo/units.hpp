@@ -10,6 +10,7 @@ namespace tpyapp::geo::units {
 extern int32_t _SCALE;
 inline constexpr std::string_view __name__ = "geo.units";
 
+// def scaled(x: int32) -> int32:
 int32_t scaled(int32_t x);
 
 void __tpy_init();

@@ -4,12 +4,12 @@
 namespace tpyapp::facade {
 
 
+// from definer import deep
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from definer import deep
     ::tpyapp::definer::__tpy_init();
 }
 

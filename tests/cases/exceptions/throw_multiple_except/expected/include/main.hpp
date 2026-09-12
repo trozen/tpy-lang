@@ -11,8 +11,11 @@ struct MyError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def throw_value_error() -> None:
 void throw_value_error();
+// def throw_my_error() -> None:
 void throw_my_error();
+// def main() -> None:
 void main();
 
 // # Multiple except handlers with type matching

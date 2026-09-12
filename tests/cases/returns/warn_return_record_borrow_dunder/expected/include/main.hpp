@@ -11,8 +11,11 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bigger(a: Acc, b: Acc) -> Own[Acc]:
 Acc bigger(const Acc& a, const Acc& b);
+// def bigger_copy(a: Acc, b: Acc) -> Own[Acc]:
 Acc bigger_copy(const Acc& a, const Acc& b);
+// def main() -> None:
 void main();
 
 // class Acc:
@@ -40,11 +43,12 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Acc::Acc(int32_t n) : n(n) {}
 
 // def __add__(self, o: 'Acc') -> 'Acc':
+//     return self if self.n >= o.n else o
 inline const Acc& Acc::__add__(const Acc& o) const {
-    // return self if self.n >= o.n else o
     return (((this->n >= o.n)) ? ((*this)) : (o));
 }
 void __tpy_init();

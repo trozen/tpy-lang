@@ -7,52 +7,54 @@ namespace tpyapp::main {
 // # Stands in for a C sink such as `void tpy_log(const uint8_t *msg)`.
 // @export(binding="C")
 // def tpy_log(msg: Ptr[readonly[uint8]]) -> None:
+//     print(unsafe_str_from_cstr(msg))
 extern "C" void tpy_log(const uint8_t* msg) {
-    // print(unsafe_str_from_cstr(msg))
     std::cout << std::string(reinterpret_cast<const char*>(msg)) << "\n";
 }
 
 // @export(binding="C")
 // def greet(name: Ptr[readonly[uint8]]) -> int32:
+//     # Inbound: decode the C string into an owned TPy str. The comparison is
+//     # the subject -- it must compare contents, not the incoming pointer.
+//     who = unsafe_str_from_cstr(name)
+//     if who == "world":
+//         print("greeting the world")
+//     greeting = String("Hello, " + who + "!")
+//     # Outbound: unsafe_cstr() borrows `greeting`'s buffer, so the pointer is
+//     # only good while that String lives.
+//     tpy_log(unsafe_cstr(greeting))
+//     return len(who)
 extern "C" int32_t greet(const uint8_t* name) {
-    // # Inbound: decode the C string into an owned TPy str. The comparison is
-    // # the subject -- it must compare contents, not the incoming pointer.
-    // who = unsafe_str_from_cstr(name)
     std::string who = std::string(reinterpret_cast<const char*>(name));
-    // if who == "world":
     if ((who == "world")) {
-        // print("greeting the world")
         std::cout << "greeting the world" << "\n";
     }
-    // greeting = String("Hello, " + who + "!")
     ::tpy::String greeting = ::tpy::String((::tpy::str_concat((::tpy::str_concat("Hello, ", who)), "!")));
-    // # Outbound: unsafe_cstr() borrows `greeting`'s buffer, so the pointer is
-    // # only good while that String lives.
-    // tpy_log(unsafe_cstr(greeting))
     tpy_log(::tpy::cstr(greeting));
-    // return len(who)
     return ::tpy::__len__(who);
 }
 
 // def main() -> None:
+//     arg = String("world")
+//     print(greet(unsafe_cstr(arg)))
 void main() {
-    // arg = String("world")
     ::tpy::String arg = ::tpy::String("world");
-    // print(greet(unsafe_cstr(arg)))
     std::cout << greet(::tpy::cstr(arg)) << "\n";
 }
 
+// # Moving a string across an extern "C" boundary: `str` has no C spelling, so the
+// # signature carries Ptr[readonly[uint8]] and the body converts by hand. Both
+// # directions are exercised end to end.
+// from tpy.extern import export
+//
+// from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Moving a string across an extern "C" boundary: `str` has no C spelling, so the
-    // # signature carries Ptr[readonly[uint8]] and the body converts by hand. Both
-    // # directions are exercised end to end.
-    // from tpy.extern import export
-    // from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr
-    // main()
     main();
 }
 

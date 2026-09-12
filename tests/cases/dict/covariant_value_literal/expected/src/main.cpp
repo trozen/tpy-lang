@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pets: dict[str, Box[Pet]] = {"a": Box(Dog()), "b": Box(Cat())}
+//     print(pets["a"].get().name())
+//     print(pets["b"].get().name())
 void main() {
-    // pets: dict[str, Box[Pet]] = {"a": Box(Dog()), "b": Box(Cat())}
     ::tpy::ordered_map<std::string, ::tpystd::tplib::box::Box<Pet>> pets = ::tpy::make_ordered_map<std::string, ::tpystd::tplib::box::Box<Pet>>("a", ::tpystd::tplib::box::Box<Dog>(Dog()), "b", ::tpystd::tplib::box::Box<Cat>(Cat()));
-    // print(pets["a"].get().name())
     std::cout << ::tpy::__getitem__(pets, "a").get().name() << "\n";
-    // print(pets["b"].get().name())
     std::cout << ::tpy::__getitem__(pets, "b").get().name() << "\n";
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

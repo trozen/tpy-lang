@@ -3,41 +3,40 @@
 
 namespace tpyapp::main {
 
-// _ptr_g: Ptr[Holder] = None
 Holder* _ptr_g{};
-// _opt_int_g: int | None = None
 std::optional<::tpy::BigInt> _opt_int_g;
 
 // def main() -> None:
+//     h = Holder(7)
+//     r = Registry()
+//     r.install(take_ptr(h), 42)
+//     print(_ptr_g is not None)
+//     print(_opt_int_g is not None)
+//     r.clear()
+//     print(_ptr_g is None)
+//     print(_opt_int_g is None)
 void main() {
-    // h = Holder(7)
     Holder h = Holder(::tpy::BigInt(7));
-    // r = Registry()
     Registry r = Registry();
-    // r.install(take_ptr(h), 42)
     r.install(&h, 42);
-    // print(_ptr_g is not None)
     std::cout << ::tpy::print_bool((_ptr_g != nullptr)) << "\n";
-    // print(_opt_int_g is not None)
     std::cout << ::tpy::print_bool((_opt_int_g.has_value())) << "\n";
-    // r.clear()
     r.clear();
-    // print(_ptr_g is None)
     std::cout << ::tpy::print_bool((_ptr_g == nullptr)) << "\n";
-    // print(_opt_int_g is None)
     std::cout << ::tpy::print_bool((!_opt_int_g.has_value())) << "\n";
 }
 
+// _ptr_g: Ptr[Holder] = None
+// _opt_int_g: int | None = None
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // _ptr_g: Ptr[Holder] = None
     _ptr_g = nullptr;
-    // _opt_int_g: int | None = None
     _opt_int_g = std::nullopt;
-    // main()
     main();
 }
 

@@ -47,44 +47,45 @@ namespace tpyapp::main {
 
 
 // def describe(c: Color) -> str:
+//     match c:  # tpyc: warning(/non-exhaustive match.*missing: Color.Blue.*case _:/)
+//         case Color.Red:
+//             return "red"
+//         case Color.Green:
+//             return "green"
+//     return "unknown"
 std::string describe(Color c) {
-    // match c:  # tpyc: warning(/non-exhaustive match.*missing: Color.Blue.*case _:/)
     auto& __match_subject_1 = c;
     switch (__match_subject_1) {
-    // case Color.Red:
     case Color::Red: {
-        // return "red"
         return "red";
         break;
     }
-    // case Color.Green:
     case Color::Green: {
-        // return "green"
         return "green";
         break;
     }
     default: break;
     }
-    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
+//     print(describe(Color.Red))
+//     print(describe(Color.Green))
 void main() {
-    // print(describe(Color.Red))
     std::cout << describe(Color::Red) << "\n";
-    // print(describe(Color.Green))
     std::cout << describe(Color::Green) << "\n";
 }
 
+// # warning: non-exhaustive match on enum (missing member)
+// from enum import Enum, auto
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # warning: non-exhaustive match on enum (missing member)
-    // from enum import Enum, auto
-    // main()
     main();
 }
 

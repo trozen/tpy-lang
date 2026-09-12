@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box[int32](42)
+//     print(b.get())
+//     b.set(100)
+//     print(b.get())
 void main() {
-    // b = Box[int32](42)
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(42);
-    // print(b.get())
     std::cout << b.get() << "\n";
-    // b.set(100)
     b.set(100);
-    // print(b.get())
     std::cout << b.get() << "\n";
 }
 
+// # Test importing Box[T] from tplib standard library
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test importing Box[T] from tplib standard library
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

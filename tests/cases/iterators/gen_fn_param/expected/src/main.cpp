@@ -5,18 +5,21 @@ namespace tpyapp::main {
 
 
 // def is_small(n: int32) -> bool:
+//     return n < 5
 bool is_small(int32_t n) {
-    // return n < 5
     return (n < 5);
 }
 
 // def double(n: int32) -> int32:
+//     return n * 2
 int32_t double_(int32_t n) {
-    // return n * 2
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 
 // def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
+//     for x in it:
+//         if not pred(x):
+//             yield x
 template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_filterfalse<F_pred>::__next__() {
     while (true) switch (__state) {
@@ -37,7 +40,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filterfalse<F_pred>::__next__
         }
         x = *((*__for_it_0))++;
         if ((!(pred(x)))) {
-            // yield x
             __state = S_RESUME_0;
             return x;
         } else {
@@ -62,6 +64,10 @@ __gen_filterfalse<F_pred> filterfalse(F_pred&& pred, std::vector<int32_t>& it) {
 }
 
 // def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
+//     for x in it:
+//         if not pred(x):
+//             break
+//         yield x
 template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_takewhile<F_pred>::__next__() {
     while (true) switch (__state) {
@@ -85,7 +91,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_takewhile<F_pred>::__next__()
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return x;
         }
@@ -107,6 +112,10 @@ __gen_takewhile<F_pred> takewhile(F_pred&& pred, std::vector<int32_t>& it) {
 }
 
 // def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
+//     for x in it:
+//         yield x
+//         if pred(x):
+//             yield x * 10
 template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
     while (true) switch (__state) {
@@ -118,7 +127,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
     }
     case S_RESUME_0: {
         if (pred(x)) {
-            // yield x * 10
             __state = S_RESUME_1;
             return (::tpy::mul_check<int32_t>(x, 10));
         } else {
@@ -136,7 +144,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
@@ -157,10 +164,27 @@ __gen_tag<F_pred> tag(F_pred&& pred, std::vector<int32_t>& it) {
 }
 
 // def main() -> None:
+//     nums: list[int32] = [1, 7, 2, 9, 3]
+//     for v in filterfalse(is_small, nums):
+//         print(v)
+//     print("--")
+//     for v in takewhile(is_small, [1, 2, 3, 7, 4]):
+//         print(v)
+//     print("--")
+//     for v in tag(is_small, [1, 9]):
+//         print(v)
+//     print("--")
+//     for v in transform(double, [1, 2, 3]):
+//         print(v)
+//     print("--")
+//     c = Capped(2)
+//     # Bind the list to a local: a generator METHOD captures a reference-type
+//     # param by reference in its frame, so a literal (rvalue) arg can't bind.
+//     capnums: list[int32] = [1, 2, 3, 4]
+//     for v in c.keep(is_small, capnums):
+//         print(v)
 void main() {
-    // nums: list[int32] = [1, 7, 2, 9, 3]
     std::vector<int32_t> nums = {1, 7, 2, 9, 3};
-    // for v in filterfalse(is_small, nums):
     {
         auto __src_0 = filterfalse(is_small, nums);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -168,13 +192,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in takewhile(is_small, [1, 2, 3, 7, 4]):
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3, 7, 4};
         auto __src_2 = takewhile(is_small, __tmp_1);
@@ -183,13 +204,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in tag(is_small, [1, 9]):
     {
         std::vector<int32_t> __tmp_2 = {1, 9};
         auto __src_4 = tag(is_small, __tmp_2);
@@ -198,13 +216,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for v in transform(double, [1, 2, 3]):
     {
         std::vector<int32_t> __tmp_3 = {1, 2, 3};
         auto __src_6 = transform(double_, __tmp_3);
@@ -213,19 +228,12 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // c = Capped(2)
     Capped c = Capped(2);
-    // # Bind the list to a local: a generator METHOD captures a reference-type
-    // # param by reference in its frame, so a literal (rvalue) arg can't bind.
-    // capnums: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> capnums = {1, 2, 3, 4};
-    // for v in c.keep(is_small, capnums):
     {
         auto __src_8 = c.keep(is_small, capnums);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -233,18 +241,23 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def keep(self, pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
+//     n: int32 = 0
+//     for x in it:
+//         if n >= self.cap:
+//             break
+//         if pred(x):
+//             yield x
+//             n += 1
 template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n: int32 = 0
         n = 0;
         __for_it_0.emplace((it).begin());
         __for_end_0.emplace((it).end());
@@ -252,7 +265,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__
         continue;
     }
     case S_RESUME_0: {
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_JOIN_2;
         continue;
@@ -268,7 +280,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__
             continue;
         } else {
             if (pred(x)) {
-                // yield x
                 __state = S_RESUME_0;
                 return x;
             } else {
@@ -291,12 +302,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

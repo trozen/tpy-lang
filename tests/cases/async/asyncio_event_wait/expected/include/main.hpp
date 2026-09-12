@@ -19,13 +19,18 @@ struct __coro_fast;
 struct __coro_slow;
 struct __coro_main_coro;
 
+// async def setter(e: Event) -> None:
 __coro_setter setter(::tpystd::asyncio::Event& e);
+// async def fast() -> None:
 __coro_fast fast();
+// async def slow() -> None:
 __coro_slow slow();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: setter
+// async def setter(e: Event) -> None:
 struct __coro_setter {
     int32_t __state;
     bool __cancel_pending;
@@ -47,7 +52,7 @@ struct __coro_setter {
     }
 };
 
-// Async coroutine: fast
+// async def fast() -> None:
 struct __coro_fast {
     int32_t __state;
     bool __cancel_pending;
@@ -72,7 +77,7 @@ struct __coro_fast {
     }
 };
 
-// Async coroutine: slow
+// async def slow() -> None:
 struct __coro_slow {
     int32_t __state;
     bool __cancel_pending;
@@ -97,7 +102,7 @@ struct __coro_slow {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

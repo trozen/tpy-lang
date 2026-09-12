@@ -5,231 +5,231 @@ namespace tpyapp::main {
 
 
 // def test_unary() -> None:
+//     v = Vec2(int32(3), int32(4))
+//     neg = -v
+//     print(neg.x)
+//     print(neg.y)
+//     pos = +v
+//     print(pos.x)
+//     print(pos.y)
 void test_unary() {
-    // v = Vec2(int32(3), int32(4))
     Vec2 v = Vec2(3, 4);
-    // neg = -v
     Vec2 neg = -(v);
-    // print(neg.x)
     std::cout << neg.x << "\n";
-    // print(neg.y)
     std::cout << neg.y << "\n";
-    // pos = +v
     Vec2 pos = +(v);
-    // print(pos.x)
     std::cout << pos.x << "\n";
-    // print(pos.y)
     std::cout << pos.y << "\n";
 }
 
 // def test_contains() -> None:
+//     v = Vec2(int32(10), int32(20))
+//     print(int32(10) in v)
+//     print(int32(20) in v)
+//     print(int32(99) in v)
+//     print(int32(99) not in v)
+//     print(int32(10) not in v)
 void test_contains() {
-    // v = Vec2(int32(10), int32(20))
     Vec2 v = Vec2(10, 20);
-    // print(int32(10) in v)
     std::cout << ::tpy::print_bool((v.__contains__(10))) << "\n";
-    // print(int32(20) in v)
     std::cout << ::tpy::print_bool((v.__contains__(20))) << "\n";
-    // print(int32(99) in v)
     std::cout << ::tpy::print_bool((v.__contains__(99))) << "\n";
-    // print(int32(99) not in v)
     std::cout << ::tpy::print_bool((!(v.__contains__(99)))) << "\n";
-    // print(int32(10) not in v)
     std::cout << ::tpy::print_bool((!(v.__contains__(10)))) << "\n";
 }
 
 // def test_sub_mul() -> None:
+//     a = Vec2(int32(5), int32(7))
+//     b = Vec2(int32(2), int32(3))
+//     d = a - b
+//     print(d.x)
+//     print(d.y)
+//     s = a * int32(3)
+//     print(s.x)
+//     print(s.y)
 void test_sub_mul() {
-    // a = Vec2(int32(5), int32(7))
     Vec2 a = Vec2(5, 7);
-    // b = Vec2(int32(2), int32(3))
     Vec2 b = Vec2(2, 3);
-    // d = a - b
     Vec2 d = ((a) - (b));
-    // print(d.x)
     std::cout << d.x << "\n";
-    // print(d.y)
     std::cout << d.y << "\n";
-    // s = a * int32(3)
     Vec2 s = ((a) * (3));
-    // print(s.x)
     std::cout << s.x << "\n";
-    // print(s.y)
     std::cout << s.y << "\n";
 }
 
 // def test_iadd() -> None:
+//     v = Vec2(int32(1), int32(2))
+//     v += Vec2(int32(3), int32(4))
+//     print(v.x)
+//     print(v.y)
 void test_iadd() {
-    // v = Vec2(int32(1), int32(2))
     Vec2 v = Vec2(1, 2);
-    // v += Vec2(int32(3), int32(4))
     v.__iadd__(Vec2(3, 4));
-    // print(v.x)
     std::cout << v.x << "\n";
-    // print(v.y)
     std::cout << v.y << "\n";
 }
 
 // def test_isub() -> None:
+//     v = Vec2(int32(10), int32(20))
+//     v -= Vec2(int32(3), int32(5))
+//     print(v.x)
+//     print(v.y)
 void test_isub() {
-    // v = Vec2(int32(10), int32(20))
     Vec2 v = Vec2(10, 20);
-    // v -= Vec2(int32(3), int32(5))
     v.__isub__(Vec2(3, 5));
-    // print(v.x)
     std::cout << v.x << "\n";
-    // print(v.y)
     std::cout << v.y << "\n";
 }
 
 // def test_hash() -> None:
+//     v = Vec2(int32(1), int32(2))
+//     h = hash(v)
+//     print(h > 0)
 void test_hash() {
-    // v = Vec2(int32(1), int32(2))
     Vec2 v = Vec2(1, 2);
-    // h = hash(v)
     uint64_t h = ::tpy::__hash__(v);
-    // print(h > 0)
     std::cout << ::tpy::print_bool((h > 0)) << "\n";
 }
 
 // def test_len() -> None:
+//     v = Vec2(int32(1), int32(2))
+//     print(len(v))
 void test_len() {
-    // v = Vec2(int32(1), int32(2))
     Vec2 v = Vec2(1, 2);
-    // print(len(v))
     std::cout << ::tpy::__len__(v) << "\n";
 }
 
 // def test_eq() -> None:
+//     a = Vec2(int32(1), int32(2))
+//     b = Vec2(int32(1), int32(2))
+//     c = Vec2(int32(3), int32(4))
+//     print(a == b)
+//     print(a == c)
+//     print(a != c)
 void test_eq() {
-    // a = Vec2(int32(1), int32(2))
     Vec2 a = Vec2(1, 2);
-    // b = Vec2(int32(1), int32(2))
     Vec2 b = Vec2(1, 2);
-    // c = Vec2(int32(3), int32(4))
     Vec2 c = Vec2(3, 4);
-    // print(a == b)
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
-    // print(a == c)
     std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
-    // print(a != c)
     std::cout << ::tpy::print_bool((a != c)) << "\n";
 }
 
 // def test_explicit_ne() -> None:
+//     a = Tag(int32(1))
+//     b = Tag(int32(1))
+//     c = Tag(int32(2))
+//     print(a != b)
+//     print(a != c)
 void test_explicit_ne() {
-    // a = Tag(int32(1))
     Tag a = Tag(1);
-    // b = Tag(int32(1))
     Tag b = Tag(1);
-    // c = Tag(int32(2))
     Tag c = Tag(2);
-    // print(a != b)
     std::cout << ::tpy::print_bool(((a) != (b))) << "\n";
-    // print(a != c)
     std::cout << ::tpy::print_bool(((a) != (c))) << "\n";
 }
 
 // def test_inherited_eq() -> None:
+//     a = Child(int32(1), int32(2))
+//     b = Child(int32(1), int32(2))
+//     c = Child(int32(3), int32(4))
+//     print(a == b)
+//     print(a == c)
 void test_inherited_eq() {
-    // a = Child(int32(1), int32(2))
     Child a = Child(1, 2);
-    // b = Child(int32(1), int32(2))
     Child b = Child(1, 2);
-    // c = Child(int32(3), int32(4))
     Child c = Child(3, 4);
-    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
-    // print(a == c)
     std::cout << ::tpy::print_bool((a == c)) << "\n";
 }
 
 // def test_comparisons() -> None:
+//     a = Score(int32(10))
+//     b = Score(int32(20))
+//     c = Score(int32(10))
+//     print(a < b)
+//     print(a > b)
+//     print(a <= c)
+//     print(a >= c)
+//     print(b > a)
+//     print(b <= a)
 void test_comparisons() {
-    // a = Score(int32(10))
     Score a = Score(10);
-    // b = Score(int32(20))
     Score b = Score(20);
-    // c = Score(int32(10))
     Score c = Score(10);
-    // print(a < b)
     std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
-    // print(a > b)
     std::cout << ::tpy::print_bool(((a) > (b))) << "\n";
-    // print(a <= c)
     std::cout << ::tpy::print_bool(((a) <= (c))) << "\n";
-    // print(a >= c)
     std::cout << ::tpy::print_bool(((a) >= (c))) << "\n";
-    // print(b > a)
     std::cout << ::tpy::print_bool(((b) > (a))) << "\n";
-    // print(b <= a)
     std::cout << ::tpy::print_bool(((b) <= (a))) << "\n";
 }
 
 // def test_invert() -> None:
+//     m = Mask(int32(0))
+//     inv = ~m
+//     print(inv.bits)
+//     m2 = Mask(int32(5))
+//     inv2 = ~m2
+//     print(inv2.bits)
 void test_invert() {
-    // m = Mask(int32(0))
     Mask m = Mask(0);
-    // inv = ~m
     Mask inv = ~(m);
-    // print(inv.bits)
     std::cout << inv.bits << "\n";
-    // m2 = Mask(int32(5))
     Mask m2 = Mask(5);
-    // inv2 = ~m2
     Mask inv2 = ~(m2);
-    // print(inv2.bits)
     std::cout << inv2.bits << "\n";
 }
 
 // def test_builtin_pos() -> None:
+//     x: int32 = int32(5)
+//     print(+x)
+//     y: float = -3.14
+//     print(+y)
 void test_builtin_pos() {
-    // x: int32 = int32(5)
     int32_t x = 5;
-    // print(+x)
     std::cout << +x << "\n";
-    // y: float = -3.14
     double y = -(3.14);
-    // print(+y)
     std::cout << ::tpy::print_float(+(y)) << "\n";
 }
 
 // def main() -> None:
+//     test_unary()
+//     test_sub_mul()
+//     test_contains()
+//     test_iadd()
+//     test_isub()
+//     test_hash()
+//     test_len()
+//     test_eq()
+//     test_explicit_ne()
+//     test_inherited_eq()
+//     test_comparisons()
+//     test_invert()
+//     test_builtin_pos()
 void main() {
-    // test_unary()
     test_unary();
-    // test_sub_mul()
     test_sub_mul();
-    // test_contains()
     test_contains();
-    // test_iadd()
     test_iadd();
-    // test_isub()
     test_isub();
-    // test_hash()
     test_hash();
-    // test_len()
     test_len();
-    // test_eq()
     test_eq();
-    // test_explicit_ne()
     test_explicit_ne();
-    // test_inherited_eq()
     test_inherited_eq();
-    // test_comparisons()
     test_comparisons();
-    // test_invert()
     test_invert();
-    // test_builtin_pos()
     test_builtin_pos();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

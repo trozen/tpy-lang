@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_doubled;
 
+// def doubled(items: list[Node]) -> Iterator[int32]:
 __gen_doubled doubled(std::vector<Node>& items);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -32,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
-// Generator: doubled
+// def doubled(items: list[Node]) -> Iterator[int32]:
 struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
     int32_t __state;
     std::vector<Node>& items;
@@ -61,6 +63,7 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Node::Node(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

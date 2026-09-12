@@ -5,55 +5,57 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Store()
+//     s["a"] = 10            # str-key __setitem__
+//     s["b"] = 20
+//     print(s["a"], s["b"])  # 10 20 -- written values read back
+//     del s["a"]             # str-key __delitem__
+//     print(s["a"])          # -1
+//
+//     # int-keyed user record still dispatches (no over-trigger)
+//     k = IntBox()
+//     k[3] = 4
+//     print(k[0])            # 7
+//     del k[5]
+//     print(k[0])            # -5
+//
+//     # containers unaffected
+//     xs: list[int32] = [1, 2, 3]
+//     xs[1] = 99
+//     del xs[0]
+//     print(xs[0], len(xs))  # 99 2
+//     d: dict[str, int32] = {}
+//     d["x"] = 5
+//     del d["x"]
+//     print(len(d))          # 0
 void main() {
-    // s = Store()
     Store s = Store();
-    // s["a"] = 10            # str-key __setitem__
     ::tpy::__setitem__(s, "a", 10);
-    // s["b"] = 20
     ::tpy::__setitem__(s, "b", 20);
-    // print(s["a"], s["b"])  # 10 20 -- written values read back
     std::cout << s["a"] << " " << s["b"] << "\n";
-    // del s["a"]             # str-key __delitem__
     ::tpy::__delitem__(s, "a");
-    // print(s["a"])          # -1
     std::cout << s["a"] << "\n";
-    // # int-keyed user record still dispatches (no over-trigger)
-    // k = IntBox()
     IntBox k = IntBox();
-    // k[3] = 4
     ::tpy::__setitem__(k, 3, 4);
-    // print(k[0])            # 7
     std::cout << k[0] << "\n";
-    // del k[5]
     ::tpy::__delitem__(k, 5);
-    // print(k[0])            # -5
     std::cout << k[0] << "\n";
-    // # containers unaffected
-    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // xs[1] = 99
     ::tpy::__setitem__(xs, 1, 99);
-    // del xs[0]
     ::tpy::__delitem__(xs, 0);
-    // print(xs[0], len(xs))  # 99 2
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__len__(xs) << "\n";
-    // d: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // d["x"] = 5
     ::tpy::__setitem__(d, "x", 5);
-    // del d["x"]
     ::tpy::__delitem__(d, "x");
-    // print(len(d))          # 0
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

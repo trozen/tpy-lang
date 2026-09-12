@@ -11,8 +11,11 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump_all(hs: Array[Handle, 4]) -> None:
 void bump_all(std::array<Handle, 4>& hs);
+// def doubled(hs: Array[Handle, 4]) -> None:
 void doubled(const std::array<Handle, 4>& hs);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -39,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Handle::Handle(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

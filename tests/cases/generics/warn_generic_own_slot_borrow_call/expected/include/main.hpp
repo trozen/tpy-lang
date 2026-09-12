@@ -15,17 +15,27 @@ template<typename T> struct GBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def collect_generic[T](h: GHolder[T], xs: list[T]) -> None:
 template<typename T>
 void collect_generic(GHolder<T>& h, std::vector<T>& xs);
+// def collect_twin(h: Twin, xs: list[Cell]) -> None:
 void collect_twin(Twin& h, std::vector<Cell>& xs);
+// def dup_return[T](h: GHolder[T]) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> dup_return(GHolder<T>& h);
+// def dup_return_twin(h: Twin) -> Own[Cell]:
 Cell dup_return_twin(Twin& h);
+// def sec_own_param() -> None:
 void sec_own_param();
+// def sec_return() -> None:
 void sec_return();
+// def sec_generic() -> None:
 void sec_generic();
+// def sec_twin() -> None:
 void sec_twin();
+// def sec_method() -> None:
 void sec_method();
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -51,12 +61,13 @@ struct GHolder {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
+    //     self.val = v
     GHolder() = default;
     explicit GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
 
     // def borrow(self) -> T:
+    //     return self.val
     ::tpy::val_or_ref_t<T> borrow() {
-        // return self.val
         return this->val;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GHolder";
@@ -95,11 +106,12 @@ struct GRelay {
     std::vector<T> kept;
 
     // def __init__(self) -> None:
+    //     self.kept = []
     GRelay() : kept(std::vector<T>{}) {}
 
     // def take(self, h: GHolder[T]) -> None:
+    //     self.kept.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)
     void take(GHolder<T>& h) {
-        // self.kept.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)
         this->kept.push_back(h.borrow());
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GRelay";
@@ -118,20 +130,21 @@ struct GBox {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
+    //     self.val = v
     GBox() = default;
     explicit GBox(::tpy::own_param_t<T> v) : val(std::move(v)) {}
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
+    //     return self.val
     ::tpy::val_or_ref_t<T> get() {
-        // return self.val
         return this->val;
     }
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
+    //     return self.val
     ::tpy::val_or_cref_t<T> get() const {
-        // return self.val
         return this->val;
     }
 
@@ -144,8 +157,8 @@ struct GBox {
     // # in BUGS.md#generic-own-slot-borrow-call-unwarned.
     // @readonly
     // def dup(self) -> Own[GBox[T]]:
+    //     return GBox(self.get())  # tpyc: warning(/may copy readonly\[T\] into owned storage/)
     GBox<T> dup() const {
-        // return GBox(self.get())  # tpyc: warning(/may copy readonly\[T\] into owned storage/)
         T __tmp_1 = this->get();
         return GBox<T>(std::move(__tmp_1));
     }
@@ -160,30 +173,32 @@ inline std::ostream& operator<<(std::ostream& os, const GBox<T>& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, v: Own[Cell]) -> None:
+//     self.val = v
 inline Twin::Twin(Cell&& v) : val(std::move(v)) {}
 
 // def borrow(self) -> Cell:
+//     return self.val
 inline Cell& Twin::borrow() {
-    // return self.val
     return this->val;
 }
 // # generic free function: the payload is still an open T at this slot.
 // def collect_generic[T](h: GHolder[T], xs: list[T]) -> None:
+//     xs.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)
 template<typename T>
 void collect_generic(GHolder<T>& h, std::vector<T>& xs) {
-    // xs.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)
     xs.push_back(h.borrow());
 }
 // # Own[T] return: the same borrow at the return slot, the other owning-slot
 // # form -- and the identical hedged text, since the copy contract is the
 // # body's at both.
 // def dup_return[T](h: GHolder[T]) -> Own[T]:
+//     return h.borrow()  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 ::tpy::own_return_t<T> dup_return(GHolder<T>& h) {
-    // return h.borrow()  # tpyc: warning(/may copy T into owned storage/)
     return h.borrow();
 }
 

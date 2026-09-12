@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def via_ptr_up(d: Ptr[Dog]) -> bool:
+//     return isinstance(d, Animal)
 bool via_ptr_up(Dog* d) {
-    // return isinstance(d, Animal)
     return true;
 }
 
 // def via_ptr_same(d: Ptr[Dog]) -> bool:
+//     return isinstance(d, Dog)
 bool via_ptr_same(Dog* d) {
-    // return isinstance(d, Dog)
     return true;
 }
 
 // def main() -> None:
+//     d = Dog("Rex", "lab")
+//     print(via_ptr_up(d))
+//     print(via_ptr_same(d))
 void main() {
-    // d = Dog("Rex", "lab")
     Dog d = Dog("Rex", "lab");
-    // print(via_ptr_up(d))
     std::cout << ::tpy::print_bool(via_ptr_up(&d)) << "\n";
-    // print(via_ptr_same(d))
     std::cout << ::tpy::print_bool(via_ptr_same(&d)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

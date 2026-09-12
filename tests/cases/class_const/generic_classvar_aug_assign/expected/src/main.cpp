@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = C[int32]()
+//     a.counter += 5  # tpyc: warning(/Assigning to ClassVar 'C.counter' via instance/)
+//     a.counter += 7  # tpyc: warning(/Assigning to ClassVar 'C.counter' via instance/)
+//     print(a.counter)
 void main() {
-    // a = C[int32]()
     C<int32_t> a = C<int32_t>();
-    // a.counter += 5  # tpyc: warning(/Assigning to ClassVar 'C.counter' via instance/)
     C<int32_t>::counter = ::tpy::add_check<int32_t>(C<int32_t>::counter, 5);
-    // a.counter += 7  # tpyc: warning(/Assigning to ClassVar 'C.counter' via instance/)
     C<int32_t>::counter = ::tpy::add_check<int32_t>(C<int32_t>::counter, 7);
-    // print(a.counter)
     std::cout << C<int32_t>::counter << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

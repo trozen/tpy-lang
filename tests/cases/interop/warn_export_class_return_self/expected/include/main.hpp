@@ -16,9 +16,13 @@ struct Flat;
 extern Box* self;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity(b: Box) -> Box:
 Box& identity(Box& b);
+// def through_param(b: Box) -> Inner:
 Inner& through_param(Box& b);
+// def get_global() -> Box:
 Box& get_global();
+// def fresh(v: int64) -> Own[Box]:
 Box fresh(int64_t v);
 
 // @export
@@ -192,162 +196,169 @@ namespace tpyapp::main {
 
 
 // def __init__(self, x: int64):
+//     self.x = x
 inline Inner::Inner(int64_t x) : x(x) {}
 
 // def __init__(self, v: int64):
+//     self.v = v
+//     self._inner = Inner(v)
+//     self._alt = Inner(v)
 inline Box::Box(int64_t v) : v(v), _inner(Inner(v)), _alt(Inner(v)) {}
 
 // def me(self) -> "Box":
+//     return self  # tpyc: ok
 inline Box& Box::me() {
-    // return self  # tpyc: ok
     return (*this);
 }
 
 // @property
 // def itself(self) -> "Box":
+//     return self  # tpyc: ok
 inline Box& Box::itself() {
-    // return self  # tpyc: ok
     return (*this);
 }
 
 // @property
 // def itself(self) -> "Box":
+//     return self  # tpyc: ok
 inline const Box& Box::itself() const {
-    // return self  # tpyc: ok
     return (*this);
 }
 
 // def get_inner(self) -> Inner:
+//     # `_inner` is never reassigned outside __init__, so this crosses as
+//     # an aliasing borrow view -- no copy, no warning.
+//     return self._inner  # tpyc: ok
 inline Inner& Box::get_inner() {
-    // # `_inner` is never reassigned outside __init__, so this crosses as
-    // # an aliasing borrow view -- no copy, no warning.
-    // return self._inner  # tpyc: ok
     return this->_inner;
 }
 
 // def pick_inner(self, other: Inner, use_field: bool) -> Inner:
+//     if use_field:
+//         return self._inner  # tpyc: ok
+//     return other
 inline Inner& Box::pick_inner(Inner& other, bool use_field) {
-    // if use_field:
     if (use_field) {
-        // return self._inner  # tpyc: ok
         return this->_inner;
     }
-    // return other
     return other;
 }
 
 // def swap_alt(self) -> None:
+//     # Post-__init__ reassignment makes `_alt` view-ineligible: a live
+//     # view would read the storage slot through this rebind.
+//     self._alt = Inner(0)
 inline void Box::swap_alt() {
-    // # Post-__init__ reassignment makes `_alt` view-ineligible: a live
-    // # view would read the storage slot through this rebind.
-    // self._alt = Inner(0)
     this->_alt = Inner(0);
 }
 
 // def get_alt(self) -> Inner:
+//     return self._alt  # tpyc: warning(/no live object behind it/)
 inline Inner& Box::get_alt() {
-    // return self._alt  # tpyc: warning(/no live object behind it/)
     return this->_alt;
 }
 
 // def __iter__(self) -> "Box":
+//     # tp_iter threads the receiver candidate, so the canonical
+//     # return-self iterator crosses by identity and doesn't warn.
+//     return self  # tpyc: ok
 inline Box& Box::__iter__() {
-    // # tp_iter threads the receiver candidate, so the canonical
-    // # return-self iterator crosses by identity and doesn't warn.
-    // return self  # tpyc: ok
     return (*this);
 }
 
 // def __getitem__(self, i: int64) -> "Box":
+//     # The mp_subscript slot threads the receiver candidate like a
+//     # method wrapper: a bare `self` return crosses by identity.
+//     return self  # tpyc: ok
 inline Box& Box::__getitem__(int64_t i) {
-    // # The mp_subscript slot threads the receiver candidate like a
-    // # method wrapper: a bare `self` return crosses by identity.
-    // return self  # tpyc: ok
     return (*this);
 }
 
 // def __getitem__(self, i: int64) -> "Box":
+//     # The mp_subscript slot threads the receiver candidate like a
+//     # method wrapper: a bare `self` return crosses by identity.
+//     return self  # tpyc: ok
 inline const Box& Box::__getitem__(int64_t i) const {
-    // # The mp_subscript slot threads the receiver candidate like a
-    // # method wrapper: a bare `self` return crosses by identity.
-    // return self  # tpyc: ok
     return (*this);
 }
 
 // def __next__(self) -> int64:
+//     if self.v <= 0:
+//         raise StopIteration
+//     self.v -= 1
+//     return self.v
 inline std::expected<int64_t, ::tpy::StopIteration> Box::__next__() {
-    // if self.v <= 0:
     if ((this->v <= 0)) {
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // self.v -= 1
     this->v = ::tpy::sub_check<int64_t>(this->v, 1);
-    // return self.v
     return this->v;
 }
 
 // def __init__(self):
+//     self._b = Box(0)
 inline FieldIter::FieldIter() : _b(Box(0)) {}
 
 // def __iter__(self) -> Box:
+//     # A view-safe field source crosses as a borrow view from a dunder
+//     # slot too: `_b` is never reassigned.
+//     return self._b  # tpyc: ok
 inline Box& FieldIter::__iter__() {
-    // # A view-safe field source crosses as a borrow view from a dunder
-    // # slot too: `_b` is never reassigned.
-    // return self._b  # tpyc: ok
     return this->_b;
 }
 
 // def __init__(self):
+//     self._alt = Inner(0)
 inline Rebound::Rebound() : _alt(Inner(0)) {}
 
 // def reset(self) -> None:
+//     self._alt = Inner(1)
 inline void Rebound::reset() {
-    // self._alt = Inner(1)
     this->_alt = Inner(1);
 }
 
 // def __getitem__(self, i: int64) -> Inner:
+//     # Dunder-slot RESIDUE witness: a reassignable-field source has no
+//     # identity/view path, so dunder slots warn exactly like method
+//     # wrappers.
+//     return self._alt  # tpyc: warning(/no live object behind it/)
 inline Inner& Rebound::__getitem__(int64_t i) {
-    // # Dunder-slot RESIDUE witness: a reassignable-field source has no
-    // # identity/view path, so dunder slots warn exactly like method
-    // # wrappers.
-    // return self._alt  # tpyc: warning(/no live object behind it/)
     return this->_alt;
 }
 
 // def __getitem__(self, i: int64) -> Inner:
+//     # Dunder-slot RESIDUE witness: a reassignable-field source has no
+//     # identity/view path, so dunder slots warn exactly like method
+//     # wrappers.
+//     return self._alt  # tpyc: warning(/no live object behind it/)
 inline const Inner& Rebound::__getitem__(int64_t i) const {
-    // # Dunder-slot RESIDUE witness: a reassignable-field source has no
-    // # identity/view path, so dunder slots warn exactly like method
-    // # wrappers.
-    // return self._alt  # tpyc: warning(/no live object behind it/)
     return this->_alt;
 }
 
 // def __setitem__(self, i: int64, v: int64) -> Inner:
+//     # The mp_ass_subscript slot discards the method's return (CPython
+//     # does too), so even a would-warn source never crosses here.
+//     return self._alt  # tpyc: ok
 inline Inner& Rebound::__setitem__(int64_t i, int64_t v) {
-    // # The mp_ass_subscript slot discards the method's return (CPython
-    // # does too), so even a would-warn source never crosses here.
-    // return self._alt  # tpyc: ok
     return this->_alt;
 }
 
 // def __init__(self, n: int64):
+//     self.n = n
 inline Flat::Flat(int64_t n) : n(n) {}
 
 // def itself(self) -> "readonly[Flat]":
+//     # A value class crosses by copy from EVERY source -- `return self`
+//     # included -- so the identity suppression must not apply and the
+//     # value-specific wording fires.
+//     return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses the CPython boundary as a copy/)
 inline Flat Flat::itself() const {
-    // # A value class crosses by copy from EVERY source -- `return self`
-    // # included -- so the identity suppression must not apply and the
-    // # value-specific wording fires.
-    // return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses the CPython boundary as a copy/)
     return (*this);
 }
 
 // def __getitem__(self, i: int64) -> "readonly[Flat]":
+//     return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses/)
 inline Flat Flat::__getitem__(int64_t i) const {
-    // return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses/)
     return (*this);
 }
 void __tpy_init();

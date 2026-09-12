@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_not_with_bool_literals() -> None:
 void test_not_with_bool_literals();
+// def test_not_with_comparisons() -> None:
 void test_not_with_comparisons();
+// def test_not_in_conditions() -> None:
 void test_not_in_conditions();
+// def test_double_negation() -> None:
 void test_double_negation();
+// def is_valid(x: int32) -> bool:
 bool is_valid(int32_t x);
+// def test_not_with_function_call() -> None:
 void test_not_with_function_call();
+// def test_not_in_while() -> None:
 void test_not_in_while();
 
 void __tpy_init();

@@ -17,11 +17,17 @@ struct __gen_explicit_view_local;
 struct __gen_with_view_target;
 struct __gen_owned_param_stays_bare;
 
+// def static_source_view() -> Iterator[str]:
 __gen_static_source_view static_source_view();
+// def static_bytes_view() -> Iterator[bytes]:
 __gen_static_bytes_view static_bytes_view();
+// def explicit_view_local(s: StrView) -> Iterator[str]:
 __gen_explicit_view_local explicit_view_local(std::string_view s);
+// def with_view_target(h: Holder) -> Iterator[str]:
 __gen_with_view_target with_view_target(Holder& h);
+// def owned_param_stays_bare(s: str) -> Iterator[str]:
 __gen_owned_param_stays_bare owned_param_stays_bare(std::string_view s);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -46,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: static_source_view
+// def static_source_view() -> Iterator[str]:
 struct __gen_static_source_view : public ::tpy::next_iter_mixin<__gen_static_source_view, std::string> {
     int32_t __state;
     std::string_view lit;
@@ -69,7 +75,7 @@ struct __gen_static_source_view : public ::tpy::next_iter_mixin<__gen_static_sou
     }
 };
 
-// Generator: static_bytes_view
+// def static_bytes_view() -> Iterator[bytes]:
 struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_bytes_view, ::tpy::Bytes> {
     int32_t __state;
     ::tpy::BytesView raw;
@@ -92,7 +98,7 @@ struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_byte
     }
 };
 
-// Generator: explicit_view_local
+// def explicit_view_local(s: StrView) -> Iterator[str]:
 struct __gen_explicit_view_local : public ::tpy::next_iter_mixin<__gen_explicit_view_local, std::string> {
     int32_t __state;
     std::string_view s;
@@ -116,7 +122,7 @@ struct __gen_explicit_view_local : public ::tpy::next_iter_mixin<__gen_explicit_
     }
 };
 
-// Generator: with_view_target
+// def with_view_target(h: Holder) -> Iterator[str]:
 struct __gen_with_view_target : public ::tpy::next_iter_mixin<__gen_with_view_target, std::string> {
     ::tpy::frame_state __state;
     Holder& h;
@@ -159,7 +165,7 @@ struct __gen_with_view_target : public ::tpy::next_iter_mixin<__gen_with_view_ta
     }
 };
 
-// Generator: owned_param_stays_bare
+// def owned_param_stays_bare(s: str) -> Iterator[str]:
 struct __gen_owned_param_stays_bare : public ::tpy::next_iter_mixin<__gen_owned_param_stays_bare, std::string> {
     int32_t __state;
     std::string s;
@@ -184,28 +190,32 @@ struct __gen_owned_param_stays_bare : public ::tpy::next_iter_mixin<__gen_owned_
 
 
 // def __init__(self, label: StrView) -> None:
+//     self.label = label
 inline Holder::Holder(std::string_view label) : label(label) {}
 
 // def __enter__(self) -> StrView:
+//     return self.label
 inline std::string_view Holder::__enter__() const {
-    // return self.label
     return this->label;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Holder::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
+// def peephole_view(n: int32) -> Iterator[str]:
+//     lit = "peephole"
+//     i = 0
+//     while i < n:
+//         yield lit  # tpyc: ok
+//         i += 1
 inline auto peephole_view(int32_t n) {
-    // lit = "peephole"
     std::string_view lit = "peephole";
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<std::string>(
         [n, lit, i]() mutable -> std::optional<std::string> {
             while ((i < n)) {
                 auto __val = std::string(lit);
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::string>(__val);
             }

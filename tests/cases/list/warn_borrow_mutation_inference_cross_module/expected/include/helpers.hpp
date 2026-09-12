@@ -11,9 +11,13 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "helpers";
 
+// def sum_points(items: list[Point]) -> int32:
 int32_t sum_points(const std::vector<Point>& items);
+// def add_point(items: list[Point], p: Point) -> None:
 void add_point(std::vector<Point>& items, const Point& p);
+// def add_point_wrapper(items: list[Point], p: Point) -> None:
 void add_point_wrapper(std::vector<Point>& items, const Point& p);
+// def read_wrapper(items: list[Point]) -> int32:
 int32_t read_wrapper(const std::vector<Point>& items);
 
 // class Point:
@@ -36,6 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::helpers

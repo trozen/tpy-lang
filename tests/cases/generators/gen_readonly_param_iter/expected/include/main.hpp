@@ -18,8 +18,11 @@ struct __gen_tail;
 struct __coro_amain;
 struct __coro_Holder_total;
 
+// def tail(xs: readonly[list[int32]]) -> Iterator[int32]:
 __gen_tail tail(const std::vector<int32_t>& xs);
+// async def amain() -> None:
 __coro_amain amain();
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -39,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: Holder.total
+// async def total(self) -> int32:
 struct __coro_Holder_total {
     int32_t __state;
     bool __cancel_pending;
@@ -73,7 +76,7 @@ inline __coro_Holder_total Holder::total() const {
     return __coro_Holder_total(*this);
 }
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -99,7 +102,7 @@ struct __coro_amain {
     }
 };
 
-// Generator: tail
+// def tail(xs: readonly[list[int32]]) -> Iterator[int32]:
 struct __gen_tail : public ::tpy::next_iter_mixin<__gen_tail, int32_t> {
     int32_t __state;
     const std::vector<int32_t>& xs;
@@ -128,6 +131,7 @@ struct __gen_tail : public ::tpy::next_iter_mixin<__gen_tail, int32_t> {
 
 
 // def __init__(self):
+//     self.lst = [1, 2, 3]
 inline Holder::Holder() : lst(std::vector<int32_t>{1, 2, 3}) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     data = Arc.new(RwLock.new([0]))  # tpyc: is_send(yes) is_sync(yes)
+//     h1 = spawn(Writer(data.clone(), 1, 50))
+//     h2 = spawn(Writer(data.clone(), 2, 50))
+//     h1.join()
+//     h2.join()
+//     with data.get().read() as r:
+//         total = 0
+//         n = 0
+//         for v in r.get():
+//             total += v
+//             n += 1
+//         print(n, total)              # 101 elements; 0 + 50*(1+2) = 150
 void main() {
-    // data = Arc.new(RwLock.new([0]))  # tpyc: is_send(yes) is_sync(yes)
     ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>> data = Arc<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>::new_<::tpystd::tpy::sync::RwLock<std::vector<int32_t>>>(::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({0}));
-    // h1 = spawn(Writer(data.clone(), 1, 50))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h1 = ::tpystd::tpy::thread::spawn<std::monostate, Writer>(Writer(data.clone(), 1, 50));
-    // h2 = spawn(Writer(data.clone(), 2, 50))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h2 = ::tpystd::tpy::thread::spawn<std::monostate, Writer>(Writer(data.clone(), 2, 50));
-    // h1.join()
     h1.join();
-    // h2.join()
     h2.join();
-    // with data.get().read() as r:
     int32_t n;
     int32_t total;
     auto __ctx_2 = data.get().read();
     auto& r = __ctx_2.__enter__();
     try {
-        // total = 0
         total = 0;
-        // n = 0
         n = 0;
-        // for v in r.get():
         auto& __obj_0 = r.get();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t v = *__beg_0;
-            // total += v
             total = ::tpy::add_check<int32_t>(total, v);
-            // n += 1
             n = ::tpy::add_check<int32_t>(n, 1);
         }
-        // print(n, total)              # 101 elements; 0 + 50*(1+2) = 150
         std::cout << n << " " << total << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -51,19 +51,20 @@ void main() {
     __ctx_2.__exit__({}, nullptr, {});
 }
 
+// from tplib.arc import Arc
+// from tpy.thread import spawn
+// from tpy.sync import RwLock
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // from tpy.sync import RwLock
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

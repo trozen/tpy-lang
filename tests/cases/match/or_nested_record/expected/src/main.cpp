@@ -5,54 +5,55 @@ namespace tpyapp::main {
 
 
 // def classify(p: P) -> str:
+//     match p:
+//         # Same alternatives as the flat `case P(a=1) | P(a=2) | P(a=3):`.
+//         case P(a=1) | (P(a=2) | P(a=3)):
+//             return "low"
+//         case P(a=4):
+//             return "four"
+//         case _:
+//             return "high"
 std::string classify(const P& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case P(a=1) | (P(a=2) | P(a=3)):
     if ((__match_subject_1.a == 1) || (__match_subject_1.a == 2) || (__match_subject_1.a == 3)) {
-        // return "low"
         return "low";
-    // case P(a=4):
     } else if (__match_subject_1.a == 4) {
-        // return "four"
         return "four";
-    // case _:
     } else {
-        // return "high"
         return "high";
     }
     ::std::unreachable();
-    // # Same alternatives as the flat `case P(a=1) | P(a=2) | P(a=3):`.
 }
 
 // def main() -> None:
+//     print(classify(P(1)))
+//     print(classify(P(2)))
+//     print(classify(P(3)))
+//     print(classify(P(4)))
+//     print(classify(P(9)))
 void main() {
-    // print(classify(P(1)))
     P __tmp_1 = P(::tpy::BigInt(1));
     std::cout << classify(__tmp_1) << "\n";
-    // print(classify(P(2)))
     P __tmp_2 = P(::tpy::BigInt(2));
     std::cout << classify(__tmp_2) << "\n";
-    // print(classify(P(3)))
     P __tmp_3 = P(::tpy::BigInt(3));
     std::cout << classify(__tmp_3) << "\n";
-    // print(classify(P(4)))
     P __tmp_4 = P(::tpy::BigInt(4));
     std::cout << classify(__tmp_4) << "\n";
-    // print(classify(P(9)))
     P __tmp_5 = P(::tpy::BigInt(9));
     std::cout << classify(__tmp_5) << "\n";
 }
 
+// # Parenthesized or-pattern groups on a single-record subject, where each
+// # alternative carries a field-value sub-pattern (the record if/elif strategy).
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Parenthesized or-pattern groups on a single-record subject, where each
-    // # alternative carries a field-value sub-pattern (the record if/elif strategy).
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

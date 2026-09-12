@@ -17,9 +17,13 @@ struct __coro_step;
 struct __coro_ret_after_await;
 struct __coro_driver;
 
+// async def step() -> int32:
 __coro_step step();
+// async def ret_after_await() -> Own[Box]:
 __coro_ret_after_await ret_after_await();
+// async def driver() -> None:
 __coro_driver driver();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -37,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: step
+// async def step() -> int32:
 struct __coro_step {
     int32_t __state;
     bool __cancel_pending;
@@ -58,7 +62,7 @@ struct __coro_step {
     }
 };
 
-// Async coroutine: ret_after_await
+// async def ret_after_await() -> Own[Box]:
 struct __coro_ret_after_await {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -99,7 +103,7 @@ struct __coro_ret_after_await {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -125,6 +129,7 @@ struct __coro_driver {
 
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline Box::Box() : n(10) {}
 void __tpy_init();
 } // namespace tpyapp::main

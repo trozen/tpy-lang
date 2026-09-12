@@ -12,6 +12,7 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # A generic subclass infers a field whose type is the class type parameter.
@@ -33,6 +34,7 @@ struct Box : Holder {
     T v;
 
     // def __init__(self, v: T):
+    //     self.v = v
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> v) : v(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

@@ -9,6 +9,7 @@ namespace tpyapp::fa {
 
 inline constexpr std::string_view __name__ = "fa";
 
+// def make(n: int) -> int:
 ::tpy::BigInt make(const ::tpy::BigInt& n);
 
 void __tpy_init();

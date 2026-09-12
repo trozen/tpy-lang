@@ -32,8 +32,11 @@ template<typename T, typename N> struct Tagged;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(t: Tagged[Animal, str]) -> None:
 void show(Tagged<Animal, std::string>& t);
+// def make_tagged() -> Own[Tagged[Animal, str]]:
 Tagged<Animal, std::string> make_tagged();
+// def main() -> None:
 void main();
 
 // class Dog(Animal):
@@ -88,12 +91,13 @@ struct Tagged {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T], tag: N) -> None:
+    //     self._ptr = unsafe_alloc[T]()
+    //     unsafe_init(self._ptr, val)
+    //     self._tag = tag
+    //     self._owned = True
     explicit Tagged(::tpy::own_param_t<T> val, ::tpy::readonly_form_t<N> tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))) {
-        // unsafe_init(self._ptr, val)
         ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
-        // self._tag = tag
         this->_tag = ::tpy::param_to_storage<N>(tag);
-        // self._owned = True
         this->_owned = true;
     }
     Tagged(const Tagged&) = delete;
@@ -110,13 +114,13 @@ struct Tagged {
     }
 
     // def __del__(self) -> None:
+    //     if self._owned:
+    //         unsafe_drop(self._ptr)
+    //         unsafe_free(self._ptr)
     ~Tagged() {
         if (!this->__tpy_owned_) return;
-        // if self._owned:
         if (this->_owned) {
-            // unsafe_drop(self._ptr)
             ::tpy::destroy_at(this->_ptr);
-            // unsafe_free(self._ptr)
             ::operator delete(this->_ptr, std::align_val_t(alignof(T)));
         }
     }
@@ -129,14 +133,14 @@ struct Tagged {
     template<typename, typename> friend struct Tagged;
 
     // def get(self) -> T:
+    //     return self._ptr
     ::tpy::val_or_ref_t<T> get() {
-        // return self._ptr
         return ::tpy::deref_check(this->_ptr);
     }
 
     // def tag(self) -> N:
+    //     return self._tag
     ::tpy::val_or_ref_t<N> tag() {
-        // return self._tag
         return this->_tag;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
@@ -169,20 +173,22 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Dog::Dog(std::string_view n) : _name(n) {}
 
 // def name(self) -> str:
+//     return self._name
 inline std::string Dog::name() {
-    // return self._name
     return this->_name;
 }
 
 // def __init__(self, n: str) -> None:
+//     self._name = n
 inline Cat::Cat(std::string_view n) : _name(n) {}
 
 // def name(self) -> str:
+//     return self._name
 inline std::string Cat::name() {
-    // return self._name
     return this->_name;
 }
 void __tpy_init();

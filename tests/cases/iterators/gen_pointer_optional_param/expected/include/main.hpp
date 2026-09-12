@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_n_times;
 
+// def gen_n_times(p: P | None, n: int32) -> Iterator[int32]:
 __gen_gen_n_times gen_n_times(P* p, int32_t n);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
-// Generator: gen_n_times
+// def gen_n_times(p: P | None, n: int32) -> Iterator[int32]:
 struct __gen_gen_n_times : public ::tpy::next_iter_mixin<__gen_gen_n_times, int32_t> {
     int32_t __state;
     P* p;
@@ -69,6 +71,7 @@ struct __gen_gen_n_times : public ::tpy::next_iter_mixin<__gen_gen_n_times, int3
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline P::P(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

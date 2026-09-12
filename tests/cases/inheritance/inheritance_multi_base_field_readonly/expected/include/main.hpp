@@ -13,6 +13,7 @@ struct Combined;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class A:
@@ -64,28 +65,28 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 
 
 // def __init__(self) -> None:
+//     A.buf = [int32(1), int32(2)]
+//     B.buf = ["x", "y"]
 inline Combined::Combined() {
-    // A.buf = [int32(1), int32(2)]
     this->A::buf = {1, 2};
-    // B.buf = ["x", "y"]
     this->B::buf = {"x", "y"};
 }
 
 // @readonly
 // def total_int_len(self) -> int32:
+//     nums = A.buf  # tpyc: type(/readonly\[list\[int32\]\]/)
+//     return int32(len(nums))
 inline int32_t Combined::total_int_len() const {
-    // nums = A.buf  # tpyc: type(/readonly\[list\[int32\]\]/)
     const std::vector<int32_t>& nums = this->A::buf;
-    // return int32(len(nums))
     return ::tpy::__len__(nums);
 }
 
 // @readonly
 // def first_str(self) -> str:
+//     labels = B.buf  # tpyc: type(/readonly\[list\[str\]\]/)
+//     return labels[0]
 inline std::string Combined::first_str() const {
-    // labels = B.buf  # tpyc: type(/readonly\[list\[str\]\]/)
     const std::vector<std::string>& labels = this->B::buf;
-    // return labels[0]
     return ::tpy::__getitem__(labels, 0);
 }
 void __tpy_init();

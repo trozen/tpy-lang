@@ -11,8 +11,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def store_at[T](p: Ptr[T], idx: uint32, val: Own[T]) -> None:
 template<typename T>
 void store_at(T* p, uint32_t idx, ::tpy::own_param_t<T> val);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -35,13 +37,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 // # val is Own[T] so the store consumes it -- a borrowed T would copy into the
 // # pointee's owned storage (and warn); the forwarder must pass ownership through.
 // def store_at[T](p: Ptr[T], idx: uint32, val: Own[T]) -> None:
+//     unsafe_store(p, idx, val)
 template<typename T>
 void store_at(T* p, uint32_t idx, ::tpy::own_param_t<T> val) {
-    // unsafe_store(p, idx, val)
     p[idx] = std::move(val);
 }
 

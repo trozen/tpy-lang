@@ -5,35 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Basic ASCII
+//     c: char = chr(65)
+//     print(ord(c))
+//
+//     # Lowercase letter
+//     d: char = chr(122)
+//     print(ord(d))
+//
+//     # Null character
+//     zero: char = chr(0)
+//     print(ord(zero))
+//
+//     # ord/chr roundtrip
+//     n: int32 = 97
+//     print(ord(chr(n)))
 void main() {
-    // # Basic ASCII
-    // c: char = chr(65)
     char c = static_cast<char>(65);
-    // print(ord(c))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
-    // # Lowercase letter
-    // d: char = chr(122)
     char d = static_cast<char>(122);
-    // print(ord(d))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(d)) << "\n";
-    // # Null character
-    // zero: char = chr(0)
     char zero = static_cast<char>(0);
-    // print(ord(zero))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(zero)) << "\n";
-    // # ord/chr roundtrip
-    // n: int32 = 97
     int32_t n = 97;
-    // print(ord(chr(n)))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(static_cast<char>(n))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

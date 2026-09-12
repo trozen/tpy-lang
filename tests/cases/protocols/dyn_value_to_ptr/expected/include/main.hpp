@@ -31,9 +31,13 @@ struct Executor;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_waker(h: Awaker, task_id: int32) -> None:
 void make_waker(Awaker& h, int32_t task_id);
+// def _consume(p: Ptr[Awaker], task_id: int32) -> None:
 void _consume(Awaker* p, int32_t task_id);
+// def read_only_take(h: Awaker) -> Ptr[readonly[Awaker]]:
 const Awaker* read_only_take(const Awaker& h);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -97,14 +101,17 @@ namespace tpyapp::main {
 
 
 // def __init__(self, h: Awaker) -> None:
+//     # Identity: Awaker (value) -> Ptr[Awaker] via address-take.
+//     self.awaker = h  # tpyc: ok
 inline Holder::Holder(Awaker& h) : awaker(&h) {}
 
 // def __init__(self) -> None:
+//     self.log = []
 inline Executor::Executor() : log(std::vector<int32_t>{}) {}
 
 // def mark(self, task_id: int32) -> None:
+//     self.log.append(task_id)
 inline void Executor::mark(int32_t task_id) {
-    // self.log.append(task_id)
     this->log.push_back(task_id);
 }
 void __tpy_init();

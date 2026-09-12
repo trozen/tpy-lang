@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def read_twice(p: Ptr[Cell]) -> int32:
+//     a = p.val()    # tpyc: nullable(p)
+//     b = p.bump(2)  # tpyc: non_null(p)
+//     return a + b
 int32_t read_twice(Cell* p) {
-    // a = p.val()    # tpyc: nullable(p)
     int32_t a = ::tpy::deref_check(p).val();
-    // b = p.bump(2)  # tpyc: non_null(p)
     int32_t b = p->bump(2);
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main():
+//     c = Cell()
+//     print(read_twice(take_ptr(c)))
 void main() {
-    // c = Cell()
     Cell c = Cell();
-    // print(read_twice(take_ptr(c)))
     std::cout << read_twice(&c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

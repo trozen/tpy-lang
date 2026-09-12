@@ -12,15 +12,25 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def match_int(x: int32) -> bool:
 bool match_int(int32_t x);
+// def mismatch(x: int32) -> bool:
 bool mismatch(int32_t x);
+// def tuple_contains(x: int32) -> bool:
 bool tuple_contains(int32_t x);
+// def tuple_miss(x: int32) -> bool:
 bool tuple_miss(int32_t x);
+// def record_self(a: A) -> int:
 ::tpy::BigInt record_self(const A& a);
+// def record_other(a: A) -> int:
 ::tpy::BigInt record_other(const A& a);
+// def negate(x: int32) -> bool:
 bool negate(int32_t x);
+// def compound(x: int32, flag: bool) -> bool:
 bool compound(int32_t x, bool flag);
+// def match_guard(x: int32) -> str:
 std::string match_guard(int32_t x);
+// def main() -> None:
 void main();
 
 // class A:
@@ -57,9 +67,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

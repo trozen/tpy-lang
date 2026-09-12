@@ -14,10 +14,15 @@ struct Tagged;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(w: Wrapper) -> str:
 std::string describe(const Wrapper& w);
+// def get_name(w: Wrapper) -> str:
 std::string get_name(const Wrapper& w);
+// def is_cat(w: Wrapper) -> str:
 std::string is_cat(const Wrapper& w);
+// def show_tagged(t: Tagged) -> str:
 std::string show_tagged(const Tagged& t);
+// def main() -> None:
 void main();
 
 // class Cat:
@@ -87,15 +92,20 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Cat | Dog) -> None:
+//     self.pet = pet
 inline Wrapper::Wrapper(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def __init__(self, tag: str, value: str | int32) -> None:
+//     self.tag = tag
+//     self.value = value
 inline Tagged::Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value) : tag(tag), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

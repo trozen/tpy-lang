@@ -14,10 +14,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_f;
 
+// async def f() -> int:
 __coro_f f();
+// def main() -> None:
 void main();
 
-// Async coroutine: f
+// async def f() -> int:
 struct __coro_f {
     ::tpy::frame_state __state;
     bool __cancel_pending;

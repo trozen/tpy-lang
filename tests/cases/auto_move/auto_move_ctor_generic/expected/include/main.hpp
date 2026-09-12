@@ -12,6 +12,7 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Inner:
@@ -34,6 +35,7 @@ struct Box {
     T item;
 
     // def __init__(self, item: Own[T]):
+    //     self.item = item
     Box() = default;
     explicit Box(::tpy::own_param_t<T> item) : item(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

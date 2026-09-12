@@ -5,48 +5,48 @@ namespace tpyapp::main {
 
 
 // def put(nodes: list[Outer]) -> None:
+//     # The chain rooted at a container ELEMENT: the element read is a receiver
+//     # too, so the write lands in the element's own storage, not a copy.
+//     nodes[0].inner.items[0] = 7  # tpyc: ok
 void put(std::vector<Outer>& nodes) {
-    // # The chain rooted at a container ELEMENT: the element read is a receiver
-    // # too, so the write lands in the element's own storage, not a copy.
-    // nodes[0].inner.items[0] = 7  # tpyc: ok
     ::tpy::__setitem__(::tpy::__getitem__(nodes, 0).inner.items, 0, 7);
 }
 
 // def main() -> None:
+//     o = Outer(Inner())
+//     print(o.at(1))
+//     # ... and off a plain local receiver.
+//     v = o.inner.items[2]  # tpyc: ok
+//     print(v)
+//     o.bump(0)
+//     # The chain names the record's own storage, so the write is visible.
+//     print(o.inner.items[0], o.at(0))
+//     o.inner.items[1] = 42  # tpyc: ok
+//     print(o.at(1))
+//     ns = [Outer(Inner())]
+//     put(ns)
+//     # The write through the element chain is visible on the list's element.
+//     print(ns[0].inner.items[0])
 void main() {
-    // o = Outer(Inner())
     Outer o = Outer(Inner());
-    // print(o.at(1))
     std::cout << o.at(1) << "\n";
-    // # ... and off a plain local receiver.
-    // v = o.inner.items[2]  # tpyc: ok
     int32_t v = ::tpy::__getitem__(o.inner.items, 2);
-    // print(v)
     std::cout << v << "\n";
-    // o.bump(0)
     o.bump(0);
-    // # The chain names the record's own storage, so the write is visible.
-    // print(o.inner.items[0], o.at(0))
     std::cout << ::tpy::__getitem__(o.inner.items, 0) << " " << o.at(0) << "\n";
-    // o.inner.items[1] = 42  # tpyc: ok
     ::tpy::__setitem__(o.inner.items, 1, 42);
-    // print(o.at(1))
     std::cout << o.at(1) << "\n";
-    // ns = [Outer(Inner())]
     std::vector<Outer> ns = {Outer(Inner())};
-    // put(ns)
     put(ns);
-    // # The write through the element chain is visible on the list's element.
-    // print(ns[0].inner.items[0])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(ns, 0).inner.items, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

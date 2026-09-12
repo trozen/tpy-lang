@@ -5,36 +5,59 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     m = Mutex.new([1, 2])
+//
+//     g = m.lock()                 # never entered -> lock never acquired
+//     try:
+//         g.get()
+//     except RuntimeError:
+//         print("mutex unlocked-get rejected")
+//     try:
+//         g.append(3)              # via the Deref chain
+//     except RuntimeError:
+//         print("mutex unlocked-append rejected")
+//
+//     with m.lock() as h:
+//         h.append(9)
+//     try:
+//         h.get()                  # after __exit__ -> released
+//     except RuntimeError:
+//         print("mutex post-exit rejected")
+//
+//     rw = RwLock.new([0])
+//     r = rw.read()
+//     try:
+//         r.get()
+//     except RuntimeError:
+//         print("rwlock unlocked-read rejected")
+//     w = rw.write()
+//     try:
+//         w.append(1)
+//     except RuntimeError:
+//         print("rwlock unlocked-write rejected")
+//
+//     with m.lock() as ok:         # happy path still works
+//         print(sorted(ok.get()))  # [1, 2, 9]
 void main() {
-    // m = Mutex.new([1, 2])
     ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2});
-    // g = m.lock()                 # never entered -> lock never acquired
     ::tpystd::tpy::sync::MutexGuard<std::vector<int32_t>> g = m.lock();
-    // try:
     {
         try {
-            // g.get()
             g.get();
         } catch (const ::tpy::RuntimeError&) {
-            // print("mutex unlocked-get rejected")
             std::cout << "mutex unlocked-get rejected" << "\n";
         }
     }
-    // try:
     {
         try {
-            // g.append(3)              # via the Deref chain
             g.__deref__().push_back(3);
         } catch (const ::tpy::RuntimeError&) {
-            // print("mutex unlocked-append rejected")
             std::cout << "mutex unlocked-append rejected" << "\n";
         }
     }
-    // with m.lock() as h:
     auto __ctx_1 = m.lock();
     auto& h = __ctx_1.__enter__();
     try {
-        // h.append(9)
         h.__deref__().push_back(9);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -46,47 +69,33 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // try:
     {
         try {
-            // h.get()                  # after __exit__ -> released
             h.get();
         } catch (const ::tpy::RuntimeError&) {
-            // print("mutex post-exit rejected")
             std::cout << "mutex post-exit rejected" << "\n";
         }
     }
-    // rw = RwLock.new([0])
     ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({0});
-    // r = rw.read()
     ::tpystd::tpy::sync::ReadGuard<std::vector<int32_t>> r = rw.read();
-    // try:
     {
         try {
-            // r.get()
             r.get();
         } catch (const ::tpy::RuntimeError&) {
-            // print("rwlock unlocked-read rejected")
             std::cout << "rwlock unlocked-read rejected" << "\n";
         }
     }
-    // w = rw.write()
     ::tpystd::tpy::sync::WriteGuard<std::vector<int32_t>> w = rw.write();
-    // try:
     {
         try {
-            // w.append(1)
             w.__deref__().push_back(1);
         } catch (const ::tpy::RuntimeError&) {
-            // print("rwlock unlocked-write rejected")
             std::cout << "rwlock unlocked-write rejected" << "\n";
         }
     }
-    // with m.lock() as ok:         # happy path still works
     auto __ctx_2 = m.lock();
     auto& ok = __ctx_2.__enter__();
     try {
-        // print(sorted(ok.get()))  # [1, 2, 9]
         std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(ok.get())) << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -100,22 +109,23 @@ void main() {
     __ctx_2.__exit__({}, nullptr, {});
 }
 
+// # Runtime backstop for the guard-escape gap: a lock guard enforces its lock at
+// # access time, so touching the payload outside the guard's `with` block aborts
+// # (a catchable RuntimeError) instead of racing the shared payload unsynchronized.
+// # Two misuse shapes per guard kind: bound-but-never-entered (never acquired), and
+// # used-after-the-block (the `with` as-var outlives the block, lock already
+// # released). The happy `with` path is unaffected -- the flag doesn't over-trigger.
+// # (A guard outliving a dropped bare Mutex/RwLock is a separate, region-model-gated
+// # hole, still tracked in BUGS.md.)
+// from tpy.sync import Mutex, RwLock
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Runtime backstop for the guard-escape gap: a lock guard enforces its lock at
-    // # access time, so touching the payload outside the guard's `with` block aborts
-    // # (a catchable RuntimeError) instead of racing the shared payload unsynchronized.
-    // # Two misuse shapes per guard kind: bound-but-never-entered (never acquired), and
-    // # used-after-the-block (the `with` as-var outlives the block, lock already
-    // # released). The happy `with` path is unaffected -- the flag doesn't over-trigger.
-    // # (A guard outliving a dropped bare Mutex/RwLock is a separate, region-model-gated
-    // # hole, still tracked in BUGS.md.)
-    // from tpy.sync import Mutex, RwLock
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

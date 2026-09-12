@@ -9,13 +9,21 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_literal() -> None:
 void test_literal();
+// def test_dict_ctor() -> None:
 void test_dict_ctor();
+// def test_multiple() -> None:
 void test_multiple();
+// def test_numeric_widen() -> None:
 void test_numeric_widen();
+// def test_getitem_after_infer() -> None:
 void test_getitem_after_infer();
+// def takes_dict(d: dict[str, int32]) -> None:
 void takes_dict(const ::tpy::ordered_map<std::string, int32_t>& d);
+// def test_param_context() -> None:
 void test_param_context();
+// def test_param_only() -> None:
 void test_param_only();
 
 void __tpy_init();

@@ -12,8 +12,11 @@ struct Options;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def probe(x: "Fixed | None" = None, **kwargs: Unpack[Options]) -> int64:
 int64_t probe(std::optional<Fixed> x, const Options& kwargs);
+// def spread(a: int64, b: int64 = 4, *rest: int64, tag: int64 = 9) -> int64:
 int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t tag = 9);
+// def main() -> None:
 void main();
 
 // class Fixed(ValueType):
@@ -53,6 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Options& obj) {
 
 
 // def __init__(self, off: int64) -> None:
+//     self.off = off
 inline Fixed::Fixed(int64_t off) : off(off) {}
 void __tpy_init();
 } // namespace tpyapp::main

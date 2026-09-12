@@ -34,6 +34,7 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cat:
@@ -83,6 +84,7 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Cat::Cat(std::string_view label) : label(label) {}
 
 inline Cat::Cat(Cat&& other) noexcept : label(std::move(other.label)) {
@@ -97,15 +99,15 @@ inline Cat& Cat::operator=(Cat&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print(f"~Cat({self.label})")
 inline Cat::~Cat() {
     if (!this->__tpy_owned_) return;
-    // print(f"~Cat({self.label})")
     std::cout << std::format("~Cat({})", this->label) << "\n";
 }
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Cat::name() const {
-    // return self.label
     return this->label;
 }
 void __tpy_init();

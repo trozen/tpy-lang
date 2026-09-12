@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # unsafe_cast with explicit target type, source inferred from arg
+//     nums: list[int32] = [int32(1), int32(2), int32(3)]
+//     p: Ptr[int32] = unsafe_ptr(nums)
+//     q = unsafe_cast[uint32](p)  # T=uint32 explicit, U=int32 from arg
+//     print(unsafe_load(q, uint32(0)))
+//     print(unsafe_load(q, uint32(1)))
+//     print("done")
 void main() {
-    // # unsafe_cast with explicit target type, source inferred from arg
-    // nums: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> nums = {1, 2, 3};
-    // p: Ptr[int32] = unsafe_ptr(nums)
     int32_t* p = nums.data();
-    // q = unsafe_cast[uint32](p)  # T=uint32 explicit, U=int32 from arg
     uint32_t* q = reinterpret_cast<uint32_t*>(p);
-    // print(unsafe_load(q, uint32(0)))
     std::cout << q[0] << "\n";
-    // print(unsafe_load(q, uint32(1)))
     std::cout << q[1] << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// from tpy.unsafe import unsafe_cast, unsafe_ptr, unsafe_load
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_cast, unsafe_ptr, unsafe_load
-    // main()
     main();
 }
 

@@ -3,37 +3,37 @@
 
 namespace tpyapp::main {
 
-// h = Holder()
 Holder* h{};
 
 // def describe(p: Point | None) -> None:
+//     if p is not None:
+//         print(p.x)
+//         print(p.y)
+//     else:
+//         print("empty")
 void describe(const Point* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // print(p.x)
         std::cout << p->x << "\n";
-        // print(p.y)
         std::cout << p->y << "\n";
-    // else:
     } else {
-        // print("empty")
         std::cout << "empty" << "\n";
     }
 }
 
+// h = Holder()
+// describe(h.value)
+//
+// h.value = Point(5, 6)
+// describe(h.value)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // h = Holder()
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    // describe(h.value)
     describe(::tpy::optional_to_ptr(h->value));
-    // h.value = Point(5, 6)
     h->value = Point(5, 6);
-    // describe(h.value)
     describe(::tpy::optional_to_ptr(h->value));
 }
 

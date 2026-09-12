@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def local_double(x: int32) -> int32:
+//     await asyncio.sleep(0)
+//     return x * 2
 ::tpystd::tpy::Poll<int32_t> __coro_local_double::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return x * 2
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(x, 2));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,10 +35,17 @@ __coro_local_double local_double(int32_t x) {
 }
 
 // async def amain() -> None:
+//     v1 = await ping()              # bare from-import (the reproducer)
+//     v2 = await aliased()           # aliased from-import
+//     v3 = await asyncmod.add(2, 3)  # qualified (inverse: must still work)
+//     v4 = await local_double(21)    # same-module (must not be over-qualified)
+//     print(v1)
+//     print(v2)
+//     print(v3)
+//     print(v4)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // v1 = await ping()              # bare from-import (the reproducer)
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -48,7 +55,6 @@ __coro_local_double local_double(int32_t x) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v1 = std::move(__r0).value();
         __sub_0.reset();
-        // v2 = await aliased()           # aliased from-import
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -58,7 +64,6 @@ __coro_local_double local_double(int32_t x) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v2 = std::move(__r1).value();
         __sub_1.reset();
-        // v3 = await asyncmod.add(2, 3)  # qualified (inverse: must still work)
         __sub_2.emplace(2, 3);
         __state = S_RESUME_2;
         continue;
@@ -68,7 +73,6 @@ __coro_local_double local_double(int32_t x) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v3 = std::move(__r2).value();
         __sub_2.reset();
-        // v4 = await local_double(21)    # same-module (must not be over-qualified)
         __sub_3.emplace(21);
         __state = S_RESUME_3;
         continue;
@@ -78,13 +82,9 @@ __coro_local_double local_double(int32_t x) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v4 = std::move(__r3).value();
         __sub_3.reset();
-        // print(v1)
         std::cout << v1 << "\n";
-        // print(v2)
         std::cout << v2 << "\n";
-        // print(v3)
         std::cout << v3 << "\n";
-        // print(v4)
         std::cout << v4 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -100,19 +100,20 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # Awaiting a cross-module async def namespaces the sub-coro struct to the callee
+// # module. Covers bare + aliased + qualified from-import awaits and a same-module
+// # await (which must stay bare, not over-qualified).
+// import asyncio
+// import asyncmod
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Awaiting a cross-module async def namespaces the sub-coro struct to the callee
-    // # module. Covers bare + aliased + qualified from-import awaits and a same-module
-    // # await (which must stay bare, not over-qualified).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // import asyncmod
     ::tpyapp::asyncmod::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

@@ -16,8 +16,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_value;
 struct __coro_caller;
 
+// async def value(n: int) -> int:
 __coro_value value(::tpy::BigInt n);
+// async def caller() -> int:
 __coro_caller caller();
+// def main() -> None:
 void main();
 
 // class Suppressor:
@@ -42,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
     return os;
 }
 
-// Async coroutine: value
+// async def value(n: int) -> int:
 struct __coro_value {
     int32_t __state;
     bool __cancel_pending;
@@ -64,7 +67,7 @@ struct __coro_value {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> int:
 struct __coro_caller {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -109,24 +112,25 @@ struct __coro_caller {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Suppressor::Suppressor(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> str:
+//     return self.name
 inline std::string Suppressor::__enter__() const {
-    // return self.name
     return this->name;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is not None:
+//         print(f"{self.name} suppressing")
+//         return True
+//     return False
 inline bool Suppressor::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is not None:
     if ((exc_val != nullptr)) {
-        // print(f"{self.name} suppressing")
         std::cout << std::format("{} suppressing", this->name) << "\n";
-        // return True
         return true;
     }
-    // return False
     return false;
 }
 void __tpy_init();

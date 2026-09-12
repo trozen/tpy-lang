@@ -21,6 +21,7 @@ extern ::tpy::BigInt in_i32_min;
 extern ::tpy::BigInt in_i64_from_big;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def probe(label: str, a: int, b: int, shift: int32) -> None:
 void probe(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b, int32_t shift);
 
 void __tpy_init();

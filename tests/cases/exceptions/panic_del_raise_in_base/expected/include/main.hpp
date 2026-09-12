@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Base:
@@ -61,6 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, b: int32):
+//     self._b = b
 inline Base::Base(int32_t b) : _b(b) {}
 
 inline Base::Base(Base&& other) noexcept : _b(std::move(other._b)) {
@@ -75,12 +77,12 @@ inline Base& Base::operator=(Base&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("base del", self._b)
+//     raise ValueError("base cleanup failed")  # tpyc: warning(/.raise. in .__del__. cannot propagate/)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
     try {
-        // print("base del", self._b)
         std::cout << "base del" << " " << this->_b << "\n";
-        // raise ValueError("base cleanup failed")  # tpyc: warning(/.raise. in .__del__. cannot propagate/)
         throw ::tpy::ValueError("base cleanup failed");
     } catch (const std::exception& __del_exc) {
         ::tpy::report_del_exception(__del_exc);
@@ -90,6 +92,8 @@ inline Base::~Base() {
 }
 
 // def __init__(self, b: int32, c: int32):
+//     super().__init__(b)
+//     self._c = c
 inline Child::Child(int32_t b, int32_t c) : Base(b), _c(c) {}
 
 inline Child::Child(Child&& other) noexcept : Base(std::move(other)), _c(std::move(other._c)) {
@@ -104,9 +108,10 @@ inline Child& Child::operator=(Child&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("child del", self._c)
+//     super().__del__()
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
-    // print("child del", self._c)
     std::cout << "child del" << " " << this->_c << "\n";
 }
 void __tpy_init();

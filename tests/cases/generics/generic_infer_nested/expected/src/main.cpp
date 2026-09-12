@@ -3,34 +3,32 @@
 
 namespace tpyapp::main {
 
-// # Separate lines: Inner[int] explicit, then Outer inferred
-// inner = Inner[int](42)
 Inner<::tpy::BigInt>* inner{};
-// outer = Outer(inner)
 Outer<Inner<::tpy::BigInt>>* outer{};
-// # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
-// outer2 = Outer(Inner(42))
 Outer<Inner<int32_t>>* outer2{};
 
+// """Test type inference with nested generic classes."""
+//
+// # Separate lines: Inner[int] explicit, then Outer inferred
+// inner = Inner[int](42)
+// outer = Outer(inner)
+// print(outer.inner.value)
+//
+// # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
+// outer2 = Outer(Inner(42))
+// print(outer2.inner.value)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Separate lines: Inner[int] explicit, then Outer inferred
-    // inner = Inner[int](42)
     static Inner<::tpy::BigInt> __global_slot_1 = Inner<::tpy::BigInt>(::tpy::BigInt(42));
     inner = &__global_slot_1;
-    // outer = Outer(inner)
     static Outer<Inner<::tpy::BigInt>> __global_slot_2 = Outer<Inner<::tpy::BigInt>>((*inner));
     outer = &__global_slot_2;
-    // print(outer.inner.value)
     std::cout << outer->inner.value << "\n";
-    // # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
-    // outer2 = Outer(Inner(42))
     static Outer<Inner<int32_t>> __global_slot_3 = Outer<Inner<int32_t>>(Inner<int32_t>(42));
     outer2 = &__global_slot_3;
-    // print(outer2.inner.value)
     std::cout << outer2->inner.value << "\n";
 }
 

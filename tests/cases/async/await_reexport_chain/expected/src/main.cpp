@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def amain() -> None:
+//     v = await deep()
+//     print(v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // v = await deep()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r0).value();
         __sub_0.reset();
-        // print(v)
         std::cout << v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -34,19 +34,20 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # Awaiting via a re-export chain: import through `facade` (which re-exports from
+// # `definer`); the coro struct lives in the DEFINER's namespace, so the qualifier
+// # must be the chain-flattened definer, not the direct import (regression guard).
+// import asyncio
+// from facade import deep
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Awaiting via a re-export chain: import through `facade` (which re-exports from
-    // # `definer`); the coro struct lives in the DEFINER's namespace, so the qualifier
-    // # must be the chain-flattened definer, not the direct import (regression guard).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from facade import deep
     ::tpyapp::facade::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

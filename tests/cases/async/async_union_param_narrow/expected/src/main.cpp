@@ -5,10 +5,14 @@ namespace tpyapp::main {
 
 
 // async def voice(a: Dog | Cat) -> str:
+//     await asyncio.sleep(0)
+//     if isinstance(a, Dog):  # tpyc: ok
+//         await asyncio.sleep(0)
+//         return a.sound()
+//     return a.sound()
 ::tpystd::tpy::Poll<std::string> __coro_voice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -20,13 +24,11 @@ namespace tpyapp::main {
         __sub_0.reset();
         if (std::holds_alternative<Dog*>(a)) {
             auto& __a = *std::get<Dog*>(a);
-            // await asyncio.sleep(0)
             __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_1;
             continue;
         } else {
             auto& __a = *std::get<Cat*>(a);
-            // return a.sound()
             __state = S_DONE;
             std::string __tpy_async_ret = __a.sound();
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -38,7 +40,6 @@ namespace tpyapp::main {
         (void)std::move(__r1).value();
         __sub_1.reset();
         auto& __a = *std::get<Dog*>(a);
-        // return a.sound()
         __state = S_DONE;
         std::string __tpy_async_ret = __a.sound();
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -55,11 +56,12 @@ __coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
 }
 
 // async def amain() -> None:
+//     print(await voice(Dog()))
+//     print(await voice(Cat()))
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0.emplace(Dog());
-        // print(await voice(Dog()))
         __sub_0.emplace(::tpy::Union<Cat*, Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
@@ -69,10 +71,8 @@ __coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await voice(Dog()))
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1.emplace(Cat());
-        // print(await voice(Cat()))
         __sub_1.emplace(::tpy::Union<Cat*, Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
@@ -82,7 +82,6 @@ __coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await voice(Cat()))
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -98,18 +97,19 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # Narrowing a non-value union param via isinstance inside an async body
+// # (shared resumable frame with generators) then accessing an arm-specific
+// # member after a suspension. Mirrors the generator regression on the async
+// # emit path.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Narrowing a non-value union param via isinstance inside an async body
-    // # (shared resumable frame with generators) then accessing an arm-specific
-    // # member after a suspension. Mirrors the generator regression on the async
-    // # emit path.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

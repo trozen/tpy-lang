@@ -15,6 +15,7 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Sink:
@@ -48,38 +49,38 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def take(self, xs: list[int32]) -> None:
+//     xs.append(99)
 inline void Sink::take(std::vector<int32_t>& xs) const {
-    // xs.append(99)
     xs.push_back(99);
 }
 
 // def widen(self, xs: list[int64]) -> None:
+//     xs.append(1000)
 inline void Sink::widen(std::vector<int64_t>& xs) const {
-    // xs.append(1000)
     xs.push_back(1000);
 }
 
 // def first(self, xs: Span[int32]) -> int32:
+//     return xs[0]
 inline int32_t Sink::first(std::span<int32_t> xs) const {
-    // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
 // def add(self, d: dict[str, int32]) -> None:
+//     d["z"] = 100
 inline void Sink::add(::tpy::ordered_map<std::string, int32_t>& d) const {
-    // d["z"] = 100
     ::tpy::__setitem__(d, "z", 100);
 }
 
 // def grow(self, s: set[int32]) -> None:
+//     s.add(50)
 inline void Sink::grow(::tpy::ordered_set<int32_t>& s) const {
-    // s.add(50)
     s.insert(50);
 }
 
 // def greet(self, name: str) -> str:
+//     return name + "!"
 inline std::string Sink::greet(std::string_view name) const {
-    // return name + "!"
     return (::tpy::str_concat(name, "!"));
 }
 void __tpy_init();

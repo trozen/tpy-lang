@@ -11,7 +11,9 @@ extern ::tpy::Bytes _HEX;
 extern std::vector<int32_t>* _OFFSETS;
 inline constexpr std::string_view __name__ = "geo.hexcodec";
 
+// def hex_byte(c: int32) -> bytes:
 ::tpy::Bytes hex_byte(int32_t c);
+// def offset_sum() -> int32:
 int32_t offset_sum();
 
 void __tpy_init();

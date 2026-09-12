@@ -6,54 +6,55 @@ namespace tpyapp::main {
 
 // @error_return(NotFound)
 // def inner(key: str) -> int32:
+//     if key == "x":
+//         return 42
+//     raise NotFound(7)
 std::expected<int32_t, NotFound> inner(std::string_view key) {
-    // if key == "x":
     if ((key == "x")) {
-        // return 42
         return 42;
     }
-    // raise NotFound(7)
     return ::tpy::make_unexpected(NotFound(7));
 }
 
 // def outer(key: str) -> int32:
+//     try:
+//         return inner(key)
+//     except NotFound as Registry:
+//         got = Registry.code
+//     return got
 int32_t outer(std::string_view key) {
-    // try:
     int32_t got;
     {
         std::optional<NotFound> __err_opt_1;
-        // return inner(key)
         return ({ auto __er_2 = inner(key); if (!__er_2.has_value()) { __err_opt_1 = std::move(__er_2.error()); goto __except_1; } ::tpy::unwrap_ref_move(*__er_2); });
         goto __after_try_1;
         // except NotFound:
         __except_1:;
         {
             auto& Registry = *__err_opt_1;
-            // got = Registry.code
             got = Registry.code;
         }
         __after_try_1:;
     }
-    // return got
     return got;
 }
 
 // def main() -> None:
+//     print(outer("x"))
+//     print(outer("y"))
+//     print(Registry.code)
 void main() {
-    // print(outer("x"))
     std::cout << outer("x") << "\n";
-    // print(outer("y"))
     std::cout << outer("y") << "\n";
-    // print(Registry.code)
     std::cout << Registry::code << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

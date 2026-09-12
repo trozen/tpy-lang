@@ -11,7 +11,9 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def branch_count(t: Tree[None]) -> int32:
 int32_t branch_count(const Tree<std::monostate>& t);
+// def main() -> None:
 void main();
 
 template<typename T>

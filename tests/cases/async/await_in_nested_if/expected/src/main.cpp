@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,29 +26,36 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def deep(a: bool, b: bool) -> int:
+//     if a:
+//         if b:
+//             x = await value(11)
+//         else:
+//             x = await value(10)
+//     else:
+//         if b:
+//             x = await value(1)
+//         else:
+//             x = await value(0)
+//     return x
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_deep::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (a) {
             if (b) {
-                // x = await value(11)
                 __sub_0.emplace(::tpy::BigInt(11));
                 __state = S_RESUME_0;
                 continue;
             } else {
-                // x = await value(10)
                 __sub_1.emplace(::tpy::BigInt(10));
                 __state = S_RESUME_1;
                 continue;
             }
         } else {
             if (b) {
-                // x = await value(1)
                 __sub_2.emplace(::tpy::BigInt(1));
                 __state = S_RESUME_2;
                 continue;
             } else {
-                // x = await value(0)
                 __sub_3.emplace(::tpy::BigInt(0));
                 __state = S_RESUME_3;
                 continue;
@@ -88,7 +95,6 @@ __coro_value value(::tpy::BigInt n) {
         continue;
     }
     case S_JOIN_0: {
-        // return x
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = x;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -113,26 +119,27 @@ __coro_deep deep(bool a, bool b) {
 }
 
 // def main() -> None:
+//     print(asyncio.run(deep(True, True)))
+//     print(asyncio.run(deep(True, False)))
+//     print(asyncio.run(deep(False, True)))
+//     print(asyncio.run(deep(False, False)))
 void main() {
-    // print(asyncio.run(deep(True, True)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(deep(true, true))) << "\n";
-    // print(asyncio.run(deep(True, False)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(deep(true, false))) << "\n";
-    // print(asyncio.run(deep(False, True)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(deep(false, true))) << "\n";
-    // print(asyncio.run(deep(False, False)))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(deep(false, false))) << "\n";
 }
 
+// # `await` inside nested if/else (await in each of four leaves).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `await` inside nested if/else (await in each of four leaves).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

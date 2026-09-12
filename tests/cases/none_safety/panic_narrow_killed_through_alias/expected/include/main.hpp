@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Point:
@@ -51,14 +52,16 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, p: Point):
+//     self.opt = p
 inline Holder::Holder(const Point& p) : opt(p) {}
 
 // def clear(self):
+//     self.opt = None
 inline void Holder::clear() {
-    // self.opt = None
     this->opt = std::nullopt;
 }
 void __tpy_init();

@@ -6,34 +6,35 @@ namespace tpyapp::main {
 
 // @bool_locals
 // def pick(use_first: bool) -> bool:
+//     yes = "true"
+//     no = "false"
+//     return yes if use_first else no
 bool pick(bool use_first) {
-    // yes = "true"
     bool yes = true;
-    // no = "false"
     bool no = false;
-    // return yes if use_first else no
     return ((use_first) ? (yes) : (no));
 }
 
 // def main() -> None:
+//     print(1 if pick(True) else 0)
+//     print(1 if pick(False) else 0)
 void main() {
-    // print(1 if pick(True) else 0)
     std::cout << ((pick(true)) ? (1) : (0)) << "\n";
-    // print(1 if pick(False) else 0)
     std::cout << ((pick(false)) ? (1) : (0)) << "\n";
 }
 
+// # A @function_macro deduces the type of string-literal bool locals: it retypes
+// # each `x = "true"/"false"` local as bool and rewrites the RHS to a bool
+// # literal, so the mutated body type-checks and runs. Proves annotate_local +
+// # replace_expr end-to-end.
+// from boolmod import bool_locals
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @function_macro deduces the type of string-literal bool locals: it retypes
-    // # each `x = "true"/"false"` local as bool and rewrites the RHS to a bool
-    // # literal, so the mutated body type-checks and runs. Proves annotate_local +
-    // # replace_expr end-to-end.
-    // from boolmod import bool_locals
-    // main()
     main();
 }
 

@@ -20,7 +20,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_main_coro;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -123,7 +125,7 @@ inline std::ostream& operator<<(std::ostream& os, const _RefPair& obj) {
     return os;
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -168,53 +170,55 @@ struct __coro_main_coro {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
+//     self.n += 1
 inline void Counter::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 
 // def __init__(self) -> None:
+//     self._polls = 0
 inline _OwnPair::_OwnPair() : _polls(0) {}
 
 // def cancel(self) -> None:
+//     pass
 inline void _OwnPair::cancel() const {
-    // pass
 }
 
 // def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], int32]]]:
+//     self._polls += 1
+//     return poll_ready((Counter(10), self._polls))
 inline ::tpystd::tpy::Poll<std::tuple<Counter, int32_t>> _OwnPair::__poll__(::tpystd::coro::Waker w) {
-    // self._polls += 1
     this->_polls = ::tpy::add_check<int32_t>(this->_polls, 1);
-    // return poll_ready((Counter(10), self._polls))
     return ::tpystd::coro::poll_ready<std::tuple<Counter, int32_t>>(std::tuple<Counter, int32_t>{Counter(10), this->_polls});
 }
 
 // def cancel(self) -> None:
+//     pass
 inline void _ValPair::cancel() const {
-    // pass
 }
 
 // def __poll__(self, w: Waker) -> Own[Poll[tuple[int32, int32]]]:
+//     # Explicit int32: poll_ready[T]'s arg isn't target-typed by the return,
+//     # so bare literals stay IntLiteral and mismatch tuple[int32, int32].
+//     return poll_ready((int32(1), int32(2)))
 inline ::tpystd::tpy::Poll<std::tuple<int32_t, int32_t>> _ValPair::__poll__(::tpystd::coro::Waker w) const {
-    // # Explicit int32: poll_ready[T]'s arg isn't target-typed by the return,
-    // # so bare literals stay IntLiteral and mismatch tuple[int32, int32].
-    // return poll_ready((int32(1), int32(2)))
     return ::tpystd::coro::poll_ready<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2});
 }
 
 // def cancel(self) -> None:
+//     pass
 inline void _RefPair::cancel() const {
-    // pass
 }
 
 // def __poll__(self, w: Waker) -> Own[Poll[tuple[list[int32], int32]]]:
+//     xs: list[int32] = [10, 20]
+//     return poll_ready((xs, int32(2)))
 inline ::tpystd::tpy::Poll<std::tuple<std::vector<int32_t>, int32_t>> _RefPair::__poll__(::tpystd::coro::Waker w) const {
-    // xs: list[int32] = [10, 20]
     std::vector<int32_t> xs = {10, 20};
-    // return poll_ready((xs, int32(2)))
     return ::tpystd::coro::poll_ready<std::tuple<std::vector<int32_t>, int32_t>>(::tpy::tuple_to_storage_move<std::tuple<std::vector<int32_t>, int32_t>>(std::tuple<std::vector<int32_t>*, int32_t>{std::move(&(xs)), 2}));
 }
 void __tpy_init();

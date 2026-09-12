@@ -12,6 +12,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Writer:
@@ -58,28 +59,31 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self) -> None:
+//     self._parts = []
 inline Writer::Writer() : _parts(std::vector<std::string>{}) {}
 
 // def write(self, s: str) -> None:
+//     self._parts.append(s)
 inline void Writer::write(std::string_view s) {
-    // self._parts.append(s)
     this->_parts.push_back(std::string(s));
 }
 
 // def result(self) -> str:
+//     return ",".join(self._parts)
 inline std::string Writer::result() const {
-    // return ",".join(self._parts)
     return ::tpy::str_join(",", this->_parts);
 }
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def encode(self, writer: Writer) -> None:
+//     writer.write(str(self.x))
+//     writer.write(str(self.y))
 inline void Point::encode(Writer& writer) const {
-    // writer.write(str(self.x))
     writer.write(::tpy::fixed_to_str<int32_t>(this->x));
-    // writer.write(str(self.y))
     writer.write(::tpy::fixed_to_str<int32_t>(this->y));
 }
 void __tpy_init();

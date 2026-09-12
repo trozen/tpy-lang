@@ -54,16 +54,27 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def opt_guard(k: int32, v: int32 | None) -> int32:
 int32_t opt_guard(int32_t k, std::optional<int32_t> v);
+// def str_guard(k: int32, t: str) -> int32:
 int32_t str_guard(int32_t k, std::string_view t);
+// def list_guard(k: int32, xs: list[int32]) -> int32:
 int32_t list_guard(int32_t k, const std::vector<int32_t>& xs);
+// def record_guard(k: int32, g: Bag) -> int32:
 int32_t record_guard(int32_t k, const Bag& g);
+// def not_guard(k: int32, t: str) -> int32:
 int32_t not_guard(int32_t k, std::string_view t);
+// def enum_guard(k: int32, c: Color) -> int32:
 int32_t enum_guard(int32_t k, Color c);
+// def int_enum_guard(k: int32, lv: Level) -> int32:
 int32_t int_enum_guard(int32_t k, Level lv);
+// def plain_record_guard(k: int32, p: Plain) -> int32:
 int32_t plain_record_guard(int32_t k, const Plain& p);
+// def any_guard(k: int32, v: Any) -> int32:
 int32_t any_guard(int32_t k, ::tpy::Any v);
+// def and_guard(k: int32, t: str, xs: list[int32]) -> int32:
 int32_t and_guard(int32_t k, std::string_view t, const std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
 // class Plain:
@@ -110,14 +121,16 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Plain::Plain(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Bag::Bag(int32_t n) : n(n) {}
 
 // def __len__(self) -> int32:
+//     return self.n
 inline int32_t Bag::__len__() const {
-    // return self.n
     return this->n;
 }
 void __tpy_init();

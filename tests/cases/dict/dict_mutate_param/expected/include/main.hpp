@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def insert(d: dict[str, int32], key: str, val: int32) -> None:
 void insert(::tpy::ordered_map<std::string, int32_t>& d, std::string_view key, int32_t val);
+// def main() -> None:
 void main();
 
 void __tpy_init();

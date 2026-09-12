@@ -5,75 +5,80 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = (1, 2, 3)
+//     h = hash(t)
+//     print(h > 0 or h <= 0)
+//
+//     # Equal tuples produce equal hashes
+//     a = (10, "hello")
+//     b = (10, "hello")
+//     print(hash(a) == hash(b))
+//
+//     # Tuple as dict key
+//     d: dict[tuple[int32, int32], str] = {}
+//     d[(int32(1), int32(2))] = "one-two"
+//     d[(int32(3), int32(4))] = "three-four"
+//     print(d[(int32(1), int32(2))])
+//     print(d[(int32(3), int32(4))])
+//     print(len(d))
+//
+//     # @nocopy element -- hash must not copy
+//     test_nocopy_hash()
+//
+//     # hash(tuple) inside __hash__ -- the common Python idiom
+//     test_hash_delegation()
 void main() {
-    // t = (1, 2, 3)
     std::tuple<int32_t, int32_t, int32_t> t = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
-    // h = hash(t)
     uint64_t h = ::tpy::__hash__(t);
-    // print(h > 0 or h <= 0)
     std::cout << ::tpy::print_bool(((h > 0) || (h <= 0))) << "\n";
-    // # Equal tuples produce equal hashes
-    // a = (10, "hello")
     std::tuple<int32_t, std::string> a = std::tuple<int32_t, std::string>{10, "hello"};
-    // b = (10, "hello")
     std::tuple<int32_t, std::string> b = std::tuple<int32_t, std::string>{10, "hello"};
-    // print(hash(a) == hash(b))
     std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";
-    // # Tuple as dict key
-    // d: dict[tuple[int32, int32], str] = {}
     ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string> d = ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string>();
-    // d[(int32(1), int32(2))] = "one-two"
     ::tpy::__setitem__(d, std::tuple<int32_t, int32_t>{1, 2}, "one-two");
-    // d[(int32(3), int32(4))] = "three-four"
     ::tpy::__setitem__(d, std::tuple<int32_t, int32_t>{3, 4}, "three-four");
-    // print(d[(int32(1), int32(2))])
     std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{1, 2}) << "\n";
-    // print(d[(int32(3), int32(4))])
     std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{3, 4}) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // # @nocopy element -- hash must not copy
-    // test_nocopy_hash()
     test_nocopy_hash();
-    // # hash(tuple) inside __hash__ -- the common Python idiom
-    // test_hash_delegation()
     test_hash_delegation();
 }
 
 // def test_nocopy_hash() -> None:
+//     t = (Key(10), Key(20))
+//     u = (Key(10), Key(20))
+//     print(hash(t) == hash(u))
 void test_nocopy_hash() {
-    // t = (Key(10), Key(20))
     auto t = std::tuple<Key, Key>{Key(10), Key(20)};
-    // u = (Key(10), Key(20))
     auto u = std::tuple<Key, Key>{Key(10), Key(20)};
-    // print(hash(t) == hash(u))
     std::cout << ::tpy::print_bool((::tpy::__hash__(t) == ::tpy::__hash__(u))) << "\n";
 }
 
 // def test_hash_delegation() -> None:
+//     # Value-type fields
+//     p1 = Point(1, 2)
+//     p2 = Point(1, 2)
+//     print(hash(p1) == hash(p2))
+//
+//     # @nocopy fields -- hash must use const refs, no copies
+//     e1 = Edge(3, 4)
+//     e2 = Edge(3, 4)
+//     print(hash(e1) == hash(e2))
 void test_hash_delegation() {
-    // # Value-type fields
-    // p1 = Point(1, 2)
     Point p1 = Point(1, 2);
-    // p2 = Point(1, 2)
     Point p2 = Point(1, 2);
-    // print(hash(p1) == hash(p2))
     std::cout << ::tpy::print_bool((::tpy::__hash__(p1) == ::tpy::__hash__(p2))) << "\n";
-    // # @nocopy fields -- hash must use const refs, no copies
-    // e1 = Edge(3, 4)
     Edge e1 = Edge(3, 4);
-    // e2 = Edge(3, 4)
     Edge e2 = Edge(3, 4);
-    // print(hash(e1) == hash(e2))
     std::cout << ::tpy::print_bool((::tpy::__hash__(e1) == ::tpy::__hash__(e2))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

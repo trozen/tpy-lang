@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     cfg: dict[str, Any] = {
+//         "name": "tpy",
+//         "version": 1,
+//         "debug": True,
+//     }
+//     print(cfg)
+//     print(len(cfg))
 void main() {
-    // cfg: dict[str, Any] = {
-    // "name": "tpy",
-    // "version": 1,
-    // "debug": True,
-    // }
     ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"name", ::tpy::make_any(std::string("tpy"))}, {"version", ::tpy::make_any(::tpy::BigInt(1))}, {"debug", ::tpy::make_any(true)}});
-    // print(cfg)
     std::cout << ::tpy::DictPrinter(cfg) << "\n";
-    // print(len(cfg))
     std::cout << ::tpy::__len__(cfg) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

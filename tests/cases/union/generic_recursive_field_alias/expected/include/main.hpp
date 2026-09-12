@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count(t: Tree[int32]) -> int32:
 int32_t count(const Tree<int32_t>& t);
+// def main() -> None:
 void main();
 
 template<typename T>
@@ -53,11 +55,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, t: Own[Tree[int32]]) -> None:
+//     self.t = t
 inline Holder::Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
 
 // def get(self) -> Tree[int32]:
+//     return self.t
 inline Tree<int32_t>& Holder::get() {
-    // return self.t
     return this->t;
 }
 void __tpy_init();

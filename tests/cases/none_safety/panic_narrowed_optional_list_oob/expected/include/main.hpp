@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_oob(lst: list[int32] | None) -> None:
 void read_oob(const std::vector<int32_t>* lst);
+// def main() -> None:
 void main();
 
 void __tpy_init();

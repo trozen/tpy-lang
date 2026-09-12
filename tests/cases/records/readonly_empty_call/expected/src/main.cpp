@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main():
+//     f = Foo(42)
+//     print(f.get_x())
 void main() {
-    // f = Foo(42)
     Foo f = Foo(42);
-    // print(f.get_x())
     std::cout << f.get_x() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

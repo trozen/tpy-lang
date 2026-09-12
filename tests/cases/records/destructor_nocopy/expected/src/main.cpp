@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def consume(h: Own[Handle]) -> None:
+//     print("use", h.id)
 void consume(Handle&& h) {
-    // print("use", h.id)
     std::cout << "use" << " " << h.id << "\n";
 }
 
 // def main():
+//     h = Handle(1)
+//     consume(h)
+//     print("---")
+//
+//     consume(Handle(2))
+//     print("done")
 void main() {
-    // h = Handle(1)
     Handle h = Handle(1);
-    // consume(h)
     consume(std::move(h));
-    // print("---")
     std::cout << "---" << "\n";
-    // consume(Handle(2))
     consume(Handle(2));
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

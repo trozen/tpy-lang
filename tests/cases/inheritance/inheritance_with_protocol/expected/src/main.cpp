@@ -3,32 +3,34 @@
 
 namespace tpyapp::main {
 
-// # Test combined inheritance
-// p = Person("Alice", 42, 30)
 Person* p{};
 
+// # Test combined inheritance
+// p = Person("Alice", 42, 30)
+//
+// # Access inherited fields
+// print(p.name)
+// print(p.id)
+//
+// # Access own field
+// print(p.age)
+//
+// # Call inherited method
+// print(p.get_name())
+//
+// # Call protocol method
+// print(p.__str__())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test combined inheritance
-    // p = Person("Alice", 42, 30)
     static Person __global_slot_1 = Person("Alice", 42, 30);
     p = &__global_slot_1;
-    // # Access inherited fields
-    // print(p.name)
     std::cout << p->name << "\n";
-    // print(p.id)
     std::cout << p->id << "\n";
-    // # Access own field
-    // print(p.age)
     std::cout << p->age << "\n";
-    // # Call inherited method
-    // print(p.get_name())
     std::cout << p->get_name() << "\n";
-    // # Call protocol method
-    // print(p.__str__())
     std::cout << p->__str__() << "\n";
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder(b"hello", "h")
+//     print(len(h.data), h.tag)
 void main() {
-    // h = Holder(b"hello", "h")
     Holder h = Holder(::tpy::bytes_literal("hello", 5), "h");
-    // print(len(h.data), h.tag)
     std::cout << ::tpy::__len__(h.data) << " " << h.tag << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Blob(b"abc")
+//     print(len(b.data), b.data[0])
 void main() {
-    // b = Blob(b"abc")
     Blob b = Blob(::tpy::bytes_literal("abc", 3));
-    // print(len(b.data), b.data[0])
     std::cout << ::tpy::__len__(b.data) << " " << static_cast<int>(::tpy::bytes_getitem(b.data, 0)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

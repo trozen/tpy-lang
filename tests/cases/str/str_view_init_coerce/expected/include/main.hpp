@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def from_param(a: str) -> None:
 void from_param(std::string_view a);
+// def from_param_return(a: str) -> str:
 std::string from_param_return(std::string_view a);
+// def from_or_params(a: str, b: str) -> None:
 void from_or_params(std::string_view a, std::string_view b);
+// def from_ternary_params(a: str, b: str, cond: bool) -> None:
 void from_ternary_params(std::string_view a, std::string_view b, bool cond);
+// def return_or_params(a: str, b: str) -> str:
 std::string return_or_params(std::string_view a, std::string_view b);
+// def return_ternary_params(a: str, b: str, cond: bool) -> str:
 std::string return_ternary_params(std::string_view a, std::string_view b, bool cond);
 
 void __tpy_init();

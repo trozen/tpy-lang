@@ -11,6 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -33,7 +34,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
+// def my_enumerate(items: list[Point]) -> Iterator[tuple[int32, Point]]:
+//     for i in range(len(items)):
+//         yield (int32(i), items[i])
 inline auto my_enumerate(std::vector<Point>& items) {
     return ::tpy::make_generator<std::tuple<int32_t, Point*>>(
         [&items, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(items))]() mutable -> std::optional<std::tuple<int32_t, Point*>> {

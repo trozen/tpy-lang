@@ -5,45 +5,47 @@ namespace tpyapp::main {
 
 
 // def identity_ptr(p: Ptr[Point]) -> Ptr[Point]:
+//     return p  # tpyc: ok (pointer value is copied)
 Point* identity_ptr(Point* p) {
-    // return p  # tpyc: ok (pointer value is copied)
     return p;
 }
 
 // def get_ptr_copy(p: Ptr[Point]) -> Ptr[Point]:
+//     local_ptr: Ptr[Point] = p
+//     return local_ptr  # tpyc: ok (pointer value is copied)
 Point* get_ptr_copy(Point* p) {
-    // local_ptr: Ptr[Point] = p
     Point* local_ptr = p;
-    // return local_ptr  # tpyc: ok (pointer value is copied)
     return local_ptr;
 }
 
 // def main():
+//     pt: Point = Point()
+//     pt.x = 10
+//     pt.y = 20
+//
+//     ptr: Ptr[Point] = pt
+//     ptr1: Ptr[Point] = identity_ptr(ptr)
+//     ptr2: Ptr[Point] = get_ptr_copy(ptr)
+//
+//     print(ptr1.x)
+//     print(ptr2.y)
 void main() {
-    // pt: Point = Point()
     Point pt = Point();
-    // pt.x = 10
     pt.x = 10;
-    // pt.y = 20
     pt.y = 20;
-    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // ptr1: Ptr[Point] = identity_ptr(ptr)
     Point* ptr1 = identity_ptr(ptr);
-    // ptr2: Ptr[Point] = get_ptr_copy(ptr)
     Point* ptr2 = get_ptr_copy(ptr);
-    // print(ptr1.x)
     std::cout << ::tpy::deref_check(ptr1).x << "\n";
-    // print(ptr2.y)
     std::cout << ::tpy::deref_check(ptr2).y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

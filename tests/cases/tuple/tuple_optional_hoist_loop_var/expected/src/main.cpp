@@ -5,47 +5,48 @@ namespace tpyapp::main {
 
 
 // def consume(p: tuple[T | None, T | None]) -> None:
+//     a, _ = p
+//     if a is not None:
+//         print(a.x)
+//     else:
+//         print("None")
 void consume(const std::tuple<const T*, const T*>& p) {
-    // a, _ = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
 }
 
 // def main() -> None:
+//     t1 = T(1)
+//     items: list[tuple[T | None, T | None]] = [(t1, None), (None, None)]
+//
+//     last = items[0]
+//     for last in items:
+//         pass
+//     consume(last)
 void main() {
-    // t1 = T(1)
     T t1 = T(1);
-    // items: list[tuple[T | None, T | None]] = [(t1, None), (None, None)]
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr})};
-    // last = items[0]
     std::tuple<T*, T*> last = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 0));
-    // for last in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         last = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(*__beg_0);
-        // pass
     }
-    // consume(last)
     consume(last);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

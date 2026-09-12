@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def checked(n: int32) -> int32:
+//     assert True  # folds away entirely
+//     return n
 int32_t checked(int32_t n) {
-    // assert True  # folds away entirely
-    // return n
     return n;
 }
 
 // def boom() -> None:
+//     assert False  # a bare assertion raise, never called below
 void boom() {
-    // assert False  # a bare assertion raise, never called below
     ::tpy::raise_assertion_error();
 }
 
 // def dead(n: int32) -> int32:
+//     if False:  # the constant-false branch
+//         n = n + 1
+//     return n
 int32_t dead(int32_t n) {
-    // if False:  # the constant-false branch
     if (false) {
-        // n = n + 1
         n = (::tpy::add_check<int32_t>(n, 1));
     }
-    // return n
     return n;
 }
 
 // def spin(n: int32) -> int32:
+//     while False:  # the constant-false loop head
+//         n = n + 1
+//     return n
 int32_t spin(int32_t n) {
-    // while False:  # the constant-false loop head
     while (false) {
-        // n = n + 1
         n = (::tpy::add_check<int32_t>(n, 1));
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     print(checked(1), dead(2), spin(3))
 void main() {
-    // print(checked(1), dead(2), spin(3))
     std::cout << checked(1) << " " << dead(2) << " " << spin(3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

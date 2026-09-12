@@ -59,26 +59,30 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str, age: int32) -> None:
+//     self.name = name
+//     self.age = age
 inline Animal::Animal(std::string_view name, int32_t age) : name(name), age(age) {}
 
 // def speak(self) -> str:
+//     return "..."
 inline std::string Animal::speak() const {
-    // return "..."
     return "...";
 }
 
 // def describe(self) -> str:
+//     return self.name
 inline std::string Animal::describe() const {
-    // return self.name
     return this->name;
 }
 
 // def __init__(self, name: str, age: int32, breed: str) -> None:
+//     super().__init__(name, age)
+//     self.breed = breed
 inline Dog::Dog(std::string_view name, int32_t age, std::string_view breed) : Animal(name, age), breed(breed) {}
 
 // def speak(self) -> str:
+//     return "Woof!"
 inline std::string Dog::speak() const {
-    // return "Woof!"
     return "Woof!";
 }
 void __tpy_init();

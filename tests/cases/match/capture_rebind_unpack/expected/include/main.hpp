@@ -11,7 +11,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def unpack_rebind(a: Cat) -> int:
 ::tpy::BigInt unpack_rebind(const Cat& a);
+// def main():
 void main();
 
 // # A value-typed match capture rebound via tuple-unpack binds by value (a copy):
@@ -36,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::main

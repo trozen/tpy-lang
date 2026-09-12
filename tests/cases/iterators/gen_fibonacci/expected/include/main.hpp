@@ -9,26 +9,30 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
+// def fibonacci(n: int32) -> Iterator[int32]:
+//     a: int32 = 0
+//     b: int32 = 1
+//     count: int32 = 0
+//     while count < n:
+//         yield a
+//         temp: int32 = a
+//         a = b
+//         b = temp + b
+//         count += 1
 inline auto fibonacci(int32_t n) {
-    // a: int32 = 0
     int32_t a = 0;
-    // b: int32 = 1
     int32_t b = 1;
-    // count: int32 = 0
     int32_t count = 0;
     return ::tpy::make_generator<int32_t>(
         [n, a, b, count]() mutable -> std::optional<int32_t> {
             while ((count < n)) {
                 auto __val = a;
-                // temp: int32 = a
                 int32_t temp = a;
-                // a = b
                 a = b;
-                // b = temp + b
                 b = (::tpy::add_check<int32_t>(temp, b));
-                // count += 1
                 count = ::tpy::add_check<int32_t>(count, 1);
                 return std::optional<int32_t>(__val);
             }

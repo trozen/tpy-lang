@@ -11,6 +11,7 @@ struct Pt;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pt:
@@ -36,11 +37,13 @@ inline std::ostream& operator<<(std::ostream& os, const Pt& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Pt::Pt(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
+//     return "Pt(" + str(self.x) + ", " + str(self.y) + ")"
 inline std::string Pt::__repr__() const {
-    // return "Pt(" + str(self.x) + ", " + str(self.y) + ")"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pt(", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
 }
 void __tpy_init();

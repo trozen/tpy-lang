@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(a: Animal) -> None:
 void greet(const Animal& a);
+// def main() -> None:
 void main();
 
 // # Regression: when a Child rvalue is passed to a function taking a Parent
@@ -53,9 +55,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str, breed: str) -> None:
+//     super().__init__(name)
+//     self.breed = breed
 inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 void __tpy_init();
 } // namespace tpyapp::main

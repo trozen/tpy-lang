@@ -11,7 +11,9 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def put(parent: Node, key: str, child: Node) -> None:
 void put(Node& parent, std::string_view key, const Node& child);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -34,6 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
+//     self.kids = {}
 inline Node::Node(int32_t val) : val(val), kids(::tpy::ordered_map<std::string, Node>()) {}
 void __tpy_init();
 } // namespace tpyapp::main

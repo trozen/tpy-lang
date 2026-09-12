@@ -5,31 +5,48 @@ namespace tpyapp::main {
 
 
 // def identity(p: Point) -> Point:
+//     return p
 Point& identity(Point& p) {
-    // return p
     return p;
 }
 
 // def make_new(p: Point) -> Own[Point]:
+//     return Point(p.x * 2, p.y * 2)
 Point make_new(const Point& p) {
-    // return Point(p.x * 2, p.y * 2)
     return Point((::tpy::mul_check<int32_t>(p.x, 2)), (::tpy::mul_check<int32_t>(p.y, 2)));
 }
 
 // def set_x(p: Point, new_x: int32) -> Point:
+//     p.x = new_x
+//     return p
 Point& set_x(Point& p, int32_t new_x) {
-    // p.x = new_x
     p.x = new_x;
-    // return p
     return p;
 }
 
 // def main() -> None:
+//     pts = [Point(1, 2), Point(3, 4)]
+//
+//     # Ref return: mutations propagate to original
+//     for p in map(identity, pts):
+//         p.x = p.x + 100
+//     print(pts[0].x)  # 101
+//     print(pts[1].x)  # 103
+//
+//     # Own return: independent copies, originals unchanged
+//     for p in map(make_new, pts):
+//         p.x = 999  # modifies copy only
+//     print(pts[0].x)  # 101 (unchanged)
+//     print(pts[1].x)  # 103 (unchanged)
+//
+//     # Multi-iterable: ref Point + value int32
+//     vals = [10, 20]
+//     for p in map(set_x, pts, vals):
+//         pass
+//     print(pts[0].x)  # 10 (set through reference)
+//     print(pts[1].x)  # 20
 void main() {
-    // pts = [Point(1, 2), Point(3, 4)]
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
-    // # Ref return: mutations propagate to original
-    // for p in map(identity, pts):
     {
         auto __src_0 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -37,16 +54,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_1);
-        // p.x = p.x + 100
         p.x = (::tpy::add_check<int32_t>(p.x, 100));
         }
     }
-    // print(pts[0].x)  # 101
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // print(pts[1].x)  # 103
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
-    // # Own return: independent copies, originals unchanged
-    // for p in map(make_new, pts):
     {
         auto __src_2 = ::tpy::builtin_map<Point, Point>(make_new, pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -54,18 +66,12 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_3);
-        // p.x = 999  # modifies copy only
         p.x = 999;
         }
     }
-    // print(pts[0].x)  # 101 (unchanged)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // print(pts[1].x)  # 103 (unchanged)
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
-    // # Multi-iterable: ref Point + value int32
-    // vals = [10, 20]
     std::array<int32_t, 2> vals = {10, 20};
-    // for p in map(set_x, pts, vals):
     {
         auto __src_4 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(set_x, pts, vals);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -73,21 +79,18 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& p = ::tpy::unwrap_ref(*__r_5);
-        // pass
         }
     }
-    // print(pts[0].x)  # 10 (set through reference)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // print(pts[1].x)  # 20
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

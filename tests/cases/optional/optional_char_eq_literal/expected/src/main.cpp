@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def eq(o: char | None) -> bool:
+//     return o == "a"
 bool eq(std::optional<char> o) {
-    // return o == "a"
     return (o == 'a');
 }
 
 // def main() -> None:
+//     print(eq(char("a")), eq(char("b")), eq(None))
 void main() {
-    // print(eq(char("a")), eq(char("b")), eq(None))
     std::cout << ::tpy::print_bool(eq(::tpy::char_from_str("a"))) << " " << ::tpy::print_bool(eq(::tpy::char_from_str("b"))) << " " << ::tpy::print_bool(eq(std::nullopt)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

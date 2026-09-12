@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Config()
+//     m: Literal["r", "w"] = c.get_mode()
+//     print(m)
 void main() {
-    // c = Config()
     Config c = Config();
-    // m: Literal["r", "w"] = c.get_mode()
     std::string_view m = c.get_mode();
-    // print(m)
     std::cout << m << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

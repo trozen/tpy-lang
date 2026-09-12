@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def f(v: A | B | C) -> int:
+//     if isinstance(v, A):
+//         return v.ax
+//     if isinstance(v, B):
+//         return v.bx
+//     return v.cx          # v is C here
 ::tpy::BigInt f(::tpy::Union<const A*, const B*, const C*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        // return v.ax
         return __v.ax;
     }
-    // if isinstance(v, B):
     if (std::holds_alternative<const B*>(v)) {
         auto& __v = *std::get<const B*>(v);
-        // return v.bx
         return __v.bx;
     }
     auto& __v = *std::get<const C*>(v);
-    // return v.cx          # v is C here
     return __v.cx;
 }
 
 // def main() -> None:
+//     print(f(A(1)))
+//     print(f(B(2)))
+//     print(f(C(3)))
 void main() {
-    // print(f(A(1)))
     A __tmp_1 = A(::tpy::BigInt(1));
     std::cout << f(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
-    // print(f(B(2)))
     B __tmp_2 = B(::tpy::BigInt(2));
     std::cout << f(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
-    // print(f(C(3)))
     C __tmp_3 = C(::tpy::BigInt(3));
     std::cout << f(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

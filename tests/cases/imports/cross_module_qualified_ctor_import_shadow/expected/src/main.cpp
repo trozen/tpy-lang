@@ -5,34 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = pa.Box(10)          # qualified pa.Box (int ctor), with bare pb.Box in scope
+//     a.n += 5                # mutate the constructed reference object
+//     print(a.n)              # 15 -- proves pa.Box (int field), not pb.Box
+//     print(pa.Box(1).n)      # 1 -- both-qualified still resolves correctly
+//     print(pb.Box("q").msg)  # q
+//     print(Box("hi").msg)    # hi -- bare import is pb.Box
 void main() {
-    // a = pa.Box(10)          # qualified pa.Box (int ctor), with bare pb.Box in scope
     ::tpyapp::pa::Box a = ::tpyapp::pa::Box(::tpy::BigInt(10));
-    // a.n += 5                # mutate the constructed reference object
     a.n = (a.n) + (::tpy::BigInt(5));
-    // print(a.n)              # 15 -- proves pa.Box (int field), not pb.Box
     std::cout << a.n << "\n";
-    // print(pa.Box(1).n)      # 1 -- both-qualified still resolves correctly
     std::cout << ::tpyapp::pa::Box(::tpy::BigInt(1)).n << "\n";
-    // print(pb.Box("q").msg)  # q
     std::cout << ::tpyapp::pb::Box("q").msg << "\n";
-    // print(Box("hi").msg)    # hi -- bare import is pb.Box
     std::cout << ::tpyapp::pb::Box("hi").msg << "\n";
 }
 
+// # A qualified construction `pa.Box(...)` must resolve to pa.Box even when the
+// # same-named pb.Box is bare-imported into this module -- the bare import must
+// # not shadow the qualified target's module identity.
+// import pa
+// import pb
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A qualified construction `pa.Box(...)` must resolve to pa.Box even when the
-    // # same-named pb.Box is bare-imported into this module -- the bare import must
-    // # not shadow the qualified target's module identity.
-    // import pa
     ::tpyapp::pa::__tpy_init();
-    // import pb
     ::tpyapp::pb::__tpy_init();
-    // main()
     main();
 }
 

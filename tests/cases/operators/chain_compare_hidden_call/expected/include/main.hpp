@@ -13,7 +13,9 @@ extern int32_t calls;
 extern ::tpy::BigInt order;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(tag: int, v: int) -> int:
 ::tpy::BigInt bump(const ::tpy::BigInt& tag, const ::tpy::BigInt& v);
+// def main() -> None:
 void main();
 
 // class P:
@@ -41,19 +43,20 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self) -> None:
+//     self.plain = 5
 inline P::P() : plain(::tpy::BigInt(5)) {}
 
 // @property
 // def mid(self) -> int:
+//     return bump(2, 5)
 inline ::tpy::BigInt P::mid() const {
-    // return bump(2, 5)
     return bump(::tpy::BigInt(2), ::tpy::BigInt(5));
 }
 
 // @property
 // def first(self) -> int:
+//     return bump(1, 1)
 inline ::tpy::BigInt P::first() const {
-    // return bump(1, 1)
     return bump(::tpy::BigInt(1), ::tpy::BigInt(1));
 }
 void __tpy_init();

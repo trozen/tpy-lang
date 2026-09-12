@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int] = [7, 8]
+//     print(use_bare(nums).x)
+//     print(use_owned(nums).v)
+//     rows: list[tuple[int, int]] = [(1, 2), (3, 4)]
+//     pair = use_pair(rows)
+//     print(pair.p[0], pair.p[1])
+//     table: dict[str, int] = {"a": 9}
+//     print(use_dict(table, "a").v)
 void main() {
-    // nums: list[int] = [7, 8]
     std::vector<::tpy::BigInt> nums = {7, 8};
-    // print(use_bare(nums).x)
     std::cout << use_bare<::tpy::BigInt>(nums).x << "\n";
-    // print(use_owned(nums).v)
     std::cout << use_owned<::tpy::BigInt>(nums).v << "\n";
-    // rows: list[tuple[int, int]] = [(1, 2), (3, 4)]
     std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>> rows = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}};
-    // pair = use_pair(rows)
     Pair<::tpy::BigInt, ::tpy::BigInt> pair = use_pair<::tpy::BigInt>(rows);
-    // print(pair.p[0], pair.p[1])
     std::cout << std::get<0>(pair.p) << " " << std::get<1>(pair.p) << "\n";
-    // table: dict[str, int] = {"a": 9}
     ::tpy::ordered_map<std::string, ::tpy::BigInt> table = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(9)}});
-    // print(use_dict(table, "a").v)
     std::cout << use_dict<std::string, ::tpy::BigInt>(table, "a").v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

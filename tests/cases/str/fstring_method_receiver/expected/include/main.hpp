@@ -11,8 +11,11 @@ struct Page;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(b: bytes) -> int:
 ::tpy::BigInt take(::tpy::BytesView b);
+// def render(n: int) -> bytes:
 ::tpy::Bytes render(const ::tpy::BigInt& n);
+// def main() -> None:
 void main();
 
 // # An f-string used directly as a method receiver -- the std::format rvalue
@@ -37,11 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const Page& obj) {
 
 
 // def __init__(self) -> None:
+//     self.body = b""
 inline Page::Page() : body(::tpy::Bytes{}) {}
 
 // def size(self) -> int:
+//     return len(self.body)
 inline ::tpy::BigInt Page::size() const {
-    // return len(self.body)
     return ::tpy::BigInt(::tpy::__len__(this->body));
 }
 void __tpy_init();

@@ -5,37 +5,40 @@ namespace tpyapp::main {
 
 
 // def free_fn() -> int32:
+//     # comment before a free-function docstring
+//     """Free function docstring."""
+//     return 1
 int32_t free_fn() {
-    // # comment before a free-function docstring
-    // return 1
     return 1;
 }
 
 // def skipped() -> None:
+//     # `pass` is the boundary: unlike a docstring it keeps its own source line
+//     # on top of the trivia.
+//     pass
 void skipped() {
-    // # `pass` is the boundary: unlike a docstring it keeps its own source line
-    // # on top of the trivia.
-    // pass
 }
 
 // def main() -> None:
+//     c = Counter()
+//     skipped()
+//     print(free_fn() + c.bump() + c.bump())
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // skipped()
     skipped();
-    // print(free_fn() + c.bump() + c.bump())
     std::cout << (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(free_fn(), c.bump())), c.bump())) << "\n";
 }
 
+// # A docstring emits no code, but the `#` comments preceding it still reach the
+// # generated C++ -- at module, function, constructor and method level.
+// """Module docstring, preceded by the comment block above."""
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A docstring emits no code, but the `#` comments preceding it still reach the
-    // # generated C++ -- at module, function, constructor and method level.
-    // main()
     main();
 }
 

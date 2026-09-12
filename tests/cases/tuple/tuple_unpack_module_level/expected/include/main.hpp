@@ -19,8 +19,11 @@ extern int32_t LO;
 extern int32_t HI;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_pair() -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> get_pair();
+// def get_triple() -> tuple[int32, int32, int32]:
 std::tuple<int32_t, int32_t, int32_t> get_triple();
+// def use_globals() -> None:
 void use_globals();
 
 void __tpy_init();

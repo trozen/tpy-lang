@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     print(cast(str, b.peek()))
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // print(cast(str, b.peek()))
     std::cout << ::tpy::any_cast_or_panic<std::string>(b.peek()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

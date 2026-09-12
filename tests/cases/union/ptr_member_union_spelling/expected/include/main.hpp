@@ -12,7 +12,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def takes(u: PtrPet) -> int32:  # tpyc: ok
 int32_t takes(const ::tpy::Union<Cat*, Dog*>& u);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -49,9 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Dog::Dog(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cat::Cat(int32_t n) : n(n) {}
 using PtrPet = ::tpy::Union<Cat*, Dog*>;
 

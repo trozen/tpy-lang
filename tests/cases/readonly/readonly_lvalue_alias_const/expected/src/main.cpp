@@ -6,27 +6,27 @@ namespace tpyapp::main {
 
 // @readonly
 // def alias_param(b: Box) -> int32:
+//     alias = b  # lvalue alias -> const Box*
+//     return alias.get_value()
 int32_t alias_param(const Box& b) {
-    // alias = b  # lvalue alias -> const Box*
     const Box& alias = b;
-    // return alias.get_value()
     return alias.get_value();
 }
 
 // def main() -> None:
+//     b = Box(int32(42))
+//     print(alias_param(b))
 void main() {
-    // b = Box(int32(42))
     Box b = Box(42);
-    // print(alias_param(b))
     std::cout << alias_param(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

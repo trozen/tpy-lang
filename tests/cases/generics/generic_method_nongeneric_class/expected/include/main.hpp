@@ -11,6 +11,7 @@ struct Converter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Method-level type parameter on a non-generic class
@@ -21,9 +22,9 @@ struct Converter {
     Converter();
 
     // def identity[U](self, val: U) -> U:
+    //     return val
     template<typename U>
     ::tpy::val_or_cref_t<U> identity(::tpy::readonly_form_t<U> val) const {
-        // return val
         return ::tpy::param_to_return<U>(val);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Converter";
@@ -36,8 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const Converter& obj) {
 
 
 // def __init__(self):
+//     pass
 inline Converter::Converter() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

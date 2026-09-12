@@ -5,51 +5,52 @@ namespace tpyapp::main {
 
 
 // def build_obj() -> Own[Json]:
+//     d: dict[str, Json] = {"a": 1, "b": 2}
+//     return d
 Json build_obj() {
-    // d: dict[str, Json] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, Json> d = ::tpy::ordered_map<std::string, Json>({{"a", 1}, {"b", 2}});
-    // return d
     return d;
 }
 
 // def build_arr() -> Own[Json]:
+//     xs: list[Json] = [1, 2, 3]
+//     return xs
 Json build_arr() {
-    // xs: list[Json] = [1, 2, 3]
     std::vector<Json> xs = {1, 2, 3};
-    // return xs
     return xs;
 }
 
 // def main() -> None:
+//     obj: Json = build_obj()
+//     if isinstance(obj, dict):
+//         obj["c"] = 3
+//         print(len(obj))
+//
+//     arr: Json = build_arr()
+//     if isinstance(arr, list):
+//         arr.append(4)
+//         print(len(arr))
 void main() {
-    // obj: Json = build_obj()
     Json obj = build_obj();
-    // if isinstance(obj, dict):
     if (std::holds_alternative<::tpy::ordered_map<std::string, Json>>(obj.value)) {
         auto& __obj = std::get<::tpy::ordered_map<std::string, Json>>(obj.value);
-        // obj["c"] = 3
         ::tpy::__setitem__(__obj, "c", 3);
-        // print(len(obj))
         std::cout << ::tpy::__len__(__obj) << "\n";
     }
-    // arr: Json = build_arr()
     Json arr = build_arr();
-    // if isinstance(arr, list):
     if (std::holds_alternative<std::vector<Json>>(arr.value)) {
         auto& __arr = std::get<std::vector<Json>>(arr.value);
-        // arr.append(4)
         __arr.push_back(4);
-        // print(len(arr))
         std::cout << ::tpy::__len__(__arr) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

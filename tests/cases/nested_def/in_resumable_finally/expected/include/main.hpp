@@ -17,12 +17,16 @@ struct __gen_gen_def_in_finally;
 struct __coro_called_from_finally;
 struct __coro_main;
 
+// async def def_in_finally() -> int32:
 __coro_def_in_finally def_in_finally();
+// def gen_def_in_finally() -> Iterator[int32]:
 __gen_gen_def_in_finally gen_def_in_finally();
+// async def called_from_finally() -> int32:
 __coro_called_from_finally called_from_finally();
+// async def main() -> None:
 __coro_main main();
 
-// Async coroutine: def_in_finally
+// async def def_in_finally() -> int32:
 struct __coro_def_in_finally {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -64,7 +68,7 @@ struct __coro_def_in_finally {
     }
 };
 
-// Async coroutine: called_from_finally
+// async def called_from_finally() -> int32:
 struct __coro_called_from_finally {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -106,7 +110,7 @@ struct __coro_called_from_finally {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -134,7 +138,7 @@ struct __coro_main {
     }
 };
 
-// Generator: gen_def_in_finally
+// def gen_def_in_finally() -> Iterator[int32]:
 struct __gen_gen_def_in_finally : public ::tpy::next_iter_mixin<__gen_gen_def_in_finally, int32_t> {
     ::tpy::frame_state __state;
     int32_t total;

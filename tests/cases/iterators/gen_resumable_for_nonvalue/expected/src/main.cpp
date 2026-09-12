@@ -5,6 +5,9 @@ namespace tpyapp::main {
 
 
 // def doubled(items: list[Node]) -> Iterator[int32]:
+//     for it in items:
+//         yield it.x
+//         yield it.x + 100
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -14,7 +17,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield it.x + 100
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(it->x, 100));
     }
@@ -28,7 +30,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         it = &(*((*__for_it_0))++);
-        // yield it.x
         __state = S_RESUME_0;
         return it->x;
     }
@@ -44,10 +45,11 @@ __gen_doubled doubled(std::vector<Node>& items) {
 }
 
 // def main() -> None:
+//     data = [Node(1), Node(2), Node(3)]
+//     for v in doubled(data):
+//         print(v)
 void main() {
-    // data = [Node(1), Node(2), Node(3)]
     std::vector<Node> data = {Node(1), Node(2), Node(3)};
-    // for v in doubled(data):
     {
         auto __src_0 = doubled(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -55,18 +57,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

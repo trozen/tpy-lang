@@ -5,18 +5,19 @@ namespace tpyapp::main {
 
 
 // def time() -> int:
+//     return 42
 ::tpy::BigInt time() {
-    // return 42
     return ::tpy::BigInt(42);
 }
 
+// import time
+//
+// print(time())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import time
-    // print(time())
     std::cout << time() << "\n";
 }
 

@@ -18,6 +18,7 @@ struct __coro_drive;
 struct __coro_Holder_direct;
 struct __coro_Holder_reguard;
 
+// async def drive() -> None:
 __coro_drive drive();
 
 // class Holder:
@@ -40,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: Holder.direct
+// async def direct(self) -> int32:
 struct __coro_Holder_direct {
     int32_t __state;
     bool __cancel_pending;
@@ -66,7 +67,7 @@ inline __coro_Holder_direct Holder::direct() const {
     return __coro_Holder_direct(*this);
 }
 
-// Async coroutine: Holder.reguard
+// async def reguard(self) -> int32:
 struct __coro_Holder_reguard {
     int32_t __state;
     bool __cancel_pending;
@@ -94,7 +95,7 @@ inline __coro_Holder_reguard Holder::reguard() const {
     return __coro_Holder_reguard(*this);
 }
 
-// Async coroutine: drive
+// async def drive() -> None:
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;
@@ -131,6 +132,7 @@ struct __coro_drive {
 
 
 // def __init__(self, v: int32 | None) -> None:
+//     self.f = v
 inline Holder::Holder(std::optional<int32_t> v) : f(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

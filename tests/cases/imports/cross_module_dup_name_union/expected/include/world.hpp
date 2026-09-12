@@ -30,6 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, lat: int):
+//     self.lat = lat
 inline Point::Point(const ::tpy::BigInt& lat) : lat(lat) {}
 void __tpy_init();
 } // namespace tpyapp::world

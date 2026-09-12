@@ -11,6 +11,7 @@ struct Foo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Foo:
@@ -35,12 +36,13 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Foo::Foo(int32_t x) : x(x) {}
 
 // @readonly()
 // def get_x(self) -> int32:
+//     return self.x
 inline int32_t Foo::get_x() const {
-    // return self.x
     return this->x;
 }
 void __tpy_init();

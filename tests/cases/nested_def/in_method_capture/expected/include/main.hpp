@@ -11,6 +11,7 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Acc:
@@ -38,28 +39,32 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self) -> None:
+//     self.total = 0
+//     self.count = 0
 inline Acc::Acc() : total(0), count(0) {}
 
 // def collect(self, k: int32) -> None:
+//     bonus = 1
+//
+//     def feed() -> None:
+//         self.total += k + bonus
+//         self._tick()
+//
+//     feed()
+//     feed()
 inline void Acc::collect(int32_t k) {
-    // bonus = 1
     int32_t bonus = 1;
-    // def feed() -> None:
     auto feed = [&bonus, &k, this]() {
-        // self.total += k + bonus
         this->total = ::tpy::add_check<int32_t>(this->total, (::tpy::add_check<int32_t>(k, bonus)));
-        // self._tick()
         this->_tick();
     };
-    // feed()
     feed();
-    // feed()
     feed();
 }
 
 // def _tick(self) -> None:
+//     self.count += 1
 inline void Acc::_tick() {
-    // self.count += 1
     this->count = ::tpy::add_check<int32_t>(this->count, 1);
 }
 void __tpy_init();

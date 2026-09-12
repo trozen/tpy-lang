@@ -5,8 +5,9 @@ namespace tpyapp::main {
 
 
 // def main():
+//     for x in doubled([1, 2, 3, 4, 5]):
+//         print(x)
 void main() {
-    // for x in doubled([1, 2, 3, 4, 5]):
     {
         std::vector<int32_t> __tmp_1 = {1, 2, 3, 4, 5};
         auto __src_0 = doubled(__tmp_1);
@@ -15,18 +16,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

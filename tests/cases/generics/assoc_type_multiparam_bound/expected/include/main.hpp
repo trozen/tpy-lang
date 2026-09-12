@@ -19,12 +19,16 @@ struct ListStr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_first[K, V, T: Pair[K, V]](x: T) -> K:      # tpyc: ok
 template<typename K, typename V, Pair<K, V> T>
 ::tpy::val_or_ref_t<K> take_first(::tpy::param_val_or_ref_t<T> x);
+// def take_second[K, V, T: Pair[K, V]](x: T) -> V:     # tpyc: ok
 template<typename K, typename V, Pair<K, V> T>
 ::tpy::val_or_ref_t<V> take_second(::tpy::param_val_or_ref_t<T> x);
+// def head[K, V, T: Pair[list[K], V]](x: T) -> K:      # tpyc: ok
 template<typename K, typename V, Pair<std::vector<K>, V> T>
 ::tpy::val_or_ref_t<K> head(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // class IntStr:
@@ -77,50 +81,54 @@ inline std::ostream& operator<<(std::ostream& os, const ListStr& obj) {
 
 
 // def __init__(self, a: int, b: str):
+//     self.a = a
+//     self.b = b
 inline IntStr::IntStr(const ::tpy::BigInt& a, std::string_view b) : a(a), b(b) {}
 
 // def first(self) -> int:
+//     return self.a
 inline ::tpy::BigInt IntStr::first() const {
-    // return self.a
     return this->a;
 }
 
 // def second(self) -> str:
+//     return self.b
 inline std::string IntStr::second() const {
-    // return self.b
     return this->b;
 }
 
 // def __init__(self, xs: list[int], s: str):
+//     self.xs = xs
+//     self.s = s
 inline ListStr::ListStr(const std::vector<::tpy::BigInt>& xs, std::string_view s) : xs(xs), s(s) {}
 
 // def first(self) -> list[int]:
+//     return self.xs
 inline std::vector<::tpy::BigInt>& ListStr::first() {
-    // return self.xs
     return this->xs;
 }
 
 // def second(self) -> str:
+//     return self.s
 inline std::string ListStr::second() const {
-    // return self.s
     return this->s;
 }
 // def take_first[K, V, T: Pair[K, V]](x: T) -> K:      # tpyc: ok
+//     return x.first()
 template<typename K, typename V, Pair<K, V> T>
 ::tpy::val_or_ref_t<K> take_first(::tpy::param_val_or_ref_t<T> x) {
-    // return x.first()
     return x.first();
 }
 // def take_second[K, V, T: Pair[K, V]](x: T) -> V:     # tpyc: ok
+//     return x.second()
 template<typename K, typename V, Pair<K, V> T>
 ::tpy::val_or_ref_t<V> take_second(::tpy::param_val_or_ref_t<T> x) {
-    // return x.second()
     return x.second();
 }
 // def head[K, V, T: Pair[list[K], V]](x: T) -> K:      # tpyc: ok
+//     return x.first()[0]
 template<typename K, typename V, Pair<std::vector<K>, V> T>
 ::tpy::val_or_ref_t<K> head(::tpy::param_val_or_ref_t<T> x) {
-    // return x.first()[0]
     return ::tpy::__getitem__(x.first(), 0);
 }
 

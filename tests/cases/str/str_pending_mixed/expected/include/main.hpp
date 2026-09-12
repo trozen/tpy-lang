@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_mixed() -> None:
 void test_mixed();
 
 void __tpy_init();

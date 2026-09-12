@@ -5,103 +5,106 @@ namespace tpyapp::main {
 
 
 // def bump(u: A | B) -> None:
+//     if isinstance(u, A):
+//         u.x = u.x + 1
+//     else:
+//         u.y = u.y + 10
 void bump(::tpy::Union<A*, B*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
-        // u.x = u.x + 1
         __u.x = (::tpy::add_check<int32_t>(__u.x, 1));
-    // else:
     } else {
         auto& __u = *std::get<B*>(u);
-        // u.y = u.y + 10
         __u.y = (::tpy::add_check<int32_t>(__u.y, 10));
     }
 }
 
 // def bump_counter(u: Counter | A) -> None:
+//     if isinstance(u, Counter):
+//         u.n = u.n + 100
 void bump_counter(::tpy::Union<A*, Counter*> u) {
-    // if isinstance(u, Counter):
     if (std::holds_alternative<Counter*>(u)) {
         auto& __u = *std::get<Counter*>(u);
-        // u.n = u.n + 100
         __u.n = (::tpy::add_check<int32_t>(__u.n, 100));
     }
 }
 
 // def describe(u: A | B | None) -> int32:
+//     if u is None:
+//         return -1
+//     if isinstance(u, A):
+//         return u.x
+//     return u.y
 int32_t describe(::tpy::Union<std::monostate, const A*, const B*> u) {
-    // if u is None:
     if ((std::holds_alternative<std::monostate>(u))) {
-        // return -1
         return -1;
     }
-    // if isinstance(u, A):
     if (std::holds_alternative<const A*>(u)) {
         auto& __u = *std::get<const A*>(u);
-        // return u.x
         return __u.x;
     }
     auto& __u = *std::get<const B*>(u);
-    // return u.y
     return __u.y;
 }
 
 // def via_param(a: A) -> int32:
+//     bump(a)
+//     return a.x
 int32_t via_param(A& a) {
-    // bump(a)
     bump(::tpy::Union<A*, B*>{&(a)});
-    // return a.x
     return a.x;
 }
 
 // def main() -> None:
+//     a = A(5)
+//     print(via_param(a))
+//     print(a.x)  # the callee mutated the caller's object, not a copy
+//     print(describe(a))
+//     print(describe(None))
+//
+//     c = Counter(1)
+//     c.bump_via_union()
+//     print(c.n)
+//
+//     pair = Pair(3, 30)
+//     pair.bump_picked(False)
+//     pair.bump_picked(True)
+//     print(pair.a1.x, pair.a2.x)
+//
+//     xs = [A(7), A(8)]
+//     for elem in xs:
+//         bump(elem)
+//     print(xs[0].x, xs[1].x)  # loop-var lifts alias the list elements
 void main() {
-    // a = A(5)
     A a = A(5);
-    // print(via_param(a))
     std::cout << via_param(a) << "\n";
-    // print(a.x)  # the callee mutated the caller's object, not a copy
     std::cout << a.x << "\n";
-    // print(describe(a))
     std::cout << describe(::tpy::Union<std::monostate, const A*, const B*>{&(a)}) << "\n";
-    // print(describe(None))
     std::cout << describe(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n";
-    // c = Counter(1)
     Counter c = Counter(1);
-    // c.bump_via_union()
     c.bump_via_union();
-    // print(c.n)
     std::cout << c.n << "\n";
-    // pair = Pair(3, 30)
     Pair pair = Pair(3, 30);
-    // pair.bump_picked(False)
     pair.bump_picked(false);
-    // pair.bump_picked(True)
     pair.bump_picked(true);
-    // print(pair.a1.x, pair.a2.x)
     std::cout << pair.a1.x << " " << pair.a2.x << "\n";
-    // xs = [A(7), A(8)]
     std::array<A, 2> xs = {A(7), A(8)};
-    // for elem in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& elem = *__beg_0;
-        // bump(elem)
         bump(::tpy::Union<A*, B*>{&(elem)});
     }
-    // print(xs[0].x, xs[1].x)  # loop-var lifts alias the list elements
     std::cout << ::tpy::__getitem__(xs, 0).x << " " << ::tpy::__getitem__(xs, 1).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

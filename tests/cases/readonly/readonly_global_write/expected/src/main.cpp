@@ -3,27 +3,27 @@
 
 namespace tpyapp::main {
 
-// x: int32 = 0
 int32_t x{};
 
 // @readonly
 // def ok() -> int32:
+//     global x
+//     x = 1  # tpyc: ok
+//     return x
 int32_t ok() {
-    // global x
-    // x = 1  # tpyc: ok
     x = 1;
-    // return x
     return x;
 }
 
+// x: int32 = 0
+//
+// print(ok())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 = 0
     x = 0;
-    // print(ok())
     std::cout << ok() << "\n";
 }
 

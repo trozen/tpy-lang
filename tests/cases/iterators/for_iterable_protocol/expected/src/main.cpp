@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(0, 5)
+//     print(sum_items(c))
+//
+//     c2 = Counter(10, 15)
+//     print(sum_items(c2))
 void main() {
-    // c = Counter(0, 5)
     Counter c = Counter(0, 5);
-    // print(sum_items(c))
     std::cout << sum_items(c) << "\n";
-    // c2 = Counter(10, 15)
     Counter c2 = Counter(10, 15);
-    // print(sum_items(c2))
     std::cout << sum_items(c2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

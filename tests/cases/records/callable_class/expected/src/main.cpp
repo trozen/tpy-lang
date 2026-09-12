@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main():
+//     d = Doubler()
+//     print(d(5))
+//     print(d(100))
+//
+//     a = Adder(10)
+//     print(a(5))
+//     print(a(32))
 void main() {
-    // d = Doubler()
     Doubler d = Doubler();
-    // print(d(5))
     std::cout << d.__call__(5) << "\n";
-    // print(d(100))
     std::cout << d.__call__(100) << "\n";
-    // a = Adder(10)
     Adder a = Adder(10);
-    // print(a(5))
     std::cout << a.__call__(5) << "\n";
-    // print(a(32))
     std::cout << a.__call__(32) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

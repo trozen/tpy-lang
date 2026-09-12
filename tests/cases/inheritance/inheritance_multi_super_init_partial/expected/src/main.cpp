@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Combined(int32(10), int32(20))
+//     print(c.a)
+//     print(c.b)
 void main() {
-    // c = Combined(int32(10), int32(20))
     Combined c = Combined(10, 20);
-    // print(c.a)
     std::cout << c.a << "\n";
-    // print(c.b)
     std::cout << c.b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

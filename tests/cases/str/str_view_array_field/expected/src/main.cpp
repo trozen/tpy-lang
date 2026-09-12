@@ -5,156 +5,166 @@ namespace tpyapp::main {
 
 
 // def test_array_subscript_view() -> None:
+//     """Array element access -> string_view (stable storage)."""
+//     arr: Array[str, 3] = ["hello", "world", "test"]
+//     s = arr[int32(0)]  # tpyc: type(StrView)
+//     print(s)
 void test_array_subscript_view() {
-    // arr: Array[str, 3] = ["hello", "world", "test"]
     std::array<std::string, 3> arr = {"hello", "world", "test"};
-    // s = arr[int32(0)]  # tpyc: type(StrView)
     std::string_view s = ::tpy::__getitem__(arr, 0);
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_array_subscript_mutated() -> None:
+//     """Array element overwrite invalidates view -> falls back to str."""
+//     arr: Array[str, 2] = ["old", "value"]
+//     s = arr[int32(0)]  # tpyc: type(str)
+//     arr[int32(0)] = "new"
+//     print(s)
 void test_array_subscript_mutated() {
-    // arr: Array[str, 2] = ["old", "value"]
     std::array<std::string, 2> arr = {"old", "value"};
-    // s = arr[int32(0)]  # tpyc: type(str)
     std::string s = ::tpy::__getitem__(arr, 0);
-    // arr[int32(0)] = "new"
     ::tpy::__setitem__(arr, 0, "new");
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_record_field_view() -> None:
+//     """Record field access -> string_view (stable storage)."""
+//     p = Person("Alice", int32(30))
+//     s = p.name  # tpyc: type(StrView)
+//     print(s)
 void test_record_field_view() {
-    // p = Person("Alice", int32(30))
     Person p = Person("Alice", 30);
-    // s = p.name  # tpyc: type(StrView)
     std::string_view s = p.name;
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_record_field_mutated() -> None:
+//     """Record field reassignment invalidates view -> falls back to str."""
+//     p = Person("Bob", int32(25))
+//     s = p.name  # tpyc: type(str)
+//     p.name = "Charlie"
+//     print(s)
 void test_record_field_mutated() {
-    // p = Person("Bob", int32(25))
     Person p = Person("Bob", 25);
-    // s = p.name  # tpyc: type(str)
     std::string s = p.name;
-    // p.name = "Charlie"
     p.name = "Charlie";
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_record_reassigned() -> None:
+//     """Record variable reassignment invalidates view -> falls back to str."""
+//     p = Person("Dave", int32(40))
+//     s = p.name  # tpyc: type(str)
+//     p = Person("Eve", int32(35))
+//     print(s)
 void test_record_reassigned() {
     std::optional<Person> __slot_2;
-    // p = Person("Dave", int32(40))
     Person __slot_1 = Person("Dave", 40);
     Person* p = &__slot_1;
-    // s = p.name  # tpyc: type(str)
     std::string s = p->name;
-    // p = Person("Eve", int32(35))
     p = &*(__slot_2 = Person("Eve", 35));
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_record_method_mutates() -> None:
+//     """Non-readonly method call on source record invalidates view."""
+//     p = Person("Frank", int32(50))
+//     s = p.name  # tpyc: type(str)
+//     p.rename("Grace")
+//     print(s)
 void test_record_method_mutates() {
-    // p = Person("Frank", int32(50))
     Person p = Person("Frank", 50);
-    // s = p.name  # tpyc: type(str)
     std::string s = p.name;
-    // p.rename("Grace")
     p.rename("Grace");
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_readonly_method_preserves_view() -> None:
+//     """Readonly method call does NOT invalidate the view."""
+//     p = Person("Helen", int32(60))
+//     s = p.name  # tpyc: type(StrView)
+//     g = p.greeting()
+//     print(s)
 void test_readonly_method_preserves_view() {
-    // p = Person("Helen", int32(60))
     Person p = Person("Helen", 60);
-    // s = p.name  # tpyc: type(StrView)
     std::string_view s = p.name;
-    // g = p.greeting()
     std::string g = p.greeting();
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_field_aug_assign_mutates() -> None:
+//     """Field aug-assign invalidates view -> falls back to str."""
+//     p = Person("Iris", int32(70))
+//     s = p.name  # tpyc: type(str)
+//     p.name += "!"
+//     print(s)
 void test_field_aug_assign_mutates() {
-    // p = Person("Iris", int32(70))
     Person p = Person("Iris", 70);
-    // s = p.name  # tpyc: type(str)
     std::string s = p.name;
-    // p.name += "!"
     p.name += "!";
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_array_passed_to_func(arr: Array[str, 2]) -> None:
+//     """Array passed to non-readonly func -> falls back to str."""
+//     s = arr[int32(0)]  # tpyc: type(str)
+//     mutate_array(arr)
+//     print(s)
 void test_array_passed_to_func(std::array<std::string, 2>& arr) {
-    // s = arr[int32(0)]  # tpyc: type(str)
     std::string s = ::tpy::__getitem__(arr, 0);
-    // mutate_array(arr)
     mutate_array(arr);
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def mutate_array(arr: Array[str, 2]) -> None:
+//     arr[int32(0)] = "mutated"
 void mutate_array(std::array<std::string, 2>& arr) {
-    // arr[int32(0)] = "mutated"
     ::tpy::__setitem__(arr, 0, "mutated");
 }
 
 // def test_multiple_views_one_source() -> None:
+//     """Multiple views from same source; one mutation invalidates all."""
+//     p = Person("X", int32(1))
+//     a = p.name  # tpyc: type(str)
+//     b = p.name  # tpyc: type(str)
+//     p.name = "Y"
+//     print(a)
+//     print(b)
 void test_multiple_views_one_source() {
-    // p = Person("X", int32(1))
     Person p = Person("X", 1);
-    // a = p.name  # tpyc: type(str)
     std::string a = p.name;
-    // b = p.name  # tpyc: type(str)
     std::string b = p.name;
-    // p.name = "Y"
     p.name = "Y";
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
+// test_array_subscript_view()
+// test_array_subscript_mutated()
+// test_record_field_view()
+// test_record_field_mutated()
+// test_record_reassigned()
+// test_record_method_mutates()
+// test_readonly_method_preserves_view()
+// test_field_aug_assign_mutates()
+// test_array_passed_to_func(["first", "second"])
+// test_multiple_views_one_source()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_array_subscript_view()
     test_array_subscript_view();
-    // test_array_subscript_mutated()
     test_array_subscript_mutated();
-    // test_record_field_view()
     test_record_field_view();
-    // test_record_field_mutated()
     test_record_field_mutated();
-    // test_record_reassigned()
     test_record_reassigned();
-    // test_record_method_mutates()
     test_record_method_mutates();
-    // test_readonly_method_preserves_view()
     test_readonly_method_preserves_view();
-    // test_field_aug_assign_mutates()
     test_field_aug_assign_mutates();
-    // test_array_passed_to_func(["first", "second"])
     std::array<std::string, 2> __tmp_1 = {"first", "second"};
     test_array_passed_to_func(__tmp_1);
-    // test_multiple_views_one_source()
     test_multiple_views_one_source();
 }
 

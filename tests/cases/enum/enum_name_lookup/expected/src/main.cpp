@@ -47,31 +47,32 @@ namespace tpyapp::main {
 
 
 // def lookup(name: str) -> Color:
+//     return Color[name]
 Color lookup(std::string_view name) {
-    // return Color[name]
     return ::tpy::EnumUtil<Color>::from_name(name);
 }
 
 // def main() -> None:
+//     print(Color["Red"])
+//     print(Color["Green"])
+//     print(Color["Blue"])
+//     print(lookup("Green"))
 void main() {
-    // print(Color["Red"])
     std::cout << ::tpy::EnumUtil<Color>::from_name("Red") << "\n";
-    // print(Color["Green"])
     std::cout << ::tpy::EnumUtil<Color>::from_name("Green") << "\n";
-    // print(Color["Blue"])
     std::cout << ::tpy::EnumUtil<Color>::from_name("Blue") << "\n";
-    // print(lookup("Green"))
     std::cout << lookup("Green") << "\n";
 }
 
+// # Test enum name lookup via subscript: Color["Red"]
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test enum name lookup via subscript: Color["Red"]
-    // from enum import Enum
-    // main()
     main();
 }
 

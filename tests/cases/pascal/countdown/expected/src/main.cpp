@@ -3,18 +3,19 @@
 
 namespace tpyapp::main {
 
-// i: integer;
 int32_t i{};
 
+// i: integer;
+//
+// for i := 5 downto 1 do
+//   writeln(i);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // for i := 5 downto 1 do
     int32_t __stop_0 = ::tpy::sub_check<int32_t>(1, 1);
     for (int32_t i = 5; i > __stop_0; --i) {
-        // writeln(i);
         std::cout << i << "\n";
     }
 }

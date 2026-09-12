@@ -6,14 +6,14 @@ namespace tpyapp::b {
 
 
 // def b_func() -> int32:
+//     return boost(7)
 int32_t b_func() {
-    // return boost(7)
     return ::tpyapp::util::boost(7);
 }
 
 // def b_helper() -> int32:
+//     return 3
 int32_t b_helper() {
-    // return 3
     return 3;
 }
 
@@ -22,19 +22,19 @@ int32_t b_helper() {
 // # `from a import a_func` line above would be a dead import and the
 // # cycle would be registered solely on the import-statement edge.
 // def b_func_via_a() -> int32:
+//     return a_func()
 int32_t b_func_via_a() {
-    // return a_func()
     return ::tpyapp::a::a_func();
 }
 
+// from a import a_func
+// from util import boost
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import a_func
     ::tpyapp::a::__tpy_init();
-    // from util import boost
     ::tpyapp::util::__tpy_init();
 }
 

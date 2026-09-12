@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Client(name="MyClient")
+//     c.connect(host="localhost", port=int32(8080))
 void main() {
-    // c = Client(name="MyClient")
     Client c = Client("MyClient");
-    // c.connect(host="localhost", port=int32(8080))
     c.connect(Options("localhost", 8080));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

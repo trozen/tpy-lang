@@ -5,236 +5,236 @@ namespace tpyapp::main {
 
 
 // def take(x: Own[P | None]) -> int32:
+//     if x is None:
+//         return int32(-1)
+//     return x.x
 int32_t take(std::optional<P>&& x) {
-    // if x is None:
     if ((!x.has_value())) {
-        // return int32(-1)
         return -1;
     }
-    // return x.x
     return x->x;
 }
 
 // def make(v: int32) -> Own[P | None]:
+//     if v > 0:
+//         return P(v)
+//     return None
 std::optional<P> make(int32_t v) {
-    // if v > 0:
     if ((v > 0)) {
-        // return P(v)
         return P(v);
     }
-    // return None
     return std::nullopt;
 }
 
 // def passthrough(x: Own[P | None]) -> Own[P | None]:
+//     # Returning the storage-form Optional param directly: codegen must
+//     # `std::move(x)` the whole optional rather than dereffing -- (*x) on
+//     # a nullopt is UB and would also lose the None case.
+//     return x
 std::optional<P> passthrough(std::optional<P>&& x) {
-    // # Returning the storage-form Optional param directly: codegen must
-    // # `std::move(x)` the whole optional rather than dereffing -- (*x) on
-    // # a nullopt is UB and would also lose the None case.
-    // return x
     return std::move(x);
 }
 
 // def borrow(p: P | None) -> int32:
+//     if p is None:
+//         return int32(-1)
+//     return p.x
 int32_t borrow(const P* p) {
-    // if p is None:
     if ((p == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return p.x
     return p->x;
 }
 
 // def forward_borrow(x: Own[P | None]) -> int32:
+//     # Forwarding a storage-form Optional param into a borrow-form
+//     # `P | None` slot needs an explicit optional_to_ptr lift -- C++ won't
+//     # convert std::optional<P> to const P*.
+//     return borrow(x)
 int32_t forward_borrow(std::optional<P>&& x) {
-    // # Forwarding a storage-form Optional param into a borrow-form
-    // # `P | None` slot needs an explicit optional_to_ptr lift -- C++ won't
-    // # convert std::optional<P> to const P*.
-    // return borrow(x)
     return borrow(::tpy::optional_to_ptr(x));
 }
 
 // def reassign_pointer(x: Own[P | None]) -> int32:
+//     # Reassign a pointer-form local from the Own-Optional param: the
+//     # rebind path needs the lift, otherwise C++ assigns optional<P> to P*.
+//     y: P | None = None
+//     y = x
+//     if y is None:
+//         return int32(-1)
+//     return y.x
 int32_t reassign_pointer(std::optional<P>&& x) {
-    // # Reassign a pointer-form local from the Own-Optional param: the
-    // # rebind path needs the lift, otherwise C++ assigns optional<P> to P*.
-    // y: P | None = None
     P* y = nullptr;
-    // y = x
     y = ::tpy::optional_to_ptr(x);
-    // if y is None:
     if ((y == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return y.x
     return y->x;
 }
 
 // def first_decl(x: Own[P | None]) -> int32:
+//     # First-declaration of a pointer-form local from the Own-Optional
+//     # param (no prior `y = None` line). The var-decl path needs the lift
+//     # too -- otherwise C++ declares `P* y = x` with x as optional<P>.
+//     y = x
+//     if y is None:
+//         return int32(-1)
+//     return y.x
 int32_t first_decl(std::optional<P>&& x) {
-    // # First-declaration of a pointer-form local from the Own-Optional
-    // # param (no prior `y = None` line). The var-decl path needs the lift
-    // # too -- otherwise C++ declares `P* y = x` with x as optional<P>.
-    // y = x
     P* y = ::tpy::optional_to_ptr(x);
-    // if y is None:
     if ((y == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return y.x
     return y->x;
 }
 
 // def test_call_arg_lvalue_and_none() -> None:
+//     print(take(None))
+//     a = P(7)
+//     print(take(a))
 void test_call_arg_lvalue_and_none() {
-    // print(take(None))
     std::cout << take(std::nullopt) << "\n";
-    // a = P(7)
     P a = P(7);
-    // print(take(a))
     std::cout << take(std::move(a)) << "\n";
 }
 
 // def test_field_assign() -> None:
+//     h = Holder()
+//     h.store(P(42))
+//     if h.slot is not None:
+//         print(h.slot.x)
+//     h.store(None)
+//     print(h.slot is None)
 void test_field_assign() {
-    // h = Holder()
     Holder h = Holder();
-    // h.store(P(42))
     h.store(P(42));
-    // if h.slot is not None:
     if ((h.slot.has_value())) {
-        // print(h.slot.x)
         std::cout << (*h.slot).x << "\n";
     }
-    // h.store(None)
     h.store(std::nullopt);
-    // print(h.slot is None)
     std::cout << ::tpy::print_bool((!h.slot.has_value())) << "\n";
 }
 
 // def test_return_into_pointer_receiver() -> None:
+//     # Own[P|None] return into a P|None receiver: function returns
+//     # std::optional<P> (storage form) but the local is P*. Codegen
+//     # materializes a slot for the optional and lifts via optional_to_ptr.
+//     r = make(int32(11))
+//     if r is not None:
+//         print(r.x)
+//     s = make(int32(-1))
+//     print(s is None)
 void test_return_into_pointer_receiver() {
-    // # Own[P|None] return into a P|None receiver: function returns
-    // # std::optional<P> (storage form) but the local is P*. Codegen
-    // # materializes a slot for the optional and lifts via optional_to_ptr.
-    // r = make(int32(11))
     std::optional<P> __slot_1 = make(11);
     P* r = ::tpy::optional_to_ptr(__slot_1);
-    // if r is not None:
     if ((r != nullptr)) {
-        // print(r.x)
         std::cout << r->x << "\n";
     }
-    // s = make(int32(-1))
     std::optional<P> __slot_2 = make(-1);
     P* s = ::tpy::optional_to_ptr(__slot_2);
-    // print(s is None)
     std::cout << ::tpy::print_bool((s == nullptr)) << "\n";
 }
 
 // def test_forward_own_return_to_own_param() -> None:
+//     print(take(make(int32(13))))
 void test_forward_own_return_to_own_param() {
-    // print(take(make(int32(13))))
     std::cout << take(make(13)) << "\n";
 }
 
 // def test_return_passthrough() -> None:
+//     # The function's return type is the same Own[P|None] shape --
+//     # preserves the None case across the call.
+//     pt = passthrough(P(17))
+//     if pt is not None:
+//         print(pt.x)
+//     nope = passthrough(None)
+//     print(nope is None)
 void test_return_passthrough() {
-    // # The function's return type is the same Own[P|None] shape --
-    // # preserves the None case across the call.
-    // pt = passthrough(P(17))
     std::optional<P> __slot_1 = passthrough(P(17));
     P* pt = ::tpy::optional_to_ptr(__slot_1);
-    // if pt is not None:
     if ((pt != nullptr)) {
-        // print(pt.x)
         std::cout << pt->x << "\n";
     }
-    // nope = passthrough(None)
     std::optional<P> __slot_2 = passthrough(std::nullopt);
     P* nope = ::tpy::optional_to_ptr(__slot_2);
-    // print(nope is None)
     std::cout << ::tpy::print_bool((nope == nullptr)) << "\n";
 }
 
 // def test_forward_to_borrow_slot() -> None:
+//     # Forward into a borrow-form `P | None` slot via optional_to_ptr.
+//     print(forward_borrow(P(19)))
+//     print(forward_borrow(None))
 void test_forward_to_borrow_slot() {
-    // # Forward into a borrow-form `P | None` slot via optional_to_ptr.
-    // print(forward_borrow(P(19)))
     std::cout << forward_borrow(P(19)) << "\n";
-    // print(forward_borrow(None))
     std::cout << forward_borrow(std::nullopt) << "\n";
 }
 
 // def test_reassign_pointer_local() -> None:
+//     print(reassign_pointer(P(31)))
+//     print(reassign_pointer(None))
 void test_reassign_pointer_local() {
-    // print(reassign_pointer(P(31)))
     std::cout << reassign_pointer(P(31)) << "\n";
-    // print(reassign_pointer(None))
     std::cout << reassign_pointer(std::nullopt) << "\n";
 }
 
 // def test_first_decl_pointer_local() -> None:
+//     print(first_decl(P(37)))
+//     print(first_decl(None))
 void test_first_decl_pointer_local() {
-    // print(first_decl(P(37)))
     std::cout << first_decl(P(37)) << "\n";
-    // print(first_decl(None))
     std::cout << first_decl(std::nullopt) << "\n";
 }
 
 // def test_rebind_from_successive_returns() -> None:
+//     # A single std::optional<P> slot holds the current value, the
+//     # pointer-local re-lifts after each rebind.
+//     z = make(int32(41))
+//     z = make(int32(43))
+//     if z is not None:
+//         print(z.x)
+//     z = make(int32(-1))
+//     print(z is None)
 void test_rebind_from_successive_returns() {
-    // # A single std::optional<P> slot holds the current value, the
-    // # pointer-local re-lifts after each rebind.
-    // z = make(int32(41))
     std::optional<P> __slot_1 = make(41);
     P* z = ::tpy::optional_to_ptr(__slot_1);
-    // z = make(int32(43))
     __slot_1 = make(43);
     z = ::tpy::optional_to_ptr(__slot_1);
-    // if z is not None:
     if ((z != nullptr)) {
-        // print(z.x)
         std::cout << z->x << "\n";
     }
-    // z = make(int32(-1))
     __slot_1 = make(-1);
     z = ::tpy::optional_to_ptr(__slot_1);
-    // print(z is None)
     std::cout << ::tpy::print_bool((z == nullptr)) << "\n";
 }
 
 // def main() -> None:
+//     test_call_arg_lvalue_and_none()
+//     test_field_assign()
+//     test_return_into_pointer_receiver()
+//     test_forward_own_return_to_own_param()
+//     test_return_passthrough()
+//     test_forward_to_borrow_slot()
+//     test_reassign_pointer_local()
+//     test_first_decl_pointer_local()
+//     test_rebind_from_successive_returns()
 void main() {
-    // test_call_arg_lvalue_and_none()
     test_call_arg_lvalue_and_none();
-    // test_field_assign()
     test_field_assign();
-    // test_return_into_pointer_receiver()
     test_return_into_pointer_receiver();
-    // test_forward_own_return_to_own_param()
     test_forward_own_return_to_own_param();
-    // test_return_passthrough()
     test_return_passthrough();
-    // test_forward_to_borrow_slot()
     test_forward_to_borrow_slot();
-    // test_reassign_pointer_local()
     test_reassign_pointer_local();
-    // test_first_decl_pointer_local()
     test_first_decl_pointer_local();
-    // test_rebind_from_successive_returns()
     test_rebind_from_successive_returns();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

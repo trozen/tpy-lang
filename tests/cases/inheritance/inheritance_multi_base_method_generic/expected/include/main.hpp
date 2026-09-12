@@ -12,6 +12,7 @@ struct IntBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -21,12 +22,13 @@ struct Box {
     T item;
 
     // def __init__(self, item: T) -> None:
+    //     self.item = item
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> item) : item(item) {}
 
     // def get(self) -> T:
+    //     return self.item
     ::tpy::val_or_ref_t<T> get() {
-        // return self.item
         return this->item;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -57,13 +59,14 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     Box.__init__(self, value)
 inline IntBox::IntBox(int32_t value) : Box<int32_t>(value) {}
 
 // def fetch(self) -> int32:
+//     # Resolved: Box[int32].get(self) -> int32. The substitution T -> int32
+//     # comes from IntBox's parents entry Box[int32].
+//     return Box.get(self)
 inline int32_t IntBox::fetch() {
-    // # Resolved: Box[int32].get(self) -> int32. The substitution T -> int32
-    // # comes from IntBox's parents entry Box[int32].
-    // return Box.get(self)
     return this->Box<int32_t>::get();
 }
 void __tpy_init();

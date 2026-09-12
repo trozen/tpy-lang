@@ -5,34 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: set[int32] = {1, 2, 3}
+//     print(1 in s)
+//     print(4 in s)
+//     print(1 not in s)
+//     print(4 not in s)
+//
+//     # String set
+//     words: set[str] = {"hello", "world"}
+//     print("hello" in words)
+//     print("foo" in words)
+//     print("foo" not in words)
 void main() {
-    // s: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    // print(1 in s)
     std::cout << ::tpy::print_bool((s.contains(1))) << "\n";
-    // print(4 in s)
     std::cout << ::tpy::print_bool((s.contains(4))) << "\n";
-    // print(1 not in s)
     std::cout << ::tpy::print_bool((!(s.contains(1)))) << "\n";
-    // print(4 not in s)
     std::cout << ::tpy::print_bool((!(s.contains(4)))) << "\n";
-    // # String set
-    // words: set[str] = {"hello", "world"}
     ::tpy::ordered_set<std::string> words = ::tpy::ordered_set<std::string>({"hello", "world"});
-    // print("hello" in words)
     std::cout << ::tpy::print_bool((words.contains("hello"))) << "\n";
-    // print("foo" in words)
     std::cout << ::tpy::print_bool((words.contains("foo"))) << "\n";
-    // print("foo" not in words)
     std::cout << ::tpy::print_bool((!(words.contains("foo")))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,70 +5,72 @@ namespace tpyapp::main {
 
 
 // def range_basic() -> None:
+//     squares = [x * x for x in range(5)]  # tpyc: type(/Array\[int32, 5\]/)
+//     for s in squares:
+//         print(s)
 void range_basic() {
-    // squares = [x * x for x in range(5)]  # tpyc: type(/Array\[int32, 5\]/)
     std::array<int32_t, 5> squares = ::tpy::array_from_index<int32_t, 5>([&](std::size_t __i_0) -> int32_t {
         int32_t x = int32_t(__i_0);
         return (::tpy::mul_check<int32_t>(x, x));
     });
-    // for s in squares:
     auto& __obj_1 = squares;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t s = *__beg_1;
-        // print(s)
         std::cout << s << "\n";
     }
 }
 
 // def range_transform() -> None:
+//     doubled = [x * 2 for x in range(4)]  # tpyc: type(/Array\[int32, 4\]/)
+//     print(len(doubled))
+//     print(doubled[0], doubled[3])
 void range_transform() {
-    // doubled = [x * 2 for x in range(4)]  # tpyc: type(/Array\[int32, 4\]/)
     std::array<int32_t, 4> doubled = ::tpy::array_from_index<int32_t, 4>([&](std::size_t __i_0) -> int32_t {
         int32_t x = int32_t(__i_0);
         return (::tpy::mul_check<int32_t>(x, 2));
     });
-    // print(len(doubled))
     std::cout << ::tpy::__len__(doubled) << "\n";
-    // print(doubled[0], doubled[3])
     std::cout << ::tpy::__getitem__(doubled, 0) << " " << ::tpy::__getitem__(doubled, 3) << "\n";
 }
 
 // def range_empty() -> None:
+//     empty = [x for x in range(0)]  # tpyc: type(/Array\[int32, 0\]/)
+//     print(len(empty))
 void range_empty() {
-    // empty = [x for x in range(0)]  # tpyc: type(/Array\[int32, 0\]/)
     std::array<int32_t, 0> empty = ::tpy::array_from_index<int32_t, 0>([&](std::size_t __i_0) -> int32_t {
         int32_t x = int32_t(__i_0);
         return x;
     });
-    // print(len(empty))
     std::cout << ::tpy::__len__(empty) << "\n";
 }
 
 // def range_two_arg() -> None:
+//     items = [x for x in range(2, 7)]  # tpyc: type(/Array\[int32, 5\]/)
+//     for i in items:
+//         print(i)
 void range_two_arg() {
-    // items = [x for x in range(2, 7)]  # tpyc: type(/Array\[int32, 5\]/)
     std::array<int32_t, 5> items = ::tpy::array_from_index<int32_t, 5>([&](std::size_t __i_0) -> int32_t {
         int32_t x = 2 + int32_t(__i_0);
         return x;
     });
-    // for i in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t i = *__beg_1;
-        // print(i)
         std::cout << i << "\n";
     }
 }
 
 // def array_source() -> None:
+//     src: Array[int32, 4] = [1, 2, 3, 4]
+//     doubled = [x * 2 for x in src]  # tpyc: type(/Array\[int32, 4\]/)
+//     for d in doubled:
+//         print(d)
 void array_source() {
-    // src: Array[int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> src = {1, 2, 3, 4};
-    // doubled = [x * 2 for x in src]  # tpyc: type(/Array\[int32, 4\]/)
     std::array<int32_t, 4> doubled = ({
         auto& __obj_0 = src;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t __i_0) -> int32_t {
@@ -76,22 +78,22 @@ void array_source() {
             return (::tpy::mul_check<int32_t>(x, 2));
         });
     });
-    // for d in doubled:
     auto& __obj_1 = doubled;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t d = *__beg_1;
-        // print(d)
         std::cout << d << "\n";
     }
 }
 
 // def array_filter_fallback() -> None:
+//     src: Array[int32, 4] = [1, 2, 3, 4]
+//     evens = [x for x in src if x % 2 == 0]  # tpyc: type(/list\[int32\]/)
+//     for e in evens:
+//         print(e)
 void array_filter_fallback() {
-    // src: Array[int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> src = {1, 2, 3, 4};
-    // evens = [x for x in src if x % 2 == 0]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> evens = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = src;
@@ -106,67 +108,68 @@ void array_filter_fallback() {
         }
         std::move(__result);
     });
-    // for e in evens:
     auto& __obj_1 = evens;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t e = *__beg_1;
-        // print(e)
         std::cout << e << "\n";
     }
 }
 
 // def range_three_arg() -> None:
+//     evens = [x for x in range(0, 10, 2)]  # tpyc: type(/Array\[int32, 5\]/)
+//     for e in evens:
+//         print(e)
 void range_three_arg() {
-    // evens = [x for x in range(0, 10, 2)]  # tpyc: type(/Array\[int32, 5\]/)
     std::array<int32_t, 5> evens = ::tpy::array_from_index<int32_t, 5>([&](std::size_t __i_0) -> int32_t {
         int32_t x = 0 + int32_t(__i_0) * (2);
         return x;
     });
-    // for e in evens:
     auto& __obj_1 = evens;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t e = *__beg_1;
-        // print(e)
         std::cout << e << "\n";
     }
 }
 
 // def range_negative_step() -> None:
+//     countdown = [x for x in range(10, 0, -2)]  # tpyc: type(/Array\[int32, 5\]/)
+//     for c in countdown:
+//         print(c)
 void range_negative_step() {
-    // countdown = [x for x in range(10, 0, -2)]  # tpyc: type(/Array\[int32, 5\]/)
     std::array<int32_t, 5> countdown = ::tpy::array_from_index<int32_t, 5>([&](std::size_t __i_0) -> int32_t {
         int32_t x = 10 + int32_t(__i_0) * (-2);
         return x;
     });
-    // for c in countdown:
     auto& __obj_1 = countdown;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t c = *__beg_1;
-        // print(c)
         std::cout << c << "\n";
     }
 }
 
 // def range_empty_negative() -> None:
+//     empty = [x for x in range(0, 10, -1)]  # tpyc: type(/Array\[int32, 0\]/)
+//     print(len(empty))
 void range_empty_negative() {
-    // empty = [x for x in range(0, 10, -1)]  # tpyc: type(/Array\[int32, 0\]/)
     std::array<int32_t, 0> empty = ::tpy::array_from_index<int32_t, 0>([&](std::size_t __i_0) -> int32_t {
         int32_t x = 0 + int32_t(__i_0) * (-1);
         return x;
     });
-    // print(len(empty))
     std::cout << ::tpy::__len__(empty) << "\n";
 }
 
 // def fallback_mutation() -> None:
+//     items = [x for x in range(3)]  # tpyc: type(/list\[int32\]/)
+//     items.append(99)
+//     for i in items:
+//         print(i)
 void fallback_mutation() {
-    // items = [x for x in range(3)]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> items = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -176,40 +179,39 @@ void fallback_mutation() {
         }
         std::move(__result);
     });
-    // items.append(99)
     items.push_back(99);
-    // for i in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t i = *__beg_1;
-        // print(i)
         std::cout << i << "\n";
     }
 }
 
 // def explicit_array_annotation() -> None:
+//     items: Array[int32, 5] = [x for x in range(5)]  # tpyc: type(/Array\[int32, 5\]/)
+//     for i in items:
+//         print(i)
 void explicit_array_annotation() {
-    // items: Array[int32, 5] = [x for x in range(5)]  # tpyc: type(/Array\[int32, 5\]/)
     std::array<int32_t, 5> items = ::tpy::array_from_index<int32_t, 5>([&](std::size_t __i_0) -> int32_t {
         int32_t x = int32_t(__i_0);
         return x;
     });
-    // for i in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t i = *__beg_1;
-        // print(i)
         std::cout << i << "\n";
     }
 }
 
 // def explicit_list_annotation() -> None:
+//     items: list[int32] = [x for x in range(3)]  # tpyc: type(/list\[int32\]/)
+//     for i in items:
+//         print(i)
 void explicit_list_annotation() {
-    // items: list[int32] = [x for x in range(3)]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> items = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -219,45 +221,43 @@ void explicit_list_annotation() {
         }
         std::move(__result);
     });
-    // for i in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t i = *__beg_1;
-        // print(i)
         std::cout << i << "\n";
     }
 }
 
+// range_basic()
+// range_transform()
+// range_empty()
+// range_two_arg()
+// array_source()
+// array_filter_fallback()
+// range_three_arg()
+// range_negative_step()
+// range_empty_negative()
+// explicit_array_annotation()
+// fallback_mutation()
+// explicit_list_annotation()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // range_basic()
     range_basic();
-    // range_transform()
     range_transform();
-    // range_empty()
     range_empty();
-    // range_two_arg()
     range_two_arg();
-    // array_source()
     array_source();
-    // array_filter_fallback()
     array_filter_fallback();
-    // range_three_arg()
     range_three_arg();
-    // range_negative_step()
     range_negative_step();
-    // range_empty_negative()
     range_empty_negative();
-    // explicit_array_annotation()
     explicit_array_annotation();
-    // fallback_mutation()
     fallback_mutation();
-    // explicit_list_annotation()
     explicit_list_annotation();
 }
 

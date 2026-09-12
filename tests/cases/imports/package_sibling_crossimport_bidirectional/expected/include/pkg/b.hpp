@@ -15,6 +15,7 @@ struct B;
 
 inline constexpr std::string_view __name__ = "pkg.b";
 
+// def use_a(a: A) -> int32:
 int32_t use_a(const ::tpyapp::pkg::a::A& a);
 
 // class B:

@@ -12,8 +12,11 @@ struct Square;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def area(shape: Circle) -> float: ...
 double area(const Circle& shape);
+// def area(shape: Square) -> float: ...
 double area(const Square& shape);
+// def main() -> None:
 void main();
 
 // class Circle:
@@ -50,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
 
 
 // def __init__(self, radius: float) -> None:
+//     self.radius = radius
 inline Circle::Circle(double radius) : radius(radius) {}
 
 // def __init__(self, side: float) -> None:
+//     self.side = side
 inline Square::Square(double side) : side(side) {}
 void __tpy_init();
 } // namespace tpyapp::main

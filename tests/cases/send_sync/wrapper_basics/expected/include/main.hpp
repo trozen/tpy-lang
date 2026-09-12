@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_marked(cb: Send[Callable[[int32], None]]) -> None:
 void take_marked(const std::function<void(int32_t)>& cb);
+// def take_bare(cb: Callable[[int32], None]) -> None:
 void take_bare(const std::function<void(int32_t)>& cb);
+// def main() -> None:
 void main();
 
 void __tpy_init();

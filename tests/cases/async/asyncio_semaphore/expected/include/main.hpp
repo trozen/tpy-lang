@@ -19,8 +19,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_worker;
 struct __coro_main_coro;
 
+// async def worker(sem: Semaphore, c: Counters) -> None:
 __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Counters:
@@ -40,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counters& obj) {
     return os;
 }
 
-// Async coroutine: worker
+// async def worker(sem: Semaphore, c: Counters) -> None:
 struct __coro_worker {
     int32_t __state;
     bool __cancel_pending;
@@ -74,7 +77,7 @@ struct __coro_worker {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -109,6 +112,8 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.active = 0
+//     self.peak = 0
 inline Counters::Counters() : active(0), peak(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

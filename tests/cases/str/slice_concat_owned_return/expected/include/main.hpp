@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def cut_join(s: str) -> str:
 std::string cut_join(std::string_view s);
+// def fmt_slice(s: str) -> str:
 std::string fmt_slice(std::string_view s);
+// def iter_slice(s: str) -> None:
 void iter_slice(std::string_view s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

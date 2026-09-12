@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // async def main() -> None:
+//     c = Counter()
+//     r = await c.grab()
+//     print(r.n)
+//     print(c.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counter()
         c.emplace(Counter());
-        // r = await c.grab()
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
@@ -20,9 +22,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        // print(r.n)
         std::cout << r->n << "\n";
-        // print(c.n)
         std::cout << (*c).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -39,6 +39,11 @@ __coro_main main() {
 }
 
 // async def grab(self) -> "Counter":
+//     try:
+//         return self
+//     finally:
+//         await asyncio.sleep(0)
+//         self.n = 10
 ::tpystd::tpy::Poll<Counter*> __coro_Counter_grab::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -50,7 +55,6 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Counter*>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // self.n = 10
         __self.n = ::tpy::BigInt(10);
         __state = S_JOIN_0;
         continue;
@@ -71,7 +75,6 @@ __coro_main main() {
     }
     case S_JOIN_1: {
         try {
-            // return self
             this->__finally_ret_0 = &(__self);
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -83,7 +86,6 @@ __coro_main main() {
         }
     }
     case S_JOIN_2: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -94,18 +96,19 @@ __coro_main main() {
 }
 
 
+// # A borrow return under a SUSPENDING finally: the pending-return slot is
+// # the pointer payload, so the finally's mutation of the receiver is
+// # visible through the awaited result (CPython aliasing -- contrast the
+// # storage-form eager-copy divergence tracked in BUGS.md).
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A borrow return under a SUSPENDING finally: the pending-return slot is
-    // # the pointer payload, so the finally's mutation of the receiver is
-    // # visible through the awaited result (CPython aliasing -- contrast the
-    // # storage-form eager-copy divergence tracked in BUGS.md).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

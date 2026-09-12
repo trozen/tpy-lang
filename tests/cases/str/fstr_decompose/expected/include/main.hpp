@@ -12,8 +12,11 @@ struct Service;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def log_from_module(mod: Module, val: int32) -> None:
 void log_from_module(Module& mod, int32_t val);
+// def log_from_service(svc: Service, val: int32) -> None:
 void log_from_service(Service& svc, int32_t val);
+// def main() -> None:
 void main();
 
 // # _logger field path
@@ -63,28 +66,30 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self._logger = LogHandle(name)
 inline Module::Module(std::string_view name) : _logger(::mylog::LogHandle(name)) {}
 
 // # Auto-discover via _logger field
 // def log_auto(self, tag: str, n: int32) -> None:
+//     log(f"tag={tag} n={n}")
 inline void Module::log_auto(std::string_view tag, int32_t n) {
-    // log(f"tag={tag} n={n}")
     ::mylog::log_dispatch(this->_logger, "tag={} n={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*, int32_t>>(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n}));
 }
 
 // def __init__(self, name: str) -> None:
+//     self._handle = LogHandle(name)
 inline Service::Service(std::string_view name) : _handle(::mylog::LogHandle(name)) {}
 
 // def get_logger(self) -> LogHandle:
+//     return self._handle
 inline ::mylog::LogHandle& Service::get_logger() {
-    // return self._handle
     return this->_handle;
 }
 
 // # Auto-discover via get_logger() method
 // def log_auto(self, msg: str) -> None:
+//     log(f"svc={msg}")
 inline void Service::log_auto(std::string_view msg) {
-    // log(f"svc={msg}")
     ::mylog::log_dispatch(this->get_logger(), "svc={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*>>(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(msg))));
 }
 void __tpy_init();

@@ -17,7 +17,9 @@ struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_weak_after_arc_dies() -> Own[Weak[Cell]]:
 ::tpystd::tplib::arc::Weak<Cell> make_weak_after_arc_dies();
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -45,6 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Cell::Cell(int32_t v) : val(v) {}
 
 inline Cell::Cell(Cell&& other) noexcept : val(std::move(other.val)) {
@@ -59,9 +62,9 @@ inline Cell& Cell::operator=(Cell&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("Cell.__del__", self.val)
 inline Cell::~Cell() {
     if (!this->__tpy_owned_) return;
-    // print("Cell.__del__", self.val)
     std::cout << "Cell.__del__" << " " << this->val << "\n";
 }
 void __tpy_init();

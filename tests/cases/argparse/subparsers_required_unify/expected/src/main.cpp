@@ -5,15 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(prog="prog")
+//     sub = parser.add_subparsers(dest="cmd", required=True)
+//
+//     a = sub.add_parser("a")
+//     a.add_argument("--x", required=True)
+//
+//     b = sub.add_parser("b")
+//     b.add_argument("--x")  # not required
+//
+//     args = parser.parse_args(["b"])
+//     print(args.cmd)
+//     print("x is None: " + str(args.x is None))
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["b"])
     std::vector<std::string> __tmp_1 = {"b"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.cmd)
     std::cout << args.cmd << "\n";
-    // print("x is None: " + str(args.x is None))
     std::cout << (::tpy::str_concat("x is None: ", std::string(::tpy::bool_to_str((!args.x.has_value()))))) << "\n";
-    // return 0
     return 0;
 }
 
@@ -119,14 +128,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(__tpy_argparse_cmd, __tpy_argparse_flat_x);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = None
+//     b: Any = 42
+//     print(a is None)
+//     print(b is None)
+//     print(a is not None)
+//     print(b is not None)
 void main() {
-    // a: Any = None
     ::tpy::Any a = ::tpy::make_any(std::monostate{});
-    // b: Any = 42
     ::tpy::Any b = ::tpy::make_any(::tpy::BigInt(42));
-    // print(a is None)
     std::cout << ::tpy::print_bool((a.value.has_value() && a.value.type() == typeid(std::monostate))) << "\n";
-    // print(b is None)
     std::cout << ::tpy::print_bool((b.value.has_value() && b.value.type() == typeid(std::monostate))) << "\n";
-    // print(a is not None)
     std::cout << ::tpy::print_bool((!(a.value.has_value() && a.value.type() == typeid(std::monostate)))) << "\n";
-    // print(b is not None)
     std::cout << ::tpy::print_bool((!(b.value.has_value() && b.value.type() == typeid(std::monostate)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

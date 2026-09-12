@@ -13,8 +13,11 @@ struct __tpy_builder_argparse_args_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
+// args = parser.parse_args(["core:strict", "--out", "release"])
 void __tpy_builder_argparse_help_1();
+// args = parser.parse_args(["core:strict", "--out", "release"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
 
 // class Tag:
@@ -61,33 +64,35 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // def __init__(self, raw: str) -> None:
+//     self.namespace = ""
+//     self.name = raw
+//     idx: int32 = raw.find(":")
+//     if idx >= 0:
+//         self.namespace = raw[:idx]
+//         self.name = raw[idx + 1:]
 inline Tag::Tag(std::string_view raw) : namespace_(""), name(raw) {
-    // idx: int32 = raw.find(":")
     int32_t idx = ::tpy::str_find(raw, ":");
-    // if idx >= 0:
     if ((idx >= 0)) {
-        // self.namespace = raw[:idx]
         this->namespace_ = std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{std::nullopt, idx}));
-        // self.name = raw[idx + 1:]
         this->name = std::string(::tpy::str_slice(raw, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(idx, 1)), std::nullopt}));
     }
 }
 
 // @staticmethod
 // def from_arg(s: str) -> Own[Tag]:
+//     return Tag(s)
 inline Tag Tag::from_arg(std::string_view s) {
-    // return Tag(s)
     return Tag(s);
 }
 
 // def __str__(self) -> str:
+//     if self.namespace == "":
+//         return self.name
+//     return self.namespace + ":" + self.name
 inline std::string Tag::__str__() const {
-    // if self.namespace == "":
     if ((this->namespace_ == "")) {
-        // return self.name
         return this->name;
     }
-    // return self.namespace + ":" + self.name
     return (::tpy::str_concat((::tpy::str_concat(this->namespace_, ":")), this->name));
 }
 

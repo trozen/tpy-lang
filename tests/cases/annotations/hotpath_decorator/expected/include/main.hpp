@@ -11,7 +11,9 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def scale(x: int) -> int:  # tpyc: ok
 ::tpy::BigInt scale(const ::tpy::BigInt& x);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -35,12 +37,13 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.count = 0
 inline Counter::Counter() : count(::tpy::BigInt(0)) {}
 
 // @hotpath
 // def bump(self, n: int) -> None:  # tpyc: ok
+//     self.count += scale(n)
 inline void Counter::bump(const ::tpy::BigInt& n) {
-    // self.count += scale(n)
     this->count = (this->count) + (scale(n));
 }
 void __tpy_init();

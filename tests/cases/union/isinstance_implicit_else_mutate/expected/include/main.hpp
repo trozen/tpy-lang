@@ -12,7 +12,9 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(x: Box | Other) -> None:
 void bump(::tpy::Union<Box*, Other*> x);
+// def main() -> None:
 void main();
 
 // # The fall-through narrowed access must alias the member (not copy): mutate a
@@ -51,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 
 
 // def __init__(self, n: int):
+//     self.n = n
 inline Box::Box(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, s: int):
+//     self.s = s
 inline Other::Other(const ::tpy::BigInt& s) : s(s) {}
 void __tpy_init();
 } // namespace tpyapp::main

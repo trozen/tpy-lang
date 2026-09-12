@@ -18,10 +18,16 @@ struct __coro_asum;
 struct __gen_gsum;
 struct __coro_main_coro;
 
+// async def asum(pair: readonly[tuple[Tag, Tag]]) -> int32:
 __coro_asum asum(std::tuple<const Tag*, const Tag*> pair);
+// def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[int32]:
 __gen_gsum gsum(std::tuple<const Tag*, const Tag*> pair);
+// def pick(p1: readonly[tuple[Tag, Tag]], p2: readonly[tuple[Tag, Tag]],
+//          c: bool) -> int32:
 int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<const Tag*, const Tag*>& p2, bool c);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -46,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
     return os;
 }
 
-// Async coroutine: asum
+// async def asum(pair: readonly[tuple[Tag, Tag]]) -> int32:
 struct __coro_asum {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +76,7 @@ struct __coro_asum {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -103,7 +109,7 @@ struct __coro_main_coro {
     }
 };
 
-// Generator: gsum
+// def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[int32]:
 struct __gen_gsum : public ::tpy::next_iter_mixin<__gen_gsum, int32_t> {
     int32_t __state;
     std::tuple<const Tag*, const Tag*> pair;
@@ -128,6 +134,7 @@ struct __gen_gsum : public ::tpy::next_iter_mixin<__gen_gsum, int32_t> {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tag::Tag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

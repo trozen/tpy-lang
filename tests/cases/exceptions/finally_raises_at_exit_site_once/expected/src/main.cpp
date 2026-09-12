@@ -3,39 +3,33 @@
 
 namespace tpyapp::main {
 
-// # Regression: a finally body that RAISES must run exactly once when control
-// # leaves the try via return / break / continue, and the FIRST exception must
-// # propagate. The exit-site copy sets its frame's guard before running, so the
-// # frame's own catch skips its copy rather than running the finally a second
-// # time; an enclosing frame's guard is still unset, so its finally still runs.
-// _code = 0
 int32_t _code{};
 
 // def bump() -> int:
+//     global _code
+//     _code += 1
+//     print(f"side-effect {_code}")
+//     return _code
 ::tpy::BigInt bump() {
-    // global _code
-    // _code += 1
     _code = ::tpy::add_check<int32_t>(_code, 1);
-    // print(f"side-effect {_code}")
     std::cout << std::format("side-effect {}", _code) << "\n";
-    // return _code
     return ::tpy::BigInt(_code);
 }
 
 // def ret_out(n: int) -> int:
+//     try:
+//         return n
+//     finally:
+//         raise Err(bump())
 ::tpy::BigInt ret_out(const ::tpy::BigInt& n) {
-    // try:
     {
         bool __fin_ran_1 = false;
         try {
-            // return n
             [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = n;
             __fin_ran_1 = true;
-            // raise Err(bump())
             throw Err(bump());
         } catch (...) {
             if (!__fin_ran_1) {
-                // raise Err(bump())
                 throw Err(bump());
             }
             throw;
@@ -44,39 +38,36 @@ int32_t _code{};
 }
 
 // def brk_out() -> None:
+//     for i in range(3):
+//         try:
+//             if i == 1:
+//                 break
+//             print(f"iter {i}")
+//         finally:
+//             if i == 1:
+//                 raise Err(bump())
 void brk_out() {
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // try:
         {
             bool __fin_ran_2 = false;
             try {
-                // if i == 1:
                 if ((i == 1)) {
-                    // break
                     __fin_ran_2 = true;
-                    // if i == 1:
                     if ((i == 1)) {
-                        // raise Err(bump())
                         throw Err(bump());
                     }
                     break;
                 }
-                // print(f"iter {i}")
                 std::cout << std::format("iter {}", i) << "\n";
             } catch (...) {
                 if (!__fin_ran_2) {
-                    // if i == 1:
                     if ((i == 1)) {
-                        // raise Err(bump())
                         throw Err(bump());
                     }
                 }
                 throw;
             }
-            // if i == 1:
             if ((i == 1)) {
-                // raise Err(bump())
                 throw Err(bump());
             }
         }
@@ -84,61 +75,60 @@ void brk_out() {
 }
 
 // def cont_out() -> None:
+//     for i in range(2):
+//         try:
+//             continue
+//         finally:
+//             raise Err(bump())
 void cont_out() {
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // try:
         {
             bool __fin_ran_3 = false;
             try {
-                // continue
                 __fin_ran_3 = true;
-                // raise Err(bump())
                 throw Err(bump());
             } catch (...) {
                 if (!__fin_ran_3) {
-                    // raise Err(bump())
                     throw Err(bump());
                 }
                 throw;
             }
-            // raise Err(bump())
             throw Err(bump());
         }
     }
 }
 
 // def nested_ret() -> int:
+//     # The inner finally raises on the return path; the outer finally must
+//     # still run (its guard is unset), exactly once, and the inner exception
+//     # is the one that propagates.
+//     try:
+//         try:
+//             return 3
+//         finally:
+//             print("inner fin")
+//             raise Err(bump())
+//     finally:
+//         print("outer fin")
 ::tpy::BigInt nested_ret() {
-    // # The inner finally raises on the return path; the outer finally must
-    // # still run (its guard is unset), exactly once, and the inner exception
-    // # is the one that propagates.
-    // try:
     {
         try {
-            // try:
             {
                 bool __fin_ran_5 = false;
                 try {
-                    // return 3
                     [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(3);
                     __fin_ran_5 = true;
-                    // print("inner fin")
                     std::cout << "inner fin" << "\n";
-                    // raise Err(bump())
                     throw Err(bump());
                 } catch (...) {
                     if (!__fin_ran_5) {
-                        // print("inner fin")
                         std::cout << "inner fin" << "\n";
-                        // raise Err(bump())
                         throw Err(bump());
                     }
                     throw;
                 }
             }
         } catch (...) {
-            // print("outer fin")
             std::cout << "outer fin" << "\n";
             throw;
         }
@@ -146,79 +136,82 @@ void cont_out() {
 }
 
 // def main() -> None:
+//     global _code
+//     _code = 0
+//     print("-- ret_out --")
+//     try:
+//         ret_out(5)
+//     except Err as e:
+//         print(f"caught code={e.code}")
+//
+//     _code = 0
+//     print("-- brk_out --")
+//     try:
+//         brk_out()
+//     except Err as e:
+//         print(f"caught code={e.code}")
+//
+//     _code = 0
+//     print("-- cont_out --")
+//     try:
+//         cont_out()
+//     except Err as e:
+//         print(f"caught code={e.code}")
+//
+//     _code = 0
+//     print("-- nested_ret --")
+//     try:
+//         nested_ret()
+//     except Err as e:
+//         print(f"caught code={e.code}")
 void main() {
-    // global _code
-    // _code = 0
     _code = 0;
-    // print("-- ret_out --")
     std::cout << "-- ret_out --" << "\n";
-    // try:
     {
         try {
-            // ret_out(5)
             ret_out(::tpy::BigInt(5));
         } catch (const Err& e) {
-            // print(f"caught code={e.code}")
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
     }
-    // _code = 0
     _code = 0;
-    // print("-- brk_out --")
     std::cout << "-- brk_out --" << "\n";
-    // try:
     {
         try {
-            // brk_out()
             brk_out();
         } catch (const Err& e) {
-            // print(f"caught code={e.code}")
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
     }
-    // _code = 0
     _code = 0;
-    // print("-- cont_out --")
     std::cout << "-- cont_out --" << "\n";
-    // try:
     {
         try {
-            // cont_out()
             cont_out();
         } catch (const Err& e) {
-            // print(f"caught code={e.code}")
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
     }
-    // _code = 0
     _code = 0;
-    // print("-- nested_ret --")
     std::cout << "-- nested_ret --" << "\n";
-    // try:
     {
         try {
-            // nested_ret()
             nested_ret();
         } catch (const Err& e) {
-            // print(f"caught code={e.code}")
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
     }
 }
 
+// _code = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: a finally body that RAISES must run exactly once when control
-    // # leaves the try via return / break / continue, and the FIRST exception must
-    // # propagate. The exit-site copy sets its frame's guard before running, so the
-    // # frame's own catch skips its copy rather than running the finally a second
-    // # time; an enclosing frame's guard is still unset, so its finally still runs.
-    // _code = 0
     _code = 0;
-    // main()
     main();
 }
 

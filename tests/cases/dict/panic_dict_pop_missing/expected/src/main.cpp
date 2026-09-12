@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Pop on missing key without default should panic
 // def main() -> None:
+//     d = {"x": 1}
+//     d.pop("missing")
 void main() {
-    // d = {"x": 1}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}});
-    // d.pop("missing")
     ::tpy::dict_pop(d, "missing");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

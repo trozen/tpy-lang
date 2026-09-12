@@ -12,12 +12,16 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_cell;
 struct __gen_copied;
 
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v);
+// def cell() -> Iterator[int32]:
 __gen_cell cell();
+// def copied(xs: list[int32]) -> Iterator[int32]:
 __gen_copied copied(std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
-// Generator: cell
+// def cell() -> Iterator[int32]:
 struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
     int32_t __state;
     int32_t step;
@@ -41,7 +45,7 @@ struct __gen_cell : public ::tpy::next_iter_mixin<__gen_cell, int32_t> {
     }
 };
 
-// Generator: copied
+// def copied(xs: list[int32]) -> Iterator[int32]:
 struct __gen_copied : public ::tpy::next_iter_mixin<__gen_copied, int32_t> {
     int32_t __state;
     std::vector<int32_t>& xs;

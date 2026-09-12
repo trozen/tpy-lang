@@ -15,12 +15,15 @@ template <::tpystd::typing::Iterable<::tpy::BigInt> T_items>
 struct __coro_total;
 struct __coro_main_coro;
 
+// async def total(items: Iterable[int]) -> int:
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_items>
 __coro_total<T_items> total(T_items&& items);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: total
+// async def total(items: Iterable[int]) -> int:
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_items>
 struct __coro_total {
     int32_t __state;
@@ -45,24 +48,24 @@ struct __coro_total {
     }
 };
 // async def total(items: Iterable[int]) -> int:
+//     s = 0
+//     for x in items:
+//         s += x
+//     return s
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_items>
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total<T_items>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // s = 0
         s = 0;
-        // for x in items:
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
-            // s += x
             s = ::tpy::add_check<int32_t>(s, (x).to_fixed_check<int32_t>());
         }
-        // return s
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(s);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -79,7 +82,7 @@ __coro_total<T_items> total(T_items&& items) {
     return __coro_total<T_items>(std::forward<T_items>(items));
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

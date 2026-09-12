@@ -64,6 +64,9 @@ struct _ArcCell : _ArcCellBase {
     ::tpy::UninitStorage<U> storage;
 
     // def __init__(self) -> None:
+    //     self.strong = Atomic[uint32](1)
+    //     self.weak = Atomic[uint32](1)
+    //     self.storage = UninitStorage[U]()
     _ArcCell() : strong(::tpystd::tpy::atomic::Atomic<uint32_t>(1)), weak(::tpystd::tpy::atomic::Atomic<uint32_t>(1)), storage(::tpy::UninitStorage<U>()) {}
     // non-copyable (@nocopy)
     _ArcCell(const _ArcCell&) = delete;
@@ -72,86 +75,86 @@ struct _ArcCell : _ArcCellBase {
     _ArcCell& operator=(_ArcCell&&) = default;
 
     // def incr_strong(self) -> None:
+    //     # Relaxed: the caller already holds a strong ref, so the cell can't be
+    //     # freed under us and no cross-thread ordering is needed for the bump.
+    //     self.strong.fetch_add(1, MemoryOrder.RELAXED)
     void incr_strong() override {
-        // # Relaxed: the caller already holds a strong ref, so the cell can't be
-        // # freed under us and no cross-thread ordering is needed for the bump.
-        // self.strong.fetch_add(1, MemoryOrder.RELAXED)
         this->strong.fetch_add(1, ::std::memory_order::relaxed);
     }
 
     // def release_strong(self) -> bool:
+    //     # Release publishes all prior uses of the payload; on the last strong
+    //     # drop an acquire fence synchronizes with every other thread's release
+    //     # before we destruct. Then decrement the collective weak (strong handles
+    //     # jointly own one weak ref). Returns True iff the cell itself is now
+    //     # unreferenced and needs free. A nested Weak.__del__ from the payload
+    //     # destructor sees weak >= 2 (collective + its own) and can't free us.
+    //     prev_strong = self.strong.fetch_sub(1, MemoryOrder.RELEASE)
+    //     if prev_strong == 1:
+    //         fence(MemoryOrder.ACQUIRE)
+    //         self.storage.reset()
+    //         prev_weak = self.weak.fetch_sub(1, MemoryOrder.RELEASE)
+    //         if prev_weak == 1:
+    //             fence(MemoryOrder.ACQUIRE)
+    //             return True
+    //     return False
     bool release_strong() override {
-        // # Release publishes all prior uses of the payload; on the last strong
-        // # drop an acquire fence synchronizes with every other thread's release
-        // # before we destruct. Then decrement the collective weak (strong handles
-        // # jointly own one weak ref). Returns True iff the cell itself is now
-        // # unreferenced and needs free. A nested Weak.__del__ from the payload
-        // # destructor sees weak >= 2 (collective + its own) and can't free us.
-        // prev_strong = self.strong.fetch_sub(1, MemoryOrder.RELEASE)
         uint32_t prev_strong = this->strong.fetch_sub(1, ::std::memory_order::release);
-        // if prev_strong == 1:
         if ((prev_strong == 1)) {
-            // fence(MemoryOrder.ACQUIRE)
             ::tpystd::tpy::atomic::fence(::std::memory_order::acquire);
-            // self.storage.reset()
             this->storage.reset();
-            // prev_weak = self.weak.fetch_sub(1, MemoryOrder.RELEASE)
             uint32_t prev_weak = this->weak.fetch_sub(1, ::std::memory_order::release);
-            // if prev_weak == 1:
             if ((prev_weak == 1)) {
-                // fence(MemoryOrder.ACQUIRE)
                 ::tpystd::tpy::atomic::fence(::std::memory_order::acquire);
-                // return True
                 return true;
             }
         }
-        // return False
         return false;
     }
 
     // def try_incr_strong(self) -> bool:
+    //     # Weak.upgrade: increment only while strong > 0, via a CAS loop that
+    //     # acquires on success so the recovered handle sees a live payload.
+    //     cur = self.strong.load(MemoryOrder.RELAXED)
+    //     while cur != 0:
+    //         ok, observed = self.strong.compare_exchange_weak(
+    //             cur, cur + 1, MemoryOrder.ACQUIRE, MemoryOrder.RELAXED)
+    //         if ok:
+    //             return True
+    //         cur = observed
+    //     return False
     bool try_incr_strong() override {
-        // # Weak.upgrade: increment only while strong > 0, via a CAS loop that
-        // # acquires on success so the recovered handle sees a live payload.
-        // cur = self.strong.load(MemoryOrder.RELAXED)
         uint32_t cur = this->strong.load(::std::memory_order::relaxed);
-        // while cur != 0:
         while ((cur != 0)) {
-            // ok, observed = self.strong.compare_exchange_weak(
-            // cur, cur + 1, MemoryOrder.ACQUIRE, MemoryOrder.RELAXED)
             auto __tup_1 = this->strong.compare_exchange_weak(cur, (::tpy::add_check<uint32_t>(cur, 1)), ::std::memory_order::acquire, ::std::memory_order::relaxed);
             bool ok = std::get<0>(__tup_1);
             uint32_t observed = std::get<1>(__tup_1);
-            // if ok:
             if (ok) {
-                // return True
                 return true;
             }
-            // cur = observed
             cur = observed;
         }
-        // return False
         return false;
     }
 
     // def incr_weak(self) -> None:
+    //     self.weak.fetch_add(1, MemoryOrder.RELAXED)
     void incr_weak() override {
-        // self.weak.fetch_add(1, MemoryOrder.RELAXED)
         this->weak.fetch_add(1, ::std::memory_order::relaxed);
     }
 
     // def release_weak(self) -> bool:
+    //     prev_weak = self.weak.fetch_sub(1, MemoryOrder.RELEASE)
+    //     if prev_weak == 1:
+    //         fence(MemoryOrder.ACQUIRE)
+    //         return True
+    //     return False
     bool release_weak() override {
-        // prev_weak = self.weak.fetch_sub(1, MemoryOrder.RELEASE)
         uint32_t prev_weak = this->weak.fetch_sub(1, ::std::memory_order::release);
-        // if prev_weak == 1:
         if ((prev_weak == 1)) {
-            // fence(MemoryOrder.ACQUIRE)
             ::tpystd::tpy::atomic::fence(::std::memory_order::acquire);
-            // return True
             return true;
         }
-        // return False
         return false;
     }
     static constexpr std::string_view __tpy_class_name__ = "tplib.arc._ArcCell";
@@ -180,6 +183,8 @@ struct Arc {
     bool __tpy_owned_ = true;
 
     // def __init__(self, cell: Ptr[_ArcCellBase], payload: Ptr[T]) -> None:
+    //     self._cell = cell
+    //     self._payload = payload
     explicit Arc(_ArcCellBase* cell, T* payload) : _cell(cell), _payload(payload) {}
     // non-copyable (@nocopy)
     Arc(const Arc&) = delete;
@@ -196,11 +201,11 @@ struct Arc {
     }
 
     // def __del__(self) -> None:
+    //     if self._cell.release_strong():
+    //         unsafe_release(self._cell)
     ~Arc() {
         if (!this->__tpy_owned_) return;
-        // if self._cell.release_strong():
         if (::tpy::deref_check(this->_cell).release_strong()) {
-            // unsafe_release(self._cell)
             ::tpy::heap_release(this->_cell);
         }
     }
@@ -213,14 +218,14 @@ struct Arc {
     template<typename> friend struct Arc;
 
     // def __deref__(self) -> T:
+    //     return self.get()
     ::tpy::val_or_ref_t<T> __deref__() {
-        // return self.get()
         return this->get();
     }
 
     // def __deref__(self) -> T:
+    //     return self.get()
     ::tpy::val_or_cref_t<T> __deref__() const {
-        // return self.get()
         return this->get();
     }
 
@@ -229,8 +234,8 @@ struct Arc {
     // # slot a subtype clone is observing.
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
+    //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
@@ -239,56 +244,56 @@ struct Arc {
     // # slot a subtype clone is observing.
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
+    //     return self._payload
     ::tpy::val_or_cref_t<T> get() const {
-        // return self._payload
         return ::tpy::deref_check(this->_payload);
     }
 
     // @staticmethod
     // def new[U: T](value: Own[U]) -> Own[Arc[T]]:
+    //     cell = unsafe_take(_ArcCell[U]())
+    //     cell.storage.construct(value)
+    //     return Arc[T](cell, cell.storage.ptr())
     template<typename U>
     static Arc<T> new_(::tpy::own_param_t<U> value) {
-        // cell = unsafe_take(_ArcCell[U]())
         _ArcCell<U>* cell = ::tpy::heap_take(_ArcCell<U>());
-        // cell.storage.construct(value)
         ::tpy::deref_check(cell).storage.construct(std::move(value));
-        // return Arc[T](cell, cell.storage.ptr())
         return Arc<T>(cell, cell->storage.ptr());
     }
 
     // @auto_readonly
     // def clone(self) -> Own[Arc[auto_readonly[T]]]:
+    //     self._cell.incr_strong()
+    //     return Arc[auto_readonly[T]](self._cell, self._payload)
     Arc<T> clone() {
-        // self._cell.incr_strong()
         ::tpy::deref_check(this->_cell).incr_strong();
-        // return Arc[auto_readonly[T]](self._cell, self._payload)
         return Arc<T>(this->_cell, this->_payload);
     }
 
     // @auto_readonly
     // def clone(self) -> Own[Arc[auto_readonly[T]]]:
+    //     self._cell.incr_strong()
+    //     return Arc[auto_readonly[T]](self._cell, self._payload)
     Arc<T> clone() const {
-        // self._cell.incr_strong()
         ::tpy::deref_check(this->_cell).incr_strong();
-        // return Arc[auto_readonly[T]](self._cell, self._payload)
         return Arc<T>(this->_cell, this->_payload);
     }
 
     // @auto_readonly
     // def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
+    //     self._cell.incr_weak()
+    //     return Weak[auto_readonly[T]](self._cell, self._payload)
     Weak<T> downgrade() {
-        // self._cell.incr_weak()
         ::tpy::deref_check(this->_cell).incr_weak();
-        // return Weak[auto_readonly[T]](self._cell, self._payload)
         return Weak<T>(this->_cell, this->_payload);
     }
 
     // @auto_readonly
     // def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
+    //     self._cell.incr_weak()
+    //     return Weak[auto_readonly[T]](self._cell, self._payload)
     Weak<T> downgrade() const {
-        // self._cell.incr_weak()
         ::tpy::deref_check(this->_cell).incr_weak();
-        // return Weak[auto_readonly[T]](self._cell, self._payload)
         return Weak<T>(this->_cell, this->_payload);
     }
 
@@ -296,56 +301,56 @@ struct Arc {
     // # `Arc<T>::eq`). Cell-pointer identity is not yet expressible at the
     // # TPy surface; tracked in BUGS.md (shared with Rc).
     // def __str__(self) -> str:
+    //     return f"Arc({self.get()})"
     std::string __str__() const {
-        // return f"Arc({self.get()})"
         return std::format("Arc({})", ::tpy::__str__(this->get()));
     }
 
     // def __repr__(self) -> str:
+    //     return f"Arc({self.get()!r})"
     std::string __repr__() const {
-        // return f"Arc({self.get()!r})"
         return std::format("Arc({})", ::tpy::repr_of(this->get()));
     }
 
     // def __eq__[T: Equatable](self, other: Arc[T]) -> bool:
+    //     return self.get() == other.get()
     bool __eq__(const Arc<T>& other) const
       requires ::tpystd::tpy::Equatable<T> {
-        // return self.get() == other.get()
         return ::tpy::eq(this->get(), other.get());
     }
 
     // def __lt__[T: Comparable](self, other: Arc[T]) -> bool:
+    //     return self.get() < other.get()
     bool __lt__(const Arc<T>& other) const
       requires ::tpystd::tpy::Comparable<T> {
-        // return self.get() < other.get()
         return (this->get() < other.get());
     }
 
     // def __le__[T: Comparable](self, other: Arc[T]) -> bool:
+    //     return not other.get() < self.get()
     bool __le__(const Arc<T>& other) const
       requires ::tpystd::tpy::Comparable<T> {
-        // return not other.get() < self.get()
         return (!((other.get() < this->get())));
     }
 
     // def __gt__[T: Comparable](self, other: Arc[T]) -> bool:
+    //     return other.get() < self.get()
     bool __gt__(const Arc<T>& other) const
       requires ::tpystd::tpy::Comparable<T> {
-        // return other.get() < self.get()
         return (other.get() < this->get());
     }
 
     // def __ge__[T: Comparable](self, other: Arc[T]) -> bool:
+    //     return not self.get() < other.get()
     bool __ge__(const Arc<T>& other) const
       requires ::tpystd::tpy::Comparable<T> {
-        // return not self.get() < other.get()
         return (!((this->get() < other.get())));
     }
 
     // def __hash__[T: Hashable](self) -> uint64:
+    //     return hash(self.get())
     uint64_t __hash__() const
       requires ::tpystd::tpy::Hashable<T> {
-        // return hash(self.get())
         return ::tpy::__hash__(this->get());
     }
 
@@ -400,6 +405,8 @@ struct Weak {
     bool __tpy_owned_ = true;
 
     // def __init__(self, cell: Ptr[_ArcCellBase], payload: Ptr[T]) -> None:
+    //     self._cell = cell
+    //     self._payload = payload
     explicit Weak(_ArcCellBase* cell, T* payload) : _cell(cell), _payload(payload) {}
     // non-copyable (@nocopy)
     Weak(const Weak&) = delete;
@@ -416,54 +423,54 @@ struct Weak {
     }
 
     // def __del__(self) -> None:
+    //     if self._cell.release_weak():
+    //         unsafe_release(self._cell)
     ~Weak() {
         if (!this->__tpy_owned_) return;
-        // if self._cell.release_weak():
         if (::tpy::deref_check(this->_cell).release_weak()) {
-            // unsafe_release(self._cell)
             ::tpy::heap_release(this->_cell);
         }
     }
 
     // @auto_readonly
     // def upgrade(self) -> Own[Arc[auto_readonly[T]]] | None:
+    //     if not self._cell.try_incr_strong():
+    //         return None
+    //     return Arc[auto_readonly[T]](self._cell, self._payload)
     std::optional<Arc<T>> upgrade() {
-        // if not self._cell.try_incr_strong():
         if ((!(::tpy::deref_check(this->_cell).try_incr_strong()))) {
-            // return None
             return std::nullopt;
         }
-        // return Arc[auto_readonly[T]](self._cell, self._payload)
         return Arc<T>(this->_cell, this->_payload);
     }
 
     // @auto_readonly
     // def upgrade(self) -> Own[Arc[auto_readonly[T]]] | None:
+    //     if not self._cell.try_incr_strong():
+    //         return None
+    //     return Arc[auto_readonly[T]](self._cell, self._payload)
     std::optional<Arc<T>> upgrade() const {
-        // if not self._cell.try_incr_strong():
         if ((!(::tpy::deref_check(this->_cell).try_incr_strong()))) {
-            // return None
             return std::nullopt;
         }
-        // return Arc[auto_readonly[T]](self._cell, self._payload)
         return Arc<T>(this->_cell, this->_payload);
     }
 
     // @auto_readonly
     // def clone(self) -> Own[Weak[auto_readonly[T]]]:
+    //     self._cell.incr_weak()
+    //     return Weak[auto_readonly[T]](self._cell, self._payload)
     Weak<T> clone() {
-        // self._cell.incr_weak()
         ::tpy::deref_check(this->_cell).incr_weak();
-        // return Weak[auto_readonly[T]](self._cell, self._payload)
         return Weak<T>(this->_cell, this->_payload);
     }
 
     // @auto_readonly
     // def clone(self) -> Own[Weak[auto_readonly[T]]]:
+    //     self._cell.incr_weak()
+    //     return Weak[auto_readonly[T]](self._cell, self._payload)
     Weak<T> clone() const {
-        // self._cell.incr_weak()
         ::tpy::deref_check(this->_cell).incr_weak();
-        // return Weak[auto_readonly[T]](self._cell, self._payload)
         return Weak<T>(this->_cell, this->_payload);
     }
     static constexpr std::string_view __tpy_class_name__ = "tplib.arc.Weak";

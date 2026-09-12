@@ -12,8 +12,11 @@ struct Res;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_branch(flag: bool) -> None:
 void in_branch(bool flag);
+// def in_loop() -> None:
 void in_loop();
+// def main() -> None:
 void main();
 
 // class Slot:
@@ -56,20 +59,22 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Slot::Slot(int32_t v) : v(v) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.s = Slot(v)
 inline Res::Res(int32_t v) : s(Slot(v)) {}
 
 // def __enter__(self) -> Slot:
+//     return self.s
 inline Slot& Res::__enter__() {
-    // return self.s
     return this->s;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("exit", self.s.v)
 inline void Res::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("exit", self.s.v)
     std::cout << "exit" << " " << this->s.v << "\n";
 }
 void __tpy_init();

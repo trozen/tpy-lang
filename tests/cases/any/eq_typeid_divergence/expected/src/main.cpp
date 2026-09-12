@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = 1
+//     b: Any = 1.0
+//     print(a == b)
 void main() {
-    // a: Any = 1
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(1));
-    // b: Any = 1.0
     ::tpy::Any b = ::tpy::make_any(static_cast<double>(1.0));
-    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

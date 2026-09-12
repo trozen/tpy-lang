@@ -5,63 +5,62 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Explicit annotation, bare literals coerced
+//     items: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
+//     for n, s in items:
+//         print(n, s)
+//
+//     # Inferred from typed constructors
+//     pairs = [(int32(10), True), (int32(20), False)]
+//     for n, flag in pairs:
+//         print(n, flag)
+//
+//     # Tuple of two strings, fully inferred
+//     names = [("Alice", "A"), ("Bob", "B")]
+//     for full, initial in names:
+//         print(full, initial)
 void main() {
-    // # Explicit annotation, bare literals coerced
-    // items: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> items = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
-    // for n, s in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        // for n, s in items:
         const auto& __tup_1 = __for_tup_0;
         int32_t n = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);
-        // print(n, s)
         std::cout << n << " " << s << "\n";
     }
-    // # Inferred from typed constructors
-    // pairs = [(int32(10), True), (int32(20), False)]
     std::array<std::tuple<int32_t, bool>, 2> pairs = {std::tuple<int32_t, bool>{10, true}, std::tuple<int32_t, bool>{20, false}};
-    // for n, flag in pairs:
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_1 = *__beg_1;
-        // for n, flag in pairs:
         const auto& __tup_2 = __for_tup_1;
         int32_t n = std::get<0>(__tup_2);
         bool flag = std::get<1>(__tup_2);
-        // print(n, flag)
         std::cout << n << " " << ::tpy::print_bool(flag) << "\n";
     }
-    // # Tuple of two strings, fully inferred
-    // names = [("Alice", "A"), ("Bob", "B")]
     std::array<std::tuple<std::string, std::string>, 2> names = {std::tuple<std::string, std::string>{"Alice", "A"}, std::tuple<std::string, std::string>{"Bob", "B"}};
-    // for full, initial in names:
     auto& __obj_2 = names;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& __for_tup_2 = *__beg_2;
-        // for full, initial in names:
         const auto& __tup_3 = __for_tup_2;
         std::string_view full = std::get<0>(__tup_3);
         std::string_view initial = std::get<1>(__tup_3);
-        // print(full, initial)
         std::cout << full << " " << initial << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

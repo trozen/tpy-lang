@@ -11,6 +11,7 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Wrapper:
@@ -34,11 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, value: int):
+//     self._value = value
 inline Wrapper::Wrapper(const ::tpy::BigInt& value) : _value(value) {}
 
 // def take(self: Own[Self]) -> int:
+//     return self._value
 inline ::tpy::BigInt Wrapper::take() && {
-    // return self._value
     return std::move(this->_value);
 }
 void __tpy_init();

@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Stack()
+//     # Both calls use borrowing (consuming dispatch is for-loop only)
+//     print(s.consume())
+//     print(s.consume())
 void main() {
-    // s = Stack()
     Stack s = Stack();
-    // # Both calls use borrowing (consuming dispatch is for-loop only)
-    // print(s.consume())
     std::cout << s.consume() << "\n";
-    // print(s.consume())
     std::cout << s.consume() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

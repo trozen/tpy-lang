@@ -31,23 +31,41 @@ struct __coro_coro;
 struct __coro_async_section;
 struct __gen_H_g;
 
+// def make() -> Own[A]:
 A make();
+// def make_pair() -> Own[tuple[A, int32]]:
 std::tuple<A, int32_t> make_pair();
+// def own_elem_pair() -> tuple[Own[A], int32]:
 std::tuple<A, int32_t> own_elem_pair();
+// def fresh() -> Iterator[int32]:
 __gen_fresh fresh();
+// def own_call() -> Iterator[int32]:
 __gen_own_call own_call();
+// def lvalue(a: A) -> Iterator[int32]:
 __gen_lvalue lvalue(A& a);
+// def mixed_fresh_first(a: A) -> Iterator[int32]:
 __gen_mixed_fresh_first mixed_fresh_first(A& a);
+// def mixed_lvalue_first(a: A) -> Iterator[int32]:
 __gen_mixed_lvalue_first mixed_lvalue_first(A& a);
+// def moved_last_use() -> Iterator[int32]:
 __gen_moved_last_use moved_last_use();
+// def loop_reassigned() -> Iterator[int32]:
 __gen_loop_reassigned loop_reassigned();
+// def literal_then_call(c: bool) -> Iterator[int32]:
 __gen_literal_then_call literal_then_call(bool c);
+// def call_then_literal(c: bool) -> Iterator[int32]:
 __gen_call_then_literal call_then_literal(bool c);
+// def call_reassigned() -> Iterator[int32]:
 __gen_call_reassigned call_reassigned();
+// def own_elem_call() -> Iterator[int32]:
 __gen_own_elem_call own_elem_call();
+// def try_body() -> Iterator[int32]:
 __gen_try_body try_body();
+// async def coro(a: A) -> int32:
 __coro_coro coro(A& a);
+// async def async_section() -> None:
 __coro_async_section async_section();
+// def main() -> None:
 void main();
 
 // class A:
@@ -84,7 +102,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
     return os;
 }
 
-// Async coroutine: coro
+// async def coro(a: A) -> int32:
 struct __coro_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -109,7 +127,7 @@ struct __coro_coro {
     }
 };
 
-// Async coroutine: async_section
+// async def async_section() -> None:
 struct __coro_async_section {
     int32_t __state;
     bool __cancel_pending;
@@ -134,7 +152,7 @@ struct __coro_async_section {
     }
 };
 
-// Generator: fresh
+// def fresh() -> Iterator[int32]:
 struct __gen_fresh : public ::tpy::next_iter_mixin<__gen_fresh, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
@@ -157,7 +175,7 @@ struct __gen_fresh : public ::tpy::next_iter_mixin<__gen_fresh, int32_t> {
     }
 };
 
-// Generator: own_call
+// def own_call() -> Iterator[int32]:
 struct __gen_own_call : public ::tpy::next_iter_mixin<__gen_own_call, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<std::tuple<int32_t, A>> t;
@@ -180,7 +198,7 @@ struct __gen_own_call : public ::tpy::next_iter_mixin<__gen_own_call, int32_t> {
     }
 };
 
-// Generator: lvalue
+// def lvalue(a: A) -> Iterator[int32]:
 struct __gen_lvalue : public ::tpy::next_iter_mixin<__gen_lvalue, int32_t> {
     int32_t __state;
     A& a;
@@ -204,7 +222,7 @@ struct __gen_lvalue : public ::tpy::next_iter_mixin<__gen_lvalue, int32_t> {
     }
 };
 
-// Generator: mixed_fresh_first
+// def mixed_fresh_first(a: A) -> Iterator[int32]:
 struct __gen_mixed_fresh_first : public ::tpy::next_iter_mixin<__gen_mixed_fresh_first, int32_t> {
     int32_t __state;
     A& a;
@@ -228,7 +246,7 @@ struct __gen_mixed_fresh_first : public ::tpy::next_iter_mixin<__gen_mixed_fresh
     }
 };
 
-// Generator: mixed_lvalue_first
+// def mixed_lvalue_first(a: A) -> Iterator[int32]:
 struct __gen_mixed_lvalue_first : public ::tpy::next_iter_mixin<__gen_mixed_lvalue_first, int32_t> {
     int32_t __state;
     A& a;
@@ -252,7 +270,7 @@ struct __gen_mixed_lvalue_first : public ::tpy::next_iter_mixin<__gen_mixed_lval
     }
 };
 
-// Generator: moved_last_use
+// def moved_last_use() -> Iterator[int32]:
 struct __gen_moved_last_use : public ::tpy::next_iter_mixin<__gen_moved_last_use, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<A> a;
@@ -276,7 +294,7 @@ struct __gen_moved_last_use : public ::tpy::next_iter_mixin<__gen_moved_last_use
     }
 };
 
-// Generator: loop_reassigned
+// def loop_reassigned() -> Iterator[int32]:
 struct __gen_loop_reassigned : public ::tpy::next_iter_mixin<__gen_loop_reassigned, int32_t> {
     int32_t __state;
     int32_t i;
@@ -301,7 +319,7 @@ struct __gen_loop_reassigned : public ::tpy::next_iter_mixin<__gen_loop_reassign
     }
 };
 
-// Generator: literal_then_call
+// def literal_then_call(c: bool) -> Iterator[int32]:
 struct __gen_literal_then_call : public ::tpy::next_iter_mixin<__gen_literal_then_call, int32_t> {
     int32_t __state;
     bool c;
@@ -325,7 +343,7 @@ struct __gen_literal_then_call : public ::tpy::next_iter_mixin<__gen_literal_the
     }
 };
 
-// Generator: call_then_literal
+// def call_then_literal(c: bool) -> Iterator[int32]:
 struct __gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_call_then_literal, int32_t> {
     int32_t __state;
     bool c;
@@ -349,7 +367,7 @@ struct __gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_call_then_l
     }
 };
 
-// Generator: call_reassigned
+// def call_reassigned() -> Iterator[int32]:
 struct __gen_call_reassigned : public ::tpy::next_iter_mixin<__gen_call_reassigned, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
@@ -372,7 +390,7 @@ struct __gen_call_reassigned : public ::tpy::next_iter_mixin<__gen_call_reassign
     }
 };
 
-// Generator: own_elem_call
+// def own_elem_call() -> Iterator[int32]:
 struct __gen_own_elem_call : public ::tpy::next_iter_mixin<__gen_own_elem_call, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
@@ -395,7 +413,7 @@ struct __gen_own_elem_call : public ::tpy::next_iter_mixin<__gen_own_elem_call, 
     }
 };
 
-// Generator: try_body
+// def try_body() -> Iterator[int32]:
 struct __gen_try_body : public ::tpy::next_iter_mixin<__gen_try_body, int32_t> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<std::tuple<A, int32_t>> t;
@@ -436,7 +454,7 @@ struct __gen_try_body : public ::tpy::next_iter_mixin<__gen_try_body, int32_t> {
     }
 };
 
-// Generator: H.g
+// def g(self) -> Iterator[int32]:
 struct __gen_H_g : public ::tpy::next_iter_mixin<__gen_H_g, int32_t> {
     int32_t __state;
     const H& __self;
@@ -466,9 +484,11 @@ inline __gen_H_g H::g() const {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline A::A(int32_t v) : v(v) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline H::H(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

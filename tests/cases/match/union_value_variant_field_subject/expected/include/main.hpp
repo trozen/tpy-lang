@@ -13,6 +13,7 @@ struct W;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: match directly on a value-variant union field of `self`.
@@ -71,32 +72,35 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
 
 
 // def __init__(self, x: str) -> None:
+//     self.x = x
 inline A::A(std::string_view x) : x(x) {}
 
 // def __init__(self, y: str) -> None:
+//     self.y = y
 inline B::B(std::string_view y) : y(y) {}
 
 // def __init__(self, f: A | B) -> None:
+//     self.f = f
 inline W::W(::tpy::Union<const A*, const B*> f) : f(::tpy::to_value_variant<::tpy::Union<A, B>>(f)) {}
 
 // def get_label(self) -> str:
+//     match self.f:
+//         case A(x=v):
+//             return "a:" + v
+//         case B(y=v):
+//             return "b:" + v
 inline std::string W::get_label() const {
-    // match self.f:
     auto& __match_subject_1 = this->f;
     switch (__match_subject_1.index()) {
-    // case A(x=v):
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1);
         auto& v = __case_0.x;
-        // return "a:" + v
         return (::tpy::str_concat("a:", v));
         break;
     }
-    // case B(y=v):
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
         auto& v = __case_1.y;
-        // return "b:" + v
         return (::tpy::str_concat("b:", v));
         break;
     }

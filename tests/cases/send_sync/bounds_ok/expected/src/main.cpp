@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(use(42), use([1, 2]))
+//     ch = Channel(7)
+//     print(ch.item)
 void main() {
-    // print(use(42), use([1, 2]))
     std::vector<int32_t> __tmp_1 = {1, 2};
     std::cout << use<int32_t>(42) << " " << use<std::vector<int32_t>>(__tmp_1) << "\n";
-    // ch = Channel(7)
     Channel<int32_t> ch = Channel<int32_t>(7);
-    // print(ch.item)
     std::cout << ch.item << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

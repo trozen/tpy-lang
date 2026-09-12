@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h1 = Holder([10, 20])
+//     h2 = Holder(None)
+//     print(len(h1.items))
+//     print(len(h2.items))
 void main() {
-    // h1 = Holder([10, 20])
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>{10, 20};
     Holder h1 = Holder(&(__tmp_1));
-    // h2 = Holder(None)
     Holder h2 = Holder(nullptr);
-    // print(len(h1.items))
     std::cout << ::tpy::__len__(h1.items) << "\n";
-    // print(len(h2.items))
     std::cout << ::tpy::__len__(h2.items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def make() -> tuple[Own[Box], int32]:
+//     return (Box(5), 7)
 std::tuple<Box, int32_t> make() {
-    // return (Box(5), 7)
     return std::tuple<Box, int32_t>{Box(5), 7};
 }
 
 // def consume(b: Own[Box]) -> int32:
+//     b.val += 1
+//     return b.val
 int32_t consume(Box&& b) {
-    // b.val += 1
     b.val = ::tpy::add_check<int32_t>(b.val, 1);
-    // return b.val
     return b.val;
 }
 
 // def main() -> None:
+//     t = make()
+//     box, n = t
+//     print(consume(box) + n)
 void main() {
-    // t = make()
     std::tuple<Box, int32_t> t = make();
-    // box, n = t
     auto&& __tup_1 = std::move(t);
     Box box = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // print(consume(box) + n)
     std::cout << (::tpy::add_check<int32_t>(consume(std::move(box)), n)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

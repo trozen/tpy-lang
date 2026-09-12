@@ -5,26 +5,37 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     loop = asyncio.get_running_loop()
+//     probe = socket(AF_INET, SOCK_STREAM)
+//     probe.bind(("127.0.0.1", 0))
+//     probe.listen(1)
+//     host, port = probe.getsockname()
+//     probe.close()
+//
+//     s = socket(AF_INET, SOCK_STREAM)
+//     s.setblocking(False)
+//     try:
+//         await loop.sock_connect(s, ("127.0.0.1", port))
+//         print("connected unexpectedly")
+//     except ConnectionRefusedError:
+//         # The specific subclass pins the CPython-parity claim; a regression
+//         # to generic SocketError would fall through to the arm below.
+//         print("connect refused")
+//     except OSError:
+//         print("caught generic OSError")
+//     s.close()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // probe = socket(AF_INET, SOCK_STREAM)
         probe.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
-        // probe.bind(("127.0.0.1", 0))
         (*probe).bind(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
-        // probe.listen(1)
         (*probe).listen(1);
-        // host, port = probe.getsockname()
         auto __tup_1 = (*probe).getsockname();
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
-        // probe.close()
         (*probe).close();
-        // s = socket(AF_INET, SOCK_STREAM)
         s.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
-        // s.setblocking(False)
         (*s).setblocking(false);
         __state = S_JOIN_1;
         continue;
@@ -35,21 +46,16 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("connected unexpectedly")
             std::cout << "connected unexpectedly" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ConnectionRefusedError&) {
             __sub_0.reset();
-            // # The specific subclass pins the CPython-parity claim; a regression
-            // # to generic SocketError would fall through to the arm below.
-            // print("connect refused")
             std::cout << "connect refused" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::OSError&) {
             __sub_0.reset();
-            // print("caught generic OSError")
             std::cout << "caught generic OSError" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -59,26 +65,20 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_0: {
-        // s.close()
         (*s).close();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
         try {
-            // await loop.sock_connect(s, ("127.0.0.1", port))
             __sub_0.emplace(std::move((*loop).sock_connect((*s), std::tuple<std::string, int32_t>{"127.0.0.1", port})));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ConnectionRefusedError&) {
-            // # The specific subclass pins the CPython-parity claim; a regression
-            // # to generic SocketError would fall through to the arm below.
-            // print("connect refused")
             std::cout << "connect refused" << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::OSError&) {
-            // print("caught generic OSError")
             std::cout << "caught generic OSError" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -98,27 +98,28 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio reactor: sock_connect to a refused port raises
+// # ConnectionRefusedError (an OSError), matching CPython asyncio.
+// # Grab a port by binding+listening, then close it: connecting to the freed
+// # port draws an RST -> ECONNREFUSED on both Linux and macOS. (A bound-but-not-
+// # listen()ed socket only refuses on Linux; BSD/macOS silently drops the SYN
+// # and the connect times out instead -- host-divergent, so not usable here.)
+// import asyncio
+// from socket import socket, AF_INET, SOCK_STREAM
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio reactor: sock_connect to a refused port raises
-    // # ConnectionRefusedError (an OSError), matching CPython asyncio.
-    // # Grab a port by binding+listening, then close it: connecting to the freed
-    // # port draws an RST -> ECONNREFUSED on both Linux and macOS. (A bound-but-not-
-    // # listen()ed socket only refuses on Linux; BSD/macOS silently drops the SYN
-    // # and the connect times out instead -- host-divergent, so not usable here.)
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socket, AF_INET, SOCK_STREAM
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

@@ -23,12 +23,19 @@ struct __gen_nested_shadow;
 struct __coro_a_guarded;
 struct __coro_amain;
 
+// def guarded(a: Cat | Dog) -> Iterator[int32]:
 __gen_guarded guarded(::tpy::Union<const Cat*, const Dog*> a);
+// def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[int32]:
 __gen_guarded_cond guarded_cond(::tpy::Union<const Cat*, const Dog*> a, bool flag);
+// def nested(h: Holder) -> Iterator[int32]:
 __gen_nested nested(Holder& h);
+// def nested_shadow(h: Holder) -> Iterator[int32]:
 __gen_nested_shadow nested_shadow(Holder& h);
+// async def a_guarded(a: Cat | Dog) -> int32:
 __coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a);
+// async def amain() -> None:
 __coro_amain amain();
+// def main() -> None:
 void main();
 
 // class Cat:
@@ -78,7 +85,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: a_guarded
+// async def a_guarded(a: Cat | Dog) -> int32:
 struct __coro_a_guarded {
     int32_t __state;
     bool __cancel_pending;
@@ -103,7 +110,7 @@ struct __coro_a_guarded {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -132,7 +139,7 @@ struct __coro_amain {
     }
 };
 
-// Generator: guarded
+// def guarded(a: Cat | Dog) -> Iterator[int32]:
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
     int32_t __state;
     ::tpy::Union<const Cat*, const Dog*> a;
@@ -158,7 +165,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
     }
 };
 
-// Generator: guarded_cond
+// def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[int32]:
 struct __gen_guarded_cond : public ::tpy::next_iter_mixin<__gen_guarded_cond, int32_t> {
     int32_t __state;
     ::tpy::Union<const Cat*, const Dog*> a;
@@ -185,7 +192,7 @@ struct __gen_guarded_cond : public ::tpy::next_iter_mixin<__gen_guarded_cond, in
     }
 };
 
-// Generator: nested
+// def nested(h: Holder) -> Iterator[int32]:
 struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
     int32_t __state;
     Holder& h;
@@ -211,7 +218,7 @@ struct __gen_nested : public ::tpy::next_iter_mixin<__gen_nested, int32_t> {
     }
 };
 
-// Generator: nested_shadow
+// def nested_shadow(h: Holder) -> Iterator[int32]:
 struct __gen_nested_shadow : public ::tpy::next_iter_mixin<__gen_nested_shadow, int32_t> {
     int32_t __state;
     Holder& h;
@@ -241,12 +248,15 @@ struct __gen_nested_shadow : public ::tpy::next_iter_mixin<__gen_nested_shadow, 
 
 
 // def __init__(self, lives: int32) -> None:
+//     self.lives = lives
 inline Cat::Cat(int32_t lives) : lives(lives) {}
 
 // def __init__(self, lives: int32) -> None:
+//     self.lives = lives
 inline Dog::Dog(int32_t lives) : lives(lives) {}
 
 // def __init__(self, pet: Cat | Dog) -> None:
+//     self.pet = pet  # tpyc: warning(/copies Cat \| Dog into field/)
 inline Holder::Holder(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 void __tpy_init();
 } // namespace tpyapp::main

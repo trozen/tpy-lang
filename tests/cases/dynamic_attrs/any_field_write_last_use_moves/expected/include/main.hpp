@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def store(h: Holder) -> None:
 void store(Holder& h);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -48,9 +50,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Node::Node(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.payload = None
 inline Holder::Holder() : payload(::tpy::make_any(std::monostate{})) {}
 void __tpy_init();
 } // namespace tpyapp::main

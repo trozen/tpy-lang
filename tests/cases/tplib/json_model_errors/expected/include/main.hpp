@@ -46,9 +46,13 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_missing_field() -> None:
 void test_missing_field();
+// def test_invalid_enum() -> None:
 void test_invalid_enum();
+// def test_malformed_with_describe() -> None:
 void test_malformed_with_describe();
+// def main() -> None:
 void main();
 
 // @model
@@ -149,12 +153,9 @@ inline std::string Item::to_json(int32_t indent) const {
 }
 
 inline void Item::save_json(std::string_view __path, int32_t indent) const {
-    // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
     auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
     auto& __f = __ctx_1.__enter__();
     try {
-        // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
-        // from enum import Enum
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -169,13 +170,10 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
 }
 
 inline Item Item::load_json(std::string_view __path) {
-    // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
-        // from enum import Enum
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -187,18 +185,14 @@ inline Item Item::load_json(std::string_view __path) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // from tplib.json import JsonError
     return Item::from_json(__data);
 }
 
 inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_load_json(std::string_view __path) {
-    // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        // # Test @model error messages via try_from_json: missing field, invalid enum, describe().
-        // from enum import Enum
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -210,7 +204,6 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // from tplib.json import JsonError
     return Item::try_from_json(__data);
 }
 void __tpy_init();

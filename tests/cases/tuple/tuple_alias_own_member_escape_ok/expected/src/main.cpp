@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def make() -> tuple[Own[Box], int32]:
+//     b = Box(5)
+//     pair = (b, 0)
+//     u = pair
+//     return u
 std::tuple<Box, int32_t> make() {
-    // b = Box(5)
     Box b = Box(5);
-    // pair = (b, 0)
     auto pair = std::tuple<Box, int32_t>{std::move(b), 0};
-    // u = pair
     auto&& u = pair;
-    // return u
     return u;
 }
 
 // def main() -> None:
+//     got, n = make()
+//     print(got.val + n)
 void main() {
-    // got, n = make()
     auto __tup_1 = make();
     Box got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // print(got.val + n)
     std::cout << (::tpy::add_check<int32_t>(got.val, n)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

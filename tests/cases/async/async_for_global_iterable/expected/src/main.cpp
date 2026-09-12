@@ -3,14 +3,16 @@
 
 namespace tpyapp::main {
 
-// g = Source(3)
 Source* g{};
 
 // async def main_coro() -> None:
+//     total = 0
+//     async for x in g:
+//         total += x
+//     print(total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_itr_0.emplace((*(g)).__aiter__());
         __state = S_JOIN_0;
@@ -35,7 +37,6 @@ Source* g{};
     }
     case S_JOIN_0: {
         try {
-            // async for x in g:
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -47,13 +48,11 @@ Source* g{};
         }
     }
     case S_JOIN_1: {
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
-        // print(total)
         std::cout << total << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -70,24 +69,24 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def __anext__(self) -> int32:
+//     if self.n >= self.limit:
+//         raise StopAsyncIteration
+//     self.n += 1
+//     return self.n
 ::tpystd::tpy::Poll<int32_t> __coro_AIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if self.n >= self.limit:
         if ((__self.n >= __self.limit)) {
-            // raise StopAsyncIteration
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.n += 1
         __self.n = ::tpy::add_check<int32_t>(__self.n, 1);
-        // return self.n
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -98,21 +97,23 @@ void main() {
 }
 
 
+// # `async for x in g:` over a module-global async iterable. A global
+// # renders as `Src*`, so the `.__aiter__()` call must deref it rather
+// # than hitting `.`-on-pointer. Same re-address root as the global
+// # await / with-manager cases.
+// import asyncio
+//
+// g = Source(3)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `async for x in g:` over a module-global async iterable. A global
-    // # renders as `Src*`, so the `.__aiter__()` call must deref it rather
-    // # than hitting `.`-on-pointer. Same re-address root as the global
-    // # await / with-manager cases.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // g = Source(3)
     static Source __global_slot_1 = Source(3);
     g = &__global_slot_1;
-    // main()
     main();
 }
 

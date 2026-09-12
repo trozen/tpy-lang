@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def take_point(p: Own[Point]) -> int32:
+//     return 42
 int32_t take_point(Point&& p) {
-    // return 42
     return 42;
 }
 
 // def use_point(p: Point) -> None:
+//     print(p.x)
 void use_point(const Point& p) {
-    // print(p.x)
     std::cout << p.x << "\n";
 }
 
 // def main():
+//     p: Point = Point()
+//     p.x = 10
+//     # Passing Point to Own[Point] would be implicit copy -- p is used after
+//     result: int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
+//     use_point(p)
+//     print(result)
 void main() {
-    // p: Point = Point()
     Point p = Point();
-    // p.x = 10
     p.x = 10;
-    // # Passing Point to Own[Point] would be implicit copy -- p is used after
-    // result: int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
     Point __tmp_1 = p;
     int32_t result = take_point(std::move(__tmp_1));
-    // use_point(p)
     use_point(p);
-    // print(result)
     std::cout << result << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

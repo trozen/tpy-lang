@@ -3,233 +3,233 @@
 
 namespace tpyapp::main {
 
-// call_count: int32 = 0
 int32_t call_count{};
 
 // def test_basic() -> None:
+//     print(1 < 2 < 3)
+//     print(1 < 2 < 2)
+//     print(1 < 3 < 2)
 void test_basic() {
-    // print(1 < 2 < 3)
     std::cout << ::tpy::print_bool(((1 < 2) && (2 < 3))) << "\n";
-    // print(1 < 2 < 2)
     std::cout << ::tpy::print_bool(((1 < 2) && (2 < 2))) << "\n";
-    // print(1 < 3 < 2)
     std::cout << ::tpy::print_bool(((1 < 3) && (3 < 2))) << "\n";
 }
 
 // def test_variables() -> None:
+//     x: int32 = 5
+//     print(int32(0) < x < int32(10))
+//     print(int32(0) < x < int32(5))
 void test_variables() {
-    // x: int32 = 5
     int32_t x = 5;
-    // print(int32(0) < x < int32(10))
     std::cout << ::tpy::print_bool(((0 < x) && (x < 10))) << "\n";
-    // print(int32(0) < x < int32(5))
     std::cout << ::tpy::print_bool(((0 < x) && (x < 5))) << "\n";
 }
 
 // def test_mixed_ops() -> None:
+//     print(1 <= 2 < 3)
+//     print(1 < 2 <= 2)
 void test_mixed_ops() {
-    // print(1 <= 2 < 3)
     std::cout << ::tpy::print_bool(((1 <= 2) && (2 < 3))) << "\n";
-    // print(1 < 2 <= 2)
     std::cout << ::tpy::print_bool(((1 < 2) && (2 <= 2))) << "\n";
 }
 
 // def test_equality() -> None:
+//     print(1 == 1 == 1)
+//     print(1 == 1 == 2)
+//     print(1 != 2 != 1)
+//     print(1 != 2 != 2)
 void test_equality() {
-    // print(1 == 1 == 1)
     std::cout << ::tpy::print_bool(((1 == 1) && (1 == 1))) << "\n";
-    // print(1 == 1 == 2)
     std::cout << ::tpy::print_bool(((1 == 1) && (1 == 2))) << "\n";
-    // print(1 != 2 != 1)
     std::cout << ::tpy::print_bool(((1 != 2) && (2 != 1))) << "\n";
-    // print(1 != 2 != 2)
     std::cout << ::tpy::print_bool(((1 != 2) && (2 != 2))) << "\n";
 }
 
 // def test_triple() -> None:
+//     print(1 < 2 < 3 < 4)
+//     print(1 < 2 < 3 < 3)
 void test_triple() {
-    // print(1 < 2 < 3 < 4)
     std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && (3 < 4))) << "\n";
-    // print(1 < 2 < 3 < 3)
     std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && (3 < 3))) << "\n";
 }
 
 // def test_descending() -> None:
+//     print(3 >= 2 >= 1)
+//     print(3 >= 2 >= 3)
 void test_descending() {
-    // print(3 >= 2 >= 1)
     std::cout << ::tpy::print_bool(((3 >= 2) && (2 >= 1))) << "\n";
-    // print(3 >= 2 >= 3)
     std::cout << ::tpy::print_bool(((3 >= 2) && (2 >= 3))) << "\n";
 }
 
 // def test_short_circuit() -> None:
+//     x: int32 = 10
+//     y: int32 = 0
+//     # First comparison false -> second must not matter
+//     # (verifies && short-circuit from desugaring)
+//     print(5 < 3 < 100)
 void test_short_circuit() {
-    // x: int32 = 10
     int32_t x = 10;
-    // y: int32 = 0
     int32_t y = 0;
-    // # First comparison false -> second must not matter
-    // # (verifies && short-circuit from desugaring)
-    // print(5 < 3 < 100)
     std::cout << ::tpy::print_bool(((5 < 3) && (3 < 100))) << "\n";
 }
 
 // def test_float() -> None:
+//     print(1.0 < 2.5 < 3.0)
+//     print(1.0 < 2.5 < 2.0)
 void test_float() {
-    // print(1.0 < 2.5 < 3.0)
     std::cout << ::tpy::print_bool(((1.0 < 2.5) && (2.5 < 3.0))) << "\n";
-    // print(1.0 < 2.5 < 2.0)
     std::cout << ::tpy::print_bool(((1.0 < 2.5) && (2.5 < 2.0))) << "\n";
 }
 
 // def test_in_condition() -> None:
+//     x: int32 = 5
+//     if 0 < x < 10:
+//         print("in range")
+//     else:
+//         print("out of range")
 void test_in_condition() {
-    // x: int32 = 5
     int32_t x = 5;
-    // if 0 < x < 10:
     if (((0 < x) && (x < 10))) {
-        // print("in range")
         std::cout << "in range" << "\n";
-    // else:
     } else {
-        // print("out of range")
         std::cout << "out of range" << "\n";
     }
 }
 
 // def test_as_expression() -> None:
+//     result: bool = 1 < 2 < 3
+//     print(result)
+//     print(not (1 < 2 < 3))
+//     print(1 < 2 < 3 and 4 < 5 < 6)
 void test_as_expression() {
-    // result: bool = 1 < 2 < 3
     bool result = ((1 < 2) && (2 < 3));
-    // print(result)
     std::cout << ::tpy::print_bool(result) << "\n";
-    // print(not (1 < 2 < 3))
     std::cout << ::tpy::print_bool((!(((1 < 2) && (2 < 3))))) << "\n";
-    // print(1 < 2 < 3 and 4 < 5 < 6)
     std::cout << ::tpy::print_bool((((1 < 2) && (2 < 3)) && ((4 < 5) && (5 < 6)))) << "\n";
 }
 
 // def get_mid() -> int32:
+//     global call_count
+//     call_count = call_count + int32(1)
+//     return int32(5)
 int32_t get_mid() {
-    // global call_count
-    // call_count = call_count + int32(1)
     call_count = (::tpy::add_check<int32_t>(call_count, 1));
-    // return int32(5)
     return 5;
 }
 
 // def get_high() -> int32:
+//     global call_count
+//     call_count = call_count + int32(1)
+//     return int32(10)
 int32_t get_high() {
-    // global call_count
-    // call_count = call_count + int32(1)
     call_count = (::tpy::add_check<int32_t>(call_count, 1));
-    // return int32(10)
     return 10;
 }
 
 // def get_top() -> int32:
+//     global call_count
+//     call_count = call_count + int32(1)
+//     return int32(20)
 int32_t get_top() {
-    // global call_count
-    // call_count = call_count + int32(1)
     call_count = (::tpy::add_check<int32_t>(call_count, 1));
-    // return int32(20)
     return 20;
 }
 
 // def test_single_eval() -> None:
+//     # Function call as intermediate -- must be evaluated exactly once
+//     global call_count
+//     call_count = int32(0)
+//     print(int32(0) < get_mid() < int32(10))
+//     print(call_count)
 void test_single_eval() {
-    // # Function call as intermediate -- must be evaluated exactly once
-    // global call_count
-    // call_count = int32(0)
     call_count = 0;
-    // print(int32(0) < get_mid() < int32(10))
     std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < 10); })) << "\n";
-    // print(call_count)
     std::cout << call_count << "\n";
 }
 
 // def test_short_circuit_operands() -> None:
+//     # Two function calls: a < f() < g()
+//     # When first comparison fails, g() must NOT be called
+//     global call_count
+//     call_count = int32(0)
+//     print(int32(99) < get_mid() < get_high())
+//     # get_mid() called (returns 5), 99 < 5 is false -> get_high() skipped
+//     print(call_count)
+//     # When first comparison passes, both are called
+//     call_count = int32(0)
+//     print(int32(0) < get_mid() < get_high())
+//     # get_mid() called (returns 5), 0 < 5 true -> get_high() called (returns 10), 5 < 10 true
+//     print(call_count)
 void test_short_circuit_operands() {
-    // # Two function calls: a < f() < g()
-    // # When first comparison fails, g() must NOT be called
-    // global call_count
-    // call_count = int32(0)
     call_count = 0;
-    // print(int32(99) < get_mid() < get_high())
     std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < get_high()); })) << "\n";
-    // # get_mid() called (returns 5), 99 < 5 is false -> get_high() skipped
-    // print(call_count)
     std::cout << call_count << "\n";
-    // # When first comparison passes, both are called
-    // call_count = int32(0)
     call_count = 0;
-    // print(int32(0) < get_mid() < get_high())
     std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && (_cmp1 < get_high()); })) << "\n";
-    // # get_mid() called (returns 5), 0 < 5 true -> get_high() called (returns 10), 5 < 10 true
-    // print(call_count)
     std::cout << call_count << "\n";
 }
 
 // def test_triple_short_circuit() -> None:
+//     # 3-pair chain with complex intermediates: a < f() < g() < h()
+//     # Exercises the inner wrap loop (n >= 3) in chained-compare codegen.
+//     global call_count
+//     # All pass: 0 < 5 < 10 < 20 -- all three helpers evaluate.
+//     call_count = int32(0)
+//     print(int32(0) < get_mid() < get_high() < get_top())
+//     print(call_count)
+//     # Fail at 2nd compare (get_high() < 3 is false): get_top() must skip.
+//     call_count = int32(0)
+//     print(int32(0) < get_mid() < get_high() < int32(3))
+//     print(call_count)
+//     # Fail at 1st compare (99 < 5 is false): both get_high() and get_top() skip.
+//     call_count = int32(0)
+//     print(int32(99) < get_mid() < get_high() < get_top())
+//     print(call_count)
 void test_triple_short_circuit() {
-    // # 3-pair chain with complex intermediates: a < f() < g() < h()
-    // # Exercises the inner wrap loop (n >= 3) in chained-compare codegen.
-    // global call_count
-    // # All pass: 0 < 5 < 10 < 20 -- all three helpers evaluate.
-    // call_count = int32(0)
     call_count = 0;
-    // print(int32(0) < get_mid() < get_high() < get_top())
     std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < get_top()); }); })) << "\n";
-    // print(call_count)
     std::cout << call_count << "\n";
-    // # Fail at 2nd compare (get_high() < 3 is false): get_top() must skip.
-    // call_count = int32(0)
     call_count = 0;
-    // print(int32(0) < get_mid() < get_high() < int32(3))
     std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 0; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < 3); }); })) << "\n";
-    // print(call_count)
     std::cout << call_count << "\n";
-    // # Fail at 1st compare (99 < 5 is false): both get_high() and get_top() skip.
-    // call_count = int32(0)
     call_count = 0;
-    // print(int32(99) < get_mid() < get_high() < get_top())
     std::cout << ::tpy::print_bool(({ auto&& _cmp0 = 99; auto&& _cmp1 = get_mid(); (_cmp0 < _cmp1) && ({ auto&& _cmp2 = get_high(); (_cmp1 < _cmp2) && (_cmp2 < get_top()); }); })) << "\n";
-    // print(call_count)
     std::cout << call_count << "\n";
 }
 
+// call_count: int32 = 0
+//
+// test_basic()
+// test_variables()
+// test_mixed_ops()
+// test_equality()
+// test_triple()
+// test_descending()
+// test_short_circuit()
+// test_float()
+// test_in_condition()
+// test_as_expression()
+// test_single_eval()
+// test_short_circuit_operands()
+// test_triple_short_circuit()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // call_count: int32 = 0
     call_count = 0;
-    // test_basic()
     test_basic();
-    // test_variables()
     test_variables();
-    // test_mixed_ops()
     test_mixed_ops();
-    // test_equality()
     test_equality();
-    // test_triple()
     test_triple();
-    // test_descending()
     test_descending();
-    // test_short_circuit()
     test_short_circuit();
-    // test_float()
     test_float();
-    // test_in_condition()
     test_in_condition();
-    // test_as_expression()
     test_as_expression();
-    // test_single_eval()
     test_single_eval();
-    // test_short_circuit_operands()
     test_short_circuit_operands();
-    // test_triple_short_circuit()
     test_triple_short_circuit();
 }
 

@@ -5,117 +5,121 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     zones = available_timezones()
+//     print(len(zones) > 100)
+//     print("Europe/Warsaw" in zones, "America/New_York" in zones,
+//           "UTC" in zones)
+//     print("posixrules" in zones)
+//     bad_prefix = False
+//     for k in zones:
+//         if k.startswith("posix/") or k.startswith("right/"):
+//             bad_prefix = True
+//     print(bad_prefix)
+//     # The completion invariant: every listed key constructs and
+//     # round-trips its key.
+//     all_ok = True
+//     for k in zones:
+//         z = ZoneInfo(k)
+//         if z.key != k:
+//             all_ok = False
+//     print(all_ok)
+//
+//     waw = ZoneInfo("Europe/Warsaw")
+//     # UTC 00:30 and 01:30 on 2023-10-29 are the two passes of the
+//     # repeated wall time 02:30 in Warsaw.
+//     r0 = waw.fromutc(datetime(2023, 10, 29, 0, 30, tzinfo=waw))
+//     r1 = waw.fromutc(datetime(2023, 10, 29, 1, 30, tzinfo=waw))
+//     print(r0, r0.fold)
+//     print(r1, r1.fold)
+//     print(r1.timestamp() - r0.timestamp())
+//     # Outside any transition: plain shift, fold 0.
+//     plain = waw.fromutc(datetime(2023, 7, 15, 10, 0, tzinfo=waw))
+//     print(plain, plain.fold)
+//     # tzinfo must be this zone: naive and other-zone inputs raise.
+//     try:
+//         waw.fromutc(datetime(2023, 10, 29, 0, 30))
+//         print("no-raise")
+//     except ValueError:
+//         print("ValueError-naive")
+//     try:
+//         waw.fromutc(datetime(2023, 10, 29, 0, 30,
+//                              tzinfo=ZoneInfo("America/New_York")))
+//         print("no-raise")
+//     except ValueError:
+//         print("ValueError-other-zone")
 void main() {
-    // zones = available_timezones()
     ::tpy::ordered_set<std::string> zones = ::tpystd::zoneinfo::available_timezones();
-    // print(len(zones) > 100)
     std::cout << ::tpy::print_bool((::tpy::__len__(zones) > 100)) << "\n";
-    // print("Europe/Warsaw" in zones, "America/New_York" in zones,
-    // "UTC" in zones)
     std::cout << ::tpy::print_bool((zones.contains("Europe/Warsaw"))) << " " << ::tpy::print_bool((zones.contains("America/New_York"))) << " " << ::tpy::print_bool((zones.contains("UTC"))) << "\n";
-    // print("posixrules" in zones)
     std::cout << ::tpy::print_bool((zones.contains("posixrules"))) << "\n";
-    // bad_prefix = False
     bool bad_prefix = false;
-    // for k in zones:
     auto& __obj_0 = zones;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // if k.startswith("posix/") or k.startswith("right/"):
         if ((::tpy::str_startswith(k, "posix/") || ::tpy::str_startswith(k, "right/"))) {
-            // bad_prefix = True
             bad_prefix = true;
         }
     }
-    // print(bad_prefix)
     std::cout << ::tpy::print_bool(bad_prefix) << "\n";
-    // # The completion invariant: every listed key constructs and
-    // # round-trips its key.
-    // all_ok = True
     bool all_ok = true;
-    // for k in zones:
     auto& __obj_1 = zones;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // z = ZoneInfo(k)
         ::tpystd::datetime::ZoneInfo z = ::tpystd::datetime::ZoneInfo(k);
-        // if z.key != k:
         if ((z.key() != k)) {
-            // all_ok = False
             all_ok = false;
         }
     }
-    // print(all_ok)
     std::cout << ::tpy::print_bool(all_ok) << "\n";
-    // waw = ZoneInfo("Europe/Warsaw")
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    // # UTC 00:30 and 01:30 on 2023-10-29 are the two passes of the
-    // # repeated wall time 02:30 in Warsaw.
-    // r0 = waw.fromutc(datetime(2023, 10, 29, 0, 30, tzinfo=waw))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime r0 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1));
-    // r1 = waw.fromutc(datetime(2023, 10, 29, 1, 30, tzinfo=waw))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
     ::tpystd::datetime::datetime r1 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2));
-    // print(r0, r0.fold)
     std::cout << r0 << " " << r0.fold() << "\n";
-    // print(r1, r1.fold)
     std::cout << r1 << " " << r1.fold() << "\n";
-    // print(r1.timestamp() - r0.timestamp())
     std::cout << ::tpy::print_float(((r1.timestamp()) - (r0.timestamp()))) << "\n";
-    // # Outside any transition: plain shift, fold 0.
-    // plain = waw.fromutc(datetime(2023, 7, 15, 10, 0, tzinfo=waw))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime plain = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(10), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3));
-    // print(plain, plain.fold)
     std::cout << plain << " " << plain.fold() << "\n";
-    // # tzinfo must be this zone: naive and other-zone inputs raise.
-    // try:
     {
         try {
-            // waw.fromutc(datetime(2023, 10, 29, 0, 30))
             waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30)));
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-naive")
             std::cout << "ValueError-naive" << "\n";
         }
     }
-    // try:
     {
         try {
-            // waw.fromutc(datetime(2023, 10, 29, 0, 30,
-            // tzinfo=ZoneInfo("America/New_York")))
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ::tpystd::datetime::ZoneInfo("America/New_York");
             waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4));
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-other-zone")
             std::cout << "ValueError-other-zone" << "\n";
         }
     }
 }
 
+// # zoneinfo completion: available_timezones (only host-stable membership/
+// # exclusion invariants are printed -- the exact set and count depend on
+// # the host tz database) and ZoneInfo.fromutc incl. PEP 495 fold on the
+// # second pass of a repeated wall time.
+// from datetime import datetime
+// from zoneinfo import ZoneInfo, available_timezones
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # zoneinfo completion: available_timezones (only host-stable membership/
-    // # exclusion invariants are printed -- the exact set and count depend on
-    // # the host tz database) and ZoneInfo.fromutc incl. PEP 495 fold on the
-    // # second pass of a repeated wall time.
-    // from datetime import datetime
     ::tpystd::datetime::__tpy_init();
-    // from zoneinfo import ZoneInfo, available_timezones
     ::tpystd::zoneinfo::__tpy_init();
-    // main()
     main();
 }
 

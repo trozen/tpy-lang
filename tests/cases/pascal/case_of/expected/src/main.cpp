@@ -3,47 +3,46 @@
 
 namespace tpyapp::main {
 
-// i: integer;
 int32_t i{};
 
+// i: integer;
+//
+// for i := 1 to 5 do
+// begin
+//   case i of
+//     1: writeln('one');
+//     2, 3: writeln('two-or-three');
+//     4: writeln('four');
+//   else
+//     writeln('other');
+//   end;
+// end;
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // for i := 1 to 5 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(5, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        // case i of
         auto& __match_subject_1 = i;
         switch (__match_subject_1) {
-        // 1: writeln('one');
         case 1: {
-            // 1: writeln('one');
             std::cout << "one" << "\n";
             break;
         }
-        // 2, 3: writeln('two-or-three');
         case 2: {
-            // 2, 3: writeln('two-or-three');
             std::cout << "two-or-three" << "\n";
             break;
         }
-        // 2, 3: writeln('two-or-three');
         case 3: {
-            // 2, 3: writeln('two-or-three');
             std::cout << "two-or-three" << "\n";
             break;
         }
-        // 4: writeln('four');
         case 4: {
-            // 4: writeln('four');
             std::cout << "four" << "\n";
             break;
         }
-        // case i of
         default: {
-            // writeln('other');
             std::cout << "other" << "\n";
             break;
         }

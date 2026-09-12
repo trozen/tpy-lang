@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def describe(s: Circle | Rect) -> None:
+//     match s:
+//         case Circle(r):
+//             print(r)
+//         case Rect(_, h):
+//             print(h)
 void describe(::tpy::Union<const Circle*, const Rect*> s) {
-    // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.index()) {
-    // case Circle(r):
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto r = __case_0.radius;
-        // print(r)
         std::cout << ::tpy::print_float(r) << "\n";
         break;
     }
-    // case Rect(_, h):
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         auto h = __case_1.height;
-        // print(h)
         std::cout << ::tpy::print_float(h) << "\n";
         break;
     }
@@ -29,27 +29,28 @@ void describe(::tpy::Union<const Circle*, const Rect*> s) {
 }
 
 // def main() -> None:
+//     c: Circle | Rect = Circle(5.0)
+//     describe(c)
+//     r: Circle | Rect = Rect(3.0, 4.0)
+//     describe(r)
 void main() {
-    // c: Circle | Rect = Circle(5.0)
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    // describe(c)
     describe(c.as_const());
-    // r: Circle | Rect = Rect(3.0, 4.0)
     ::tpy::Union<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
     ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    // describe(r)
     describe(r.as_const());
 }
 
+// # match/case with positional class patterns via __match_args__
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case with positional class patterns via __match_args__
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def relay(b: Own[Box]) -> Own[Box]:
+//     await asyncio.sleep(0)
+//     return b
 ::tpystd::tpy::Poll<Box> __coro_relay::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return b
         __state = S_DONE;
         Box __tpy_async_ret = std::move(b);
         return ::tpystd::tpy::Poll<Box>::ready(std::move(__tpy_async_ret));
@@ -35,10 +35,12 @@ __coro_relay relay(Box b) {
 }
 
 // async def driver() -> int32:
+//     b = await relay(Box(9))
+//     b.v += 1
+//     return b.v
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = await relay(Box(9))
         __sub_0.emplace(Box(9));
         __state = S_RESUME_0;
         continue;
@@ -48,9 +50,7 @@ __coro_relay relay(Box b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         b.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // b.v += 1
         (*b).v = ::tpy::add_check<int32_t>((*b).v, 1);
-        // return b.v
         __state = S_DONE;
         int32_t __tpy_async_ret = (*b).v;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -67,22 +67,23 @@ __coro_driver driver() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(driver()))
 void main() {
-    // print(asyncio.run(driver()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(driver())) << "\n";
 }
 
+// # An async def relaying an Own[T] param: the return moves the param out of
+// # the frame (a copy is a deleted-ctor build error for @nocopy). The awaiter
+// # owns the result and mutates it.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async def relaying an Own[T] param: the return moves the param out of
-    // # the frame (a copy is a deleted-ctor build error for @nocopy). The awaiter
-    // # owns the result and mutates it.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "a";
 
+// def add_pair(p: Pair) -> int32:
 int32_t add_pair(Pair& p);
 
 // @dataclass

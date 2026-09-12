@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w, k = Widget(5).split()
+//     w.n = 9
+//     print(w.n, k)
+//     p, j = Plain(6).split()
+//     p.n = 8
+//     print(p.n, j)
 void main() {
-    // w, k = Widget(5).split()
     auto __tup_1 = Widget(5).split();
     Widget w = std::move(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
-    // w.n = 9
     w.n = 9;
-    // print(w.n, k)
     std::cout << w.n << " " << k << "\n";
-    // p, j = Plain(6).split()
     auto __tup_2 = Plain(6).split();
     Plain p = std::move(std::get<0>(__tup_2));
     int32_t j = std::get<1>(__tup_2);
-    // p.n = 8
     p.n = 8;
-    // print(p.n, j)
     std::cout << p.n << " " << j << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

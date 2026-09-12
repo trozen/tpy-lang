@@ -23,13 +23,18 @@ struct __coro_sender;
 struct __coro_receiver;
 struct __coro_main_coro;
 
+// def _make_payload() -> bytes:
 ::tpy::Bytes _make_payload();
+// async def sender(sock: socket) -> None:
 __coro_sender sender(::tpystd::socket::socket& sock);
+// async def receiver(sock: socket) -> None:
 __coro_receiver receiver(::tpystd::socket::socket& sock);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: sender
+// async def sender(sock: socket) -> None:
 struct __coro_sender {
     int32_t __state;
     bool __cancel_pending;
@@ -54,7 +59,7 @@ struct __coro_sender {
     }
 };
 
-// Async coroutine: receiver
+// async def receiver(sock: socket) -> None:
 struct __coro_receiver {
     int32_t __state;
     bool __cancel_pending;
@@ -86,7 +91,7 @@ struct __coro_receiver {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

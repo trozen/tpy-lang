@@ -11,7 +11,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def stash(items: list[Point], p: Point) -> None:
 void stash(std::vector<Point>& items, const Point& p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -31,6 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self) -> None:
+//     self.x = 0
 inline Point::Point() : x(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -3,20 +3,19 @@
 
 namespace tpyapp::main {
 
-// x = None
 std::optional<int32_t> x;
 
+// x = None
+// x = first([int32(41), int32(42)])
+// print(x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = None
     x = std::nullopt;
-    // x = first([int32(41), int32(42)])
     std::vector<int32_t> __tmp_1 = {41, 42};
     x = first<int32_t>(__tmp_1);
-    // print(x)
     std::cout << ::tpy::print_optional_val(x) << "\n";
 }
 

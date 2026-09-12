@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = InfiniteCounter()
+//     count: int32 = 0
+//     for x in c:
+//         print(x)
+//         count += 1
+//         if count >= 3:
+//             break
 void main() {
-    // c = InfiniteCounter()
     InfiniteCounter c = InfiniteCounter();
-    // count: int32 = 0
     int32_t count = 0;
-    // for x in c:
     auto& __src_0 = c;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
-        // if count >= 3:
         if ((count >= 3)) {
-            // break
             break;
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def scaled(a: int64, b: int64 = 10, *, c: int64) -> int64:
+//     return a * 100 + b * 10 + c
 ::tpystd::tpy::Poll<int64_t> __coro_scaled::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return a * 100 + b * 10 + c
         __state = S_DONE;
         int64_t __tpy_async_ret = (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 100)), (::tpy::mul_check<int64_t>(b, 10)))), c));
         return ::tpystd::tpy::Poll<int64_t>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,11 @@ __coro_scaled scaled(int64_t a, int64_t b, int64_t c) {
 }
 
 // async def drive() -> None:
+//     print(await scaled(1, c=3))
+//     print(await scaled(1, 2, c=3))
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await scaled(1, c=3))
         __sub_0.emplace(1, 10, 3);
         __state = S_RESUME_0;
         continue;
@@ -39,9 +40,7 @@ __coro_scaled scaled(int64_t a, int64_t b, int64_t c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await scaled(1, c=3))
         std::cout << __await_lift_0 << "\n";
-        // print(await scaled(1, 2, c=3))
         __sub_1.emplace(1, 2, 3);
         __state = S_RESUME_1;
         continue;
@@ -51,7 +50,6 @@ __coro_scaled scaled(int64_t a, int64_t b, int64_t c) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await scaled(1, 2, c=3))
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -68,10 +66,11 @@ __coro_drive drive() {
 }
 
 // def main() -> None:
+//     asyncio.run(drive())
+//     for v in counted(step=5):
+//         print(v)
 void main() {
-    // asyncio.run(drive())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(drive()));
-    // for v in counted(step=5):
     {
         auto __src_0 = counted(2, 5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -79,23 +78,23 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int64_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// # An async/generator FACTORY signature is emitted by its own params emitter, so
+// # it needs the same default-suppression gate the plain-function one has: a
+// # default before a required keyword-only param has no C++ spelling.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async/generator FACTORY signature is emitted by its own params emitter, so
-    // # it needs the same default-suppression gate the plain-function one has: a
-    // # default before a required keyword-only param has no C++ spelling.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

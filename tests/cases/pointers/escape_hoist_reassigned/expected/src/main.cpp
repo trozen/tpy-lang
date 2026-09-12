@@ -8,31 +8,31 @@ namespace tpyapp::main {
 // # reassigned within the loop. Tests the intersection of hoisted_vars
 // # and reassigned_vars.
 // def hoist_and_reassign() -> None:
+//     saved: Point = Point(0, 0)
+//     for i in range(3):
+//         p: Point = Point(i, 0)
+//         p = Point(i, i + 10)
+//         saved = p  # tpyc: warning(/will not keep the object it was given/)
+//     print(saved.x, saved.y)
 void hoist_and_reassign() {
     std::optional<Point> __slot_2;
     std::optional<Point> __slot_3;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p: Point = Point(i, 0)
         Point* p = &*(__slot_2 = Point(i, 0));
-        // p = Point(i, i + 10)
         p = &*(__slot_3 = Point(i, (::tpy::add_check<int32_t>(i, 10))));
-        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// hoist_and_reassign()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // hoist_and_reassign()
     hoist_and_reassign();
 }
 

@@ -121,8 +121,8 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 inline Outer::Outer(int32_t rank) : rank(rank) {}
 
 // def __lt__(self, other: "Outer") -> bool:
+//     return self.rank < other.rank
 inline bool Outer::__lt__(const Outer& other) const {
-    // return self.rank < other.rank
     return (this->rank < other.rank);
 }
 
@@ -149,8 +149,8 @@ inline bool Outer::__ge__(const Outer& other) const {
 inline Inner::Inner(int32_t rank) : rank(rank) {}
 
 // def __lt__(self, other: "Inner") -> bool:
+//     return self.rank < other.rank
 inline bool Inner::__lt__(const Inner& other) const {
-    // return self.rank < other.rank
     return (this->rank < other.rank);
 }
 

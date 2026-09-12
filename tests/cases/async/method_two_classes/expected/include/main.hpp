@@ -18,6 +18,7 @@ struct __coro_main_coro;
 struct __coro_A_tag;
 struct __coro_B_tag;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
 
 // class A:
@@ -46,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     return os;
 }
 
-// Async coroutine: A.tag
+// async def tag(self) -> str:
 struct __coro_A_tag {
     int32_t __state;
     bool __cancel_pending;
@@ -72,7 +73,7 @@ inline __coro_A_tag A::tag() const {
     return __coro_A_tag(*this);
 }
 
-// Async coroutine: B.tag
+// async def tag(self) -> str:
 struct __coro_B_tag {
     int32_t __state;
     bool __cancel_pending;
@@ -98,7 +99,7 @@ inline __coro_B_tag B::tag() const {
     return __coro_B_tag(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

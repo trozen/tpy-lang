@@ -5,39 +5,38 @@ namespace tpyapp::main {
 
 
 // def use(c: Optional[C]) -> None:
+//     print(c.LIMIT)  # tpyc: warning(/Potential None access/)
+//     if c is not None:
+//         # Narrowing silences the warning and elides the runtime check.
+//         print(c.LIMIT)  # tpyc: ok
 void use(const C* c) {
-    // print(c.LIMIT)  # tpyc: warning(/Potential None access/)
     std::cout << ({ ::tpy::deref_check(c); C::LIMIT; }) << "\n";
-    // if c is not None:
     if ((c != nullptr)) {
-        // # Narrowing silences the warning and elides the runtime check.
-        // print(c.LIMIT)  # tpyc: ok
         std::cout << C::LIMIT << "\n";
     }
-    // # Narrowing silences the warning and elides the runtime check.
 }
 
 // def main() -> None:
+//     # Assignment of `C()` narrows `c` to `C` at the access -- no warning,
+//     # no null check, just `C::LIMIT`.
+//     c: Optional[C] = C()
+//     print(c.LIMIT)  # tpyc: ok
+//     # Function parameter where sema can't prove non-None.
+//     use(C())
 void main() {
-    // # Assignment of `C()` narrows `c` to `C` at the access -- no warning,
-    // # no null check, just `C::LIMIT`.
-    // c: Optional[C] = C()
     C __slot_1 = C();
     C* c = &__slot_1;
-    // print(c.LIMIT)  # tpyc: ok
     std::cout << C::LIMIT << "\n";
-    // # Function parameter where sema can't prove non-None.
-    // use(C())
     C __tmp_1 = C();
     use(&(__tmp_1));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

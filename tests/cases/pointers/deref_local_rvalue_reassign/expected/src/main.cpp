@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pt = Point(1, 2)
+//     ptr: Ptr[Point] = pt
+//     alias: Point = ptr
+//     alias.x = 7  # the deref binding aliases pt
+//     print(pt.x, alias.x)
+//     alias = Point(3, 4)  # the rvalue reassign takes a fresh slot
+//     print(pt.x, alias.x)
 void main() {
     std::optional<Point> __slot_1;
-    // pt = Point(1, 2)
     Point pt = Point(1, 2);
-    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // alias: Point = ptr
     Point* alias = &(::tpy::deref_check(ptr));
-    // alias.x = 7  # the deref binding aliases pt
     alias->x = 7;
-    // print(pt.x, alias.x)
     std::cout << pt.x << " " << alias->x << "\n";
-    // alias = Point(3, 4)  # the rvalue reassign takes a fresh slot
     alias = &*(__slot_1 = Point(3, 4));
-    // print(pt.x, alias.x)
     std::cout << pt.x << " " << alias->x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

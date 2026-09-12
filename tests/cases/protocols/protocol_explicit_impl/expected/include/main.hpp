@@ -43,11 +43,13 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 
 
 // def __init__(self, name: str, age: int32) -> None:
+//     self.name = name
+//     self.age = age
 inline Person::Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
 // def __str__(self) -> str:
+//     return self.name
 inline std::string Person::__str__() const {
-    // return self.name
     return this->name;
 }
 void __tpy_init();

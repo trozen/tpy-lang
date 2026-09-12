@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def greet() -> str:
+//     await asyncio.sleep(0)
+//     return "hi"
 ::tpystd::tpy::Poll<std::string> __coro_greet::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return "hi"
         __state = S_DONE;
         std::string __tpy_async_ret = "hi";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -35,25 +35,26 @@ __coro_greet greet() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(greet()))
+//     bound = asyncio.run(greet())
+//     print(bound)
 void main() {
-    // print(asyncio.run(greet()))
     std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(greet())) << "\n";
-    // bound = asyncio.run(greet())
     std::string bound = ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(greet()));
-    // print(bound)
     std::cout << bound << "\n";
 }
 
+// # Regression: an async returning a short (SSO) str must survive moving through
+// # Poll<std::string> (the old UninitArrayStorage memcpy-move dangled it; ASan-only).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: an async returning a short (SSO) str must survive moving through
-    // # Poll<std::string> (the old UninitArrayStorage memcpy-move dangled it; ASan-only).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

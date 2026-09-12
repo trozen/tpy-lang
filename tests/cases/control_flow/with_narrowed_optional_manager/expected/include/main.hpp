@@ -13,8 +13,11 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def value_enter(c: Counter | None) -> int32:
 int32_t value_enter(Counter* c);
+// def record_enter(h: Holder | None) -> int32:
 int32_t record_enter(Holder* h);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -79,35 +82,38 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def __enter__(self) -> int32:
+//     return self.n
 inline int32_t Counter::__enter__() const {
-    // return self.n
     return this->n;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("counter exit", self.n)
 inline void Counter::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("counter exit", self.n)
     std::cout << "counter exit" << " " << this->n << "\n";
 }
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Slot::Slot(int32_t v) : v(v) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.s = Slot(v)
 inline Holder::Holder(int32_t v) : s(Slot(v)) {}
 
 // def __enter__(self) -> Slot:
+//     return self.s
 inline Slot& Holder::__enter__() {
-    // return self.s
     return this->s;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("holder exit", self.s.v)
 inline void Holder::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("holder exit", self.s.v)
     std::cout << "holder exit" << " " << this->s.v << "\n";
 }
 void __tpy_init();

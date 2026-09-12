@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename U>
 struct __gen_Foo_items;
 
+// def main() -> None:
 void main();
 
 // class Foo:
@@ -30,7 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
-// Generator: Foo.items
+// def items[U](self, x: U) -> Iterator[U]:
 template <typename U>
 struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, U> {
     int32_t __state;
@@ -56,16 +57,16 @@ struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, U> {
 };
 
 // def items[U](self, x: U) -> Iterator[U]:
+//     yield x
+//     yield x
 template <typename U>
 std::expected<U, ::tpy::StopIteration> __gen_Foo_items<U>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
     case S_RESUME_0: {
-        // yield x
         __state = S_RESUME_1;
         return x;
     }

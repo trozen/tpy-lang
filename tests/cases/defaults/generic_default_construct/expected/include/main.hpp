@@ -9,14 +9,16 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_default[T](x: T = T()) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> make_default(::tpy::param_val_or_ref_t<T> x = T{});
+// def main() -> None:
 void main();
 
 // def make_default[T](x: T = T()) -> T:
+//     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> make_default(::tpy::param_val_or_ref_t<T> x) {
-    // return x
     return ::tpy::param_to_return<T>(x);
 }
 

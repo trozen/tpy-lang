@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     j = Jar()
+//     j.add("a", 3)
+//     print(j.peek("a"))       # 3
+//     print(j.peek_get("a"))   # 3
+//     print(j.peek_get("z"))   # -1
+//     j.rename("a")            # mutate the shared Cookie through the mutable borrow-local
+//     print(j.peek("a"))       # 99 -- the readonly reader aliases the shared object, not a copy
 void main() {
-    // j = Jar()
     Jar j = Jar();
-    // j.add("a", 3)
     j.add("a", 3);
-    // print(j.peek("a"))       # 3
     std::cout << j.peek("a") << "\n";
-    // print(j.peek_get("a"))   # 3
     std::cout << j.peek_get("a") << "\n";
-    // print(j.peek_get("z"))   # -1
     std::cout << j.peek_get("z") << "\n";
-    // j.rename("a")            # mutate the shared Cookie through the mutable borrow-local
     j.rename("a");
-    // print(j.peek("a"))       # 99 -- the readonly reader aliases the shared object, not a copy
     std::cout << j.peek("a") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

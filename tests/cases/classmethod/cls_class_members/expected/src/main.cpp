@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Counter.bump())
+//     print(Counter.scaled_start())
+//     print(Counter.twice())
+//     print(Counter.calls)
 void main() {
-    // print(Counter.bump())
     std::cout << Counter::bump() << "\n";
-    // print(Counter.scaled_start())
     std::cout << Counter::scaled_start() << "\n";
-    // print(Counter.twice())
     std::cout << Counter::twice() << "\n";
-    // print(Counter.calls)
     std::cout << Counter::calls << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

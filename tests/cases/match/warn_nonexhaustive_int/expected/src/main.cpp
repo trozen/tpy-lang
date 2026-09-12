@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def f(n: int32) -> int32:
+//     match n:  # tpyc: warning(/non-exhaustive match.*no unconditional catch-all/)
+//         case 1:
+//             return 10
+//         case 2:
+//             return 20
+//     return 0
 int32_t f(int32_t n) {
-    // match n:  # tpyc: warning(/non-exhaustive match.*no unconditional catch-all/)
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case 1:
     case 1: {
-        // return 10
         return 10;
         break;
     }
-    // case 2:
     case 2: {
-        // return 20
         return 20;
         break;
     }
     default: break;
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     print(f(1))
+//     print(f(2))
+//     print(f(7))
 void main() {
-    // print(f(1))
     std::cout << f(1) << "\n";
-    // print(f(2))
     std::cout << f(2) << "\n";
-    // print(f(7))
     std::cout << f(7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main():
+//     result = list(squares(5))
+//     print(result)
 void main() {
-    // result = list(squares(5))
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(squares(5));
-    // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

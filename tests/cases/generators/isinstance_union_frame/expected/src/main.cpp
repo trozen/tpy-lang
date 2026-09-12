@@ -5,14 +5,26 @@ namespace tpyapp::main {
 
 
 // def run() -> Iterator[int]:
+//     work: list[Push | Emit] = []
+//     work.append(Emit("ab"))
+//     work.append(Push([1, 2, 3]))
+//     while len(work) > 0:
+//         t = work.pop()
+//         if isinstance(t, Push):  # tpyc: ok
+//             # mutate through the narrowed alias; observing it proves a borrow
+//             # into the frame variant, not a copy.
+//             t.items.append(99)
+//             total = 0
+//             for n in t.items:
+//                 total += n
+//             yield total
+//         else:
+//             yield len(t.label)
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // work: list[Push | Emit] = []
         work.emplace(std::vector<::tpy::Union<Emit, Push>>{});
-        // work.append(Emit("ab"))
         (*work).push_back(Emit("ab"));
-        // work.append(Push([1, 2, 3]))
         (*work).push_back(Push({1, 2, 3}));
         __state = S_JOIN_0;
         continue;
@@ -29,31 +41,22 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
     }
     case S_JOIN_0: {
         if ((::tpy::__len__((*work)) > 0)) {
-            // t = work.pop()
             t.emplace(::tpy::pop_back((*work)));
             if (std::holds_alternative<Push>((*t))) {
                 auto& __t = std::get<Push>((*t));
-                // # mutate through the narrowed alias; observing it proves a borrow
-                // # into the frame variant, not a copy.
-                // t.items.append(99)
                 __t.items.push_back(99);
-                // total = 0
                 total = 0;
-                // for n in t.items:
                 auto& __obj_0 = __t.items;
                 auto __beg_0 = __obj_0.begin();
                 auto __end_0 = __obj_0.end();
                 for (; __beg_0 != __end_0; ++__beg_0) {
                     const ::tpy::BigInt& n = *__beg_0;
-                    // total += n
                     total = ::tpy::add_check<int32_t>(total, (n).to_fixed_check<int32_t>());
                 }
-                // yield total
                 __state = S_RESUME_0;
                 return ::tpy::BigInt(total);
             } else {
                 auto& __t = std::get<Emit>((*t));
-                // yield len(t.label)
                 __state = S_RESUME_1;
                 return ::tpy::BigInt(::tpy::__len__(__t.label));
             }
@@ -78,14 +81,14 @@ __gen_run run() {
 }
 
 // def first_value(t: Push | Emit) -> Iterator[int]:
+//     # assert-narrowing (the persistent extraction path) of a frame-resident union.
+//     assert isinstance(t, Push)  # tpyc: ok
+//     yield t.items[0]
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_first_value::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # assert-narrowing (the persistent extraction path) of a frame-resident union.
-        // assert isinstance(t, Push)  # tpyc: ok
         if (!(std::holds_alternative<const Push*>(t))) ::tpy::raise_assertion_error();
         auto& __t = *std::get<const Push*>(t);
-        // yield t.items[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(__t.items, 0);
     }
@@ -106,22 +109,27 @@ __gen_first_value first_value(::tpy::Union<const Emit*, const Push*> t) {
 }
 
 // def plain(t: Push | Emit) -> int:
+//     # Inverse: the same narrowing in a non-generator must keep working.
+//     if isinstance(t, Push):
+//         return len(t.items)
+//     return -1
 ::tpy::BigInt plain(::tpy::Union<const Emit*, const Push*> t) {
-    // # Inverse: the same narrowing in a non-generator must keep working.
-    // if isinstance(t, Push):
     if (std::holds_alternative<const Push*>(t)) {
         auto& __t = *std::get<const Push*>(t);
-        // return len(t.items)
         return ::tpy::BigInt(::tpy::__len__(__t.items));
     }
     auto& __t = *std::get<const Emit*>(t);
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     for v in run():
+//         print(v)
+//     for v in first_value(Push([7, 8])):
+//         print("first", v)
+//     print("plain", plain(Push([1, 2, 3, 4])))
+//     print("plain", plain(Emit("z")))
 void main() {
-    // for v in run():
     {
         auto __src_0 = run();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -129,11 +137,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in first_value(Push([7, 8])):
     {
         Push __tmp_1 = Push({7, 8});
         auto __src_2 = first_value(::tpy::Union<const Emit*, const Push*>{&__tmp_1});
@@ -142,24 +148,21 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        // print("first", v)
         std::cout << "first" << " " << v << "\n";
         }
     }
-    // print("plain", plain(Push([1, 2, 3, 4])))
     Push __tmp_2 = Push({1, 2, 3, 4});
     std::cout << "plain" << " " << plain(::tpy::Union<const Emit*, const Push*>{&__tmp_2}) << "\n";
-    // print("plain", plain(Emit("z")))
     Emit __tmp_3 = Emit("z");
     std::cout << "plain" << " " << plain(::tpy::Union<const Emit*, const Push*>{&__tmp_3}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

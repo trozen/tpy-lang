@@ -11,47 +11,47 @@ namespace tpyapp::main {
 // # dangle, so they must own (std::string). Distinct source names are essential: a
 // # shared `t` would hoist the source too, making a view safe and the owning moot.
 // def make(tag: str) -> tuple[str, str]:
+//     return (tag + "-alpha-long-enough-to-heap-allocate",
+//             tag + "-beta-long-enough-to-heap-allocate")
 std::tuple<std::string, std::string> make(std::string_view tag) {
-    // return (tag + "-alpha-long-enough-to-heap-allocate",
-    // tag + "-beta-long-enough-to-heap-allocate")
     return std::tuple<std::string, std::string>{(::tpy::str_concat(tag, "-alpha-long-enough-to-heap-allocate")), (::tpy::str_concat(tag, "-beta-long-enough-to-heap-allocate"))};
 }
 
 // def main() -> None:
+//     flag = len("ab") > 1
+//     if flag:
+//         t1 = make("X")
+//         a, b = t1
+//     else:
+//         t2 = make("Y")
+//         a, b = t2
+//     print(a)
+//     print(b)
 void main() {
-    // flag = len("ab") > 1
     bool flag = (::tpy::__len__("ab") > 1);
-    // if flag:
     std::string a;
     std::string b;
     if (flag) {
-        // t1 = make("X")
         std::tuple<std::string, std::string> t1 = make("X");
-        // a, b = t1
         const auto& __tup_1 = t1;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
-    // else:
     } else {
-        // t2 = make("Y")
         std::tuple<std::string, std::string> t2 = make("Y");
-        // a, b = t2
         const auto& __tup_2 = t2;
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
     }
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

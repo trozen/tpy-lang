@@ -5,17 +5,19 @@ namespace tpyapp::main {
 
 
 // def in_branch(n: int32) -> int32:
+//     if n > 0:
+//         with CM(n) as c:
+//             # First decl of `v`, read after the with: predeclared inside the
+//             # branch, where the C++ scope matches.
+//             v = c + 1
+//         print(v)
+//     return n
 int32_t in_branch(int32_t n) {
-    // if n > 0:
     if ((n > 0)) {
-        // with CM(n) as c:
         int32_t v;
         auto __ctx_1 = CM(n);
         auto c = __ctx_1.__enter__();
         try {
-            // # First decl of `v`, read after the with: predeclared inside the
-            // # branch, where the C++ scope matches.
-            // v = c + 1
             v = (::tpy::add_check<int32_t>(c, 1));
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -27,23 +29,22 @@ int32_t in_branch(int32_t n) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // print(v)
         std::cout << v << "\n";
     }
-    // return n
     return n;
 }
 
 // def in_loop() -> None:
+//     for i in range(2):
+//         with CM(i) as c:
+//             w = c * 2
+//         print(w)
 void in_loop() {
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // with CM(i) as c:
         int32_t w;
         auto __ctx_2 = CM(i);
         auto c = __ctx_2.__enter__();
         try {
-            // w = c * 2
             w = (::tpy::mul_check<int32_t>(c, 2));
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
@@ -55,22 +56,26 @@ void in_loop() {
         }
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
-        // print(w)
         std::cout << w << "\n";
     }
 }
 
 // def nonvalue_rvalue_reassigned(n: int32) -> int32:
+//     with CM(n) as c:
+//         # A list first-declared in the body and later rvalue-reassigned: the
+//         # pointer predecl plus a lazily allocated function-top slot.
+//         xs = [c]
+//     # Mutation after the block is visible, so the name still aliases the slot.
+//     xs.append(9)
+//     print(xs)
+//     xs = [n, n, n]
+//     return len(xs)
 int32_t nonvalue_rvalue_reassigned(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_1;
-    // with CM(n) as c:
     std::vector<int32_t>* xs;
     auto __ctx_3 = CM(n);
     auto c = __ctx_3.__enter__();
     try {
-        // # A list first-declared in the body and later rvalue-reassigned: the
-        // # pointer predecl plus a lazily allocated function-top slot.
-        // xs = [c]
         xs = &*(__slot_1 = {c});
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -82,29 +87,27 @@ int32_t nonvalue_rvalue_reassigned(int32_t n) {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // # Mutation after the block is visible, so the name still aliases the slot.
-    // xs.append(9)
     xs->push_back(9);
-    // print(xs)
     std::cout << ::tpy::ListPrinter((*xs)) << "\n";
-    // xs = [n, n, n]
     xs = &*(__slot_1 = {n, n, n});
-    // return len(xs)
     return ::tpy::__len__((*xs));
 }
 
 // def nonvalue_in_branch(n: int32) -> int32:
+//     total = 0
+//     if n > 0:
+//         with CM(n) as c:
+//             ys = [c, c]
+//         ys.append(3)
+//         total = len(ys)
+//     return total
 int32_t nonvalue_in_branch(int32_t n) {
-    // total = 0
     int32_t total = 0;
-    // if n > 0:
     if ((n > 0)) {
-        // with CM(n) as c:
         std::optional<std::vector<int32_t>> ys;
         auto __ctx_4 = CM(n);
         auto c = __ctx_4.__enter__();
         try {
-            // ys = [c, c]
             ys = {c, c};
             goto __with_exit_4;
         } catch (::tpy::BaseException& __exc_4) {
@@ -116,30 +119,32 @@ int32_t nonvalue_in_branch(int32_t n) {
         }
         __with_exit_4:
         __ctx_4.__exit__({}, nullptr, {});
-        // ys.append(3)
         ys->push_back(3);
-        // total = len(ys)
         total = ::tpy::__len__((*ys));
     }
-    // return total
     return total;
 }
 
 // def kept_manager_and_reseat() -> int32:
+//     with Node(1) as outer:
+//         with Node(10) as inner:
+//             print(inner.n)
+//         # An rvalue reseat of the hoisted pointer name, alongside the kept
+//         # manager of the inner with: two function-top slots.
+//         inner = inner.next()
+//         print(outer.n)
+//     return inner.n
 int32_t kept_manager_and_reseat() {
     std::optional<Node> __slot_1;
     std::optional<Node> __slot_2;
-    // with Node(1) as outer:
     Node* inner;
     auto __ctx_5 = Node(1);
     auto& outer = __ctx_5.__enter__();
     try {
-        // with Node(10) as inner:
         __slot_1.emplace(Node(10));
         auto& __ctx_6 = (*__slot_1);
         inner = &(__ctx_6.__enter__());
         try {
-            // print(inner.n)
             std::cout << inner->n << "\n";
             goto __with_exit_6;
         } catch (::tpy::BaseException& __exc_6) {
@@ -151,11 +156,7 @@ int32_t kept_manager_and_reseat() {
         }
         __with_exit_6:
         __ctx_6.__exit__({}, nullptr, {});
-        // # An rvalue reseat of the hoisted pointer name, alongside the kept
-        // # manager of the inner with: two function-top slots.
-        // inner = inner.next()
         inner = &*(__slot_2 = inner->next());
-        // print(outer.n)
         std::cout << outer.n << "\n";
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
@@ -167,30 +168,29 @@ int32_t kept_manager_and_reseat() {
     }
     __with_exit_5:
     __ctx_5.__exit__({}, nullptr, {});
-    // return inner.n
     return inner->n;
 }
 
 // def main() -> None:
+//     print(in_branch(2))
+//     in_loop()
+//     print(nonvalue_rvalue_reassigned(5))
+//     print(nonvalue_in_branch(1))
+//     print(kept_manager_and_reseat())
 void main() {
-    // print(in_branch(2))
     std::cout << in_branch(2) << "\n";
-    // in_loop()
     in_loop();
-    // print(nonvalue_rvalue_reassigned(5))
     std::cout << nonvalue_rvalue_reassigned(5) << "\n";
-    // print(nonvalue_in_branch(1))
     std::cout << nonvalue_in_branch(1) << "\n";
-    // print(kept_manager_and_reseat())
     std::cout << kept_manager_and_reseat() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

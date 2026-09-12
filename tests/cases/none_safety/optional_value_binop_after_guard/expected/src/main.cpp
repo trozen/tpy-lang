@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def add_after_guard(x: int32 | None) -> int32:
+//     if x is not None:
+//         return x + 1  # tpyc: ok
+//     return 0
 int32_t add_after_guard(std::optional<int32_t> x) {
-    // if x is not None:
     if ((x.has_value())) {
-        // return x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    // return 0
     return 0;
 }
 
+// print(add_after_guard(2))
+// print(add_after_guard(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(add_after_guard(2))
     std::cout << add_after_guard(2) << "\n";
-    // print(add_after_guard(None))
     std::cout << add_after_guard(std::nullopt) << "\n";
 }
 

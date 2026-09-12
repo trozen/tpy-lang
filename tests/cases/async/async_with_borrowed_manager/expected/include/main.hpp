@@ -20,9 +20,13 @@ struct __coro_main_coro;
 struct __coro_Counter___aenter__;
 struct __coro_Counter___aexit__;
 
+// async def guard_scope(c: Counter) -> None:
 __coro_guard_scope guard_scope(Counter& c);
+// async def raise_scope(c: Counter) -> None:
 __coro_raise_scope raise_scope(Counter& c);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -44,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: Counter.__aenter__
+// async def __aenter__(self) -> None:
 struct __coro_Counter___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -72,7 +76,8 @@ inline __coro_Counter___aenter__ Counter::__aenter__() {
     return __coro_Counter___aenter__(*this);
 }
 
-// Async coroutine: Counter.__aexit__
+// async def __aexit__(self, exc_type: None, exc_val: None,
+//                     exc_tb: None) -> None:
 struct __coro_Counter___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -103,7 +108,7 @@ inline __coro_Counter___aexit__ Counter::__aexit__(std::monostate exc_type, std:
     return __coro_Counter___aexit__(*this, exc_type, exc_val, exc_tb);
 }
 
-// Async coroutine: guard_scope
+// async def guard_scope(c: Counter) -> None:
 struct __coro_guard_scope {
     int32_t __state;
     bool __cancel_pending;
@@ -134,7 +139,7 @@ struct __coro_guard_scope {
     }
 };
 
-// Async coroutine: raise_scope
+// async def raise_scope(c: Counter) -> None:
 struct __coro_raise_scope {
     int32_t __state;
     bool __cancel_pending;
@@ -167,7 +172,7 @@ struct __coro_raise_scope {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -196,6 +201,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Counter::Counter() : n(::tpy::BigInt(0)) {}
 void __tpy_init();
 } // namespace tpyapp::main

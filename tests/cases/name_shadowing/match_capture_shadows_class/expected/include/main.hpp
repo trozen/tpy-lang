@@ -13,7 +13,9 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(v: Item | Other) -> int32:
 int32_t pick(::tpy::Union<Item*, Other*> v);
+// def main() -> None:
 void main();
 
 // class Registry:
@@ -63,9 +65,11 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 
 
 // def __init__(self, code: int32):
+//     self.code = code
 inline Item::Item(int32_t code) : code(code) {}
 
 // def __init__(self, tag: int32):
+//     self.tag = tag
 inline Other::Other(int32_t tag) : tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

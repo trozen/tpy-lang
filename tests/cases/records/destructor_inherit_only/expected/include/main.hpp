@@ -12,7 +12,9 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(c: Own[Child]) -> None:
 void consume(Child&& c);
+// def main():
 void main();
 
 // class Base:
@@ -55,6 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, name: str):
+//     self.name = name
 inline Base::Base(std::string_view name) : name(name) {}
 
 inline Base::Base(Base&& other) noexcept : name(std::move(other.name)) {
@@ -69,13 +72,15 @@ inline Base& Base::operator=(Base&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("drop", self.name)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    // print("drop", self.name)
     std::cout << "drop" << " " << this->name << "\n";
 }
 
 // def __init__(self, name: str, tag: str):
+//     super().__init__(name)
+//     self.tag = tag
 inline Child::Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

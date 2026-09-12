@@ -9,74 +9,77 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def iter_sum(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t iter_sum(T_items& items);
+// def process(items: Spannable[int32] | Iterable[int32], tag: str) -> int32:
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t process(T_items& items, std::string_view tag);
+// def main() -> None:
 void main();
 
 // def iter_sum(items: Iterable[int32]) -> int32:
+//     total: int32 = 0
+//     for y in items:
+//         total += y
+//     return total
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t iter_sum(T_items& items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for y in items:
     auto& __src_0 = items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t y = ::tpy::unwrap_ref(*__r_1);
-        // total += y
         total = ::tpy::add_check<int32_t>(total, y);
     }
-    // return total
     return total;
 }
 // def process(items: Spannable[int32] | Iterable[int32], tag: str) -> int32:
+//     match tag:
+//         case "span_path":
+//             # Present so codegen emits the Spannable narrowing; not executed
+//             # in main() below to keep the test CPython-compatible (list does
+//             # not match the runtime_checkable Spannable protocol in CPython).
+//             assert isinstance(items, Spannable)
+//             s = span(items)
+//             total: int32 = 0
+//             for x in s:
+//                 total += x
+//             return total
+//         case "iter_path":
+//             # items is still the union here; narrow to Iterable to iterate.
+//             # This body is emitted after "span_path" in codegen, which is
+//             # where a leaked Spannable narrowing would manifest.
+//             if isinstance(items, Iterable):
+//                 return iter_sum(items)
+//             return -1
+//         case _:
+//             return -2
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t process(T_items& items, std::string_view tag) {
-    // match tag:
     auto& __match_subject_1 = tag;
-    // case "span_path":
     if (__match_subject_1 == "span_path") {
-        // # Present so codegen emits the Spannable narrowing; not executed
-        // # in main() below to keep the test CPython-compatible (list does
-        // # not match the runtime_checkable Spannable protocol in CPython).
-        // assert isinstance(items, Spannable)
         if (!(::tpystd::tpy::Spannable<T_items, int32_t>)) ::tpy::raise_assertion_error();
-        // s = span(items)
         std::span<const int32_t> s = ::tpy::as_span(items);
-        // total: int32 = 0
         int32_t total = 0;
-        // for x in s:
         auto& __obj_0 = s;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
-        // return total
         return total;
-    // case "iter_path":
     } else if (__match_subject_1 == "iter_path") {
-        // # items is still the union here; narrow to Iterable to iterate.
-        // # This body is emitted after "span_path" in codegen, which is
-        // # where a leaked Spannable narrowing would manifest.
-        // if isinstance(items, Iterable):
         if constexpr (::tpystd::typing::Iterable<T_items, int32_t>) {
-            // return iter_sum(items)
             return iter_sum(items);
         }
-        // return -1
         return -1;
-    // case _:
     } else {
-        // return -2
         return -2;
     }
     ::std::unreachable();

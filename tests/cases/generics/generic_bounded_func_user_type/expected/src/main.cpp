@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = MyContainer([1, 2, 3, 4, 5])
+//     # MyContainer satisfies Sized, so inference should work
+//     result = get_length(c)
+//     print(result)
 void main() {
-    // c = MyContainer([1, 2, 3, 4, 5])
     MyContainer c = MyContainer({1, 2, 3, 4, 5});
-    // # MyContainer satisfies Sized, so inference should work
-    // result = get_length(c)
     int32_t result = get_length<MyContainer>(c);
-    // print(result)
     std::cout << result << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

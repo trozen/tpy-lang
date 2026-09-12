@@ -5,61 +5,61 @@ namespace tpyapp::main {
 
 
 // def test_non_last_use() -> None:
+//     x = Item(int32(1))
+//     h = Holder()
+//     h.item = x  # tpyc: warning(/copies Item into field/)
+//     print(x.value)
 void test_non_last_use() {
-    // x = Item(int32(1))
     Item x = Item(1);
-    // h = Holder()
     Holder h = Holder();
-    // h.item = x  # tpyc: warning(/copies Item into field/)
     h.item = x;
-    // print(x.value)
     std::cout << x.value << "\n";
 }
 
 // def test_last_use() -> None:
+//     x = Item(int32(2))
+//     h = Holder()
+//     h.item = x  # tpyc: ok (last use -- auto-moved)
 void test_last_use() {
-    // x = Item(int32(2))
     Item x = Item(2);
-    // h = Holder()
     Holder h = Holder();
-    // h.item = x  # tpyc: ok (last use -- auto-moved)
     h.item = std::move(x);
 }
 
 // def test_container_non_last_use() -> None:
+//     x = Item(int32(3))
+//     items: list[Item] = []
+//     items.append(x)  # tpyc: warning(/copies Item into owned storage/)
+//     print(x.value)
 void test_container_non_last_use() {
-    // x = Item(int32(3))
     Item x = Item(3);
-    // items: list[Item] = []
     std::vector<Item> items = std::vector<Item>{};
-    // items.append(x)  # tpyc: warning(/copies Item into owned storage/)
     items.push_back(x);
-    // print(x.value)
     std::cout << x.value << "\n";
 }
 
 // def test_container_last_use() -> None:
+//     x = Item(int32(4))
+//     items: list[Item] = []
+//     items.append(x)  # tpyc: ok (last use)
 void test_container_last_use() {
-    // x = Item(int32(4))
     Item x = Item(4);
-    // items: list[Item] = []
     std::vector<Item> items = std::vector<Item>{};
-    // items.append(x)  # tpyc: ok (last use)
     items.push_back(std::move(x));
 }
 
+// test_non_last_use()
+// test_last_use()
+// test_container_non_last_use()
+// test_container_last_use()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_non_last_use()
     test_non_last_use();
-    // test_last_use()
     test_last_use();
-    // test_container_non_last_use()
     test_container_non_last_use();
-    // test_container_last_use()
     test_container_last_use();
 }
 

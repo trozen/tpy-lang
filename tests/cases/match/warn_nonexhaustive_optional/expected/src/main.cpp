@@ -5,47 +5,47 @@ namespace tpyapp::main {
 
 
 // def classify(x: Optional[int32]) -> str:
+//     match x:  # tpyc: warning(/non-exhaustive match.*missing: None.*case _:/)
+//         case 0:
+//             return "zero"
+//         case 1:
+//             return "one"
+//     return "unknown"
 std::string classify(std::optional<int32_t> x) {
-    // match x:  # tpyc: warning(/non-exhaustive match.*missing: None.*case _:/)
     auto& __match_subject_1 = x;
     if (__match_subject_1.has_value()) {
         auto& __match_inner_1 = (*__match_subject_1);
         switch (__match_inner_1) {
-        // case 0:
         case 0: {
-            // return "zero"
             return "zero";
             break;
         }
-        // case 1:
         case 1: {
-            // return "one"
             return "one";
             break;
         }
         default: break;
         }
     }
-    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
+//     print(classify(int32(0)))
+//     print(classify(int32(1)))
+//     print(classify(int32(5)))
 void main() {
-    // print(classify(int32(0)))
     std::cout << classify(0) << "\n";
-    // print(classify(int32(1)))
     std::cout << classify(1) << "\n";
-    // print(classify(int32(5)))
     std::cout << classify(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Test __str__/__repr__ dispatch: str(), repr(), print(), f-string, !r, !s
@@ -40,17 +41,19 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def __str__(self) -> str:
+//     return f"({self.x}, {self.y})"
 inline std::string Point::__str__() const {
-    // return f"({self.x}, {self.y})"
     return std::format("({}, {})", (this->x).to_string(), (this->y).to_string());
 }
 
 // def __repr__(self) -> str:
+//     return f"Point(x={self.x}, y={self.y})"
 inline std::string Point::__repr__() const {
-    // return f"Point(x={self.x}, y={self.y})"
     return std::format("Point(x={}, y={})", (this->x).to_string(), (this->y).to_string());
 }
 void __tpy_init();

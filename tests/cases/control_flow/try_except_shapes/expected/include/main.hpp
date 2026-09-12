@@ -11,13 +11,21 @@ struct AppError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def boom(n: int) -> int:
 ::tpy::BigInt boom(const ::tpy::BigInt& n);
+// def catch_multi(n: int) -> int:
 ::tpy::BigInt catch_multi(const ::tpy::BigInt& n);
+// def catch_bare(n: int) -> int:
 ::tpy::BigInt catch_bare(const ::tpy::BigInt& n);
+// def with_else(n: int) -> int:
 ::tpy::BigInt with_else(const ::tpy::BigInt& n);
+// def with_finally(n: int) -> int:
 ::tpy::BigInt with_finally(const ::tpy::BigInt& n);
+// def reraise(n: int) -> int:
 ::tpy::BigInt reraise(const ::tpy::BigInt& n);
+// def raising_finally(n: int) -> int:
 ::tpy::BigInt raising_finally(const ::tpy::BigInt& n);
+// def main() -> None:
 void main();
 
 // # Throw-tier try/except shapes: multi-handler catch arms, bare except,
@@ -49,6 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 
 
 // def __init__(self, code: int) -> None:
+//     self.code = code
 inline AppError::AppError(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -13,6 +13,7 @@ struct Widget;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Named:
@@ -63,17 +64,19 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Named::Named(std::string_view name) : name(name) {}
 
 // def describe(self) -> str:
+//     return self.name
 inline std::string Named::describe() const {
-    // return self.name
     return this->name;
 }
 
 // def __init__(self, name: str, count: int32) -> None:
+//     super().__init__(name)
+//     self.count = count
 inline Widget::Widget(std::string_view name, int32_t count) : Named(name) {
-    // self.count = count
     this->count = count;
 }
 void __tpy_init();

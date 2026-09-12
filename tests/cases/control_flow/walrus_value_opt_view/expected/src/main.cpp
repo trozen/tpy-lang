@@ -5,118 +5,118 @@ namespace tpyapp::main {
 
 
 // def maybe_text(k: int32) -> str | None:
+//     if k > 0:
+//         return "abc"
+//     return None
 std::optional<std::string> maybe_text(int32_t k) {
-    // if k > 0:
     if ((k > 0)) {
-        // return "abc"
         return "abc";
     }
-    // return None
     return std::nullopt;
 }
 
 // def maybe_blob(k: int32) -> bytes | None:
+//     if k > 0:
+//         return b"ab"
+//     return None
 std::optional<::tpy::Bytes> maybe_blob(int32_t k) {
-    // if k > 0:
     if ((k > 0)) {
-        // return b"ab"
         return ::tpy::bytes_literal_owned("ab", 2);
     }
-    // return None
     return std::nullopt;
 }
 
 // def text_len(k: int32) -> int32:
+//     if (s := maybe_text(k)) is not None:   # tpyc: ok -- `str | None` target
+//         print(s)
+//         return len(s)
+//     return -1
 int32_t text_len(int32_t k) {
-    // if (s := maybe_text(k)) is not None:   # tpyc: ok -- `str | None` target
     std::optional<std::string> s;
     if (((s = maybe_text(k)).has_value())) {
-        // print(s)
         std::cout << ::tpy::print_optional_val(s) << "\n";
-        // return len(s)
         return ::tpy::__len__((*s));
     }
-    // return -1
     return -1;
 }
 
 // def blob_len(k: int32) -> int32:
+//     if (b := maybe_blob(k)) is not None:   # tpyc: ok -- `bytes | None` target
+//         return len(b)
+//     return -1
 int32_t blob_len(int32_t k) {
-    // if (b := maybe_blob(k)) is not None:   # tpyc: ok -- `bytes | None` target
     std::optional<::tpy::Bytes> b;
     if (((b = maybe_blob(k)).has_value())) {
-        // return len(b)
         return ::tpy::__len__((*b));
     }
-    // return -1
     return -1;
 }
 
 // def from_text_param(t: str | None) -> int32:
+//     # A PARAM source binds the VIEW form, so the owned slot takes an explicit
+//     # copy rather than the optional's converting assignment.
+//     if (s := t) is not None:               # tpyc: ok -- a `str | None` param
+//         return len(s)
+//     return -1
 int32_t from_text_param(std::optional<std::string_view> t) {
-    // # A PARAM source binds the VIEW form, so the owned slot takes an explicit
-    // # copy rather than the optional's converting assignment.
-    // if (s := t) is not None:               # tpyc: ok -- a `str | None` param
     std::optional<std::string> s;
     if (((s = t ? std::make_optional(std::string(*t)) : std::nullopt).has_value())) {
-        // return len(s)
         return ::tpy::__len__((*s));
     }
-    // return -1
     return -1;
 }
 
 // def from_blob_param(t: bytes | None) -> int32:
+//     # The bytes face of the same copy: `optional<span>` never converts to
+//     # `optional<vector>` on its own.
+//     if (b := t) is not None:               # tpyc: ok -- a `bytes | None` param
+//         return len(b)
+//     return -1
 int32_t from_blob_param(std::optional<::tpy::BytesView> t) {
-    // # The bytes face of the same copy: `optional<span>` never converts to
-    // # `optional<vector>` on its own.
-    // if (b := t) is not None:               # tpyc: ok -- a `bytes | None` param
     std::optional<::tpy::Bytes> b;
     if (((b = t ? std::make_optional(::tpy::Bytes(*t)) : std::nullopt).has_value())) {
-        // return len(b)
         return ::tpy::__len__((*b));
     }
-    // return -1
     return -1;
 }
 
 // def reassigned(k: int32) -> int32:
+//     s = maybe_text(k)
+//     if s is None:
+//         # A REUSE of the same target assigns the predeclared slot in place.
+//         if (s := maybe_text(1)) is not None:  # tpyc: ok
+//             return len(s)
+//     return 0
 int32_t reassigned(int32_t k) {
-    // s = maybe_text(k)
     std::optional<std::string> s = maybe_text(k);
-    // if s is None:
     if ((!s.has_value())) {
-        // # A REUSE of the same target assigns the predeclared slot in place.
-        // if (s := maybe_text(1)) is not None:  # tpyc: ok
         if (((s = maybe_text(1)).has_value())) {
-            // return len(s)
             return ::tpy::__len__((*s));
         }
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     print(text_len(1), text_len(0))
+//     print(blob_len(1), blob_len(0))
+//     print(from_text_param("abcd"), from_text_param(None))
+//     print(from_blob_param(b"abc"), from_blob_param(None))
+//     print(reassigned(0))
 void main() {
-    // print(text_len(1), text_len(0))
     std::cout << text_len(1) << " " << text_len(0) << "\n";
-    // print(blob_len(1), blob_len(0))
     std::cout << blob_len(1) << " " << blob_len(0) << "\n";
-    // print(from_text_param("abcd"), from_text_param(None))
     std::cout << from_text_param("abcd") << " " << from_text_param(std::nullopt) << "\n";
-    // print(from_blob_param(b"abc"), from_blob_param(None))
     std::cout << from_blob_param(::tpy::bytes_literal_owned("abc", 3)) << " " << from_blob_param(std::nullopt) << "\n";
-    // print(reassigned(0))
     std::cout << reassigned(0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

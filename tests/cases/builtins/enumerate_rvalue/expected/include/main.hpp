@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_words() -> Own[list[str]]:
 std::vector<std::string> make_words();
+// def main() -> None:
 void main();
 
 void __tpy_init();

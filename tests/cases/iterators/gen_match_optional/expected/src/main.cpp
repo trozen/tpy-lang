@@ -5,21 +5,23 @@ namespace tpyapp::main {
 
 
 // def gen(x: Optional[int]) -> Iterator[int]:
+//     match x:
+//         case None:
+//             yield -1
+//         case v:
+//             yield v
+//             yield v * 2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = x;
-        // case None:
         if (!__match_subject_1.has_value()) {
-            // yield -1
             __state = S_RESUME_0;
             return ::tpy::BigInt(-1);
         } else {
             auto& __match_inner_1 = (*__match_subject_1);
-            // case v:
             {
                 v = __match_inner_1;
-                // yield v
                 __state = S_RESUME_1;
                 return v;
             }
@@ -32,7 +34,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_1: {
-        // yield v * 2
         __state = S_RESUME_2;
         return ((v) * (::tpy::BigInt(2)));
     }
@@ -56,8 +57,12 @@ __gen_gen gen(std::optional<::tpy::BigInt> x) {
 }
 
 // def main() -> None:
+//     for y in gen(None):
+//         print(y)
+//     print("--")
+//     for y in gen(4):
+//         print(y)
 void main() {
-    // for y in gen(None):
     {
         auto __src_0 = gen(std::nullopt);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -65,13 +70,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
-        // print(y)
         std::cout << y << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // for y in gen(4):
     {
         auto __src_2 = gen(4);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -79,18 +81,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_3);
-        // print(y)
         std::cout << y << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def take_marked(cb: Send[Callable[[int32], None]]) -> None:
+//     cb(1)
 void take_marked(const std::function<void(int32_t)>& cb) {
-    // cb(1)
     cb(1);
 }
 
 // def take_bare(cb: Callable[[int32], None]) -> None:
+//     cb(1)
 void take_bare(const std::function<void(int32_t)>& cb) {
-    // cb(1)
     cb(1);
 }
 
 // def main() -> None:
+//     x: Send[int32] = 5              # tpyc: type(int32) is_send(yes)
+//     xs: Send[list[int32]] = [1, 2]  # tpyc: type(list[int32]) is_sync(no)
+//     y: Sync[int32] = 6              # tpyc: type(int32) is_sync(yes)
+//     take_bare(lambda n: print(n))
+//     print(x, len(xs), y)
 void main() {
-    // x: Send[int32] = 5              # tpyc: type(int32) is_send(yes)
     int32_t x = 5;
-    // xs: Send[list[int32]] = [1, 2]  # tpyc: type(list[int32]) is_sync(no)
     std::vector<int32_t> xs = {1, 2};
-    // y: Sync[int32] = 6              # tpyc: type(int32) is_sync(yes)
     int32_t y = 6;
-    // take_bare(lambda n: print(n))
     take_bare([](int32_t n) { std::cout << n << "\n"; });
-    // print(x, len(xs), y)
     std::cout << x << " " << ::tpy::__len__(xs) << " " << y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

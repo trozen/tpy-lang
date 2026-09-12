@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def name_of(a: Animal) -> str:
 std::string name_of(Animal& a);
+// def main() -> None:
 void main();
 
 // class Animal:
@@ -56,21 +58,24 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
 
 // def describe(self) -> str:
+//     return self.name
 inline std::string Animal::describe() const {
-    // return self.name
     return this->name;
 }
 
 // # Adds a field and a new method but does NOT override describe()
 // def __init__(self, name: str, breed: str) -> None:
+//     super().__init__(name)
+//     self.breed = breed
 inline Dog::Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
 // def bark(self) -> str:  # new method, not an override
+//     return "Woof!"
 inline std::string Dog::bark() const {
-    // return "Woof!"
     return "Woof!";
 }
 void __tpy_init();

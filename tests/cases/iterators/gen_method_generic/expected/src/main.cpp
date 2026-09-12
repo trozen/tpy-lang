@@ -5,10 +5,14 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(42)
+//     for v in b.items():
+//         print(v)
+//     s = Box("x")
+//     for t in s.items():
+//         print(t)
 void main() {
-    // b = Box(42)
     Box<int32_t> b = Box<int32_t>(42);
-    // for v in b.items():
     {
         auto __src_0 = b.items();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,13 +20,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // s = Box("x")
     Box<std::string> s = Box<std::string>("x");
-    // for t in s.items():
     {
         auto __src_2 = s.items();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -30,18 +31,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view t = ::tpy::unwrap_ref(*__r_3);
-        // print(t)
         std::cout << t << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

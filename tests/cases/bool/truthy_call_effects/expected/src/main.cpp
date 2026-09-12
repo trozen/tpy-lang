@@ -3,87 +3,93 @@
 
 namespace tpyapp::main {
 
-// calls = 0
 int32_t calls{};
 
 // def make() -> Own[Rec]:
+//     global calls
+//     calls += 1
+//     return Rec(1)
 Rec make() {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return Rec(1)
     return Rec(::tpy::BigInt(1));
 }
 
 // def yes() -> bool:
+//     return True
 bool yes() {
-    // return True
     return true;
 }
 
 // def main() -> None:
+//     if make():
+//         print("if:", calls)
+//
+//     while make():
+//         break
+//     print("while:", calls)
+//
+//     assert make()
+//     print("assert:", calls)
+//
+//     if make() and yes():
+//         print("and:", calls)
+//
+//     if yes() or make():
+//         print("or short-circuits:", calls)
+//
+//     # A property getter runs user code behind field-access syntax, so the fold
+//     # has to keep it too.
+//     h = Holder()
+//     if h.made:
+//         print("property:", calls)
+//
+//     # A name and a field read fold their VALUE the same way, and the snapshot
+//     # pins that they still evaluate.
+//     r = Rec(2)
+//     if r:
+//         print("name operand ok")
+//     if h.r:
+//         print("field operand ok")
+//     print("total:", calls)
 void main() {
-    // if make():
     if ((static_cast<void>(make()), true)) {
-        // print("if:", calls)
         std::cout << "if:" << " " << calls << "\n";
     }
-    // while make():
     while ((static_cast<void>(make()), true)) {
-        // break
         break;
     }
-    // print("while:", calls)
     std::cout << "while:" << " " << calls << "\n";
-    // assert make()
     if (!((static_cast<void>(make()), true))) ::tpy::raise_assertion_error();
-    // print("assert:", calls)
     std::cout << "assert:" << " " << calls << "\n";
-    // if make() and yes():
     if (((static_cast<void>(make()), true) && yes())) {
-        // print("and:", calls)
         std::cout << "and:" << " " << calls << "\n";
     }
-    // if yes() or make():
     if ((yes() || (static_cast<void>(make()), true))) {
-        // print("or short-circuits:", calls)
         std::cout << "or short-circuits:" << " " << calls << "\n";
     }
-    // # A property getter runs user code behind field-access syntax, so the fold
-    // # has to keep it too.
-    // h = Holder()
     Holder h = Holder();
-    // if h.made:
     if ((static_cast<void>(h.made()), true)) {
-        // print("property:", calls)
         std::cout << "property:" << " " << calls << "\n";
     }
-    // # A name and a field read fold their VALUE the same way, and the snapshot
-    // # pins that they still evaluate.
-    // r = Rec(2)
     Rec r = Rec(::tpy::BigInt(2));
-    // if r:
     if ((static_cast<void>(r), true)) {
-        // print("name operand ok")
         std::cout << "name operand ok" << "\n";
     }
-    // if h.r:
     if ((static_cast<void>(h.r), true)) {
-        // print("field operand ok")
         std::cout << "field operand ok" << "\n";
     }
-    // print("total:", calls)
     std::cout << "total:" << " " << calls << "\n";
 }
 
+// calls = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // calls = 0
     calls = 0;
-    // main()
     main();
 }
 

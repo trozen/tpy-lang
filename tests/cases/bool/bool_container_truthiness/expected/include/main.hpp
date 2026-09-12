@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check_list(items: list[int], empty: list[int]) -> None:
 void check_list(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy::BigInt>& empty);
+// def check_str(s: str, e: str) -> None:
 void check_str(std::string_view s, std::string_view e);
+// def check_and_or(items: list[int], empty: list[int]) -> None:
 void check_and_or(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy::BigInt>& empty);
+// def main() -> None:
 void main();
 
 void __tpy_init();

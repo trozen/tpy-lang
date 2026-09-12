@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def show(x: int32 | None) -> None:
+//     if x is not None:
+//         print(x)
+//     else:
+//         print("None")
 void show(std::optional<int32_t> x) {
-    // if x is not None:
     if ((x.has_value())) {
-        // print(x)
         std::cout << ::tpy::print_optional_val(x) << "\n";
-    // else:
     } else {
-        // print("None")
         std::cout << "None" << "\n";
     }
 }
 
 // def main() -> None:
+//     show(42)
+//     show(None)
+//     n: int32 = 10
+//     show(n)
 void main() {
-    // show(42)
     show(42);
-    // show(None)
     show(std::nullopt);
-    // n: int32 = 10
     int32_t n = 10;
-    // show(n)
     show(n);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

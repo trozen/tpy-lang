@@ -5,41 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     arr = Array[int32, 3]([10, 20, 30])
+//
+//     # Mutable span from Ptr.span()
+//     p = take_ptr(arr[0])
+//     s: Span[int32] = p.span(3)
+//     s[0] = 42
+//     print(arr[0])  # 42
+//     print(s[1])    # 20
+//     print(s[2])    # 30
+//
+//     # Read-only span from Ptr[readonly[...]].span()
+//     rp: Ptr[readonly[int32]] = take_ptr(arr[0])
+//     rs: Span[readonly[int32]] = rp.span(3)
+//     print(rs[0])   # 42
+//     print(rs[1])   # 20
+//     print(rs[2])   # 30
 void main() {
-    // arr = Array[int32, 3]([10, 20, 30])
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
-    // # Mutable span from Ptr.span()
-    // p = take_ptr(arr[0])
     int32_t* p = &::tpy::__getitem__(arr, 0);
-    // s: Span[int32] = p.span(3)
     std::span<int32_t> s = std::span(p, static_cast<size_t>(3));
-    // s[0] = 42
     ::tpy::__setitem__(s, 0, 42);
-    // print(arr[0])  # 42
     std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    // print(s[1])    # 20
     std::cout << ::tpy::__getitem__(s, 1) << "\n";
-    // print(s[2])    # 30
     std::cout << ::tpy::__getitem__(s, 2) << "\n";
-    // # Read-only span from Ptr[readonly[...]].span()
-    // rp: Ptr[readonly[int32]] = take_ptr(arr[0])
     const int32_t* rp = &::tpy::__getitem__(arr, 0);
-    // rs: Span[readonly[int32]] = rp.span(3)
     std::span<const int32_t> rs = std::span(rp, static_cast<size_t>(3));
-    // print(rs[0])   # 42
     std::cout << ::tpy::__getitem__(rs, 0) << "\n";
-    // print(rs[1])   # 20
     std::cout << ::tpy::__getitem__(rs, 1) << "\n";
-    // print(rs[2])   # 30
     std::cout << ::tpy::__getitem__(rs, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

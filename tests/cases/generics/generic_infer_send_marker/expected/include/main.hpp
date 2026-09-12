@@ -11,10 +11,13 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sink[T](item: Own[T]) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> sink(::tpy::own_param_t<T> item);
+// def fwd[T](item: Send[Own[T]]) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> fwd(::tpy::own_param_t<T> item);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -35,17 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline Item::Item(const ::tpy::BigInt& v) : v(v) {}
 // def sink[T](item: Own[T]) -> Own[T]:
+//     return item
 template<typename T>
 ::tpy::own_return_t<T> sink(::tpy::own_param_t<T> item) {
-    // return item
     return item;
 }
 // def fwd[T](item: Send[Own[T]]) -> Own[T]:
+//     return sink(item)   # tpyc: ok
 template<typename T>
 ::tpy::own_return_t<T> fwd(::tpy::own_param_t<T> item) {
-    // return sink(item)   # tpyc: ok
     return sink<T>(std::move(item));
 }
 

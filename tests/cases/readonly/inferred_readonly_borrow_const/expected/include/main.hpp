@@ -13,8 +13,11 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_param(s: readonly[Store]) -> int32:
 int32_t read_param(const Store& s);
+// def read_call(o: readonly[Outer]) -> int32:
 int32_t read_call(const Outer& o);
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -105,113 +108,117 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self):
+//     self.v = 7
 inline Cell::Cell() : v(7) {}
 
 // def __init__(self):
+//     self._cell = Cell()
+//     self._present = True
 inline Store::Store() : _cell(Cell()), _present(true) {}
 
 // def __getitem__(self, k: int32) -> Cell | None:
+//     if self._present:
+//         return self._cell
+//     return None
 inline Cell* Store::__getitem__(int32_t k) {
-    // if self._present:
     if (this->_present) {
-        // return self._cell
         return &(this->_cell);
     }
-    // return None
     return nullptr;
 }
 
 // def __getitem__(self, k: int32) -> Cell | None:
+//     if self._present:
+//         return self._cell
+//     return None
 inline const Cell* Store::__getitem__(int32_t k) const {
-    // if self._present:
     if (this->_present) {
-        // return self._cell
         return &(this->_cell);
     }
-    // return None
     return nullptr;
 }
 
 // @auto_readonly
 // def get(self, k: int32) -> auto_readonly[Cell | None]:
+//     if self._present:
+//         return self._cell
+//     return None
 inline Cell* Store::get(int32_t k) {
-    // if self._present:
     if (this->_present) {
-        // return self._cell
         return &(this->_cell);
     }
-    // return None
     return nullptr;
 }
 
 // @auto_readonly
 // def get(self, k: int32) -> auto_readonly[Cell | None]:
+//     if self._present:
+//         return self._cell
+//     return None
 inline const Cell* Store::get(int32_t k) const {
-    // if self._present:
     if (this->_present) {
-        // return self._cell
         return &(this->_cell);
     }
-    // return None
     return nullptr;
 }
 
 // @auto_readonly
 // def first(self) -> auto_readonly[Cell]:
+//     return self._cell
 inline Cell& Store::first() {
-    // return self._cell
     return this->_cell;
 }
 
 // @auto_readonly
 // def first(self) -> auto_readonly[Cell]:
+//     return self._cell
 inline const Cell& Store::first() const {
-    // return self._cell
     return this->_cell;
 }
 
 // def __init__(self):
+//     self.store = Store()
 inline Outer::Outer() : store(Store()) {}
 
 // def read_sub(self) -> int32:
+//     # Inferred readonly; subscript resolves the const twin at C++ level.
+//     p = self.store[5]
+//     if p is not None:
+//         return p.v
+//     return -1
 inline int32_t Outer::read_sub() const {
-    // # Inferred readonly; subscript resolves the const twin at C++ level.
-    // p = self.store[5]
     const Cell* p = this->store[5];
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.v
         return p->v;
     }
-    // return -1
     return -1;
 }
 
 // def read_named(self) -> int32:
+//     # NOT inferred readonly: binding a NAMED accessor result keeps the
+//     # receiver mutable (READONLY_DESIGN.md limitation), so the mutable
+//     # twin + non-const bind stay -- pins the asymmetry with read_sub.
+//     p = self.store.get(5)
+//     if p is not None:
+//         return p.v
+//     return -1
 inline int32_t Outer::read_named() {
-    // # NOT inferred readonly: binding a NAMED accessor result keeps the
-    // # receiver mutable (READONLY_DESIGN.md limitation), so the mutable
-    // # twin + non-const bind stay -- pins the asymmetry with read_sub.
-    // p = self.store.get(5)
     Cell* p = this->store.get(5);
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.v
         return p->v;
     }
-    // return -1
     return -1;
 }
 
 // def bump(self) -> None:
+//     # Mutating sibling: the bound borrow stays non-const and is written
+//     # through -- proves the const arm does not over-trigger.
+//     p = self.store[5]
+//     if p is not None:
+//         p.v = p.v + 1
 inline void Outer::bump() {
-    // # Mutating sibling: the bound borrow stays non-const and is written
-    // # through -- proves the const arm does not over-trigger.
-    // p = self.store[5]
     Cell* p = this->store[5];
-    // if p is not None:
     if ((p != nullptr)) {
-        // p.v = p.v + 1
         p->v = (::tpy::add_check<int32_t>(p->v, 1));
     }
 }

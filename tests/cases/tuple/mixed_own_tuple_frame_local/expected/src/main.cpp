@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def make_mixed(b: Box) -> tuple[Own[Box], Box]:
+//     return (Box(1), b)
 std::tuple<Box, Box*> make_mixed(Box& b) {
-    // return (Box(1), b)
     return std::tuple<Box, Box*>{Box(1), &(b)};
 }
 
 // def gen(b: Box) -> Iterator[int32]:
+//     p = make_mixed(b)
+//     p[1].val = 88
+//     yield p[0].val
+//     yield p[1].val
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // p = make_mixed(b)
         p.emplace(make_mixed(b));
-        // p[1].val = 88
         std::get<1>((*p))->val = 88;
-        // yield p[0].val
         __state = S_RESUME_0;
         return std::get<0>((*p)).val;
     }
     case S_RESUME_0: {
-        // yield p[1].val
         __state = S_RESUME_1;
         return std::get<1>((*p))->val;
     }
@@ -43,14 +43,15 @@ __gen_gen gen(Box& b) {
 }
 
 // async def coro(b: Box) -> int32:
+//     p = make_mixed(b)
+//     p[1].val = 99
+//     await asyncio.sleep(0)
+//     return p[0].val + p[1].val
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // p = make_mixed(b)
         p.emplace(make_mixed(b));
-        // p[1].val = 99
         std::get<1>((*p))->val = 99;
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -60,7 +61,6 @@ __gen_gen gen(Box& b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return p[0].val + p[1].val
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(std::get<0>((*p)).val, std::get<1>((*p))->val));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -77,10 +77,16 @@ __coro_coro coro(Box& b) {
 }
 
 // def main() -> None:
+//     b = Box(7)
+//     for v in gen(b):
+//         print("gen:", v)
+//     print("after gen:", b.val)
+//
+//     c = Box(7)
+//     print("coro:", asyncio.run(coro(c)))
+//     print("after coro:", c.val)
 void main() {
-    // b = Box(7)
     Box b = Box(7);
-    // for v in gen(b):
     {
         auto __src_0 = gen(b);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -88,32 +94,28 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print("gen:", v)
         std::cout << "gen:" << " " << v << "\n";
         }
     }
-    // print("after gen:", b.val)
     std::cout << "after gen:" << " " << b.val << "\n";
-    // c = Box(7)
     Box c = Box(7);
-    // print("coro:", asyncio.run(coro(c)))
     std::cout << "coro:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(coro(c))) << "\n";
-    // print("after coro:", c.val)
     std::cout << "after coro:" << " " << c.val << "\n";
 }
 
+// # A mixed owned+borrow tuple local that lives in a RESUMABLE FRAME -- a
+// # multi-yield generator and an async function -- keeps the mixed render in its
+// # frame field. A whole-tuple storage field would copy the borrowed element, so
+// # both bodies write through it and the caller reads the original.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A mixed owned+borrow tuple local that lives in a RESUMABLE FRAME -- a
-    // # multi-yield generator and an async function -- keeps the mixed render in its
-    // # frame field. A whole-tuple storage field would copy the borrowed element, so
-    // # both bodies write through it and the caller reads the original.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

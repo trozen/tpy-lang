@@ -3,55 +3,65 @@
 
 namespace tpyapp::main {
 
-// G: int32 = 9
 int32_t G{};
 
 // def main() -> None:
+//     a = A(1)
+//     h = H(a, (a, 2), (3, 4))
+//     print(h.items is None, h.ox is None)
+//     print(h.vu)
+//     print(h.un is None)
+//     pu = h.pu
+//     print(isinstance(pu, A))
+//     pr = h.pr
+//     print(isinstance(pr, A))
+//     print(h.pn is None)
+//     print(h.ft[1], h.vt[0], h.tl[1])
+//     q = P()
+//     print(q.p is None)
+//     d = D()
+//     print(d.n, d.strict)
 void main() {
-    // a = A(1)
     A a = A(1);
-    // h = H(a, (a, 2), (3, 4))
     H h = H(::tpy::Union<const A*, const B*>{&(a)}, std::tuple<A*, int32_t>{&(a), 2}, std::tuple<int32_t, int32_t>{3, 4});
-    // print(h.items is None, h.ox is None)
     std::cout << ::tpy::print_bool((!h.items.has_value())) << " " << ::tpy::print_bool((!h.ox.has_value())) << "\n";
-    // print(h.vu)
     std::cout << ::tpy::__str__(h.vu) << "\n";
-    // print(h.un is None)
     std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(h.un))) << "\n";
-    // pu = h.pu
     ::tpy::Union<A*, B*> pu = ::tpy::to_ptr_variant(h.pu);
-    // print(isinstance(pu, A))
     std::cout << ::tpy::print_bool(std::holds_alternative<A*>(pu)) << "\n";
-    // pr = h.pr
     ::tpy::Union<A*, B*> pr = ::tpy::to_ptr_variant(h.pr);
-    // print(isinstance(pr, A))
     std::cout << ::tpy::print_bool(std::holds_alternative<A*>(pr)) << "\n";
-    // print(h.pn is None)
     std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(h.pn))) << "\n";
-    // print(h.ft[1], h.vt[0], h.tl[1])
     std::cout << std::get<1>(h.ft) << " " << std::get<0>(h.vt) << " " << std::get<1>(h.tl) << "\n";
-    // q = P()
     P q = P();
-    // print(q.p is None)
     std::cout << ::tpy::print_bool((q.p == nullptr)) << "\n";
-    // d = D()
     D d = D();
-    // print(d.n, d.strict)
     std::cout << d.n << " " << ::tpy::print_bool(d.strict) << "\n";
 }
 
 
 // def __init__(self, pu: A | B, ft: tuple[A, int32],
-// vt: tuple[int32, int32]) -> None:
+//              vt: tuple[int32, int32]) -> None:
+//     self.items = None
+//     self.ox = None
+//     self.vu = 5
+//     self.un = None
+//     self.pu = pu  # tpyc: warning(/copies A \| B into field/)
+//     self.pr = A(3)
+//     self.pn = None
+//     self.ft = ft  # tpyc: warning(/copies A into field \(tuple element 0\)/)
+//     self.vt = vt
+//     self.tl = (1, 2)
 H::H(::tpy::Union<const A*, const B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt) : items(std::nullopt), ox(std::nullopt), vu(5), un(std::monostate{}), pu(::tpy::to_value_variant<::tpy::Union<A, B>>(pu)), pr(A(3)), pn(std::monostate{}), ft(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(ft)), vt(vt), tl(std::tuple<int32_t, int32_t>{1, 2}) {}
+// G: int32 = 9
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // G: int32 = 9
     G = 9;
-    // main()
     main();
 }
 

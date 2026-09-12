@@ -12,11 +12,17 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(x: Leaf | None) -> None:
 void show(const Leaf* x);
+// def bump_and_peek(x: Leaf | None) -> None:
 void bump_and_peek(Leaf* x);
+// def label(x: Leaf | None) -> int32:
 int32_t label(const Leaf* x);
+// def peek(x: Leaf | None) -> None:
 void peek(const Leaf* x);
+// def from_field(h: Holder) -> None:
 void from_field(const Holder& h);
+// def main() -> None:
 void main();
 
 // class Leaf:
@@ -52,9 +58,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Leaf::Leaf(int32_t n) : n(n) {}
 
 // def __init__(self):
+//     self.opt = None
 inline Holder::Holder() : opt(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

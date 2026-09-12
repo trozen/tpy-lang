@@ -3501,8 +3501,7 @@ def _lower_overload_folded_match(stmt: TpyMatch, lc, declared, loc, *,
             binds.append(THIRMatchFoldBind(
                 name_cpp=escape_cpp_name(sub_pattern.name),
                 source_cpp=f"{subject_name}.{field_name}",
-                by_value=bool(by_value),
-                no_source_comment=True))
+                by_value=bool(by_value)))
             declared[sub_pattern.name] = ft
         body = _statements._lower_stmts(case.body, lc, declared,
                                         in_branch=in_branch,

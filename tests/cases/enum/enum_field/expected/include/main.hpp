@@ -35,6 +35,7 @@ struct Pixel;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Pixel:
@@ -59,6 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pixel& obj) {
 
 
 // def __init__(self, x: int, y: int, color: Color) -> None:
+//     self.x = x
+//     self.y = y
+//     self.color = color
 inline Pixel::Pixel(const ::tpy::BigInt& x, const ::tpy::BigInt& y, Color color) : x(x), y(y), color(color) {}
 void __tpy_init();
 } // namespace tpyapp::main

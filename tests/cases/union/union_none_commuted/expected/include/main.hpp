@@ -11,8 +11,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check(v: int32 | Cat | None) -> str:
 std::string check(::tpy::Union<std::monostate, const Cat*, const int32_t*> v);
+// def check_not(v: int32 | Cat | None) -> str:
 std::string check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*> v);
+// def main() -> None:
 void main();
 
 // class Cat:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

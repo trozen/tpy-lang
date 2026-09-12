@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def from_list() -> None:
+//     items: list[tuple[int32, Box]] = [(1, Box(5))]
+//     t = items[0]
+//     t[1].val = 99
+//     print(items[0][1].val)
 void from_list() {
-    // items: list[tuple[int32, Box]] = [(1, Box(5))]
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)})};
-    // t = items[0]
     auto&& t = ::tpy::__getitem__(items, 0);
-    // t[1].val = 99
     std::get<1>(t).val = 99;
-    // print(items[0][1].val)
     std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n";
 }
 
 // def from_field() -> None:
+//     h = Holder(Box(7))
+//     t = h.pair
+//     t[1].val = 42
+//     print(h.pair[1].val)
 void from_field() {
-    // h = Holder(Box(7))
     Holder h = Holder(Box(7));
-    // t = h.pair
     auto&& t = h.pair;
-    // t[1].val = 42
     std::get<1>(t).val = 42;
-    // print(h.pair[1].val)
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
 // def chain_alias() -> None:
+//     items: list[tuple[int32, Box]] = [(1, Box(3))]
+//     t = items[0]
+//     u = t
+//     u[1].val = 11
+//     print(items[0][1].val)
 void chain_alias() {
-    // items: list[tuple[int32, Box]] = [(1, Box(3))]
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(3)})};
-    // t = items[0]
     auto&& t = ::tpy::__getitem__(items, 0);
-    // u = t
     auto&& u = t;
-    // u[1].val = 11
     std::get<1>(u).val = 11;
-    // print(items[0][1].val)
     std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n";
 }
 
 // def main() -> None:
+//     from_list()
+//     from_field()
+//     chain_alias()
 void main() {
-    // from_list()
     from_list();
-    // from_field()
     from_field();
-    // chain_alias()
     chain_alias();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = 1
+//     b: Any = 1
+//     c: Any = "1"
+//     d: Any = 2
+//     print(a == b)
+//     print(a == c)
+//     print(a == d)
+//     print(a != b)
+//     print(a != c)
 void main() {
-    // a: Any = 1
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(1));
-    // b: Any = 1
     ::tpy::Any b = ::tpy::make_any(::tpy::BigInt(1));
-    // c: Any = "1"
     ::tpy::Any c = ::tpy::make_any(std::string("1"));
-    // d: Any = 2
     ::tpy::Any d = ::tpy::make_any(::tpy::BigInt(2));
-    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
-    // print(a == c)
     std::cout << ::tpy::print_bool((a == c)) << "\n";
-    // print(a == d)
     std::cout << ::tpy::print_bool((a == d)) << "\n";
-    // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
-    // print(a != c)
     std::cout << ::tpy::print_bool((a != c)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,55 +5,56 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     store.env["a"] = "x"  # tpyc: ok -- the module-qualified global as a setitem receiver
+//     store.env["b"] = "y"
+//     n = 0
+//     for k in store.env:  # tpyc: ok -- and as a for-loop iterable
+//         n = n + len(k)
+//     print(store.env["a"], store.env["b"], n)
+//     del store.env["a"]  # tpyc: ok -- and as a del target
+//     left = 0
+//     for k in store.env:
+//         left = left + 1
+//     print(left)
 void main() {
-    // store.env["a"] = "x"  # tpyc: ok -- the module-qualified global as a setitem receiver
     ::tpy::__setitem__((*::tpyapp::store::env), "a", "x");
-    // store.env["b"] = "y"
     ::tpy::__setitem__((*::tpyapp::store::env), "b", "y");
-    // n = 0
     int32_t n = 0;
-    // for k in store.env:  # tpyc: ok -- and as a for-loop iterable
     auto& __src_0 = (*::tpyapp::store::env);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_1);
-        // n = n + len(k)
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(k)));
     }
-    // print(store.env["a"], store.env["b"], n)
     std::cout << (*::tpyapp::store::env)["a"] << " " << (*::tpyapp::store::env)["b"] << " " << n << "\n";
-    // del store.env["a"]  # tpyc: ok -- and as a del target
     ::tpy::__delitem__((*::tpyapp::store::env), "a");
-    // left = 0
     int32_t left = 0;
-    // for k in store.env:
     auto& __src_2 = (*::tpyapp::store::env);
     auto&& __itr_2 = ::tpy::__iter__(__src_2);
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         std::string_view k = ::tpy::unwrap_ref(*__r_3);
-        // left = left + 1
         left = (::tpy::add_check<int32_t>(left, 1));
     }
-    // print(left)
     std::cout << left << "\n";
 }
 
+// # A @nocopy record module-global of ANOTHER module driven through its mapping
+// # dunders: the module-qualified name is the receiver, the iterable and the
+// # `del` target, and every write is seen by the next read (a copy would not
+// # compile, since Env is @nocopy).
+// import store
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @nocopy record module-global of ANOTHER module driven through its mapping
-    // # dunders: the module-qualified name is the receiver, the iterable and the
-    // # `del` target, and every write is seen by the next read (a copy would not
-    // # compile, since Env is @nocopy).
-    // import store
     ::tpyapp::store::__tpy_init();
-    // main()
     main();
 }
 

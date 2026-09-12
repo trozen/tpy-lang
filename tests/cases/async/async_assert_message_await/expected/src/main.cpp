@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // async def msg(tag: str) -> str:
+//     print("building", tag)
+//     return tag + "!"
 ::tpystd::tpy::Poll<std::string> __coro_msg::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("building", tag)
         std::cout << "building" << " " << tag << "\n";
-        // return tag + "!"
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat(tag, "!"));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -28,12 +28,13 @@ __coro_msg msg(std::string_view tag) {
 }
 
 // async def go(x: int32) -> None:
+//     assert x > 0, await msg("positive")
+//     print("passed", x)
 ::tpystd::tpy::Poll<::std::monostate> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((!((x > 0)))) {
             __coro_arg_0 = "positive";
-            // assert x > 0, await msg("positive")
             __sub_0.emplace(__coro_arg_0);
             __state = S_RESUME_0;
             continue;
@@ -47,13 +48,11 @@ __coro_msg msg(std::string_view tag) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // assert x > 0, await msg("positive")
         ::tpy::raise_assertion_error(__await_lift_0);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
-        // print("passed", x)
         std::cout << "passed" << " " << x << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -70,10 +69,14 @@ __coro_go go(int32_t x) {
 }
 
 // async def main_coro() -> None:
+//     await go(2)
+//     try:
+//         await go(0)
+//     except AssertionError as e:
+//         print("caught", e)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await go(2)
         __sub_0.emplace(2);
         __state = S_RESUME_0;
         continue;
@@ -96,7 +99,6 @@ __coro_go go(int32_t x) {
             continue;
         } catch (const ::tpy::AssertionError& e) {
             __sub_1.reset();
-            // print("caught", e)
             std::cout << "caught" << " " << e << "\n";
             __state = S_JOIN_0;
             continue;
@@ -110,7 +112,6 @@ __coro_go go(int32_t x) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        // await go(0)
         __sub_1.emplace(0);
         __state = S_RESUME_1;
         continue;
@@ -126,16 +127,17 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
+// # An awaiting assert message is evaluated only on failure (CPython);
+// # the passing path must not run its side effects.
+// import asyncio
+//
+// asyncio.run(main_coro())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An awaiting assert message is evaluated only on failure (CPython);
-    // # the passing path must not run its side effects.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 

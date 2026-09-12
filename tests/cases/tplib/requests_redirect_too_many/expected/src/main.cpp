@@ -5,71 +5,73 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     c, d = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /two\r\nContent-Length: 0\r\n\r\n")
+//     d.sendall(b"HTTP/1.1 302 Found\r\nLocation: /three\r\nContent-Length: 0\r\n\r\n")
+//     s = requests.Session()
+//     h0 = HTTPConnection("api.test", 80)
+//     h0.sock = a
+//     s._connection = Box(h0)
+//     h1 = HTTPConnection("api.test", 80)
+//     h1.sock = c
+//     s._redirect_connections = [Box(h1)]
+//     s.max_redirects = 1
+//     try:
+//         s.get("http://api.test/one")
+//         print("NO RAISE")
+//     except TooManyRedirects:
+//         print("caught TooManyRedirects")
+//     b.close()
+//     d.close()
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // c, d = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    // b.sendall(b"HTTP/1.1 302 Found\r\nLocation: /two\r\nContent-Length: 0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: /two\r\nContent-Length: 0\r\n\r\n", 57));
-    // d.sendall(b"HTTP/1.1 302 Found\r\nLocation: /three\r\nContent-Length: 0\r\n\r\n")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: /three\r\nContent-Length: 0\r\n\r\n", 59));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // h0 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection h0 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h0.sock = a
     h0.sock = std::move(a);
-    // s._connection = Box(h0)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h0));
-    // h1 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection h1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // h1.sock = c
     h1.sock = std::move(c);
-    // s._redirect_connections = [Box(h1)]
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
-    // s.max_redirects = 1
     s.max_redirects = 1;
-    // try:
     {
         try {
-            // s.get("http://api.test/one")
             s.get("http://api.test/one");
-            // print("NO RAISE")
             std::cout << "NO RAISE" << "\n";
         } catch (const ::tpystd::tplib::requests::TooManyRedirects&) {
-            // print("caught TooManyRedirects")
             std::cout << "caught TooManyRedirects" << "\n";
         }
     }
-    // b.close()
     b.close();
-    // d.close()
     d.close();
 }
 
+// # A redirect chain longer than Session.max_redirects raises TooManyRedirects.
+// # max_redirects=1 allows one hop into .history; the second 302 trips the limit.
+// # Both peers serve a 302, so the chain never terminates on its own.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A redirect chain longer than Session.max_redirects raises TooManyRedirects.
-    // # max_redirects=1 allows one hop into .history; the second 302 trips the limit.
-    // # Both peers serve a 302, so the chain never terminates on its own.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

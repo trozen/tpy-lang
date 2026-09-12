@@ -29,6 +29,7 @@ inline std::ostream& operator<<(std::ostream& os, const Original& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Original::Original(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::c

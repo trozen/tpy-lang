@@ -15,6 +15,7 @@ struct SimpleBuffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class SimpleBuffer:
@@ -57,33 +58,35 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleBuffer& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = [10, 20, 30, 0]
+//     self._n = 3
 inline SimpleBuffer::SimpleBuffer() : _data(std::array<int32_t, 4>{10, 20, 30, 0}), _n(3) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<int32_t> SimpleBuffer::__span__() {
-    // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<const int32_t> SimpleBuffer::__span__() const {
-    // return self._data
     return ::tpy::as_span(this->_data);
 }
 
 // @auto_readonly
 // def __iter__(self) -> SpanIter[auto_readonly[int32]]:
+//     return SpanIter(self.__span__())
 inline ::tpy::SpanIter<int32_t> SimpleBuffer::__iter__() {
-    // return SpanIter(self.__span__())
     return ::tpy::SpanIter<int32_t>(this->__span__());
 }
 
 // @auto_readonly
 // def __iter__(self) -> SpanIter[auto_readonly[int32]]:
+//     return SpanIter(self.__span__())
 inline ::tpy::SpanIter<const int32_t> SimpleBuffer::__iter__() const {
-    // return SpanIter(self.__span__())
     return ::tpy::SpanIter<const int32_t>(this->__span__());
 }
 void __tpy_init();

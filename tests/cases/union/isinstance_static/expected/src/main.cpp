@@ -5,76 +5,77 @@ namespace tpyapp::main {
 
 
 // def match_int(x: int32) -> bool:
+//     return isinstance(x, int32)
 bool match_int(int32_t x) {
-    // return isinstance(x, int32)
     return true;
 }
 
 // def mismatch(x: int32) -> bool:
+//     return isinstance(x, A)
 bool mismatch(int32_t x) {
-    // return isinstance(x, A)
     return false;
 }
 
 // def tuple_contains(x: int32) -> bool:
+//     return isinstance(x, (A, int32))
 bool tuple_contains(int32_t x) {
-    // return isinstance(x, (A, int32))
     return true;
 }
 
 // def tuple_miss(x: int32) -> bool:
+//     return isinstance(x, (A, B))
 bool tuple_miss(int32_t x) {
-    // return isinstance(x, (A, B))
     return false;
 }
 
 // def record_self(a: A) -> int:
+//     # Happy path used inside an if so codegen folds the branch.
+//     if isinstance(a, A):
+//         return a.x
+//     return -1
 ::tpy::BigInt record_self(const A& a) {
-    // # Happy path used inside an if so codegen folds the branch.
-    // if isinstance(a, A):
     if (true) {
-        // return a.x
         return a.x;
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def record_other(a: A) -> int:
+//     if isinstance(a, B):
+//         return -1
+//     return a.x
 ::tpy::BigInt record_other(const A& a) {
-    // if isinstance(a, B):
     if (false) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // return a.x
     return a.x;
 }
 
 // def negate(x: int32) -> bool:
+//     return not isinstance(x, A)
 bool negate(int32_t x) {
-    // return not isinstance(x, A)
     return (!(false));
 }
 
 // def compound(x: int32, flag: bool) -> bool:
+//     return isinstance(x, int32) and flag
 bool compound(int32_t x, bool flag) {
-    // return isinstance(x, int32) and flag
     return (true && flag);
 }
 
 // def match_guard(x: int32) -> str:
+//     match x:
+//         case _ if isinstance(x, int32):
+//             return "int32"
+//         case _:
+//             return "other"
 std::string match_guard(int32_t x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1) {
-    // case _ if isinstance(x, int32):
     default: {
         if (true) {
-            // return "int32"
             return "int32";
         } else {
-            // return "other"
             return "other";
         }
         break;
@@ -84,37 +85,37 @@ std::string match_guard(int32_t x) {
 }
 
 // def main() -> None:
+//     print(match_int(int32(1)))
+//     print(mismatch(int32(1)))
+//     print(tuple_contains(int32(1)))
+//     print(tuple_miss(int32(1)))
+//     print(record_self(A(7)))
+//     print(record_other(A(8)))
+//     print(negate(int32(1)))
+//     print(compound(int32(1), True))
+//     print(compound(int32(1), False))
+//     print(match_guard(int32(1)))
 void main() {
-    // print(match_int(int32(1)))
     std::cout << ::tpy::print_bool(match_int(1)) << "\n";
-    // print(mismatch(int32(1)))
     std::cout << ::tpy::print_bool(mismatch(1)) << "\n";
-    // print(tuple_contains(int32(1)))
     std::cout << ::tpy::print_bool(tuple_contains(1)) << "\n";
-    // print(tuple_miss(int32(1)))
     std::cout << ::tpy::print_bool(tuple_miss(1)) << "\n";
-    // print(record_self(A(7)))
     A __tmp_1 = A(::tpy::BigInt(7));
     std::cout << record_self(__tmp_1) << "\n";
-    // print(record_other(A(8)))
     A __tmp_2 = A(::tpy::BigInt(8));
     std::cout << record_other(__tmp_2) << "\n";
-    // print(negate(int32(1)))
     std::cout << ::tpy::print_bool(negate(1)) << "\n";
-    // print(compound(int32(1), True))
     std::cout << ::tpy::print_bool(compound(1, true)) << "\n";
-    // print(compound(int32(1), False))
     std::cout << ::tpy::print_bool(compound(1, false)) << "\n";
-    // print(match_guard(int32(1)))
     std::cout << match_guard(1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

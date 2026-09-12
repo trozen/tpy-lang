@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def via_param(b: Box, c: Box) -> int32:
+//     return count(b, c)  # tpyc: ok
 int32_t via_param(const Box& b, const Box& c) {
-    // return count(b, c)  # tpyc: ok
     std::array<const Box*, 2> __tmp_1{&b, &c};
     return count<Box>(::tpy::varargs<const Box>(__tmp_1));
 }
 
 // def main() -> None:
+//     x = Box(3)
+//     y = Box(4)
+//     print(via_param(x, y))
 void main() {
-    // x = Box(3)
     Box x = Box(3);
-    // y = Box(4)
     Box y = Box(4);
-    // print(via_param(x, y))
     std::cout << via_param(x, y) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

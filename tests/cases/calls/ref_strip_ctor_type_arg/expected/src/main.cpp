@@ -5,65 +5,68 @@ namespace tpyapp::main {
 
 
 // def identity(p: Point) -> Point:
+//     return p
 Point& identity(Point& p) {
-    // return p
     return p;
 }
 
 // def to_pair(p: Point) -> tuple[str, Point]:
+//     return (str(p), p)
 std::tuple<std::string, Point*> to_pair(Point& p) {
-    // return (str(p), p)
     return std::tuple<std::string, Point*>{std::string(::tpy::__str__(p)), &(p)};
 }
 
 // def main() -> None:
+//     pts: list[Point] = [Point(1, 2), Point(3, 4)]
+//
+//     # list(map(...)) -- Ref[Point] from identity return must not leak into list[T]
+//     result = list(map(identity, pts))  # tpyc: type(list[Point]) warning(/copies Point elements/)
+//     for p in result:
+//         print(p)
+//
+//     # dict from map -- Ref must be stripped from both K and V
+//     d = dict(map(to_pair, pts))  # tpyc: type(dict[str, Point]) warning(/copies tuple\[str, Point\] elements/)
+//     for k in d:
+//         print(k, d[k])
+//
+//     # copy_iter() acknowledges the copy
+//     d2 = dict(copy_iter(map(to_pair, pts)))  # tpyc: ok
+//     for k in d2:
+//         print(k, d2[k])
 void main() {
-    // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    // # list(map(...)) -- Ref[Point] from identity return must not leak into list[T]
-    // result = list(map(identity, pts))  # tpyc: type(list[Point]) warning(/copies Point elements/)
     std::vector<Point> result = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
-    // for p in result:
     auto& __obj_0 = result;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // print(p)
         std::cout << p << "\n";
     }
-    // # dict from map -- Ref must be stripped from both K and V
-    // d = dict(map(to_pair, pts))  # tpyc: type(dict[str, Point]) warning(/copies tuple\[str, Point\] elements/)
     ::tpy::ordered_map<std::string, Point> d = ::tpy::dict_construct<std::string, Point>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts));
-    // for k in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // print(k, d[k])
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
     }
-    // # copy_iter() acknowledges the copy
-    // d2 = dict(copy_iter(map(to_pair, pts)))  # tpyc: ok
     ::tpy::ordered_map<std::string, Point> d2 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts)));
-    // for k in d2:
     auto& __obj_2 = d2;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view k = *__beg_2;
-        // print(k, d2[k])
         std::cout << k << " " << ::tpy::__getitem__(d2, k) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

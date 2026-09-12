@@ -5,297 +5,302 @@ namespace tpyapp::main {
 
 
 // def test_append() -> None:
+//     items: list[int32] = [int32(1), int32(2), int32(3)]
+//     for x in items:
+//         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
 void test_append() {
-    // items: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
         items.push_back(x);
     }
 }
 
 // def test_pop() -> None:
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         items.pop()  # tpyc: warning(/Mutation of 'items'.*'pop'/)
 void test_pop() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items.pop()  # tpyc: warning(/Mutation of 'items'.*'pop'/)
         ::tpy::pop_back(items);
     }
 }
 
 // def test_insert() -> None:
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         items.insert(int32(0), int32(9))  # tpyc: warning(/Mutation of 'items'.*'insert'/)
 void test_insert() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items.insert(int32(0), int32(9))  # tpyc: warning(/Mutation of 'items'.*'insert'/)
         ::tpy::list_insert(items, 0, 9);
     }
 }
 
 // def test_remove() -> None:
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         items.remove(int32(1))  # tpyc: warning(/Mutation of 'items'.*'remove'/)
 void test_remove() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items.remove(int32(1))  # tpyc: warning(/Mutation of 'items'.*'remove'/)
         ::tpy::list_remove(items, 1);
     }
 }
 
 // def test_clear() -> None:
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         items.clear()  # tpyc: warning(/Mutation of 'items'.*'clear'/)
 void test_clear() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items.clear()  # tpyc: warning(/Mutation of 'items'.*'clear'/)
         items.clear();
     }
 }
 
 // def test_extend() -> None:
+//     items: list[int32] = [int32(1), int32(2)]
+//     other: list[int32] = [int32(3)]
+//     for x in items:
+//         items.extend(other)  # tpyc: warning(/Mutation of 'items'.*'extend'/)
 void test_extend() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // other: list[int32] = [int32(3)]
     std::vector<int32_t> other = {3};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items.extend(other)  # tpyc: warning(/Mutation of 'items'.*'extend'/)
         ::tpy::list_extend(items, other);
     }
 }
 
 // def test_reverse() -> None:
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         items.reverse()  # tpyc: warning(/Mutation of 'items'.*'reverse'/)
 void test_reverse() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items.reverse()  # tpyc: warning(/Mutation of 'items'.*'reverse'/)
         ::tpy::list_reverse(items);
     }
 }
 
 // def test_sort() -> None:
+//     items: list[int32] = [int32(3), int32(1)]
+//     for x in items:
+//         items.sort()  # tpyc: warning(/Mutation of 'items'.*'sort'/)
 void test_sort() {
-    // items: list[int32] = [int32(3), int32(1)]
     std::vector<int32_t> items = {3, 1};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items.sort()  # tpyc: warning(/Mutation of 'items'.*'sort'/)
         ::tpy::sort_in_place(items);
     }
 }
 
 // def test_del() -> None:
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         del items[int32(0)]  # tpyc: warning(/Mutation of 'items'.*'del'/)
 void test_del() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // del items[int32(0)]  # tpyc: warning(/Mutation of 'items'.*'del'/)
         ::tpy::__delitem__(items, 0);
     }
 }
 
 // def test_nested_loops() -> None:
+//     outer: list[int32] = [int32(1)]
+//     inner: list[int32] = [int32(2)]
+//     for x in outer:
+//         for y in inner:
+//             inner.append(y)  # tpyc: warning(/Mutation of 'inner'/)
+//         outer.append(x)  # tpyc: warning(/Mutation of 'outer'/)
 void test_nested_loops() {
-    // outer: list[int32] = [int32(1)]
     std::vector<int32_t> outer = {1};
-    // inner: list[int32] = [int32(2)]
     std::vector<int32_t> inner = {2};
-    // for x in outer:
     auto& __obj_0 = outer;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // for y in inner:
         auto& __obj_1 = inner;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t y = *__beg_1;
-            // inner.append(y)  # tpyc: warning(/Mutation of 'inner'/)
             inner.push_back(y);
         }
-        // outer.append(x)  # tpyc: warning(/Mutation of 'outer'/)
         outer.push_back(x);
     }
 }
 
 // def test_conditional_mutation() -> None:
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         if x > int32(0):
+//             items.append(x)  # tpyc: warning(/Mutation of 'items'/)
 void test_conditional_mutation() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // if x > int32(0):
         if ((x > 0)) {
-            // items.append(x)  # tpyc: warning(/Mutation of 'items'/)
             items.push_back(x);
         }
     }
 }
 
 // def test_subscript_assign_ok() -> None:
+//     """Element replacement doesn't invalidate iterators."""
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         items[int32(0)] = int32(9)  # tpyc: ok
 void test_subscript_assign_ok() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // items[int32(0)] = int32(9)  # tpyc: ok
         ::tpy::__setitem__(items, 0, 9);
     }
 }
 
 // def test_no_warn_after_loop() -> None:
+//     """Mutation after loop exit is fine."""
+//     items: list[int32] = [int32(1), int32(2)]
+//     for x in items:
+//         pass
+//     items.append(int32(3))  # tpyc: ok
 void test_no_warn_after_loop() {
-    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // pass
     }
-    // items.append(int32(3))  # tpyc: ok
     items.push_back(3);
 }
 
 // def test_read_only_ok() -> None:
+//     """No warnings for read-only operations during iteration."""
+//     items: list[int32] = [int32(1), int32(2), int32(3)]
+//     total: int32 = int32(0)
+//     for x in items:
+//         total += x        # tpyc: ok
+//         _ = len(items)    # tpyc: ok
+//         _ = items[int32(0)]  # tpyc: ok
 void test_read_only_ok() {
-    // items: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // total: int32 = int32(0)
     int32_t total = 0;
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x        # tpyc: ok
         total = ::tpy::add_check<int32_t>(total, x);
-        // _ = len(items)    # tpyc: ok
         int32_t _ = ::tpy::__len__(items);
-        // _ = items[int32(0)]  # tpyc: ok
         _ = ::tpy::__getitem__(items, 0);
     }
 }
 
 // def test_outer_loan_survives_inner_while() -> None:
+//     """A loop shape that takes no iterator loan must not expire the outer one."""
+//     items: list[int32] = [1, 2]
+//     i: int32 = 0
+//     for x in items:
+//         while i < 2:
+//             i += 1
+//         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
 void test_outer_loan_survives_inner_while() {
-    // items: list[int32] = [1, 2]
     std::vector<int32_t> items = {1, 2};
-    // i: int32 = 0
     int32_t i = 0;
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // while i < 2:
         while ((i < 2)) {
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         }
-        // items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
         items.push_back(x);
     }
 }
 
 // def test_else_clause_ok() -> None:
+//     """The `else` clause runs after the iterator is done -- mutating there is fine."""
+//     items: list[int32] = [1, 2]
+//     total: int32 = 0
+//     for x in items:
+//         total += x
+//     else:
+//         items.append(3)  # tpyc: ok
+//     print("else_clause:", total, len(items))
 void test_else_clause_ok() {
-    // items: list[int32] = [1, 2]
     std::vector<int32_t> items = {1, 2};
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // else:
     {
-        // items.append(3)  # tpyc: ok
         items.push_back(3);
     }
     __after_else_0:;
-    // print("else_clause:", total, len(items))
     std::cout << "else_clause:" << " " << total << " " << ::tpy::__len__(items) << "\n";
 }
 
 // def main() -> None:
+//     test_else_clause_ok()
 void main() {
-    // test_else_clause_ok()
     test_else_clause_ok();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

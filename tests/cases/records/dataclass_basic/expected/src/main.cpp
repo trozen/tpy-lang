@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1, 2)
+//     print(p)
+//     print(p.x, p.y)
+//     print(repr(p))
+//     p2 = Point(x=10, y=20)
+//     print(p2)
 void main() {
-    // p = Point(1, 2)
     Point p = Point(1, 2);
-    // print(p)
     std::cout << p << "\n";
-    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
-    // print(repr(p))
     std::cout << ::tpy::repr_of(p) << "\n";
-    // p2 = Point(x=10, y=20)
     Point p2 = Point(10, 20);
-    // print(p2)
     std::cout << p2 << "\n";
 }
 
+// # Basic @dataclass: auto-generated __init__ from field annotations
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Basic @dataclass: auto-generated __init__ from field annotations
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

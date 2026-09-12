@@ -5,73 +5,73 @@ namespace tpyapp::main {
 
 
 // def get_or_default(x: int32, default: int32) -> int32:
+//     if x > 0:
+//         return x
+//     return default
 int32_t get_or_default(int32_t x, int32_t default_) {
-    // if x > 0:
     if ((x > 0)) {
-        // return x
         return x;
     }
-    // return default
     return default_;
 }
 
 // def test_local_keywords() -> None:
+//     delete: int32 = 10
+//     new: int32 = 20
+//     result: int32 = delete + new
+//     print(result)
 void test_local_keywords() {
-    // delete: int32 = 10
     int32_t delete_ = 10;
-    // new: int32 = 20
     int32_t new_ = 20;
-    // result: int32 = delete + new
     int32_t result = (::tpy::add_check<int32_t>(delete_, new_));
-    // print(result)
     std::cout << result << "\n";
 }
 
 // def test_for_loop_keyword() -> None:
+//     total: int32 = 0
+//     items: list[int32] = [1, 2, 3]
+//     for operator in items:
+//         total = total + operator
+//     print(total)
 void test_for_loop_keyword() {
-    // total: int32 = 0
     int32_t total = 0;
-    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // for operator in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t operator_ = *__beg_0;
-        // total = total + operator
         total = (::tpy::add_check<int32_t>(total, operator_));
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def delete(x: int32) -> int32:
+//     return x * 2
 int32_t delete_(int32_t x) {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main() -> None:
+//     print(get_or_default(5, 42))
+//     print(get_or_default(-1, 42))
+//     test_local_keywords()
+//     test_for_loop_keyword()
+//     print(delete(7))
 void main() {
-    // print(get_or_default(5, 42))
     std::cout << get_or_default(5, 42) << "\n";
-    // print(get_or_default(-1, 42))
     std::cout << get_or_default(-1, 42) << "\n";
-    // test_local_keywords()
     test_local_keywords();
-    // test_for_loop_keyword()
     test_for_loop_keyword();
-    // print(delete(7))
     std::cout << delete_(7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

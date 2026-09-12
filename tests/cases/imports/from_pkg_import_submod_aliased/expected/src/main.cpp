@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def use(c: p.Counter) -> int32:
+//     return c.n
 int32_t use(const ::tpyapp::pkg::state::Counter& c) {
-    // return c.n
     return c.n;
 }
 
 // def main() -> None:
+//     print(p.LIMIT)
+//     print(use(p.Counter(int32(7))))
 void main() {
-    // print(p.LIMIT)
     std::cout << ::tpyapp::pkg::state::LIMIT << "\n";
-    // print(use(p.Counter(int32(7))))
     ::tpyapp::pkg::state::Counter __tmp_1 = ::tpyapp::pkg::state::Counter(7);
     std::cout << use(__tmp_1) << "\n";
 }
 
+// # `from pkg import submod as alias` -- the alias must work as a namespace
+// # qualifier for both calls and type annotations, just like the un-aliased
+// # form. Pre-fix the alias rebuild for `_reverse_module_aliases` only fired
+// # for the un-aliased case; this pins the aliased path.
+// from pkg import state as p
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `from pkg import submod as alias` -- the alias must work as a namespace
-    // # qualifier for both calls and type annotations, just like the un-aliased
-    // # form. Pre-fix the alias rebuild for `_reverse_module_aliases` only fired
-    // # for the un-aliased case; this pins the aliased path.
-    // from pkg import state as p
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::state::__tpy_init();
-    // main()
     main();
 }
 

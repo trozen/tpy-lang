@@ -5,73 +5,87 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Tuple-shaped T: bare literal `3` coerces to int32 in the second-arg
+//     # tuple even though T was determined by the first arg.
+//     pq: list[tuple[int32, str]] = []
+//     heappush(pq, (3, "third"))  # tpyc: ok
+//     heappush(pq, (1, "first"))  # tpyc: ok
+//     push_t(pq, (2, "second"))   # tpyc: ok
+//     print(len(pq))
+//
+//     # Float-literal slot: same path, FloatLiteralType -> float64.
+//     weighted: list[tuple[float64, str]] = []
+//     push_t(weighted, (1.5, "a"))  # tpyc: ok
+//     push_t(weighted, (2.5, "b"))  # tpyc: ok
+//     print(len(weighted))
+//
+//     # Nested tuple-of-tuple slot.
+//     nested: list[tuple[tuple[int32, int32], str]] = []
+//     push_t(nested, ((1, 2), "x"))  # tpyc: ok
+//     print(len(nested))
+//
+//     # Dict K + V both fixed-int from separate args; literals coerce in place.
+//     counts: dict[int32, int32] = {}
+//     put_dict(counts, 7, 42)  # tpyc: ok
+//     print(counts[7])
+//
+//     # set[T] inference with bare literal element.
+//     seen: set[int32] = set()
+//     add_to_set(seen, 11)  # tpyc: ok
+//     add_to_set(seen, 22)  # tpyc: ok
+//     print(len(seen))
+//
+//     # T pinned from a list-literal arg whose elements are literal-typed tuples.
+//     # Exercises resolve_int_literals' compound walk: without map_inner_types
+//     # recursion, T would reach codegen as list[tuple[IntLiteral, str]] and
+//     # leak the literal value into the C++ template argument.
+//     take_any([(1, "a"), (2, "b")])  # tpyc: ok
+//
+//     # Both args are bare literal tuples (T inferred from first, consistency
+//     # check + resolution applied through compound shape against the second).
+//     # Without the unification, codegen leaked `std::tuple<3, std::string>`.
+//     pair_any((3, "x"), (4, "y"))  # tpyc: ok
 void main() {
-    // # Tuple-shaped T: bare literal `3` coerces to int32 in the second-arg
-    // # tuple even though T was determined by the first arg.
-    // pq: list[tuple[int32, str]] = []
     std::vector<std::tuple<int32_t, std::string>> pq = std::vector<std::tuple<int32_t, std::string>>{};
-    // heappush(pq, (3, "third"))  # tpyc: ok
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{3, "third"});
-    // heappush(pq, (1, "first"))  # tpyc: ok
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{1, "first"});
-    // push_t(pq, (2, "second"))   # tpyc: ok
     push_t<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{2, "second"});
-    // print(len(pq))
     std::cout << ::tpy::__len__(pq) << "\n";
-    // # Float-literal slot: same path, FloatLiteralType -> float64.
-    // weighted: list[tuple[float64, str]] = []
     std::vector<std::tuple<double, std::string>> weighted = std::vector<std::tuple<double, std::string>>{};
-    // push_t(weighted, (1.5, "a"))  # tpyc: ok
     push_t<std::tuple<double, std::string>>(weighted, std::tuple<double, std::string>{1.5, "a"});
-    // push_t(weighted, (2.5, "b"))  # tpyc: ok
     push_t<std::tuple<double, std::string>>(weighted, std::tuple<double, std::string>{2.5, "b"});
-    // print(len(weighted))
     std::cout << ::tpy::__len__(weighted) << "\n";
-    // # Nested tuple-of-tuple slot.
-    // nested: list[tuple[tuple[int32, int32], str]] = []
     std::vector<std::tuple<std::tuple<int32_t, int32_t>, std::string>> nested = std::vector<std::tuple<std::tuple<int32_t, int32_t>, std::string>>{};
-    // push_t(nested, ((1, 2), "x"))  # tpyc: ok
     push_t<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(nested, std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 2}, "x"});
-    // print(len(nested))
     std::cout << ::tpy::__len__(nested) << "\n";
-    // # Dict K + V both fixed-int from separate args; literals coerce in place.
-    // counts: dict[int32, int32] = {}
     ::tpy::ordered_map<int32_t, int32_t> counts = ::tpy::ordered_map<int32_t, int32_t>();
-    // put_dict(counts, 7, 42)  # tpyc: ok
     put_dict<int32_t, int32_t>(counts, 7, 42);
-    // print(counts[7])
     std::cout << ::tpy::__getitem__(counts, 7) << "\n";
-    // # set[T] inference with bare literal element.
-    // seen: set[int32] = set()
     ::tpy::ordered_set<int32_t> seen = ::tpy::ordered_set<int32_t>();
-    // add_to_set(seen, 11)  # tpyc: ok
     add_to_set<int32_t>(seen, 11);
-    // add_to_set(seen, 22)  # tpyc: ok
     add_to_set<int32_t>(seen, 22);
-    // print(len(seen))
     std::cout << ::tpy::__len__(seen) << "\n";
-    // # T pinned from a list-literal arg whose elements are literal-typed tuples.
-    // # Exercises resolve_int_literals' compound walk: without map_inner_types
-    // # recursion, T would reach codegen as list[tuple[IntLiteral, str]] and
-    // # leak the literal value into the C++ template argument.
-    // take_any([(1, "a"), (2, "b")])  # tpyc: ok
     std::vector<std::tuple<int32_t, std::string>> __tmp_1 = {std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}};
     take_any<std::vector<std::tuple<int32_t, std::string>>>(__tmp_1);
-    // # Both args are bare literal tuples (T inferred from first, consistency
-    // # check + resolution applied through compound shape against the second).
-    // # Without the unification, codegen leaked `std::tuple<3, std::string>`.
-    // pair_any((3, "x"), (4, "y"))  # tpyc: ok
     pair_any<std::tuple<int32_t, std::string>>(std::tuple<int32_t, std::string>{3, "x"}, std::tuple<int32_t, std::string>{4, "y"});
 }
 
+// """
+// Generic T inferred as a compound (tuple/list/dict/set): literal-typed elements
+// in a later arg coerce to the matching slot type of the already-determined T.
+// Mirrors the scalar `heappush(xs: list[int32], 3)` coercion one structural
+// layer deeper. Covers int and float literals; the nested-list-of-tuple case
+// also guards against compound-walk regressions in `resolve_int_literals`.
+// """
+// from heapq import heappush
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from heapq import heappush
     ::tpystd::heapq::__tpy_init();
-    // main()
     main();
 }
 

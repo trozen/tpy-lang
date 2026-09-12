@@ -14,6 +14,7 @@ struct Zoo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -90,69 +91,73 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat) -> None:
+//     self.pet = pet  # tpyc: warning(/copies/)
 inline Inner::Inner(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def __init__(self, inner: Inner) -> None:
+//     self.inner = inner
 inline Zoo::Zoo(const Inner& inner) : inner(inner) {}
 
 // @readonly
 // def get_pet_name(self) -> str:
+//     p = self.inner.pet
+//     if isinstance(p, Dog):
+//         return p.name
+//     elif isinstance(p, Cat):
+//         return p.name
+//     return ""
 inline std::string Zoo::get_pet_name() const {
-    // p = self.inner.pet
     ::tpy::Union<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(this->inner.pet);
-    // if isinstance(p, Dog):
     if (std::holds_alternative<const Dog*>(p)) {
         auto& __p = *std::get<const Dog*>(p);
-        // return p.name
         return __p.name;
     } else {
-        // elif isinstance(p, Cat):
         if (true) {
             auto& __p = *std::get<const Cat*>(p);
-            // return p.name
             return __p.name;
         }
     }
-    // return ""
     return "";
 }
 
 // def get_pet_name_auto(self) -> str:
+//     p = self.inner.pet
+//     if isinstance(p, Dog):
+//         return p.name
+//     elif isinstance(p, Cat):
+//         return p.name
+//     return ""
 inline std::string Zoo::get_pet_name_auto() {
-    // p = self.inner.pet
     ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(this->inner.pet);
-    // if isinstance(p, Dog):
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
-        // return p.name
         return __p.name;
     } else {
-        // elif isinstance(p, Cat):
         if (true) {
             auto& __p = *std::get<Cat*>(p);
-            // return p.name
             return __p.name;
         }
     }
-    // return ""
     return "";
 }
 
 // def rename_pet(self, new_name: str) -> None:
+//     # Mutate through pointer-variant local -- proves reference semantics
+//     p = self.inner.pet
+//     if isinstance(p, Dog):
+//         p.name = new_name
 inline void Zoo::rename_pet(std::string_view new_name) {
-    // # Mutate through pointer-variant local -- proves reference semantics
-    // p = self.inner.pet
     ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(this->inner.pet);
-    // if isinstance(p, Dog):
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
-        // p.name = new_name
         __p.name = new_name;
     }
 }

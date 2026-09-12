@@ -5,85 +5,85 @@ namespace tpyapp::main {
 
 
 // def test_straight():
+//     r = Resource("a")
+//     r = Resource("b")
+//     r = Resource("c")
+//     print("alive:", r.name)
 void test_straight() {
     std::optional<Resource> __slot_2;
-    // r = Resource("a")
     Resource __slot_1 = Resource("a");
     Resource* r = &__slot_1;
-    // r = Resource("b")
     r = &*(__slot_2 = Resource("b"));
-    // r = Resource("c")
     r = &*(__slot_2 = Resource("c"));
-    // print("alive:", r.name)
     std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // def test_loop():
+//     r = Resource("init")
+//     for i in range(3):
+//         r = Resource("loop")
+//     print("alive:", r.name)
 void test_loop() {
     std::optional<Resource> __slot_2;
-    // r = Resource("init")
     Resource __slot_1 = Resource("init");
     Resource* r = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // r = Resource("loop")
         r = &*(__slot_2 = Resource("loop"));
     }
-    // print("alive:", r.name)
     std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // def test_conditional(flag: int32):
+//     r = Resource("start")
+//     if flag > 0:
+//         r = Resource("branch")
+//     print("alive:", r.name)
 void test_conditional(int32_t flag) {
     std::optional<Resource> __slot_2;
-    // r = Resource("start")
     Resource __slot_1 = Resource("start");
     Resource* r = &__slot_1;
-    // if flag > 0:
     if ((flag > 0)) {
-        // r = Resource("branch")
         r = &*(__slot_2 = Resource("branch"));
     }
-    // print("alive:", r.name)
     std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // def test_inherit():
+//     c = Child("x")
+//     c = Child("y")
+//     c = Child("z")
+//     print("alive:", c.tag)
 void test_inherit() {
     std::optional<Child> __slot_2;
-    // c = Child("x")
     Child __slot_1 = Child("x");
     Child* c = &__slot_1;
-    // c = Child("y")
     c = &*(__slot_2 = Child("y"));
-    // c = Child("z")
     c = &*(__slot_2 = Child("z"));
-    // print("alive:", c.tag)
     std::cout << "alive:" << " " << c->tag << "\n";
 }
 
+// test_straight()
+// print("---")
+// test_loop()
+// print("---")
+// test_conditional(1)
+// print("---")
+// test_conditional(0)
+// print("---")
+// test_inherit()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_straight()
     test_straight();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_loop()
     test_loop();
-    // print("---")
     std::cout << "---" << "\n";
-    // test_conditional(1)
     test_conditional(1);
-    // print("---")
     std::cout << "---" << "\n";
-    // test_conditional(0)
     test_conditional(0);
-    // print("---")
     std::cout << "---" << "\n";
-    // test_inherit()
     test_inherit();
 }
 

@@ -6,30 +6,30 @@ namespace tpyapp::main {
 
 // # Tuple unpacking reassignment inside a loop (variables declared before loop)
 // def main() -> None:
+//     x, y = 0.0, 0.0
+//     for i in range(3):
+//         x, y = x + 1.0, y + 2.0
+//     print(x)
+//     print(y)
 void main() {
-    // x, y = 0.0, 0.0
     double x = 0.0;
     double y = 0.0;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // x, y = x + 1.0, y + 2.0
         double __unpack_0_0 = ((x) + (1.0));
         double __unpack_0_1 = ((y) + (2.0));
         x = __unpack_0_0;
         y = __unpack_0_1;
     }
-    // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
-    // print(y)
     std::cout << ::tpy::print_float(y) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

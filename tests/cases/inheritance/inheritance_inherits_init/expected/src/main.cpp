@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = IntBox(7)
+//     print(a.get())
+//
+//     b = TaggedBox(42)
+//     print(b.value)
 void main() {
-    // a = IntBox(7)
     IntBox a = IntBox(7);
-    // print(a.get())
     std::cout << a.get() << "\n";
-    // b = TaggedBox(42)
     TaggedBox b = TaggedBox(42);
-    // print(b.value)
     std::cout << b.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

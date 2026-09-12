@@ -11,9 +11,13 @@ struct Buf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def total(sp: Span[readonly[int32]]) -> int32:
 int32_t total(std::span<const int32_t> sp);
+// def opt_total(b: Buf | None) -> int32:
 int32_t opt_total(const Buf* b);
+// def plain_total(b: Buf) -> int32:
 int32_t plain_total(const Buf& b);
+// def main() -> None:
 void main();
 
 // class Buf:
@@ -44,17 +48,18 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 
 
 // def __init__(self) -> None:
+//     self.xs = [1, 2]
 inline Buf::Buf() : xs(std::vector<int32_t>{1, 2}) {}
 
 // def __span__(self) -> Span[readonly[int32]]:
+//     return self.xs
 inline std::span<const int32_t> Buf::__span__() const {
-    // return self.xs
     return ::tpy::as_span(this->xs);
 }
 
 // def own_total(self) -> int32:
+//     return total(self)      # tpyc: ok -- `self` is the indirect receiver
 inline int32_t Buf::own_total() const {
-    // return total(self)      # tpyc: ok -- `self` is the indirect receiver
     return total((*this).__span__());
 }
 void __tpy_init();

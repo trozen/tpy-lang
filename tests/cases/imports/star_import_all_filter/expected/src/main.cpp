@@ -4,20 +4,21 @@
 namespace tpyapp::main {
 
 
+// # `__all__` filters star imports but does NOT restrict explicit
+// # imports. lib defines Public and Hidden; only Public is in __all__,
+// # so star import sees just it. Explicit `from lib import Hidden`
+// # still works.
+// from lib import *
+//
+// print(Public().val)
+// print(Hidden().val)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `__all__` filters star imports but does NOT restrict explicit
-    // # imports. lib defines Public and Hidden; only Public is in __all__,
-    // # so star import sees just it. Explicit `from lib import Hidden`
-    // # still works.
-    // from lib import *
     ::tpyapp::lib::__tpy_init();
-    // print(Public().val)
     std::cout << ::tpyapp::lib::Public().val << "\n";
-    // print(Hidden().val)
     std::cout << ::tpyapp::lib::Hidden().val << "\n";
 }
 

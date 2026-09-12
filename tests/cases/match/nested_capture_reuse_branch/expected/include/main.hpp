@@ -11,7 +11,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(a: Cat, b: Cat, flag: bool) -> int:
 ::tpy::BigInt pick(const Cat& a, const Cat& b, bool flag);
+// def main() -> None:
 void main();
 
 // # The nested `match` that reuses a capture name need not sit at the arm's top
@@ -35,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::main

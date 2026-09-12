@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def pick(x: A | B | None) -> int32:
+//     match x:
+//         case None:
+//             return 0
+//         case A():
+//             return x.v
+//         case B():
+//             return x.v + 10
 int32_t pick(::tpy::Union<std::monostate, const A*, const B*> x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case None:
     case 0: {
-        // return 0
         return 0;
         break;
     }
-    // case A():
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // return x.v
         return __case_1.v;
         break;
     }
-    // case B():
     case 2: {
         auto& __case_2 = *std::get<2>(__match_subject_1);
-        // return x.v + 10
         return (::tpy::add_check<int32_t>(__case_2.v, 10));
         break;
     }
@@ -34,23 +34,23 @@ int32_t pick(::tpy::Union<std::monostate, const A*, const B*> x) {
 }
 
 // def main() -> None:
+//     print(pick(None))
+//     print(pick(A()))
+//     print(pick(B()))
 void main() {
-    // print(pick(None))
     std::cout << pick(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n";
-    // print(pick(A()))
     A __tmp_1 = A();
     std::cout << pick(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}) << "\n";
-    // print(pick(B()))
     B __tmp_2 = B();
     std::cout << pick(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

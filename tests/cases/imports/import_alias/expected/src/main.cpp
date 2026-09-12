@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     p = Pt(int32(3), int32(4))
+//     print(p.x)
+//     print(MAX)
+//     print(sum_nums(int32(10), int32(20)))
+//     return int32(0)
 int32_t main() {
-    // p = Pt(int32(3), int32(4))
     ::tpyapp::utils::Point p = ::tpyapp::utils::Point(3, 4);
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(MAX)
     std::cout << ::tpyapp::utils::MAX_VALUE << "\n";
-    // print(sum_nums(int32(10), int32(20)))
     std::cout << ::tpyapp::utils::add(10, 20) << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from utils import Point as Pt, MAX_VALUE as MAX, add as sum_nums
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from utils import Point as Pt, MAX_VALUE as MAX, add as sum_nums
     ::tpyapp::utils::__tpy_init();
-    // main()
     main();
 }
 

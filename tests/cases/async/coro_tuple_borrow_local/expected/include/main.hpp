@@ -17,7 +17,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_bump;
 struct __coro_driver;
 
+// async def bump(b: Box) -> None:
 __coro_bump bump(Box& b);
+// async def driver() -> None:
 __coro_driver driver();
 
 // class Box:
@@ -36,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: bump
+// async def bump(b: Box) -> None:
 struct __coro_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -61,7 +63,7 @@ struct __coro_bump {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -87,6 +89,7 @@ struct __coro_driver {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

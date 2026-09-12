@@ -16,12 +16,16 @@ struct __coro_coro_if;
 struct __coro_coro_elif;
 struct __coro_coro_match;
 
+// async def coro_if(n: int) -> int:
 __coro_coro_if coro_if(::tpy::BigInt n);
+// async def coro_elif(n: int) -> int:
 __coro_coro_elif coro_elif(::tpy::BigInt n);
+// async def coro_match(n: int) -> int:
 __coro_coro_match coro_match(::tpy::BigInt n);
+// def main() -> None:
 void main();
 
-// Async coroutine: coro_if
+// async def coro_if(n: int) -> int:
 struct __coro_coro_if {
     int32_t __state;
     bool __cancel_pending;
@@ -46,7 +50,7 @@ struct __coro_coro_if {
     }
 };
 
-// Async coroutine: coro_elif
+// async def coro_elif(n: int) -> int:
 struct __coro_coro_elif {
     int32_t __state;
     bool __cancel_pending;
@@ -71,7 +75,7 @@ struct __coro_coro_elif {
     }
 };
 
-// Async coroutine: coro_match
+// async def coro_match(n: int) -> int:
 struct __coro_coro_match {
     int32_t __state;
     bool __cancel_pending;

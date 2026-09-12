@@ -5,21 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     print(helper.get_value())
+//     return int32(0)
 int32_t main() {
-    // print(helper.get_value())
     std::cout << ::tpyapp::helper::get_value() << "\n";
-    // return int32(0)
     return 0;
 }
 
+// import helper
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import helper
     ::tpyapp::helper::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,41 +5,42 @@ namespace tpyapp::main {
 
 
 // def combine(a: int64, b: int64 = 10, *, c: int64 = 20) -> int64:
+//     return a * 10000 + b * 100 + c
 int64_t combine(int64_t a, int64_t b, int64_t c) {
-    // return a * 10000 + b * 100 + c
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10000)), (::tpy::mul_check<int64_t>(b, 100)))), c));
 }
 
 // def partial(a: int64, b: int64 = 10, c: int64 = 30, *, d: int64 = 40) -> int64:
+//     return a * 1000000 + b * 10000 + c * 100 + d
 int64_t partial(int64_t a, int64_t b, int64_t c, int64_t d) {
-    // return a * 1000000 + b * 10000 + c * 100 + d
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 1000000)), (::tpy::mul_check<int64_t>(b, 10000)))), (::tpy::mul_check<int64_t>(c, 100)))), d));
 }
 
 // def main() -> None:
+//     print(combine(1))
+//     print(combine(1, 2))
+//     print(combine(1, c=3))
+//     print(combine(1, 2, c=3))
+//
+//     print(partial(5))
+//     print(partial(5, d=9))
+//     print(partial(5, 6, d=9))
 void main() {
-    // print(combine(1))
     std::cout << combine(1, 10, 20) << "\n";
-    // print(combine(1, 2))
     std::cout << combine(1, 2, 20) << "\n";
-    // print(combine(1, c=3))
     std::cout << combine(1, 10, 3) << "\n";
-    // print(combine(1, 2, c=3))
     std::cout << combine(1, 2, 3) << "\n";
-    // print(partial(5))
     std::cout << partial(5, 10, 30, 40) << "\n";
-    // print(partial(5, d=9))
     std::cout << partial(5, 10, 30, 9) << "\n";
-    // print(partial(5, 6, d=9))
     std::cout << partial(5, 6, 30, 9) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

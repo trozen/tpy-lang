@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(use_proto(Counter()))
 void main() {
-    // print(use_proto(Counter()))
     auto __tmp_1 = ::tpyapp::a::Counter();
     std::cout << use_proto(__tmp_1) << "\n";
 }
 
+// # Cycle member explicitly inherits from a peer's protocol
+// # (`class Counter(Greeter)`). Allowed by design: protocols are
+// # structural / templated, not concrete inheritance, so the
+// # completeness-graph reject gate doesn't fire on cross-cycle
+// # protocol inheritance edges.
+// from a import Counter
+// from b import Greeter
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cycle member explicitly inherits from a peer's protocol
-    // # (`class Counter(Greeter)`). Allowed by design: protocols are
-    // # structural / templated, not concrete inheritance, so the
-    // # completeness-graph reject gate doesn't fire on cross-cycle
-    // # protocol inheritance edges.
-    // from a import Counter
     ::tpyapp::a::__tpy_init();
-    // from b import Greeter
     ::tpyapp::b::__tpy_init();
-    // main()
     main();
 }
 

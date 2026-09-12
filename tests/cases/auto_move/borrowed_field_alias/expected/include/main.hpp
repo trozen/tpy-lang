@@ -13,6 +13,7 @@ struct Keeper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Inner:
@@ -65,17 +66,20 @@ inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
 
 
 // def __init__(self):
+//     self.vals = [7, 8]
 inline Inner::Inner() : vals(std::vector<int32_t>{7, 8}) {}
 
 // def __init__(self):
+//     self.inner = Inner()
 inline Outer::Outer() : inner(Inner()) {}
 
 // def __init__(self):
+//     self.stored = []
 inline Keeper::Keeper() : stored(std::vector<Outer>{}) {}
 
 // def take(self, o: Own[Outer]):
+//     self.stored.append(o)
 inline void Keeper::take(Outer&& o) {
-    // self.stored.append(o)
     this->stored.push_back(std::move(o));
 }
 void __tpy_init();

@@ -11,11 +11,17 @@ struct T;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def peek(t: readonly[T]) -> int32:
 int32_t peek(const T& t);
+// def bump(t: T) -> None:
 void bump(T& t);
+// def bump_opt(t: T | None) -> None:
 void bump_opt(T* t);
+// def read_first(p: tuple[T | None, T | None]) -> int32:  # tpyc: ok
 int32_t read_first(const std::tuple<const T*, const T*>& p);
+// def apply(p: tuple[T | None, T | None]) -> None:  # tpyc: ok
 void apply(const std::tuple<T*, T*>& p);
+// def main() -> None:
 void main();
 
 // class T:
@@ -36,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const T& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline T::T(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // # Panic with expression message: assert False with variable message.
 // def fail(msg: str) -> None:
+//     assert False, msg
 void fail(std::string_view msg) {
-    // assert False, msg
     ::tpy::raise_assertion_error(msg);
 }
 
+// fail("dynamic message")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // fail("dynamic message")
     fail("dynamic message");
 }
 

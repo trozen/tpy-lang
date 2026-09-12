@@ -5,72 +5,75 @@ namespace tpyapp::main {
 
 
 // def test_list_try_hoist() -> None:
+//     try:
+//         items: list[int32] = [1, 2, 3]
+//     except Exception:
+//         return
+//     print(items)
 void test_list_try_hoist() {
-    // try:
     std::optional<std::vector<int32_t>> items;
     {
         try {
-            // items: list[int32] = [1, 2, 3]
             items = {1, 2, 3};
         } catch (const ::tpy::Exception&) {
-            // return
             return;
         }
     }
-    // print(items)
     std::cout << ::tpy::ListPrinter((*items)) << "\n";
 }
 
 // def test_record_try_hoist() -> None:
+//     try:
+//         p = Point(10, 20)
+//     except Exception:
+//         return
+//     print(p.x, p.y)
 void test_record_try_hoist() {
-    // try:
     std::optional<Point> p;
     {
         try {
-            // p = Point(10, 20)
             p = Point(10, 20);
         } catch (const ::tpy::Exception&) {
-            // return
             return;
         }
     }
-    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
 // def test_value_type_try_hoist() -> None:
+//     try:
+//         x: int32 = 42
+//     except Exception:
+//         return
+//     print(x)
 void test_value_type_try_hoist() {
-    // try:
     int32_t x;
     {
         try {
-            // x: int32 = 42
             x = 42;
         } catch (const ::tpy::Exception&) {
-            // return
             return;
         }
     }
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def main() -> None:
+//     test_list_try_hoist()
+//     test_record_try_hoist()
+//     test_value_type_try_hoist()
 void main() {
-    // test_list_try_hoist()
     test_list_try_hoist();
-    // test_record_try_hoist()
     test_record_try_hoist();
-    // test_value_type_try_hoist()
     test_value_type_try_hoist();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

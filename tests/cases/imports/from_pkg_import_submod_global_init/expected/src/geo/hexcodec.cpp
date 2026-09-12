@@ -3,60 +3,54 @@
 
 namespace tpyapp::geo::hexcodec {
 
-// # A module-global bytes literal constant: codegen declares it empty at file
-// # scope and assigns it in this module's __tpy_init(). If that init is not
-// # chained, the constant stays empty and the indexing below panics.
-// _HEX: bytes = b"0123456789ABCDEF"
 ::tpy::Bytes _HEX;
-// # A module-global built by a top-level statement (not a literal): only ever
-// # populated by __tpy_init running, so it double-guards that init actually ran.
-// _OFFSETS: list[int32] = [1, 2, 3]
 std::vector<int32_t>* _OFFSETS{};
 
 // def hex_byte(c: int32) -> bytes:
+//     out = bytearray()
+//     out.append(uint8(37))
+//     out.append(_HEX[c >> 4])
+//     out.append(_HEX[c & 0xF])
+//     return out.decode().encode()
 ::tpy::Bytes hex_byte(int32_t c) {
-    // out = bytearray()
     ::tpy::ByteArray out = ::tpy::ByteArray();
-    // out.append(uint8(37))
     out.push_back(37);
-    // out.append(_HEX[c >> 4])
     out.push_back(::tpy::bytes_getitem(_HEX, (::tpy::rshift_check<int32_t>(c, 4))));
-    // out.append(_HEX[c & 0xF])
     out.push_back(::tpy::bytes_getitem(_HEX, (static_cast<int32_t>(c & 15))));
-    // return out.decode().encode()
     return ::tpy::bytes_from_str(::tpy::bytes_decode(out));
 }
 
 // def offset_sum() -> int32:
+//     total: int32 = 0
+//     for o in _OFFSETS:
+//         total += o
+//     return total
 int32_t offset_sum() {
-    // total: int32 = 0
     int32_t total = 0;
-    // for o in _OFFSETS:
     auto& __obj_0 = (*_OFFSETS);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t o = *__beg_0;
-        // total += o
         total = ::tpy::add_check<int32_t>(total, o);
     }
-    // return total
     return total;
 }
 
+// # A module-global bytes literal constant: codegen declares it empty at file
+// # scope and assigns it in this module's __tpy_init(). If that init is not
+// # chained, the constant stays empty and the indexing below panics.
+// _HEX: bytes = b"0123456789ABCDEF"
+//
+// # A module-global built by a top-level statement (not a literal): only ever
+// # populated by __tpy_init running, so it double-guards that init actually ran.
+// _OFFSETS: list[int32] = [1, 2, 3]
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A module-global bytes literal constant: codegen declares it empty at file
-    // # scope and assigns it in this module's __tpy_init(). If that init is not
-    // # chained, the constant stays empty and the indexing below panics.
-    // _HEX: bytes = b"0123456789ABCDEF"
     _HEX = ::tpy::bytes_literal_owned("0123456789ABCDEF", 16);
-    // # A module-global built by a top-level statement (not a literal): only ever
-    // # populated by __tpy_init running, so it double-guards that init actually ran.
-    // _OFFSETS: list[int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     _OFFSETS = &__global_slot_1;
 }

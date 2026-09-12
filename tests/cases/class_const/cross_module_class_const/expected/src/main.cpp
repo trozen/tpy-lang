@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Limits.MAX_RETRIES)
+//     print(Limits.GREETING)
 void main() {
-    // print(Limits.MAX_RETRIES)
     std::cout << ::tpyapp::limits::Limits::MAX_RETRIES << "\n";
-    // print(Limits.GREETING)
     std::cout << ::tpyapp::limits::Limits::GREETING << "\n";
 }
 
+// # Class constants on a record imported from another module.
+// # Verifies the codegen path uses imported_record_qualification to emit
+// # `<namespace>::Limits::MAX_RETRIES` rather than a bare local name.
+// from limits import Limits
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Class constants on a record imported from another module.
-    // # Verifies the codegen path uses imported_record_qualification to emit
-    // # `<namespace>::Limits::MAX_RETRIES` rather than a bare local name.
-    // from limits import Limits
     ::tpyapp::limits::__tpy_init();
-    // main()
     main();
 }
 

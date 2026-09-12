@@ -14,6 +14,7 @@ struct Timer;
 extern Timer* time;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f():
 void f();
 
 // class Timer:

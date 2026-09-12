@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def score(x: float | None) -> int32:
+//     if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
+//         return 1
+//     return 0
 int32_t score(std::optional<double> x) {
-    // if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
     if (::tpy::is_truthy(x)) {
-        // return 1
         return 1;
     }
-    // return 0
     return 0;
 }
 
+// print(score(1.5))
+// print(score(0.0))
+// print(score(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(score(1.5))
     std::cout << score(1.5) << "\n";
-    // print(score(0.0))
     std::cout << score(0.0) << "\n";
-    // print(score(None))
     std::cout << score(std::nullopt) << "\n";
 }
 

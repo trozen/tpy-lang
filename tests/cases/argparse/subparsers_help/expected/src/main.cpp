@@ -5,14 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(prog="prog", description="A test program.")
+//     parser.add_argument("--verbose", "-v", action="store_true", help="be loud")
+//
+//     sub = parser.add_subparsers(dest="cmd", required=True, help="sub-command")
+//     show = sub.add_parser("show", help="show a value")
+//     show.add_argument("--key", help="key to show")
+//     set_p = sub.add_parser("set", help="set a value")
+//     set_p.add_argument("--key", help="key to set")
+//     set_p.add_argument("--value", help="new value")
+//
+//     args = parser.parse_args(["-h"])
+//     # Unreachable: parse_args invokes the help printer, which exits(0).
+//     print(args.cmd)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["-h"])
     std::vector<std::string> __tmp_1 = {"-h"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // # Unreachable: parse_args invokes the help printer, which exits(0).
-    // print(args.cmd)
     std::cout << args.cmd << "\n";
-    // return 0
     return 0;
 }
 
@@ -126,14 +136,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(verbose, __tpy_argparse_cmd, __tpy_argparse_flat_key, __tpy_argparse_flat_value);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

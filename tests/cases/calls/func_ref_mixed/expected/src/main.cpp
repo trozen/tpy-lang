@@ -5,53 +5,55 @@ namespace tpyapp::main {
 
 
 // def to_str(x: int32) -> str:
+//     return str(x)
 std::string to_str(int32_t x) {
-    // return str(x)
     return ::tpy::fixed_to_str<int32_t>(x);
 }
 
 // def double(x: int32) -> int32:
+//     return x * 2
 int32_t double_(int32_t x) {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def apply_callable(f: Callable[[int32], int32], x: int32) -> int32:
+//     return f(x)
 int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 
 // # Return Callable wrapping a named function
 // def get_doubler() -> Callable[[int32], int32]:
+//     return double
 std::function<int32_t(int32_t)> get_doubler() {
-    // return double
     return double_;
 }
 
 // def main() -> None:
+//     # Same function used with both Fn and Callable
+//     print(apply_fn(double, 21))       # 42
+//     print(apply_callable(double, 21)) # 42
+//
+//     # Different signature function
+//     print(transform(to_str, 99))      # 99
+//
+//     # Return as Callable
+//     f = get_doubler()
+//     print(f(10))  # 20
 void main() {
-    // # Same function used with both Fn and Callable
-    // print(apply_fn(double, 21))       # 42
     std::cout << apply_fn(double_, 21) << "\n";
-    // print(apply_callable(double, 21)) # 42
     std::cout << apply_callable(double_, 21) << "\n";
-    // # Different signature function
-    // print(transform(to_str, 99))      # 99
     std::cout << transform(to_str, 99) << "\n";
-    // # Return as Callable
-    // f = get_doubler()
     std::function<int32_t(int32_t)> f = get_doubler();
-    // print(f(10))  # 20
     std::cout << f(10) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

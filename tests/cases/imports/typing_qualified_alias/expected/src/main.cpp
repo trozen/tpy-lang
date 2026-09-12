@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def safe_inc(x: t.Optional[int32]) -> int32:
+//     if x is not None:
+//         return x + int32(1)
+//     return int32(0)
 int32_t safe_inc(std::optional<int32_t> x) {
-    // if x is not None:
     if ((x.has_value())) {
-        // return x + int32(1)
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    // return int32(0)
     return 0;
 }
 
 // def main():
+//     print(safe_inc(int32(9)))
+//     print(safe_inc(None))
+//     hello(Person("Alice"))
 void main() {
-    // print(safe_inc(int32(9)))
     std::cout << safe_inc(9) << "\n";
-    // print(safe_inc(None))
     std::cout << safe_inc(std::nullopt) << "\n";
-    // hello(Person("Alice"))
     auto __tmp_1 = Person("Alice");
     hello(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def producer(fut: Future[None]) -> None:
+//     fut.set_result(None)
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // fut.set_result(None)
         fut.set_result(std::monostate{});
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,14 +26,15 @@ __coro_producer producer(::tpystd::asyncio::Future<std::monostate>& fut) {
 }
 
 // async def main_coro() -> None:
+//     fut: Future[None] = Future[None]()
+//     asyncio.create_task(producer(fut))
+//     await fut
+//     print("done")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // fut: Future[None] = Future[None]()
         fut.emplace(::tpystd::asyncio::Future<std::monostate>());
-        // asyncio.create_task(producer(fut))
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*fut))));
-        // await fut
         __sub_0 = &((*fut));
         __state = S_RESUME_0;
         continue;
@@ -43,7 +44,6 @@ __coro_producer producer(::tpystd::asyncio::Future<std::monostate>& fut) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        // print("done")
         std::cout << "done" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -60,25 +60,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Future[None] -- void-payload completion signal. Regression guard for
+// # BUGS.md "Future[None] has no usable completion API": Own[None] used
+// # to lower to `void&&` and `_result: UninitArrayStorage[T, 1]` to
+// # `UninitArrayStorage<void, 1>`, both ill-formed. After the position-
+// # aware None resolution fix, Future[None] lowers to Future<std::monostate>
+// # and set_result(None) Just Works.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Future[None] -- void-payload completion signal. Regression guard for
-    // # BUGS.md "Future[None] has no usable completion API": Own[None] used
-    // # to lower to `void&&` and `_result: UninitArrayStorage[T, 1]` to
-    // # `UninitArrayStorage<void, 1>`, both ill-formed. After the position-
-    // # aware None resolution fix, Future[None] lowers to Future<std::monostate>
-    // # and set_result(None) Just Works.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

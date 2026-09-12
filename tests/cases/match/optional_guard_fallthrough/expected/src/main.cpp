@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def with_wildcard(x: Optional[int32], flag: bool) -> str:
+//     match x:
+//         case None if flag:
+//             return "none+flag"
+//         case _:
+//             return "other"
 std::string with_wildcard(std::optional<int32_t> x, bool flag) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None if flag:
     if (!__match_subject_1.has_value()) {
         if (flag) {
-            // return "none+flag"
             return "none+flag";
             goto __match_end_2;
         }
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -27,26 +27,26 @@ std::string with_wildcard(std::optional<int32_t> x, bool flag) {
 }
 
 // def with_capture(x: Optional[int32], flag: bool) -> str:
+//     match x:
+//         case None if flag:
+//             return "none+flag"
+//         case v:
+//             if v is None:
+//                 return "none-noflag"
+//             return str(v)
 std::string with_capture(std::optional<int32_t> x, bool flag) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None if flag:
     if (!__match_subject_1.has_value()) {
         if (flag) {
-            // return "none+flag"
             return "none+flag";
             goto __match_end_2;
         }
     }
-    // case v:
     {
         auto& v = __match_subject_1;
-        // if v is None:
         if ((!v.has_value())) {
-            // return "none-noflag"
             return "none-noflag";
         }
-        // return str(v)
         return ::tpy::fixed_to_str<int32_t>((*v));
         goto __match_end_2;
     }
@@ -55,31 +55,31 @@ std::string with_capture(std::optional<int32_t> x, bool flag) {
 }
 
 // def main() -> None:
+//     print(with_wildcard(None, True))
+//     print(with_wildcard(None, False))
+//     print(with_wildcard(int32(5), True))
+//     print(with_wildcard(int32(5), False))
+//     print(with_capture(None, True))
+//     print(with_capture(None, False))
+//     print(with_capture(int32(5), True))
+//     print(with_capture(int32(5), False))
 void main() {
-    // print(with_wildcard(None, True))
     std::cout << with_wildcard(std::nullopt, true) << "\n";
-    // print(with_wildcard(None, False))
     std::cout << with_wildcard(std::nullopt, false) << "\n";
-    // print(with_wildcard(int32(5), True))
     std::cout << with_wildcard(5, true) << "\n";
-    // print(with_wildcard(int32(5), False))
     std::cout << with_wildcard(5, false) << "\n";
-    // print(with_capture(None, True))
     std::cout << with_capture(std::nullopt, true) << "\n";
-    // print(with_capture(None, False))
     std::cout << with_capture(std::nullopt, false) << "\n";
-    // print(with_capture(int32(5), True))
     std::cout << with_capture(5, true) << "\n";
-    // print(with_capture(int32(5), False))
     std::cout << with_capture(5, false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

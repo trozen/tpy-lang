@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def drop(xs: Own[list[int32]]) -> int32:
+//     store: list[list[int32]] = []
+//     store.append(xs)
+//     return len(store)
 int32_t drop(std::vector<int32_t>&& xs) {
-    // store: list[list[int32]] = []
     std::vector<std::vector<int32_t>> store = std::vector<std::vector<int32_t>>{};
-    // store.append(xs)
     store.push_back(std::move(xs));
-    // return len(store)
     return ::tpy::__len__(store);
 }
 
 // def main():
+//     w = Walker()
+//     xs = [1, 2, 3]
+//     g = w.walk(xs)
+//     print(drop(xs))  # tpyc: warning(/copies/)
+//     for v in g:
+//         print(v)
 void main() {
-    // w = Walker()
     Walker w = Walker();
-    // xs = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // g = w.walk(xs)
     auto g = w.walk(xs);
-    // print(drop(xs))  # tpyc: warning(/copies/)
     std::vector<int32_t> __tmp_1 = xs;
     std::cout << drop(std::move(__tmp_1)) << "\n";
-    // for v in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

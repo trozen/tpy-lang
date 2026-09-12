@@ -7,23 +7,23 @@ namespace tpyapp::a {
 
 
 // def aa() -> int32:
+//     return 1
 int32_t aa() {
-    // return 1
     return 1;
 }
 
 // def call_b() -> int32:
+//     return bb()
 int32_t call_b() {
-    // return bb()
     return ::tpyapp::b::bb();
 }
 
+// from b import bb
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from b import bb
     ::tpyapp::b::__tpy_init();
 }
 

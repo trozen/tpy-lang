@@ -5,69 +5,69 @@ namespace tpyapp::main {
 
 
 // def scalar_tuple(v: int | str | None) -> str:
+//     if isinstance(v, (int, str)):
+//         return "present"
+//     return "none"
 std::string scalar_tuple(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v) {
-    // if isinstance(v, (int, str)):
     if ((std::holds_alternative<::tpy::BigInt>(v) || std::holds_alternative<std::string>(v))) {
-        // return "present"
         return "present";
     }
-    // return "none"
     return "none";
 }
 
 // def scalar_inline(v: int | str | None) -> str:
+//     if isinstance(v, int | str):
+//         return "present"
+//     return "none"
 std::string scalar_inline(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v) {
-    // if isinstance(v, int | str):
     if ((std::holds_alternative<::tpy::BigInt>(v) || std::holds_alternative<std::string>(v))) {
-        // return "present"
         return "present";
     }
-    // return "none"
     return "none";
 }
 
 // def ref_tuple(v: A | B | None) -> str:
+//     if isinstance(v, (A, B)):
+//         return "ab"
+//     return "none"
 std::string ref_tuple(::tpy::Union<std::monostate, const A*, const B*> v) {
-    // if isinstance(v, (A, B)):
     if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
-        // return "ab"
         return "ab";
     }
-    // return "none"
     return "none";
 }
 
 // def main() -> None:
+//     a: int | str | None = 5
+//     print(scalar_tuple(a))
+//     print(scalar_inline(a))
+//     n: int | str | None = None
+//     print(scalar_tuple(n))
+//     print(scalar_inline(n))
+//     x: A | B | None = A()
+//     print(ref_tuple(x))
+//     y: A | B | None = None
+//     print(ref_tuple(y))
 void main() {
-    // a: int | str | None = 5
     ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> a = 5;
-    // print(scalar_tuple(a))
     std::cout << scalar_tuple(a) << "\n";
-    // print(scalar_inline(a))
     std::cout << scalar_inline(a) << "\n";
-    // n: int | str | None = None
     ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> n = std::monostate{};
-    // print(scalar_tuple(n))
     std::cout << scalar_tuple(n) << "\n";
-    // print(scalar_inline(n))
     std::cout << scalar_inline(n) << "\n";
-    // x: A | B | None = A()
     ::tpy::Union<std::monostate, A, B> __slot_1 = A();
     ::tpy::Union<std::monostate, A*, B*> x = ::tpy::to_ptr_variant(__slot_1);
-    // print(ref_tuple(x))
     std::cout << ref_tuple(x.as_const()) << "\n";
-    // y: A | B | None = None
     ::tpy::Union<std::monostate, A*, B*> y = std::monostate{};
-    // print(ref_tuple(y))
     std::cout << ref_tuple(y.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

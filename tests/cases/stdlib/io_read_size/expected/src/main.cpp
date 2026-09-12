@@ -5,66 +5,80 @@ namespace tpyapp::main {
 
 
 // def stringio_read_size() -> None:
+//     s = io.StringIO("hello world")
+//     print("n5:", s.read(5))                  # hello
+//     print("n3:", s.read(3))                  #  wo
+//     print("rest:", s.read())                 # rld
+//     print("eof:", "[" + s.read(5) + "]")     # []
+//     s.seek(0)
+//     print("past-end:", s.read(100))          # whole string (clamped)
+//     s.seek(0)
+//     print("zero:", "[" + s.read(0) + "]")    # []
+//     print("after-zero:", s.read())           # still whole string
 void stringio_read_size() {
-    // s = io.StringIO("hello world")
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("hello world");
-    // print("n5:", s.read(5))                  # hello
     std::cout << "n5:" << " " << s.read(5) << "\n";
-    // print("n3:", s.read(3))                  #  wo
     std::cout << "n3:" << " " << s.read(3) << "\n";
-    // print("rest:", s.read())                 # rld
     std::cout << "rest:" << " " << s.read() << "\n";
-    // print("eof:", "[" + s.read(5) + "]")     # []
     std::cout << "eof:" << " " << (::tpy::str_concat((::tpy::str_concat("[", s.read(5))), "]")) << "\n";
-    // s.seek(0)
     s.seek(0);
-    // print("past-end:", s.read(100))          # whole string (clamped)
     std::cout << "past-end:" << " " << s.read(100) << "\n";
-    // s.seek(0)
     s.seek(0);
-    // print("zero:", "[" + s.read(0) + "]")    # []
     std::cout << "zero:" << " " << (::tpy::str_concat((::tpy::str_concat("[", s.read(0))), "]")) << "\n";
-    // print("after-zero:", s.read())           # still whole string
     std::cout << "after-zero:" << " " << s.read() << "\n";
 }
 
 // def bytesio_read_size() -> None:
+//     b = io.BytesIO(b"abcdef")
+//     print("n3:", b.read(3))                  # b'abc'
+//     print("rest:", b.read())                 # b'def'
+//     print("eof:", b.read(2))                 # b''
+//     b.seek(0)
+//     print("zero:", b.read(0))                # b''
+//     print("neg:", b.read(-1))                # whole (negative = all)
 void bytesio_read_size() {
-    // b = io.BytesIO(b"abcdef")
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("abcdef", 6));
-    // print("n3:", b.read(3))                  # b'abc'
     std::cout << "n3:" << " " << ::tpy::BytesPrinter(b.read(3)) << "\n";
-    // print("rest:", b.read())                 # b'def'
     std::cout << "rest:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
-    // print("eof:", b.read(2))                 # b''
     std::cout << "eof:" << " " << ::tpy::BytesPrinter(b.read(2)) << "\n";
-    // b.seek(0)
     b.seek(0);
-    // print("zero:", b.read(0))                # b''
     std::cout << "zero:" << " " << ::tpy::BytesPrinter(b.read(0)) << "\n";
-    // print("neg:", b.read(-1))                # whole (negative = all)
     std::cout << "neg:" << " " << ::tpy::BytesPrinter(b.read(-1)) << "\n";
 }
 
 // def protocol_params() -> None:
+//     print("proto-text:", via_protocol(io.StringIO("abcdefgh")))     # abcd|efgh
+//     print("proto-bytes:", via_binary_protocol(io.BytesIO(b"xyz")))  # b'xy'
 void protocol_params() {
-    // print("proto-text:", via_protocol(io.StringIO("abcdefgh")))     # abcd|efgh
     auto __tmp_1 = ::tpystd::io::StringIO("abcdefgh");
     std::cout << "proto-text:" << " " << via_protocol(__tmp_1) << "\n";
-    // print("proto-bytes:", via_binary_protocol(io.BytesIO(b"xyz")))  # b'xy'
     auto __tmp_2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz", 3));
     std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(via_binary_protocol(__tmp_2)) << "\n";
 }
 
 // def file_read_size() -> None:
+//     tpath = "tpy_test_io_read_size.txt"
+//     with open(tpath, "w") as f:
+//         f.write("abcdefghij")
+//     with open(tpath) as r:
+//         print("file-zero:", "[" + r.read(0) + "]")  # []
+//         print("file-n4:", r.read(4))             # abcd
+//         print("file-eq-remaining:", r.read(6))   # efghij (size == bytes left)
+//         print("file-rest:", r.read())            # "" (already at EOF)
+//         print("file-eof:", "[" + r.read(5) + "]")  # []
+//
+//     bpath = "tpy_test_io_read_size.bin"
+//     with open(bpath, "wb") as bf:
+//         bf.write(b"0123456789")
+//     with open(bpath, "rb") as br:
+//         print("bfile-n4:", br.read(4))           # b'0123'
+//         print("bfile-rest:", br.read())          # b'456789'
+//         print("bfile-eof:", br.read(3))          # b''
 void file_read_size() {
-    // tpath = "tpy_test_io_read_size.txt"
     std::string_view tpath = "tpy_test_io_read_size.txt";
-    // with open(tpath, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(tpath, "w");
     auto& f = __ctx_1.__enter__();
     try {
-        // f.write("abcdefghij")
         f.write("abcdefghij");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -76,19 +90,13 @@ void file_read_size() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(tpath) as r:
     auto __ctx_2 = ::tpy::builtin_open(tpath);
     auto& r = __ctx_2.__enter__();
     try {
-        // print("file-zero:", "[" + r.read(0) + "]")  # []
         std::cout << "file-zero:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(0))), "]")) << "\n";
-        // print("file-n4:", r.read(4))             # abcd
         std::cout << "file-n4:" << " " << r.read(4) << "\n";
-        // print("file-eq-remaining:", r.read(6))   # efghij (size == bytes left)
         std::cout << "file-eq-remaining:" << " " << r.read(6) << "\n";
-        // print("file-rest:", r.read())            # "" (already at EOF)
         std::cout << "file-rest:" << " " << r.read() << "\n";
-        // print("file-eof:", "[" + r.read(5) + "]")  # []
         std::cout << "file-eof:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(5))), "]")) << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -100,13 +108,10 @@ void file_read_size() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // bpath = "tpy_test_io_read_size.bin"
     std::string_view bpath = "tpy_test_io_read_size.bin";
-    // with open(bpath, "wb") as bf:
     auto __ctx_3 = ::tpy::builtin_open_binary(bpath, "wb");
     auto& bf = __ctx_3.__enter__();
     try {
-        // bf.write(b"0123456789")
         bf.write(::tpy::bytes_literal("0123456789", 10));
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -118,15 +123,11 @@ void file_read_size() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // with open(bpath, "rb") as br:
     auto __ctx_4 = ::tpy::builtin_open_binary(bpath, "rb");
     auto& br = __ctx_4.__enter__();
     try {
-        // print("bfile-n4:", br.read(4))           # b'0123'
         std::cout << "bfile-n4:" << " " << ::tpy::BytesPrinter(br.read(4)) << "\n";
-        // print("bfile-rest:", br.read())          # b'456789'
         std::cout << "bfile-rest:" << " " << ::tpy::BytesPrinter(br.read()) << "\n";
-        // print("bfile-eof:", br.read(3))          # b''
         std::cout << "bfile-eof:" << " " << ::tpy::BytesPrinter(br.read(3)) << "\n";
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -141,33 +142,34 @@ void file_read_size() {
 }
 
 // def main() -> None:
+//     stringio_read_size()
+//     print("---")
+//     bytesio_read_size()
+//     print("---")
+//     protocol_params()
+//     print("---")
+//     file_read_size()
 void main() {
-    // stringio_read_size()
     stringio_read_size();
-    // print("---")
     std::cout << "---" << "\n";
-    // bytesio_read_size()
     bytesio_read_size();
-    // print("---")
     std::cout << "---" << "\n";
-    // protocol_params()
     protocol_params();
-    // print("---")
     std::cout << "---" << "\n";
-    // file_read_size()
     file_read_size();
 }
 
+// # io read(size): StringIO/BytesIO bounded reads + Readable/BinaryReadable
+// # protocol params + the native TextIO/BinaryIO file read(size) path.
+// import io
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # io read(size): StringIO/BytesIO bounded reads + Readable/BinaryReadable
-    // # protocol params + the native TextIO/BinaryIO file read(size) path.
-    // import io
     ::tpystd::io::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,39 +5,39 @@ namespace tpyapp::shapes {
 
 
 // def int_leaves(s: Shape) -> int32:
+//     match s:
+//         case list() as items:
+//             total = 0
+//             for it in items:
+//                 total += int_leaves(it)
+//             return total
+//         case str():
+//             return 0
+//         case _:
+//             return 1
 int32_t int_leaves(const Shape& s) {
-    // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.value.index()) {
-    // case list() as items:
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& items = __case_0;
-        // total = 0
         int32_t total = 0;
-        // for it in items:
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& it = *__beg_0;
-            // total += int_leaves(it)
             total = ::tpy::add_check<int32_t>(total, int_leaves(it));
         }
-        // return total
         return total;
         break;
     }
-    // case str():
     case 2: {
         auto& __case_1 = std::get<2>(__match_subject_1.value);
-        // return 0
         return 0;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }

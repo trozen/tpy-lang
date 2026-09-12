@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     item = Item("Widget", 42)
+//     print(item.describe())
+//     print(item.id())
 void main() {
-    // item = Item("Widget", 42)
     Item item = Item("Widget", 42);
-    // print(item.describe())
     std::cout << item.describe() << "\n";
-    // print(item.id())
     std::cout << item.id() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

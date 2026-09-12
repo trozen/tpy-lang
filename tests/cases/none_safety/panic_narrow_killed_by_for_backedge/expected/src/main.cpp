@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p: Point | None = Point(1)
+//     if p is None:
+//         return
+//     for i in range(3):
+//         print(p.x)  # tpyc: warning(/Potential None access/)
+//         if i == 1:
+//             p = None
 void main() {
-    // p: Point | None = Point(1)
     Point __slot_1 = Point(1);
     Point* p = &__slot_1;
-    // if p is None:
     if ((p == nullptr)) {
-        // return
         return;
     }
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // print(p.x)  # tpyc: warning(/Potential None access/)
         std::cout << ::tpy::deref_check(p).x << "\n";
-        // if i == 1:
         if ((i == 1)) {
-            // p = None
             p = nullptr;
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

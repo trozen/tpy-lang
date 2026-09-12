@@ -5,13 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(
+//         prog="frobnicator",
+//         description="Many-flag CLI to exercise usage-line wrap.",
+//     )
+//     parser.add_argument("--alpha", help="alpha flag")
+//     parser.add_argument("--bravo", help="bravo flag")
+//     parser.add_argument("--charlie", help="charlie flag")
+//     parser.add_argument("--delta", help="delta flag")
+//     parser.add_argument("--echo", help="echo flag")
+//     parser.add_argument("--foxtrot", help="foxtrot flag")
+//     parser.add_argument("--golf", help="golf flag")
+//     parser.add_argument("input")
+//     args = parser.parse_args(["-h"])
+//     print(args.input)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["-h"])
     std::vector<std::string> __tmp_1 = {"-h"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.input)
     std::cout << args.input << "\n";
-    // return 0
     return 0;
 }
 
@@ -111,14 +123,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
 
 // args = parser.parse_args(["-h"])
 __tpy_builder_argparse_args_1::__tpy_builder_argparse_args_1(std::optional<std::string_view> alpha, std::optional<std::string_view> bravo, std::optional<std::string_view> charlie, std::optional<std::string_view> delta, std::optional<std::string_view> echo, std::optional<std::string_view> foxtrot, std::optional<std::string_view> golf, std::string_view input) : alpha(alpha ? std::make_optional(std::string(*alpha)) : std::nullopt), bravo(bravo ? std::make_optional(std::string(*bravo)) : std::nullopt), charlie(charlie ? std::make_optional(std::string(*charlie)) : std::nullopt), delta(delta ? std::make_optional(std::string(*delta)) : std::nullopt), echo(echo ? std::make_optional(std::string(*echo)) : std::nullopt), foxtrot(foxtrot ? std::make_optional(std::string(*foxtrot)) : std::nullopt), golf(golf ? std::make_optional(std::string(*golf)) : std::nullopt), input(input) {}
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Rect:
@@ -55,45 +56,47 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 
 // def __init__(self, w: int32, h: int32) -> None:
+//     self._w = w
+//     self._h = h
 inline Rect::Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
 
 // @property
 // def width(self) -> int32:
+//     return self._w
 inline int32_t Rect::width() const {
-    // return self._w
     return this->_w;
 }
 
 // @width.setter
 // def width(self, v: int32) -> None:
+//     self._w = v
 inline void Rect::set_width(int32_t v) {
-    // self._w = v
     this->_w = v;
 }
 
 // @property
 // def height(self) -> int32:
+//     return self._h
 inline int32_t Rect::height() const {
-    // return self._h
     return this->_h;
 }
 
 // @property
 // def area(self) -> int32:
+//     return self.width * self.height
 inline int32_t Rect::area() const {
-    // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width(), this->height()));
 }
 
 // def describe(self) -> str:
+//     return f"{self.width}x{self.height}={self.area}"
 inline std::string Rect::describe() const {
-    // return f"{self.width}x{self.height}={self.area}"
     return std::format("{}x{}={}", this->width(), this->height(), this->area());
 }
 
 // def scale(self, factor: int32) -> None:
+//     self.width = self._w * factor
 inline void Rect::scale(int32_t factor) {
-    // self.width = self._w * factor
     this->set_width((::tpy::mul_check<int32_t>(this->_w, factor)));
 }
 void __tpy_init();

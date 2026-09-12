@@ -5,10 +5,14 @@ namespace tpyapp::main {
 
 
 // def evens(n: int32) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < n:
+//         if i % 2 == 0:
+//             yield i
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -20,7 +24,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     case S_JOIN_0: {
         if ((i < n)) {
             if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-                // yield i
                 __state = S_RESUME_0;
                 return i;
             } else {
@@ -33,7 +36,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
         }
     }
     case S_JOIN_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -50,8 +52,9 @@ __gen_evens evens(int32_t n) {
 }
 
 // def main():
+//     for x in evens(10):
+//         print(x)
 void main() {
-    // for x in evens(10):
     {
         auto __src_0 = evens(10);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -59,18 +62,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

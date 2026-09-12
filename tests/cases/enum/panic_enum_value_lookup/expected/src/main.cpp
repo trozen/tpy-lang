@@ -47,21 +47,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Color = Color(99)
+//     print(c)
 void main() {
-    // c: Color = Color(99)
     Color c = ::tpy::EnumUtil<Color>::from_value(99);
-    // print(c)
     std::cout << c << "\n";
 }
 
+// # Test enum value lookup panic on invalid value
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test enum value lookup panic on invalid value
-    // from enum import Enum
-    // main()
     main();
 }
 

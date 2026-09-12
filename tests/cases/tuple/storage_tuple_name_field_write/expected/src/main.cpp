@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def copy_alias(h: Holder, other: Holder) -> None:
+//     t = other.pair
+//     # A bare copy of the storage-form tuple -- one warning per element.
+//     h.pair = t  # tpyc: warning(/tuple element 0/) warning(/tuple element 1/)
 void copy_alias(Holder& h, const Holder& other) {
-    // t = other.pair
     auto&& t = other.pair;
-    // # A bare copy of the storage-form tuple -- one warning per element.
-    // h.pair = t  # tpyc: warning(/tuple element 0/) warning(/tuple element 1/)
     h.pair = t;
 }
 
 // def main() -> None:
+//     a = Holder()
+//     b = Holder()
+//     copy_alias(a, b)
+//     print(a.pair[0] is None)
 void main() {
-    // a = Holder()
     Holder a = Holder();
-    // b = Holder()
     Holder b = Holder();
-    // copy_alias(a, b)
     copy_alias(a, b);
-    // print(a.pair[0] is None)
     std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(a.pair)) == nullptr)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

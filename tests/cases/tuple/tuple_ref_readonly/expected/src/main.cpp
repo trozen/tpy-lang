@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Container(int32(42))
+//     w = Wrapper(c)
+//     pair = w.get_pair()
+//     print(pair[0])
+//     print(pair[1])
 void main() {
-    // c = Container(int32(42))
     Container c = Container(42);
-    // w = Wrapper(c)
     Wrapper w = Wrapper(c);
-    // pair = w.get_pair()
     auto pair = w.get_pair();
-    // print(pair[0])
     std::cout << (*std::get<0>(pair)) << "\n";
-    // print(pair[1])
     std::cout << std::get<1>(pair) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

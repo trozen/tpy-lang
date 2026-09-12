@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def store(h: Holder) -> None:
+//     n = Node(1)
+//     h.payload = n  # the last use moves the make_any result, not the source
 void store(Holder& h) {
-    // n = Node(1)
     Node n = Node(1);
-    // h.payload = n  # the last use moves the make_any result, not the source
     h.payload = std::move(::tpy::make_any(n));
 }
 
 // def main() -> None:
+//     h = Holder()
+//     store(h)
+//     print("stored")
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // store(h)
     store(h);
-    // print("stored")
     std::cout << "stored" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

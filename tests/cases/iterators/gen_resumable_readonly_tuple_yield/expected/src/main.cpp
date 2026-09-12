@@ -5,12 +5,18 @@ namespace tpyapp::main {
 
 
 // def pairs(items: list[P]) -> Iterator[readonly[tuple[P, P]]]:
+//     n = int32(len(items))
+//     i: int32 = 0
+//     while i + 1 < n:
+//         if i == 0:
+//             yield (items[i], items[i + 1])
+//         else:
+//             yield (items[i + 1], items[i])
+//         i += 2
 std::expected<std::tuple<const P*, const P*>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = int32(len(items))
         n = ::tpy::__len__(items);
-        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -26,11 +32,9 @@ std::expected<std::tuple<const P*, const P*>, ::tpy::StopIteration> __gen_pairs:
     case S_JOIN_0: {
         if (((::tpy::add_check<int32_t>(i, 1)) < n)) {
             if ((i == 0)) {
-                // yield (items[i], items[i + 1])
                 __state = S_RESUME_0;
                 return std::tuple<const P*, const P*>{&(::tpy::__getitem__(items, i)), &(::tpy::__getitem__(items, (::tpy::add_check<int32_t>(i, 1))))};
             } else {
-                // yield (items[i + 1], items[i])
                 __state = S_RESUME_1;
                 return std::tuple<const P*, const P*>{&(::tpy::__getitem__(items, (::tpy::add_check<int32_t>(i, 1)))), &(::tpy::__getitem__(items, i))};
             }
@@ -40,7 +44,6 @@ std::expected<std::tuple<const P*, const P*>, ::tpy::StopIteration> __gen_pairs:
         }
     }
     case S_JOIN_1: {
-        // i += 2
         i = ::tpy::add_check<int32_t>(i, 2);
         __state = S_JOIN_0;
         continue;
@@ -57,10 +60,12 @@ __gen_pairs pairs(std::vector<P>& items) {
 }
 
 // def main() -> None:
+//     items = [P(1), P(2), P(3), P(4)]
+//     for pair in pairs(items):
+//         print(pair[0].x)
+//         print(pair[1].x)
 void main() {
-    // items = [P(1), P(2), P(3), P(4)]
     std::vector<P> items = {P(1), P(2), P(3), P(4)};
-    // for pair in pairs(items):
     {
         auto __src_0 = pairs(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -68,20 +73,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-        // print(pair[0].x)
         std::cout << std::get<0>(pair)->x << "\n";
-        // print(pair[1].x)
         std::cout << std::get<1>(pair)->x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

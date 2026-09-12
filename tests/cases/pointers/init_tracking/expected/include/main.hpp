@@ -11,15 +11,25 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def direct_assign() -> None:
 void direct_assign();
+// def param_use(p: Point) -> None:
 void param_use(const Point& p);
+// def value_init() -> None:
 void value_init();
+// def assign_before_if(cond: bool) -> None:
 void assign_before_if(bool cond);
+// def then_returns(cond: bool) -> None:
 void then_returns(bool cond);
+// def both_return(cond: bool) -> int32:
 int32_t both_return(bool cond);
+// def both_branches_assign(cond: bool) -> None:
 void both_branches_assign(bool cond);
+// def else_returns(cond: bool) -> None:
 void else_returns(bool cond);
+// def decl_then_assign() -> None:
 void decl_then_assign();
+// def loop_shadow_outer() -> None:
 void loop_shadow_outer();
 
 // class Point:
@@ -42,6 +52,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

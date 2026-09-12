@@ -5,66 +5,66 @@ namespace tpyapp::main {
 
 
 // def widen() -> int:
+//     return 4
 ::tpy::BigInt widen() {
-    // return 4
     return ::tpy::BigInt(4);
 }
 
 // def needle(b: Bag) -> None:
+//     p = 1
+//     print(p in b)        # __contains__ needle
+//     p = widen()          # the assignment that retro-widens `p` to BigInt
+//     print(p)
 void needle(const Bag& b) {
-    // p = 1
     ::tpy::BigInt p = ::tpy::BigInt(1);
-    // print(p in b)        # __contains__ needle
     std::cout << ::tpy::print_bool((b.__contains__((p).to_fixed_check<int32_t>()))) << "\n";
-    // p = widen()          # the assignment that retro-widens `p` to BigInt
     p = widen();
-    // print(p)
     std::cout << p << "\n";
 }
 
 // def forward(b: Bag) -> None:
+//     p = 1
+//     print(b + p)         # __add__ argument slot
+//     p = widen()
+//     print(p)
 void forward(const Bag& b) {
-    // p = 1
     ::tpy::BigInt p = ::tpy::BigInt(1);
-    // print(b + p)         # __add__ argument slot
     std::cout << ((b) + ((p).to_fixed_check<int32_t>())) << "\n";
-    // p = widen()
     p = widen();
-    // print(p)
     std::cout << p << "\n";
 }
 
 // def reflected(b: Bag) -> None:
+//     p = 1
+//     print(p + b)         # __radd__ argument slot (the operands swap)
+//     p = widen()
+//     print(p)
 void reflected(const Bag& b) {
-    // p = 1
     ::tpy::BigInt p = ::tpy::BigInt(1);
-    // print(p + b)         # __radd__ argument slot (the operands swap)
     std::cout << (((p).to_fixed_check<int32_t>()) + (b)) << "\n";
-    // p = widen()
     p = widen();
-    // print(p)
     std::cout << p << "\n";
 }
 
 // def main() -> None:
+//     needle(Bag())
+//     forward(Bag())
+//     reflected(Bag())
 void main() {
-    // needle(Bag())
     Bag __tmp_1 = Bag();
     needle(__tmp_1);
-    // forward(Bag())
     Bag __tmp_2 = Bag();
     forward(__tmp_2);
-    // reflected(Bag())
     Bag __tmp_3 = Bag();
     reflected(__tmp_3);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

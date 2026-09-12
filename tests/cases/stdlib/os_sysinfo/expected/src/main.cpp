@@ -5,36 +5,43 @@ namespace tpyapp::main {
 
 
 // def main():
+//     print(os.name, os.sep, os.pathsep, repr(os.linesep))
+//     print(os.curdir, os.pardir, os.extsep, os.devnull)
+//
+//     print("pid", os.getpid() > 0, os.getppid() > 0)
+//     print("ids", os.getuid() >= 0, os.getgid() >= 0,
+//           os.geteuid() == os.getuid(), os.getegid() == os.getgid())
+//
+//     c = os.cpu_count()
+//     print("cpu", c is not None and c > 0)
+//
+//     print("strerror", os.strerror(2))          # No such file or directory
+//     print("isatty", os.isatty(99999))          # False (invalid fd)
+//
+//     old = os.umask(0o27)
+//     restored = os.umask(old)
+//     print("umask", old >= 0, restored == 0o27)  # the second call returns 0o27
+//
+//     # unlink is os.remove
+//     with open("tpy_os_sysinfo_t", "w") as fh:
+//         fh.write("x")
+//     os.unlink("tpy_os_sysinfo_t")
+//     print("unlink", not os.path.exists("tpy_os_sysinfo_t"))
 void main() {
-    // print(os.name, os.sep, os.pathsep, repr(os.linesep))
     std::cout << ::tpystd::os::name << " " << ::tpystd::os::sep << " " << ::tpystd::os::pathsep << " " << ::tpy::repr_of(::tpystd::os::linesep) << "\n";
-    // print(os.curdir, os.pardir, os.extsep, os.devnull)
     std::cout << ::tpystd::os::curdir << " " << ::tpystd::os::pardir << " " << ::tpystd::os::extsep << " " << ::tpystd::os::devnull << "\n";
-    // print("pid", os.getpid() > 0, os.getppid() > 0)
     std::cout << "pid" << " " << ::tpy::print_bool((::tpy::stdlib::os::getpid() > 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::getppid() > 0)) << "\n";
-    // print("ids", os.getuid() >= 0, os.getgid() >= 0,
-    // os.geteuid() == os.getuid(), os.getegid() == os.getgid())
     std::cout << "ids" << " " << ::tpy::print_bool((::tpy::stdlib::os::getuid() >= 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::getgid() >= 0)) << " " << ::tpy::print_bool((::tpy::stdlib::os::geteuid() == ::tpy::stdlib::os::getuid())) << " " << ::tpy::print_bool((::tpy::stdlib::os::getegid() == ::tpy::stdlib::os::getgid())) << "\n";
-    // c = os.cpu_count()
     std::optional<int64_t> c = ::tpystd::os::cpu_count();
-    // print("cpu", c is not None and c > 0)
     std::cout << "cpu" << " " << ::tpy::print_bool(((c.has_value()) && ((*c) > 0))) << "\n";
-    // print("strerror", os.strerror(2))          # No such file or directory
     std::cout << "strerror" << " " << ::tpy::stdlib::os::strerror(2) << "\n";
-    // print("isatty", os.isatty(99999))          # False (invalid fd)
     std::cout << "isatty" << " " << ::tpy::print_bool(::tpy::stdlib::os::isatty(99999)) << "\n";
-    // old = os.umask(0o27)
     int64_t old = ::tpy::stdlib::os::umask(23);
-    // restored = os.umask(old)
     int64_t restored = ::tpy::stdlib::os::umask(old);
-    // print("umask", old >= 0, restored == 0o27)  # the second call returns 0o27
     std::cout << "umask" << " " << ::tpy::print_bool((old >= 0)) << " " << ::tpy::print_bool((restored == 23)) << "\n";
-    // # unlink is os.remove
-    // with open("tpy_os_sysinfo_t", "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode("tpy_os_sysinfo_t", "w");
     auto& fh = __ctx_1.__enter__();
     try {
-        // fh.write("x")
         fh.write("x");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -46,25 +53,24 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // os.unlink("tpy_os_sysinfo_t")
     ::tpystd::os::unlink("tpy_os_sysinfo_t");
-    // print("unlink", not os.path.exists("tpy_os_sysinfo_t"))
     std::cout << "unlink" << " " << ::tpy::print_bool((!(::tpy::stdlib::os::path_exists("tpy_os_sysinfo_t")))) << "\n";
 }
 
+// # os module constants (name/sep/.../devnull) + process identity (getpid/getuid
+// # family), umask, cpu_count, strerror, isatty, unlink. Identity values are
+// # machine-specific, so they're checked by property; constants and strerror(2)
+// # are deterministic (strerror uses the same libc as CPython). Byte-compared
+// # against CPython.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os module constants (name/sep/.../devnull) + process identity (getpid/getuid
-    // # family), umask, cpu_count, strerror, isatty, unlink. Identity values are
-    // # machine-specific, so they're checked by property; constants and strerror(2)
-    // # are deterministic (strerror uses the same libc as CPython). Byte-compared
-    // # against CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

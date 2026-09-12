@@ -11,9 +11,12 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def count[T](*items: T) -> int32:
 template<typename T>
 int32_t count(::tpy::varargs<const T> items);
+// def via_param(b: Box, c: Box) -> int32:
 int32_t via_param(const Box& b, const Box& c);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -40,11 +43,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 // def count[T](*items: T) -> int32:
+//     return len(items)
 template<typename T>
 int32_t count(::tpy::varargs<const T> items) {
-    // return len(items)
     return ::tpy::__len__(items);
 }
 

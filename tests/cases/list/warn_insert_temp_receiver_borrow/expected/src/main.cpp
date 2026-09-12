@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[Payload] = []
+//     # The receiver is a temporary, but `borrow` still hands back a borrow.
+//     xs.append(Holder().borrow())  # tpyc: warning(/copies Payload into owned storage/)
+//     # The copy() twin says the same thing explicitly and is silent.
+//     xs.append(copy(Holder().borrow()))  # tpyc: ok
+//     print(xs[0].v, xs[1].v)
+//     xs[0].v = 99
+//     print(xs[0].v, xs[1].v)
 void main() {
-    // xs: list[Payload] = []
     std::vector<Payload> xs = std::vector<Payload>{};
-    // # The receiver is a temporary, but `borrow` still hands back a borrow.
-    // xs.append(Holder().borrow())  # tpyc: warning(/copies Payload into owned storage/)
     xs.push_back(Holder().borrow());
-    // # The copy() twin says the same thing explicitly and is silent.
-    // xs.append(copy(Holder().borrow()))  # tpyc: ok
     xs.push_back(Payload(Holder().borrow()));
-    // print(xs[0].v, xs[1].v)
     std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n";
-    // xs[0].v = 99
     ::tpy::__getitem__(xs, 0).v = 99;
-    // print(xs[0].v, xs[1].v)
     std::cout << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

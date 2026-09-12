@@ -13,6 +13,7 @@ struct WRef;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class WRef:
@@ -49,19 +50,20 @@ inline std::ostream& operator<<(std::ostream& os, const WRef& obj) {
 
 
 // def __init__(self, target: Widget) -> None:
+//     self._target = copy(target)
 inline WRef::WRef(const ::x::Widget& target) : _target(target) {}
 
 // @auto_readonly
 // def __deref__(self) -> Widget:
+//     return self._target
 inline ::x::Widget& WRef::__deref__() {
-    // return self._target
     return this->_target;
 }
 
 // @auto_readonly
 // def __deref__(self) -> Widget:
+//     return self._target
 inline const ::x::Widget& WRef::__deref__() const {
-    // return self._target
     return this->_target;
 }
 void __tpy_init();

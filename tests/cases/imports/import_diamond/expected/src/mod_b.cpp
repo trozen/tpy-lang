@@ -5,17 +5,17 @@ namespace tpyapp::mod_b {
 
 
 // def b_value() -> int32:
+//     return d_value() + int32(10)
 int32_t b_value() {
-    // return d_value() + int32(10)
     return (::tpy::add_check<int32_t>(::tpyapp::mod_d::d_value(), 10));
 }
 
+// from mod_d import d_value
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mod_d import d_value
     ::tpyapp::mod_d::__tpy_init();
 }
 

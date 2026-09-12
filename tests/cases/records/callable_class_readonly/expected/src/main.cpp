@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main():
+//     n = Negate()
+//     print(n(42))
+//     print(n(-7))
+//
+//     s = ScaleBy(3)
+//     print(s(10))
+//     print(s(-5))
 void main() {
-    // n = Negate()
     Negate n = Negate();
-    // print(n(42))
     std::cout << n.__call__(42) << "\n";
-    // print(n(-7))
     std::cout << n.__call__(-7) << "\n";
-    // s = ScaleBy(3)
     ScaleBy s = ScaleBy(3);
-    // print(s(10))
     std::cout << s.__call__(10) << "\n";
-    // print(s(-5))
     std::cout << s.__call__(-5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -6,20 +6,21 @@ namespace tpyapp::main {
 
 // @error_return(MyErr)
 // def half(n: int32) -> int32:
+//     if n % 2 != 0:
+//         raise MyErr()
+//     return n // 2
 std::expected<int32_t, MyErr> half(int32_t n) {
-    // if n % 2 != 0:
     if (((::tpy::mod_floor<int32_t>(n, 2)) != 0)) {
-        // raise MyErr()
         return ::tpy::make_unexpected(MyErr{});
     }
-    // return n // 2
     return (::tpy::div_floor<int32_t>(n, 2));
 }
 
 // @error_return(MyErr)
 // def halves() -> int32:
+//     hs = [half(i) for i in range(0, 8, 2)]  # tpyc: type(/list\[int32\]/)
+//     return hs[0] + hs[3]
 std::expected<int32_t, MyErr> halves() {
-    // hs = [half(i) for i in range(0, 8, 2)]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> hs = ({
         std::vector<int32_t> __result;
         auto __obj_0 = ::tpy::Range<int32_t>(0, 8, 2);
@@ -31,14 +32,14 @@ std::expected<int32_t, MyErr> halves() {
         }
         std::move(__result);
     });
-    // return hs[0] + hs[3]
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(hs, 0), ::tpy::__getitem__(hs, 3)));
 }
 
 // @error_return(MyErr)
 // def bad() -> int32:
+//     hs = [half(i) for i in range(3)]  # tpyc: type(/list\[int32\]/)
+//     return hs[0]
 std::expected<int32_t, MyErr> bad() {
-    // hs = [half(i) for i in range(3)]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> hs = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -48,41 +49,52 @@ std::expected<int32_t, MyErr> bad() {
         }
         std::move(__result);
     });
-    // return hs[0]
     return ::tpy::__getitem__(hs, 0);
 }
 
 // def main():
+//     try:
+//         print(halves())
+//     except MyErr:
+//         print("unexpected")
+//     try:
+//         print(bad())
+//     except MyErr:
+//         print("propagated")
+//     g = Gauge(5)
+//     try:
+//         props = [g.val for i in range(4)]  # tpyc: type(/list\[int32\]/)
+//         meths = [g.scaled(i) for i in range(3)]  # tpyc: type(/list\[int32\]/)
+//         print(props[0], len(props), meths[2])
+//     except MyErr:
+//         print("unexpected")
+//     bad_g = Gauge(-1)
+//     try:
+//         broken = [bad_g.val for i in range(2)]
+//         print(broken[0])
+//     except MyErr:
+//         print("caught")
 void main() {
-    // try:
     {
-        // print(halves())
         std::cout << ({ auto __er_4 = halves(); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
         goto __after_try_3;
         // except MyErr:
         __except_3:;
-        // print("unexpected")
         std::cout << "unexpected" << "\n";
         __after_try_3:;
     }
-    // try:
     {
-        // print(bad())
         std::cout << ({ auto __er_6 = bad(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n";
         goto __after_try_5;
         // except MyErr:
         __except_5:;
-        // print("propagated")
         std::cout << "propagated" << "\n";
         __after_try_5:;
     }
-    // g = Gauge(5)
     Gauge g = Gauge(5);
-    // try:
     std::optional<std::vector<int32_t>> meths;
     std::optional<std::vector<int32_t>> props;
     {
-        // props = [g.val for i in range(4)]  # tpyc: type(/list\[int32\]/)
         props = ({
             std::vector<int32_t> __result;
             const int32_t __stop_0 = 4;
@@ -92,7 +104,6 @@ void main() {
             }
             std::move(__result);
         });
-        // meths = [g.scaled(i) for i in range(3)]  # tpyc: type(/list\[int32\]/)
         meths = ({
             std::vector<int32_t> __result;
             const int32_t __stop_1 = 3;
@@ -102,21 +113,16 @@ void main() {
             }
             std::move(__result);
         });
-        // print(props[0], len(props), meths[2])
         std::cout << ::tpy::__getitem__((*props), 0) << " " << ::tpy::__len__((*props)) << " " << ::tpy::__getitem__((*meths), 2) << "\n";
         goto __after_try_7;
         // except MyErr:
         __except_7:;
-        // print("unexpected")
         std::cout << "unexpected" << "\n";
         __after_try_7:;
     }
-    // bad_g = Gauge(-1)
     Gauge bad_g = Gauge(-1);
-    // try:
     std::optional<std::vector<int32_t>> broken;
     {
-        // broken = [bad_g.val for i in range(2)]
         broken = ({
             std::vector<int32_t> __result;
             const int32_t __stop_2 = 2;
@@ -126,23 +132,21 @@ void main() {
             }
             std::move(__result);
         });
-        // print(broken[0])
         std::cout << ::tpy::__getitem__((*broken), 0) << "\n";
         goto __after_try_10;
         // except MyErr:
         __except_10:;
-        // print("caught")
         std::cout << "caught" << "\n";
         __after_try_10:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

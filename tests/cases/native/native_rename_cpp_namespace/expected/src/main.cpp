@@ -8,22 +8,23 @@ namespace mylib {
 
 
 // def main() -> None:
+//     print(ns_add(int32(10), int32(32)))      # -> ::mylib::ns_add_impl
+//     print(other_add(int32(20), int32(22)))   # -> ::other_ns::other_add
+//     print(global_mul(int32(6), int32(7)))    # -> ::global_mul
 void main() {
-    // print(ns_add(int32(10), int32(32)))      # -> ::mylib::ns_add_impl
     std::cout << ::mylib::ns_add_impl(10, 32) << "\n";
-    // print(other_add(int32(20), int32(22)))   # -> ::other_ns::other_add
     std::cout << ::other_ns::other_add(20, 22) << "\n";
-    // print(global_mul(int32(6), int32(7)))    # -> ::global_mul
     std::cout << ::global_mul(6, 7) << "\n";
 }
 
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
-    // main()
     main();
 }
 

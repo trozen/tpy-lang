@@ -12,8 +12,10 @@ namespace tpyapp::main {
 inline auto& VERSION = ::tpyapp::const_mod::VERSION;
 
 inline constexpr std::string_view __name__ = "__main__";
+// NAME: Final[str] = "tpy"
 inline constexpr std::string_view NAME = "tpy";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

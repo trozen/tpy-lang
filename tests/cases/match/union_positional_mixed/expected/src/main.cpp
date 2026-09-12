@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def describe(s: Point | Label) -> None:
+//     match s:
+//         case Point(px, py, z=pz):
+//             print(px + py + pz)
+//         case Label(t):
+//             print(t)
 void describe(::tpy::Union<const Label*, const Point*> s) {
-    // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.index()) {
-    // case Point(px, py, z=pz):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto px = __case_0.x;
         auto py = __case_0.y;
         auto pz = __case_0.z;
-        // print(px + py + pz)
         std::cout << ::tpy::print_float(((((px) + (py))) + (pz))) << "\n";
         break;
     }
-    // case Label(t):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& t = __case_1.text;
-        // print(t)
         std::cout << t << "\n";
         break;
     }
@@ -31,27 +31,28 @@ void describe(::tpy::Union<const Label*, const Point*> s) {
 }
 
 // def main() -> None:
+//     p: Point | Label = Point(1.0, 2.0, 3.0)
+//     describe(p)
+//     la: Point | Label = Label("hello")
+//     describe(la)
 void main() {
-    // p: Point | Label = Point(1.0, 2.0, 3.0)
     ::tpy::Union<Label, Point> __slot_1 = Point(1.0, 2.0, 3.0);
     ::tpy::Union<Label*, Point*> p = ::tpy::to_ptr_variant(__slot_1);
-    // describe(p)
     describe(p.as_const());
-    // la: Point | Label = Label("hello")
     ::tpy::Union<Label, Point> __slot_2 = Label("hello");
     ::tpy::Union<Label*, Point*> la = ::tpy::to_ptr_variant(__slot_2);
-    // describe(la)
     describe(la.as_const());
 }
 
+// # match/case mixing positional and keyword patterns
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case mixing positional and keyword patterns
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

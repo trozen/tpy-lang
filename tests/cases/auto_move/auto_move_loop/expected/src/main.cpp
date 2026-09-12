@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def consume(p: Own[Point]) -> int32:
+//     return p.x
 int32_t consume(Point&& p) {
-    // return p.x
     return p.x;
 }
 
 // def main():
+//     for i in range(3):
+//         p = Point()
+//         p.x = i
+//         p.y = 0
+//         # p is last use per iteration -- auto-move
+//         print(consume(p))
 void main() {
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p = Point()
         Point p = Point();
-        // p.x = i
         p.x = i;
-        // p.y = 0
         p.y = 0;
-        // # p is last use per iteration -- auto-move
-        // print(consume(p))
         std::cout << consume(std::move(p)) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

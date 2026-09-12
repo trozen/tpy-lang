@@ -7,55 +7,55 @@ namespace tpyapp::main {
 // # Test that reassigning parameters works correctly for types
 // # passed as const reference (int/BigInt, str).
 // def gcd(a: int, b: int) -> int:
+//     while b != 0:
+//         t: int = b
+//         b = a % b
+//         a = t
+//     return a
 ::tpy::BigInt gcd(const ::tpy::BigInt& __param_a, const ::tpy::BigInt& __param_b) {
     ::tpy::BigInt a = __param_a;
     ::tpy::BigInt b = __param_b;
-    // while b != 0:
     while ((b != 0)) {
-        // t: int = b
         ::tpy::BigInt t = b;
-        // b = a % b
         b = ((a) % (b));
-        // a = t
         a = t;
     }
-    // return a
     return a;
 }
 
 // def repeat_str(s: str, n: int) -> str:
+//     result: str = ""
+//     i: int = 0
+//     while i < n:
+//         result = result + s
+//         i = i + 1
+//     return result
 std::string repeat_str(std::string_view s, const ::tpy::BigInt& n) {
-    // result: str = ""
     std::string result = "";
-    // i: int = 0
     ::tpy::BigInt i = ::tpy::BigInt(0);
-    // while i < n:
     while ((i < n)) {
-        // result = result + s
         result += s;
-        // i = i + 1
         i = ((i) + (::tpy::BigInt(1)));
     }
-    // return result
     return result;
 }
 
 // def main() -> None:
+//     print(gcd(48, 18))
+//     print(gcd(100, 75))
+//     print(repeat_str("ab", 3))
 void main() {
-    // print(gcd(48, 18))
     std::cout << gcd(::tpy::BigInt(48), ::tpy::BigInt(18)) << "\n";
-    // print(gcd(100, 75))
     std::cout << gcd(::tpy::BigInt(100), ::tpy::BigInt(75)) << "\n";
-    // print(repeat_str("ab", 3))
     std::cout << repeat_str("ab", ::tpy::BigInt(3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

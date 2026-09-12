@@ -36,6 +36,7 @@ struct shape;
 extern shape* s;
 inline constexpr std::string_view __name__ = "__main__";
 
+// function area(var s: Shape): real;
 double area(shape* s);
 
 struct shape {
@@ -56,6 +57,7 @@ struct shape {
     // ScTri:    (a, b, c: real);
     double c;
 
+    // Shape = record
     shape();
     static constexpr std::string_view __tpy_class_name__ = "__main__.shape";
 };
@@ -66,6 +68,13 @@ inline std::ostream& operator<<(std::ostream& os, const shape& obj) {
 }
 
 
+// Shape = record
+//   id: integer;
+//   case kind: ShapeKind of
+//     ScCircle: (radius: real);
+//     ScRect:   (w, h: real);
+//     ScTri:    (a, b, c: real);
+// end;
 inline shape::shape() : kind(shapekind::sccircle) {}
 void __tpy_init();
 } // namespace tpyapp::main

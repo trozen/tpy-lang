@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dur(100)
+//     print(1.5 * d)   # float on the left -> Dur.__rmul__ -> 150.0
+//     print(10 + d)    # int on the left -> Dur.__radd__ -> 110
+//     f = Flags(1)
+//     r = 4 | f        # int on the left -> Flags.__ror__ -> 5
+//     print(r.bits)
 void main() {
-    // d = Dur(100)
     Dur d = Dur(100);
-    // print(1.5 * d)   # float on the left -> Dur.__rmul__ -> 150.0
     std::cout << ::tpy::print_float(((1.5) * (d))) << "\n";
-    // print(10 + d)    # int on the left -> Dur.__radd__ -> 110
     std::cout << ((10) + (d)) << "\n";
-    // f = Flags(1)
     Flags f = Flags(1);
-    // r = 4 | f        # int on the left -> Flags.__ror__ -> 5
     Flags r = ((4) | (f));
-    // print(r.bits)
     std::cout << r.bits << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,111 +5,119 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
+//     hc = HTTPConnection("api.test", 8002)
+//     hc.sock = a
+//     conn: Box[_Connection] = Box(hc)
+//     resp = _urlopen("http://api.test:8002/health", None, None, None, conn)
+//     print(resp.status, resp.reason)
+//     print(resp.read())
+//     print(b.recv(65536))
+//     b.close()
+//
+//     c, d = socket.socketpair()
+//     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+//     hc2 = HTTPConnection("api.test", 80)
+//     hc2.sock = c
+//     conn2: Box[_Connection] = Box(hc2)
+//     resp2 = _urlopen("http://api.test/v1", b'{"x":1}', None, None, conn2)
+//     print(resp2.status)
+//     print(d.recv(65536))
+//     d.close()
+//
+//     try:
+//         urlopen("ftp://api.test/x")     # non-http scheme
+//         print("no-raise")
+//     except URLError:
+//         print("scheme URLError")
+//
+//     try:
+//         urlopen("http:///path")         # http but no host
+//         print("no-raise")
+//     except URLError:
+//         print("no-host URLError")
+//
+//     # URLError roots at OSError (CPython parity), so a handler written for
+//     # the builtin hierarchy catches it.
+//     try:
+//         urlopen("http:///path")
+//         print("no-raise")
+//     except OSError:
+//         print("no-host OSError")
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43));
-    // hc = HTTPConnection("api.test", 8002)
     ::tpystd::http::client::HTTPConnection hc = ::tpystd::http::client::HTTPConnection("api.test", 8002);
-    // hc.sock = a
     hc.sock = std::move(a);
-    // conn: Box[_Connection] = Box(hc)
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(hc));
-    // resp = _urlopen("http://api.test:8002/health", None, None, None, conn)
     ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::_urlopen("http://api.test:8002/health", std::nullopt, std::nullopt, nullptr, std::move(conn));
-    // print(resp.status, resp.reason)
     std::cout << resp.status << " " << resp.reason << "\n";
-    // print(resp.read())
     std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
-    // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // b.close()
     b.close();
-    // c, d = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
-    // d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // hc2 = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection hc2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // hc2.sock = c
     hc2.sock = std::move(c);
-    // conn2: Box[_Connection] = Box(hc2)
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn2 = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(hc2));
-    // resp2 = _urlopen("http://api.test/v1", b'{"x":1}', None, None, conn2)
     ::tpystd::http::client::HTTPResponse resp2 = ::tpystd::urllib::request::_urlopen("http://api.test/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), std::nullopt, nullptr, std::move(conn2));
-    // print(resp2.status)
     std::cout << resp2.status << "\n";
-    // print(d.recv(65536))
     std::cout << ::tpy::BytesPrinter(d.recv(65536)) << "\n";
-    // d.close()
     d.close();
-    // try:
     {
         try {
-            // urlopen("ftp://api.test/x")     # non-http scheme
             ::tpystd::urllib::request::urlopen("ftp://api.test/x");
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpystd::urllib::request::URLError&) {
-            // print("scheme URLError")
             std::cout << "scheme URLError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // urlopen("http:///path")         # http but no host
             ::tpystd::urllib::request::urlopen("http:///path");
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpystd::urllib::request::URLError&) {
-            // print("no-host URLError")
             std::cout << "no-host URLError" << "\n";
         }
     }
-    // # URLError roots at OSError (CPython parity), so a handler written for
-    // # the builtin hierarchy catches it.
-    // try:
     {
         try {
-            // urlopen("http:///path")
             ::tpystd::urllib::request::urlopen("http:///path");
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::OSError&) {
-            // print("no-host OSError")
             std::cout << "no-host OSError" << "\n";
         }
     }
 }
 
+// # urllib.request.urlopen over http.client: GET reads the body (read happens AFTER
+// # the connection is dropped -- the response reader is a dup of the socket fd, so
+// # it stays valid); data= switches to POST; a non-http scheme / no-host raises
+// # URLError. Drives the internal `_urlopen` with a pre-connected Box[_Connection]
+// # (the offline seam -- @nocopy socket, so a silent copy would be a compile error);
+// # public urlopen() dials and takes no such param.
+// import socket
+// from tplib import Box
+// from urllib.request import urlopen, _urlopen, URLError
+// from http.client import HTTPConnection, _Connection
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # urllib.request.urlopen over http.client: GET reads the body (read happens AFTER
-    // # the connection is dropped -- the response reader is a dup of the socket fd, so
-    // # it stays valid); data= switches to POST; a non-http scheme / no-host raises
-    // # URLError. Drives the internal `_urlopen` with a pre-connected Box[_Connection]
-    // # (the offline seam -- @nocopy socket, so a silent copy would be a compile error);
-    // # public urlopen() dials and takes no such param.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // from urllib.request import urlopen, _urlopen, URLError
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::request::__tpy_init();
-    // from http.client import HTTPConnection, _Connection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // main()
     main();
 }
 

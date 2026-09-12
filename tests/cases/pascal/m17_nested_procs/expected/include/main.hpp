@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// procedure outer(start: integer);
 void outer(int32_t start);
+// function helper(n: integer): integer;
 int32_t outer__helper(int32_t n);
+// procedure print_pair(a, b: integer);
 void outer__print_pair(int32_t a, int32_t b);
 
 void __tpy_init();

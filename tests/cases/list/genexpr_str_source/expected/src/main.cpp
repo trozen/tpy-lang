@@ -3,16 +3,13 @@
 
 namespace tpyapp::main {
 
-// # A generator expression over a STR source: the chars iterate off the same
-// # begin/end pair a container does. The module-global source also pins that the
-// # IIFE names the global directly -- capturing a namespace-scope object would be
-// # ill-formed C++.
-// LETTERS = "abc"
 std::string LETTERS;
 
 // def from_global() -> None:
+//     d = dict(((str(x), 0.0) for x in LETTERS))  # tpyc: ok
+//     d["a"] += 1.0
+//     print(len(d), d["a"], d["c"])
 void from_global() {
-    // d = dict(((str(x), 0.0) for x in LETTERS))  # tpyc: ok
     ::tpy::ordered_map<std::string, double> d = ::tpy::dict_construct<std::string, double>([]() {
         auto& __src = LETTERS;
         return ::tpy::make_generator<std::tuple<std::string, double>>(
@@ -25,20 +22,19 @@ void from_global() {
             }
         );
     }());
-    // d["a"] += 1.0
     ::tpy::__setitem__(d, "a", (::tpy::__getitem__(d, "a")) + (1.0));
-    // print(len(d), d["a"], d["c"])
     std::cout << ::tpy::__len__(d) << " " << ::tpy::print_float(::tpy::__getitem__(d, "a")) << " " << ::tpy::print_float(::tpy::__getitem__(d, "c")) << "\n";
 }
 
 // def from_local() -> None:
+//     letters = "xy"
+//     scale = 2.0
+//     # The element expression reads an ordinary local, which IS captured.
+//     d = dict(((str(c), scale) for c in letters))  # tpyc: ok
+//     print(len(d), d["x"], d["y"])
 void from_local() {
-    // letters = "xy"
     std::string_view letters = "xy";
-    // scale = 2.0
     double scale = 2.0;
-    // # The element expression reads an ordinary local, which IS captured.
-    // d = dict(((str(c), scale) for c in letters))  # tpyc: ok
     ::tpy::ordered_map<std::string, double> d = ::tpy::dict_construct<std::string, double>([&letters, &scale]() {
         auto& __src = letters;
         return ::tpy::make_generator<std::tuple<std::string, double>>(
@@ -51,30 +47,30 @@ void from_local() {
             }
         );
     }());
-    // print(len(d), d["x"], d["y"])
     std::cout << ::tpy::__len__(d) << " " << ::tpy::print_float(::tpy::__getitem__(d, "x")) << " " << ::tpy::print_float(::tpy::__getitem__(d, "y")) << "\n";
 }
 
 // def main() -> None:
+//     from_global()
+//     from_local()
 void main() {
-    // from_global()
     from_global();
-    // from_local()
     from_local();
 }
 
+// # A generator expression over a STR source: the chars iterate off the same
+// # begin/end pair a container does. The module-global source also pins that the
+// # IIFE names the global directly -- capturing a namespace-scope object would be
+// # ill-formed C++.
+// LETTERS = "abc"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A generator expression over a STR source: the chars iterate off the same
-    // # begin/end pair a container does. The module-global source also pins that the
-    // # IIFE names the global directly -- capturing a namespace-scope object would be
-    // # ill-formed C++.
-    // LETTERS = "abc"
     LETTERS = "abc";
-    // main()
     main();
 }
 

@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [3, 1, 2]
+//     print(pick(nums))     # tpyc: ok  -- generic overload
+//     print(pick("hello"))  # tpyc: ok  -- non-generic overload
 void main() {
-    // nums: list[int32] = [3, 1, 2]
     std::vector<int32_t> nums = {3, 1, 2};
-    // print(pick(nums))     # tpyc: ok  -- generic overload
     std::cout << pick<int32_t>(nums) << "\n";
-    // print(pick("hello"))  # tpyc: ok  -- non-generic overload
     std::cout << pick(std::string_view("hello")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

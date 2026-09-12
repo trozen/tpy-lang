@@ -5,47 +5,50 @@ namespace tpyapp::main {
 
 
 // def greet(name: str) -> str:
+//     return str("Hello ") + name
 std::string greet(std::string_view name) {
-    // return str("Hello ") + name
     return (::tpy::str_concat(std::string("Hello "), name));
 }
 
 // def get_name() -> str:
+//     return str(int32(42))
 std::string get_name() {
-    // return str(int32(42))
     return ::tpy::fixed_to_str<int32_t>(42);
 }
 
 // def main() -> None:
+//     # str param is string_view (zero-copy)
+//     msg: str = greet("world")
+//     print(msg)  # Hello world
+//
+//     # str() conversion stored in variable (owned, no dangling)
+//     n: str = get_name()
+//     print(n)  # 42
+//
+//     # str field in record (owned)
+//     p: Person = Person("Alice")
+//     print(p.name)  # Alice
+//
+//     # list[str] generates vector<string>
+//     names: list[str] = ["hello", "world"]
+//     print(names[0])  # hello
 void main() {
-    // # str param is string_view (zero-copy)
-    // msg: str = greet("world")
     std::string msg = greet("world");
-    // print(msg)  # Hello world
     std::cout << msg << "\n";
-    // # str() conversion stored in variable (owned, no dangling)
-    // n: str = get_name()
     std::string n = get_name();
-    // print(n)  # 42
     std::cout << n << "\n";
-    // # str field in record (owned)
-    // p: Person = Person("Alice")
     Person p = Person("Alice");
-    // print(p.name)  # Alice
     std::cout << p.name << "\n";
-    // # list[str] generates vector<string>
-    // names: list[str] = ["hello", "world"]
     std::vector<std::string> names = {"hello", "world"};
-    // print(names[0])  # hello
     std::cout << ::tpy::__getitem__(names, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,7 +11,9 @@ struct StopIteration;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first_negative(items: list[int32]) -> int32:
 std::expected<int32_t, StopIteration> first_negative(const std::vector<int32_t>& items);
+// def main() -> None:
 void main();
 
 // class StopIteration(Exception, ReturnException):

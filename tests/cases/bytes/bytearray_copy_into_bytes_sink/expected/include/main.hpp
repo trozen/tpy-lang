@@ -11,8 +11,11 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def own_return(ba: bytearray) -> bytes:
 ::tpy::Bytes own_return(const ::tpy::ByteArray& ba);
+// def tuple_arg(t: tuple[bytes, int]) -> int:
 ::tpy::BigInt tuple_arg(const std::tuple<::tpy::Bytes, ::tpy::BigInt>& t);
+// def main() -> None:
 void main();
 
 // # The explicit `bytes(ba)` at every OWNING `bytes` sink -- the spelling the
@@ -55,14 +58,15 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.data = b""
 inline Holder::Holder() : data(::tpy::Bytes{}) {}
 
 // def keep(self, src: bytearray) -> None:
+//     # the field sink -- in a method, not the constructor, because a native
+//     # call at a member-init field rejects
+//     # (BUGS.md#bytearray-ctor-field-and-list-conv)
+//     self.data = bytes(src)  # tpyc: ok
 inline void Holder::keep(const ::tpy::ByteArray& src) {
-    // # the field sink -- in a method, not the constructor, because a native
-    // # call at a member-init field rejects
-    // # (BUGS.md#bytearray-ctor-field-and-list-conv)
-    // self.data = bytes(src)  # tpyc: ok
     this->data = ::tpy::Bytes(src);
 }
 void __tpy_init();

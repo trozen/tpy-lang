@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_Owner_voices;
 struct __gen_Owner_first;
 
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -61,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
     return os;
 }
 
-// Generator: Owner.voices
+// def voices(self, a: Dog | Cat) -> Iterator[str]:
 struct __gen_Owner_voices : public ::tpy::next_iter_mixin<__gen_Owner_voices, std::string> {
     int32_t __state;
     const Owner& __self;
@@ -91,7 +92,7 @@ inline __gen_Owner_voices Owner::voices(::tpy::Union<Cat*, Dog*> a) const {
     return __gen_Owner_voices(*this, a);
 }
 
-// Generator: Owner.first
+// def first(self, a: Dog | Cat) -> Iterator[str]:
 struct __gen_Owner_first : public ::tpy::next_iter_mixin<__gen_Owner_first, std::string> {
     int32_t __state;
     const Owner& __self;
@@ -122,14 +123,14 @@ inline __gen_Owner_first Owner::first(::tpy::Union<Cat*, Dog*> a) const {
 
 
 // def sound(self) -> str:
+//     return "woof"
 inline std::string Dog::sound() const {
-    // return "woof"
     return "woof";
 }
 
 // def sound(self) -> str:
+//     return "meow"
 inline std::string Cat::sound() const {
-    // return "meow"
     return "meow";
 }
 void __tpy_init();

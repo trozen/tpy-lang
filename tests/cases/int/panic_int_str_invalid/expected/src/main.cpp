@@ -3,17 +3,16 @@
 
 namespace tpyapp::main {
 
-// x: int = int("abc")
 ::tpy::BigInt x;
 
+// x: int = int("abc")
+// print(x)  # Should not reach here
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int = int("abc")
     x = ::tpy::BigInt::from_str("abc");
-    // print(x)  # Should not reach here
     std::cout << x << "\n";
 }
 

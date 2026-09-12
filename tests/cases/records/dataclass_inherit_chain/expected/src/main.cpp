@@ -5,38 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = C(1, 2, 3)
+//     print(c)
+//     print(c.x)
+//     print(c.y)
+//     print(c.z)
+//     print(c == C(1, 2, 3))
+//     print(c == C(1, 2, 4))
+//     # Intermediate works
+//     b = B(10, 20)
+//     print(b)
+//     print(b == B(10, 20))
 void main() {
-    // c = C(1, 2, 3)
     C c = C(1, 2, 3);
-    // print(c)
     std::cout << c << "\n";
-    // print(c.x)
     std::cout << c.x << "\n";
-    // print(c.y)
     std::cout << c.y << "\n";
-    // print(c.z)
     std::cout << c.z << "\n";
-    // print(c == C(1, 2, 3))
     std::cout << ::tpy::print_bool(((c) == (C(1, 2, 3)))) << "\n";
-    // print(c == C(1, 2, 4))
     std::cout << ::tpy::print_bool(((c) == (C(1, 2, 4)))) << "\n";
-    // # Intermediate works
-    // b = B(10, 20)
     B b = B(10, 20);
-    // print(b)
     std::cout << b << "\n";
-    // print(b == B(10, 20))
     std::cout << ::tpy::print_bool(((b) == (B(10, 20)))) << "\n";
 }
 
+// # 3-level @dataclass inheritance chain: grandparent -> parent -> child
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # 3-level @dataclass inheritance chain: grandparent -> parent -> child
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Clamped(50)
+//     print(c.value)
+//     c.value = 200
+//     print(c.value)
+//     c.value = -10
+//     print(c.value)
+//     c.value = 42
+//     print(c.value)
 void main() {
-    // c = Clamped(50)
     Clamped c = Clamped(50);
-    // print(c.value)
     std::cout << c.value() << "\n";
-    // c.value = 200
     c.set_value(200);
-    // print(c.value)
     std::cout << c.value() << "\n";
-    // c.value = -10
     c.set_value(-10);
-    // print(c.value)
     std::cout << c.value() << "\n";
-    // c.value = 42
     c.set_value(42);
-    // print(c.value)
     std::cout << c.value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

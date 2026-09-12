@@ -6,51 +6,52 @@ namespace tpyapp::main {
 
 
 
+// def pick(v: str) -> int32:
+//     return int32(99)
 // @overload
 // def pick(v: Literal["r", "w"]) -> int32: ...
 int32_t pick__lit_r__w(std::string_view v) {
-    // return int32(99)
     return 99;
 }
 
 // @overload
 // def pick(v: str) -> int32: ...
 int32_t pick(std::string_view v) {
-    // return int32(99)
     return 99;
 }
 
 
 // def main() -> None:
+//     m: Literal["r", "w"] = "r"
+//     print(pick(m))   # Literal overload
+//     m = "w"          # in-set reassignment
+//     print(pick(m))   # still Literal overload
+//
+//     # Branch join: both arms stay in the declared set, dispatch unaffected.
+//     cond: bool = True
+//     n: Literal["r", "w"] = "r"
+//     if cond:
+//         n = "w"
+//     print(pick(n))   # Literal overload after join
 void main() {
-    // m: Literal["r", "w"] = "r"
     std::string_view m = "r";
-    // print(pick(m))   # Literal overload
     std::cout << pick__lit_r__w(m) << "\n";
-    // m = "w"          # in-set reassignment
     m = "w";
-    // print(pick(m))   # still Literal overload
     std::cout << pick__lit_r__w(m) << "\n";
-    // # Branch join: both arms stay in the declared set, dispatch unaffected.
-    // cond: bool = True
     bool cond = true;
-    // n: Literal["r", "w"] = "r"
     std::string_view n = "r";
-    // if cond:
     if (cond) {
-        // n = "w"
         n = "w";
     }
-    // print(pick(n))   # Literal overload after join
     std::cout << pick__lit_r__w(n) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

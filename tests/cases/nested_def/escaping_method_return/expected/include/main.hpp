@@ -11,6 +11,7 @@ struct Factory;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Factory:
@@ -29,13 +30,13 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
 
 
 // def make_adder(self, n: int32) -> Callable[[int32], int32]:
+//     def add(x: int32) -> int32:
+//         return x + n
+//     return add
 inline std::function<int32_t(int32_t)> Factory::make_adder(int32_t n) const {
-    // def add(x: int32) -> int32:
     auto add = [n](int32_t x) -> int32_t {
-        // return x + n
         return (::tpy::add_check<int32_t>(x, n));
     };
-    // return add
     return add;
 }
 void __tpy_init();

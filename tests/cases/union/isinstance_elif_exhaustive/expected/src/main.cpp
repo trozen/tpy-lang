@@ -5,65 +5,65 @@ namespace tpyapp::main {
 
 
 // def by_field(pet: Dog | Cat) -> int:
+//     if isinstance(pet, Dog):
+//         return pet.n
+//     elif isinstance(pet, Cat):
+//         return pet.n
+//     return -1
 ::tpy::BigInt by_field(::tpy::Union<const Cat*, const Dog*> pet) {
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<const Dog*>(pet)) {
         auto& __pet = *std::get<const Dog*>(pet);
-        // return pet.n
         return __pet.n;
     } else {
-        // elif isinstance(pet, Cat):
         if (true) {
             auto& __pet = *std::get<const Cat*>(pet);
-            // return pet.n
             return __pet.n;
         }
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def by_method(pet: Dog | Cat) -> int:
+//     if isinstance(pet, Dog):
+//         return pet.sound()
+//     elif isinstance(pet, Cat):
+//         return pet.sound()
+//     return -1
 ::tpy::BigInt by_method(::tpy::Union<Cat*, Dog*> pet) {
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        // return pet.sound()
         return __pet.sound();
     } else {
-        // elif isinstance(pet, Cat):
         if (true) {
             auto& __pet = *std::get<Cat*>(pet);
-            // return pet.sound()
             return __pet.sound();
         }
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     print(by_field(Dog(1)))
+//     print(by_field(Cat(2)))
+//     print(by_method(Dog(1)))
+//     print(by_method(Cat(2)))
 void main() {
-    // print(by_field(Dog(1)))
     Dog __tmp_1 = Dog(::tpy::BigInt(1));
     std::cout << by_field(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
-    // print(by_field(Cat(2)))
     Cat __tmp_2 = Cat(::tpy::BigInt(2));
     std::cout << by_field(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
-    // print(by_method(Dog(1)))
     Dog __tmp_3 = Dog(::tpy::BigInt(1));
     std::cout << by_method(::tpy::Union<Cat*, Dog*>{&__tmp_3}) << "\n";
-    // print(by_method(Cat(2)))
     Cat __tmp_4 = Cat(::tpy::BigInt(2));
     std::cout << by_method(::tpy::Union<Cat*, Dog*>{&__tmp_4}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

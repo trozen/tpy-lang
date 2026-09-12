@@ -13,8 +13,11 @@ struct Fox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def feed(a: Dog | Cat | None) -> str:
 std::string feed(::tpy::Union<std::monostate, Cat*, Dog*> a);
+// def only_wildcard_covers(a: Dog | Fox | None) -> str:
 std::string only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*> a);
+// def main() -> None:
 void main();
 
 // # A wildcard or capture alternative makes an or-group over a union subject
@@ -70,12 +73,15 @@ inline std::ostream& operator<<(std::ostream& os, const Fox& obj) {
 
 
 // def __init__(self, hunger: int) -> None:
+//     self.hunger = hunger
 inline Dog::Dog(const ::tpy::BigInt& hunger) : hunger(hunger) {}
 
 // def __init__(self, hunger: int) -> None:
+//     self.hunger = hunger
 inline Cat::Cat(const ::tpy::BigInt& hunger) : hunger(hunger) {}
 
 // def __init__(self, hunger: int) -> None:
+//     self.hunger = hunger
 inline Fox::Fox(const ::tpy::BigInt& hunger) : hunger(hunger) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,34 +9,32 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick[T: Comparable](xs: list[T]) -> int32: ...
 template<::tpystd::tpy::Comparable T>
 int32_t pick(const std::vector<T>& xs);
+// def pick(xs: str) -> int32: ...
 int32_t pick(std::string_view xs);
+// def main() -> None:
 void main();
 
 // @overload
 // def pick[T: Comparable](xs: list[T]) -> int32: ...
 template<::tpystd::tpy::Comparable T>
 int32_t pick(const std::vector<T>& xs) {
-    // n = 0
     int32_t n = 0;
-    // for _ in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& _ = *__beg_0;
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // return n
     return n;
 }
 
 // @overload
 // def pick(xs: str) -> int32: ...
 inline int32_t pick(std::string_view xs) {
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 

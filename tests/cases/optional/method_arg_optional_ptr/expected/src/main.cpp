@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def relay(g: Graph, n: Node | None) -> None:
+//     g.link(n)
 void relay(Graph& g, const Node* n) {
-    // g.link(n)
     g.link(n);
 }
 
 // def main() -> None:
+//     g = Graph()
+//     a = Node(5)
+//     g.link(a)
+//     g.link(None)
+//     relay(g, a)
+//     g.stash(Node(9))
+//     g.link(g.slot)
+//     print(g.total)
 void main() {
-    // g = Graph()
     Graph g = Graph();
-    // a = Node(5)
     Node a = Node(5);
-    // g.link(a)
     g.link(&(a));
-    // g.link(None)
     g.link(nullptr);
-    // relay(g, a)
     relay(g, &(a));
-    // g.stash(Node(9))
     g.stash(Node(9));
-    // g.link(g.slot)
     g.link(::tpy::optional_to_ptr(g.slot));
-    // print(g.total)
     std::cout << g.total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

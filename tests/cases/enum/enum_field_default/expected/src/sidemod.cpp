@@ -42,14 +42,14 @@ std::optional<::tpyapp::sidemod::RemoteState> EnumUtil<::tpyapp::sidemod::Remote
 namespace tpyapp::sidemod {
 
 
+// # Cross-module enum used as a field default in the importing module's record
+// # AND in a record defined here (same-module qualification path).
+// from enum import Enum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module enum used as a field default in the importing module's record
-    // # AND in a record defined here (same-module qualification path).
-    // from enum import Enum
 }
 
 } // namespace tpyapp::sidemod

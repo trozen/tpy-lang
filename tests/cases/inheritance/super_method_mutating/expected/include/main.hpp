@@ -14,6 +14,7 @@ struct Multi;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -92,50 +93,55 @@ inline std::ostream& operator<<(std::ostream& os, const Multi& obj) {
 
 
 // def __init__(self) -> None:
+//     self.x = 0
 inline Base::Base() : x(0) {}
 
 // def bump(self) -> None:
+//     self.x = self.x + 1
 inline void Base::bump() {
-    // self.x = self.x + 1
     this->x = (::tpy::add_check<int32_t>(this->x, 1));
 }
 
 // def get(self) -> int32:
+//     return self.x
 inline int32_t Base::get() const {
-    // return self.x
     return this->x;
 }
 
 // def __init__(self) -> None:
+//     self.y = 0
 inline Other::Other() : y(0) {}
 
 // def bump_other(self) -> None:
+//     self.y = self.y + 10
 inline void Other::bump_other() {
-    // self.y = self.y + 10
     this->y = (::tpy::add_check<int32_t>(this->y, 10));
 }
 
 // def __init__(self) -> None:
+//     super().__init__()
 inline Child::Child() : Base() {}
 
 // def call_super_bump(self) -> None:
+//     super().bump()
 inline void Child::call_super_bump() {
-    // super().bump()
     this->Base::bump();
 }
 
 // def call_super_get(self) -> int32:
+//     return super().get()
 inline int32_t Child::call_super_get() const {
-    // return super().get()
     return this->Base::get();
 }
 
 // def __init__(self) -> None:
+//     Child.__init__(self)
+//     Other.__init__(self)
 inline Multi::Multi() : Child(), Other() {}
 
 // def call_super_bump_other(self) -> None:
+//     super().bump_other()
 inline void Multi::call_super_bump_other() {
-    // super().bump_other()
     this->Other::bump_other();
 }
 void __tpy_init();

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def side_effect() -> None:
+//     print("inside-side-effect")
 ::tpystd::tpy::Poll<::std::monostate> __coro_side_effect::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("inside-side-effect")
         std::cout << "inside-side-effect" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,10 +26,11 @@ __coro_side_effect side_effect() {
 }
 
 // async def caller() -> None:
+//     await side_effect()
+//     print("after-await")
 ::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await side_effect()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -39,7 +40,6 @@ __coro_side_effect side_effect() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("after-await")
         std::cout << "after-await" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -56,25 +56,26 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     if poll_once(caller()).is_ready():
+//         print("done")
 void main() {
-    // if poll_once(caller()).is_ready():
     auto __tmp_1 = caller();
     if (::tpystd::coro::poll_once<std::monostate>(__tmp_1).is_ready()) {
-        // print("done")
         std::cout << "done" << "\n";
     }
 }
 
+// # Standalone `await sub()` -- result is discarded; sub runs for its
+// # side effects.
+// from tpy.coro import poll_once
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Standalone `await sub()` -- result is discarded; sub runs for its
-    // # side effects.
-    // from tpy.coro import poll_once
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

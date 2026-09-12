@@ -15,10 +15,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_collect;
 
+// def collect() -> Iterator[int32]:
 __gen_collect collect();
+// def main() -> None:
 void main();
 
-// Generator: collect
+// def collect() -> Iterator[int32]:
 struct __gen_collect : public ::tpy::next_iter_mixin<__gen_collect, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<::tpystd::tplib::box::Box<int32_t>>> boxes;

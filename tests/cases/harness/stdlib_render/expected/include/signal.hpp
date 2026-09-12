@@ -19,6 +19,7 @@ namespace tpystd::signal {
 
 inline constexpr std::string_view __name__ = "signal";
 
+// def raise_signal(sig: int32) -> None:
 void raise_signal(int32_t sig);
 
 void __tpy_init();

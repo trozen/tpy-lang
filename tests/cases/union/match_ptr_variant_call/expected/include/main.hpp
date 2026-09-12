@@ -13,6 +13,7 @@ struct Picker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: match on a pointer-variant union returned from a METHOD call binds
@@ -65,14 +66,16 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 
 
 // def __init__(self, n: str) -> None:
+//     self.name = n
 inline Dog::Dog(std::string_view n) : name(n) {}
 
 // def __init__(self, n: str) -> None:
+//     self.name = n
 inline Cat::Cat(std::string_view n) : name(n) {}
 
 // def choose(self, d: Dog) -> Dog | Cat:
+//     return d
 inline ::tpy::Union<const Cat*, const Dog*> Picker::choose(const Dog& d) const {
-    // return d
     return &(d);
 }
 void __tpy_init();

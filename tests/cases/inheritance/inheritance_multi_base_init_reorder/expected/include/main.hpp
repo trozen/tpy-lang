@@ -13,6 +13,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Left:
@@ -63,12 +64,16 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, a: int32) -> None:
+//     self.a = a
 inline Left::Left(int32_t a) : a(a) {}
 
 // def __init__(self, b: int32) -> None:
+//     self.b = b
 inline Right::Right(int32_t b) : b(b) {}
 
 // def __init__(self, a: int32, b: int32) -> None:
+//     Right.__init__(self, b)
+//     Left.__init__(self, a)  # tpyc: warning(/written out of declaration order/)
 inline Child::Child(int32_t a, int32_t b) : Left(a), Right(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

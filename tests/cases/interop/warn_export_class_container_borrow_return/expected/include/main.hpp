@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(d: dict[str, int64]) -> dict[str, int64]:  # tpyc: warning(/dict parameter 'd' is copied in/)
 ::tpy::ordered_map<std::string, int64_t>& pick(::tpy::ordered_map<std::string, int64_t>& d);
 
 // @export
@@ -38,28 +39,29 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int64):
+//     self.n = n
 inline Holder::Holder(int64_t n) : n(n) {}
 
 // def same(self, xs: list[int64]) -> list[int64]:  # tpyc: warning(/list parameter 'xs' is copied in/)
+//     return xs  # tpyc: warning(/method 'same': returns a list by reference.*copied across the CPython boundary.*return Own/)
 inline const std::vector<int64_t>& Holder::same(const std::vector<int64_t>& xs) const {
-    // return xs  # tpyc: warning(/method 'same': returns a list by reference.*copied across the CPython boundary.*return Own/)
     return xs;
 }
 
 // def fresh(self, xs: list[int64]) -> Own[list[int64]]:  # tpyc: ok
+//     out: list[int64] = []
+//     for x in xs:
+//         out.append(x)
+//     return out
 inline std::vector<int64_t> Holder::fresh(const std::vector<int64_t>& xs) const {
-    // out: list[int64] = []
     std::vector<int64_t> out = std::vector<int64_t>{};
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int64_t x = *__beg_0;
-        // out.append(x)
         out.push_back(x);
     }
-    // return out
     return out;
 }
 void __tpy_init();

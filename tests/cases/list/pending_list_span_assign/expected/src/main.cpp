@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     data = [1, 2, 3]
+//     s: Span[int32] = data
+//     print(s[0])
+//     print(s[2])
 void main() {
-    // data = [1, 2, 3]
     std::array<int32_t, 3> data = {1, 2, 3};
-    // s: Span[int32] = data
     std::span<int32_t> s = ::tpy::as_mut_span(data);
-    // print(s[0])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // print(s[2])
     std::cout << ::tpy::__getitem__(s, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

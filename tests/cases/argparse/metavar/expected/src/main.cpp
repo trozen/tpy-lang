@@ -5,13 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(description="Test metavar override.")
+//     parser.add_argument("path", metavar="PATH", help="file path")
+//     parser.add_argument("--count", type=int, metavar="N", default=1, help="count")
+//     parser.add_argument("--names", action="append", metavar="NAME", help="names")
+//     args = parser.parse_args(["-h"])
+//     print(args.path)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["-h"])
     std::vector<std::string> __tmp_1 = {"-h"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.path)
     std::cout << args.path << "\n";
-    // return 0
     return 0;
 }
 
@@ -75,14 +79,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(path, count, std::move(names ? std::optional<std::vector<std::string>>(std::move(*names)) : std::nullopt));
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

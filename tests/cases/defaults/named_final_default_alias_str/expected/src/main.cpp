@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def use_alias(flags: uint32 = DEFAULT_FLAGS) -> int32:
+//     return int32(flags)
 int32_t use_alias(uint32_t flags) {
-    // return int32(flags)
     return ::tpy::int_cast_check<int32_t>(flags);
 }
 
 // def greet(prefix: str = DEFAULT_GREETING) -> str:
+//     return prefix
 std::string greet(std::string_view prefix) {
-    // return prefix
     return std::string(prefix);
 }
 
 // def main() -> None:
+//     print(use_alias())
+//     print(use_alias(uint32(0)))
+//     print(greet())
+//     print(greet("hi"))
 void main() {
-    // print(use_alias())
     std::cout << use_alias() << "\n";
-    // print(use_alias(uint32(0)))
     std::cout << use_alias(0) << "\n";
-    // print(greet())
     std::cout << greet() << "\n";
-    // print(greet("hi"))
     std::cout << greet("hi") << "\n";
 }
 
+// from consts import CASELESS as DEFAULT_FLAGS
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from consts import CASELESS as DEFAULT_FLAGS
     ::tpyapp::consts::__tpy_init();
-    // main()
     main();
 }
 

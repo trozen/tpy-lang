@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     msg = Message("hello")
+//     c = Container(msg)
+//     c.describe()
 void main() {
-    // msg = Message("hello")
     Message msg = Message("hello");
-    // c = Container(msg)
     Container<Message> c = Container<Message>(msg);
-    // c.describe()
     c.describe();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

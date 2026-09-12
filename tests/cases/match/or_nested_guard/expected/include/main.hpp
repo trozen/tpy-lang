@@ -13,8 +13,11 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(a: Dog | Cat | Bird, allow: bool) -> str:
 std::string classify(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool allow);
+// def small(n: int, allow: bool) -> str:
 std::string small(const ::tpy::BigInt& n, bool allow);
+// def main() -> None:
 void main();
 
 // @dataclass

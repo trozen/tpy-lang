@@ -37,19 +37,20 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // @classmethod
 // def origin(cls) -> Own[Self]:
+//     return cls(0)
 inline Point Point::origin() {
-    // return cls(0)
     return Point(0);
 }
 
 // @classmethod
 // def at(cls, x: int32) -> Own[Self]:
+//     return cls(x)
 inline Point Point::at(int32_t x) {
-    // return cls(x)
     return Point(x);
 }
 void __tpy_init();

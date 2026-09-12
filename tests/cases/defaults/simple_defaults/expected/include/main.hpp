@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(name: str, greeting: str = "Hello") -> None:
 void greet(std::string_view name, std::string_view greeting = "Hello");
+// def add(a: int32, b: int32 = int32(0)) -> int32:
 int32_t add(int32_t a, int32_t b = 0);
+// def scale(value: float, factor: float = 1.0) -> float:
 double scale(double value, double factor = 1.0);
+// def log(msg: str, verbose: bool = False) -> None:
 void log(std::string_view msg, bool verbose = false);
+// def main() -> None:
 void main();
 
 void __tpy_init();

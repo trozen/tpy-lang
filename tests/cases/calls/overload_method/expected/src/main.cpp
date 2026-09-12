@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     v = Vet()
+//     d = Dog("Rex")
+//     c = Cat(7)
+//     print(v.treat(d))
+//     print(v.treat(c))
+//     print(v.count)
 void main() {
-    // v = Vet()
     Vet v = Vet();
-    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    // c = Cat(7)
     Cat c = Cat(::tpy::BigInt(7));
-    // print(v.treat(d))
     std::cout << v.treat(d) << "\n";
-    // print(v.treat(c))
     std::cout << v.treat(c) << "\n";
-    // print(v.count)
     std::cout << v.count << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

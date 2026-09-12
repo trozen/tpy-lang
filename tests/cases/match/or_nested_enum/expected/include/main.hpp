@@ -34,7 +34,9 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(c: Color) -> str:
 std::string classify(Color c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

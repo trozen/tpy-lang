@@ -5,8 +5,11 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     for x in Box("v").gen_reassigned():
+//         print(x)
+//     for x in Box(None).gen_reassigned():
+//         print(x)
 void main() {
-    // for x in Box("v").gen_reassigned():
     {
         Box __tmp_1 = Box("v");
         auto __src_0 = __tmp_1.gen_reassigned();
@@ -15,11 +18,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for x in Box(None).gen_reassigned():
     {
         Box __tmp_2 = Box(std::nullopt);
         auto __src_2 = __tmp_2.gen_reassigned();
@@ -28,31 +29,30 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
 // def gen_reassigned(self) -> Iterator[str]:
+//     q = ""
+//     if self.s is not None:
+//         # The reassign from the narrowed field forces q's frame
+//         # storage owned.
+//         q = self.s
+//     yield "start"
+//     yield q
 std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // q = ""
         q = "";
-        // if self.s is not None:
         if ((__self.s.has_value())) {
-            // # The reassign from the narrowed field forces q's frame
-            // # storage owned.
-            // q = self.s
             q = (*__self.s);
         }
-        // yield "start"
         __state = S_RESUME_0;
         return "start";
     }
     case S_RESUME_0: {
-        // yield q
         __state = S_RESUME_1;
         return q;
     }
@@ -66,12 +66,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_reassigned::__nex
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

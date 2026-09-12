@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n = unwrap(IntBox(42))          # tpyc: ok
+//     print(n + 1)
+//     print(unwrap(StrBox("hello")))  # tpyc: ok
 void main() {
-    // n = unwrap(IntBox(42))          # tpyc: ok
     IntBox __tmp_1 = IntBox(::tpy::BigInt(42));
     ::tpy::BigInt n = unwrap<::tpy::BigInt, IntBox>(__tmp_1);
-    // print(n + 1)
     std::cout << ((n) + (::tpy::BigInt(1))) << "\n";
-    // print(unwrap(StrBox("hello")))  # tpyc: ok
     StrBox __tmp_2 = StrBox("hello");
     std::cout << unwrap<std::string, StrBox>(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,261 +9,263 @@ namespace tpyapp::main {
 // # Python), so the post-block assignment must not emit a write to the C++
 // # block-scoped name.
 // def in_for() -> int:
+//     for i in range(3):
+//         n = i + 1
+//         print(n)
+//     n = 9
+//     return n
 ::tpy::BigInt in_for() {
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // n = i + 1
         int32_t n = (::tpy::add_check<int32_t>(i, 1));
-        // print(n)
         std::cout << n << "\n";
     }
-    // n = 9
     int32_t n = 9;
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def in_while() -> int:
+//     c = 2
+//     while c > 0:
+//         n = c
+//         print(n)
+//         c -= 1
+//     n = 9
+//     return n
 ::tpy::BigInt in_while() {
-    // c = 2
     int32_t c = 2;
-    // while c > 0:
     while ((c > 0)) {
-        // n = c
         int32_t n = c;
-        // print(n)
         std::cout << n << "\n";
-        // c -= 1
         c = ::tpy::sub_check<int32_t>(c, 1);
     }
-    // n = 9
     int32_t n = 9;
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def in_match(tag: int) -> int:
+//     match tag:
+//         case 1:
+//             n = 11
+//             print(n)
+//         case _:
+//             pass
+//     n = 9
+//     return n
 ::tpy::BigInt in_match(const ::tpy::BigInt& tag) {
-    // match tag:
     auto& __match_subject_1 = tag;
-    // case 1:
     if (__match_subject_1 == 1) {
-        // n = 11
         int32_t n = 11;
-        // print(n)
         std::cout << n << "\n";
-    // case _:
     } else {
-        // pass
     }
-    // n = 9
     int32_t n = 9;
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def in_try(d: int) -> int:
+//     try:
+//         n = 100 // d
+//         print(n)
+//     except ZeroDivisionError:
+//         pass
+//     n = 9
+//     return n
 ::tpy::BigInt in_try(const ::tpy::BigInt& d) {
-    // try:
     {
         try {
-            // n = 100 // d
             ::tpy::BigInt n = ((::tpy::BigInt(::tpy::BigInt(100))) / (d));
-            // print(n)
             std::cout << n << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // pass
         }
     }
-    // n = 9
     int32_t n = 9;
-    // return n
     return n;
 }
 
 // def in_except(d: int) -> int:
+//     # The handler body is a block too: a name first bound there and assigned
+//     # after the try is the same local.
+//     try:
+//         print(100 // d)
+//     except ZeroDivisionError:
+//         n = -1
+//         print(n)
+//     n = 9
+//     return n
 ::tpy::BigInt in_except(const ::tpy::BigInt& d) {
-    // # The handler body is a block too: a name first bound there and assigned
-    // # after the try is the same local.
-    // try:
     {
         try {
-            // print(100 // d)
             std::cout << ((::tpy::BigInt(::tpy::BigInt(100))) / (d)) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // n = -1
             int32_t n = -1;
-            // print(n)
             std::cout << n << "\n";
         }
     }
-    // n = 9
     int32_t n = 9;
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def in_for_else() -> int:
+//     # A loop `else:` body is its own C++ block (the `break` path jumps past
+//     # it), so its declarations must not reach the post-loop assignment.
+//     for i in range(3):
+//         print(i)
+//     else:
+//         n = 7
+//         print(n)
+//     n = 9
+//     return n
 ::tpy::BigInt in_for_else() {
-    // # A loop `else:` body is its own C++ block (the `break` path jumps past
-    // # it), so its declarations must not reach the post-loop assignment.
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // print(i)
         std::cout << i << "\n";
     }
-    // else:
     {
-        // n = 7
         int32_t n = 7;
-        // print(n)
         std::cout << n << "\n";
     }
     __after_else_0:;
-    // n = 9
     int32_t n = 9;
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def in_while_else(k: int) -> int:
+//     i = 0
+//     while i < k:
+//         print(i)
+//         i += 1
+//     else:
+//         n = 7
+//         print(n)
+//     n = 9
+//     return n
 ::tpy::BigInt in_while_else(const ::tpy::BigInt& k) {
-    // i = 0
     int32_t i = 0;
-    // while i < k:
     while ((::tpy::BigInt(i) < k)) {
-        // print(i)
         std::cout << i << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // else:
     {
-        // n = 7
         int32_t n = 7;
-        // print(n)
         std::cout << n << "\n";
     }
     __after_else_0:;
-    // n = 9
     int32_t n = 9;
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def optional_local(flag: bool) -> str:
+//     # Optional-typed locals carry extra codegen classification (storage vs
+//     # pointer form) that the scope snapshot also restores.
+//     for i in range(2):
+//         v: str | None = None
+//         if flag:
+//             v = str(i)
+//         print(v is None)
+//     v = "nine"
+//     return v
 std::string optional_local(bool flag) {
-    // # Optional-typed locals carry extra codegen classification (storage vs
-    // # pointer form) that the scope snapshot also restores.
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // v: str | None = None
         std::optional<std::string> v = std::nullopt;
-        // if flag:
         if (flag) {
-            // v = str(i)
             v = ::tpy::fixed_to_str<int32_t>(i);
         }
-        // print(v is None)
         std::cout << ::tpy::print_bool((!v.has_value())) << "\n";
     }
-    // v = "nine"
     std::string_view v = "nine";
-    // return v
     return std::string(v);
 }
 
 // def str_local() -> str:
+//     for i in range(2):
+//         s = str(i)
+//         print(s)
+//     s = "after"
+//     return s
 std::string str_local() {
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // s = str(i)
         std::string s = ::tpy::fixed_to_str<int32_t>(i);
-        // print(s)
         std::cout << s << "\n";
     }
-    // s = "after"
     std::string_view s = "after";
-    // return s
     return std::string(s);
 }
 
 // def list_local() -> int:
+//     for i in range(2):
+//         xs = [i, i]
+//         print(xs[0])
+//     xs = [9, 9]
+//     return xs[0]
 ::tpy::BigInt list_local() {
-    // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // xs = [i, i]
         std::array<int32_t, 2> __slot_1 = {i, i};
         std::array<int32_t, 2>* xs = &__slot_1;
-        // print(xs[0])
         std::cout << ::tpy::__getitem__((*xs), 0) << "\n";
     }
-    // xs = [9, 9]
     std::array<int32_t, 2> __slot_3 = {9, 9};
     std::array<int32_t, 2>* xs = &__slot_3;
-    // return xs[0]
     return ::tpy::__getitem__((*xs), 0);
 }
 
 // def nested_blocks(flag: bool) -> int:
+//     # Declared in a loop nested inside an if: still one function local.
+//     if flag:
+//         for i in range(2):
+//             n = i + 5
+//             print(n)
+//     n = 9
+//     return n
 ::tpy::BigInt nested_blocks(bool flag) {
-    // # Declared in a loop nested inside an if: still one function local.
-    // if flag:
     if (flag) {
-        // for i in range(2):
         for (int32_t i = 0; i < 2; ++i) {
-            // n = i + 5
             int32_t n = (::tpy::add_check<int32_t>(i, 5));
-            // print(n)
             std::cout << n << "\n";
         }
     }
-    // n = 9
     int32_t n = 9;
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def main() -> None:
+//     print(in_for())
+//     print(in_while())
+//     print(in_match(1))
+//     print(in_match(2))
+//     print(in_try(5))
+//     print(in_try(0))
+//     print(in_except(0))
+//     print(in_for_else())
+//     print(in_while_else(2))
+//     print(optional_local(True))
+//     print(optional_local(False))
+//     print(str_local())
+//     print(list_local())
+//     print(nested_blocks(True))
+//     print(nested_blocks(False))
 void main() {
-    // print(in_for())
     std::cout << in_for() << "\n";
-    // print(in_while())
     std::cout << in_while() << "\n";
-    // print(in_match(1))
     std::cout << in_match(::tpy::BigInt(1)) << "\n";
-    // print(in_match(2))
     std::cout << in_match(::tpy::BigInt(2)) << "\n";
-    // print(in_try(5))
     std::cout << in_try(::tpy::BigInt(5)) << "\n";
-    // print(in_try(0))
     std::cout << in_try(::tpy::BigInt(0)) << "\n";
-    // print(in_except(0))
     std::cout << in_except(::tpy::BigInt(0)) << "\n";
-    // print(in_for_else())
     std::cout << in_for_else() << "\n";
-    // print(in_while_else(2))
     std::cout << in_while_else(::tpy::BigInt(2)) << "\n";
-    // print(optional_local(True))
     std::cout << optional_local(true) << "\n";
-    // print(optional_local(False))
     std::cout << optional_local(false) << "\n";
-    // print(str_local())
     std::cout << str_local() << "\n";
-    // print(list_local())
     std::cout << list_local() << "\n";
-    // print(nested_blocks(True))
     std::cout << nested_blocks(true) << "\n";
-    // print(nested_blocks(False))
     std::cout << nested_blocks(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

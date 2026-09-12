@@ -5,26 +5,31 @@ namespace tpyapp::main {
 
 
 // def borrow(p: P | None) -> int32:
+//     if p is None:
+//         return int32(-1)
+//     return p.x
 int32_t borrow(const P* p) {
-    // if p is None:
     if ((p == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return p.x
     return p->x;
 }
 
 // def main() -> None:
+//     items: list[tuple[P | None, int32]] = [
+//         (P(int32(1)), int32(10)),
+//         (None, int32(20)),
+//         (P(int32(3)), int32(30)),
+//     ]
+//     # Comprehension unpack: `p` passed to borrow-param
+//     results = [borrow(p) for p, n in items]
+//     for r in results:
+//         print(r)
+//     # Generator expression unpack (inlined genexpr path)
+//     total = sum(n for p, n in items)
+//     print(total)
 void main() {
-    // items: list[tuple[P | None, int32]] = [
-    // (P(int32(1)), int32(10)),
-    // (None, int32(20)),
-    // (P(int32(3)), int32(30)),
-    // ]
     std::vector<std::tuple<std::optional<P>, int32_t>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<P*, int32_t>>(std::tuple<P, int32_t>{P(1), 10})), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(std::tuple<P*, int32_t>{nullptr, 20}), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<P*, int32_t>>(std::tuple<P, int32_t>{P(3), 30}))};
-    // # Comprehension unpack: `p` passed to borrow-param
-    // results = [borrow(p) for p, n in items]
     std::vector<int32_t> results = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
@@ -39,17 +44,13 @@ void main() {
         }
         std::move(__result);
     });
-    // for r in results:
     auto& __obj_1 = results;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t r = *__beg_1;
-        // print(r)
         std::cout << r << "\n";
     }
-    // # Generator expression unpack (inlined genexpr path)
-    // total = sum(n for p, n in items)
     int32_t total = ::tpy::builtin_sum<int32_t>([&items]() {
         auto& __src = items;
         return ::tpy::make_generator<int32_t>(
@@ -64,16 +65,15 @@ void main() {
             }
         );
     }());
-    // print(total)
     std::cout << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -8,8 +8,18 @@ namespace tpyapp::main {
 // # plus a walrus form. The comp result binds `list[list[int]]`; the embedded
 // # pending element type must be finalized in the binding or codegen crashes.
 // def main() -> None:
+//     rows = [[i, i + 1] for i in range(4) if i > 0]  # tpyc: ok
+//     print(rows)
+//     # Mutate through the nested subscript to prove a real mutable container
+//     # crossed the binding (a silent copy would not be observed).
+//     rows[0][0] = 99
+//     print(rows)
+//
+//     # Walrus binding the same composite (a separate binding sink).
+//     print((cols := [[j * 2, j * 3] for j in range(3) if j > 0]))  # tpyc: ok
+//     cols[1][0] = 77
+//     print(cols)
 void main() {
-    // rows = [[i, i + 1] for i in range(4) if i > 0]  # tpyc: ok
     std::vector<std::array<int32_t, 2>> rows = ({
         std::vector<std::array<int32_t, 2>> __result;
         const int32_t __stop_0 = 4;
@@ -21,16 +31,9 @@ void main() {
         }
         std::move(__result);
     });
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
-    // # Mutate through the nested subscript to prove a real mutable container
-    // # crossed the binding (a silent copy would not be observed).
-    // rows[0][0] = 99
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 99);
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
-    // # Walrus binding the same composite (a separate binding sink).
-    // print((cols := [[j * 2, j * 3] for j in range(3) if j > 0]))  # tpyc: ok
     std::optional<std::vector<std::array<int32_t, 2>>> cols;
     std::cout << ::tpy::ListPrinter((cols = ({
         std::vector<std::array<int32_t, 2>> __result;
@@ -43,19 +46,20 @@ void main() {
         }
         std::move(__result);
     }), *cols)) << "\n";
-    // cols[1][0] = 77
     ::tpy::__setitem__(::tpy::__getitem__((*cols), 1), 0, 77);
-    // print(cols)
     std::cout << ::tpy::ListPrinter((*cols)) << "\n";
 }
 
 // def loop_mutate() -> None:
+//     # Plain (non-resumable) for-loop over the nested-list comp: the loop var's
+//     # element type is the pending inner list, finalized via stmt.elem_type.
+//     # Mutate through the loop var and observe the change on the source row
+//     # (reference semantics, not a per-iteration copy).
+//     rows = [[i, i + 1] for i in range(4) if i > 0]
+//     for r in rows:
+//         r[0] = r[0] + 100
+//     print(rows)
 void loop_mutate() {
-    // # Plain (non-resumable) for-loop over the nested-list comp: the loop var's
-    // # element type is the pending inner list, finalized via stmt.elem_type.
-    // # Mutate through the loop var and observe the change on the source row
-    // # (reference semantics, not a per-iteration copy).
-    // rows = [[i, i + 1] for i in range(4) if i > 0]
     std::vector<std::array<int32_t, 2>> rows = ({
         std::vector<std::array<int32_t, 2>> __result;
         const int32_t __stop_0 = 4;
@@ -67,27 +71,24 @@ void loop_mutate() {
         }
         std::move(__result);
     });
-    // for r in rows:
     auto& __obj_1 = rows;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& r = *__beg_1;
-        // r[0] = r[0] + 100
         ::tpy::__setitem__(r, 0, (::tpy::add_check<int32_t>(::tpy::__getitem__(r, 0), 100)));
     }
-    // print(rows)
     std::cout << ::tpy::ListPrinter(rows) << "\n";
 }
 
+// main()
+// loop_mutate()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
-    // loop_mutate()
     loop_mutate();
 }
 

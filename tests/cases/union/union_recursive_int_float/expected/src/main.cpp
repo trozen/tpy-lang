@@ -5,93 +5,93 @@ namespace tpyapp::main {
 
 
 // def make_int() -> Own[V]:
+//     return 42
 V make_int() {
-    // return 42
     return 42;
 }
 
 // def make_float() -> Own[V]:
+//     return 3.14
 V make_float() {
-    // return 3.14
     return 3.14;
 }
 
 // def make_null() -> Own[V]:
+//     # Direct `return None` from a function returning Own[RecursiveUnion]
+//     # must construct the wrapper struct's monostate alternative -- not nullptr.
+//     return None
 V make_null() {
-    // # Direct `return None` from a function returning Own[RecursiveUnion]
-    // # must construct the wrapper struct's monostate alternative -- not nullptr.
-    // return None
     return std::monostate{};
 }
 
 // def make_mixed_list() -> Own[V]:
+//     return [1, 2.5, 3, 4.5]
 V make_mixed_list() {
-    // return [1, 2.5, 3, 4.5]
     return std::vector<V>{1, 2.5, 3, 4.5};
 }
 
 // def make_mixed_dict() -> Own[V]:
+//     return {"i": 7, "f": 0.25, "s": "hi", "n": None}
 V make_mixed_dict() {
-    // return {"i": 7, "f": 0.25, "s": "hi", "n": None}
     return ::tpy::ordered_map<std::string, V>({{"i", 7}, {"f", 0.25}, {"s", "hi"}, {"n", std::monostate{}}});
 }
 
 // def kind(v: V) -> str:
+//     match v:
+//         case None:
+//             return "null"
+//         case bool() as b:
+//             return "bool"
+//         case int() as n:
+//             return "int"
+//         case float() as f:
+//             return "float"
+//         case str() as s:
+//             return "str"
+//         case list() as items:
+//             return "list"
+//         case dict() as d:
+//             return "dict"
 std::string kind(const V& v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.value.index()) {
-    // case None:
     case 0: {
-        // return "null"
         return "null";
         break;
     }
-    // case bool() as b:
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto b = __case_1;
-        // return "bool"
         return "bool";
         break;
     }
-    // case int() as n:
     case 4: {
         auto& __case_2 = std::get<4>(__match_subject_1.value);
         auto& n = __case_2;
-        // return "int"
         return "int";
         break;
     }
-    // case float() as f:
     case 3: {
         auto& __case_3 = std::get<3>(__match_subject_1.value);
         auto f = __case_3;
-        // return "float"
         return "float";
         break;
     }
-    // case str() as s:
     case 6: {
         auto& __case_4 = std::get<6>(__match_subject_1.value);
         auto& s = __case_4;
-        // return "str"
         return "str";
         break;
     }
-    // case list() as items:
     case 5: {
         auto& __case_5 = std::get<5>(__match_subject_1.value);
         auto& items = __case_5;
-        // return "list"
         return "list";
         break;
     }
-    // case dict() as d:
     case 2: {
         auto& __case_6 = std::get<2>(__match_subject_1.value);
         auto& d = __case_6;
-        // return "dict"
         return "dict";
         break;
     }
@@ -100,45 +100,48 @@ std::string kind(const V& v) {
 }
 
 // def main() -> None:
+//     a = make_int()
+//     b = make_float()
+//     print(a)
+//     print(b)
+//     print(kind(a))
+//     print(kind(b))
+//
+//     n = make_null()
+//     print(n)
+//     print(kind(n))
+//
+//     xs = make_mixed_list()
+//     print(xs)
+//     print(kind(xs))
+//
+//     d = make_mixed_dict()
+//     print(d)
+//     print(kind(d))
 void main() {
-    // a = make_int()
     V a = make_int();
-    // b = make_float()
     V b = make_float();
-    // print(a)
     std::cout << ::tpy::__str__(a) << "\n";
-    // print(b)
     std::cout << ::tpy::__str__(b) << "\n";
-    // print(kind(a))
     std::cout << kind(a) << "\n";
-    // print(kind(b))
     std::cout << kind(b) << "\n";
-    // n = make_null()
     V n = make_null();
-    // print(n)
     std::cout << ::tpy::__str__(n) << "\n";
-    // print(kind(n))
     std::cout << kind(n) << "\n";
-    // xs = make_mixed_list()
     V xs = make_mixed_list();
-    // print(xs)
     std::cout << ::tpy::__str__(xs) << "\n";
-    // print(kind(xs))
     std::cout << kind(xs) << "\n";
-    // d = make_mixed_dict()
     V d = make_mixed_dict();
-    // print(d)
     std::cout << ::tpy::__str__(d) << "\n";
-    // print(kind(d))
     std::cout << kind(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

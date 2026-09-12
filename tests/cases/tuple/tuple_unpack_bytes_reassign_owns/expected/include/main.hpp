@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def split_b(b: bytes) -> tuple[bytes, bytes]:
 std::tuple<::tpy::Bytes, ::tpy::Bytes> split_b(::tpy::BytesView b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

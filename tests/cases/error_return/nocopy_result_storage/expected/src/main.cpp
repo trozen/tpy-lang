@@ -6,84 +6,93 @@ namespace tpyapp::main {
 
 // @error_return(E)
 // def make(n: int32) -> Own[Payload]:
+//     if n < 0:
+//         raise E
+//     return Payload(n)
 std::expected<Payload, E> make(int32_t n) {
-    // if n < 0:
     if ((n < 0)) {
-        // raise E
         return ::tpy::make_unexpected(E{});
     }
-    // return Payload(n)
     return Payload(n);
 }
 
 // @error_return(E)
 // def chain(n: int32) -> Own[Payload]:
+//     p = make(n)
+//     return p
 std::expected<Payload, E> chain(int32_t n) {
-    // p = make(n)
     Payload p;
     {
         auto __try_tmp_3 = make(n);
         if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
         p = ::tpy::unwrap_ref_move(*__try_tmp_3);
     }
-    // return p
     return p;
 }
 
 // def main() -> None:
+//     try:
+//         a = make(5)
+//     except E:
+//         print("error")
+//     else:
+//         print(a.v)
+//
+//     try:
+//         b = chain(6)
+//     except E:
+//         print("error")
+//     else:
+//         print(b.v)
+//
+//     s = Sink()
+//     s.fill(9)
+//     print(s.p.v)
+//     s.fill(-1)
+//     print(s.p.v)
+//
+//     try:
+//         c = make(-1)
+//     except E:
+//         print("caught")
 void main() {
-    // try:
     std::optional<Payload> a;
     {
-        // a = make(5)
         {
             auto __try_tmp_5 = make(5);
             if (!__try_tmp_5.has_value()) goto __except_4;
             a = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
-        // print(a.v)
         std::cout << a->v << "\n";
         goto __after_try_4;
         // except E:
         __except_4:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_4:;
     }
-    // try:
     std::optional<Payload> b;
     {
-        // b = chain(6)
         {
             auto __try_tmp_7 = chain(6);
             if (!__try_tmp_7.has_value()) goto __except_6;
             b = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
-        // print(b.v)
         std::cout << b->v << "\n";
         goto __after_try_6;
         // except E:
         __except_6:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_6:;
     }
-    // s = Sink()
     Sink s = Sink();
-    // s.fill(9)
     s.fill(9);
-    // print(s.p.v)
     std::cout << s.p.v << "\n";
-    // s.fill(-1)
     s.fill(-1);
-    // print(s.p.v)
     std::cout << s.p.v << "\n";
-    // try:
     std::optional<Payload> c;
     {
-        // c = make(-1)
         {
             auto __try_tmp_9 = make(-1);
             if (!__try_tmp_9.has_value()) goto __except_8;
@@ -92,18 +101,17 @@ void main() {
         goto __after_try_8;
         // except E:
         __except_8:;
-        // print("caught")
         std::cout << "caught" << "\n";
         __after_try_8:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

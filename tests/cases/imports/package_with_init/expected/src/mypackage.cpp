@@ -3,21 +3,20 @@
 
 namespace tpyapp::mypackage {
 
-// CONST: int32 = int32(42)
 int32_t CONST{};
 
 // def func() -> None:
+//     print("from init")
 void func() {
-    // print("from init")
     std::cout << "from init" << "\n";
 }
 
+// CONST: int32 = int32(42)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // CONST: int32 = int32(42)
     CONST = 42;
 }
 

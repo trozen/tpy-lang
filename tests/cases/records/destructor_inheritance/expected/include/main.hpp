@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // # Tests __del__ with inheritance: parent destructor is called automatically after child
@@ -71,13 +72,14 @@ inline Base& Base::operator=(Base&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("Base destroyed")
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    // print("Base destroyed")
     std::cout << "Base destroyed" << "\n";
 }
 
 // def __init__(self, label: str):
+//     self.label = label
 inline Child::Child(std::string_view label) : label(label) {}
 
 inline Child::Child(Child&& other) noexcept : Base(std::move(other)), label(std::move(other.label)) {
@@ -92,9 +94,9 @@ inline Child& Child::operator=(Child&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("Child destroyed:", self.label)
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
-    // print("Child destroyed:", self.label)
     std::cout << "Child destroyed:" << " " << this->label << "\n";
 }
 void __tpy_init();

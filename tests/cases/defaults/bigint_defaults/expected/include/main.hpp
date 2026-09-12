@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add(a: int, b: int = 0) -> int:
 ::tpy::BigInt add(const ::tpy::BigInt& a, const ::tpy::BigInt& b = ::tpy::BigInt(0));
+// def scale(value: int, factor: int = 1) -> int:
 ::tpy::BigInt scale(const ::tpy::BigInt& value, const ::tpy::BigInt& factor = ::tpy::BigInt(1));
+// def main() -> None:
 void main();
 
 void __tpy_init();

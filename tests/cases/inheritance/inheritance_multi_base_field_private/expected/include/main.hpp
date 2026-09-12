@@ -13,6 +13,7 @@ struct Service;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class RateLimiter:
@@ -65,28 +66,28 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
 
 
 // def __init__(self) -> None:
+//     RateLimiter._count = 0
+//     CacheStats._count = 0
 inline Service::Service() {
-    // RateLimiter._count = 0
     this->RateLimiter::_count = 0;
-    // CacheStats._count = 0
     this->CacheStats::_count = 0;
 }
 
 // def tick_request(self) -> None:
+//     RateLimiter._count += 1  # aug-assign through the unbound-self form
 inline void Service::tick_request() {
-    // RateLimiter._count += 1  # aug-assign through the unbound-self form
     this->RateLimiter::_count = ::tpy::add_check<int32_t>(this->RateLimiter::_count, 1);
 }
 
 // def tick_cache(self) -> None:
+//     CacheStats._count = CacheStats._count + 1
 inline void Service::tick_cache() {
-    // CacheStats._count = CacheStats._count + 1
     this->CacheStats::_count = (::tpy::add_check<int32_t>(this->CacheStats::_count, 1));
 }
 
 // def report(self) -> str:
+//     return "req=" + str(RateLimiter._count) + " cache=" + str(CacheStats._count)
 inline std::string Service::report() const {
-    // return "req=" + str(RateLimiter._count) + " cache=" + str(CacheStats._count)
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("req=", ::tpy::fixed_to_str<int32_t>(this->RateLimiter::_count))), " cache=")), ::tpy::fixed_to_str<int32_t>(this->CacheStats::_count)));
 }
 void __tpy_init();

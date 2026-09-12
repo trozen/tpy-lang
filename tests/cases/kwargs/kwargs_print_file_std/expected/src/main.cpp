@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print("default sink")
+//     print("explicit stdout", file=sys.stdout)
+//     print("to stderr", file=sys.stderr)
+//     print("after stderr write")
 void main() {
-    // print("default sink")
     std::cout << "default sink" << "\n";
-    // print("explicit stdout", file=sys.stdout)
     ::tpy::as_ostream((*::tpystd::sys::stdout)) << "explicit stdout" << "\n";
-    // print("to stderr", file=sys.stderr)
     ::tpy::as_ostream((*::tpystd::sys::stderr)) << "to stderr" << "\n";
-    // print("after stderr write")
     std::cout << "after stderr write" << "\n";
 }
 
+// # print(..., file=sys.stdout/sys.stderr) routes through StdStream wrappers.
+// # stderr output is not captured by the test runner; we just verify it doesn't
+// # crash and that explicit sys.stdout matches the default.
+// import sys
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # print(..., file=sys.stdout/sys.stderr) routes through StdStream wrappers.
-    // # stderr output is not captured by the test runner; we just verify it doesn't
-    // # crash and that explicit sys.stdout matches the default.
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // main()
     main();
 }
 

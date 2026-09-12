@@ -5,68 +5,72 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # bin
+//     print(bin(0))
+//     print(bin(1))
+//     print(bin(42))
+//     print(bin(255))
+//     print(bin(-1))
+//     print(bin(-42))
+//
+//     # hex
+//     print(hex(0))
+//     print(hex(1))
+//     print(hex(255))
+//     print(hex(256))
+//     print(hex(-1))
+//
+//     # oct
+//     print(oct(0))
+//     print(oct(1))
+//     print(oct(8))
+//     print(oct(64))
+//     print(oct(-8))
+//
+//     # int64
+//     big: int64 = 1000000000000
+//     print(hex(big))
+//
+//     # BigInt (int)
+//     print(bin(2 ** 64 + 1))
+//     print(hex(2 ** 64 + 1))
+//     print(oct(2 ** 64 + 1))
+//     print(bin(-2 ** 64))
+//     print(hex(-2 ** 64))
+//     print(oct(-2 ** 64))
 void main() {
-    // # bin
-    // print(bin(0))
     std::cout << ::tpy::builtin_bin(0) << "\n";
-    // print(bin(1))
     std::cout << ::tpy::builtin_bin(1) << "\n";
-    // print(bin(42))
     std::cout << ::tpy::builtin_bin(42) << "\n";
-    // print(bin(255))
     std::cout << ::tpy::builtin_bin(255) << "\n";
-    // print(bin(-1))
     std::cout << ::tpy::builtin_bin(-1) << "\n";
-    // print(bin(-42))
     std::cout << ::tpy::builtin_bin(-42) << "\n";
-    // # hex
-    // print(hex(0))
     std::cout << ::tpy::builtin_hex(0) << "\n";
-    // print(hex(1))
     std::cout << ::tpy::builtin_hex(1) << "\n";
-    // print(hex(255))
     std::cout << ::tpy::builtin_hex(255) << "\n";
-    // print(hex(256))
     std::cout << ::tpy::builtin_hex(256) << "\n";
-    // print(hex(-1))
     std::cout << ::tpy::builtin_hex(-1) << "\n";
-    // # oct
-    // print(oct(0))
     std::cout << ::tpy::builtin_oct(0) << "\n";
-    // print(oct(1))
     std::cout << ::tpy::builtin_oct(1) << "\n";
-    // print(oct(8))
     std::cout << ::tpy::builtin_oct(8) << "\n";
-    // print(oct(64))
     std::cout << ::tpy::builtin_oct(64) << "\n";
-    // print(oct(-8))
     std::cout << ::tpy::builtin_oct(-8) << "\n";
-    // # int64
-    // big: int64 = 1000000000000
     int64_t big = static_cast<int64_t>(1000000000000);
-    // print(hex(big))
     std::cout << ::tpy::builtin_hex(big) << "\n";
-    // # BigInt (int)
-    // print(bin(2 ** 64 + 1))
     std::cout << ::tpy::builtin_bin_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
-    // print(hex(2 ** 64 + 1))
     std::cout << ::tpy::builtin_hex_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
-    // print(oct(2 ** 64 + 1))
     std::cout << ::tpy::builtin_oct_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
-    // print(bin(-2 ** 64))
     std::cout << ::tpy::builtin_bin_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
-    // print(hex(-2 ** 64))
     std::cout << ::tpy::builtin_hex_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
-    // print(oct(-2 ** 64))
     std::cout << ::tpy::builtin_oct_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

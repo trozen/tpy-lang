@@ -9,13 +9,21 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def takes_str(s: str) -> None:
 void takes_str(std::string_view s);
+// def takes_str_opt(s: str | None) -> None:
 void takes_str_opt(std::optional<std::string_view> s);
+// def takes_strview_opt(s: StrView | None) -> None:
 void takes_strview_opt(std::optional<std::string_view> s);
+// def returns_view() -> StrView:
 std::string_view returns_view();
+// def returns_view_opt() -> StrView | None:
 std::optional<std::string_view> returns_view_opt();
+// def returns_view_none() -> StrView | None:
 std::optional<std::string_view> returns_view_none();
+// def returns_str_opt() -> str | None:
 std::optional<std::string> returns_str_opt();
+// def main() -> None:
 void main();
 
 void __tpy_init();

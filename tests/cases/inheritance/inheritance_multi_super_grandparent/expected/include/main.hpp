@@ -14,6 +14,7 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Only the grandparent (GA) defines tag(); A inherits without overriding.
@@ -70,14 +71,14 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def tag(self) -> str:
+//     return "GA.tag"
 inline std::string GA::tag() const {
-    // return "GA.tag"
     return "GA.tag";
 }
 
 // def tag(self) -> str:
+//     return super().tag() + " + child"
 inline std::string C::tag() const {
-    // return super().tag() + " + child"
     return (::tpy::str_concat(this->GA::tag(), " + child"));
 }
 void __tpy_init();

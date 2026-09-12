@@ -7,17 +7,17 @@ namespace tpyapp::c {
 
 
 // def cc() -> int32:
+//     return 3 + aa()
 int32_t cc() {
-    // return 3 + aa()
     return (::tpy::add_check<int32_t>(3, ::tpyapp::a::aa()));
 }
 
+// from a import aa
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from a import aa
     ::tpyapp::a::__tpy_init();
 }
 

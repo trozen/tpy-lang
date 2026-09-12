@@ -52,13 +52,22 @@ struct HTTPConnection;
 struct HTTPSConnection;
 
 inline constexpr std::string_view __name__ = "http.client";
+// HTTP_PORT: Final[int32] = 80
 inline constexpr int32_t HTTP_PORT = 80;
+// HTTPS_PORT: Final[int32] = 443
 inline constexpr int32_t HTTPS_PORT = 443;
 
+// def _hex_val(c: int32) -> int32:
 int32_t _hex_val(int32_t c);
+// def _digits_to_int(s: str) -> int:
 ::tpy::BigInt _digits_to_int(std::string_view s);
+// def _parse_chunk_size(line: bytes) -> int:
 ::tpy::BigInt _parse_chunk_size(::tpy::BytesView line);
+// def _content_length(method: str, body: bytes | None) -> int:
 ::tpy::BigInt _content_length(std::string_view method, std::optional<::tpy::BytesView> body);
+// def _build_request(method: str, url: str, body: bytes | None,
+//                    headers: dict[str, str] | None,
+//                    host: str, port: int32, default_port: int32) -> bytes:
 ::tpy::Bytes _build_request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port);
 
 // class HTTPException(Exception):
@@ -179,7 +188,7 @@ struct HTTPConnection : _Connection {
     std::string _method;
 
     // def __init__(self, host: str, port: int32 = HTTP_PORT,
-    // timeout: float | None = None) -> None:
+    //              timeout: float | None = None) -> None:
     HTTPConnection() = default;
     explicit HTTPConnection(std::string_view host, int32_t port = HTTP_PORT, std::optional<double> timeout = std::nullopt);
     // non-copyable (field 'sock')
@@ -192,7 +201,7 @@ struct HTTPConnection : _Connection {
     void connect() override;
 
     // def request(self, method: str, url: str, body: bytes | None = None,
-    // headers: dict[str, str] | None = None) -> None:
+    //             headers: dict[str, str] | None = None) -> None:
     void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body = std::nullopt, ::tpy::ordered_map<std::string, std::string>* headers = nullptr) override;
 
     // def getresponse(self) -> Own[HTTPResponse]:
@@ -224,8 +233,8 @@ struct HTTPSConnection : _Connection {
     std::string _method;
 
     // def __init__(self, host: str, port: int32 = HTTPS_PORT,
-    // timeout: float | None = None,
-    // context: ssl.SSLContext | None = None) -> None:
+    //              timeout: float | None = None,
+    //              context: ssl.SSLContext | None = None) -> None:
     explicit HTTPSConnection(std::string_view host, int32_t port = HTTPS_PORT, std::optional<double> timeout = std::nullopt, const ::tpystd::ssl::SSLContext* context = nullptr);
     // non-copyable (field '_tls')
     HTTPSConnection(const HTTPSConnection&) = delete;
@@ -237,7 +246,7 @@ struct HTTPSConnection : _Connection {
     void connect() override;
 
     // def request(self, method: str, url: str, body: bytes | None = None,
-    // headers: dict[str, str] | None = None) -> None:
+    //             headers: dict[str, str] | None = None) -> None:
     void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body = std::nullopt, ::tpy::ordered_map<std::string, std::string>* headers = nullptr) override;
 
     // def getresponse(self) -> Own[HTTPResponse]:
@@ -316,238 +325,256 @@ namespace tpystd::http::client {
 // # Explicit __init__ + String param: compiler-gap workaround for
 // # exception subclasses (StrView default-arg on a user ctor).
 // def __init__(self, message: String = "") -> None:
+//     super().__init__(message)
 inline HTTPException::HTTPException(const ::tpy::String& message) : ::tpy::Exception(message) {}
 
 // def begin(self) -> None:
+//     self._read_status()
+//     # Only 100 Continue is an interim response to skip; CPython returns
+//     # 101/102/103 as the final status rather than skipping them.
+//     while self.status == 100:
+//         self._skip_headers()
+//         self._read_status()
+//     self._read_headers()
+//     self._init_framing()
+//     self.will_close = self._check_close()
 inline void HTTPResponse::begin() {
-    // self._read_status()
     this->_read_status();
-    // # Only 100 Continue is an interim response to skip; CPython returns
-    // # 101/102/103 as the final status rather than skipping them.
-    // while self.status == 100:
     while ((this->status == 100)) {
-        // self._skip_headers()
         this->_skip_headers();
-        // self._read_status()
         this->_read_status();
     }
-    // self._read_headers()
     this->_read_headers();
-    // self._init_framing()
     this->_init_framing();
-    // self.will_close = self._check_close()
     this->will_close = this->_check_close();
 }
 
 // def _skip_headers(self) -> None:
+//     while True:
+//         h: str = self._fp.readline().decode().rstrip()
+//         if h == "":
+//             break
 inline void HTTPResponse::_skip_headers() {
-    // while True:
     while (true) {
-        // h: str = self._fp.readline().decode().rstrip()
         std::string h = std::string(::tpy::str_rstrip(::tpy::bytes_decode(this->_fp.readline())));
-        // if h == "":
         if ((h == "")) {
-            // break
             break;
         }
     }
 }
 
 // def _next_chunk(self) -> bool:
+//     size = _parse_chunk_size(self._fp.readline())
+//     if size <= 0:
+//         self._read_trailer()
+//         self._eof = True
+//         return False
+//     self._chunk_left = size
+//     return True
 inline bool HTTPResponse::_next_chunk() {
-    // size = _parse_chunk_size(self._fp.readline())
     ::tpy::BigInt size = _parse_chunk_size(this->_fp.readline());
-    // if size <= 0:
     if ((size <= 0)) {
-        // self._read_trailer()
         this->_read_trailer();
-        // self._eof = True
         this->_eof = true;
-        // return False
         return false;
     }
-    // self._chunk_left = size
     this->_chunk_left = size;
-    // return True
     return true;
 }
 
 // def _read_trailer(self) -> None:
+//     while True:
+//         t: str = self._fp.readline().decode().rstrip()
+//         if t == "":
+//             break
 inline void HTTPResponse::_read_trailer() {
-    // while True:
     while (true) {
-        // t: str = self._fp.readline().decode().rstrip()
         std::string t = std::string(::tpy::str_rstrip(::tpy::bytes_decode(this->_fp.readline())));
-        // if t == "":
         if ((t == "")) {
-            // break
             break;
         }
     }
 }
 
 // def getheaders(self) -> Own[list[tuple[str, str]]]:
+//     out: list[tuple[str, str]] = []
+//     for kv in self._headers:
+//         out.append((kv[0], kv[1]))
+//     return out
 inline std::vector<std::tuple<std::string, std::string>> HTTPResponse::getheaders() const {
-    // out: list[tuple[str, str]] = []
     std::vector<std::tuple<std::string, std::string>> out = std::vector<std::tuple<std::string, std::string>>{};
-    // for kv in self._headers:
     auto& __obj_0 = this->_headers;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        // out.append((kv[0], kv[1]))
         out.push_back(std::tuple<std::string, std::string>{std::get<0>(kv), std::get<1>(kv)});
     }
-    // return out
     return out;
 }
 
 // def close(self) -> None:
+//     self._fp.close()
+//     self._eof = True
 inline void HTTPResponse::close() {
-    // self._fp.close()
     this->_fp.close();
-    // self._eof = True
     this->_eof = true;
 }
 
 // def __enter__(self) -> "HTTPResponse":
+//     return self
 inline HTTPResponse& HTTPResponse::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.close()
 inline void HTTPResponse::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.close()
     this->close();
 }
 
 // def __init__(self, host: str, port: int32 = HTTP_PORT,
-// timeout: float | None = None) -> None:
+//              timeout: float | None = None) -> None:
+//     self.host = host
+//     self.port = port
+//     self.timeout = timeout
+//     self.sock = None
+//     self._method = ""
 inline HTTPConnection::HTTPConnection(std::string_view host, int32_t port, std::optional<double> timeout) : host(host), port(port), timeout(timeout), sock(std::nullopt), _method("") {}
 
 // def connect(self) -> None:
+//     if self.sock is None:
+//         self.sock = socket.create_connection((self.host, self.port),
+//                                              self.timeout)
 inline void HTTPConnection::connect() {
-    // if self.sock is None:
     if ((!this->sock.has_value())) {
-        // self.sock = socket.create_connection((self.host, self.port),
-        // self.timeout)
         this->sock = ::tpystd::socket::create_connection(std::tuple<std::string, int32_t>{this->host, this->port}, this->timeout);
     }
 }
 
 // def request(self, method: str, url: str, body: bytes | None = None,
-// headers: dict[str, str] | None = None) -> None:
+//             headers: dict[str, str] | None = None) -> None:
+//     self.connect()
+//     self._method = method
+//     data = _build_request(method, url, body, headers, self.host,
+//                           self.port, HTTP_PORT)
+//     if self.sock is None:
+//         raise HTTPException("Connection not established")
+//     self.sock.sendall(data)
 inline void HTTPConnection::request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) {
-    // self.connect()
     this->connect();
-    // self._method = method
     this->_method = method;
-    // data = _build_request(method, url, body, headers, self.host,
-    // self.port, HTTP_PORT)
     ::tpy::Bytes data = _build_request(method, url, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt, headers, this->host, this->port, HTTP_PORT);
-    // if self.sock is None:
     if ((!this->sock.has_value())) {
-        // raise HTTPException("Connection not established")
         throw HTTPException("Connection not established");
     }
-    // self.sock.sendall(data)
     (*this->sock).sendall(data);
 }
 
 // def getresponse(self) -> Own[HTTPResponse]:
+//     if self.sock is None:
+//         raise HTTPException("Connection not established")
+//     resp = HTTPResponse(self.sock.makefile("rb"), self._method)
+//     resp.begin()
+//     return resp
 inline HTTPResponse HTTPConnection::getresponse() {
-    // if self.sock is None:
     if ((!this->sock.has_value())) {
-        // raise HTTPException("Connection not established")
         throw HTTPException("Connection not established");
     }
-    // resp = HTTPResponse(self.sock.makefile("rb"), self._method)
     HTTPResponse resp = HTTPResponse((*this->sock).makefile("rb"), this->_method);
-    // resp.begin()
     resp.begin();
-    // return resp
     return resp;
 }
 
 // def close(self) -> None:
+//     if self.sock is not None:
+//         self.sock.close()
+//         self.sock = None
 inline void HTTPConnection::close() {
-    // if self.sock is not None:
     if ((this->sock.has_value())) {
-        // self.sock.close()
         (*this->sock).close();
-        // self.sock = None
         this->sock = std::nullopt;
     }
 }
 
 // def __init__(self, host: str, port: int32 = HTTPS_PORT,
-// timeout: float | None = None,
-// context: ssl.SSLContext | None = None) -> None:
+//              timeout: float | None = None,
+//              context: ssl.SSLContext | None = None) -> None:
+//     self.host = host
+//     self.port = port
+//     self.timeout = timeout
+//     # A caller-supplied context is captured by value (copied) -- it is a
+//     # small config record (verify mode + hostname flag + CA path), so the
+//     # connection snapshots its settings rather than aliasing the caller's.
+//     self._context = (copy(context) if context is not None
+//                      else ssl.create_default_context())
+//     self._tls = None
+//     self._method = ""
 inline HTTPSConnection::HTTPSConnection(std::string_view host, int32_t port, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context) : host(host), port(port), timeout(timeout), _context((((context != nullptr)) ? (::tpystd::ssl::SSLContext((*context))) : (::tpystd::ssl::create_default_context()))), _tls(std::nullopt), _method("") {}
 
 // def connect(self) -> None:
+//     if self._tls is None:
+//         sock = socket.create_connection((self.host, self.port),
+//                                         self.timeout)
+//         self._tls = self._context.wrap_socket(sock, self.host)
 inline void HTTPSConnection::connect() {
-    // if self._tls is None:
     if ((!this->_tls.has_value())) {
-        // sock = socket.create_connection((self.host, self.port),
-        // self.timeout)
         ::tpystd::socket::socket sock = ::tpystd::socket::create_connection(std::tuple<std::string, int32_t>{this->host, this->port}, this->timeout);
-        // self._tls = self._context.wrap_socket(sock, self.host)
         this->_tls = this->_context.wrap_socket(std::move(sock), this->host);
     }
 }
 
 // def request(self, method: str, url: str, body: bytes | None = None,
-// headers: dict[str, str] | None = None) -> None:
+//             headers: dict[str, str] | None = None) -> None:
+//     self.connect()
+//     self._method = method
+//     data = _build_request(method, url, body, headers, self.host,
+//                           self.port, HTTPS_PORT)
+//     if self._tls is None:
+//         raise HTTPException("Connection not established")
+//     self._tls.sendall(data)
 inline void HTTPSConnection::request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) {
-    // self.connect()
     this->connect();
-    // self._method = method
     this->_method = method;
-    // data = _build_request(method, url, body, headers, self.host,
-    // self.port, HTTPS_PORT)
     ::tpy::Bytes data = _build_request(method, url, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt, headers, this->host, this->port, HTTPS_PORT);
-    // if self._tls is None:
     if ((!this->_tls.has_value())) {
-        // raise HTTPException("Connection not established")
         throw HTTPException("Connection not established");
     }
-    // self._tls.sendall(data)
     (*this->_tls).sendall(data);
 }
 
 // def getresponse(self) -> Own[HTTPResponse]:
+//     if self._tls is None:
+//         raise HTTPException("Connection not established")
+//     resp = HTTPResponse(self._tls.makefile(), self._method)
+//     resp.begin()
+//     return resp
 inline HTTPResponse HTTPSConnection::getresponse() {
-    // if self._tls is None:
     if ((!this->_tls.has_value())) {
-        // raise HTTPException("Connection not established")
         throw HTTPException("Connection not established");
     }
-    // resp = HTTPResponse(self._tls.makefile(), self._method)
     HTTPResponse resp = HTTPResponse((*this->_tls).makefile(), this->_method);
-    // resp.begin()
     resp.begin();
-    // return resp
     return resp;
 }
 
 // def close(self) -> None:
+//     if self._tls is not None:
+//         self._tls.close()
+//         self._tls = None
 inline void HTTPSConnection::close() {
-    // if self._tls is not None:
     if ((this->_tls.has_value())) {
-        // self._tls.close()
         (*this->_tls).close();
-        // self._tls = None
         this->_tls = std::nullopt;
     }
 }
 
 // def __init__(self, line: String = "") -> None:
+//     super().__init__(line)
 inline BadStatusLine::BadStatusLine(const ::tpy::String& line) : HTTPException(line) {}
 
 // def __init__(self, version: String = "") -> None:
+//     super().__init__(version)
 inline UnknownProtocol::UnknownProtocol(const ::tpy::String& version) : HTTPException(version) {}
 void __tpy_init();
 } // namespace tpystd::http::client

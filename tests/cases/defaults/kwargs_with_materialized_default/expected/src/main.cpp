@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def probe(x: "Fixed | None" = None, **kwargs: Unpack[Options]) -> int64:
+//     return -1 if x is None else x.off
 int64_t probe(std::optional<Fixed> x, const Options& kwargs) {
-    // return -1 if x is None else x.off
     return (((!x.has_value())) ? (-1) : ((*x).off));
 }
 
 // def spread(a: int64, b: int64 = 4, *rest: int64, tag: int64 = 9) -> int64:
+//     total = a * 1000 + b * 100 + tag
+//     for r in rest:
+//         total = total + r
+//     return total
 int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t tag) {
-    // total = a * 1000 + b * 100 + tag
     int64_t total = (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 1000)), (::tpy::mul_check<int64_t>(b, 100)))), tag));
-    // for r in rest:
     auto& __obj_0 = rest;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int64_t r = *__beg_0;
-        // total = total + r
         total = (::tpy::add_check<int64_t>(total, r));
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     print(probe(Fixed(3), host="a"))
+//     print(probe(host="b"))
+//     # `spread(1)` is deliberately absent: with *args present, omitting b so
+//     # tag's default must skip a positional slot still mis-binds, so pinning it
+//     # here would freeze a wrong value.
+//     print(spread(1, 2))
+//     print(spread(1, 2, 5, 6))
 void main() {
-    // print(probe(Fixed(3), host="a"))
     Options __tmp_1 = Options("a");
     std::cout << probe(Fixed(3), __tmp_1) << "\n";
-    // print(probe(host="b"))
     Options __tmp_2 = Options("b");
     std::cout << probe(std::nullopt, __tmp_2) << "\n";
-    // # `spread(1)` is deliberately absent: with *args present, omitting b so
-    // # tag's default must skip a positional slot still mis-binds, so pinning it
-    // # here would freeze a wrong value.
-    // print(spread(1, 2))
     std::cout << spread(1, 2, ::tpy::varargs<const int64_t>(), 9) << "\n";
-    // print(spread(1, 2, 5, 6))
     std::array<const int64_t, 2> __tmp_3{5, 6};
     std::cout << spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_3), 9) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,339 +5,367 @@ namespace tpyapp::main {
 
 
 // def _p(x: float) -> None:
+//     # Work around format_float's precision loss on |x| < 0.1.
+//     # int(x * 1e14) is a deterministic IEEE-754 op -- same bits on TPy
+//     # and CPython -- and the integer prints correctly on both.
+//     print(int(x * 1e14))
 void _p(double x) {
-    // # Work around format_float's precision loss on |x| < 0.1.
-    // # int(x * 1e14) is a deterministic IEEE-754 op -- same bits on TPy
-    // # and CPython -- and the integer prints correctly on both.
-    // print(int(x * 1e14))
     std::cout << ::tpy::BigInt::from_float(((x) * (100000000000000.0))) << "\n";
 }
 
 // def main() -> None:
+//     # --- Engine: byte-identical uint32 stream vs CPython for seed=42.
+//     random.seed(int32(42))
+//     print("engine_u32:")
+//     for _ in range(10):
+//         print(int(random._inst.getrandbits(32)))
+//
+//     # Another seed, shorter run.
+//     random.seed(int32(1))
+//     print("seed1_u32:")
+//     for _ in range(5):
+//         print(int(random._inst.getrandbits(32)))
+//
+//     # --- Reproducibility of random() on the same seed.
+//     random.seed(int32(42))
+//     a0: float = random.random()
+//     a1: float = random.random()
+//     random.seed(int32(42))
+//     b0: float = random.random()
+//     b1: float = random.random()
+//     print("reproducible:", a0 == b0, a1 == b1)
+//
+//     # --- Range of random().
+//     random.seed(int32(7))
+//     i: int32 = 0
+//     in_range: bool = True
+//     while i < 1000:
+//         v: float = random.random()
+//         if v < 0.0 or v >= 1.0:
+//             in_range = False
+//         i += 1
+//     print("in_range:", in_range)
+//
+//     # --- Different seeds diverge.
+//     random.seed(int32(1))
+//     s1: float = random.random()
+//     random.seed(int32(2))
+//     s2: float = random.random()
+//     print("distinct_seeds:", s1 != s2)
+//
+//     # --- Per-instance Random independence.
+//     r1: Random = Random(uint32(42))
+//     r2: Random = Random(uint32(42))
+//     print("instance_same_seed:", r1.random() == r2.random())
+//
+//     r3: Random = Random(uint32(42))
+//     r4: Random = Random(uint32(43))
+//     print("instance_diff_seed:", r3.random() != r4.random())
+//
+//     # Per-instance doesn't perturb the singleton.
+//     random.seed(int32(99))
+//     before: float = random.random()
+//     side: Random = Random(uint32(12345))
+//     side.random()
+//     side.random()
+//     random.seed(int32(99))
+//     after: float = random.random()
+//     print("singleton_isolated:", before == after)
+//
+//     # --- Integer helpers.
+//     random.seed(int32(42))
+//     print("randint:")
+//     for _ in range(5):
+//         print(random.randint(int32(1), int32(100)))
+//
+//     random.seed(int32(42))
+//     print("randrange_stop:")
+//     for _ in range(3):
+//         print(random.randrange(int32(10)))
+//
+//     random.seed(int32(42))
+//     print("randrange_start_stop:")
+//     for _ in range(3):
+//         print(random.randrange(int32(100), int32(200)))
+//
+//     random.seed(int32(42))
+//     print("randrange_step:")
+//     for _ in range(3):
+//         print(random.randrange(int32(0), int32(100), int32(7)))
+//
+//     # Power-of-2 widths exercise the _randbelow bit_length(n) path, which
+//     # differs from bit_length(n-1) only for powers of 2. Earlier bug lived
+//     # here: widths 100, 10, 7-step (all non-powers-of-2) matched CPython
+//     # by coincidence while power-of-2 widths did not.
+//     random.seed(int32(42))
+//     print("randrange_pow2:")
+//     for _ in range(5):
+//         print(random.randrange(int32(4)))
+//     random.seed(int32(42))
+//     print("randrange_pow2_32:")
+//     for _ in range(3):
+//         print(random.randrange(int32(0), int32(32)))
+//
+//     random.seed(int32(42))
+//     print("randbytes_multiples_of_4:")
+//     print(random.randbytes(int32(16)).hex())
+//     # Non-multiple-of-4 sizes exercise the partial-word packing path.
+//     # Earlier bug took low bytes of the final word; CPython uses the top
+//     # bytes (`getrandbits(k)` shifts the final word by `32 - k` before
+//     # packing, so the bytes surfaced are the high end).
+//     random.seed(int32(42))
+//     print("randbytes_1:", random.randbytes(int32(1)).hex())
+//     random.seed(int32(42))
+//     print("randbytes_5:", random.randbytes(int32(5)).hex())
+//     random.seed(int32(42))
+//     print("randbytes_7:", random.randbytes(int32(7)).hex())
+//
+//     # --- Continuous distributions.
+//     # Each block: seed, N draws, scaled-int printed.
+//     random.seed(int32(42))
+//     print("uniform:")
+//     for _ in range(3):
+//         _p(random.uniform(1.0, 10.0))
+//
+//     random.seed(int32(42))
+//     print("triangular_default:")
+//     for _ in range(3):
+//         _p(random.triangular())
+//
+//     random.seed(int32(42))
+//     print("triangular_args:")
+//     for _ in range(3):
+//         _p(random.triangular(0.0, 10.0, 3.0))
+//
+//     random.seed(int32(42))
+//     print("gauss:")
+//     for _ in range(4):
+//         _p(random.gauss(0.0, 1.0))
+//
+//     random.seed(int32(42))
+//     print("normalvariate:")
+//     for _ in range(3):
+//         _p(random.normalvariate(0.0, 1.0))
+//
+//     random.seed(int32(42))
+//     print("lognormvariate:")
+//     for _ in range(3):
+//         _p(random.lognormvariate(0.0, 1.0))
+//
+//     random.seed(int32(42))
+//     print("expovariate:")
+//     for _ in range(3):
+//         _p(random.expovariate(1.0))
+//
+//     random.seed(int32(42))
+//     print("paretovariate:")
+//     for _ in range(3):
+//         _p(random.paretovariate(2.0))
+//
+//     random.seed(int32(42))
+//     print("weibullvariate:")
+//     for _ in range(3):
+//         _p(random.weibullvariate(1.0, 1.5))
+//
+//     random.seed(int32(42))
+//     print("gammavariate_big:")
+//     for _ in range(3):
+//         _p(random.gammavariate(2.0, 1.0))
+//
+//     random.seed(int32(42))
+//     print("gammavariate_small:")
+//     for _ in range(3):
+//         _p(random.gammavariate(0.5, 1.0))
+//
+//     random.seed(int32(42))
+//     print("betavariate:")
+//     for _ in range(3):
+//         _p(random.betavariate(2.0, 5.0))
+//
+//     random.seed(int32(42))
+//     print("vonmisesvariate:")
+//     for _ in range(3):
+//         _p(random.vonmisesvariate(0.0, 1.0))
+//
+//     # gauss() state is cleared on reseed (CPython matches).
+//     random.seed(int32(42))
+//     g1: float = random.gauss(0.0, 1.0)
+//     random.seed(int32(42))
+//     g2: float = random.gauss(0.0, 1.0)
+//     print("gauss_state_reset:", g1 == g2)
 void main() {
-    // # --- Engine: byte-identical uint32 stream vs CPython for seed=42.
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("engine_u32:")
     std::cout << "engine_u32:" << "\n";
-    // for _ in range(10):
     for (int32_t _ = 0; _ < 10; ++_) {
-        // print(int(random._inst.getrandbits(32)))
         std::cout << (*::tpystd::random::_inst).getrandbits(32) << "\n";
     }
-    // # Another seed, shorter run.
-    // random.seed(int32(1))
     ::tpystd::random::seed(1);
-    // print("seed1_u32:")
     std::cout << "seed1_u32:" << "\n";
-    // for _ in range(5):
     for (int32_t _ = 0; _ < 5; ++_) {
-        // print(int(random._inst.getrandbits(32)))
         std::cout << (*::tpystd::random::_inst).getrandbits(32) << "\n";
     }
-    // # --- Reproducibility of random() on the same seed.
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // a0: float = random.random()
     double a0 = ::tpystd::random::random();
-    // a1: float = random.random()
     double a1 = ::tpystd::random::random();
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // b0: float = random.random()
     double b0 = ::tpystd::random::random();
-    // b1: float = random.random()
     double b1 = ::tpystd::random::random();
-    // print("reproducible:", a0 == b0, a1 == b1)
     std::cout << "reproducible:" << " " << ::tpy::print_bool((a0 == b0)) << " " << ::tpy::print_bool((a1 == b1)) << "\n";
-    // # --- Range of random().
-    // random.seed(int32(7))
     ::tpystd::random::seed(7);
-    // i: int32 = 0
     int32_t i = 0;
-    // in_range: bool = True
     bool in_range = true;
-    // while i < 1000:
     while ((i < 1000)) {
-        // v: float = random.random()
         double v = ::tpystd::random::random();
-        // if v < 0.0 or v >= 1.0:
         if (((v < 0.0) || (v >= 1.0))) {
-            // in_range = False
             in_range = false;
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // print("in_range:", in_range)
     std::cout << "in_range:" << " " << ::tpy::print_bool(in_range) << "\n";
-    // # --- Different seeds diverge.
-    // random.seed(int32(1))
     ::tpystd::random::seed(1);
-    // s1: float = random.random()
     double s1 = ::tpystd::random::random();
-    // random.seed(int32(2))
     ::tpystd::random::seed(2);
-    // s2: float = random.random()
     double s2 = ::tpystd::random::random();
-    // print("distinct_seeds:", s1 != s2)
     std::cout << "distinct_seeds:" << " " << ::tpy::print_bool((s1 != s2)) << "\n";
-    // # --- Per-instance Random independence.
-    // r1: Random = Random(uint32(42))
     ::tpystd::random::Random r1 = ::tpystd::random::Random(42);
-    // r2: Random = Random(uint32(42))
     ::tpystd::random::Random r2 = ::tpystd::random::Random(42);
-    // print("instance_same_seed:", r1.random() == r2.random())
     std::cout << "instance_same_seed:" << " " << ::tpy::print_bool((r1.random() == r2.random())) << "\n";
-    // r3: Random = Random(uint32(42))
     ::tpystd::random::Random r3 = ::tpystd::random::Random(42);
-    // r4: Random = Random(uint32(43))
     ::tpystd::random::Random r4 = ::tpystd::random::Random(43);
-    // print("instance_diff_seed:", r3.random() != r4.random())
     std::cout << "instance_diff_seed:" << " " << ::tpy::print_bool((r3.random() != r4.random())) << "\n";
-    // # Per-instance doesn't perturb the singleton.
-    // random.seed(int32(99))
     ::tpystd::random::seed(99);
-    // before: float = random.random()
     double before = ::tpystd::random::random();
-    // side: Random = Random(uint32(12345))
     ::tpystd::random::Random side = ::tpystd::random::Random(12345);
-    // side.random()
     side.random();
-    // side.random()
     side.random();
-    // random.seed(int32(99))
     ::tpystd::random::seed(99);
-    // after: float = random.random()
     double after = ::tpystd::random::random();
-    // print("singleton_isolated:", before == after)
     std::cout << "singleton_isolated:" << " " << ::tpy::print_bool((before == after)) << "\n";
-    // # --- Integer helpers.
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randint:")
     std::cout << "randint:" << "\n";
-    // for _ in range(5):
     for (int32_t _ = 0; _ < 5; ++_) {
-        // print(random.randint(int32(1), int32(100)))
         std::cout << ::tpystd::random::randint(1, 100) << "\n";
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randrange_stop:")
     std::cout << "randrange_stop:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // print(random.randrange(int32(10)))
         std::cout << ::tpystd::random::randrange(10) << "\n";
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randrange_start_stop:")
     std::cout << "randrange_start_stop:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // print(random.randrange(int32(100), int32(200)))
         std::cout << ::tpystd::random::randrange(100, 200) << "\n";
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randrange_step:")
     std::cout << "randrange_step:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // print(random.randrange(int32(0), int32(100), int32(7)))
         std::cout << ::tpystd::random::randrange(0, 100, 7) << "\n";
     }
-    // # Power-of-2 widths exercise the _randbelow bit_length(n) path, which
-    // # differs from bit_length(n-1) only for powers of 2. Earlier bug lived
-    // # here: widths 100, 10, 7-step (all non-powers-of-2) matched CPython
-    // # by coincidence while power-of-2 widths did not.
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randrange_pow2:")
     std::cout << "randrange_pow2:" << "\n";
-    // for _ in range(5):
     for (int32_t _ = 0; _ < 5; ++_) {
-        // print(random.randrange(int32(4)))
         std::cout << ::tpystd::random::randrange(4) << "\n";
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randrange_pow2_32:")
     std::cout << "randrange_pow2_32:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // print(random.randrange(int32(0), int32(32)))
         std::cout << ::tpystd::random::randrange(0, 32) << "\n";
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randbytes_multiples_of_4:")
     std::cout << "randbytes_multiples_of_4:" << "\n";
-    // print(random.randbytes(int32(16)).hex())
     std::cout << ::tpy::bytes_hex(::tpystd::random::randbytes(16)) << "\n";
-    // # Non-multiple-of-4 sizes exercise the partial-word packing path.
-    // # Earlier bug took low bytes of the final word; CPython uses the top
-    // # bytes (`getrandbits(k)` shifts the final word by `32 - k` before
-    // # packing, so the bytes surfaced are the high end).
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randbytes_1:", random.randbytes(int32(1)).hex())
     std::cout << "randbytes_1:" << " " << ::tpy::bytes_hex(::tpystd::random::randbytes(1)) << "\n";
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randbytes_5:", random.randbytes(int32(5)).hex())
     std::cout << "randbytes_5:" << " " << ::tpy::bytes_hex(::tpystd::random::randbytes(5)) << "\n";
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("randbytes_7:", random.randbytes(int32(7)).hex())
     std::cout << "randbytes_7:" << " " << ::tpy::bytes_hex(::tpystd::random::randbytes(7)) << "\n";
-    // # --- Continuous distributions.
-    // # Each block: seed, N draws, scaled-int printed.
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("uniform:")
     std::cout << "uniform:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.uniform(1.0, 10.0))
         _p(::tpystd::random::uniform(1.0, 10.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("triangular_default:")
     std::cout << "triangular_default:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.triangular())
         _p(::tpystd::random::triangular());
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("triangular_args:")
     std::cout << "triangular_args:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.triangular(0.0, 10.0, 3.0))
         _p(::tpystd::random::triangular(0.0, 10.0, 3.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("gauss:")
     std::cout << "gauss:" << "\n";
-    // for _ in range(4):
     for (int32_t _ = 0; _ < 4; ++_) {
-        // _p(random.gauss(0.0, 1.0))
         _p(::tpystd::random::gauss(0.0, 1.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("normalvariate:")
     std::cout << "normalvariate:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.normalvariate(0.0, 1.0))
         _p(::tpystd::random::normalvariate(0.0, 1.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("lognormvariate:")
     std::cout << "lognormvariate:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.lognormvariate(0.0, 1.0))
         _p(::tpystd::random::lognormvariate(0.0, 1.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("expovariate:")
     std::cout << "expovariate:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.expovariate(1.0))
         _p(::tpystd::random::expovariate(1.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("paretovariate:")
     std::cout << "paretovariate:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.paretovariate(2.0))
         _p(::tpystd::random::paretovariate(2.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("weibullvariate:")
     std::cout << "weibullvariate:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.weibullvariate(1.0, 1.5))
         _p(::tpystd::random::weibullvariate(1.0, 1.5));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("gammavariate_big:")
     std::cout << "gammavariate_big:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.gammavariate(2.0, 1.0))
         _p(::tpystd::random::gammavariate(2.0, 1.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("gammavariate_small:")
     std::cout << "gammavariate_small:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.gammavariate(0.5, 1.0))
         _p(::tpystd::random::gammavariate(0.5, 1.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("betavariate:")
     std::cout << "betavariate:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.betavariate(2.0, 5.0))
         _p(::tpystd::random::betavariate(2.0, 5.0));
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("vonmisesvariate:")
     std::cout << "vonmisesvariate:" << "\n";
-    // for _ in range(3):
     for (int32_t _ = 0; _ < 3; ++_) {
-        // _p(random.vonmisesvariate(0.0, 1.0))
         _p(::tpystd::random::vonmisesvariate(0.0, 1.0));
     }
-    // # gauss() state is cleared on reseed (CPython matches).
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // g1: float = random.gauss(0.0, 1.0)
     double g1 = ::tpystd::random::gauss(0.0, 1.0);
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // g2: float = random.gauss(0.0, 1.0)
     double g2 = ::tpystd::random::gauss(0.0, 1.0);
-    // print("gauss_state_reset:", g1 == g2)
     std::cout << "gauss_state_reset:" << " " << ::tpy::print_bool((g1 == g2)) << "\n";
 }
 
+// # random -- MT19937 engine byte-identity with CPython + Tier 1 surface.
+// # The engine's uint32 stream is the primary correctness check; distribution
+// # functions are verified byte-identical to CPython by printing a scaled
+// # integer representation (float-print in TPy diverges from CPython for
+// # |x| < 0.1 due to a pre-existing format_float precision bug).
+// import random
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # random -- MT19937 engine byte-identity with CPython + Tier 1 surface.
-    // # The engine's uint32 stream is the primary correctness check; distribution
-    // # functions are verified byte-identical to CPython by printing a scaled
-    // # integer representation (float-print in TPy diverges from CPython for
-    // # |x| < 0.1 due to a pre-existing format_float precision bug).
-    // import random
     ::tpystd::random::__tpy_init();
-    // main()
     main();
 }
 

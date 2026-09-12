@@ -5,54 +5,54 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = 0
+//     b: Any = 1
+//     c: Any = ""
+//     d: Any = "x"
+//     e: Any = None
+//     if a:
+//         print("a-true")
+//     else:
+//         print("a-false")
+//     if b:
+//         print("b-true")
+//     if not c:
+//         print("c-false")
+//     if d:
+//         print("d-true")
+//     if not e:
+//         print("e-false")
 void main() {
-    // a: Any = 0
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(0));
-    // b: Any = 1
     ::tpy::Any b = ::tpy::make_any(::tpy::BigInt(1));
-    // c: Any = ""
     ::tpy::Any c = ::tpy::make_any(std::string(""));
-    // d: Any = "x"
     ::tpy::Any d = ::tpy::make_any(std::string("x"));
-    // e: Any = None
     ::tpy::Any e = ::tpy::make_any(std::monostate{});
-    // if a:
     if (::tpy::to_bool(a)) {
-        // print("a-true")
         std::cout << "a-true" << "\n";
-    // else:
     } else {
-        // print("a-false")
         std::cout << "a-false" << "\n";
     }
-    // if b:
     if (::tpy::to_bool(b)) {
-        // print("b-true")
         std::cout << "b-true" << "\n";
     }
-    // if not c:
     if ((!(::tpy::to_bool(c)))) {
-        // print("c-false")
         std::cout << "c-false" << "\n";
     }
-    // if d:
     if (::tpy::to_bool(d)) {
-        // print("d-true")
         std::cout << "d-true" << "\n";
     }
-    // if not e:
     if ((!(::tpy::to_bool(e)))) {
-        // print("e-false")
         std::cout << "e-false" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

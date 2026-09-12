@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def first() -> None:
+//     print("first")
 ::tpystd::tpy::Poll<::std::monostate> __coro_first::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("first")
         std::cout << "first" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,11 +26,11 @@ __coro_first first() {
 }
 
 // async def second() -> None:
+//     print("second")
 ::tpystd::tpy::Poll<::std::monostate> __coro_second::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("second")
         std::cout << "second" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -47,6 +47,11 @@ __coro_second second() {
 }
 
 // async def caller() -> int:
+//     try:
+//         return 5
+//     finally:
+//         await first()
+//         await second()
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -58,7 +63,6 @@ __coro_second second() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // await second()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -87,7 +91,6 @@ __coro_second second() {
     }
     case S_JOIN_1: {
         try {
-            // return 5
             this->__finally_ret_0 = 5;
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -99,7 +102,6 @@ __coro_second second() {
         }
     }
     case S_JOIN_2: {
-        // await first()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -116,23 +118,24 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # Finally body with two sequential `await` calls (v1.5 M3.3).
+// # Each suspension inside the finally body emits its own Yield
+// # terminator and its own resume case; AsyncFinallyExit only fires
+// # at the tail after both have completed.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Finally body with two sequential `await` calls (v1.5 M3.3).
-    // # Each suspension inside the finally body emits its own Yield
-    // # terminator and its own resume case; AsyncFinallyExit only fires
-    // # at the tail after both have completed.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

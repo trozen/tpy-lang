@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def scaled(n: int32) -> Iterator[int32]:
+//     yield n
+//     yield n * 2
+//     yield n * 3
 std::expected<int32_t, ::tpy::StopIteration> __gen_scaled::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield n
         __state = S_RESUME_0;
         return n;
     }
     case S_RESUME_0: {
-        // yield n * 2
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(n, 2));
     }
     case S_RESUME_1: {
-        // yield n * 3
         __state = S_RESUME_2;
         return (::tpy::mul_check<int32_t>(n, 3));
     }
@@ -38,8 +38,9 @@ __gen_scaled scaled(int32_t n) {
 }
 
 // def main() -> None:
+//     for v in scaled(5):
+//         print(v)
 void main() {
-    // for v in scaled(5):
     {
         auto __src_0 = scaled(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -47,18 +48,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

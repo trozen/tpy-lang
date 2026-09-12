@@ -35,14 +35,23 @@ struct SSLRawIO;
 
 extern std::vector<std::string>* _ca_probe_paths;
 inline constexpr std::string_view __name__ = "ssl";
+// # CPython ssl.CERT_* values.
+// CERT_NONE: Final[int32] = 0
 inline constexpr int32_t CERT_NONE = 0;
+// CERT_REQUIRED: Final[int32] = 2
 inline constexpr int32_t CERT_REQUIRED = 2;
 
+// def _resolve_system_ca_file() -> str:
 std::string _resolve_system_ca_file();
+// def _errstr(rc: int32) -> str:
 std::string _errstr(int32_t rc);
+// def _fail(s: Ptr[mbedtls.Session], msg: str) -> None:
 void _fail(::tpy_tls_session* s, std::string_view msg);
+// def _raise_io_error(rc: int32) -> None:
 void _raise_io_error(int32_t rc);
+// def create_default_context() -> Own[SSLContext]:
 SSLContext create_default_context();
+// def _bundled_ca_count() -> int32:
 int32_t _bundled_ca_count();
 
 // class SSLError(OSError):
@@ -130,8 +139,8 @@ struct SSLContext {
     void load_default_certs();
 
     // def wrap_socket(self, sock: Own[socket], server_hostname: str = "",
-    // do_handshake_on_connect: bool = True,
-    // server_side: bool = False) -> Own[SSLSocket]:
+    //                 do_handshake_on_connect: bool = True,
+    //                 server_side: bool = False) -> Own[SSLSocket]:
     SSLSocket wrap_socket(::tpystd::socket::socket&& sock, std::string_view server_hostname = "", bool do_handshake_on_connect = true, bool server_side = false) const;
 
     // def _config_client(self, s: Ptr[mbedtls.Session]) -> None:
@@ -295,6 +304,8 @@ inline std::ostream& operator<<(std::ostream& os, const SSLZeroReturnError& obj)
 
 
 // def __init__(self, s: Ptr[mbedtls.Session], sock: Own[socket]) -> None:
+//     self._s = s
+//     self._sock = sock
 inline _SslSession::_SslSession(::tpy_tls_session* s, ::tpystd::socket::socket&& sock) : _s(s), _sock(std::move(sock)) {}
 
 inline _SslSession::_SslSession(_SslSession&& other) noexcept : _s(std::move(other._s)), _sock(std::move(other._sock)) {
@@ -309,181 +320,210 @@ inline _SslSession& _SslSession::operator=(_SslSession&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     # tls_free tolerates a null pointer; this runs once (single owner).
+//     mbedtls.tls_free(self._s)
 inline _SslSession::~_SslSession() {
     if (!this->__tpy_owned_) return;
-    // # tls_free tolerates a null pointer; this runs once (single owner).
-    // mbedtls.tls_free(self._s)
     ::tpy_tls_free(this->_s);
 }
 
 // def raw(self) -> Ptr[mbedtls.Session]:
+//     return self._s
 inline ::tpy_tls_session* _SslSession::raw() const {
-    // return self._s
     return this->_s;
 }
 
 // def fileno(self) -> int32:
+//     return self._sock.fileno()
 inline int32_t _SslSession::fileno() const {
-    // return self._sock.fileno()
     return this->_sock.fileno();
 }
 
 // def setblocking(self, flag: bool) -> None:
+//     self._sock.setblocking(flag)
 inline void _SslSession::setblocking(bool flag) {
-    // self._sock.setblocking(flag)
     this->_sock.setblocking(flag);
 }
 
 // def __init__(self) -> None:
+//     self.verify_mode = CERT_REQUIRED
+//     self.check_hostname = True
+//     self._cafile = ""
+//     # A bare SSLContext() trusts nothing until told to (like CPython, where
+//     # only create_default_context / load_default_certs load the roots).
+//     self._use_bundled_ca = False
+//     self._system_cafile = ""
+//     # The server-role cert chain is empty until load_cert_chain; the
+//     # client path never consults it.
+//     self._certfile = ""
+//     self._keyfile = ""
 inline SSLContext::SSLContext() {
-    // self.verify_mode = CERT_REQUIRED
     this->verify_mode = CERT_REQUIRED;
-    // self.check_hostname = True
     this->check_hostname = true;
-    // self._cafile = ""
     this->_cafile = "";
-    // # A bare SSLContext() trusts nothing until told to (like CPython, where
-    // # only create_default_context / load_default_certs load the roots).
-    // self._use_bundled_ca = False
     this->_use_bundled_ca = false;
-    // self._system_cafile = ""
     this->_system_cafile = "";
-    // # The server-role cert chain is empty until load_cert_chain; the
-    // # client path never consults it.
-    // self._certfile = ""
     this->_certfile = "";
-    // self._keyfile = ""
     this->_keyfile = "";
 }
 
 // def load_verify_locations(self, cafile: str) -> None:
+//     """Trust the CA certificates in `cafile` (PEM or DER). Additive to the
+//     bundled roots when those are also enabled (matches CPython)."""
+//     self._cafile = cafile
 inline void SSLContext::load_verify_locations(std::string_view cafile) {
-    // self._cafile = cafile
     this->_cafile = cafile;
 }
 
 // def load_cert_chain(self, certfile: str, keyfile: str) -> None:
+//     """Load the server's certificate chain and private key (PEM files),
+//     used when wrapping a socket with `server_side=True`. CPython's
+//     `password=` parameter is not supported (tighter v1 signature)."""
+//     self._certfile = certfile
+//     self._keyfile = keyfile
 inline void SSLContext::load_cert_chain(std::string_view certfile, std::string_view keyfile) {
-    // self._certfile = certfile
     this->_certfile = certfile;
-    // self._keyfile = keyfile
     this->_keyfile = keyfile;
 }
 
 // def load_default_certs(self) -> None:
+//     """Trust the default CA sets: the vendored Mozilla bundle plus the
+//     platform's own bundle when one exists (SSL_CERT_FILE overrides the
+//     probed location, like OpenSSL) -- so a corporate CA installed
+//     system-wide verifies with no flags, matching curl. Additive with
+//     load_verify_locations. CPython's `purpose=` parameter is not
+//     supported (tighter v1 signature)."""
+//     self._use_bundled_ca = True
+//     self._system_cafile = _resolve_system_ca_file()
 inline void SSLContext::load_default_certs() {
-    // self._use_bundled_ca = True
     this->_use_bundled_ca = true;
-    // self._system_cafile = _resolve_system_ca_file()
     this->_system_cafile = _resolve_system_ca_file();
 }
 
 // def _config_server(self, s: Ptr[mbedtls.Session]) -> None:
+//     """Apply the server config (own cert chain + key) to a fresh session.
+//     Frees `s` and raises on failure."""
+//     if len(self._certfile) == 0:
+//         _fail(s, "server_side wrap_socket requires load_cert_chain")
+//     cf = self._certfile
+//     kf = self._keyfile
+//     rc = mbedtls.tls_config_server(
+//         s, unsafe_cast(unsafe_ptr(cf)), uint64(len(cf)),
+//         unsafe_cast(unsafe_ptr(kf)), uint64(len(kf)))
+//     if rc != 0:
+//         _fail(s, _errstr(rc))
 inline void SSLContext::_config_server(::tpy_tls_session* s) const {
-    // if len(self._certfile) == 0:
     if ((::tpy::__len__(this->_certfile) == 0)) {
-        // _fail(s, "server_side wrap_socket requires load_cert_chain")
         _fail(s, "server_side wrap_socket requires load_cert_chain");
     }
-    // cf = self._certfile
     std::string_view cf = this->_certfile;
-    // kf = self._keyfile
     std::string_view kf = this->_keyfile;
-    // rc = mbedtls.tls_config_server(
-    // s, unsafe_cast(unsafe_ptr(cf)), uint64(len(cf)),
-    // unsafe_cast(unsafe_ptr(kf)), uint64(len(kf)))
     int32_t rc = ::tpy_tls_config_server(s, reinterpret_cast<const uint8_t*>(cf.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(cf)), reinterpret_cast<const uint8_t*>(kf.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(kf)));
-    // if rc != 0:
     if ((rc != 0)) {
-        // _fail(s, _errstr(rc))
         _fail(s, _errstr(rc));
     }
 }
 
 // def __init__(self, session: Own[Rc[_SslSession]]) -> None:
+//     self._session = session
+//     self._handshaked = False
+//     self._closed = False
 inline SSLSocket::SSLSocket(::tpystd::tplib::rc::Rc<_SslSession>&& session) : _session(std::move(session)), _handshaked(false), _closed(false) {}
 
 // def do_handshake_blocking(self) -> None:
+//     """Drive the handshake to completion (expects a blocking socket)."""
+//     while not self.do_handshake():
+//         pass
 inline void SSLSocket::do_handshake_blocking() {
-    // while not self.do_handshake():
     while ((!(this->do_handshake()))) {
-        // pass
     }
 }
 
 // def recv(self, bufsize: int32) -> bytes:
+//     """Receive up to `bufsize` decrypted bytes; b"" means the peer sent
+//     a clean close_notify."""
+//     return self._session.get().read_into(bufsize)
 inline ::tpy::Bytes SSLSocket::recv(int32_t bufsize) {
-    // return self._session.get().read_into(bufsize)
     return this->_session.get().read_into(bufsize);
 }
 
 // def send(self, data: bytes) -> int32:
+//     """Encrypt + send some of `data`; returns bytes sent."""
+//     rc = mbedtls.tls_write(self._session.get().raw(), unsafe_ptr(data),
+//                            uint64(len(data)))
+//     if rc < int32(0):
+//         _raise_io_error(rc)
+//     return rc
 inline int32_t SSLSocket::send(::tpy::BytesView data) {
-    // rc = mbedtls.tls_write(self._session.get().raw(), unsafe_ptr(data),
-    // uint64(len(data)))
     int32_t rc = ::tpy_tls_write(this->_session.get().raw(), data.data(), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)));
-    // if rc < int32(0):
     if ((rc < 0)) {
-        // _raise_io_error(rc)
         _raise_io_error(rc);
     }
-    // return rc
     return rc;
 }
 
 // def makefile(self) -> Own[BufferedReader]:
+//     """A buffered binary reader over this TLS session (CPython's
+//     `socket.makefile("rb")`). Shares the session via `Rc`, so the reader
+//     keeps the connection alive independently of this `SSLSocket`."""
+//     return BufferedReader(SSLRawIO(self._session.clone()))
 inline ::tpystd::io::BufferedReader SSLSocket::makefile() {
-    // return BufferedReader(SSLRawIO(self._session.clone()))
     return ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(SSLRawIO(this->_session.clone())));
 }
 
 // def version(self) -> str:
+//     """The negotiated protocol, e.g. "TLSv1.3"."""
+//     return unsafe_str_from_cstr(unsafe_cast(
+//         mbedtls.tls_version(self._session.get().raw())))
 inline std::string SSLSocket::version() {
-    // return unsafe_str_from_cstr(unsafe_cast(
-    // mbedtls.tls_version(self._session.get().raw())))
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(::tpy_tls_version(this->_session.get().raw()))));
 }
 
 // def fileno(self) -> int32:
+//     return self._session.get().fileno()
 inline int32_t SSLSocket::fileno() {
-    // return self._session.get().fileno()
     return this->_session.get().fileno();
 }
 
 // def setblocking(self, flag: bool) -> None:
+//     self._session.get().setblocking(flag)
 inline void SSLSocket::setblocking(bool flag) {
-    // self._session.get().setblocking(flag)
     this->_session.get().setblocking(flag);
 }
 
 // def close(self) -> None:
+//     """Send close_notify (best-effort). The underlying fd is closed when
+//     the last shared holder of the session drops -- so a still-open
+//     `makefile()` reader keeps the connection alive, matching CPython's
+//     refcounted `socket.makefile`. Idempotent: close_notify is sent once."""
+//     if self._closed:
+//         return
+//     self._closed = True
+//     mbedtls.tls_close_notify(self._session.get().raw())
 inline void SSLSocket::close() {
-    // if self._closed:
     if (this->_closed) {
-        // return
         return;
     }
-    // self._closed = True
     this->_closed = true;
-    // mbedtls.tls_close_notify(self._session.get().raw())
     ::tpy_tls_close_notify(this->_session.get().raw());
 }
 
 // def __init__(self, session: Own[Rc[_SslSession]]) -> None:
+//     self._session = session
 inline SSLRawIO::SSLRawIO(::tpystd::tplib::rc::Rc<_SslSession>&& session) : _session(std::move(session)) {}
 
 // def read(self, size: int32 = -1) -> bytes:
+//     n = size if size > int32(0) else 8192
+//     return self._session.get().read_into(n)
 inline ::tpy::Bytes SSLRawIO::read(int32_t size) {
-    // n = size if size > int32(0) else 8192
     int32_t n = (((size > 0)) ? (size) : (8192));
-    // return self._session.get().read_into(n)
     return this->_session.get().read_into(n);
 }
 
 // def close(self) -> None:
+//     # The session/fd close when the last Rc holder drops; nothing here.
+//     pass
 inline void SSLRawIO::close() const {
-    // # The session/fd close when the last Rc holder drops; nothing here.
-    // pass
 }
 void __tpy_init();
 } // namespace tpystd::ssl

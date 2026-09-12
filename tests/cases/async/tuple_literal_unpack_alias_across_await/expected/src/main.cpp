@@ -5,15 +5,18 @@ namespace tpyapp::main {
 
 
 // async def work(items: list[Counter]) -> None:
+//     a, b = (items[0], items[1])
+//     await asyncio.sleep(0.01)
+//     a.n += 10
+//     print(items[0].n)
+//     print(b.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_work::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = (items[0], items[1])
         __unpack_0_0 = &(::tpy::__getitem__(items, 0));
         __unpack_0_1 = &(::tpy::__getitem__(items, 1));
         a = __unpack_0_0;
         b = __unpack_0_1;
-        // await asyncio.sleep(0.01)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
         __state = S_RESUME_0;
         continue;
@@ -23,11 +26,8 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // a.n += 10
         a->n = ::tpy::add_check<int32_t>(a->n, 10);
-        // print(items[0].n)
         std::cout << ::tpy::__getitem__(items, 0).n << "\n";
-        // print(b.n)
         std::cout << b->n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -44,12 +44,12 @@ __coro_work work(std::vector<Counter>& items) {
 }
 
 // async def amain() -> None:
+//     items = [Counter(1), Counter(2)]
+//     await work(items)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items = [Counter(1), Counter(2)]
         items.emplace(std::vector<Counter>{Counter(1), Counter(2)});
-        // await work(items)
         __sub_0.emplace((*items));
         __state = S_RESUME_0;
         continue;
@@ -73,18 +73,19 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # A tuple-literal unpack of reference elements in an async body, with the
+// # aliases held across an await, must still alias (observe the mutation),
+// # not copy -- the desugared single-assigns survive the suspension as frame
+// # pointer slots.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A tuple-literal unpack of reference elements in an async body, with the
-    // # aliases held across an await, must still alias (observe the mutation),
-    // # not copy -- the desugared single-assigns survive the suspension as frame
-    // # pointer slots.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

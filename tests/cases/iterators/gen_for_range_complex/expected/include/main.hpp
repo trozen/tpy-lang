@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_squares_plus;
 
+// def squares_plus(n: int32) -> Iterator[int32]:
 __gen_squares_plus squares_plus(int32_t n);
+// def main():
 void main();
 
-// Generator: squares_plus
+// def squares_plus(n: int32) -> Iterator[int32]:
 struct __gen_squares_plus : public ::tpy::next_iter_mixin<__gen_squares_plus, int32_t> {
     int32_t __state;
     int32_t n;

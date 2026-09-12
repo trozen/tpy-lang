@@ -5,60 +5,67 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p1: float = time.perf_counter()
+//     p2: float = time.perf_counter()
+//     print("perf_monotonic:", p2 >= p1)
+//
+//     m1: float = time.monotonic()
+//     m2: float = time.monotonic()
+//     print("monotonic_monotonic:", m2 >= m1)
+//
+//     pn1: int64 = time.perf_counter_ns()
+//     pn2: int64 = time.perf_counter_ns()
+//     print("perf_ns_monotonic:", pn2 >= pn1)
+//
+//     mn1: int64 = time.monotonic_ns()
+//     mn2: int64 = time.monotonic_ns()
+//     print("monotonic_ns_monotonic:", mn2 >= mn1)
+//
+//     # 1704067200 = 2024-01-01 UTC seconds; ns is *1e9.
+//     tn: int64 = time.time_ns()
+//     print("time_ns_after_2024:", tn > int64(1704067200000000000))
+//
+//     t: float = time.time()
+//     print("time_after_2024:", t > 1704067200.0)
+//
+//     cpu: float = time.process_time()
+//     print("process_time_nonneg:", cpu >= 0.0)
+//     cpu2: float = time.process_time()
+//     print("process_time_monotonic:", cpu2 >= cpu)
 void main() {
-    // p1: float = time.perf_counter()
     double p1 = ::tpy::stdlib::time::perf_counter();
-    // p2: float = time.perf_counter()
     double p2 = ::tpy::stdlib::time::perf_counter();
-    // print("perf_monotonic:", p2 >= p1)
     std::cout << "perf_monotonic:" << " " << ::tpy::print_bool((p2 >= p1)) << "\n";
-    // m1: float = time.monotonic()
     double m1 = ::tpy::stdlib::time::monotonic();
-    // m2: float = time.monotonic()
     double m2 = ::tpy::stdlib::time::monotonic();
-    // print("monotonic_monotonic:", m2 >= m1)
     std::cout << "monotonic_monotonic:" << " " << ::tpy::print_bool((m2 >= m1)) << "\n";
-    // pn1: int64 = time.perf_counter_ns()
     int64_t pn1 = ::tpy::stdlib::time::perf_counter_ns();
-    // pn2: int64 = time.perf_counter_ns()
     int64_t pn2 = ::tpy::stdlib::time::perf_counter_ns();
-    // print("perf_ns_monotonic:", pn2 >= pn1)
     std::cout << "perf_ns_monotonic:" << " " << ::tpy::print_bool((pn2 >= pn1)) << "\n";
-    // mn1: int64 = time.monotonic_ns()
     int64_t mn1 = ::tpy::stdlib::time::monotonic_ns();
-    // mn2: int64 = time.monotonic_ns()
     int64_t mn2 = ::tpy::stdlib::time::monotonic_ns();
-    // print("monotonic_ns_monotonic:", mn2 >= mn1)
     std::cout << "monotonic_ns_monotonic:" << " " << ::tpy::print_bool((mn2 >= mn1)) << "\n";
-    // # 1704067200 = 2024-01-01 UTC seconds; ns is *1e9.
-    // tn: int64 = time.time_ns()
     int64_t tn = ::tpy::stdlib::time::time_ns();
-    // print("time_ns_after_2024:", tn > int64(1704067200000000000))
     std::cout << "time_ns_after_2024:" << " " << ::tpy::print_bool((tn > static_cast<int64_t>(1704067200000000000))) << "\n";
-    // t: float = time.time()
     double t = ::tpy::time_time();
-    // print("time_after_2024:", t > 1704067200.0)
     std::cout << "time_after_2024:" << " " << ::tpy::print_bool((t > 1704067200.0)) << "\n";
-    // cpu: float = time.process_time()
     double cpu = ::tpy::stdlib::time::process_time();
-    // print("process_time_nonneg:", cpu >= 0.0)
     std::cout << "process_time_nonneg:" << " " << ::tpy::print_bool((cpu >= 0.0)) << "\n";
-    // cpu2: float = time.process_time()
     double cpu2 = ::tpy::stdlib::time::process_time();
-    // print("process_time_monotonic:", cpu2 >= cpu)
     std::cout << "process_time_monotonic:" << " " << ::tpy::print_bool((cpu2 >= cpu)) << "\n";
 }
 
+// # time module: perf_counter / monotonic / time_ns / process_time.
+// # Absolute timing values vary, so the test asserts invariants
+// # (monotonicity, post-2024 epoch sanity) rather than fixed outputs.
+// import time
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # time module: perf_counter / monotonic / time_ns / process_time.
-    // # Absolute timing values vary, so the test asserts invariants
-    // # (monotonicity, post-2024 epoch sanity) rather than fixed outputs.
-    // import time
-    // main()
     main();
 }
 

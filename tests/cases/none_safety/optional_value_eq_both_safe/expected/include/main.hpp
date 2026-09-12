@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def eq_both(a: int32 | None, b: int32 | None) -> bool:
 bool eq_both(std::optional<int32_t> a, std::optional<int32_t> b);
 
 void __tpy_init();

@@ -20,8 +20,11 @@ struct Neg;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe_expr(e: Expr) -> str:
 std::string describe_expr(const Expr& e);
+// def show_value(v: Value) -> str:
 std::string show_value(const Value& v);
+// def main() -> None:
 void main();
 
 // class Lit:
@@ -84,12 +87,16 @@ inline std::ostream& operator<<(std::ostream& os, const Neg& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 
 // def __init__(self, left: Own[Box[Expr]], right: Own[Box[Expr]]) -> None:
+//     self.left = left
+//     self.right = right
 inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), right(std::move(right)) {}
 
 // def __init__(self, inner: Own[Box[Value]]) -> None:
+//     self.inner = inner
 inline Neg::Neg(::tpystd::tplib::box::Box<Value>&& inner) : inner(std::move(inner)) {}
 struct Expr {
     using variant_type = ::tpy::Union<BinOp, Lit>;

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def twice(x: int32) -> int32:
+//     return x * 2
 int32_t twice(int32_t x) {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main():
+//     p = Pair(5)
+//     print(p.a)
+//     print(p.b)
 void main() {
-    // p = Pair(5)
     Pair p = Pair(5);
-    // print(p.a)
     std::cout << p.a << "\n";
-    // print(p.b)
     std::cout << p.b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

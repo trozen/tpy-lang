@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(mode: Literal["r", "w", "rb", "wb"]) -> None:
 void classify(std::string_view mode);
+// def with_wildcard(mode: Literal["a", "b", "c"]) -> None:
 void with_wildcard(std::string_view mode);
+// def main() -> None:
 void main();
 
 void __tpy_init();

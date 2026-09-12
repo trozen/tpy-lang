@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(x: Cat | Dog) -> int:
 ::tpy::BigInt show(::tpy::Union<const Cat*, const Dog*> x);
+// def main() -> None:
 void main();
 
 // # isinstance narrowing where the remaining member is reached via implicit
@@ -51,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, a: int):
+//     self.a = a
 inline Cat::Cat(const ::tpy::BigInt& a) : a(a) {}
 
 // def __init__(self, b: int):
+//     self.b = b
 inline Dog::Dog(const ::tpy::BigInt& b) : b(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

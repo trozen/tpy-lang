@@ -5,22 +5,32 @@ namespace tpyapp::main {
 
 
 // def build(root: str) -> None:
+//     os.mkdir(root)
+//     os.mkdir(root + "/sub1")
+//     os.mkdir(root + "/sub1/deep")
+//     os.mkdir(root + "/sub2")
+//     os.mkdir(root + "/skip")
+//     with open(root + "/top.txt", "w") as f:
+//         f.write("t")
+//     with open(root + "/sub1/a.txt", "w") as f:
+//         f.write("a")
+//     with open(root + "/sub1/deep/b.txt", "w") as f:
+//         f.write("b")
+//     with open(root + "/skip/junk.txt", "w") as f:
+//         f.write("j")
+//     os.symlink(root + "/sub1", root + "/lnk")
+//     # a broken symlink -- is_dir() raises; walk must treat it as a non-dir
+//     # (it lands in filenames), not crash.
+//     os.symlink(root + "/does_not_exist", root + "/dangling")
 void build(std::string_view root) {
-    // os.mkdir(root)
     ::tpystd::os::mkdir(root);
-    // os.mkdir(root + "/sub1")
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/sub1")));
-    // os.mkdir(root + "/sub1/deep")
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/sub1/deep")));
-    // os.mkdir(root + "/sub2")
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/sub2")));
-    // os.mkdir(root + "/skip")
     ::tpystd::os::mkdir((::tpy::str_concat(root, "/skip")));
-    // with open(root + "/top.txt", "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/top.txt")), "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // f.write("t")
         f->write("t");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -32,11 +42,9 @@ void build(std::string_view root) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(root + "/sub1/a.txt", "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/sub1/a.txt")), "w");
     f = &(__ctx_2.__enter__());
     try {
-        // f.write("a")
         f->write("a");
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -48,11 +56,9 @@ void build(std::string_view root) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // with open(root + "/sub1/deep/b.txt", "w") as f:
     auto __ctx_3 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/sub1/deep/b.txt")), "w");
     f = &(__ctx_3.__enter__());
     try {
-        // f.write("b")
         f->write("b");
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -64,11 +70,9 @@ void build(std::string_view root) {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // with open(root + "/skip/junk.txt", "w") as f:
     auto __ctx_4 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/skip/junk.txt")), "w");
     f = &(__ctx_4.__enter__());
     try {
-        // f.write("j")
         f->write("j");
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -80,45 +84,54 @@ void build(std::string_view root) {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    // os.symlink(root + "/sub1", root + "/lnk")
     ::tpy::stdlib::os::symlink((::tpy::str_concat(root, "/sub1")), (::tpy::str_concat(root, "/lnk")));
-    // # a broken symlink -- is_dir() raises; walk must treat it as a non-dir
-    // # (it lands in filenames), not crash.
-    // os.symlink(root + "/does_not_exist", root + "/dangling")
     ::tpy::stdlib::os::symlink((::tpy::str_concat(root, "/does_not_exist")), (::tpy::str_concat(root, "/dangling")));
 }
 
 // def teardown(root: str) -> None:
+//     os.remove(root + "/dangling")
+//     os.remove(root + "/lnk")
+//     os.remove(root + "/skip/junk.txt")
+//     os.remove(root + "/sub1/deep/b.txt")
+//     os.remove(root + "/sub1/a.txt")
+//     os.remove(root + "/top.txt")
+//     os.rmdir(root + "/skip")
+//     os.rmdir(root + "/sub2")
+//     os.rmdir(root + "/sub1/deep")
+//     os.rmdir(root + "/sub1")
+//     os.rmdir(root)
 void teardown(std::string_view root) {
-    // os.remove(root + "/dangling")
     ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/dangling")));
-    // os.remove(root + "/lnk")
     ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/lnk")));
-    // os.remove(root + "/skip/junk.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/skip/junk.txt")));
-    // os.remove(root + "/sub1/deep/b.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/sub1/deep/b.txt")));
-    // os.remove(root + "/sub1/a.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/sub1/a.txt")));
-    // os.remove(root + "/top.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/top.txt")));
-    // os.rmdir(root + "/skip")
     ::tpy::stdlib::os::rmdir((::tpy::str_concat(root, "/skip")));
-    // os.rmdir(root + "/sub2")
     ::tpy::stdlib::os::rmdir((::tpy::str_concat(root, "/sub2")));
-    // os.rmdir(root + "/sub1/deep")
     ::tpy::stdlib::os::rmdir((::tpy::str_concat(root, "/sub1/deep")));
-    // os.rmdir(root + "/sub1")
     ::tpy::stdlib::os::rmdir((::tpy::str_concat(root, "/sub1")));
-    // os.rmdir(root)
     ::tpy::stdlib::os::rmdir(root);
 }
 
 // def walk_sorted(root: str) -> None:
+//     rows: list[str] = []
+//     for dirpath, dirnames, filenames in os.walk(root):
+//         kept: list[str] = []
+//         for d in dirnames:
+//             if d != "skip":
+//                 kept.append(d)
+//         dirnames[:] = kept
+//         files = sorted(filenames)
+//         rel = dirpath[len(root):]
+//         if len(rel) == 0:
+//             rel = "."
+//         rows.append(rel + " files=" + ",".join(files))
+//     rows.sort()
+//     for r in rows:
+//         print(r)
 void walk_sorted(std::string_view root) {
-    // rows: list[str] = []
     std::vector<std::string> rows = std::vector<std::string>{};
-    // for dirpath, dirnames, filenames in os.walk(root):
     {
         auto __src_0 = ::tpystd::os::walk(root);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -126,58 +139,46 @@ void walk_sorted(std::string_view root) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for dirpath, dirnames, filenames in os.walk(root):
         auto& __tup_1 = __for_tup_0;
         std::string_view dirpath = std::get<0>(__tup_1);
         auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        // kept: list[str] = []
         std::vector<std::string> kept = std::vector<std::string>{};
-        // for d in dirnames:
         auto& __obj_2 = dirnames;
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             std::string_view d = *__beg_2;
-            // if d != "skip":
             if ((d != "skip")) {
-                // kept.append(d)
                 kept.push_back(std::string(d));
             }
         }
-        // dirnames[:] = kept
         ::tpy::list_set_slice(dirnames, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(kept));
-        // files = sorted(filenames)
         std::vector<std::string> files = ::tpy::builtin_sorted<std::string>(filenames);
-        // rel = dirpath[len(root):]
         std::string_view rel = ::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt});
-        // if len(rel) == 0:
         if ((::tpy::__len__(rel) == 0)) {
-            // rel = "."
             rel = ".";
         }
-        // rows.append(rel + " files=" + ",".join(files))
         rows.push_back((::tpy::str_concat((::tpy::str_concat(rel, " files=")), ::tpy::str_join(",", files))));
         }
     }
-    // rows.sort()
     ::tpy::sort_in_place(rows);
-    // for r in rows:
     auto& __obj_3 = rows;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         std::string_view r = *__beg_3;
-        // print(r)
         std::cout << r << "\n";
     }
 }
 
 // def count_dirs(root: str, follow: bool) -> int32:
+//     n = 0
+//     for dp, dn, fn in os.walk(root, followlinks=follow):
+//         n += 1
+//     return n
 int32_t count_dirs(std::string_view root, bool follow) {
-    // n = 0
     int32_t n = 0;
-    // for dp, dn, fn in os.walk(root, followlinks=follow):
     {
         auto __src_0 = ::tpystd::os::walk(root, true, std::nullopt, follow);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -185,25 +186,26 @@ int32_t count_dirs(std::string_view root, bool follow) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
-        // for dp, dn, fn in os.walk(root, followlinks=follow):
         auto& __tup_1 = __for_tup_1;
         std::string_view dp = std::get<0>(__tup_1);
         auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    // return n
     return n;
 }
 
 // def prune_all(root: str) -> int32:
+//     # dirnames[:] = [] stops all descent -- only the root tuple is yielded.
+//     n = 0
+//     for dp, dn, fn in os.walk(root):
+//         empty: list[str] = []
+//         dn[:] = empty
+//         n += 1
+//     return n
 int32_t prune_all(std::string_view root) {
-    // # dirnames[:] = [] stops all descent -- only the root tuple is yielded.
-    // n = 0
     int32_t n = 0;
-    // for dp, dn, fn in os.walk(root):
     {
         auto __src_0 = ::tpystd::os::walk(root);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -211,20 +213,15 @@ int32_t prune_all(std::string_view root) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
-        // for dp, dn, fn in os.walk(root):
         auto& __tup_1 = __for_tup_2;
         std::string_view dp = std::get<0>(__tup_1);
         auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        // empty: list[str] = []
         std::vector<std::string> empty = std::vector<std::string>{};
-        // dn[:] = empty
         ::tpy::list_set_slice(dn, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(empty));
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    // return n
     return n;
 }
 
@@ -233,10 +230,26 @@ int32_t prune_all(std::string_view root) {
 // # within a level is scandir-arbitrary, so assert only the structural invariant:
 // # every dir is visited after its parent (parent index < child index).
 // def order_ok(root: str) -> bool:
+//     seen: list[str] = []
+//     for dp, dn, fn in os.walk(root):
+//         seen.append(dp)
+//     i = 0
+//     while i < len(seen):
+//         cur = seen[i]
+//         parent = os.path.dirname(cur)
+//         if cur != root:
+//             j = 0
+//             found = False
+//             while j < i:
+//                 if seen[j] == parent:
+//                     found = True
+//                 j += 1
+//             if not found:
+//                 return False
+//         i += 1
+//     return True
 bool order_ok(std::string_view root) {
-    // seen: list[str] = []
     std::vector<std::string> seen = std::vector<std::string>{};
-    // for dp, dn, fn in os.walk(root):
     {
         auto __src_0 = ::tpystd::os::walk(root);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -244,77 +257,72 @@ bool order_ok(std::string_view root) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_1);
-        // for dp, dn, fn in os.walk(root):
         auto& __tup_1 = __for_tup_3;
         std::string_view dp = std::get<0>(__tup_1);
         auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        // seen.append(dp)
         seen.push_back(std::string(dp));
         }
     }
-    // i = 0
     int32_t i = 0;
-    // while i < len(seen):
     while ((i < ::tpy::__len__(seen))) {
-        // cur = seen[i]
         std::string_view cur = seen[static_cast<std::size_t>(i)];
-        // parent = os.path.dirname(cur)
         std::string parent = ::tpystd::os::path::dirname(cur);
-        // if cur != root:
         if ((cur != root)) {
-            // j = 0
             int32_t j = 0;
-            // found = False
             bool found = false;
-            // while j < i:
             while ((j < i)) {
-                // if seen[j] == parent:
                 if ((::tpy::__getitem__(seen, j) == parent)) {
-                    // found = True
                     found = true;
                 }
-                // j += 1
                 j = ::tpy::add_check<int32_t>(j, 1);
             }
-            // if not found:
             if ((!(found))) {
-                // return False
                 return false;
             }
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return True
     return true;
 }
 
 // def main() -> None:
+//     tmp = os.getcwd()
+//     root = tmp + "/tpy_oswalk_case"
+//     if os.path.exists(root):
+//         teardown(root)
+//     build(root)
+//     walk_sorted(root)
+//     # followlinks: the lnk -> sub1 symlink is descended only when followlinks
+//     # (so the count is higher); no prune here.
+//     print("nofollow dirs:", count_dirs(root, False))
+//     print("follow dirs:", count_dirs(root, True))
+//     # missing root -> default onerror=None skips, yields nothing
+//     n = 0
+//     for dp, dn, fn in os.walk(tmp + "/tpy_oswalk_missing"):
+//         n += 1
+//     print("missing yields:", n)
+//     # prune-to-empty stops all descent (only root yielded)
+//     print("prune-all yields:", prune_all(root))
+//     # walking a file (not a dir): scandir raises -> skipped, yields nothing
+//     nf = 0
+//     for dp, dn, fn in os.walk(root + "/top.txt"):
+//         nf += 1
+//     print("file-as-top yields:", nf)
+//     # parent-before-child order holds (unsorted, not masked by walk_sorted)
+//     print("order ok:", order_ok(root))
+//     teardown(root)
 void main() {
-    // tmp = os.getcwd()
     std::string tmp = ::tpy::stdlib::os::getcwd();
-    // root = tmp + "/tpy_oswalk_case"
     ::tpy::String root = (::tpy::str_concat(tmp, "/tpy_oswalk_case"));
-    // if os.path.exists(root):
     if (::tpy::stdlib::os::path_exists(root)) {
-        // teardown(root)
         teardown(root);
     }
-    // build(root)
     build(root);
-    // walk_sorted(root)
     walk_sorted(root);
-    // # followlinks: the lnk -> sub1 symlink is descended only when followlinks
-    // # (so the count is higher); no prune here.
-    // print("nofollow dirs:", count_dirs(root, False))
     std::cout << "nofollow dirs:" << " " << count_dirs(root, false) << "\n";
-    // print("follow dirs:", count_dirs(root, True))
     std::cout << "follow dirs:" << " " << count_dirs(root, true) << "\n";
-    // # missing root -> default onerror=None skips, yields nothing
-    // n = 0
     int32_t n = 0;
-    // for dp, dn, fn in os.walk(tmp + "/tpy_oswalk_missing"):
     {
         auto __src_0 = ::tpystd::os::walk((::tpy::str_concat(tmp, "/tpy_oswalk_missing")));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -322,24 +330,16 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_1);
-        // for dp, dn, fn in os.walk(tmp + "/tpy_oswalk_missing"):
         auto& __tup_1 = __for_tup_4;
         std::string_view dp = std::get<0>(__tup_1);
         auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
-    // print("missing yields:", n)
     std::cout << "missing yields:" << " " << n << "\n";
-    // # prune-to-empty stops all descent (only root yielded)
-    // print("prune-all yields:", prune_all(root))
     std::cout << "prune-all yields:" << " " << prune_all(root) << "\n";
-    // # walking a file (not a dir): scandir raises -> skipped, yields nothing
-    // nf = 0
     int32_t nf = 0;
-    // for dp, dn, fn in os.walk(root + "/top.txt"):
     {
         auto __src_2 = ::tpystd::os::walk((::tpy::str_concat(root, "/top.txt")));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -347,32 +347,27 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_5 = ::tpy::unwrap_ref(*__r_3);
-        // for dp, dn, fn in os.walk(root + "/top.txt"):
         auto& __tup_2 = __for_tup_5;
         std::string_view dp = std::get<0>(__tup_2);
         auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
         auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_2)));
-        // nf += 1
         nf = ::tpy::add_check<int32_t>(nf, 1);
         }
     }
-    // print("file-as-top yields:", nf)
     std::cout << "file-as-top yields:" << " " << nf << "\n";
-    // # parent-before-child order holds (unsorted, not masked by walk_sorted)
-    // print("order ok:", order_ok(root))
     std::cout << "order ok:" << " " << ::tpy::print_bool(order_ok(root)) << "\n";
-    // teardown(root)
     teardown(root);
 }
 
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

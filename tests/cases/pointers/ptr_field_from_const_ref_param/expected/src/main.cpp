@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = A(42)
+//     m = Mut(a)
+//     print(m._a.v)
+//     b = A(99)
+//     m.set_a(b)
+//     print(m._a.v)
+//     c = Const(a)
+//     print(c._a.v)
 void main() {
-    // a = A(42)
     A a = A(42);
-    // m = Mut(a)
     Mut m = Mut(a);
-    // print(m._a.v)
     std::cout << ::tpy::deref_check(m._a).v << "\n";
-    // b = A(99)
     A b = A(99);
-    // m.set_a(b)
     m.set_a(b);
-    // print(m._a.v)
     std::cout << ::tpy::deref_check(m._a).v << "\n";
-    // c = Const(a)
     Const c = Const(a);
-    // print(c._a.v)
     std::cout << ::tpy::deref_check(c._a).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

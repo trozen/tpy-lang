@@ -11,7 +11,9 @@ struct AppError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def validate(x: int32) -> None:
 void validate(int32_t x);
+// def main() -> None:
 void main();
 
 // class AppError(Exception):
@@ -38,6 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 
 
 // def __init__(self, code: int32, detail: str) -> None:
+//     self.code = code
+//     self.detail = detail
 inline AppError::AppError(int32_t code, std::string_view detail) : code(code), detail(detail) {}
 void __tpy_init();
 } // namespace tpyapp::main

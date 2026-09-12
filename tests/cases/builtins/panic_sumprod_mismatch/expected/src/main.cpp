@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     math.sumprod([1.0, 2.0, 3.0], [4.0, 5.0])
 void main() {
-    // math.sumprod([1.0, 2.0, 3.0], [4.0, 5.0])
     auto __tmp_1 = std::array<double, 3>{1.0, 2.0, 3.0};
     auto __tmp_2 = std::array<double, 2>{4.0, 5.0};
     ::tpystd::math::sumprod(__tmp_1, __tmp_2);
 }
 
+// # sumprod raises ValueError on length mismatch.
+// # Iterator-based impl (in lib/tpy/math.py) drives two iterators and raises
+// # when one exhausts before the other.
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # sumprod raises ValueError on length mismatch.
-    // # Iterator-based impl (in lib/tpy/math.py) drives two iterators and raises
-    // # when one exhausts before the other.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

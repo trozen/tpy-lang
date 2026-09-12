@@ -5,49 +5,50 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n = 42                      # tpyc: is_send(yes) is_sync(yes)
+//     f = 1.5                     # tpyc: is_send(yes) is_sync(yes)
+//     ok = True                   # tpyc: is_send(yes) is_sync(yes)
+//     s = "hello"                 # tpyc: is_send(no) is_sync(yes)
+//     # Same literal, two types, opposite Sync: an explicit list is mutable
+//     # (Sync no); an unmutated literal deduces to the value-type Array (Sync
+//     # yes). Mutating `ar` would deduce list and flip it to is_sync(no).
+//     xs: list[int32] = [1, 2, 3]  # tpyc: type(list[int32]) is_send(yes) is_sync(no)
+//     ar = [1, 2, 3]              # tpyc: type(Array[int32, 3]) is_send(yes) is_sync(yes)
+//     st = {1, 2}                 # tpyc: is_send(yes) is_sync(no)
+//     d = {1: 2}                  # tpyc: is_send(yes) is_sync(no)
+//     t = (1, 2.5)                # tpyc: is_send(yes) is_sync(yes)
+//     bv = b"abc"                 # tpyc: is_send(no) is_sync(yes)
+//     ba = bytearray(b"abc")      # tpyc: is_send(yes) is_sync(no)
+//     rc = Rc.new(7)              # tpyc: is_send(no) is_sync(no)
+//     print(n, f, ok, s)
+//     print(len(xs), len(ar), len(st), len(d), t[0], len(bv), len(ba), rc.get())
 void main() {
-    // n = 42                      # tpyc: is_send(yes) is_sync(yes)
     int32_t n = 42;
-    // f = 1.5                     # tpyc: is_send(yes) is_sync(yes)
     double f = 1.5;
-    // ok = True                   # tpyc: is_send(yes) is_sync(yes)
     bool ok = true;
-    // s = "hello"                 # tpyc: is_send(no) is_sync(yes)
     std::string_view s = "hello";
-    // # Same literal, two types, opposite Sync: an explicit list is mutable
-    // # (Sync no); an unmutated literal deduces to the value-type Array (Sync
-    // # yes). Mutating `ar` would deduce list and flip it to is_sync(no).
-    // xs: list[int32] = [1, 2, 3]  # tpyc: type(list[int32]) is_send(yes) is_sync(no)
     std::vector<int32_t> xs = {1, 2, 3};
-    // ar = [1, 2, 3]              # tpyc: type(Array[int32, 3]) is_send(yes) is_sync(yes)
     std::array<int32_t, 3> ar = {1, 2, 3};
-    // st = {1, 2}                 # tpyc: is_send(yes) is_sync(no)
     ::tpy::ordered_set<int32_t> st = ::tpy::ordered_set<int32_t>({1, 2});
-    // d = {1: 2}                  # tpyc: is_send(yes) is_sync(no)
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 2}});
-    // t = (1, 2.5)                # tpyc: is_send(yes) is_sync(yes)
     std::tuple<int32_t, double> t = std::tuple<int32_t, double>{1, 2.5};
-    // bv = b"abc"                 # tpyc: is_send(no) is_sync(yes)
     ::tpy::BytesView bv = ::tpy::bytes_literal("abc", 3);
-    // ba = bytearray(b"abc")      # tpyc: is_send(yes) is_sync(no)
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    // rc = Rc.new(7)              # tpyc: is_send(no) is_sync(no)
     ::tpystd::tplib::rc::Rc<int32_t> rc = Rc<int32_t>::new_<int32_t>(7);
-    // print(n, f, ok, s)
     std::cout << n << " " << ::tpy::print_float(f) << " " << ::tpy::print_bool(ok) << " " << s << "\n";
-    // print(len(xs), len(ar), len(st), len(d), t[0], len(bv), len(ba), rc.get())
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ar) << " " << ::tpy::__len__(st) << " " << ::tpy::__len__(d) << " " << std::get<0>(t) << " " << ::tpy::__len__(bv) << " " << ::tpy::__len__(ba) << " " << rc.get() << "\n";
 }
 
+// from tplib.rc import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

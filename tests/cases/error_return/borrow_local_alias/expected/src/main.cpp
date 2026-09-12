@@ -6,81 +6,86 @@ namespace tpyapp::main {
 
 // @error_return(E)
 // def propagate(h: H) -> int32:
+//     v = h.view()
+//     v.append(8)
+//     return len(h.items)
 std::expected<int32_t, E> propagate(H& h) {
-    // v = h.view()
     std::vector<int32_t>* v;
     {
         auto __try_tmp_1 = h.view();
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         v = &(::tpy::unwrap_ref(*__try_tmp_1));
     }
-    // v.append(8)
     v->push_back(8);
-    // return len(h.items)
     return ::tpy::__len__(h.items);
 }
 
 // def main() -> None:
+//     h = H()
+//     try:
+//         v = h.view()
+//         v.append(9)
+//         print(h.items)
+//     except E:
+//         print("error")
+//
+//     try:
+//         print(propagate(h))
+//     except E:
+//         print("error")
+//
+//     try:
+//         r = h.rview()
+//         print(len(r))
+//     except E:
+//         print("error")
 void main() {
-    // h = H()
     H h = H();
-    // try:
     std::vector<int32_t>* v;
     {
-        // v = h.view()
         {
             auto __try_tmp_3 = h.view();
             if (!__try_tmp_3.has_value()) goto __except_2;
             v = &(::tpy::unwrap_ref(*__try_tmp_3));
         }
-        // v.append(9)
         v->push_back(9);
-        // print(h.items)
         std::cout << ::tpy::ListPrinter(h.items) << "\n";
         goto __after_try_2;
         // except E:
         __except_2:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_2:;
     }
-    // try:
     {
-        // print(propagate(h))
         std::cout << ({ auto __er_5 = propagate(h); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n";
         goto __after_try_4;
         // except E:
         __except_4:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_4:;
     }
-    // try:
     const std::vector<int32_t>* r;
     {
-        // r = h.rview()
         {
             auto __try_tmp_7 = h.rview();
             if (!__try_tmp_7.has_value()) goto __except_6;
             r = &(::tpy::unwrap_ref(*__try_tmp_7));
         }
-        // print(len(r))
         std::cout << ::tpy::__len__((*r)) << "\n";
         goto __after_try_6;
         // except E:
         __except_6:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_6:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

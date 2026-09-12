@@ -18,6 +18,7 @@ template<Counted T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -53,6 +54,7 @@ struct Holder {
     T item;
 
     // def __init__(self, item: Send[Own[T]]) -> None:
+    //     self.item = item   # tpyc: ok -- Send[Own[T]] param moved into the field
     Holder() = default;
     explicit Holder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
     // non-copyable (@nocopy)
@@ -62,8 +64,8 @@ struct Holder {
     Holder& operator=(Holder&&) = default;
 
     // def value(self) -> int32:
+    //     return self.item.value()
     int32_t value() {
-        // return self.item.value()
         return this->item.value();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -77,11 +79,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Token::Token(int32_t n) : n(n) {}
 
 // def value(self) -> int32:
+//     return self.n
 inline int32_t Token::value() const {
-    // return self.n
     return this->n;
 }
 void __tpy_init();

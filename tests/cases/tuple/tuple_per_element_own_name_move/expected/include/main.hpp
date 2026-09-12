@@ -11,9 +11,13 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sink(p: tuple[Own[Box], int32]) -> int32:
 int32_t sink(std::tuple<Box, int32_t>&& p);
+// def pass_by_name(ob: Own[Box]) -> int32:
 int32_t pass_by_name(Box&& ob);
+// def return_by_name(ob: Own[Box]) -> tuple[Own[Box], int32]:
 std::tuple<Box, int32_t> return_by_name(Box&& ob);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -40,6 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

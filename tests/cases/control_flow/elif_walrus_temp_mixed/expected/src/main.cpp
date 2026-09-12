@@ -5,50 +5,50 @@ namespace tpyapp::main {
 
 
 // def take(items: list[int32]) -> int32:
+//     items.append(1)
+//     return len(items)
 int32_t take(std::vector<int32_t>& items) {
-    // items.append(1)
     items.push_back(1);
-    // return len(items)
     return ::tpy::__len__(items);
 }
 
 // def test(x: int32) -> int32:
+//     if x < 0:
+//         return -1
+//     elif (v := take([10, 20])) == x:
+//         return v
+//     else:
+//         return -v
 int32_t test(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // return -1
         return -1;
-    // elif (v := take([10, 20])) == x:
     } else {
         int32_t v;
         std::vector<int32_t> __tmp_1 = {10, 20};
         if (((v = take(__tmp_1)) == x)) {
-            // return v
             return v;
-        // else:
         } else {
-            // return -v
             return ::tpy::neg_check<int32_t>(v);
         }
     }
 }
 
 // def main() -> None:
+//     print(test(-5))
+//     print(test(3))
+//     print(test(7))
 void main() {
-    // print(test(-5))
     std::cout << test(-5) << "\n";
-    // print(test(3))
     std::cout << test(3) << "\n";
-    // print(test(7))
     std::cout << test(7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,51 +5,54 @@ namespace tpyapp::main {
 
 
 // def main():
+//     # getenv overloads: 1-arg is str|None, 2-arg-with-str-default narrows to str
+//     print(os.getenv("TPY_UNSET_VAR") is None)
+//     print(os.getenv("TPY_UNSET_VAR", "dflt"))
+//     print(len(os.getenv("TPY_UNSET_VAR", "")) == 0)   # len() needs the str overload
+//     print(os.getenv("PATH") is not None)
+//
+//     # expandvars expansion: compare to getenv so the value cancels out
+//     print(expandvars("$PATH") == os.getenv("PATH"))
+//     print(expandvars("${PATH}") == os.getenv("PATH"))
+//     print(expandvars("p=$PATH;") == "p=" + os.getenv("PATH", "") + ";")
+//
+//     # non-expanding cases (machine-independent): unset left verbatim, bare $,
+//     # plain text, unclosed brace
+//     print(expandvars("$TPY_UNSET_VAR/x"))
+//     print(expandvars("${TPY_UNSET_VAR}"))
+//     print(expandvars("cost: $ 5"))
+//     print(expandvars("no vars"))
+//     print(expandvars("${unclosed"))
 void main() {
-    // # getenv overloads: 1-arg is str|None, 2-arg-with-str-default narrows to str
-    // print(os.getenv("TPY_UNSET_VAR") is None)
     std::cout << ::tpy::print_bool((!::tpystd::os::getenv("TPY_UNSET_VAR").has_value())) << "\n";
-    // print(os.getenv("TPY_UNSET_VAR", "dflt"))
     std::cout << ::tpystd::os::getenv("TPY_UNSET_VAR", "dflt") << "\n";
-    // print(len(os.getenv("TPY_UNSET_VAR", "")) == 0)   # len() needs the str overload
     std::cout << ::tpy::print_bool((::tpy::__len__(::tpystd::os::getenv("TPY_UNSET_VAR", "")) == 0)) << "\n";
-    // print(os.getenv("PATH") is not None)
     std::cout << ::tpy::print_bool((::tpystd::os::getenv("PATH").has_value())) << "\n";
-    // # expandvars expansion: compare to getenv so the value cancels out
-    // print(expandvars("$PATH") == os.getenv("PATH"))
     std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("$PATH") == ::tpystd::os::getenv("PATH"))) << "\n";
-    // print(expandvars("${PATH}") == os.getenv("PATH"))
     std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("${PATH}") == ::tpystd::os::getenv("PATH"))) << "\n";
-    // print(expandvars("p=$PATH;") == "p=" + os.getenv("PATH", "") + ";")
     std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("p=$PATH;") == (::tpy::str_concat((::tpy::str_concat("p=", ::tpystd::os::getenv("PATH", ""))), ";")))) << "\n";
-    // # non-expanding cases (machine-independent): unset left verbatim, bare $,
-    // # plain text, unclosed brace
-    // print(expandvars("$TPY_UNSET_VAR/x"))
     std::cout << ::tpystd::os::path::expandvars("$TPY_UNSET_VAR/x") << "\n";
-    // print(expandvars("${TPY_UNSET_VAR}"))
     std::cout << ::tpystd::os::path::expandvars("${TPY_UNSET_VAR}") << "\n";
-    // print(expandvars("cost: $ 5"))
     std::cout << ::tpystd::os::path::expandvars("cost: $ 5") << "\n";
-    // print(expandvars("no vars"))
     std::cout << ::tpystd::os::path::expandvars("no vars") << "\n";
-    // print(expandvars("${unclosed"))
     std::cout << ::tpystd::os::path::expandvars("${unclosed") << "\n";
 }
 
+// # os.getenv overloads (str|None vs str) + os.path.expandvars. Expansion is
+// # checked against getenv so the machine-specific value cancels (PATH is set in
+// # any environment that runs the toolchain); non-expanding cases are
+// # machine-independent. Byte-compared against CPython.
+// import os
+// from os.path import expandvars
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.getenv overloads (str|None vs str) + os.path.expandvars. Expansion is
-    // # checked against getenv so the machine-specific value cancels (PATH is set in
-    // # any environment that runs the toolchain); non-expanding cases are
-    // # machine-independent. Byte-compared against CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // from os.path import expandvars
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag[str]()
+//     xs = ["a", "b", "a", "c", "a", "b"]
+//     b.add_all(xs)
+//     print(b["a"], b["b"], b["z"])
+//     print("a" in b, "z" in b)
+//     print(b.total())
 void main() {
-    // b = Bag[str]()
     Bag<std::string> b = Bag<std::string>();
-    // xs = ["a", "b", "a", "c", "a", "b"]
     std::array<std::string, 6> xs = {"a", "b", "a", "c", "a", "b"};
-    // b.add_all(xs)
     b.add_all(xs);
-    // print(b["a"], b["b"], b["z"])
     std::cout << b["a"] << " " << b["b"] << " " << b["z"] << "\n";
-    // print("a" in b, "z" in b)
     std::cout << ::tpy::print_bool((b.__contains__("a"))) << " " << ::tpy::print_bool((b.__contains__("z"))) << "\n";
-    // print(b.total())
     std::cout << b.total() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

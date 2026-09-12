@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def describe(a: Animal) -> str:
+//     return a.speak()
 std::string describe(Animal& a) {
-    // return a.speak()
     return a.speak();
 }
 
 // def main() -> None:
+//     d: Dog = Dog("Rex", "Lab")
+//     # ARG context intentionally does not emit a per-call-site warning;
+//     # the def-site warning on line 11 already flagged the hiding. Static
+//     # dispatch: Animal.speak is called, not Dog.speak (divergence from CPython).
+//     print(describe(d))
 void main() {
-    // d: Dog = Dog("Rex", "Lab")
     Dog d = Dog("Rex", "Lab");
-    // # ARG context intentionally does not emit a per-call-site warning;
-    // # the def-site warning on line 11 already flagged the hiding. Static
-    // # dispatch: Animal.speak is called, not Dog.speak (divergence from CPython).
-    // print(describe(d))
     std::cout << describe(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,10 +12,15 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def collect_list_nocopy() -> int:
 ::tpy::BigInt collect_list_nocopy();
+// def collect_set() -> int:
 ::tpy::BigInt collect_set();
+// def borrow_source_copies(src: list[Node]) -> int:
 ::tpy::BigInt borrow_source_copies(const std::vector<Node>& src);
+// def filtered_moves() -> int:
 ::tpy::BigInt filtered_moves();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -78,30 +83,35 @@ namespace tpyapp::main {
 
 
 // def __init__(self, i: int) -> None:
+//     self.id = i
 inline Widget::Widget(const ::tpy::BigInt& i) : id(i) {}
 
 // def __init__(self, i: int) -> None:
+//     self.v = i
 inline Node::Node(const ::tpy::BigInt& i) : v(i) {}
 
 // def __hash__(self) -> int:
+//     return self.v
 inline ::tpy::BigInt Node::__hash__() const {
-    // return self.v
     return this->v;
 }
 
 // def __eq__(self, o: "Node") -> bool:
+//     return self.v == o.v
 inline bool Node::__eq__(const Node& o) const {
-    // return self.v == o.v
     return (this->v == o.v);
 }
+// def widgets(n: int) -> Iterator[Own[Widget]]:
+//     i = 0
+//     while i < n:
+//         yield Widget(i)
+//         i += 1
 inline auto widgets(const ::tpy::BigInt& n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<Widget>(
         [n, i]() mutable -> std::optional<Widget> {
             while ((::tpy::BigInt(i) < n)) {
                 auto __val = Widget(::tpy::BigInt(i));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<Widget>(std::move(__val));
             }
@@ -110,14 +120,17 @@ inline auto widgets(const ::tpy::BigInt& n) {
     );
 }
 
+// def nodes(n: int) -> Iterator[Own[Node]]:
+//     i = 0
+//     while i < n:
+//         yield Node(i)
+//         i += 1
 inline auto nodes(const ::tpy::BigInt& n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<Node>(
         [n, i]() mutable -> std::optional<Node> {
             while ((::tpy::BigInt(i) < n)) {
                 auto __val = Node(::tpy::BigInt(i));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<Node>(std::move(__val));
             }

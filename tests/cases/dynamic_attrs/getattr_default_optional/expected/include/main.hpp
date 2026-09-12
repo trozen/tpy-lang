@@ -11,6 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -29,13 +30,13 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __getattr__(self, name: str) -> Optional[str]:
+//     if name == "host":
+//         return "example.com"
+//     raise AttributeError(name)
 inline std::optional<std::string> Bag::__getattr__(std::string_view name) const {
-    // if name == "host":
     if ((name == "host")) {
-        // return "example.com"
         return "example.com";
     }
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 void __tpy_init();

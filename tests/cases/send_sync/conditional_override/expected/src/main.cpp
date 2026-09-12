@@ -5,19 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # int32 and bool are both Send + Sync, so the conditional grants the trait.
+//     assert_send[Shared[int32]]()
+//     assert_sync[Shared[int32]]()
+//     assert_send[Shared[bool]]()
+//     assert_sync[Shared[bool]]()
+//     # Send-only conditional: granted for a Send T, structural (non-Sync) otherwise.
+//     assert_send[SendCell[int32]]()
+//     print("ok")
 void main() {
-    // # int32 and bool are both Send + Sync, so the conditional grants the trait.
-    // # Send-only conditional: granted for a Send T, structural (non-Sync) otherwise.
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,24 +3,22 @@
 
 namespace tpyapp::main {
 
-// # Test with generic parent
-// lc = LabeledContainer("count", 42)
 LabeledContainer* lc{};
 
+// # Test with generic parent
+// lc = LabeledContainer("count", 42)
+// print(lc.label)
+// print(lc.get())
+// print(lc.describe())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test with generic parent
-    // lc = LabeledContainer("count", 42)
     static LabeledContainer __global_slot_1 = LabeledContainer("count", 42);
     lc = &__global_slot_1;
-    // print(lc.label)
     std::cout << lc->label << "\n";
-    // print(lc.get())
     std::cout << lc->get() << "\n";
-    // print(lc.describe())
     std::cout << lc->describe() << "\n";
 }
 

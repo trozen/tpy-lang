@@ -11,6 +11,7 @@ struct Accum;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Accum:
@@ -31,14 +32,15 @@ inline std::ostream& operator<<(std::ostream& os, const Accum& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.total = int32(0)
+//     i: int32 = int32(0)
+//     while i < n:
+//         self.total = self.total + i  # tpyc: ok
+//         i = i + int32(1)
 inline Accum::Accum(int32_t n) : total(0) {
-    // i: int32 = int32(0)
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // self.total = self.total + i  # tpyc: ok
         this->total = (::tpy::add_check<int32_t>(this->total, i));
-        // i = i + int32(1)
         i = (::tpy::add_check<int32_t>(i, 1));
     }
 }

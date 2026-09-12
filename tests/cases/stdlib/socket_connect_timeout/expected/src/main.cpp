@@ -5,45 +5,48 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     srv = socket.create_server(("127.0.0.1", 0))
+//     port = srv.getsockname()[1]
+//     c = socket.create_connection(("127.0.0.1", port), 2.0)
+//     conn, _ = srv.accept()
+//     print("connected:", c.gettimeout() == 2.0)
+//
+//     c.sendall(b"ping")
+//     got = conn.recv(4)
+//     print("server got:", got)
+//
+//     conn.close()
+//     c.close()
+//     srv.close()
 void main() {
-    // srv = socket.create_server(("127.0.0.1", 0))
     ::tpystd::socket::socket srv = ::tpystd::socket::create_server(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
-    // port = srv.getsockname()[1]
     int32_t port = std::get<1>(srv.getsockname());
-    // c = socket.create_connection(("127.0.0.1", port), 2.0)
     ::tpystd::socket::socket c = ::tpystd::socket::create_connection(std::tuple<std::string, int32_t>{"127.0.0.1", port}, 2.0);
-    // conn, _ = srv.accept()
     auto __tup_1 = srv.accept();
     ::tpystd::socket::socket conn = std::move(std::get<0>(__tup_1));
-    // print("connected:", c.gettimeout() == 2.0)
     std::cout << "connected:" << " " << ::tpy::print_bool((c.gettimeout() == 2.0)) << "\n";
-    // c.sendall(b"ping")
     c.sendall(::tpy::bytes_literal("ping", 4));
-    // got = conn.recv(4)
     ::tpy::Bytes got = conn.recv(4);
-    // print("server got:", got)
     std::cout << "server got:" << " " << ::tpy::BytesPrinter(got) << "\n";
-    // conn.close()
     conn.close();
-    // c.close()
     c.close();
-    // srv.close()
     srv.close();
 }
 
+// # create_connection(timeout=) applies the timeout before connect, so the whole
+// # connect/recv/send sequence honors it. Connecting to a live local listener with
+// # a generous timeout succeeds (no spurious timeout), the connected socket carries
+// # the timeout, and data round-trips under it. Loopback + an ephemeral port keep
+// # this deterministic (no external network); a socketpair can't exercise connect.
+// import socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # create_connection(timeout=) applies the timeout before connect, so the whole
-    // # connect/recv/send sequence honors it. Connecting to a live local listener with
-    // # a generous timeout succeeds (no spurious timeout), the connected socket carries
-    // # the timeout, and data round-trips under it. Loopback + an ephemeral port keep
-    // # this deterministic (no external network); a socketpair can't exercise connect.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

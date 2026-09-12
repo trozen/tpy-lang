@@ -3,18 +3,18 @@
 
 namespace tpystd::os::_environ {
 
-// environ: _Environ = _Environ()
 _Environ* environ{};
 
+// from ._native import (
+//     environ_keys, env_get, setenv as _setenv, unsetenv as _unsetenv,
+// )
+//
+// environ: _Environ = _Environ()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from ._native import (
-    // environ_keys, env_get, setenv as _setenv, unsetenv as _unsetenv,
-    // )
-    // environ: _Environ = _Environ()
     static _Environ __global_slot_1 = _Environ();
     environ = &__global_slot_1;
 }

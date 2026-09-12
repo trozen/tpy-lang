@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(h: Holder, h2: Holder) -> int:
 ::tpy::BigInt f(const Holder& h, const Holder& h2);
+// def main() -> None:
 void main();
 
 // # A REASSIGNED tuple local DECL-INITIALIZED from a borrow source aliases its
@@ -54,9 +56,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int):
+//     self.val = v
 inline Box::Box(const ::tpy::BigInt& v) : val(v) {}
 
 // def __init__(self, b: Box):
+//     self.pair = (1, b)  # tpyc: warning(/copies Box into field/)
 inline Holder::Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Box>>(std::tuple<::tpy::BigInt, Box>{::tpy::BigInt(1), b})) {}
 void __tpy_init();
 } // namespace tpyapp::main

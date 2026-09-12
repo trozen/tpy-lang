@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def super() -> int32:
+//     return int32(42)
 int32_t super() {
-    // return int32(42)
     return 42;
 }
 
 // def main() -> None:
+//     x = super()
+//     print(x)
 void main() {
-    // x = super()
     int32_t x = super();
-    // print(x)
     std::cout << x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

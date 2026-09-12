@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     b.fill(9)
+//     print(b.items)
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // b.fill(9)
     b.fill(9);
-    // print(b.items)
     std::cout << ::tpy::ListPrinter(b.items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

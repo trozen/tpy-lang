@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = WithOptional(Payload(1), Payload(2))
+//     print(a.p.v, a.opt is None)
+//     b = WithOwn(Payload(3))
+//     print(b.p.v, b.opt is None)
 void main() {
-    // a = WithOptional(Payload(1), Payload(2))
     Payload __tmp_1 = Payload(2);
     WithOptional a = WithOptional(Payload(1), &(__tmp_1));
-    // print(a.p.v, a.opt is None)
     std::cout << a.p.v << " " << ::tpy::print_bool((!a.opt.has_value())) << "\n";
-    // b = WithOwn(Payload(3))
     WithOwn b = WithOwn(Payload(3));
-    // print(b.p.v, b.opt is None)
     std::cout << b.p.v << " " << ::tpy::print_bool((!b.opt.has_value())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

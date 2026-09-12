@@ -11,8 +11,11 @@ struct Expr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def passthru(e: Expr) -> Expr:   # returned by reference -> Expr& e
 Expr& passthru(Expr& e);
+// def count(e: Expr) -> int32:     # only read -> const Expr& e
 int32_t count(const Expr& e);
+// def main() -> None:
 void main();
 
 struct Expr {

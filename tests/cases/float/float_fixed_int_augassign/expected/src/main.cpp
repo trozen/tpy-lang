@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x = 10.0
+//     x += int8(5)
+//     x -= int32(3)
+//     x *= uint16(2)
+//     x /= int64(4)
+//     print(x)
 void main() {
-    // x = 10.0
     double x = 10.0;
-    // x += int8(5)
     x = (x) + static_cast<double>(5);
-    // x -= int32(3)
     x = (x) - static_cast<double>(3);
-    // x *= uint16(2)
     x = (x) * static_cast<double>(2);
-    // x /= int64(4)
     x = ::tpy::truediv(x, static_cast<double>(4));
-    // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

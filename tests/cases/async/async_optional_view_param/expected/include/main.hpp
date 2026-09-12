@@ -16,12 +16,16 @@ struct __coro_first_bytes;
 struct __coro_str_len;
 struct __coro_main_coro;
 
+// async def first_bytes(b: bytes | None) -> int:
 __coro_first_bytes first_bytes(std::optional<::tpy::BytesView> b);
+// async def str_len(s: Optional[str]) -> int:
 __coro_str_len str_len(std::optional<std::string_view> s);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: first_bytes
+// async def first_bytes(b: bytes | None) -> int:
 struct __coro_first_bytes {
     int32_t __state;
     bool __cancel_pending;
@@ -45,7 +49,7 @@ struct __coro_first_bytes {
     }
 };
 
-// Async coroutine: str_len
+// async def str_len(s: Optional[str]) -> int:
 struct __coro_str_len {
     int32_t __state;
     bool __cancel_pending;
@@ -69,7 +73,7 @@ struct __coro_str_len {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

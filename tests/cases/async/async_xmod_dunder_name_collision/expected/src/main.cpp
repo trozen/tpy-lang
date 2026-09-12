@@ -5,11 +5,16 @@ namespace tpyapp::main {
 
 
 // async def amain() -> None:
+//     async with Gate() as v:
+//         print(v)
+//     t = Ticker()
+//     print(await t.__anext__())
+//     s = Svc()
+//     print(await s.fetch())
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(Gate());
-        // async with Gate() as v:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -40,11 +45,8 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await t.__anext__())
         std::cout << __await_lift_0 << "\n";
-        // s = Svc()
         s.emplace(Svc());
-        // print(await s.fetch())
         __sub_3.emplace((*s));
         __state = S_RESUME_3;
         continue;
@@ -54,28 +56,23 @@ namespace tpyapp::main {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r3).value();
         __sub_3.reset();
-        // print(await s.fetch())
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_0: {
-        // async with Gate() as v:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_1: {
-        // t = Ticker()
         t.emplace(Ticker());
-        // print(await t.__anext__())
         __sub_2.emplace((*t));
         __state = S_RESUME_2;
         continue;
     }
     case S_JOIN_2: {
         try {
-            // print(v)
             std::cout << v << "\n";
             __state = S_JOIN_0;
             continue;
@@ -97,11 +94,12 @@ __coro_amain amain() {
 }
 
 // async def __aenter__(self) -> int32:
+//     async with svc.Gate() as v:
+//         return v + 1
 ::tpystd::tpy::Poll<int32_t> __coro_Gate___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(::tpyapp::svc::Gate());
-        // async with svc.Gate() as v:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -138,7 +136,6 @@ __coro_amain amain() {
     }
     case S_JOIN_1: {
         try {
-            // return v + 1
             this->__finally_ret_0 = (::tpy::add_check<int32_t>(v, 1));
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -150,7 +147,6 @@ __coro_amain amain() {
         }
     }
     case S_JOIN_2: {
-        // async with svc.Gate() as v:
         __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_1;
         continue;
@@ -162,10 +158,10 @@ __coro_amain amain() {
 
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
+//     await asyncio.sleep(0)
 ::tpystd::tpy::Poll<::std::monostate> __coro_Gate___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -185,6 +181,9 @@ __coro_amain amain() {
 
 
 // async def __anext__(self) -> int32:
+//     async for v in svc.Ticker(3):
+//         self.total += v
+//     return self.total
 ::tpystd::tpy::Poll<int32_t> __coro_Ticker___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -211,7 +210,6 @@ __coro_amain amain() {
     }
     case S_JOIN_0: {
         try {
-            // async for v in svc.Ticker(3):
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -223,13 +221,11 @@ __coro_amain amain() {
         }
     }
     case S_JOIN_1: {
-        // self.total += v
         __self.total = ::tpy::add_check<int32_t>(__self.total, v);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
-        // return self.total
         __state = S_DONE;
         int32_t __tpy_async_ret = __self.total;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -241,12 +237,12 @@ __coro_amain amain() {
 
 
 // async def fetch(self) -> int32:
+//     h = svc.Svc()
+//     return await h.fetch()
 ::tpystd::tpy::Poll<int32_t> __coro_Svc_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // h = svc.Svc()
         h.emplace(::tpyapp::svc::Svc());
-        // return await h.fetch()
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
@@ -265,22 +261,23 @@ __coro_amain amain() {
 }
 
 
+// # The three owner-typed frame embeddings, each reaching a CROSS-MODULE callee
+// # whose bare name collides with a local record that implements the same dunder
+// # as a coro. Those structs live in svc.py's namespace and are already complete
+// # via its header, so none is an emit-ordering edge here -- but keying an edge on
+// # the bare `(method, record)` pair resolves each to the LOCAL unit, producing a
+// # phantom self-edge and rejecting valid code as a recursive embedding.
+// import asyncio
+// import svc
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The three owner-typed frame embeddings, each reaching a CROSS-MODULE callee
-    // # whose bare name collides with a local record that implements the same dunder
-    // # as a coro. Those structs live in svc.py's namespace and are already complete
-    // # via its header, so none is an emit-ordering edge here -- but keying an edge on
-    // # the bare `(method, record)` pair resolves each to the LOCAL unit, producing a
-    // # phantom self-edge and rejecting valid code as a recursive embedding.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // import svc
     ::tpyapp::svc::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

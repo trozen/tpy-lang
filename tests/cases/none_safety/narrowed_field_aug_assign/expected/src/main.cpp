@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(10, 4)
+//     c.step()
+//     c.show()
+//     none_counter = Counter(None, None)
+//     none_counter.step()
+//     print(none_counter.big is None, none_counter.small is None)
 void main() {
-    // c = Counter(10, 4)
     Counter c = Counter(10, 4);
-    // c.step()
     c.step();
-    // c.show()
     c.show();
-    // none_counter = Counter(None, None)
     Counter none_counter = Counter(std::nullopt, std::nullopt);
-    // none_counter.step()
     none_counter.step();
-    // print(none_counter.big is None, none_counter.small is None)
     std::cout << ::tpy::print_bool((!none_counter.big.has_value())) << " " << ::tpy::print_bool((!none_counter.small.has_value())) << "\n";
 }
 
 
 // def step(self) -> None:
+//     if self.big is None:
+//         return
+//     if self.small is None:
+//         return
+//     self.big += 1
+//     self.small += 1
+//     self.big -= 2
+//     self.small *= 3
+//     # `//=` takes the cpp_op fallback path rather than the resolved
+//     # binop_result -- regression guard for that branch.
+//     self.big //= 2
 void Counter::step() {
-    // if self.big is None:
     if ((!this->big.has_value())) {
-        // return
         return;
     }
-    // if self.small is None:
     if ((!this->small.has_value())) {
-        // return
         return;
     }
-    // self.big += 1
     (*this->big) = ((*this->big)) + (::tpy::BigInt(1));
-    // self.small += 1
     (*this->small) = ::tpy::add_check<int32_t>((*this->small), 1);
-    // self.big -= 2
     (*this->big) = ((*this->big)) - (::tpy::BigInt(2));
-    // self.small *= 3
     (*this->small) = ::tpy::mul_check<int32_t>((*this->small), 3);
-    // # `//=` takes the cpp_op fallback path rather than the resolved
-    // # binop_result -- regression guard for that branch.
-    // self.big //= 2
     (*this->big) = ((*this->big)) / (::tpy::BigInt(2));
 }
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

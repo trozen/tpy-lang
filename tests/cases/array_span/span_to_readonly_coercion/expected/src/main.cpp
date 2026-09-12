@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def sum_span(s: Span[readonly[int32]]) -> int32:
+//     total: int32 = 0
+//     for i in range(len(s)):
+//         total += s[i]
+//     return total
 int32_t sum_span(std::span<const int32_t> s) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for i in range(len(s)):
     int32_t __stop_0 = ::tpy::__len__(s);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // total += s[i]
         total = ::tpy::add_check<int32_t>(total, s[static_cast<std::size_t>(i)]);
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     arr = Array[int32, 3]([10, 20, 30])
+//     # Array coerces to Span, then Span coerces to Span[readonly[...]]
+//     result = sum_span(arr)
+//     print(result)
 void main() {
-    // arr = Array[int32, 3]([10, 20, 30])
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
-    // # Array coerces to Span, then Span coerces to Span[readonly[...]]
-    // result = sum_span(arr)
     int32_t result = sum_span(::tpy::as_span(arr));
-    // print(result)
     std::cout << result << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

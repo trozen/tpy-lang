@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def relay(h: Holder) -> tuple[Box, int32]:
 std::tuple<Box*, int32_t> relay(Holder& h);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -54,14 +56,17 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, b: Box, n: int32) -> None:
+//     self.box = b
+//     self.n = n
 inline Holder::Holder(const Box& b, int32_t n) : box(b), n(n) {}
 
 // def get_pair(self) -> tuple[Box, int32]:
+//     return (self.box, self.n)
 inline std::tuple<Box*, int32_t> Holder::get_pair() {
-    // return (self.box, self.n)
     return std::tuple<Box*, int32_t>{&(this->box), this->n};
 }
 void __tpy_init();

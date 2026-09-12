@@ -5,93 +5,104 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Constructor with no args (delegating default ctor)
+//     c = Container()
+//     print(c.count)
+//
+//     # Constructor with concrete arg
+//     nums: list[int] = [1, 2, 3]
+//     c2 = Container(nums)
+//     print(c2.count)
+//
+//     # Constructor with explicit None
+//     c3 = Container(None)
+//     print(c3.count)
+//
+//     # Method: required + optional protocol, both provided
+//     more: list[int] = [10, 20]
+//     c2.update(nums, more)
+//     print(c2.count)
+//
+//     # Method: explicit None for optional
+//     c2.update(nums, None)
+//     print(c2.count)
+//
+//     # Free function: both provided
+//     print(count_items(nums, more))
+//
+//     # Free function: omit optional
+//     print(count_items(nums))
+//
+//     # Free function: explicit None
+//     print(count_items(nums, None))
+//
+//     # Function with only Optional[Protocol] param
+//     print(only_optional())
+//     print(only_optional(nums))
+//     print(only_optional(None))
+//
+//     # Required + optional protocol in constructor
+//     mc = MixedContainer(nums)
+//     print(mc.count)
+//     mc2 = MixedContainer(nums, more)
+//     print(mc2.count)
+//     mc3 = MixedContainer(nums, None)
+//     print(mc3.count)
+//
+//     # Generic class with Optional[Protocol] constructor
+//     gc = GenericContainer[int](nums)
+//     print(gc.count)
+//     gc2 = GenericContainer[int]()
+//     print(gc2.count)
+//     gc3 = GenericContainer[int](None)
+//     print(gc3.count)
+//
+//     # Generic Optional[Sequence[int]]
+//     print(sum_optional(nums))
+//     print(sum_optional(nums, more))
+//     print(sum_optional(nums, None))
 void main() {
-    // # Constructor with no args (delegating default ctor)
-    // c = Container()
     Container c = Container();
-    // print(c.count)
     std::cout << c.count << "\n";
-    // # Constructor with concrete arg
-    // nums: list[int] = [1, 2, 3]
     std::vector<::tpy::BigInt> nums = {1, 2, 3};
-    // c2 = Container(nums)
     Container c2 = Container(&(nums));
-    // print(c2.count)
     std::cout << c2.count << "\n";
-    // # Constructor with explicit None
-    // c3 = Container(None)
     Container c3 = Container(static_cast<std::nullptr_t*>(nullptr));
-    // print(c3.count)
     std::cout << c3.count << "\n";
-    // # Method: required + optional protocol, both provided
-    // more: list[int] = [10, 20]
     std::vector<::tpy::BigInt> more = {10, 20};
-    // c2.update(nums, more)
     c2.update(nums, &(more));
-    // print(c2.count)
     std::cout << c2.count << "\n";
-    // # Method: explicit None for optional
-    // c2.update(nums, None)
     c2.update(nums, static_cast<std::nullptr_t*>(nullptr));
-    // print(c2.count)
     std::cout << c2.count << "\n";
-    // # Free function: both provided
-    // print(count_items(nums, more))
     std::cout << count_items(nums, &(more)) << "\n";
-    // # Free function: omit optional
-    // print(count_items(nums))
     std::cout << count_items(nums) << "\n";
-    // # Free function: explicit None
-    // print(count_items(nums, None))
     std::cout << count_items(nums, static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    // # Function with only Optional[Protocol] param
-    // print(only_optional())
     std::cout << only_optional() << "\n";
-    // print(only_optional(nums))
     std::cout << only_optional(&(nums)) << "\n";
-    // print(only_optional(None))
     std::cout << only_optional(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    // # Required + optional protocol in constructor
-    // mc = MixedContainer(nums)
     MixedContainer mc = MixedContainer(nums);
-    // print(mc.count)
     std::cout << mc.count << "\n";
-    // mc2 = MixedContainer(nums, more)
     MixedContainer mc2 = MixedContainer(nums, &(more));
-    // print(mc2.count)
     std::cout << mc2.count << "\n";
-    // mc3 = MixedContainer(nums, None)
     MixedContainer mc3 = MixedContainer(nums, static_cast<std::nullptr_t*>(nullptr));
-    // print(mc3.count)
     std::cout << mc3.count << "\n";
-    // # Generic class with Optional[Protocol] constructor
-    // gc = GenericContainer[int](nums)
     GenericContainer<::tpy::BigInt> gc = GenericContainer<::tpy::BigInt>(&(nums));
-    // print(gc.count)
     std::cout << gc.count << "\n";
-    // gc2 = GenericContainer[int]()
     GenericContainer<::tpy::BigInt> gc2 = GenericContainer<::tpy::BigInt>();
-    // print(gc2.count)
     std::cout << gc2.count << "\n";
-    // gc3 = GenericContainer[int](None)
     GenericContainer<::tpy::BigInt> gc3 = GenericContainer<::tpy::BigInt>(static_cast<std::nullptr_t*>(nullptr));
-    // print(gc3.count)
     std::cout << gc3.count << "\n";
-    // # Generic Optional[Sequence[int]]
-    // print(sum_optional(nums))
     std::cout << sum_optional(nums) << "\n";
-    // print(sum_optional(nums, more))
     std::cout << sum_optional(nums, &(more)) << "\n";
-    // print(sum_optional(nums, None))
     std::cout << sum_optional(nums, static_cast<std::nullptr_t*>(nullptr)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

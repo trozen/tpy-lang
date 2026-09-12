@@ -14,19 +14,33 @@ extern Point* g;
 extern Point* pt;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_local_sharing() -> None:
 void test_local_sharing();
+// def test_copy_independence() -> None:
 void test_copy_independence();
+// def test_init_from_param(p: Point) -> None:
 void test_init_from_param(Point& p);
+// def test_init_from_element() -> None:
 void test_init_from_element();
+// def test_foreach_mutation() -> None:
 void test_foreach_mutation();
+// def test_rebinding() -> None:
 void test_rebinding();
+// def test_rvalue_append() -> None:
 void test_rvalue_append();
+// def test_build_with_copy() -> None:
 void test_build_with_copy();
+// def test_init_from_global() -> None:
 void test_init_from_global();
+// def test_rebind_to_global() -> None:
 void test_rebind_to_global();
+// def test_list_sharing() -> None:
 void test_list_sharing();
+// def test_pointer_chain() -> None:
 void test_pointer_chain();
+// def test_method_on_pointer_local() -> None:
 void test_method_on_pointer_local();
+// def test_foreach_value_from_pointer_local() -> None:
 void test_foreach_value_from_pointer_local();
 
 // class Point:
@@ -69,14 +83,17 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, v: int32):
+//     self.val = v
 inline Counter::Counter(int32_t v) : val(v) {}
 
 // def increment(self) -> None:
+//     self.val = self.val + 1
 inline void Counter::increment() {
-    // self.val = self.val + 1
     this->val = (::tpy::add_check<int32_t>(this->val, 1));
 }
 void __tpy_init();

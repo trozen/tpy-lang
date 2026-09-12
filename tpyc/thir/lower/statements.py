@@ -5099,9 +5099,7 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
                 *, in_branch: bool = False,
                 branch_decls_ok: bool = False,
                 loop_depth: int = 0) -> THIRStmt:
-    # Single chokepoint: lower the statement, then carry the parse node's
-    # `no_source_comment` desugar flag onto the THIR node so the emitter dedups
-    # the shared source comment (nested statements route through here too).
+    # Single chokepoint (nested statements route through here too).
     scope = _LowerScope(lc, declared, in_branch=in_branch,
                         branch_decls_ok=branch_decls_ok,
                         loop_depth=loop_depth)
@@ -5127,8 +5125,6 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
             raise
         raise ThirUnsupported(stmt_reject_reason(stmt, ex.reason),
                               loc=ex.loc) from None
-    if getattr(stmt, "no_source_comment", False) and not result.no_source_comment:
-        return replace(result, no_source_comment=True)
     return result
 
 
@@ -5187,8 +5183,7 @@ def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
                       or isinstance(ptu, OwnType)))
     return THIRNarrowAlias(alias=alias, variant_cpp=_narrow_variant_cpp(var, u, lc),
                            member_cpp=member_cpp,
-                           is_ptr_variant=is_ptr, const_ref=const_ref,
-                           no_source_comment=True, loc=loc)
+                           is_ptr_variant=is_ptr, const_ref=const_ref, loc=loc)
 
 def _make_dyn_narrow_alias(alias: str, var: str, member: TpyType,
                            lc: _LowerCtx, declared: dict[str, TpyType],
@@ -5203,8 +5198,7 @@ def _make_dyn_narrow_alias(alias: str, var: str, member: TpyType,
     cast_rhs = narrow_cast_rhs(member_cpp, member, inner_src, cast_arg,
                                is_const=const, analyzer=lc.analyzer)
     return THIRDynNarrowAlias(alias=alias, member_cpp=member_cpp,
-                              cast_rhs_cpp=cast_rhs, is_const=const,
-                              no_source_comment=True, loc=loc)
+                              cast_rhs_cpp=cast_rhs, is_const=const, loc=loc)
 
 def _register_dyn_narrow(alias: str, var: str, member: TpyType,
                          lc: _LowerCtx,
@@ -5527,8 +5521,7 @@ def _lower_narrowed_branch(body, fact: 'TpyType | None', var: str,
     the poly-narrow `(*__p_ptr)` spelling via `lc.narrow.spelled`; the
     subject retypes for the branch walk); the snapshot pops at the closing
     brace. `alias_loc` is the if's loc for the then arm, but else_body[0]'s
-    loc for the else arm -- emit_else_comment's backward scan for the
-    `else:` line starts from the else body's leading statement.
+    loc for the else arm.
     `make_alias(alias, fact, loc)` overrides the union extraction (the Any
     arm's any_cast alias); `u` may be None only when it is given.
     `bind_spelled` is the poly-narrow read spelling -- no alias statement
@@ -6098,8 +6091,7 @@ def _lower_any_narrow_if(stmt: TpyIf, ainfo, lc: _LowerCtx,
 
     def make_alias(alias, fact, alias_loc):
         return THIRAnyNarrowAlias(
-            alias=alias, subject_cpp=var, member_cpp=lc.render_type(fact),
-            no_source_comment=True, loc=alias_loc)
+            alias=alias, subject_cpp=var, member_cpp=lc.render_type(fact), loc=alias_loc)
 
     def branch_of(body, fact, alias_loc):
         return _lower_narrowed_branch(body, fact, var, None, lc, declared,
@@ -6697,8 +6689,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             source_bind=sb,
             source_cpp=(f"(*{escape_cpp_name(src_name)})"
                         if src_ref and src_name in lc.pointers else None),
-            loc=loc,
-            no_source_comment=getattr(stmt, "no_source_comment", False))
+            loc=loc)
     if value is None:
         value = _lower_expr(
             stmt.value, lc, declared,
@@ -6710,8 +6701,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         source="", targets=tuple(stmt.targets),
         target_cpps=(None,) * len(stmt.targets),
         binds=tuple(binds), wraps=tuple(wraps),
-        source_expr=value, source_bind=TupleSourceBind.RVALUE, loc=loc,
-        no_source_comment=getattr(stmt, "no_source_comment", False))
+        source_expr=value, source_bind=TupleSourceBind.RVALUE, loc=loc)
 
 
 def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
@@ -6745,8 +6735,7 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
                             loc=stmt.loc),
             value=THIRName(name=init.name, result_type=declared[stmt.name],
                            loc=stmt.loc),
-            loc=stmt.loc,
-            no_source_comment=getattr(stmt, "no_source_comment", False))
+            loc=stmt.loc)
     elif (isinstance(init, TpyFieldAccess)
             and _alias_field_source_ok(init, declared, analyzer)):
         # A reference FIELD source (`a = self.plain`): the alias takes the
@@ -6780,8 +6769,7 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
                         loc=stmt.loc),
         value=THIRFormConvert(result_type=pointee, value=src,
                               form=Form.BORROW, loc=stmt.loc),
-        loc=stmt.loc,
-        no_source_comment=getattr(stmt, "no_source_comment", False))
+        loc=stmt.loc)
 
 
 def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
@@ -6813,8 +6801,7 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
                 result_type=unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     declared[stmt.name]))),
                 value=_sub_src, form=Form.BORROW, loc=stmt.loc),
-            loc=stmt.loc,
-            no_source_comment=getattr(stmt, "no_source_comment", False))
+            loc=stmt.loc)
     if isinstance(stmt.init, TpyTupleLiteral):
         value = _lower_borrow_tuple_literal(
             stmt.init, declared[stmt.name], lc, declared)
@@ -6845,8 +6832,7 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     return THIRAssign(
         target=THIRName(name=stmt.name, result_type=declared[stmt.name],
                         loc=stmt.loc),
-        value=value, loc=stmt.loc,
-        no_source_comment=getattr(stmt, "no_source_comment", False))
+        value=value, loc=stmt.loc)
 
 
 def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
@@ -6883,8 +6869,7 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
             name=stmt.name, value=value,
             cpp_type=lc.render_type(unwrap_readonly(unwrap_ref_type(
                 lc.frame_local_types.get(stmt.name, declared[stmt.name])))),
-            loc=stmt.loc,
-            no_source_comment=getattr(stmt, "no_source_comment", False))
+            loc=stmt.loc)
     if type(init) in _comprehensions._COMP_KINDS:
         # A comprehension init (`rows = [[i, i+1] for i in range(3)]`):
         # the ordinary comp statement-expression renders INSIDE the
@@ -6925,8 +6910,7 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         lc.frame_local_types.get(stmt.name, declared[stmt.name])))
     return THIRFrameSlotWrite(
         name=stmt.name, value=value, cpp_type=lc.render_type(slot_t),
-        loc=stmt.loc,
-        no_source_comment=getattr(stmt, "no_source_comment", False))
+        loc=stmt.loc)
 
 
 def _lower_erased_handle_write(stmt: TpyVarDecl, init: TpyExpr,
@@ -6955,8 +6939,7 @@ def _lower_erased_handle_write(stmt: TpyVarDecl, init: TpyExpr,
     _witness("res.erased_handle_write")
     return THIRAssign(
         target=THIRName(name=stmt.name, result_type=slot_t, loc=stmt.loc),
-        value=value, loc=stmt.loc,
-        no_source_comment=getattr(stmt, "no_source_comment", False))
+        value=value, loc=stmt.loc)
 
 
 def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
@@ -6983,8 +6966,7 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
                 target=THIRName(name=stmt.name,
                                 result_type=declared[stmt.name],
                                 loc=stmt.loc),
-                value=value, loc=stmt.loc,
-                no_source_comment=getattr(stmt, "no_source_comment", False))
+                value=value, loc=stmt.loc)
     if isinstance(init, TpyNoneLiteral):
         opt_slot = unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(declared[stmt.name])))
@@ -7001,8 +6983,7 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
                                 loc=stmt.loc),
                 value=THIRLiteral(result_type=declared[stmt.name], value=None,
                                   form=Form.STORAGE, loc=stmt.loc),
-                loc=stmt.loc,
-                no_source_comment=getattr(stmt, "no_source_comment", False))
+                loc=stmt.loc)
     if isinstance(init, (TpyCall, TpyMethodCall)):
         _fu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             declared[stmt.name])))
@@ -7022,8 +7003,7 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
                 target=THIRName(name=stmt.name,
                                 result_type=declared[stmt.name],
                                 loc=stmt.loc),
-                value=value, loc=stmt.loc,
-                no_source_comment=getattr(stmt, "no_source_comment", False))
+                value=value, loc=stmt.loc)
     # A value-repr optional frame field takes the WHOLE optional bare
     # (`v = __self.f;`), so the source read must not deref on narrow -- the
     # same admission the sync decl sink threads for its optional slot.
@@ -7048,8 +7028,7 @@ def _lower_frame_field_assign(stmt: TpyVarDecl, lc: '_LowerCtx',
     return THIRAssign(
         target=THIRName(name=stmt.name, result_type=declared[stmt.name],
                         loc=stmt.loc),
-        value=value, loc=stmt.loc,
-        no_source_comment=getattr(stmt, "no_source_comment", False))
+        value=value, loc=stmt.loc)
 
 
 def _value_opt_target_binding(name: str, lc: '_LowerCtx') -> bool:
@@ -7501,8 +7480,7 @@ def _lower_overload_folded_if(
             if node.then_body and isinstance(node.then_body[-1],
                                              (TpyReturn, TpyRaise)):
                 lc.overload_terminated = True
-            return THIRFoldedBlock(stmts=body, no_source_comment=True,
-                                   trivia_loc=stmt.loc)
+            return THIRFoldedBlock(stmts=body)
         if resolved is False:
             continue
         live.append(node)
@@ -7511,10 +7489,8 @@ def _lower_overload_folded_if(
         if last.else_body:
             body = _lower_stmts(last.else_body, lc, declared,
                                 in_branch=in_branch, loop_depth=loop_depth)
-            return THIRFoldedBlock(stmts=body, no_source_comment=True,
-                                   trivia_loc=stmt.loc)
-        return THIRFoldedBlock(stmts=(), no_source_comment=True,
-                               trivia_loc=stmt.loc)
+            return THIRFoldedBlock(stmts=body)
+        return THIRFoldedBlock(stmts=())
     branches: list[tuple] = []
     for i, node in enumerate(live):
         if lc.analyzer.if_branch_decls.get(node):
@@ -7536,8 +7512,7 @@ def _lower_overload_folded_if(
     if last.else_body:
         else_body = _lower_stmts(last.else_body, lc, declared,
                                  in_branch=True, loop_depth=loop_depth)
-    return THIRFoldedIfChain(branches=tuple(branches), else_body=else_body,
-                             no_source_comment=True, trivia_loc=stmt.loc)
+    return THIRFoldedIfChain(branches=tuple(branches), else_body=else_body)
 
 
 def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
@@ -7599,7 +7574,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
     # have already flushed before dispatch.
     if is_docstring(stmt):
         _witness("stmt.trivia")
-        return THIRNoOpStmt(trivia_loc=loc)
+        return THIRNoOpStmt()
     if isinstance(stmt, TpyPassStmt):
         _witness("stmt.trivia")
         return THIRNoOpStmt(loc=loc)
@@ -7779,7 +7754,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             declared[stmt.name] = declared.get(
                 lc.forwarded_map[stmt.name], _var_decl_type(stmt, analyzer))
             _witness("decl.forwarded_alias")
-            return THIRNoOpStmt(trivia_loc=loc)
+            return THIRNoOpStmt()
         if stmt.linkage != VarLinkage.DEFAULT:
             if lc.top_level_scope:
                 # A `native_global(...)` binding declares nothing of its own
@@ -7787,21 +7762,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # the decl emits no line and only leading trivia survives
                 # (the Final skip's shape).
                 _witness("top_level.native_global_skip")
-                return THIRNoOpStmt(trivia_loc=loc)
+                return THIRNoOpStmt()
             note_detail("decl.linkage")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         if stmt.is_final:
             # Final globals live at namespace scope -- nothing is emitted
             # here, so only leading trivia survives.
             _witness("top_level.final_skip")
-            return THIRNoOpStmt(trivia_loc=loc)
+            return THIRNoOpStmt()
         if stmt.init is None and lc.top_level_scope and stmt.name in declared:
             # A GLOBAL's annotation-only decl: the name already exists at
             # namespace scope, so nothing is emitted for it (the
             # `global_declared_vars` no-init arm) and only leading trivia
             # survives -- the Final skip's shape.
             _witness("top_level.global_no_init")
-            return THIRNoOpStmt(trivia_loc=loc)
+            return THIRNoOpStmt()
         if stmt.init is None:
             # An annotation-only decl (`x: str` / `x: int32`) default-
             # constructs the resolved slot (`std::string x;` / `int32_t x;`)
@@ -7949,9 +7924,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and init0.name != stmt.name):
                 _witness("decl.coro_frame_rebind")
                 return THIRCoroHandleMove(
-                    target=stmt.name, source=init0.name, loc=loc,
-                    no_source_comment=getattr(stmt, "no_source_comment",
-                                              False))
+                    target=stmt.name, source=init0.name, loc=loc)
             if not isinstance(stmt.init, (TpyCall, TpyMethodCall)):
                 note_detail("decl.coro_frame_rebind_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -7965,8 +7938,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                              allow_temps=True))
             _witness("decl.coro_frame_rebind")
             return THIRFrameSlotWrite(
-                name=stmt.name, value=value, cpp_type=None, loc=loc,
-                no_source_comment=getattr(stmt, "no_source_comment", False))
+                name=stmt.name, value=value, cpp_type=None, loc=loc)
         # Escape-hoist record pointer-local first decls (hoisted, or
         # name-reassigned with an rvalue init -- the classifier's OTHER, the
         # pointer path). Placed before the branch-scope gate: a
@@ -14981,11 +14953,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         begin_stmt()
         if (isinstance(stmt.expr, TpyCall)
                 and stmt.expr.compile_time_assert):
-            # assert_send/assert_sync: checked in sema, no emission; the
-            # loc rides trivia_loc so the
-            # leading `#` comments still emit without the source line.
+            # assert_send/assert_sync: checked in sema, no emission.
             _witness("stmt.compile_time_assert")
-            return THIRNoOpStmt(loc=None, trivia_loc=loc)
+            return THIRNoOpStmt(loc=None)
         er_fi = _error_return_stmt_fi(stmt.expr, analyzer)
         if er_fi is not None:
             # A discarded @error_return call: the `__try_tmp_N` block.

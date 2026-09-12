@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     b = Bumper()
+//     n = Node(1)
+//     print(b(n))
+//     print(n.v)
+//     print(b(n), n.v)
 void main() {
-    // b = Bumper()
     Bumper b = Bumper();
-    // n = Node(1)
     Node n = Node(1);
-    // print(b(n))
     std::cout << b.__call__(n) << "\n";
-    // print(n.v)
     std::cout << n.v << "\n";
-    // print(b(n), n.v)
     std::cout << b.__call__(n) << " " << n.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

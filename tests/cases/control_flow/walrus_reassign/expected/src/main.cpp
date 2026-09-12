@@ -5,42 +5,47 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n = 5
+//     while (n := n - 1) > 0:
+//         print(n)
+//
+//     x: int32 | None = 5
+//     if (x := None) is None:
+//         print("none")
+//
+//     s = "asd"
+//     if (s := s + "!"):  # owned source: must promote s to owned, else it dangles
+//         print(s)
+//     print(s)
+//
+//     b = b"hi"
+//     if (b := b + b"!"):  # bytes view, same owned-source promotion as str
+//         print(len(b))
+//
+//     # Comprehension walrus rebinds the enclosing-scope local; the rebind must
+//     # still assign in place across the comprehension's scope handling.
+//     m: int32 = 10
+//     xs = [m for _ in range(3) if (m := m - 1) > 0]
+//     print(m, len(xs))
 void main() {
-    // n = 5
     int32_t n = 5;
-    // while (n := n - 1) > 0:
     while (((n = (::tpy::sub_check<int32_t>(n, 1))) > 0)) {
-        // print(n)
         std::cout << n << "\n";
     }
-    // x: int32 | None = 5
     std::optional<int32_t> x = 5;
-    // if (x := None) is None:
     if ((!(x = std::nullopt).has_value())) {
-        // print("none")
         std::cout << "none" << "\n";
     }
-    // s = "asd"
     std::string s = "asd";
-    // if (s := s + "!"):  # owned source: must promote s to owned, else it dangles
     if ((!(s = (::tpy::str_concat(s, "!"))).empty())) {
-        // print(s)
         std::cout << s << "\n";
     }
-    // print(s)
     std::cout << s << "\n";
-    // b = b"hi"
     ::tpy::Bytes b = ::tpy::bytes_literal_owned("hi", 2);
-    // if (b := b + b"!"):  # bytes view, same owned-source promotion as str
     if ((!(b = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1)))).empty())) {
-        // print(len(b))
         std::cout << ::tpy::__len__(b) << "\n";
     }
-    // # Comprehension walrus rebinds the enclosing-scope local; the rebind must
-    // # still assign in place across the comprehension's scope handling.
-    // m: int32 = 10
     int32_t m = 10;
-    // xs = [m for _ in range(3) if (m := m - 1) > 0]
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -52,16 +57,15 @@ void main() {
         }
         std::move(__result);
     });
-    // print(m, len(xs))
     std::cout << m << " " << ::tpy::__len__(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

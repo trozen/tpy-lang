@@ -5,114 +5,121 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # expm1 / log1p -- exact at 0
+//     print(math.expm1(0.0) == 0.0)
+//     print(math.log1p(0.0) == 0.0)
+//     e1 = math.expm1(1.0)          # e - 1 ~= 1.71828
+//     print(e1 > 1.71 and e1 < 1.72)
+//     l1 = math.log1p(1.0)          # ln 2 ~= 0.6931
+//     print(l1 > 0.69 and l1 < 0.70)
+//
+//     # gamma / lgamma
+//     print(math.gamma(5.0))        # 4! = 24
+//     print(math.gamma(1.0) == 1.0)
+//     print(math.lgamma(1.0) == 0.0)
+//     g5 = math.lgamma(5.0)         # ln(24)
+//     print(g5 > 3.17 and g5 < 3.19)
+//
+//     # erf / erfc
+//     print(math.erf(0.0) == 0.0)
+//     e2 = math.erf(1.0)            # ~= 0.8427
+//     print(e2 > 0.84 and e2 < 0.85)
+//     e3 = math.erfc(1.0)           # ~= 0.1573
+//     print(e3 > 0.15 and e3 < 0.16)
+//     # erf + erfc round to 1 for moderate x
+//     print(math.erf(1.0) + math.erfc(1.0) == 1.0)
+//
+//     # nextafter / ldexp (fma tested separately; added to CPython in 3.13)
+//     na = math.nextafter(1.0, 2.0)
+//     print(na > 1.0 and na < 1.0000000001)
+//     print(math.nextafter(1.0, 1.0) == 1.0)
+//     print(math.ldexp(1.5, 3))     # 1.5 * 2^3 = 12.0
+//     print(math.ldexp(1.0, -1))    # 0.5
+//
+//     # modf: (fractional, integer) both as float
+//     frac, ip = math.modf(3.75)
+//     print(frac, ip)
+//     nfrac, nip = math.modf(-3.75)
+//     print(nfrac, nip)
+//
+//     # frexp: (mantissa in [0.5, 1), exponent as T). T defaults to int32
+//     # (see math_frexp_generic for explicit int64/BigInt variants).
+//     m1, ex1 = math.frexp(12.0)    # 0.75, 4
+//     print(m1, ex1)
+//     m2, ex2 = math.frexp(0.5)     # 0.5, 0
+//     print(m2, ex2)
+//     m3, ex3 = math.frexp(0.0)     # 0.0, 0
+//     print(m3, ex3)
+//
+//     # ulp: always positive; ulp(1.0) ~= 2.22e-16 (IEEE double)
+//     u1 = math.ulp(1.0)
+//     print(u1 > 0.0 and u1 < 1e-15)
+//     u2 = math.ulp(math.inf)
+//     print(math.isinf(u2))
+//     # ulp(-x) == ulp(x) (C++ helper takes fabs internally)
+//     print(math.ulp(-1.0) == math.ulp(1.0))
 void main() {
-    // # expm1 / log1p -- exact at 0
-    // print(math.expm1(0.0) == 0.0)
     std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_expm1(0.0) == 0.0)) << "\n";
-    // print(math.log1p(0.0) == 0.0)
     std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_log1p(0.0) == 0.0)) << "\n";
-    // e1 = math.expm1(1.0)          # e - 1 ~= 1.71828
     double e1 = ::tpy::stdlib::math::checked_expm1(1.0);
-    // print(e1 > 1.71 and e1 < 1.72)
     std::cout << ::tpy::print_bool(((e1 > 1.71) && (e1 < 1.72))) << "\n";
-    // l1 = math.log1p(1.0)          # ln 2 ~= 0.6931
     double l1 = ::tpy::stdlib::math::checked_log1p(1.0);
-    // print(l1 > 0.69 and l1 < 0.70)
     std::cout << ::tpy::print_bool(((l1 > 0.69) && (l1 < 0.7))) << "\n";
-    // # gamma / lgamma
-    // print(math.gamma(5.0))        # 4! = 24
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_gamma(5.0)) << "\n";
-    // print(math.gamma(1.0) == 1.0)
     std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_gamma(1.0) == 1.0)) << "\n";
-    // print(math.lgamma(1.0) == 0.0)
     std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_lgamma(1.0) == 0.0)) << "\n";
-    // g5 = math.lgamma(5.0)         # ln(24)
     double g5 = ::tpy::stdlib::math::checked_lgamma(5.0);
-    // print(g5 > 3.17 and g5 < 3.19)
     std::cout << ::tpy::print_bool(((g5 > 3.17) && (g5 < 3.19))) << "\n";
-    // # erf / erfc
-    // print(math.erf(0.0) == 0.0)
     std::cout << ::tpy::print_bool((::std::erf(0.0) == 0.0)) << "\n";
-    // e2 = math.erf(1.0)            # ~= 0.8427
     double e2 = ::std::erf(1.0);
-    // print(e2 > 0.84 and e2 < 0.85)
     std::cout << ::tpy::print_bool(((e2 > 0.84) && (e2 < 0.85))) << "\n";
-    // e3 = math.erfc(1.0)           # ~= 0.1573
     double e3 = ::std::erfc(1.0);
-    // print(e3 > 0.15 and e3 < 0.16)
     std::cout << ::tpy::print_bool(((e3 > 0.15) && (e3 < 0.16))) << "\n";
-    // # erf + erfc round to 1 for moderate x
-    // print(math.erf(1.0) + math.erfc(1.0) == 1.0)
     std::cout << ::tpy::print_bool((((::std::erf(1.0)) + (::std::erfc(1.0))) == 1.0)) << "\n";
-    // # nextafter / ldexp (fma tested separately; added to CPython in 3.13)
-    // na = math.nextafter(1.0, 2.0)
     double na = ::std::nextafter(1.0, 2.0);
-    // print(na > 1.0 and na < 1.0000000001)
     std::cout << ::tpy::print_bool(((na > 1.0) && (na < 1.0000000001))) << "\n";
-    // print(math.nextafter(1.0, 1.0) == 1.0)
     std::cout << ::tpy::print_bool((::std::nextafter(1.0, 1.0) == 1.0)) << "\n";
-    // print(math.ldexp(1.5, 3))     # 1.5 * 2^3 = 12.0
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(1.5, 3)) << "\n";
-    // print(math.ldexp(1.0, -1))    # 0.5
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(1.0, -1)) << "\n";
-    // # modf: (fractional, integer) both as float
-    // frac, ip = math.modf(3.75)
     auto __tup_1 = ::tpy::stdlib::math::modf(3.75);
     double frac = std::get<0>(__tup_1);
     double ip = std::get<1>(__tup_1);
-    // print(frac, ip)
     std::cout << ::tpy::print_float(frac) << " " << ::tpy::print_float(ip) << "\n";
-    // nfrac, nip = math.modf(-3.75)
     auto __tup_2 = ::tpy::stdlib::math::modf(-(3.75));
     double nfrac = std::get<0>(__tup_2);
     double nip = std::get<1>(__tup_2);
-    // print(nfrac, nip)
     std::cout << ::tpy::print_float(nfrac) << " " << ::tpy::print_float(nip) << "\n";
-    // # frexp: (mantissa in [0.5, 1), exponent as T). T defaults to int32
-    // # (see math_frexp_generic for explicit int64/BigInt variants).
-    // m1, ex1 = math.frexp(12.0)    # 0.75, 4
     auto __tup_3 = ::tpy::stdlib::math::frexp<int32_t>(12.0);
     double m1 = std::get<0>(__tup_3);
     int32_t ex1 = std::get<1>(__tup_3);
-    // print(m1, ex1)
     std::cout << ::tpy::print_float(m1) << " " << ex1 << "\n";
-    // m2, ex2 = math.frexp(0.5)     # 0.5, 0
     auto __tup_4 = ::tpy::stdlib::math::frexp<int32_t>(0.5);
     double m2 = std::get<0>(__tup_4);
     int32_t ex2 = std::get<1>(__tup_4);
-    // print(m2, ex2)
     std::cout << ::tpy::print_float(m2) << " " << ex2 << "\n";
-    // m3, ex3 = math.frexp(0.0)     # 0.0, 0
     auto __tup_5 = ::tpy::stdlib::math::frexp<int32_t>(0.0);
     double m3 = std::get<0>(__tup_5);
     int32_t ex3 = std::get<1>(__tup_5);
-    // print(m3, ex3)
     std::cout << ::tpy::print_float(m3) << " " << ex3 << "\n";
-    // # ulp: always positive; ulp(1.0) ~= 2.22e-16 (IEEE double)
-    // u1 = math.ulp(1.0)
     double u1 = ::tpy::stdlib::math::ulp(1.0);
-    // print(u1 > 0.0 and u1 < 1e-15)
     std::cout << ::tpy::print_bool(((u1 > 0.0) && (u1 < 1e-15))) << "\n";
-    // u2 = math.ulp(math.inf)
     double u2 = ::tpy::stdlib::math::ulp(::tpystd::math::inf);
-    // print(math.isinf(u2))
     std::cout << ::tpy::print_bool(::std::isinf(u2)) << "\n";
-    // # ulp(-x) == ulp(x) (C++ helper takes fabs internally)
-    // print(math.ulp(-1.0) == math.ulp(1.0))
     std::cout << ::tpy::print_bool((::tpy::stdlib::math::ulp(-(1.0)) == ::tpy::stdlib::math::ulp(1.0))) << "\n";
 }
 
+// # math module: special functions (gamma, lgamma, erf, erfc, expm1, log1p),
+// # float building blocks (nextafter, ldexp, fma), and float decomposition
+// # (modf, frexp, ulp).
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # math module: special functions (gamma, lgamma, erf, erfc, expm1, log1p),
-    // # float building blocks (nextafter, ldexp, fma), and float decomposition
-    // # (modf, frexp, ulp).
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

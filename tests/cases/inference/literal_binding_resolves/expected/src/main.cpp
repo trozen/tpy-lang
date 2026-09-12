@@ -3,31 +3,40 @@
 
 namespace tpyapp::main {
 
-// # IntLiteralType is committed to default_int_type at binding sites that feed
-// # expression analysis: str() picks int32_t (not int8_t), and tuple-unpack
-// # locals get a concrete C++ type (not the literal value as a "type").
-// a, b = 1, 2  # tpyc: type(int32)
 int32_t a{};
-// # IntLiteralType is committed to default_int_type at binding sites that feed
-// # expression analysis: str() picks int32_t (not int8_t), and tuple-unpack
-// # locals get a concrete C++ type (not the literal value as a "type").
-// a, b = 1, 2  # tpyc: type(int32)
 int32_t b{};
 
 // def main() -> None:
+//     nums = [10, 20, 30]  # tpyc: type(Array[int32, 3])
+//     for n in nums:  # tpyc: type(int32)
+//         print(str(n))
+//
+//     parts = list(str(x) for x in nums)  # tpyc: type(list[str])
+//     print(parts)
+//
+//     # asymmetric widths (200 fits int16 but not int8) -- both resolve to int32.
+//     p, q = 4, 5  # tpyc: type(int32)
+//     p2, q2 = 1, 200  # tpyc: type(int32)
+//     print(str(p), str(q), str(p2), str(q2))
+//
+//     t = (6, 7)  # tpyc: type(tuple[int32, int32])
+//     r, s = t  # tpyc: type(int32)
+//     print(str(r), str(s))
+//
+//     pairs = [(1, 2), (3, 4)]  # tpyc: type(Array[tuple[int32, int32], 2])
+//     for u, v in pairs:  # tpyc: type(int32)
+//         print(str(u), str(v))
+//
+//     print(str(a), str(b))
 void main() {
-    // nums = [10, 20, 30]  # tpyc: type(Array[int32, 3])
     std::array<int32_t, 3> nums = {10, 20, 30};
-    // for n in nums:  # tpyc: type(int32)
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
-        // print(str(n))
         std::cout << ::tpy::fixed_to_str<int32_t>(n) << "\n";
     }
-    // parts = list(str(x) for x in nums)  # tpyc: type(list[str])
     std::vector<std::string> parts = ::tpy::construct<std::vector<std::string>>([&nums]() {
         auto& __src = nums;
         return ::tpy::make_generator<std::string>(
@@ -40,56 +49,41 @@ void main() {
             }
         );
     }());
-    // print(parts)
     std::cout << ::tpy::ListPrinter(parts) << "\n";
-    // # asymmetric widths (200 fits int16 but not int8) -- both resolve to int32.
-    // p, q = 4, 5  # tpyc: type(int32)
     int32_t p = 4;
     int32_t q = 5;
-    // p2, q2 = 1, 200  # tpyc: type(int32)
     int32_t p2 = 1;
     int32_t q2 = 200;
-    // print(str(p), str(q), str(p2), str(q2))
     std::cout << ::tpy::fixed_to_str<int32_t>(p) << " " << ::tpy::fixed_to_str<int32_t>(q) << " " << ::tpy::fixed_to_str<int32_t>(p2) << " " << ::tpy::fixed_to_str<int32_t>(q2) << "\n";
-    // t = (6, 7)  # tpyc: type(tuple[int32, int32])
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{6, 7};
-    // r, s = t  # tpyc: type(int32)
     const auto& __tup_1 = t;
     int32_t r = std::get<0>(__tup_1);
     int32_t s = std::get<1>(__tup_1);
-    // print(str(r), str(s))
     std::cout << ::tpy::fixed_to_str<int32_t>(r) << " " << ::tpy::fixed_to_str<int32_t>(s) << "\n";
-    // pairs = [(1, 2), (3, 4)]  # tpyc: type(Array[tuple[int32, int32], 2])
     std::array<std::tuple<int32_t, int32_t>, 2> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // for u, v in pairs:  # tpyc: type(int32)
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        // for u, v in pairs:  # tpyc: type(int32)
         const auto& __tup_2 = __for_tup_0;
         int32_t u = std::get<0>(__tup_2);
         int32_t v = std::get<1>(__tup_2);
-        // print(str(u), str(v))
         std::cout << ::tpy::fixed_to_str<int32_t>(u) << " " << ::tpy::fixed_to_str<int32_t>(v) << "\n";
     }
-    // print(str(a), str(b))
     std::cout << ::tpy::fixed_to_str<int32_t>(a) << " " << ::tpy::fixed_to_str<int32_t>(b) << "\n";
 }
 
+// a, b = 1, 2  # tpyc: type(int32)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # IntLiteralType is committed to default_int_type at binding sites that feed
-    // # expression analysis: str() picks int32_t (not int8_t), and tuple-unpack
-    // # locals get a concrete C++ type (not the literal value as a "type").
-    // a, b = 1, 2  # tpyc: type(int32)
     a = 1;
     b = 2;
-    // main()
     main();
 }
 

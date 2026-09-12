@@ -5,45 +5,46 @@ namespace tpyapp::main {
 
 
 // def add_name(xs: list[str], v: str) -> None:
+//     xs.append(v)
 void add_name(std::vector<std::string>& xs, std::string_view v) {
-    // xs.append(v)
     xs.push_back(std::string(v));
 }
 
 // def main() -> None:
+//     # Subscript receiver.
+//     print(tables.NAMES[0], tables.NAMES[1])
+//     # Print argument (the whole container).
+//     print(tables.NAMES)
+//     # Call argument at a plain `list[str]&` slot -- passed by reference, so
+//     # the mutation below is visible through the module global afterwards.
+//     add_name(tables.NAMES, "gamma")
+//     print(tables.NAMES)
+//     # The same two shapes over a STDLIB pointer-slot global. Output stays
+//     # host-independent: argv[0] is a path, so only its emptiness is printed.
+//     print(len(sys.argv) >= 1, len(sys.argv[0]) > 0)
 void main() {
-    // # Subscript receiver.
-    // print(tables.NAMES[0], tables.NAMES[1])
     std::cout << ::tpy::__getitem__((*::tpyapp::tables::NAMES), 0) << " " << ::tpy::__getitem__((*::tpyapp::tables::NAMES), 1) << "\n";
-    // # Print argument (the whole container).
-    // print(tables.NAMES)
     std::cout << ::tpy::ListPrinter((*::tpyapp::tables::NAMES)) << "\n";
-    // # Call argument at a plain `list[str]&` slot -- passed by reference, so
-    // # the mutation below is visible through the module global afterwards.
-    // add_name(tables.NAMES, "gamma")
     add_name((*::tpyapp::tables::NAMES), "gamma");
-    // print(tables.NAMES)
     std::cout << ::tpy::ListPrinter((*::tpyapp::tables::NAMES)) << "\n";
-    // # The same two shapes over a STDLIB pointer-slot global. Output stays
-    // # host-independent: argv[0] is a path, so only its emptiness is printed.
-    // print(len(sys.argv) >= 1, len(sys.argv[0]) > 0)
     std::cout << ::tpy::print_bool((::tpy::__len__((*::tpystd::sys::argv)) >= 1)) << " " << ::tpy::print_bool((::tpy::__len__(::tpy::__getitem__((*::tpystd::sys::argv), 0)) > 0)) << "\n";
 }
 
+// # A container GLOBAL of another module, read as `mod.X` at the positions a
+// # caller hits first. The read is a pointer slot, so each consumer has to
+// # accept the `(*slot)` deref: the element template, the printer wrap, and a
+// # by-reference parameter.
+// import sys
+// import tables
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A container GLOBAL of another module, read as `mod.X` at the positions a
-    // # caller hits first. The read is a pointer slot, so each consumer has to
-    // # accept the `(*slot)` deref: the element template, the printer wrap, and a
-    // # by-reference parameter.
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // import tables
     ::tpyapp::tables::__tpy_init();
-    // main()
     main();
 }
 

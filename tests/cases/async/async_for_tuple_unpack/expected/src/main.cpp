@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // async def sum_squares(p: Pairs) -> int:
+//     total = 0
+//     async for k, sq in p:
+//         total += sq
+//     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_sum_squares::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_itr_0.emplace((p).__aiter__());
         __state = S_JOIN_0;
@@ -33,7 +36,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         try {
-            // async for k, sq in p:
             __sub_0.emplace(*__for_itr_0);
             __state = S_RESUME_0;
             continue;
@@ -45,17 +47,14 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_1: {
-        // async for k, sq in p:
         const auto& __tup_1 = __for_tup_0;
         k = std::get<0>(__tup_1);
         sq = std::get<1>(__tup_1);
-        // total += sq
         total = ::tpy::add_check<int32_t>(total, (sq).to_fixed_check<int32_t>());
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
-        // return total
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(total);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -72,12 +71,12 @@ __coro_sum_squares sum_squares(Pairs& p) {
 }
 
 // async def main() -> None:
+//     p = Pairs(4)
+//     print(await sum_squares(p))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // p = Pairs(4)
         p.emplace(Pairs(::tpy::BigInt(4)));
-        // print(await sum_squares(p))
         __sub_0.emplace((*p));
         __state = S_RESUME_0;
         continue;
@@ -87,7 +86,6 @@ __coro_sum_squares sum_squares(Pairs& p) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await sum_squares(p))
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -104,18 +102,18 @@ __coro_main main() {
 }
 
 // async def __anext__(self) -> tuple[int, int]:
+//     if self.n >= self.limit:
+//         raise StopAsyncIteration
+//     self.n += 1
+//     return (self.n, self.n * self.n)
 ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt, ::tpy::BigInt>> __coro_PairIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // if self.n >= self.limit:
         if ((__self.n >= __self.limit)) {
-            // raise StopAsyncIteration
             throw ::tpy::StopAsyncIteration{};
         }
-        // self.n += 1
         __self.n = (__self.n) + (::tpy::BigInt(1));
-        // return (self.n, self.n * self.n)
         __state = S_DONE;
         std::tuple<::tpy::BigInt, ::tpy::BigInt> __tpy_async_ret = std::tuple<::tpy::BigInt, ::tpy::BigInt>{__self.n, ((__self.n) * (__self.n))};
         return ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt, ::tpy::BigInt>>::ready(std::move(__tpy_async_ret));
@@ -126,17 +124,18 @@ __coro_main main() {
 }
 
 
+// # Tuple unpack in `async for (a, b) in pairs:`. Inherits the parser's
+// # existing tuple-unpack rewrite, which routes through a synthetic loop
+// # var. Verifies the rewrite composes with the async-for path.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Tuple unpack in `async for (a, b) in pairs:`. Inherits the parser's
-    // # existing tuple-unpack rewrite, which routes through a synthetic loop
-    // # var. Verifies the rewrite composes with the async-for path.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

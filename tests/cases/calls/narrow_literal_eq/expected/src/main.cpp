@@ -6,245 +6,240 @@ namespace tpyapp::main {
 
 
 
+// def classify(mode: str) -> str:
+//     if mode == "r" or mode == "w":
+//         return "text"
+//     return "binary"
 // @overload
 // def classify(mode: Literal["r", "w"]) -> str: ...
 std::string classify__lit_r__w(std::string_view mode) {
-    // return "text"
     return "text";
 }
 
 // @overload
 // def classify(mode: Literal["rb", "wb"]) -> str: ...
 std::string classify__lit_rb__wb(std::string_view mode) {
-    // return "binary"
     return "binary";
 }
 
 
 // def dispatch_str(mode: Literal["r", "w", "rb", "wb"]) -> None:
+//     if mode == "rb":
+//         # mode: Literal["rb"], matches binary stub
+//         print(classify(mode))
+//     elif mode == "wb":
+//         # mode: Literal["wb"], matches binary stub
+//         print(classify(mode))
+//     elif mode == "r":
+//         # mode: Literal["r"], matches text stub
+//         print(classify(mode))
+//     else:
+//         # mode: Literal["w"], matches text stub
+//         print(classify(mode))
 void dispatch_str(std::string_view mode) {
-    // if mode == "rb":
     if ((mode == "rb")) {
-        // # mode: Literal["rb"], matches binary stub
-        // print(classify(mode))
         std::cout << classify__lit_rb__wb(mode) << "\n";
-    // elif mode == "wb":
     } else if ((mode == "wb")) {
-        // # mode: Literal["wb"], matches binary stub
-        // print(classify(mode))
         std::cout << classify__lit_rb__wb(mode) << "\n";
-    // elif mode == "r":
     } else if ((mode == "r")) {
-        // # mode: Literal["r"], matches text stub
-        // print(classify(mode))
         std::cout << classify__lit_r__w(mode) << "\n";
-    // else:
     } else {
-        // # mode: Literal["w"], matches text stub
-        // print(classify(mode))
         std::cout << classify__lit_r__w(mode) << "\n";
     }
-    // # mode: Literal["rb"], matches binary stub
 }
 
 
 
 
+// def bucket(x: int32) -> str:
+//     if x <= 2:
+//         return "low"
+//     return "high"
 // @overload
 // def bucket(x: Literal[1, 2]) -> str: ...
 std::string bucket__lit_1__2(int32_t x) {
-    // if x <= 2:
     if ((x <= 2)) {
-        // return "low"
         return "low";
     }
-    // return "high"
     return "high";
 }
 
 // @overload
 // def bucket(x: Literal[3, 4]) -> str: ...
 std::string bucket__lit_3__4(int32_t x) {
-    // if x <= 2:
     if ((x <= 2)) {
-        // return "low"
         return "low";
     }
-    // return "high"
     return "high";
 }
 
 // @overload
 // def bucket(x: int32) -> str: ...
 std::string bucket(int32_t x) {
-    // if x <= 2:
     if ((x <= 2)) {
-        // return "low"
         return "low";
     }
-    // return "high"
     return "high";
 }
 
 
 // def dispatch_int(x: Literal[1, 2, 3, 4]) -> None:
+//     if x == 1:
+//         # x: Literal[1], matches first stub
+//         print(bucket(x))
+//     elif x == 3:
+//         # x: Literal[3], matches second stub
+//         print(bucket(x))
+//     else:
+//         # x: Literal[2, 4] -- falls through to int32 fallback
+//         print(bucket(x))
 void dispatch_int(int32_t x) {
-    // if x == 1:
     if ((x == 1)) {
-        // # x: Literal[1], matches first stub
-        // print(bucket(x))
         std::cout << bucket__lit_1__2(x) << "\n";
-    // elif x == 3:
     } else if ((x == 3)) {
-        // # x: Literal[3], matches second stub
-        // print(bucket(x))
         std::cout << bucket__lit_3__4(x) << "\n";
-    // else:
     } else {
-        // # x: Literal[2, 4] -- falls through to int32 fallback
-        // print(bucket(x))
         std::cout << bucket(x) << "\n";
     }
-    // # x: Literal[1], matches first stub
 }
 
 // def dispatch_ne(mode: Literal["r", "rb"]) -> None:
+//     if mode != "r":
+//         # mode: Literal["rb"]
+//         print(classify(mode))
+//     else:
+//         # mode: Literal["r"]
+//         print(classify(mode))
 void dispatch_ne(std::string_view mode) {
-    // if mode != "r":
     if ((mode != "r")) {
-        // # mode: Literal["rb"]
-        // print(classify(mode))
         std::cout << classify__lit_rb__wb(mode) << "\n";
-    // else:
     } else {
-        // # mode: Literal["r"]
-        // print(classify(mode))
         std::cout << classify__lit_r__w(mode) << "\n";
     }
-    // # mode: Literal["rb"]
 }
 
 // def dispatch_or(mode: Literal["r", "w", "rb", "wb"]) -> None:
+//     if mode == "rb" or mode == "wb":
+//         # mode: Literal["rb", "wb"] (|| true intersects to nothing, but
+//         # false branch correctly narrows to Literal["r", "w"])
+//         print(classify(mode))
+//     else:
+//         # mode: Literal["r", "w"]
+//         print(classify(mode))
 void dispatch_or(std::string_view mode) {
-    // if mode == "rb" or mode == "wb":
     if (((mode == "rb") || (mode == "wb"))) {
-        // # mode: Literal["rb", "wb"] (|| true intersects to nothing, but
-        // # false branch correctly narrows to Literal["r", "w"])
-        // print(classify(mode))
         std::cout << classify__lit_rb__wb(mode) << "\n";
-    // else:
     } else {
-        // # mode: Literal["r", "w"]
-        // print(classify(mode))
         std::cout << classify__lit_r__w(mode) << "\n";
     }
-    // # mode: Literal["rb", "wb"] (|| true intersects to nothing, but
-    // # false branch correctly narrows to Literal["r", "w"])
 }
 
 // def dispatch_out_of_range(mode: Literal["r", "w"]) -> None:
+//     if mode == "rb":
+//         # "rb" not in {"r", "w"} -- no narrowing, no error
+//         print("unreachable")
+//     else:
+//         print("ok")
 void dispatch_out_of_range(std::string_view mode) {
-    // if mode == "rb":
     if ((mode == "rb")) {
-        // # "rb" not in {"r", "w"} -- no narrowing, no error
-        // print("unreachable")
         std::cout << "unreachable" << "\n";
-    // else:
     } else {
-        // print("ok")
         std::cout << "ok" << "\n";
     }
-    // # "rb" not in {"r", "w"} -- no narrowing, no error
 }
 
 // def nested_fold(mode: Literal["r", "rb"]) -> None:
+//     if mode == "rb":
+//         # mode: Literal["rb"] -- single value, comparisons fold to constants
+//         if mode == "rb":
+//             print("always")
+//         if mode == "r":
+//             print("never")
+//     else:
+//         print("text")
 void nested_fold(std::string_view mode) {
-    // if mode == "rb":
     if ((mode == "rb")) {
-        // # mode: Literal["rb"] -- single value, comparisons fold to constants
-        // if mode == "rb":
         if (true) {
-            // print("always")
             std::cout << "always" << "\n";
         }
-        // if mode == "r":
         if (false) {
-            // print("never")
             std::cout << "never" << "\n";
         }
-    // else:
     } else {
-        // print("text")
         std::cout << "text" << "\n";
     }
-    // # mode: Literal["rb"] -- single value, comparisons fold to constants
 }
 
 // def reassign_clears_fold(x: Literal[1, 2]) -> None:
+//     if x == 1:
+//         # x: Literal[1] -- folding active
+//         x = 2
+//         # x reassigned -- folding must be cleared
+//         if x == 1:
+//             print("never")
+//         else:
+//             print("reassigned")
+//     else:
+//         print("two")
 void reassign_clears_fold(int32_t x) {
-    // if x == 1:
     if ((x == 1)) {
-        // # x: Literal[1] -- folding active
-        // x = 2
         x = 2;
-        // # x reassigned -- folding must be cleared
-        // if x == 1:
         if ((x == 1)) {
-            // print("never")
             std::cout << "never" << "\n";
-        // else:
         } else {
-            // print("reassigned")
             std::cout << "reassigned" << "\n";
         }
-    // else:
     } else {
-        // print("two")
         std::cout << "two" << "\n";
     }
-    // # x: Literal[1] -- folding active
 }
 
 // def main() -> None:
+//     dispatch_str("rb")
+//     dispatch_str("wb")
+//     dispatch_str("r")
+//     dispatch_str("w")
+//
+//     dispatch_int(1)
+//     dispatch_int(3)
+//     dispatch_int(2)
+//
+//     dispatch_ne("rb")
+//     dispatch_ne("r")
+//
+//     dispatch_or("rb")
+//     dispatch_or("r")
+//
+//     dispatch_out_of_range("r")
+//
+//     nested_fold("rb")
+//     nested_fold("r")
+//
+//     reassign_clears_fold(1)
 void main() {
-    // dispatch_str("rb")
     dispatch_str("rb");
-    // dispatch_str("wb")
     dispatch_str("wb");
-    // dispatch_str("r")
     dispatch_str("r");
-    // dispatch_str("w")
     dispatch_str("w");
-    // dispatch_int(1)
     dispatch_int(1);
-    // dispatch_int(3)
     dispatch_int(3);
-    // dispatch_int(2)
     dispatch_int(2);
-    // dispatch_ne("rb")
     dispatch_ne("rb");
-    // dispatch_ne("r")
     dispatch_ne("r");
-    // dispatch_or("rb")
     dispatch_or("rb");
-    // dispatch_or("r")
     dispatch_or("r");
-    // dispatch_out_of_range("r")
     dispatch_out_of_range("r");
-    // nested_fold("rb")
     nested_fold("rb");
-    // nested_fold("r")
     nested_fold("r");
-    // reassign_clears_fold(1)
     reassign_clears_fold(1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

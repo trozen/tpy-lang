@@ -11,6 +11,7 @@ struct Maybe;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Maybe:
@@ -38,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Maybe& obj) {
 
 
 // def __init__(self, n: int32):
+//     self._n = n
 inline Maybe::Maybe(int32_t n) : _n(n) {}
 
 inline Maybe::Maybe(Maybe&& other) noexcept : _n(std::move(other._n)) {
@@ -52,14 +54,14 @@ inline Maybe& Maybe::operator=(Maybe&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("del", self._n)
+//     if self._n > 0:
+//         raise ValueError("positive on drop")  # tpyc: warning(/.raise. in .__del__. cannot propagate/)
 inline Maybe::~Maybe() {
     if (!this->__tpy_owned_) return;
     try {
-        // print("del", self._n)
         std::cout << "del" << " " << this->_n << "\n";
-        // if self._n > 0:
         if ((this->_n > 0)) {
-            // raise ValueError("positive on drop")  # tpyc: warning(/.raise. in .__del__. cannot propagate/)
             throw ::tpy::ValueError("positive on drop");
         }
     } catch (const std::exception& __del_exc) {

@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Item] = [Item(1, "a"), Item(2, "b"), Item(3, "c")]
+//     result: list[Item] = []
+//     for x in items:
+//         result.append(x)
+//     for r in result:
+//         print(r.value, r.name)
 void main() {
-    // items: list[Item] = [Item(1, "a"), Item(2, "b"), Item(3, "c")]
     std::vector<Item> items = {Item(1, "a"), Item(2, "b"), Item(3, "c")};
-    // result: list[Item] = []
     std::vector<Item> result = std::vector<Item>{};
-    // for x in items:
     auto __obj_0 = ::tpy::own_iter(std::move(items));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // result.append(x)
         result.push_back(std::move(x));
     }
-    // for r in result:
     auto& __obj_1 = result;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& r = *__beg_1;
-        // print(r.value, r.name)
         std::cout << r.value << " " << r.name << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

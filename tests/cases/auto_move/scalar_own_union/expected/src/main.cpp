@@ -5,103 +5,103 @@ namespace tpyapp::main {
 
 
 // def describe(u: Own[A | B]) -> int32:
+//     if isinstance(u, A):
+//         return u.x
+//     if isinstance(u, B):
+//         return u.y
+//     return int32(0)
 int32_t describe(::tpy::Union<A, B>&& u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<A>(u)) {
         const auto& __u = std::get<A>(u);
-        // return u.x
         return __u.x;
     }
-    // if isinstance(u, B):
     if (true) {
         const auto& __u = std::get<B>(u);
-        // return u.y
         return __u.y;
     }
-    // return int32(0)
     return 0;
 }
 
 // def pick(flag: bool) -> Own[A | B]:
+//     if flag:
+//         return A(7)
+//     return B(11)
 ::tpy::Union<A, B> pick(bool flag) {
-    // if flag:
     if (flag) {
-        // return A(7)
         return A(7);
     }
-    // return B(11)
     return B(11);
 }
 
 // def borrow_union(u: A | B) -> int32:
+//     if isinstance(u, A):
+//         return u.x
+//     if isinstance(u, B):
+//         return u.y
+//     return int32(0)
 int32_t borrow_union(::tpy::Union<const A*, const B*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<const A*>(u)) {
         auto& __u = *std::get<const A*>(u);
-        // return u.x
         return __u.x;
     }
     auto& __u = *std::get<const B*>(u);
-    // if isinstance(u, B):
     if (true) {
         auto& __u = *std::get<const B*>(u);
-        // return u.y
         return __u.y;
     }
-    // return int32(0)
     return 0;
 }
 
 // def forward_to_borrow(u: Own[A | B]) -> int32:
+//     # Forwarding the storage-form variant param into a pointer-variant
+//     # slot needs to_ptr_variant; the bare value-variant doesn't convert.
+//     return borrow_union(u)
 int32_t forward_to_borrow(::tpy::Union<A, B>&& u) {
-    // # Forwarding the storage-form variant param into a pointer-variant
-    // # slot needs to_ptr_variant; the bare value-variant doesn't convert.
-    // return borrow_union(u)
     return borrow_union(::tpy::to_const_ptr_variant(u));
 }
 
 // def test_body_isinstance_narrowing() -> None:
+//     print(describe(A(7)))
+//     print(describe(B(11)))
 void test_body_isinstance_narrowing() {
-    // print(describe(A(7)))
     std::cout << describe(A(7)) << "\n";
-    // print(describe(B(11)))
     std::cout << describe(B(11)) << "\n";
 }
 
 // def test_return_into_pointer_variant_receiver() -> None:
+//     # Own[A|B] return into the canonical A|B receiver -- existing
+//     # to_ptr_variant lift handles the storage->pointer-variant conversion.
+//     print(describe(pick(True)))
+//     print(describe(pick(False)))
 void test_return_into_pointer_variant_receiver() {
-    // # Own[A|B] return into the canonical A|B receiver -- existing
-    // # to_ptr_variant lift handles the storage->pointer-variant conversion.
-    // print(describe(pick(True)))
     std::cout << describe(pick(true)) << "\n";
-    // print(describe(pick(False)))
     std::cout << describe(pick(false)) << "\n";
 }
 
 // def test_forward_to_borrow_slot() -> None:
+//     print(forward_to_borrow(A(13)))
+//     print(forward_to_borrow(B(17)))
 void test_forward_to_borrow_slot() {
-    // print(forward_to_borrow(A(13)))
     std::cout << forward_to_borrow(A(13)) << "\n";
-    // print(forward_to_borrow(B(17)))
     std::cout << forward_to_borrow(B(17)) << "\n";
 }
 
 // def main() -> None:
+//     test_body_isinstance_narrowing()
+//     test_return_into_pointer_variant_receiver()
+//     test_forward_to_borrow_slot()
 void main() {
-    // test_body_isinstance_narrowing()
     test_body_isinstance_narrowing();
-    // test_return_into_pointer_variant_receiver()
     test_return_into_pointer_variant_receiver();
-    // test_forward_to_borrow_slot()
     test_forward_to_borrow_slot();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

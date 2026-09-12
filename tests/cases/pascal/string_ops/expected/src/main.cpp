@@ -3,13 +3,23 @@
 
 namespace tpyapp::main {
 
-// greeting: string;
 ::pascal_rt::runtime::strings::PStr<255>* greeting{};
-// name: string;
 ::pascal_rt::runtime::strings::PStr<255>* name{};
-// result: string;
 ::pascal_rt::runtime::strings::PStr<255>* result{};
 
+// greeting: string;
+// name: string;
+// result: string;
+//
+// greeting := 'Hello';
+// name := 'World';
+// result := greeting + ', ' + name + '!';
+// writeln(result);
+// writeln(length(result));
+// if result = 'Hello, World!' then
+//   writeln('match')
+// else
+//   writeln('no match');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -18,31 +28,20 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::strings::__tpy_init();
-    // greeting: string;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_1 = ::pascal_rt::runtime::strings::PStr<255>();
     greeting = &__global_slot_1;
-    // name: string;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_2 = ::pascal_rt::runtime::strings::PStr<255>();
     name = &__global_slot_2;
-    // result: string;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_3 = ::pascal_rt::runtime::strings::PStr<255>();
     result = &__global_slot_3;
-    // greeting := 'Hello';
     greeting->assign("Hello");
-    // name := 'World';
     name->assign("World");
-    // result := greeting + ', ' + name + '!';
     result->assign(std::string((::tpy::str_concat(std::string((::tpy::str_concat(std::string((::tpy::str_concat(std::string(::tpy::__str__((*greeting))), ", "))), std::string(::tpy::__str__((*name)))))), "!"))));
-    // writeln(result);
     std::cout << std::string(::tpy::__str__((*result))) << "\n";
-    // writeln(length(result));
     std::cout << ::tpy::__len__((*result)) << "\n";
-    // if result = 'Hello, World!' then
     if ((std::string(::tpy::__str__((*result))) == "Hello, World!")) {
-        // writeln('match')
         std::cout << "match" << "\n";
     } else {
-        // writeln('no match');
         std::cout << "no match" << "\n";
     }
 }

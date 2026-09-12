@@ -6,26 +6,29 @@ namespace tpyapp::main {
 
 // # Stepped bytes slicing: b[start:stop:step] returns new bytes.
 // def main() -> None:
+//     data: bytes = b"abcdef"
+//
+//     # Every other byte
+//     print(data[::2])
+//
+//     # Reverse
+//     print(data[::-1])
+//
+//     # Step with bounds
+//     print(data[1:5:2])
 void main() {
-    // data: bytes = b"abcdef"
     ::tpy::BytesView data = ::tpy::bytes_literal("abcdef", 6);
-    // # Every other byte
-    // print(data[::2])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, 2})) << "\n";
-    // # Reverse
-    // print(data[::-1])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, -1})) << "\n";
-    // # Step with bounds
-    // print(data[1:5:2])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{1, 5, 2})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

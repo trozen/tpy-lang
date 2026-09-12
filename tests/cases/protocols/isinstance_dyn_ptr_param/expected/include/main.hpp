@@ -31,7 +31,9 @@ struct Quiet;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def reading(p: Ptr[Awaker]) -> int32:
 int32_t reading(Awaker* p);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -108,26 +110,28 @@ namespace tpyapp::main {
 
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Loud::Loud(int32_t base) : base(base) {}
 
 // def mark(self) -> int32:
+//     return self.base
 inline int32_t Loud::mark() {
-    // return self.base
     return this->base;
 }
 
 // def shout(self) -> int32:
+//     return self.base * 100
 inline int32_t Loud::shout() const {
-    // return self.base * 100
     return (::tpy::mul_check<int32_t>(this->base, 100));
 }
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Quiet::Quiet(int32_t base) : base(base) {}
 
 // def mark(self) -> int32:
+//     return self.base
 inline int32_t Quiet::mark() {
-    // return self.base
     return this->base;
 }
 void __tpy_init();

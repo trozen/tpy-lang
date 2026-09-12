@@ -9,6 +9,7 @@ namespace tpyapp::util {
 
 inline constexpr std::string_view __name__ = "util";
 
+// def boost(n: int32) -> int32:
 int32_t boost(int32_t n);
 
 void __tpy_init();

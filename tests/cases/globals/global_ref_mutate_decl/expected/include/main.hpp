@@ -12,6 +12,7 @@ struct Writer;
 extern std::vector<int32_t>* log;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Writer:
@@ -30,9 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
 
 
 // def add(self, v: int):
+//     global log
+//     log.append(v)
 inline void Writer::add(const ::tpy::BigInt& v) const {
-    // global log
-    // log.append(v)
     log->push_back((v).to_fixed_check<int32_t>());
 }
 void __tpy_init();

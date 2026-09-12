@@ -5,56 +5,56 @@ namespace tpyapp::main {
 
 
 // def greet_dog(d: Dog) -> None:
+//     print("Woof!", d.name)
 void greet_dog(const Dog& d) {
-    // print("Woof!", d.name)
     std::cout << "Woof!" << " " << d.name << "\n";
 }
 
 // def greet_cat(c: Cat) -> None:
+//     print("Meow!", c.name)
 void greet_cat(const Cat& c) {
-    // print("Meow!", c.name)
     std::cout << "Meow!" << " " << c.name << "\n";
 }
 
 // def main() -> None:
+//     pet: Dog | Cat = Dog("Rex")
+//     if isinstance(pet, Dog):
+//         greet_dog(pet)
+//     else:
+//         greet_cat(pet)
+//     pet = Cat("Whiskers")
+//     if isinstance(pet, Cat):
+//         greet_cat(pet)
+//     else:
+//         greet_dog(pet)
 void main() {
     std::optional<::tpy::Union<Cat, Dog>> __slot_2;
-    // pet: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
-    // if isinstance(pet, Dog):
     if (true) {
         auto& __pet = *std::get<Dog*>(pet);
-        // greet_dog(pet)
         greet_dog(__pet);
-    // else:
     } else {
         auto& __pet = *std::get<Cat*>(pet);
-        // greet_cat(pet)
         greet_cat(__pet);
     }
-    // pet = Cat("Whiskers")
     __slot_2.emplace(Cat("Whiskers"));
     pet = ::tpy::to_ptr_variant(*__slot_2);
-    // if isinstance(pet, Cat):
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        // greet_cat(pet)
         greet_cat(__pet);
-    // else:
     } else {
         auto& __pet = *std::get<Dog*>(pet);
-        // greet_dog(pet)
         greet_dog(__pet);
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

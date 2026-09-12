@@ -12,7 +12,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_copy_param(pet: Dog | Cat) -> None:
 void print_copy_param(::tpy::Union<const Cat*, const Dog*> pet);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -49,9 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

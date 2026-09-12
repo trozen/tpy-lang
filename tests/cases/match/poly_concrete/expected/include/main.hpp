@@ -29,7 +29,9 @@ struct Snake;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(a: Animal) -> str:
 std::string classify(const Animal& a);
+// def main() -> None:
 void main();
 
 // class Animal(Tag):
@@ -93,12 +95,15 @@ namespace tpyapp::main {
 
 
 // def __init__(self, legs: int) -> None:
+//     self.legs = legs
 inline Animal::Animal(const ::tpy::BigInt& legs) : legs(legs) {}
 
 // def __init__(self) -> None:
+//     super().__init__(4)
 inline Dog::Dog() : Animal(4) {}
 
 // def __init__(self) -> None:
+//     super().__init__(0)
 inline Snake::Snake() : Animal(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

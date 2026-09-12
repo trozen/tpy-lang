@@ -5,15 +5,19 @@ namespace tpyapp::main {
 
 
 // def bump_all(h: Holder) -> Iterator[int32]:
+//     yield 0
+//     total = 0
+//     for n in h.nodes_gen():  # tpyc: ok
+//         n.val += 10
+//         total += n.val
+//         yield total
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_all::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
-        // total = 0
         total = 0;
         __for_src_0.emplace(h.nodes_gen());
         __state = S_JOIN_0;
@@ -30,11 +34,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump_all::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         n = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        // n.val += 10
         n->val = ::tpy::add_check<int32_t>(n->val, 10);
-        // total += n.val
         total = ::tpy::add_check<int32_t>(total, n->val);
-        // yield total
         __state = S_RESUME_1;
         return total;
     }
@@ -50,10 +51,12 @@ __gen_bump_all bump_all(Holder& h) {
 }
 
 // def main() -> None:
+//     h = Holder()
+//     for v in bump_all(h):
+//         print(v)
+//     print(h.a.val, h.b.val)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // for v in bump_all(h):
     {
         auto __src_0 = bump_all(h);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -61,24 +64,22 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(h.a.val, h.b.val)
     std::cout << h.a.val << " " << h.b.val << "\n";
 }
 
 // def nodes_gen(self) -> Iterator[Node]:
+//     yield self.a
+//     yield self.b
 std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_Holder_nodes_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.a
         __state = S_RESUME_0;
         return __self.a;
     }
     case S_RESUME_0: {
-        // yield self.b
         __state = S_RESUME_1;
         return __self.b;
     }
@@ -92,12 +93,12 @@ std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_Holder_nodes_
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

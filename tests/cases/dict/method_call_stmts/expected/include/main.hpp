@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drop(d: dict[int32, int32], k: int32) -> None:
 void drop(::tpy::ordered_map<int32_t, int32_t>& d, int32_t k);
+// def take(d: dict[int32, int32], k: int32) -> int32:
 int32_t take(::tpy::ordered_map<int32_t, int32_t>& d, int32_t k);
+// def peek(d: dict[int32, int32], k: int32) -> int32:
 int32_t peek(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k);
+// def wipe(d: dict[int32, int32]) -> None:
 void wipe(::tpy::ordered_map<int32_t, int32_t>& d);
+// def main() -> None:
 void main();
 
 void __tpy_init();

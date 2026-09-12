@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: str = "hi"
+//     i: int32 = -10
+//     print(s[i])
 void main() {
-    // s: str = "hi"
     std::string_view s = "hi";
-    // i: int32 = -10
     int32_t i = -10;
-    // print(s[i])
     std::cout << ::tpy::__getitem__(s, i) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

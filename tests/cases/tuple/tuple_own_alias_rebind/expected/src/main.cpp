@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def make_pair(v: int32) -> Own[tuple[int32, Box]]:
+//     return (v, Box(v))
 std::tuple<int32_t, Box> make_pair(int32_t v) {
-    // return (v, Box(v))
     return std::tuple<int32_t, Box>{v, Box(v)};
 }
 
 // def use(h: Holder) -> int32:
+//     t = make_pair(9)        # owning binding: slot-materialized, t borrows it
+//     first = t[1].val
+//     t = h.pair              # tpyc: ok
+//     t[1].val = 99           # mutate through the alias -- visible on h.pair
+//     return first
 int32_t use(Holder& h) {
-    // t = make_pair(9)        # owning binding: slot-materialized, t borrows it
     std::optional<std::tuple<int32_t, Box>> __slot_1;
     std::tuple<int32_t, Box*> t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(9)));
-    // first = t[1].val
     int32_t first = std::get<1>(t)->val;
-    // t = h.pair              # tpyc: ok
     t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
-    // t[1].val = 99           # mutate through the alias -- visible on h.pair
     std::get<1>(t)->val = 99;
-    // return first
     return first;
 }
 
 // def main() -> None:
+//     h = Holder(Box(5))
+//     r = use(h)
+//     print(r)                # 9 (owning slot's Box)
+//     print(h.pair[1].val)    # 99 (alias mutation observed -- not a copy)
 void main() {
-    // h = Holder(Box(5))
     Holder h = Holder(Box(5));
-    // r = use(h)
     int32_t r = use(h);
-    // print(r)                # 9 (owning slot's Box)
     std::cout << r << "\n";
-    // print(h.pair[1].val)    # 99 (alias mutation observed -- not a copy)
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

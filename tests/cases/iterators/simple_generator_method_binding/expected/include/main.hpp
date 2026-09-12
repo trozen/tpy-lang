@@ -35,6 +35,7 @@ struct Source;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Source:
@@ -42,24 +43,26 @@ struct Source {
 
 
     // def gen(self, n: int32) -> Iterator[int32]:
+    //     i: int32 = 0
+    //     while i < n:
+    //         if i == caps.CAP:           # module-constant access in a method generator
+    //             break
+    //         if i == Color.GREEN.value:  # enum-member access in a generator body
+    //             print("green")
+    //         yield i
+    //         i += 1
     auto gen(int32_t n) const {
-        // i: int32 = 0
         int32_t i = 0;
         return ::tpy::make_generator<int32_t>(
             [this, n, i]() mutable -> std::optional<int32_t> {
                 while ((i < n)) {
-                    // if i == caps.CAP:           # module-constant access in a method generator
                     if ((i == ::tpyapp::caps::CAP)) {
-                        // break
                         break;
                     }
-                    // if i == Color.GREEN.value:  # enum-member access in a generator body
                     if ((i == static_cast<int32_t>(Color::GREEN))) {
-                        // print("green")
                         std::cout << "green" << "\n";
                     }
                     auto __val = i;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
                     return std::optional<int32_t>(__val);
                 }

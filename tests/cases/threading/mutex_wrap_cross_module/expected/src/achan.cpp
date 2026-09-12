@@ -4,15 +4,15 @@
 namespace tpyapp::achan {
 
 
+// from tpy.mem import UninitHeapStorage
+// from tpy.sync import Mutex, Condvar
+// from tplib.arc import Arc
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitHeapStorage
-    // from tpy.sync import Mutex, Condvar
     ::tpystd::tpy::sync::__tpy_init();
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
 }

@@ -80,11 +80,18 @@ std::optional<::tpyapp::main::day> EnumUtil<::tpyapp::main::day>::try_parse(std:
 
 namespace tpyapp::main {
 
-// b: Byte;
 int32_t b{};
-// d: Day;
 day d;
 
+// b: Byte;
+// d: Day;
+//
+// b := 42;
+// writeln(b);
+// d := Sat;
+// if d in [Sat, Sun] then writeln('weekend')
+// else writeln('weekday');
+// if 5 in [1, 3, 5, 7, 9] then writeln('odd small');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -93,23 +100,15 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
-    // b := 42;
     b = ::pascal_rt::runtime::builtins::check_subrange(42, 0, 255, "b");
-    // writeln(b);
     std::cout << b << "\n";
-    // d := Sat;
     d = day::sat;
-    // if d in [Sat, Sun] then writeln('weekend')
     if (((d == day::sat) || (d == day::sun))) {
-        // if d in [Sat, Sun] then writeln('weekend')
         std::cout << "weekend" << "\n";
     } else {
-        // else writeln('weekday');
         std::cout << "weekday" << "\n";
     }
-    // if 5 in [1, 3, 5, 7, 9] then writeln('odd small');
     if ((((((5 == 1) || (5 == 3)) || (5 == 5)) || (5 == 7)) || (5 == 9))) {
-        // if 5 in [1, 3, 5, 7, 9] then writeln('odd small');
         std::cout << "odd small" << "\n";
     }
 }

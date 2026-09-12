@@ -12,10 +12,14 @@ struct T;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def is_def(o: Pod | None) -> bool:
 bool is_def(const Pod* o);
+// def is_def_gen[U](o: U | None) -> bool:
 template<typename U>
 bool is_def_gen(::tpy::opt_cparam_t<U> o);
+// def take(t: T) -> Pod | None:
 Pod* take(T& t);
+// def main() -> None:
 void main();
 
 // # A NARROWED storage-form Optional field widened back to an Optional arg or
@@ -52,16 +56,18 @@ inline std::ostream& operator<<(std::ostream& os, const T& obj) {
 
 
 // def __init__(self) -> None:
+//     self.x = 0
 inline Pod::Pod() : x(::tpy::BigInt(0)) {}
 
 // def __init__(self) -> None:
+//     self.o = None
 inline T::T() : o(std::nullopt) {}
 // def is_def_gen[U](o: U | None) -> bool:
+//     # Generic sibling: the type param must infer U=Pod from a narrowed field
+//     # arg (whose analyzed type is Ref-wrapped), not U=Ref[Pod] -> val_or_ref.
+//     return o is not None
 template<typename U>
 bool is_def_gen(::tpy::opt_cparam_t<U> o) {
-    // # Generic sibling: the type param must infer U=Pod from a narrowed field
-    // # arg (whose analyzed type is Ref-wrapped), not U=Ref[Pod] -> val_or_ref.
-    // return o is not None
     return (::tpy::opt_has_value(o));
 }
 

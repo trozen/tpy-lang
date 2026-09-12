@@ -13,17 +13,29 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def parse(s: str) -> int:
 std::expected<::tpy::BigInt, E> parse(std::string_view s);
+// def get_name(s: str) -> str:
 std::expected<std::string, E> get_name(std::string_view s);
+// def add(a: str, b: str) -> int:
 std::expected<::tpy::BigInt, E> add(std::string_view a, std::string_view b);
+// def mul3(a: str, b: str, c: str) -> int:
 std::expected<::tpy::BigInt, E> mul3(std::string_view a, std::string_view b, std::string_view c);
+// def as_arg(s: str) -> int:
 std::expected<::tpy::BigInt, E> as_arg(std::string_view s);
+// def greet(s: str) -> str:
 std::expected<std::string, E> greet(std::string_view s);
+// def positive(x: int, y: int) -> Own[Point]:
 std::expected<Point, E> positive(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
+// def modify(x: int, y: int) -> Own[Point]:
 std::expected<Point, E> modify(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
+// def main() -> None:
 void main();
+// def checked_parse(s: str) -> int:
 std::expected<::tpy::BigInt, ParseErr> checked_parse(std::string_view s);
+// def checked_add(a: str, b: str) -> int:
 std::expected<::tpy::BigInt, ParseErr> checked_add(std::string_view a, std::string_view b);
+// def test_as_binding() -> None:
 void test_as_binding();
 
 // class E(Exception, ReturnException):
@@ -93,17 +105,18 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, code: int) -> None:
+//     self.code = code
 inline ParseErr::ParseErr(const ::tpy::BigInt& code) : code(code) {}
 
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def updated(self) -> Self:
+//     self.x += 1
+//     self.y += 1
+//     return self
 inline Point& Point::updated() {
-    // self.x += 1
     this->x = (this->x) + (::tpy::BigInt(1));
-    // self.y += 1
     this->y = (this->y) + (::tpy::BigInt(1));
-    // return self
     return (*this);
 }
 

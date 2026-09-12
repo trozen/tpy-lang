@@ -5,13 +5,13 @@ namespace nested_case::helpers {
 
 
 // async def compute(self, delta: int) -> int:  # tpyc: ok
+//     self.value += delta
+//     return self.value
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_7_Library_6_Worker_7_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // self.value += delta
         __self.value = (__self.value) + (delta);
-        // return self.value
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.value;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));

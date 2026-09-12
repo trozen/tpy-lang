@@ -5,12 +5,17 @@ namespace tpyapp::main {
 
 
 // def gen(k: int32) -> Iterator[int32]:
+//     base = 100
+//
+//     def scale(x: int32) -> int32:
+//         return x + base
+//
+//     for i in range(k):
+//         yield scale(i)
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // base = 100
         base = 100;
-        // def scale(x: int32) -> int32:
         // def scale: frame member
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(k));
@@ -27,7 +32,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         i = ((*__for_i_0))++;
-        // yield scale(i)
         __state = S_RESUME_0;
         return scale(i);
     }
@@ -37,7 +41,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 int32_t __gen_gen::scale(int32_t x) {
-    // return x + base
     return (::tpy::add_check<int32_t>(x, base));
 }
 
@@ -47,8 +50,9 @@ __gen_gen gen(int32_t k) {
 }
 
 // def main() -> None:
+//     for v in gen(3):
+//         print(v)
 void main() {
-    // for v in gen(3):
     {
         auto __src_0 = gen(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -56,18 +60,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

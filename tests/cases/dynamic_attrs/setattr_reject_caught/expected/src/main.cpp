@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Strict()
+//     s.host = "ok"
+//     print("set host")
+//     try:
+//         s._private = "bad"
+//         print("never")
+//     except AttributeError as e:
+//         print("caught:", str(e))
 void main() {
-    // s = Strict()
     Strict s = Strict();
-    // s.host = "ok"
     s.__setattr__("host", "ok");
-    // print("set host")
     std::cout << "set host" << "\n";
-    // try:
     {
         try {
-            // s._private = "bad"
             s.__setattr__("_private", "bad");
-            // print("never")
             std::cout << "never" << "\n";
         } catch (const ::tpy::AttributeError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

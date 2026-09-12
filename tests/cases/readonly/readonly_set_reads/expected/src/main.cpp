@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def has(s: readonly[set[int32]], x: int32) -> bool:
+//     return x in s
 bool has(const ::tpy::ordered_set<int32_t>& s, int32_t x) {
-    // return x in s
     return std::ranges::contains(s, x);
 }
 
 // def count(s: readonly[set[int32]]) -> int32:
+//     n = 0
+//     for _e in s:
+//         n += 1
+//     return n
 int32_t count(const ::tpy::ordered_set<int32_t>& s) {
-    // n = 0
     int32_t n = 0;
-    // for _e in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t _e = *__beg_0;
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     s: set[int32] = {1, 2, 3}
+//     print(has(s, 2), has(s, 9))
+//     print(count(s))
 void main() {
-    // s: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    // print(has(s, 2), has(s, 9))
     std::cout << ::tpy::print_bool(has(s, 2)) << " " << ::tpy::print_bool(has(s, 9)) << "\n";
-    // print(count(s))
     std::cout << count(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

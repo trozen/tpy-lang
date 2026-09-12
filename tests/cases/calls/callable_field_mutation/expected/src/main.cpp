@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def add_one(xs: list[int32]) -> None:
+//     xs.append(1)
 void add_one(std::vector<int32_t>& xs) {
-    // xs.append(1)
     xs.push_back(1);
 }
 
 // def main() -> None:
+//     h = Holder(add_one)
+//     h.poke()
+//     h.poke()
+//     print(len(h.data))
+//     print(h.data[1], h.data[2])
 void main() {
-    // h = Holder(add_one)
     Holder h = Holder(add_one);
-    // h.poke()
     h.poke();
-    // h.poke()
     h.poke();
-    // print(len(h.data))
     std::cout << ::tpy::__len__(h.data) << "\n";
-    // print(h.data[1], h.data[2])
     std::cout << ::tpy::__getitem__(h.data, 1) << " " << ::tpy::__getitem__(h.data, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

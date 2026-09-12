@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Combined(42, "answer")
+//     print(c.summary())
 void main() {
-    // c = Combined(42, "answer")
     Combined c = Combined(42, "answer");
-    // print(c.summary())
     std::cout << c.summary() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

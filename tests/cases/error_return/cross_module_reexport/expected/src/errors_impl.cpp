@@ -6,13 +6,13 @@ namespace tpyapp::errors_impl {
 
 // @error_return(ParseError)
 // def parse_int(s: str) -> int:
+//     if s == "":
+//         raise ParseError
+//     return int(s)
 std::expected<::tpy::BigInt, ParseError> parse_int(std::string_view s) {
-    // if s == "":
     if ((s == "")) {
-        // raise ParseError
         return ::tpy::make_unexpected(ParseError{});
     }
-    // return int(s)
     return ::tpy::BigInt::from_str(s);
 }
 

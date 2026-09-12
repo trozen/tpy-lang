@@ -28,20 +28,26 @@ struct __gen_dropwhile;
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_filterfalse;
 
+// def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
 template <typename T>
 __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> object, std::optional<int32_t> times = std::nullopt);
+// def cycle[T](it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_cycle<T, T_it> cycle(T_it&& it);
+// def islice[T](it: Iterable[T], stop: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_islice<T, T_it> islice(T_it&& it, int32_t stop);
+// def takewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 __gen_takewhile<T, T_it, F_pred> takewhile(F_pred&& pred, T_it&& it);
+// def dropwhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 __gen_dropwhile<T, T_it, F_pred> dropwhile(F_pred&& pred, T_it&& it);
+// def filterfalse[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 __gen_filterfalse<T, T_it, F_pred> filterfalse(F_pred&& pred, T_it&& it);
 
-// Generator: repeat
+// def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
 template <typename T>
 struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
     int32_t __state;
@@ -72,6 +78,12 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
     }
 };
 // def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
+//     if times is None:
+//         while True:
+//             yield object
+//     else:
+//         for _ in range(times):
+//             yield object
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
     while (true) switch (__state) {
@@ -100,7 +112,6 @@ std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
     }
     case S_JOIN_1: {
         if (true) {
-            // yield object
             __state = S_RESUME_0;
             return object;
         } else {
@@ -114,7 +125,6 @@ std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
             continue;
         }
         _ = ((*__for_i_0))++;
-        // yield object
         __state = S_RESUME_1;
         return object;
     }
@@ -130,7 +140,7 @@ __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> object, std::optional<int32_
     return __gen_repeat<T>(object, times);
 }
 
-// Generator: cycle
+// def cycle[T](it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_cycle : public ::tpy::next_iter_mixin<__gen_cycle<T, T_it>, T> {
     int32_t __state;
@@ -164,11 +174,17 @@ struct __gen_cycle : public ::tpy::next_iter_mixin<__gen_cycle<T, T_it>, T> {
     }
 };
 // def cycle[T](it: Iterable[T]) -> Iterator[T]:
+//     saved: list[T] = []
+//     for x in it:
+//         saved.append(x)
+//         yield x
+//     while len(saved) > 0:
+//         for y in saved:
+//             yield y
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_cycle<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // saved: list[T] = []
         saved.emplace(std::vector<T>{});
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -189,9 +205,7 @@ std::expected<T, ::tpy::StopIteration> __gen_cycle<T, T_it>::__next__() {
             continue;
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
-        // saved.append(x)
         (*saved).push_back((*x));
-        // yield x
         __state = S_RESUME_0;
         return (*x);
     }
@@ -212,7 +226,6 @@ std::expected<T, ::tpy::StopIteration> __gen_cycle<T, T_it>::__next__() {
             continue;
         }
         y = &(*((*__for_it_1))++);
-        // yield y
         __state = S_RESUME_1;
         return (*y);
     }
@@ -228,7 +241,7 @@ __gen_cycle<T, T_it> cycle(T_it&& it) {
     return __gen_cycle<T, T_it>(std::forward<T_it>(it));
 }
 
-// Generator: islice
+// def islice[T](it: Iterable[T], stop: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_islice : public ::tpy::next_iter_mixin<__gen_islice<T, T_it>, T> {
     int32_t __state;
@@ -258,18 +271,22 @@ struct __gen_islice : public ::tpy::next_iter_mixin<__gen_islice<T, T_it>, T> {
     }
 };
 // def islice[T](it: Iterable[T], stop: int32) -> Iterator[T]:
+//     i: int32 = 0
+//     for x in it:
+//         if i >= stop:
+//             break
+//         yield x
+//         i += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_islice<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: int32 = 0
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -285,7 +302,6 @@ std::expected<T, ::tpy::StopIteration> __gen_islice<T, T_it>::__next__() {
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         }
@@ -306,7 +322,7 @@ __gen_islice<T, T_it> islice(T_it&& it, int32_t stop) {
     return __gen_islice<T, T_it>(std::forward<T_it>(it), stop);
 }
 
-// Generator: takewhile
+// def takewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<T, T_it, F_pred>, T> {
     int32_t __state;
@@ -335,6 +351,10 @@ struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<T, T_it, 
     }
 };
 // def takewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
+//     for x in it:
+//         if not pred(x):
+//             break
+//         yield x
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<T, ::tpy::StopIteration> __gen_takewhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
@@ -358,7 +378,6 @@ std::expected<T, ::tpy::StopIteration> __gen_takewhile<T, T_it, F_pred>::__next_
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         }
@@ -379,7 +398,7 @@ __gen_takewhile<T, T_it, F_pred> takewhile(F_pred&& pred, T_it&& it) {
     return __gen_takewhile<T, T_it, F_pred>(std::forward<F_pred>(pred), std::forward<T_it>(it));
 }
 
-// Generator: dropwhile
+// def dropwhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_dropwhile : public ::tpy::next_iter_mixin<__gen_dropwhile<T, T_it, F_pred>, T> {
     int32_t __state;
@@ -409,11 +428,17 @@ struct __gen_dropwhile : public ::tpy::next_iter_mixin<__gen_dropwhile<T, T_it, 
     }
 };
 // def dropwhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
+//     dropping = True
+//     for x in it:
+//         if dropping:
+//             if pred(x):
+//                 continue
+//             dropping = False
+//         yield x
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<T, ::tpy::StopIteration> __gen_dropwhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // dropping = True
         dropping = true;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -435,7 +460,6 @@ std::expected<T, ::tpy::StopIteration> __gen_dropwhile<T, T_it, F_pred>::__next_
                 __state = S_JOIN_0;
                 continue;
             } else {
-                // dropping = False
                 dropping = false;
                 __state = S_JOIN_1;
                 continue;
@@ -446,7 +470,6 @@ std::expected<T, ::tpy::StopIteration> __gen_dropwhile<T, T_it, F_pred>::__next_
         }
     }
     case S_JOIN_1: {
-        // yield x
         __state = S_RESUME_0;
         return (*x);
     }
@@ -462,7 +485,7 @@ __gen_dropwhile<T, T_it, F_pred> dropwhile(F_pred&& pred, T_it&& it) {
     return __gen_dropwhile<T, T_it, F_pred>(std::forward<F_pred>(pred), std::forward<T_it>(it));
 }
 
-// Generator: filterfalse
+// def filterfalse[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<T, T_it, F_pred>, T> {
     int32_t __state;
@@ -491,6 +514,9 @@ struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<T, T_
     }
 };
 // def filterfalse[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
+//     for x in it:
+//         if not pred(x):
+//             yield x
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<T, ::tpy::StopIteration> __gen_filterfalse<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
@@ -511,7 +537,6 @@ std::expected<T, ::tpy::StopIteration> __gen_filterfalse<T, T_it, F_pred>::__nex
         }
         x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));
         if ((!(pred((*x))))) {
-            // yield x
             __state = S_RESUME_0;
             return (*x);
         } else {
@@ -535,14 +560,17 @@ __gen_filterfalse<T, T_it, F_pred> filterfalse(F_pred&& pred, T_it&& it) {
     return __gen_filterfalse<T, T_it, F_pred>(std::forward<F_pred>(pred), std::forward<T_it>(it));
 }
 
+// def count(start: int = 0, step: int = 1) -> Iterator[int]:
+//     n = start
+//     while True:
+//         yield n
+//         n = n + step
 inline auto count(const ::tpy::BigInt& start = ::tpy::BigInt(0), const ::tpy::BigInt& step = ::tpy::BigInt(1)) {
-    // n = start
     ::tpy::BigInt n = start;
     return ::tpy::make_generator<::tpy::BigInt>(
         [start, step, n]() mutable -> std::optional<::tpy::BigInt> {
             while (true) {
                 auto __val = n;
-                // n = n + step
                 n = ((n) + (step));
                 return std::optional<::tpy::BigInt>(__val);
             }

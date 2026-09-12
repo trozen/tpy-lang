@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def test_lazy_variable_count() -> None:
+//     n: int32 = 5
+//     x = [7] * n  # tpyc: type(/repeat\[/)
+//     print(len(x))
+//     consume(x)
 void test_lazy_variable_count() {
-    // n: int32 = 5
     int32_t n = 5;
-    // x = [7] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> x = ::tpy::repeat_range<int32_t>(n, {7});
-    // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
-    // consume(x)
     consume(x);
 }
 
 // def test_lazy_for_loop() -> None:
+//     n: int32 = 3
+//     r = [10] * n  # tpyc: type(/repeat\[/)
+//     for v in r:
+//         print(v)
 void test_lazy_for_loop() {
-    // n: int32 = 3
     int32_t n = 3;
-    // r = [10] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {10});
-    // for v in r:
     auto& __src_0 = r;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
 // def test_direct_iterable_arg() -> None:
+//     # Pass repeat literal directly to Iterable param
+//     consume([3] * 4)
 void test_direct_iterable_arg() {
-    // # Pass repeat literal directly to Iterable param
-    // consume([3] * 4)
     auto __tmp_1 = ({
         int32_t __rep_0 = 3;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t) -> int32_t { return __rep_0; });
@@ -46,28 +46,28 @@ void test_direct_iterable_arg() {
 }
 
 // def test_print_lazy_repeat() -> None:
+//     # Print on lazy repeat uses ListPrinter
+//     n: int32 = 4
+//     r = [5] * n  # tpyc: type(/repeat\[/)
+//     print(r)
 void test_print_lazy_repeat() {
-    // # Print on lazy repeat uses ListPrinter
-    // n: int32 = 4
     int32_t n = 4;
-    // r = [5] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {5});
-    // print(r)
     std::cout << ::tpy::ListPrinter(r) << "\n";
 }
 
+// test_lazy_variable_count()
+// test_lazy_for_loop()
+// test_direct_iterable_arg()
+// test_print_lazy_repeat()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_lazy_variable_count()
     test_lazy_variable_count();
-    // test_lazy_for_loop()
     test_lazy_for_loop();
-    // test_direct_iterable_arg()
     test_direct_iterable_arg();
-    // test_print_lazy_repeat()
     test_print_lazy_repeat();
 }
 

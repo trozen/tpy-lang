@@ -5,11 +5,20 @@ namespace tpyapp::main {
 
 
 // async def client_role(port: int32) -> None:
+//     reader, writer = await asyncio.open_connection("127.0.0.1", port)
+//     writer.write(b"ping\n")
+//     writer.write(b"more")
+//     await writer.drain()
+//     line = await reader.readline()
+//     print("line: " + line.decode())
+//     rest = await reader.readexactly(4)
+//     print("rest: " + rest.decode())
+//     writer.close()
+//     await writer.wait_closed()
 ::tpystd::tpy::Poll<::std::monostate> __coro_client_role::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = "127.0.0.1";
-        // reader, writer = await asyncio.open_connection("127.0.0.1", port)
         __sub_0.emplace(__coro_arg_0, port);
         __state = S_RESUME_0;
         continue;
@@ -19,15 +28,11 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // reader, writer = await asyncio.open_connection("127.0.0.1", port)
         auto&& __tup_1 = (*__await_lift_0);
         reader.emplace(std::move(std::get<0>(__tup_1)));
         writer.emplace(std::move(std::get<1>(__tup_1)));
-        // writer.write(b"ping\n")
         (*writer).write(::tpy::bytes_literal("ping\n", 5));
-        // writer.write(b"more")
         (*writer).write(::tpy::bytes_literal("more", 4));
-        // await writer.drain()
         __sub_1.emplace((*writer));
         __state = S_RESUME_1;
         continue;
@@ -37,7 +42,6 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // line = await reader.readline()
         __sub_2.emplace((*reader));
         __state = S_RESUME_2;
         continue;
@@ -47,9 +51,7 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         line = std::move(__r2).value();
         __sub_2.reset();
-        // print("line: " + line.decode())
         std::cout << (::tpy::str_concat("line: ", ::tpy::bytes_decode(line))) << "\n";
-        // rest = await reader.readexactly(4)
         __sub_3.emplace((*reader), 4);
         __state = S_RESUME_3;
         continue;
@@ -59,11 +61,8 @@ namespace tpyapp::main {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         rest = std::move(__r3).value();
         __sub_3.reset();
-        // print("rest: " + rest.decode())
         std::cout << (::tpy::str_concat("rest: ", ::tpy::bytes_decode(rest))) << "\n";
-        // writer.close()
         (*writer).close();
-        // await writer.wait_closed()
         __sub_4.emplace((*writer));
         __state = S_RESUME_4;
         continue;
@@ -88,24 +87,32 @@ __coro_client_role client_role(int32_t port) {
 }
 
 // async def main_coro() -> None:
+//     loop = asyncio.get_running_loop()
+//     listener = socket(AF_INET, SOCK_STREAM)
+//     listener.bind(("127.0.0.1", 0))
+//     listener.listen(1)
+//     listener.setblocking(False)
+//     port = listener.getsockname()[1]
+//
+//     client = asyncio.create_task(client_role(port))
+//
+//     conn, addr = await loop.sock_accept(listener)
+//     data = await loop.sock_recv(conn, 1024)
+//     await loop.sock_sendall(conn, data)
+//     conn.close()
+//
+//     await client
+//     listener.close()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // listener = socket(AF_INET, SOCK_STREAM)
         listener.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
-        // listener.bind(("127.0.0.1", 0))
         (*listener).bind(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
-        // listener.listen(1)
         (*listener).listen(1);
-        // listener.setblocking(False)
         (*listener).setblocking(false);
-        // port = listener.getsockname()[1]
         port = std::get<1>((*listener).getsockname());
-        // client = asyncio.create_task(client_role(port))
         client.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(client_role(port))));
-        // conn, addr = await loop.sock_accept(listener)
         __sub_0.emplace(std::move((*loop).sock_accept((*listener))));
         __state = S_RESUME_0;
         continue;
@@ -115,11 +122,9 @@ __coro_client_role client_role(int32_t port) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // conn, addr = await loop.sock_accept(listener)
         auto&& __tup_1 = (*__await_lift_0);
         conn.emplace(std::move(std::get<0>(__tup_1)));
         addr = std::get<1>(__tup_1);
-        // data = await loop.sock_recv(conn, 1024)
         __sub_1.emplace(std::move((*loop).sock_recv((*conn), 1024)));
         __state = S_RESUME_1;
         continue;
@@ -129,7 +134,6 @@ __coro_client_role client_role(int32_t port) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         data = std::move(__r1).value();
         __sub_1.reset();
-        // await loop.sock_sendall(conn, data)
         __sub_2.emplace(std::move((*loop).sock_sendall((*conn), data)));
         __state = S_RESUME_2;
         continue;
@@ -139,9 +143,7 @@ __coro_client_role client_role(int32_t port) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
         __sub_2.reset();
-        // conn.close()
         (*conn).close();
-        // await client
         __sub_3 = &((*client));
         __state = S_RESUME_3;
         continue;
@@ -151,7 +153,6 @@ __coro_client_role client_role(int32_t port) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r3).value();
         __sub_3 = nullptr;
-        // listener.close()
         (*listener).close();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -168,24 +169,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio streams: open_connection -> StreamReader/StreamWriter over the
+// # epoll reactor. The reader/writer are @nocopy, moved out of the await tuple
+// # (a silent copy would be a compile error), forcing the value-vs-reference test.
+// import asyncio
+//
+// from socket import socket, AF_INET, SOCK_STREAM
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio streams: open_connection -> StreamReader/StreamWriter over the
-    // # epoll reactor. The reader/writer are @nocopy, moved out of the await tuple
-    // # (a silent copy would be a compile error), forcing the value-vs-reference test.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socket, AF_INET, SOCK_STREAM
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

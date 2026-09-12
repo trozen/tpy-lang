@@ -13,7 +13,9 @@ using ::tpystd::tplib::array_list::ArrayList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_span(s: Span[readonly[int32]]) -> int32:
 int32_t sum_span(std::span<const int32_t> s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

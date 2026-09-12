@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Canvas()
+//     c.fill(4, 7)
+//     c.pixels[0] = 9
+//     print(len(c.pixels), c.pixels[0], c.pixels[3])
+//     c.slurp("alpha\nbeta\ngamma")
+//     c.lines.append("delta")
+//     print(len(c.lines), c.lines[1], c.lines[3])
+//     x: set[int32] = {1, 2}
+//     y: set[int32] = {2, 3}
+//     c.merge(x, y)
+//     c.tags.add(9)
+//     print(len(c.tags), len(x), 9 in c.tags)
+//     # A second write replaces the field's storage outright.
+//     c.fill(2, 1)
+//     print(len(c.pixels), c.pixels[1])
 void main() {
-    // c = Canvas()
     Canvas c = Canvas();
-    // c.fill(4, 7)
     c.fill(4, 7);
-    // c.pixels[0] = 9
     ::tpy::__setitem__(c.pixels, 0, 9);
-    // print(len(c.pixels), c.pixels[0], c.pixels[3])
     std::cout << ::tpy::__len__(c.pixels) << " " << ::tpy::__getitem__(c.pixels, 0) << " " << ::tpy::__getitem__(c.pixels, 3) << "\n";
-    // c.slurp("alpha\nbeta\ngamma")
     c.slurp("alpha\nbeta\ngamma");
-    // c.lines.append("delta")
     c.lines.push_back("delta");
-    // print(len(c.lines), c.lines[1], c.lines[3])
     std::cout << ::tpy::__len__(c.lines) << " " << ::tpy::__getitem__(c.lines, 1) << " " << ::tpy::__getitem__(c.lines, 3) << "\n";
-    // x: set[int32] = {1, 2}
     ::tpy::ordered_set<int32_t> x = ::tpy::ordered_set<int32_t>({1, 2});
-    // y: set[int32] = {2, 3}
     ::tpy::ordered_set<int32_t> y = ::tpy::ordered_set<int32_t>({2, 3});
-    // c.merge(x, y)
     c.merge(x, y);
-    // c.tags.add(9)
     c.tags.insert(9);
-    // print(len(c.tags), len(x), 9 in c.tags)
     std::cout << ::tpy::__len__(c.tags) << " " << ::tpy::__len__(x) << " " << ::tpy::print_bool((c.tags.contains(9))) << "\n";
-    // # A second write replaces the field's storage outright.
-    // c.fill(2, 1)
     c.fill(2, 1);
-    // print(len(c.pixels), c.pixels[1])
     std::cout << ::tpy::__len__(c.pixels) << " " << ::tpy::__getitem__(c.pixels, 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

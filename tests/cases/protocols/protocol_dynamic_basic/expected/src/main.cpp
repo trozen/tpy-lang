@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog()
+//     c = Cat()
+//     print(d.make_noise())
+//     print(c.make_noise())
 void main() {
-    // d = Dog()
     Dog d = Dog();
-    // c = Cat()
     Cat c = Cat();
-    // print(d.make_noise())
     std::cout << d.make_noise() << "\n";
-    // print(c.make_noise())
     std::cout << c.make_noise() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

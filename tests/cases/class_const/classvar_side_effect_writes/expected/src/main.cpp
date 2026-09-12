@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def make_c() -> Own[Counter]:
+//     print("side_effect")
+//     return Counter()
 Counter make_c() {
-    // print("side_effect")
     std::cout << "side_effect" << "\n";
-    // return Counter()
     return Counter();
 }
 
 // def main() -> None:
+//     Counter.instances = 0
+//     make_c().instances = 5  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
+//     print(Counter.instances)
+//
+//     cs: list[Counter] = [Counter(), Counter()]
+//     cs[0].instances += 3  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
+//     print(Counter.instances)
 void main() {
-    // Counter.instances = 0
     Counter::instances = 0;
-    // make_c().instances = 5  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
     static_cast<void>(make_c());
     Counter::instances = 5;
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
-    // cs: list[Counter] = [Counter(), Counter()]
     std::vector<Counter> cs = {Counter(), Counter()};
-    // cs[0].instances += 3  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
     static_cast<void>(::tpy::__getitem__(cs, 0));
     Counter::instances = ::tpy::add_check<int32_t>(Counter::instances, 3);
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

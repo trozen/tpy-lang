@@ -5,47 +5,65 @@ namespace tpyapp::main {
 
 
 // def feed(data: bytes) -> int64:
+//     r, w = os.pipe()
+//     os.write(w, data)
+//     os.close(w)   # signal EOF on the read end
+//     return r
 int64_t feed(::tpy::BytesView data) {
-    // r, w = os.pipe()
     auto __tup_1 = ::tpystd::os::pipe();
     int64_t r = std::get<0>(__tup_1);
     int64_t w = std::get<1>(__tup_1);
-    // os.write(w, data)
     ::tpystd::os::write(w, data);
-    // os.close(w)   # signal EOF on the read end
     ::tpystd::os::close(w);
-    // return r
     return r;
 }
 
 // def main() -> None:
+//     f = FileIO(feed(b"hello world"))
+//     print(f.fileno() >= 0)
+//     print(f.read(5))      # b'hello'
+//     print(f.read(0))      # b'' (size 0 never touches the fd)
+//     print(f.read(-1))     # b' world'
+//     print(f.read(-1))     # b'' at EOF
+//     print(f.readable())
+//     print(f.closed)
+//     f.close()
+//     print(f.closed)
+//
+//     # with-statement closes on exit.
+//     with FileIO(feed(b"ctx")) as cf:
+//         print(cf.read(-1))   # b'ctx'
+//     print(cf.closed)
+//
+//     # A negative fd is rejected at construction (CPython parity).
+//     try:
+//         FileIO(int64(-1))
+//         print("no-raise")
+//     except ValueError:
+//         print("negfd-ValueError")
+//
+//     # closefd=False: FileIO does not own the fd; the caller closes it. (If it
+//     # owned it, the os.close below would hit EBADF.)
+//     fd = feed(b"abc")
+//     g = FileIO(fd, closefd=False)
+//     print(g.read(-1))     # b'abc'
+//     g.close()
+//     os.close(fd)
+//     print("closefd-ok")
 void main() {
-    // f = FileIO(feed(b"hello world"))
     ::tpystd::io::FileIO f = ::tpystd::io::FileIO(feed(::tpy::bytes_literal("hello world", 11)));
-    // print(f.fileno() >= 0)
     std::cout << ::tpy::print_bool((f.fileno() >= 0)) << "\n";
-    // print(f.read(5))      # b'hello'
     std::cout << ::tpy::BytesPrinter(f.read(5)) << "\n";
-    // print(f.read(0))      # b'' (size 0 never touches the fd)
     std::cout << ::tpy::BytesPrinter(f.read(0)) << "\n";
-    // print(f.read(-1))     # b' world'
     std::cout << ::tpy::BytesPrinter(f.read(-1)) << "\n";
-    // print(f.read(-1))     # b'' at EOF
     std::cout << ::tpy::BytesPrinter(f.read(-1)) << "\n";
-    // print(f.readable())
     std::cout << ::tpy::print_bool(f.readable()) << "\n";
-    // print(f.closed)
     std::cout << ::tpy::print_bool(f.closed()) << "\n";
-    // f.close()
     f.close();
-    // print(f.closed)
     std::cout << ::tpy::print_bool(f.closed()) << "\n";
-    // # with-statement closes on exit.
-    // with FileIO(feed(b"ctx")) as cf:
     auto __ctx_1 = ::tpystd::io::FileIO(feed(::tpy::bytes_literal("ctx", 3)));
     auto& cf = __ctx_1.__enter__();
     try {
-        // print(cf.read(-1))   # b'ctx'
         std::cout << ::tpy::BytesPrinter(cf.read(-1)) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -57,51 +75,38 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // print(cf.closed)
     std::cout << ::tpy::print_bool(cf.closed()) << "\n";
-    // # A negative fd is rejected at construction (CPython parity).
-    // try:
     {
         try {
-            // FileIO(int64(-1))
             ::tpystd::io::FileIO(-1);
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("negfd-ValueError")
             std::cout << "negfd-ValueError" << "\n";
         }
     }
-    // # closefd=False: FileIO does not own the fd; the caller closes it. (If it
-    // # owned it, the os.close below would hit EBADF.)
-    // fd = feed(b"abc")
     int64_t fd = feed(::tpy::bytes_literal("abc", 3));
-    // g = FileIO(fd, closefd=False)
     ::tpystd::io::FileIO g = ::tpystd::io::FileIO(fd, false);
-    // print(g.read(-1))     # b'abc'
     std::cout << ::tpy::BytesPrinter(g.read(-1)) << "\n";
-    // g.close()
     g.close();
-    // os.close(fd)
     ::tpystd::os::close(fd);
-    // print("closefd-ok")
     std::cout << "closefd-ok" << "\n";
 }
 
+// # io.FileIO raw layer over a pipe fd: read(size) issues a single os.read,
+// # read(-1) drains to EOF, close()/closed, and closefd=False leaves the fd
+// # open for the caller. FileIO is @nocopy, so a silent copy across the
+// # FileIO(...) -> BufferedReader / local-binding boundary is a compile error.
+// import os
+// from io import FileIO
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # io.FileIO raw layer over a pipe fd: read(size) issues a single os.read,
-    // # read(-1) drains to EOF, close()/closed, and closefd=False leaves the fd
-    // # open for the caller. FileIO is @nocopy, so a silent copy across the
-    // # FileIO(...) -> BufferedReader / local-binding boundary is a compile error.
-    // import os
     ::tpystd::os::__tpy_init();
-    // from io import FileIO
     ::tpystd::io::__tpy_init();
-    // main()
     main();
 }
 

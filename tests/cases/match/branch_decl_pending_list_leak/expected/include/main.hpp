@@ -11,8 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(p: Point) -> int:
 ::tpy::BigInt f(const Point& p);
+// def g(p: Point) -> int:
 ::tpy::BigInt g(const Point& p);
+// def main() -> None:
 void main();
 
 // # A list literal first declared inside a match arm and read after the
@@ -37,6 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

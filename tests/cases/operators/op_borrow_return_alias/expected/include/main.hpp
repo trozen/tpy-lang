@@ -11,10 +11,15 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_binary_alias():
 void test_binary_alias();
+// def test_binary_operand_alias():
 void test_binary_operand_alias();
+// def test_reflected_alias():
 void test_reflected_alias();
+// def test_unary_alias():
 void test_unary_alias();
+// def main():
 void main();
 
 // class Acc:
@@ -56,23 +61,24 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Acc::Acc(int32_t n) : n(n) {}
 
 // def __add__(self, o: "Acc") -> "Acc":
+//     return self if self.n >= o.n else o
 inline const Acc& Acc::__add__(const Acc& o) const {
-    // return self if self.n >= o.n else o
     return (((this->n >= o.n)) ? ((*this)) : (o));
 }
 
 // def __radd__(self, other: int32) -> "Acc":
+//     return self
 inline const Acc& Acc::__radd__(int32_t other) const {
-    // return self
     return (*this);
 }
 
 // def __neg__(self) -> "Acc":
+//     return self
 inline const Acc& Acc::__neg__() const {
-    // return self
     return (*this);
 }
 void __tpy_init();

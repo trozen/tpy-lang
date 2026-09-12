@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // @readonly
 // def build() -> int32:
+//     b = Box(3)
+//     return b.x  # tpyc: ok
 int32_t build() {
-    // b = Box(3)
     Box b = Box(3);
-    // return b.x  # tpyc: ok
     return b.x;
 }
 
+// print(build())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(build())
     std::cout << build() << "\n";
 }
 

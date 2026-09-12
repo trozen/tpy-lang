@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     print(VERSION)
+//     result: int32 = add(int32(5), int32(7))
+//     print(result)
+//     return int32(0)
 int32_t main() {
-    // print(VERSION)
     std::cout << ::tpyapp::mypackage::VERSION << "\n";
-    // result: int32 = add(int32(5), int32(7))
     int32_t result = ::tpyapp::mypackage::utils::add(5, 7);
-    // print(result)
     std::cout << result << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from mypackage import VERSION, add
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mypackage import VERSION, add
     ::tpyapp::mypackage::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Cell[int32](42)
+//     print(c.duplicate())
 void main() {
-    // c = Cell[int32](42)
     Cell<int32_t> c = Cell<int32_t>(42);
-    // print(c.duplicate())
     std::cout << c.duplicate() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: int32 = int32(2147483647)
+//     print(round(x, int32(-1)))
 void main() {
-    // x: int32 = int32(2147483647)
     int32_t x = 2147483647;
-    // print(round(x, int32(-1)))
     std::cout << ::tpy::round_fixed<int32_t>(x, -1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

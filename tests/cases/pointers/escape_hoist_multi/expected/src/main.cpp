@@ -7,38 +7,38 @@ namespace tpyapp::main {
 // # Two different loop-body vars both escape to outer scope.
 // # Both slots must be hoisted to function scope.
 // def multi_hoist() -> None:
+//     saved_a: Point = Point(0, 0)
+//     saved_b: Point = Point(0, 0)
+//     for i in range(3):
+//         a: Point = Point(i, 10)
+//         b: Point = Point(20, i)
+//         saved_a = a  # tpyc: warning(/will not keep the object it was given/)
+//         saved_b = b  # tpyc: warning(/will not keep the object it was given/)
+//     print(saved_a.x, saved_a.y)
+//     print(saved_b.x, saved_b.y)
 void multi_hoist() {
     std::optional<Point> __slot_3;
     std::optional<Point> __slot_4;
-    // saved_a: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved_a = &__slot_1;
-    // saved_b: Point = Point(0, 0)
     Point __slot_2 = Point(0, 0);
     Point* saved_b = &__slot_2;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // a: Point = Point(i, 10)
         Point* a = &*(__slot_3 = Point(i, 10));
-        // b: Point = Point(20, i)
         Point* b = &*(__slot_4 = Point(20, i));
-        // saved_a = a  # tpyc: warning(/will not keep the object it was given/)
         saved_a = a;
-        // saved_b = b  # tpyc: warning(/will not keep the object it was given/)
         saved_b = b;
     }
-    // print(saved_a.x, saved_a.y)
     std::cout << saved_a->x << " " << saved_a->y << "\n";
-    // print(saved_b.x, saved_b.y)
     std::cout << saved_b->x << " " << saved_b->y << "\n";
 }
 
+// multi_hoist()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // multi_hoist()
     multi_hoist();
 }
 

@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(g: list[list[int]]) -> None:  # tpyc: ok
 void take(const std::vector<std::vector<::tpy::BigInt>>& g);
+// def main() -> None:
 void main();
 
 void __tpy_init();

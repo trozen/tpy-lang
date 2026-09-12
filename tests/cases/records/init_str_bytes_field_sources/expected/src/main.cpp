@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     m = Meta("hello", "world")
+//     print(m.title, m.tag, m.view, m.label)
+//     b = Buf(b"xyz")
+//     print(len(b.data), len(b.lit), len(b.empty))
+//     print(b.data[0], b.lit[1])
 void main() {
-    // m = Meta("hello", "world")
     Meta m = Meta("hello", "world");
-    // print(m.title, m.tag, m.view, m.label)
     std::cout << m.title << " " << m.tag << " " << m.view << " " << m.label << "\n";
-    // b = Buf(b"xyz")
     Buf b = Buf(::tpy::bytes_literal("xyz", 3));
-    // print(len(b.data), len(b.lit), len(b.empty))
     std::cout << ::tpy::__len__(b.data) << " " << ::tpy::__len__(b.lit) << " " << ::tpy::__len__(b.empty) << "\n";
-    // print(b.data[0], b.lit[1])
     std::cout << static_cast<int>(::tpy::bytes_getitem(b.data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(b.lit, 1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

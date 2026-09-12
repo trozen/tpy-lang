@@ -19,7 +19,9 @@ struct __coro_main_coro;
 struct __coro_BaseCM___aenter__;
 struct __coro_BaseCM___aexit__;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class BaseCM:
@@ -53,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const DerivedCM& obj) {
     return os;
 }
 
-// Async coroutine: BaseCM.__aenter__
+// async def __aenter__(self) -> None:
 struct __coro_BaseCM___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -81,7 +83,7 @@ inline __coro_BaseCM___aenter__ BaseCM::__aenter__() {
     return __coro_BaseCM___aenter__(*this);
 }
 
-// Async coroutine: BaseCM.__aexit__
+// async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_BaseCM___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -112,7 +114,7 @@ inline __coro_BaseCM___aexit__ BaseCM::__aexit__(std::monostate et, std::monosta
     return __coro_BaseCM___aexit__(*this, et, ev, tb);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -145,6 +147,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline BaseCM::BaseCM() : n(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

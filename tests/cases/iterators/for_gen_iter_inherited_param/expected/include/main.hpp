@@ -12,7 +12,9 @@ struct Source;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drain_sum(src: Source) -> int32:
 int32_t drain_sum(Source& src);
+// def main():
 void main();
 
 // class BaseSource:
@@ -25,11 +27,13 @@ struct BaseSource {
     explicit BaseSource(int32_t n);
 
     // def __iter__(self) -> Iterator[int32]:
+    //     while self._n > 0:
+    //         self._n -= 1
+    //         yield self._n
     auto __iter__() {
         return ::tpy::make_generator<int32_t>(
             [this]() mutable -> std::optional<int32_t> {
                 while (((*this)._n > 0)) {
-                    // self._n -= 1
                     (*this)._n = ::tpy::sub_check<int32_t>((*this)._n, 1);
                     auto __val = (*this)._n;
                     return std::optional<int32_t>(__val);
@@ -64,9 +68,12 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 
 
 // def __init__(self, n: int32):
+//     self._n = n
 inline BaseSource::BaseSource(int32_t n) : _n(n) {}
 
 // def __init__(self, n: int32, tag: int32):
+//     super().__init__(n)
+//     self._tag = tag
 inline Source::Source(int32_t n, int32_t tag) : BaseSource(n), _tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

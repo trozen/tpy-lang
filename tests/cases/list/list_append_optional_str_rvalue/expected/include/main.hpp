@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_prefix(subject: str, keep: bool) -> Optional[StrView]:
 std::optional<std::string_view> maybe_prefix(std::string_view subject, bool keep);
+// def main() -> None:
 void main();
 
 void __tpy_init();

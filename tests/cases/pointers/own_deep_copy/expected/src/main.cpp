@@ -5,38 +5,47 @@ namespace tpyapp::main {
 
 
 // def take_items(c: Container) -> Own[list[Point]]:
+//     return copy(c.items)
 std::vector<Point> take_items(const Container& c) {
-    // return copy(c.items)
     return std::vector<Point>(c.items);
 }
 
 // def main() -> None:
+//     c: Container = Container()
+//     c.items = [Point()]
+//     c.items[0].x = 10
+//
+//     # Get a copy of the items
+//     taken: list[Point] = take_items(c)
+//
+//     # Modify the copy
+//     taken[0].x = 99
+//
+//     # Original should be unchanged (deep copy semantics)
+//     print(c.items[0].x)  # 10
+//     print(taken[0].x)    # 99
 void main() {
-    // c: Container = Container()
     Container c = Container();
-    // c.items = [Point()]
     c.items = {Point()};
-    // c.items[0].x = 10
     ::tpy::__getitem__(c.items, 0).x = 10;
-    // # Get a copy of the items
-    // taken: list[Point] = take_items(c)
     std::vector<Point> taken = take_items(c);
-    // # Modify the copy
-    // taken[0].x = 99
     ::tpy::__getitem__(taken, 0).x = 99;
-    // # Original should be unchanged (deep copy semantics)
-    // print(c.items[0].x)  # 10
     std::cout << ::tpy::__getitem__(c.items, 0).x << "\n";
-    // print(taken[0].x)    # 99
     std::cout << ::tpy::__getitem__(taken, 0).x << "\n";
 }
 
+// """Tests that copy() has deep copy semantics for containers.
+//
+// When returning Own[list[T]], C++ copies all elements by value.
+// The CPython harness must use deepcopy to match this behavior.
+// """
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

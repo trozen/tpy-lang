@@ -14,10 +14,12 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_val;
 struct __coro_main;
 
+// async def val(tag: str, n: int) -> int:
 __coro_val val(std::string_view tag, ::tpy::BigInt n);
+// async def main() -> None:
 __coro_main main();
 
-// Async coroutine: val
+// async def val(tag: str, n: int) -> int:
 struct __coro_val {
     int32_t __state;
     bool __cancel_pending;
@@ -40,7 +42,7 @@ struct __coro_val {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;

@@ -11,8 +11,10 @@ struct MyContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_length[T: Sized](item: T) -> int32:
 template<::tpystd::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item);
+// def main() -> None:
 void main();
 
 // class MyContainer:
@@ -42,19 +44,20 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
 
 
 // def __init__(self, items: list[int32]) -> None:
+//     self.data = items
 inline MyContainer::MyContainer(const std::vector<int32_t>& items) : data(items) {}
 
 // def __len__(self) -> int32:
+//     return len(self.data)
 inline int32_t MyContainer::__len__() const {
-    // return len(self.data)
     return ::tpy::__len__(this->data);
 }
 // def get_length[T: Sized](item: T) -> int32:
+//     # Note: Can't call len(item) here yet - returning fixed value
+//     # This tests that the bound is validated during inference
+//     return 42
 template<::tpystd::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item) {
-    // # Note: Can't call len(item) here yet - returning fixed value
-    // # This tests that the bound is validated during inference
-    // return 42
     return 42;
 }
 

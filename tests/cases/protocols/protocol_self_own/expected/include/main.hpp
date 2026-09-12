@@ -17,8 +17,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add_points(a: Addable, b: Addable) -> None:
 template<Addable T_a, Addable T_b>
 void add_points(const T_a& a, const T_b& b);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -48,18 +50,20 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __add__(self, other: Point) -> Own[Point]:
+//     return Point(self.x + other.x, self.y + other.y)
 inline Point Point::__add__(const Point& other) const {
-    // return Point(self.x + other.x, self.y + other.y)
     return Point((::tpy::add_check<int32_t>(this->x, other.x)), (::tpy::add_check<int32_t>(this->y, other.y)));
 }
 // def add_points(a: Addable, b: Addable) -> None:
+//     # Verify that a + b compiles (the protocol constraint allows it)
+//     result = a + b
 template<Addable T_a, Addable T_b>
 void add_points(const T_a& a, const T_b& b) {
-    // # Verify that a + b compiles (the protocol constraint allows it)
-    // result = a + b
     auto result = (a + b);
 }
 

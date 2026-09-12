@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -48,9 +49,13 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, b: bytearray, xs: list[int32]) -> None:
+//     self.buf = b  # tpyc: warning(/copies bytearray into field/)
+//     self.xs = xs  # tpyc: warning(/copies list\[int32\] into field/)
 inline Base::Base(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs) : buf(b), xs(xs) {}
 
 // def __init__(self, b: bytearray, xs: list[int32]) -> None:
+//     super().__init__(b, xs)  # tpyc: ok
+//     self.n = 1
 inline Child::Child(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs) : Base(b, xs), n(1) {}
 void __tpy_init();
 } // namespace tpyapp::main

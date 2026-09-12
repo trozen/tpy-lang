@@ -18,8 +18,10 @@ struct StrBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def unwrap[R, T: Container[R]](x: T) -> R:
 template<typename R, Container<R> T>
 ::tpy::val_or_ref_t<R> unwrap(::tpy::param_val_or_ref_t<T> x);
+// def main() -> None:
 void main();
 
 // class IntBox:
@@ -62,26 +64,28 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline IntBox::IntBox(const ::tpy::BigInt& v) : v(v) {}
 
 // def get(self) -> int:
+//     return self.v
 inline ::tpy::BigInt IntBox::get() const {
-    // return self.v
     return this->v;
 }
 
 // def __init__(self, s: str):
+//     self.s = s
 inline StrBox::StrBox(std::string_view s) : s(s) {}
 
 // def get(self) -> str:
+//     return self.s
 inline std::string StrBox::get() const {
-    // return self.s
     return this->s;
 }
 // def unwrap[R, T: Container[R]](x: T) -> R:
+//     return x.get()
 template<typename R, Container<R> T>
 ::tpy::val_or_ref_t<R> unwrap(::tpy::param_val_or_ref_t<T> x) {
-    // return x.get()
     return x.get();
 }
 

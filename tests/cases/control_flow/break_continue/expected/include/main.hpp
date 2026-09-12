@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_break():
 void test_break();
+// def test_continue():
 void test_continue();
+// def test_nested_break():
 void test_nested_break();
+// def test_nested_continue():
 void test_nested_continue();
 
 void __tpy_init();

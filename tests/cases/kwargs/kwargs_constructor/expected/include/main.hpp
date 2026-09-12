@@ -12,6 +12,7 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Keyword arguments in record constructors
@@ -55,9 +56,14 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
 // def __init__(self, host: str, port: int = 8080, verbose: bool = False) -> None:
+//     self.host = host
+//     self.port = port
+//     self.verbose = verbose
 inline Config::Config(std::string_view host, const ::tpy::BigInt& port, bool verbose) : host(host), port(port), verbose(verbose) {}
 void __tpy_init();
 } // namespace tpyapp::main

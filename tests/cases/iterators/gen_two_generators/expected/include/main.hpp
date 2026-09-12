@@ -12,11 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_a;
 struct __gen_gen_b;
 
+// def gen_a() -> Iterator[int32]:
 __gen_gen_a gen_a();
+// def gen_b() -> Iterator[int32]:
 __gen_gen_b gen_b();
+// def main():
 void main();
 
-// Generator: gen_a
+// def gen_a() -> Iterator[int32]:
 struct __gen_gen_a : public ::tpy::next_iter_mixin<__gen_gen_a, int32_t> {
     int32_t __state;
 
@@ -38,7 +41,7 @@ struct __gen_gen_a : public ::tpy::next_iter_mixin<__gen_gen_a, int32_t> {
     }
 };
 
-// Generator: gen_b
+// def gen_b() -> Iterator[int32]:
 struct __gen_gen_b : public ::tpy::next_iter_mixin<__gen_gen_b, int32_t> {
     int32_t __state;
 

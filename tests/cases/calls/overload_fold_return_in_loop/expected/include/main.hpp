@@ -12,12 +12,19 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_loop(v: A, k: int) -> int: ...
 ::tpy::BigInt in_loop(const A& v, const ::tpy::BigInt& k);
+// def in_loop(v: B, k: int) -> int: ...
 ::tpy::BigInt in_loop(const B& v, const ::tpy::BigInt& k);
+// def in_branch(v: A, gate: bool) -> int: ...
 ::tpy::BigInt in_branch(const A& v, bool gate);
+// def in_branch(v: B, gate: bool) -> int: ...
 ::tpy::BigInt in_branch(const B& v, bool gate);
+// def toplevel(v: A) -> int: ...
 ::tpy::BigInt toplevel(const A& v);
+// def toplevel(v: B) -> int: ...
 ::tpy::BigInt toplevel(const B& v);
+// def main() -> None:
 void main();
 
 // class A:
@@ -54,9 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def drain(b: Own[Box[int32]]) -> Iterator[int32]:
+//     yield b.get()
+//     yield b.get() * 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_drain::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield b.get()
         __state = S_RESUME_0;
         return b.get();
     }
     case S_RESUME_0: {
-        // yield b.get() * 2
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(b.get(), 2));
     }
@@ -33,10 +33,11 @@ __gen_drain drain(::tpystd::tplib::box::Box<int32_t> b) {
 }
 
 // def main() -> None:
+//     box = Box(int32(7))
+//     for v in drain(box):
+//         print(v)
 void main() {
-    // box = Box(int32(7))
     ::tpystd::tplib::box::Box<int32_t> box = ::tpystd::tplib::box::Box<int32_t>(7);
-    // for v in drain(box):
     {
         auto __src_0 = drain(std::move(box));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -44,21 +45,21 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

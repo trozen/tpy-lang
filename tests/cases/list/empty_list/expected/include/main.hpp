@@ -11,9 +11,13 @@ extern std::vector<::tpy::BigInt>* global_list;
 extern std::vector<int32_t>* global_list2;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_empty_list() -> int:
 ::tpy::BigInt test_empty_list();
+// def test_empty_list_int32() -> int32:
 int32_t test_empty_list_int32();
+// def test_list_constructor() -> int:
 ::tpy::BigInt test_list_constructor();
+// def test_list_constructor_int32() -> int32:
 int32_t test_list_constructor_int32();
 
 void __tpy_init();

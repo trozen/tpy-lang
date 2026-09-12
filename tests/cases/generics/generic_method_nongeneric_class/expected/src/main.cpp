@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Converter()
+//     print(c.identity(42))
+//     print(c.identity("hello"))
+//     print(c.identity(True))
 void main() {
-    // c = Converter()
     Converter c = Converter();
-    // print(c.identity(42))
     std::cout << c.identity<int32_t>(42) << "\n";
-    // print(c.identity("hello"))
     std::cout << c.identity<std::string>("hello") << "\n";
-    // print(c.identity(True))
     std::cout << ::tpy::print_bool(c.identity<bool>(true)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

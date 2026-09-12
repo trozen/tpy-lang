@@ -5,67 +5,67 @@ namespace tpyapp::main {
 
 
 // def in_if(flag: bool) -> None:
+//     print("enter in_if")
+//     if flag:
+//         r = Noisy("if-first")
+//         r = Noisy("if-second")
+//         print("inside:", r.name)
+//     print("after block")
 void in_if(bool flag) {
     std::optional<Noisy> __slot_2;
-    // print("enter in_if")
     std::cout << "enter in_if" << "\n";
-    // if flag:
     if (flag) {
-        // r = Noisy("if-first")
         Noisy __slot_1 = Noisy("if-first");
         Noisy* r = &__slot_1;
-        // r = Noisy("if-second")
         r = &*(__slot_2 = Noisy("if-second"));
-        // print("inside:", r.name)
         std::cout << "inside:" << " " << r->name << "\n";
     }
-    // print("after block")
     std::cout << "after block" << "\n";
 }
 
 // def in_loop() -> None:
+//     print("enter in_loop")
+//     i = 0
+//     while i < 2:
+//         r = Noisy("loop-first")
+//         r = Noisy("loop-second")
+//         print("inside:", r.name)
+//         i += 1
+//     print("after loop")
 void in_loop() {
     std::optional<Noisy> __slot_2;
-    // print("enter in_loop")
     std::cout << "enter in_loop" << "\n";
-    // i = 0
     int32_t i = 0;
-    // while i < 2:
     while ((i < 2)) {
-        // r = Noisy("loop-first")
         Noisy __slot_1 = Noisy("loop-first");
         Noisy* r = &__slot_1;
-        // r = Noisy("loop-second")
         r = &*(__slot_2 = Noisy("loop-second"));
-        // print("inside:", r.name)
         std::cout << "inside:" << " " << r->name << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // print("after loop")
     std::cout << "after loop" << "\n";
 }
 
 // def main() -> None:
+//     in_if(True)
+//     print("---")
+//     in_loop()
+//     print("---")
+//     print("done")
 void main() {
-    // in_if(True)
     in_if(true);
-    // print("---")
     std::cout << "---" << "\n";
-    // in_loop()
     in_loop();
-    // print("---")
     std::cout << "---" << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

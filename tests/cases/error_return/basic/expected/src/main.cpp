@@ -6,72 +6,78 @@ namespace tpyapp::main {
 
 // @error_return(NotFound)
 // def find_index(items: list[int32], target: int32) -> int32:
+//     for i in range(len(items)):
+//         if items[i] == target:
+//             return i
+//     raise NotFound
 std::expected<int32_t, NotFound> find_index(const std::vector<int32_t>& items, int32_t target) {
-    // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if items[i] == target:
         if ((items[static_cast<std::size_t>(i)] == target)) {
-            // return i
             return i;
         }
     }
-    // raise NotFound
     return ::tpy::make_unexpected(NotFound{});
 }
 
 // def main() -> None:
+//     items: list[int32] = [10, 20, 30, 40]
+//
+//     # Success case
+//     try:
+//         idx = find_index(items, 30)
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(idx)
+//
+//     # Error case
+//     try:
+//         idx2 = find_index(items, 99)
+//     except NotFound:
+//         print("not found")
+//     else:
+//         print(idx2)
 void main() {
-    // items: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> items = {10, 20, 30, 40};
-    // # Success case
-    // try:
     int32_t idx;
     {
-        // idx = find_index(items, 30)
         {
             auto __try_tmp_2 = find_index(items, 30);
             if (!__try_tmp_2.has_value()) goto __except_1;
             idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
-        // print(idx)
         std::cout << idx << "\n";
         goto __after_try_1;
         // except NotFound:
         __except_1:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_1:;
     }
-    // # Error case
-    // try:
     int32_t idx2;
     {
-        // idx2 = find_index(items, 99)
         {
             auto __try_tmp_4 = find_index(items, 99);
             if (!__try_tmp_4.has_value()) goto __except_3;
             idx2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(idx2)
         std::cout << idx2 << "\n";
         goto __after_try_3;
         // except NotFound:
         __except_3:;
-        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_3:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

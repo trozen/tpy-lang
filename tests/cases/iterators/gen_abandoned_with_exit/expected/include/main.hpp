@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def gen() -> Iterator[int]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class CM:
@@ -33,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<CM> cm;
@@ -77,14 +79,14 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
 
 
 // def __enter__(self) -> None:
+//     print("enter")
 inline void CM::__enter__() const {
-    // print("enter")
     std::cout << "enter" << "\n";
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("exit exceptional" if exc_val is not None else "exit normal")
 inline void CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("exit exceptional" if exc_val is not None else "exit normal")
     std::cout << (((exc_val != nullptr)) ? ("exit exceptional") : ("exit normal")) << "\n";
 }
 void __tpy_init();

@@ -5,136 +5,143 @@ namespace tpyapp::main {
 
 
 // def pooled_reuse() -> None:
+//     a, b = socket.socketpair()
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     key = requests._pool_key("http://api.test/v1/a", True)
+//     print("key:", key)
+//     s._pool[key] = Box(conn)
+//
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr1")
+//     r1 = s.get("http://api.test/v1/a")
+//     print(r1.status_code, r1.text)
+//     print("req1:", b.recv(65536).decode().split("\r\n")[0])
+//
+//     # Second request to the same target: pool pops the same connection --
+//     # the same socketpair peer sees the second request (real reuse, not a
+//     # reconnect, which would fail here: api.test does not resolve).
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr2")
+//     r2 = s.get("http://api.test/v1/b")
+//     print(r2.status_code, r2.text)
+//     print("req2:", b.recv(65536).decode().split("\r\n")[0])
+//
+//     # Server ends reuse: the pooled socket is closed (peer sees EOF), but the
+//     # pool keeps the connection as a reconnect handle.
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n"
+//               b"\r\nr3")
+//     r3 = s.get("http://api.test/v1/c")
+//     print(r3.status_code, r3.text)
+//     b.recv(65536)
+//     print("peer EOF after close:", b.recv(10) == b"")
+//     print("pool keeps handle:", key in s._pool)
+//     b.close()
 void pooled_reuse() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // key = requests._pool_key("http://api.test/v1/a", True)
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/v1/a", __tmp_1);
-    // print("key:", key)
     std::cout << "key:" << " " << key << "\n";
-    // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr1")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr1", 40));
-    // r1 = s.get("http://api.test/v1/a")
     ::tpystd::tplib::requests::Response r1 = s.get("http://api.test/v1/a");
-    // print(r1.status_code, r1.text)
     std::cout << r1.status_code << " " << r1.text() << "\n";
-    // print("req1:", b.recv(65536).decode().split("\r\n")[0])
     std::cout << "req1:" << " " << ::tpy::__getitem__(::tpy::str_split(::tpy::bytes_decode(b.recv(65536)), "\r\n"), 0) << "\n";
-    // # Second request to the same target: pool pops the same connection --
-    // # the same socketpair peer sees the second request (real reuse, not a
-    // # reconnect, which would fail here: api.test does not resolve).
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr2")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nr2", 40));
-    // r2 = s.get("http://api.test/v1/b")
     ::tpystd::tplib::requests::Response r2 = s.get("http://api.test/v1/b");
-    // print(r2.status_code, r2.text)
     std::cout << r2.status_code << " " << r2.text() << "\n";
-    // print("req2:", b.recv(65536).decode().split("\r\n")[0])
     std::cout << "req2:" << " " << ::tpy::__getitem__(::tpy::str_split(::tpy::bytes_decode(b.recv(65536)), "\r\n"), 0) << "\n";
-    // # Server ends reuse: the pooled socket is closed (peer sees EOF), but the
-    // # pool keeps the connection as a reconnect handle.
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n"
-    // b"\r\nr3")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nr3", 59));
-    // r3 = s.get("http://api.test/v1/c")
     ::tpystd::tplib::requests::Response r3 = s.get("http://api.test/v1/c");
-    // print(r3.status_code, r3.text)
     std::cout << r3.status_code << " " << r3.text() << "\n";
-    // b.recv(65536)
     b.recv(65536);
-    // print("peer EOF after close:", b.recv(10) == b"")
     std::cout << "peer EOF after close:" << " " << ::tpy::print_bool((b.recv(10) == ::tpy::BytesView{})) << "\n";
-    // print("pool keeps handle:", key in s._pool)
     std::cout << "pool keeps handle:" << " " << ::tpy::print_bool((s._pool.contains(key))) << "\n";
-    // b.close()
     b.close();
 }
 
 // def pool_key_shapes() -> None:
+//     # https default port + verify variants get distinct keys.
+//     print(requests._pool_key("https://api.test/x", True))
+//     print(requests._pool_key("https://api.test:8443/x", False))
+//     print(requests._pool_key("https://api.test/x", "/etc/ca.pem"))
 void pool_key_shapes() {
-    // # https default port + verify variants get distinct keys.
-    // print(requests._pool_key("https://api.test/x", True))
     ::tpy::Union<bool, std::string> __tmp_2 = true;
     std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_2) << "\n";
-    // print(requests._pool_key("https://api.test:8443/x", False))
     ::tpy::Union<bool, std::string> __tmp_3 = false;
     std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test:8443/x", __tmp_3) << "\n";
-    // print(requests._pool_key("https://api.test/x", "/etc/ca.pem"))
     ::tpy::Union<bool, std::string> __tmp_4 = "/etc/ca.pem";
     std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_4) << "\n";
 }
 
 // def failed_request_drops_entry() -> None:
+//     # A request that fails mid-flight on a pooled connection must DROP the
+//     # entry (RAII-close), not restore it -- restoring would hand the next
+//     # request a mid-stream-corrupted connection. shutdown(SHUT_WR) (not
+//     # close()) so the request send still succeeds and the failure is
+//     # deterministically the EOF status line, not a send/RST race.
+//     a, b = socket.socketpair()
+//     s = requests.Session()
+//     s.headers = {"User-Agent": "test-agent"}
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     key = requests._pool_key("http://api.test/x", True)
+//     s._pool[key] = Box(conn)
+//     b.shutdown(socket.SHUT_WR)
+//     try:
+//         s.get("http://api.test/x")
+//         print("unexpected success")
+//     except BadStatusLine:
+//         print("bad status; entry dropped:", key not in s._pool)
+//     b.close()
 void failed_request_drops_entry() {
-    // # A request that fails mid-flight on a pooled connection must DROP the
-    // # entry (RAII-close), not restore it -- restoring would hand the next
-    // # request a mid-stream-corrupted connection. shutdown(SHUT_WR) (not
-    // # close()) so the request send still succeeds and the failure is
-    // # deterministically the EOF status line, not a send/RST race.
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.headers = {"User-Agent": "test-agent"}
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // key = requests._pool_key("http://api.test/x", True)
     ::tpy::Union<bool, std::string> __tmp_5 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/x", __tmp_5);
-    // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
-    // b.shutdown(socket.SHUT_WR)
     b.shutdown(::tpystd::socket::SHUT_WR);
-    // try:
     {
         try {
-            // s.get("http://api.test/x")
             s.get("http://api.test/x");
-            // print("unexpected success")
             std::cout << "unexpected success" << "\n";
         } catch (const ::tpystd::http::client::BadStatusLine&) {
-            // print("bad status; entry dropped:", key not in s._pool)
             std::cout << "bad status; entry dropped:" << " " << ::tpy::print_bool((!(s._pool.contains(key)))) << "\n";
         }
     }
-    // b.close()
     b.close();
 }
 
 // def exit_closes_pool() -> None:
+//     a, b = socket.socketpair()
+//     with requests.Session() as s:
+//         conn = HTTPConnection("api.test", 80)
+//         conn.sock = a
+//         s._pool[requests._pool_key("http://api.test/", True)] = Box(conn)
+//     # __exit__ closed the pooled connection; the peer now sees EOF.
+//     print("closed on exit:", b.recv(10) == b"")
+//     b.close()
 void exit_closes_pool() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // with requests.Session() as s:
     std::optional<::tpystd::http::client::HTTPConnection> conn;
     auto __ctx_1 = ::tpystd::tplib::requests::Session();
     auto& s = __ctx_1.__enter__();
     try {
-        // conn = HTTPConnection("api.test", 80)
         conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-        // conn.sock = a
         conn->sock = std::move(a);
-        // s._pool[requests._pool_key("http://api.test/", True)] = Box(conn)
         ::tpy::Union<bool, std::string> __tmp_6 = true;
         ::tpy::__setitem__(s._pool, ::tpystd::tplib::requests::_pool_key("http://api.test/", __tmp_6), ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move((*conn))));
         goto __with_exit_1;
@@ -147,49 +154,47 @@ void exit_closes_pool() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # __exit__ closed the pooled connection; the peer now sees EOF.
-    // print("closed on exit:", b.recv(10) == b"")
     std::cout << "closed on exit:" << " " << ::tpy::print_bool((b.recv(10) == ::tpy::BytesView{})) << "\n";
-    // b.close()
     b.close();
 }
 
 // def main() -> None:
+//     pooled_reuse()
+//     pool_key_shapes()
+//     failed_request_drops_entry()
+//     exit_closes_pool()
 void main() {
-    // pooled_reuse()
     pooled_reuse();
-    // pool_key_shapes()
     pool_key_shapes();
-    // failed_request_drops_entry()
     failed_request_drops_entry();
-    // exit_closes_pool()
     exit_closes_pool();
 }
 
+// # tplib.requests Session connection pooling: a pooled connection (seeded via
+// # s._pool -- the offline pooling seam; _connection stays the single-use seam)
+// # serves multiple requests over one socket, goes back in the pool after each,
+// # and a Connection: close response closes the socket while the pool keeps the
+// # entry as a lazy-reconnect handle -- but a request that FAILS mid-flight
+// # drops the entry instead of restoring it. Also pins the _pool_key shape
+// # (scheme | host | port | verify-token). User-Agent pinned so sent-bytes
+// # don't churn.
+// # no_cpython: tplib.requests has no CPython module.
+// import socket
+// from http.client import HTTPConnection, BadStatusLine
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tplib.requests Session connection pooling: a pooled connection (seeded via
-    // # s._pool -- the offline pooling seam; _connection stays the single-use seam)
-    // # serves multiple requests over one socket, goes back in the pool after each,
-    // # and a Connection: close response closes the socket while the pool keeps the
-    // # entry as a lazy-reconnect handle -- but a request that FAILS mid-flight
-    // # drops the entry instead of restoring it. Also pins the _pool_key shape
-    // # (scheme | host | port | verify-token). User-Agent pinned so sent-bytes
-    // # don't churn.
-    // # no_cpython: tplib.requests has no CPython module.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection, BadStatusLine
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

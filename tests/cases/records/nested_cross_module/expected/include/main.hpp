@@ -12,6 +12,7 @@ using ::tpyapp::shapes::Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

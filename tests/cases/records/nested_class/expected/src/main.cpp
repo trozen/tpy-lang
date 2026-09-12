@@ -5,33 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o = Outer(1)
+//     print(o.x)
+//
+//     i = Outer.Inner(10)
+//     print(i.y)
+//     print(i.doubled())
+//
+//     # Nested type as field type
+//     inner: Outer.Inner = Outer.Inner(42)
+//     print(inner.y)
+//
+//     # Nested constructor with a defaulted parameter, positional spelling
+//     print("pair_default", Outer.Pair(1, 2).v, Outer.Pair(5).v)
 void main() {
-    // o = Outer(1)
     Outer o = Outer(1);
-    // print(o.x)
     std::cout << o.x << "\n";
-    // i = Outer.Inner(10)
     Outer::Inner i = Outer::Inner(10);
-    // print(i.y)
     std::cout << i.y << "\n";
-    // print(i.doubled())
     std::cout << i.doubled() << "\n";
-    // # Nested type as field type
-    // inner: Outer.Inner = Outer.Inner(42)
     Outer::Inner inner = Outer::Inner(42);
-    // print(inner.y)
     std::cout << inner.y << "\n";
-    // # Nested constructor with a defaulted parameter, positional spelling
-    // print("pair_default", Outer.Pair(1, 2).v, Outer.Pair(5).v)
     std::cout << "pair_default" << " " << Outer::Pair(1, 2).v << " " << Outer::Pair(5).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

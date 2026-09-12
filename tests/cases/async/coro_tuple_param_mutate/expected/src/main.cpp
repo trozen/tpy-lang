@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def bump(p: tuple[int32, Box]) -> None:
+//     await asyncio.sleep(0)
+//     p[1].val = 99
 ::tpystd::tpy::Poll<::std::monostate> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // p[1].val = 99
         std::get<1>(p)->val = 99;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -35,13 +35,14 @@ __coro_bump bump(std::tuple<int32_t, Box*> p) {
 }
 
 // async def driver() -> None:
+//     b = Box(5)
+//     await bump((1, b))
+//     print(b.val)
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = Box(5)
         b.emplace(Box(5));
         __coro_arg_0 = std::tuple<int32_t, Box*>{1, &((*b))};
-        // await bump((1, b))
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
@@ -51,7 +52,6 @@ __coro_bump bump(std::tuple<int32_t, Box*> p) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print(b.val)
         std::cout << (*b).val << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -67,17 +67,18 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
+// # A reference-member tuple PARAM mutated through after an await: the coro
+// # frame captures the borrow tuple in pointer form, so the mutation reaches
+// # the caller's object across the suspension (CPython aliasing).
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A reference-member tuple PARAM mutated through after an await: the coro
-    // # frame captures the borrow tuple in pointer form, so the mutation reaches
-    // # the caller's object across the suspension (CPython aliasing).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

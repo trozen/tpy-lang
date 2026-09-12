@@ -5,128 +5,130 @@ namespace tpyapp::main {
 
 
 // def show_request(method: str, url: str, body: bytes | None,
-// headers: dict[str, str]) -> None:
+//                  headers: dict[str, str]) -> None:
+//     # Capture exactly what HTTPConnection writes for this method/headers combo.
+//     # (headers is always a dict -- CPython's request() rejects a None headers.)
+//     a, b = socket.socketpair()
+//     conn = http.client.HTTPConnection("api.test", 8002)
+//     conn.sock = a
+//     conn.request(method, url, body, headers)
+//     print(b.recv(65536))
+//     conn.close()
+//     b.close()
 void show_request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>& headers) {
-    // # Capture exactly what HTTPConnection writes for this method/headers combo.
-    // # (headers is always a dict -- CPython's request() rejects a None headers.)
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // conn = http.client.HTTPConnection("api.test", 8002)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // conn.request(method, url, body, headers)
     conn.request(method, url, body, &(headers));
-    // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // conn.close()
     conn.close();
-    // b.close()
     b.close();
 }
 
 // def main() -> None:
+//     # --- GET: parse status line + headers, read the Content-Length body. ---
+//     a, b = socket.socketpair()
+//     conn = http.client.HTTPConnection("api.test", 8002)
+//     conn.sock = a
+//     conn.request("GET", "/v1/resource")
+//     b.recv(65536)                       # drain request -> graceful FIN on close
+//     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+//               b"X-Multi: a\r\nContent-Length: 10\r\nX-Multi: b\r\n\r\nabcdefghij")
+//     b.close()
+//     resp = conn.getresponse()
+//     print(resp.status, resp.reason, resp.version)
+//     print(resp.getheader("content-type"))      # case-insensitive
+//     print(resp.getheader("x-multi"))           # duplicate values joined: a, b
+//     print(resp.getheader("missing", "DEF"))    # default when absent
+//     print(resp.getheader("absent"))            # no default -> None
+//     print(resp.read(3))                        # b'abc'
+//     print(resp.read(0))                        # b'' (must not end the body)
+//     print(resp.read())                         # b'defghij'
+//     print(resp.read())                         # b'' (exhausted)
+//     for kv in resp.getheaders():
+//         print(kv[0], "=", kv[1])
+//     conn.close()
+//
+//     # --- Request bytes for various method/header combinations. ---
+//     # POST with body: auto Host/Accept-Encoding/Content-Length precede caller's.
+//     show_request("POST", "/v1", b'{"x":1}', {"Content-Type": "application/json"})
+//     # Bodyless POST/PUT/PATCH still send Content-Length: 0.
+//     show_request("POST", "/x", None, {})
+//     show_request("PUT", "/x", None, {})
+//     show_request("PATCH", "/x", None, {})
+//     # Bodyless GET sends no Content-Length.
+//     show_request("GET", "/x", None, {})
+//     # Caller-supplied Host suppresses the auto Host (auto Accept-Encoding stays).
+//     show_request("GET", "/x", None, {"Host": "override:9000"})
+//     # Caller-supplied Transfer-Encoding suppresses the auto Content-Length.
+//     show_request("POST", "/x", b"data", {"Transfer-Encoding": "chunked"})
 void main() {
-    // # --- GET: parse status line + headers, read the Content-Length body. ---
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // conn = http.client.HTTPConnection("api.test", 8002)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // conn.request("GET", "/v1/resource")
     conn.request("GET", "/v1/resource");
-    // b.recv(65536)                       # drain request -> graceful FIN on close
     b.recv(65536);
-    // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
-    // b"X-Multi: a\r\nContent-Length: 10\r\nX-Multi: b\r\n\r\nabcdefghij")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Multi: a\r\nContent-Length: 10\r\nX-Multi: b\r\n\r\nabcdefghij", 105));
-    // b.close()
     b.close();
-    // resp = conn.getresponse()
     ::tpystd::http::client::HTTPResponse resp = conn.getresponse();
-    // print(resp.status, resp.reason, resp.version)
     std::cout << resp.status << " " << resp.reason << " " << resp.version << "\n";
-    // print(resp.getheader("content-type"))      # case-insensitive
     std::cout << ::tpy::print_optional_val(resp.getheader("content-type")) << "\n";
-    // print(resp.getheader("x-multi"))           # duplicate values joined: a, b
     std::cout << ::tpy::print_optional_val(resp.getheader("x-multi")) << "\n";
-    // print(resp.getheader("missing", "DEF"))    # default when absent
     std::cout << ::tpy::print_optional_val(resp.getheader("missing", "DEF")) << "\n";
-    // print(resp.getheader("absent"))            # no default -> None
     std::cout << ::tpy::print_optional_val(resp.getheader("absent")) << "\n";
-    // print(resp.read(3))                        # b'abc'
     std::cout << ::tpy::BytesPrinter(resp.read(3)) << "\n";
-    // print(resp.read(0))                        # b'' (must not end the body)
     std::cout << ::tpy::BytesPrinter(resp.read(0)) << "\n";
-    // print(resp.read())                         # b'defghij'
     std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
-    // print(resp.read())                         # b'' (exhausted)
     std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
-    // for kv in resp.getheaders():
     auto __obj_0 = resp.getheaders();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& kv = *__beg_0;
-        // print(kv[0], "=", kv[1])
         std::cout << std::get<0>(kv) << " " << "=" << " " << std::get<1>(kv) << "\n";
     }
-    // conn.close()
     conn.close();
-    // # --- Request bytes for various method/header combinations. ---
-    // # POST with body: auto Host/Accept-Encoding/Content-Length precede caller's.
-    // show_request("POST", "/v1", b'{"x":1}', {"Content-Type": "application/json"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "application/json"}});
     show_request("POST", "/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), __tmp_1);
-    // # Bodyless POST/PUT/PATCH still send Content-Length: 0.
-    // show_request("POST", "/x", None, {})
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>();
     show_request("POST", "/x", std::nullopt, __tmp_2);
-    // show_request("PUT", "/x", None, {})
     ::tpy::ordered_map<std::string, std::string> __tmp_3 = ::tpy::ordered_map<std::string, std::string>();
     show_request("PUT", "/x", std::nullopt, __tmp_3);
-    // show_request("PATCH", "/x", None, {})
     ::tpy::ordered_map<std::string, std::string> __tmp_4 = ::tpy::ordered_map<std::string, std::string>();
     show_request("PATCH", "/x", std::nullopt, __tmp_4);
-    // # Bodyless GET sends no Content-Length.
-    // show_request("GET", "/x", None, {})
     ::tpy::ordered_map<std::string, std::string> __tmp_5 = ::tpy::ordered_map<std::string, std::string>();
     show_request("GET", "/x", std::nullopt, __tmp_5);
-    // # Caller-supplied Host suppresses the auto Host (auto Accept-Encoding stays).
-    // show_request("GET", "/x", None, {"Host": "override:9000"})
     ::tpy::ordered_map<std::string, std::string> __tmp_6 = ::tpy::ordered_map<std::string, std::string>({{"Host", "override:9000"}});
     show_request("GET", "/x", std::nullopt, __tmp_6);
-    // # Caller-supplied Transfer-Encoding suppresses the auto Content-Length.
-    // show_request("POST", "/x", b"data", {"Transfer-Encoding": "chunked"})
     ::tpy::ordered_map<std::string, std::string> __tmp_7 = ::tpy::ordered_map<std::string, std::string>({{"Transfer-Encoding", "chunked"}});
     show_request("POST", "/x", ::tpy::bytes_literal_owned("data", 4), __tmp_7);
 }
 
+// # http.client request/response over a socketpair (conn.sock injection -- no
+// # real server, no DNS, no ports). Covers the full GET flow (status/reason/
+// # version, case-insensitive getheader incl. duplicate-join, default, and
+// # absent->None; read(amt)/read(0)/read-to-exhausted; getheaders) and the exact
+// # request bytes various method/header combinations emit (auto Host /
+// # Accept-Encoding / Content-Length in CPython's order, and their suppression
+// # when the caller supplies the header). socket and BufferedReader are @nocopy,
+// # so moving the owned socket into conn.sock and the makefile'd reader into the
+// # response are real moves -- a silent copy would be a compile error.
+// import socket
+// import http.client
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # http.client request/response over a socketpair (conn.sock injection -- no
-    // # real server, no DNS, no ports). Covers the full GET flow (status/reason/
-    // # version, case-insensitive getheader incl. duplicate-join, default, and
-    // # absent->None; read(amt)/read(0)/read-to-exhausted; getheaders) and the exact
-    // # request bytes various method/header combinations emit (auto Host /
-    // # Accept-Encoding / Content-Length in CPython's order, and their suppression
-    // # when the caller supplies the header). socket and BufferedReader are @nocopy,
-    // # so moving the owned socket into conn.sock and the makefile'd reader into the
-    // # response are real moves -- a silent copy would be a compile error.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // import http.client
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // main()
     main();
 }
 

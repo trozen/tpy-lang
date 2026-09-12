@@ -5,10 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items = [P(1), P(2), P(3)]
+//
+//     for a, b in gen_for(items):
+//         if a is not None:
+//             print(a.x)
+//
+//     for a, b in gen_range(items):
+//         if a is not None:
+//             print(a.x)
+//
+//     for a, b in gen_while(items, int32(2)):
+//         if a is not None:
+//             print(a.x)
 void main() {
-    // items = [P(1), P(2), P(3)]
     std::vector<P> items = {P(1), P(2), P(3)};
-    // for a, b in gen_for(items):
     {
         auto __src_0 = gen_for(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,18 +27,14 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for a, b in gen_for(items):
         auto& __tup_1 = __for_tup_0;
         P* a = std::get<0>(__tup_1);
         P* b = std::get<1>(__tup_1);
-        // if a is not None:
         if ((a != nullptr)) {
-            // print(a.x)
             std::cout << a->x << "\n";
         }
         }
     }
-    // for a, b in gen_range(items):
     {
         auto __src_2 = gen_range(items);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -35,18 +42,14 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-        // for a, b in gen_range(items):
         auto& __tup_2 = __for_tup_1;
         P* a = std::get<0>(__tup_2);
         P* b = std::get<1>(__tup_2);
-        // if a is not None:
         if ((a != nullptr)) {
-            // print(a.x)
             std::cout << a->x << "\n";
         }
         }
     }
-    // for a, b in gen_while(items, int32(2)):
     {
         auto __src_4 = gen_while(items, 2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -54,25 +57,22 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-        // for a, b in gen_while(items, int32(2)):
         auto& __tup_3 = __for_tup_2;
         P* a = std::get<0>(__tup_3);
         P* b = std::get<1>(__tup_3);
-        // if a is not None:
         if ((a != nullptr)) {
-            // print(a.x)
             std::cout << a->x << "\n";
         }
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

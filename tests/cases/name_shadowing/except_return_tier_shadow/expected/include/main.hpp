@@ -12,8 +12,11 @@ struct NotFound;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def inner(key: str) -> int32:
 std::expected<int32_t, NotFound> inner(std::string_view key);
+// def outer(key: str) -> int32:
 int32_t outer(std::string_view key);
+// def main() -> None:
 void main();
 
 // class Registry:
@@ -51,6 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
 
 
 // def __init__(self, code: int32) -> None:
+//     self.code = code
 inline NotFound::NotFound(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

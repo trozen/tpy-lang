@@ -11,6 +11,7 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Buffer:
@@ -33,11 +34,12 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(self) -> None:
+//     self._items = [int32(1), int32(2), int32(3)]
 inline Buffer::Buffer() : _items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def items(self) -> Span[int32]:
+//     return self._items
 inline std::span<int32_t> Buffer::items() {
-    // return self._items
     return ::tpy::as_mut_span(this->_items);
 }
 void __tpy_init();

@@ -5,205 +5,205 @@ namespace tpyapp::main {
 
 
 // def has_item_str(xs: list[str], v: str) -> bool:
+//     for x in xs:
+//         if x == v:
+//             return True
+//     return False
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v) {
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view x = *__beg_0;
-        // if x == v:
         if ((x == v)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 
 // def has_item_string(xs: list[String], v: String) -> bool:
+//     for x in xs:
+//         if x == v:
+//             return True
+//     return False
 bool has_item_string(const std::vector<::tpy::String>& xs, const ::tpy::String& v) {
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::String& x = *__beg_0;
-        // if x == v:
         if ((x == v)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 
 // def has_item_bytes(xs: list[bytes], v: bytes) -> bool:
+//     for x in xs:
+//         if x == v:
+//             return True
+//     return False
 bool has_item_bytes(const std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v) {
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView x = *__beg_0;
-        // if x == v:
         if ((x == v)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 
 // def size_of(p: bytes) -> int32:
+//     # a BORROWING `bytes` slot: the parameter form is the span, so a bytearray
+//     # argument is viewed, never copied -- the render carries no copy helper
+//     return len(p)
 int32_t size_of(::tpy::BytesView p) {
-    // # a BORROWING `bytes` slot: the parameter form is the span, so a bytearray
-    // # argument is viewed, never copied -- the render carries no copy helper
-    // return len(p)
     return ::tpy::__len__(p);
 }
 
 // def store_str(xs: list[str], v: str) -> None:
+//     xs.append(v)
 void store_str(std::vector<std::string>& xs, std::string_view v) {
-    // xs.append(v)
     xs.push_back(std::string(v));
 }
 
 // def store_bytes(xs: list[bytes], v: bytes) -> None:
+//     xs.append(v)
 void store_bytes(std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v) {
-    // xs.append(v)
     xs.push_back(::tpy::Bytes(v));
 }
 
 // def str_family(k: str) -> None:
+//     # str: the slot is the view, so the caller passes the param bare
+//     names = ["a", "b"]
+//     print("str", has_item(names, k), has_item_str(names, k))  # tpyc: ok
+//     # String: a value type whose slot is a reference to its own storage
+//     s = String("a")
+//     strings: list[String] = [String("a"), String("b")]
+//     print("String", has_item(strings, s), has_item_string(strings, s))  # tpyc: ok
 void str_family(std::string_view k) {
-    // # str: the slot is the view, so the caller passes the param bare
-    // names = ["a", "b"]
     std::vector<std::string> names = {"a", "b"};
-    // print("str", has_item(names, k), has_item_str(names, k))  # tpyc: ok
     std::cout << "str" << " " << ::tpy::print_bool(has_item<std::string>(names, k)) << " " << ::tpy::print_bool(has_item_str(names, k)) << "\n";
-    // # String: a value type whose slot is a reference to its own storage
-    // s = String("a")
     ::tpy::String s = ::tpy::String("a");
-    // strings: list[String] = [String("a"), String("b")]
     std::vector<::tpy::String> strings = {::tpy::String("a"), ::tpy::String("b")};
-    // print("String", has_item(strings, s), has_item_string(strings, s))  # tpyc: ok
     std::cout << "String" << " " << ::tpy::print_bool(has_item<::tpy::String>(strings, s)) << " " << ::tpy::print_bool(has_item_string(strings, s)) << "\n";
 }
 
 // def bytes_family(p: bytes) -> None:
+//     # bytes: the slot is the span, so the caller passes the param bare
+//     keys = [b"a", b"b"]
+//     print("bytes", has_item(keys, p), has_item_bytes(keys, p))  # tpyc: ok
+//     # bytearray: a REFERENCE type, so both the slot and the `T` return are
+//     # references -- mutating through the returned alias and observing it on the
+//     # original is what proves the generic did not copy. (`list[bytearray]` is a
+//     # separate pre-existing gap, so the container form of this leg is the
+//     # `list[uint8]` section below.)
+//     ba = bytearray(b"a")
+//     r = echo_ref(ba)  # tpyc: ok
+//     r.append(9)
+//     print("bytearray", len(ba), len(r))
+//     # The BORROWING direction of the same pair, the counterpart of the owning
+//     # sink in tests/cases/bytes/error_bytearray_at_bytes_sink: a bytearray at a
+//     # `bytes` parameter is a free view, so the second call sees the mutation
+//     # made between the two -- and it reads the same in CPython, which passes
+//     # the object itself. What rules out a per-call copy is the snapshot beside
+//     # it: the argument renders bare, with no `bytes_copy`.
+//     buf = bytearray(b"ab")
+//     n1 = size_of(buf)  # tpyc: ok
+//     buf.append(7)
+//     print("borrow", n1, size_of(buf))
 void bytes_family(::tpy::BytesView p) {
-    // # bytes: the slot is the span, so the caller passes the param bare
-    // keys = [b"a", b"b"]
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
-    // print("bytes", has_item(keys, p), has_item_bytes(keys, p))  # tpyc: ok
     std::cout << "bytes" << " " << ::tpy::print_bool(has_item<::tpy::Bytes>(keys, p)) << " " << ::tpy::print_bool(has_item_bytes(keys, p)) << "\n";
-    // # bytearray: a REFERENCE type, so both the slot and the `T` return are
-    // # references -- mutating through the returned alias and observing it on the
-    // # original is what proves the generic did not copy. (`list[bytearray]` is a
-    // # separate pre-existing gap, so the container form of this leg is the
-    // # `list[uint8]` section below.)
-    // ba = bytearray(b"a")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
-    // r = echo_ref(ba)  # tpyc: ok
     ::tpy::ByteArray& r = echo_ref<::tpy::ByteArray>(ba);
-    // r.append(9)
     r.push_back(9);
-    // print("bytearray", len(ba), len(r))
     std::cout << "bytearray" << " " << ::tpy::__len__(ba) << " " << ::tpy::__len__(r) << "\n";
-    // # The BORROWING direction of the same pair, the counterpart of the owning
-    // # sink in tests/cases/bytes/error_bytearray_at_bytes_sink: a bytearray at a
-    // # `bytes` parameter is a free view, so the second call sees the mutation
-    // # made between the two -- and it reads the same in CPython, which passes
-    // # the object itself. What rules out a per-call copy is the snapshot beside
-    // # it: the argument renders bare, with no `bytes_copy`.
-    // buf = bytearray(b"ab")
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
-    // n1 = size_of(buf)  # tpyc: ok
     int32_t n1 = size_of(buf);
-    // buf.append(7)
     buf.push_back(7);
-    // print("borrow", n1, size_of(buf))
     std::cout << "borrow" << " " << n1 << " " << size_of(buf) << "\n";
 }
 
 // def u8_list() -> None:
+//     # list[uint8] keeps the plain buffer spelling and its reference forms
+//     v: list[uint8] = [uint8(1)]
+//     # the container literal COPIES its element into the owned slot; the boundary
+//     # under test is the generic SLOT, whose reference form the alias below proves
+//     xs: list[list[uint8]] = [v]
+//     print("list", has_item(xs, v))  # tpyc: ok
+//     r = echo_ref(v)
+//     r.append(uint8(2))
+//     print("list", len(v), len(r))
 void u8_list() {
-    // # list[uint8] keeps the plain buffer spelling and its reference forms
-    // v: list[uint8] = [uint8(1)]
     std::vector<uint8_t> v = {1};
-    // # the container literal COPIES its element into the owned slot; the boundary
-    // # under test is the generic SLOT, whose reference form the alias below proves
-    // xs: list[list[uint8]] = [v]
     std::vector<std::vector<uint8_t>> xs = {v};
-    // print("list", has_item(xs, v))  # tpyc: ok
     std::cout << "list" << " " << ::tpy::print_bool(has_item<std::vector<uint8_t>>(xs, v)) << "\n";
-    // r = echo_ref(v)
     std::vector<uint8_t>& r = echo_ref<std::vector<uint8_t>>(v);
-    // r.append(uint8(2))
     r.push_back(2);
-    // print("list", len(v), len(r))
     std::cout << "list" << " " << ::tpy::__len__(v) << " " << ::tpy::__len__(r) << "\n";
 }
 
 // def storing(k: str, p: bytes) -> None:
+//     # the store body at both view families, each beside its twin
+//     a: list[str] = []
+//     b: list[str] = []
+//     store(a, k)
+//     store_str(b, k)
+//     print("store", a, b)
+//     c: list[bytes] = []
+//     d: list[bytes] = []
+//     store(c, p)
+//     store_bytes(d, p)
+//     print("store", c, d)
 void storing(std::string_view k, ::tpy::BytesView p) {
-    // # the store body at both view families, each beside its twin
-    // a: list[str] = []
     std::vector<std::string> a = std::vector<std::string>{};
-    // b: list[str] = []
     std::vector<std::string> b = std::vector<std::string>{};
-    // store(a, k)
     store<std::string>(a, k);
-    // store_str(b, k)
     store_str(b, k);
-    // print("store", a, b)
     std::cout << "store" << " " << ::tpy::ListPrinter(a) << " " << ::tpy::ListPrinter(b) << "\n";
-    // c: list[bytes] = []
     std::vector<::tpy::Bytes> c = std::vector<::tpy::Bytes>{};
-    // d: list[bytes] = []
     std::vector<::tpy::Bytes> d = std::vector<::tpy::Bytes>{};
-    // store(c, p)
     store<::tpy::Bytes>(c, p);
-    // store_bytes(d, p)
     store_bytes(d, p);
-    // print("store", c, d)
     std::cout << "store" << " " << ::tpy::ListPrinter(c) << " " << ::tpy::ListPrinter(d) << "\n";
 }
 
 // def readonly_method(k: str) -> None:
+//     names = ["a", "b"]
+//     pk = Peeker[str]()
+//     print("readonly", pk.peek(names, k))  # tpyc: ok
 void readonly_method(std::string_view k) {
-    // names = ["a", "b"]
     std::vector<std::string> names = {"a", "b"};
-    // pk = Peeker[str]()
     Peeker<std::string> pk = Peeker<std::string>();
-    // print("readonly", pk.peek(names, k))  # tpyc: ok
     std::cout << "readonly" << " " << ::tpy::print_bool(pk.peek(names, k)) << "\n";
 }
 
 // def main() -> None:
+//     str_family("a")
+//     bytes_family(b"a")
+//     u8_list()
+//     storing("z", b"z")
+//     readonly_method("a")
 void main() {
-    // str_family("a")
     str_family("a");
-    // bytes_family(b"a")
     bytes_family(::tpy::bytes_literal("a", 1));
-    // u8_list()
     u8_list();
-    // storing("z", b"z")
     storing("z", ::tpy::bytes_literal("z", 1));
-    // readonly_method("a")
     readonly_method("a");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

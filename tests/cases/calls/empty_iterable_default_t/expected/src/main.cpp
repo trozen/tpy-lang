@@ -5,28 +5,44 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(sorted([]))           # tpyc: ok
+//     print(all([]))              # tpyc: ok
+//     print(any([]))              # tpyc: ok
+//     print(tag([]))              # tpyc: ok
+//     print(pick_or([], 7))       # tpyc: ok
+//     print(pair([1, 2], []))     # tpyc: ok
+//     print(pair([], [1, 2]))     # tpyc: ok
+//
+//     for i, x in enumerate([]):  # tpyc: ok
+//         print(i, x)
+//     print("enumerate done")
+//
+//     for x in iter([]):          # tpyc: ok
+//         print(x)
+//     print("iter done")
+//
+//     # Guards the PendingListType path through
+//     # `_infer_protocol_type_arg_structurally`: list doesn't declare
+//     # Sequence in its extends list, so conformance falls into the
+//     # structural helper -- which used to leak TypeParamRef(T) for
+//     # non-NominalType args.
+//     for x in reversed([]):      # tpyc: ok
+//         print(x)
+//     print("reversed done")
 void main() {
-    // print(sorted([]))           # tpyc: ok
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(std::vector<int32_t>{})) << "\n";
-    // print(all([]))              # tpyc: ok
     std::cout << ::tpy::print_bool(::tpy::builtin_all(std::vector<int32_t>{})) << "\n";
-    // print(any([]))              # tpyc: ok
     std::cout << ::tpy::print_bool(::tpy::builtin_any(std::vector<int32_t>{})) << "\n";
-    // print(tag([]))              # tpyc: ok
     auto __tmp_1 = std::vector<int32_t>{};
     std::cout << tag<int32_t>(__tmp_1) << "\n";
-    // print(pick_or([], 7))       # tpyc: ok
     auto __tmp_2 = std::vector<int32_t>{};
     std::cout << pick_or<int32_t>(__tmp_2, 7) << "\n";
-    // print(pair([1, 2], []))     # tpyc: ok
     auto __tmp_3 = std::array<int32_t, 2>{1, 2};
     auto __tmp_4 = std::vector<int32_t>{};
     std::cout << pair<int32_t>(__tmp_3, __tmp_4) << "\n";
-    // print(pair([], [1, 2]))     # tpyc: ok
     auto __tmp_5 = std::vector<int32_t>{};
     auto __tmp_6 = std::array<int32_t, 2>{1, 2};
     std::cout << pair<int32_t>(__tmp_5, __tmp_6) << "\n";
-    // for i, x in enumerate([]):  # tpyc: ok
     {
         auto __src_0 = ::tpy::builtin_enumerate<int32_t>(std::vector<int32_t>{});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -34,17 +50,13 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for i, x in enumerate([]):  # tpyc: ok
         const auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
         int32_t x = std::get<1>(__tup_1);
-        // print(i, x)
         std::cout << i << " " << x << "\n";
         }
     }
-    // print("enumerate done")
     std::cout << "enumerate done" << "\n";
-    // for x in iter([]):          # tpyc: ok
     {
         auto __src_2 = ::tpy::__iter__(std::vector<int32_t>{});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -52,18 +64,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // print("iter done")
     std::cout << "iter done" << "\n";
-    // # Guards the PendingListType path through
-    // # `_infer_protocol_type_arg_structurally`: list doesn't declare
-    // # Sequence in its extends list, so conformance falls into the
-    // # structural helper -- which used to leak TypeParamRef(T) for
-    // # non-NominalType args.
-    // for x in reversed([]):      # tpyc: ok
     {
         auto __src_4 = ::tpy::builtin_reversed<int32_t>(std::vector<int32_t>{});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -71,21 +75,20 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_5);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // print("reversed done")
     std::cout << "reversed done" << "\n";
 }
 
+// from tpy.extern import type_param_default, DefaultInt
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import type_param_default, DefaultInt
-    // main()
     main();
 }
 

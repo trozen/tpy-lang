@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def maybe_apply(f: Callable[[int32], int32] | None, x: int32) -> int32:
+//     if f is not None:
+//         return f(x)
+//     return x
 int32_t maybe_apply(std::optional<std::function<int32_t(int32_t)>> f, int32_t x) {
-    // if f is not None:
     if ((f.has_value())) {
-        // return f(x)
         return f.value()(x);
     }
-    // return x
     return x;
 }
 
 // def make_doubler() -> Callable[[int32], int32]:
+//     return lambda x: x * 2
 std::function<int32_t(int32_t)> make_doubler() {
-    // return lambda x: x * 2
     return [](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); };
 }
 
 // def main() -> None:
+//     doubler = make_doubler()
+//     print(maybe_apply(doubler, 5))
+//     print(maybe_apply(None, 5))
 void main() {
-    // doubler = make_doubler()
     std::function<int32_t(int32_t)> doubler = make_doubler();
-    // print(maybe_apply(doubler, 5))
     std::cout << maybe_apply(doubler, 5) << "\n";
-    // print(maybe_apply(None, 5))
     std::cout << maybe_apply(std::nullopt, 5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

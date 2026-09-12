@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // async def a() -> int32:
+//     return await shared()
 ::tpystd::tpy::Poll<int32_t> __coro_a::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await shared()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -33,10 +33,10 @@ __coro_a a() {
 }
 
 // async def b() -> int32:
+//     return await shared()
 ::tpystd::tpy::Poll<int32_t> __coro_b::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await shared()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -61,10 +61,11 @@ __coro_b b() {
 }
 
 // async def shared() -> int32:
+//     await asyncio.sleep(0)
+//     return 1
 ::tpystd::tpy::Poll<int32_t> __coro_shared::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -74,7 +75,6 @@ __coro_b b() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 1
         __state = S_DONE;
         int32_t __tpy_async_ret = 1;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -91,10 +91,12 @@ __coro_shared shared() {
 }
 
 // async def driver() -> None:
+//     x = await a()
+//     y = await b()
+//     print(x + y)
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // x = await a()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -104,7 +106,6 @@ __coro_shared shared() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         x = std::move(__r0).value();
         __sub_0.reset();
-        // y = await b()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -114,7 +115,6 @@ __coro_shared shared() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         y = std::move(__r1).value();
         __sub_1.reset();
-        // print(x + y)
         std::cout << (::tpy::add_check<int32_t>(x, y)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -131,10 +131,10 @@ __coro_driver driver() {
 }
 
 // async def main_coro() -> None:
+//     await driver()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await driver()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -159,22 +159,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Diamond dependency: both `a` and `b` inline-await the same `shared` coroutine,
+// # and `driver` awaits both. The topo emit must place `shared`'s struct before
+// # both awaiters (no edge between a and b); exercises the multi-dependent path.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Diamond dependency: both `a` and `b` inline-await the same `shared` coroutine,
-    // # and `driver` awaits both. The topo emit must place `shared`'s struct before
-    // # both awaiters (no edge between a and b); exercises the multi-dependent path.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

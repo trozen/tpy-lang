@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(e: readonly[Optional[BaseException]]) -> str:
 std::string classify(const ::tpy::BaseException* e);
+// def main() -> None:
 void main();
 
 void __tpy_init();

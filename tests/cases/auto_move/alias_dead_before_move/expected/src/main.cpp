@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def consume(p: Own[Point]) -> int32:
+//     return p.x
 int32_t consume(Point&& p) {
-    // return p.x
     return p.x;
 }
 
 // def main():
+//     p = Point()
+//     p.x = 42
+//     alias = p
+//     print(alias.x)
+//     print(consume(p))  # tpyc: ok -- alias dead, p at last use
 void main() {
-    // p = Point()
     Point p = Point();
-    // p.x = 42
     p.x = 42;
-    // alias = p
     Point& alias = p;
-    // print(alias.x)
     std::cout << alias.x << "\n";
-    // print(consume(p))  # tpyc: ok -- alias dead, p at last use
     std::cout << consume(std::move(p)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def describe(s: Shape) -> str:
+//     if isinstance(s, Circle):
+//         return "circle"
+//     assert isinstance(s, Rect)
+//     return "rect"
 std::string describe(::tpy::Union<const Circle*, const Rect*> s) {
-    // if isinstance(s, Circle):
     if (std::holds_alternative<const Circle*>(s)) {
         auto& __s = *std::get<const Circle*>(s);
-        // return "circle"
         return "circle";
     }
     auto& __s = *std::get<const Rect*>(s);
-    // assert isinstance(s, Rect)
     if (!(true)) ::tpy::raise_assertion_error();
     auto& __s_2 = *std::get<const Rect*>(s);
-    // return "rect"
     return "rect";
 }
 
 // def main() -> None:
+//     c: Shape = Circle(int32(10))
+//     r: Shape = Rect(int32(3))
+//     print(describe(c))
+//     print(describe(r))
 void main() {
-    // c: Shape = Circle(int32(10))
     Shape __slot_1 = Circle(10);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    // r: Shape = Rect(int32(3))
     Shape __slot_2 = Rect(3);
     ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
-    // print(describe(r))
     std::cout << describe(r.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

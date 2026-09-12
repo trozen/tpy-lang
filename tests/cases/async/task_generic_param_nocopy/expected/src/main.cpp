@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def co(x: int32) -> int32:
+//     return x + int32(1)
 ::tpystd::tpy::Poll<int32_t> __coro_co::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return x + int32(1)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(x, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,24 +26,25 @@ __coro_co co(int32_t x) {
 }
 
 // def task_arity_concrete(t: Task[int32]) -> int32:
+//     # Signature only: param is a Task[int32] borrow. Body proves the
+//     # codegen path accepts the binding without copying.
+//     return 0
 int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t) {
-    // # Signature only: param is a Task[int32] borrow. Body proves the
-    // # codegen path accepts the binding without copying.
-    // return 0
     return 0;
 }
 
 // async def main_coro() -> None:
+//     t = asyncio.create_task(co(int32(7)))
+//     _ = task_arity_concrete(t)
+//     _ = task_arity_generic[int32](t)
+//     result = await t
+//     print(result)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = asyncio.create_task(co(int32(7)))
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(co(7))));
-        // _ = task_arity_concrete(t)
         _ = task_arity_concrete((*t));
-        // _ = task_arity_generic[int32](t)
         _ = task_arity_generic<int32_t>((*t));
-        // result = await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -53,7 +54,6 @@ int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         result = std::move(__r0).value();
         __sub_0 = nullptr;
-        // print(result)
         std::cout << result << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -70,27 +70,28 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Regression: generic and concrete Task[T] params are emitted by
+// # reference at the C++ signature. Previously tpy.Task was registered
+// # as is_value_type=True, so both `t: Task[T]` (generic) and
+// # `t: Task[int32]` (concrete) emitted `Task<T> t` by-value at the
+// # generated C++ signature -- breaking the deleted copy ctor at the
+// # call site. Now Task[T] is correctly is_value_type=False (matching
+// # its @nocopy nature), so concrete returns spell `Own[Task[T]]` and
+// # params spell `const Task<T>&`.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: generic and concrete Task[T] params are emitted by
-    // # reference at the C++ signature. Previously tpy.Task was registered
-    // # as is_value_type=True, so both `t: Task[T]` (generic) and
-    // # `t: Task[int32]` (concrete) emitted `Task<T> t` by-value at the
-    // # generated C++ signature -- breaking the deleted copy ctor at the
-    // # call site. Now Task[T] is correctly is_value_type=False (matching
-    // # its @nocopy nature), so concrete returns spell `Own[Task[T]]` and
-    // # params spell `const Task<T>&`.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

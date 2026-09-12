@@ -3,40 +3,40 @@
 
 namespace tpyapp::main {
 
-// gate: Gate = Gate(7)
 Gate* gate{};
 
 // def read() -> int32:
+//     return gate.x
 int32_t read() {
-    // return gate.x
     return gate->x;
 }
 
 // def read_then_shadow() -> int32:
+//     y = gate.x  # the read before the local binding still means the global
+//     gate = Gate(1)
+//     return y + gate.x
 int32_t read_then_shadow() {
-    // y = gate.x  # the read before the local binding still means the global
     int32_t y = gate->x;
-    // gate = Gate(1)
     Gate gate = Gate(1);
-    // return y + gate.x
     return (::tpy::add_check<int32_t>(y, gate.x));
 }
 
 // def main() -> None:
+//     print(read(), read_then_shadow())
 void main() {
-    // print(read(), read_then_shadow())
     std::cout << read() << " " << read_then_shadow() << "\n";
 }
 
+// gate: Gate = Gate(7)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // gate: Gate = Gate(7)
     static Gate __global_slot_1 = Gate(7);
     gate = &__global_slot_1;
-    // main()
     main();
 }
 

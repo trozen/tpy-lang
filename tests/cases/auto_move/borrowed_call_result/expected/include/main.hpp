@@ -11,9 +11,13 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first(xs: list[P]) -> P:
 P& first(std::vector<P>& xs);
+// def drop(xs: Own[list[P]]) -> int32:
 int32_t drop(std::vector<P>&& xs);
+// def hold(p: Own[P]) -> int32:
 int32_t hold(P&& p);
+// def main():
 void main();
 
 // class P:
@@ -33,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self):
+//     self.vals = [5]
 inline P::P() : vals(std::vector<int32_t>{5}) {}
 void __tpy_init();
 } // namespace tpyapp::main

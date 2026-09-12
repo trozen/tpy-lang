@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def add_offset(x: float | None) -> float:
+//     return x + 1.0  # tpyc: warning(/Potential None access/)
 double add_offset(std::optional<double> x) {
-    // return x + 1.0  # tpyc: warning(/Potential None access/)
     return ((::tpy::deref_optional_check(x)) + (1.0));
 }
 
+// print(add_offset(1.5))
+// print(add_offset(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(add_offset(1.5))
     std::cout << ::tpy::print_float(add_offset(1.5)) << "\n";
-    // print(add_offset(None))
     std::cout << ::tpy::print_float(add_offset(std::nullopt)) << "\n";
 }
 

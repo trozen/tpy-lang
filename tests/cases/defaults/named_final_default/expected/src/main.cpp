@@ -5,33 +5,36 @@ namespace tpyapp::main {
 
 
 // def fn(flags: uint32 = NOFLAG, limit: int32 = DEFAULT_LIMIT) -> int32:
+//     return limit + int32(flags)
 int32_t fn(uint32_t flags, int32_t limit) {
-    // return limit + int32(flags)
     return (::tpy::add_check<int32_t>(limit, ::tpy::int_cast_check<int32_t>(flags)));
 }
 
 // def main() -> None:
+//     print(fn())
+//     print(fn(uint32(7)))
+//     print(fn(uint32(0), int32(3)))
+//     e = Engine()
+//     print(e.run())
+//     print(e.run(uint32(2), int32(1)))
 void main() {
-    // print(fn())
     std::cout << fn() << "\n";
-    // print(fn(uint32(7)))
     std::cout << fn(7) << "\n";
-    // print(fn(uint32(0), int32(3)))
     std::cout << fn(0, 3) << "\n";
-    // e = Engine()
     Engine e = Engine();
-    // print(e.run())
     std::cout << e.run() << "\n";
-    // print(e.run(uint32(2), int32(1)))
     std::cout << e.run(2, 1) << "\n";
 }
 
+// NOFLAG: Final[uint32] = uint32(0)
+// DEFAULT_LIMIT: Final[int32] = 16
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

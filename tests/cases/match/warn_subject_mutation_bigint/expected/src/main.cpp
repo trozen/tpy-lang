@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def poke(h: Holder) -> None:
+//     match h.item:
+//         case Big(n=b):
+//             h.item = Small(9)  # tpyc: warning(/'h.item' is mutated in this arm while pattern bindings borrow/)
+//             print(b)
+//         case Small(v=v):
+//             print("small", v)
 void poke(Holder& h) {
-    // match h.item:
     auto& __match_subject_1 = h.item;
     switch (__match_subject_1.index()) {
-    // case Big(n=b):
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1);
         auto& b = __case_0.n;
-        // h.item = Small(9)  # tpyc: warning(/'h.item' is mutated in this arm while pattern bindings borrow/)
         h.item = Small(9);
-        // print(b)
         std::cout << b << "\n";
         break;
     }
-    // case Small(v=v):
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
         auto v = __case_1.v;
-        // print("small", v)
         std::cout << "small" << " " << v << "\n";
         break;
     }
@@ -31,18 +31,18 @@ void poke(Holder& h) {
 }
 
 // def main() -> None:
+//     poke(Holder())
 void main() {
-    // poke(Holder())
     Holder __tmp_1 = Holder();
     poke(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

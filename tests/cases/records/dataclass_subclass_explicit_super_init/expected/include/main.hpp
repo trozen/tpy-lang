@@ -13,6 +13,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -91,8 +92,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self._ptr = unsafe_alloc()
+//     unsafe_init(self._ptr, value)
 inline Resource::Resource(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
-    // unsafe_init(self._ptr, value)
     ::new(static_cast<void*>(this->_ptr)) int32_t(value);
 }
 
@@ -108,18 +110,21 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     unsafe_drop(self._ptr)
+//     unsafe_free(self._ptr)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    // unsafe_drop(self._ptr)
     ::tpy::destroy_at(this->_ptr);
-    // unsafe_free(self._ptr)
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
 }
 
 // def __init__(self, v: int32) -> None:
+//     self.res = Resource(v)
 inline Base::Base(int32_t v) : res(Resource(v)) {}
 
 // def __init__(self, v: int32, extra: int32) -> None:
+//     super().__init__(v)
+//     self.extra = extra
 inline Child::Child(int32_t v, int32_t extra) : Base(v), extra(extra) {}
 
 inline bool Child::__eq__(const Child& other) const {

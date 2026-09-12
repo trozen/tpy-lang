@@ -10,6 +10,7 @@ namespace tpyapp::config {
 extern int32_t MAX_VALUE;
 inline constexpr std::string_view __name__ = "config";
 
+// def get_max() -> int32:
 int32_t get_max();
 
 void __tpy_init();

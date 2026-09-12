@@ -11,6 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass
@@ -48,8 +49,8 @@ inline Bag::Bag(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>&& items) : n(
 }
 
 // def __post_init__(self) -> None:
+//     self.items = [self.n, self.n + 1]
 inline void Bag::__post_init__() {
-    // self.items = [self.n, self.n + 1]
     this->items = {this->n, ((this->n) + (::tpy::BigInt(1)))};
 }
 

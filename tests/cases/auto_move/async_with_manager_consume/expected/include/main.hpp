@@ -18,7 +18,9 @@ struct __coro_runner;
 struct __coro_Guard___aenter__;
 struct __coro_Guard___aexit__;
 
+// async def runner() -> None:
 __coro_runner runner();
+// def main():
 void main();
 
 // class Guard:
@@ -58,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
     return os;
 }
 
-// Async coroutine: Guard.__aenter__
+// async def __aenter__(self) -> None:
 struct __coro_Guard___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -84,7 +86,7 @@ inline __coro_Guard___aenter__ Guard::__aenter__() const {
     return __coro_Guard___aenter__(*this);
 }
 
-// Async coroutine: Guard.__aexit__
+// async def __aexit__(self, et: None, ev: None, tb: None) -> None:
 struct __coro_Guard___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -113,7 +115,7 @@ inline __coro_Guard___aexit__ Guard::__aexit__(std::monostate et, std::monostate
     return __coro_Guard___aexit__(*this, et, ev, tb);
 }
 
-// Async coroutine: runner
+// async def runner() -> None:
 struct __coro_runner {
     int32_t __state;
     bool __cancel_pending;
@@ -147,14 +149,16 @@ struct __coro_runner {
 
 
 // def __init__(self):
+//     self.vals = [1, 2]
 inline Guard::Guard() : vals(std::vector<int32_t>{1, 2}) {}
 
 // def __init__(self):
+//     self.stored = []
 inline K::K() : stored(std::vector<Guard>{}) {}
 
 // def take(self, g: Own[Guard]):
+//     self.stored.append(g)
 inline void K::take(Guard&& g) {
-    // self.stored.append(g)
     this->stored.push_back(std::move(g));
 }
 void __tpy_init();

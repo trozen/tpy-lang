@@ -5,18 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(native_add(int32(10), int32(32)))
 void main() {
-    // print(native_add(int32(10), int32(32)))
     std::cout << ::nativelib::native_add(10, 32) << "\n";
 }
 
+// from nativelib.ops import native_add
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from nativelib.ops import native_add
-    // main()
     main();
 }
 

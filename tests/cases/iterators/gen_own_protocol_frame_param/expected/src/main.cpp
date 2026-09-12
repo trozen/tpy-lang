@@ -5,16 +5,21 @@ namespace tpyapp::main {
 
 
 // def reference_element() -> None:
+//     pts = [Point(1), Point(2)]
+//     seen: int32 = 0
+//     # The bare-`T` yield slot hands a reference element out BY VALUE on both
+//     # emit paths (the generic-yield copy tracked in BUGS.md), so the witness
+//     # yields `tuple[int32, T]`, whose slot is pointer-formed and does alias:
+//     # mutate the element on its first yield, read it back on its second.
+//     for i, p in each(pts):
+//         if seen % 2 == 0:
+//             p.x += 100
+//         else:
+//             print("reference:", i, p.x)
+//         seen += 1
 void reference_element() {
-    // pts = [Point(1), Point(2)]
     std::array<Point, 2> pts = {Point(1), Point(2)};
-    // seen: int32 = 0
     int32_t seen = 0;
-    // # The bare-`T` yield slot hands a reference element out BY VALUE on both
-    // # emit paths (the generic-yield copy tracked in BUGS.md), so the witness
-    // # yields `tuple[int32, T]`, whose slot is pointer-formed and does alias:
-    // # mutate the element on its first yield, read it back on its second.
-    // for i, p in each(pts):
     {
         auto __src_0 = each<Point>(std::move(pts));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -22,34 +27,25 @@ void reference_element() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // # The bare-`T` yield slot hands a reference element out BY VALUE on both
-        // # emit paths (the generic-yield copy tracked in BUGS.md), so the witness
-        // # yields `tuple[int32, T]`, whose slot is pointer-formed and does alias:
-        // # mutate the element on its first yield, read it back on its second.
-        // for i, p in each(pts):
         auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-        // if seen % 2 == 0:
         if (((::tpy::mod_floor<int32_t>(seen, 2)) == 0)) {
-            // p.x += 100
             p.x = ::tpy::add_check<int32_t>(p.x, 100);
-        // else:
         } else {
-            // print("reference:", i, p.x)
             std::cout << "reference:" << " " << i << " " << p.x << "\n";
         }
-        // seen += 1
         seen = ::tpy::add_check<int32_t>(seen, 1);
         }
     }
 }
 
 // def value_element() -> None:
+//     nums = [10, 20]
+//     for i, n in each(nums):
+//         print("value:", i, n)
 void value_element() {
-    // nums = [10, 20]
     std::array<int32_t, 2> nums = {10, 20};
-    // for i, n in each(nums):
     {
         auto __src_0 = each<int32_t>(std::move(nums));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -57,26 +53,27 @@ void value_element() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
-        // for i, n in each(nums):
         const auto& __tup_1 = __for_tup_1;
         int32_t i = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        // print("value:", i, n)
         std::cout << "value:" << " " << i << " " << n << "\n";
         }
     }
 }
 
 // def reused_source() -> None:
+//     nums = [30, 40]
+//     # The source is REUSED after the consuming call, so sema cannot move it into
+//     # the `Own` slot and copies instead -- TPy's generator walks the copy where
+//     # CPython's walks `nums` itself. The mutation is kept after the loop so both
+//     # sides print the same lines; the warning is the acknowledgment that a
+//     # mutation DURING the loop would be seen by CPython and not by TPy.
+//     for i, n in each(nums):  # tpyc: warning(/copies/)
+//         print("reuse:", i, n)
+//     nums.append(50)
+//     print("reuse: len", len(nums))
 void reused_source() {
-    // nums = [30, 40]
     std::vector<int32_t> nums = {30, 40};
-    // # The source is REUSED after the consuming call, so sema cannot move it into
-    // # the `Own` slot and copies instead -- TPy's generator walks the copy where
-    // # CPython's walks `nums` itself. The mutation is kept after the loop so both
-    // # sides print the same lines; the warning is the acknowledgment that a
-    // # mutation DURING the loop would be seen by CPython and not by TPy.
-    // for i, n in each(nums):  # tpyc: warning(/copies/)
     {
         std::vector<int32_t> __tmp_1 = nums;
         auto __src_0 = each<int32_t>(std::move(__tmp_1));
@@ -85,45 +82,37 @@ void reused_source() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
-        // # The source is REUSED after the consuming call, so sema cannot move it into
-        // # the `Own` slot and copies instead -- TPy's generator walks the copy where
-        // # CPython's walks `nums` itself. The mutation is kept after the loop so both
-        // # sides print the same lines; the warning is the acknowledgment that a
-        // # mutation DURING the loop would be seen by CPython and not by TPy.
-        // for i, n in each(nums):  # tpyc: warning(/copies/)
         const auto& __tup_1 = __for_tup_2;
         int32_t i = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        // print("reuse:", i, n)
         std::cout << "reuse:" << " " << i << " " << n << "\n";
         }
     }
-    // nums.append(50)
     nums.push_back(50);
-    // print("reuse: len", len(nums))
     std::cout << "reuse: len" << " " << ::tpy::__len__(nums) << "\n";
 }
 
 // def main() -> None:
+//     reference_element()
+//     value_element()
+//     reused_source()
 void main() {
-    // reference_element()
     reference_element();
-    // value_element()
     value_element();
-    // reused_source()
     reused_source();
 }
 
+// # An `Own[<static protocol>]` param on a resumable body: the frame captures the
+// # moved-in conformer by value, so the body is admitted at the frame-param gate.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An `Own[<static protocol>]` param on a resumable body: the frame captures the
-    // # moved-in conformer by value, so the body is admitted at the frame-param gate.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,6 +5,11 @@ namespace tpyapp::main {
 
 
 // async def background() -> None:
+//     try:
+//         await asyncio.sleep(60.0)
+//         print("not reached")
+//     finally:
+//         print("background cleanup ran")
 ::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -19,7 +24,6 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("not reached")
             std::cout << "not reached" << "\n";
             __fin_ran_1 = true;
             this->__finally_0();
@@ -39,7 +43,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.sleep(60.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));
             __state = S_RESUME_0;
             continue;
@@ -58,7 +61,6 @@ namespace tpyapp::main {
 }
 
 void __coro_background::__finally_0() {
-    // print("background cleanup ran")
     std::cout << "background cleanup ran" << "\n";
 }
 
@@ -68,15 +70,15 @@ __coro_background background() {
 }
 
 // async def main_coro() -> None:
+//     t: Task[None] = asyncio.create_task(background())
+//     del t
+//     print("main done")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // t: Task[None] = asyncio.create_task(background())
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(background())));
-        // del t
         { auto __del_sink = std::move(t); }
-        // print("main done")
         std::cout << "main done" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -93,25 +95,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.run cancels and drains spawned tasks at exit so their finally
+// # blocks still run for fire-and-forget tasks. The background task is
+// # parked on a long sleep that would never naturally complete during the
+// # test; cancellation at run end delivers CancelledError to its next
+// # resume position, the wrapper try/finally runs the cleanup, and the
+// # task completes via the cached exception path.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.run cancels and drains spawned tasks at exit so their finally
-    // # blocks still run for fire-and-forget tasks. The background task is
-    // # parked on a long sleep that would never naturally complete during the
-    // # test; cancellation at run end delivers CancelledError to its next
-    // # resume position, the wrapper try/finally runs the cleanup, and the
-    // # task completes via the cached exception path.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

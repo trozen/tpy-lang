@@ -13,12 +13,16 @@ struct __gen_twice_buf;
 struct __gen_twice_arr;
 struct __gen_twice_list;
 
+// def twice_buf(b: bytearray) -> Iterator[bytearray]:  # tpyc: ok
 __gen_twice_buf twice_buf(::tpy::ByteArray& b);
+// def twice_arr(a: Array[int32, 2]) -> Iterator[Array[int32, 2]]:  # tpyc: ok
 __gen_twice_arr twice_arr(std::array<int32_t, 2>& a);
+// def twice_list(xs: list[int32]) -> Iterator[list[int32]]:  # tpyc: ok
 __gen_twice_list twice_list(std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
-// Generator: twice_buf
+// def twice_buf(b: bytearray) -> Iterator[bytearray]:  # tpyc: ok
 struct __gen_twice_buf : public ::tpy::next_iter_mixin<__gen_twice_buf, ::tpy::val_or_ref<::tpy::ByteArray>> {
     int32_t __state;
     ::tpy::ByteArray& b;
@@ -41,7 +45,7 @@ struct __gen_twice_buf : public ::tpy::next_iter_mixin<__gen_twice_buf, ::tpy::v
     }
 };
 
-// Generator: twice_arr
+// def twice_arr(a: Array[int32, 2]) -> Iterator[Array[int32, 2]]:  # tpyc: ok
 struct __gen_twice_arr : public ::tpy::next_iter_mixin<__gen_twice_arr, ::tpy::val_or_ref<std::array<int32_t, 2>>> {
     int32_t __state;
     std::array<int32_t, 2>& a;
@@ -64,7 +68,7 @@ struct __gen_twice_arr : public ::tpy::next_iter_mixin<__gen_twice_arr, ::tpy::v
     }
 };
 
-// Generator: twice_list
+// def twice_list(xs: list[int32]) -> Iterator[list[int32]]:  # tpyc: ok
 struct __gen_twice_list : public ::tpy::next_iter_mixin<__gen_twice_list, ::tpy::val_or_ref<std::vector<int32_t>>> {
     int32_t __state;
     std::vector<int32_t>& xs;

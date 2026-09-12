@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def mk_arr() -> Own[Array[int32, 4]]:
+//     return [7, 7, 7, 7]
 std::array<int32_t, 4> mk_arr() {
-    // return [7, 7, 7, 7]
     return {7, 7, 7, 7};
 }
 
 // def mk_ba() -> Own[bytearray]:
+//     return bytearray(b"xy")
 ::tpy::ByteArray mk_ba() {
-    // return bytearray(b"xy")
     return ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
 }
 
 // def borrow_arr(x: Array[int32, 4]) -> Array[int32, 4]:
+//     return x
 std::array<int32_t, 4>& borrow_arr(std::array<int32_t, 4>& x) {
-    // return x
     return x;
 }
 
 // def main() -> None:
+//     b = Buf(1)
+//     b.load(b"abc")
+//     print(len(b.ba), b.a[0])
+//     b.own_call()
+//     print(len(b.ba), b.a[0])
+//     # The field is the record's own storage, so mutating it after the write is
+//     # visible on the next read through the same record.
+//     b.ba.append(33)
+//     print(len(b.ba))
+//     b.repeat()
+//     print(b.a[0])
+//     q: Array[int32, 4] = [5, 5, 5, 5]
+//     b.alias(q)
+//     print(b.a[0])
 void main() {
-    // b = Buf(1)
     Buf b = Buf(1);
-    // b.load(b"abc")
     b.load(::tpy::bytes_literal("abc", 3));
-    // print(len(b.ba), b.a[0])
     std::cout << ::tpy::__len__(b.ba) << " " << ::tpy::__getitem__(b.a, 0) << "\n";
-    // b.own_call()
     b.own_call();
-    // print(len(b.ba), b.a[0])
     std::cout << ::tpy::__len__(b.ba) << " " << ::tpy::__getitem__(b.a, 0) << "\n";
-    // # The field is the record's own storage, so mutating it after the write is
-    // # visible on the next read through the same record.
-    // b.ba.append(33)
     b.ba.push_back(33);
-    // print(len(b.ba))
     std::cout << ::tpy::__len__(b.ba) << "\n";
-    // b.repeat()
     b.repeat();
-    // print(b.a[0])
     std::cout << ::tpy::__getitem__(b.a, 0) << "\n";
-    // q: Array[int32, 4] = [5, 5, 5, 5]
     std::array<int32_t, 4> q = {5, 5, 5, 5};
-    // b.alias(q)
     b.alias(q);
-    // print(b.a[0])
     std::cout << ::tpy::__getitem__(b.a, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

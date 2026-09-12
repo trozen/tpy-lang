@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def show_port(cfg: Config) -> None:
+//     if cfg.port is not None:
+//         p: int = cfg.port
+//         print(p)
+//     else:
+//         print("no port")
 void show_port(const Config& cfg) {
-    // if cfg.port is not None:
     if ((cfg.port.has_value())) {
-        // p: int = cfg.port
         ::tpy::BigInt p = (*cfg.port);
-        // print(p)
         std::cout << p << "\n";
-    // else:
     } else {
-        // print("no port")
         std::cout << "no port" << "\n";
     }
 }
 
 // def main() -> None:
+//     show_port(Config(8080))
+//     show_port(Config(None))
 void main() {
-    // show_port(Config(8080))
     Config __tmp_1 = Config(8080);
     show_port(__tmp_1);
-    // show_port(Config(None))
     Config __tmp_2 = Config(std::nullopt);
     show_port(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

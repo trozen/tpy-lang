@@ -5,20 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(BIG_VALUE)
 void main() {
-    // print(BIG_VALUE)
     std::cout << ::tpyapp::constants::BIG_VALUE << "\n";
 }
 
+// # Cross-module import of a Final[int] (BigInt) constant
+// from constants import BIG_VALUE
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module import of a Final[int] (BigInt) constant
-    // from constants import BIG_VALUE
     ::tpyapp::constants::__tpy_init();
-    // main()
     main();
 }
 

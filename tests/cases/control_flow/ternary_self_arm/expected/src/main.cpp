@@ -5,77 +5,77 @@ namespace tpyapp::main {
 
 
 // def test_then_arm_aliases_self():
+//     a = Acc(3)
+//     b = Acc(1)
+//     a.bump_larger(b)
+//     print(a.n)  # 103 -- a copy would print 3
+//     print(b.n)
 void test_then_arm_aliases_self() {
-    // a = Acc(3)
     Acc a = Acc(3);
-    // b = Acc(1)
     Acc b = Acc(1);
-    // a.bump_larger(b)
     a.bump_larger(b);
-    // print(a.n)  # 103 -- a copy would print 3
     std::cout << a.n << "\n";
-    // print(b.n)
     std::cout << b.n << "\n";
 }
 
 // def test_then_arm_aliases_other():
+//     a = Acc(1)
+//     b = Acc(5)
+//     a.bump_larger(b)
+//     print(a.n)
+//     print(b.n)  # 105
 void test_then_arm_aliases_other() {
-    // a = Acc(1)
     Acc a = Acc(1);
-    // b = Acc(5)
     Acc b = Acc(5);
-    // a.bump_larger(b)
     a.bump_larger(b);
-    // print(a.n)
     std::cout << a.n << "\n";
-    // print(b.n)  # 105
     std::cout << b.n << "\n";
 }
 
 // def test_else_arm_aliases_self():
+//     a = Acc(9)
+//     b = Acc(2)
+//     a.bump_smaller(b)
+//     print(a.n)  # 109 -- a copy would print 9
+//     print(b.n)
 void test_else_arm_aliases_self() {
-    // a = Acc(9)
     Acc a = Acc(9);
-    // b = Acc(2)
     Acc b = Acc(2);
-    // a.bump_smaller(b)
     a.bump_smaller(b);
-    // print(a.n)  # 109 -- a copy would print 9
     std::cout << a.n << "\n";
-    // print(b.n)
     std::cout << b.n << "\n";
 }
 
 // def test_readonly_arm():
+//     a = Acc(7)
+//     b = Acc(4)
+//     print(a.larger_n(b))
+//     print(b.larger_n(a))
 void test_readonly_arm() {
-    // a = Acc(7)
     Acc a = Acc(7);
-    // b = Acc(4)
     Acc b = Acc(4);
-    // print(a.larger_n(b))
     std::cout << a.larger_n(b) << "\n";
-    // print(b.larger_n(a))
     std::cout << b.larger_n(a) << "\n";
 }
 
 // def main():
+//     test_then_arm_aliases_self()
+//     test_then_arm_aliases_other()
+//     test_else_arm_aliases_self()
+//     test_readonly_arm()
 void main() {
-    // test_then_arm_aliases_self()
     test_then_arm_aliases_self();
-    // test_then_arm_aliases_other()
     test_then_arm_aliases_other();
-    // test_else_arm_aliases_self()
     test_else_arm_aliases_self();
-    // test_readonly_arm()
     test_readonly_arm();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

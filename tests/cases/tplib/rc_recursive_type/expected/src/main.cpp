@@ -5,46 +5,49 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Rc.new(Node(int32(1)))
+//     b = Rc.new(Node(int32(2)))
+//     c = Rc.new(Node(int32(3)))
+//
+//     a.get().next = b.clone()
+//     b.get().next = c.clone()
+//
+//     # Walk the chain.
+//     cur = a.clone()
+//     while True:
+//         print(cur.get().value)
+//         nxt = cur.get().next
+//         if nxt is None:
+//             break
+//         cur = nxt.clone()
 void main() {
     std::optional<::tpystd::tplib::rc::Rc<Node>> __slot_2;
-    // a = Rc.new(Node(int32(1)))
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(1));
-    // b = Rc.new(Node(int32(2)))
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(2));
-    // c = Rc.new(Node(int32(3)))
     ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_<Node>(Node(3));
-    // a.get().next = b.clone()
     a.get().next = b.clone();
-    // b.get().next = c.clone()
     b.get().next = c.clone();
-    // # Walk the chain.
-    // cur = a.clone()
     ::tpystd::tplib::rc::Rc<Node> __slot_1 = a.clone();
     ::tpystd::tplib::rc::Rc<Node>* cur = &__slot_1;
-    // while True:
     while (true) {
-        // print(cur.get().value)
         std::cout << cur->get().value << "\n";
-        // nxt = cur.get().next
         ::tpystd::tplib::rc::Rc<Node>* nxt = ::tpy::optional_to_ptr(cur->get().next);
-        // if nxt is None:
         if ((nxt == nullptr)) {
-            // break
             break;
         }
-        // cur = nxt.clone()
         cur = &*(__slot_2 = nxt->clone());
     }
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -16,17 +16,28 @@ struct StrLabels;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drop_from(al: ArrayList[int32, 4], k: int32) -> None:
 void drop_from(::tpystd::tplib::array_list::ArrayList<int32_t, 4>& al, int32_t k);
+// def drop_literal(al: ArrayList[int32, 4]) -> None:
 void drop_literal(::tpystd::tplib::array_list::ArrayList<int32_t, 4>& al);
+// def drop_from_record(box: Labels[int32, 4], k: int32) -> None:
 void drop_from_record(Labels<int32_t, 4>& box, int32_t k);
+// def drop_str_param(al: ArrayList[str, 4], k: str) -> None:
 void drop_str_param(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view k);
+// def drop_str_local(al: ArrayList[str, 4]) -> None:
 void drop_str_local(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al);
+// def drop_str_slice(al: ArrayList[str, 4], src: str) -> None:
 void drop_str_slice(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view src);
+// def drop_bytes(al: ArrayList[bytes, 4], k: bytes) -> None:
 void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, ::tpy::BytesView k);
+// def has_str(box: Labels[str, 4], k: str) -> bool:
 bool has_str(Labels<std::string, 4>& box, std::string_view k);
+// def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Equatable T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+// def has_item_str(xs: list[str], v: str) -> bool:
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v);
+// def main() -> None:
 void main();
 
 // class Labels[T: Equatable, N: int]:
@@ -36,46 +47,47 @@ struct Labels {
     ::tpystd::tplib::array_list::ArrayList<T, N> items;
 
     // def __init__(self) -> None:
+    //     self.items = ArrayList[T, N]()
     Labels() : items(::tpystd::tplib::array_list::ArrayList<T, N>()) {}
 
     // def add(self, value: T) -> None:
+    //     self.items.append(value)  # tpyc: warning(/may copy T into owned storage/)
     void add(::tpy::param_val_or_ref_t<T> value) {
-        // self.items.append(value)  # tpyc: warning(/may copy T into owned storage/)
         this->items.append(::tpy::param_to_storage<T>(value));
     }
 
     // def drop(self, value: T) -> None:
+    //     # The element slot: `value` is the record's own T.
+    //     self.items.remove(value)
     void drop(::tpy::param_val_or_ref_t<T> value) {
-        // # The element slot: `value` is the record's own T.
-        // self.items.remove(value)
         this->items.remove(value);
     }
 
     // def has(self, value: T) -> bool:
+    //     # A readonly method spells the slot `const T&` -- the SECOND generic
+    //     # parameter spelling, distinct from `param_val_or_ref_t<T>`.
+    //     for it in self.items:
+    //         if it == value:
+    //             return True
+    //     return False
     bool has(::tpy::readonly_form_t<T> value) const {
-        // # A readonly method spells the slot `const T&` -- the SECOND generic
-        // # parameter spelling, distinct from `param_val_or_ref_t<T>`.
-        // for it in self.items:
         auto& __src_0 = this->items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& it = ::tpy::unwrap_ref(*__r_1);
-            // if it == value:
             if (::tpy::eq(it, value)) {
-                // return True
                 return true;
             }
         }
-        // return False
         return false;
     }
 
     // def tag_len(self, tag: str) -> int32:
+    //     # INVERSE: a non-element str param -- still a std::string_view.
+    //     return len(tag)
     int32_t tag_len(std::string_view tag) const {
-        // # INVERSE: a non-element str param -- still a std::string_view.
-        // return len(tag)
         return ::tpy::__len__(tag);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Labels";
@@ -114,54 +126,55 @@ inline std::ostream& operator<<(std::ostream& os, const StrLabels& obj) {
 
 
 // def __init__(self) -> None:
+//     self.items = ArrayList[str, 4]()
 inline StrLabels::StrLabels() : items(::tpystd::tplib::array_list::ArrayList<std::string, 4>()) {}
 
 // def add(self, value: str) -> None:
+//     self.items.append(value)
 inline void StrLabels::add(std::string_view value) {
-    // self.items.append(value)
     this->items.append(std::string(value));
 }
 
 // def drop(self, value: str) -> None:
+//     self.items.remove(value)
 inline void StrLabels::drop(std::string_view value) {
-    // self.items.remove(value)
     this->items.remove(value);
 }
 
 // def has(self, value: str) -> bool:
+//     for it in self.items:
+//         if it == value:
+//             return True
+//     return False
 inline bool StrLabels::has(std::string_view value) const {
-    // for it in self.items:
     auto& __src_0 = this->items;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view it = ::tpy::unwrap_ref(*__r_1);
-        // if it == value:
         if ((it == value)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
+//     for x in xs:
+//         if x == v:
+//             return True
+//     return False
 template<::tpystd::tpy::Equatable T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        // if x == v:
         if (::tpy::eq(x, v)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 

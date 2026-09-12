@@ -12,6 +12,7 @@ struct Grid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -54,9 +55,14 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Cell::Cell(int32_t v) : v(v) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
+//     self.cells = [Cell(i) for i in range(self.n)]  # tpyc: ok
+//     self.seen = {i * 2 for i in range(self.n)}  # tpyc: ok
+//     self.index = {i: i * i for i in range(self.n)}  # tpyc: ok
 inline Grid::Grid(int32_t n) : n(n), cells(({
     std::vector<Cell> __result;
     const int32_t __stop_0 = this->n;

@@ -11,6 +11,7 @@ struct Calc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Calc:
@@ -31,8 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const Calc& obj) {
 
 // @classmethod
 // def add(cls, a: int32, /, b: int32) -> int32:
+//     return a + b
 inline int32_t Calc::add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 void __tpy_init();

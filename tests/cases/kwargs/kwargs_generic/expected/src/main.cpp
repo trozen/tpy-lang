@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(first(a=1, b=2))
+//     print(first(10, b=20))
+//     print(first(b="world", a="hello"))
 void main() {
-    // print(first(a=1, b=2))
     std::cout << first<int32_t>(1, 2) << "\n";
-    // print(first(10, b=20))
     std::cout << first<int32_t>(10, 20) << "\n";
-    // print(first(b="world", a="hello"))
     std::cout << first<std::string>("hello", "world") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

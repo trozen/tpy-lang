@@ -11,6 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -34,11 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self, items: dict[str, Any]) -> None:
+//     self._items = items
 inline Bag::Bag(const ::tpy::ordered_map<std::string, ::tpy::Any>& items) : _items(items) {}
 
 // def __getattr__(self, name: str) -> Any:
+//     return self._items[name]
 inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
-    // return self._items[name]
     return ::tpy::__getitem__(this->_items, name);
 }
 void __tpy_init();

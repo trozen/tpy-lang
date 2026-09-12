@@ -12,6 +12,7 @@ struct Cell;
 extern std::tuple<int32_t, Cell> g;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -38,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Cell::Cell(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

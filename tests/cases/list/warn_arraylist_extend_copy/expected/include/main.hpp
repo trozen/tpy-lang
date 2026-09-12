@@ -15,9 +15,13 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_extend_warns() -> None:
 void test_extend_warns();
+// def test_extend_value_type_no_warn() -> None:
 void test_extend_value_type_no_warn();
+// def test_ctor_warns() -> None:
 void test_ctor_warns();
+// def test_ctor_last_use_no_warn() -> None:
 void test_ctor_last_use_no_warn();
 
 // class Node:
@@ -38,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Node::Node(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

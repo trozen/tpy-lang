@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(abs(Temp(-5)).v)   # 5
+//     print(abs(Temp(7)).v)    # 7
 void main() {
-    // print(abs(Temp(-5)).v)   # 5
     std::cout << (Temp(-5)).__abs__().v << "\n";
-    // print(abs(Temp(7)).v)    # 7
     std::cout << (Temp(7)).__abs__().v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

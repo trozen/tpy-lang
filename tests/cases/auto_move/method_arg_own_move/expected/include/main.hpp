@@ -12,7 +12,9 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def forward(s: Sink, p: Own[Payload]) -> None:
 void forward(Sink& s, Payload&& p);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -57,14 +59,16 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Payload::Payload(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.total = 0
 inline Sink::Sink() : total(0) {}
 
 // def absorb(self, p: Own[Payload]) -> None:
+//     self.total += p.n
 inline void Sink::absorb(Payload&& p) {
-    // self.total += p.n
     this->total = ::tpy::add_check<int32_t>(this->total, p.n);
 }
 void __tpy_init();

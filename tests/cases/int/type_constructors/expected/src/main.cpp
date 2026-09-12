@@ -4,75 +4,83 @@
 namespace tpyapp::main {
 
 
+// # --- int32 constructors ---
+// # int32(float): truncate toward zero
+// print(int32(3.7))    # 3
+// print(int32(-3.7))   # -3
+// print(int32(0.0))    # 0
+//
+// # int32(str): parse
+// print(int32("42"))    # 42
+// print(int32("-100"))  # -100
+// print(int32(" 7 "))   # 7 (whitespace stripped)
+//
+// # int32(bool)
+// print(int32(True))    # 1
+// print(int32(False))   # 0
+//
+// # --- int constructors ---
+// # int(bool)
+// print(int(True))      # 1
+// print(int(False))     # 0
+//
+// # int(char)
+// print(int(chr(65)))   # 65 (ASCII 'A')
+// print(int(chr(0)))    # 0
+//
+// # --- float constructors ---
+// # float(bool)
+// print(float(True))    # 1.0
+// print(float(False))   # 0.0
+//
+// # float(str)
+// print(float("3.14"))   # 3.14
+// print(float("-0.5"))   # -0.5
+// print(float(" 42 "))   # 42.0
+// print(float("1e3"))    # 1000.0
+// print(float("inf"))    # inf
+// print(float("-inf"))   # -inf
+//
+// # --- bool constructors ---
+// # bool(float)
+// print(bool(0.0))      # False
+// print(bool(1.5))      # True
+// print(bool(-0.1))     # True
+//
+// # bool(str)
+// print(bool(""))        # False
+// print(bool("hello"))   # True
+// print(bool(" "))       # True (non-empty)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # --- int32 constructors ---
-    // # int32(float): truncate toward zero
-    // print(int32(3.7))    # 3
     std::cout << ::tpy::from_float_check<int32_t>(3.7) << "\n";
-    // print(int32(-3.7))   # -3
     std::cout << ::tpy::from_float_check<int32_t>(-(3.7)) << "\n";
-    // print(int32(0.0))    # 0
     std::cout << ::tpy::from_float_check<int32_t>(0.0) << "\n";
-    // # int32(str): parse
-    // print(int32("42"))    # 42
     std::cout << ::tpy::from_str_check<int32_t>("42") << "\n";
-    // print(int32("-100"))  # -100
     std::cout << ::tpy::from_str_check<int32_t>("-100") << "\n";
-    // print(int32(" 7 "))   # 7 (whitespace stripped)
     std::cout << ::tpy::from_str_check<int32_t>(" 7 ") << "\n";
-    // # int32(bool)
-    // print(int32(True))    # 1
     std::cout << static_cast<int32_t>(true) << "\n";
-    // print(int32(False))   # 0
     std::cout << static_cast<int32_t>(false) << "\n";
-    // # --- int constructors ---
-    // # int(bool)
-    // print(int(True))      # 1
     std::cout << ::tpy::BigInt(static_cast<int32_t>(true)) << "\n";
-    // print(int(False))     # 0
     std::cout << ::tpy::BigInt(static_cast<int32_t>(false)) << "\n";
-    // # int(char)
-    // print(int(chr(65)))   # 65 (ASCII 'A')
     std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(65))) << "\n";
-    // print(int(chr(0)))    # 0
     std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(0))) << "\n";
-    // # --- float constructors ---
-    // # float(bool)
-    // print(float(True))    # 1.0
     std::cout << ::tpy::print_float(static_cast<double>(true)) << "\n";
-    // print(float(False))   # 0.0
     std::cout << ::tpy::print_float(static_cast<double>(false)) << "\n";
-    // # float(str)
-    // print(float("3.14"))   # 3.14
     std::cout << ::tpy::print_float(::tpy::float_from_str("3.14")) << "\n";
-    // print(float("-0.5"))   # -0.5
     std::cout << ::tpy::print_float(::tpy::float_from_str("-0.5")) << "\n";
-    // print(float(" 42 "))   # 42.0
     std::cout << ::tpy::print_float(::tpy::float_from_str(" 42 ")) << "\n";
-    // print(float("1e3"))    # 1000.0
     std::cout << ::tpy::print_float(::tpy::float_from_str("1e3")) << "\n";
-    // print(float("inf"))    # inf
     std::cout << ::tpy::print_float(std::numeric_limits<double>::infinity()) << "\n";
-    // print(float("-inf"))   # -inf
     std::cout << ::tpy::print_float(-std::numeric_limits<double>::infinity()) << "\n";
-    // # --- bool constructors ---
-    // # bool(float)
-    // print(bool(0.0))      # False
     std::cout << ::tpy::print_bool((0.0 != 0.0)) << "\n";
-    // print(bool(1.5))      # True
     std::cout << ::tpy::print_bool((1.5 != 0.0)) << "\n";
-    // print(bool(-0.1))     # True
     std::cout << ::tpy::print_bool((-(0.1) != 0.0)) << "\n";
-    // # bool(str)
-    // print(bool(""))        # False
     std::cout << ::tpy::print_bool((std::string_view("").size() != 0)) << "\n";
-    // print(bool("hello"))   # True
     std::cout << ::tpy::print_bool((std::string_view("hello").size() != 0)) << "\n";
-    // print(bool(" "))       # True (non-empty)
     std::cout << ::tpy::print_bool((std::string_view(" ").size() != 0)) << "\n";
 }
 

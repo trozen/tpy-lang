@@ -12,8 +12,10 @@ struct Util;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick[T](a: T, b: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main():
 void main();
 
 // class Util:
@@ -22,9 +24,9 @@ struct Util {
 
     // @staticmethod
     // def smax[T](a: T, b: T) -> T:
+    //     return b
     template<typename T>
     static ::tpy::val_or_ref_t<T> smax(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-        // return b
         return ::tpy::param_to_return<T>(b);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Util";
@@ -36,9 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Util& obj) {
 }
 
 // def pick[T](a: T, b: T) -> T:
+//     return b
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // return b
     return ::tpy::param_to_return<T>(b);
 }
 

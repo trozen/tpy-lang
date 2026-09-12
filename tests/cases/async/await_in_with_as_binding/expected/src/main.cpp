@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,6 +26,9 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def caller() -> None:
+//     with Resource("R") as label:
+//         x = await value(3)
+//         print(f"{label}={x}")
 ::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -42,7 +45,6 @@ __coro_value value(::tpy::BigInt n) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             x = std::move(__r0).value();
             __sub_0.reset();
-            // print(f"{label}={x}")
             std::cout << std::format("{}={}", label, (x).to_string()) << "\n";
             __fin_ran_1 = true;
             (*__with_ctx_0).__exit__({}, nullptr, {});
@@ -63,7 +65,6 @@ __coro_value value(::tpy::BigInt n) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        // x = await value(3)
         __sub_0.emplace(::tpy::BigInt(3));
         __state = S_RESUME_0;
         continue;
@@ -84,22 +85,23 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     asyncio.run(caller())
 void main() {
-    // asyncio.run(caller())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(caller()));
 }
 
+// # `with X() as t:` binding works inside async-def -- the as-var is
+// # a hoisted frame field so awaits in the body see the bound value
+// # across suspensions.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `with X() as t:` binding works inside async-def -- the as-var is
-    // # a hoisted frame field so awaits in the body see the bound value
-    // # across suspensions.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def mutate(b: Box) -> None:
+//     b.value = b.value + 1
 void mutate(Box& b) {
-    // b.value = b.value + 1
     b.value = (::tpy::add_check<int32_t>(b.value, 1));
 }
 
 // @readonly
 // def ok(b: Box) -> int32:
+//     local = Box(b.value)
+//     mutate(local)  # tpyc: ok
+//     return local.value
 int32_t ok(const Box& b) {
-    // local = Box(b.value)
     Box local = Box(b.value);
-    // mutate(local)  # tpyc: ok
     mutate(local);
-    // return local.value
     return local.value;
 }
 
+// print(ok(Box(5)))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(ok(Box(5)))
     Box __tmp_1 = Box(5);
     std::cout << ok(__tmp_1) << "\n";
 }

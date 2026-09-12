@@ -17,15 +17,22 @@ struct __gen_g_frame_whole;
 struct __gen_g_global;
 struct __gen_g_view;
 
+// def g(p: int32 | None) -> Iterator[int32]:
 __gen_g g(std::optional<int32_t> p);
+// def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
 __gen_g_loop g_loop(::tpy::ordered_map<std::string, std::optional<int32_t>>& d);
+// def g_whole(p: int32 | None) -> Iterator[int32 | None]:
 __gen_g_whole g_whole(std::optional<int32_t> p);
+// def g_frame_whole(p: int32 | None) -> Iterator[int32]:
 __gen_g_frame_whole g_frame_whole(std::optional<int32_t> p);
+// def g_global() -> Iterator[int32]:
 __gen_g_global g_global();
+// def g_view(s: str | None) -> Iterator[str]:
 __gen_g_view g_view(std::optional<std::string_view> s);
+// def main() -> None:
 void main();
 
-// Generator: g
+// def g(p: int32 | None) -> Iterator[int32]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
     int32_t __state;
     std::optional<int32_t> p;
@@ -51,7 +58,7 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, int32_t> {
     }
 };
 
-// Generator: g_loop
+// def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
 struct __gen_g_loop : public ::tpy::next_iter_mixin<__gen_g_loop, int32_t> {
     int32_t __state;
     ::tpy::ordered_map<std::string, std::optional<int32_t>>& d;
@@ -79,7 +86,7 @@ struct __gen_g_loop : public ::tpy::next_iter_mixin<__gen_g_loop, int32_t> {
     }
 };
 
-// Generator: g_whole
+// def g_whole(p: int32 | None) -> Iterator[int32 | None]:
 struct __gen_g_whole : public ::tpy::next_iter_mixin<__gen_g_whole, std::optional<int32_t>> {
     int32_t __state;
     std::optional<int32_t> p;
@@ -103,7 +110,7 @@ struct __gen_g_whole : public ::tpy::next_iter_mixin<__gen_g_whole, std::optiona
     }
 };
 
-// Generator: g_frame_whole
+// def g_frame_whole(p: int32 | None) -> Iterator[int32]:
 struct __gen_g_frame_whole : public ::tpy::next_iter_mixin<__gen_g_frame_whole, int32_t> {
     int32_t __state;
     std::optional<int32_t> p;
@@ -129,7 +136,7 @@ struct __gen_g_frame_whole : public ::tpy::next_iter_mixin<__gen_g_frame_whole, 
     }
 };
 
-// Generator: g_global
+// def g_global() -> Iterator[int32]:
 struct __gen_g_global : public ::tpy::next_iter_mixin<__gen_g_global, int32_t> {
     int32_t __state;
 
@@ -152,7 +159,7 @@ struct __gen_g_global : public ::tpy::next_iter_mixin<__gen_g_global, int32_t> {
     }
 };
 
-// Generator: g_view
+// def g_view(s: str | None) -> Iterator[str]:
 struct __gen_g_view : public ::tpy::next_iter_mixin<__gen_g_view, std::string> {
     int32_t __state;
     std::optional<std::string> s;

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [1, 2, 3, 4]
+//     print(sum_fast(nums))  # 10
 void main() {
-    // nums: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> nums = {1, 2, 3, 4};
-    // print(sum_fast(nums))  # 10
     std::cout << sum_fast(nums) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

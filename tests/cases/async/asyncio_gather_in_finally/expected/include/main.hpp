@@ -15,11 +15,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_cleanup_task;
 struct __coro_main_coro;
 
+// async def cleanup_task(label: str) -> int32:
 __coro_cleanup_task cleanup_task(std::string_view label);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: cleanup_task
+// async def cleanup_task(label: str) -> int32:
 struct __coro_cleanup_task {
     int32_t __state;
     bool __cancel_pending;
@@ -43,7 +46,7 @@ struct __coro_cleanup_task {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

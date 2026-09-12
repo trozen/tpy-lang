@@ -7,35 +7,35 @@ namespace tpyapp::main {
 // # Variable goes rvalue → lvalue → rvalue. The final rvalue assignment
 // # re-enables hoisting because p now owns its storage again.
 // def rvalue_restored() -> None:
+//     saved: Point = Point(0, 0)
+//     for i in range(3):
+//         items: list[Point] = [Point(99, 99)]
+//         p: Point = Point(0, 0)
+//         p = items[0]
+//         p = Point(i, i + 10)
+//         saved = p  # tpyc: warning(/will not keep the object it was given/)
+//     print(saved.x, saved.y)
 void rvalue_restored() {
     std::optional<Point> __slot_2;
     std::optional<Point> __slot_3;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // items: list[Point] = [Point(99, 99)]
         std::vector<Point> items = {Point(99, 99)};
-        // p: Point = Point(0, 0)
         Point* p = &*(__slot_2 = Point(0, 0));
-        // p = items[0]
         p = &(::tpy::__getitem__(items, 0));
-        // p = Point(i, i + 10)
         p = &*(__slot_3 = Point(i, (::tpy::add_check<int32_t>(i, 10))));
-        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// rvalue_restored()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // rvalue_restored()
     rvalue_restored();
 }
 

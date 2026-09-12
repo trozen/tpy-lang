@@ -12,7 +12,9 @@ using ::tpystd::coro::poll_ready;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_ready() -> Own[Poll[None]]:
 ::tpystd::tpy::Poll<std::monostate> make_ready();
+// def main() -> None:
 void main();
 
 void __tpy_init();

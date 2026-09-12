@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // # Different-size list reassignment widens to list
 // def main() -> None:
+//     x = [1, 2, 3]  # tpyc: type(/list/)
+//     x = [4, 5]
+//     print(len(x))
 void main() {
     std::optional<std::vector<int32_t>> __slot_2;
-    // x = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* x = &__slot_1;
-    // x = [4, 5]
     x = &*(__slot_2 = {4, 5});
-    // print(len(x))
     std::cout << ::tpy::__len__((*x)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

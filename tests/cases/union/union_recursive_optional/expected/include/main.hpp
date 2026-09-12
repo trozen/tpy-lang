@@ -11,12 +11,19 @@ struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def depth(t: Tree) -> int:
 ::tpy::BigInt depth(const Tree& t);
+// def maybe_depth(t: Tree | None) -> int:
 ::tpy::BigInt maybe_depth(const Tree* t);
+// def show(t: Tree | None) -> None:
 void show(const Tree* t);
+// def first_or_none(items: list[Tree]) -> Tree | None:
 Tree* first_or_none(std::vector<Tree>& items);
+// def get_depth_or_default(t: Tree | None, default: int) -> int:
 ::tpy::BigInt get_depth_or_default(const Tree* t, const ::tpy::BigInt& default_);
+// def describe(t: Tree | None) -> str:
 std::string describe(const Tree* t);
+// def main() -> None:
 void main();
 
 struct Tree {

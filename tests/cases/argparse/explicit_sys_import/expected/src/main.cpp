@@ -5,18 +5,20 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     if len(sys.argv) > 0:
+//         # exercises the user's own sys.argv read
+//         pass
+//     parser = ArgumentParser()
+//     parser.add_argument("--name", default="world")
+//     args = parser.parse_args()
+//     print(args.name)
+//     return 0
 int32_t main() {
-    // if len(sys.argv) > 0:
     if ((::tpy::__len__((*::tpystd::sys::argv)) > 0)) {
-        // # exercises the user's own sys.argv read
-        // pass
     }
-    // args = parser.parse_args()
     std::vector<std::string> __tmp_1 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice((*::tpystd::sys::argv), ::tpy::BasicSlice{1, std::nullopt}));
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.name)
     std::cout << args.name << "\n";
-    // return 0
     return 0;
 }
 
@@ -55,22 +57,24 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(name);
 }
 
+// # A user that explicitly imports ``sys`` alongside ``argparse``: the
+// # argparse macro_deps wiring also brings ``sys`` into ``macro_ns``,
+// # but the user's ``import sys`` lands in ``global_ns`` (which has
+// # higher lookup priority), so resolution stays unambiguous. Both
+// # the user-side ``sys.argv`` read and the macro-injected
+// # ``sys.argv[1:]`` (in the bare ``parse_args()`` rewrite) resolve
+// # to the same module.
+// import sys
+//
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A user that explicitly imports ``sys`` alongside ``argparse``: the
-    // # argparse macro_deps wiring also brings ``sys`` into ``macro_ns``,
-    // # but the user's ``import sys`` lands in ``global_ns`` (which has
-    // # higher lookup priority), so resolution stays unambiguous. Both
-    // # the user-side ``sys.argv`` read and the macro-injected
-    // # ``sys.argv[1:]`` (in the bare ``parse_args()`` rewrite) resolve
-    // # to the same module.
-    // import sys
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = ArrayList[int32, 4]()
+//     a.append(10)
+//     a.append(20)
+//     a.index(99)
 void main() {
-    // a = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
-    // a.append(10)
     a.append(10);
-    // a.append(20)
     a.append(20);
-    // a.index(99)
     a.index(99);
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items = [int32(1), int32(2), int32(3)]
+//     for a, b in gen_value_pairs(items):
+//         if a is not None:
+//             print(a)
 void main() {
-    // items = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // for a, b in gen_value_pairs(items):
     {
         auto __src_0 = gen_value_pairs(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,25 +18,22 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for a, b in gen_value_pairs(items):
         const auto& __tup_1 = __for_tup_0;
         std::optional<int32_t> a = std::get<0>(__tup_1);
         std::optional<int32_t> b = std::get<1>(__tup_1);
-        // if a is not None:
         if ((a.has_value())) {
-            // print(a)
             std::cout << ::tpy::print_optional_val(a) << "\n";
         }
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

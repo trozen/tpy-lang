@@ -11,6 +11,7 @@ struct Shape;
 
 inline constexpr std::string_view __name__ = "shapes";
 
+// def int_leaves(s: Shape) -> int32:
 int32_t int_leaves(const Shape& s);
 
 struct Shape {

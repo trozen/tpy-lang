@@ -6,63 +6,67 @@ namespace tpyapp::main {
 
 // # Direct param subscript -- borrows from items (param 0)
 // def get_first(items: list[Point]) -> Point:
+//     return items[0]  # tpyc: ok
 Point& get_first(std::vector<Point>& items) {
-    // return items[0]  # tpyc: ok
     return ::tpy::__getitem__(items, 0);
 }
 
 // # Direct param -- borrows from p (param 0)
 // def identity(p: Point) -> Point:
+//     return p  # tpyc: ok
 Point& identity(Point& p) {
-    // return p  # tpyc: ok
     return p;
 }
 
 // # No borrow: returns a newly constructed value
 // def make_point(x: int32) -> Own[Point]:
+//     return Point(x, x)  # tpyc: ok
 Point make_point(int32_t x) {
-    // return Point(x, x)  # tpyc: ok
     return Point(x, x);
 }
 
 // def main() -> None:
+//     pts: list[Point] = [Point(1, 2), Point(3, 4)]
+//
+//     # f borrows from pts (return_borrows_from = {0})
+//     f = get_first(pts)
+//     print(f.x)
+//
+//     # q borrows from p (return_borrows_from = {0})
+//     p = Point(10, 20)
+//     q = identity(p)
+//     print(q.x)
+//
+//     # r owns its own storage (return_borrows_from = frozenset())
+//     r = make_point(int32(5))
+//     print(r.x)
+//
+//     # first borrows from c (return_borrows_from = {-1})
+//     c = Container()
+//     c.add(Point(7, 8))
+//     first = c.first()
+//     print(first.x)
 void main() {
-    // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    // # f borrows from pts (return_borrows_from = {0})
-    // f = get_first(pts)
     Point& f = get_first(pts);
-    // print(f.x)
     std::cout << f.x << "\n";
-    // # q borrows from p (return_borrows_from = {0})
-    // p = Point(10, 20)
     Point p = Point(10, 20);
-    // q = identity(p)
     Point& q = identity(p);
-    // print(q.x)
     std::cout << q.x << "\n";
-    // # r owns its own storage (return_borrows_from = frozenset())
-    // r = make_point(int32(5))
     Point r = make_point(5);
-    // print(r.x)
     std::cout << r.x << "\n";
-    // # first borrows from c (return_borrows_from = {-1})
-    // c = Container()
     Container c = Container();
-    // c.add(Point(7, 8))
     c.add(Point(7, 8));
-    // first = c.first()
     Point& first = c.first();
-    // print(first.x)
     std::cout << first.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

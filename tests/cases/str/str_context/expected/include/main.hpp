@@ -11,8 +11,11 @@ struct Person;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(name: str) -> str:
 std::string greet(std::string_view name);
+// def get_name() -> str:
 std::string get_name();
+// def main() -> None:
 void main();
 
 // class Person:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Person::Person(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

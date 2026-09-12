@@ -18,7 +18,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_BaseAIter___anext__;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class BaseAIter:
@@ -53,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const DerivedAIter& obj) {
     return os;
 }
 
-// Async coroutine: BaseAIter.__anext__
+// async def __anext__(self) -> int32:
 struct __coro_BaseAIter___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -81,7 +83,7 @@ inline __coro_BaseAIter___anext__ BaseAIter::__anext__() {
     return __coro_BaseAIter___anext__(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -112,11 +114,12 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.i = 0
 inline BaseAIter::BaseAIter() : i(0) {}
 
 // def __aiter__(self) -> "BaseAIter":
+//     return self
 inline BaseAIter& BaseAIter::__aiter__() {
-    // return self
     return (*this);
 }
 void __tpy_init();

@@ -11,7 +11,9 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_c() -> Own[C]:
 C make_c();
+// def main() -> None:
 void main();
 
 // class C:
@@ -31,8 +33,8 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline C::C() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

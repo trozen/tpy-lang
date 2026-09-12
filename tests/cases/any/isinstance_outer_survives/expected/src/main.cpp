@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: Any = "hello"
+//     if isinstance(x, str):
+//         print(x)             # narrowed view
+//     print(x)                 # outer Any still alive
+//     if isinstance(x, str):
+//         print(x.upper())     # narrowed again, fresh borrow
+//     print(x)                 # outer survives twice
 void main() {
-    // x: Any = "hello"
     ::tpy::Any x = ::tpy::make_any(std::string("hello"));
-    // if isinstance(x, str):
     if ((x.value.has_value() && x.value.type() == typeid(std::string))) {
         const std::string& __x = std::any_cast<const std::string&>(x.value);
-        // print(x)             # narrowed view
         std::cout << __x << "\n";
     }
-    // print(x)                 # outer Any still alive
     std::cout << x << "\n";
-    // if isinstance(x, str):
     if ((x.value.has_value() && x.value.type() == typeid(std::string))) {
         const std::string& __x = std::any_cast<const std::string&>(x.value);
-        // print(x.upper())     # narrowed again, fresh borrow
         std::cout << ::tpy::str_upper(__x) << "\n";
     }
-    // print(x)                 # outer survives twice
     std::cout << x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

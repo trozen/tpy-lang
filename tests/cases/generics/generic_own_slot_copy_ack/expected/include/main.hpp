@@ -14,37 +14,50 @@ struct IntHolder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def collect_ack[T](h: GHolder[T], xs: list[T]) -> None:
 template<typename T>
 void collect_ack(GHolder<T>& h, std::vector<T>& xs);
+// def relay_owned[T](v: Own[T], xs: list[T]) -> None:
 template<typename T>
 void relay_owned(::tpy::own_param_t<T> v, std::vector<T>& xs);
+// def dup_bounded[T: ValueType](h: VHolder[T]) -> Own[T]:
 template<::tpy::ValueType T>
 ::tpy::own_return_t<T> dup_bounded(VHolder<T>& h);
+// def dup_bounded_twin(h: IntHolder) -> Own[int32]:
 int32_t dup_bounded_twin(IntHolder& h);
+// def sec_value_bound() -> None:
 void sec_value_bound();
+// def apply_generic[T, K](xs: list[T], f: Fn[[T], K], out: list[K]) -> None:
 template<typename T, typename K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
 void apply_generic(const std::vector<T>& xs, __F0&& f, std::vector<K>& out);
+// def apply_twin(xs: list[int32], f: Fn[[int32], Cell], out: list[Cell]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
   }
 void apply_twin(const std::vector<int32_t>& xs, __F0&& f, std::vector<Cell>& out);
+// def ret_generic[T, K](x: T, f: Fn[[T], K]) -> Own[K]:
 template<typename T, typename K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
 ::tpy::own_return_t<K> ret_generic(::tpy::param_val_or_ref_t<T> x, __F0&& f);
+// def ret_twin(x: int32, f: Fn[[int32], Cell]) -> Own[Cell]:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
   }
 Cell ret_twin(int32_t x, __F0&& f);
+// def sec_callable_value() -> None:
 void sec_callable_value();
+// def sec_ack() -> None:
 void sec_ack();
+// def sec_moved() -> None:
 void sec_moved();
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -70,12 +83,13 @@ struct GHolder {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
+    //     self.val = v
     GHolder() = default;
     explicit GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
 
     // def borrow(self) -> T:
+    //     return self.val
     ::tpy::val_or_ref_t<T> borrow() {
-        // return self.val
         return this->val;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GHolder";
@@ -94,12 +108,13 @@ struct VHolder {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
+    //     self.val = v
     VHolder() = default;
     explicit VHolder(T v) : val(std::move(v)) {}
 
     // def borrow(self) -> T:
+    //     return self.val
     ::tpy::val_or_cref_t<T> borrow() const {
-        // return self.val
         return this->val;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.VHolder";
@@ -133,28 +148,30 @@ inline std::ostream& operator<<(std::ostream& os, const IntHolder& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline IntHolder::IntHolder(int32_t v) : val(v) {}
 
 // def borrow(self) -> int32:
+//     return self.val
 inline int32_t IntHolder::borrow() const {
-    // return self.val
     return this->val;
 }
 // # copy() spelled at the owning slot: the duplication is intended, no warning.
 // def collect_ack[T](h: GHolder[T], xs: list[T]) -> None:
+//     xs.append(copy(h.borrow()))  # tpyc: ok
 template<typename T>
 void collect_ack(GHolder<T>& h, std::vector<T>& xs) {
-    // xs.append(copy(h.borrow()))  # tpyc: ok
     xs.push_back(T(h.borrow()));
 }
 // # inverse: an Own[T] moved through a generic body is not a copy at all.
 // def relay_owned[T](v: Own[T], xs: list[T]) -> None:
+//     xs.append(v)  # tpyc: ok
 template<typename T>
 void relay_owned(::tpy::own_param_t<T> v, std::vector<T>& xs) {
-    // xs.append(v)  # tpyc: ok
     xs.push_back(std::move(v));
 }
 // # inverse: a `T: ValueType` bound makes a reference-type copy impossible, so
@@ -164,9 +181,9 @@ void relay_owned(::tpy::own_param_t<T> v, std::vector<T>& xs) {
 // # `Ptr` field still hands both copies the same pointee
 // # (BUGS.md#value-type-ptr-field-aliases-through-copy-exemption).
 // def dup_bounded[T: ValueType](h: VHolder[T]) -> Own[T]:
+//     return h.borrow()  # tpyc: ok
 template<::tpy::ValueType T>
 ::tpy::own_return_t<T> dup_bounded(VHolder<T>& h) {
-    // return h.borrow()  # tpyc: ok
     return h.borrow();
 }
 // # inverse: a call through a callable VALUE is an rvalue whatever K resolves
@@ -178,53 +195,53 @@ template<::tpy::ValueType T>
 // # (BUGS.md#callable-value-borrow-return-copies-unwarned), not what this
 // # section asserts.
 // def apply_generic[T, K](xs: list[T], f: Fn[[T], K], out: list[K]) -> None:
+//     for x in xs:
+//         out.append(f(x))  # tpyc: ok
 template<typename T, typename K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
 void apply_generic(const std::vector<T>& xs, __F0&& f, std::vector<K>& out) {
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // out.append(f(x))  # tpyc: ok
         out.push_back(f(x));
     }
 }
 // def apply_twin(xs: list[int32], f: Fn[[int32], Cell], out: list[Cell]) -> None:
+//     for x in xs:
+//         out.append(f(x))  # tpyc: ok
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
   }
 void apply_twin(const std::vector<int32_t>& xs, __F0&& f, std::vector<Cell>& out) {
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // out.append(f(x))  # tpyc: ok
         out.push_back(f(x));
     }
 }
 // def ret_generic[T, K](x: T, f: Fn[[T], K]) -> Own[K]:
+//     return f(x)  # tpyc: ok
 template<typename T, typename K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
 ::tpy::own_return_t<K> ret_generic(::tpy::param_val_or_ref_t<T> x, __F0&& f) {
-    // return f(x)  # tpyc: ok
     return f(x);
 }
 // def ret_twin(x: int32, f: Fn[[int32], Cell]) -> Own[Cell]:
+//     return f(x)  # tpyc: ok
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
   }
 Cell ret_twin(int32_t x, __F0&& f) {
-    // return f(x)  # tpyc: ok
     return f(x);
 }
 

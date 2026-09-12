@@ -17,6 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main;
 struct __coro_C_snapshot;
 
+// async def main() -> None:
 __coro_main main();
 
 // class C:
@@ -36,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
-// Async coroutine: C.snapshot
+// async def snapshot(self) -> Own["C"]:
 struct __coro_C_snapshot {
     int32_t __state;
     bool __cancel_pending;
@@ -64,7 +65,7 @@ inline __coro_C_snapshot C::snapshot() const {
     return __coro_C_snapshot(*this);
 }
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -92,6 +93,7 @@ struct __coro_main {
 
 
 // def __init__(self) -> None:
+//     self.v = 1
 inline C::C() : v(::tpy::BigInt(1)) {}
 void __tpy_init();
 } // namespace tpyapp::main

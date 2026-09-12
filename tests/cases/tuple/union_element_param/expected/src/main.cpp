@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def read_second(pair: tuple[Dog | Cat, int32]) -> int32:
+//     return pair[1]
 int32_t read_second(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>& pair) {
-    // return pair[1]
     return std::get<1>(pair);
 }
 
 // def passthrough(pair: tuple[Dog | Cat, int32]) -> int32:
+//     return read_second(pair)
 int32_t passthrough(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>& pair) {
-    // return read_second(pair)
     return read_second(pair);
 }
 
 // def main() -> None:
+//     print("dog:", read_second((Dog(7), 2)))
+//     print("cat:", read_second((Cat(9), 3)))
+//     print("pass:", passthrough((Dog(1), 5)))
 void main() {
-    // print("dog:", read_second((Dog(7), 2)))
     std::cout << "dog:" << " " << read_second(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Dog(7), 2})) << "\n";
-    // print("cat:", read_second((Cat(9), 3)))
     std::cout << "cat:" << " " << read_second(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Cat(9), 3})) << "\n";
-    // print("pass:", passthrough((Dog(1), 5)))
     std::cout << "pass:" << " " << passthrough(::tpy::tuple_value_to_borrow<std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>>(std::tuple<::tpy::Union<Cat, Dog>, int32_t>{Dog(1), 5})) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -40,11 +41,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, p: Own[Poll[int32]]) -> None:
+//     self._slot = p
 inline Holder::Holder(::tpystd::tpy::Poll<int32_t>&& p) : _slot(std::move(p)) {}
 
 // def take(self: Own[Self]) -> Own[Poll[int32]]:
+//     return self._slot
 inline ::tpystd::tpy::Poll<int32_t> Holder::take() && {
-    // return self._slot
     return std::move(this->_slot);
 }
 void __tpy_init();

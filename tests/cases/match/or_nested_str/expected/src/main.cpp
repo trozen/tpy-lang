@@ -7,87 +7,78 @@ namespace tpyapp::main {
 // # Parenthesized or-pattern groups on a str subject with enough alternatives
 // # to take the string-switch dispatch strategy.
 // def classify(s: str) -> str:
+//     match s:
+//         # Same alternatives as the flat `case "red" | "green" | "blue":`.
+//         case ("red" | "green") | "blue":
+//             return "color"
+//         case "cat" | ("dog" | "bird"):
+//             return "animal"
+//         case "one" | "two" | "three":
+//             return "number"
+//         case _:
+//             return "unknown"
 std::string classify(std::string_view s) {
-    // match s:
     auto& __match_subject_1 = s;
     if (__match_subject_1.size() >= 2) {
         switch (static_cast<unsigned char>(__match_subject_1[1])) {
         case 'a': {
-            // case "cat" | ("dog" | "bird"):
             if (__match_subject_1 == "cat") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'e': {
-            // case ("red" | "green") | "blue":
             if (__match_subject_1 == "red") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
             break;
         }
         case 'h': {
-            // case "one" | "two" | "three":
             if (__match_subject_1 == "three") {
-                // return "number"
                 return "number";
                 goto __match_end_2;
             }
             break;
         }
         case 'i': {
-            // case "cat" | ("dog" | "bird"):
             if (__match_subject_1 == "bird") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'l': {
-            // case ("red" | "green") | "blue":
             if (__match_subject_1 == "blue") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
             break;
         }
         case 'n': {
-            // case "one" | "two" | "three":
             if (__match_subject_1 == "one") {
-                // return "number"
                 return "number";
                 goto __match_end_2;
             }
             break;
         }
         case 'o': {
-            // case "cat" | ("dog" | "bird"):
             if (__match_subject_1 == "dog") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'r': {
-            // case ("red" | "green") | "blue":
             if (__match_subject_1 == "green") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
             break;
         }
         case 'w': {
-            // case "one" | "two" | "three":
             if (__match_subject_1 == "two") {
-                // return "number"
                 return "number";
                 goto __match_end_2;
             }
@@ -95,43 +86,40 @@ std::string classify(std::string_view s) {
         }
         }
     }
-    // case _:
     {
-        // return "unknown"
         return "unknown";
         goto __match_end_2;
     }
     __match_end_2:;
     ::std::unreachable();
-    // # Same alternatives as the flat `case "red" | "green" | "blue":`.
 }
 
 // def main() -> None:
+//     print(classify("red"))
+//     print(classify("green"))
+//     print(classify("blue"))
+//     print(classify("cat"))
+//     print(classify("dog"))
+//     print(classify("bird"))
+//     print(classify("two"))
+//     print(classify("zzz"))
 void main() {
-    // print(classify("red"))
     std::cout << classify("red") << "\n";
-    // print(classify("green"))
     std::cout << classify("green") << "\n";
-    // print(classify("blue"))
     std::cout << classify("blue") << "\n";
-    // print(classify("cat"))
     std::cout << classify("cat") << "\n";
-    // print(classify("dog"))
     std::cout << classify("dog") << "\n";
-    // print(classify("bird"))
     std::cout << classify("bird") << "\n";
-    // print(classify("two"))
     std::cout << classify("two") << "\n";
-    // print(classify("zzz"))
     std::cout << classify("zzz") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

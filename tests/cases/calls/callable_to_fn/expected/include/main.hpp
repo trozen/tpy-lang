@@ -11,12 +11,15 @@ struct Handler;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def apply(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 int32_t apply(__F0&& f, int32_t x);
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x);
+// def main() -> None:
 void main();
 
 // class Handler:
@@ -36,14 +39,15 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 
 
 // def __init__(self, cb: Callable[[int32], int32]) -> None:
+//     self.cb = cb
 inline Handler::Handler(std::function<int32_t(int32_t)> cb) : cb(cb) {}
 // def apply(f: Fn[[int32], int32], x: int32) -> int32:
+//     return f(x)
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
 int32_t apply(__F0&& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 

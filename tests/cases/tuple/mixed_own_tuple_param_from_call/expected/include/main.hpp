@@ -11,12 +11,19 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
 std::tuple<Box, Box*> make_mixed(Box& b);
+// def make_owned() -> tuple[Own[Box], Own[Box]]:
 std::tuple<Box, Box> make_owned();
+// def take_mixed(p: tuple[Own[Box], Box]) -> int32:
 int32_t take_mixed(const std::tuple<Box, const Box*>& p);
+// def take_owned(p: tuple[Own[Box], Own[Box]]) -> int32:
 int32_t take_owned(std::tuple<Box, Box>&& p);
+// def relay(b: Box) -> int32:
 int32_t relay(Box& b);
+// def mutate_borrowed(p: tuple[Own[Box], Box]) -> None:
 void mutate_borrowed(const std::tuple<Box, Box*>& p);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -37,6 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Box::Box(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

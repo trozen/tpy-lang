@@ -7,22 +7,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(lambda_sum(20, 22))
+//     print(square(7))
 void main() {
-    // print(lambda_sum(20, 22))
     std::cout << []() { return 20 + 22; }() << "\n";
-    // print(square(7))
     std::cout << ({ int t = 7; t * t; }) << "\n";
 }
 
+// # @cpp_template free functions with literal C++ braces, spelled via the
+// # {{ }} escape (a lambda body and a GCC statement-expression).
+// from tpy.extern import cpp_template
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @cpp_template free functions with literal C++ braces, spelled via the
-    // # {{ }} escape (a lambda body and a GCC statement-expression).
-    // from tpy.extern import cpp_template
-    // main()
     main();
 }
 

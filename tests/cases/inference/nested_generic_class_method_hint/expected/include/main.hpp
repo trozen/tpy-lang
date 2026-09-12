@@ -37,6 +37,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Cat:
@@ -65,6 +66,7 @@ struct Container {
     T payload;
 
     // def __init__(self, val: Own[T]) -> None:
+    //     self.payload = val
     Container() = default;
     explicit Container(::tpy::own_param_t<T> val) : payload(std::move(val)) {}
 
@@ -74,9 +76,9 @@ struct Container {
     // # hint, so Box's record-construction LHS-hint preference flips its
     // # internal T from Cat to Greeter.
     // def wrap[U](self, value: Own[U]) -> Own[Rc[U]]:
+    //     return Rc.new(value)
     template<typename U>
     ::tpystd::tplib::rc::Rc<U> wrap(::tpy::own_param_t<U> value) const {
-        // return Rc.new(value)
         return Rc<U>::template new_<U>(std::move(value));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -109,11 +111,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def greet(self) -> str:
+//     return self.name
 inline std::string Cat::greet() const {
-    // return self.name
     return this->name;
 }
 void __tpy_init();

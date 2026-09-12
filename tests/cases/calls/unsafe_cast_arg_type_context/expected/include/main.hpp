@@ -15,6 +15,7 @@ extern void* carg_ptr;
 extern Sink* sink;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_ptr(p: Ptr[None]) -> int32:
 int32_t take_ptr(void* p);
 
 // class Sink:
@@ -33,8 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def put(self, p: Ptr[None]) -> int32:
+//     return int32(20)
 inline int32_t Sink::put(void* p) const {
-    // return int32(20)
     return 20;
 }
 void __tpy_init();

@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Box_vals;
 
+// def clobber() -> int:
 ::tpy::BigInt clobber();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Generator: Box.vals
+// def vals(self) -> Iterator[int]:
 struct __gen_Box_vals : public ::tpy::next_iter_mixin<__gen_Box_vals, ::tpy::BigInt> {
     int32_t __state;
     const Box& __self;
@@ -68,6 +70,9 @@ inline __gen_Box_vals Box::vals() const {
 
 
 // def __init__(self, a: int, b: int, c: int) -> None:
+//     self.a = a
+//     self.b = b
+//     self.c = c
 inline Box::Box(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) : a(a), b(b), c(c) {}
 void __tpy_init();
 } // namespace tpyapp::main

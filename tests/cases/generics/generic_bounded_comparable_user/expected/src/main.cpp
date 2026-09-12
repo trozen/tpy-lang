@@ -5,36 +5,41 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x = MyInt(10)
+//     y = MyInt(20)
+//     z = MyInt(10)
+//
+//     # Test comparison via Comparable bound
+//     print(is_less(x, y))  # True
+//     print(is_less(y, x))  # False
+//
+//     # Test returning bounded type
+//     result = find_min(x, y)
+//     print(result.value)  # 10
+//
+//     # Test equality
+//     print(x == z)  # True
+//     print(x == y)  # False
 void main() {
-    // x = MyInt(10)
     MyInt x = MyInt(10);
-    // y = MyInt(20)
     MyInt y = MyInt(20);
-    // z = MyInt(10)
     MyInt z = MyInt(10);
-    // # Test comparison via Comparable bound
-    // print(is_less(x, y))  # True
     std::cout << ::tpy::print_bool(is_less<MyInt>(x, y)) << "\n";
-    // print(is_less(y, x))  # False
     std::cout << ::tpy::print_bool(is_less<MyInt>(y, x)) << "\n";
-    // # Test returning bounded type
-    // result = find_min(x, y)
     MyInt& result = find_min<MyInt>(x, y);
-    // print(result.value)  # 10
     std::cout << result.value << "\n";
-    // # Test equality
-    // print(x == z)  # True
     std::cout << ::tpy::print_bool(((x) == (z))) << "\n";
-    // print(x == y)  # False
     std::cout << ::tpy::print_bool(((x) == (y))) << "\n";
 }
 
+// """Test user-defined record with __lt__ satisfies Comparable bound."""
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

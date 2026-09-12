@@ -5,157 +5,157 @@ namespace tpyapp::main {
 
 
 // def via_list_literal(c: P) -> int32:
+//     xs: list[tuple[int32, tuple[int32, P]]] = [(1, (2, c))]  # tpyc: warning(/copies P into owned storage \(tuple element 1.1\)/)
+//     xs[0][1][1].n = 41
+//     return c.n
 int32_t via_list_literal(const P& c) {
-    // xs: list[tuple[int32, tuple[int32, P]]] = [(1, (2, c))]  # tpyc: warning(/copies P into owned storage \(tuple element 1.1\)/)
     std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = {std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{2, &(c)})}};
-    // xs[0][1][1].n = 41
     std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 41;
-    // return c.n
     return c.n;
 }
 
 // def via_inner_lvalue(c: P) -> int32:
+//     # The nested member arrives as a whole borrow-form tuple lvalue rather than
+//     # a literal, so the walk re-dispatches on the inner source shape. Kept live
+//     # past the store so last-use auto-move does not suppress the diagnostic.
+//     t = (2, c)
+//     xs: list[tuple[int32, tuple[int32, P]]] = [(1, t)]  # tpyc: warning(/copies P into owned storage \(tuple element 1.1\)/)
+//     xs[0][1][1].n = 42
+//     return t[1].n
 int32_t via_inner_lvalue(P& c) {
-    // # The nested member arrives as a whole borrow-form tuple lvalue rather than
-    // # a literal, so the walk re-dispatches on the inner source shape. Kept live
-    // # past the store so last-use auto-move does not suppress the diagnostic.
-    // t = (2, c)
     auto t = std::tuple<int32_t, P*>{2, &(c)};
-    // xs: list[tuple[int32, tuple[int32, P]]] = [(1, t)]  # tpyc: warning(/copies P into owned storage \(tuple element 1.1\)/)
     std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = {std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(t)}};
-    // xs[0][1][1].n = 42
     std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 42;
-    // return t[1].n
     return std::get<1>(t)->n;
 }
 
 // def via_append(c: P) -> int32:
+//     # Two distinct copies of `c` on this path, so two diagnostics: the local
+//     # already owns its nested member (a nested reference gives no borrow form),
+//     # and the append copies again out of that storage.
+//     q: tuple[int32, tuple[int32, P]] = (1, (2, c))  # tpyc: warning(/copies P into owned storage \(tuple element 1.1\)/)
+//     xs: list[tuple[int32, tuple[int32, P]]] = []
+//     xs.append(q)  # tpyc: warning(/copies P into owned storage \(tuple element 1.1\)/)
+//     xs[0][1][1].n = 43
+//     return q[1][1].n
 int32_t via_append(const P& c) {
-    // # Two distinct copies of `c` on this path, so two diagnostics: the local
-    // # already owns its nested member (a nested reference gives no borrow form),
-    // # and the append copies again out of that storage.
-    // q: tuple[int32, tuple[int32, P]] = (1, (2, c))  # tpyc: warning(/copies P into owned storage \(tuple element 1.1\)/)
     std::tuple<int32_t, std::tuple<int32_t, P>> q = std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{2, &(c)})};
-    // xs: list[tuple[int32, tuple[int32, P]]] = []
     std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>>{};
-    // xs.append(q)  # tpyc: warning(/copies P into owned storage \(tuple element 1.1\)/)
     xs.push_back(q);
-    // xs[0][1][1].n = 43
     std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 43;
-    // return q[1][1].n
     return std::get<1>(std::get<1>(q)).n;
 }
 
 // def via_field(h: Holder, c: P) -> int32:
+//     h.q = (9, (8, c))  # tpyc: warning(/copies P into field \(tuple element 1.1\)/)
+//     h.q[1][1].n = 44
+//     return c.n
 int32_t via_field(Holder& h, const P& c) {
-    // h.q = (9, (8, c))  # tpyc: warning(/copies P into field \(tuple element 1.1\)/)
     h.q = std::tuple<int32_t, std::tuple<int32_t, P>>{9, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{8, &(c)})};
-    // h.q[1][1].n = 44
     std::get<1>(std::get<1>(h.q)).n = 44;
-    // return c.n
     return c.n;
 }
 
 // def via_setitem(c: P) -> int32:
+//     # A subscript target names the sink "container" rather than "owned
+//     # storage"; the direct level at this sink is a separate silent gap.
+//     d: dict[int32, tuple[int32, tuple[int32, P]]] = {}
+//     d[0] = (9, (8, c))  # tpyc: warning(/copies P into container \(tuple element 1.1\)/)
+//     d[0][1][1].n = 47
+//     return c.n
 int32_t via_setitem(const P& c) {
-    // # A subscript target names the sink "container" rather than "owned
-    // # storage"; the direct level at this sink is a separate silent gap.
-    // d: dict[int32, tuple[int32, tuple[int32, P]]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>();
-    // d[0] = (9, (8, c))  # tpyc: warning(/copies P into container \(tuple element 1.1\)/)
     ::tpy::__setitem__(d, 0, std::tuple<int32_t, std::tuple<int32_t, P>>{9, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{8, &(c)})});
-    // d[0][1][1].n = 47
     std::get<1>(std::get<1>(::tpy::__getitem__(d, 0))).n = 47;
-    // return c.n
     return c.n;
 }
 
 // def three_levels(c: P) -> int32:
+//     xs: list[tuple[int32, tuple[int32, tuple[int32, P]]]] = [(1, (2, (3, c)))]  # tpyc: warning(/copies P into owned storage \(tuple element 1.1.1\)/)
+//     xs[0][1][1][1].n = 45
+//     return c.n
 int32_t three_levels(const P& c) {
-    // xs: list[tuple[int32, tuple[int32, tuple[int32, P]]]] = [(1, (2, (3, c)))]  # tpyc: warning(/copies P into owned storage \(tuple element 1.1.1\)/)
     std::vector<std::tuple<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>> xs = {std::tuple<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>{1, std::tuple<int32_t, std::tuple<int32_t, P>>{2, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{3, &(c)})}}};
-    // xs[0][1][1][1].n = 45
     std::get<1>(std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0)))).n = 45;
-    // return c.n
     return c.n;
 }
 
 // def acknowledged(c: P) -> int32:
+//     # copy() at the nested member silences it, same spelling as at depth 0.
+//     xs: list[tuple[int32, tuple[int32, P]]] = [(1, (2, copy(c)))]  # tpyc: ok
+//     xs[0][1][1].n = 46
+//     return c.n
 int32_t acknowledged(const P& c) {
-    // # copy() at the nested member silences it, same spelling as at depth 0.
-    // xs: list[tuple[int32, tuple[int32, P]]] = [(1, (2, copy(c)))]  # tpyc: ok
     std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = {std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{2, P(c)})}};
-    // xs[0][1][1].n = 46
     std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 46;
-    // return c.n
     return c.n;
 }
 
 // def fresh_member() -> int32:
+//     # A fresh rvalue nested member constructs in place -- nothing aliases, so
+//     # the walk must stay quiet. The inverse guard against over-triggering.
+//     xs: list[tuple[int32, tuple[int32, P]]] = [(1, (2, P(7)))]  # tpyc: ok
+//     return xs[0][1][1].n
 int32_t fresh_member() {
-    // # A fresh rvalue nested member constructs in place -- nothing aliases, so
-    // # the walk must stay quiet. The inverse guard against over-triggering.
-    // xs: list[tuple[int32, tuple[int32, P]]] = [(1, (2, P(7)))]  # tpyc: ok
     std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = {std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{2, P(7)})}};
-    // return xs[0][1][1].n
     return std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n;
 }
 
 // def no_reference_member() -> int32:
+//     # Nested tuple of pure value elements: nothing to copy at any depth.
+//     xs: list[tuple[int32, tuple[int32, int32]]] = [(1, (2, 3))]  # tpyc: ok
+//     return xs[0][1][1]
 int32_t no_reference_member() {
-    // # Nested tuple of pure value elements: nothing to copy at any depth.
-    // xs: list[tuple[int32, tuple[int32, int32]]] = [(1, (2, 3))]  # tpyc: ok
     std::vector<std::tuple<int32_t, std::tuple<int32_t, int32_t>>> xs = {std::tuple<int32_t, std::tuple<int32_t, int32_t>>{1, std::tuple<int32_t, int32_t>{2, 3}}};
-    // return xs[0][1][1]
     return std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0)));
 }
 
 // def main() -> None:
+//     a = P(0)
+//     print("list:", via_list_literal(a), a.n)
+//     b = P(0)
+//     print("inner_lvalue:", via_inner_lvalue(b), b.n)
+//     d = P(0)
+//     print("append:", via_append(d), d.n)
+//     e = P(0)
+//     h = Holder(e)
+//     f = P(0)
+//     print("field:", via_field(h, f), f.n)
+//     j = P(0)
+//     print("setitem:", via_setitem(j), j.n)
+//     g = P(0)
+//     print("three:", three_levels(g), g.n)
+//     i = P(0)
+//     print("acknowledged:", acknowledged(i), i.n)
+//     print("fresh:", fresh_member())
+//     print("values:", no_reference_member())
 void main() {
-    // a = P(0)
     P a = P(0);
-    // print("list:", via_list_literal(a), a.n)
     std::cout << "list:" << " " << via_list_literal(a) << " " << a.n << "\n";
-    // b = P(0)
     P b = P(0);
-    // print("inner_lvalue:", via_inner_lvalue(b), b.n)
     std::cout << "inner_lvalue:" << " " << via_inner_lvalue(b) << " " << b.n << "\n";
-    // d = P(0)
     P d = P(0);
-    // print("append:", via_append(d), d.n)
     std::cout << "append:" << " " << via_append(d) << " " << d.n << "\n";
-    // e = P(0)
     P e = P(0);
-    // h = Holder(e)
     Holder h = Holder(e);
-    // f = P(0)
     P f = P(0);
-    // print("field:", via_field(h, f), f.n)
     std::cout << "field:" << " " << via_field(h, f) << " " << f.n << "\n";
-    // j = P(0)
     P j = P(0);
-    // print("setitem:", via_setitem(j), j.n)
     std::cout << "setitem:" << " " << via_setitem(j) << " " << j.n << "\n";
-    // g = P(0)
     P g = P(0);
-    // print("three:", three_levels(g), g.n)
     std::cout << "three:" << " " << three_levels(g) << " " << g.n << "\n";
-    // i = P(0)
     P i = P(0);
-    // print("acknowledged:", acknowledged(i), i.n)
     std::cout << "acknowledged:" << " " << acknowledged(i) << " " << i.n << "\n";
-    // print("fresh:", fresh_member())
     std::cout << "fresh:" << " " << fresh_member() << "\n";
-    // print("values:", no_reference_member())
     std::cout << "values:" << " " << no_reference_member() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

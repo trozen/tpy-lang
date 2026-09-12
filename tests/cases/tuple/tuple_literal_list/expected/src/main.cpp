@@ -5,26 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Int literal tuples
+//     pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
+//     print(pairs[0], pairs[1])
+//
+//     # Float literal tuples
+//     points: list[tuple[float, float]] = [(1.0, 2.0), (3.0, 4.0)]
+//     print(points[0])
+//
+//     # Dict from annotated list of tuples via constructor
+//     d = dict[str, int32](pairs)
+//     print(d["a"], d["c"])
+//
+//     # Unannotated list of tuples (IntLiteralType resolved inside tuples)
+//     raw = [("x", 10), ("y", 20)]
+//     d2 = dict[str, int32]((k, v) for k, v in raw)
+//     print(d2["x"], d2["y"])
 void main() {
-    // # Int literal tuples
-    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
-    // print(pairs[0], pairs[1])
     std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 0)) << " " << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 1)) << "\n";
-    // # Float literal tuples
-    // points: list[tuple[float, float]] = [(1.0, 2.0), (3.0, 4.0)]
     std::vector<std::tuple<double, double>> points = {std::tuple<double, double>{1.0, 2.0}, std::tuple<double, double>{3.0, 4.0}};
-    // print(points[0])
     std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(points, 0)) << "\n";
-    // # Dict from annotated list of tuples via constructor
-    // d = dict[str, int32](pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
-    // print(d["a"], d["c"])
     std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "c") << "\n";
-    // # Unannotated list of tuples (IntLiteralType resolved inside tuples)
-    // raw = [("x", 10), ("y", 20)]
     std::array<std::tuple<std::string, int32_t>, 2> raw = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}};
-    // d2 = dict[str, int32]((k, v) for k, v in raw)
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>([&raw]() {
         auto& __src = raw;
         return ::tpy::make_generator<std::tuple<std::string, int32_t>>(
@@ -39,16 +43,15 @@ void main() {
             }
         );
     }());
-    // print(d2["x"], d2["y"])
     std::cout << ::tpy::__getitem__(d2, "x") << " " << ::tpy::__getitem__(d2, "y") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

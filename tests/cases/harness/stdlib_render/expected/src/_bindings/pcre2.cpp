@@ -16,31 +16,66 @@ namespace tpystd::_bindings::pcre2 {
 
 
 
+// # tpy: cpp_namespace("tpystd::_bindings::pcre2")
+// # tpy: include("<tpy/stdlib/pcre2_h.hpp>")
+// # tpy: link("pcre2", managed=True)
+// """Raw PCRE2 C bindings.
+//
+// One @native declaration per pcre2_*_8 primitive, matching the upstream C
+// ABI 1:1. No Python semantics.
+// Consumers (the public `re` facade) build user-visible Pattern / Match
+// classes on top of these raw handles, using __del__ for RAII over the
+// opaque pcre2_code* / pcre2_match_data* lifetimes.
+//
+// Naming:
+//   - Opaque type markers: `Code`, `MatchData`, `MatchContext`. The TPy-level
+//     handle is `Ptr[Code]` etc., which codegens to `pcre2_code_8*`.
+//   - All function names mirror the PCRE2 C names with the `_8` suffix dropped.
+//
+// Constants are hardcoded uint32 values matching pcre2.h. PCRE2's flag values
+// are part of its public ABI and don't change between versions.
+// """
+//
+// from tpy.extern import native
+//
+// PCRE2_CASELESS:                     Final[uint32] = 0x00000008
+// PCRE2_MULTILINE:                    Final[uint32] = 0x00000400
+// PCRE2_DOTALL:                       Final[uint32] = 0x00000020
+// PCRE2_EXTENDED:                     Final[uint32] = 0x00000080
+// PCRE2_UTF:                          Final[uint32] = 0x00080000
+// PCRE2_UCP:                          Final[uint32] = 0x00020000
+// PCRE2_ANCHORED:                     Final[uint32] = 0x80000000
+// PCRE2_ENDANCHORED:                  Final[uint32] = 0x20000000
+//
+// # Match-time option: reject an empty match at the start offset (the
+// # advance-after-empty-match step of global substitution semantics).
+// PCRE2_NOTEMPTY_ATSTART:             Final[uint32] = 0x00000008
+//
+// # Match-step option for pcre2_substitute.
+// PCRE2_SUBSTITUTE_GLOBAL:            Final[uint32] = 0x00000100
+// PCRE2_SUBSTITUTE_OVERFLOW_LENGTH:   Final[uint32] = 0x00001000
+// PCRE2_SUBSTITUTE_MATCHED:           Final[uint32] = 0x00010000
+//
+// # pcre2_jit_compile selector: full JIT for normal matching.
+// PCRE2_JIT_COMPLETE:                 Final[uint32] = 0x00000001
+//
+// # Pattern-info selectors for pcre2_pattern_info.
+// PCRE2_INFO_CAPTURECOUNT:            Final[uint32] = 4
+//
+// # pcre2_match return codes. NOMATCH means "no match" (not an error);
+// # NOMEMORY is returned by pcre2_substitute when the output buffer is
+// # too small AND PCRE2_SUBSTITUTE_OVERFLOW_LENGTH is set.
+// PCRE2_ERROR_NOMATCH:                Final[int32] = -1
+// PCRE2_ERROR_NOMEMORY:               Final[int32] = -48
+//
+// # Sentinel meaning "this group did not participate". PCRE2_UNSET is
+// # (PCRE2_SIZE)~0u = SIZE_MAX in C; we compare against it via raw uint64.
+// PCRE2_UNSET:                        Final[uint64] = 0xFFFFFFFFFFFFFFFF
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: cpp_namespace("tpystd::_bindings::pcre2")
-    // # tpy: include("<tpy/stdlib/pcre2_h.hpp>")
-    // # tpy: link("pcre2", managed=True)
-    // from tpy.extern import native
-    // # ---------- Compile / match flags (subset we actually use) ----------
-    // # Names mirror upstream pcre2.h exactly. Safe because pcre2.h is never
-    // # included in our generated TUs (see runtime/cpp/include/tpy/stdlib/pcre2_h.hpp
-    // # header comment) -- the preprocessor never sees a `#define PCRE2_CASELESS`
-    // # in the same TU as our constant declaration. Values are part of PCRE2's
-    // # stable ABI.
-    // # Match-time option: reject an empty match at the start offset (the
-    // # advance-after-empty-match step of global substitution semantics).
-    // # Match-step option for pcre2_substitute.
-    // # pcre2_jit_compile selector: full JIT for normal matching.
-    // # Pattern-info selectors for pcre2_pattern_info.
-    // # pcre2_match return codes. NOMATCH means "no match" (not an error);
-    // # NOMEMORY is returned by pcre2_substitute when the output buffer is
-    // # too small AND PCRE2_SUBSTITUTE_OVERFLOW_LENGTH is set.
-    // # Sentinel meaning "this group did not participate". PCRE2_UNSET is
-    // # (PCRE2_SIZE)~0u = SIZE_MAX in C; we compare against it via raw uint64.
 }
 
 } // namespace tpystd::_bindings::pcre2

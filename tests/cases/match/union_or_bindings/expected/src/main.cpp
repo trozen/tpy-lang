@@ -5,66 +5,66 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat | Bird) -> str:
+//     match a:
+//         case Dog(name=n) | Cat(name=n):
+//             return "pet: " + n
+//         case Bird(name=n):
+//             return "bird: " + n
+//     return ""
 std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog(name=n) | Cat(name=n):
     case 2: {
         auto& __case_0_0 = *std::get<2>(__match_subject_1);
         auto& n = __case_0_0.name;
-        // return "pet: " + n
         return (::tpy::str_concat("pet: ", n));
         break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject_1);
         auto& n = __case_0_1.name;
-        // return "pet: " + n
         return (::tpy::str_concat("pet: ", n));
         break;
     }
-    // case Bird(name=n):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& n = __case_1.name;
-        // return "bird: " + n
         return (::tpy::str_concat("bird: ", n));
         break;
     }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     d: Dog | Cat | Bird = Dog("Rex")
+//     c: Dog | Cat | Bird = Cat("Whiskers")
+//     b: Dog | Cat | Bird = Bird("Tweety")
+//     print(describe(d))
+//     print(describe(c))
+//     print(describe(b))
 void main() {
-    // d: Dog | Cat | Bird = Dog("Rex")
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat | Bird = Cat("Whiskers")
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat("Whiskers");
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // b: Dog | Cat | Bird = Bird("Tweety")
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    // print(describe(d))
     std::cout << describe(d.as_const()) << "\n";
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
-    // print(describe(b))
     std::cout << describe(b.as_const()) << "\n";
 }
 
+// # match/case or-patterns on unions with variable bindings
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case or-patterns on unions with variable bindings
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

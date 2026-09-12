@@ -5,33 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     user = UserInfo(name="Alice", age=int32(30), active=True)
+//     print(user["name"])
+//     print(user["age"])
+//     print(user["active"])
+//
+//     # Mutation via subscript
+//     user["age"] = int32(31)
+//     print(user["age"])
+//
+//     # Augmented assignment
+//     user["age"] += int32(1)
+//     print(user["age"])
 void main() {
-    // user = UserInfo(name="Alice", age=int32(30), active=True)
     UserInfo user = UserInfo("Alice", 30, true);
-    // print(user["name"])
     std::cout << user.name << "\n";
-    // print(user["age"])
     std::cout << user.age << "\n";
-    // print(user["active"])
     std::cout << ::tpy::print_bool(user.active) << "\n";
-    // # Mutation via subscript
-    // user["age"] = int32(31)
     user.age = 31;
-    // print(user["age"])
     std::cout << user.age << "\n";
-    // # Augmented assignment
-    // user["age"] += int32(1)
     user.age = ::tpy::add_check<int32_t>(user.age, 1);
-    // print(user["age"])
     std::cout << user.age << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

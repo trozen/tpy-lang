@@ -17,11 +17,17 @@ using ::tpystd::tplib::json::writer::JsonWriter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_reader_standard() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_standard();
+// def test_reader_bf() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_bf();
+// def test_reader_unicode() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_unicode();
+// def test_writer_control_chars() -> None:
 void test_writer_control_chars();
+// def test_roundtrip() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_roundtrip();
+// def main() -> None:
 void main();
 
 void __tpy_init();

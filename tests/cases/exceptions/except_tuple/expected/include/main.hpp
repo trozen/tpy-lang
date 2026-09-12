@@ -13,11 +13,17 @@ struct CErr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def boom(which: int) -> None:
 void boom(const ::tpy::BigInt& which);
+// def with_binding(which: int) -> None:
 void with_binding(const ::tpy::BigInt& which);
+// def without_binding(which: int) -> None:
 void without_binding(const ::tpy::BigInt& which);
+// def single_element(which: int) -> None:
 void single_element(const ::tpy::BigInt& which);
+// def repeated() -> None:
 void repeated();
+// def main() -> None:
 void main();
 
 // # The `except (A, B):` tuple form. The parser expands it into one ordinary
@@ -82,9 +88,11 @@ inline std::ostream& operator<<(std::ostream& os, const CErr& obj) {
 
 
 // def __init__(self, code: int) -> None:
+//     self.code = code
 inline AErr::AErr(const ::tpy::BigInt& code) : code(code) {}
 
 // def __init__(self, code: int) -> None:
+//     self.code = code
 inline BErr::BErr(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub() -> BytesView:
+//     return b"x"
 ::tpystd::tpy::Poll<::tpy::BytesView> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return b"x"
         __state = S_DONE;
         ::tpy::BytesView __tpy_async_ret = ::tpy::bytes_literal("x", 1);
         return ::tpystd::tpy::Poll<::tpy::BytesView>::ready(std::move(__tpy_async_ret));
@@ -26,13 +26,13 @@ __coro_sub sub() {
 }
 
 // async def main_coro() -> None:
+//     # The task's payload type keeps this declaration on the storage row.
+//     t = asyncio.create_task(sub())
+//     print(len(await t))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # The task's payload type keeps this declaration on the storage row.
-        // t = asyncio.create_task(sub())
         t.emplace(::tpystd::asyncio::create_task<::tpy::BytesView>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BytesView>>(sub())));
-        // print(len(await t))
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -42,7 +42,6 @@ __coro_sub sub() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0 = nullptr;
-        // print(len(await t))
         std::cout << ::tpy::__len__(__await_lift_0) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -59,21 +58,22 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Awaiting a `Task` whose payload is a view: the task handle stays outside
+// # the record slice, so its declaration takes the storage row.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Awaiting a `Task` whose payload is a view: the task handle stays outside
-    // # the record slice, so its declaration takes the storage row.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

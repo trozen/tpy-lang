@@ -14,6 +14,7 @@ template<typename T> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -73,6 +74,8 @@ struct Pair {
     T second;
 
     // def __init__(self, first: T, second: T) -> None:
+    //     self.first = first
+    //     self.second = second
     Pair() = default;
     explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second) : first(first), second(second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -86,12 +89,16 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
+//     self.items = []
 inline Bag::Bag() : items(std::vector<int32_t>{}) {}
 
 // def __init__(self, cb: Callable[[int32], None]) -> None:
+//     self.cb = cb
 inline Handler::Handler(std::function<void(int32_t)> cb) : cb(cb) {}
 void __tpy_init();
 } // namespace tpyapp::main

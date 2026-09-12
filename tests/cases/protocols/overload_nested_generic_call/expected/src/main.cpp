@@ -6,27 +6,28 @@ namespace tpyapp::main {
 
 // @dispatch
 // def double_wrap(inner: str) -> Own[Box[Rc[str]]]:
+//     return Box(Rc.new(inner))
 ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>> double_wrap(std::string_view inner) {
-    // return Box(Rc.new(inner))
     return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>>(Rc<std::string>::new_<std::string>(std::string(inner)));
 }
 
 // def main() -> None:
+//     b: Box[Rc[Pet]] = double_wrap(Rc.new(Dog("Spot")))  # tpyc: type(Box[Rc[Pet]])
+//     print(b.get().get().name())
 void main() {
-    // b: Box[Rc[Pet]] = double_wrap(Rc.new(Dog("Spot")))  # tpyc: type(Box[Rc[Pet]])
     ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<Pet>> b = double_wrap<Pet>(Rc<Pet>::new_<::tpy::Adapter<Pet, Dog>>(Dog("Spot")));
-    // print(b.get().get().name())
     std::cout << b.get().get().name() << "\n";
 }
 
+// from tplib import Box, Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box, Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

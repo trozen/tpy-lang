@@ -7,32 +7,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [3, 1, 2]
+//     print(total(each(nums)))    # tpyc: ok
+//
+//     items: list[Item] = [Item(3), Item(1), Item(2)]
+//     print(keysum(each(items)))  # tpyc: ok
+//
+//     # Same overload resolution with the frame-shaped generator on the left.
+//     print(total(each_twice(nums)))     # tpyc: ok
+//     print(keysum(each_twice(items)))   # tpyc: ok
 void main() {
-    // nums: list[int32] = [3, 1, 2]
     std::vector<int32_t> nums = {3, 1, 2};
-    // print(total(each(nums)))    # tpyc: ok
     auto __tmp_1 = each<int32_t>(nums);
     std::cout << total(__tmp_1) << "\n";
-    // items: list[Item] = [Item(3), Item(1), Item(2)]
     std::vector<Item> items = {Item(3), Item(1), Item(2)};
-    // print(keysum(each(items)))  # tpyc: ok
     auto __tmp_2 = each<Item>(items);
     std::cout << keysum(__tmp_2) << "\n";
-    // # Same overload resolution with the frame-shaped generator on the left.
-    // print(total(each_twice(nums)))     # tpyc: ok
     auto __tmp_3 = each_twice<int32_t>(nums);
     std::cout << total(__tmp_3) << "\n";
-    // print(keysum(each_twice(items)))   # tpyc: ok
     auto __tmp_4 = each_twice<Item>(items);
     std::cout << keysum(__tmp_4) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

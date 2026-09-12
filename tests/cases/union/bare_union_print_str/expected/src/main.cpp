@@ -5,44 +5,45 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: int32 | str = 5
+//     print(a)  # tpyc: ok
+//     print(str(a))  # tpyc: ok
+//     a = "hi"
+//     print(a)
+//     print(str(a))
+//
+//     # Pointer-variant record union: print after a narrow+mutate observes the
+//     # live object (a silent copy at the print boundary would print Counter(1)).
+//     u: Counter | str = Counter(1)
+//     print(u)  # tpyc: ok
+//     print(str(u))  # tpyc: ok
+//     if isinstance(u, Counter):
+//         u.n = 99
+//     print(u)
 void main() {
-    // a: int32 | str = 5
     ::tpy::Union<int32_t, std::string> a = 5;
-    // print(a)  # tpyc: ok
     std::cout << ::tpy::__str__(a) << "\n";
-    // print(str(a))  # tpyc: ok
     std::cout << ::tpy::__str__(a) << "\n";
-    // a = "hi"
     a = "hi";
-    // print(a)
     std::cout << ::tpy::__str__(a) << "\n";
-    // print(str(a))
     std::cout << ::tpy::__str__(a) << "\n";
-    // # Pointer-variant record union: print after a narrow+mutate observes the
-    // # live object (a silent copy at the print boundary would print Counter(1)).
-    // u: Counter | str = Counter(1)
     ::tpy::Union<Counter, std::string> __slot_1 = Counter(1);
     ::tpy::Union<Counter*, std::string*> u = ::tpy::to_ptr_variant(__slot_1);
-    // print(u)  # tpyc: ok
     std::cout << ::tpy::__str__(u) << "\n";
-    // print(str(u))  # tpyc: ok
     std::cout << std::string(::tpy::__str__(u)) << "\n";
-    // if isinstance(u, Counter):
     if (true) {
         auto& __u = *std::get<Counter*>(u);
-        // u.n = 99
         __u.n = 99;
     }
-    // print(u)
     std::cout << ::tpy::__str__(u) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

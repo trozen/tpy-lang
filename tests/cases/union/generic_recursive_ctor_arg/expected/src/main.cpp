@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def count_leaves(t: Tree[int32]) -> int32:
+//     match t:
+//         case list() as branches:
+//             n = 0
+//             for c in branches:
+//                 n += count_leaves(c)
+//             return n
+//         case _:
+//             return 1
 int32_t count_leaves(const Tree<int32_t>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // n = 0
         int32_t n = 0;
-        // for c in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& c = *__beg_0;
-            // n += count_leaves(c)
             n = ::tpy::add_check<int32_t>(n, count_leaves(c));
         }
-        // return n
         return n;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }
@@ -38,25 +38,25 @@ int32_t count_leaves(const Tree<int32_t>& t) {
 }
 
 // def main() -> None:
+//     seed: Tree[int32] = [1, [2, 3], 4]
+//     s = Summary(seed)  # tpyc: ok
+//     print(s.n)
+//     leaf: Tree[int32] = 7
+//     print(Summary(leaf).n)  # tpyc: ok
 void main() {
-    // seed: Tree[int32] = [1, [2, 3], 4]
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}, 4};
-    // s = Summary(seed)  # tpyc: ok
     Summary s = Summary(seed);
-    // print(s.n)
     std::cout << s.n << "\n";
-    // leaf: Tree[int32] = 7
     Tree<int32_t> leaf = 7;
-    // print(Summary(leaf).n)  # tpyc: ok
     std::cout << Summary(leaf).n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

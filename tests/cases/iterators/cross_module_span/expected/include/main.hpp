@@ -12,7 +12,9 @@ using ::tpyapp::pool::make_pool;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def total(xs: Span[readonly[int32]]) -> int32:
 int32_t total(std::span<const int32_t> xs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

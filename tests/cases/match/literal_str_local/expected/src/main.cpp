@@ -6,83 +6,86 @@ namespace tpyapp::main {
 
 // # match/case on local str variables (PendingStrType before resolution)
 // def classify_items(items: list[str]) -> None:
+//     for item in items:
+//         match item:
+//             case "apple":
+//                 print("fruit")
+//             case "carrot":
+//                 print("vegetable")
+//             case _:
+//                 print("unknown: " + item)
 void classify_items(const std::vector<std::string>& items) {
-    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view item = *__beg_0;
-        // match item:
         auto& __match_subject_1 = item;
-        // case "apple":
         if (__match_subject_1 == "apple") {
-            // print("fruit")
             std::cout << "fruit" << "\n";
-        // case "carrot":
         } else if (__match_subject_1 == "carrot") {
-            // print("vegetable")
             std::cout << "vegetable" << "\n";
-        // case _:
         } else {
-            // print("unknown: " + item)
             std::cout << (::tpy::str_concat("unknown: ", item)) << "\n";
         }
     }
 }
 
 // def classify_many(items: list[str]) -> None:
+//     """Switch-optimized path (>= 5 literal cases)."""
+//     for item in items:
+//         match item:
+//             case "red":
+//                 print("color")
+//             case "green":
+//                 print("color")
+//             case "blue":
+//                 print("color")
+//             case "cat":
+//                 print("animal")
+//             case "dog":
+//                 print("animal")
+//             case other:
+//                 print("other: " + other)
 void classify_many(const std::vector<std::string>& items) {
-    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view item = *__beg_0;
-        // match item:
         auto& __match_subject_1 = item;
         if (__match_subject_1.size() >= 1) {
             switch (static_cast<unsigned char>(__match_subject_1[0])) {
             case 'b': {
-                // case "blue":
                 if (__match_subject_1 == "blue") {
-                    // print("color")
                     std::cout << "color" << "\n";
                     goto __match_end_2;
                 }
                 break;
             }
             case 'c': {
-                // case "cat":
                 if (__match_subject_1 == "cat") {
-                    // print("animal")
                     std::cout << "animal" << "\n";
                     goto __match_end_2;
                 }
                 break;
             }
             case 'd': {
-                // case "dog":
                 if (__match_subject_1 == "dog") {
-                    // print("animal")
                     std::cout << "animal" << "\n";
                     goto __match_end_2;
                 }
                 break;
             }
             case 'g': {
-                // case "green":
                 if (__match_subject_1 == "green") {
-                    // print("color")
                     std::cout << "color" << "\n";
                     goto __match_end_2;
                 }
                 break;
             }
             case 'r': {
-                // case "red":
                 if (__match_subject_1 == "red") {
-                    // print("color")
                     std::cout << "color" << "\n";
                     goto __match_end_2;
                 }
@@ -90,10 +93,8 @@ void classify_many(const std::vector<std::string>& items) {
             }
             }
         }
-        // case other:
         {
             auto& other = __match_subject_1;
-            // print("other: " + other)
             std::cout << (::tpy::str_concat("other: ", other)) << "\n";
             goto __match_end_2;
         }
@@ -102,21 +103,21 @@ void classify_many(const std::vector<std::string>& items) {
 }
 
 // def main() -> None:
+//     classify_items(["apple", "carrot", "banana"])
+//     classify_many(["red", "cat", "dog", "xyz"])
 void main() {
-    // classify_items(["apple", "carrot", "banana"])
     std::vector<std::string> __tmp_1 = {"apple", "carrot", "banana"};
     classify_items(__tmp_1);
-    // classify_many(["red", "cat", "dog", "xyz"])
     std::vector<std::string> __tmp_2 = {"red", "cat", "dog", "xyz"};
     classify_many(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

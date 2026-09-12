@@ -10,15 +10,25 @@ namespace tpyapp::main {
 extern std::vector<int32_t>* span_src;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_basic() -> None:
 void test_basic();
+// def test_negative() -> None:
 void test_negative();
+// def test_clamping() -> None:
 void test_clamping();
+// def test_empty() -> None:
 void test_empty();
+// def test_type_inference() -> None:
 void test_type_inference();
+// def test_array() -> None:
 void test_array();
+// def test_span(s: Span[int32]) -> None:
 void test_span(std::span<int32_t> s);
+// def test_readonly_list(items: list[int32]) -> None:
 void test_readonly_list(const std::vector<int32_t>& items);
+// def test_readonly_span_param(s: Span[readonly[int32]]) -> None:
 void test_readonly_span_param(std::span<const int32_t> s);
+// def test_single_element() -> None:
 void test_single_element();
 
 void __tpy_init();

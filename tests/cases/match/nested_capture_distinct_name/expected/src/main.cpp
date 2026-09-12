@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def keeps_alias(h: Holder, g: Holder) -> int:
+//     match h:
+//         case Holder(inner=q):
+//             match g:
+//                 case Holder(tag=t):   # tpyc: ok -- different name
+//                     pass
+//             h.inner.n = 42            # mutate through the subject
+//             return q.n + t            # 42 + 7 -- q still aliases h.inner
+//     return -1
 ::tpy::BigInt keeps_alias(Holder& h, const Holder& g) {
-    // match h:
     auto& __match_subject_1 = h;
-    // case Holder(inner=q):
     {
         auto& q = __match_subject_1.inner;
-        // match g:
         ::tpy::BigInt t;
         auto& __match_subject_2 = g;
-        // case Holder(tag=t):   # tpyc: ok -- different name
         {
             t = __match_subject_2.tag;
-            // pass
         }
-        // h.inner.n = 42            # mutate through the subject
         h.inner.n = ::tpy::BigInt(42);
-        // return q.n + t            # 42 + 7 -- q still aliases h.inner
         return ((q.n) + (t));
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     print(keeps_alias(Holder(Inner(1), 3), Holder(Inner(2), 7)))
 void main() {
-    // print(keeps_alias(Holder(Inner(1), 3), Holder(Inner(2), 7)))
     Holder __tmp_1 = Holder(Inner(::tpy::BigInt(1)), ::tpy::BigInt(3));
     Holder __tmp_2 = Holder(Inner(::tpy::BigInt(2)), ::tpy::BigInt(7));
     std::cout << keeps_alias(__tmp_1, __tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def pick(x: int32 | None, flag: bool) -> int32:
+//     if x and flag:  # tpyc: warning(/variable 'x'/)
+//         return x + 1  # tpyc: ok
+//     return 0
 int32_t pick(std::optional<int32_t> x, bool flag) {
-    // if x and flag:  # tpyc: warning(/variable 'x'/)
     if ((::tpy::is_truthy(x) && flag)) {
-        // return x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    // return 0
     return 0;
 }
 
+// print(pick(3, True))
+// print(pick(0, True))
+// print(pick(None, True))
+// print(pick(3, False))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(pick(3, True))
     std::cout << pick(3, true) << "\n";
-    // print(pick(0, True))
     std::cout << pick(0, true) << "\n";
-    // print(pick(None, True))
     std::cout << pick(std::nullopt, true) << "\n";
-    // print(pick(3, False))
     std::cout << pick(3, false) << "\n";
 }
 

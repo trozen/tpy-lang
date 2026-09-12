@@ -12,6 +12,7 @@ struct Counter;
 extern Counter* g;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -37,19 +38,20 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.opens = 0
 inline Counter::Counter() : opens(0) {}
 
 // def __enter__(self) -> int32:
+//     self.opens += 1
+//     return self.opens
 inline int32_t Counter::__enter__() {
-    // self.opens += 1
     this->opens = ::tpy::add_check<int32_t>(this->opens, 1);
-    // return self.opens
     return this->opens;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void Counter::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

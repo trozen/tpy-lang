@@ -5,8 +5,8 @@ namespace tpyapp::inner {
 
 
 // def shared_helper() -> None:
+//     print("hi from inner")
 void shared_helper() {
-    // print("hi from inner")
     std::cout << "hi from inner" << "\n";
 }
 

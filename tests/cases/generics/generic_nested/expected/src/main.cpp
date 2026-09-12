@@ -5,30 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Test Container[int32] which internally uses Box[int32]
+//     c: Container[int32] = Container[int32](42)
+//     print(c.get_value())
+//
+//     # Get the inner box
+//     box: Box[int32] = c.get_inner()
+//     print(box.get())
+//
+//     # Local variable with type parameter (tests the second fix)
+//     c2: Container[str] = Container[str]("hello")
+//     print(c2.get_value())
 void main() {
-    // # Test Container[int32] which internally uses Box[int32]
-    // c: Container[int32] = Container[int32](42)
     Container<int32_t> c = Container<int32_t>(42);
-    // print(c.get_value())
     std::cout << c.get_value() << "\n";
-    // # Get the inner box
-    // box: Box[int32] = c.get_inner()
     Box<int32_t>& box = c.get_inner();
-    // print(box.get())
     std::cout << box.get() << "\n";
-    // # Local variable with type parameter (tests the second fix)
-    // c2: Container[str] = Container[str]("hello")
     Container<std::string> c2 = Container<std::string>("hello");
-    // print(c2.get_value())
     std::cout << c2.get_value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

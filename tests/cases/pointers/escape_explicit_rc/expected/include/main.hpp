@@ -15,7 +15,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def rc_is_shared() -> None:
 void rc_is_shared();
+// def rc_outlives_the_loop() -> None:
 void rc_outlives_the_loop();
 
 // class Point:
@@ -36,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

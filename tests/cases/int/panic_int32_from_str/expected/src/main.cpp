@@ -3,19 +3,17 @@
 
 namespace tpyapp::main {
 
-// # Invalid string for int32 parsing
-// x: int32 = int32("abc")
 int32_t x{};
 
+// # Invalid string for int32 parsing
+// x: int32 = int32("abc")
+// print(x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Invalid string for int32 parsing
-    // x: int32 = int32("abc")
     x = ::tpy::from_str_check<int32_t>("abc");
-    // print(x)
     std::cout << x << "\n";
 }
 

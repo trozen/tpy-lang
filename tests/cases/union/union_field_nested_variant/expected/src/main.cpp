@@ -5,56 +5,56 @@ namespace tpyapp::main {
 
 
 // def describe_zoo(z: Zoo) -> str:
+//     match z:
+//         case Zoo(animal=Cat(name=n)):
+//             return "cat: " + n
+//         case Zoo(animal=Dog(name=n)):
+//             return "dog: " + n
+//         case _:
+//             return "other"
 std::string describe_zoo(const Zoo& z) {
-    // match z:
     auto& __match_subject_1 = z;
-    // case Zoo(animal=Cat(name=n)):
     if (std::holds_alternative<Cat>(__match_subject_1.animal)) {
         auto& __field_match_subject_1_animal = std::get<Cat>(__match_subject_1.animal);
         auto& n = __field_match_subject_1_animal.name;
-        // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
-    // case Zoo(animal=Dog(name=n)):
     } else if (std::holds_alternative<Dog>(__match_subject_1.animal)) {
         auto& __field_match_subject_1_animal = std::get<Dog>(__match_subject_1.animal);
         auto& n = __field_match_subject_1_animal.name;
-        // return "dog: " + n
         return (::tpy::str_concat("dog: ", n));
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     ball: Ball | Mouse = Ball("red")
+//     cat: Cat | Dog = Cat("Luna", ball)
+//     z1 = Zoo(cat)
+//     dog: Cat | Dog = Dog("Rex")
+//     z2 = Zoo(dog)
+//     print(describe_zoo(z1))
+//     print(describe_zoo(z2))
 void main() {
-    // ball: Ball | Mouse = Ball("red")
     ::tpy::Union<Ball, Mouse> __slot_1 = Ball("red");
     ::tpy::Union<Ball*, Mouse*> ball = ::tpy::to_ptr_variant(__slot_1);
-    // cat: Cat | Dog = Cat("Luna", ball)
     ::tpy::Union<Cat, Dog> __slot_2 = Cat("Luna", ball.as_const());
     ::tpy::Union<Cat*, Dog*> cat = ::tpy::to_ptr_variant(__slot_2);
-    // z1 = Zoo(cat)
     Zoo z1 = Zoo(cat.as_const());
-    // dog: Cat | Dog = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_3 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> dog = ::tpy::to_ptr_variant(__slot_3);
-    // z2 = Zoo(dog)
     Zoo z2 = Zoo(dog.as_const());
-    // print(describe_zoo(z1))
     std::cout << describe_zoo(z1) << "\n";
-    // print(describe_zoo(z2))
     std::cout << describe_zoo(z2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

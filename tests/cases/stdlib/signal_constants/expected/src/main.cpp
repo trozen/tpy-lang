@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main():
+//     print(int(SIGINT))
+//     print(int(SIGTERM))
 void main() {
-    // print(int(SIGINT))
     std::cout << ::tpy::BigInt(static_cast<int64_t>(::tpy_const_sigint)) << "\n";
-    // print(int(SIGTERM))
     std::cout << ::tpy::BigInt(static_cast<int64_t>(::tpy_const_sigterm)) << "\n";
 }
 
+// # signal.SIGINT / SIGTERM are sourced from <signal.h> via native_global so the
+// # generated constant doesn't collide with the libc SIGINT/SIGTERM macros, which
+// # are in scope in every generated TU on macOS (a plain constexpr named SIGINT
+// # expands to `int32_t 2 = 2`). Regression guard for that collision.
+// from signal import SIGINT, SIGTERM
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # signal.SIGINT / SIGTERM are sourced from <signal.h> via native_global so the
-    // # generated constant doesn't collide with the libc SIGINT/SIGTERM macros, which
-    // # are in scope in every generated TU on macOS (a plain constexpr named SIGINT
-    // # expands to `int32_t 2 = 2`). Regression guard for that collision.
-    // from signal import SIGINT, SIGTERM
     ::tpystd::signal::__tpy_init();
-    // main()
     main();
 }
 

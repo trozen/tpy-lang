@@ -5,89 +5,90 @@ namespace tpyapp::main {
 
 
 // def boom() -> int32:
+//     raise ValueError("nope")
 int32_t boom() {
-    // raise ValueError("nope")
     throw ::tpy::ValueError("nope");
 }
 
 // def swap() -> None:
+//     a = 1
+//     b = 2
+//     a, b = (b, a)
+//     print(a)
+//     print(b)
 void swap() {
-    // a = 1
     int32_t a = 1;
-    // b = 2
     int32_t b = 2;
-    // a, b = (b, a)
     int32_t __unpack_0_0 = b;
     int32_t __unpack_0_1 = a;
     a = __unpack_0_0;
     b = __unpack_0_1;
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def fib() -> None:
+//     x = 0
+//     y = 1
+//     for _ in range(5):
+//         x, y = (y, x + y)
+//     print(x)
+//     print(y)
 void fib() {
-    // x = 0
     int32_t x = 0;
-    // y = 1
     int32_t y = 1;
-    // for _ in range(5):
     for (int32_t _ = 0; _ < 5; ++_) {
-        // x, y = (y, x + y)
         int32_t __unpack_1_0 = y;
         int32_t __unpack_1_1 = (::tpy::add_check<int32_t>(x, y));
         x = __unpack_1_0;
         y = __unpack_1_1;
     }
-    // print(x)
     std::cout << x << "\n";
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def eval_order() -> None:
+//     a = 7
+//     b = 8
+//     try:
+//         a, b = (70, boom())
+//     except ValueError:
+//         pass
+//     # The RHS raised before any visible target was bound -> both unchanged.
+//     print(a)
+//     print(b)
 void eval_order() {
-    // a = 7
     int32_t a = 7;
-    // b = 8
     int32_t b = 8;
-    // try:
     {
         try {
-            // a, b = (70, boom())
             int32_t __unpack_2_0 = 70;
             int32_t __unpack_2_1 = boom();
             a = __unpack_2_0;
             b = __unpack_2_1;
         } catch (const ::tpy::ValueError&) {
-            // pass
         }
     }
-    // # The RHS raised before any visible target was bound -> both unchanged.
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def main() -> None:
+//     swap()
+//     fib()
+//     eval_order()
 void main() {
-    // swap()
     swap();
-    // fib()
     fib();
-    // eval_order()
     eval_order();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

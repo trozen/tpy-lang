@@ -31,7 +31,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(pet: Pet) -> None:
 void greet(const Pet& pet);
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -86,15 +88,15 @@ namespace tpyapp::main {
 
 // @readonly
 // def name(self) -> str:
+//     return "Rex"
 inline std::string Dog::name() const {
-    // return "Rex"
     return "Rex";
 }
 
 // @readonly
 // def name(self) -> str:
+//     return "Whiskers"
 inline std::string Cat::name() const {
-    // return "Whiskers"
     return "Whiskers";
 }
 void __tpy_init();

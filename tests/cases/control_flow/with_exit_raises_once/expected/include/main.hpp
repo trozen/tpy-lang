@@ -12,9 +12,13 @@ struct Quiet;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fall_through() -> None:
 void fall_through();
+// def nested_inner_throws() -> None:
 void nested_inner_throws();
+// def body_raises_exit_throws() -> None:
 void body_raises_exit_throws();
+// def main() -> None:
 void main();
 
 // # Regression: an __exit__ that RAISES on the with's fall-through path must run
@@ -63,31 +67,32 @@ inline std::ostream& operator<<(std::ostream& os, const Quiet& obj) {
 
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt Thrower::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("exit ran")
+//     raise RuntimeError("from exit")
 inline void Thrower::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("exit ran")
     std::cout << "exit ran" << "\n";
-    // raise RuntimeError("from exit")
     throw ::tpy::RuntimeError("from exit");
 }
 
 // def __init__(self, tag: str) -> None:
+//     self.tag = tag
 inline Quiet::Quiet(std::string_view tag) : tag(tag) {}
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt Quiet::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print(f"exit {self.tag}")
 inline void Quiet::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print(f"exit {self.tag}")
     std::cout << std::format("exit {}", this->tag) << "\n";
 }
 void __tpy_init();

@@ -3,49 +3,48 @@
 
 namespace tpyapp::main {
 
-// BUF: bytearray = bytearray(b"ab")
 ::tpy::ByteArray* BUF{};
-// NUMS: list[int32] = [1, 2]
 std::vector<int32_t>* NUMS{};
 
 // def add(n: uint8) -> None:
+//     BUF.append(n)  # tpyc: ok
 void add(uint8_t n) {
-    // BUF.append(n)  # tpyc: ok
     BUF->push_back(n);
 }
 
 // def add_num(n: int32) -> None:
+//     NUMS.append(n)
 void add_num(int32_t n) {
-    // NUMS.append(n)
     NUMS->push_back(n);
 }
 
 // def main() -> None:
+//     add(67)
+//     print(len(BUF), BUF[2])
+//     print(BUF.upper())
+//     add_num(3)
+//     print(len(NUMS))
 void main() {
-    // add(67)
     add(67);
-    // print(len(BUF), BUF[2])
     std::cout << ::tpy::__len__((*BUF)) << " " << static_cast<int>(::tpy::bytes_getitem((*BUF), 2)) << "\n";
-    // print(BUF.upper())
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper((*BUF))) << "\n";
-    // add_num(3)
     add_num(3);
-    // print(len(NUMS))
     std::cout << ::tpy::__len__((*NUMS)) << "\n";
 }
 
+// BUF: bytearray = bytearray(b"ab")
+// NUMS: list[int32] = [1, 2]
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // BUF: bytearray = bytearray(b"ab")
     static ::tpy::ByteArray __global_slot_1 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     BUF = &__global_slot_1;
-    // NUMS: list[int32] = [1, 2]
     static std::vector<int32_t> __global_slot_2 = {1, 2};
     NUMS = &__global_slot_2;
-    // main()
     main();
 }
 

@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = A(1)
+//     a.bs.append(B(2))
+//     a.bs[0].as_.append(A(3))
+//     a.bs[0].val = 20
+//     print(a.val, a.bs[0].val, len(a.bs[0].as_))
 void main() {
-    // a = A(1)
     A a = A(1);
-    // a.bs.append(B(2))
     a.bs.push_back(B(2));
-    // a.bs[0].as_.append(A(3))
     ::tpy::__getitem__(a.bs, 0).as_.push_back(A(3));
-    // a.bs[0].val = 20
     ::tpy::__getitem__(a.bs, 0).val = 20;
-    // print(a.val, a.bs[0].val, len(a.bs[0].as_))
     std::cout << a.val << " " << ::tpy::__getitem__(a.bs, 0).val << " " << ::tpy::__len__(::tpy::__getitem__(a.bs, 0).as_) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

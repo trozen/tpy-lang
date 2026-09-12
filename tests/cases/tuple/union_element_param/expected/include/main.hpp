@@ -12,8 +12,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_second(pair: tuple[Dog | Cat, int32]) -> int32:
 int32_t read_second(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>& pair);
+// def passthrough(pair: tuple[Dog | Cat, int32]) -> int32:
 int32_t passthrough(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>& pair);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -62,9 +65,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, b: int32) -> None:
+//     self.bark = b
 inline Dog::Dog(int32_t b) : bark(b) {}
 
 // def __init__(self, m: int32) -> None:
+//     self.meow = m
 inline Cat::Cat(int32_t m) : meow(m) {}
 void __tpy_init();
 } // namespace tpyapp::main

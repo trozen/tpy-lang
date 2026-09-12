@@ -12,6 +12,7 @@ struct Conn;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Conn:
@@ -40,22 +41,24 @@ inline std::ostream& operator<<(std::ostream& os, const Conn& obj) {
 
 
 // def __init__(self, h: str, t: float | None) -> None:
+//     self.host = h
+//     self.timeout = t
 inline Conn::Conn(std::string_view h, std::optional<double> t) : host(h), timeout(t) {}
 
 // def whole(self) -> int32:
+//     return dialer.dial(self.host, self.timeout)
 inline int32_t Conn::whole() const {
-    // return dialer.dial(self.host, self.timeout)
     return ::tpyapp::dialer::dial(this->host, this->timeout);
 }
 
 // def narrowed(self) -> int32:
+//     if self.timeout is None:
+//         return 0
+//     return dialer.dial(self.host, self.timeout)
 inline int32_t Conn::narrowed() const {
-    // if self.timeout is None:
     if ((!this->timeout.has_value())) {
-        // return 0
         return 0;
     }
-    // return dialer.dial(self.host, self.timeout)
     return ::tpyapp::dialer::dial(this->host, (*this->timeout));
 }
 void __tpy_init();

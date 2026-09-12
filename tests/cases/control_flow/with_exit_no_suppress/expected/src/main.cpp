@@ -5,17 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         with Bouncer() as x:
+//             print(f"x={x}")
+//             raise ValueError("propagate me")
+//     except ValueError as e:
+//         print(f"outer caught: {str(e)}")
 void main() {
-    // try:
     {
         try {
-            // with Bouncer() as x:
             auto __ctx_1 = Bouncer();
             auto x = __ctx_1.__enter__();
             try {
-                // print(f"x={x}")
                 std::cout << std::format("x={}", (x).to_string()) << "\n";
-                // raise ValueError("propagate me")
                 throw ::tpy::ValueError("propagate me");
             } catch (::tpy::BaseException& __exc_1) {
                 if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
@@ -24,18 +26,17 @@ void main() {
                 throw;
             }
         } catch (const ::tpy::ValueError& e) {
-            // print(f"outer caught: {str(e)}")
             std::cout << std::format("outer caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

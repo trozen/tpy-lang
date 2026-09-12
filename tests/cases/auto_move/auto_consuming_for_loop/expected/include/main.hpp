@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_last_use() -> int32:
 int32_t sum_last_use();
+// def sum_not_last_use() -> int32:
 int32_t sum_not_last_use();
+// def main() -> None:
 void main();
 
 void __tpy_init();

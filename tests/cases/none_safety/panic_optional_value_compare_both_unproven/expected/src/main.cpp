@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def gt_pair(a: int32 | None, b: int32 | None) -> bool:
+//     return a > b  # tpyc: warning(/Potential None access/)
 bool gt_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // return a > b  # tpyc: warning(/Potential None access/)
     return (::tpy::deref_optional_check(a) > ::tpy::deref_optional_check(b));
 }
 
+// print(gt_pair(3, 1))
+// print(gt_pair(None, 1))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(gt_pair(3, 1))
     std::cout << ::tpy::print_bool(gt_pair(3, 1)) << "\n";
-    // print(gt_pair(None, 1))
     std::cout << ::tpy::print_bool(gt_pair(std::nullopt, 1)) << "\n";
 }
 

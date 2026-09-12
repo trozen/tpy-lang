@@ -5,69 +5,72 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Stack()
+//     s.push(10)
+//     s.push(20)
+//     s.push(30)
+//
+//     # Non-const iteration
+//     for x in s:
+//         print(x)
+//
+//     # Const iteration via __repr__
+//     print(repr(s))
+//
+//     # Const iteration via readonly method
+//     print(s.sum())
 void main() {
-    // s = Stack()
     Stack s = Stack();
-    // s.push(10)
     s.push(10);
-    // s.push(20)
     s.push(20);
-    // s.push(30)
     s.push(30);
-    // # Non-const iteration
-    // for x in s:
     auto& __src_0 = s;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
-    // # Const iteration via __repr__
-    // print(repr(s))
     std::cout << ::tpy::repr_of(s) << "\n";
-    // # Const iteration via readonly method
-    // print(s.sum())
     std::cout << s.sum() << "\n";
 }
 
 
 // def __repr__(self) -> str:
+//     s = "Stack("
+//     first = True
+//     for x in self:
+//         if not first:
+//             s += ", "
+//         first = False
+//         s += str(x)
+//     s += ")"
+//     return s
 std::string Stack::__repr__() const {
-    // s = "Stack("
     std::string s = "Stack(";
-    // first = True
     bool first = true;
-    // for x in self:
     auto& __src_0 = (*this);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // if not first:
         if ((!(first))) {
-            // s += ", "
             s += ", ";
         }
-        // first = False
         first = false;
-        // s += str(x)
         s += ::tpy::fixed_to_str<int32_t>(x);
     }
-    // s += ")"
     s += ")";
-    // return s
     return s;
 }
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // async def driver() -> None:
+//     s = Svc()
+//     v = await s.fetch()
+//     print(v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s = Svc()
         s.emplace(Svc());
-        // v = await s.fetch()
         __sub_0.emplace((*s));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +21,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r0).value();
         __sub_0.reset();
-        // print(v)
         std::cout << v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,10 +37,10 @@ __coro_driver driver() {
 }
 
 // async def main_coro() -> None:
+//     await driver()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await driver()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -65,16 +65,17 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def fetch(self) -> int32:
+//     await asyncio.sleep(0)
+//     return 7
 ::tpystd::tpy::Poll<int32_t> __coro_Svc_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -84,7 +85,6 @@ void main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return 7
         __state = S_DONE;
         int32_t __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -95,18 +95,19 @@ void main() {
 }
 
 
+// # Regression guard for the historical ordering: a free coroutine awaiting a
+// # METHOD coroutine (the case the old method-first emission was built for). The
+// # dependency-ordered emission still puts the method struct before its free
+// # awaiter.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression guard for the historical ordering: a free coroutine awaiting a
-    // # METHOD coroutine (the case the old method-first emission was built for). The
-    // # dependency-ordered emission still puts the method struct before its free
-    // # awaiter.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

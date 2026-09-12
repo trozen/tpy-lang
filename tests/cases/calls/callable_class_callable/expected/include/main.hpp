@@ -12,7 +12,9 @@ struct Adder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def apply(f: Callable[[int32], int32], x: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t x);
+// def main():
 void main();
 
 // class Doubler:
@@ -58,17 +60,18 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
 
 
 // def __call__(self, x: int32) -> int32:
+//     return x * 2
 inline int32_t Doubler::__call__(int32_t x) const {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def __init__(self, offset: int32):
+//     self.offset = offset
 inline Adder::Adder(int32_t offset) : offset(offset) {}
 
 // def __call__(self, x: int32) -> int32:
+//     return x + self.offset
 inline int32_t Adder::__call__(int32_t x) const {
-    // return x + self.offset
     return (::tpy::add_check<int32_t>(x, this->offset));
 }
 void __tpy_init();

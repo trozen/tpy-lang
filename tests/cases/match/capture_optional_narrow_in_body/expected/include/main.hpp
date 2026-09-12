@@ -12,7 +12,9 @@ struct Test;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(s: Build | Test) -> None:
 void describe(::tpy::Union<const Build*, const Test*> s);
+// def main() -> None:
 void main();
 
 // class Build:
@@ -51,9 +53,12 @@ inline std::ostream& operator<<(std::ostream& os, const Test& obj) {
 
 
 // def __init__(self, target: Optional[str], jobs: Optional[str]) -> None:
+//     self.target = target
+//     self.jobs = jobs
 inline Build::Build(std::optional<std::string_view> target, std::optional<std::string_view> jobs) : target(target ? std::make_optional(std::string(*target)) : std::nullopt), jobs(jobs ? std::make_optional(std::string(*jobs)) : std::nullopt) {}
 
 // def __init__(self, filter_: Optional[str]) -> None:
+//     self.filter_ = filter_
 inline Test::Test(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

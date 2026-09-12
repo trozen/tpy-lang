@@ -6,37 +6,37 @@ namespace tpyapp::main {
 
 // # @dynamic protocol: non-mutated param -> const Base&
 // def print_area(s: Shape) -> None:
+//     print(s.area())
 void print_area(const Shape& s) {
-    // print(s.area())
     std::cout << s.area() << "\n";
 }
 
 // def main() -> None:
+//     b = Box(10)
+//     print(get_measure(b))
+//     print(double_resize(b))
+//     print(get_measure(b))
+//     copy_measure(Box(5), b)
+//     print(b.measure())
+//     print_area(Rect(3, 4))
 void main() {
-    // b = Box(10)
     Box b = Box(10);
-    // print(get_measure(b))
     std::cout << get_measure(b) << "\n";
-    // print(double_resize(b))
     std::cout << double_resize(b) << "\n";
-    // print(get_measure(b))
     std::cout << get_measure(b) << "\n";
-    // copy_measure(Box(5), b)
     auto __tmp_1 = Box(5);
     copy_measure(__tmp_1, b);
-    // print(b.measure())
     std::cout << b.measure() << "\n";
-    // print_area(Rect(3, 4))
     ::tpy::Adapter<Shape, Rect> __tmp_2{Rect(3, 4)};
     print_area(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

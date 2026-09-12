@@ -3,25 +3,24 @@
 
 namespace tpyapp::main {
 
-// x: int32 = -2147483648  # INT32_MIN
 int32_t x{};
-// y: int32 = -1
 int32_t y{};
-// z: int32 = x // y       # Result would be INT32_MAX + 1, should panic
 int32_t z{};
 
+// """Test int32 division overflow panic at runtime."""
+//
+// x: int32 = -2147483648  # INT32_MIN
+// y: int32 = -1
+// z: int32 = x // y       # Result would be INT32_MAX + 1, should panic
+// print(z)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 = -2147483648  # INT32_MIN
     x = -2147483648;
-    // y: int32 = -1
     y = -1;
-    // z: int32 = x // y       # Result would be INT32_MAX + 1, should panic
     z = (::tpy::div_check<int32_t>(x, y));
-    // print(z)
     std::cout << z << "\n";
 }
 

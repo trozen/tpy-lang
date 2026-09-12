@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     line = Line(Point(int32(1), int32(2)), Point(int32(3), int32(4)))
+//     d = asdict(line)
+//     print(d)
+//     t = astuple(line)
+//     print(t)
 void main() {
-    // line = Line(Point(int32(1), int32(2)), Point(int32(3), int32(4)))
     Line line = Line(Point(1, 2), Point(3, 4));
-    // d = asdict(line)
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> d = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", line.start.x}, {"y", line.start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", line.end.x}, {"y", line.end.y}})}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // t = astuple(line)
     std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>> t = std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{line.start.x, line.start.y}, std::tuple<int32_t, int32_t>{line.end.x, line.end.y}};
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
 }
 
+// # Test asdict() with nested dataclass fields
+// from dataclasses import dataclass, asdict, astuple
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test asdict() with nested dataclass fields
-    // from dataclasses import dataclass, asdict, astuple
-    // main()
     main();
 }
 

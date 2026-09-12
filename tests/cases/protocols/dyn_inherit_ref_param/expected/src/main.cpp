@@ -5,39 +5,40 @@ namespace tpyapp::main {
 
 
 // def use(s: Box[Sink], d: dict[str, int32]) -> int32:
+//     s.get().bump(d)
+//     return s.get().total(d)
 int32_t use(::tpystd::tplib::box::Box<Sink>& s, ::tpy::ordered_map<std::string, int32_t>& d) {
-    // s.get().bump(d)
     s.get().bump(d);
-    // return s.get().total(d)
     return s.get().total(&(d));
 }
 
 // def main() -> None:
+//     d = {"a": int32(2), "b": int32(3)}
+//     box: Box[Sink] = Box(Counter(10))
+//     print(use(box, d))
+//     # The mutation is visible here -> the dict was aliased through the box, not
+//     # silently copied at the @dynamic boundary.
+//     print("seen" in d, len(d))
+//     tags: list[str] = ["ab", "cde"]
+//     print(box.get().width(tags))
 void main() {
-    // d = {"a": int32(2), "b": int32(3)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 2}, {"b", 3}});
-    // box: Box[Sink] = Box(Counter(10))
     ::tpystd::tplib::box::Box<Sink> box = ::tpystd::tplib::box::Box<Counter>(Counter(10));
-    // print(use(box, d))
     std::cout << use(box, d) << "\n";
-    // # The mutation is visible here -> the dict was aliased through the box, not
-    // # silently copied at the @dynamic boundary.
-    // print("seen" in d, len(d))
     std::cout << ::tpy::print_bool((d.contains("seen"))) << " " << ::tpy::__len__(d) << "\n";
-    // tags: list[str] = ["ab", "cde"]
     std::vector<std::string> tags = {"ab", "cde"};
-    // print(box.get().width(tags))
     std::cout << box.get().width(tags) << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

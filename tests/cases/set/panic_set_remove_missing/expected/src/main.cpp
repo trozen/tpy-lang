@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: set[int32] = {1, 2, 3}
+//     s.remove(99)
 void main() {
-    // s: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    // s.remove(99)
     ::tpy::set_remove(s, 99);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

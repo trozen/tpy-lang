@@ -6,35 +6,65 @@ namespace tpyapp::main {
 
 // # all() and any() builtins with lists and generator expressions
 // def main() -> None:
+//     t = [True, True, True]
+//     f1 = [True, False, True]
+//     f2 = [False, False, False]
+//     print(all(t))
+//     print(all(f1))
+//     print(all(f2))
+//
+//     a1 = [True, False, False]
+//     a2 = [False, False, False]
+//     a3 = [False, False, True]
+//     print(any(a1))
+//     print(any(a2))
+//     print(any(a3))
+//
+//     # generator expressions
+//     nums = [1, 2, 3, 4, 5]
+//     print(all(x > 0 for x in nums))
+//     print(all(x > 3 for x in nums))
+//     print(any(x > 4 for x in nums))
+//     print(any(x > 10 for x in nums))
+//
+//     # empty iterables
+//     empty: list[bool] = []
+//     print(all(empty))
+//     print(any(empty))
+//
+//     # non-bool: integers (truthy = nonzero)
+//     ints = [1, 2, 3]
+//     print(all(ints))
+//     ints_with_zero = [1, 0, 2]
+//     print(all(ints_with_zero))
+//     print(any(ints_with_zero))
+//
+//     # strings (truthy = non-empty)
+//     strs = ["a", "b", "c"]
+//     print(all(strs))
+//     strs2 = ["a", "", "c"]
+//     print(all(strs2))
+//     print(any(strs2))
+//
+//     # floats (truthy = nonzero)
+//     floats = [1.0, 2.0, 3.0]
+//     print(all(floats))
+//     floats2 = [1.0, 0.0, 3.0]
+//     print(all(floats2))
 void main() {
-    // t = [True, True, True]
     std::array<bool, 3> t = {true, true, true};
-    // f1 = [True, False, True]
     std::array<bool, 3> f1 = {true, false, true};
-    // f2 = [False, False, False]
     std::array<bool, 3> f2 = {false, false, false};
-    // print(all(t))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(t)) << "\n";
-    // print(all(f1))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(f1)) << "\n";
-    // print(all(f2))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(f2)) << "\n";
-    // a1 = [True, False, False]
     std::array<bool, 3> a1 = {true, false, false};
-    // a2 = [False, False, False]
     std::array<bool, 3> a2 = {false, false, false};
-    // a3 = [False, False, True]
     std::array<bool, 3> a3 = {false, false, true};
-    // print(any(a1))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(a1)) << "\n";
-    // print(any(a2))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(a2)) << "\n";
-    // print(any(a3))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(a3)) << "\n";
-    // # generator expressions
-    // nums = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> nums = {1, 2, 3, 4, 5};
-    // print(all(x > 0 for x in nums))
     std::cout << ::tpy::print_bool(::tpy::builtin_all([&nums]() {
         auto& __src = nums;
         return ::tpy::make_generator<bool>(
@@ -47,7 +77,6 @@ void main() {
             }
         );
     }())) << "\n";
-    // print(all(x > 3 for x in nums))
     std::cout << ::tpy::print_bool(::tpy::builtin_all([&nums]() {
         auto& __src = nums;
         return ::tpy::make_generator<bool>(
@@ -60,7 +89,6 @@ void main() {
             }
         );
     }())) << "\n";
-    // print(any(x > 4 for x in nums))
     std::cout << ::tpy::print_bool(::tpy::builtin_any([&nums]() {
         auto& __src = nums;
         return ::tpy::make_generator<bool>(
@@ -73,7 +101,6 @@ void main() {
             }
         );
     }())) << "\n";
-    // print(any(x > 10 for x in nums))
     std::cout << ::tpy::print_bool(::tpy::builtin_any([&nums]() {
         auto& __src = nums;
         return ::tpy::make_generator<bool>(
@@ -86,52 +113,31 @@ void main() {
             }
         );
     }())) << "\n";
-    // # empty iterables
-    // empty: list[bool] = []
     std::vector<bool> empty = std::vector<bool>{};
-    // print(all(empty))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(empty)) << "\n";
-    // print(any(empty))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(empty)) << "\n";
-    // # non-bool: integers (truthy = nonzero)
-    // ints = [1, 2, 3]
     std::array<int32_t, 3> ints = {1, 2, 3};
-    // print(all(ints))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(ints)) << "\n";
-    // ints_with_zero = [1, 0, 2]
     std::array<int32_t, 3> ints_with_zero = {1, 0, 2};
-    // print(all(ints_with_zero))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(ints_with_zero)) << "\n";
-    // print(any(ints_with_zero))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(ints_with_zero)) << "\n";
-    // # strings (truthy = non-empty)
-    // strs = ["a", "b", "c"]
     std::array<std::string, 3> strs = {"a", "b", "c"};
-    // print(all(strs))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(strs)) << "\n";
-    // strs2 = ["a", "", "c"]
     std::array<std::string, 3> strs2 = {"a", "", "c"};
-    // print(all(strs2))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(strs2)) << "\n";
-    // print(any(strs2))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(strs2)) << "\n";
-    // # floats (truthy = nonzero)
-    // floats = [1.0, 2.0, 3.0]
     std::array<double, 3> floats = {1.0, 2.0, 3.0};
-    // print(all(floats))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(floats)) << "\n";
-    // floats2 = [1.0, 0.0, 3.0]
     std::array<double, 3> floats2 = {1.0, 0.0, 3.0};
-    // print(all(floats2))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(floats2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

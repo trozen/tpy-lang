@@ -9,17 +9,29 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_for() -> int:
 ::tpy::BigInt in_for();
+// def in_while() -> int:
 ::tpy::BigInt in_while();
+// def in_match(tag: int) -> int:
 ::tpy::BigInt in_match(const ::tpy::BigInt& tag);
+// def in_try(d: int) -> int:
 ::tpy::BigInt in_try(const ::tpy::BigInt& d);
+// def in_except(d: int) -> int:
 ::tpy::BigInt in_except(const ::tpy::BigInt& d);
+// def in_for_else() -> int:
 ::tpy::BigInt in_for_else();
+// def in_while_else(k: int) -> int:
 ::tpy::BigInt in_while_else(const ::tpy::BigInt& k);
+// def optional_local(flag: bool) -> str:
 std::string optional_local(bool flag);
+// def str_local() -> str:
 std::string str_local();
+// def list_local() -> int:
 ::tpy::BigInt list_local();
+// def nested_blocks(flag: bool) -> int:
 ::tpy::BigInt nested_blocks(bool flag);
+// def main() -> None:
 void main();
 
 void __tpy_init();

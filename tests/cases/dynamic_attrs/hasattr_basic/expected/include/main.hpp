@@ -11,6 +11,7 @@ struct Headers;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # D16 v1.5 phase 7: hasattr on a dyn-readable class -- runtime check via try/catch
@@ -36,16 +37,17 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
 
 
 // def __init__(self, origin: str) -> None:
+//     self._origin = origin
 inline Headers::Headers(std::string_view origin) : _origin(origin) {}
 
 // def __getattr__(self, name: str) -> str:
+//     if name == "host":
+//         return self._origin
+//     raise AttributeError(name)
 inline std::string Headers::__getattr__(std::string_view name) const {
-    // if name == "host":
     if ((name == "host")) {
-        // return self._origin
         return this->_origin;
     }
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 void __tpy_init();

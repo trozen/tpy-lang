@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,6 +26,10 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def caller() -> int:
+//     with Suppressor("S") as s:
+//         x = await value(2)
+//         raise ValueError(s)
+//     return 42
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -41,7 +45,6 @@ __coro_value value(::tpy::BigInt n) {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             x = std::move(__r0).value();
             __sub_0.reset();
-            // raise ValueError(s)
             throw ::tpy::ValueError(s);
         } catch (::tpy::BaseException& __exc_0) {
             if (!(*__with_ctx_0).__exit__({}, &__exc_0, {})) throw;
@@ -53,13 +56,11 @@ __coro_value value(::tpy::BigInt n) {
         }
     }
     case S_JOIN_0: {
-        // x = await value(2)
         __sub_0.emplace(::tpy::BigInt(2));
         __state = S_RESUME_0;
         continue;
     }
     case S_JOIN_1: {
-        // return 42
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -80,22 +81,23 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # Sync `with X:` whose `__exit__` returns bool (can suppress)
+// # inside an async-def. After a suppressed exception, control
+// # transitions to `post_with_bb` (a synthesized case label).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Sync `with X:` whose `__exit__` returns bool (can suppress)
-    // # inside an async-def. After a suppressed exception, control
-    // # transitions to `post_with_bb` (a synthesized case label).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

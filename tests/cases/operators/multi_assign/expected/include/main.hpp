@@ -13,7 +13,9 @@ struct Clamped;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_obj(v: int) -> Own[Obj]:
 Obj make_obj(const ::tpy::BigInt& v);
+// def main() -> None:
 void main();
 
 // class Obj:
@@ -74,36 +76,38 @@ inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
 
 
 // def __init__(self, val: int) -> None:
+//     self.val = val
 inline Obj::Obj(const ::tpy::BigInt& val) : val(val) {}
 
 // def __init__(self) -> None:
+//     self.x = self.y = 0
 inline Pair::Pair() {
-    // self.x = self.y = 0
     int32_t __ma_0 = 0;
     this->x = ::tpy::BigInt(__ma_0);
     this->y = ::tpy::BigInt(__ma_0);
 }
 
 // def __init__(self) -> None:
+//     self._val = 0
 inline Clamped::Clamped() : _val(::tpy::BigInt(0)) {}
 
 // @property
 // def val(self) -> int:
+//     return self._val
 inline ::tpy::BigInt Clamped::val() const {
-    // return self._val
     return this->_val;
 }
 
 // @val.setter
 // def val(self, v: int) -> None:
+//     if v > 100:
+//         self._val = 100
+//     else:
+//         self._val = v
 inline void Clamped::set_val(const ::tpy::BigInt& v) {
-    // if v > 100:
     if ((v > 100)) {
-        // self._val = 100
         this->_val = ::tpy::BigInt(100);
-    // else:
     } else {
-        // self._val = v
         this->_val = v;
     }
 }

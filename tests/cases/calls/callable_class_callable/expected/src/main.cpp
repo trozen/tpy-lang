@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def apply(f: Callable[[int32], int32], x: int32) -> int32:
+//     return f(x)
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t x) {
-    // return f(x)
     return f(x);
 }
 
 // def main():
+//     d = Doubler()
+//     print(apply(d, 5))
+//
+//     a = Adder(100)
+//     print(apply(a, 5))
 void main() {
-    // d = Doubler()
     Doubler d = Doubler();
-    // print(apply(d, 5))
     std::cout << apply(d, 5) << "\n";
-    // a = Adder(100)
     Adder a = Adder(100);
-    // print(apply(a, 5))
     std::cout << apply(a, 5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

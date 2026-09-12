@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def from_param(b: bytes) -> BytesView:
+//     return b
 ::tpy::BytesView from_param(::tpy::BytesView b) {
-    // return b
     return b;
 }
 
 // def from_param_sliced(b: bytes) -> BytesView:
+//     return b[1:]
 ::tpy::BytesView from_param_sliced(::tpy::BytesView b) {
-    // return b[1:]
     return ::tpy::bytes_slice(b, ::tpy::BasicSlice{1, std::nullopt});
 }
 
 // def from_literal() -> BytesView:
+//     bv: BytesView = b"hello"
+//     return bv
 ::tpy::BytesView from_literal() {
-    // bv: BytesView = b"hello"
     ::tpy::BytesView bv = ::tpy::bytes_literal("hello", 5);
-    // return bv
     return bv;
 }
 
 // def main() -> None:
+//     data = b"abcdef"
+//     print(from_param(data).decode())
+//     print(from_param_sliced(data).decode())
+//     print(from_literal().decode())
 void main() {
-    // data = b"abcdef"
     ::tpy::BytesView data = ::tpy::bytes_literal("abcdef", 6);
-    // print(from_param(data).decode())
     std::cout << ::tpy::bytes_decode(from_param(data)) << "\n";
-    // print(from_param_sliced(data).decode())
     std::cout << ::tpy::bytes_decode(from_param_sliced(data)) << "\n";
-    // print(from_literal().decode())
     std::cout << ::tpy::bytes_decode(from_literal()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

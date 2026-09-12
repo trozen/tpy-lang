@@ -11,7 +11,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_pair(p: Point) -> tuple[int32, Own[Point]]:
 std::tuple<int32_t, Point> make_pair(const Point& p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -37,11 +39,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
+//     return "Point(x=" + str(self.x) + ", y=" + str(self.y) + ")"
 inline std::string Point::__repr__() const {
-    // return "Point(x=" + str(self.x) + ", y=" + str(self.y) + ")"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Point(x=", ::tpy::fixed_to_str<int32_t>(this->x))), ", y=")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
 }
 void __tpy_init();

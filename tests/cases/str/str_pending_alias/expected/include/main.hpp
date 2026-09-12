@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_alias_augassign() -> None:
 void test_alias_augassign();
+// def test_alias_stays_view() -> None:
 void test_alias_stays_view();
+// def test_chain_alias_promote() -> None:
 void test_chain_alias_promote();
+// def test_reassign_from_owned_pending(cond: bool) -> None:
 void test_reassign_from_owned_pending(bool cond);
+// def test_reassign_from_owned_pending_return(cond: bool) -> str:
 std::string test_reassign_from_owned_pending_return(bool cond);
+// def test_source_promotes_alias() -> None:
 void test_source_promotes_alias();
+// def test_owned_reassign_no_backprop() -> None:
 void test_owned_reassign_no_backprop();
 
 void __tpy_init();

@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def go() -> None:
+//     t = await solo(7)
+//     print(t[0])
 ::tpystd::tpy::Poll<::std::monostate> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = await solo(7)
         __sub_0.emplace(7);
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         t = std::move(__r0).value();
         __sub_0.reset();
-        // print(t[0])
         std::cout << std::get<0>(t) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -35,21 +35,22 @@ __coro_go go() {
 }
 
 // def main() -> None:
+//     asyncio.run(go())
 void main() {
-    // asyncio.run(go())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(go()));
 }
 
+// # A coroutine returning a single-element `tuple[T]`: the one-slot tuple is
+// # parenthesized rather than brace-initialized.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A coroutine returning a single-element `tuple[T]`: the one-slot tuple is
-    // # parenthesized rather than brace-initialized.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -12,10 +12,15 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def double(k: int32) -> int32:
 int32_t double_(int32_t k);
+// def maybe_sum(k: int32, c: bool) -> int32:
 int32_t maybe_sum(int32_t k, bool c);
+// def maybe_call(k: int32, c: bool) -> int32:
 int32_t maybe_call(int32_t k, bool c);
+// def tag(u: A | B) -> str:
 std::string tag(::tpy::Union<const A*, const B*> u);
+// def main() -> None:
 void main();
 
 // class A:
@@ -52,9 +57,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, a: int32) -> None:
+//     self.a = a
 inline A::A(int32_t a) : a(a) {}
 
 // def __init__(self, b: int32) -> None:
+//     self.b = b
 inline B::B(int32_t b) : b(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

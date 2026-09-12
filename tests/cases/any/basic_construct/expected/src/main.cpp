@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: Any = 42
+//     b: Any = "hello"
+//     c: Any = 3.14
+//     d: Any = None
+//     e: Any = True
+//     print("constructed")
 void main() {
-    // a: Any = 42
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(42));
-    // b: Any = "hello"
     ::tpy::Any b = ::tpy::make_any(std::string("hello"));
-    // c: Any = 3.14
     ::tpy::Any c = ::tpy::make_any(static_cast<double>(3.14));
-    // d: Any = None
     ::tpy::Any d = ::tpy::make_any(std::monostate{});
-    // e: Any = True
     ::tpy::Any e = ::tpy::make_any(true);
-    // print("constructed")
     std::cout << "constructed" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

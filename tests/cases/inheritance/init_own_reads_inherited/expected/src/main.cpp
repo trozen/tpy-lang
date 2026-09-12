@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = Tagged("Rex")
+//     print(t.name)
+//     print(t.name_len)   # expected: 3 (post-mutation), not 0 (default-init)
 void main() {
-    // t = Tagged("Rex")
     Tagged t = Tagged("Rex");
-    // print(t.name)
     std::cout << t.name << "\n";
-    // print(t.name_len)   # expected: 3 (post-mutation), not 0 (default-init)
     std::cout << t.name_len << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

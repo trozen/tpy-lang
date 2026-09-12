@@ -5,31 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Task("low", Priority(1))
+//     b = Task("high", Priority(3))
+//     c = Task("mid", Priority(2))
+//
+//     # min/max by user-defined Comparable key
+//     print(min(a, b, key=lambda t: t.prio).name)
+//     print(max(a, b, key=lambda t: t.prio).name)
+//
+//     # 3-arg
+//     print(min(a, b, c, key=lambda t: t.prio).name)
+//     print(max(a, b, c, key=lambda t: t.prio).name)
 void main() {
-    // a = Task("low", Priority(1))
     Task a = Task("low", Priority(1));
-    // b = Task("high", Priority(3))
     Task b = Task("high", Priority(3));
-    // c = Task("mid", Priority(2))
     Task c = Task("mid", Priority(2));
-    // # min/max by user-defined Comparable key
-    // print(min(a, b, key=lambda t: t.prio).name)
     std::cout << ::tpy::min_key(a, b, [](const Task& t) -> const Priority& { return t.prio; }).name << "\n";
-    // print(max(a, b, key=lambda t: t.prio).name)
     std::cout << ::tpy::max_key(a, b, [](const Task& t) -> const Priority& { return t.prio; }).name << "\n";
-    // # 3-arg
-    // print(min(a, b, c, key=lambda t: t.prio).name)
     std::cout << ::tpy::min3_key(a, b, c, [](const Task& t) -> const Priority& { return t.prio; }).name << "\n";
-    // print(max(a, b, c, key=lambda t: t.prio).name)
     std::cout << ::tpy::max3_key(a, b, c, [](const Task& t) -> const Priority& { return t.prio; }).name << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

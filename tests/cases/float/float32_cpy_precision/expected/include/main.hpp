@@ -11,15 +11,25 @@ struct Meter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ops() -> None:
 void ops();
+// def reflected() -> None:
 void reflected();
+// def unary() -> None:
 void unary();
+// def accumulate() -> None:
 void accumulate();
+// def method() -> None:
 void method();
+// def comprehension() -> None:
 void comprehension();
+// def union_literal() -> None:
 void union_literal();
+// def union_value(v: float32) -> None:
 void union_value(float v);
+// def union_param(u: float32 | float) -> None:
 void union_param(const ::tpy::Union<double, float>& u);
+// def main() -> None:
 void main();
 
 // # method: a field of the type keeps the rounding through a method
@@ -43,11 +53,12 @@ inline std::ostream& operator<<(std::ostream& os, const Meter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.total = float32(0.0)
 inline Meter::Meter() : total(0.0f) {}
 
 // def add(self, v: float32) -> None:
+//     self.total = self.total + v
 inline void Meter::add(float v) {
-    // self.total = self.total + v
     this->total = ((this->total) + (v));
 }
 void __tpy_init();

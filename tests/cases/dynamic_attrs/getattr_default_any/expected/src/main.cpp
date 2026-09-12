@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bag()
+//     a: Any = getattr(b, "count", -1)
+//     print(cast(int, a))     # dunder -> 7
+//     a = getattr(b, "missing", -1)
+//     print(cast(int, a))     # dunder raises -> -1
 void main() {
-    // b = Bag()
     Bag b = Bag();
-    // a: Any = getattr(b, "count", -1)
     ::tpy::Any a = ({ std::optional<::tpy::Any> __r; try { __r.emplace(b.__getattr__("count")); } catch (const ::tpy::AttributeError&) { __r.emplace(::tpy::make_any(::tpy::BigInt(-1))); } std::move(*__r); });
-    // print(cast(int, a))     # dunder -> 7
     std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(a) << "\n";
-    // a = getattr(b, "missing", -1)
     a = ({ std::optional<::tpy::Any> __r; try { __r.emplace(b.__getattr__("missing")); } catch (const ::tpy::AttributeError&) { __r.emplace(::tpy::make_any(::tpy::BigInt(-1))); } std::move(*__r); });
-    // print(cast(int, a))     # dunder raises -> -1
     std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(a) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

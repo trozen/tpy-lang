@@ -5,44 +5,45 @@ namespace tpyapp::main {
 
 
 // def show(a: Cat | Dog) -> None:
+//     pass
 void show(::tpy::Union<const Cat*, const Dog*> a) {
-    // pass
 }
 
 // def main() -> None:
+//     a: Cat | Dog = Cat("x")
+//     b: Cat | Dog = Dog("y")
+//     items: list[Cat | Dog] = [a, b]
+//     show(a)
+//     show(b)
+//     print(len(items))
+//
+//     # Narrowed variable in list literal: 'a' is Cat& after isinstance,
+//     # must not be wrapped with to_value_variant.
+//     if isinstance(a, Cat):
+//         more: list[Cat | Dog] = [a, b]
+//         print(len(more))
 void main() {
-    // a: Cat | Dog = Cat("x")
     ::tpy::Union<Cat, Dog> __slot_1 = Cat("x");
     ::tpy::Union<Cat*, Dog*> a = ::tpy::to_ptr_variant(__slot_1);
-    // b: Cat | Dog = Dog("y")
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("y");
     ::tpy::Union<Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_2);
-    // items: list[Cat | Dog] = [a, b]
     std::vector<::tpy::Union<Cat, Dog>> items = {::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(a), ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(b)};
-    // show(a)
     show(a.as_const());
-    // show(b)
     show(b.as_const());
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    // # Narrowed variable in list literal: 'a' is Cat& after isinstance,
-    // # must not be wrapped with to_value_variant.
-    // if isinstance(a, Cat):
     if (true) {
         auto& __a = *std::get<Cat*>(a);
-        // more: list[Cat | Dog] = [a, b]
         std::vector<::tpy::Union<Cat, Dog>> more = {__a, ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(b)};
-        // print(len(more))
         std::cout << ::tpy::__len__(more) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

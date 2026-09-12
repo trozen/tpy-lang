@@ -5,236 +5,254 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     ist = timezone(timedelta(hours=5, minutes=30), "IST")
+//     unnamed = timezone(timedelta(hours=-3, minutes=-30))
+//     withsec = timezone(timedelta(hours=5, minutes=30, seconds=15))
+//
+//     print(repr(UTC), str(UTC))
+//     print(repr(ist), str(ist))
+//     print(repr(unnamed), str(unnamed))
+//     print(repr(withsec), str(withsec))
+//     print(repr(timezone(timedelta(), "EMPTYOK")))
+//     # Empty string is a real name, distinct from the unnamed form.
+//     empty_name = timezone(timedelta(hours=1), "")
+//     no_name = timezone(timedelta(hours=1))
+//     print(repr(empty_name), repr(empty_name.tzname(None)))
+//     print(repr(no_name), no_name.tzname(None))
+//     print(empty_name == no_name)  # offset-only eq: True
+//     print(ist.utcoffset(None), ist.tzname(None), ist.dst(None) is None)
+//     print(timezone(timedelta(hours=5, minutes=30), "OTHER") == ist)  # offset-only eq
+//     print(hash(timezone(timedelta(hours=5, minutes=30))) == hash(ist))
+//     print(timezone(timedelta()) == UTC)
+//     try:
+//         timezone(timedelta(hours=24))
+//     except ValueError:
+//         print("ValueError-offset-hi")
+//     try:
+//         timezone(timedelta(hours=-24))
+//     except ValueError:
+//         print("ValueError-offset-lo")
+//     print(repr(timezone(timedelta(hours=23, minutes=59, microseconds=999999))))
+//
+//     dt = datetime(2021, 3, 5, 14, 30, 15, 123456, tzinfo=ist)
+//     u = datetime(2021, 3, 5, 9, 0, 15, 123456, tzinfo=UTC)
+//     print(repr(dt))
+//     print(dt.isoformat(), str(dt))
+//     print(dt.utcoffset(), dt.tzname(), dt.dst() is None)
+//     print(dt == u, dt <= u, dt >= u, hash(dt) == hash(u))
+//     print(u - dt)
+//     print(dt - datetime(2021, 3, 4, 9, 0, 15, 123456, tzinfo=UTC))
+//     print(dt + timedelta(hours=2))
+//     print(dt - timedelta(minutes=45))
+//
+//     naive = datetime(2021, 3, 5, 9, 0, 15, 123456)
+//     print(naive == u, naive != u)
+//     try:
+//         print(naive < u)
+//     except TypeError:
+//         print("TypeError-order")
+//     try:
+//         print(u - naive)
+//     except TypeError:
+//         print("TypeError-sub")
+//
+//     print(dt.replace(hour=8))
+//     try:
+//         dt.replace(month=13)
+//     except ValueError:
+//         print("ValueError-replace-month")
+//     try:
+//         time(14, 30).replace(hour=25)
+//     except ValueError:
+//         print("ValueError-replace-hour")
+//     try:
+//         date(2021, 2, 28).replace(day=30)
+//     except ValueError:
+//         print("ValueError-replace-day")
+//     print(dt.replace(tzinfo=None))
+//     print(dt.replace(tzinfo=UTC))
+//     print(dt.replace(year=1999, minute=0, tzinfo=None))
+//     print(naive.replace(tzinfo=ist))
+//     try:
+//         print(dt.replace(tzinfo=False))
+//     except TypeError:
+//         print("TypeError-replace-tzinfo")
+//
+//     t = datetime(2021, 3, 5, 14, 30, 15, 999999, tzinfo=withsec)
+//     print(t.isoformat())
+//     print(t.isoformat(timespec="hours"))
+//     print(t.isoformat(timespec="minutes"))
+//     print(t.isoformat(timespec="seconds"))
+//     print(t.isoformat(timespec="milliseconds"))  # truncates, never rounds
+//     print(t.isoformat(timespec="microseconds"))
+//     try:
+//         print(t.isoformat(timespec="bogus"))
+//     except ValueError:
+//         print("ValueError-timespec")
+//
+//     print(datetime.combine(date(2021, 3, 5), time(9, 15), UTC))
+//     print(datetime.fromtimestamp(1614937200.5, UTC))
+//     print(datetime.fromtimestamp(1614937200.5, ist))
+//     print(repr(ist.fromutc(datetime(2021, 3, 5, 9, 0, tzinfo=ist))))
+//     try:
+//         ist.fromutc(datetime(2021, 3, 5, 9, 0, tzinfo=UTC))
+//     except ValueError:
+//         print("ValueError-fromutc")
+//
+//     # Aware/naive values as dict keys: aware pairs at the same instant
+//     # collapse to one key.
+//     d = {dt: "a", u: "b", naive: "c"}
+//     print(len(d), d[dt])
 void main() {
-    // ist = timezone(timedelta(hours=5, minutes=30), "IST")
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
-    // unnamed = timezone(timedelta(hours=-3, minutes=-30))
     ::tpystd::datetime::timezone unnamed = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-30), ::tpy::BigInt(-3)));
-    // withsec = timezone(timedelta(hours=5, minutes=30, seconds=15))
     ::tpystd::datetime::timezone withsec = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)));
-    // print(repr(UTC), str(UTC))
     std::cout << ::tpy::repr_of(::tpystd::datetime::UTC) << " " << std::string(::tpy::__str__(::tpystd::datetime::UTC)) << "\n";
-    // print(repr(ist), str(ist))
     std::cout << ::tpy::repr_of(ist) << " " << std::string(::tpy::__str__(ist)) << "\n";
-    // print(repr(unnamed), str(unnamed))
     std::cout << ::tpy::repr_of(unnamed) << " " << std::string(::tpy::__str__(unnamed)) << "\n";
-    // print(repr(withsec), str(withsec))
     std::cout << ::tpy::repr_of(withsec) << " " << std::string(::tpy::__str__(withsec)) << "\n";
-    // print(repr(timezone(timedelta(), "EMPTYOK")))
     std::cout << ::tpy::repr_of(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(), "EMPTYOK")) << "\n";
-    // # Empty string is a real name, distinct from the unnamed form.
-    // empty_name = timezone(timedelta(hours=1), "")
     ::tpystd::datetime::timezone empty_name = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)), "");
-    // no_name = timezone(timedelta(hours=1))
     ::tpystd::datetime::timezone no_name = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)));
-    // print(repr(empty_name), repr(empty_name.tzname(None)))
     std::cout << ::tpy::repr_of(empty_name) << " " << ::tpy::repr_of(empty_name.tzname(std::nullopt)) << "\n";
-    // print(repr(no_name), no_name.tzname(None))
     std::cout << ::tpy::repr_of(no_name) << " " << no_name.tzname(std::nullopt) << "\n";
-    // print(empty_name == no_name)  # offset-only eq: True
     std::cout << ::tpy::print_bool(((empty_name) == (no_name))) << "\n";
-    // print(ist.utcoffset(None), ist.tzname(None), ist.dst(None) is None)
     std::cout << ist.utcoffset(std::nullopt) << " " << ist.tzname(std::nullopt) << " " << ::tpy::print_bool((!ist.dst(std::nullopt).has_value())) << "\n";
-    // print(timezone(timedelta(hours=5, minutes=30), "OTHER") == ist)  # offset-only eq
     std::cout << ::tpy::print_bool(((::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "OTHER")) == (ist))) << "\n";
-    // print(hash(timezone(timedelta(hours=5, minutes=30))) == hash(ist))
     std::cout << ::tpy::print_bool((::tpy::__hash__(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)))) == ::tpy::__hash__(ist))) << "\n";
-    // print(timezone(timedelta()) == UTC)
     std::cout << ::tpy::print_bool(((::tpystd::datetime::timezone(::tpystd::datetime::timedelta())) == (::tpystd::datetime::UTC))) << "\n";
-    // try:
     {
         try {
-            // timezone(timedelta(hours=24))
             ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(24)));
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-offset-hi")
             std::cout << "ValueError-offset-hi" << "\n";
         }
     }
-    // try:
     {
         try {
-            // timezone(timedelta(hours=-24))
             ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-24)));
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-offset-lo")
             std::cout << "ValueError-offset-lo" << "\n";
         }
     }
-    // print(repr(timezone(timedelta(hours=23, minutes=59, microseconds=999999))))
     std::cout << ::tpy::repr_of(::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(999999), ::tpy::BigInt(0), ::tpy::BigInt(59), ::tpy::BigInt(23)))) << "\n";
-    // dt = datetime(2021, 3, 5, 14, 30, 15, 123456, tzinfo=ist)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
     ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_1);
-    // u = datetime(2021, 3, 5, 9, 0, 15, 123456, tzinfo=UTC)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::UTC;
     ::tpystd::datetime::datetime u = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_2);
-    // print(repr(dt))
     std::cout << ::tpy::repr_of(dt) << "\n";
-    // print(dt.isoformat(), str(dt))
     std::cout << dt.isoformat() << " " << std::string(::tpy::__str__(dt)) << "\n";
-    // print(dt.utcoffset(), dt.tzname(), dt.dst() is None)
     std::cout << ::tpy::print_optional_val(dt.utcoffset()) << " " << ::tpy::print_optional_val(dt.tzname()) << " " << ::tpy::print_bool((!dt.dst().has_value())) << "\n";
-    // print(dt == u, dt <= u, dt >= u, hash(dt) == hash(u))
     std::cout << ::tpy::print_bool(((dt) == (u))) << " " << ::tpy::print_bool(((dt) <= (u))) << " " << ::tpy::print_bool(((dt) >= (u))) << " " << ::tpy::print_bool((::tpy::__hash__(dt) == ::tpy::__hash__(u))) << "\n";
-    // print(u - dt)
     std::cout << ((u) - (dt)) << "\n";
-    // print(dt - datetime(2021, 3, 4, 9, 0, 15, 123456, tzinfo=UTC))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
     std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456), __tmp_3))) << "\n";
-    // print(dt + timedelta(hours=2))
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)))) << "\n";
-    // print(dt - timedelta(minutes=45))
     std::cout << ((dt) - (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(45)))) << "\n";
-    // naive = datetime(2021, 3, 5, 9, 0, 15, 123456)
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456));
-    // print(naive == u, naive != u)
     std::cout << ::tpy::print_bool(((naive) == (u))) << " " << ::tpy::print_bool((naive != u)) << "\n";
-    // try:
     {
         try {
-            // print(naive < u)
             std::cout << ::tpy::print_bool(((naive) < (u))) << "\n";
         } catch (const ::tpy::TypeError&) {
-            // print("TypeError-order")
             std::cout << "TypeError-order" << "\n";
         }
     }
-    // try:
     {
         try {
-            // print(u - naive)
             std::cout << ((u) - (naive)) << "\n";
         } catch (const ::tpy::TypeError&) {
-            // print("TypeError-sub")
             std::cout << "TypeError-sub" << "\n";
         }
     }
-    // print(dt.replace(hour=8))
     std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, 8) << "\n";
-    // try:
     {
         try {
-            // dt.replace(month=13)
             dt.replace(std::nullopt, 13);
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-replace-month")
             std::cout << "ValueError-replace-month" << "\n";
         }
     }
-    // try:
     {
         try {
-            // time(14, 30).replace(hour=25)
             ::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30)).replace(25);
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-replace-hour")
             std::cout << "ValueError-replace-hour" << "\n";
         }
     }
-    // try:
     {
         try {
-            // date(2021, 2, 28).replace(day=30)
             ::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(2), ::tpy::BigInt(28)).replace(std::nullopt, std::nullopt, 30);
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-replace-day")
             std::cout << "ValueError-replace-day" << "\n";
         }
     }
-    // print(dt.replace(tzinfo=None))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_4 = std::monostate{};
     std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_4) << "\n";
-    // print(dt.replace(tzinfo=UTC))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = ::tpystd::datetime::UTC;
     std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5) << "\n";
-    // print(dt.replace(year=1999, minute=0, tzinfo=None))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_6 = std::monostate{};
     std::cout << dt.replace(1999, std::nullopt, std::nullopt, std::nullopt, 0, std::nullopt, std::nullopt, __tmp_6) << "\n";
-    // print(naive.replace(tzinfo=ist))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_7 = ist;
     std::cout << naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_7) << "\n";
-    // try:
     {
         try {
-            // print(dt.replace(tzinfo=False))
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_8 = false;
             std::cout << dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_8) << "\n";
         } catch (const ::tpy::TypeError&) {
-            // print("TypeError-replace-tzinfo")
             std::cout << "TypeError-replace-tzinfo" << "\n";
         }
     }
-    // t = datetime(2021, 3, 5, 14, 30, 15, 999999, tzinfo=withsec)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = withsec;
     ::tpystd::datetime::datetime t = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(999999), __tmp_9);
-    // print(t.isoformat())
     std::cout << t.isoformat() << "\n";
-    // print(t.isoformat(timespec="hours"))
     std::cout << t.isoformat("T", "hours") << "\n";
-    // print(t.isoformat(timespec="minutes"))
     std::cout << t.isoformat("T", "minutes") << "\n";
-    // print(t.isoformat(timespec="seconds"))
     std::cout << t.isoformat("T", "seconds") << "\n";
-    // print(t.isoformat(timespec="milliseconds"))  # truncates, never rounds
     std::cout << t.isoformat("T", "milliseconds") << "\n";
-    // print(t.isoformat(timespec="microseconds"))
     std::cout << t.isoformat("T", "microseconds") << "\n";
-    // try:
     {
         try {
-            // print(t.isoformat(timespec="bogus"))
             std::cout << t.isoformat("T", "bogus") << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-timespec")
             std::cout << "ValueError-timespec" << "\n";
         }
     }
-    // print(datetime.combine(date(2021, 3, 5), time(9, 15), UTC))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = ::tpystd::datetime::UTC;
     std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), ::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(15)), __tmp_10) << "\n";
-    // print(datetime.fromtimestamp(1614937200.5, UTC))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_11 = ::tpystd::datetime::UTC;
     std::cout << datetime::fromtimestamp(1614937200.5, __tmp_11) << "\n";
-    // print(datetime.fromtimestamp(1614937200.5, ist))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_12 = ist;
     std::cout << datetime::fromtimestamp(1614937200.5, __tmp_12) << "\n";
-    // print(repr(ist.fromutc(datetime(2021, 3, 5, 9, 0, tzinfo=ist))))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_13 = ist;
     std::cout << ::tpy::repr_of(ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_13))) << "\n";
-    // try:
     {
         try {
-            // ist.fromutc(datetime(2021, 3, 5, 9, 0, tzinfo=UTC))
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_14 = ::tpystd::datetime::UTC;
             ist.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_14));
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-fromutc")
             std::cout << "ValueError-fromutc" << "\n";
         }
     }
-    // # Aware/naive values as dict keys: aware pairs at the same instant
-    // # collapse to one key.
-    // d = {dt: "a", u: "b", naive: "c"}
     ::tpy::ordered_map<::tpystd::datetime::datetime, std::string> d = ::tpy::ordered_map<::tpystd::datetime::datetime, std::string>({{dt, "a"}, {u, "b"}, {naive, "c"}});
-    // print(len(d), d[dt])
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__getitem__(d, dt) << "\n";
 }
 
+// # datetime v3 fixed-offset timezone + aware datetime core: construction and
+// # validation, utcoffset/tzname/dst, eq/hash by offset, repr/str, aware
+// # arithmetic and comparisons (UTC-normalized), runtime naive/aware mixing
+// # rules (== False, ordering/subtraction TypeError), replace() incl. the
+// # tzinfo set/drop forms, isoformat offset suffix + timespec, combine and
+// # fromtimestamp with a tz.
+// from datetime import datetime, date, time, timedelta, timezone, UTC
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime v3 fixed-offset timezone + aware datetime core: construction and
-    // # validation, utcoffset/tzname/dst, eq/hash by offset, repr/str, aware
-    // # arithmetic and comparisons (UTC-normalized), runtime naive/aware mixing
-    // # rules (== False, ordering/subtraction TypeError), replace() incl. the
-    // # tzinfo set/drop forms, isoformat offset suffix + timespec, combine and
-    // # fromtimestamp with a tz.
-    // from datetime import datetime, date, time, timedelta, timezone, UTC
     ::tpystd::datetime::__tpy_init();
-    // main()
     main();
 }
 

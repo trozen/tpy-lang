@@ -5,88 +5,93 @@ namespace tpyapp::main {
 
 
 // def show2(pair: tuple[str, str]) -> None:
+//     print(pair[0] + " | " + pair[1])
 void show2(const std::tuple<std::string, std::string>& pair) {
-    // print(pair[0] + " | " + pair[1])
     std::cout << (::tpy::str_concat((::tpy::str_concat(std::get<0>(pair), " | ")), std::get<1>(pair))) << "\n";
 }
 
 // def main():
+//     # join: relative, absolute-reset, trailing slash, empty first/component
+//     print(join("/usr", "lib", "foo.py"))      # tpyc: ok
+//     print(join("/usr", "/etc", "x"))
+//     print(join("a", "b"))
+//     print(join("a/", "b"))
+//     print(join("", "b"))
+//     print(join("a", ""))
+//     print(join("/single"))
+//
+//     # split / dirname / basename over the tricky slash forms
+//     for p in ["/a/b", "a/b", "a", "/", "//", "a/", "", "/a/b/"]:
+//         show2(split(p))
+//         print(dirname(p) + " <> " + basename(p))
+//
+//     # splitext: leading dots, multi-dot, no-ext, trailing dot
+//     for q in ["foo.txt", "foo.tar.gz", ".bashrc", "/a/.bashrc",
+//               "foo", "a.", "/a/b", "..ext", "/d.ir/file"]:
+//         show2(splitext(q))
+//
+//     # isabs / splitdrive (POSIX: drive is always empty)
+//     print(isabs("/x"))
+//     print(isabs("x"))
+//     print(isabs(""))
+//     show2(splitdrive("/a/b"))
+//
+//     print(sep + extsep + pardir + curdir + pathsep)
+//     print(defpath)
+//     print(devnull)
 void main() {
-    // # join: relative, absolute-reset, trailing slash, empty first/component
-    // print(join("/usr", "lib", "foo.py"))      # tpyc: ok
     std::array<const std::string, 2> __tmp_1{"lib", "foo.py"};
     std::cout << ::tpystd::os::path::join("/usr", ::tpy::varargs<const std::string>(__tmp_1)) << "\n";
-    // print(join("/usr", "/etc", "x"))
     std::array<const std::string, 2> __tmp_2{"/etc", "x"};
     std::cout << ::tpystd::os::path::join("/usr", ::tpy::varargs<const std::string>(__tmp_2)) << "\n";
-    // print(join("a", "b"))
     std::array<const std::string, 1> __tmp_3{"b"};
     std::cout << ::tpystd::os::path::join("a", ::tpy::varargs<const std::string>(__tmp_3)) << "\n";
-    // print(join("a/", "b"))
     std::array<const std::string, 1> __tmp_4{"b"};
     std::cout << ::tpystd::os::path::join("a/", ::tpy::varargs<const std::string>(__tmp_4)) << "\n";
-    // print(join("", "b"))
     std::array<const std::string, 1> __tmp_5{"b"};
     std::cout << ::tpystd::os::path::join("", ::tpy::varargs<const std::string>(__tmp_5)) << "\n";
-    // print(join("a", ""))
     std::array<const std::string, 1> __tmp_6{""};
     std::cout << ::tpystd::os::path::join("a", ::tpy::varargs<const std::string>(__tmp_6)) << "\n";
-    // print(join("/single"))
     std::cout << ::tpystd::os::path::join("/single", ::tpy::varargs<const std::string>()) << "\n";
-    // # split / dirname / basename over the tricky slash forms
-    // for p in ["/a/b", "a/b", "a", "/", "//", "a/", "", "/a/b/"]:
     auto __obj_0 = {"/a/b", "a/b", "a", "/", "//", "a/", "", "/a/b/"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
-        // show2(split(p))
         show2(::tpystd::os::path::split(p));
-        // print(dirname(p) + " <> " + basename(p))
         std::cout << (::tpy::str_concat((::tpy::str_concat(::tpystd::os::path::dirname(p), " <> ")), ::tpystd::os::path::basename(p))) << "\n";
     }
-    // # splitext: leading dots, multi-dot, no-ext, trailing dot
-    // for q in ["foo.txt", "foo.tar.gz", ".bashrc", "/a/.bashrc",
-    // "foo", "a.", "/a/b", "..ext", "/d.ir/file"]:
     auto __obj_1 = {"foo.txt", "foo.tar.gz", ".bashrc", "/a/.bashrc", "foo", "a.", "/a/b", "..ext", "/d.ir/file"};
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view q = *__beg_1;
-        // show2(splitext(q))
         show2(::tpystd::os::path::splitext(q));
     }
-    // # isabs / splitdrive (POSIX: drive is always empty)
-    // print(isabs("/x"))
     std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("/x")) << "\n";
-    // print(isabs("x"))
     std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("x")) << "\n";
-    // print(isabs(""))
     std::cout << ::tpy::print_bool(::tpystd::os::path::isabs("")) << "\n";
-    // show2(splitdrive("/a/b"))
     show2(::tpystd::os::path::splitdrive("/a/b"));
-    // print(sep + extsep + pardir + curdir + pathsep)
     std::cout << (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(::tpystd::os::path::sep, ::tpystd::os::path::extsep)), ::tpystd::os::path::pardir)), ::tpystd::os::path::curdir)), ::tpystd::os::path::pathsep)) << "\n";
-    // print(defpath)
     std::cout << ::tpystd::os::path::defpath << "\n";
-    // print(devnull)
     std::cout << ::tpystd::os::path::devnull << "\n";
 }
 
+// # os.path v1 -- pure-string path manipulation (POSIX). Output is byte-compared
+// # against CPython's posixpath in the cpy phase, so this doubles as a parity test.
+// from os.path import (
+//     join, split, splitext, basename, dirname, isabs, splitdrive,
+//     sep, extsep, pardir, curdir, pathsep, defpath, devnull,
+// )
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.path v1 -- pure-string path manipulation (POSIX). Output is byte-compared
-    // # against CPython's posixpath in the cpy phase, so this doubles as a parity test.
-    // from os.path import (
-    // join, split, splitext, basename, dirname, isabs, splitdrive,
-    // sep, extsep, pardir, curdir, pathsep, defpath, devnull,
-    // )
     ::tpystd::os::__tpy_init();
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

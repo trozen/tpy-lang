@@ -12,15 +12,25 @@ struct Segment;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add_params(a: Vec, b: Vec) -> Own[Vec]:
 Vec add_params(const Vec& a, const Vec& b);
+// def scale_param(v: Vec, s: float) -> Own[Vec]:
 Vec scale_param(const Vec& v, double s);
+// def negate_param(v: Vec) -> Own[Vec]:
 Vec negate_param(const Vec& v);
+// def compare_params(a: Vec, b: Vec) -> bool:
 bool compare_params(const Vec& a, const Vec& b);
+// def test_field_ops() -> None:
 void test_field_ops();
+// def test_param_ops() -> None:
 void test_param_ops();
+// def test_chained() -> None:
 void test_chained();
+// def test_binop_assign() -> None:
 void test_binop_assign();
+// def test_iadd_ref(delta: Vec) -> None:
 void test_iadd_ref(const Vec& delta);
+// def main() -> None:
 void main();
 
 // class Vec:
@@ -105,62 +115,66 @@ inline std::ostream& operator<<(std::ostream& os, const Segment& obj) {
 
 
 // def __init__(self, x: float, y: float) -> None:
+//     self.x = x
+//     self.y = y
 inline Vec::Vec(double x, double y) : x(x), y(y) {}
 
 // def __add__(self, other: Vec) -> Own[Vec]:
+//     return Vec(self.x + other.x, self.y + other.y)
 inline Vec Vec::__add__(const Vec& other) const {
-    // return Vec(self.x + other.x, self.y + other.y)
     return Vec(((this->x) + (other.x)), ((this->y) + (other.y)));
 }
 
 // def __sub__(self, other: Vec) -> Own[Vec]:
+//     return Vec(self.x - other.x, self.y - other.y)
 inline Vec Vec::__sub__(const Vec& other) const {
-    // return Vec(self.x - other.x, self.y - other.y)
     return Vec(((this->x) - (other.x)), ((this->y) - (other.y)));
 }
 
 // def __mul__(self, s: float) -> Own[Vec]:
+//     return Vec(self.x * s, self.y * s)
 inline Vec Vec::__mul__(double s) const {
-    // return Vec(self.x * s, self.y * s)
     return Vec(((this->x) * (s)), ((this->y) * (s)));
 }
 
 // def __neg__(self) -> Own[Vec]:
+//     return Vec(-self.x, -self.y)
 inline Vec Vec::__neg__() const {
-    // return Vec(-self.x, -self.y)
     return Vec(-(this->x), -(this->y));
 }
 
 // def __eq__(self, other: Vec) -> bool:
+//     return self.x == other.x and self.y == other.y
 inline bool Vec::__eq__(const Vec& other) const {
-    // return self.x == other.x and self.y == other.y
     return ((this->x == other.x) && (this->y == other.y));
 }
 
 // def __iadd__(self, other: Vec) -> Vec:
+//     self.x += other.x
+//     self.y += other.y
+//     return self
 inline Vec& Vec::__iadd__(const Vec& other) {
-    // self.x += other.x
     this->x = (this->x) + (other.x);
-    // self.y += other.y
     this->y = (this->y) + (other.y);
-    // return self
     return (*this);
 }
 
 // def __init__(self, start: Vec, end: Vec) -> None:
+//     self.start = start
+//     self.end = end
 inline Segment::Segment(const Vec& start, const Vec& end) : start(start), end(end) {}
 
 // def diff(self) -> Own[Vec]:
+//     # Ref[Vec] - Ref[Vec] via field access
+//     return self.end - self.start
 inline Vec Segment::diff() const {
-    // # Ref[Vec] - Ref[Vec] via field access
-    // return self.end - self.start
     return ((this->end) - (this->start));
 }
 
 // def midpoint(self) -> Own[Vec]:
+//     # (Ref[Vec] + Ref[Vec]) * float
+//     return (self.start + self.end) * 0.5
 inline Vec Segment::midpoint() const {
-    // # (Ref[Vec] + Ref[Vec]) * float
-    // return (self.start + self.end) * 0.5
     return ((((this->start) + (this->end))) * (0.5));
 }
 void __tpy_init();

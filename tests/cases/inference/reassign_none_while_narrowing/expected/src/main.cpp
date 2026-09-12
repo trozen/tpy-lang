@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def make(i: int32) -> Own[Box]:
+//     return Box(i)
 Box make(int32_t i) {
-    // return Box(i)
     return Box(i);
 }
 
 // def test_while() -> None:
+//     result = None
+//     i = int32(0)
+//     while i < int32(3):
+//         result = make(i)
+//         i += int32(1)
+//     if result is not None:
+//         print(result.v)
 void test_while() {
     std::optional<Box> __slot_1;
-    // result = None
     Box* result = nullptr;
-    // i = int32(0)
     int32_t i = 0;
-    // while i < int32(3):
     while ((i < 3)) {
-        // result = make(i)
         result = &*(__slot_1 = make(i));
-        // i += int32(1)
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // if result is not None:
     if ((result != nullptr)) {
-        // print(result.v)
         std::cout << result->v << "\n";
     }
 }
 
+// test_while()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_while()
     test_while();
 }
 

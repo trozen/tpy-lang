@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def describe(p: Pet) -> str:
+//     match p:  # tpyc: warning(/non-exhaustive match.*no unconditional catch-all/)
+//         case Dog():
+//             return "dog"
+//         case Cat():
+//             return "cat"
+//     return "fallthrough"
 std::string describe(const Pet& p) {
-    // match p:  # tpyc: warning(/non-exhaustive match.*no unconditional catch-all/)
     auto& __match_subject_1 = p;
-    // case Dog():
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
-        // return "dog"
         return "dog";
-    // case Cat():
     } else if (const Cat* __mpoly_1 = dynamic_cast<const Cat*>(&__match_subject_1)) {
         const Cat& __case_1 = *__mpoly_1;
-        // return "cat"
         return "cat";
     }
-    // return "fallthrough"
     return "fallthrough";
 }
 
 // def main() -> None:
+//     print(describe(Dog()))
+//     print(describe(Cat()))
 void main() {
-    // print(describe(Dog()))
     Dog __tmp_1{Dog()};
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Cat()))
     Cat __tmp_2{Cat()};
     std::cout << describe(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

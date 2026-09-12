@@ -9,17 +9,29 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_char_literals() -> None:
 void test_char_literals();
+// def test_char_from_string_index() -> None:
 void test_char_from_string_index();
+// def test_char_comparison() -> None:
 void test_char_comparison();
+// def test_char_in_string() -> None:
 void test_char_in_string();
+// def is_vowel(c: char) -> bool:
 bool is_vowel(char c);
+// def count_vowels(text: str) -> int32:
 int32_t count_vowels(std::string_view text);
+// def test_char_function_param() -> None:
 void test_char_function_param();
+// def test_char_iteration() -> None:
 void test_char_iteration();
+// def test_vowel_counting() -> None:
 void test_vowel_counting();
+// def test_chr_function() -> None:
 void test_chr_function();
+// def accepts_str(s: str) -> None:
 void accepts_str(std::string_view s);
+// def test_char_to_str_coercion() -> None:
 void test_char_to_str_coercion();
 
 void __tpy_init();

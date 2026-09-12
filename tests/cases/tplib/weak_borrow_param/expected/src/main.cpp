@@ -5,41 +5,43 @@ namespace tpyapp::main {
 
 
 // def read_via_weak(w: Weak[Cell]) -> int32:
+//     upgraded = w.upgrade()
+//     if upgraded is None:
+//         return int32(-1)
+//     return upgraded.get().val
 int32_t read_via_weak(const ::tpystd::tplib::rc::Weak<Cell>& w) {
-    // upgraded = w.upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Cell>> upgraded = w.upgrade();
-    // if upgraded is None:
     if ((!upgraded.has_value())) {
-        // return int32(-1)
         return -1;
     }
-    // return upgraded.get().val
     return (*upgraded).get().val;
 }
 
 // def main() -> None:
+//     rc = Rc.new(Cell(int32(7)))
+//     w = rc.downgrade()
+//
+//     print(read_via_weak(w))  # 7 (w borrowed; caller retains ownership)
+//     w2 = w.clone()
+//     print(read_via_weak(w2))  # 7
 void main() {
-    // rc = Rc.new(Cell(int32(7)))
     ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(7));
-    // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
-    // print(read_via_weak(w))  # 7 (w borrowed; caller retains ownership)
     std::cout << read_via_weak(w) << "\n";
-    // w2 = w.clone()
     ::tpystd::tplib::rc::Weak<Cell> w2 = w.clone();
-    // print(read_via_weak(w2))  # 7
     std::cout << read_via_weak(w2) << "\n";
 }
 
+// from tplib.rc import Rc, Weak
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

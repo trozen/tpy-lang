@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main():
+//     h = Keeper()
+//     o = Outer()
+//     a = o.inner
+//     h.take(o)  # tpyc: warning(/copies/)
+//     print(len(a.vals))
 void main() {
-    // h = Keeper()
     Keeper h = Keeper();
-    // o = Outer()
     Outer o = Outer();
-    // a = o.inner
     Inner& a = o.inner;
-    // h.take(o)  # tpyc: warning(/copies/)
     Outer __tmp_1 = o;
     h.take(std::move(__tmp_1));
-    // print(len(a.vals))
     std::cout << ::tpy::__len__(a.vals) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

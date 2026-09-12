@@ -3,18 +3,17 @@
 
 namespace tpyapp::main {
 
-// result = list(Counter(5))
 std::vector<int32_t>* result{};
 
+// result = list(Counter(5))
+// print(result)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // result = list(Counter(5))
     static std::vector<int32_t> __global_slot_1 = ::tpy::construct<std::vector<int32_t>>(Counter(5));
     result = &__global_slot_1;
-    // print(result)
     std::cout << ::tpy::ListPrinter((*result)) << "\n";
 }
 

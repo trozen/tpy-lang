@@ -6,28 +6,28 @@ namespace tpyapp::main {
 
 // # bytes.rstrip(chars) -- strip specific bytes from right
 // def main() -> None:
+//     print(b"hello\x00\x00\x00".rstrip(b"\x00"))  # b'hello'
+//     print(b"hello...".rstrip(b"."))                # b'hello'
+//     print(b"abcba".rstrip(b"ab"))                  # b'abc' -- strips any 'a' or 'b' from right
+//     print(b"hello".rstrip(b"\x00"))                # b'hello' -- nothing to strip
+//     # BytesView (from slice) -- rstrip returns a view
+//     data: bytes = b"hello\x00\x00\x00end"
+//     print(len(data[0:8].rstrip(b"\x00")))          # 5
 void main() {
-    // print(b"hello\x00\x00\x00".rstrip(b"\x00"))  # b'hello'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello\000\000\000", 8), ::tpy::bytes_literal("\000", 1))) << "\n";
-    // print(b"hello...".rstrip(b"."))                # b'hello'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello...", 8), ::tpy::bytes_literal(".", 1))) << "\n";
-    // print(b"abcba".rstrip(b"ab"))                  # b'abc' -- strips any 'a' or 'b' from right
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("abcba", 5), ::tpy::bytes_literal("ab", 2))) << "\n";
-    // print(b"hello".rstrip(b"\x00"))                # b'hello' -- nothing to strip
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal("\000", 1))) << "\n";
-    // # BytesView (from slice) -- rstrip returns a view
-    // data: bytes = b"hello\x00\x00\x00end"
     ::tpy::BytesView data = ::tpy::bytes_literal("hello\000\000\000end", 11);
-    // print(len(data[0:8].rstrip(b"\x00")))          # 5
     std::cout << ::tpy::__len__(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 8}), ::tpy::bytes_literal("\000", 1))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

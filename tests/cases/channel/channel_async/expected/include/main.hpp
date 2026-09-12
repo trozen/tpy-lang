@@ -21,8 +21,11 @@ struct __coro_producer;
 struct __coro_consumer;
 struct __coro_main_co;
 
+// async def producer(tx: Own[Sender[Counter]]) -> None:
 __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx);
+// async def consumer(rx: Own[Receiver[Counter]]) -> None:
 __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx);
+// async def main_co() -> None:
 __coro_main_co main_co();
 
 // @nocopy
@@ -47,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: producer
+// async def producer(tx: Own[Sender[Counter]]) -> None:
 struct __coro_producer {
     int32_t __state;
     bool __cancel_pending;
@@ -73,7 +76,7 @@ struct __coro_producer {
     }
 };
 
-// Async coroutine: consumer
+// async def consumer(rx: Own[Receiver[Counter]]) -> None:
 struct __coro_consumer {
     int32_t __state;
     bool __cancel_pending;
@@ -102,7 +105,7 @@ struct __coro_consumer {
     }
 };
 
-// Async coroutine: main_co
+// async def main_co() -> None:
 struct __coro_main_co {
     int32_t __state;
     bool __cancel_pending;
@@ -133,6 +136,7 @@ struct __coro_main_co {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

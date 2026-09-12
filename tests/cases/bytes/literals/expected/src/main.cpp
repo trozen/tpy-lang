@@ -6,35 +6,36 @@ namespace tpyapp::main {
 
 // # Bytes literal construction and printing
 // def main() -> None:
+//     empty = b""
+//     hello = b"hello"
+//     binary = b"\x00\x01\xff"
+//     escape = b"\t\n\r\\"
+//
+//     print(empty)
+//     print(hello)
+//     print(binary)
+//     print(escape)
+//     print(len(hello))
+//     print(len(binary))
 void main() {
-    // empty = b""
     ::tpy::BytesView empty = ::tpy::BytesView{};
-    // hello = b"hello"
     ::tpy::BytesView hello = ::tpy::bytes_literal("hello", 5);
-    // binary = b"\x00\x01\xff"
     ::tpy::BytesView binary = ::tpy::bytes_literal("\000\x01\xff", 3);
-    // escape = b"\t\n\r\\"
     ::tpy::BytesView escape = ::tpy::bytes_literal("\t\n\r\\", 4);
-    // print(empty)
     std::cout << ::tpy::BytesPrinter(empty) << "\n";
-    // print(hello)
     std::cout << ::tpy::BytesPrinter(hello) << "\n";
-    // print(binary)
     std::cout << ::tpy::BytesPrinter(binary) << "\n";
-    // print(escape)
     std::cout << ::tpy::BytesPrinter(escape) << "\n";
-    // print(len(hello))
     std::cout << ::tpy::__len__(hello) << "\n";
-    // print(len(binary))
     std::cout << ::tpy::__len__(binary) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def narrowing_cleared_on_reassign(x: int32 | None, other: int32 | None, n: int32) -> int32:
+//     total: int32 = 0
+//     if x is not None:
+//         i: int32 = 0
+//         while i < n:
+//             x = other
+//             total = total + x  # tpyc: warning(/Potential None access/)
+//             i = i + 1
+//     return total
 int32_t narrowing_cleared_on_reassign(std::optional<int32_t> x, std::optional<int32_t> other, int32_t n) {
-    // total: int32 = 0
     int32_t total = 0;
-    // if x is not None:
     if ((x.has_value())) {
-        // i: int32 = 0
         int32_t i = 0;
-        // while i < n:
         while ((i < n)) {
-            // x = other
             x = other;
-            // total = total + x  # tpyc: warning(/Potential None access/)
             total = (::tpy::add_check<int32_t>(total, ::tpy::deref_optional_check(x)));
-            // i = i + 1
             i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
-    // return total
     return total;
 }
 
+// print(narrowing_cleared_on_reassign(1, 2, 3))
+// print(narrowing_cleared_on_reassign(None, 2, 3))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(narrowing_cleared_on_reassign(1, 2, 3))
     std::cout << narrowing_cleared_on_reassign(1, 2, 3) << "\n";
-    // print(narrowing_cleared_on_reassign(None, 2, 3))
     std::cout << narrowing_cleared_on_reassign(std::nullopt, 2, 3) << "\n";
 }
 

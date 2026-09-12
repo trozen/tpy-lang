@@ -11,7 +11,9 @@ struct Headers;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def set_it(h: Headers, name: str, value: str) -> None:
 void set_it(Headers& h, std::string_view name, std::string_view value);
+// def main() -> None:
 void main();
 
 // # D16 phase 9: setattr(obj, name_var, v) with a runtime name -- routes to
@@ -38,13 +40,15 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
 
 
 // def __init__(self) -> None:
+//     self._last_name = ""
+//     self._last_value = ""
 inline Headers::Headers() : _last_name(""), _last_value("") {}
 
 // def __setattr__(self, name: str, value: str) -> None:
+//     self._last_name = name
+//     self._last_value = value
 inline void Headers::__setattr__(std::string_view name, std::string_view value) {
-    // self._last_name = name
     this->_last_name = name;
-    // self._last_value = value
     this->_last_value = value;
 }
 void __tpy_init();

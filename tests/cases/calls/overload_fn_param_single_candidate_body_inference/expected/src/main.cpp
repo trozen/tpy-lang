@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3]
+//     # 2-arg call: only the Fn-bearing overload is viable. U comes from
+//     # the lambda body (`x + int32(1)` -> int32). Regime B handles this.
+//     print(apply(lambda x: x + int32(1), xs))   # 0 (overload returns 0)
 void main() {
-    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // # 2-arg call: only the Fn-bearing overload is viable. U comes from
-    // # the lambda body (`x + int32(1)` -> int32). Regime B handles this.
-    // print(apply(lambda x: x + int32(1), xs))   # 0 (overload returns 0)
     std::cout << apply<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

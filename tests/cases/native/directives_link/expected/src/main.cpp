@@ -6,23 +6,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(sqrt(4.0))
+//     print(sqrt(9.0))
 void main() {
-    // print(sqrt(4.0))
     std::cout << ::tpy::print_float(sqrt(4.0)) << "\n";
-    // print(sqrt(9.0))
     std::cout << ::tpy::print_float(sqrt(9.0)) << "\n";
 }
 
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test that # tpy: link directive passes linker flags (uses libm)
-    // # tpy: include("<math.h>")
-    // # tpy: link("m")
-    // from tpy.extern import native
-    // main()
     main();
 }
 

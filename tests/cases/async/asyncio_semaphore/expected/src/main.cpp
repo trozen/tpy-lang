@@ -5,11 +5,16 @@ namespace tpyapp::main {
 
 
 // async def worker(sem: Semaphore, c: Counters) -> None:
+//     async with sem:
+//         c.active += 1
+//         if c.active > c.peak:
+//             c.peak = c.active
+//         await asyncio.sleep(0.001)
+//         c.active -= 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_worker::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0 = &(sem);
-        // async with sem:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
@@ -28,7 +33,6 @@ namespace tpyapp::main {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r1).value();
             __sub_1.reset();
-            // c.active -= 1
             c.active = ::tpy::sub_check<int32_t>(c.active, 1);
             __state = S_JOIN_0;
             continue;
@@ -53,7 +57,6 @@ namespace tpyapp::main {
         continue;
     }
     case S_JOIN_0: {
-        // async with sem:
         __sub_2.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
         __state = S_RESUME_2;
         continue;
@@ -64,14 +67,10 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
-            // c.active += 1
             c.active = ::tpy::add_check<int32_t>(c.active, 1);
-            // if c.active > c.peak:
             if ((c.active > c.peak)) {
-                // c.peak = c.active
                 c.peak = c.active;
             }
-            // await asyncio.sleep(0.001)
             __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
             __state = S_RESUME_1;
             continue;
@@ -93,14 +92,37 @@ __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c) {
 }
 
 // async def main_coro() -> None:
+//     counter = Semaphore(2)
+//     print("locked0:", counter.locked())
+//     await counter.acquire()
+//     await counter.acquire()
+//     print("locked_full:", counter.locked())
+//     counter.release()
+//     counter.release()
+//     counter.release()
+//     print("locked_extra:", counter.locked())
+//
+//     # Fresh Semaphore(2): the cap holds the observed peak at 2 with 5 workers.
+//     sem = Semaphore(2)
+//     c = Counters()
+//     tasks: list[asyncio.Task[None]] = []
+//     i = 0
+//     while i < 5:
+//         tasks.append(asyncio.create_task(worker(sem, c)))
+//         i += 1
+//     await asyncio.gather(*tasks)
+//     print("peak:", c.peak)
+//
+//     try:
+//         bad = Semaphore(-1)
+//         print("no error")
+//     except ValueError:
+//         print("caught negative")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // counter = Semaphore(2)
         counter.emplace(::tpystd::asyncio::Semaphore(2));
-        // print("locked0:", counter.locked())
         std::cout << "locked0:" << " " << ::tpy::print_bool((*counter).locked()) << "\n";
-        // await counter.acquire()
         __sub_0.emplace((*counter));
         __state = S_RESUME_0;
         continue;
@@ -110,7 +132,6 @@ __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // await counter.acquire()
         __sub_1.emplace((*counter));
         __state = S_RESUME_1;
         continue;
@@ -120,33 +141,19 @@ __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // print("locked_full:", counter.locked())
         std::cout << "locked_full:" << " " << ::tpy::print_bool((*counter).locked()) << "\n";
-        // counter.release()
         (*counter).release();
-        // counter.release()
         (*counter).release();
-        // counter.release()
         (*counter).release();
-        // print("locked_extra:", counter.locked())
         std::cout << "locked_extra:" << " " << ::tpy::print_bool((*counter).locked()) << "\n";
-        // # Fresh Semaphore(2): the cap holds the observed peak at 2 with 5 workers.
-        // sem = Semaphore(2)
         sem.emplace(::tpystd::asyncio::Semaphore(2));
-        // c = Counters()
         c.emplace(Counters());
-        // tasks: list[asyncio.Task[None]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>{});
-        // i = 0
         i = 0;
-        // while i < 5:
         while ((i < 5)) {
-            // tasks.append(asyncio.create_task(worker(sem, c)))
             (*tasks).push_back(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(worker((*sem), (*c)))));
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         }
-        // await asyncio.gather(*tasks)
         __sub_2.emplace(std::move(::tpystd::asyncio::gather<std::monostate>(::tpy::varargs<::tpystd::asyncio::_executor::Task<std::monostate>>(::tpy::as_mut_span((*tasks))))));
         __state = S_RESUME_2;
         continue;
@@ -156,17 +163,12 @@ __coro_worker worker(::tpystd::asyncio::Semaphore& sem, Counters& c) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
         __sub_2.reset();
-        // print("peak:", c.peak)
         std::cout << "peak:" << " " << (*c).peak << "\n";
-        // try:
         {
             try {
-                // bad = Semaphore(-1)
                 bad.emplace(::tpystd::asyncio::Semaphore(-1));
-                // print("no error")
                 std::cout << "no error" << "\n";
             } catch (const ::tpy::ValueError&) {
-                // print("caught negative")
                 std::cout << "caught negative" << "\n";
             }
         }
@@ -185,22 +187,23 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.Semaphore: caps concurrency (peak=2 for Semaphore(2)); locked()
+// # tracks an exhausted counter; release past the initial value grows it
+// # (plain Semaphore, not Bounded); negative initial value is rejected.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.Semaphore: caps concurrency (peak=2 for Semaphore(2)); locked()
-    // # tracks an exhausted counter; release past the initial value grows it
-    // # (plain Semaphore, not Bounded); negative initial value is rejected.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

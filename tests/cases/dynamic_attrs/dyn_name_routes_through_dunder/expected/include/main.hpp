@@ -11,6 +11,7 @@ struct Hybrid;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # D16 phase 9 (Option A): when getattr(obj, name_var) is called with a
@@ -38,12 +39,13 @@ inline std::ostream& operator<<(std::ostream& os, const Hybrid& obj) {
 
 
 // def __init__(self, declared: str) -> None:
+//     self.declared = declared
 inline Hybrid::Hybrid(std::string_view declared) : declared(declared) {}
 
 // def __getattr__(self, name: str) -> str:
+//     # Reports who got asked, distinct from the field's value.
+//     return "dunder:" + name
 inline std::string Hybrid::__getattr__(std::string_view name) const {
-    // # Reports who got asked, distinct from the field's value.
-    // return "dunder:" + name
     return (::tpy::str_concat("dunder:", name));
 }
 void __tpy_init();

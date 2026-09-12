@@ -5,9 +5,9 @@ SemanticAnalyzer, no CodeGenContext. It reuses the existing analyzer-free leaf
 helpers (`escape_cpp_name`, `expand_cpp_template`, `TpyType.to_cpp`), and its
 output is pinned by the committed `expected/` snapshots.
 
-Source comments are rendered through a `CommentSink` supplied by the codegen
-seam (the stateless `ctx` comment helpers); the dump/tests pass the no-op
-default so emission stays decoupled from the analyzer.
+Source comments are not this module's concern: the codegen printer echoes
+each definition's Python source above the C++ signature, so no statement
+inside a body carries a comment.
 """
 
 from __future__ import annotations
@@ -163,41 +163,6 @@ class THIRCodeGenError(Exception):
     """
 
 
-class CommentSink:
-    """Renders the source comments that precede / surround statements,
-    backed by a CodeGenContext's stateless comment helpers.
-
-    Duck-typed on `ctx` so emit.py stays free of a CodeGenContext import.
-    """
-
-    def __init__(self, ctx):
-        self._ctx = ctx
-
-    def stmt(self, out: TextIO, loc, indent: str) -> None:
-        self._ctx.emit_inline_comments(out, loc, indent)
-        self._ctx.emit_source_comment(out, loc, indent)
-
-    def inline(self, out: TextIO, loc, indent: str) -> None:
-        # Leading `#`-comment trivia only: a skipped statement's comments
-        # still emit even though its code does not.
-        self._ctx.emit_inline_comments(out, loc, indent)
-
-    def elif_(self, out: TextIO, loc, indent: str) -> None:
-        # An elif condition gets only its source line: a flattened elif
-        # emits no inline comments.
-        self._ctx.emit_source_comment(out, loc, indent)
-
-    def case_(self, out: TextIO, loc, indent: str) -> None:
-        # A `match` arm gets only its source line -- the case loc's source
-        # comment, never the leading `#`-comment trivia.
-        self._ctx.emit_source_comment(out, loc, indent)
-
-    def else_(self, out: TextIO, else_body, indent: str) -> None:
-        self._ctx.emit_else_comment(out, else_body, indent)
-
-    def trailing(self, out: TextIO, body, indent: str) -> None:
-        self._ctx.emit_block_trailing_comments(out, body, indent)
-
 
 class TempSink:
     """Allocates `__tmp_N` names for THIRArgTemp and renders the pending
@@ -334,14 +299,9 @@ class _EmitState:
     the analog of `ctx.rebind_slots`.
 
     `temps` is the `__tmp_N` sink THIRArgTemp renders through, flushed before
-    the enclosing statement line (after its source comment -- one flush point
-    per statement). Unlike the counters above it is NOT per-function: it is
+    the enclosing statement line (one flush point per statement). Unlike the counters above it is NOT per-function: it is
     ctx-backed, so the numbering stays module-cumulative across the module's
-    bodies.
-
-    `comments` is None only in the constant position (`constants.py`), which
-    emits one EXPRESSION: every comment render hangs off a statement."""
-    comments: 'CommentSink | None'
+    bodies."""
     temps: TempSink
     # `with_counter` numbers `__ctx_N` (ctx attr `with_counter`); `try_counter`
     # numbers the throw tier's `__after_else_N` else labels, the return
@@ -1943,7 +1903,6 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
             state.temps.flush(out, indent)
             out.write(f"{indent}{if_kw} ({cond}) {{\n")
         else:
-            state.comments.elif_(out, node.loc, indent)
             cp = state.temps.checkpoint()
             cond = _emit_expr(node.condition, state)
             if (state.temps.has_pending_since(cp)
@@ -1958,13 +1917,10 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
             else:
                 out.write(f"{indent}}} else {if_kw} ({cond}) {{\n")
         _emit_stmts(out, node.then_body, indent_level + 1, state)
-        state.comments.trailing(out, node.then_body, body_indent)
     last = chain[-1]
     if last.else_body:
-        state.comments.else_(out, last.else_body, indent)
         out.write(f"{indent}}} else {{\n")
         _emit_stmts(out, last.else_body, indent_level + 1, state)
-        state.comments.trailing(out, last.else_body, body_indent)
     out.write(f"{indent}}}\n")
     for ind in reversed(extra_closes):
         out.write(f"{ind}}}\n")
@@ -1998,10 +1954,8 @@ def _pop_loop_frame(out: TextIO, indent: str, state: _EmitState,
     else_label = state.loop_else_labels.pop()
     break_label = state.loop_break_labels.pop()
     if else_label:
-        state.comments.else_(out, orelse, indent)
         out.write(f"{indent}{{\n")
         _emit_stmts(out, orelse, indent_level + 1, state)
-        state.comments.trailing(out, orelse, INDENT * (indent_level + 1))
         out.write(f"{indent}}}\n")
         out.write(f"{indent}{else_label}:;\n")
     if break_label:
@@ -2106,7 +2060,6 @@ def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitSta
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1
-    state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
     _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
 
@@ -2179,7 +2132,6 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1
-    state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
     _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
 
@@ -2219,7 +2171,6 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1
-    state.comments.trailing(out, stmt.body, inner)
     out.write(f"{indent}}}\n")
     _pop_loop_frame(out, indent, state, saved_depth, stmt.orelse, indent_level)
 
@@ -2262,7 +2213,6 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
     # prelude/close lines above follow the bumped string.
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1
-    state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
     if not stmt.iterable_lvalue:
         out.write(f"{outer}}}\n")
@@ -2914,7 +2864,6 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
     out.write(f"{indent}switch ({subject}) {{\n")
     state.switch_depth += 1
     for arm in stmt.arms:
-        state.comments.case_(out, arm.entries[0].loc, indent)
         if not arm.labels:
             if default_label is not None:
                 out.write(f"{indent}default: {default_label}: {{\n")
@@ -2981,7 +2930,6 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
     deref = "*" if stmt.is_ptr_variant else ""
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         if not arm.labels:
             out.write(f"{indent}default: {{\n")
         elif len(arm.labels) == 1:
@@ -3046,7 +2994,6 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
         use_scope = len(arm.entries) > 1
         bind_indent = inner2 if use_scope else inner
         for entry in arm.entries:
-            state.comments.case_(out, entry.loc, inner)
             if use_scope:
                 out.write(f"{inner}{{\n")
             bases: dict[str, str] = {}
@@ -3109,7 +3056,6 @@ def _emit_match_poly_if_elif(out: TextIO, stmt: THIRMatch,
     inner = INDENT * (indent_level + 1)
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         if entry.poly_cast is not None:
             keyword = "if" if i == 0 else "} else if"
             pre, suf = entry.poly_cast
@@ -3149,7 +3095,6 @@ def _emit_match_poly_guarded(out: TextIO, stmt: THIRMatch,
     end_label = f"__match_end_{state.match_counter}"
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         if entry.poly_cast is not None:
             pre, suf = entry.poly_cast
             out.write(f"{indent}if ({pre}{subject}{suf}) {{\n")
@@ -3217,7 +3162,6 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
     has_value_cond = (f"{subject}.has_value()" if stmt.optional_value_repr
                       else f"{subject} != nullptr")
     if stmt.none_entry is not None:
-        state.comments.stmt(out, stmt.none_entry.loc, indent)
         out.write(f"{indent}if ({null_cond}) {{\n")
         _emit_match_arm_body(out, stmt.none_entry, indent_level + 1, state)
         out.write(f"{indent}}} else {{\n")
@@ -3226,7 +3170,6 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
     out.write(f"{inner}auto& {inner_name} = (*{subject});\n")
     if stmt.inner_strategy is None:
         entry = stmt.arms[0].entries[0]
-        state.comments.case_(out, entry.loc, inner)
         out.write(f"{inner}{{\n")
         _emit_match_whole_bindings(out, entry, inner_name, inner2)
         _emit_stmts(out, entry.body, indent_level + 2, state)
@@ -3279,7 +3222,6 @@ def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
     inner = INDENT * (indent_level + 1)
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         if entry.opt_conds is None:
             out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
         else:
@@ -3323,7 +3265,6 @@ def _emit_match_if_elif_optional_guarded(out: TextIO, stmt: THIRMatch,
     end_label = f"__match_end_{state.match_counter}"
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         if entry.opt_conds is None:
             out.write(f"{indent}{{\n")
         else:
@@ -3353,7 +3294,6 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     state.match_counter += 1
     end_label = f"__match_end_{state.match_counter}"
     for entry in stmt.str_guarded:
-        state.comments.case_(out, entry.loc, indent)
         cond = _opt_chain_cond(entry.opt_conds, subject)
         out.write(f"{indent}if ({cond}) {{\n")
         _emit_match_whole_bindings(out, entry, subject, inner)
@@ -3374,7 +3314,6 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     for arm in stmt.arms:
         out.write(f"{sw_indent}case {arm.labels[0]}: {{\n")
         for entry in arm.entries:
-            state.comments.case_(out, entry.loc, sw_inner)
             cond = _opt_chain_cond(entry.opt_conds, subject)
             out.write(f"{sw_inner}if ({cond}) {{\n")
             _emit_match_whole_bindings(out, entry, subject, sw_deep)
@@ -3388,7 +3327,6 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     if stmt.str_disc_kind == "char_at":
         out.write(f"{indent}}}\n")
     for entry in stmt.str_trailing:
-        state.comments.case_(out, entry.loc, indent)
         out.write(f"{indent}{{\n")
         _emit_match_whole_bindings(out, entry, subject, inner)
         _emit_match_goto_tail(out, entry, indent_level, state, end_label)
@@ -3410,7 +3348,6 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
     inner = INDENT * (indent_level + 1)
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         if not arm.labels:
             out.write(f"{indent}{{\n" if i == 0 else f"{indent}}} else {{\n")
         else:
@@ -3451,7 +3388,6 @@ def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
     end_label = f"__match_end_{state.match_counter}"
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         if not arm.labels:
             out.write(f"{indent}{{\n")
         else:
@@ -3494,7 +3430,6 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
     inner = INDENT * (indent_level + 1)
     for i, arm in enumerate(stmt.arms):
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         keyword = "if" if i == 0 else "} else if"
         if entry.or_conds is not None:
             if entry.or_conds:
@@ -3536,7 +3471,6 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
     end_label = f"__match_end_{state.match_counter}"
     for arm in stmt.arms:
         entry = arm.entries[0]
-        state.comments.case_(out, entry.loc, indent)
         if entry.or_conds is not None:
             if entry.or_conds:
                 cond = _record_or_cond(entry.or_conds, subject)
@@ -4484,18 +4418,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         for call in stmt.calls:
             out.write(f"{indent}{call}();\n")
     elif isinstance(stmt, THIRNoOpStmt):
-        # No code -- the `// pass` source comment (if any) is emitted by the
-        # caller (_emit_stmts) from the node's loc. A skipped statement's
-        # leading trivia (trivia_loc) emits inline comments only.
-        if stmt.trivia_loc is not None:
-            state.comments.inline(out, stmt.trivia_loc, INDENT * indent_level)
+        pass  # no code
     elif isinstance(stmt, THIRFoldedBlock):
         # Per-@overload-stub fold splice: the surviving statements emit flat
-        # at the enclosing indent. The chain head's preceding `#` comments
-        # emit even for an all-dead chain.
+        # at the enclosing indent.
         _witness("fold.overload_block")
-        if stmt.trivia_loc is not None:
-            state.comments.inline(out, stmt.trivia_loc, INDENT * indent_level)
         if stmt.burns_match_counter:
             state.match_counter += 1
         _emit_stmts(out, stmt.stmts, indent_level, state)
@@ -4505,8 +4432,6 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # last original node. Temps flush before each branch line; lowering
         # admits them only on the first branch.
         _witness("fold.overload_live_chain")
-        if stmt.trivia_loc is not None:
-            state.comments.inline(out, stmt.trivia_loc, indent)
         for i, (cond_node, body) in enumerate(stmt.branches):
             cond = _emit_expr(cond_node, state)
             state.temps.flush(out, indent)
@@ -4631,16 +4556,11 @@ def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int,
 def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> None:
     indent = INDENT * indent_level
     for stmt in stmts:
-        # A desugar-expanded statement (no_source_comment) shares the first
-        # statement's source comment -- skip the repeat.
-        if not stmt.no_source_comment:
-            state.comments.stmt(out, stmt.loc, indent)
         _emit_stmt(out, stmt, indent_level, state)
 
 
 def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
-                   *, comments: CommentSink,
-                   temps: TempSink,
+                   *, temps: TempSink,
                    with_counter: ModuleCounter,
                    try_counter: ModuleCounter,
                    finally_guard_counter: ModuleCounter,
@@ -4656,7 +4576,7 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
     spelling (`ctx.current_return_cpp` at the seam), read only by the
     finally-chain return temp decl. `global_scope` emits the module-init body
     (`__tpy_init`), whose slots spell `static __global_slot_N`."""
-    state = _EmitState(comments, temps=temps,
+    state = _EmitState(temps=temps,
                        with_counter=with_counter,
                        try_counter=try_counter,
                        finally_guard_counter=finally_guard_counter,
@@ -4680,8 +4600,7 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
 
 
 def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
-                               *, comments: CommentSink,
-                               temps: TempSink,
+                               *, temps: TempSink,
                                with_counter: ModuleCounter,
                                try_counter: ModuleCounter,
                                finally_guard_counter: ModuleCounter,
@@ -4694,7 +4613,7 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     never lower there (gate + validator enforced); the body shares the
     statement machinery and its sink. ``body_indent_level`` is 2 for an
     in-struct definition, 1 for an out-of-line one at namespace scope."""
-    state = _EmitState(comments, temps=temps,
+    state = _EmitState(temps=temps,
                        with_counter=with_counter,
                        try_counter=try_counter,
                        finally_guard_counter=finally_guard_counter)
@@ -4735,8 +4654,7 @@ class ResumableLeafEmitter:
     the seam disagree on the routed body's shape -- a hard error, never
     silently skipped."""
 
-    def __init__(self, body, *, comments: 'CommentSink',
-                 temps: 'TempSink',
+    def __init__(self, body, *, temps: 'TempSink',
                  with_counter: 'ModuleCounter',
                  try_counter: 'ModuleCounter',
                  finally_guard_counter: 'ModuleCounter',
@@ -4749,8 +4667,7 @@ class ResumableLeafEmitter:
                  iter_counter: 'IterCounter | None' = None,
                  ) -> None:
         self._body = body
-        self._state = _EmitState(comments,
-                                 temps=temps,
+        self._state = _EmitState(temps=temps,
                                  with_counter=with_counter,
                                  try_counter=try_counter,
                                  finally_guard_counter=finally_guard_counter,
@@ -4882,15 +4799,13 @@ class SimpleGenLeafEmitter:
     yield), so the body's blocks and expressions are direct fields, not
     identity-keyed tables."""
 
-    def __init__(self, body, *, comments: 'CommentSink',
-                 temps: 'TempSink',
+    def __init__(self, body, *, temps: 'TempSink',
                  with_counter: 'ModuleCounter',
                  try_counter: 'ModuleCounter',
                  finally_guard_counter: 'ModuleCounter',
                  hoist_sink: 'Callable[[str], None] | None' = None) -> None:
         self._body = body
-        self._state = _EmitState(comments,
-                                 temps=temps,
+        self._state = _EmitState(temps=temps,
                                  with_counter=with_counter,
                                  try_counter=try_counter,
                                  finally_guard_counter=finally_guard_counter,

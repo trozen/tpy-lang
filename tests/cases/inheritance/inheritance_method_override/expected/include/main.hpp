@@ -80,41 +80,45 @@ inline std::ostream& operator<<(std::ostream& os, const Rectangle& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Shape::Shape(std::string_view name) : name(name) {}
 
 // def area(self) -> int32:
+//     return 0
 inline int32_t Shape::area() const {
-    // return 0
     return 0;
 }
 
 // def describe(self) -> str:
+//     return self.name
 inline std::string Shape::describe() const {
-    // return self.name
     return this->name;
 }
 
 // def __init__(self, side: int32) -> None:
+//     self.name = "Square"
+//     self.side = side
 inline Square::Square(int32_t side) : side(side) {
-    // self.name = "Square"
     this->name = "Square";
 }
 
 // def area(self) -> int32:
+//     return self.side * self.side
 inline int32_t Square::area() const {
-    // return self.side * self.side
     return (::tpy::mul_check<int32_t>(this->side, this->side));
 }
 
 // def __init__(self, width: int32, height: int32) -> None:
+//     self.name = "Rectangle"
+//     self.width = width
+//     self.height = height
 inline Rectangle::Rectangle(int32_t width, int32_t height) : width(width), height(height) {
-    // self.name = "Rectangle"
     this->name = "Rectangle";
 }
 
 // def area(self) -> int32:
+//     return self.width * self.height
 inline int32_t Rectangle::area() const {
-    // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width, this->height));
 }
 void __tpy_init();

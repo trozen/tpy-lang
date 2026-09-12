@@ -5,39 +5,40 @@ namespace tpyapp::main {
 
 
 // def sentinel(c: Counter) -> int32:
+//     return 0
 int32_t sentinel(const Counter& c) {
-    // return 0
     return 0;
 }
 
 // @resolve_bump
 // def poke(c: Counter) -> int32:
+//     return sentinel(c)
 int32_t poke(Counter& c) {
-    // return sentinel(c)
     return c.bump();
 }
 
 // def main() -> None:
+//     c = Counter()
+//     print(poke(c))
+//     print(poke(c))
 void main() {
-    // c = Counter()
     Counter c = Counter();
-    // print(poke(c))
     std::cout << poke(c) << "\n";
-    // print(poke(c))
     std::cout << poke(c) << "\n";
 }
 
+// # A post-sema deferred macro rewrites sentinel(c) -> c.bump() (a MUTATING call
+// # on the param receiver) and calls note_param_mutated, so Phase-2 emits the
+// # param mutable (Counter&) instead of const& -- the mutating call then compiles.
+// # The mutation is observed across two calls on the shared Counter: 1 then 2.
+// from mutatemod import resolve_bump
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A post-sema deferred macro rewrites sentinel(c) -> c.bump() (a MUTATING call
-    // # on the param receiver) and calls note_param_mutated, so Phase-2 emits the
-    // # param mutable (Counter&) instead of const& -- the mutating call then compiles.
-    // # The mutation is observed across two calls on the shared Counter: 1 then 2.
-    // from mutatemod import resolve_bump
-    // main()
     main();
 }
 

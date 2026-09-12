@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def f(t: tuple[T | None, T | None]) -> int32:
+//     a, b = t
+//     if a is None or b is None:
+//         return int32(0)
+//     return a.x + b.x
 int32_t f(const std::tuple<const T*, const T*>& t) {
-    // a, b = t
     auto& __tup_1 = t;
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
-    // if a is None or b is None:
     if (((a == nullptr) || (b == nullptr))) {
-        // return int32(0)
         return 0;
     }
-    // return a.x + b.x
     return (::tpy::add_check<int32_t>(a->x, b->x));
 }
 
 // def main() -> None:
+//     items: list[tuple[T | None, T | None]] = [
+//         (T(int32(1)), T(int32(2))),
+//         (None, T(int32(3))),
+//     ]
+//     for it in items:
+//         print(f(it))
 void main() {
-    // items: list[tuple[T | None, T | None]] = [
-    // (T(int32(1)), T(int32(2))),
-    // (None, T(int32(3))),
-    // ]
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(1), T(2)})), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T*, T>{nullptr, T(3)}))};
-    // for it in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        // print(f(it))
         std::cout << f(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it)) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

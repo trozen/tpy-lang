@@ -9,30 +9,30 @@ namespace tpyapp::main {
 // # declared/param split. The callee mutates the caller's list, so the alias is
 // # observable. The copy before the move is BUGS.md#own-str-slot-temp-copies-owned-source.
 // def add_joined(xs: list[str], a: str, b: str) -> None:
+//     t = a + b
+//     xs.append(t)  # the owned-str local at an Own[str] element slot
 void add_joined(std::vector<std::string>& xs, std::string_view a, std::string_view b) {
-    // t = a + b
     ::tpy::String t = (::tpy::str_concat(a, b));
-    // xs.append(t)  # the owned-str local at an Own[str] element slot
     std::string __tmp_1{t};
     xs.push_back(std::move(__tmp_1));
 }
 
 // def main() -> None:
+//     xs: list[str] = ["seed"]
+//     add_joined(xs, "ab", "cd")
+//     print(len(xs), xs[0], xs[1])
 void main() {
-    // xs: list[str] = ["seed"]
     std::vector<std::string> xs = {"seed"};
-    // add_joined(xs, "ab", "cd")
     add_joined(xs, "ab", "cd");
-    // print(len(xs), xs[0], xs[1])
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

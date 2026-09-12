@@ -11,13 +11,21 @@ struct Tag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick_list(c: bool, a: list[int32], b: list[int32]) -> None:
 void pick_list(bool c, std::vector<int32_t>& a, std::vector<int32_t>& b);
+// def pick_dict(c: bool, a: dict[str, int32], b: dict[str, int32]) -> None:
 void pick_dict(bool c, ::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b);
+// def pick_set(c: bool, a: set[int32], b: set[int32]) -> None:
 void pick_set(bool c, ::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b);
+// def pick_bytearray(c: bool, a: bytearray, b: bytearray) -> None:
 void pick_bytearray(bool c, ::tpy::ByteArray& a, ::tpy::ByteArray& b);
+// def pick_array(c: bool, a: Array[int32, 2], b: Array[int32, 2]) -> None:
 void pick_array(bool c, std::array<int32_t, 2>& a, std::array<int32_t, 2>& b);
+// def pick_record(c: bool, a: Tag, b: Tag) -> None:
 void pick_record(bool c, Tag& a, Tag& b);
+// def read_through(c: bool, a: bytearray, b: bytearray) -> int32:
 int32_t read_through(bool c, const ::tpy::ByteArray& a, const ::tpy::ByteArray& b);
+// def main() -> None:
 void main();
 
 // class Tag:
@@ -38,6 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tag::Tag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

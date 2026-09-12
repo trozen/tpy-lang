@@ -11,7 +11,9 @@ struct Suppressor;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_neg_one(do_raise: bool) -> int:
 ::tpy::BigInt maybe_neg_one(bool do_raise);
+// def main() -> None:
 void main();
 
 // # Regression for the liveness change: a `-> int` function whose with-body
@@ -40,14 +42,14 @@ inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
 
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt Suppressor::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     return exc_val is not None  # suppress any caught exception
 inline bool Suppressor::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // return exc_val is not None  # suppress any caught exception
     return (exc_val != nullptr);
 }
 void __tpy_init();

@@ -5,80 +5,80 @@ namespace tpyapp::main {
 
 
 // def grown() -> int32:
+//     xs = [3, 1]
+//     xs.append(9)
+//     xs.insert(0, 7)
+//     xs.sort()
+//     total = 0
+//     for x in xs:
+//         total = total + x
+//     return total
 int32_t grown() {
-    // xs = [3, 1]
     std::vector<int32_t> xs = {3, 1};
-    // xs.append(9)
     xs.push_back(9);
-    // xs.insert(0, 7)
     ::tpy::list_insert(xs, 0, 7);
-    // xs.sort()
     ::tpy::sort_in_place(xs);
-    // total = 0
     int32_t total = 0;
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total = total + x
         total = (::tpy::add_check<int32_t>(total, x));
     }
-    // return total
     return total;
 }
 
 // def fixed() -> int32:
+//     ys = [10, 20, 30]
+//     total = ys[0]
+//     total = total + ys[2]
+//     for i in range(len(ys)):
+//         total = total + ys[i]
+//     return total
 int32_t fixed() {
-    // ys = [10, 20, 30]
     std::array<int32_t, 3> ys = {10, 20, 30};
-    // total = ys[0]
     int32_t total = ::tpy::__getitem__(ys, 0);
-    // total = total + ys[2]
     total = (::tpy::add_check<int32_t>(total, ::tpy::__getitem__(ys, 2)));
-    // for i in range(len(ys)):
     int32_t __stop_0 = ::tpy::__len__(ys);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // total = total + ys[i]
         total = (::tpy::add_check<int32_t>(total, ys[static_cast<std::size_t>(i)]));
     }
-    // return total
     return total;
 }
 
 // def from_empty(n: int32) -> int32:
+//     zs: list[int32] = []
+//     zs.append(n)
+//     zs.append(n + 1)
+//     # len is read before the pop mutates: a `len(zs) + zs.pop()` binop would be
+//     # C++-argument-order-dependent (CPython evaluates left-to-right).
+//     count = len(zs)
+//     return count + zs.pop()
 int32_t from_empty(int32_t n) {
-    // zs: list[int32] = []
     std::vector<int32_t> zs = std::vector<int32_t>{};
-    // zs.append(n)
     zs.push_back(n);
-    // zs.append(n + 1)
     zs.push_back((::tpy::add_check<int32_t>(n, 1)));
-    // # len is read before the pop mutates: a `len(zs) + zs.pop()` binop would be
-    // # C++-argument-order-dependent (CPython evaluates left-to-right).
-    // count = len(zs)
     int32_t count = ::tpy::__len__(zs);
-    // return count + zs.pop()
     return (::tpy::add_check<int32_t>(count, ::tpy::pop_back(zs)));
 }
 
 // def main() -> None:
+//     print(grown())
+//     print(fixed())
+//     print(from_empty(5))
 void main() {
-    // print(grown())
     std::cout << grown() << "\n";
-    // print(fixed())
     std::cout << fixed() << "\n";
-    // print(from_empty(5))
     std::cout << from_empty(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

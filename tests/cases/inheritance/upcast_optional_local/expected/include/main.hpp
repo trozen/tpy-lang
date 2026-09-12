@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def upcast(d: Dog) -> None:
 void upcast(Dog& d);
+// def main() -> None:
 void main();
 
 // # A plain upcast of a record lvalue into a nullable base-typed local. The slot
@@ -56,15 +58,18 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
+//     self.tag = 0
 inline Pet::Pet(std::string_view name) : name(name), tag(::tpy::BigInt(0)) {}
 
 // def rename(self, name: str) -> None:
+//     self.name = name
 inline void Pet::rename(std::string_view name) {
-    // self.name = name
     this->name = name;
 }
 
 // def __init__(self, name: str) -> None:
+//     super().__init__(name)
 inline Dog::Dog(std::string_view name) : Pet(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

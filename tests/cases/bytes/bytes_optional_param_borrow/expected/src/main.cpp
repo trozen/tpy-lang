@@ -5,70 +5,72 @@ namespace tpyapp::main {
 
 
 // def first_or_empty(b: bytes | None) -> bytes:
+//     if b is None:
+//         return b""
+//     return b                      # owned-bytes return from borrow param
 ::tpy::Bytes first_or_empty(std::optional<::tpy::BytesView> b) {
-    // if b is None:
     if ((!b.has_value())) {
-        // return b""
         return ::tpy::Bytes{};
     }
-    // return b                      # owned-bytes return from borrow param
     return ::tpy::Bytes((*b));
 }
 
 // def collect(b: bytes | None) -> int:
+//     out: list[bytes] = []
+//     if b is not None:
+//         out.append(b)             # container insert from borrow param
+//     return len(out)
 ::tpy::BigInt collect(std::optional<::tpy::BytesView> b) {
-    // out: list[bytes] = []
     std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
-    // if b is not None:
     if ((b.has_value())) {
-        // out.append(b)             # container insert from borrow param
         out.push_back(::tpy::Bytes((*b)));
     }
-    // return len(out)
     return ::tpy::BigInt(::tpy::__len__(out));
 }
 
 // def reassigned(b: bytes | None) -> int:
+//     if b is None:
+//         b = b"fallback"           # reassign of a borrow-form param
+//     return len(b)
 ::tpy::BigInt reassigned(std::optional<::tpy::BytesView> __param_b) {
     std::optional<::tpy::Bytes> b = __param_b ? std::make_optional(::tpy::Bytes(*__param_b)) : std::nullopt;
-    // if b is None:
     if ((!b.has_value())) {
-        // b = b"fallback"           # reassign of a borrow-form param
         b = ::tpy::bytes_literal_owned("fallback", 8);
     }
-    // return len(b)
     return ::tpy::BigInt(::tpy::__len__((*b)));
 }
 
 // def reassigned_plain(b: bytes, c: bool) -> int:
+//     if c:
+//         b = b"longer"             # reassign of a plain bytes (span) param -> owned copy
+//     return len(b)
 ::tpy::BigInt reassigned_plain(::tpy::BytesView __param_b, bool c) {
     ::tpy::Bytes b = ::tpy::Bytes(__param_b);
-    // if c:
     if (c) {
-        // b = b"longer"             # reassign of a plain bytes (span) param -> owned copy
         b = ::tpy::bytes_literal_owned("longer", 6);
     }
-    // return len(b)
     return ::tpy::BigInt(::tpy::__len__(b));
 }
 
 // def forward(data: bytes) -> int:
+//     return len(first_or_empty(data))   # real bytes value into bytes|None param
 ::tpy::BigInt forward(::tpy::BytesView data) {
-    // return len(first_or_empty(data))   # real bytes value into bytes|None param
     return ::tpy::BigInt(::tpy::__len__(first_or_empty(data)));
 }
 
 // def gen(b: bytes | None) -> Iterator[int]:
+//     # simple generator (no await) owning the bytes|None param across yields
+//     yield 1
+//     if b is not None:
+//         yield int(b[0])           # reads buffer after a yield -> needs owned capture
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 1
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
     case S_RESUME_0: {
         if ((b.has_value())) {
-            // yield int(b[0])           # reads buffer after a yield -> needs owned capture
             __state = S_RESUME_1;
             return ::tpy::BigInt(static_cast<uint64_t>(::tpy::bytes_getitem((*b), 0)));
         } else {
@@ -96,28 +98,30 @@ __gen_gen gen(std::optional<::tpy::BytesView> b) {
 }
 
 // def main() -> None:
+//     print(len(first_or_empty(b"hello")))
+//     print(len(first_or_empty(None)))
+//     print(collect(b"xy"))
+//     print(reassigned(None))
+//     print(reassigned_plain(b"ab", True), reassigned_plain(b"abc", False))
+//     print(forward(b"world"))
+//     h = Holder()
+//     h.store(b"abc")
+//     print(len(h.data))
+//     total = 0
+//     for v in gen(b"Q"):
+//         total += v
+//     print(total)
 void main() {
-    // print(len(first_or_empty(b"hello")))
     std::cout << ::tpy::__len__(first_or_empty(::tpy::bytes_literal_owned("hello", 5))) << "\n";
-    // print(len(first_or_empty(None)))
     std::cout << ::tpy::__len__(first_or_empty(std::nullopt)) << "\n";
-    // print(collect(b"xy"))
     std::cout << collect(::tpy::bytes_literal_owned("xy", 2)) << "\n";
-    // print(reassigned(None))
     std::cout << reassigned(std::nullopt) << "\n";
-    // print(reassigned_plain(b"ab", True), reassigned_plain(b"abc", False))
     std::cout << reassigned_plain(::tpy::bytes_literal("ab", 2), true) << " " << reassigned_plain(::tpy::bytes_literal("abc", 3), false) << "\n";
-    // print(forward(b"world"))
     std::cout << forward(::tpy::bytes_literal("world", 5)) << "\n";
-    // h = Holder()
     Holder h = Holder();
-    // h.store(b"abc")
     h.store(::tpy::bytes_literal_owned("abc", 3));
-    // print(len(h.data))
     std::cout << ::tpy::__len__(h.data) << "\n";
-    // total = 0
     int32_t total = 0;
-    // for v in gen(b"Q"):
     {
         ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("Q", 1);
         auto __src_0 = gen(__tmp_1);
@@ -126,20 +130,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, (v).to_fixed_check<int32_t>());
         }
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

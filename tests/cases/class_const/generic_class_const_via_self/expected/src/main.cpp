@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Bounded[int32]()
+//     print(b.at_limit(5))
+//     print(b.at_limit(7))
+//     print(b.at_limit(8))
 void main() {
-    // b = Bounded[int32]()
     Bounded<int32_t> b = Bounded<int32_t>();
-    // print(b.at_limit(5))
     std::cout << ::tpy::print_bool(b.at_limit(5)) << "\n";
-    // print(b.at_limit(7))
     std::cout << ::tpy::print_bool(b.at_limit(7)) << "\n";
-    // print(b.at_limit(8))
     std::cout << ::tpy::print_bool(b.at_limit(8)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

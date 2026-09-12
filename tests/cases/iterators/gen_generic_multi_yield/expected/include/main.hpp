@@ -12,11 +12,13 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename T>
 struct __gen_two_yields;
 
+// def two_yields[T](a: T, b: T) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 __gen_two_yields<T> two_yields(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
-// Generator: two_yields
+// def two_yields[T](a: T, b: T) -> Iterator[T]:  # tpyc: ok
 template <typename T>
 struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, T> {
     int32_t __state;
@@ -41,16 +43,16 @@ struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, T> 
     }
 };
 // def two_yields[T](a: T, b: T) -> Iterator[T]:  # tpyc: ok
+//     yield a
+//     yield b
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_two_yields<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield a
         __state = S_RESUME_0;
         return a;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return b;
     }

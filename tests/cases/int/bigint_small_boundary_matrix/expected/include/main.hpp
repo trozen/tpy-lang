@@ -14,6 +14,7 @@ extern ::tpy::BigInt BIG_POS;
 extern ::tpy::BigInt BIG_NEG;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show_mul(label: str, a: int, b: int) -> None:
 void show_mul(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b);
 
 void __tpy_init();

@@ -19,13 +19,18 @@ struct __coro_consumer;
 struct __coro_fast_path_consumer;
 struct __coro_main_coro;
 
+// async def producer(e: Event) -> None:
 __coro_producer producer(::tpystd::asyncio::Event& e);
+// async def consumer(e: Event) -> None:
 __coro_consumer consumer(::tpystd::asyncio::Event& e);
+// async def fast_path_consumer(e: Event) -> None:
 __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: producer
+// async def producer(e: Event) -> None:
 struct __coro_producer {
     int32_t __state;
     bool __cancel_pending;
@@ -49,7 +54,7 @@ struct __coro_producer {
     }
 };
 
-// Async coroutine: consumer
+// async def consumer(e: Event) -> None:
 struct __coro_consumer {
     int32_t __state;
     bool __cancel_pending;
@@ -73,7 +78,7 @@ struct __coro_consumer {
     }
 };
 
-// Async coroutine: fast_path_consumer
+// async def fast_path_consumer(e: Event) -> None:
 struct __coro_fast_path_consumer {
     int32_t __state;
     bool __cancel_pending;
@@ -97,7 +102,7 @@ struct __coro_fast_path_consumer {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

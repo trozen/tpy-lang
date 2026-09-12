@@ -12,11 +12,17 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_branch(n: int32) -> int32:
 int32_t in_branch(int32_t n);
+// def in_loop() -> None:
 void in_loop();
+// def nonvalue_rvalue_reassigned(n: int32) -> int32:
 int32_t nonvalue_rvalue_reassigned(int32_t n);
+// def nonvalue_in_branch(n: int32) -> int32:
 int32_t nonvalue_in_branch(int32_t n);
+// def kept_manager_and_reseat() -> int32:
 int32_t kept_manager_and_reseat();
+// def main() -> None:
 void main();
 
 // class CM:
@@ -68,37 +74,39 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline CM::CM(int32_t n) : n(n) {}
 
 // def __enter__(self) -> int32:
+//     return self.n
 inline int32_t CM::__enter__() const {
-    // return self.n
     return this->n;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("exit", self.n)
 inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("exit", self.n)
     std::cout << "exit" << " " << this->n << "\n";
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Node::Node(int32_t n) : n(n) {}
 
 // def __enter__(self) -> "Node":
+//     return self
 inline Node& Node::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Node::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 
 // def next(self) -> Own["Node"]:
+//     return Node(self.n + 1)
 inline Node Node::next() const {
-    // return Node(self.n + 1)
     return Node((::tpy::add_check<int32_t>(this->n, 1)));
 }
 void __tpy_init();

@@ -5,13 +5,13 @@ namespace tpyapp::lib {
 
 
 
+// # Module defining a @native(binding="C") type and a helper function
+// from tpy.extern import native
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Module defining a @native(binding="C") type and a helper function
-    // from tpy.extern import native
 }
 
 } // namespace tpyapp::lib

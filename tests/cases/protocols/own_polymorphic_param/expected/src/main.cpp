@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def adopt(p: Own[Pet]) -> Own[Pet]:  # tpyc: ok
+//     return p                         # consume by forwarding ownership out
 std::unique_ptr<Pet> adopt(std::unique_ptr<Pet> p) {
-    // return p                         # consume by forwarding ownership out
     return p;
 }
 
 // def main() -> None:
+//     print(adopt(Dog()).name())       # inheritance rvalue
+//     print(adopt(Cat("felix")).name())  # structural rvalue -> Adapter
 void main() {
-    // print(adopt(Dog()).name())       # inheritance rvalue
     std::cout << adopt(std::make_unique<Dog>(Dog()))->name() << "\n";
-    // print(adopt(Cat("felix")).name())  # structural rvalue -> Adapter
     std::cout << adopt(::tpy::make_adapter<Pet>(Cat("felix")))->name() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

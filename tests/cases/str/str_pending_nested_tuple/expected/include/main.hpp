@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(flag: bool) -> tuple[int, tuple[str, bool]]:
 std::tuple<::tpy::BigInt, std::tuple<std::string, bool>> pick(bool flag);
 
 void __tpy_init();

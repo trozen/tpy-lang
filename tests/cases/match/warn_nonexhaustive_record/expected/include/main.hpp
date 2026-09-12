@@ -11,9 +11,13 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe_guarded(p: Point) -> str:
 std::string describe_guarded(const Point& p);
+// def describe_literal(p: Point) -> str:
 std::string describe_literal(const Point& p);
+// def describe_exhaustive(p: Point) -> str:
 std::string describe_exhaustive(const Point& p);
+// def main() -> None:
 void main();
 
 // # warning: non-exhaustive match on record (guarded and literal-field arms only)
@@ -37,6 +41,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int, y: int) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

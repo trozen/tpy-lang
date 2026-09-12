@@ -11,25 +11,45 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
 std::tuple<Box, Box*> make_mixed(Box& b);
+// def make_owned() -> Own[tuple[Box, Box]]:
 std::tuple<Box, Box> make_owned();
+// def take(t: tuple[Box, Box]) -> int32:
 int32_t take(const std::tuple<const Box*, const Box*>& t);
+// def read_borrow_elem(b: Box) -> int32:
 int32_t read_borrow_elem(Box& b);
+// def read_own_elem(b: Box) -> int32:
 int32_t read_own_elem(Box& b);
+// def write_borrow_elem(b: Box) -> int32:
 int32_t write_borrow_elem(Box& b);
+// def read_direct(b: Box) -> int32:
 int32_t read_direct(Box& b);
+// def read_param(p: tuple[Own[Box], Box]) -> int32:
 int32_t read_param(const std::tuple<Box, const Box*>& p);
+// def unpack_mixed(b: Box) -> int32:
 int32_t unpack_mixed(Box& b);
+// def method_on_borrow_elem(b: Box) -> int32:
 int32_t method_on_borrow_elem(Box& b);
+// def pass_whole(b: Box) -> int32:
 int32_t pass_whole(Box& b);
+// def wholly_owned_still_dots() -> int32:
 int32_t wholly_owned_still_dots();
+// def in_list(b: Box) -> int32:
 int32_t in_list(Box& b);
+// def in_dict(b: Box) -> int32:
 int32_t in_dict(Box& b);
+// def in_nested_tuple(b: Box) -> int32:
 int32_t in_nested_tuple(Box& b);
+// def as_loop_var(b: Box) -> int32:
 int32_t as_loop_var(Box& b);
+// def in_list_copy_ack(b: Box) -> int32:
 int32_t in_list_copy_ack(Box& b);
+// def via_ternary(b: Box, c: Box, flag: bool) -> int32:
 int32_t via_ternary(Box& b, Box& c, bool flag);
+// def rebound_in_branch(b: Box, c: Box, flag: bool) -> int32:
 int32_t rebound_in_branch(Box& b, Box& c, bool flag);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -53,13 +73,14 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Box::Box(int32_t val) : val(val) {}
 
 // def bump(self) -> int32:
+//     self.val = self.val + 1
+//     return self.val
 inline int32_t Box::bump() {
-    // self.val = self.val + 1
     this->val = (::tpy::add_check<int32_t>(this->val, 1));
-    // return self.val
     return this->val;
 }
 void __tpy_init();

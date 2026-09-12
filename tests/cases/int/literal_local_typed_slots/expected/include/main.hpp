@@ -11,13 +11,21 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ret_unsigned() -> uint64:
 uint64_t ret_unsigned();
+// def init_typed_local() -> uint64:
 uint64_t init_typed_local();
+// def reassign_existing_typed() -> uint64:
 uint64_t reassign_existing_typed();
+// def setitem_typed_list() -> uint64:
 uint64_t setitem_typed_list();
+// def field_assign_typed() -> uint64:
 uint64_t field_assign_typed();
+// def dict_key_typed() -> str:
 std::string dict_key_typed();
+// def method_arg_with_own_param() -> uint64:
 uint64_t method_arg_with_own_param();
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -37,6 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.val = uint64(0)
 inline Holder::Holder() : val(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

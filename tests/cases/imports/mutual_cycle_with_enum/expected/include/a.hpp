@@ -10,6 +10,7 @@ namespace tpyapp::a {
 
 inline constexpr std::string_view __name__ = "a";
 
+// def lookup() -> Color:
 ::tpyapp::b::Color lookup();
 
 void __tpy_init();

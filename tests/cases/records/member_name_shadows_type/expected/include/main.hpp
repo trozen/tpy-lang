@@ -66,6 +66,7 @@ struct holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class day:
@@ -328,118 +329,125 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline day::day(const ::tpy::BigInt& n) : n(n) {}
 
 // def __init__(self, side: int) -> None:
+//     self.side = side
 inline square::square(const ::tpy::BigInt& side) : side(side) {}
 
 // def area(self) -> int:
+//     return self.side * self.side
 inline ::tpy::BigInt square::area() const {
-    // return self.side * self.side
     return ((this->side) * (this->side));
 }
 
 // def __init__(self, tick: int) -> None:
+//     self.tick = tick
 inline clock::clock(const ::tpy::BigInt& tick) : tick(tick) {}
 
 // def day(self) -> Own[day]:              # method shadows record type `day`
+//     return day(self.tick)
 inline ::tpyapp::main::day clock::day() const {
-    // return day(self.tick)
     return ::tpyapp::main::day(this->tick);
 }
 
 // def __init__(self, c: int) -> None:
+//     self.Color = c
 inline widget::widget(const ::tpy::BigInt& c) : Color(c) {}
 
 // def kind(self) -> Color:
+//     return Color.RED if self.Color == 0 else Color.GREEN
 inline ::tpyapp::main::Color widget::kind() const {
-    // return Color.RED if self.Color == 0 else Color.GREEN
     return (((this->Color == 0)) ? (Color::RED) : (Color::GREEN));
 }
 
 // def read(self) -> Own[day]:
+//     return day(9)
 inline ::tpyapp::main::day gauge::read() const {
-    // return day(9)
     return ::tpyapp::main::day(::tpy::BigInt(9));
 }
 
 // def day(self) -> int:                   # base method `day`...
+//     return 1
 inline ::tpy::BigInt base::day() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // @staticmethod
 // def day() -> Own[day]:                  # static method shadows type `day`
+//     return day(7)
 inline ::tpyapp::main::day factory::day() {
-    // return day(7)
     return ::tpyapp::main::day(::tpy::BigInt(7));
 }
 
 // def relabel(self, day: day) -> int:     # param typed `day` (also the shadow)
+//     return day.n
 inline ::tpy::BigInt factory::relabel(const ::tpyapp::main::day& day) const {
-    // return day.n
     return day.n;
 }
 
 // def shape(self) -> int:                 # method shadows protocol type `shape`
+//     return 1
 inline ::tpy::BigInt canvas::shape() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def draw(self, s: shape) -> int:        # param typed protocol `shape`
+//     return s.area()
 inline ::tpy::BigInt canvas::draw(::tpyapp::main::shape& s) const {
-    // return s.area()
     return s.area();
 }
 
 // def build(self) -> Own[day]:            # references type `day`...
+//     return day(6)
 inline ::tpyapp::main::day meter::build() const {
-    // return day(6)
     return ::tpyapp::main::day(::tpy::BigInt(6));
 }
 
 // @property
 // def day(self) -> int:                   # ...property `day` shadows it
+//     return 6
 inline ::tpy::BigInt meter::day() const {
-    // return 6
     return ::tpy::BigInt(6);
 }
 
 // def __init__(self, d: int) -> None:
+//     self.day = d
 inline fbase::fbase(const ::tpy::BigInt& d) : day(d) {}
 
 // # Inverse guard: no member named `day`, so its `day` reference must render
 // # BARE (not qualified) -- confirms qualification stays scoped to colliding
 // # records. The snapshot is the check.
 // def emit(self) -> Own[day]:
+//     return day(2)
 inline day printer::emit() const {
-    // return day(2)
     return day(::tpy::BigInt(2));
 }
 
 // def __init__(self, day: int) -> None:
+//     self.day = day
 inline holder::holder(const ::tpy::BigInt& day) : day(day) {}
 
 // def boxed(self) -> Own[Box[day]]:
+//     return Box(day(self.day))
 inline ::tpystd::tplib::box::Box<::tpyapp::main::day> holder::boxed() const {
-    // return Box(day(self.day))
     return ::tpystd::tplib::box::Box<::tpyapp::main::day>(::tpyapp::main::day(this->day));
 }
 
 // def build(self) -> Own[day]:            # ...inherited into sub, shadows `day`
+//     return day(self.day())
 inline ::tpyapp::main::day sub::build() const {
-    // return day(self.day())
     return ::tpyapp::main::day(this->day());
 }
 
 // def __init__(self, d: int) -> None:
+//     fbase.__init__(self, d)
 inline fsub::fsub(const ::tpy::BigInt& d) : ::tpyapp::main::fbase(d) {}
 
 // def build(self) -> Own[day]:            # inherited field `day` shadows type
+//     return day(self.day)
 inline ::tpyapp::main::day fsub::build() const {
-    // return day(self.day)
     return ::tpyapp::main::day(this->day);
 }
 void __tpy_init();

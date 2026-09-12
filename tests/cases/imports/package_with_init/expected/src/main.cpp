@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     print(CONST)
+//     func()
+//     return int32(0)
 int32_t main() {
-    // print(CONST)
     std::cout << ::tpyapp::mypackage::CONST << "\n";
-    // func()
     ::tpyapp::mypackage::func();
-    // return int32(0)
     return 0;
 }
 
+// from mypackage import func, CONST
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mypackage import func, CONST
     ::tpyapp::mypackage::__tpy_init();
-    // main()
     main();
 }
 

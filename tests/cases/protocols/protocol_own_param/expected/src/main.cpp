@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [1, 2, 3]
+//     print(first(nums))
+//
+//     words: list[str] = ["hello", "world"]
+//     print(first(words))
+//     print(to_list(words))
 void main() {
-    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // print(first(nums))
     std::cout << first<int32_t>(std::move(nums)) << "\n";
-    // words: list[str] = ["hello", "world"]
     std::vector<std::string> words = {"hello", "world"};
-    // print(first(words))
     std::vector<std::string> __tmp_1 = words;
     std::cout << first<std::string>(std::move(__tmp_1)) << "\n";
-    // print(to_list(words))
     std::cout << ::tpy::ListPrinter(to_list<std::string>(std::move(words))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

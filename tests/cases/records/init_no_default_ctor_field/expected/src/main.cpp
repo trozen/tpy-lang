@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     o = Owner(int32(1), int32(42))
+//     print(o.h.id)
+//     print(o.tag)
 void main() {
-    // o = Owner(int32(1), int32(42))
     Owner o = Owner(1, 42);
-    // print(o.h.id)
     std::cout << o.h.id << "\n";
-    // print(o.tag)
     std::cout << o.tag << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

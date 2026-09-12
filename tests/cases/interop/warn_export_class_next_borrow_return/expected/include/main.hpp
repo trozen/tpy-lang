@@ -152,97 +152,107 @@ inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self):
+//     self._cur = Node(0)
+//     self._n = 0
 inline Repeat::Repeat() : _cur(Node(0)), _n(0) {}
 
 // def __iter__(self) -> "Repeat":  # tpyc: ok
+//     return self
 inline Repeat& Repeat::__iter__() {
-    // return self
     return (*this);
 }
 
 // def __next__(self) -> Node:
+//     if self._n >= 3:
+//         raise StopIteration
+//     self._n += 1
+//     return self._cur  # tpyc: ok
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Repeat::__next__() {
-    // if self._n >= 3:
     if ((this->_n >= 3)) {
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // self._n += 1
     this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
-    // return self._cur  # tpyc: ok
     return this->_cur;
 }
 
 // def __init__(self):
+//     self._row = [1, 2]
+//     self._n = 0
 inline Rows::Rows() : _row(std::vector<int32_t>{1, 2}), _n(0) {}
 
 // def __next__(self) -> list[int32]:
+//     if self._n >= 2:
+//         raise StopIteration
+//     self._n += 1
+//     return self._row  # tpyc: warning(/'__next__': returns a list by reference/)
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> Rows::__next__() {
-    // if self._n >= 2:
     if ((this->_n >= 2)) {
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // self._n += 1
     this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
-    // return self._row  # tpyc: warning(/'__next__': returns a list by reference/)
     return this->_row;
 }
 
 // def __init__(self):
+//     self._cur = Node(0)
+//     self._n = 0
 inline Peek::Peek() : _cur(Node(0)), _n(0) {}
 
 // def __next__(self) -> "readonly[Node]":
+//     if self._n >= 3:
+//         raise StopIteration
+//     self._n += 1
+//     return self._cur  # tpyc: ok
 inline std::expected<::tpy::val_or_ref<const Node>, ::tpy::StopIteration> Peek::__next__() {
-    // if self._n >= 3:
     if ((this->_n >= 3)) {
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // self._n += 1
     this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
-    // return self._cur  # tpyc: ok
     return this->_cur;
 }
 
 // def __init__(self):
+//     self._cur = Node(0)
+//     self._n = 0
 inline Swapping::Swapping() : _cur(Node(0)), _n(0) {}
 
 // def reset(self) -> None:
+//     self._cur = Node(1)
 inline void Swapping::reset() {
-    // self._cur = Node(1)
     this->_cur = Node(1);
 }
 
 // def __next__(self) -> Node:
+//     if self._n >= 3:
+//         raise StopIteration
+//     self._n += 1
+//     return self._cur  # tpyc: warning(/'__next__': returns exposed class 'Node' by reference from a source with no live object behind it/)
 inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Swapping::__next__() {
-    // if self._n >= 3:
     if ((this->_n >= 3)) {
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // self._n += 1
     this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
-    // return self._cur  # tpyc: warning(/'__next__': returns exposed class 'Node' by reference from a source with no live object behind it/)
     return this->_cur;
 }
 
 // def __init__(self):
+//     self._n = 0
 inline Fresh::Fresh() : _n(0) {}
 
 // def __next__(self) -> Own[Node]:  # tpyc: ok
+//     if self._n >= 3:
+//         raise StopIteration
+//     self._n += 1
+//     return Node(self._n)
 inline std::expected<Node, ::tpy::StopIteration> Fresh::__next__() {
-    // if self._n >= 3:
     if ((this->_n >= 3)) {
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // self._n += 1
     this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
-    // return Node(self._n)
     return Node(this->_n);
 }
 void __tpy_init();

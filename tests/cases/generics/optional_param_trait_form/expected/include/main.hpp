@@ -26,21 +26,34 @@ struct __coro_probe_async_twin;
 struct __coro_probe_pinned_twin;
 struct __coro_amain;
 
+// def probe_gen[T](val: T | None) -> bool:
 template<typename T>
 bool probe_gen(::tpy::opt_cparam_t<T> val);
+// def probe_twin(val: int32 | None) -> bool:
 bool probe_twin(std::optional<int32_t> val);
+// def first_or[T](val: T | None, fallback: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first_or(::tpy::opt_param_t<T> val, ::tpy::param_val_or_ref_t<T> fallback);
+// def first_or_twin(val: Cell | None, fallback: Cell) -> Cell:
 Cell& first_or_twin(Cell* val, Cell& fallback);
+// def mk() -> int32:
 int32_t mk();
+// def gen_body(n: int32) -> Iterator[bool]:
 __gen_gen_body gen_body(int32_t n);
+// def er_gen(n: int32) -> bool:
 std::expected<bool, Stop> er_gen(int32_t n);
+// def er_twin(n: int32) -> bool:
 std::expected<bool, Stop> er_twin(int32_t n);
+// async def probe_async[T](val: T | None) -> bool:
 template <typename T>
 __coro_probe_async<T> probe_async(::tpy::opt_param_t<T> val);
+// async def probe_async_twin(val: int32 | None) -> bool:
 __coro_probe_async_twin probe_async_twin(std::optional<int32_t> val);
+// async def probe_pinned_twin(val: Pinned | None) -> bool:
 __coro_probe_pinned_twin probe_pinned_twin(Pinned* val);
+// async def amain(n: int32) -> None:
 __coro_amain amain(int32_t n);
+// def main() -> None:
 void main();
 
 // class Stop(Exception, ReturnException):
@@ -126,19 +139,22 @@ struct Container {
     std::optional<T> _val;
 
     // def __init__(self, val: T | None) -> None:
+    //     # ctor position: the slot lifts into the optional field. The lift is a
+    //     # copy at a reference T -- warned, and identically for the twin below.
+    //     self._val = val  # tpyc: warning(/may copy T \| None into field/)
     Container() = default;
     explicit Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
 
     // def probe(self, val: T | None) -> bool:
+    //     # method position: the method mutates nothing, so the const spelling.
+    //     return val is not None  # tpyc: ok
     bool probe(::tpy::opt_cparam_t<T> val) const {
-        // # method position: the method mutates nothing, so the const spelling.
-        // return val is not None  # tpyc: ok
         return (::tpy::opt_has_value(val));
     }
 
     // def held(self) -> bool:
+    //     return self._val is not None
     bool held() const {
-        // return self._val is not None
         return (this->_val.has_value());
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -191,7 +207,7 @@ inline std::ostream& operator<<(std::ostream& os, const CellBox& obj) {
     return os;
 }
 
-// Async coroutine: probe_async
+// async def probe_async[T](val: T | None) -> bool:
 template <typename T>
 struct __coro_probe_async {
     int32_t __state;
@@ -214,13 +230,13 @@ struct __coro_probe_async {
     }
 };
 // async def probe_async[T](val: T | None) -> bool:
+//     # The coroutine twin: the frame field is the same per-instantiation slot.
+//     return val is not None  # tpyc: ok
 template <typename T>
 ::tpystd::tpy::Poll<bool> __coro_probe_async<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // # The coroutine twin: the frame field is the same per-instantiation slot.
-        // return val is not None  # tpyc: ok
         __state = S_DONE;
         bool __tpy_async_ret = (::tpy::opt_has_value(val));
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -237,7 +253,7 @@ __coro_probe_async<T> probe_async(::tpy::opt_param_t<T> val) {
     return __coro_probe_async<T>(val);
 }
 
-// Async coroutine: probe_async_twin
+// async def probe_async_twin(val: int32 | None) -> bool:
 struct __coro_probe_async_twin {
     int32_t __state;
     bool __cancel_pending;
@@ -259,7 +275,7 @@ struct __coro_probe_async_twin {
     }
 };
 
-// Async coroutine: probe_pinned_twin
+// async def probe_pinned_twin(val: Pinned | None) -> bool:
 struct __coro_probe_pinned_twin {
     int32_t __state;
     bool __cancel_pending;
@@ -281,7 +297,7 @@ struct __coro_probe_pinned_twin {
     }
 };
 
-// Async coroutine: amain
+// async def amain(n: int32) -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -340,7 +356,7 @@ struct __coro_amain {
     }
 };
 
-// Generator: gen_body
+// def gen_body(n: int32) -> Iterator[bool]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, bool> {
     int32_t __state;
     int32_t n;
@@ -365,63 +381,67 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, bool> {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Pinned::Pinned(int32_t n) : n(n) {}
 
 // def __enter__(self) -> "Guard":
+//     return self
 inline Guard& Guard::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc, tb) -> None:
+//     pass
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc, std::monostate tb) const {
-    // pass
 }
 
 // def __init__(self, val: int32 | None) -> None:
+//     self._val = val
 inline ContainerTwin::ContainerTwin(std::optional<int32_t> val) : _val(val) {}
 
 // def probe(self, val: int32 | None) -> bool:
+//     return val is not None
 inline bool ContainerTwin::probe(std::optional<int32_t> val) const {
-    // return val is not None
     return (val.has_value());
 }
 
 // def held(self) -> bool:
+//     return self._val is not None
 inline bool ContainerTwin::held() const {
-    // return self._val is not None
     return (this->_val.has_value());
 }
 
 // def __init__(self, val: Cell | None) -> None:
+//     self._val = val  # tpyc: warning(/copies Cell \| None into field/)
 inline CellBox::CellBox(const Cell* val) : _val(::tpy::ptr_to_optional(val)) {}
 
 // def held(self) -> bool:
+//     return self._val is not None
 inline bool CellBox::held() const {
-    // return self._val is not None
     return (this->_val.has_value());
 }
 // def probe_gen[T](val: T | None) -> bool:
+//     # free function, the subject slot: the None test reads either form.
+//     return val is not None  # tpyc: ok
 template<typename T>
 bool probe_gen(::tpy::opt_cparam_t<T> val) {
-    // # free function, the subject slot: the None test reads either form.
-    // return val is not None  # tpyc: ok
     return (::tpy::opt_has_value(val));
 }
 // def first_or[T](val: T | None, fallback: T) -> T:
+//     # A reference T arrives as a borrow, so the returned payload aliases the
+//     # caller's object rather than a copy of it.
+//     if val is None:
+//         return fallback
+//     return val  # tpyc: ok
 template<typename T>
 ::tpy::val_or_ref_t<T> first_or(::tpy::opt_param_t<T> val, ::tpy::param_val_or_ref_t<T> fallback) {
-    // # A reference T arrives as a borrow, so the returned payload aliases the
-    // # caller's object rather than a copy of it.
-    // if val is None:
     if ((!::tpy::opt_has_value(val))) {
-        // return fallback
         return ::tpy::param_to_return<T>(fallback);
     }
-    // return val  # tpyc: ok
     return (*val);
 }
 

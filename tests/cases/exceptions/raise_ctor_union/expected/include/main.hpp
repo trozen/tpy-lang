@@ -13,6 +13,7 @@ struct UErr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # raise X(a) where the ctor param is a union `A | B` routes through the shared
@@ -70,12 +71,16 @@ inline std::ostream& operator<<(std::ostream& os, const UErr& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 
 // def __init__(self, p: A | B) -> None:
+//     super().__init__("u")
+//     self.payload = p
 inline UErr::UErr(::tpy::Union<const A*, const B*> p) : ::tpy::Exception("u"), payload(::tpy::to_value_variant<::tpy::Union<A, B>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

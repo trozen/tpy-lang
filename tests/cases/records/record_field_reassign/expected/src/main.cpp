@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def mk(n: int) -> Own[Inner]:
+//     return Inner(n)
 Inner mk(const ::tpy::BigInt& n) {
-    // return Inner(n)
     return Inner(n);
 }
 
 // def main():
+//     h = Holder(Inner(10))
+//     print(h.v.x)
+//     h.set_ctor(20)
+//     h.bump()
+//     print(h.v.x)
+//     h.set_call(30)
+//     h.bump()
+//     print(h.v.x)
 void main() {
-    // h = Holder(Inner(10))
     Holder h = Holder(Inner(::tpy::BigInt(10)));
-    // print(h.v.x)
     std::cout << h.v.x << "\n";
-    // h.set_ctor(20)
     h.set_ctor(20);
-    // h.bump()
     h.bump();
-    // print(h.v.x)
     std::cout << h.v.x << "\n";
-    // h.set_call(30)
     h.set_call(30);
-    // h.bump()
     h.bump();
-    // print(h.v.x)
     std::cout << h.v.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

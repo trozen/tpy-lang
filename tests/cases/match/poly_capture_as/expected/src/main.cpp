@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def describe(p: Pet) -> str:
+//     match p:  # tpyc: ok
+//         case Dog() as d:
+//             return "dog:" + d.speak()
+//         case other:
+//             return "other:" + other.speak()
 std::string describe(const Pet& p) {
-    // match p:  # tpyc: ok
     auto& __match_subject_1 = p;
-    // case Dog() as d:
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
         auto& d = __case_0;
-        // return "dog:" + d.speak()
         return (::tpy::str_concat("dog:", d.speak()));
-    // case other:
     } else {
         auto& other = __match_subject_1;
-        // return "other:" + other.speak()
         return (::tpy::str_concat("other:", other.speak()));
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(describe(Dog()))
+//     print(describe(Cat()))
 void main() {
-    // print(describe(Dog()))
     Dog __tmp_1{Dog()};
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Cat()))
     Cat __tmp_2{Cat()};
     std::cout << describe(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

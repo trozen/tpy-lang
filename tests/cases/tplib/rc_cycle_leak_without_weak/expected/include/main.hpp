@@ -15,8 +15,11 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def acyclic() -> None:
 void acyclic();
+// def cyclic() -> None:
 void cyclic();
+// def main() -> None:
 void main();
 
 // class Node:
@@ -47,8 +50,10 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
+//     self.next = None
+//     print("init", name)
 inline Node::Node(std::string_view name) : name(name), next(std::nullopt) {
-    // print("init", name)
     std::cout << "init" << " " << name << "\n";
 }
 
@@ -64,9 +69,9 @@ inline Node& Node::operator=(Node&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("del", self.name)
 inline Node::~Node() {
     if (!this->__tpy_owned_) return;
-    // print("del", self.name)
     std::cout << "del" << " " << this->name << "\n";
 }
 void __tpy_init();

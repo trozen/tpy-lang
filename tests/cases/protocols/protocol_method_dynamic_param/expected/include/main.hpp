@@ -33,6 +33,7 @@ struct Announcer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dog(Speaker):
@@ -129,32 +130,36 @@ namespace tpyapp::main {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def speak(self) -> str:
+//     return "Woof from " + self.name
 inline std::string Dog::speak() {
-    // return "Woof from " + self.name
     return (::tpy::str_concat("Woof from ", this->name));
 }
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def speak(self) -> str:
+//     return "Meow from " + self.name
 inline std::string Cat::speak() {
-    // return "Meow from " + self.name
     return (::tpy::str_concat("Meow from ", this->name));
 }
 
 // def __init__(self, s: Speaker) -> None:
+//     self.message = s.speak()
 inline Recorder::Recorder(Speaker& s) : message(s.speak()) {}
 
 // def __init__(self, prefix: str) -> None:
+//     self.prefix = prefix
 inline Announcer::Announcer(std::string_view prefix) : prefix(prefix) {}
 
 // def announce(self, s: Speaker) -> None:
+//     print(self.prefix + s.speak())
 inline void Announcer::announce(Speaker& s) const {
-    // print(self.prefix + s.speak())
     std::cout << (::tpy::str_concat(this->prefix, s.speak())) << "\n";
 }
 void __tpy_init();

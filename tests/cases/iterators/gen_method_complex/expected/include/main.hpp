@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_Range___iter__;
 struct __gen_Range_pairs;
 
+// def main() -> None:
 void main();
 
 // class Range:
@@ -41,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Range& obj) {
     return os;
 }
 
-// Generator: Range.__iter__
+// def __iter__(self) -> Iterator[int32]:
 struct __gen_Range___iter__ : public ::tpy::next_iter_mixin<__gen_Range___iter__, int32_t> {
     int32_t __state;
     const Range& __self;
@@ -70,7 +71,7 @@ inline __gen_Range___iter__ Range::__iter__() const {
     return __gen_Range___iter__(*this);
 }
 
-// Generator: Range.pairs
+// def pairs(self) -> Iterator[int32]:
 struct __gen_Range_pairs : public ::tpy::next_iter_mixin<__gen_Range_pairs, int32_t> {
     int32_t __state;
     const Range& __self;
@@ -101,11 +102,13 @@ inline __gen_Range_pairs Range::pairs() const {
 
 
 // def __init__(self, start: int32, stop: int32) -> None:
+//     self.start = start
+//     self.stop = stop
 inline Range::Range(int32_t start, int32_t stop) : start(start), stop(stop) {}
 
 // def total(self) -> int32:
+//     return self.stop - self.start
 inline int32_t Range::total() const {
-    // return self.stop - self.start
     return (::tpy::sub_check<int32_t>(this->stop, this->start));
 }
 void __tpy_init();

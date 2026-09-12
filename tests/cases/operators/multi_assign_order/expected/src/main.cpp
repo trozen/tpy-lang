@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a: list[int32] = [0, 0]
+//     b = 0
+//     a[(b := 1)] = b = 7
+//     print(a, b)
+//     c = d = [1, 2]
+//     d.append(3)
+//     print(c)
 void main() {
-    // a: list[int32] = [0, 0]
     std::vector<int32_t> a = {0, 0};
-    // b = 0
     int32_t b = 0;
-    // a[(b := 1)] = b = 7
     int32_t __ma_0 = 7;
     ::tpy::__setitem__(a, (b = 1), __ma_0);
     b = __ma_0;
-    // print(a, b)
     std::cout << ::tpy::ListPrinter(a) << " " << b << "\n";
-    // c = d = [1, 2]
     std::vector<int32_t> c = {1, 2};
     std::vector<int32_t>& d = c;
-    // d.append(3)
     d.push_back(3);
-    // print(c)
     std::cout << ::tpy::ListPrinter(c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def no_break() -> None:
 void no_break();
+// def with_break() -> None:
 void with_break();
+// def nested_inner_else() -> None:
 void nested_inner_else();
+// def nested_outer_else() -> None:
 void nested_outer_else();
+// def false_condition() -> None:
 void false_condition();
+// def var_decl_in_else() -> None:
 void var_decl_in_else();
+// def main() -> None:
 void main();
 
 void __tpy_init();

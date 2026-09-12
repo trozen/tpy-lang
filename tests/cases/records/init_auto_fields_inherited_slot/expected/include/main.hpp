@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -49,17 +50,18 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Base::Base(int32_t x) : x(x) {}
 
 // def get_x(self) -> int32:
+//     return self.x
 inline int32_t Base::get_x() const {
-    // return self.x
     return this->x;
 }
 
 // def __init__(self, x: int32):
+//     self.x = x          # x is Base.x -- reuse the inherited slot, no shadow
 inline Child::Child(int32_t x) {
-    // self.x = x          # x is Base.x -- reuse the inherited slot, no shadow
     this->x = x;
 }
 void __tpy_init();

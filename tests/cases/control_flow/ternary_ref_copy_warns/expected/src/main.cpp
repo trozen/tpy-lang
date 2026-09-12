@@ -12,47 +12,47 @@ namespace tpyapp::main {
 // # runtime output stays parity-clean (len(c) is 4 either way) since the copy
 // # itself is the acknowledged divergence we are surfacing, not asserting.
 // def mixed(flag: bool) -> int:
+//     a = [1, 2, 3]
+//     c = a if flag else [9]   # tpyc: warning(/ternary copies a reference type/)
+//     c.append(7)
+//     return len(c)            # 4 in both TPy (copy) and CPython (alias)
 ::tpy::BigInt mixed(bool flag) {
-    // a = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // c = a if flag else [9]   # tpyc: warning(/ternary copies a reference type/)
     std::vector<int32_t> c = ((flag) ? (a) : (std::vector<int32_t>{9}));
-    // c.append(7)
     c.push_back(7);
-    // return len(c)            # 4 in both TPy (copy) and CPython (alias)
     return ::tpy::BigInt(::tpy::__len__(c));
 }
 
 // # A both-lvalue ternary ALIASES (codegen binds a reference) and does NOT warn;
 // # observe the alias by mutating through it.
 // def both_lvalue(flag: bool) -> int:
+//     a = [1, 2, 3]
+//     b = [5, 6]
+//     c = a if flag else b     # tpyc: ok
+//     c.append(7)
+//     return len(a)            # 4 -- c aliased a, mutation visible
 ::tpy::BigInt both_lvalue(bool flag) {
-    // a = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // b = [5, 6]
     std::vector<int32_t> b = {5, 6};
-    // c = a if flag else b     # tpyc: ok
     std::vector<int32_t>& c = ((flag) ? (a) : (b));
-    // c.append(7)
     c.push_back(7);
-    // return len(a)            # 4 -- c aliased a, mutation visible
     return ::tpy::BigInt(::tpy::__len__(a));
 }
 
 // def main() -> None:
+//     print(mixed(True))
+//     print(both_lvalue(True))
 void main() {
-    // print(mixed(True))
     std::cout << mixed(true) << "\n";
-    // print(both_lvalue(True))
     std::cout << both_lvalue(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

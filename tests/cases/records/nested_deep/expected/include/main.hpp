@@ -11,6 +11,7 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Outer:
@@ -63,12 +64,15 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Mid::Deep& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Outer::Mid::Deep::Deep(int32_t val) : val(val) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Outer::Mid::Mid(std::string_view name) : name(name) {}
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Outer::Outer(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -18,9 +18,13 @@ struct __coro_first;
 struct __coro_second;
 struct __coro_driver;
 
+// def maybe_p(items: list[P], i: int32) -> P | None:
 P* maybe_p(std::vector<P>& items, int32_t i);
+// async def first(n: int32) -> int32:
 __coro_first first(int32_t n);
+// async def second(items: list[P], i: int32) -> int32:
 __coro_second second(std::vector<P>& items, int32_t i);
+// async def driver() -> None:
 __coro_driver driver();
 
 // @nocopy
@@ -45,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
-// Async coroutine: first
+// async def first(n: int32) -> int32:
 struct __coro_first {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +74,7 @@ struct __coro_first {
     }
 };
 
-// Async coroutine: second
+// async def second(items: list[P], i: int32) -> int32:
 struct __coro_second {
     int32_t __state;
     bool __cancel_pending;
@@ -96,7 +100,7 @@ struct __coro_second {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -126,6 +130,7 @@ struct __coro_driver {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline P::P(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

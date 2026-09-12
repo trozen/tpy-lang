@@ -5,52 +5,55 @@ namespace tpyapp::main {
 
 
 // def main():
+//     h = Holder()
+//     h.inner = Inner()
+//
+//     # Method with Own + non-Own: only Own param should be moved
+//     i = Inner()
+//     i.value = 10
+//     h.set_with_tag(i, int32(5))
+//     print(h.inner.value)
+//
+//     # Generic ctor with non-Own param: should NOT move
+//     i2 = Inner()
+//     i2.value = 42
+//     box = GenericBox[Inner](i2)
+//     print(box.item.value)
+//     print(i2.value)
+//
+//     # Generic method with Own + non-Own: only Own should move
+//     gh = GenericHolder[Inner](Inner())
+//     i3 = Inner()
+//     i3.value = 7
+//     f = gh.replace_with_flag(i3, int32(3))
+//     print(gh.item.value)
+//     print(f)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // h.inner = Inner()
     h.inner = Inner();
-    // # Method with Own + non-Own: only Own param should be moved
-    // i = Inner()
     Inner i = Inner();
-    // i.value = 10
     i.value = 10;
-    // h.set_with_tag(i, int32(5))
     h.set_with_tag(std::move(i), 5);
-    // print(h.inner.value)
     std::cout << h.inner.value << "\n";
-    // # Generic ctor with non-Own param: should NOT move
-    // i2 = Inner()
     Inner i2 = Inner();
-    // i2.value = 42
     i2.value = 42;
-    // box = GenericBox[Inner](i2)
     GenericBox<Inner> box = GenericBox<Inner>(i2);
-    // print(box.item.value)
     std::cout << box.item.value << "\n";
-    // print(i2.value)
     std::cout << i2.value << "\n";
-    // # Generic method with Own + non-Own: only Own should move
-    // gh = GenericHolder[Inner](Inner())
     GenericHolder<Inner> gh = GenericHolder<Inner>(Inner());
-    // i3 = Inner()
     Inner i3 = Inner();
-    // i3.value = 7
     i3.value = 7;
-    // f = gh.replace_with_flag(i3, int32(3))
     int32_t f = gh.replace_with_flag(std::move(i3), 3);
-    // print(gh.item.value)
     std::cout << gh.item.value << "\n";
-    // print(f)
     std::cout << f << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

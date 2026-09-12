@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def gen(b: Box, c: Box, cond: bool) -> Iterator[tuple[int32, Box]]:
+//     t = (1, b)
+//     t2 = (2, c)
+//     u = t if cond else t2
+//     yield u
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (1, b)
         t = std::tuple<int32_t, Box*>{1, &(b)};
-        // t2 = (2, c)
         t2 = std::tuple<int32_t, Box*>{2, &(c)};
-        // u = t if cond else t2
         u = ((cond) ? (t) : (t2));
-        // yield u
         __state = S_RESUME_0;
         return u;
     }
@@ -34,12 +34,14 @@ __gen_gen gen(Box& b, Box& c, bool cond) {
 }
 
 // def main() -> None:
+//     b = Box(1)
+//     c = Box(2)
+//     for pair in gen(b, c, True):
+//         pair[1].val = 99
+//     print(b.val, c.val)
 void main() {
-    // b = Box(1)
     Box b = Box(1);
-    // c = Box(2)
     Box c = Box(2);
-    // for pair in gen(b, c, True):
     {
         auto __src_0 = gen(b, c, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -47,20 +49,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-        // pair[1].val = 99
         std::get<1>(pair)->val = 99;
         }
     }
-    // print(b.val, c.val)
     std::cout << b.val << " " << c.val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

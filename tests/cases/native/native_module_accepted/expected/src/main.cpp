@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(native_func(int32(10)))
+//     print(native_c_func(int32(5)))
+//     print(tmpl_add(int32(3), int32(4)))
+//     c = NativeClass(int32(42))
+//     print(c.value)
 void main() {
-    // print(native_func(int32(10)))
     std::cout << ::nativelib::native_func(10) << "\n";
-    // print(native_c_func(int32(5)))
     std::cout << native_c_func(5) << "\n";
-    // print(tmpl_add(int32(3), int32(4)))
     std::cout << (3 + 4) << "\n";
-    // c = NativeClass(int32(42))
     ::nativelib::NativeClass c = ::nativelib::NativeClass(42);
-    // print(c.value)
     std::cout << c.value << "\n";
 }
 
+// from nativelib import native_func, native_c_func, NativeClass, tmpl_add
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from nativelib import native_func, native_c_func, NativeClass, tmpl_add
-    // main()
     main();
 }
 

@@ -12,9 +12,13 @@ struct Gauge;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def half(n: int32) -> int32:
 std::expected<int32_t, MyErr> half(int32_t n);
+// def halves() -> int32:
 std::expected<int32_t, MyErr> halves();
+// def bad() -> int32:
 std::expected<int32_t, MyErr> bad();
+// def main():
 void main();
 
 // class MyErr(Exception, ReturnException):
@@ -60,30 +64,31 @@ inline std::ostream& operator<<(std::ostream& os, const Gauge& obj) {
 
 
 // def __init__(self, raw: int32) -> None:
+//     self.raw = raw
 inline Gauge::Gauge(int32_t raw) : raw(raw) {}
 
 // @property
 // @error_return(MyErr)
 // def val(self) -> int32:
+//     if self.raw < 0:
+//         raise MyErr()
+//     return self.raw
 inline std::expected<int32_t, MyErr> Gauge::val() const {
-    // if self.raw < 0:
     if ((this->raw < 0)) {
-        // raise MyErr()
         return ::tpy::make_unexpected(MyErr{});
     }
-    // return self.raw
     return this->raw;
 }
 
 // @error_return(MyErr)
 // def scaled(self, k: int32) -> int32:
+//     if self.raw < 0:
+//         raise MyErr()
+//     return self.raw * k
 inline std::expected<int32_t, MyErr> Gauge::scaled(int32_t k) const {
-    // if self.raw < 0:
     if ((this->raw < 0)) {
-        // raise MyErr()
         return ::tpy::make_unexpected(MyErr{});
     }
-    // return self.raw * k
     return (::tpy::mul_check<int32_t>(this->raw, k));
 }
 void __tpy_init();

@@ -9,42 +9,45 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T_items>
-  requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
-void describe(const T_items& items);
-template<typename T_items>
-  requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
-::tpy::BigInt get_value(const T_items& items);
-void main();
-
 // def describe(items: Sized | Sequence[int]) -> None:
 template<typename T_items>
   requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
+void describe(const T_items& items);
+// def get_value(items: Sized | Sequence[int]) -> int:
+template<typename T_items>
+  requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
+::tpy::BigInt get_value(const T_items& items);
+// def main() -> None:
+void main();
+
+// def describe(items: Sized | Sequence[int]) -> None:
+//     if isinstance(items, Sequence):
+//         print(items[0])
+//     elif isinstance(items, Sized):
+//         print(len(items))
+template<typename T_items>
+  requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 void describe(const T_items& items) {
-    // if isinstance(items, Sequence):
     if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
-        // print(items[0])
         std::cout << ::tpy::__getitem__(items, 0) << "\n";
-    // elif isinstance(items, Sized):
     } else if constexpr (::tpystd::typing::Sized<T_items>) {
-        // print(len(items))
         std::cout << ::tpy::__len__(items) << "\n";
     }
 }
 // def get_value(items: Sized | Sequence[int]) -> int:
+//     if isinstance(items, Sequence):
+//         return items[0]
+//     elif isinstance(items, Sized):
+//         return len(items)
+//     return 0
 template<typename T_items>
   requires (::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt get_value(const T_items& items) {
-    // if isinstance(items, Sequence):
     if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
-        // return items[0]
         return ::tpy::__getitem__(items, 0);
-    // elif isinstance(items, Sized):
     } else if constexpr (::tpystd::typing::Sized<T_items>) {
-        // return len(items)
         return ::tpy::BigInt(::tpy::__len__(items));
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 

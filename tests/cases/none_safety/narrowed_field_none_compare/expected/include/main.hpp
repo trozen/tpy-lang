@@ -12,6 +12,7 @@ struct T;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # A None-compare on an already-NARROWED storage-form Optional field must keep
@@ -50,9 +51,12 @@ inline std::ostream& operator<<(std::ostream& os, const T& obj) {
 
 
 // def __init__(self) -> None:
+//     self.x = 0
 inline Pod::Pod() : x(::tpy::BigInt(0)) {}
 
 // def __init__(self) -> None:
+//     self.o = None
+//     self.v = None
 inline T::T() : o(std::nullopt), v(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

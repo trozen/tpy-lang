@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def describe(p: Pet) -> str:
+//     if isinstance(p, Cat):       # tpyc: ok
+//         return "cat:" + p.purr()  # purr is Cat-only -- needs the adapter narrowing
+//     return "other:" + p.name()
 std::string describe(Pet& p) {
-    // if isinstance(p, Cat):       # tpyc: ok
     if (Cat* __p_ptr = ::tpy::dyn_adapter_cast<Pet, Cat>(&p); (__p_ptr != nullptr)) {
-        // return "cat:" + p.purr()  # purr is Cat-only -- needs the adapter narrowing
         return (::tpy::str_concat("cat:", (*__p_ptr).purr()));
     }
-    // return "other:" + p.name()
     return (::tpy::str_concat("other:", p.name()));
 }
 
 // def main() -> None:
+//     print(describe(Dog()))           # inheritance conformer -> not a Cat
+//     print(describe(Cat("felix")))    # structural rvalue -> Adapter
+//     whiskers = Cat("whiskers")
+//     print(describe(whiskers))        # structural lvalue -> RefAdapter
 void main() {
-    // print(describe(Dog()))           # inheritance conformer -> not a Cat
     Dog __tmp_1{Dog()};
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Cat("felix")))    # structural rvalue -> Adapter
     ::tpy::Adapter<Pet, Cat> __tmp_2{Cat("felix")};
     std::cout << describe(__tmp_2) << "\n";
-    // whiskers = Cat("whiskers")
     Cat whiskers = Cat("whiskers");
-    // print(describe(whiskers))        # structural lvalue -> RefAdapter
     ::tpy::RefAdapter<Pet, Cat> __tmp_3{whiskers};
     std::cout << describe(__tmp_3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

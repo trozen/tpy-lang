@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def extract() -> Own[Handle]:
+//     h: Handle | None = Handle()
+//     h.value = int32(99)
+//     assert h is not None
+//     return h  # tpyc: ok
 Handle extract() {
-    // h: Handle | None = Handle()
     Handle __slot_1 = Handle();
     Handle* h = &__slot_1;
-    // h.value = int32(99)
     h->value = 99;
-    // assert h is not None
     if (!((h != nullptr))) ::tpy::raise_assertion_error();
-    // return h  # tpyc: ok
     return std::move((*h));
 }
 
 // def main():
+//     result = extract()
+//     print(result.value)
 void main() {
-    // result = extract()
     Handle result = extract();
-    // print(result.value)
     std::cout << result.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

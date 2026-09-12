@@ -3,92 +3,87 @@
 
 namespace tpyapp::main {
 
+int32_t calls{};
+::tpy::BigInt order;
+
+// def bump(tag: int, v: int) -> int:
+//     global calls, order
+//     calls += 1
+//     order = order * 10 + tag
+//     return v
+::tpy::BigInt bump(const ::tpy::BigInt& tag, const ::tpy::BigInt& v) {
+    calls = ::tpy::add_check<int32_t>(calls, 1);
+    order = ((((order) * (::tpy::BigInt(10)))) + (tag));
+    return v;
+}
+
+// def main() -> None:
+//     global calls, order
+//     p = P()
+//
+//     # An intermediate appears in two pairs; the inline arm would render it twice.
+//     calls = 0
+//     in_range = 1 < p.mid < 10
+//     print("in range:", in_range, "calls:", calls)
+//
+//     # Still exactly once when the second pair is false.
+//     calls = 0
+//     out_of_range = 1 < p.mid < 3
+//     print("out of range:", out_of_range, "calls:", calls)
+//
+//     # The first operand must evaluate before the intermediate it precedes.
+//     order = 0
+//     ordered = p.first < bump(2, 5) < bump(3, 10)
+//     print("ordered:", ordered, "order:", order)
+//
+//     # A false leading pair short-circuits the trailing operand entirely.
+//     calls = 0
+//     short = 1 < 0 < p.mid
+//     print("short-circuit:", short, "calls:", calls)
+//
+//     # Inverse: no hidden call behind a plain field, so it stays inlined.
+//     calls = 0
+//     plain_range = 1 < p.plain < 10
+//     print("plain field:", plain_range, "calls:", calls)
+void main() {
+    P p = P();
+    calls = 0;
+    bool in_range = ({ auto&& _cmp1 = p.mid(); (1 < _cmp1) && (_cmp1 < 10); });
+    std::cout << "in range:" << " " << ::tpy::print_bool(in_range) << " " << "calls:" << " " << calls << "\n";
+    calls = 0;
+    bool out_of_range = ({ auto&& _cmp1 = p.mid(); (1 < _cmp1) && (_cmp1 < 3); });
+    std::cout << "out of range:" << " " << ::tpy::print_bool(out_of_range) << " " << "calls:" << " " << calls << "\n";
+    order = ::tpy::BigInt(0);
+    bool ordered = ({ auto&& _cmp0 = p.first(); auto&& _cmp1 = bump(::tpy::BigInt(2), ::tpy::BigInt(5)); (_cmp0 < _cmp1) && (_cmp1 < bump(::tpy::BigInt(3), ::tpy::BigInt(10))); });
+    std::cout << "ordered:" << " " << ::tpy::print_bool(ordered) << " " << "order:" << " " << order << "\n";
+    calls = 0;
+    bool short_ = ((1 < 0) && (::tpy::BigInt(0) < p.mid()));
+    std::cout << "short-circuit:" << " " << ::tpy::print_bool(short_) << " " << "calls:" << " " << calls << "\n";
+    calls = 0;
+    bool plain_range = ((::tpy::BigInt(1) < p.plain) && (p.plain < 10));
+    std::cout << "plain field:" << " " << ::tpy::print_bool(plain_range) << " " << "calls:" << " " << calls << "\n";
+}
+
 // # A property getter is a method call wearing field-access syntax, so a chained
 // # compare must bind it to a temp. Inlining it rendered the intermediate into
 // # both pairs (getter ran twice), and leaving a non-duplicable first operand
 // # unbound ran it after the intermediate it precedes. A plain field read has no
 // # hidden call and must still inline -- the snapshot pins that inverse.
 // calls = 0
-int32_t calls{};
 // # Evaluation order as digits, appended left to right: 1 = first operand,
 // # 2 = middle, 3 = last. Source order is 123; the unbound first operand gave 213.
 // # Annotated as a workaround: a bare `0` infers int32, and a plain
 // # re-assignment does not currently widen it to the BigInt the RHS produces.
 // order: int = 0
-::tpy::BigInt order;
-
-// def bump(tag: int, v: int) -> int:
-::tpy::BigInt bump(const ::tpy::BigInt& tag, const ::tpy::BigInt& v) {
-    // global calls, order
-    // calls += 1
-    calls = ::tpy::add_check<int32_t>(calls, 1);
-    // order = order * 10 + tag
-    order = ((((order) * (::tpy::BigInt(10)))) + (tag));
-    // return v
-    return v;
-}
-
-// def main() -> None:
-void main() {
-    // global calls, order
-    // p = P()
-    P p = P();
-    // # An intermediate appears in two pairs; the inline arm would render it twice.
-    // calls = 0
-    calls = 0;
-    // in_range = 1 < p.mid < 10
-    bool in_range = ({ auto&& _cmp1 = p.mid(); (1 < _cmp1) && (_cmp1 < 10); });
-    // print("in range:", in_range, "calls:", calls)
-    std::cout << "in range:" << " " << ::tpy::print_bool(in_range) << " " << "calls:" << " " << calls << "\n";
-    // # Still exactly once when the second pair is false.
-    // calls = 0
-    calls = 0;
-    // out_of_range = 1 < p.mid < 3
-    bool out_of_range = ({ auto&& _cmp1 = p.mid(); (1 < _cmp1) && (_cmp1 < 3); });
-    // print("out of range:", out_of_range, "calls:", calls)
-    std::cout << "out of range:" << " " << ::tpy::print_bool(out_of_range) << " " << "calls:" << " " << calls << "\n";
-    // # The first operand must evaluate before the intermediate it precedes.
-    // order = 0
-    order = ::tpy::BigInt(0);
-    // ordered = p.first < bump(2, 5) < bump(3, 10)
-    bool ordered = ({ auto&& _cmp0 = p.first(); auto&& _cmp1 = bump(::tpy::BigInt(2), ::tpy::BigInt(5)); (_cmp0 < _cmp1) && (_cmp1 < bump(::tpy::BigInt(3), ::tpy::BigInt(10))); });
-    // print("ordered:", ordered, "order:", order)
-    std::cout << "ordered:" << " " << ::tpy::print_bool(ordered) << " " << "order:" << " " << order << "\n";
-    // # A false leading pair short-circuits the trailing operand entirely.
-    // calls = 0
-    calls = 0;
-    // short = 1 < 0 < p.mid
-    bool short_ = ((1 < 0) && (::tpy::BigInt(0) < p.mid()));
-    // print("short-circuit:", short, "calls:", calls)
-    std::cout << "short-circuit:" << " " << ::tpy::print_bool(short_) << " " << "calls:" << " " << calls << "\n";
-    // # Inverse: no hidden call behind a plain field, so it stays inlined.
-    // calls = 0
-    calls = 0;
-    // plain_range = 1 < p.plain < 10
-    bool plain_range = ((::tpy::BigInt(1) < p.plain) && (p.plain < 10));
-    // print("plain field:", plain_range, "calls:", calls)
-    std::cout << "plain field:" << " " << ::tpy::print_bool(plain_range) << " " << "calls:" << " " << calls << "\n";
-}
-
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A property getter is a method call wearing field-access syntax, so a chained
-    // # compare must bind it to a temp. Inlining it rendered the intermediate into
-    // # both pairs (getter ran twice), and leaving a non-duplicable first operand
-    // # unbound ran it after the intermediate it precedes. A plain field read has no
-    // # hidden call and must still inline -- the snapshot pins that inverse.
-    // calls = 0
     calls = 0;
-    // # Evaluation order as digits, appended left to right: 1 = first operand,
-    // # 2 = middle, 3 = last. Source order is 123; the unbound first operand gave 213.
-    // # Annotated as a workaround: a bare `0` infers int32, and a plain
-    // # re-assignment does not currently widen it to the BigInt the RHS produces.
-    // order: int = 0
     order = ::tpy::BigInt(0);
-    // main()
     main();
 }
 

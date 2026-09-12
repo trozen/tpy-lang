@@ -9,18 +9,31 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(mode: str) -> str:
 std::string classify__lit_r__w(std::string_view mode);
+// def classify(mode: str) -> str:
 std::string classify__lit_rb__wb(std::string_view mode);
+// def dispatch_str(mode: Literal["r", "w", "rb", "wb"]) -> None:
 void dispatch_str(std::string_view mode);
+// def bucket(x: int32) -> str:
 std::string bucket__lit_1__2(int32_t x);
+// def bucket(x: int32) -> str:
 std::string bucket__lit_3__4(int32_t x);
+// def bucket(x: int32) -> str:
 std::string bucket(int32_t x);
+// def dispatch_int(x: Literal[1, 2, 3, 4]) -> None:
 void dispatch_int(int32_t x);
+// def dispatch_ne(mode: Literal["r", "rb"]) -> None:
 void dispatch_ne(std::string_view mode);
+// def dispatch_or(mode: Literal["r", "w", "rb", "wb"]) -> None:
 void dispatch_or(std::string_view mode);
+// def dispatch_out_of_range(mode: Literal["r", "w"]) -> None:
 void dispatch_out_of_range(std::string_view mode);
+// def nested_fold(mode: Literal["r", "rb"]) -> None:
 void nested_fold(std::string_view mode);
+// def reassign_clears_fold(x: Literal[1, 2]) -> None:
 void reassign_clears_fold(int32_t x);
+// def main() -> None:
 void main();
 
 void __tpy_init();

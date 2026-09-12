@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f = Foo()
+//     print(f.x)
+//     print(f.y)
 void main() {
-    // f = Foo()
     Foo f = Foo();
-    // print(f.x)
     std::cout << f.x << "\n";
-    // print(f.y)
     std::cout << f.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

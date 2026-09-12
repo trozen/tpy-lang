@@ -15,6 +15,7 @@ struct DataError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -40,6 +41,7 @@ struct Wrap {
     std::vector<T> xs;
 
     // def __init__(self, xs: Own[list[T]]):
+    //     self.xs = xs
     Wrap() = default;
     explicit Wrap(std::vector<T>&& xs) : xs(std::move(xs)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
@@ -105,15 +107,19 @@ inline std::ostream& operator<<(std::ostream& os, const DataError& obj) {
 
 
 // def __init__(self, xs: Own[list[int32]]):
+//     self.xs = xs
 inline Holder::Holder(std::vector<int32_t>&& xs) : xs(std::move(xs)) {}
 
 // def __init__(self, d: Own[dict[str, int32]]):
+//     self.d = d
 inline DictHolder::DictHolder(::tpy::ordered_map<std::string, int32_t>&& d) : d(std::move(d)) {}
 
 // def __init__(self, s: Own[set[int32]]):
+//     self.s = s
 inline SetHolder::SetHolder(::tpy::ordered_set<int32_t>&& s) : s(std::move(s)) {}
 
 // def __init__(self, xs: list[int32]):
+//     self.n = len(xs)
 inline DataError::DataError(const std::vector<int32_t>& xs) : n(::tpy::__len__(xs)) {}
 void __tpy_init();
 } // namespace tpyapp::main

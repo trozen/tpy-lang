@@ -44,24 +44,42 @@ struct __coro_CM2___aenter__;
 struct __coro_CM2___aexit__;
 struct __coro_Counter___anext__;
 
+// async def add(a: int32, b: int32 = 10) -> int32:
 __coro_add add(int32_t a, int32_t b = 10);
+// async def counted[T](it: Iterable[T], skip: int32 = 7) -> int32:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __coro_counted<T, T_it> counted(T_it&& it, int32_t skip = 7);
+// async def with_default() -> int32:
 __coro_with_default with_default();
+// async def with_override() -> int32:
 __coro_with_override with_override();
+// async def inline_default() -> int32:
 __coro_inline_default inline_default();
+// async def inline_override() -> int32:
 __coro_inline_override inline_override();
+// async def generic_default() -> int32:
 __coro_generic_default generic_default();
+// async def generic_override() -> int32:
 __coro_generic_override generic_override();
+// async def method_inline_default() -> int32:
 __coro_method_inline_default method_inline_default();
+// async def method_inline_override() -> int32:
 __coro_method_inline_override method_inline_override();
+// async def method_task_default() -> int32:
 __coro_method_task_default method_task_default();
+// async def method_task_override() -> int32:
 __coro_method_task_override method_task_override();
+// async def aenter_default() -> int32:
 __coro_aenter_default aenter_default();
+// async def aexit_default() -> int32:
 __coro_aexit_default aexit_default();
+// async def anext_default() -> int32:
 __coro_anext_default anext_default();
+// async def cross_module_default() -> int32:
 __coro_cross_module_default cross_module_default();
+// async def cross_module_override() -> int32:
 __coro_cross_module_override cross_module_override();
+// def main() -> None:
 void main();
 
 // class Adder:
@@ -159,7 +177,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
     return os;
 }
 
-// Async coroutine: Adder.add
+// async def add(self, a: int32, b: int32 = 10) -> int32:
 struct __coro_Adder_add {
     int32_t __state;
     bool __cancel_pending;
@@ -189,7 +207,7 @@ inline __coro_Adder_add Adder::add(int32_t a, int32_t b) const {
     return __coro_Adder_add(*this, a, b);
 }
 
-// Async coroutine: CM.__aenter__
+// async def __aenter__(self, bump: int32 = 5) -> int32:
 struct __coro_CM___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -218,7 +236,8 @@ inline __coro_CM___aenter__ CM::__aenter__(int32_t bump) {
     return __coro_CM___aenter__(*this, bump);
 }
 
-// Async coroutine: CM.__aexit__
+// async def __aexit__(self, exc_type: None, exc: None,
+//                     tb: None) -> bool:
 struct __coro_CM___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -249,7 +268,7 @@ inline __coro_CM___aexit__ CM::__aexit__(std::monostate exc_type, std::monostate
     return __coro_CM___aexit__(*this, exc_type, exc, tb);
 }
 
-// Async coroutine: CM2.__aenter__
+// async def __aenter__(self) -> int32:
 struct __coro_CM2___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -277,7 +296,8 @@ inline __coro_CM2___aenter__ CM2::__aenter__() const {
     return __coro_CM2___aenter__(*this);
 }
 
-// Async coroutine: CM2.__aexit__
+// async def __aexit__(self, exc_type: None, exc: None, tb: None,
+//                     extra: int32 = 9) -> bool:
 struct __coro_CM2___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -309,7 +329,7 @@ inline __coro_CM2___aexit__ CM2::__aexit__(std::monostate exc_type, std::monosta
     return __coro_CM2___aexit__(*this, exc_type, exc, tb, extra);
 }
 
-// Async coroutine: Counter.__anext__
+// async def __anext__(self, step: int32 = 1) -> int32:
 struct __coro_Counter___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -338,7 +358,7 @@ inline __coro_Counter___anext__ Counter::__anext__(int32_t step) {
     return __coro_Counter___anext__(*this, step);
 }
 
-// Async coroutine: add
+// async def add(a: int32, b: int32 = 10) -> int32:
 struct __coro_add {
     int32_t __state;
     bool __cancel_pending;
@@ -363,7 +383,7 @@ struct __coro_add {
     }
 };
 
-// Async coroutine: counted
+// async def counted[T](it: Iterable[T], skip: int32 = 7) -> int32:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __coro_counted {
     int32_t __state;
@@ -391,11 +411,15 @@ struct __coro_counted {
     }
 };
 // async def counted[T](it: Iterable[T], skip: int32 = 7) -> int32:
+//     await asyncio.sleep(0)
+//     c: int32 = 0
+//     for _x in it:
+//         c += 1
+//     return c + skip
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 ::tpystd::tpy::Poll<int32_t> __coro_counted<T, T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -405,19 +429,15 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // c: int32 = 0
         c = 0;
-        // for _x in it:
         auto& __src_0 = it;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& _x = ::tpy::unwrap_ref(*__r_1);
-            // c += 1
             c = ::tpy::add_check<int32_t>(c, 1);
         }
-        // return c + skip
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(c, skip));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -434,7 +454,7 @@ __coro_counted<T, T_it> counted(T_it&& it, int32_t skip) {
     return __coro_counted<T, T_it>(std::forward<T_it>(it), skip);
 }
 
-// Async coroutine: with_default
+// async def with_default() -> int32:
 struct __coro_with_default {
     int32_t __state;
     bool __cancel_pending;
@@ -458,7 +478,7 @@ struct __coro_with_default {
     }
 };
 
-// Async coroutine: with_override
+// async def with_override() -> int32:
 struct __coro_with_override {
     int32_t __state;
     bool __cancel_pending;
@@ -482,7 +502,7 @@ struct __coro_with_override {
     }
 };
 
-// Async coroutine: inline_default
+// async def inline_default() -> int32:
 struct __coro_inline_default {
     int32_t __state;
     bool __cancel_pending;
@@ -505,7 +525,7 @@ struct __coro_inline_default {
     }
 };
 
-// Async coroutine: inline_override
+// async def inline_override() -> int32:
 struct __coro_inline_override {
     int32_t __state;
     bool __cancel_pending;
@@ -528,7 +548,7 @@ struct __coro_inline_override {
     }
 };
 
-// Async coroutine: generic_default
+// async def generic_default() -> int32:
 struct __coro_generic_default {
     int32_t __state;
     bool __cancel_pending;
@@ -552,7 +572,7 @@ struct __coro_generic_default {
     }
 };
 
-// Async coroutine: generic_override
+// async def generic_override() -> int32:
 struct __coro_generic_override {
     int32_t __state;
     bool __cancel_pending;
@@ -576,7 +596,7 @@ struct __coro_generic_override {
     }
 };
 
-// Async coroutine: method_inline_default
+// async def method_inline_default() -> int32:
 struct __coro_method_inline_default {
     int32_t __state;
     bool __cancel_pending;
@@ -600,7 +620,7 @@ struct __coro_method_inline_default {
     }
 };
 
-// Async coroutine: method_inline_override
+// async def method_inline_override() -> int32:
 struct __coro_method_inline_override {
     int32_t __state;
     bool __cancel_pending;
@@ -624,7 +644,7 @@ struct __coro_method_inline_override {
     }
 };
 
-// Async coroutine: method_task_default
+// async def method_task_default() -> int32:
 struct __coro_method_task_default {
     int32_t __state;
     bool __cancel_pending;
@@ -649,7 +669,7 @@ struct __coro_method_task_default {
     }
 };
 
-// Async coroutine: method_task_override
+// async def method_task_override() -> int32:
 struct __coro_method_task_override {
     int32_t __state;
     bool __cancel_pending;
@@ -674,7 +694,7 @@ struct __coro_method_task_override {
     }
 };
 
-// Async coroutine: aenter_default
+// async def aenter_default() -> int32:
 struct __coro_aenter_default {
     int32_t __state;
     bool __cancel_pending;
@@ -707,7 +727,7 @@ struct __coro_aenter_default {
     }
 };
 
-// Async coroutine: aexit_default
+// async def aexit_default() -> int32:
 struct __coro_aexit_default {
     int32_t __state;
     bool __cancel_pending;
@@ -738,7 +758,7 @@ struct __coro_aexit_default {
     }
 };
 
-// Async coroutine: anext_default
+// async def anext_default() -> int32:
 struct __coro_anext_default {
     int32_t __state;
     bool __cancel_pending;
@@ -768,7 +788,7 @@ struct __coro_anext_default {
     }
 };
 
-// Async coroutine: cross_module_default
+// async def cross_module_default() -> int32:
 struct __coro_cross_module_default {
     int32_t __state;
     bool __cancel_pending;
@@ -791,7 +811,7 @@ struct __coro_cross_module_default {
     }
 };
 
-// Async coroutine: cross_module_override
+// async def cross_module_override() -> int32:
 struct __coro_cross_module_override {
     int32_t __state;
     bool __cancel_pending;
@@ -816,23 +836,29 @@ struct __coro_cross_module_override {
 
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Adder::Adder(int32_t base) : base(base) {}
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline CM::CM() : n(0) {}
 
 // def __init__(self) -> None:
+//     self.hits = 0
+//     self.seen = 0
 inline CM2::CM2() : hits(0), seen(0) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def __init__(self, start: int32) -> None:
+//     self.start = start
 inline Counts::Counts(int32_t start) : start(start) {}
 
 // def __aiter__(self) -> Own[Counter]:
+//     return Counter(self.start)
 inline Counter Counts::__aiter__() const {
-    // return Counter(self.start)
     return Counter(this->start);
 }
 void __tpy_init();

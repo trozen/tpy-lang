@@ -5,136 +5,148 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Atomic[uint32](0)  # tpyc: is_send(yes) is_sync(yes)
+//     print(a.load(MemoryOrder.RELAXED))            # 0
+//
+//     a.store(10, MemoryOrder.RELAXED)
+//     print(a.load(MemoryOrder.RELAXED))            # 10
+//
+//     print(a.exchange(20, MemoryOrder.ACQ_REL))    # 10 (old)
+//     print(a.load(MemoryOrder.RELAXED))            # 20
+//
+//     print(a.fetch_add(5, MemoryOrder.RELAXED))    # 20 -> 25
+//     print(a.fetch_sub(3, MemoryOrder.RELAXED))    # 25 -> 22
+//     print(a.fetch_or(1, MemoryOrder.RELAXED))     # 22 -> 23
+//     print(a.fetch_and(0xF, MemoryOrder.RELAXED))  # 23 -> 7
+//     print(a.fetch_xor(0x2, MemoryOrder.RELAXED))  # 7 -> 5
+//     print(a.load(MemoryOrder.RELAXED))            # 5
+//
+//     # Strong CAS is deterministic: matches, so it swaps and reports the old value.
+//     ok, observed = a.compare_exchange(5, 99, MemoryOrder.ACQ_REL, MemoryOrder.RELAXED)
+//     print(ok)                                     # True
+//     print(observed)                               # 5
+//     print(a.load(MemoryOrder.RELAXED))            # 99
+//
+//     # Mismatch: no swap, reports the current value.
+//     ok2, cur = a.compare_exchange(5, 1, MemoryOrder.ACQ_REL, MemoryOrder.RELAXED)
+//     print(ok2)                                     # False
+//     print(cur)                                     # 99
+//
+//     # Weak CAS may fail spuriously, so drive it in the canonical retry loop:
+//     # increment-if-still-99. On success the value is 100.
+//     while True:
+//         cur2 = a.load(MemoryOrder.RELAXED)
+//         done, _ = a.compare_exchange_weak(cur2, cur2 + 1, MemoryOrder.ACQ_REL, MemoryOrder.RELAXED)
+//         if done:
+//             break
+//     print(a.load(MemoryOrder.RELAXED))            # 100
+//
+//     fence(MemoryOrder.SEQ_CST)
+//
+//     # Default ordering (seq_cst) -- no MemoryOrder argument needed.
+//     b = Atomic[uint32](0)
+//     b.store(50)
+//     print(b.load())                               # 50
+//     print(b.fetch_add(5))                         # 50 -> 55
+//     print(b.fetch_sub(2))                         # 55 -> 53
+//     ok3, obs = b.compare_exchange(53, 60)         # default orders
+//     print(ok3)                                    # True
+//     print(b.load())                               # 60
+//     fence()                                        # default order
+//
+//     # In-place operators: atomic RMW at seq_cst.
+//     b += 10                                       # 70
+//     b -= 5                                        # 65
+//     b |= 2                                        # 67
+//     b &= 0xF                                      # 3
+//     b ^= 0x1                                      # 2
+//     print(b.load())                               # 2
+//
+//     # Snapshot repr.
+//     print(b)                                      # Atomic(2)
+//     print(repr(b))                                # Atomic(2)
+//
+//     # Fixed-width wrapping matches std::atomic<T> (and the CPython stub's _coerce).
+//     w = Atomic[uint32](0xFFFFFFFF)
+//     print(w.fetch_add(1, MemoryOrder.RELAXED))    # 4294967295 (old), value wraps to 0
+//     print(w.load(MemoryOrder.RELAXED))            # 0
+//     w -= 1                                        # wraps back to 4294967295
+//     print(w.load(MemoryOrder.RELAXED))            # 4294967295
+//     print("done")
 void main() {
-    // a = Atomic[uint32](0)  # tpyc: is_send(yes) is_sync(yes)
     ::tpystd::tpy::atomic::Atomic<uint32_t> a = ::tpystd::tpy::atomic::Atomic<uint32_t>(0);
-    // print(a.load(MemoryOrder.RELAXED))            # 0
     std::cout << a.load(::std::memory_order::relaxed) << "\n";
-    // a.store(10, MemoryOrder.RELAXED)
     a.store(10, ::std::memory_order::relaxed);
-    // print(a.load(MemoryOrder.RELAXED))            # 10
     std::cout << a.load(::std::memory_order::relaxed) << "\n";
-    // print(a.exchange(20, MemoryOrder.ACQ_REL))    # 10 (old)
     std::cout << a.exchange(20, ::std::memory_order::acq_rel) << "\n";
-    // print(a.load(MemoryOrder.RELAXED))            # 20
     std::cout << a.load(::std::memory_order::relaxed) << "\n";
-    // print(a.fetch_add(5, MemoryOrder.RELAXED))    # 20 -> 25
     std::cout << a.fetch_add(5, ::std::memory_order::relaxed) << "\n";
-    // print(a.fetch_sub(3, MemoryOrder.RELAXED))    # 25 -> 22
     std::cout << a.fetch_sub(3, ::std::memory_order::relaxed) << "\n";
-    // print(a.fetch_or(1, MemoryOrder.RELAXED))     # 22 -> 23
     std::cout << a.fetch_or(1, ::std::memory_order::relaxed) << "\n";
-    // print(a.fetch_and(0xF, MemoryOrder.RELAXED))  # 23 -> 7
     std::cout << a.fetch_and(15, ::std::memory_order::relaxed) << "\n";
-    // print(a.fetch_xor(0x2, MemoryOrder.RELAXED))  # 7 -> 5
     std::cout << a.fetch_xor(2, ::std::memory_order::relaxed) << "\n";
-    // print(a.load(MemoryOrder.RELAXED))            # 5
     std::cout << a.load(::std::memory_order::relaxed) << "\n";
-    // # Strong CAS is deterministic: matches, so it swaps and reports the old value.
-    // ok, observed = a.compare_exchange(5, 99, MemoryOrder.ACQ_REL, MemoryOrder.RELAXED)
     auto __tup_1 = a.compare_exchange(5, 99, ::std::memory_order::acq_rel, ::std::memory_order::relaxed);
     bool ok = std::get<0>(__tup_1);
     uint32_t observed = std::get<1>(__tup_1);
-    // print(ok)                                     # True
     std::cout << ::tpy::print_bool(ok) << "\n";
-    // print(observed)                               # 5
     std::cout << observed << "\n";
-    // print(a.load(MemoryOrder.RELAXED))            # 99
     std::cout << a.load(::std::memory_order::relaxed) << "\n";
-    // # Mismatch: no swap, reports the current value.
-    // ok2, cur = a.compare_exchange(5, 1, MemoryOrder.ACQ_REL, MemoryOrder.RELAXED)
     auto __tup_2 = a.compare_exchange(5, 1, ::std::memory_order::acq_rel, ::std::memory_order::relaxed);
     bool ok2 = std::get<0>(__tup_2);
     uint32_t cur = std::get<1>(__tup_2);
-    // print(ok2)                                     # False
     std::cout << ::tpy::print_bool(ok2) << "\n";
-    // print(cur)                                     # 99
     std::cout << cur << "\n";
-    // # Weak CAS may fail spuriously, so drive it in the canonical retry loop:
-    // # increment-if-still-99. On success the value is 100.
-    // while True:
     while (true) {
-        // cur2 = a.load(MemoryOrder.RELAXED)
         uint32_t cur2 = a.load(::std::memory_order::relaxed);
-        // done, _ = a.compare_exchange_weak(cur2, cur2 + 1, MemoryOrder.ACQ_REL, MemoryOrder.RELAXED)
         auto __tup_3 = a.compare_exchange_weak(cur2, (::tpy::add_check<uint32_t>(cur2, 1)), ::std::memory_order::acq_rel, ::std::memory_order::relaxed);
         bool done = std::get<0>(__tup_3);
-        // if done:
         if (done) {
-            // break
             break;
         }
     }
-    // print(a.load(MemoryOrder.RELAXED))            # 100
     std::cout << a.load(::std::memory_order::relaxed) << "\n";
-    // fence(MemoryOrder.SEQ_CST)
     ::tpystd::tpy::atomic::fence(::std::memory_order::seq_cst);
-    // # Default ordering (seq_cst) -- no MemoryOrder argument needed.
-    // b = Atomic[uint32](0)
     ::tpystd::tpy::atomic::Atomic<uint32_t> b = ::tpystd::tpy::atomic::Atomic<uint32_t>(0);
-    // b.store(50)
     b.store(50);
-    // print(b.load())                               # 50
     std::cout << b.load() << "\n";
-    // print(b.fetch_add(5))                         # 50 -> 55
     std::cout << b.fetch_add(5) << "\n";
-    // print(b.fetch_sub(2))                         # 55 -> 53
     std::cout << b.fetch_sub(2) << "\n";
-    // ok3, obs = b.compare_exchange(53, 60)         # default orders
     auto __tup_4 = b.compare_exchange(53, 60);
     bool ok3 = std::get<0>(__tup_4);
     uint32_t obs = std::get<1>(__tup_4);
-    // print(ok3)                                    # True
     std::cout << ::tpy::print_bool(ok3) << "\n";
-    // print(b.load())                               # 60
     std::cout << b.load() << "\n";
-    // fence()                                        # default order
     ::tpystd::tpy::atomic::fence();
-    // # In-place operators: atomic RMW at seq_cst.
-    // b += 10                                       # 70
     b.__iadd__(10);
-    // b -= 5                                        # 65
     b.__isub__(5);
-    // b |= 2                                        # 67
     b.__ior__(2);
-    // b &= 0xF                                      # 3
     b.__iand__(15);
-    // b ^= 0x1                                      # 2
     b.__ixor__(1);
-    // print(b.load())                               # 2
     std::cout << b.load() << "\n";
-    // # Snapshot repr.
-    // print(b)                                      # Atomic(2)
     std::cout << b << "\n";
-    // print(repr(b))                                # Atomic(2)
     std::cout << ::tpy::repr_of(b) << "\n";
-    // # Fixed-width wrapping matches std::atomic<T> (and the CPython stub's _coerce).
-    // w = Atomic[uint32](0xFFFFFFFF)
     ::tpystd::tpy::atomic::Atomic<uint32_t> w = ::tpystd::tpy::atomic::Atomic<uint32_t>(static_cast<uint32_t>(4294967295));
-    // print(w.fetch_add(1, MemoryOrder.RELAXED))    # 4294967295 (old), value wraps to 0
     std::cout << w.fetch_add(1, ::std::memory_order::relaxed) << "\n";
-    // print(w.load(MemoryOrder.RELAXED))            # 0
     std::cout << w.load(::std::memory_order::relaxed) << "\n";
-    // w -= 1                                        # wraps back to 4294967295
     w.__isub__(1);
-    // print(w.load(MemoryOrder.RELAXED))            # 4294967295
     std::cout << w.load(::std::memory_order::relaxed) << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// # Single-threaded correctness of the Atomic[T] primitive: the full
+// # std::atomic<integral> op surface (load/store/exchange, fetch_add/sub/and/or/xor,
+// # compare_exchange[/_weak]) plus the Send/Sync classification the Arc cell relies
+// # on. Contention across real threads is exercised by the Arc test, not here.
+// from tpy.atomic import Atomic, MemoryOrder, fence
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Single-threaded correctness of the Atomic[T] primitive: the full
-    // # std::atomic<integral> op surface (load/store/exchange, fetch_add/sub/and/or/xor,
-    // # compare_exchange[/_weak]) plus the Send/Sync classification the Arc cell relies
-    // # on. Contention across real threads is exercised by the Arc test, not here.
-    // from tpy.atomic import Atomic, MemoryOrder, fence
     ::tpystd::tpy::atomic::__tpy_init();
-    // main()
     main();
 }
 

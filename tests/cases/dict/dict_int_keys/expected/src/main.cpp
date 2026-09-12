@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = {int32(1): "one", int32(2): "two", int32(3): "three"}
+//     print(d)
+//     print(d[int32(2)])
+//     print(int32(1) in d)
+//     print(int32(99) in d)
+//     for k in d:
+//         print(k, d[k])
 void main() {
-    // d = {int32(1): "one", int32(2): "two", int32(3): "three"}
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "one"}, {2, "two"}, {3, "three"}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(d[int32(2)])
     std::cout << ::tpy::__getitem__(d, 2) << "\n";
-    // print(int32(1) in d)
     std::cout << ::tpy::print_bool((d.contains(1))) << "\n";
-    // print(int32(99) in d)
     std::cout << ::tpy::print_bool((d.contains(99))) << "\n";
-    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t k = *__beg_0;
-        // print(k, d[k])
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

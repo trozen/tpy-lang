@@ -23,6 +23,7 @@ struct M;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @model
@@ -119,12 +120,9 @@ inline std::string M::to_json(int32_t indent) const {
 }
 
 inline void M::save_json(std::string_view __path, int32_t indent) const {
-    // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
     auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
     auto& __f = __ctx_1.__enter__();
     try {
-        // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
-        // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -136,20 +134,13 @@ inline void M::save_json(std::string_view __path, int32_t indent) const {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
-    // # with CPython int("1.5") raising ValueError. Pins the failure mode after the
-    // # switch to bare-number BigInt (the old string encoding rejected this earlier,
-    // # with an opaque `expected '"'`).
 }
 
 inline M M::load_json(std::string_view __path) {
-    // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
-        // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -161,22 +152,14 @@ inline M M::load_json(std::string_view __path) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
-    // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
-    // # with CPython int("1.5") raising ValueError. Pins the failure mode after the
     return M::from_json(__data);
-    // # switch to bare-number BigInt (the old string encoding rejected this earlier,
-    // # with an opaque `expected '"'`).
 }
 
 inline std::expected<M, ::tpystd::tplib::json::parser::JsonError> M::try_load_json(std::string_view __path) {
-    // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
-        // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -188,12 +171,7 @@ inline std::expected<M, ::tpystd::tplib::json::parser::JsonError> M::try_load_js
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // # A non-integer JSON number (1.5) in an `int`/BigInt @model field fails at parse
-    // # time: read_number_raw reads the float lexeme, then int() rejects it -- parity
-    // # with CPython int("1.5") raising ValueError. Pins the failure mode after the
     return M::try_from_json(__data);
-    // # switch to bare-number BigInt (the old string encoding rejected this earlier,
-    // # with an opaque `expected '"'`).
 }
 void __tpy_init();
 } // namespace tpyapp::main

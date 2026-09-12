@@ -30,7 +30,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(s: Speaker) -> None:
 void greet(Speaker& s);
+// def main() -> None:
 void main();
 
 // class Dog(Speaker):
@@ -70,8 +72,8 @@ namespace tpyapp::main {
 
 // @override
 // def speak(self) -> str:  # tpyc: ok
+//     return "woof"
 inline std::string Dog::speak() {
-    // return "woof"
     return "woof";
 }
 void __tpy_init();

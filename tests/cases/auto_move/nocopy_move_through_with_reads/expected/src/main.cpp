@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def with_reads() -> Own[Handle]:
+//     h = Handle(7)
+//     alias = h
+//     print(alias.fd)
+//     return alias
 Handle with_reads() {
-    // h = Handle(7)
     Handle h = Handle(7);
-    // alias = h
     Handle alias = std::move(h);
-    // print(alias.fd)
     std::cout << alias.fd << "\n";
-    // return alias
     return alias;
 }
 
 // def main():
+//     r = with_reads()
+//     print(r.fd)
 void main() {
-    // r = with_reads()
     Handle r = with_reads();
-    // print(r.fd)
     std::cout << r.fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

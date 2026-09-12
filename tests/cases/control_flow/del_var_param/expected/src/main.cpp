@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // # del on function parameter
 // def f(x: int) -> None:
+//     print(x)
+//     del x
+//     x = 99
+//     print(x)
 void f(const ::tpy::BigInt& __param_x) {
     ::tpy::BigInt x = __param_x;
-    // print(x)
     std::cout << x << "\n";
-    // del x
-    // x = 99
     x = ::tpy::BigInt(99);
-    // print(x)
     std::cout << x << "\n";
 }
 
+// f(42)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // f(42)
     f(::tpy::BigInt(42));
 }
 

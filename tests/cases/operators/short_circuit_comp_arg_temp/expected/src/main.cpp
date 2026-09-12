@@ -5,16 +5,18 @@ namespace tpyapp::main {
 
 
 // def take(p: Probe | None) -> int32:
+//     """Reference param, so a `Probe(...)` rvalue argument needs a hoisted temp."""
+//     return 1 if p is not None else 0
 int32_t take(const Probe* p) {
-    // return 1 if p is not None else 0
     return (((p != nullptr)) ? (1) : (0));
 }
 
 // def comp_in_ternary(c: Counter, cond: bool, xs: list[int32]) -> int32:
+//     # The comprehension sits in the `then` arm; its per-element temp must not
+//     # run when `cond` is false.
+//     ys = [take(Probe(c, i)) for i in xs] if cond else [0]
+//     return len(ys)
 int32_t comp_in_ternary(Counter& c, bool cond, const std::vector<int32_t>& xs) {
-    // # The comprehension sits in the `then` arm; its per-element temp must not
-    // # run when `cond` is false.
-    // ys = [take(Probe(c, i)) for i in xs] if cond else [0]
     std::vector<int32_t> ys = ((cond) ? (({
         std::vector<int32_t> __result;
         auto& __obj_0 = xs;
@@ -28,14 +30,13 @@ int32_t comp_in_ternary(Counter& c, bool cond, const std::vector<int32_t>& xs) {
         }
         std::move(__result);
     })) : (std::vector<int32_t>{0}));
-    // return len(ys)
     return ::tpy::__len__(ys);
 }
 
 // def comp_in_and(c: Counter, cond: bool, xs: list[int32]) -> bool:
+//     # Same shape one level down, in an `and` RHS.
+//     return cond and len([take(Probe(c, i)) for i in xs]) > 0
 bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs) {
-    // # Same shape one level down, in an `and` RHS.
-    // return cond and len([take(Probe(c, i)) for i in xs]) > 0
     return (cond && (::tpy::__len__(({
         std::vector<int32_t> __result;
         auto& __obj_0 = xs;
@@ -52,38 +53,38 @@ bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs) {
 }
 
 // def main() -> None:
+//     # A fresh Counter per check, so `n` is exactly the number of Probes built.
+//     c = Counter()
+//     print("ternary_skipped", comp_in_ternary(c, False, [1, 2]), c.n)  # 1 0
+//     c = Counter()
+//     print("ternary_taken", comp_in_ternary(c, True, [1, 2]), c.n)     # 2 2
+//     c = Counter()
+//     print("and_skipped", comp_in_and(c, False, [1, 2]), c.n)          # False 0
+//     c = Counter()
+//     print("and_taken", comp_in_and(c, True, [1, 2]), c.n)             # True 2
 void main() {
     std::optional<Counter> __slot_2;
-    // # A fresh Counter per check, so `n` is exactly the number of Probes built.
-    // c = Counter()
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
-    // print("ternary_skipped", comp_in_ternary(c, False, [1, 2]), c.n)  # 1 0
     std::vector<int32_t> __tmp_3 = {1, 2};
     std::cout << "ternary_skipped" << " " << comp_in_ternary((*c), false, __tmp_3) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("ternary_taken", comp_in_ternary(c, True, [1, 2]), c.n)     # 2 2
     std::vector<int32_t> __tmp_4 = {1, 2};
     std::cout << "ternary_taken" << " " << comp_in_ternary((*c), true, __tmp_4) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("and_skipped", comp_in_and(c, False, [1, 2]), c.n)          # False 0
     std::vector<int32_t> __tmp_5 = {1, 2};
     std::cout << "and_skipped" << " " << ::tpy::print_bool(comp_in_and((*c), false, __tmp_5)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("and_taken", comp_in_and(c, True, [1, 2]), c.n)             # True 2
     std::vector<int32_t> __tmp_6 = {1, 2};
     std::cout << "and_taken" << " " << ::tpy::print_bool(comp_in_and((*c), true, __tmp_6)) << " " << c->n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -32,7 +32,9 @@ struct Notifier;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fire_direct(exec: ExecutorA, tid: int32) -> None:
 void fire_direct(ExecutorA& exec, int32_t tid);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -133,42 +135,46 @@ namespace tpyapp::main {
 
 
 // def __init__(self) -> None:
+//     self.log = []
 inline ExecutorA::ExecutorA() : log(std::vector<int32_t>{}) {}
 
 // def mark(self, task_id: int32) -> None:
+//     self.log.append(task_id * 10)
 inline void ExecutorA::mark(int32_t task_id) {
-    // self.log.append(task_id * 10)
     this->log.push_back((::tpy::mul_check<int32_t>(task_id, 10)));
 }
 
 // def __init__(self) -> None:
+//     self.log = []
 inline ExecutorB::ExecutorB() : log(std::vector<int32_t>{}) {}
 
 // def mark(self, task_id: int32) -> None:
+//     self.log.append(task_id + 1000)
 inline void ExecutorB::mark(int32_t task_id) {
-    // self.log.append(task_id + 1000)
     this->log.push_back((::tpy::add_check<int32_t>(task_id, 1000)));
 }
 
 // def __init__(self) -> None:
+//     self.awaker = None  # Ptr[T] is implicitly nullable
+//     self.task_id = 0
 inline Notifier::Notifier() : awaker(nullptr), task_id(0) {}
 
 // def aim(self, p: Ptr[Awaker], tid: int32) -> None:
+//     self.awaker = p
+//     self.task_id = tid
 inline void Notifier::aim(Awaker* p, int32_t tid) {
-    // self.awaker = p
     this->awaker = p;
-    // self.task_id = tid
     this->task_id = tid;
 }
 
 // def fire(self) -> None:
+//     if self.awaker is None:
+//         return
+//     self.awaker.mark(self.task_id)
 inline void Notifier::fire() {
-    // if self.awaker is None:
     if ((this->awaker == nullptr)) {
-        // return
         return;
     }
-    // self.awaker.mark(self.task_id)
     this->awaker->mark(this->task_id);
 }
 void __tpy_init();

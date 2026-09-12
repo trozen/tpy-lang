@@ -5,61 +5,61 @@ namespace tpyapp::main {
 
 
 // def double(k: int32) -> int32:
+//     return k * 2
 int32_t double_(int32_t k) {
-    // return k * 2
     return (::tpy::mul_check<int32_t>(k, 2));
 }
 
 // def maybe_sum(k: int32, c: bool) -> int32:
+//     x: int32 | None = (k + 2) if c else None    # tpyc: ok -- a binop arm
+//     if x is not None:
+//         return x
+//     return -1
 int32_t maybe_sum(int32_t k, bool c) {
-    // x: int32 | None = (k + 2) if c else None    # tpyc: ok -- a binop arm
     std::optional<int32_t> x = ((c) ? (std::optional<int32_t>((::tpy::add_check<int32_t>(k, 2)))) : (std::optional<int32_t>(std::nullopt)));
-    // if x is not None:
     if ((x.has_value())) {
-        // return x
         return (*x);
     }
-    // return -1
     return -1;
 }
 
 // def maybe_call(k: int32, c: bool) -> int32:
+//     y: int32 | None = double(k) if c else None  # tpyc: ok -- a call arm
+//     if y is not None:
+//         return y
+//     return -1
 int32_t maybe_call(int32_t k, bool c) {
-    // y: int32 | None = double(k) if c else None  # tpyc: ok -- a call arm
     std::optional<int32_t> y = ((c) ? (std::optional<int32_t>(double_(k))) : (std::optional<int32_t>(std::nullopt)));
-    // if y is not None:
     if ((y.has_value())) {
-        // return y
         return (*y);
     }
-    // return -1
     return -1;
 }
 
 // def tag(u: A | B) -> str:
+//     return "a" if isinstance(u, A) else "b"    # tpyc: ok -- a str result
 std::string tag(::tpy::Union<const A*, const B*> u) {
-    // return "a" if isinstance(u, A) else "b"    # tpyc: ok -- a str result
     return std::string(((std::holds_alternative<const A*>(u)) ? ("a") : ("b")));
 }
 
 // def main() -> None:
+//     print(maybe_sum(1, True), maybe_sum(1, False))
+//     print(maybe_call(3, True), maybe_call(3, False))
+//     print(tag(A(1)), tag(B(2)))
 void main() {
-    // print(maybe_sum(1, True), maybe_sum(1, False))
     std::cout << maybe_sum(1, true) << " " << maybe_sum(1, false) << "\n";
-    // print(maybe_call(3, True), maybe_call(3, False))
     std::cout << maybe_call(3, true) << " " << maybe_call(3, false) << "\n";
-    // print(tag(A(1)), tag(B(2)))
     A __tmp_1 = A(1);
     B __tmp_2 = B(2);
     std::cout << tag(::tpy::Union<const A*, const B*>{&__tmp_1}) << " " << tag(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -6,11 +6,20 @@ namespace tpyapp::main {
 
 // # list() from iterators, both standalone and nested inside generic calls
 // def main() -> None:
+//     # Standalone
+//     print(list(range(5)))
+//     print(list(x * 2 for x in [1, 2, 3]))
+//     words = ["hello", "world"]
+//     print(list(iter(words)))
+//
+//     # Nested in generic calls with protocol params
+//     nums = [5, 3, 1, 4, 2]
+//     print(sorted(list(x * 2 for x in nums)))
+//     print(sum(list(range(5))))
+//     bools = [True, True, False]
+//     print(all(list(iter(bools))))
 void main() {
-    // # Standalone
-    // print(list(range(5)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n";
-    // print(list(x * 2 for x in [1, 2, 3]))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
         [__src = std::array<int32_t, 3>({1, 2, 3}), __started = false, __beg = std::array<int32_t, 3>::iterator(), __end = std::array<int32_t, 3>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
@@ -21,14 +30,9 @@ void main() {
             return std::nullopt;
         }
     ))) << "\n";
-    // words = ["hello", "world"]
     std::array<std::string, 2> words = {"hello", "world"};
-    // print(list(iter(words)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::__iter__(words))) << "\n";
-    // # Nested in generic calls with protocol params
-    // nums = [5, 3, 1, 4, 2]
     std::array<int32_t, 5> nums = {5, 3, 1, 4, 2};
-    // print(sorted(list(x * 2 for x in nums)))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::construct<std::vector<int32_t>>([&nums]() {
         auto& __src = nums;
         return ::tpy::make_generator<int32_t>(
@@ -41,20 +45,17 @@ void main() {
             }
         );
     }()))) << "\n";
-    // print(sum(list(range(5))))
     std::cout << ::tpy::builtin_sum<int32_t>(::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5))) << "\n";
-    // bools = [True, True, False]
     std::array<bool, 3> bools = {true, true, false};
-    // print(all(list(iter(bools))))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(::tpy::construct<std::vector<bool>>(::tpy::__iter__(bools)))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

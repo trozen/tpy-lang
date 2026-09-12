@@ -9,44 +9,47 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first[T](*args: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::varargs<T> args);
+// def count_rest[T](*args: T) -> int:
 template<typename T>
 ::tpy::BigInt count_rest(::tpy::varargs<const T> args);
+// def main() -> None:
 void main();
 
 // # generic *args: iterate the pack directly and after a slice (element type is
 // # the type param T, resolved from the call site)
 // def first[T](*args: T) -> T:
+//     for x in args:  # tpyc: ok
+//         return x
+//     return args[0]
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::varargs<T> args) {
-    // for x in args:  # tpyc: ok
     auto& __obj_0 = args;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // return x
         return x;
     }
-    // return args[0]
     return ::tpy::__getitem__(args, 0);
 }
 // def count_rest[T](*args: T) -> int:
+//     n = 0
+//     for _ in args[1:]:  # tpyc: ok
+//         n += 1
+//     return n
 template<typename T>
 ::tpy::BigInt count_rest(::tpy::varargs<const T> args) {
-    // n = 0
     int32_t n = 0;
-    // for _ in args[1:]:  # tpyc: ok
     auto __obj_0 = ::tpy::list_slice(args, ::tpy::BasicSlice{1, std::nullopt});
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& _ = *__beg_0;
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 

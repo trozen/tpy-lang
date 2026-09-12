@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def close(h: Own[Handle]) -> int32:
+//     return h.fd
 int32_t close(Handle&& h) {
-    // return h.fd
     return h.fd;
 }
 
 // def forward(h: Own[Handle]) -> int32:
+//     return close(h)  # tpyc: ok
 int32_t forward(Handle&& h) {
-    // return close(h)  # tpyc: ok
     return close(std::move(h));
 }
 
 // def main():
+//     h = Handle()
+//     h.fd = 77
+//     print(forward(h))  # tpyc: ok
 void main() {
-    // h = Handle()
     Handle h = Handle();
-    // h.fd = 77
     h.fd = 77;
-    // print(forward(h))  # tpyc: ok
     std::cout << forward(std::move(h)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

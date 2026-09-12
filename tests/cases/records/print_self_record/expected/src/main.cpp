@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = W()
+//     w.show()
+//     w.n = 4
+//     w.show()
 void main() {
-    // w = W()
     W w = W();
-    // w.show()
     w.show();
-    // w.n = 4
     w.n = 4;
-    // w.show()
     w.show();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

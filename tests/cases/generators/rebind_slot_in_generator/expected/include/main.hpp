@@ -11,6 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -34,27 +35,31 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def bump(self) -> None:
+//     self.x += 1
 inline void Point::bump() {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
 }
+// def decl_inside_while(n: int32) -> Iterator[int32]:
+//     i = 0
+//     while i < n:
+//         p = Point(0)
+//         p = Point(i)
+//         yield p.x
+//         i += 1
 inline auto decl_inside_while(int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {
             std::optional<Point> __slot_2;
             while ((i < n)) {
-                // p = Point(0)
                 Point __slot_1 = Point(0);
                 Point* p = &__slot_1;
-                // p = Point(i)
                 p = &*(__slot_2 = Point(i));
                 auto __val = p->x;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }
@@ -63,6 +68,11 @@ inline auto decl_inside_while(int32_t n) {
     );
 }
 
+// def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
+//     for v in xs:
+//         p = Point(0)
+//         p = Point(v)
+//         yield p.x
 inline auto decl_inside_for(std::vector<int32_t>& xs) {
     return ::tpy::make_generator<int32_t>(
         [&xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<int32_t> {
@@ -70,10 +80,8 @@ inline auto decl_inside_for(std::vector<int32_t>& xs) {
             if (!__init) { __beg = (xs).begin(); __end = (xs).end(); __init = true; }
             if (__beg != __end) {
                 int32_t v = *__beg++;
-                // p = Point(0)
                 Point __slot_1 = Point(0);
                 Point* p = &__slot_1;
-                // p = Point(v)
                 p = &*(__slot_2 = Point(v));
                 auto __val = p->x;
                 return std::optional<int32_t>(__val);
@@ -83,24 +91,27 @@ inline auto decl_inside_for(std::vector<int32_t>& xs) {
     );
 }
 
+// def alias_holds_across_rebind(n: int32) -> Iterator[int32]:
+//     i = 0
+//     while i < n:
+//         p = Point(i)
+//         alias = p
+//         p = Point(100)  # tpyc: warning(/will not keep the object it was given/)
+//         alias.bump()
+//         yield alias.x
+//         i += 1
 inline auto alias_holds_across_rebind(int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {
             std::optional<Point> __slot_2;
             while ((i < n)) {
-                // p = Point(i)
                 Point __slot_1 = Point(i);
                 Point* p = &__slot_1;
-                // alias = p
                 Point& alias = (*p);
-                // p = Point(100)  # tpyc: warning(/will not keep the object it was given/)
                 p = &*(__slot_2 = Point(100));
-                // alias.bump()
                 alias.bump();
                 auto __val = alias.x;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }

@@ -5,54 +5,54 @@ namespace tpyapp::main {
 
 
 // def test_basic() -> None:
+//     d = {"a": int32(1), "b": int32(2), "c": int32(3)}
+//     print(len(d))
+//     del d["b"]
+//     print(len(d))
+//     print(d)
 void test_basic() {
-    // d = {"a": int32(1), "b": int32(2), "c": int32(3)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // del d["b"]
     ::tpy::__delitem__(d, "b");
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_multi_target() -> None:
+//     d = {"x": int32(10), "y": int32(20), "z": int32(30)}
+//     del d["x"], d["z"]
+//     print(d)
+//     print(len(d))
 void test_multi_target() {
-    // d = {"x": int32(10), "y": int32(20), "z": int32(30)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
-    // del d["x"], d["z"]
     ::tpy::__delitem__(d, "x");
     ::tpy::__delitem__(d, "z");
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def test_del_then_insert() -> None:
+//     d = {"a": int32(1), "b": int32(2)}
+//     del d["a"]
+//     d["c"] = int32(3)
+//     print(d)
 void test_del_then_insert() {
-    // d = {"a": int32(1), "b": int32(2)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // del d["a"]
     ::tpy::__delitem__(d, "a");
-    // d["c"] = int32(3)
     ::tpy::__setitem__(d, "c", 3);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
+// test_basic()
+// test_multi_target()
+// test_del_then_insert()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_basic()
     test_basic();
-    // test_multi_target()
     test_multi_target();
-    // test_del_then_insert()
     test_del_then_insert();
 }
 

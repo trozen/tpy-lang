@@ -5,57 +5,59 @@ namespace tpyapp::main {
 
 
 // def make_waker(h: Awaker, task_id: int32) -> None:
+//     # Identity at a callee site: forwards a protocol value through Ptr[P].
+//     _consume(h, task_id)
 void make_waker(Awaker& h, int32_t task_id) {
-    // # Identity at a callee site: forwards a protocol value through Ptr[P].
-    // _consume(h, task_id)
     _consume(&h, task_id);
 }
 
 // def _consume(p: Ptr[Awaker], task_id: int32) -> None:
+//     p.mark(task_id)
 void _consume(Awaker* p, int32_t task_id) {
-    // p.mark(task_id)
     ::tpy::deref_check(p).mark(task_id);
 }
 
 // def read_only_take(h: Awaker) -> Ptr[readonly[Awaker]]:
+//     # Identity to readonly Ptr: address-of with const inner.
+//     p: Ptr[readonly[Awaker]] = h
+//     return p
 const Awaker* read_only_take(const Awaker& h) {
-    // # Identity to readonly Ptr: address-of with const inner.
-    // p: Ptr[readonly[Awaker]] = h
     auto p = &h;
-    // return p
     return p;
 }
 
 // def main() -> None:
+//     e = Executor()
+//     # `e: Executor` -> `h: Awaker` at the callee (base-class binding),
+//     # then `h -> Ptr[Awaker]` inside via the new identity coercion.
+//     make_waker(e, 7)
+//     print(e.log[0])
+//
+//     h = Holder(e)
+//     # h.awaker is a non-null Ptr[Awaker] pointing at e
+//     h.awaker.mark(99)
+//     print(e.log[1])
+//
+//     # readonly Ptr return: just verify it doesn't crash on lvalue access
+//     rp = read_only_take(e)
+//     print(rp is not None)
 void main() {
-    // e = Executor()
     Executor e = Executor();
-    // # `e: Executor` -> `h: Awaker` at the callee (base-class binding),
-    // # then `h -> Ptr[Awaker]` inside via the new identity coercion.
-    // make_waker(e, 7)
     make_waker(e, 7);
-    // print(e.log[0])
     std::cout << ::tpy::__getitem__(e.log, 0) << "\n";
-    // h = Holder(e)
     Holder h = Holder(e);
-    // # h.awaker is a non-null Ptr[Awaker] pointing at e
-    // h.awaker.mark(99)
     ::tpy::deref_check(h.awaker).mark(99);
-    // print(e.log[1])
     std::cout << ::tpy::__getitem__(e.log, 1) << "\n";
-    // # readonly Ptr return: just verify it doesn't crash on lvalue access
-    // rp = read_only_take(e)
     auto rp = read_only_take(e);
-    // print(rp is not None)
     std::cout << ::tpy::print_bool((rp != nullptr)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

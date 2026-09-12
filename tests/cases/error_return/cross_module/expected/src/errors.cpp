@@ -6,17 +6,17 @@ namespace tpyapp::errors {
 
 // @error_return(NotFound)
 // def find(items: list[int32], target: int32) -> int32:
+//     for i in range(len(items)):
+//         if items[i] == target:
+//             return i
+//     raise NotFound
 std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t target) {
-    // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if items[i] == target:
         if ((items[static_cast<std::size_t>(i)] == target)) {
-            // return i
             return i;
         }
     }
-    // raise NotFound
     return ::tpy::make_unexpected(NotFound{});
 }
 

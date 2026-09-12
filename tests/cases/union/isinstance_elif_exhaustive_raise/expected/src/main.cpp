@@ -5,54 +5,56 @@ namespace tpyapp::main {
 
 
 // def check(pet: Dog | Cat) -> None:
+//     if isinstance(pet, Dog):
+//         raise PetError(pet.n + 100)
+//     elif isinstance(pet, Cat):
+//         raise PetError(pet.n + 200)
 void check(::tpy::Union<const Cat*, const Dog*> pet) {
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<const Dog*>(pet)) {
         auto& __pet = *std::get<const Dog*>(pet);
-        // raise PetError(pet.n + 100)
         throw PetError(((__pet.n) + (::tpy::BigInt(100))));
     } else {
-        // elif isinstance(pet, Cat):
         if (true) {
             auto& __pet = *std::get<const Cat*>(pet);
-            // raise PetError(pet.n + 200)
             throw PetError(((__pet.n) + (::tpy::BigInt(200))));
         }
     }
 }
 
 // def main() -> None:
+//     try:
+//         check(Cat(2))
+//     except PetError as e:
+//         print(e.code)
+//     try:
+//         check(Dog(1))
+//     except PetError as e:
+//         print(e.code)
 void main() {
-    // try:
     {
         try {
-            // check(Cat(2))
             Cat __tmp_1 = Cat(::tpy::BigInt(2));
             check(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         } catch (const PetError& e) {
-            // print(e.code)
             std::cout << e.code << "\n";
         }
     }
-    // try:
     {
         try {
-            // check(Dog(1))
             Dog __tmp_2 = Dog(::tpy::BigInt(1));
             check(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
         } catch (const PetError& e) {
-            // print(e.code)
             std::cout << e.code << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

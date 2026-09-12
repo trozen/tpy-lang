@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     factory = DefaultFactory()
+//     container = create_container(factory, "Hello from container")
+//     container.print_value()
 void main() {
-    // factory = DefaultFactory()
     DefaultFactory factory = DefaultFactory();
-    // container = create_container(factory, "Hello from container")
     Container<Message> container = create_container<DefaultFactory>(factory, "Hello from container");
-    // container.print_value()
     container.print_value();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

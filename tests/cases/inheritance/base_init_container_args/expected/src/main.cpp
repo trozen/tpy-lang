@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # The field write itself is a warned copy (both legs), so the case pins
+//     # the warning rather than aliasing: what flipped is the base-init ARG.
+//     c = Child(bytearray(b"xy"), [1, 2, 3])
+//     print(len(c.buf), len(c.xs), c.n)
 void main() {
-    // # The field write itself is a warned copy (both legs), so the case pins
-    // # the warning rather than aliasing: what flipped is the base-init ARG.
-    // c = Child(bytearray(b"xy"), [1, 2, 3])
     Child c = Child(::tpy::ByteArray(::tpy::bytes_literal("xy", 2)), {1, 2, 3});
-    // print(len(c.buf), len(c.xs), c.n)
     std::cout << ::tpy::__len__(c.buf) << " " << ::tpy::__len__(c.xs) << " " << c.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

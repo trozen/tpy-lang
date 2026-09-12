@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def consume_own(b: Own[Box]) -> int32:
+//     return b.value
 int32_t consume_own(Box&& b) {
-    // return b.value
     return b.value;
 }
 
 // def consume_optional(b: Own[Box] | None) -> int32:
+//     if b is None:
+//         return int32(-1)
+//     return consume_own(b)
 int32_t consume_optional(std::optional<Box> b) {
-    // if b is None:
     if ((!b.has_value())) {
-        // return int32(-1)
         return -1;
     }
-    // return consume_own(b)
     return consume_own(std::move((*b)));
 }
 
 // def main():
+//     b = Box()
+//     b.value = 42
+//     # Warning: copy is unnecessary because b is at its last use
+//     print(consume_optional(copy(b)))  # tpyc: warning(/unnecessary copy/)
 void main() {
-    // b = Box()
     Box b = Box();
-    // b.value = 42
     b.value = 42;
-    // # Warning: copy is unnecessary because b is at its last use
-    // print(consume_optional(copy(b)))  # tpyc: warning(/unnecessary copy/)
     std::cout << consume_optional(Box(b)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

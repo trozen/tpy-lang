@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def join_or(a: Optional[str], b: str) -> int:
+//     x: str = a if a is not None else b  # tpyc: type(StrView)
+//     return len(x)
 ::tpy::BigInt join_or(std::optional<std::string_view> a, std::string_view b) {
-    // x: str = a if a is not None else b  # tpyc: type(StrView)
     std::string_view x = (((a.has_value())) ? ((*a)) : (b));
-    // return len(x)
     return ::tpy::BigInt(::tpy::__len__(x));
 }
 
 // def bytes_or(a: Optional[bytes], b: bytes) -> int:
+//     y: bytes = a if a is not None else b  # tpyc: type(bytes)
+//     return len(y)
 ::tpy::BigInt bytes_or(std::optional<::tpy::BytesView> a, ::tpy::BytesView b) {
-    // y: bytes = a if a is not None else b  # tpyc: type(bytes)
     ::tpy::Bytes y = ::tpy::Bytes((((a.has_value())) ? ((*a)) : (b)));
-    // return len(y)
     return ::tpy::BigInt(::tpy::__len__(y));
 }
 
 // def passthrough_str(s: str) -> int:
+//     local: str = s  # tpyc: type(StrView)
+//     return len(local)
 ::tpy::BigInt passthrough_str(std::string_view s) {
-    // local: str = s  # tpyc: type(StrView)
     std::string_view local = s;
-    // return len(local)
     return ::tpy::BigInt(::tpy::__len__(local));
 }
 
 // def passthrough_bytes(b: bytes) -> int:
+//     local: bytes = b  # tpyc: type(BytesView)
+//     return len(local)
 ::tpy::BigInt passthrough_bytes(::tpy::BytesView b) {
-    // local: bytes = b  # tpyc: type(BytesView)
     ::tpy::BytesView local = b;
-    // return len(local)
     return ::tpy::BigInt(::tpy::__len__(local));
 }
 
 // def main() -> None:
+//     print(join_or("hello", "z"), join_or(None, "zz"))
+//     print(bytes_or(b"abcd", b"z"), bytes_or(None, b"zz"))
+//     print(passthrough_str("hi"), passthrough_bytes(b"xyz"))
 void main() {
-    // print(join_or("hello", "z"), join_or(None, "zz"))
     std::cout << join_or("hello", "z") << " " << join_or(std::nullopt, "zz") << "\n";
-    // print(bytes_or(b"abcd", b"z"), bytes_or(None, b"zz"))
     std::cout << bytes_or(::tpy::bytes_literal_owned("abcd", 4), ::tpy::bytes_literal("z", 1)) << " " << bytes_or(std::nullopt, ::tpy::bytes_literal("zz", 2)) << "\n";
-    // print(passthrough_str("hi"), passthrough_bytes(b"xyz"))
     std::cout << passthrough_str("hi") << " " << passthrough_bytes(::tpy::bytes_literal("xyz", 3)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

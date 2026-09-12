@@ -12,11 +12,17 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drain(seed: Own[list[int]]) -> int:
 ::tpy::BigInt drain(std::vector<::tpy::BigInt>&& seed);
+// def invariant(seed: Own[list[int]]) -> int:
 ::tpy::BigInt invariant(std::vector<::tpy::BigInt>&& seed);
+// def compound(seed: Own[list[int]], flag: bool) -> int:
 ::tpy::BigInt compound(std::vector<::tpy::BigInt>&& seed, bool flag);
+// def or_rebind() -> int:
 ::tpy::BigInt or_rebind();
+// def not_rebind() -> int:
 ::tpy::BigInt not_rebind();
+// def main() -> None:
 void main();
 
 // class A:
@@ -53,9 +59,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, items: Own[list[int]]) -> None:
+//     self.items = items
 inline A::A(std::vector<::tpy::BigInt>&& items) : items(std::move(items)) {}
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline B::B(std::string_view label) : label(label) {}
 void __tpy_init();
 } // namespace tpyapp::main

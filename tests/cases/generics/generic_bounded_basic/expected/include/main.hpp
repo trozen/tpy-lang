@@ -11,6 +11,7 @@ template<::tpystd::typing::Sized T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T: Sized]:
@@ -20,12 +21,13 @@ struct Container {
     T item;
 
     // def __init__(self, item: T):
+    //     self.item = item
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> item) : item(item) {}
 
     // def get_item(self) -> T:
+    //     return self.item
     ::tpy::val_or_ref_t<T> get_item() {
-        // return self.item
         return this->item;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

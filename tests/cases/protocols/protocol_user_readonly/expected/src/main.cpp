@@ -3,18 +3,17 @@
 
 namespace tpyapp::main {
 
-// g = GoodReader(42)
 GoodReader* g{};
 
+// g = GoodReader(42)
+// print(use_readable(g))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g = GoodReader(42)
     static GoodReader __global_slot_1 = GoodReader(42);
     g = &__global_slot_1;
-    // print(use_readable(g))
     std::cout << use_readable((*g)) << "\n";
 }
 

@@ -5,54 +5,54 @@ namespace tpyapp::main {
 
 
 // def on_init(mod: Module):
+//     mod.log("initialized")
 void on_init(Module& mod) {
-    // mod.log("initialized")
     mod.log("initialized");
 }
 
 // @readonly
 // def get_description(mod: Module) -> str:
+//     return "Module(" + mod._name + ")"
 std::string get_description(const Module& mod) {
-    // return "Module(" + mod._name + ")"
     return (::tpy::str_concat((::tpy::str_concat("Module(", mod._name)), ")"));
 }
 
 // def to_upper(s: str) -> str:
+//     return s
 std::string to_upper(std::string_view s) {
-    // return s
     return std::string(s);
 }
 
 // def append_item(mod: Module, val: int32):
+//     mod._items.append(val)
 void append_item(Module& mod, int32_t val) {
-    // mod._items.append(val)
     mod._items.push_back(val);
 }
 
 // def main() -> None:
+//     m = Module("test")
+//     m.init()
+//     print(m.describe())
+//     print(m.name_upper())
+//     m.reinit()
+//     m.add_item(42)
+//     print(m._items)
 void main() {
-    // m = Module("test")
     Module m = Module("test");
-    // m.init()
     m.init();
-    // print(m.describe())
     std::cout << m.describe() << "\n";
-    // print(m.name_upper())
     std::cout << m.name_upper() << "\n";
-    // m.reinit()
     m.reinit();
-    // m.add_item(42)
     m.add_item(42);
-    // print(m._items)
     std::cout << ::tpy::ListPrinter(m._items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

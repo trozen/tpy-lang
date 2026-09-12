@@ -5,65 +5,74 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     sink = Sink()
+//
+//     data = [9]
+//     sink.take(data)
+//     print(data)
+//
+//     e = []
+//     sink.take(e)
+//     print(e)
+//
+//     span_src = [1, 2, 3]  # tpyc: type(/Array\[int32, 3\]/)
+//     print(sink.first(span_src))
+//
+//     w = [4]
+//     sink.widen(w)
+//     print(w)
+//
+//     d = {"a": 1}
+//     sink.add(d)
+//     print(d["a"], d["z"])
+//
+//     s = {1, 2}
+//     sink.grow(s)
+//     print(len(s), 50 in s)
+//
+//     word = "hi"
+//     print(sink.greet(word))
+//
+//     b = Box([1, 2])
+//     other = [7]
+//     b.set(other)
+//     print(b.get())
 void main() {
-    // sink = Sink()
     Sink sink = Sink();
-    // data = [9]
     std::vector<int32_t> data = {9};
-    // sink.take(data)
     sink.take(data);
-    // print(data)
     std::cout << ::tpy::ListPrinter(data) << "\n";
-    // e = []
     std::vector<int32_t> e = std::vector<int32_t>{};
-    // sink.take(e)
     sink.take(e);
-    // print(e)
     std::cout << ::tpy::ListPrinter(e) << "\n";
-    // span_src = [1, 2, 3]  # tpyc: type(/Array\[int32, 3\]/)
     std::array<int32_t, 3> span_src = {1, 2, 3};
-    // print(sink.first(span_src))
     std::cout << sink.first(::tpy::as_mut_span(span_src)) << "\n";
-    // w = [4]
     std::vector<int64_t> w = {4};
-    // sink.widen(w)
     sink.widen(w);
-    // print(w)
     std::cout << ::tpy::ListPrinter(w) << "\n";
-    // d = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // sink.add(d)
     sink.add(d);
-    // print(d["a"], d["z"])
     std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "z") << "\n";
-    // s = {1, 2}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // sink.grow(s)
     sink.grow(s);
-    // print(len(s), 50 in s)
     std::cout << ::tpy::__len__(s) << " " << ::tpy::print_bool((s.contains(50))) << "\n";
-    // word = "hi"
     std::string_view word = "hi";
-    // print(sink.greet(word))
     std::cout << sink.greet(word) << "\n";
-    // b = Box([1, 2])
     ::tpystd::tplib::box::Box<std::vector<int32_t>> b = ::tpystd::tplib::box::Box<std::vector<int32_t>>({1, 2});
-    // other = [7]
     std::vector<int32_t> other = {7};
-    // b.set(other)
     b.set(std::move(other));
-    // print(b.get())
     std::cout << ::tpy::ListPrinter(b.get()) << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(ch: char = 'X') -> None:
 void greet(char ch = 'X');
+// def bracket(text: str, open_ch: char = '(', close_ch: char = ')') -> str:
 std::string bracket(std::string_view text, char open_ch = '(', char close_ch = ')');
+// def main() -> None:
 void main();
 
 void __tpy_init();

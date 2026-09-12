@@ -7,31 +7,31 @@ namespace tpyapp::main {
 // # Escape only happens in one branch of an if-statement inside a loop.
 // # The hoisted slot must still be at function scope.
 // def conditional_hoist() -> None:
+//     saved: Point = Point(0, 0)
+//     for i in range(5):
+//         p: Point = Point(i, i * 3)
+//         if i > 2:
+//             saved = p  # tpyc: warning(/will not keep the object it was given/)
+//     print(saved.x, saved.y)
 void conditional_hoist() {
     std::optional<Point> __slot_2;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        // p: Point = Point(i, i * 3)
         Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 3))));
-        // if i > 2:
         if ((i > 2)) {
-            // saved = p  # tpyc: warning(/will not keep the object it was given/)
             saved = p;
         }
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// conditional_hoist()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // conditional_hoist()
     conditional_hoist();
 }
 

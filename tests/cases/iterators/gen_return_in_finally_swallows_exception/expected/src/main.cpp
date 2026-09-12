@@ -5,6 +5,12 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[str]:
+//     try:
+//         yield "before"
+//         raise ValueError("oops")
+//     finally:
+//         yield "in finally"
+//         return
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -13,7 +19,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {
         try {
-            // raise ValueError("oops")
             throw ::tpy::ValueError("oops");
         } catch (...) {
             this->__finally_exc_0 = std::current_exception();
@@ -22,13 +27,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         }
     }
     case S_RESUME_1: {
-        // return
         this->__finally_pending_0 = true;
         __state = S_JOIN_1;
         continue;
     }
     case S_JOIN_0: {
-        // yield "before"
         __state = S_RESUME_0;
         return "before";
     }
@@ -48,7 +51,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_2: {
-        // yield "in finally"
         __state = S_RESUME_1;
         return "in finally";
     }
@@ -64,8 +66,9 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for v in gen():
+//         print(v)
 void main() {
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -73,18 +76,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

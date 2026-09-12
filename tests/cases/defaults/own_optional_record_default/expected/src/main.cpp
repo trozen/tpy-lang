@@ -8,38 +8,40 @@ namespace tpyapp::main {
 // # Own renders the value form, so the pointer-form escape must not apply and the
 // # declaration must not carry `= std::nullopt` ahead of Rec's definition.
 // def store(r: Own[Rec | None] = None) -> Own[Holder]:
+//     return Holder(r)
 Holder store(std::optional<Rec>&& r) {
-    // return Holder(r)
     return Holder(r ? std::optional<Rec>(std::move(*r)) : std::nullopt);
 }
 
 // def main() -> None:
+//     print(Holder().value())
+//     print(Holder(Rec(7)).value())
+//
+//     print(store().value())  # omitted -> filled at this call site
+//
+//     kept = store(Rec(4))
+//     print(kept.value())
+//     if kept.slot is not None:
+//         kept.slot.v = 9  # mutation lands on the moved-in value, not a copy
+//     print(kept.value())
 void main() {
-    // print(Holder().value())
     std::cout << Holder().value() << "\n";
-    // print(Holder(Rec(7)).value())
     std::cout << Holder(Rec(7)).value() << "\n";
-    // print(store().value())  # omitted -> filled at this call site
     std::cout << store(std::nullopt).value() << "\n";
-    // kept = store(Rec(4))
     Holder kept = store(Rec(4));
-    // print(kept.value())
     std::cout << kept.value() << "\n";
-    // if kept.slot is not None:
     if ((kept.slot.has_value())) {
-        // kept.slot.v = 9  # mutation lands on the moved-in value, not a copy
         (*kept.slot).v = 9;
     }
-    // print(kept.value())
     std::cout << kept.value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

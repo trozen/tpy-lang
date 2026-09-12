@@ -6,26 +6,26 @@ namespace tpyapp::main {
 
 // # Cross-variable same-size reassignment: mutation on one promotes both
 // def main() -> None:
+//     a = [1, 2, 3]  # tpyc: type(/list/)
+//     b = [4, 5, 6]  # tpyc: type(/list/)
+//     a = b
+//     a.append(7)
+//     print(len(b))
 void main() {
-    // a = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* a = &__slot_1;
-    // b = [4, 5, 6]  # tpyc: type(/list/)
     std::vector<int32_t> b = {4, 5, 6};
-    // a = b
     a = &(b);
-    // a.append(7)
     a->push_back(7);
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

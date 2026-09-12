@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def sub() -> int32:
+//     return int32(10)
 ::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return int32(10)
         __state = S_DONE;
         int32_t __tpy_async_ret = 10;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,12 +26,17 @@ __coro_sub sub() {
 }
 
 // async def caller() -> int32:
+//     print("before-1")
+//     x = await sub()
+//     print("between-1-2")
+//     y = await sub()
+//     z: int32 = x + y + int32(1)
+//     print("after-2")
+//     return z
 ::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print("before-1")
         std::cout << "before-1" << "\n";
-        // x = await sub()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -41,9 +46,7 @@ __coro_sub sub() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         x = std::move(__r0).value();
         __sub_0.reset();
-        // print("between-1-2")
         std::cout << "between-1-2" << "\n";
-        // y = await sub()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -53,11 +56,8 @@ __coro_sub sub() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         y = std::move(__r1).value();
         __sub_1.reset();
-        // z: int32 = x + y + int32(1)
         z = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, y)), 1));
-        // print("after-2")
         std::cout << "after-2" << "\n";
-        // return z
         __state = S_DONE;
         int32_t __tpy_async_ret = z;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -74,20 +74,21 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(poll_once(caller()).value())
 void main() {
-    // print(poll_once(caller()).value())
     auto __tmp_1 = caller();
     std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n";
 }
 
+// from tpy.coro import poll_once
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import poll_once
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d: dict[Any, int] = {1: 1, "two": 2, 3.5: 3}
+//     print(len(d))
 void main() {
-    // d: dict[Any, int] = {1: 1, "two": 2, 3.5: 3}
     ::tpy::ordered_map<::tpy::Any, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::Any, ::tpy::BigInt>({{::tpy::make_any(::tpy::BigInt(1)), ::tpy::BigInt(1)}, {::tpy::make_any(std::string("two")), ::tpy::BigInt(2)}, {::tpy::make_any(static_cast<double>(3.5)), ::tpy::BigInt(3)}});
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

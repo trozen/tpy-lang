@@ -12,11 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_if;
 struct __gen_gen_match;
 
+// def gen_if(n: int) -> Iterator[int]:
 __gen_gen_if gen_if(::tpy::BigInt n);
+// def gen_match(n: int) -> Iterator[int]:
 __gen_gen_match gen_match(::tpy::BigInt n);
+// def main() -> None:
 void main();
 
-// Generator: gen_if
+// def gen_if(n: int) -> Iterator[int]:
 struct __gen_gen_if : public ::tpy::next_iter_mixin<__gen_gen_if, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt n;
@@ -40,7 +43,7 @@ struct __gen_gen_if : public ::tpy::next_iter_mixin<__gen_gen_if, ::tpy::BigInt>
     }
 };
 
-// Generator: gen_match
+// def gen_match(n: int) -> Iterator[int]:
 struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt n;

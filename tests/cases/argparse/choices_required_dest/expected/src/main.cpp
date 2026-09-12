@@ -5,15 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser()
+//     parser.add_argument(
+//         "--mode",
+//         choices=("fast", "slow"),
+//         required=True,
+//         help="execution mode",
+//     )
+//     parser.add_argument("--level", type=int, default=0,
+//                         choices=(0, 1, 2),
+//                         dest="severity")
+//     args = parser.parse_args(["--mode", "fast", "--level", "2"])
+//     print(args.mode)
+//     print(args.severity)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["--mode", "fast", "--level", "2"])
     std::vector<std::string> __tmp_1 = {"--mode", "fast", "--level", "2"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.mode)
     std::cout << args.mode << "\n";
-    // print(args.severity)
     std::cout << args.severity << "\n";
-    // return 0
     return 0;
 }
 
@@ -76,14 +86,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(mode, severity);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

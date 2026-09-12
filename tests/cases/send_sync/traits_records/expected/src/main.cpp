@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1, 2)             # tpyc: is_send(yes) is_sync(yes)
+//     b = Bag()                   # tpyc: is_send(yes) is_sync(no)
+//     h = Handler(lambda n: print(n))  # tpyc: is_send(no) is_sync(no)
+//     pv = Pair(1, 2)             # tpyc: is_send(yes) is_sync(yes)
+//     pl = Pair[list[int32]]([1], [2])  # tpyc: is_send(yes) is_sync(no)
+//     print(p.x, p.y, len(b.items))
+//     h.cb(3)
+//     print(pv.first, len(pl.second))
 void main() {
-    // p = Point(1, 2)             # tpyc: is_send(yes) is_sync(yes)
     Point p = Point(1, 2);
-    // b = Bag()                   # tpyc: is_send(yes) is_sync(no)
     Bag b = Bag();
-    // h = Handler(lambda n: print(n))  # tpyc: is_send(no) is_sync(no)
     Handler h = Handler([](int32_t n) { std::cout << n << "\n"; });
-    // pv = Pair(1, 2)             # tpyc: is_send(yes) is_sync(yes)
     Pair<int32_t> pv = Pair<int32_t>(1, 2);
-    // pl = Pair[list[int32]]([1], [2])  # tpyc: is_send(yes) is_sync(no)
     Pair<std::vector<int32_t>> pl = Pair<std::vector<int32_t>>({1}, {2});
-    // print(p.x, p.y, len(b.items))
     std::cout << p.x << " " << p.y << " " << ::tpy::__len__(b.items) << "\n";
-    // h.cb(3)
     h.cb(3);
-    // print(pv.first, len(pl.second))
     std::cout << pv.first << " " << ::tpy::__len__(pl.second) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

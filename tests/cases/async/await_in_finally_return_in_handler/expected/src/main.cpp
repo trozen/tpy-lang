@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def boom() -> int:
+//     raise ValueError("inside boom")
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_boom::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // raise ValueError("inside boom")
         throw ::tpy::ValueError("inside boom");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -24,11 +24,11 @@ __coro_boom boom() {
 }
 
 // async def cleanup() -> None:
+//     print("cleanup")
 ::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("cleanup")
         std::cout << "cleanup" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -45,6 +45,12 @@ __coro_cleanup cleanup() {
 }
 
 // async def caller() -> int:
+//     try:
+//         return await boom()
+//     except ValueError:
+//         return 99
+//     finally:
+//         await cleanup()
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -64,7 +70,6 @@ __coro_cleanup cleanup() {
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
             try {
-                // return 99
                 this->__finally_ret_0 = 99;
                 this->__finally_pending_0 = true;
                 __state = S_JOIN_2;
@@ -104,13 +109,11 @@ __coro_cleanup cleanup() {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_JOIN_1: {
-        // return await boom()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
     case S_JOIN_2: {
-        // await cleanup()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -127,23 +130,24 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # M3.3.1 + M3.3.2 combined: `return` inside an except handler of
+// # a try-with-finally-with-await. Try raises, handler returns the
+// # replacement value into the pending-return slot, finally runs,
+// # then the deferred Poll::ready fires.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # M3.3.1 + M3.3.2 combined: `return` inside an except handler of
-    // # a try-with-finally-with-await. Try raises, handler returns the
-    // # replacement value into the pending-return slot, finally runs,
-    // # then the deferred Poll::ready fires.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Wrap;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Res:
@@ -56,6 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Res::Res(int32_t v) : v(v) {}
 
 inline Res::Res(Res&& other) noexcept : v(std::move(other.v)) {
@@ -70,12 +72,14 @@ inline Res& Res::operator=(Res&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     pass
 inline Res::~Res() {
     if (!this->__tpy_owned_) return;
-    // pass
 }
 
 // def __init__(self, v: int32) -> None:
+//     self.res = Res(v)
+//     self.tag = v * 100
 inline Wrap::Wrap(int32_t v) : res(Res(v)), tag((::tpy::mul_check<int32_t>(v, 100))) {}
 void __tpy_init();
 } // namespace tpyapp::main

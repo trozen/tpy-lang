@@ -5,47 +5,49 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = IntBag()
+//     b.add(3)
+//     b.add(7)
+//     print(b.contains(7))
+//     print(b.contains(9))
+//     print(b.biggest())
+//
+//     d = DeepBag()
+//     d.add(5)
+//     d.add(2)
+//     print(d.contains(2))
+//     print(d.biggest())
+//
+//     w = WideBag[int32]()
+//     w.add(11)
+//     w.add(4)
+//     print(w.contains(11))
+//     print(w.biggest())
 void main() {
-    // b = IntBag()
     IntBag b = IntBag();
-    // b.add(3)
     b.add(3);
-    // b.add(7)
     b.add(7);
-    // print(b.contains(7))
     std::cout << ::tpy::print_bool(b.contains(7)) << "\n";
-    // print(b.contains(9))
     std::cout << ::tpy::print_bool(b.contains(9)) << "\n";
-    // print(b.biggest())
     std::cout << b.biggest() << "\n";
-    // d = DeepBag()
     DeepBag d = DeepBag();
-    // d.add(5)
     d.add(5);
-    // d.add(2)
     d.add(2);
-    // print(d.contains(2))
     std::cout << ::tpy::print_bool(d.contains(2)) << "\n";
-    // print(d.biggest())
     std::cout << d.biggest() << "\n";
-    // w = WideBag[int32]()
     WideBag<int32_t> w = WideBag<int32_t>();
-    // w.add(11)
     w.add(11);
-    // w.add(4)
     w.add(4);
-    // print(w.contains(11))
     std::cout << ::tpy::print_bool(w.contains(11)) << "\n";
-    // print(w.biggest())
     std::cout << w.biggest() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

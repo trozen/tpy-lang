@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
+// def count(xs: list[int32]) -> int32:
 int32_t count(const std::vector<int32_t>& xs);
+// def drop(xs: Own[list[int32]]) -> int32:
 int32_t drop(std::vector<int32_t>&& xs);
 
 void __tpy_init();

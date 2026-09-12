@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // def write_fixtures() -> None:
+//     with open(CERT_PATH, "w") as f:
+//         f.write(CERT_PEM)
+//     with open(KEY_PATH, "w") as f:
+//         f.write(KEY_PEM)
 void write_fixtures() {
-    // with open(CERT_PATH, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(CERT_PATH, "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());
     try {
-        // f.write(CERT_PEM)
         f->write(CERT_PEM);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -22,11 +24,9 @@ void write_fixtures() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with open(KEY_PATH, "w") as f:
     auto __ctx_2 = ::tpy::builtin_open_mode(KEY_PATH, "w");
     f = &(__ctx_2.__enter__());
     try {
-        // f.write(KEY_PEM)
         f->write(KEY_PEM);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -41,100 +41,127 @@ void write_fixtures() {
 }
 
 // def handshaken_pair() -> tuple[Own[SSLSocket], Own[SSLSocket]]:
+//     """A verified client SSLSocket + its server peer, handshake complete."""
+//     a, b = socket.socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     ctx = ssl.create_default_context()
+//     ctx.load_verify_locations(CERT_PATH)
+//     cli = ctx.wrap_socket(a, "localhost", False)
+//     sctx = ssl.SSLContext()
+//     sctx.load_cert_chain(CERT_PATH, KEY_PATH)
+//     srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
+//     i = 0
+//     cdone = False
+//     sdone = False
+//     while i < 500 and not (cdone and sdone):
+//         if not sdone and srv.do_handshake():
+//             sdone = True
+//         if not cdone and cli.do_handshake():
+//             cdone = True
+//         i += 1
+//     cli.setblocking(True)
+//     srv.setblocking(True)
+//     return cli, srv
 std::tuple<::tpystd::ssl::SSLSocket, ::tpystd::ssl::SSLSocket> handshaken_pair() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // a.setblocking(False)
     a.setblocking(false);
-    // b.setblocking(False)
     b.setblocking(false);
-    // ctx = ssl.create_default_context()
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
-    // ctx.load_verify_locations(CERT_PATH)
     ctx.load_verify_locations(CERT_PATH);
-    // cli = ctx.wrap_socket(a, "localhost", False)
     ::tpystd::ssl::SSLSocket cli = ctx.wrap_socket(std::move(a), "localhost", false);
-    // sctx = ssl.SSLContext()
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
-    // sctx.load_cert_chain(CERT_PATH, KEY_PATH)
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
-    // srv = sctx.wrap_socket(b, server_side=True, do_handshake_on_connect=False)
     ::tpystd::ssl::SSLSocket srv = sctx.wrap_socket(std::move(b), "", false, true);
-    // i = 0
     int32_t i = 0;
-    // cdone = False
     bool cdone = false;
-    // sdone = False
     bool sdone = false;
-    // while i < 500 and not (cdone and sdone):
     while (((i < 500) && (!((cdone && sdone))))) {
-        // if not sdone and srv.do_handshake():
         if (((!(sdone)) && srv.do_handshake())) {
-            // sdone = True
             sdone = true;
         }
-        // if not cdone and cli.do_handshake():
         if (((!(cdone)) && cli.do_handshake())) {
-            // cdone = True
             cdone = true;
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // cli.setblocking(True)
     cli.setblocking(true);
-    // srv.setblocking(True)
     srv.setblocking(true);
-    // return cli, srv
     return std::tuple<::tpystd::ssl::SSLSocket, ::tpystd::ssl::SSLSocket>{std::move(cli), std::move(srv)};
 }
 
 // def main() -> None:
+//     write_fixtures()
+//     cli, srv = handshaken_pair()
+//     srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nsecure")
+//
+//     hc = HTTPSConnection("das.test", 443, None, None)
+//     hc._tls = cli
+//     conn: Box[_Connection] = Box(hc)
+//     resp = _urlopen("https://das.test/health", None, None, None, conn)
+//     print(resp.status, resp.reason)
+//     print(resp.read())
+//     srv.close()
 void main() {
-    // write_fixtures()
     write_fixtures();
-    // cli, srv = handshaken_pair()
     auto __tup_1 = handshaken_pair();
     ::tpystd::ssl::SSLSocket cli = std::move(std::get<0>(__tup_1));
     ::tpystd::ssl::SSLSocket srv = std::move(std::get<1>(__tup_1));
-    // srv.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nsecure")
     srv.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nsecure", 44));
-    // hc = HTTPSConnection("das.test", 443, None, None)
     ::tpystd::http::client::HTTPSConnection hc = ::tpystd::http::client::HTTPSConnection("das.test", 443, std::nullopt, nullptr);
-    // hc._tls = cli
     hc._tls = std::move(cli);
-    // conn: Box[_Connection] = Box(hc)
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> conn = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(std::move(hc));
-    // resp = _urlopen("https://das.test/health", None, None, None, conn)
     ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::_urlopen("https://das.test/health", std::nullopt, std::nullopt, nullptr, std::move(conn));
-    // print(resp.status, resp.reason)
     std::cout << resp.status << " " << resp.reason << "\n";
-    // print(resp.read())
     std::cout << ::tpy::BytesPrinter(resp.read()) << "\n";
-    // srv.close()
     srv.close();
 }
 
+// from tplib import Box
+// import socket
+// import ssl
+//
+// from urllib.request import _urlopen
+// from http.client import HTTPSConnection, _Connection
+//
+// CERT_PEM: Final[str] = """-----BEGIN CERTIFICATE-----
+// MIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw
+// FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1
+// MTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO
+// PQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE
+// tP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN
+// WGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD
+// VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID
+// SAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW
+// Ddslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==
+// -----END CERTIFICATE-----
+// """
+//
+// KEY_PEM: Final[str] = """-----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg2kn/USvpv4Ilspd2
+// xfLz4BM0UjqqhFJndB7QYY+ijAihRANCAATi4r8fZOEM8tz66TgRALGG7z33xtTC
+// AHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq
+// -----END PRIVATE KEY-----
+// """
+//
+// CERT_PATH: Final[str] = "tpy_test_urlopen_https_cert.pem"
+// KEY_PATH: Final[str] = "tpy_test_urlopen_https_key.pem"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // import ssl
     ::tpystd::ssl::__tpy_init();
-    // from urllib.request import _urlopen
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::request::__tpy_init();
-    // from http.client import HTTPSConnection, _Connection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // main()
     main();
 }
 

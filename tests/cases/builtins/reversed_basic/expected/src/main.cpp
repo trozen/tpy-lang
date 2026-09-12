@@ -5,10 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[int32] = [1, 2, 3, 4, 5]
+//     for x in reversed(items):
+//         print(x)
+//
+//     # strings
+//     words: list[str] = ["a", "b", "c"]
+//     for s in reversed(words):
+//         print(s)
+//
+//     # single element
+//     one: list[int32] = [42]
+//     for x in reversed(one):
+//         print(x)
+//
+//     # empty
+//     empty: list[int32] = []
+//     for x in reversed(empty):
+//         print(x)
 void main() {
-    // items: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
-    // for x in reversed(items):
     {
         auto __src_0 = ::tpy::builtin_reversed<int32_t>(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,14 +32,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // # strings
-    // words: list[str] = ["a", "b", "c"]
     std::vector<std::string> words = {"a", "b", "c"};
-    // for s in reversed(words):
     {
         auto __src_2 = ::tpy::builtin_reversed<std::string>(words);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -31,14 +43,10 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // # single element
-    // one: list[int32] = [42]
     std::vector<int32_t> one = {42};
-    // for x in reversed(one):
     {
         auto __src_4 = ::tpy::builtin_reversed<int32_t>(one);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -46,14 +54,10 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_5);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // # empty
-    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    // for x in reversed(empty):
     {
         auto __src_6 = ::tpy::builtin_reversed<int32_t>(empty);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -61,18 +65,17 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_7);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

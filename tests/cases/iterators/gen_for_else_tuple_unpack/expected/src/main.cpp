@@ -5,6 +5,12 @@ namespace tpyapp::main {
 
 
 // def gen(pairs: list[tuple[int32, int32]], limit: int32) -> Iterator[int32]:
+//     for a, b in pairs:
+//         if a + b >= limit:
+//             break
+//         yield a + b
+//     else:
+//         yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -23,12 +29,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
         __for_tup_0 = *((*__for_it_0))++;
-        // for a, b in pairs:
         const auto& __tup_1 = __for_tup_0;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
@@ -36,7 +40,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield a + b
             __state = S_RESUME_0;
             return (::tpy::add_check<int32_t>(a, b));
         }
@@ -57,11 +60,16 @@ __gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& pairs, int32_t limit) {
 }
 
 // def main():
+//     # No break: else runs
+//     print("no break:")
+//     for v in gen([(1, 2), (3, 4)], 100):
+//         print(v)
+//     # Break: else skipped
+//     print("break:")
+//     for v in gen([(1, 2), (3, 4)], 5):
+//         print(v)
 void main() {
-    // # No break: else runs
-    // print("no break:")
     std::cout << "no break:" << "\n";
-    // for v in gen([(1, 2), (3, 4)], 100):
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
         auto __src_0 = gen(__tmp_1, 100);
@@ -70,14 +78,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // # Break: else skipped
-    // print("break:")
     std::cout << "break:" << "\n";
-    // for v in gen([(1, 2), (3, 4)], 5):
     {
         std::vector<std::tuple<int32_t, int32_t>> __tmp_2 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
         auto __src_2 = gen(__tmp_2, 5);
@@ -86,18 +90,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

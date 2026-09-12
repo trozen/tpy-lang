@@ -10,73 +10,80 @@ namespace tpyapp::main {
 // # double when the string contains `'` and no `"`. The same escaping is
 // # used by container printing (print([s]), print({s})).
 // def main() -> None:
+//     # Control characters
+//     print(repr("a\nb"))         # 'a\nb'
+//     print(repr("tab\there"))    # 'tab\there'
+//     print(repr("cr\rfoo"))      # 'cr\rfoo'
+//
+//     # Backslash
+//     print(repr("back\\slash"))  # 'back\\slash'
+//
+//     # Quote selection
+//     print(repr("plain"))        # 'plain'
+//     print(repr("can't"))        # "can't" (switches to double)
+//     print(repr("dq\"x"))        # 'dq"x' (keeps single)
+//     print(repr("'and\""))       # '\'and"' (both present, escape `'`)
+//
+//     # Containers: print_element uses the same escaping
+//     items: list[str] = []
+//     items.append("a\nb")
+//     items.append("c")
+//     items.append("can't")
+//     print(items)
+//
+//     # Dict with strings
+//     d: dict[str, str] = {}
+//     d["key"] = "v\tab"
+//     print(d)
+//
+//     # Set with strings (set printer routes through the same print_element).
+//     s: set[str] = set()
+//     s.add("only-one\n")
+//     print(s)
+//
+//     # repr() on Optional[str] (parameter form -- can't be narrowed by sema).
+//     show_optional("a\nb")
+//     show_optional(None)
+//
+//     # Edge case: empty string.
+//     print(repr(""))
 void main() {
-    // # Control characters
-    // print(repr("a\nb"))         # 'a\nb'
     std::cout << ::tpy::repr_of("a\nb") << "\n";
-    // print(repr("tab\there"))    # 'tab\there'
     std::cout << ::tpy::repr_of("tab\there") << "\n";
-    // print(repr("cr\rfoo"))      # 'cr\rfoo'
     std::cout << ::tpy::repr_of("cr\rfoo") << "\n";
-    // # Backslash
-    // print(repr("back\\slash"))  # 'back\\slash'
     std::cout << ::tpy::repr_of("back\\slash") << "\n";
-    // # Quote selection
-    // print(repr("plain"))        # 'plain'
     std::cout << ::tpy::repr_of("plain") << "\n";
-    // print(repr("can't"))        # "can't" (switches to double)
     std::cout << ::tpy::repr_of("can't") << "\n";
-    // print(repr("dq\"x"))        # 'dq"x' (keeps single)
     std::cout << ::tpy::repr_of("dq\"x") << "\n";
-    // print(repr("'and\""))       # '\'and"' (both present, escape `'`)
     std::cout << ::tpy::repr_of("'and\"") << "\n";
-    // # Containers: print_element uses the same escaping
-    // items: list[str] = []
     std::vector<std::string> items = std::vector<std::string>{};
-    // items.append("a\nb")
     items.push_back("a\nb");
-    // items.append("c")
     items.push_back("c");
-    // items.append("can't")
     items.push_back("can't");
-    // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
-    // # Dict with strings
-    // d: dict[str, str] = {}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>();
-    // d["key"] = "v\tab"
     ::tpy::__setitem__(d, "key", "v\tab");
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // # Set with strings (set printer routes through the same print_element).
-    // s: set[str] = set()
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
-    // s.add("only-one\n")
     s.insert("only-one\n");
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // # repr() on Optional[str] (parameter form -- can't be narrowed by sema).
-    // show_optional("a\nb")
     show_optional("a\nb");
-    // show_optional(None)
     show_optional(std::nullopt);
-    // # Edge case: empty string.
-    // print(repr(""))
     std::cout << ::tpy::repr_of("") << "\n";
 }
 
 // def show_optional(s: str | None) -> None:
+//     print(repr(s))
 void show_optional(std::optional<std::string_view> s) {
-    // print(repr(s))
     std::cout << ::tpy::repr_of(s ? std::make_optional(std::string(*s)) : std::nullopt) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

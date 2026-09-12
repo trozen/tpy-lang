@@ -5,38 +5,38 @@ namespace tpyapp::main {
 
 
 // def process(v: A | B) -> None:
+//     if isinstance(v, A):
+//         print(v.x)
+//     else:
+//         print(v.y)
 void process(::tpy::Union<const A*, const B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        // print(v.x)
         std::cout << __v.x << "\n";
-    // else:
     } else {
         auto& __v = *std::get<const B*>(v);
-        // print(v.y)
         std::cout << __v.y << "\n";
     }
 }
 
 // def main() -> None:
+//     a: A = A(42)
+//     b: B = B("hello")
+//     process(a)
+//     process(b)
 void main() {
-    // a: A = A(42)
     A a = A(::tpy::BigInt(42));
-    // b: B = B("hello")
     B b = B("hello");
-    // process(a)
     process(::tpy::Union<const A*, const B*>{&(a)});
-    // process(b)
     process(::tpy::Union<const A*, const B*>{&(b)});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

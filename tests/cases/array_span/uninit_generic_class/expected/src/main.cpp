@@ -3,38 +3,36 @@
 
 namespace tpyapp::main {
 
-// # Value type
-// h = Holder[int32](42)
 Holder<int32_t>* h{};
-// # str
-// s = Holder[str]("hello")
 Holder<std::string>* s{};
 
+// from tpy.mem import UninitHeapStorage
+//
+// # Value type
+// h = Holder[int32](42)
+// print(h.get())
+// h.set(100)
+// print(h.take())
+//
+// # str
+// s = Holder[str]("hello")
+// print(s.get())
+// s.set("world")
+// print(s.take())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitHeapStorage
-    // # Value type
-    // h = Holder[int32](42)
     static Holder<int32_t> __global_slot_1 = Holder<int32_t>(42);
     h = &__global_slot_1;
-    // print(h.get())
     std::cout << h->get() << "\n";
-    // h.set(100)
     h->set(100);
-    // print(h.take())
     std::cout << h->take() << "\n";
-    // # str
-    // s = Holder[str]("hello")
     static Holder<std::string> __global_slot_2 = Holder<std::string>("hello");
     s = &__global_slot_2;
-    // print(s.get())
     std::cout << s->get() << "\n";
-    // s.set("world")
     s->set("world");
-    // print(s.take())
     std::cout << s->take() << "\n";
 }
 

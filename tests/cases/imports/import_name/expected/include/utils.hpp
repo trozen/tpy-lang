@@ -9,6 +9,7 @@ namespace tpyapp::utils {
 
 inline constexpr std::string_view __name__ = "utils";
 
+// def get_name() -> str:
 std::string get_name();
 
 void __tpy_init();

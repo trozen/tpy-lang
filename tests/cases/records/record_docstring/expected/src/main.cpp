@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(3, 4)
+//     print(p.magnitude_sq())
 void main() {
-    // p = Point(3, 4)
     Point p = Point(3, 4);
-    // print(p.magnitude_sq())
     std::cout << p.magnitude_sq() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

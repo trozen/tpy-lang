@@ -32,7 +32,9 @@ struct Hamster;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def size_of(p: Pet, flag: bool) -> str:
 std::string size_of(const Pet& p, bool flag);
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -107,33 +109,34 @@ namespace tpyapp::main {
 
 
 // def __init__(self, tag: str) -> None:
+//     self.tag = tag
 inline Dog::Dog(std::string_view tag) : tag(tag) {}
 
 // def speak(self) -> str:
+//     return "woof"
 inline std::string Dog::speak() {
-    // return "woof"
     return "woof";
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Cat::Cat() {
-    // pass
 }
 
 // def speak(self) -> str:
+//     return "meow"
 inline std::string Cat::speak() {
-    // return "meow"
     return "meow";
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Hamster::Hamster() {
-    // pass
 }
 
 // def speak(self) -> str:
+//     return "squeak"
 inline std::string Hamster::speak() {
-    // return "squeak"
     return "squeak";
 }
 void __tpy_init();

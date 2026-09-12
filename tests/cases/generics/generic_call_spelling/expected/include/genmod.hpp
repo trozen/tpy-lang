@@ -9,13 +9,14 @@ namespace tpyapp::genmod {
 
 inline constexpr std::string_view __name__ = "genmod";
 
+// def gf[T](a: T, b: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> gf(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 
 // def gf[T](a: T, b: T) -> T:
+//     return b
 template<typename T>
 ::tpy::val_or_ref_t<T> gf(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // return b
     return ::tpy::param_to_return<T>(b);
 }
 

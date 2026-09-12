@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Outer.Inner.LIMIT)
+//     print(Outer.Inner.TAG)
 void main() {
-    // print(Outer.Inner.LIMIT)
     std::cout << Outer::Inner::LIMIT << "\n";
-    // print(Outer.Inner.TAG)
     std::cout << Outer::Inner::TAG << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

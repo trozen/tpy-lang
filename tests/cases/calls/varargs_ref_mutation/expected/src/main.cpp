@@ -5,65 +5,68 @@ namespace tpyapp::main {
 
 
 // def increment_all(*args: Counter) -> None:
+//     for c in args:
+//         c.value += 1
 void increment_all(::tpy::varargs<Counter> args) {
-    // for c in args:
     auto& __obj_0 = args;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& c = *__beg_0;
-        // c.value += 1
         c.value = (c.value) + (::tpy::BigInt(1));
     }
 }
 
 // def set_values(*args: Counter) -> None:
+//     for i in range(len(args)):
+//         args[i].value = (i + 1) * 10
 void set_values(::tpy::varargs<Counter> args) {
-    // for i in range(len(args)):
     int32_t __stop_0 = ::tpy::__len__(args);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // args[i].value = (i + 1) * 10
         args[static_cast<std::size_t>(i)].value = ::tpy::BigInt((::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(i, 1)), 10)));
     }
 }
 
 // def main() -> None:
+//     a = Counter(0)
+//     b = Counter(0)
+//     c = Counter(0)
+//
+//     # mutations through *args should be visible
+//     increment_all(a, b, c)
+//     print(a.value)
+//     print(b.value)
+//     print(c.value)
+//
+//     # indexing access should also give references
+//     set_values(a, b)
+//     print(a.value)
+//     print(b.value)
+//
+//     # c should still be 1 from earlier increment
+//     print(c.value)
 void main() {
-    // a = Counter(0)
     Counter a = Counter(::tpy::BigInt(0));
-    // b = Counter(0)
     Counter b = Counter(::tpy::BigInt(0));
-    // c = Counter(0)
     Counter c = Counter(::tpy::BigInt(0));
-    // # mutations through *args should be visible
-    // increment_all(a, b, c)
     std::array<Counter*, 3> __tmp_1{&a, &b, &c};
     increment_all(::tpy::varargs<Counter>(__tmp_1));
-    // print(a.value)
     std::cout << a.value << "\n";
-    // print(b.value)
     std::cout << b.value << "\n";
-    // print(c.value)
     std::cout << c.value << "\n";
-    // # indexing access should also give references
-    // set_values(a, b)
     std::array<Counter*, 2> __tmp_2{&a, &b};
     set_values(::tpy::varargs<Counter>(__tmp_2));
-    // print(a.value)
     std::cout << a.value << "\n";
-    // print(b.value)
     std::cout << b.value << "\n";
-    // # c should still be 1 from earlier increment
-    // print(c.value)
     std::cout << c.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

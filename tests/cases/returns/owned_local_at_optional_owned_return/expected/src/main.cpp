@@ -5,71 +5,71 @@ namespace tpyapp::main {
 
 
 // def from_local(k: str) -> str | None:
+//     if len(k) > 0:
+//         v = String(k)
+//         return v
+//     return None
 std::optional<std::string> from_local(std::string_view k) {
-    // if len(k) > 0:
     if ((::tpy::__len__(k) > 0)) {
-        // v = String(k)
         ::tpy::String v = ::tpy::String(k);
-        // return v
         return v;
     }
-    // return None
     return std::nullopt;
 }
 
 // def from_concat(k: str) -> str | None:
+//     if len(k) > 0:
+//         v = k + "x"
+//         return v
+//     return None
 std::optional<std::string> from_concat(std::string_view k) {
-    // if len(k) > 0:
     if ((::tpy::__len__(k) > 0)) {
-        // v = k + "x"
         ::tpy::String v = (::tpy::str_concat(k, "x"));
-        // return v
         return v;
     }
-    // return None
     return std::nullopt;
 }
 
 // def from_bytes(k: bytes) -> bytes | None:
+//     if len(k) > 0:
+//         v = bytes(k)
+//         return v
+//     return None
 std::optional<::tpy::Bytes> from_bytes(::tpy::BytesView k) {
-    // if len(k) > 0:
     if ((::tpy::__len__(k) > 0)) {
-        // v = bytes(k)
         ::tpy::Bytes v = ::tpy::Bytes(k);
-        // return v
         return v;
     }
-    // return None
     return std::nullopt;
 }
 
 // def from_own_param(k: Own[str]) -> str | None:
+//     if len(k) > 0:
+//         return k
+//     return None
 std::optional<std::string> from_own_param(std::string k) {
-    // if len(k) > 0:
     if ((::tpy::__len__(k) > 0)) {
-        // return k
         return k;
     }
-    // return None
     return std::nullopt;
 }
 
 // def main() -> None:
+//     print(from_local("a"), from_concat("a"))
+//     print(from_bytes(b"a"), from_own_param(String("a")))
+//     print(from_local(""), from_own_param(String("")))
 void main() {
-    // print(from_local("a"), from_concat("a"))
     std::cout << ::tpy::print_optional_val(from_local("a")) << " " << ::tpy::print_optional_val(from_concat("a")) << "\n";
-    // print(from_bytes(b"a"), from_own_param(String("a")))
     std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(from_bytes(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_optional_val(from_own_param(::tpy::String("a"))) << "\n";
-    // print(from_local(""), from_own_param(String("")))
     std::cout << ::tpy::print_optional_val(from_local("")) << " " << ::tpy::print_optional_val(from_own_param(::tpy::String(""))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

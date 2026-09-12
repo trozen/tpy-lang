@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_range(start: int32, end: int32) -> None:
 void print_range(int32_t start, int32_t end);
+// def sum_range(n: int32) -> int32:
 int32_t sum_range(int32_t n);
 
 void __tpy_init();

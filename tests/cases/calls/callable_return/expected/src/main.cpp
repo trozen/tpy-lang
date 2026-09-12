@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def make_adder(n: int32) -> Callable[[int32], int32]:
+//     return lambda x: x + n
 std::function<int32_t(int32_t)> make_adder(int32_t n) {
-    // return lambda x: x + n
     return [n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); };
 }
 
 // def make_multiplier(factor: int32) -> Callable[[int32], int32]:
+//     return lambda x: x * factor
 std::function<int32_t(int32_t)> make_multiplier(int32_t factor) {
-    // return lambda x: x * factor
     return [factor](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, factor)); };
 }
 
 // def main() -> None:
+//     add5 = make_adder(5)
+//     print(add5(10))  # 15
+//     print(add5(0))   # 5
+//
+//     mul3 = make_multiplier(3)
+//     print(mul3(7))   # 21
 void main() {
-    // add5 = make_adder(5)
     std::function<int32_t(int32_t)> add5 = make_adder(5);
-    // print(add5(10))  # 15
     std::cout << add5(10) << "\n";
-    // print(add5(0))   # 5
     std::cout << add5(0) << "\n";
-    // mul3 = make_multiplier(3)
     std::function<int32_t(int32_t)> mul3 = make_multiplier(3);
-    // print(mul3(7))   # 21
     std::cout << mul3(7) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

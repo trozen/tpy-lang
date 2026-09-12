@@ -18,7 +18,9 @@ struct __coro_main_coro;
 struct __coro_CM___aenter__;
 struct __coro_CM___aexit__;
 
+// async def inner() -> int:
 __coro_inner inner();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
 
 // class CM:
@@ -36,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
     return os;
 }
 
-// Async coroutine: CM.__aenter__
+// async def __aenter__(self) -> int:
 struct __coro_CM___aenter__ {
     int32_t __state;
     bool __cancel_pending;
@@ -62,7 +64,7 @@ inline __coro_CM___aenter__ CM::__aenter__() const {
     return __coro_CM___aenter__(*this);
 }
 
-// Async coroutine: CM.__aexit__
+// async def __aexit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
 struct __coro_CM___aexit__ {
     int32_t __state;
     bool __cancel_pending;
@@ -91,7 +93,7 @@ inline __coro_CM___aexit__ CM::__aexit__(std::monostate exc_type, std::monostate
     return __coro_CM___aexit__(*this, exc_type, exc_val, exc_tb);
 }
 
-// Async coroutine: inner
+// async def inner() -> int:
 struct __coro_inner {
     int32_t __state;
     bool __cancel_pending;
@@ -124,7 +126,7 @@ struct __coro_inner {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

@@ -11,8 +11,10 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def collect(source: Iterable[Own[Item]]) -> Own[list[Item]]:
 template<::tpystd::typing::Iterable<Item> T_source>
 std::vector<Item> collect(T_source&& source);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -33,25 +35,26 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Item::Item(int32_t v) : value(v) {}
 // def collect(source: Iterable[Own[Item]]) -> Own[list[Item]]:
+//     result: list[Item] = []
+//     for x in source:
+//         x.value += 10
+//         result.append(x)
+//     return result
 template<::tpystd::typing::Iterable<Item> T_source>
 std::vector<Item> collect(T_source&& source) {
-    // result: list[Item] = []
     std::vector<Item> result = std::vector<Item>{};
-    // for x in source:
     auto& __src_0 = source;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        // x.value += 10
         x.value = ::tpy::add_check<int32_t>(x.value, 10);
-        // result.append(x)
         result.push_back(std::move(x));
     }
-    // return result
     return result;
 }
 

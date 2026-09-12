@@ -5,17 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser()
+//     parser.add_argument("-n", "--count", type=int, default=1)
+//     parser.add_argument("--scale", type=float, default=1.5)
+//     parser.add_argument("--name", default="world")
+//     args = parser.parse_args(["--count", "5", "--name", "alice"])
+//     print(args.count)
+//     print(args.scale)
+//     print(args.name)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["--count", "5", "--name", "alice"])
     std::vector<std::string> __tmp_1 = {"--count", "5", "--name", "alice"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.count)
     std::cout << args.count << "\n";
-    // print(args.scale)
     std::cout << ::tpy::print_float(args.scale) << "\n";
-    // print(args.name)
     std::cout << args.name << "\n";
-    // return 0
     return 0;
 }
 
@@ -70,14 +74,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(count, scale, name);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

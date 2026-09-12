@@ -5,98 +5,107 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(os.path.normcase("/A/b.TXT"))
+//
+//     tmp = os.getcwd()
+//     d = tmp + "/tpy_ospath_roundout"
+//     if os.path.exists(d):
+//         os.rmdir(d)
+//     os.mkdir(d)
+//
+//     # samestat: two stats of the same dir match; a different dir does not.
+//     s = os.stat(d)
+//     print("same:", os.path.samestat(s, os.stat(d)))
+//     print("diff:", os.path.samestat(os.stat(tmp), s))
+//
+//     # realpath: strict=True on an existing path equals the loose result.
+//     print("strict-eq:",
+//           os.path.realpath(d, strict=True) == os.path.realpath(d, strict=False))
+//     missing = d + "/nope"
+//     # strict=False never fails on a missing path.
+//     print("loose-ok:", len(os.path.realpath(missing, strict=False)) > 0)
+//     # strict=True raises FileNotFoundError on a missing path.
+//     try:
+//         os.path.realpath(missing, strict=True)
+//     except FileNotFoundError:
+//         print("strict FileNotFoundError")
+//
+//     # realpath resolves a symlink to its target (the behavior that
+//     # distinguishes it from abspath); a dangling symlink fails under strict.
+//     lnk = tmp + "/tpy_ospath_roundout_lnk"
+//     if os.path.lexists(lnk):
+//         os.remove(lnk)
+//     os.symlink(d, lnk)
+//     print("symlink-resolves:",
+//           os.path.realpath(lnk, strict=True) == os.path.realpath(d, strict=True))
+//     os.remove(lnk)
+//
+//     dangling = tmp + "/tpy_ospath_roundout_dangling"
+//     if os.path.lexists(dangling):
+//         os.remove(dangling)
+//     os.symlink(d + "/gone", dangling)
+//     try:
+//         os.path.realpath(dangling, strict=True)
+//     except FileNotFoundError:
+//         print("dangling FileNotFoundError")
+//     os.remove(dangling)
+//
+//     os.rmdir(d)
 void main() {
-    // print(os.path.normcase("/A/b.TXT"))
     std::cout << ::tpystd::os::path::normcase("/A/b.TXT") << "\n";
-    // tmp = os.getcwd()
     std::string tmp = ::tpy::stdlib::os::getcwd();
-    // d = tmp + "/tpy_ospath_roundout"
     ::tpy::String d = (::tpy::str_concat(tmp, "/tpy_ospath_roundout"));
-    // if os.path.exists(d):
     if (::tpy::stdlib::os::path_exists(d)) {
-        // os.rmdir(d)
         ::tpy::stdlib::os::rmdir(d);
     }
-    // os.mkdir(d)
     ::tpystd::os::mkdir(d);
-    // # samestat: two stats of the same dir match; a different dir does not.
-    // s = os.stat(d)
     ::tpystd::os::_types::stat_result s = ::tpystd::os::stat(d);
-    // print("same:", os.path.samestat(s, os.stat(d)))
     std::cout << "same:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(s, ::tpystd::os::stat(d))) << "\n";
-    // print("diff:", os.path.samestat(os.stat(tmp), s))
     std::cout << "diff:" << " " << ::tpy::print_bool(::tpystd::os::path::samestat(::tpystd::os::stat(tmp), s)) << "\n";
-    // # realpath: strict=True on an existing path equals the loose result.
-    // print("strict-eq:",
-    // os.path.realpath(d, strict=True) == os.path.realpath(d, strict=False))
     std::cout << "strict-eq:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(d, true) == ::tpy::stdlib::os::path_realpath(d, false))) << "\n";
-    // missing = d + "/nope"
     ::tpy::String missing = (::tpy::str_concat(d, "/nope"));
-    // # strict=False never fails on a missing path.
-    // print("loose-ok:", len(os.path.realpath(missing, strict=False)) > 0)
     std::cout << "loose-ok:" << " " << ::tpy::print_bool((::tpy::__len__(::tpy::stdlib::os::path_realpath(missing, false)) > 0)) << "\n";
-    // # strict=True raises FileNotFoundError on a missing path.
-    // try:
     {
         try {
-            // os.path.realpath(missing, strict=True)
             ::tpy::stdlib::os::path_realpath(missing, true);
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("strict FileNotFoundError")
             std::cout << "strict FileNotFoundError" << "\n";
         }
     }
-    // # realpath resolves a symlink to its target (the behavior that
-    // # distinguishes it from abspath); a dangling symlink fails under strict.
-    // lnk = tmp + "/tpy_ospath_roundout_lnk"
     ::tpy::String lnk = (::tpy::str_concat(tmp, "/tpy_ospath_roundout_lnk"));
-    // if os.path.lexists(lnk):
     if (::tpy::stdlib::os::path_lexists(lnk)) {
-        // os.remove(lnk)
         ::tpy::stdlib::os::remove(lnk);
     }
-    // os.symlink(d, lnk)
     ::tpy::stdlib::os::symlink(d, lnk);
-    // print("symlink-resolves:",
-    // os.path.realpath(lnk, strict=True) == os.path.realpath(d, strict=True))
     std::cout << "symlink-resolves:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(lnk, true) == ::tpy::stdlib::os::path_realpath(d, true))) << "\n";
-    // os.remove(lnk)
     ::tpy::stdlib::os::remove(lnk);
-    // dangling = tmp + "/tpy_ospath_roundout_dangling"
     ::tpy::String dangling = (::tpy::str_concat(tmp, "/tpy_ospath_roundout_dangling"));
-    // if os.path.lexists(dangling):
     if (::tpy::stdlib::os::path_lexists(dangling)) {
-        // os.remove(dangling)
         ::tpy::stdlib::os::remove(dangling);
     }
-    // os.symlink(d + "/gone", dangling)
     ::tpy::stdlib::os::symlink((::tpy::str_concat(d, "/gone")), dangling);
-    // try:
     {
         try {
-            // os.path.realpath(dangling, strict=True)
             ::tpy::stdlib::os::path_realpath(dangling, true);
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("dangling FileNotFoundError")
             std::cout << "dangling FileNotFoundError" << "\n";
         }
     }
-    // os.remove(dangling)
     ::tpy::stdlib::os::remove(dangling);
-    // os.rmdir(d)
     ::tpy::stdlib::os::rmdir(d);
 }
 
+// # os.path round-out: normcase, samestat, realpath(strict=). Output is
+// # host-independent: bools + comparisons, not raw stat/path values.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.path round-out: normcase, samestat, realpath(strict=). Output is
-    // # host-independent: bools + comparisons, not raw stat/path values.
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

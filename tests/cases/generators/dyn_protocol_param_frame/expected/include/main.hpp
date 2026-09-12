@@ -76,11 +76,17 @@ struct __gen_forward_gen;
 struct __gen_own_gen;
 struct __gen_Holder_walk;
 
+// def free_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 __gen_free_gen free_gen(Src& s);
+// def ro_gen(s: readonly[RoSrc]) -> Iterator[int32]:  # tpyc: ok
 __gen_ro_gen ro_gen(const RoSrc& s);
+// def generic_gen(s: Src2[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_generic_gen generic_gen(Src2<int32_t>& s);
+// def forward_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 __gen_forward_gen forward_gen(Src& s);
+// def own_gen(s: Own[Src]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
 __gen_own_gen own_gen(std::unique_ptr<Src> s);
+// def main() -> None:
 void main();
 
 // class Impl:
@@ -201,7 +207,7 @@ struct tpy::RefAdapter<tpyapp::main::Src2<T>, __tpy_Impl> : tpyapp::main::Src2<T
 
 namespace tpyapp::main {
 
-// Generator: free_gen
+// def free_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 struct __gen_free_gen : public ::tpy::next_iter_mixin<__gen_free_gen, int32_t> {
     int32_t __state;
     Src& s;
@@ -224,7 +230,7 @@ struct __gen_free_gen : public ::tpy::next_iter_mixin<__gen_free_gen, int32_t> {
     }
 };
 
-// Generator: ro_gen
+// def ro_gen(s: readonly[RoSrc]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_ro_gen : public ::tpy::next_iter_mixin<__gen_ro_gen, int32_t> {
     int32_t __state;
     const RoSrc& s;
@@ -247,7 +253,7 @@ struct __gen_ro_gen : public ::tpy::next_iter_mixin<__gen_ro_gen, int32_t> {
     }
 };
 
-// Generator: generic_gen
+// def generic_gen(s: Src2[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_generic_gen : public ::tpy::next_iter_mixin<__gen_generic_gen, int32_t> {
     int32_t __state;
     Src2<int32_t>& s;
@@ -270,7 +276,7 @@ struct __gen_generic_gen : public ::tpy::next_iter_mixin<__gen_generic_gen, int3
     }
 };
 
-// Generator: forward_gen
+// def forward_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 struct __gen_forward_gen : public ::tpy::next_iter_mixin<__gen_forward_gen, int32_t> {
     int32_t __state;
     Src& s;
@@ -298,7 +304,7 @@ struct __gen_forward_gen : public ::tpy::next_iter_mixin<__gen_forward_gen, int3
     }
 };
 
-// Generator: own_gen
+// def own_gen(s: Own[Src]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
 struct __gen_own_gen : public ::tpy::next_iter_mixin<__gen_own_gen, int32_t> {
     int32_t __state;
     std::unique_ptr<Src> s;
@@ -321,7 +327,7 @@ struct __gen_own_gen : public ::tpy::next_iter_mixin<__gen_own_gen, int32_t> {
     }
 };
 
-// Generator: Holder.walk
+// def walk(self, s: Src) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Holder_walk : public ::tpy::next_iter_mixin<__gen_Holder_walk, int32_t> {
     int32_t __state;
     const Holder& __self;
@@ -351,37 +357,40 @@ inline __gen_Holder_walk Holder::walk(Src& s) const {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Impl::Impl(int32_t n) : n(n) {}
 
 // @readonly
 // def get(self) -> int32:
+//     return self.n
 inline int32_t Impl::get() const {
-    // return self.n
     return this->n;
 }
 
 // def bump(self) -> None:
+//     self.n += 1
 inline void Impl::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Inh::Inh(int32_t n) : n(n) {}
 
 // def get(self) -> int32:
+//     return self.n
 inline int32_t Inh::get() {
-    // return self.n
     return this->n;
 }
 
 // def bump(self) -> None:
+//     self.n += 1
 inline void Inh::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 
 // def __init__(self, tag: int32) -> None:
+//     self.tag = tag
 inline Holder::Holder(int32_t tag) : tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

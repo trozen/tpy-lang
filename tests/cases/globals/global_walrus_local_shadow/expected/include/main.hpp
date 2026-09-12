@@ -10,9 +10,13 @@ namespace tpyapp::main {
 extern int32_t counter;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def observe() -> int:
 ::tpy::BigInt observe();
+// def shadow() -> int:
 ::tpy::BigInt shadow();
+// def nested_shadow() -> int:
 ::tpy::BigInt nested_shadow();
+// def main() -> None:
 void main();
 
 void __tpy_init();

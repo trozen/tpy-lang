@@ -12,6 +12,7 @@ struct Dual;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class MyIter:
@@ -63,43 +64,45 @@ inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self._val = val
 inline MyIter::MyIter(int32_t val) : _val(val) {}
 
 // def __next__(self) -> int32:
+//     if self._val > 0:
+//         result = self._val
+//         self._val -= 1
+//         return result
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> MyIter::__next__() {
-    // if self._val > 0:
     if ((this->_val > 0)) {
-        // result = self._val
         int32_t result = this->_val;
-        // self._val -= 1
         this->_val = ::tpy::sub_check<int32_t>(this->_val, 1);
-        // return result
         return result;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def __init__(self) -> None:
+//     self._data = [1, 2, 3]
 inline Dual::Dual() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<int32_t> Dual::__span__() {
-    // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[int32]]:
+//     return self._data
 inline std::span<const int32_t> Dual::__span__() const {
-    // return self._data
     return ::tpy::as_span(this->_data);
 }
 
 // def __iter__(self) -> Own[MyIter]:
+//     return MyIter(int32(3))
 inline MyIter Dual::__iter__() const {
-    // return MyIter(int32(3))
     return MyIter(3);
 }
 void __tpy_init();

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Wrapper()
+//     w.bump_twice()
+//     w.bump_twice()
+//     print(w.n)
 void main() {
-    // w = Wrapper()
     Wrapper w = Wrapper();
-    // w.bump_twice()
     w.bump_twice();
-    // w.bump_twice()
     w.bump_twice();
-    // print(w.n)
     std::cout << w.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

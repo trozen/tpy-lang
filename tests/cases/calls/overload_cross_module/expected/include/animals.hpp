@@ -12,7 +12,9 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "animals";
 
+// def describe(animal: Dog) -> str: ...
 std::string describe(const Dog& animal);
+// def describe(animal: Cat) -> str: ...
 std::string describe(const Cat& animal);
 
 // class Dog:
@@ -49,9 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::animals

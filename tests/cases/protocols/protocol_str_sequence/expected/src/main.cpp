@@ -5,29 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     text: str = "hello"
+//
+//     # str conforms to Sequence[char]
+//     print(first_char(text))    # h
+//     print(count_chars(text))   # 5
+//
+//     # Direct indexing on str
+//     print(text[0])             # h
+//     print(text[-1])            # o
+//     print(text[2])             # l
 void main() {
-    // text: str = "hello"
     std::string_view text = "hello";
-    // # str conforms to Sequence[char]
-    // print(first_char(text))    # h
     std::cout << first_char(text) << "\n";
-    // print(count_chars(text))   # 5
     std::cout << count_chars(text) << "\n";
-    // # Direct indexing on str
-    // print(text[0])             # h
     std::cout << ::tpy::__getitem__(text, 0) << "\n";
-    // print(text[-1])            # o
     std::cout << ::tpy::__getitem__(text, -1) << "\n";
-    // print(text[2])             # l
     std::cout << ::tpy::__getitem__(text, 2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

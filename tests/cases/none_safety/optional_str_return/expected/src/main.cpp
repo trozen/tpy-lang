@@ -7,40 +7,40 @@ namespace tpyapp::main {
 // # Value-repr Optional[str] return sinks routed through THIR: None -> nullopt, a
 // # str literal -> bare, and a whole Optional[str] param -> the view->owned shim.
 // def pick(b: bool) -> str | None:
+//     if b:
+//         return "yes"
+//     return None
 std::optional<std::string> pick(bool b) {
-    // if b:
     if (b) {
-        // return "yes"
         return "yes";
     }
-    // return None
     return std::nullopt;
 }
 
 // def forward(s: str | None) -> str | None:
+//     return s
 std::optional<std::string> forward(std::optional<std::string_view> s) {
-    // return s
     return s ? std::make_optional(std::string(*s)) : std::nullopt;
 }
 
 // def main() -> None:
+//     print(pick(True))
+//     print(pick(False) is None)
+//     print(forward("hi"))
+//     print(forward(None) is None)
 void main() {
-    // print(pick(True))
     std::cout << ::tpy::print_optional_val(pick(true)) << "\n";
-    // print(pick(False) is None)
     std::cout << ::tpy::print_bool((!pick(false).has_value())) << "\n";
-    // print(forward("hi"))
     std::cout << ::tpy::print_optional_val(forward("hi")) << "\n";
-    // print(forward(None) is None)
     std::cout << ::tpy::print_bool((!forward(std::nullopt).has_value())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

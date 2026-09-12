@@ -13,7 +13,9 @@ struct A;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def probe(a: A) -> int:
 ::tpy::BigInt probe(const A& a);
+// def main() -> None:
 void main();
 
 // # A plain record is always truthy, but reaching `a.b.c` must still check that
@@ -70,12 +72,15 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline C::C(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self, c: C):
+//     self.c = c
 inline B::B(const C& c) : c(c) {}
 
 // def __init__(self, b: B | None):
+//     self.b = b
 inline A::A(const B* b) : b(::tpy::ptr_to_optional(b)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // async def take_one_step(h: Holder) -> Own[Payload]:
+//     return copy(await h.borrow())  # tpyc: ok
 ::tpystd::tpy::Poll<Payload> __coro_take_one_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return copy(await h.borrow())  # tpyc: ok
         __sub_0.emplace(h);
         __state = S_RESUME_0;
         continue;
@@ -18,7 +18,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Payload>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // return copy(await h.borrow())  # tpyc: ok
         __state = S_DONE;
         Payload __tpy_async_ret = Payload((*__await_lift_0));
         return ::tpystd::tpy::Poll<Payload>::ready(std::move(__tpy_async_ret));
@@ -35,10 +34,11 @@ __coro_take_one_step take_one_step(Holder& h) {
 }
 
 // async def take_two_step(h: Holder) -> Own[Payload]:
+//     x = await h.borrow()
+//     return copy(x)  # tpyc: ok
 ::tpystd::tpy::Poll<Payload> __coro_take_two_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // x = await h.borrow()
         __sub_0.emplace(h);
         __state = S_RESUME_0;
         continue;
@@ -48,7 +48,6 @@ __coro_take_one_step take_one_step(Holder& h) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Payload>::pending();
         x = std::move(__r0).value();
         __sub_0.reset();
-        // return copy(x)  # tpyc: ok
         __state = S_DONE;
         Payload __tpy_async_ret = Payload((*x));
         return ::tpystd::tpy::Poll<Payload>::ready(std::move(__tpy_async_ret));
@@ -65,12 +64,15 @@ __coro_take_two_step take_two_step(Holder& h) {
 }
 
 // async def amain() -> None:
+//     h = Holder(1)
+//     a = await take_one_step(h)
+//     b = await take_two_step(h)
+//     h.p.v = 9
+//     print(h.p.v, a.v, b.v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // h = Holder(1)
         h.emplace(Holder(1));
-        // a = await take_one_step(h)
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
@@ -80,7 +82,6 @@ __coro_take_two_step take_two_step(Holder& h) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // b = await take_two_step(h)
         __sub_1.emplace((*h));
         __state = S_RESUME_1;
         continue;
@@ -90,9 +91,7 @@ __coro_take_two_step take_two_step(Holder& h) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b.emplace(std::move(__r1).value());
         __sub_1.reset();
-        // h.p.v = 9
         (*h).p.v = 9;
-        // print(h.p.v, a.v, b.v)
         std::cout << (*h).p.v << " " << (*a).v << " " << (*b).v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -109,11 +108,11 @@ __coro_amain amain() {
 }
 
 // async def borrow(self) -> Payload:
+//     return self.p
 ::tpystd::tpy::Poll<Payload*> __coro_Holder_borrow::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return self.p
         __state = S_DONE;
         Payload* __tpy_async_ret = &(__self.p);
         return ::tpystd::tpy::Poll<Payload*>::ready(std::move(__tpy_async_ret));
@@ -124,21 +123,22 @@ __coro_amain amain() {
 }
 
 
+// # The spelling warn_return_await_borrow_own's diagnostic names: an AWAITED
+// # borrow copied into an `Own[T]` return. The awaited result is a pointer into
+// # caller-durable storage, so the copy has to read through it -- both the
+// # one-step `copy(await ...)` and the two-step over the pointer-local the await
+// # binds. COPY SEMANTICS ARE THE POINT: the source is mutated after each return
+// # and the copies keep their old value, which CPython agrees with because
+// # `copy()` deep-copies there.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The spelling warn_return_await_borrow_own's diagnostic names: an AWAITED
-    // # borrow copied into an `Own[T]` return. The awaited result is a pointer into
-    // # caller-durable storage, so the copy has to read through it -- both the
-    // # one-step `copy(await ...)` and the two-step over the pointer-local the await
-    // # binds. COPY SEMANTICS ARE THE POINT: the source is mutated after each return
-    // # and the copies keep their old value, which CPython agrees with because
-    // # `copy()` deep-copies there.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

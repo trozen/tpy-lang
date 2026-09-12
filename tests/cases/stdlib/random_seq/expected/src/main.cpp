@@ -5,196 +5,208 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # --- choice: byte-identical to CPython on the same seed.
+//     random.seed(int32(42))
+//     items: list[int32] = [int32(10), int32(20), int32(30), int32(40), int32(50)]
+//     print("choice_seed42:")
+//     i: int32 = 0
+//     while i < 8:
+//         print(random.choice(items))
+//         i += 1
+//
+//     # choice on str list works too.
+//     random.seed(int32(7))
+//     words: list[str] = ["alpha", "beta", "gamma", "delta"]
+//     print("choice_str:")
+//     i = 0
+//     while i < 6:
+//         print(random.choice(words))
+//         i += 1
+//
+//     # --- shuffle: in-place permutation, byte-identical to CPython.
+//     random.seed(int32(99))
+//     deck: list[int32] = [int32(0), int32(1), int32(2), int32(3), int32(4),
+//                         int32(5), int32(6), int32(7), int32(8), int32(9)]
+//     random.shuffle(deck)
+//     print("shuffle_99:")
+//     for v in deck:
+//         print(v)
+//
+//     # Shuffle preserves the multiset: the sum is invariant across any
+//     # permutation of [1..5], so it must equal 15 regardless of seed.
+//     random.seed(int32(123))
+//     arr: list[int32] = [int32(1), int32(2), int32(3), int32(4), int32(5)]
+//     random.shuffle(arr)
+//     s: int32 = 0
+//     for v in arr:
+//         s += v
+//     print("shuffle_multiset_sum:", s)
+//
+//     # Edge cases: shuffle should be a no-op on lengths 0 and 1 (the
+//     # while-loop body never executes for either).
+//     empty: list[int32] = []
+//     random.shuffle(empty)
+//     print("shuffle_empty_len:", int32(len(empty)))
+//     single: list[int32] = [int32(42)]
+//     random.shuffle(single)
+//     print("shuffle_single:", single[0])
+//
+//     # --- getrandbits: now returns int (BigInt). k <= 32 fast path matches
+//     # the previous uint32 stream byte-for-byte; k > 32 concatenates words.
+//     random.seed(int32(42))
+//     print("getrandbits_32:")
+//     i = 0
+//     while i < 4:
+//         print(random.getrandbits(int32(32)))
+//         i += 1
+//
+//     # k=33 exercises the multi-word boundary (numwords=2, last_k=1).
+//     random.seed(int32(42))
+//     print("getrandbits_33:")
+//     i = 0
+//     while i < 3:
+//         print(random.getrandbits(int32(33)))
+//         i += 1
+//
+//     random.seed(int32(42))
+//     print("getrandbits_64:")
+//     i = 0
+//     while i < 3:
+//         print(random.getrandbits(int32(64)))
+//         i += 1
+//
+//     random.seed(int32(42))
+//     print("getrandbits_100:")
+//     i = 0
+//     while i < 2:
+//         print(random.getrandbits(int32(100)))
+//         i += 1
+//
+//     # Small k still works.
+//     random.seed(int32(42))
+//     print("getrandbits_small:")
+//     print(random.getrandbits(int32(1)))
+//     print(random.getrandbits(int32(7)))
+//
+//     # --- seed(negative): mapped to abs(), so seed(-42) == seed(42) stream.
+//     random.seed(int32(-42))
+//     a0: int = random.getrandbits(int32(32))
+//     random.seed(int32(42))
+//     b0: int = random.getrandbits(int32(32))
+//     print("seed_neg_eq_pos:", a0 == b0)
+//
+//     # INT32_MIN -> 2^31 absolute value (the only negative whose abs
+//     # doesn't fit in int32). Just verify it doesn't crash and produces
+//     # a reproducible stream.
+//     random.seed(int32(-2147483648))
+//     c0: int = random.getrandbits(int32(32))
+//     random.seed(int32(-2147483648))
+//     c1: int = random.getrandbits(int32(32))
+//     print("seed_int32min_reproducible:", c0 == c1)
 void main() {
-    // # --- choice: byte-identical to CPython on the same seed.
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // items: list[int32] = [int32(10), int32(20), int32(30), int32(40), int32(50)]
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
-    // print("choice_seed42:")
     std::cout << "choice_seed42:" << "\n";
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 8:
     while ((i < 8)) {
-        // print(random.choice(items))
         std::cout << ::tpystd::random::choice<int32_t>(items) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // # choice on str list works too.
-    // random.seed(int32(7))
     ::tpystd::random::seed(7);
-    // words: list[str] = ["alpha", "beta", "gamma", "delta"]
     std::vector<std::string> words = {"alpha", "beta", "gamma", "delta"};
-    // print("choice_str:")
     std::cout << "choice_str:" << "\n";
-    // i = 0
     i = 0;
-    // while i < 6:
     while ((i < 6)) {
-        // print(random.choice(words))
         std::cout << ::tpystd::random::choice<std::string>(words) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // # --- shuffle: in-place permutation, byte-identical to CPython.
-    // random.seed(int32(99))
     ::tpystd::random::seed(99);
-    // deck: list[int32] = [int32(0), int32(1), int32(2), int32(3), int32(4),
-    // int32(5), int32(6), int32(7), int32(8), int32(9)]
     std::vector<int32_t> deck = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    // random.shuffle(deck)
     ::tpystd::random::shuffle<int32_t>(deck);
-    // print("shuffle_99:")
     std::cout << "shuffle_99:" << "\n";
-    // for v in deck:
     auto& __obj_0 = deck;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // print(v)
         std::cout << v << "\n";
     }
-    // # Shuffle preserves the multiset: the sum is invariant across any
-    // # permutation of [1..5], so it must equal 15 regardless of seed.
-    // random.seed(int32(123))
     ::tpystd::random::seed(123);
-    // arr: list[int32] = [int32(1), int32(2), int32(3), int32(4), int32(5)]
     std::vector<int32_t> arr = {1, 2, 3, 4, 5};
-    // random.shuffle(arr)
     ::tpystd::random::shuffle<int32_t>(arr);
-    // s: int32 = 0
     int32_t s = 0;
-    // for v in arr:
     auto& __obj_1 = arr;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t v = *__beg_1;
-        // s += v
         s = ::tpy::add_check<int32_t>(s, v);
     }
-    // print("shuffle_multiset_sum:", s)
     std::cout << "shuffle_multiset_sum:" << " " << s << "\n";
-    // # Edge cases: shuffle should be a no-op on lengths 0 and 1 (the
-    // # while-loop body never executes for either).
-    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    // random.shuffle(empty)
     ::tpystd::random::shuffle<int32_t>(empty);
-    // print("shuffle_empty_len:", int32(len(empty)))
     std::cout << "shuffle_empty_len:" << " " << ::tpy::__len__(empty) << "\n";
-    // single: list[int32] = [int32(42)]
     std::vector<int32_t> single = {42};
-    // random.shuffle(single)
     ::tpystd::random::shuffle<int32_t>(single);
-    // print("shuffle_single:", single[0])
     std::cout << "shuffle_single:" << " " << ::tpy::__getitem__(single, 0) << "\n";
-    // # --- getrandbits: now returns int (BigInt). k <= 32 fast path matches
-    // # the previous uint32 stream byte-for-byte; k > 32 concatenates words.
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("getrandbits_32:")
     std::cout << "getrandbits_32:" << "\n";
-    // i = 0
     i = 0;
-    // while i < 4:
     while ((i < 4)) {
-        // print(random.getrandbits(int32(32)))
         std::cout << ::tpystd::random::getrandbits(32) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // # k=33 exercises the multi-word boundary (numwords=2, last_k=1).
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("getrandbits_33:")
     std::cout << "getrandbits_33:" << "\n";
-    // i = 0
     i = 0;
-    // while i < 3:
     while ((i < 3)) {
-        // print(random.getrandbits(int32(33)))
         std::cout << ::tpystd::random::getrandbits(33) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("getrandbits_64:")
     std::cout << "getrandbits_64:" << "\n";
-    // i = 0
     i = 0;
-    // while i < 3:
     while ((i < 3)) {
-        // print(random.getrandbits(int32(64)))
         std::cout << ::tpystd::random::getrandbits(64) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("getrandbits_100:")
     std::cout << "getrandbits_100:" << "\n";
-    // i = 0
     i = 0;
-    // while i < 2:
     while ((i < 2)) {
-        // print(random.getrandbits(int32(100)))
         std::cout << ::tpystd::random::getrandbits(100) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // # Small k still works.
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // print("getrandbits_small:")
     std::cout << "getrandbits_small:" << "\n";
-    // print(random.getrandbits(int32(1)))
     std::cout << ::tpystd::random::getrandbits(1) << "\n";
-    // print(random.getrandbits(int32(7)))
     std::cout << ::tpystd::random::getrandbits(7) << "\n";
-    // # --- seed(negative): mapped to abs(), so seed(-42) == seed(42) stream.
-    // random.seed(int32(-42))
     ::tpystd::random::seed(-42);
-    // a0: int = random.getrandbits(int32(32))
     ::tpy::BigInt a0 = ::tpystd::random::getrandbits(32);
-    // random.seed(int32(42))
     ::tpystd::random::seed(42);
-    // b0: int = random.getrandbits(int32(32))
     ::tpy::BigInt b0 = ::tpystd::random::getrandbits(32);
-    // print("seed_neg_eq_pos:", a0 == b0)
     std::cout << "seed_neg_eq_pos:" << " " << ::tpy::print_bool((a0 == b0)) << "\n";
-    // # INT32_MIN -> 2^31 absolute value (the only negative whose abs
-    // # doesn't fit in int32). Just verify it doesn't crash and produces
-    // # a reproducible stream.
-    // random.seed(int32(-2147483648))
     ::tpystd::random::seed(-2147483648);
-    // c0: int = random.getrandbits(int32(32))
     ::tpy::BigInt c0 = ::tpystd::random::getrandbits(32);
-    // random.seed(int32(-2147483648))
     ::tpystd::random::seed(-2147483648);
-    // c1: int = random.getrandbits(int32(32))
     ::tpy::BigInt c1 = ::tpystd::random::getrandbits(32);
-    // print("seed_int32min_reproducible:", c0 == c1)
     std::cout << "seed_int32min_reproducible:" << " " << ::tpy::print_bool((c0 == c1)) << "\n";
 }
 
+// # random.choice / shuffle, getrandbits(k > 32), seed(negative).
+// # All byte-identical to CPython on the same MT seed -- choice and
+// # shuffle each consume known _randbelow(...) draws, getrandbits packs
+// # multi-word output little-endian like CPython's getrandbits, and
+// # negative seeds map to abs(seed) before init_by_array.
+// import random
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # random.choice / shuffle, getrandbits(k > 32), seed(negative).
-    // # All byte-identical to CPython on the same MT seed -- choice and
-    // # shuffle each consume known _randbelow(...) draws, getrandbits packs
-    // # multi-word output little-endian like CPython's getrandbits, and
-    // # negative seeds map to abs(seed) before init_by_array.
-    // import random
     ::tpystd::random::__tpy_init();
-    // main()
     main();
 }
 

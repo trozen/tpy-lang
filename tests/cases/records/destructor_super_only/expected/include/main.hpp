@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // # Tests __del__ whose body is only super().__del__() -- effective body is empty
@@ -67,9 +68,9 @@ inline Base& Base::operator=(Base&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("Base destroyed")
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    // print("Base destroyed")
     std::cout << "Base destroyed" << "\n";
 }
 
@@ -85,6 +86,7 @@ inline Child& Child::operator=(Child&& other) noexcept {
 }
 
 // def __del__(self):
+//     super().__del__()
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
 }

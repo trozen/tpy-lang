@@ -6,29 +6,29 @@ namespace tpyapp::main {
 
 // @dispatch
 // def pick(x: int32, y: int32) -> int32:
+//     return x
 int32_t pick(int32_t x, int32_t y) {
-    // return x
     return x;
 }
 
 // def main() -> None:
+//     a: int32 = use(int32(1), int32(2))
+//     print(a)
+//     f: float32 = use(float32(1.5), float32(2.5))
+//     print(f)
 void main() {
-    // a: int32 = use(int32(1), int32(2))
     int32_t a = use<int32_t>(1, 2);
-    // print(a)
     std::cout << a << "\n";
-    // f: float32 = use(float32(1.5), float32(2.5))
     float f = use<float>(1.5f, 2.5f);
-    // print(f)
     std::cout << ::tpy::print_float(static_cast<double>(f)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

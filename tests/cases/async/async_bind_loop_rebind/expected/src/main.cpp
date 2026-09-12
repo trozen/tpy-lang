@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def add_one(n: int) -> int:
+//     return n + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_add_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n + 1
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,14 @@ __coro_add_one add_one(::tpy::BigInt n) {
 }
 
 // async def main_coro() -> None:
+//     total = 0
+//     for i in range(3):
+//         c = add_one(i)
+//         total += await c
+//     print(total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
@@ -41,22 +45,18 @@ __coro_add_one add_one(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         c.reset();
-        // total += await c
         total = ::tpy::add_check<int32_t>(total, (__await_lift_0).to_fixed_check<int32_t>());
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            // print(total)
             std::cout << total << "\n";
             __state = S_DONE;
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
         i = ((*__for_i_0))++;
-        // c = add_one(i)
         c.emplace(add_one(::tpy::BigInt(i)));
-        // total += await c
         __state = S_RESUME_0;
         continue;
     }
@@ -72,21 +72,22 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Same-coroutine rebind + consume inside a loop body (the retry shape):
+// # each iteration re-emplaces the concrete frame and awaits it.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Same-coroutine rebind + consume inside a loop body (the retry shape):
-    // # each iteration re-emplaces the concrete frame and awaits it.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

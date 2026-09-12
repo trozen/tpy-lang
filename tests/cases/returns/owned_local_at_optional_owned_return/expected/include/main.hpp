@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def from_local(k: str) -> str | None:
 std::optional<std::string> from_local(std::string_view k);
+// def from_concat(k: str) -> str | None:
 std::optional<std::string> from_concat(std::string_view k);
+// def from_bytes(k: bytes) -> bytes | None:
 std::optional<::tpy::Bytes> from_bytes(::tpy::BytesView k);
+// def from_own_param(k: Own[str]) -> str | None:
 std::optional<std::string> from_own_param(std::string k);
+// def main() -> None:
 void main();
 
 void __tpy_init();

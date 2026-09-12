@@ -11,6 +11,7 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Config:
@@ -29,8 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def get_mode(self) -> Literal["r", "w"]:
+//     return "r"
 inline std::string_view Config::get_mode() const {
-    // return "r"
     return "r";
 }
 void __tpy_init();

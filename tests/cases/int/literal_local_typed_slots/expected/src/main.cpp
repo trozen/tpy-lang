@@ -5,107 +5,107 @@ namespace tpyapp::main {
 
 
 // def ret_unsigned() -> uint64:
+//     x = 0
+//     return x
 uint64_t ret_unsigned() {
-    // x = 0
     uint64_t x = 0;
-    // return x
     return x;
 }
 
 // def init_typed_local() -> uint64:
+//     x = 5
+//     y: uint64 = x
+//     return y
 uint64_t init_typed_local() {
-    // x = 5
     uint64_t x = 5;
-    // y: uint64 = x
     uint64_t y = x;
-    // return y
     return y;
 }
 
 // def reassign_existing_typed() -> uint64:
+//     y: uint64 = 100
+//     x = 7
+//     y = x
+//     return y
 uint64_t reassign_existing_typed() {
-    // y: uint64 = 100
     uint64_t y = 100;
-    // x = 7
     uint64_t x = 7;
-    // y = x
     y = x;
-    // return y
     return y;
 }
 
 // def setitem_typed_list() -> uint64:
+//     xs: list[uint64] = [0, 0, 0]
+//     n = 9
+//     xs[1] = n
+//     return xs[1]
 uint64_t setitem_typed_list() {
-    // xs: list[uint64] = [0, 0, 0]
     std::vector<uint64_t> xs = {0, 0, 0};
-    // n = 9
     uint64_t n = 9;
-    // xs[1] = n
     ::tpy::__setitem__(xs, 1, n);
-    // return xs[1]
     return ::tpy::__getitem__(xs, 1);
 }
 
 // def field_assign_typed() -> uint64:
+//     h = Holder()
+//     n = 11
+//     h.val = n
+//     return h.val
 uint64_t field_assign_typed() {
-    // h = Holder()
     Holder h = Holder();
-    // n = 11
     uint64_t n = 11;
-    // h.val = n
     h.val = n;
-    // return h.val
     return h.val;
 }
 
 // def dict_key_typed() -> str:
+//     d: dict[uint64, str] = {}
+//     k = 13
+//     d[k] = "ok"
+//     return d[k]
 std::string dict_key_typed() {
-    // d: dict[uint64, str] = {}
     ::tpy::ordered_map<uint64_t, std::string> d = ::tpy::ordered_map<uint64_t, std::string>();
-    // k = 13
     uint64_t k = 13;
-    // d[k] = "ok"
     ::tpy::__setitem__(d, k, "ok");
-    // return d[k]
     return ::tpy::__getitem__(d, k);
 }
 
 // def method_arg_with_own_param() -> uint64:
+//     xs: list[uint64] = []
+//     n = 19
+//     xs.append(n)
+//     return xs[0]
 uint64_t method_arg_with_own_param() {
-    // xs: list[uint64] = []
     std::vector<uint64_t> xs = std::vector<uint64_t>{};
-    // n = 19
     uint64_t n = 19;
-    // xs.append(n)
     xs.push_back(n);
-    // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
 // def main() -> None:
+//     print(ret_unsigned())
+//     print(init_typed_local())
+//     print(reassign_existing_typed())
+//     print(setitem_typed_list())
+//     print(field_assign_typed())
+//     print(dict_key_typed())
+//     print(method_arg_with_own_param())
 void main() {
-    // print(ret_unsigned())
     std::cout << ret_unsigned() << "\n";
-    // print(init_typed_local())
     std::cout << init_typed_local() << "\n";
-    // print(reassign_existing_typed())
     std::cout << reassign_existing_typed() << "\n";
-    // print(setitem_typed_list())
     std::cout << setitem_typed_list() << "\n";
-    // print(field_assign_typed())
     std::cout << field_assign_typed() << "\n";
-    // print(dict_key_typed())
     std::cout << dict_key_typed() << "\n";
-    // print(method_arg_with_own_param())
     std::cout << method_arg_with_own_param() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

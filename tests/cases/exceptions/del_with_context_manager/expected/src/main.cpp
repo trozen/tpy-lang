@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main():
+//     r = Resource(3)
+//     print("before drop")
 void main() {
-    // r = Resource(3)
     Resource r = Resource(3);
-    // print("before drop")
     std::cout << "before drop" << "\n";
 }
 
+// main()
+// print("done")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
-    // print("done")
     std::cout << "done" << "\n";
 }
 

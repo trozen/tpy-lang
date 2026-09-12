@@ -15,11 +15,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_make;
 struct __coro_driver;
 
+// async def make() -> Own[list[int32]]:
 __coro_make make();
+// async def driver() -> int32:
 __coro_driver driver();
+// def main() -> None:
 void main();
 
-// Async coroutine: make
+// async def make() -> Own[list[int32]]:
 struct __coro_make {
     int32_t __state;
     bool __cancel_pending;
@@ -50,7 +53,7 @@ struct __coro_make {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> int32:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;

@@ -13,7 +13,9 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def f(v: A | B | C) -> int:
 ::tpy::BigInt f(::tpy::Union<const A*, const B*, const C*> v);
+// def main() -> None:
 void main();
 
 // # Two sequential isinstance-and-return narrow a 3-member union down to the last
@@ -68,12 +70,15 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, x: int):
+//     self.ax = x
 inline A::A(const ::tpy::BigInt& x) : ax(x) {}
 
 // def __init__(self, x: int):
+//     self.bx = x
 inline B::B(const ::tpy::BigInt& x) : bx(x) {}
 
 // def __init__(self, x: int):
+//     self.cx = x
 inline C::C(const ::tpy::BigInt& x) : cx(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

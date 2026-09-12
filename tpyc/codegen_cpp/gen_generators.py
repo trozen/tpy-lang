@@ -401,11 +401,10 @@ class GeneratorCodegen:
             raise CodeGenError(
                 f"internal error: no lowered simple-generator body for "
                 f"'{func.name}'", func.loc)
-        from ..thir.emit import (CommentSink, ModuleCounter, TempSink,
+        from ..thir.emit import (ModuleCounter, TempSink,
                                  SimpleGenLeafEmitter)
         return SimpleGenLeafEmitter(
             sg,
-            comments=CommentSink(self.ctx),
             temps=TempSink(self.ctx),
             with_counter=ModuleCounter(self.ctx, "with_counter"),
             try_counter=ModuleCounter(self.ctx, "try_except_counter"),
@@ -464,13 +463,14 @@ class GeneratorCodegen:
         if record_name:
             const_suffix = " const" if func.is_readonly else ""
             out.write(f"\n")
-            self.ctx.emit_source_comment(out, func.loc, indent=INDENT)
+            self.ctx.emit_definition_source_block(out, func.loc, INDENT)
             tpl_header = self._gen_template_header(func, indent=INDENT)
             if tpl_header:
                 out.write(tpl_header)
             params = self._gen_params(func, emit_defaults=True)
             out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
         else:
+            self.ctx.emit_definition_source_block(out, func.loc)
             tpl_header = self._gen_template_header(func)
             if tpl_header:
                 out.write(tpl_header)
@@ -569,13 +569,14 @@ class GeneratorCodegen:
         if record_name:
             const_suffix = " const" if func.is_readonly else ""
             out.write(f"\n")
-            self.ctx.emit_source_comment(out, func.loc, indent=INDENT)
+            self.ctx.emit_definition_source_block(out, func.loc, INDENT)
             tpl_header = self._gen_template_header(func, indent=INDENT)
             if tpl_header:
                 out.write(tpl_header)
             params = self._gen_params(func, emit_defaults=True)
             out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
         else:
+            self.ctx.emit_definition_source_block(out, func.loc)
             tpl_header = self._gen_template_header(func)
             if tpl_header:
                 out.write(tpl_header)
@@ -1372,8 +1373,6 @@ class GeneratorCodegen:
         self.ctx.const_ref_params = crp
         self.ctx.deep_const_borrow_params = dcbp
         leaf.emit_init(out, indent_level)
-        self.ctx.emit_block_trailing_comments(
-            out, init_stmts, INDENT * indent_level)
         self.ctx.current_ns = local_ns
         return local_ns
 

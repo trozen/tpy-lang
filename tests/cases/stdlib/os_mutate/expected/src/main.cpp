@@ -5,66 +5,87 @@ namespace tpyapp::main {
 
 
 // def teardown(base: str) -> None:
+//     if lexists(base + "/lnk"):
+//         os.remove(base + "/lnk")
+//     for n in ["one.txt", "two.txt", "renamed.txt", "final.txt"]:
+//         if exists(base + "/" + n):
+//             os.remove(base + "/" + n)
+//     if exists(base + "/a/b"):
+//         os.rmdir(base + "/a/b")
+//     if exists(base + "/a"):
+//         os.rmdir(base + "/a")
+//     if exists(base):
+//         os.rmdir(base)
 void teardown(std::string_view base) {
-    // if lexists(base + "/lnk"):
     if (::tpy::stdlib::os::path_lexists((::tpy::str_concat(base, "/lnk")))) {
-        // os.remove(base + "/lnk")
         ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/lnk")));
     }
-    // for n in ["one.txt", "two.txt", "renamed.txt", "final.txt"]:
     auto __obj_0 = {"one.txt", "two.txt", "renamed.txt", "final.txt"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view n = *__beg_0;
-        // if exists(base + "/" + n):
         if (::tpy::stdlib::os::path_exists((::tpy::str_concat((::tpy::str_concat(base, "/")), n)))) {
-            // os.remove(base + "/" + n)
             ::tpy::stdlib::os::remove((::tpy::str_concat((::tpy::str_concat(base, "/")), n)));
         }
     }
-    // if exists(base + "/a/b"):
     if (::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/a/b")))) {
-        // os.rmdir(base + "/a/b")
         ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/a/b")));
     }
-    // if exists(base + "/a"):
     if (::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/a")))) {
-        // os.rmdir(base + "/a")
         ::tpy::stdlib::os::rmdir((::tpy::str_concat(base, "/a")));
     }
-    // if exists(base):
     if (::tpy::stdlib::os::path_exists(base)) {
-        // os.rmdir(base)
         ::tpy::stdlib::os::rmdir(base);
     }
 }
 
 // def main():
+//     base = "tpy_os_mutate"
+//     teardown(base)
+//
+//     os.mkdir(base)
+//     os.makedirs(base + "/a/b")
+//     os.makedirs(base + "/a/b", exist_ok=True)   # already exists -> no error
+//     print("makedirs:", isdir(base + "/a"), isdir(base + "/a/b"))
+//
+//     for n in ["one.txt", "two.txt"]:
+//         with open(base + "/" + n, "w") as fh:
+//             fh.write(n)
+//     # controlled dir -> the full listing is deterministic ("a" + the two files)
+//     print("listdir:", ",".join(sorted(os.listdir(base))))
+//
+//     os.symlink("one.txt", base + "/lnk")
+//     print("symlink:", islink(base + "/lnk"), lexists(base + "/lnk"),
+//           isfile(base + "/lnk"))   # isfile follows the link -> True
+//     print("readlink:", os.readlink(base + "/lnk"))
+//
+//     os.rename(base + "/one.txt", base + "/renamed.txt")
+//     print("rename:", exists(base + "/renamed.txt"), exists(base + "/one.txt"))
+//     os.replace(base + "/two.txt", base + "/final.txt")
+//     print("replace:", exists(base + "/final.txt"), exists(base + "/two.txt"))
+//
+//     os.remove(base + "/lnk")
+//     os.remove(base + "/renamed.txt")
+//     os.remove(base + "/final.txt")
+//     # removedirs prunes b, a, then base (all empty after the files are gone).
+//     os.removedirs(base + "/a/b")
+//     print("torn down:", exists(base))
 void main() {
-    // base = "tpy_os_mutate"
     std::string_view base = "tpy_os_mutate";
-    // teardown(base)
     teardown(base);
-    // os.mkdir(base)
     ::tpystd::os::mkdir(base);
-    // os.makedirs(base + "/a/b")
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/a/b")));
-    // os.makedirs(base + "/a/b", exist_ok=True)   # already exists -> no error
     ::tpystd::os::makedirs((::tpy::str_concat(base, "/a/b")), 511, true);
-    // print("makedirs:", isdir(base + "/a"), isdir(base + "/a/b"))
     std::cout << "makedirs:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir((::tpy::str_concat(base, "/a")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir((::tpy::str_concat(base, "/a/b")))) << "\n";
-    // for n in ["one.txt", "two.txt"]:
     auto __obj_0 = {"one.txt", "two.txt"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view n = *__beg_0;
-        // with open(base + "/" + n, "w") as fh:
         auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat((::tpy::str_concat(base, "/")), n)), "w");
         auto& fh = __ctx_1.__enter__();
         try {
-            // fh.write(n)
             fh.write(n);
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -77,50 +98,35 @@ void main() {
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
     }
-    // # controlled dir -> the full listing is deterministic ("a" + the two files)
-    // print("listdir:", ",".join(sorted(os.listdir(base))))
     std::cout << "listdir:" << " " << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir(base))) << "\n";
-    // os.symlink("one.txt", base + "/lnk")
     ::tpy::stdlib::os::symlink("one.txt", (::tpy::str_concat(base, "/lnk")));
-    // print("symlink:", islink(base + "/lnk"), lexists(base + "/lnk"),
-    // isfile(base + "/lnk"))   # isfile follows the link -> True
     std::cout << "symlink:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink((::tpy::str_concat(base, "/lnk")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists((::tpy::str_concat(base, "/lnk")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile((::tpy::str_concat(base, "/lnk")))) << "\n";
-    // print("readlink:", os.readlink(base + "/lnk"))
     std::cout << "readlink:" << " " << ::tpy::stdlib::os::readlink((::tpy::str_concat(base, "/lnk"))) << "\n";
-    // os.rename(base + "/one.txt", base + "/renamed.txt")
     ::tpy::stdlib::os::rename((::tpy::str_concat(base, "/one.txt")), (::tpy::str_concat(base, "/renamed.txt")));
-    // print("rename:", exists(base + "/renamed.txt"), exists(base + "/one.txt"))
     std::cout << "rename:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/renamed.txt")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/one.txt")))) << "\n";
-    // os.replace(base + "/two.txt", base + "/final.txt")
     ::tpystd::os::replace((::tpy::str_concat(base, "/two.txt")), (::tpy::str_concat(base, "/final.txt")));
-    // print("replace:", exists(base + "/final.txt"), exists(base + "/two.txt"))
     std::cout << "replace:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/final.txt")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(base, "/two.txt")))) << "\n";
-    // os.remove(base + "/lnk")
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/lnk")));
-    // os.remove(base + "/renamed.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/renamed.txt")));
-    // os.remove(base + "/final.txt")
     ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/final.txt")));
-    // # removedirs prunes b, a, then base (all empty after the files are gone).
-    // os.removedirs(base + "/a/b")
     ::tpystd::os::removedirs((::tpy::str_concat(base, "/a/b")));
-    // print("torn down:", exists(base))
     std::cout << "torn down:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists(base)) << "\n";
 }
 
+// # os mutating ops: mkdir/makedirs/listdir(controlled dir)/symlink/rename/
+// # replace/remove/rmdir. Builds + tears down a fresh scratch tree so both phases
+// # start clean; byte-compared against CPython.
+// import os
+// from os.path import isdir, isfile, islink, lexists, exists
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os mutating ops: mkdir/makedirs/listdir(controlled dir)/symlink/rename/
-    // # replace/remove/rmdir. Builds + tears down a fresh scratch tree so both phases
-    // # start clean; byte-compared against CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // from os.path import isdir, isfile, islink, lexists, exists
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

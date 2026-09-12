@@ -22,28 +22,50 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_generate;
 struct __coro_async_read;
 
+// def string_reads(x: str | int32, index: int) -> None:
 void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigInt& index);
+// def bytes_reads(x: bytes | Indexed, index: int) -> None:
 void bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*> x, const ::tpy::BigInt& index);
+// def bytes_value_union(x: bytes | int32) -> None:
 void bytes_value_union(const ::tpy::Union<::tpy::Bytes, int32_t>& x);
+// def bytearray_reads(x: bytearray | int32, index: int) -> None:
 void bytearray_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x, const ::tpy::BigInt& index);
+// def capture_reads(x: str | int32, allowed: bool) -> None:
 void capture_reads(const ::tpy::Union<int32_t, std::string>& x, bool allowed);
+// def generic_read[T](marker: T) -> None:
 template<typename T>
 void generic_read(::tpy::param_val_or_ref_t<T> marker);
+// def monomorphic_read(marker: int32) -> None:
 void monomorphic_read(int32_t marker);
+// def tuple_reads(x: bytearray | int32) -> None:
 void tuple_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x);
+// def generate(x: bytearray | int32) -> Iterator[int32]:
 __gen_generate generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x);
+// async def async_read(x: bytearray | int32) -> int32:
 __coro_async_read async_read(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x);
+// def comprehension(x: bytearray | int32) -> None:
 void comprehension(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x);
+// def union_text(choose_text: bool) -> str | int32:
 ::tpy::Union<int32_t, std::string> union_text(bool choose_text);
+// def closure(choose_text: bool) -> None:
 void closure(bool choose_text);
+// def cleanup_reads(x: str | int32) -> None:
 void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x);
+// def error_read(x: bytearray | int32) -> int32:
 std::expected<int32_t, Err> error_read(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x);
+// def conditional_reads(x: str | int32, counter: Counter) -> None:
 void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& counter);
+// def list_read(x: list[int32] | int32) -> None:
 void list_read(::tpy::Union<const int32_t*, const std::vector<int32_t>*> x);
+// def dict_read(x: dict[int32, int32] | int32) -> None:
 void dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*> x);
+// def record_read(x: Indexed | int32) -> None:
 void record_read(::tpy::Union<const Indexed*, const int32_t*> x);
+// def make_buffer() -> Own[bytearray | int32]:
 ::tpy::Union<::tpy::ByteArray, int32_t> make_buffer();
+// def make_list() -> Own[list[int32] | int32]:
 ::tpy::Union<int32_t, std::vector<int32_t>> make_list();
+// def main() -> None:
 void main();
 
 // class Indexed:
@@ -136,7 +158,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: async_read
+// async def async_read(x: bytearray | int32) -> int32:
 struct __coro_async_read {
     int32_t __state;
     bool __cancel_pending;
@@ -161,7 +183,7 @@ struct __coro_async_read {
     }
 };
 
-// Generator: generate
+// def generate(x: bytearray | int32) -> Iterator[int32]:
 struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
     int32_t __state;
     ::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x;
@@ -188,27 +210,28 @@ struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
 
 
 // def __getitem__(self, index: int32) -> int32:
+//     return index + 20
 inline int32_t Indexed::__getitem__(int32_t index) const {
-    // return index + 20
     return (::tpy::add_check<int32_t>(index, 20));
 }
 
 // # Constructor: the indexed scalar is consumed by a field store.
 // def __init__(self, x: str | int32) -> None:
+//     self.value = ""
+//     match x:
+//         case str():
+//             self.value = str(x[0])  # tpyc: ok
+//         case _:
+//             pass
 inline Reader::Reader(const ::tpy::Union<int32_t, std::string>& x) : value("") {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case str():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // self.value = str(x[0])  # tpyc: ok
         this->value = std::string(::tpy::char_to_str(::tpy::__getitem__(__case_0, 0)));
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
@@ -216,20 +239,20 @@ inline Reader::Reader(const ::tpy::Union<int32_t, std::string>& x) : value("") {
 
 // # Method: readonly receiver inference must not affect scalar indexing.
 // def read(self, x: str | int32) -> str:
+//     match x:
+//         case str():
+//             return str(x[-1])  # tpyc: ok
+//         case _:
+//             return ""
 inline std::string Reader::read(const ::tpy::Union<int32_t, std::string>& x) const {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case str():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // return str(x[-1])  # tpyc: ok
         return std::string(::tpy::char_to_str(::tpy::__getitem__(__case_0, -1)));
         break;
     }
-    // case _:
     default: {
-        // return ""
         return "";
         break;
     }
@@ -238,44 +261,45 @@ inline std::string Reader::read(const ::tpy::Union<int32_t, std::string>& x) con
 }
 
 // def __enter__(self) -> "Guard":
+//     return self
 inline Guard& Guard::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     self.calls = 0
 inline Counter::Counter() : calls(0) {}
 
 // def index(self) -> int32:
+//     self.calls += 1
+//     return 1
 inline int32_t Counter::index() {
-    // self.calls += 1
     this->calls = ::tpy::add_check<int32_t>(this->calls, 1);
-    // return 1
     return 1;
 }
 // def generic_read[T](marker: T) -> None:
+//     x = union_text(True)
+//     match x:
+//         case str():
+//             print("generic", x[0], marker)  # tpyc: ok
+//         case _:
+//             pass
 template<typename T>
 void generic_read(::tpy::param_val_or_ref_t<T> marker) {
-    // x = union_text(True)
     ::tpy::Union<int32_t, std::string> x = union_text(true);
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case str():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // print("generic", x[0], marker)  # tpyc: ok
         std::cout << "generic" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::ValuePrinter(marker) << "\n";
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }

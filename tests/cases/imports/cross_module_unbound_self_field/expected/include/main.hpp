@@ -15,6 +15,7 @@ struct Combined;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Combined(Counter, Tag):
@@ -36,20 +37,20 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 
 
 // def __init__(self, n: int32, label: str) -> None:
+//     Counter.value = n  # tpyc: ok
+//     Tag.value = label  # tpyc: ok
 inline Combined::Combined(int32_t n, std::string_view label) {
-    // Counter.value = n  # tpyc: ok
     this->::tpyapp::bases::Counter::value = n;
-    // Tag.value = label  # tpyc: ok
     this->::tpyapp::bases::Tag::value = label;
 }
 
 // def summary(self) -> str:
+//     n = Counter.value  # tpyc: ok
+//     label = Tag.value  # tpyc: ok
+//     return label + "=" + str(n)
 inline std::string Combined::summary() const {
-    // n = Counter.value  # tpyc: ok
     int32_t n = this->::tpyapp::bases::Counter::value;
-    // label = Tag.value  # tpyc: ok
     std::string_view label = this->::tpyapp::bases::Tag::value;
-    // return label + "=" + str(n)
     return (::tpy::str_concat((::tpy::str_concat(label, "=")), ::tpy::fixed_to_str<int32_t>(n)));
 }
 void __tpy_init();

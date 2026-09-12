@@ -11,6 +11,7 @@ extern int32_t lo;
 extern int32_t hi;
 inline constexpr std::string_view __name__ = "config";
 
+// def get_bounds() -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> get_bounds();
 
 void __tpy_init();

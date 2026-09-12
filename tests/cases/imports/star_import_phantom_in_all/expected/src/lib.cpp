@@ -5,8 +5,8 @@ namespace tpyapp::lib {
 
 
 // def real_fn() -> None:
+//     print("real")
 void real_fn() {
-    // print("real")
     std::cout << "real" << "\n";
 }
 

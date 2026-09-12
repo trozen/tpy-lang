@@ -11,8 +11,11 @@ extern ::tpy::ByteArray* BUF;
 extern std::vector<int32_t>* NUMS;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add(n: uint8) -> None:
 void add(uint8_t n);
+// def add_num(n: int32) -> None:
 void add_num(int32_t n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

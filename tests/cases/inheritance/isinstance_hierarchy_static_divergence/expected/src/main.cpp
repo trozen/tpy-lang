@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def ptr_downcast(a: Ptr[Animal]) -> bool:
+//     return isinstance(a, Dog)  # tpyc: warning(/descendant type 'Dog'/)
 bool ptr_downcast(Animal* a) {
-    // return isinstance(a, Dog)  # tpyc: warning(/descendant type 'Dog'/)
     return false;
 }
 
 // def main() -> None:
+//     d = Dog("Rex", "lab")
+//     print(ptr_downcast(d))  # tpyc: False, CPython: True
 void main() {
-    // d = Dog("Rex", "lab")
     Dog d = Dog("Rex", "lab");
-    // print(ptr_downcast(d))  # tpyc: False, CPython: True
     std::cout << ::tpy::print_bool(ptr_downcast(&d)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

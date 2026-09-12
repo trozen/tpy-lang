@@ -3,55 +3,62 @@
 
 namespace tpyapp::main {
 
-// g: int = 55
 ::tpy::BigInt g;
 
 // def return_owned_int32() -> Own[int32]:
+//     big: int = 42
+//     return copy(big)  # BigInt -> Own[int32] requires .to_int32() coercion
 int32_t return_owned_int32() {
-    // big: int = 42
     ::tpy::BigInt big = ::tpy::BigInt(42);
-    // return copy(big)  # BigInt -> Own[int32] requires .to_int32() coercion
     return (::tpy::BigInt(big)).to_fixed_check<int32_t>();
 }
 
 // def take_owned_int32(x: Own[int32]) -> int32:
+//     return x
 int32_t take_owned_int32(int32_t x) {
-    // return x
     return x;
 }
 
 // def global_source() -> int32:
+//     return take_owned_int32(g)  # tpyc: ok -- a bare module-global read at the Own slot
 int32_t global_source() {
-    // return take_owned_int32(g)  # tpyc: ok -- a bare module-global read at the Own slot
     return take_owned_int32((g).to_fixed_check<int32_t>());
 }
 
 // def main() -> None:
+//     # Test return coercion
+//     result1: int32 = return_owned_int32()
+//     print(result1)  # 42
+//
+//     # Test argument coercion
+//     big: int = 100
+//     result2: int32 = take_owned_int32(big)
+//     print(result2)  # 100
+//
+//     print(global_source())  # 55
 void main() {
-    // # Test return coercion
-    // result1: int32 = return_owned_int32()
     int32_t result1 = return_owned_int32();
-    // print(result1)  # 42
     std::cout << result1 << "\n";
-    // # Test argument coercion
-    // big: int = 100
     ::tpy::BigInt big = ::tpy::BigInt(100);
-    // result2: int32 = take_owned_int32(big)
     int32_t result2 = take_owned_int32((big).to_fixed_check<int32_t>());
-    // print(result2)  # 100
     std::cout << result2 << "\n";
-    // print(global_source())  # 55
     std::cout << global_source() << "\n";
 }
 
+// """Tests that coercions work correctly through Own[T] wrapper.
+//
+// Own[T] should transparently allow inner type coercions like BigInt -> int32.
+// """
+//
+// g: int = 55
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g: int = 55
     g = ::tpy::BigInt(55);
-    // main()
     main();
 }
 

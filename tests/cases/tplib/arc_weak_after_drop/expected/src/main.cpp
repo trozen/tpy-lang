@@ -5,49 +5,50 @@ namespace tpyapp::main {
 
 
 // def make_weak_after_arc_dies() -> Own[Weak[Cell]]:
+//     arc = Arc.new(Cell(7))
+//     w = arc.downgrade()
+//     # arc drops at function return -- payload destructed (strong 1 -> 0), but
+//     # `w` keeps the cell memory alive (weak still 1).
+//     return w
 ::tpystd::tplib::arc::Weak<Cell> make_weak_after_arc_dies() {
-    // arc = Arc.new(Cell(7))
     ::tpystd::tplib::arc::Arc<Cell> arc = Arc<Cell>::new_<Cell>(Cell(7));
-    // w = arc.downgrade()
     ::tpystd::tplib::arc::Weak<Cell> w = arc.downgrade();
-    // # arc drops at function return -- payload destructed (strong 1 -> 0), but
-    // # `w` keeps the cell memory alive (weak still 1).
-    // return w
     return w;
 }
 
 // def main() -> None:
+//     print("--- pre ---")
+//     w = make_weak_after_arc_dies()
+//     print("--- post ---")
+//     upgraded = w.upgrade()
+//     if upgraded is None:
+//         print("upgrade returned None")
+//     else:
+//         print("unexpected upgrade:", upgraded.get().val)
+//     print("--- done ---")
 void main() {
-    // print("--- pre ---")
     std::cout << "--- pre ---" << "\n";
-    // w = make_weak_after_arc_dies()
     ::tpystd::tplib::arc::Weak<Cell> w = make_weak_after_arc_dies();
-    // print("--- post ---")
     std::cout << "--- post ---" << "\n";
-    // upgraded = w.upgrade()
     std::optional<::tpystd::tplib::arc::Arc<Cell>> upgraded = w.upgrade();
-    // if upgraded is None:
     if ((!upgraded.has_value())) {
-        // print("upgrade returned None")
         std::cout << "upgrade returned None" << "\n";
-    // else:
     } else {
-        // print("unexpected upgrade:", upgraded.get().val)
         std::cout << "unexpected upgrade:" << " " << (*upgraded).get().val << "\n";
     }
-    // print("--- done ---")
     std::cout << "--- done ---" << "\n";
 }
 
+// from tplib.arc import Arc, Weak
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,15 +11,22 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def folded(x: Optional[str], flag: bool) -> str:
 std::string folded(std::optional<std::string_view> x, bool flag);
+// def folded_or(x: Optional[str], flag: bool) -> str:
 std::string folded_or(std::optional<std::string_view> x, bool flag);
+// def folded_later(x: Optional[str], flag: bool) -> str:
 std::string folded_later(std::optional<std::string_view> x, bool flag);
+// def wildcard_guard(x: Optional[str], flag: bool) -> str:
 std::string wildcard_guard(std::optional<std::string_view> x, bool flag);
+// def binding_guard(x: Optional[str], flag: bool) -> str:
 std::string binding_guard(std::optional<std::string_view> x, bool flag);
+// def gen(x: Optional[str], flag: bool) -> Iterator[str]:
 __gen_gen gen(std::optional<std::string_view> x, bool flag);
+// def main() -> None:
 void main();
 
-// Generator: gen
+// def gen(x: Optional[str], flag: bool) -> Iterator[str]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     int32_t __state;
     std::optional<std::string> x;

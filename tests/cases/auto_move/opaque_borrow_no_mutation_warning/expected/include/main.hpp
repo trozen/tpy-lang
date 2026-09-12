@@ -11,7 +11,9 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
+// def pick(xs: list[P]) -> P:
 P& pick(std::vector<P>& xs);
 
 // class P:
@@ -31,6 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self):
+//     self.vals = [7]
 inline P::P() : vals(std::vector<int32_t>{7}) {}
 void __tpy_init();
 } // namespace tpyapp::main

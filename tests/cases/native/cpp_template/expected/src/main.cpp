@@ -8,25 +8,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(to_char(65))
+//     print(to_int("Z"))
+//     print(add(10, 32))
+//     print(round_trip[int32](7))
 void main() {
-    // print(to_char(65))
     std::cout << static_cast<char>(65) << "\n";
-    // print(to_int("Z"))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>('Z')) << "\n";
-    // print(add(10, 32))
     std::cout << 10 + 32 << "\n";
-    // print(round_trip[int32](7))
     std::cout << static_cast<int32_t>(static_cast<int32_t>(7)) << "\n";
 }
 
+// # @cpp_template: inline C++ expression templates in .py source
+// from tpy.extern import cpp_template
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @cpp_template: inline C++ expression templates in .py source
-    // from tpy.extern import cpp_template
-    // main()
     main();
 }
 

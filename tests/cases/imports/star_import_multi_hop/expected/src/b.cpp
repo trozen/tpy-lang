@@ -4,12 +4,12 @@
 namespace tpyapp::b {
 
 
+// from c import *
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from c import *
     ::tpyapp::c::__tpy_init();
 }
 

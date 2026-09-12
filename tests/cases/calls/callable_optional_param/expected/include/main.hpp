@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_apply(f: Callable[[int32], int32] | None, x: int32) -> int32:
 int32_t maybe_apply(std::optional<std::function<int32_t(int32_t)>> f, int32_t x);
+// def make_doubler() -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> make_doubler();
+// def main() -> None:
 void main();
 
 void __tpy_init();

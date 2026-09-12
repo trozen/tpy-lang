@@ -15,7 +15,9 @@ extern std::tuple<Box, Box> pair;
 extern std::tuple<Box, Box> mixed;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
 std::tuple<Box, Box*> make_mixed(Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -36,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Box::Box(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

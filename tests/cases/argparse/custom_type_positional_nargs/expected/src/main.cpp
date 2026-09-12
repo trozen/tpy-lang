@@ -5,11 +5,13 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     parser = ArgumentParser()
+//     parser.add_argument("paths", type=Tag, nargs="+")
+//     args = parser.parse_args(["src/main.py", "src/util.py", "tests/main.py"])
+//     print(args.paths)
 void main() {
-    // args = parser.parse_args(["src/main.py", "src/util.py", "tests/main.py"])
     std::vector<std::string> __tmp_1 = {"src/main.py", "src/util.py", "tests/main.py"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.paths)
     std::cout << ::tpy::ListPrinter(args.paths) << "\n";
 }
 
@@ -56,14 +58,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(std::move(paths));
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

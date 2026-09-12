@@ -12,7 +12,9 @@ struct Ref;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_point(p: Point) -> None:
 void print_point(const Point& p);
+// def test() -> None:
 void test();
 
 // class Point:
@@ -67,22 +69,25 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, target: Point) -> None:
+//     self._target = target
 inline Ref::Ref(const Point& target) : _target(target) {}
 
 // @auto_readonly
 // def __deref__(self) -> Point:
+//     return self._target
 inline Point& Ref::__deref__() {
-    // return self._target
     return this->_target;
 }
 
 // @auto_readonly
 // def __deref__(self) -> Point:
+//     return self._target
 inline const Point& Ref::__deref__() const {
-    // return self._target
     return this->_target;
 }
 void __tpy_init();

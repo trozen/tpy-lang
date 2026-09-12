@@ -9,20 +9,22 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def cross_protocol(items: Sequence[int32]) -> None:
 template<::tpystd::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items);
+// def main() -> None:
 void main();
 
 // def cross_protocol(items: Sequence[int32]) -> None:
+//     if isinstance(items, Hashable):
+//         print("hashable sequence of", len(items))
+//     else:
+//         print("non-hashable sequence of", len(items))
 template<::tpystd::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items) {
-    // if isinstance(items, Hashable):
     if constexpr (::tpystd::tpy::Hashable<T_items>) {
-        // print("hashable sequence of", len(items))
         std::cout << "hashable sequence of" << " " << ::tpy::__len__(items) << "\n";
-    // else:
     } else {
-        // print("non-hashable sequence of", len(items))
         std::cout << "non-hashable sequence of" << " " << ::tpy::__len__(items) << "\n";
     }
 }

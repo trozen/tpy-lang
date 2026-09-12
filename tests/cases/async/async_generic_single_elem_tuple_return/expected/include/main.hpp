@@ -16,12 +16,15 @@ template <typename T>
 struct __coro_solo;
 struct __coro_go;
 
+// async def solo[T](x: T) -> tuple[T]:
 template <typename T>
 __coro_solo<T> solo(::tpy::param_val_or_ref_t<T> x);
+// async def go() -> None:
 __coro_go go();
+// def main() -> None:
 void main();
 
-// Async coroutine: solo
+// async def solo[T](x: T) -> tuple[T]:
 template <typename T>
 struct __coro_solo {
     int32_t __state;
@@ -46,11 +49,13 @@ struct __coro_solo {
     }
 };
 // async def solo[T](x: T) -> tuple[T]:
+//     await asyncio.sleep(0)
+//     # The single-element tuple return is the subject.
+//     return (x,)
 template <typename T>
 ::tpystd::tpy::Poll<std::tuple<T>> __coro_solo<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -60,8 +65,6 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::tuple<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // # The single-element tuple return is the subject.
-        // return (x,)
         __state = S_DONE;
         std::tuple<T> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<T>>(::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x));
         return ::tpystd::tpy::Poll<std::tuple<T>>::ready(std::move(__tpy_async_ret));
@@ -78,7 +81,7 @@ __coro_solo<T> solo(::tpy::param_val_or_ref_t<T> x) {
     return __coro_solo<T>(x);
 }
 
-// Async coroutine: go
+// async def go() -> None:
 struct __coro_go {
     int32_t __state;
     bool __cancel_pending;

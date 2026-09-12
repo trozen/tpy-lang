@@ -5,57 +5,61 @@ namespace tpyapp::main {
 
 
 // def identity(p: Point) -> Point:
+//     return p
 Point& identity(Point& p) {
-    // return p
     return p;
 }
 
 // def clone_point(p: Point) -> Own[Point]:
+//     return copy(p)
 Point clone_point(const Point& p) {
-    // return copy(p)
     return Point(p);
 }
 
 // def double(x: int32) -> int32:
+//     return x * 2
 int32_t double_(int32_t x) {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main() -> None:
+//     pts: list[Point] = [Point(1, 2), Point(3, 4)]
+//     vals: list[int32] = [int32(1), int32(2)]
+//
+//     # map returning Ref[Point] -> list copies on materialization
+//     a = list(map(identity, pts))  # tpyc: warning(/copies Point elements/)
+//     print(len(a))
+//
+//     # value type elements -- no warning
+//     b = list(map(double, vals))  # tpyc: ok
+//     print(len(b))
+//
+//     # Own[Point] return -- caller acknowledged ownership, no warning
+//     c = list(map(clone_point, pts))  # tpyc: ok
+//     print(len(c))
+//
+//     # copy_iter() acknowledges the copy
+//     d = list(copy_iter(map(identity, pts)))  # tpyc: ok
+//     print(len(d))
 void main() {
-    // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    // vals: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> vals = {1, 2};
-    // # map returning Ref[Point] -> list copies on materialization
-    // a = list(map(identity, pts))  # tpyc: warning(/copies Point elements/)
     std::vector<Point> a = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // # value type elements -- no warning
-    // b = list(map(double, vals))  # tpyc: ok
     std::vector<int32_t> b = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(double_, vals));
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    // # Own[Point] return -- caller acknowledged ownership, no warning
-    // c = list(map(clone_point, pts))  # tpyc: ok
     std::vector<Point> c = ::tpy::construct<std::vector<Point>>(::tpy::builtin_map<Point, Point>(clone_point, pts));
-    // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
-    // # copy_iter() acknowledges the copy
-    // d = list(copy_iter(map(identity, pts)))  # tpyc: ok
     std::vector<Point> d = ::tpy::construct<std::vector<Point>>(::tpy::copy_iter<Point>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts)));
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

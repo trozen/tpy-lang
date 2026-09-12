@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def use(c: Counter) -> int32:
+//     return c.n
 int32_t use(const ::repro_rec::pkg::types::Counter& c) {
-    // return c.n
     return c.n;
 }
 
 // def main() -> None:
+//     print(use(Counter(int32(42))))
 void main() {
-    // print(use(Counter(int32(42))))
     ::repro_rec::pkg::types::Counter __tmp_1 = ::repro_rec::pkg::types::Counter(42);
     std::cout << use(__tmp_1) << "\n";
 }
 
+// # Native_module facade re-exporting a *record* (not just a variable).
+// # Exercises the can_reexport extension to native_module facades for
+// # records: the consumer should see Counter as if it lived directly in the
+// # facade's surface.
+// from pkg import Counter
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Native_module facade re-exporting a *record* (not just a variable).
-    // # Exercises the can_reexport extension to native_module facades for
-    // # records: the consumer should see Counter as if it lived directly in the
-    // # facade's surface.
-    // from pkg import Counter
-    // main()
     main();
 }
 

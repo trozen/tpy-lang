@@ -5,19 +5,34 @@ namespace tpyapp::main {
 
 
 // def main():
+//     p = "tpy_os_metadata"
+//     if os.path.exists(p):
+//         os.remove(p)
+//     with open(p, "w") as fh:
+//         fh.write("data")
+//
+//     os.chmod(p, 0o640)
+//     print("mode", oct(os.stat(p).st_mode & 0o777))   # 0o640
+//     print("access", os.access(p, os.F_OK), os.access(p, os.R_OK),
+//           os.access(p, os.W_OK), os.access(p, os.X_OK))   # True True True False
+//     print("missing", os.access("tpy_nope_xyz", os.F_OK))   # False
+//
+//     os.utime(p, (1000000000.0, 1500000000.0))
+//     st = os.stat(p)
+//     print("times", st.st_atime == 1000000000.0, st.st_mtime == 1500000000.0)
+//
+//     os.chown(p, st.st_uid, st.st_gid)   # to self -> permitted no-op
+//     print("chown ok")
+//
+//     os.remove(p)
 void main() {
-    // p = "tpy_os_metadata"
     std::string_view p = "tpy_os_metadata";
-    // if os.path.exists(p):
     if (::tpy::stdlib::os::path_exists(p)) {
-        // os.remove(p)
         ::tpy::stdlib::os::remove(p);
     }
-    // with open(p, "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode(p, "w");
     auto& fh = __ctx_1.__enter__();
     try {
-        // fh.write("data")
         fh.write("data");
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -29,40 +44,30 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // os.chmod(p, 0o640)
     ::tpystd::os::chmod(p, 416);
-    // print("mode", oct(os.stat(p).st_mode & 0o777))   # 0o640
     std::cout << "mode" << " " << ::tpy::builtin_oct((static_cast<int64_t>(::tpystd::os::stat(p).st_mode & 511))) << "\n";
-    // print("access", os.access(p, os.F_OK), os.access(p, os.R_OK),
-    // os.access(p, os.W_OK), os.access(p, os.X_OK))   # True True True False
     std::cout << "access" << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_f_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_r_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_w_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_x_ok)) << "\n";
-    // print("missing", os.access("tpy_nope_xyz", os.F_OK))   # False
     std::cout << "missing" << " " << ::tpy::print_bool(::tpystd::os::access("tpy_nope_xyz", ::tpy::stdlib::os::kc_f_ok)) << "\n";
-    // os.utime(p, (1000000000.0, 1500000000.0))
     ::tpystd::os::utime(p, std::tuple<double, double>{1000000000.0, 1500000000.0});
-    // st = os.stat(p)
     ::tpystd::os::_types::stat_result st = ::tpystd::os::stat(p);
-    // print("times", st.st_atime == 1000000000.0, st.st_mtime == 1500000000.0)
     std::cout << "times" << " " << ::tpy::print_bool((st.st_atime == 1000000000.0)) << " " << ::tpy::print_bool((st.st_mtime == 1500000000.0)) << "\n";
-    // os.chown(p, st.st_uid, st.st_gid)   # to self -> permitted no-op
     ::tpystd::os::chown(p, st.st_uid, st.st_gid);
-    // print("chown ok")
     std::cout << "chown ok" << "\n";
-    // os.remove(p)
     ::tpy::stdlib::os::remove(p);
 }
 
+// # File metadata: chmod (+ verify via stat), access (R/W/X/F_OK), utime
+// # (+ verify mtime), chown-to-self (no-op, always permitted). Byte-compared
+// # against CPython.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # File metadata: chmod (+ verify via stat), access (R/W/X/F_OK), utime
-    // # (+ verify mtime), chown-to-self (no-op, always permitted). Byte-compared
-    // # against CPython.
-    // import os
     ::tpystd::os::__tpy_init();
-    // main()
     main();
 }
 

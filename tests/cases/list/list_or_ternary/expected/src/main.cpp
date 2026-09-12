@@ -5,201 +5,201 @@ namespace tpyapp::main {
 
 
 // def test_or(a: list[int32], b: list[int32]) -> None:
+//     x = a or b  # tpyc: type(list[int32])
+//     print(x)
 void test_or(std::vector<int32_t>& a, std::vector<int32_t>& b) {
-    // x = a or b  # tpyc: type(list[int32])
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_and(a: list[int32], b: list[int32]) -> None:
+//     x = a and b  # tpyc: type(list[int32])
+//     print(x)
 void test_and(std::vector<int32_t>& a, std::vector<int32_t>& b) {
-    // x = a and b  # tpyc: type(list[int32])
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? b : a);
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_ternary(a: list[int32], b: list[int32], cond: bool) -> None:
+//     x = a if cond else b  # tpyc: type(list[int32])
+//     print(x)
 void test_ternary(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond) {
-    // x = a if cond else b  # tpyc: type(list[int32])
     std::vector<int32_t>& x = ((cond) ? (a) : (b));
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_literal_or() -> None:
+//     x = [int32(1), int32(2)] or [int32(3), int32(4)]  # tpyc: type(list[int32])
+//     print(x)
 void test_literal_or() {
-    // x = [int32(1), int32(2)] or [int32(3), int32(4)]  # tpyc: type(list[int32])
     std::optional<std::vector<int32_t>> __logical_slot_2;
     auto&& __tmp_1 = std::vector<int32_t>{1, 2};
     std::vector<int32_t> x = (*((::tpy::__len__(__tmp_1) != 0) ? &(__tmp_1) : (__logical_slot_2.emplace(std::vector<int32_t>{3, 4}), &*__logical_slot_2)));
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_literal_ternary(cond: bool) -> None:
+//     x = [int32(1), int32(2)] if cond else [int32(3), int32(4)]  # tpyc: type(list[int32])
+//     print(x)
 void test_literal_ternary(bool cond) {
-    // x = [int32(1), int32(2)] if cond else [int32(3), int32(4)]  # tpyc: type(list[int32])
     std::vector<int32_t> x = ((cond) ? (std::vector<int32_t>{1, 2}) : (std::vector<int32_t>{3, 4}));
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_or_chain(a: list[int32], b: list[int32], c: list[int32]) -> None:
+//     x = a or b or c  # tpyc: type(list[int32])
+//     print(x)
 void test_or_chain(std::vector<int32_t>& a, std::vector<int32_t>& b, std::vector<int32_t>& c) {
-    // x = a or b or c  # tpyc: type(list[int32])
     auto&& __tmp_3 = ((::tpy::__len__(a) != 0) ? a : b);
     std::vector<int32_t>& x = ((::tpy::__len__(__tmp_3) != 0) ? __tmp_3 : c);
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_local_vars_or() -> None:
+//     # Local list variables (not params) must also produce list[T], not array.
+//     a = [int32(1)]  # tpyc: type(list[int32])
+//     b = [int32(2)]
+//     x = a or b  # tpyc: type(list[int32])
+//     print(x)
 void test_local_vars_or() {
-    // # Local list variables (not params) must also produce list[T], not array.
-    // a = [int32(1)]  # tpyc: type(list[int32])
     std::vector<int32_t> a = {1};
-    // b = [int32(2)]
     std::vector<int32_t> b = {2};
-    // x = a or b  # tpyc: type(list[int32])
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_int_literal_elements_or() -> None:
+//     # Plain int literals: [1, 2] and [3, 4] have different IntLiteralType elements
+//     # but should still yield list[int] (default int type), not bool.
+//     x = [1, 2] or [3, 4]  # tpyc: type(list[int32])
+//     print(x)
 void test_int_literal_elements_or() {
-    // # Plain int literals: [1, 2] and [3, 4] have different IntLiteralType elements
-    // # but should still yield list[int] (default int type), not bool.
-    // x = [1, 2] or [3, 4]  # tpyc: type(list[int32])
     std::optional<std::vector<int32_t>> __logical_slot_5;
     auto&& __tmp_4 = std::vector<int32_t>{1, 2};
     std::vector<int32_t> x = (*((::tpy::__len__(__tmp_4) != 0) ? &(__tmp_4) : (__logical_slot_5.emplace(std::vector<int32_t>{3, 4}), &*__logical_slot_5)));
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_int_literal_elements_ternary(cond: bool) -> None:
+//     x = [1, 2] if cond else [3, 4]  # tpyc: type(list[int32])
+//     print(x)
 void test_int_literal_elements_ternary(bool cond) {
-    // x = [1, 2] if cond else [3, 4]  # tpyc: type(list[int32])
     std::vector<int32_t> x = ((cond) ? (std::vector<int32_t>{1, 2}) : (std::vector<int32_t>{3, 4}));
-    // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_or_alias_first(a: list[int32], b: list[int32]) -> None:
+//     # x binds to a (non-empty); mutating a must be visible through x.
+//     x = a or b
+//     a.append(int32(99))
+//     print(x)  # must include 99
 void test_or_alias_first(std::vector<int32_t>& a, std::vector<int32_t>& b) {
-    // # x binds to a (non-empty); mutating a must be visible through x.
-    // x = a or b
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
-    // a.append(int32(99))
     a.push_back(99);
-    // print(x)  # must include 99
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_or_alias_second(a: list[int32], b: list[int32]) -> None:
+//     # a is empty so x binds to b; mutating b must be visible through x.
+//     x = a or b
+//     b.append(int32(99))
+//     print(x)  # must include 99
 void test_or_alias_second(std::vector<int32_t>& a, std::vector<int32_t>& b) {
-    // # a is empty so x binds to b; mutating b must be visible through x.
-    // x = a or b
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
-    // b.append(int32(99))
     b.push_back(99);
-    // print(x)  # must include 99
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_and_alias(a: list[int32], b: list[int32]) -> None:
+//     # x = a and b returns b when a is truthy; mutating b must be visible through x.
+//     x = a and b
+//     b.append(int32(99))
+//     print(x)  # must include 99
 void test_and_alias(std::vector<int32_t>& a, std::vector<int32_t>& b) {
-    // # x = a and b returns b when a is truthy; mutating b must be visible through x.
-    // x = a and b
     std::vector<int32_t>& x = ((::tpy::__len__(a) != 0) ? b : a);
-    // b.append(int32(99))
     b.push_back(99);
-    // print(x)  # must include 99
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_or_chain_alias(a: list[int32], b: list[int32], c: list[int32]) -> None:
+//     # a is empty, b is non-empty, so x binds to b.
+//     x = a or b or c
+//     b.append(int32(99))
+//     print(x)  # must include 99
 void test_or_chain_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, std::vector<int32_t>& c) {
-    // # a is empty, b is non-empty, so x binds to b.
-    // x = a or b or c
     auto&& __tmp_6 = ((::tpy::__len__(a) != 0) ? a : b);
     std::vector<int32_t>& x = ((::tpy::__len__(__tmp_6) != 0) ? __tmp_6 : c);
-    // b.append(int32(99))
     b.push_back(99);
-    // print(x)  # must include 99
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
 
 // def test_ternary_alias(a: list[int32], b: list[int32], cond: bool) -> None:
+//     # x binds to a or b by reference; mutation through x must be visible in original.
+//     x = a if cond else b
+//     x.append(int32(99))
+//     print(a)
+//     print(b)
 void test_ternary_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond) {
-    // # x binds to a or b by reference; mutation through x must be visible in original.
-    // x = a if cond else b
     std::vector<int32_t>& x = ((cond) ? (a) : (b));
-    // x.append(int32(99))
     x.push_back(99);
-    // print(a)
     std::cout << ::tpy::ListPrinter(a) << "\n";
-    // print(b)
     std::cout << ::tpy::ListPrinter(b) << "\n";
 }
 
+// test_or([int32(1), int32(2)], [int32(3), int32(4)])
+// test_and([int32(1), int32(2)], [int32(3), int32(4)])
+// test_ternary([int32(1), int32(2)], [int32(3), int32(4)], True)
+// test_literal_or()
+// test_literal_ternary(True)
+// test_or_chain([int32(1)], [int32(2)], [int32(3)])
+// test_local_vars_or()
+// test_int_literal_elements_or()
+// test_int_literal_elements_ternary(True)
+// test_or_alias_first([int32(1)], [int32(2)])
+// test_or_alias_second([], [int32(2)])
+// test_and_alias([int32(1)], [int32(2)])
+// test_or_chain_alias([], [int32(2)], [int32(3)])
+// test_ternary_alias([int32(1)], [int32(2)], True)
+// test_ternary_alias([int32(1)], [int32(2)], False)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_or([int32(1), int32(2)], [int32(3), int32(4)])
     std::vector<int32_t> __tmp_7 = {1, 2};
     std::vector<int32_t> __tmp_8 = {3, 4};
     test_or(__tmp_7, __tmp_8);
-    // test_and([int32(1), int32(2)], [int32(3), int32(4)])
     std::vector<int32_t> __tmp_9 = {1, 2};
     std::vector<int32_t> __tmp_10 = {3, 4};
     test_and(__tmp_9, __tmp_10);
-    // test_ternary([int32(1), int32(2)], [int32(3), int32(4)], True)
     std::vector<int32_t> __tmp_11 = {1, 2};
     std::vector<int32_t> __tmp_12 = {3, 4};
     test_ternary(__tmp_11, __tmp_12, true);
-    // test_literal_or()
     test_literal_or();
-    // test_literal_ternary(True)
     test_literal_ternary(true);
-    // test_or_chain([int32(1)], [int32(2)], [int32(3)])
     std::vector<int32_t> __tmp_13 = {1};
     std::vector<int32_t> __tmp_14 = {2};
     std::vector<int32_t> __tmp_15 = {3};
     test_or_chain(__tmp_13, __tmp_14, __tmp_15);
-    // test_local_vars_or()
     test_local_vars_or();
-    // test_int_literal_elements_or()
     test_int_literal_elements_or();
-    // test_int_literal_elements_ternary(True)
     test_int_literal_elements_ternary(true);
-    // test_or_alias_first([int32(1)], [int32(2)])
     std::vector<int32_t> __tmp_16 = {1};
     std::vector<int32_t> __tmp_17 = {2};
     test_or_alias_first(__tmp_16, __tmp_17);
-    // test_or_alias_second([], [int32(2)])
     std::vector<int32_t> __tmp_18 = std::vector<int32_t>{};
     std::vector<int32_t> __tmp_19 = {2};
     test_or_alias_second(__tmp_18, __tmp_19);
-    // test_and_alias([int32(1)], [int32(2)])
     std::vector<int32_t> __tmp_20 = {1};
     std::vector<int32_t> __tmp_21 = {2};
     test_and_alias(__tmp_20, __tmp_21);
-    // test_or_chain_alias([], [int32(2)], [int32(3)])
     std::vector<int32_t> __tmp_22 = std::vector<int32_t>{};
     std::vector<int32_t> __tmp_23 = {2};
     std::vector<int32_t> __tmp_24 = {3};
     test_or_chain_alias(__tmp_22, __tmp_23, __tmp_24);
-    // test_ternary_alias([int32(1)], [int32(2)], True)
     std::vector<int32_t> __tmp_25 = {1};
     std::vector<int32_t> __tmp_26 = {2};
     test_ternary_alias(__tmp_25, __tmp_26, true);
-    // test_ternary_alias([int32(1)], [int32(2)], False)
     std::vector<int32_t> __tmp_27 = {1};
     std::vector<int32_t> __tmp_28 = {2};
     test_ternary_alias(__tmp_27, __tmp_28, false);

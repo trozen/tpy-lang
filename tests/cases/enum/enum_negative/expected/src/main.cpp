@@ -47,29 +47,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: Signal = Signal.Error
+//     print(s)
+//     print(s.value)
+//     s = Signal.Ok
+//     print(s)
+//     print(s.value)
 void main() {
-    // s: Signal = Signal.Error
     Signal s = Signal::Error;
-    // print(s)
     std::cout << s << "\n";
-    // print(s.value)
     std::cout << static_cast<int32_t>(s) << "\n";
-    // s = Signal.Ok
     s = Signal::Ok;
-    // print(s)
     std::cout << s << "\n";
-    // print(s.value)
     std::cout << static_cast<int32_t>(s) << "\n";
 }
 
+// # Enum with negative values
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum with negative values
-    // from enum import Enum
-    // main()
     main();
 }
 

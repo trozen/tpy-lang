@@ -14,8 +14,10 @@ struct Puppy;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def is_dog_or_cat[T: Animal](x: T) -> bool:
 template<typename T>
 bool is_dog_or_cat(::tpy::param_val_or_ref_t<T> x);
+// def main():
 void main();
 
 // class Animal:
@@ -78,29 +80,30 @@ inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Animal::Animal(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Dog::Dog(int32_t n) {
-    // self.n = n
     this->n = n;
 }
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Cat::Cat(int32_t n) {
-    // self.n = n
     this->n = n;
 }
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Puppy::Puppy(int32_t n) {
-    // self.n = n
     this->n = n;
 }
 // def is_dog_or_cat[T: Animal](x: T) -> bool:
+//     return isinstance(x, (Dog, Cat))  # tpyc: ok
 template<typename T>
 bool is_dog_or_cat(::tpy::param_val_or_ref_t<T> x) {
-    // return isinstance(x, (Dog, Cat))  # tpyc: ok
     return (::tpy::isinstance_static<Cat, decltype(x)>() || ::tpy::isinstance_static<Dog, decltype(x)>());
 }
 

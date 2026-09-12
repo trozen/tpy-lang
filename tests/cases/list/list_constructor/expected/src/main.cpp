@@ -3,126 +3,121 @@
 
 namespace tpyapp::main {
 
-// # Constructor without LHS annotation - type inferred from constructor
-// nums = list[int32]()
 std::vector<int32_t>* nums{};
-// # Constructor with matching LHS annotation
-// other: list[int32] = list[int32]()
 std::vector<int32_t>* other{};
-// # List of records without annotation (tests header ordering)
-// points = list[Point]()
 std::vector<Point>* points{};
-// # Nested list of records (tests recursive record check)
-// nested = list[list[Point]]()
 std::vector<std::vector<Point>>* nested{};
-// inner = list[Point]()
 std::vector<Point>* inner{};
-// src = [100, 200, 300]
 std::vector<int32_t>* src{};
-// copy = list(src)
 std::vector<int32_t>* copy{};
-// # Array → list conversion
-// arr: Array[int32, 3] = [5, 6, 7]
 std::array<int32_t, 3>* arr{};
-// from_arr = list(arr)
 std::vector<int32_t>* from_arr{};
 
 // def test_local_list() -> None:
+//     # Local list without annotation
+//     local_nums = list[int32]()
+//     local_nums.append(100)
+//     local_nums.append(200)
+//     print(len(local_nums))
 void test_local_list() {
-    // # Local list without annotation
-    // local_nums = list[int32]()
     std::vector<int32_t> local_nums = std::vector<int32_t>();
-    // local_nums.append(100)
     local_nums.push_back(100);
-    // local_nums.append(200)
     local_nums.push_back(200);
-    // print(len(local_nums))
     std::cout << ::tpy::__len__(local_nums) << "\n";
 }
 
+// """Tests list[T]() constructor syntax."""
+//
+// # Constructor without LHS annotation - type inferred from constructor
+// nums = list[int32]()
+// nums.append(1)
+// nums.append(2)
+// print(len(nums))
+//
+// # Constructor with matching LHS annotation
+// other: list[int32] = list[int32]()
+// other.append(3)
+// print(len(other))
+//
+// # List of records without annotation (tests header ordering)
+// points = list[Point]()
+// points.append(Point(10, 20))
+// print(len(points))
+// print(points[0].x)
+//
+// # Nested list of records (tests recursive record check)
+// nested = list[list[Point]]()
+// inner = list[Point]()
+// inner.append(Point(99, 88))
+// nested.append(inner)
+// print(len(nested))
+// print(nested[0][0].x)
+//
+// # Test local list creation
+// test_local_list()
+//
+// # Direct print of empty list constructor (regression test for ListPrinter CTAD)
+// print(list[int32]())
+// print(list[int]())
+//
+// # list(iterable) constructor - type inferred from argument
+// print(list([1, 2, 3]))
+// print(list([int32(10), int32(20)]))
+// src = [100, 200, 300]
+// copy = list(src)
+// print(copy)
+// copy.append(400)
+// print(len(src))  # Original unchanged
+// print(len(copy))
+//
+// # Array → list conversion
+// arr: Array[int32, 3] = [5, 6, 7]
+// from_arr = list(arr)
+// print(from_arr)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Constructor without LHS annotation - type inferred from constructor
-    // nums = list[int32]()
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>();
     nums = &__global_slot_1;
-    // nums.append(1)
     nums->push_back(1);
-    // nums.append(2)
     nums->push_back(2);
-    // print(len(nums))
     std::cout << ::tpy::__len__((*nums)) << "\n";
-    // # Constructor with matching LHS annotation
-    // other: list[int32] = list[int32]()
     static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
     other = &__global_slot_2;
-    // other.append(3)
     other->push_back(3);
-    // print(len(other))
     std::cout << ::tpy::__len__((*other)) << "\n";
-    // # List of records without annotation (tests header ordering)
-    // points = list[Point]()
     static std::vector<Point> __global_slot_3 = std::vector<Point>();
     points = &__global_slot_3;
-    // points.append(Point(10, 20))
     points->push_back(Point(10, 20));
-    // print(len(points))
     std::cout << ::tpy::__len__((*points)) << "\n";
-    // print(points[0].x)
     std::cout << ::tpy::__getitem__((*points), 0).x << "\n";
-    // # Nested list of records (tests recursive record check)
-    // nested = list[list[Point]]()
     static std::vector<std::vector<Point>> __global_slot_4 = std::vector<std::vector<Point>>();
     nested = &__global_slot_4;
-    // inner = list[Point]()
     static std::vector<Point> __global_slot_5 = std::vector<Point>();
     inner = &__global_slot_5;
-    // inner.append(Point(99, 88))
     inner->push_back(Point(99, 88));
-    // nested.append(inner)
     nested->push_back((*inner));
-    // print(len(nested))
     std::cout << ::tpy::__len__((*nested)) << "\n";
-    // print(nested[0][0].x)
     std::cout << ::tpy::__getitem__(::tpy::__getitem__((*nested), 0), 0).x << "\n";
-    // # Test local list creation
-    // test_local_list()
     test_local_list();
-    // # Direct print of empty list constructor (regression test for ListPrinter CTAD)
-    // print(list[int32]())
     std::cout << ::tpy::ListPrinter(std::vector<int32_t>()) << "\n";
-    // print(list[int]())
     std::cout << ::tpy::ListPrinter(std::vector<::tpy::BigInt>()) << "\n";
-    // # list(iterable) constructor - type inferred from argument
-    // print(list([1, 2, 3]))
     std::cout << ::tpy::ListPrinter(std::vector<int32_t>({1, 2, 3})) << "\n";
-    // print(list([int32(10), int32(20)]))
     std::cout << ::tpy::ListPrinter(std::vector<int32_t>({10, 20})) << "\n";
-    // src = [100, 200, 300]
     static std::vector<int32_t> __global_slot_6 = {100, 200, 300};
     src = &__global_slot_6;
-    // copy = list(src)
     static std::vector<int32_t> __global_slot_7 = ::tpy::construct<std::vector<int32_t>>((*src));
     copy = &__global_slot_7;
-    // print(copy)
     std::cout << ::tpy::ListPrinter((*copy)) << "\n";
-    // copy.append(400)
     copy->push_back(400);
-    // print(len(src))  # Original unchanged
     std::cout << ::tpy::__len__((*src)) << "\n";
-    // print(len(copy))
     std::cout << ::tpy::__len__((*copy)) << "\n";
-    // # Array → list conversion
-    // arr: Array[int32, 3] = [5, 6, 7]
     static std::array<int32_t, 3> __global_slot_8 = {5, 6, 7};
     arr = &__global_slot_8;
-    // from_arr = list(arr)
     static std::vector<int32_t> __global_slot_9 = ::tpy::construct<std::vector<int32_t>>((*arr));
     from_arr = &__global_slot_9;
-    // print(from_arr)
     std::cout << ::tpy::ListPrinter((*from_arr)) << "\n";
 }
 

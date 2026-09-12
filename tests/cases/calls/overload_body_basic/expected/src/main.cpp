@@ -6,32 +6,32 @@ namespace tpyapp::main {
 
 // @dispatch
 // def describe(x: int) -> str:  # tpyc: ok
+//     return "int: " + str(x)
 std::string describe(const ::tpy::BigInt& x) {
-    // return "int: " + str(x)
     return (::tpy::str_concat("int: ", (x).to_string()));
 }
 
 // @dispatch
 // def describe(x: str) -> str:  # tpyc: ok
+//     return "str: " + x
 std::string describe(std::string_view x) {
-    // return "str: " + x
     return (::tpy::str_concat("str: ", x));
 }
 
 // def main() -> None:
+//     print(describe(42))
+//     print(describe("hello"))
 void main() {
-    // print(describe(42))
     std::cout << describe(::tpy::BigInt(42)) << "\n";
-    // print(describe("hello"))
     std::cout << describe(std::string_view("hello")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

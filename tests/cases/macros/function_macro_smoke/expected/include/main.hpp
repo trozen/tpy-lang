@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add(a: int32, b: int32) -> int32:  # tpyc: warning(/function macro saw add\(a, b\) -> int32/)
 int32_t add(int32_t a, int32_t b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

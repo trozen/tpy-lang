@@ -5,10 +5,18 @@ namespace tpyapp::main {
 
 
 // def gen(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+//     prev: P | None = None
+//     for it in items:
+//         yield (prev, it)
+//         # Sentinel: x == 0 means "reset prev"; otherwise carry forward.
+//         if it.x == int32(0):
+//             prev = None
+//         else:
+//             prev = it
+//     yield (prev, None)
 std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // prev: P | None = None
         prev = nullptr;
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
@@ -16,14 +24,9 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // # Sentinel: x == 0 means "reset prev"; otherwise carry forward.
-        // if it.x == int32(0):
         if ((it->x == 0)) {
-            // prev = None
             prev = nullptr;
-        // else:
         } else {
-            // prev = it
             prev = it;
         }
         __state = S_JOIN_0;
@@ -35,12 +38,10 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield (prev, None)
             __state = S_RESUME_1;
             return std::tuple<P*, P*>{prev, nullptr};
         }
         it = &(*((*__for_it_0))++);
-        // yield (prev, it)
         __state = S_RESUME_0;
         return std::tuple<P*, P*>{prev, it};
     }
@@ -56,38 +57,39 @@ __gen_gen gen(std::vector<P>& items) {
 }
 
 // def show(p: tuple[P | None, P | None]) -> None:
+//     a, b = p
+//     if a is not None:
+//         print(a.x)
+//     else:
+//         print("a=none")
+//     if b is not None:
+//         print(b.x)
+//     else:
+//         print("b=none")
+//     print("---")
 void show(const std::tuple<const P*, const P*>& p) {
-    // a, b = p
     auto& __tup_1 = p;
     const P* a = std::get<0>(__tup_1);
     const P* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // print(a.x)
         std::cout << a->x << "\n";
-    // else:
     } else {
-        // print("a=none")
         std::cout << "a=none" << "\n";
     }
-    // if b is not None:
     if ((b != nullptr)) {
-        // print(b.x)
         std::cout << b->x << "\n";
-    // else:
     } else {
-        // print("b=none")
         std::cout << "b=none" << "\n";
     }
-    // print("---")
     std::cout << "---" << "\n";
 }
 
 // def main() -> None:
+//     items = [P(1), P(2), P(0), P(3)]
+//     for pair in gen(items):
+//         show(pair)
 void main() {
-    // items = [P(1), P(2), P(0), P(3)]
     std::vector<P> items = {P(1), P(2), P(0), P(3)};
-    // for pair in gen(items):
     {
         auto __src_0 = gen(items);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -95,18 +97,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-        // show(pair)
         show(pair);
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

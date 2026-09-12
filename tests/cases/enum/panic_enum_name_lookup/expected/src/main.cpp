@@ -39,19 +39,20 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Color["Purple"]
 void main() {
-    // c = Color["Purple"]
     Color c = ::tpy::EnumUtil<Color>::from_name("Purple");
 }
 
+// # Panic: Color["Purple"] should panic on invalid name
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Panic: Color["Purple"] should panic on invalid name
-    // from enum import Enum
-    // main()
     main();
 }
 

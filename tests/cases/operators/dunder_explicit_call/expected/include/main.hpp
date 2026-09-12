@@ -11,7 +11,9 @@ struct Tag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def probe(t: Tag, s: str) -> bool:
 bool probe(const Tag& t, std::string_view s);
+// def main() -> None:
 void main();
 
 // class Tag:
@@ -46,17 +48,18 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tag::Tag(int32_t n) : n(n) {}
 
 // def __eq__(self, other: str) -> bool:
+//     return self.n == len(other)
 inline bool Tag::__eq__(std::string_view other) const {
-    // return self.n == len(other)
     return (this->n == ::tpy::__len__(other));
 }
 
 // def __ne__(self, other: str) -> bool:
+//     return not self.__eq__(other)  # tpyc: ok -- dunder call on `self`
 inline bool Tag::__ne__(std::string_view other) const {
-    // return not self.__eq__(other)  # tpyc: ok -- dunder call on `self`
     return (!(((*this)) == (other)));
 }
 void __tpy_init();

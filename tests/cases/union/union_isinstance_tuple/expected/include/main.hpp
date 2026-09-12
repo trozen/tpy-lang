@@ -13,12 +13,19 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def basic(v: A | B | C) -> str:
 std::string basic(::tpy::Union<const A*, const B*, const C*> v);
+// def negate(v: A | B | C) -> int:
 ::tpy::BigInt negate(::tpy::Union<const A*, const B*, const C*> v);
+// def and_rhs(v: A | B | C, flag: bool) -> str:
 std::string and_rhs(::tpy::Union<const A*, const B*, const C*> v, bool flag);
+// def or_lhs(v: A | B | C, flag: bool) -> str:
 std::string or_lhs(::tpy::Union<const A*, const B*, const C*> v, bool flag);
+// def single_member_tuple(v: A | B | C) -> str:
 std::string single_member_tuple(::tpy::Union<const A*, const B*, const C*> v);
+// def match_guard(v: A | B | C) -> str:
 std::string match_guard(::tpy::Union<const A*, const B*, const C*> v);
+// def main() -> None:
 void main();
 
 // # Tuple form isinstance(x, (A, B)) expands to "A or B" narrowing,
@@ -73,12 +80,15 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, tag: int) -> None:
+//     self.tag = tag
 inline A::A(const ::tpy::BigInt& tag) : tag(tag) {}
 
 // def __init__(self, tag: int) -> None:
+//     self.tag = tag
 inline B::B(const ::tpy::BigInt& tag) : tag(tag) {}
 
 // def __init__(self, z: int) -> None:
+//     self.z = z
 inline C::C(const ::tpy::BigInt& z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

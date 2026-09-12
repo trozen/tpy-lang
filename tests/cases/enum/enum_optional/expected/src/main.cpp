@@ -47,42 +47,43 @@ namespace tpyapp::main {
 
 
 // def maybe_color(flag: bool) -> Color | None:
+//     if flag:
+//         return Color.Red
+//     return None
 std::optional<Color> maybe_color(bool flag) {
-    // if flag:
     if (flag) {
-        // return Color.Red
         return Color::Red;
     }
-    // return None
     return std::nullopt;
 }
 
 // def main() -> None:
+//     c: Color | None = maybe_color(True)
+//     if c is not None:
+//         print(c)
+//     c = maybe_color(False)
+//     if c is None:
+//         print("no color")
 void main() {
-    // c: Color | None = maybe_color(True)
     std::optional<Color> c = maybe_color(true);
-    // if c is not None:
     if ((c.has_value())) {
-        // print(c)
         std::cout << ::tpy::print_optional_val(c) << "\n";
     }
-    // c = maybe_color(False)
     c = maybe_color(false);
-    // if c is None:
     if ((!c.has_value())) {
-        // print("no color")
         std::cout << "no color" << "\n";
     }
 }
 
+// # Optional enum (Color | None)
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Optional enum (Color | None)
-    // from enum import Enum
-    // main()
     main();
 }
 

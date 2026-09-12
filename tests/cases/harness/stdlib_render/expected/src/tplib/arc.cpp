@@ -4,15 +4,15 @@
 namespace tpystd::tplib::arc {
 
 
+// from tpy.mem import UninitStorage
+// from tpy.atomic import Atomic, MemoryOrder, fence
+// from tpy.unsafe import unsafe_take, unsafe_release
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitStorage
-    // from tpy.atomic import Atomic, MemoryOrder, fence
     ::tpystd::tpy::atomic::__tpy_init();
-    // from tpy.unsafe import unsafe_take, unsafe_release
 }
 
 } // namespace tpystd::tplib::arc

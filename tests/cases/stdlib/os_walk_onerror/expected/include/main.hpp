@@ -10,12 +10,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def report(e: readonly[OSError]) -> None:
 void report(const ::tpy::OSError& e);
+// def boom(e: readonly[OSError]) -> None:
 void boom(const ::tpy::OSError& e);
+// def yields(top: str, cb: Callable[[readonly[OSError]], None] | None) -> int32:
 int32_t yields(std::string_view top, std::optional<std::function<void(const ::tpy::OSError&)>> cb);
+// def walk_rows(root: str, cb: Callable[[readonly[OSError]], None] | None) -> Own[list[str]]:
 std::vector<std::string> walk_rows(std::string_view root, std::optional<std::function<void(const ::tpy::OSError&)>> cb);
+// def build(root: str) -> None:
 void build(std::string_view root);
+// def teardown(root: str) -> None:
 void teardown(std::string_view root);
+// def main() -> None:
 void main();
 
 void __tpy_init();

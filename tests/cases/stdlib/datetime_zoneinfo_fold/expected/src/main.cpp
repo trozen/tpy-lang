@@ -5,121 +5,131 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     waw = ZoneInfo("Europe/Warsaw")
+//
+//     # Constructor never auto-detects fold; fold=1 must be explicit.
+//     fold_wall = datetime(2023, 10, 29, 2, 30, tzinfo=waw)
+//     fold_wall1 = fold_wall.replace(fold=1)
+//     print(fold_wall.fold, fold_wall1.fold)
+//     print(fold_wall.utcoffset(), fold_wall.dst(), fold_wall.tzname())
+//     print(fold_wall1.utcoffset(), fold_wall1.dst(), fold_wall1.tzname())
+//     print(fold_wall.timestamp(), fold_wall1.timestamp())
+//
+//     gap_wall = datetime(2023, 3, 26, 2, 30, tzinfo=waw)
+//     gap_wall1 = gap_wall.replace(fold=1)
+//     print(gap_wall.utcoffset(), gap_wall.dst(), gap_wall.tzname())
+//     print(gap_wall1.utcoffset(), gap_wall1.dst(), gap_wall1.tzname())
+//     print(gap_wall.timestamp(), gap_wall1.timestamp())
+//
+//     # Same-zone pairs compare by wall clock (CPython's same-tzinfo rule):
+//     # the fold pair is equal and hash-equal despite differing utcoffsets.
+//     print(fold_wall == fold_wall1, hash(fold_wall) == hash(fold_wall1))
+//     print(fold_wall < fold_wall1, fold_wall > fold_wall1)
+//     # ...but subtraction goes through real per-instant offsets.
+//     print(fold_wall1 - fold_wall)
+//
+//     # fold is ignored for naive equality/hash too.
+//     naive = datetime(2023, 10, 29, 2, 30)
+//     naive1 = naive.replace(fold=1)
+//     print(naive == naive1, hash(naive) == hash(naive1))
+//     print(repr(naive1))
+//
+//     # fold is INERT on a fixed-offset timezone: same offset/dst/name/
+//     # timestamp at both fold values.
+//     fixed = datetime(2023, 10, 29, 2, 30,
+//                      tzinfo=timezone(timedelta(hours=2)))
+//     fixed1 = fixed.replace(fold=1)
+//     print(fixed.utcoffset() == fixed1.utcoffset(),
+//           fixed.dst() is None and fixed1.dst() is None,
+//           fixed.tzname() == fixed1.tzname(),
+//           fixed.timestamp() == fixed1.timestamp())
+//     print(repr(fixed1))
+//
+//     # replace(tzinfo=<ZoneInfo>) attaches the zone (and keeps fold here).
+//     rezoned = fixed1.replace(tzinfo=waw)
+//     print(rezoned, rezoned.fold)
+//
+//     # fold validation is a catchable ValueError (match type, not text).
+//     try:
+//         datetime(2023, 1, 1, fold=2)
+//         print("no-raise")
+//     except ValueError:
+//         print("ValueError-fold")
+//     try:
+//         naive.replace(fold=-1)
+//         print("no-raise")
+//     except ValueError:
+//         print("ValueError-replace-fold")
 void main() {
-    // waw = ZoneInfo("Europe/Warsaw")
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
-    // # Constructor never auto-detects fold; fold=1 must be explicit.
-    // fold_wall = datetime(2023, 10, 29, 2, 30, tzinfo=waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime fold_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
-    // fold_wall1 = fold_wall.replace(fold=1)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_2 = true;
     ::tpystd::datetime::datetime fold_wall1 = fold_wall.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_2, 1);
-    // print(fold_wall.fold, fold_wall1.fold)
     std::cout << fold_wall.fold() << " " << fold_wall1.fold() << "\n";
-    // print(fold_wall.utcoffset(), fold_wall.dst(), fold_wall.tzname())
     std::cout << ::tpy::print_optional_val(fold_wall.utcoffset()) << " " << ::tpy::print_optional_val(fold_wall.dst()) << " " << ::tpy::print_optional_val(fold_wall.tzname()) << "\n";
-    // print(fold_wall1.utcoffset(), fold_wall1.dst(), fold_wall1.tzname())
     std::cout << ::tpy::print_optional_val(fold_wall1.utcoffset()) << " " << ::tpy::print_optional_val(fold_wall1.dst()) << " " << ::tpy::print_optional_val(fold_wall1.tzname()) << "\n";
-    // print(fold_wall.timestamp(), fold_wall1.timestamp())
     std::cout << ::tpy::print_float(fold_wall.timestamp()) << " " << ::tpy::print_float(fold_wall1.timestamp()) << "\n";
-    // gap_wall = datetime(2023, 3, 26, 2, 30, tzinfo=waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime gap_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(3), ::tpy::BigInt(26), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3);
-    // gap_wall1 = gap_wall.replace(fold=1)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_4 = true;
     ::tpystd::datetime::datetime gap_wall1 = gap_wall.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_4, 1);
-    // print(gap_wall.utcoffset(), gap_wall.dst(), gap_wall.tzname())
     std::cout << ::tpy::print_optional_val(gap_wall.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall.dst()) << " " << ::tpy::print_optional_val(gap_wall.tzname()) << "\n";
-    // print(gap_wall1.utcoffset(), gap_wall1.dst(), gap_wall1.tzname())
     std::cout << ::tpy::print_optional_val(gap_wall1.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall1.dst()) << " " << ::tpy::print_optional_val(gap_wall1.tzname()) << "\n";
-    // print(gap_wall.timestamp(), gap_wall1.timestamp())
     std::cout << ::tpy::print_float(gap_wall.timestamp()) << " " << ::tpy::print_float(gap_wall1.timestamp()) << "\n";
-    // # Same-zone pairs compare by wall clock (CPython's same-tzinfo rule):
-    // # the fold pair is equal and hash-equal despite differing utcoffsets.
-    // print(fold_wall == fold_wall1, hash(fold_wall) == hash(fold_wall1))
     std::cout << ::tpy::print_bool(((fold_wall) == (fold_wall1))) << " " << ::tpy::print_bool((::tpy::__hash__(fold_wall) == ::tpy::__hash__(fold_wall1))) << "\n";
-    // print(fold_wall < fold_wall1, fold_wall > fold_wall1)
     std::cout << ::tpy::print_bool(((fold_wall) < (fold_wall1))) << " " << ::tpy::print_bool(((fold_wall) > (fold_wall1))) << "\n";
-    // # ...but subtraction goes through real per-instant offsets.
-    // print(fold_wall1 - fold_wall)
     std::cout << ((fold_wall1) - (fold_wall)) << "\n";
-    // # fold is ignored for naive equality/hash too.
-    // naive = datetime(2023, 10, 29, 2, 30)
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30));
-    // naive1 = naive.replace(fold=1)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = true;
     ::tpystd::datetime::datetime naive1 = naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5, 1);
-    // print(naive == naive1, hash(naive) == hash(naive1))
     std::cout << ::tpy::print_bool(((naive) == (naive1))) << " " << ::tpy::print_bool((::tpy::__hash__(naive) == ::tpy::__hash__(naive1))) << "\n";
-    // print(repr(naive1))
     std::cout << ::tpy::repr_of(naive1) << "\n";
-    // # fold is INERT on a fixed-offset timezone: same offset/dst/name/
-    // # timestamp at both fold values.
-    // fixed = datetime(2023, 10, 29, 2, 30,
-    // tzinfo=timezone(timedelta(hours=2)))
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime fixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_6);
-    // fixed1 = fixed.replace(fold=1)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_7 = true;
     ::tpystd::datetime::datetime fixed1 = fixed.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_7, 1);
-    // print(fixed.utcoffset() == fixed1.utcoffset(),
-    // fixed.dst() is None and fixed1.dst() is None,
-    // fixed.tzname() == fixed1.tzname(),
-    // fixed.timestamp() == fixed1.timestamp())
     std::cout << ::tpy::print_bool(((fixed.utcoffset()) == (fixed1.utcoffset()))) << " " << ::tpy::print_bool(((!fixed.dst().has_value()) && (!fixed1.dst().has_value()))) << " " << ::tpy::print_bool((fixed.tzname() == fixed1.tzname())) << " " << ::tpy::print_bool((fixed.timestamp() == fixed1.timestamp())) << "\n";
-    // print(repr(fixed1))
     std::cout << ::tpy::repr_of(fixed1) << "\n";
-    // # replace(tzinfo=<ZoneInfo>) attaches the zone (and keeps fold here).
-    // rezoned = fixed1.replace(tzinfo=waw)
     ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_8 = waw;
     ::tpystd::datetime::datetime rezoned = fixed1.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_8);
-    // print(rezoned, rezoned.fold)
     std::cout << rezoned << " " << rezoned.fold() << "\n";
-    // # fold validation is a catchable ValueError (match type, not text).
-    // try:
     {
         try {
-            // datetime(2023, 1, 1, fold=2)
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};
             ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_9, ::tpy::BigInt(2));
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-fold")
             std::cout << "ValueError-fold" << "\n";
         }
     }
-    // try:
     {
         try {
-            // naive.replace(fold=-1)
             ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_10 = true;
             naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_10, -1);
-            // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("ValueError-replace-fold")
             std::cout << "ValueError-replace-fold" << "\n";
         }
     }
 }
 
+// # datetime v4 PEP 495 fold: both fold values at Warsaw's 2023 gap
+// # (2023-03-26 02:30 does not exist) and fold (2023-10-29 02:30 occurs
+// # twice) -- exact utcoffset/dst/tzname/timestamp per side, the same-zone
+// # comparison rule (fold pair is EQUAL, hash-equal, not ordered), fold
+// # validation, and replace(fold=).
+// from datetime import datetime, timedelta, timezone
+// from zoneinfo import ZoneInfo
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime v4 PEP 495 fold: both fold values at Warsaw's 2023 gap
-    // # (2023-03-26 02:30 does not exist) and fold (2023-10-29 02:30 occurs
-    // # twice) -- exact utcoffset/dst/tzname/timestamp per side, the same-zone
-    // # comparison rule (fold pair is EQUAL, hash-equal, not ordered), fold
-    // # validation, and replace(fold=).
-    // from datetime import datetime, timedelta, timezone
     ::tpystd::datetime::__tpy_init();
-    // from zoneinfo import ZoneInfo
     ::tpystd::zoneinfo::__tpy_init();
-    // main()
     main();
 }
 

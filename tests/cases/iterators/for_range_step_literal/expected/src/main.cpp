@@ -8,39 +8,40 @@ namespace tpyapp::main {
 // # positive step and a descending negative step -- so the stepped-loop bound and
 // # direction arms are exec-observed, not just byte-diff-checked.
 // def main() -> None:
+//     n = 10
+//     total = 0
+//     for i in range(0, n, 2):
+//         total += i
+//     print(total)
+//
+//     down = 0
+//     for j in range(n, 0, -2):
+//         down += j
+//     print(down)
 void main() {
-    // n = 10
     int32_t n = 10;
-    // total = 0
     int32_t total = 0;
-    // for i in range(0, n, 2):
     int32_t __stop_0 = n;
     ::tpy::range_check_overflow<int32_t>(0, __stop_0, 2);
     for (int32_t i = 0; i < __stop_0; i += 2) {
-        // total += i
         total = ::tpy::add_check<int32_t>(total, i);
     }
-    // print(total)
     std::cout << total << "\n";
-    // down = 0
     int32_t down = 0;
-    // for j in range(n, 0, -2):
     int32_t __start_1 = n;
     ::tpy::range_check_overflow<int32_t>(__start_1, 0, -2);
     for (int32_t j = __start_1; j > 0; j += -2) {
-        // down += j
         down = ::tpy::add_check<int32_t>(down, j);
     }
-    // print(down)
     std::cout << down << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

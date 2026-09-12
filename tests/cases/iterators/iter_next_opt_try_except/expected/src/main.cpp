@@ -5,15 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(3)
+//     while True:
+//         try:
+//             v = c.__next__()
+//         except StopIteration:
+//             break
+//         print(v)
+//
+//     # Verify exhaustion
+//     exhausted = False
+//     try:
+//         c.__next__()
+//     except StopIteration:
+//         exhausted = True
+//     if exhausted:
+//         print("exhausted")
 void main() {
-    // c = Counter(3)
     Counter c = Counter(3);
-    // while True:
     while (true) {
-        // try:
         int32_t v;
         {
-            // v = c.__next__()
             {
                 auto __try_tmp_2 = c.__next__();
                 if (!__try_tmp_2.has_value()) goto __except_1;
@@ -22,19 +34,13 @@ void main() {
             goto __after_try_1;
             // except StopIteration:
             __except_1:;
-            // break
             break;
             __after_try_1:;
         }
-        // print(v)
         std::cout << v << "\n";
     }
-    // # Verify exhaustion
-    // exhausted = False
     bool exhausted = false;
-    // try:
     {
-        // c.__next__()
         {
             auto __try_tmp_4 = c.__next__();
             if (!__try_tmp_4.has_value()) goto __except_3;
@@ -42,23 +48,20 @@ void main() {
         goto __after_try_3;
         // except StopIteration:
         __except_3:;
-        // exhausted = True
         exhausted = true;
         __after_try_3:;
     }
-    // if exhausted:
     if (exhausted) {
-        // print("exhausted")
         std::cout << "exhausted" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

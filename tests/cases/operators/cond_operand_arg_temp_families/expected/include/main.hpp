@@ -44,31 +44,55 @@ struct Ref;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sized(tag: str, xs: list[int32]) -> bool:
 bool sized(std::string_view tag, const std::vector<int32_t>& xs);
+// def shaped(tag: str, b: Box[Shape]) -> bool:
 bool shaped(std::string_view tag, ::tpystd::tplib::box::Box<Shape>& b);
+// def anyslot[T](tag: str, v: T) -> bool:
 template<typename T>
 bool anyslot(std::string_view tag, ::tpy::param_val_or_ref_t<T> v);
+// def listslot[T](tag: str, v: list[T]) -> bool:
 template<typename T>
 bool listslot(std::string_view tag, const std::vector<T>& v);
+// def show(tag: str, t: Value) -> int32:
 int32_t show(std::string_view tag, const Value& t);
+// def leaf_count(tag: str, t: Tree[int32]) -> int32:
 int32_t leaf_count(std::string_view tag, const Tree<int32_t>& t);
+// def make_leaf() -> Own[Tree[int32]]:
 Tree<int32_t> make_leaf();
+// def held(tag: str, o: Outer) -> bool:
 bool held(std::string_view tag, const Outer& o);
+// def comprehension(src: list[int32], flag: bool) -> bool:
 bool comprehension(std::vector<int32_t>& src, bool flag);
+// def covariant(flag: bool) -> bool:
 bool covariant(bool flag);
+// def generic_ref_slot(flag: bool) -> bool:
 bool generic_ref_slot(bool flag);
+// def generic_container_literal(flag: bool) -> bool:
 bool generic_container_literal(bool flag);
+// def optptr_container_literal(s: Sink, flag: bool) -> bool:
 bool optptr_container_literal(Sink& s, bool flag);
+// def recursive_union_literal(flag: bool) -> int32:
 int32_t recursive_union_literal(bool flag);
+// def ru_wrapper_literal(flag: bool) -> int32:
 int32_t ru_wrapper_literal(bool flag);
+// def ru_wrapper_ctor(flag: bool) -> int32:
 int32_t ru_wrapper_ctor(bool flag);
+// def ru_wrapper_call(flag: bool) -> int32:
 int32_t ru_wrapper_call(bool flag);
+// def ctor_mut_rvalue(flag: bool) -> bool:
 bool ctor_mut_rvalue(bool flag);
+// def gen_recv_temp(flag: bool) -> bool:
 bool gen_recv_temp(bool flag);
+// def shown(tag: str, p: Point) -> bool:
 bool shown(std::string_view tag, const Point& p);
+// def bump(r: Ref) -> bool:
 bool bump(Ref& r);
+// def deref_or_rhs(r: Ref, flag: bool) -> bool:
 bool deref_or_rhs(Ref& r, bool flag);
+// def deref_ternary(r: Ref, flag: bool) -> bool:
 bool deref_ternary(const Ref& r, bool flag);
+// def main() -> None:
 void main();
 
 template<typename T>
@@ -187,14 +211,16 @@ struct Counter {
     explicit Counter(int32_t n);
 
     // def items(self) -> Iterator[int32]:
+    //     i = 0
+    //     while i < self.n:
+    //         yield i
+    //         i += 1
     auto items() const {
-        // i = 0
         int32_t i = 0;
         return ::tpy::make_generator<int32_t>(
             [this, i]() mutable -> std::optional<int32_t> {
                 while ((i < (*this).n)) {
                     auto __val = i;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
                     return std::optional<int32_t>(__val);
                 }
@@ -279,77 +305,83 @@ namespace tpyapp::main {
 
 
 // def __init__(self, r: float) -> None:
+//     self.r = r
 inline Circle::Circle(double r) : r(r) {}
 
 // def area(self) -> float:
+//     return 3.0 * self.r
 inline double Circle::area() {
-    // return 3.0 * self.r
     return ((3.0) * (this->r));
 }
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Neg::Neg(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.seen = 0
 inline Sink::Sink() : seen(0) {}
 
 // def take(self, tag: str, xs: list[int32] | None) -> bool:
+//     if xs is not None:
+//         self.seen = len(xs)
+//     print(tag, self.seen)
+//     return True
 inline bool Sink::take(std::string_view tag, const std::vector<int32_t>* xs) {
-    // if xs is not None:
     if ((xs != nullptr)) {
-        // self.seen = len(xs)
         this->seen = ::tpy::__len__((*xs));
     }
-    // print(tag, self.seen)
     std::cout << tag << " " << this->seen << "\n";
-    // return True
     return true;
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Inner::Inner(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
+//     self.n += 1
 inline void Inner::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 
 // def __init__(self, i: Inner) -> None:
+//     # A MUTATED constructor parameter, so an `Inner(..)` rvalue argument
+//     # needs its own hoisted temp.
+//     i.bump()
+//     self.m = i.n
 inline Outer::Outer(Inner& i) {
-    // # A MUTATED constructor parameter, so an `Inner(..)` rvalue argument
-    // # needs its own hoisted temp.
-    // i.bump()
     i.bump();
-    // self.m = i.n
     this->m = i.n;
 }
 
 // def __init__(self, n: int32) -> None:
+//     print("genrecv build", n)
+//     self.n = n
 inline Counter::Counter(int32_t n) {
-    // print("genrecv build", n)
     std::cout << "genrecv build" << " " << n << "\n";
-    // self.n = n
     this->n = n;
 }
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, target: Point) -> None:
+//     self._target = target  # tpyc: warning(/copies Point into field/)
 inline Ref::Ref(const Point& target) : _target(target) {}
 
 // @auto_readonly
 // def __deref__(self) -> Point:
+//     return self._target
 inline Point& Ref::__deref__() {
-    // return self._target
     return this->_target;
 }
 
 // @auto_readonly
 // def __deref__(self) -> Point:
+//     return self._target
 inline const Point& Ref::__deref__() const {
-    // return self._target
     return this->_target;
 }
 struct Value {
@@ -370,19 +402,19 @@ struct Value {
 };
 
 // def anyslot[T](tag: str, v: T) -> bool:
+//     print(tag, "took")
+//     return True
 template<typename T>
 bool anyslot(std::string_view tag, ::tpy::param_val_or_ref_t<T> v) {
-    // print(tag, "took")
     std::cout << tag << " " << "took" << "\n";
-    // return True
     return true;
 }
 // def listslot[T](tag: str, v: list[T]) -> bool:
+//     print(tag, len(v))
+//     return True
 template<typename T>
 bool listslot(std::string_view tag, const std::vector<T>& v) {
-    // print(tag, len(v))
     std::cout << tag << " " << ::tpy::__len__(v) << "\n";
-    // return True
     return true;
 }
 

@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def triple(n: int32) -> int32:
+//     await asyncio.sleep(0.0)
+//     return n + n + n
 ::tpystd::tpy::Poll<int32_t> __coro_triple::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return n + n + n
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(n, n)), n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,18 +35,18 @@ __coro_triple triple(int32_t n) {
 }
 
 // def pick() -> Callable[[int32], Own[Cancellable[int32]]]:
+//     return triple
 std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> pick() {
-    // return triple
     return [](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(triple(__a0)); };
 }
 
 // async def main_coro() -> int32:
+//     factory = pick()
+//     return await asyncio.create_task(factory(7))
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // factory = pick()
         factory = pick();
-        // return await asyncio.create_task(factory(7))
         __sub_0.emplace(std::move(::tpystd::asyncio::create_task<int32_t>(factory(7))));
         __state = S_RESUME_0;
         continue;
@@ -71,24 +71,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(main_coro()))
 void main() {
-    // print(asyncio.run(main_coro()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(main_coro())) << "\n";
 }
 
+// # An `async def` can be handed back in RETURN position typed as a coroutine
+// # factory `Callable[[...], Own[Cancellable[T]]]` -- the same wrapper synthesis
+// # as the argument/field positions, in a return coercion context.
+// import asyncio
+//
+// from tpy.coro import Cancellable
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An `async def` can be handed back in RETURN position typed as a coroutine
-    // # factory `Callable[[...], Own[Cancellable[T]]]` -- the same wrapper synthesis
-    // # as the argument/field positions, in a return coercion context.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Cancellable
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

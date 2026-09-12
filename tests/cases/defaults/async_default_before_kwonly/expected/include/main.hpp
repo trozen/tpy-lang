@@ -14,11 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_scaled;
 struct __coro_drive;
 
+// async def scaled(a: int64, b: int64 = 10, *, c: int64) -> int64:
 __coro_scaled scaled(int64_t a, int64_t b, int64_t c);
+// async def drive() -> None:
 __coro_drive drive();
+// def main() -> None:
 void main();
 
-// Async coroutine: scaled
+// async def scaled(a: int64, b: int64 = 10, *, c: int64) -> int64:
 struct __coro_scaled {
     int32_t __state;
     bool __cancel_pending;
@@ -42,7 +45,7 @@ struct __coro_scaled {
     }
 };
 
-// Async coroutine: drive
+// async def drive() -> None:
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;
@@ -69,6 +72,11 @@ struct __coro_drive {
     }
 };
 
+// def counted(n: int64 = 2, *, step: int64) -> Iterator[int64]:
+//     # A generator factory shares the async factory's params emitter, so it
+//     # needs the same gate.
+//     for i in range(n):
+//         yield i * step
 inline auto counted(int64_t n, int64_t step) {
     return ::tpy::make_generator<int64_t>(
         [n, step, __i = int64_t(0), __stop = static_cast<int64_t>(n)]() mutable -> std::optional<int64_t> {

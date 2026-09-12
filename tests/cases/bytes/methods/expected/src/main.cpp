@@ -6,70 +6,75 @@ namespace tpyapp::main {
 
 // # Bytes methods: find, hex, startswith, etc.
 // def main() -> None:
+//     data = b"hello world"
+//
+//     print(data.hex())
+//     print(data.find(b"world"))
+//     print(data.find(b"xyz"))
+//     print(data.rfind(b"l"))
+//     print(data.count(b"l"))
+//     print(data.startswith(b"hello"))
+//     print(data.endswith(b"world"))
+//     print(data.startswith(b"world"))
+//
+//     replaced = data.replace(b"world", b"bytes")
+//     print(replaced)
+//
+//     parts = b"a,b,c".split(b",")
+//     for p in parts:
+//         print(p)
+//
+//     joined = b", ".join(parts)
+//     print(joined)
+//
+//     # BytesView (from slice) -- methods work on views
+//     v = data[0:11]
+//     print(v.find(b"world"))
+//     print(v.replace(b"world", b"there"))
+//     vparts = data[0:11].split(b" ")
+//     for vp in vparts:
+//         print(vp)
 void main() {
-    // data = b"hello world"
     ::tpy::BytesView data = ::tpy::bytes_literal("hello world", 11);
-    // print(data.hex())
     std::cout << ::tpy::bytes_hex(data) << "\n";
-    // print(data.find(b"world"))
     std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("world", 5)) << "\n";
-    // print(data.find(b"xyz"))
     std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("xyz", 3)) << "\n";
-    // print(data.rfind(b"l"))
     std::cout << ::tpy::bytes_rfind(data, ::tpy::bytes_literal("l", 1)) << "\n";
-    // print(data.count(b"l"))
     std::cout << ::tpy::bytes_count(data, ::tpy::bytes_literal("l", 1)) << "\n";
-    // print(data.startswith(b"hello"))
     std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("hello", 5))) << "\n";
-    // print(data.endswith(b"world"))
     std::cout << ::tpy::print_bool(::tpy::bytes_endswith(data, ::tpy::bytes_literal("world", 5))) << "\n";
-    // print(data.startswith(b"world"))
     std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("world", 5))) << "\n";
-    // replaced = data.replace(b"world", b"bytes")
     ::tpy::Bytes replaced = ::tpy::bytes_replace(data, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("bytes", 5));
-    // print(replaced)
     std::cout << ::tpy::BytesPrinter(replaced) << "\n";
-    // parts = b"a,b,c".split(b",")
     std::vector<::tpy::Bytes> parts = ::tpy::bytes_split(::tpy::bytes_literal_owned("a,b,c", 5), ::tpy::bytes_literal(",", 1));
-    // for p in parts:
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView p = *__beg_0;
-        // print(p)
         std::cout << ::tpy::BytesPrinter(p) << "\n";
     }
-    // joined = b", ".join(parts)
     ::tpy::Bytes joined = ::tpy::bytes_join(::tpy::bytes_literal_owned(", ", 2), parts);
-    // print(joined)
     std::cout << ::tpy::BytesPrinter(joined) << "\n";
-    // # BytesView (from slice) -- methods work on views
-    // v = data[0:11]
     ::tpy::BytesView v = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11});
-    // print(v.find(b"world"))
     std::cout << ::tpy::bytes_find(v, ::tpy::bytes_literal("world", 5)) << "\n";
-    // print(v.replace(b"world", b"there"))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_replace(v, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("there", 5))) << "\n";
-    // vparts = data[0:11].split(b" ")
     std::vector<::tpy::Bytes> vparts = ::tpy::bytes_split(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11}), ::tpy::bytes_literal(" ", 1));
-    // for vp in vparts:
     auto& __obj_1 = vparts;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         ::tpy::BytesView vp = *__beg_1;
-        // print(vp)
         std::cout << ::tpy::BytesPrinter(vp) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

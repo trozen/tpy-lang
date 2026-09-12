@@ -5,50 +5,49 @@ namespace tpyapp::main {
 
 
 // def make_weaks() -> Own[tuple[Weak[Cell], Weak[Cell], Weak[Cell]]]:
+//     # Build three Weaks; the strong Rc dies at this function's return so the
+//     # payload destructs before the weaks are returned to the caller.
+//     rc = Rc.new(Cell(int32(42)))
+//     w1 = rc.downgrade()
+//     w2 = w1.clone()
+//     w3 = w2.clone()
+//     print("alive before drop:", rc.get().val)
+//     return (w1, w2, w3)
 std::tuple<::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>> make_weaks() {
-    // # Build three Weaks; the strong Rc dies at this function's return so the
-    // # payload destructs before the weaks are returned to the caller.
-    // rc = Rc.new(Cell(int32(42)))
     ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(42));
-    // w1 = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w1 = rc.downgrade();
-    // w2 = w1.clone()
     ::tpystd::tplib::rc::Weak<Cell> w2 = w1.clone();
-    // w3 = w2.clone()
     ::tpystd::tplib::rc::Weak<Cell> w3 = w2.clone();
-    // print("alive before drop:", rc.get().val)
     std::cout << "alive before drop:" << " " << rc.get().val << "\n";
-    // return (w1, w2, w3)
     return std::tuple<::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>>{std::move(w1), std::move(w2), std::move(w3)};
 }
 
 // def main() -> None:
+//     weaks = make_weaks()
+//     # By this point the payload has been destroyed (last strong dropped at
+//     # make_weaks's exit). Cell memory stays valid via the three Weaks.
+//     print("--- after strong death ---")
+//     print("w1:", weaks[0].upgrade() is None)
+//     print("w2:", weaks[1].upgrade() is None)
+//     print("w3:", weaks[2].upgrade() is None)
 void main() {
-    // weaks = make_weaks()
     auto weaks = make_weaks();
-    // # By this point the payload has been destroyed (last strong dropped at
-    // # make_weaks's exit). Cell memory stays valid via the three Weaks.
-    // print("--- after strong death ---")
     std::cout << "--- after strong death ---" << "\n";
-    // print("w1:", weaks[0].upgrade() is None)
     std::cout << "w1:" << " " << ::tpy::print_bool((!std::get<0>(weaks).upgrade().has_value())) << "\n";
-    // print("w2:", weaks[1].upgrade() is None)
     std::cout << "w2:" << " " << ::tpy::print_bool((!std::get<1>(weaks).upgrade().has_value())) << "\n";
-    // print("w3:", weaks[2].upgrade() is None)
     std::cout << "w3:" << " " << ::tpy::print_bool((!std::get<2>(weaks).upgrade().has_value())) << "\n";
-    // # weaks tuple drops at function return; cell memory freed at the last
-    // # weak's destruction.
 }
 
+// from tplib.rc import Rc, Weak
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

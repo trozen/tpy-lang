@@ -6,25 +6,25 @@ namespace tpyapp::main {
 
 // @readonly
 // def get_count(f: Foo) -> int32:
+//     return len(f.items)
 int32_t get_count(const Foo& f) {
-    // return len(f.items)
     return ::tpy::__len__(f.items());
 }
 
 // def main() -> None:
+//     f = Foo()
+//     print(get_count(f))
 void main() {
-    // f = Foo()
     Foo f = Foo();
-    // print(get_count(f))
     std::cout << get_count(f) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

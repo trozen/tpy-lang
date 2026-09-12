@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def main():
+//     d: dict[int64, str] = {}
+//     k: int = 1099511627776  # 2**40
+//     d[k] = "big"
+//     print(d[k])
+//     del d[k]
+//     print(len(d))
+//     counts: dict[int64, int32] = {}
+//     counts[k] = 1
+//     counts[k] += 5
+//     print(counts[k])
 void main() {
-    // d: dict[int64, str] = {}
     ::tpy::ordered_map<int64_t, std::string> d = ::tpy::ordered_map<int64_t, std::string>();
-    // k: int = 1099511627776  # 2**40
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
-    // d[k] = "big"
     ::tpy::__setitem__(d, k.to_fixed_check<int64_t>(), "big");
-    // print(d[k])
     std::cout << ::tpy::__getitem__(d, k.to_fixed_check<int64_t>()) << "\n";
-    // del d[k]
     ::tpy::__delitem__(d, k.to_fixed_check<int64_t>());
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // counts: dict[int64, int32] = {}
     ::tpy::ordered_map<int64_t, int32_t> counts = ::tpy::ordered_map<int64_t, int32_t>();
-    // counts[k] = 1
     ::tpy::__setitem__(counts, k.to_fixed_check<int64_t>(), 1);
-    // counts[k] += 5
     ::tpy::__setitem__(counts, k.to_fixed_check<int64_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(counts, k.to_fixed_check<int64_t>()), 5));
-    // print(counts[k])
     std::cout << ::tpy::__getitem__(counts, k.to_fixed_check<int64_t>()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

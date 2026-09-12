@@ -3,18 +3,17 @@
 
 namespace tpyapp::main {
 
-// d = Dog()
 Dog* d{};
 
+// d = Dog()
+// d.make_noise()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // d = Dog()
     static Dog __global_slot_1 = Dog();
     d = &__global_slot_1;
-    // d.make_noise()
     d->make_noise();
 }
 

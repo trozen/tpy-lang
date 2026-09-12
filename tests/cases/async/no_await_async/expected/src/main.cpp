@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def f() -> int32:
+//     return int32(42)
 ::tpystd::tpy::Poll<int32_t> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return int32(42)
         __state = S_DONE;
         int32_t __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,20 +26,21 @@ __coro_f f() {
 }
 
 // def main() -> None:
+//     print(poll_once(f()).value())
 void main() {
-    // print(poll_once(f()).value())
     auto __tmp_1 = f();
     std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n";
 }
 
+// from tpy.coro import poll_once
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import poll_once
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,8 +11,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(a: Cat, b: Cat) -> int:
 ::tpy::BigInt pick(const Cat& a, const Cat& b);
+// def relabel(a: Cat, b: Cat) -> str:
 std::string relabel(const Cat& a, const Cat& b);
+// def main() -> None:
 void main();
 
 // # A nested `match` reusing an outer arm's capture name REBINDS it: a `match` is
@@ -36,6 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::main

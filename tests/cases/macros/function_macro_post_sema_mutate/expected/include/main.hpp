@@ -11,8 +11,11 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sentinel(c: Counter) -> int32:
 int32_t sentinel(const Counter& c);
+// def poke(c: Counter) -> int32:
 int32_t poke(Counter& c);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -35,13 +38,14 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Counter::Counter() : n(0) {}
 
 // def bump(self) -> int32:
+//     self.n += 1
+//     return self.n
 inline int32_t Counter::bump() {
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
-    // return self.n
     return this->n;
 }
 void __tpy_init();

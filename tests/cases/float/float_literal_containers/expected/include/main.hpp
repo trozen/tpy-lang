@@ -9,11 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_list_inferred() -> None:
 void test_list_inferred();
+// def test_list_annotated_float32() -> None:
 void test_list_annotated_float32();
+// def test_dict_inferred() -> None:
 void test_dict_inferred();
+// def test_set_inferred() -> None:
 void test_set_inferred();
+// def test_ternary_float_literal() -> None:
 void test_ternary_float_literal();
+// def test_annotated_float64() -> None:
 void test_annotated_float64();
 
 void __tpy_init();

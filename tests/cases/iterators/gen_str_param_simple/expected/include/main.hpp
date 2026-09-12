@@ -9,17 +9,22 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> str:
 std::string make();
+// def main() -> None:
 void main();
 
+// def echo_n(s: str, n: int) -> Iterator[str]:
+//     i = 0
+//     while i < n:
+//         yield s
+//         i += 1
 inline auto echo_n(std::string_view s, const ::tpy::BigInt& n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<std::string>(
         [s = std::string(s), n, i]() mutable -> std::optional<std::string> {
             while ((::tpy::BigInt(i) < n)) {
                 auto __val = s;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::string>(__val);
             }

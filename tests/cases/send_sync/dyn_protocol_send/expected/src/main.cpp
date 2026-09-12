@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def greet(p: Send[Pet]) -> None:
+//     print("speak:", p.speak())
 void greet(Pet& p) {
-    // print("speak:", p.speak())
     std::cout << "speak:" << " " << p.speak() << "\n";
 }
 
 // def greet_bare(p: Pet) -> None:
+//     print("bare:", p.speak())
 void greet_bare(Pet& p) {
-    // print("bare:", p.speak())
     std::cout << "bare:" << " " << p.speak() << "\n";
 }
 
 // def consume(p: Send[Own[Pet]]) -> None:  # tpyc: warning(/never consumed/)
+//     # Send[Own[Pet]] is owned storage like a bare Own[Pet], so an owned param
+//     # that is only read (never stored/forwarded/returned) warns identically.
+//     print("own:", p.speak())
 void consume(std::unique_ptr<Pet> p) {
-    // # Send[Own[Pet]] is owned storage like a bare Own[Pet], so an owned param
-    // # that is only read (never stored/forwarded/returned) warns identically.
-    // print("own:", p.speak())
     std::cout << "own:" << " " << p->speak() << "\n";
 }
 
 // def main() -> None:
+//     d = Dog(3)
+//     greet(d)          # lvalue: RefAdapter
+//     greet(Dog(7))     # rvalue: owning Adapter
+//     greet_bare(d)
+//     consume(Dog(5))   # unique_ptr receiver through the marker
+//     q: Send[Pet] = d  # marker-typed local declaration
+//     print("local:", q.speak())
 void main() {
-    // d = Dog(3)
     Dog d = Dog(3);
-    // greet(d)          # lvalue: RefAdapter
     ::tpy::RefAdapter<Pet, Dog> __tmp_1{d};
     greet(__tmp_1);
-    // greet(Dog(7))     # rvalue: owning Adapter
     ::tpy::Adapter<Pet, Dog> __tmp_2{Dog(7)};
     greet(__tmp_2);
-    // greet_bare(d)
     ::tpy::RefAdapter<Pet, Dog> __tmp_3{d};
     greet_bare(__tmp_3);
-    // consume(Dog(5))   # unique_ptr receiver through the marker
     consume(::tpy::make_adapter<Pet>(Dog(5)));
-    // q: Send[Pet] = d  # marker-typed local declaration
     ::tpy::Adapter<Pet, Dog> __slot_1{d};
     Pet* q = &__slot_1;
-    // print("local:", q.speak())
     std::cout << "local:" << " " << q->speak() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

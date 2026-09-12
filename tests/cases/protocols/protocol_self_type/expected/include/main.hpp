@@ -15,17 +15,19 @@ concept Addable = requires(const T& t) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def add_values(x: Addable, y: Addable) -> None:
 template<Addable T_x, Addable T_y>
 void add_values(const T_x& x, const T_y& y);
+// def main() -> None:
 void main();
 
 // def add_values(x: Addable, y: Addable) -> None:
+//     # Just verifies that x + y is valid for Addable types
+//     result = x + y
+//     print(result)
 template<Addable T_x, Addable T_y>
 void add_values(const T_x& x, const T_y& y) {
-    // # Just verifies that x + y is valid for Addable types
-    // result = x + y
     auto result = (x + y);
-    // print(result)
     std::cout << result << "\n";
 }
 

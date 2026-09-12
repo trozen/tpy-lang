@@ -18,6 +18,7 @@ extern Edge* e3;
 extern Edge* e4;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find(items: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& items, int32_t target);
 
 // class Point:
@@ -56,9 +57,12 @@ inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, p: Point | None):
+//     self.target = copy(p)
 inline Edge::Edge(const Point* p) : target(::tpy::ptr_to_optional(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

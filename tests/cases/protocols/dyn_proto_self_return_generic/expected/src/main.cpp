@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Cloneable[int32] = IntBox(7)
+//     b = Box(c.replicate())
+//     print(b.value())
 void main() {
-    // c: Cloneable[int32] = IntBox(7)
     IntBox __slot_1{IntBox(7)};
     Cloneable<int32_t>* c = &__slot_1;
-    // b = Box(c.replicate())
     ::tpystd::tplib::box::Box<Cloneable<int32_t>> b = ::tpystd::tplib::box::Box<Cloneable<int32_t>>(c->replicate());
-    // print(b.value())
     std::cout << b.__deref__().value() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

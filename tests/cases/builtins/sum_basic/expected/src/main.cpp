@@ -5,35 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # int32
+//     vals = [1, 2, 3, 4, 5]
+//     print(sum(vals))
+//     print(sum(vals, 100))
+//
+//     # int64
+//     big: list[int64] = [1000000000, 2000000000, 3000000000]
+//     print(sum(big))
+//
+//     # float
+//     floats = [1.5, 2.5, 3.0]
+//     print(sum(floats))
+//     print(sum(floats, 10.0))
+//
+//     # empty
+//     empty: list[int32] = []
+//     print(sum(empty))
+//     print(sum(empty, 42))
+//
+//     # generator expression
+//     print(sum(x * x for x in [1, 2, 3, 4]))
 void main() {
-    // # int32
-    // vals = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> vals = {1, 2, 3, 4, 5};
-    // print(sum(vals))
     std::cout << ::tpy::builtin_sum<int32_t>(vals) << "\n";
-    // print(sum(vals, 100))
     std::cout << ::tpy::builtin_sum_start<int32_t>(vals, 100) << "\n";
-    // # int64
-    // big: list[int64] = [1000000000, 2000000000, 3000000000]
     std::vector<int64_t> big = {1000000000, 2000000000, static_cast<int64_t>(3000000000)};
-    // print(sum(big))
     std::cout << ::tpy::builtin_sum<int64_t>(big) << "\n";
-    // # float
-    // floats = [1.5, 2.5, 3.0]
     std::array<double, 3> floats = {1.5, 2.5, 3.0};
-    // print(sum(floats))
     std::cout << ::tpy::print_float(::tpy::builtin_sum_float(floats)) << "\n";
-    // print(sum(floats, 10.0))
     std::cout << ::tpy::print_float(::tpy::builtin_sum_start_float(floats, 10.0)) << "\n";
-    // # empty
-    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    // print(sum(empty))
     std::cout << ::tpy::builtin_sum<int32_t>(empty) << "\n";
-    // print(sum(empty, 42))
     std::cout << ::tpy::builtin_sum_start<int32_t>(empty, 42) << "\n";
-    // # generator expression
-    // print(sum(x * x for x in [1, 2, 3, 4]))
     std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
         [__src = std::array<int32_t, 4>({1, 2, 3, 4}), __started = false, __beg = std::array<int32_t, 4>::iterator(), __end = std::array<int32_t, 4>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
@@ -46,12 +50,12 @@ void main() {
     )) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

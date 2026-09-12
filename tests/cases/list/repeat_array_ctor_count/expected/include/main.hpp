@@ -12,6 +12,7 @@ struct P;
 extern std::vector<::tpy::BigInt>* log;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class P:
@@ -29,8 +30,8 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self):
+//     log.append(1)
 inline P::P() {
-    // log.append(1)
     log->push_back(1);
 }
 void __tpy_init();

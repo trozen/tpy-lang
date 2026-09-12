@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs = MyList[int32]()
+//     xs.add(3)
+//     xs.add(4)
+//     xs.add(5)
+//     print(total_of(xs))   # 3
 void main() {
-    // xs = MyList[int32]()
     MyList<int32_t> xs = MyList<int32_t>();
-    // xs.add(3)
     xs.add(3);
-    // xs.add(4)
     xs.add(4);
-    // xs.add(5)
     xs.add(5);
-    // print(total_of(xs))   # 3
     std::cout << total_of<int32_t>(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main():
+//     c = Consumer(Source(4))
+//     print(c.sum_all())   # 0 + 1 + 2 + 3
+//     print(c.sum_all())   # non-draining -> same
 void main() {
-    // c = Consumer(Source(4))
     Consumer c = Consumer(Source(4));
-    // print(c.sum_all())   # 0 + 1 + 2 + 3
     std::cout << c.sum_all() << "\n";
-    // print(c.sum_all())   # non-draining -> same
     std::cout << c.sum_all() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

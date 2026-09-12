@@ -12,6 +12,7 @@ struct Flags;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dur(ValueType):
@@ -75,26 +76,28 @@ inline std::ostream& operator<<(std::ostream& os, const Flags& obj) {
 
 
 // def __init__(self, ns: int64) -> None:
+//     self.nanos = ns
 inline Dur::Dur(int64_t ns) : nanos(ns) {}
 
 // def __rmul__(self, f: float) -> float:
+//     return f * self.nanos
 inline double Dur::__rmul__(double f) const {
-    // return f * self.nanos
     return ((f) * static_cast<double>(this->nanos));
 }
 
 // def __radd__(self, n: int64) -> int64:
+//     return n + self.nanos
 inline int64_t Dur::__radd__(int64_t n) const {
-    // return n + self.nanos
     return (::tpy::add_check<int64_t>(n, this->nanos));
 }
 
 // def __init__(self, bits: int32) -> None:
+//     self.bits = bits
 inline Flags::Flags(int32_t bits) : bits(bits) {}
 
 // def __ror__(self, other: int32) -> Own[Flags]:
+//     return Flags(other | self.bits)
 inline Flags Flags::__ror__(int32_t other) const {
-    // return Flags(other | self.bits)
     return Flags((static_cast<int32_t>(other | this->bits)));
 }
 void __tpy_init();

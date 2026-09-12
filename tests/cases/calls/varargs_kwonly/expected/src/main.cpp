@@ -5,42 +5,42 @@ namespace tpyapp::main {
 
 
 // def f(*args: int32, sep: str = ", ") -> str:
+//     result = ""
+//     for i in range(len(args)):
+//         if i > 0:
+//             result += sep
+//         result += str(args[i])
+//     return result
 std::string f(::tpy::varargs<const int32_t> args, std::string_view sep) {
-    // result = ""
     std::string result = "";
-    // for i in range(len(args)):
     int32_t __stop_0 = ::tpy::__len__(args);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if i > 0:
         if ((i > 0)) {
-            // result += sep
             result += sep;
         }
-        // result += str(args[i])
         result += ::tpy::fixed_to_str<int32_t>(args[static_cast<std::size_t>(i)]);
     }
-    // return result
     return result;
 }
 
 // def main() -> None:
+//     print(f(1, 2, 3))
+//     print(f(1, 2, 3, sep=" + "))
+//     print(f())
 void main() {
-    // print(f(1, 2, 3))
     std::array<const int32_t, 3> __tmp_1{1, 2, 3};
     std::cout << f(::tpy::varargs<const int32_t>(__tmp_1), ", ") << "\n";
-    // print(f(1, 2, 3, sep=" + "))
     std::array<const int32_t, 3> __tmp_2{1, 2, 3};
     std::cout << f(::tpy::varargs<const int32_t>(__tmp_2), " + ") << "\n";
-    // print(f())
     std::cout << f(::tpy::varargs<const int32_t>(), ", ") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

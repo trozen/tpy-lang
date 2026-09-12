@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b: Box[Pet] = Box(Parrot(label="Polly"))
+//     print(b.get().name())
+//     # Replace inheritance-path conformer with a different inheritance-path conformer.
+//     b.set(Dog(label="Rex"))
+//     print(b.get().name())
+//     # Replace with another Parrot to exercise the slot-rewrite path twice.
+//     b.set(Parrot(label="Mimi"))
+//     print(b.get().name())
 void main() {
-    // b: Box[Pet] = Box(Parrot(label="Polly"))
     ::tpystd::tplib::box::Box<Pet> b = ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly"));
-    // print(b.get().name())
     std::cout << b.get().name() << "\n";
-    // # Replace inheritance-path conformer with a different inheritance-path conformer.
-    // b.set(Dog(label="Rex"))
     b.set(std::make_unique<Dog>(Dog("Rex")));
-    // print(b.get().name())
     std::cout << b.get().name() << "\n";
-    // # Replace with another Parrot to exercise the slot-rewrite path twice.
-    // b.set(Parrot(label="Mimi"))
     b.set(std::make_unique<Parrot>(Parrot("Mimi")));
-    // print(b.get().name())
     std::cout << b.get().name() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

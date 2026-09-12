@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         raise UErr(A(7))
+//     except UErr as e:
+//         match e.payload:
+//             case A() as av:
+//                 print(av.x)
+//             case B() as bv:
+//                 print(bv.y)
 void main() {
-    // try:
     {
         try {
-            // raise UErr(A(7))
             A __tmp_1 = A(::tpy::BigInt(7));
             throw UErr(::tpy::Union<const A*, const B*>{&__tmp_1});
         } catch (const UErr& e) {
-            // match e.payload:
             auto& __match_subject_1 = e.payload;
             switch (__match_subject_1.index()) {
-            // case A() as av:
             case 0: {
                 auto& av = std::get<0>(__match_subject_1);
-                // print(av.x)
                 std::cout << av.x << "\n";
                 break;
             }
-            // case B() as bv:
             case 1: {
                 auto& bv = std::get<1>(__match_subject_1);
-                // print(bv.y)
                 std::cout << bv.y << "\n";
                 break;
             }
@@ -35,12 +36,12 @@ void main() {
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

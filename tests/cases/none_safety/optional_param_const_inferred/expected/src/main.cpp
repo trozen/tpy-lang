@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def show(p: T | None) -> None:  # tpyc: ok
+//     if p is not None:
+//         print(p.x)
 void show(const T* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // print(p.x)
         std::cout << p->x << "\n";
     }
 }
 
 // def bump(p: T | None) -> None:  # tpyc: ok
+//     # mutates through p -- stays as mutable T*
+//     if p is not None:
+//         p.x = p.x + 100
 void bump(T* p) {
-    // # mutates through p -- stays as mutable T*
-    // if p is not None:
     if ((p != nullptr)) {
-        // p.x = p.x + 100
         p->x = (::tpy::add_check<int32_t>(p->x, 100));
     }
 }
 
 // def main() -> None:
+//     t = T(1)
+//     show(t)
+//     show(None)
+//     bump(t)
+//     print(t.x)
 void main() {
-    // t = T(1)
     T t = T(1);
-    // show(t)
     show(&(t));
-    // show(None)
     show(nullptr);
-    // bump(t)
     bump(&(t));
-    // print(t.x)
     std::cout << t.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

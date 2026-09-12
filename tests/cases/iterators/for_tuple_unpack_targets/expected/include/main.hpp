@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_items(d: dict[int32, int32]) -> int32:
 int32_t sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d);
+// def sum_pairs(ps: list[tuple[int32, int32]]) -> int32:
 int32_t sum_pairs(const std::vector<std::tuple<int32_t, int32_t>>& ps);
+// def discard_snd(ps: list[tuple[int32, int32]]) -> int32:
 int32_t discard_snd(const std::vector<std::tuple<int32_t, int32_t>>& ps);
+// def main() -> None:
 void main();
 
 void __tpy_init();

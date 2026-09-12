@@ -10,6 +10,7 @@ namespace tpyapp::a {
 
 inline constexpr std::string_view __name__ = "a";
 
+// def foo() -> int:
 ::tpy::BigInt foo();
 
 void __tpy_init();

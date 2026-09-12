@@ -5,14 +5,23 @@ namespace tpyapp::main {
 
 
 // async def roundtrip() -> int:
+//     tx, rx = channel[int](4)
+//     await tx.send(7)
+//     await tx.send(35)
+//     tx.close()
+//     total = 0
+//     while True:
+//         try:
+//             total += await rx.recv()
+//         except ChannelClosed:
+//             break
+//     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_roundtrip::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tx, rx = channel[int](4)
         auto __tup_1 = ::tpystd::tpy::channel::channel<::tpy::BigInt>(4);
         tx.emplace(std::move(std::get<0>(__tup_1)));
         rx.emplace(std::move(std::get<1>(__tup_1)));
-        // await tx.send(7)
         __sub_0.emplace(std::move((*tx).send(7)));
         __state = S_RESUME_0;
         continue;
@@ -22,7 +31,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // await tx.send(35)
         __sub_1.emplace(std::move((*tx).send(35)));
         __state = S_RESUME_1;
         continue;
@@ -32,9 +40,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // tx.close()
         (*tx).close();
-        // total = 0
         total = 0;
         __state = S_JOIN_0;
         continue;
@@ -45,7 +51,6 @@ namespace tpyapp::main {
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             __await_lift_0 = std::move(__r2).value();
             __sub_2.reset();
-            // total += await rx.recv()
             total = ::tpy::add_check<int32_t>(total, (__await_lift_0).to_fixed_check<int32_t>());
             __state = S_JOIN_2;
             continue;
@@ -68,7 +73,6 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_1: {
-        // return total
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ::tpy::BigInt(total);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -79,7 +83,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_3: {
         try {
-            // total += await rx.recv()
             __sub_2.emplace(std::move((*rx).recv()));
             __state = S_RESUME_2;
             continue;
@@ -102,24 +105,25 @@ __coro_roundtrip roundtrip() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(roundtrip()))
 void main() {
-    // print(asyncio.run(roundtrip()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(roundtrip())) << "\n";
 }
 
+// # Both ends of a channel held in one coroutine across awaits: tx, rx must
+// # frame-store both Own handles to survive the send()/recv() suspensions
+// # (Sender/Receiver are @nocopy, so a silent copy at the unpack would fail).
+// import asyncio
+// from tpy.channel import channel, ChannelClosed
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Both ends of a channel held in one coroutine across awaits: tx, rx must
-    // # frame-store both Own handles to survive the send()/recv() suspensions
-    // # (Sender/Receiver are @nocopy, so a silent copy at the unpack would fail).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.channel import channel, ChannelClosed
     ::tpystd::tpy::channel::__tpy_init();
-    // main()
     main();
 }
 

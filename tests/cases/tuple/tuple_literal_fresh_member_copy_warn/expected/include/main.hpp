@@ -11,9 +11,13 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def list_member() -> None:
 void list_member();
+// def exempt_fresh(n: int32) -> None:
 void exempt_fresh(int32_t n);
+// def exempt_copy() -> None:
 void exempt_copy();
+// def main() -> None:
 void main();
 
 // class P:
@@ -34,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

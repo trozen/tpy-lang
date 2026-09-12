@@ -15,7 +15,9 @@ struct Zoo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe_zoo(z: Zoo) -> str:
 std::string describe_zoo(const Zoo& z);
+// def main() -> None:
 void main();
 
 // # Record with union field used as first variant member in an outer union.
@@ -103,18 +105,24 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 
 
 // def __init__(self, color: str) -> None:
+//     self.color = color
 inline Ball::Ball(std::string_view color) : color(color) {}
 
 // def __init__(self, size: str) -> None:
+//     self.size = size
 inline Mouse::Mouse(std::string_view size) : size(size) {}
 
 // def __init__(self, name: str, toy: Ball | Mouse) -> None:
+//     self.name = name
+//     self.toy = toy
 inline Cat::Cat(std::string_view name, ::tpy::Union<const Ball*, const Mouse*> toy) : name(name), toy(::tpy::to_value_variant<::tpy::Union<Ball, Mouse>>(toy)) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, animal: Cat | Dog) -> None:
+//     self.animal = animal
 inline Zoo::Zoo(::tpy::Union<const Cat*, const Dog*> animal) : animal(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(animal)) {}
 void __tpy_init();
 } // namespace tpyapp::main

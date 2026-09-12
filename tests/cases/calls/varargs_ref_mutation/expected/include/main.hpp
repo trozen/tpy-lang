@@ -11,8 +11,11 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def increment_all(*args: Counter) -> None:
 void increment_all(::tpy::varargs<Counter> args);
+// def set_values(*args: Counter) -> None:
 void set_values(::tpy::varargs<Counter> args);
+// def main() -> None:
 void main();
 
 // # *args with non-value types: mutations through args visible to caller
@@ -34,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Counter::Counter(const ::tpy::BigInt& value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -36,7 +36,9 @@ struct S;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_box() -> Own[Box[Mutating]]:
 ::tpystd::tplib::box::Box<Mutating> make_box();
+// def main() -> None:
 void main();
 
 // class Inner:
@@ -127,44 +129,48 @@ namespace tpyapp::main {
 
 
 // def __init__(self) -> None:
+//     self.counter = 0
 inline Inner::Inner() : counter(0) {}
 
 // def bump(self) -> None:
+//     self.counter += 1
 inline void Inner::bump() {
-    // self.counter += 1
     this->counter = ::tpy::add_check<int32_t>(this->counter, 1);
 }
 
 // def __init__(self) -> None:
+//     self.counter = 0
 inline Impl::Impl() : counter(0) {}
 
 // def do_mutate(self) -> None:
+//     self.counter += 1
 inline void Impl::do_mutate() {
-    // self.counter += 1
     this->counter = ::tpy::add_check<int32_t>(this->counter, 1);
 }
 
 // def __init__(self) -> None:
+//     self.inner = Inner()
+//     self.frame = make_box()
 inline S::S() : inner(Inner()), frame(make_box()) {}
 
 // # Direct call on a local alias of a self field -- must NOT be const.
 // def mutate_via_alias(self) -> None:
+//     i = self.inner
+//     i.bump()
 inline void S::mutate_via_alias() {
-    // i = self.inner
     Inner& i = this->inner;
-    // i.bump()
     i.bump();
 }
 
 // # Chained call (Box.get().mutate()) on a local alias of a self field --
 // # must NOT be const.
 // def mutate_via_alias_chained(self) -> None:
+//     frame = self.frame
+//     if frame is not None:
+//         frame.get().do_mutate()
 inline void S::mutate_via_alias_chained() {
-    // frame = self.frame
     ::tpystd::tplib::box::Box<Mutating>* frame = ::tpy::optional_to_ptr(this->frame);
-    // if frame is not None:
     if ((frame != nullptr)) {
-        // frame.get().do_mutate()
         frame->get().do_mutate();
     }
 }

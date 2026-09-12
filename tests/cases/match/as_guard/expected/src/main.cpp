@@ -5,75 +5,77 @@ namespace tpyapp::main {
 
 
 // def literal_as_guard(x: int32) -> str:
+//     match x:
+//         case 1 as y if y > 0:
+//             return "one positive"
+//         case 1:
+//             return "one"
+//         case _:
+//             return "other"
+//     return ""
 std::string literal_as_guard(int32_t x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1) {
-    // case 1 as y if y > 0:
     case 1: {
         auto y = __match_subject_1;
         if ((y > 0)) {
-            // return "one positive"
             return "one positive";
         } else {
-            // return "one"
             return "one";
         }
         break;
     }
-    // case _:
     default: {
-        // return "other"
         return "other";
         break;
     }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def wildcard_as_guard(x: int32) -> str:
+//     match x:
+//         case _ as y if y > 10:
+//             return "big"
+//         case _:
+//             return "small"
+//     return ""
 std::string wildcard_as_guard(int32_t x) {
-    // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1) {
-    // case _ as y if y > 10:
     default: {
         auto y = __match_subject_1;
         if ((y > 10)) {
-            // return "big"
             return "big";
         } else {
-            // return "small"
             return "small";
         }
         break;
     }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     print(literal_as_guard(int32(1)))
+//     print(literal_as_guard(int32(2)))
+//     print(wildcard_as_guard(int32(20)))
+//     print(wildcard_as_guard(int32(5)))
 void main() {
-    // print(literal_as_guard(int32(1)))
     std::cout << literal_as_guard(1) << "\n";
-    // print(literal_as_guard(int32(2)))
     std::cout << literal_as_guard(2) << "\n";
-    // print(wildcard_as_guard(int32(20)))
     std::cout << wildcard_as_guard(20) << "\n";
-    // print(wildcard_as_guard(int32(5)))
     std::cout << wildcard_as_guard(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

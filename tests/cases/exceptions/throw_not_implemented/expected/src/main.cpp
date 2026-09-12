@@ -7,31 +7,32 @@ namespace tpyapp::main {
 // # NotImplementedError is the standard way to mark an abstract / unimplemented
 // # method body. Catchable like any other Exception subclass.
 // def stub() -> None:
+//     raise NotImplementedError("stub: not implemented yet")
 void stub() {
-    // raise NotImplementedError("stub: not implemented yet")
     throw ::tpy::NotImplementedError("stub: not implemented yet");
 }
 
 // def main() -> None:
+//     try:
+//         stub()
+//     except NotImplementedError as e:
+//         print("caught:", str(e))
 void main() {
-    // try:
     {
         try {
-            // stub()
             stub();
         } catch (const ::tpy::NotImplementedError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

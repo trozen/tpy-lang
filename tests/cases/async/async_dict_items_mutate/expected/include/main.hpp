@@ -16,7 +16,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_bump;
 
+// async def bump(d: dict[int32, C]) -> int32:
 __coro_bump bump(::tpy::ordered_map<int32_t, C>& d);
+// def main():
 void main();
 
 // class C:
@@ -35,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
-// Async coroutine: bump
+// async def bump(d: dict[int32, C]) -> int32:
 struct __coro_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -69,6 +71,7 @@ struct __coro_bump {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline C::C(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

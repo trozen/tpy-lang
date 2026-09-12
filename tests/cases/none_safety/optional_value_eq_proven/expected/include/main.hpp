@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def eq_proven(x: int32 | None, y: int32) -> bool:
 bool eq_proven(std::optional<int32_t> x, int32_t y);
 
 void __tpy_init();

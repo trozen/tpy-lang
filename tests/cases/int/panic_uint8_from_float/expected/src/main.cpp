@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: uint8 = uint8(256.0)
+//     print(x)
 void main() {
-    // x: uint8 = uint8(256.0)
     uint8_t x = ::tpy::from_float_check<uint8_t>(256.0);
-    // print(x)
     std::cout << static_cast<int>(x) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

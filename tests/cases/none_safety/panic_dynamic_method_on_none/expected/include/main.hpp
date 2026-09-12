@@ -30,7 +30,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def dyn_on_optional(p: Pet | None) -> int32:
 int32_t dyn_on_optional(Pet* p);
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -68,8 +70,8 @@ namespace tpyapp::main {
 
 
 // def sound(self) -> int32:
+//     return 7
 inline int32_t Dog::sound() {
-    // return 7
     return 7;
 }
 void __tpy_init();

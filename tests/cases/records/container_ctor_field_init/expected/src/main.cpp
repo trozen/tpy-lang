@@ -5,43 +5,43 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     e = Empty()
+//     e.buf.append(65)
+//     e.tags.append(1)
+//     print(len(e.buf))
+//     print(len(e.tags))
+//     s = Seeded(b"abc")
+//     s.buf.append(66)
+//     print(len(s.buf))
+//     z = Sized(3)
+//     print(len(z.buf))
+//     print(z.buf[0])
+//     src = bytearray(b"xy")
+//     c = Copied(src)
+//     print(len(c.buf))
 void main() {
-    // e = Empty()
     Empty e = Empty();
-    // e.buf.append(65)
     e.buf.push_back(65);
-    // e.tags.append(1)
     e.tags.push_back(1);
-    // print(len(e.buf))
     std::cout << ::tpy::__len__(e.buf) << "\n";
-    // print(len(e.tags))
     std::cout << ::tpy::__len__(e.tags) << "\n";
-    // s = Seeded(b"abc")
     Seeded s = Seeded(::tpy::bytes_literal("abc", 3));
-    // s.buf.append(66)
     s.buf.push_back(66);
-    // print(len(s.buf))
     std::cout << ::tpy::__len__(s.buf) << "\n";
-    // z = Sized(3)
     Sized z = Sized(3);
-    // print(len(z.buf))
     std::cout << ::tpy::__len__(z.buf) << "\n";
-    // print(z.buf[0])
     std::cout << static_cast<int>(::tpy::bytes_getitem(z.buf, 0)) << "\n";
-    // src = bytearray(b"xy")
     ::tpy::ByteArray src = ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
-    // c = Copied(src)
     Copied c = Copied(src);
-    // print(len(c.buf))
     std::cout << ::tpy::__len__(c.buf) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

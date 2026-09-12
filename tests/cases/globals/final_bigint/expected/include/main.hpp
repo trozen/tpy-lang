@@ -8,8 +8,10 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// BIG_VALUE: Final[int] = 1000000
 extern const ::tpy::BigInt BIG_VALUE;
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

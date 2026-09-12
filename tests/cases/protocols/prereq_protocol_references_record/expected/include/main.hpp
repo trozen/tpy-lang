@@ -67,6 +67,7 @@ template<WrapperMaker T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Record with prereq protocol as bound, referenced by a bound protocol
@@ -77,12 +78,13 @@ struct Wrapper {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Wrapper() = default;
     explicit Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get_result(self) -> Own[Result]:
+    //     return self.value.to_result()
     Result get_result() {
-        // return self.value.to_result()
         return this->value.to_result();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
@@ -117,12 +119,13 @@ struct Container {
     T factory;
 
     // def __init__(self, factory: T) -> None:
+    //     self.factory = factory
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> factory) : factory(factory) {}
 
     // def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
+    //     return self.factory.make(text)
     Wrapper<Message> create_wrapper(std::string_view text) {
-        // return self.factory.make(text)
         return this->factory.make(text);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -136,20 +139,22 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Result::Result(int32_t value) : value(value) {}
 
 // def __init__(self, text: str) -> None:
+//     self.text = text
 inline Message::Message(std::string_view text) : text(text) {}
 
 // def to_result(self) -> Own[Result]:
+//     return Result(int32(42))
 inline Result Message::to_result() const {
-    // return Result(int32(42))
     return Result(42);
 }
 
 // def make(self, text: str) -> Own[Wrapper[Message]]:
+//     return Wrapper(Message(text))
 inline Wrapper<Message> DefaultWrapperMaker::make(std::string_view text) const {
-    // return Wrapper(Message(text))
     return Wrapper<Message>(Message(text));
 }
 void __tpy_init();

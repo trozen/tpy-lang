@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def describe(x: int32) -> None:
+//     print("int:", x)
 void describe(int32_t x) {
-    // print("int:", x)
     std::cout << "int:" << " " << x << "\n";
 }
 
 // def describe(p: Point) -> None:
+//     print("point:", p.x, p.y)
 void describe(const Point& p) {
-    // print("point:", p.x, p.y)
     std::cout << "point:" << " " << p.x << " " << p.y << "\n";
 }
 
 // def test() -> None:
+//     pt: Point = Point(3, 7)
+//     p: Ptr[Point] = pt
+//     # Overload resolution should pick describe(Point) via Ptr[T] -> T deref coercion
+//     describe(p)
 void test() {
-    // pt: Point = Point(3, 7)
     Point pt = Point(3, 7);
-    // p: Ptr[Point] = pt
     Point* p = &pt;
-    // # Overload resolution should pick describe(Point) via Ptr[T] -> T deref coercion
-    // describe(p)
     describe(::tpy::deref_check(p));
 }
 
+// test()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test()
     test();
 }
 

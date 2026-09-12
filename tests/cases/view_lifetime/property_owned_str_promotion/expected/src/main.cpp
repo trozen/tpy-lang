@@ -5,55 +5,55 @@ namespace tpyapp::main {
 
 
 // def free_text(b: bytes) -> str:       # free function, owned return
+//     return b.decode()
 std::string free_text(::tpy::BytesView b) {
-    // return b.decode()
     return ::tpy::bytes_decode(b);
 }
 
 // def main() -> None:
+//     b = Box(b"a payload well beyond the sixteen byte small-string buffer here", "a-stable-field-label")
+//     # owned returns -- function, method, property must all own the local
+//     f = free_text(b.payload)          # tpyc: type(str)
+//     print(f)
+//     m = b.m_text()                    # tpyc: type(str)
+//     print(m)
+//     t = b.text                        # tpyc: type(str)
+//     print(t)
+//     print(len(t))
+//     g = b.tagged                      # tpyc: type(str)
+//     print(g)
+//     # borrow returns -- method and property both stay zero-copy views
+//     mn = b.m_name()                   # tpyc: type(StrView)
+//     print(mn)
+//     n = b.name                        # tpyc: type(StrView)
+//     print(n)
+//     r = b.raw                         # tpyc: type(bytes)
+//     print(len(r))
 void main() {
-    // b = Box(b"a payload well beyond the sixteen byte small-string buffer here", "a-stable-field-label")
     Box b = Box(::tpy::bytes_literal("a payload well beyond the sixteen byte small-string buffer here", 63), "a-stable-field-label");
-    // # owned returns -- function, method, property must all own the local
-    // f = free_text(b.payload)          # tpyc: type(str)
     std::string f = free_text(b.payload);
-    // print(f)
     std::cout << f << "\n";
-    // m = b.m_text()                    # tpyc: type(str)
     std::string m = b.m_text();
-    // print(m)
     std::cout << m << "\n";
-    // t = b.text                        # tpyc: type(str)
     std::string t = b.text();
-    // print(t)
     std::cout << t << "\n";
-    // print(len(t))
     std::cout << ::tpy::__len__(t) << "\n";
-    // g = b.tagged                      # tpyc: type(str)
     std::string g = b.tagged();
-    // print(g)
     std::cout << g << "\n";
-    // # borrow returns -- method and property both stay zero-copy views
-    // mn = b.m_name()                   # tpyc: type(StrView)
     std::string_view mn = b.m_name();
-    // print(mn)
     std::cout << mn << "\n";
-    // n = b.name                        # tpyc: type(StrView)
     std::string_view n = b.name();
-    // print(n)
     std::cout << n << "\n";
-    // r = b.raw                         # tpyc: type(bytes)
     ::tpy::Bytes r = b.raw();
-    // print(len(r))
     std::cout << ::tpy::__len__(r) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

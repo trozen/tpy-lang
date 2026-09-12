@@ -13,8 +13,11 @@ extern Holder* _ptr_g;
 extern std::optional<::tpy::BigInt> _opt_int_g;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def install(h: Ptr[Holder], v: int) -> None:
 void install(Holder* h, const ::tpy::BigInt& v);
+// def clear() -> None:
 void clear();
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -35,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Holder::Holder(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,14 +5,20 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(description="A test program.")
+//     parser.add_argument("file", help="input file path")
+//     parser.add_argument("--count", type=int, default=1, help="repetition count")
+//     parser.add_argument("--name", default="world", help="greeting target")
+//     parser.add_argument("--verbose", "-v", action="count", help="increase verbosity")
+//     parser.add_argument("--tag", action="append", help="tag to apply (multi)")
+//     args = parser.parse_args(["-h"])
+//     # Unreachable: parse_args invokes the help printer, which exits(0).
+//     print(args.file)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["-h"])
     std::vector<std::string> __tmp_1 = {"-h"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // # Unreachable: parse_args invokes the help printer, which exits(0).
-    // print(args.file)
     std::cout << args.file << "\n";
-    // return 0
     return 0;
 }
 
@@ -88,14 +94,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(file, count, name, ::tpy::BigInt(verbose), std::move(tag ? std::optional<std::vector<std::string>>(std::move(*tag)) : std::nullopt));
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

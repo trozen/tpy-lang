@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def show_int(c: Container[int32]) -> None:
+//     print(c.get())
 void show_int(Container<int32_t>& c) {
-    // print(c.get())
     std::cout << c.get() << "\n";
 }
 
 // def show_str(c: Container[str]) -> None:
+//     print(c.get())
 void show_str(Container<std::string>& c) {
-    // print(c.get())
     std::cout << c.get() << "\n";
 }
 
 // def main() -> None:
+//     show_int(IntBox())
+//     show_str(StrBox())
 void main() {
-    // show_int(IntBox())
     ::tpy::Adapter<Container<int32_t>, IntBox> __tmp_1{IntBox()};
     show_int(__tmp_1);
-    // show_str(StrBox())
     ::tpy::Adapter<Container<std::string>, StrBox> __tmp_2{StrBox()};
     show_str(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

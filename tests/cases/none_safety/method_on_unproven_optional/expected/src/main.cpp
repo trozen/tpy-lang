@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def generic_on_optional(b: Bag | None) -> int32:
+//     # targs ride the checked deref
+//     return b.conv(3)           # tpyc: warning(/Potential None access/)
 int32_t generic_on_optional(Bag* b) {
-    // # targs ride the checked deref
-    // return b.conv(3)           # tpyc: warning(/Potential None access/)
     return ::tpy::deref_check(b).conv<int32_t>(3);
 }
 
 // def dyn_on_optional(p: Pet | None) -> int32:
+//     # a @dynamic pointee -- the check is pointee-blind
+//     return p.sound()           # tpyc: warning(/Potential None access/)
 int32_t dyn_on_optional(Pet* p) {
-    // # a @dynamic pointee -- the check is pointee-blind
-    // return p.sound()           # tpyc: warning(/Potential None access/)
     return ::tpy::deref_check(p).sound();
 }
 
 // def main() -> None:
+//     print(generic_on_optional(Bag(1)))
+//     d = Dog()
+//     print(dyn_on_optional(d))
 void main() {
-    // print(generic_on_optional(Bag(1)))
     Bag __tmp_1 = Bag(1);
     std::cout << generic_on_optional(&(__tmp_1)) << "\n";
-    // d = Dog()
     Dog d = Dog();
-    // print(dyn_on_optional(d))
     std::cout << dyn_on_optional(&(d)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

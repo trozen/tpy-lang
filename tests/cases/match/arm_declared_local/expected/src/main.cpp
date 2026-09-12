@@ -5,70 +5,70 @@ namespace tpyapp::main {
 
 
 // def route(n: int32) -> int32:
+//     match n:
+//         case 0:
+//             label = 10
+//         case _:
+//             label = 20
+//     return label
 int32_t route(int32_t n) {
-    // match n:
     int32_t label;
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case 0:
     case 0: {
-        // label = 10
         label = 10;
         break;
     }
-    // case _:
     default: {
-        // label = 20
         label = 20;
         break;
     }
     }
-    // return label
     return label;
 }
 
 // def pick(n: int32) -> int32:
+//     match n:
+//         case 0:
+//             seen = 100
+//         case seen:
+//             print(seen)
+//     return seen
 int32_t pick(int32_t n) {
-    // match n:
     int32_t seen;
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
-    // case 0:
     case 0: {
-        // seen = 100
         seen = 100;
         break;
     }
-    // case seen:
     default: {
         seen = __match_subject_1;
-        // print(seen)
         std::cout << seen << "\n";
         break;
     }
     }
-    // return seen
     return seen;
 }
 
 // def main() -> None:
+//     print(route(0))
+//     print(route(7))
+//     print(pick(0))
+//     print(pick(5))
 void main() {
-    // print(route(0))
     std::cout << route(0) << "\n";
-    // print(route(7))
     std::cout << route(7) << "\n";
-    // print(pick(0))
     std::cout << pick(0) << "\n";
-    // print(pick(5))
     std::cout << pick(5) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

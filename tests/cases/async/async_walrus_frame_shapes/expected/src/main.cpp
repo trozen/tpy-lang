@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def step(i: int32) -> int32:
+//     await asyncio.sleep(0)
+//     return i * 10
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return i * 10
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(i, 10));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,10 +35,15 @@ __coro_step step(int32_t i) {
 }
 
 // async def val_scalar() -> None:
+//     i = 0
+//     while i < 2:
+//         print("scalar val", (n := await step(i)))
+//         await asyncio.sleep(0)
+//         print("scalar resume", n)
+//         i += 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_val_scalar::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -48,9 +53,7 @@ __coro_step step(int32_t i) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print("scalar val", (n := await step(i)))
         std::cout << "scalar val" << " " << (n = __await_lift_0) << "\n";
-        // await asyncio.sleep(0)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_1;
         continue;
@@ -60,16 +63,13 @@ __coro_step step(int32_t i) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // print("scalar resume", n)
         std::cout << "scalar resume" << " " << n << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // print("scalar val", (n := await step(i)))
             __sub_0.emplace(i);
             __state = S_RESUME_0;
             continue;
@@ -90,10 +90,15 @@ __coro_val_scalar val_scalar() {
 }
 
 // async def owning() -> None:
+//     i = 0
+//     while i < 2:
+//         print("owning len", len(xs := [i, i + 1]))
+//         await asyncio.sleep(0)
+//         print("owning resume", len(xs), xs[0])
+//         i += 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_owning::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -103,18 +108,14 @@ __coro_val_scalar val_scalar() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("owning resume", len(xs), xs[0])
         std::cout << "owning resume" << " " << ::tpy::__len__((*xs)) << " " << ::tpy::__getitem__((*xs), 0) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // print("owning len", len(xs := [i, i + 1]))
             std::cout << "owning len" << " " << ::tpy::__len__(xs.emplace(std::array<int32_t, 2>{i, (::tpy::add_check<int32_t>(i, 1))})) << "\n";
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -135,10 +136,16 @@ __coro_owning owning() {
 }
 
 // async def borrow_alias(rows: list[list[int32]]) -> None:
+//     i = 0
+//     while i < len(rows):
+//         print("borrow len", len(row := rows[i]))
+//         await asyncio.sleep(0)
+//         row.append(99)
+//         print("borrow resume", len(row), row[0])
+//         i += 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_borrow_alias::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -148,20 +155,15 @@ __coro_owning owning() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // row.append(99)
         row->push_back(99);
-        // print("borrow resume", len(row), row[0])
         std::cout << "borrow resume" << " " << ::tpy::__len__((*row)) << " " << ::tpy::__getitem__((*row), 0) << "\n";
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(rows))) {
-            // print("borrow len", len(row := rows[i]))
             std::cout << "borrow len" << " " << ::tpy::__len__((row = &(rows[static_cast<std::size_t>(i)]), *row)) << "\n";
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -182,21 +184,31 @@ __coro_borrow_alias borrow_alias(std::vector<std::vector<int32_t>>& rows) {
 }
 
 // def pick(nodes: list[Node], i: int32) -> Node | None:
+//     if i < len(nodes):
+//         return nodes[i]
+//     return None
 Node* pick(std::vector<Node>& nodes, int32_t i) {
-    // if i < len(nodes):
     if ((i < ::tpy::__len__(nodes))) {
-        // return nodes[i]
         return &(::tpy::__getitem__(nodes, i));
     }
-    // return None
     return nullptr;
 }
 
 // async def opt_ptr(nodes: list[Node]) -> None:
+//     i = 0
+//     while i < 3:
+//         m = pick(nodes, i)
+//         print("optptr bound", (p := m) is not None)
+//         await asyncio.sleep(0)
+//         if p is not None:
+//             p.v += 100
+//             print("optptr resume", p.v)
+//         else:
+//             print("optptr resume none")
+//         i += 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_opt_ptr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -206,29 +218,20 @@ Node* pick(std::vector<Node>& nodes, int32_t i) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if p is not None:
         if ((p != nullptr)) {
-            // p.v += 100
             p->v = ::tpy::add_check<int32_t>(p->v, 100);
-            // print("optptr resume", p.v)
             std::cout << "optptr resume" << " " << p->v << "\n";
-        // else:
         } else {
-            // print("optptr resume none")
             std::cout << "optptr resume none" << "\n";
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < 3)) {
-            // m = pick(nodes, i)
             m = pick(nodes, i);
-            // print("optptr bound", (p := m) is not None)
             std::cout << "optptr bound" << " " << ::tpy::print_bool(((p = m) != nullptr)) << "\n";
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -249,10 +252,17 @@ __coro_opt_ptr opt_ptr(std::vector<Node>& nodes) {
 }
 
 // async def drive() -> None:
+//     await val_scalar()
+//     await owning()
+//     rows = [[1, 2], [3, 4, 5]]
+//     await borrow_alias(rows)
+//     print("rows after", rows[0], rows[1])
+//     nodes = [Node(7), Node(8)]
+//     await opt_ptr(nodes)
+//     print("nodes after", nodes[0].v, nodes[1].v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await val_scalar()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -262,7 +272,6 @@ __coro_opt_ptr opt_ptr(std::vector<Node>& nodes) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // await owning()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -272,9 +281,7 @@ __coro_opt_ptr opt_ptr(std::vector<Node>& nodes) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // rows = [[1, 2], [3, 4, 5]]
         rows.emplace(std::vector<std::vector<int32_t>>{{1, 2}, {3, 4, 5}});
-        // await borrow_alias(rows)
         __sub_2.emplace((*rows));
         __state = S_RESUME_2;
         continue;
@@ -284,11 +291,8 @@ __coro_opt_ptr opt_ptr(std::vector<Node>& nodes) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
         __sub_2.reset();
-        // print("rows after", rows[0], rows[1])
         std::cout << "rows after" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*rows), 0)) << " " << ::tpy::ListPrinter(::tpy::__getitem__((*rows), 1)) << "\n";
-        // nodes = [Node(7), Node(8)]
         nodes.emplace(std::vector<Node>{Node(7), Node(8)});
-        // await opt_ptr(nodes)
         __sub_3.emplace((*nodes));
         __state = S_RESUME_3;
         continue;
@@ -298,7 +302,6 @@ __coro_opt_ptr opt_ptr(std::vector<Node>& nodes) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r3).value();
         __sub_3.reset();
-        // print("nodes after", nodes[0].v, nodes[1].v)
         std::cout << "nodes after" << " " << ::tpy::__getitem__((*nodes), 0).v << " " << ::tpy::__getitem__((*nodes), 1).v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -315,22 +318,23 @@ __coro_drive drive() {
 }
 
 // def main() -> None:
+//     asyncio.run(drive())
 void main() {
-    // asyncio.run(drive())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(drive()));
 }
 
+// # Async coroutines share the resumable frame with generators, so a walrus target
+// # in a coroutine body is a frame field too: no C++ local may be declared for it.
+// # Each shape below writes the walrus target, suspends, then reads it back.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async coroutines share the resumable frame with generators, so a walrus target
-    // # in a coroutine body is a frame field too: no C++ local may be declared for it.
-    // # Each shape below writes the walrus target, suspends, then reads it back.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

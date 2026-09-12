@@ -5,105 +5,107 @@ namespace tpyapp::main {
 
 
 // def pick(a: bytes, b: bytes) -> int32:
+//     # Both operands are PARAMS, so both spell `std::span<const uint8_t>` at
+//     # runtime although their resolved type is the owned `bytes`; the select
+//     # compares the runtime spellings, not the resolved ones.
+//     return len(a or b)
 int32_t pick(::tpy::BytesView a, ::tpy::BytesView b) {
-    // # Both operands are PARAMS, so both spell `std::span<const uint8_t>` at
-    // # runtime although their resolved type is the owned `bytes`; the select
-    // # compares the runtime spellings, not the resolved ones.
-    // return len(a or b)
     return ::tpy::__len__(((!a.empty()) ? a : b));
 }
 
 // def pick_local(a: bytes, b: bytes) -> int32:
+//     # The same span-spelled select at a LOCAL sink: the local keeps the view,
+//     # so no owning conversion is taken here.
+//     v = a or b  # tpyc: ok
+//     return len(v)
 int32_t pick_local(::tpy::BytesView a, ::tpy::BytesView b) {
-    // # The same span-spelled select at a LOCAL sink: the local keeps the view,
-    // # so no owning conversion is taken here.
-    // v = a or b  # tpyc: ok
     ::tpy::BytesView v = ((!a.empty()) ? a : b);
-    // return len(v)
     return ::tpy::__len__(v);
 }
 
 // def pick_rebound(a: bytes, b: bytes) -> int32:
+//     # A REBOUND `bytes` param is still a view for the select's purposes, so
+//     # the pair stays same-spelling and the span composes over the live owned
+//     # local (BUGS.md#bytes-select-mixed-runtime-spelling).
+//     b = bytes([113, 114])
+//     v = a or b  # tpyc: ok
+//     return len(v)
 int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b) {
     ::tpy::Bytes b = ::tpy::Bytes(__param_b);
-    // # A REBOUND `bytes` param is still a view for the select's purposes, so
-    // # the pair stays same-spelling and the span composes over the live owned
-    // # local (BUGS.md#bytes-select-mixed-runtime-spelling).
-    // b = bytes([113, 114])
     b = ::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{113, 114});
-    // v = a or b  # tpyc: ok
     ::tpy::BytesView v = ((!a.empty()) ? a : b);
-    // return len(v)
     return ::tpy::__len__(v);
 }
 
 // def pick_owned(a: bytes, b: bytes) -> bytes:
+//     # The owned-RETURN sibling of the same select.
+//     return a or b  # tpyc: ok
 ::tpy::Bytes pick_owned(::tpy::BytesView a, ::tpy::BytesView b) {
-    // # The owned-RETURN sibling of the same select.
-    // return a or b  # tpyc: ok
     return ::tpy::Bytes(((!a.empty()) ? a : b));
 }
 
 // def main() -> None:
+//     empty = b""
+//     data = b"xy"
+//     # bytes: the empty operand is falsy, so `or` yields the other one.
+//     print(len(empty or data))  # tpyc: ok
+//     print(len(data and empty))  # tpyc: ok
+//     print(len(data or empty))  # tpyc: ok
+//     print(pick(b"", b"xyz"))  # tpyc: ok
+//     print(pick_local(b"", b"abcd"))  # tpyc: ok
+//     print(pick_rebound(b"", b"z"))  # tpyc: ok
+//     # The owned sinks print the CHOSEN operand's bytes; a select that kept
+//     # the span here would not build (a span into an owned slot), so the
+//     # value check guards the operand choice, the C++ type guards the copy.
+//     st = Store(b"z")
+//     st.put(b"", b"pq")
+//     print(st.data)
+//     print(pick_owned(b"", b"ab"))
+//
+//     xs = [1, 2, 3]
+//     ys: list[int32] = []
+//     s = Span[int32](xs)
+//     t = Span[int32](ys)
+//     # Span: the same select, tested with __len__ rather than .empty().
+//     u = t or s  # tpyc: ok
+//     print(len(u))
+//
+//     ba = bytearray(b"z")
+//     bb = bytearray()
+//     # bytearray: the reference tier, `.empty()` truthiness like bytes.
+//     picked = bb or ba  # tpyc: ok
+//     print(len(picked))
 void main() {
-    // empty = b""
     ::tpy::BytesView empty = ::tpy::BytesView{};
-    // data = b"xy"
     ::tpy::BytesView data = ::tpy::bytes_literal("xy", 2);
-    // # bytes: the empty operand is falsy, so `or` yields the other one.
-    // print(len(empty or data))  # tpyc: ok
     std::cout << ::tpy::__len__(((!empty.empty()) ? empty : data)) << "\n";
-    // print(len(data and empty))  # tpyc: ok
     std::cout << ::tpy::__len__(((!data.empty()) ? empty : data)) << "\n";
-    // print(len(data or empty))  # tpyc: ok
     std::cout << ::tpy::__len__(((!data.empty()) ? data : empty)) << "\n";
-    // print(pick(b"", b"xyz"))  # tpyc: ok
     std::cout << pick(::tpy::BytesView{}, ::tpy::bytes_literal("xyz", 3)) << "\n";
-    // print(pick_local(b"", b"abcd"))  # tpyc: ok
     std::cout << pick_local(::tpy::BytesView{}, ::tpy::bytes_literal("abcd", 4)) << "\n";
-    // print(pick_rebound(b"", b"z"))  # tpyc: ok
     std::cout << pick_rebound(::tpy::BytesView{}, ::tpy::bytes_literal("z", 1)) << "\n";
-    // # The owned sinks print the CHOSEN operand's bytes; a select that kept
-    // # the span here would not build (a span into an owned slot), so the
-    // # value check guards the operand choice, the C++ type guards the copy.
-    // st = Store(b"z")
     Store st = Store(::tpy::bytes_literal("z", 1));
-    // st.put(b"", b"pq")
     st.put(::tpy::BytesView{}, ::tpy::bytes_literal("pq", 2));
-    // print(st.data)
     std::cout << ::tpy::BytesPrinter(st.data) << "\n";
-    // print(pick_owned(b"", b"ab"))
     std::cout << ::tpy::BytesPrinter(pick_owned(::tpy::BytesView{}, ::tpy::bytes_literal("ab", 2))) << "\n";
-    // xs = [1, 2, 3]
     std::array<int32_t, 3> xs = {1, 2, 3};
-    // ys: list[int32] = []
     std::vector<int32_t> ys = std::vector<int32_t>{};
-    // s = Span[int32](xs)
     std::span<int32_t> s = std::span<int32_t>(xs);
-    // t = Span[int32](ys)
     std::span<int32_t> t = std::span<int32_t>(ys);
-    // # Span: the same select, tested with __len__ rather than .empty().
-    // u = t or s  # tpyc: ok
     std::span<int32_t> u = ((::tpy::__len__(t) != 0) ? t : s);
-    // print(len(u))
     std::cout << ::tpy::__len__(u) << "\n";
-    // ba = bytearray(b"z")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("z", 1));
-    // bb = bytearray()
     ::tpy::ByteArray bb = ::tpy::ByteArray();
-    // # bytearray: the reference tier, `.empty()` truthiness like bytes.
-    // picked = bb or ba  # tpyc: ok
     ::tpy::ByteArray& picked = ((!bb.empty()) ? bb : ba);
-    // print(len(picked))
     std::cout << ::tpy::__len__(picked) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

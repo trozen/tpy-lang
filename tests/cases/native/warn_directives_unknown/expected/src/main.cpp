@@ -8,16 +8,16 @@ namespace tpyapp::main {
 // # tpyc: warning(/unknown.*directive/)
 // # tpy: frobnicate("something")
 // def main() -> None:
+//     pass
 void main() {
-    // pass
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

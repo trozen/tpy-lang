@@ -3,29 +3,27 @@
 
 namespace tpyapp::main {
 
-// x: I = I(42)
 int32_t x{};
-// ch: C = "x"  # char from string literal, not constructor
 char ch{};
 
 // def greet(n: I, c: C) -> None:
+//     print(n)
+//     print(c)
 void greet(int32_t n, char c) {
-    // print(n)
     std::cout << n << "\n";
-    // print(c)
     std::cout << c << "\n";
 }
 
+// x: I = I(42)
+// ch: C = "x"  # char from string literal, not constructor
+// greet(x, ch)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: I = I(42)
     x = 42;
-    // ch: C = "x"  # char from string literal, not constructor
     ch = 'x';
-    // greet(x, ch)
     greet(x, ch);
 }
 

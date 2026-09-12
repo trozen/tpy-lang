@@ -14,7 +14,9 @@ using ::tpyapp::errors_impl::ParseError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def parse_pair(a: str, b: str) -> int:
 std::expected<::tpy::BigInt, ::tpyapp::errors_impl::ParseError> parse_pair(std::string_view a, std::string_view b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

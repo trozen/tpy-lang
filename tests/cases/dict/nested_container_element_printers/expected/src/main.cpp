@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def show(a: dict[str, set[int32]], b: dict[str, dict[str, int32]]) -> None:
+//     print(a["s"])
+//     print(b["d"])
 void show(const ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>& a, const ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>& b) {
-    // print(a["s"])
     std::cout << ::tpy::SetPrinter(::tpy::__getitem__(a, "s")) << "\n";
-    // print(b["d"])
     std::cout << ::tpy::DictPrinter(::tpy::__getitem__(b, "d")) << "\n";
 }
 
 // def main() -> None:
+//     show({"s": {1}}, {"d": {"k": 2}})
 void main() {
-    // show({"s": {1}}, {"d": {"k": 2}})
     ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>({{"s", ::tpy::ordered_set<int32_t>({1})}});
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __tmp_2 = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"d", ::tpy::ordered_map<std::string, int32_t>({{"k", 2}})}});
     show(__tmp_1, __tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

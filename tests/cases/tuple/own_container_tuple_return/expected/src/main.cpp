@@ -5,121 +5,121 @@ namespace tpyapp::main {
 
 
 // def two_lists() -> tuple[Own[list[float]], Own[list[int32]]]:
+//     a: list[float] = []
+//     b: list[int32] = []
+//     a.append(1.0)
+//     b.append(2)
+//     return a, b  # tpyc: ok
 std::tuple<std::vector<double>, std::vector<int32_t>> two_lists() {
-    // a: list[float] = []
     std::vector<double> a = std::vector<double>{};
-    // b: list[int32] = []
     std::vector<int32_t> b = std::vector<int32_t>{};
-    // a.append(1.0)
     a.push_back(1.0);
-    // b.append(2)
     b.push_back(2);
-    // return a, b  # tpyc: ok
     return std::tuple<std::vector<double>, std::vector<int32_t>>{std::move(a), std::move(b)};
 }
 
 // def mixed() -> tuple[Own[list[float]], int32]:
+//     a: list[float] = []
+//     a.append(1.0)
+//     return a, 7  # tpyc: ok
 std::tuple<std::vector<double>, int32_t> mixed() {
-    // a: list[float] = []
     std::vector<double> a = std::vector<double>{};
-    // a.append(1.0)
     a.push_back(1.0);
-    // return a, 7  # tpyc: ok
     return std::tuple<std::vector<double>, int32_t>{std::move(a), 7};
 }
 
 // def dict_and_set() -> tuple[Own[dict[int32, int32]], Own[set[int32]]]:
+//     d: dict[int32, int32] = {}
+//     s: set[int32] = set()
+//     d[1] = 2
+//     s.add(3)
+//     return d, s  # tpyc: ok
 std::tuple<::tpy::ordered_map<int32_t, int32_t>, ::tpy::ordered_set<int32_t>> dict_and_set() {
-    // d: dict[int32, int32] = {}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>();
-    // s: set[int32] = set()
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    // d[1] = 2
     ::tpy::__setitem__(d, 1, 2);
-    // s.add(3)
     s.insert(3);
-    // return d, s  # tpyc: ok
     return std::tuple<::tpy::ordered_map<int32_t, int32_t>, ::tpy::ordered_set<int32_t>>{std::move(d), std::move(s)};
 }
 
 // def two_recs() -> tuple[Own[Rec], Own[Rec]]:
+//     p = Rec(1)
+//     q = Rec(2)
+//     return p, q  # tpyc: ok
 std::tuple<Rec, Rec> two_recs() {
-    // p = Rec(1)
     Rec p = Rec(1);
-    // q = Rec(2)
     Rec q = Rec(2);
-    // return p, q  # tpyc: ok
     return std::tuple<Rec, Rec>{std::move(p), std::move(q)};
 }
 
 // def recs_and_count() -> tuple[Own[list[Rec]], int32]:
+//     rs: list[Rec] = []
+//     rs.append(Rec(5))
+//     rs.append(Rec(6))
+//     n = len(rs)
+//     return rs, n
 std::tuple<std::vector<Rec>, int32_t> recs_and_count() {
-    // rs: list[Rec] = []
     std::vector<Rec> rs = std::vector<Rec>{};
-    // rs.append(Rec(5))
     rs.push_back(Rec(5));
-    // rs.append(Rec(6))
     rs.push_back(Rec(6));
-    // n = len(rs)
     int32_t n = ::tpy::__len__(rs);
-    // return rs, n
     return std::tuple<std::vector<Rec>, int32_t>{std::move(rs), n};
 }
 
 // def main() -> None:
+//     rs, n = recs_and_count()
+//     rs[0].v += 100
+//     print(n, rs[0].v, rs[1].v)
+//     a, b = two_lists()
+//     a.append(3.0)
+//     b.append(3)
+//     print(len(a), len(b), a[1], b[1])
+//     c, n = mixed()
+//     c.append(9.0)
+//     print(len(c), n, c[1])
+//     d, s = dict_and_set()
+//     d[9] = 9
+//     s.add(9)
+//     print(len(d), len(s), d[9])
+//     p, q = two_recs()
+//     p.v = 5
+//     print(p.v, q.v)
 void main() {
-    // rs, n = recs_and_count()
     auto __tup_1 = recs_and_count();
     std::vector<Rec> rs = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // rs[0].v += 100
     ::tpy::__getitem__(rs, 0).v = ::tpy::add_check<int32_t>(::tpy::__getitem__(rs, 0).v, 100);
-    // print(n, rs[0].v, rs[1].v)
     std::cout << n << " " << ::tpy::__getitem__(rs, 0).v << " " << ::tpy::__getitem__(rs, 1).v << "\n";
-    // a, b = two_lists()
     auto __tup_2 = two_lists();
     std::vector<double> a = std::move(std::get<0>(__tup_2));
     std::vector<int32_t> b = std::move(std::get<1>(__tup_2));
-    // a.append(3.0)
     a.push_back(3.0);
-    // b.append(3)
     b.push_back(3);
-    // print(len(a), len(b), a[1], b[1])
     std::cout << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::print_float(::tpy::__getitem__(a, 1)) << " " << ::tpy::__getitem__(b, 1) << "\n";
-    // c, n = mixed()
     auto __tup_3 = mixed();
     std::vector<double> c = std::move(std::get<0>(__tup_3));
     n = std::get<1>(__tup_3);
-    // c.append(9.0)
     c.push_back(9.0);
-    // print(len(c), n, c[1])
     std::cout << ::tpy::__len__(c) << " " << n << " " << ::tpy::print_float(::tpy::__getitem__(c, 1)) << "\n";
-    // d, s = dict_and_set()
     auto __tup_4 = dict_and_set();
     ::tpy::ordered_map<int32_t, int32_t> d = std::move(std::get<0>(__tup_4));
     ::tpy::ordered_set<int32_t> s = std::move(std::get<1>(__tup_4));
-    // d[9] = 9
     ::tpy::__setitem__(d, 9, 9);
-    // s.add(9)
     s.insert(9);
-    // print(len(d), len(s), d[9])
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(s) << " " << ::tpy::__getitem__(d, 9) << "\n";
-    // p, q = two_recs()
     auto __tup_5 = two_recs();
     Rec p = std::move(std::get<0>(__tup_5));
     Rec q = std::move(std::get<1>(__tup_5));
-    // p.v = 5
     p.v = 5;
-    // print(p.v, q.v)
     std::cout << p.v << " " << q.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

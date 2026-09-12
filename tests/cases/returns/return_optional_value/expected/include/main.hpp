@@ -10,7 +10,9 @@ namespace tpyapp::main {
 extern std::optional<int32_t> result;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_int(flag: bool) -> int32 | None:
 std::optional<int32_t> maybe_int(bool flag);
+// def pass_through(val: int32 | None) -> int32 | None:
 std::optional<int32_t> pass_through(std::optional<int32_t> val);
 
 void __tpy_init();

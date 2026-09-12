@@ -16,12 +16,19 @@ struct OptSink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def rewrite(s: Sink, h: Holder) -> None:
 void rewrite(Sink& s, Holder& h);
+// def setitem(h: Holder) -> int32:
 int32_t setitem(Holder& h);
+// def container_element(h: Holder) -> int32:
 int32_t container_element(Holder& h);
+// def qualified_decl(h: Holder) -> int32:
 int32_t qualified_decl(Holder& h);
+// def variant_copy(pick: bool) -> int32:
 int32_t variant_copy(bool pick);
+// def optional_copy(o: Payload | None) -> int32:
 int32_t optional_copy(Payload* o);
+// def main() -> None:
 void main();
 
 // class Payload:
@@ -130,44 +137,50 @@ inline std::ostream& operator<<(std::ostream& os, const OptSink& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Dog::Dog(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cat::Cat(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
+//     self.p = Payload(1)
+//     self.items = [1, 2]
 inline Holder::Holder() : p(Payload(1)), items(std::vector<int32_t>{1, 2}) {}
 
 // def brec(self) -> Payload:
+//     return self.p
 inline Payload& Holder::brec() {
-    // return self.p
     return this->p;
 }
 
 // def bctr(self) -> list[int32]:
+//     return self.items
 inline std::vector<int32_t>& Holder::bctr() {
-    // return self.items
     return this->items;
 }
 
 // def __init__(self, h: Holder) -> None:
+//     # A ctor member-init write takes the NAME source only; the call
+//     # source still rejects there (BUGS.md#copy-call-source-ctor-mil).
+//     p = h.brec()
+//     items = h.bctr()
+//     self.q = copy(p)  # tpyc: ok
+//     self.box = copy(items)  # tpyc: ok
 inline Sink::Sink(Holder& h) {
-    // # A ctor member-init write takes the NAME source only; the call
-    // # source still rejects there (BUGS.md#copy-call-source-ctor-mil).
-    // p = h.brec()
     Payload& p = h.brec();
-    // items = h.bctr()
     std::vector<int32_t>& items = h.bctr();
-    // self.q = copy(p)  # tpyc: ok
     this->q = Payload(p);
-    // self.box = copy(items)  # tpyc: ok
     this->box = std::vector<int32_t>(items);
 }
 
 // def __init__(self) -> None:
+//     self.opt = None
 inline OptSink::OptSink() : opt(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

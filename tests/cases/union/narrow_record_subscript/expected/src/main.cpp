@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def get(flag: bool) -> Own[Bag | int]:
+//     if flag:
+//         return Bag()
+//     return 0
 ::tpy::Union<Bag, ::tpy::BigInt> get(bool flag) {
-    // if flag:
     if (flag) {
-        // return Bag()
         return Bag();
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     v = get(True)
+//     if isinstance(v, Bag):
+//         print(v[1])   # tpyc: ok
+//         v.xs[1] = 99  # mutate through the narrowed reference
+//         print(v[1])   # 99 -- proves v aliases the union member, not a copy
 void main() {
-    // v = get(True)
     ::tpy::Union<Bag, ::tpy::BigInt> __slot_1 = get(true);
     ::tpy::Union<Bag*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
-    // if isinstance(v, Bag):
     if (std::holds_alternative<Bag*>(v)) {
         auto& __v = *std::get<Bag*>(v);
-        // print(v[1])   # tpyc: ok
         std::cout << __v[1] << "\n";
-        // v.xs[1] = 99  # mutate through the narrowed reference
         ::tpy::__setitem__(__v.xs, 1, ::tpy::BigInt(99));
-        // print(v[1])   # 99 -- proves v aliases the union member, not a copy
         std::cout << __v[1] << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

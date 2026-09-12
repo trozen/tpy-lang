@@ -11,8 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* identity_ptr(Point* p);
+// def get_ptr_copy(p: Ptr[Point]) -> Ptr[Point]:
 Point* get_ptr_copy(Point* p);
+// def main():
 void main();
 
 // class Point:

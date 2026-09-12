@@ -5,12 +5,15 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Source(10)
+//     data: list[int32] = [1, 2]
+//     for v in s.windowed(data):
+//         print(v)
+//     for v in s.doubled():
+//         print(v)
 void main() {
-    // s = Source(10)
     Source s = Source(10);
-    // data: list[int32] = [1, 2]
     std::vector<int32_t> data = {1, 2};
-    // for v in s.windowed(data):
     {
         auto __src_0 = s.windowed(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -18,11 +21,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in s.doubled():
     {
         auto __src_2 = s.doubled();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -30,25 +31,30 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def windowed(self, xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
+//     i = 0
+//     try:
+//         while i < len(xs):
+//             yield xs[i] + self.base
+//             yield xs[i] * self.base
+//             i += 1
+//     finally:
+//         print("windowed done")
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_2;
         continue;
     }
     case S_RESUME_0: {
         try {
-            // yield xs[i] * self.base
             __state = S_RESUME_1;
             return (::tpy::mul_check<int32_t>(::tpy::__getitem__(xs, i), __self.base));
         } catch (...) {
@@ -58,7 +64,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
     }
     case S_RESUME_1: {
         try {
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;
             continue;
@@ -71,7 +76,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
         bool __fin_ran_3 = false;
         try {
             if ((i < ::tpy::__len__(xs))) {
-                // yield xs[i] + self.base
                 __state = S_RESUME_0;
                 return (::tpy::add_check<int32_t>(xs[static_cast<std::size_t>(i)], __self.base));
             } else {
@@ -110,20 +114,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
 }
 
 void __gen_Source_windowed::__finally_0() {
-    // print("windowed done")
     std::cout << "windowed done" << "\n";
 }
 
 // def doubled(self) -> Iterator[int32]:  # tpyc: ok
+//     yield self.base
+//     yield self.base * 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_doubled::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.base
         __state = S_RESUME_0;
         return __self.base;
     }
     case S_RESUME_0: {
-        // yield self.base * 2
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(__self.base, 2));
     }
@@ -137,12 +140,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_doubled::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

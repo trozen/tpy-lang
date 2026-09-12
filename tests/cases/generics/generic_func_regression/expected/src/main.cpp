@@ -3,85 +3,77 @@
 
 namespace tpyapp::main {
 
-// # Test 1: Uppercase generic function (inferred) - critical for routing test
-// nums = [10, 20, 30]
 std::vector<int32_t>* nums{};
-// # Test 2: list constructor in same file (tests routing still works)
-// nums2: list[int32] = [1, 2, 3]
 std::vector<int32_t>* nums2{};
-// # Test 3: list constructor in same file
-// items = list[int32]()
 std::vector<int32_t>* items{};
-// # Test 4: Same generic function with different types
-// strs = ["hello", "world"]
 std::vector<std::string>* strs{};
-// # Test 5: Generic function with record type (inferred)
-// points = [Point(1, 2), Point(3, 4)]
 std::vector<Point>* points{};
-// p = get_item(points, int32(0))
 Point* p{};
-// # Test 6: Chained generic calls
-// first_num = First([10, 20, 30])
 int32_t first_num{};
-// second_num = First([first_num, 40, 50])
 int32_t second_num{};
-// # Test 7: Generic function in expression context
-// result = First([5, 6, 7]) + 10
 int32_t result{};
 
+// """Regression tests for generic functions with various edge cases."""
+//
+// # Test 1: Uppercase generic function (inferred) - critical for routing test
+// nums = [10, 20, 30]
+// print(First(nums))
+//
+// # Test 2: list constructor in same file (tests routing still works)
+// nums2: list[int32] = [1, 2, 3]
+// print(len(nums2))
+//
+// # Test 3: list constructor in same file
+// items = list[int32]()
+// items.append(100)
+// print(len(items))
+//
+// # Test 4: Same generic function with different types
+// strs = ["hello", "world"]
+// print(First(strs))
+//
+// # Test 5: Generic function with record type (inferred)
+// points = [Point(1, 2), Point(3, 4)]
+// p = get_item(points, int32(0))
+// print(p.x)
+//
+// # Test 6: Chained generic calls
+// first_num = First([10, 20, 30])
+// second_num = First([first_num, 40, 50])
+// print(second_num)
+//
+// # Test 7: Generic function in expression context
+// result = First([5, 6, 7]) + 10
+// print(result)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test 1: Uppercase generic function (inferred) - critical for routing test
-    // nums = [10, 20, 30]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    // print(First(nums))
     std::cout << First<int32_t>((*nums)) << "\n";
-    // # Test 2: list constructor in same file (tests routing still works)
-    // nums2: list[int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3};
     nums2 = &__global_slot_2;
-    // print(len(nums2))
     std::cout << ::tpy::__len__((*nums2)) << "\n";
-    // # Test 3: list constructor in same file
-    // items = list[int32]()
     static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>();
     items = &__global_slot_3;
-    // items.append(100)
     items->push_back(100);
-    // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
-    // # Test 4: Same generic function with different types
-    // strs = ["hello", "world"]
     static std::vector<std::string> __global_slot_4 = {"hello", "world"};
     strs = &__global_slot_4;
-    // print(First(strs))
     std::cout << First<std::string>((*strs)) << "\n";
-    // # Test 5: Generic function with record type (inferred)
-    // points = [Point(1, 2), Point(3, 4)]
     static std::vector<Point> __global_slot_5 = {Point(1, 2), Point(3, 4)};
     points = &__global_slot_5;
-    // p = get_item(points, int32(0))
     p = &(get_item<Point>((*points), 0));
-    // print(p.x)
     std::cout << p->x << "\n";
-    // # Test 6: Chained generic calls
-    // first_num = First([10, 20, 30])
     std::vector<int32_t> __tmp_1 = {10, 20, 30};
     first_num = First<int32_t>(__tmp_1);
-    // second_num = First([first_num, 40, 50])
     std::vector<int32_t> __tmp_2 = {first_num, 40, 50};
     second_num = First<int32_t>(__tmp_2);
-    // print(second_num)
     std::cout << second_num << "\n";
-    // # Test 7: Generic function in expression context
-    // result = First([5, 6, 7]) + 10
     std::vector<int32_t> __tmp_3 = {5, 6, 7};
     result = (::tpy::add_check<int32_t>(First<int32_t>(__tmp_3), 10));
-    // print(result)
     std::cout << result << "\n";
 }
 

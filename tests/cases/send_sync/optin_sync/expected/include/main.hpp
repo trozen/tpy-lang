@@ -11,6 +11,7 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Config(Send, Sync):
@@ -33,6 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 
 // def __init__(self, rate: int32, depth: int32) -> None:
+//     self.rate = rate
+//     self.depth = depth
 inline Config::Config(int32_t rate, int32_t depth) : rate(rate), depth(depth) {}
 void __tpy_init();
 } // namespace tpyapp::main

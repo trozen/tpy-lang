@@ -5,21 +5,21 @@ namespace tpyapp::net {
 
 
 // def request(url: str, auth: tuple[str, str] | None = None,
-// timeout: float | None = None) -> int:
+//             timeout: float | None = None) -> int:
+//     n = len(url)
+//     if auth is not None:
+//         n += len(auth[0])
+//     if timeout is not None:
+//         n += int(timeout)
+//     return n
 ::tpy::BigInt request(std::string_view url, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout) {
-    // n = len(url)
     int32_t n = ::tpy::__len__(url);
-    // if auth is not None:
     if ((auth.has_value())) {
-        // n += len(auth[0])
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(std::get<0>((*auth))));
     }
-    // if timeout is not None:
     if ((timeout.has_value())) {
-        // n += int(timeout)
         n = ::tpy::add_check<int32_t>(n, (::tpy::BigInt::from_float((*timeout))).to_fixed_check<int32_t>());
     }
-    // return n
     return ::tpy::BigInt(n);
 }
 

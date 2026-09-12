@@ -44,9 +44,11 @@ inline std::ostream& operator<<(std::ostream& os, const Hidden& obj) {
 
 
 // def __init__(self) -> None:
+//     self.val = int32(1)
 inline Public::Public() : val(1) {}
 
 // def __init__(self) -> None:
+//     self.val = int32(2)
 inline Hidden::Hidden() : val(2) {}
 void __tpy_init();
 } // namespace tpyapp::lib

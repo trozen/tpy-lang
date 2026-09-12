@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(first(IntListBox([7, 8, 9])))   # tpyc: ok
 void main() {
-    // print(first(IntListBox([7, 8, 9])))   # tpyc: ok
     IntListBox __tmp_1 = IntListBox({7, 8, 9});
     std::cout << first<::tpy::BigInt, IntListBox>(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

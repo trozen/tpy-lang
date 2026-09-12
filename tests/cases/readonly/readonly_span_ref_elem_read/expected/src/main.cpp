@@ -5,48 +5,48 @@ namespace tpyapp::main {
 
 
 // def first(xs: Span[readonly[Box]]) -> int:
+//     return xs[0].val
 ::tpy::BigInt first(std::span<const Box> xs) {
-    // return xs[0].val
     return ::tpy::__getitem__(xs, 0).val;
 }
 
 // def total(xs: Span[readonly[Box]]) -> int:
+//     t = 0
+//     for b in xs:
+//         t += b.val
+//     return t
 ::tpy::BigInt total(std::span<const Box> xs) {
-    // t = 0
     int32_t t = 0;
-    // for b in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // t += b.val
         t = ::tpy::add_check<int32_t>(t, (b.val).to_fixed_check<int32_t>());
     }
-    // return t
     return ::tpy::BigInt(t);
 }
 
 // def main() -> None:
+//     boxes: list[Box] = []
+//     boxes.append(Box(10))
+//     boxes.append(Box(20))
+//     print(first(boxes))
+//     print(total(boxes))
 void main() {
-    // boxes: list[Box] = []
     std::vector<Box> boxes = std::vector<Box>{};
-    // boxes.append(Box(10))
     boxes.push_back(Box(::tpy::BigInt(10)));
-    // boxes.append(Box(20))
     boxes.push_back(Box(::tpy::BigInt(20)));
-    // print(first(boxes))
     std::cout << first(::tpy::as_span(boxes)) << "\n";
-    // print(total(boxes))
     std::cout << total(::tpy::as_span(boxes)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

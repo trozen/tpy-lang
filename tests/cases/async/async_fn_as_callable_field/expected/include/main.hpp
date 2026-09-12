@@ -19,8 +19,11 @@ struct __coro_handle;
 struct __coro_main_coro;
 struct __coro_Dispatcher_run;
 
+// async def handle(c: Own[Conn]) -> None:
 __coro_handle handle(Conn c);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -52,7 +55,7 @@ struct Dispatcher {
     std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(Conn&&)> _cb;
 
     // def __init__(self,
-    // cb: Callable[[Own[Conn]], Own[Cancellable[None]]]) -> None:
+    //              cb: Callable[[Own[Conn]], Own[Cancellable[None]]]) -> None:
     explicit Dispatcher(std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(Conn&&)> cb);
     // non-copyable (@nocopy)
     Dispatcher(const Dispatcher&) = delete;
@@ -69,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dispatcher& obj) {
     return os;
 }
 
-// Async coroutine: Dispatcher.run
+// async def run(self, count: int32) -> None:
 struct __coro_Dispatcher_run {
     int32_t __state;
     bool __cancel_pending;
@@ -104,7 +107,7 @@ inline __coro_Dispatcher_run Dispatcher::run(int32_t count) const {
     return __coro_Dispatcher_run(*this, count);
 }
 
-// Async coroutine: handle
+// async def handle(c: Own[Conn]) -> None:
 struct __coro_handle {
     int32_t __state;
     bool __cancel_pending;
@@ -128,7 +131,7 @@ struct __coro_handle {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -154,10 +157,12 @@ struct __coro_main_coro {
 
 
 // def __init__(self, id: int32) -> None:
+//     self.id = id
 inline Conn::Conn(int32_t id) : id(id) {}
 
 // def __init__(self,
-// cb: Callable[[Own[Conn]], Own[Cancellable[None]]]) -> None:
+//              cb: Callable[[Own[Conn]], Own[Cancellable[None]]]) -> None:
+//     self._cb = cb
 inline Dispatcher::Dispatcher(std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(Conn&&)> cb) : _cb(cb) {}
 void __tpy_init();
 } // namespace tpyapp::main

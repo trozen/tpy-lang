@@ -3,26 +3,24 @@
 
 namespace tpyapp::main {
 
-// # Test that it works
-// p = Person("Alice", 30)
 Person* p{};
 
+// # Test that it works
+// p = Person("Alice", 30)
+// print(p.__str__())
+// print(p.describe())
+// print(p.name)
+// print(p.age)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test that it works
-    // p = Person("Alice", 30)
     static Person __global_slot_1 = Person("Alice", 30);
     p = &__global_slot_1;
-    // print(p.__str__())
     std::cout << p->__str__() << "\n";
-    // print(p.describe())
     std::cout << p->describe() << "\n";
-    // print(p.name)
     std::cout << p->name << "\n";
-    // print(p.age)
     std::cout << p->age << "\n";
 }
 

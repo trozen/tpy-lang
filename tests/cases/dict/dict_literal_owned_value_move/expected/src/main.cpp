@@ -5,47 +5,48 @@ namespace tpyapp::main {
 
 
 // def value_move() -> None:
+//     p = Box(7)
+//     q = Box(8)
+//     d: dict[int32, Box[int32]] = {0: p, 1: q}
+//     print(d[0].get(), d[1].get())
 void value_move() {
-    // p = Box(7)
     ::tpystd::tplib::box::Box<int32_t> p = ::tpystd::tplib::box::Box<int32_t>(7);
-    // q = Box(8)
     ::tpystd::tplib::box::Box<int32_t> q = ::tpystd::tplib::box::Box<int32_t>(8);
-    // d: dict[int32, Box[int32]] = {0: p, 1: q}
     ::tpy::ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>> d = ::tpy::make_ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>>(0, std::move(p), 1, std::move(q));
-    // print(d[0].get(), d[1].get())
     std::cout << ::tpy::__getitem__(d, 0).get() << " " << ::tpy::__getitem__(d, 1).get() << "\n";
 }
 
 // def not_last_use() -> None:
+//     inner: list[int32] = [1, 2]
+//     # inner read after -> copied, not moved (asserts the over-trigger guard)
+//     d: dict[int32, list[int32]] = {0: inner}  # tpyc: warning(/copies .* into owned storage/)
+//     inner.append(3)
+//     print(len(inner), len(d))  # 3 1 -- inner intact (would be 0 if wrongly moved)
 void not_last_use() {
-    // inner: list[int32] = [1, 2]
     std::vector<int32_t> inner = {1, 2};
-    // # inner read after -> copied, not moved (asserts the over-trigger guard)
-    // d: dict[int32, list[int32]] = {0: inner}  # tpyc: warning(/copies .* into owned storage/)
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>({{0, inner}});
-    // inner.append(3)
     inner.push_back(3);
-    // print(len(inner), len(d))  # 3 1 -- inner intact (would be 0 if wrongly moved)
     std::cout << ::tpy::__len__(inner) << " " << ::tpy::__len__(d) << "\n";
 }
 
 // def main() -> None:
+//     value_move()
+//     not_last_use()
 void main() {
-    // value_move()
     value_move();
-    // not_last_use()
     not_last_use();
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

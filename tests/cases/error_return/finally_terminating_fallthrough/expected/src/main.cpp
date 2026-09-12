@@ -6,133 +6,142 @@ namespace tpyapp::main {
 
 // @error_return(E)
 // def may_fail(x: int32) -> int32:
+//     if x < 0:
+//         raise E
+//     return x
 std::expected<int32_t, E> may_fail(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // raise E
         return ::tpy::make_unexpected(E{});
     }
-    // return x
     return x;
 }
 
 // @error_return(E)
 // def falls_through() -> int32:
+//     try:
+//         v = may_fail(5)
+//         print("try body ran, v =", v)
+//     except E:
+//         print("unreachable handler")
+//     finally:
+//         print("finally ran")
+//         raise RuntimeError("from finally")
+//     return 0
 std::expected<int32_t, E> falls_through() {
-    // try:
     int32_t v;
     {
         try {
-            // v = may_fail(5)
             {
                 auto __try_tmp_2 = may_fail(5);
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 v = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
-            // print("try body ran, v =", v)
             std::cout << "try body ran, v =" << " " << v << "\n";
             goto __after_try_1;
             // except E:
             __except_1:;
-            // print("unreachable handler")
             std::cout << "unreachable handler" << "\n";
             __after_try_1:;
         } catch (...) {
-            // print("finally ran")
             std::cout << "finally ran" << "\n";
-            // raise RuntimeError("from finally")
             throw ::tpy::RuntimeError("from finally");
         }
-        // print("finally ran")
         std::cout << "finally ran" << "\n";
-        // raise RuntimeError("from finally")
         throw ::tpy::RuntimeError("from finally");
     }
-    // return 0
     return 0;
 }
 
 // @error_return(E)
 // def returns_from_finally() -> int32:
+//     """The finally's return is this tier's only exit on the fall-through path.
+//
+//     The return tier dispatches through goto + a return slot, so the elided
+//     fall-through copy left the C++ function falling off its end (UB).
+//     """
+//     try:
+//         v = may_fail(5)
+//         print("try body ran, v =", v)
+//     except E:
+//         print("unreachable handler")
+//     finally:
+//         print("finally ran")
+//         return 7
 std::expected<int32_t, E> returns_from_finally() {
-    // try:
     int32_t v;
     {
         try {
-            // v = may_fail(5)
             {
                 auto __try_tmp_4 = may_fail(5);
                 if (!__try_tmp_4.has_value()) goto __except_3;
                 v = ::tpy::unwrap_ref_move(*__try_tmp_4);
             }
-            // print("try body ran, v =", v)
             std::cout << "try body ran, v =" << " " << v << "\n";
             goto __after_try_3;
             // except E:
             __except_3:;
-            // print("unreachable handler")
             std::cout << "unreachable handler" << "\n";
             __after_try_3:;
         } catch (...) {
-            // print("finally ran")
             std::cout << "finally ran" << "\n";
-            // return 7
             return 7;
         }
-        // print("finally ran")
         std::cout << "finally ran" << "\n";
-        // return 7
         return 7;
     }
 }
 
 // def call_it() -> None:
+//     try:
+//         print(returns_from_finally())
+//     except E:
+//         print("caught E")
+//
+//     # Raises out of call_it, so keep it last.
+//     try:
+//         print(falls_through())
+//     except E:
+//         print("caught E")
 void call_it() {
-    // try:
     {
-        // print(returns_from_finally())
         std::cout << ({ auto __er_6 = returns_from_finally(); if (!__er_6.has_value()) goto __except_5; ::tpy::unwrap_ref_move(*__er_6); }) << "\n";
         goto __after_try_5;
         // except E:
         __except_5:;
-        // print("caught E")
         std::cout << "caught E" << "\n";
         __after_try_5:;
     }
-    // # Raises out of call_it, so keep it last.
-    // try:
     {
-        // print(falls_through())
         std::cout << ({ auto __er_8 = falls_through(); if (!__er_8.has_value()) goto __except_7; ::tpy::unwrap_ref_move(*__er_8); }) << "\n";
         goto __after_try_7;
         // except E:
         __except_7:;
-        // print("caught E")
         std::cout << "caught E" << "\n";
         __after_try_7:;
     }
 }
 
 // def main() -> None:
+//     try:
+//         call_it()
+//     except RuntimeError:
+//         print("caught from finally")
 void main() {
-    // try:
     {
         try {
-            // call_it()
             call_it();
         } catch (const ::tpy::RuntimeError&) {
-            // print("caught from finally")
             std::cout << "caught from finally" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -6,42 +6,42 @@ namespace tpyapp::main {
 
 // # match/case on str subject with literal patterns
 // def handle(cmd: str) -> str:
+//     match cmd:
+//         case "quit":
+//             return "quitting"
+//         case "help":
+//             return "showing help"
+//         case other:
+//             return "unknown: " + other
 std::string handle(std::string_view cmd) {
-    // match cmd:
     auto& __match_subject_1 = cmd;
-    // case "quit":
     if (__match_subject_1 == "quit") {
-        // return "quitting"
         return "quitting";
-    // case "help":
     } else if (__match_subject_1 == "help") {
-        // return "showing help"
         return "showing help";
-    // case other:
     } else {
         auto& other = __match_subject_1;
-        // return "unknown: " + other
         return (::tpy::str_concat("unknown: ", other));
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(handle("quit"))
+//     print(handle("help"))
+//     print(handle("foo"))
 void main() {
-    // print(handle("quit"))
     std::cout << handle("quit") << "\n";
-    // print(handle("help"))
     std::cout << handle("help") << "\n";
-    // print(handle("foo"))
     std::cout << handle("foo") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

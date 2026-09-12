@@ -5,53 +5,53 @@ namespace tpyapp::main {
 
 
 // def kind(v: V) -> str:
+//     match v:
+//         case None:
+//             return "null"
+//         case bool() as b:
+//             return "bool"
+//         case int() as n:
+//             return "int"
+//         case str() as s:
+//             return "str"
+//         case list() as items:
+//             return "list/" + str(len(items))
+//         case dict() as d:
+//             return "dict/" + str(len(d))
 std::string kind(const V& v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.value.index()) {
-    // case None:
     case 0: {
-        // return "null"
         return "null";
         break;
     }
-    // case bool() as b:
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto b = __case_1;
-        // return "bool"
         return "bool";
         break;
     }
-    // case int() as n:
     case 3: {
         auto& __case_2 = std::get<3>(__match_subject_1.value);
         auto& n = __case_2;
-        // return "int"
         return "int";
         break;
     }
-    // case str() as s:
     case 5: {
         auto& __case_3 = std::get<5>(__match_subject_1.value);
         auto& s = __case_3;
-        // return "str"
         return "str";
         break;
     }
-    // case list() as items:
     case 4: {
         auto& __case_4 = std::get<4>(__match_subject_1.value);
         auto& items = __case_4;
-        // return "list/" + str(len(items))
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
         break;
     }
-    // case dict() as d:
     case 2: {
         auto& __case_5 = std::get<2>(__match_subject_1.value);
         auto& d = __case_5;
-        // return "dict/" + str(len(d))
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
         break;
     }
@@ -60,74 +60,74 @@ std::string kind(const V& v) {
 }
 
 // def make_dict() -> Own[V]:
+//     d: dict[str, V] = {"k": 1, "n": None, "items": [1, None, "x"]}
+//     return d
 V make_dict() {
-    // d: dict[str, V] = {"k": 1, "n": None, "items": [1, None, "x"]}
     ::tpy::ordered_map<std::string, V> d = ::tpy::ordered_map<std::string, V>({{"k", 1}, {"n", std::monostate{}}, {"items", std::vector<V>{1, std::monostate{}, "x"}}});
-    // return d
     return d;
 }
 
 // def is_null(v: V) -> bool:
+//     if v is None:
+//         return True
+//     return False
 bool is_null(const V& v) {
-    // if v is None:
     if ((std::holds_alternative<std::monostate>(v.value))) {
-        // return True
         return true;
     }
-    // return False
     return false;
 }
 
 // def kind_after_null_guard(v: V) -> str:
+//     # Narrow-then-match: after `is None` strips NoneType, the residual type
+//     # must still be recognized as the recursive alias so codegen uses the
+//     # wrapper struct's variant indices.
+//     if v is None:
+//         return "null"
+//     match v:
+//         case bool() as b:
+//             return "bool"
+//         case int() as n:
+//             return "int"
+//         case str() as s:
+//             return "str"
+//         case list() as items:
+//             return "list/" + str(len(items))
+//         case dict() as d:
+//             return "dict/" + str(len(d))
 std::string kind_after_null_guard(const V& v) {
-    // # Narrow-then-match: after `is None` strips NoneType, the residual type
-    // # must still be recognized as the recursive alias so codegen uses the
-    // # wrapper struct's variant indices.
-    // if v is None:
     if ((std::holds_alternative<std::monostate>(v.value))) {
-        // return "null"
         return "null";
     }
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.value.index()) {
-    // case bool() as b:
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto b = __case_0;
-        // return "bool"
         return "bool";
         break;
     }
-    // case int() as n:
     case 3: {
         auto& __case_1 = std::get<3>(__match_subject_1.value);
         auto& n = __case_1;
-        // return "int"
         return "int";
         break;
     }
-    // case str() as s:
     case 5: {
         auto& __case_2 = std::get<5>(__match_subject_1.value);
         auto& s = __case_2;
-        // return "str"
         return "str";
         break;
     }
-    // case list() as items:
     case 4: {
         auto& __case_3 = std::get<4>(__match_subject_1.value);
         auto& items = __case_3;
-        // return "list/" + str(len(items))
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
         break;
     }
-    // case dict() as d:
     case 2: {
         auto& __case_4 = std::get<2>(__match_subject_1.value);
         auto& d = __case_4;
-        // return "dict/" + str(len(d))
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
         break;
     }
@@ -136,29 +136,29 @@ std::string kind_after_null_guard(const V& v) {
 }
 
 // def flat_kind(v: W) -> str:
+//     match v:
+//         case None:
+//             return "null"
+//         case int() as n:
+//             return "i:" + str(n)
+//         case str() as s:
+//             return "s:" + s
 std::string flat_kind(const W& v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
-    // case None:
     case 0: {
-        // return "null"
         return "null";
         break;
     }
-    // case int() as n:
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1);
         auto& n = __case_1;
-        // return "i:" + str(n)
         return (::tpy::str_concat("i:", (n).to_string()));
         break;
     }
-    // case str() as s:
     case 2: {
         auto& __case_2 = std::get<2>(__match_subject_1);
         auto& s = __case_2;
-        // return "s:" + s
         return (::tpy::str_concat("s:", s));
         break;
     }
@@ -167,33 +167,43 @@ std::string flat_kind(const W& v) {
 }
 
 // def kind_guarded(v: V) -> str:
+//     # Guarded match on narrowed recursive union: exercises the
+//     # _gen_match_guarded_union codegen path (switch+guard), which must
+//     # also use the wrapper struct's full variant arity, not the narrowed
+//     # subset's member count.
+//     if v is None:
+//         return "null"
+//     match v:
+//         case bool() as b if b:
+//             return "bool-true"
+//         case bool():
+//             return "bool-false"
+//         case int() as n if n > 0:
+//             return "int-pos"
+//         case int():
+//             return "int-nonpos"
+//         case str() as s:
+//             return "str/" + s
+//         case list() as items:
+//             return "list/" + str(len(items))
+//         case dict() as d:
+//             return "dict/" + str(len(d))
 std::string kind_guarded(const V& v) {
-    // # Guarded match on narrowed recursive union: exercises the
-    // # _gen_match_guarded_union codegen path (switch+guard), which must
-    // # also use the wrapper struct's full variant arity, not the narrowed
-    // # subset's member count.
-    // if v is None:
     if ((std::holds_alternative<std::monostate>(v.value))) {
-        // return "null"
         return "null";
     }
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.value.index()) {
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
-        // case bool() as b if b:
         {
             auto b = __case_1;
             if (b) {
-                // return "bool-true"
                 return "bool-true";
                 goto __match_end_2;
             }
         }
-        // case bool():
         {
-            // return "bool-false"
             return "bool-false";
             goto __match_end_2;
         }
@@ -201,27 +211,21 @@ std::string kind_guarded(const V& v) {
     }
     case 2: {
         auto& __case_2 = std::get<2>(__match_subject_1.value);
-        // case dict() as d:
         auto& d = __case_2;
-        // return "dict/" + str(len(d))
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
         goto __match_end_2;
         break;
     }
     case 3: {
         auto& __case_3 = std::get<3>(__match_subject_1.value);
-        // case int() as n if n > 0:
         {
             auto& n = __case_3;
             if ((n > 0)) {
-                // return "int-pos"
                 return "int-pos";
                 goto __match_end_2;
             }
         }
-        // case int():
         {
-            // return "int-nonpos"
             return "int-nonpos";
             goto __match_end_2;
         }
@@ -229,18 +233,14 @@ std::string kind_guarded(const V& v) {
     }
     case 4: {
         auto& __case_4 = std::get<4>(__match_subject_1.value);
-        // case list() as items:
         auto& items = __case_4;
-        // return "list/" + str(len(items))
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
         goto __match_end_2;
         break;
     }
     case 5: {
         auto& __case_5 = std::get<5>(__match_subject_1.value);
-        // case str() as s:
         auto& s = __case_5;
-        // return "str/" + s
         return (::tpy::str_concat("str/", s));
         goto __match_end_2;
         break;
@@ -251,73 +251,78 @@ __match_end_2:;
 }
 
 // def main() -> None:
+//     items: list[V] = [None, True, 42, "hi", [1, None, 2], {"k": 1, "n": None}]
+//     for x in items:
+//         print(kind(x))
+//
+//     d = make_dict()
+//     print(kind(d))
+//
+//     # is None narrowing
+//     a: V = None
+//     b: V = 7
+//     print(is_null(a))
+//     print(is_null(b))
+//
+//     # Narrow-then-match: same input set as `kind` above.
+//     for y in items:
+//         print(kind_after_null_guard(y))
+//
+//     # Guarded narrow-then-match
+//     guarded_items: list[V] = [None, True, False, 5, -3, "hi", [1, 2], {"k": 1}]
+//     for z in guarded_items:
+//         print(kind_guarded(z))
+//
+//     # Non-recursive multi-member union with None
+//     flat_items: list[W] = [None, 7, "hi"]
+//     for w in flat_items:
+//         print(flat_kind(w))
 void main() {
-    // items: list[V] = [None, True, 42, "hi", [1, None, 2], {"k": 1, "n": None}]
     std::vector<V> items = {std::monostate{}, true, 42, "hi", std::vector<V>{1, std::monostate{}, 2}, ::tpy::ordered_map<std::string, V>({{"k", 1}, {"n", std::monostate{}}})};
-    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        // print(kind(x))
         std::cout << kind(x) << "\n";
     }
-    // d = make_dict()
     V d = make_dict();
-    // print(kind(d))
     std::cout << kind(d) << "\n";
-    // # is None narrowing
-    // a: V = None
     V a = std::monostate{};
-    // b: V = 7
     V b = 7;
-    // print(is_null(a))
     std::cout << ::tpy::print_bool(is_null(a)) << "\n";
-    // print(is_null(b))
     std::cout << ::tpy::print_bool(is_null(b)) << "\n";
-    // # Narrow-then-match: same input set as `kind` above.
-    // for y in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& y = *__beg_1;
-        // print(kind_after_null_guard(y))
         std::cout << kind_after_null_guard(y) << "\n";
     }
-    // # Guarded narrow-then-match
-    // guarded_items: list[V] = [None, True, False, 5, -3, "hi", [1, 2], {"k": 1}]
     std::vector<V> guarded_items = {std::monostate{}, true, false, 5, -3, "hi", std::vector<V>{1, 2}, ::tpy::ordered_map<std::string, V>({{"k", 1}})};
-    // for z in guarded_items:
     auto& __obj_2 = guarded_items;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& z = *__beg_2;
-        // print(kind_guarded(z))
         std::cout << kind_guarded(z) << "\n";
     }
-    // # Non-recursive multi-member union with None
-    // flat_items: list[W] = [None, 7, "hi"]
     std::vector<W> flat_items = {std::monostate{}, 7, "hi"};
-    // for w in flat_items:
     auto& __obj_3 = flat_items;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         auto&& w = *__beg_3;
-        // print(flat_kind(w))
         std::cout << flat_kind(w) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p1 = Point(1, 2)
+//     p2 = Point(1, 3)
+//     print(p1 == p2)
 void main() {
-    // p1 = Point(1, 2)
     Point p1 = Point(1, 2);
-    // p2 = Point(1, 3)
     Point p2 = Point(1, 3);
-    // print(p1 == p2)
     std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n";
 }
 
+// # @dataclass with user-defined __eq__ (user wins, no synthesis)
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass with user-defined __eq__ (user wins, no synthesis)
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

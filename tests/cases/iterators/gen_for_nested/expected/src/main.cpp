@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // def matrix(rows: list[int32], cols: list[int32]) -> Iterator[int32]:
+//     yield -1
+//     for r in rows:
+//         for c in cols:
+//             yield r * 10 + c
 std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
@@ -39,7 +42,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
             continue;
         }
         c = *((*__for_it_1))++;
-        // yield r * 10 + c
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(r, 10)), c));
     }
@@ -55,8 +57,9 @@ __gen_matrix matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols) {
 }
 
 // def main():
+//     for x in matrix([1, 2], [3, 4, 5]):
+//         print(x)
 void main() {
-    // for x in matrix([1, 2], [3, 4, 5]):
     {
         std::vector<int32_t> __tmp_1 = {1, 2};
         std::vector<int32_t> __tmp_2 = {3, 4, 5};
@@ -66,18 +69,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -46,8 +46,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show_desc(d: Describable) -> None:
 void show_desc(Describable& d);
+// def show_noise(n: Noise) -> None:
 void show_noise(Noise& n);
+// def main() -> None:
 void main();
 
 // class Dog(Describable, Noise):
@@ -120,26 +123,26 @@ namespace tpyapp::main {
 
 
 // def describe(self) -> str:
+//     return "a dog"
 inline std::string Dog::describe() {
-    // return "a dog"
     return "a dog";
 }
 
 // def make_noise(self) -> str:
+//     return "Woof"
 inline std::string Dog::make_noise() {
-    // return "Woof"
     return "Woof";
 }
 
 // def describe(self) -> str:
+//     return "a cat"
 inline std::string Cat::describe() {
-    // return "a cat"
     return "a cat";
 }
 
 // def make_noise(self) -> str:
+//     return "Meow"
 inline std::string Cat::make_noise() {
-    // return "Meow"
     return "Meow";
 }
 void __tpy_init();

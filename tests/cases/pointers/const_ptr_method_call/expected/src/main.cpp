@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Counter = Counter(42)
+//     cp: Ptr[readonly[Counter]] = take_ptr(c)
+//     # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
+//     print(cp.__len__())
 void main() {
-    // c: Counter = Counter(42)
     Counter c = Counter(42);
-    // cp: Ptr[readonly[Counter]] = take_ptr(c)
     const Counter* cp = &c;
-    // # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
-    // print(cp.__len__())
     std::cout << cp->__len__() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

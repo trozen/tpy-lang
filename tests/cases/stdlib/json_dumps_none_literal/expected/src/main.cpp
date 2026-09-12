@@ -5,31 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(json.dumps([1, None, 3]))
+//     print(json.dumps({"a": None, "b": 2}))
+//     print(json.dumps({"a": [1, None], "b": None}))
+//     print(json.dumps([None, [None, [1, None]]]))
 void main() {
-    // print(json.dumps([1, None, 3]))
     ::tpystd::json::JsonValue __tmp_1 = std::vector<::tpystd::json::JsonValue>{1, std::monostate{}, 3};
     std::cout << ::tpystd::json::dumps(__tmp_1, 0, false) << "\n";
-    // print(json.dumps({"a": None, "b": 2}))
     ::tpystd::json::JsonValue __tmp_2 = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", std::monostate{}}, {"b", 2}});
     std::cout << ::tpystd::json::dumps(__tmp_2, 0, false) << "\n";
-    // print(json.dumps({"a": [1, None], "b": None}))
     ::tpystd::json::JsonValue __tmp_3 = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"a", std::vector<::tpystd::json::JsonValue>{1, std::monostate{}}}, {"b", std::monostate{}}});
     std::cout << ::tpystd::json::dumps(__tmp_3, 0, false) << "\n";
-    // print(json.dumps([None, [None, [1, None]]]))
     ::tpystd::json::JsonValue __tmp_4 = std::vector<::tpystd::json::JsonValue>{std::monostate{}, std::vector<::tpystd::json::JsonValue>{std::monostate{}, std::vector<::tpystd::json::JsonValue>{1, std::monostate{}}}};
     std::cout << ::tpystd::json::dumps(__tmp_4, 0, false) << "\n";
 }
 
+// # A None element in a list/dict literal coerced into the recursive-union
+// # JsonValue serializes as null (list, dict value, nested; no JsonValue import).
+// import json
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A None element in a list/dict literal coerced into the recursive-union
-    // # JsonValue serializes as null (list, dict value, nested; no JsonValue import).
-    // import json
     ::tpystd::json::__tpy_init();
-    // main()
     main();
 }
 

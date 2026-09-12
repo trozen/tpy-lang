@@ -9,14 +9,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_or(a: str, b: str) -> None:
 void test_or(std::string_view a, std::string_view b);
+// def test_and(a: str, b: str) -> None:
 void test_and(std::string_view a, std::string_view b);
+// def test_ternary(a: str, b: str, cond: bool) -> None:
 void test_ternary(std::string_view a, std::string_view b, bool cond);
+// def test_literal_or() -> None:
 void test_literal_or();
+// def test_or_right_promotes() -> None:
 void test_or_right_promotes();
+// def test_ternary_right_promotes() -> None:
 void test_ternary_right_promotes();
+// def test_or_chain(a: str, b: str, c: str) -> None:
 void test_or_chain(std::string_view a, std::string_view b, std::string_view c);
+// def test_literal_or_chain() -> None:
 void test_literal_or_chain();
+// def test_or_chain_third_promotes() -> None:
 void test_or_chain_third_promotes();
 
 void __tpy_init();

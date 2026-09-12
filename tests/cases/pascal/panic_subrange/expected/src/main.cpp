@@ -3,9 +3,12 @@
 
 namespace tpyapp::main {
 
-// b: Byte;
 int32_t b{};
 
+// b: Byte;
+//
+// b := 300;
+// writeln(b);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -14,9 +17,7 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
-    // b := 300;
     b = ::pascal_rt::runtime::builtins::check_subrange(300, 0, 255, "b");
-    // writeln(b);
     std::cout << b << "\n";
 }
 

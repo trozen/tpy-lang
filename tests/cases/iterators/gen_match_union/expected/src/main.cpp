@@ -5,11 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box(Dog("rex"))
+//     for s in b.describe():
+//         print(s)
+//     print("--")
+//     b2 = Box(Cat(9))
+//     for s in b2.describe():
+//         print(s)
 void main() {
-    // b = Box(Dog("rex"))
     Dog __tmp_1 = Dog("rex");
     Box b = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
-    // for s in b.describe():
     {
         auto __src_0 = b.describe();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -17,16 +22,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // b2 = Box(Cat(9))
     Cat __tmp_2 = Cat(::tpy::BigInt(9));
     Box b2 = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
-    // for s in b2.describe():
     {
         auto __src_2 = b2.describe();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -34,31 +35,33 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
 // def describe(self) -> Iterator[str]:
+//     match self.payload:
+//         case Dog(name=n):
+//             yield "dog"
+//             yield n
+//         case Cat() as c:
+//             yield "cat"
+//             yield str(c.lives)
 std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = __self.payload;
         switch (__match_subject_1.index()) {
-        // case Dog(name=n):
         case 1: {
             auto& __case_0 = std::get<1>(__match_subject_1);
             n = __case_0.name;
-            // yield "dog"
             __state = S_RESUME_0;
             return "dog";
             break;
         }
-        // case Cat() as c:
         case 0: {
             c.emplace(std::get<0>(__match_subject_1));
-            // yield "cat"
             __state = S_RESUME_2;
             return "cat";
             break;
@@ -68,7 +71,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
         continue;
     }
     case S_RESUME_0: {
-        // yield n
         __state = S_RESUME_1;
         return n;
     }
@@ -77,7 +79,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
         continue;
     }
     case S_RESUME_2: {
-        // yield str(c.lives)
         __state = S_RESUME_3;
         return ((*c).lives).to_string();
     }
@@ -95,12 +96,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

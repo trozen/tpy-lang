@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3]
+//     # 1-arg lambda -> picks the 1-arg overload; U pinned to int32 from body.
+//     print(m(lambda a: a + int32(1), xs))
+//     # 2-arg lambda -> picks the 2-arg overload; U pinned to int32 from body.
+//     print(m(lambda a, b: a + b, xs))
 void main() {
-    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // # 1-arg lambda -> picks the 1-arg overload; U pinned to int32 from body.
-    // print(m(lambda a: a + int32(1), xs))
     std::cout << m<int32_t, int32_t>([](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, 1)); }, xs) << "\n";
-    // # 2-arg lambda -> picks the 2-arg overload; U pinned to int32 from body.
-    // print(m(lambda a, b: a + b, xs))
     std::cout << m<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

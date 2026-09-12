@@ -11,6 +11,7 @@ struct Totals;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Totals:
@@ -37,25 +38,27 @@ inline std::ostream& operator<<(std::ostream& os, const Totals& obj) {
 
 // @classmethod
 // def plain_nested(cls) -> int32:
+//     def double(n: int32) -> int32:
+//         return n * 2
+//
+//     return double(4) + cls.BASE
 inline int32_t Totals::plain_nested() {
-    // def double(n: int32) -> int32:
     auto double_ = [](int32_t n) -> int32_t {
-        // return n * 2
         return (::tpy::mul_check<int32_t>(n, 2));
     };
-    // return double(4) + cls.BASE
     return (::tpy::add_check<int32_t>(double_(4), Totals::BASE));
 }
 
 // @classmethod
 // def shadowing_nested(cls) -> int32:
+//     def triple(cls: int32) -> int32:
+//         return cls * 3
+//
+//     return triple(2) + cls.BASE
 inline int32_t Totals::shadowing_nested() {
-    // def triple(cls: int32) -> int32:
     auto triple = [](int32_t cls) -> int32_t {
-        // return cls * 3
         return (::tpy::mul_check<int32_t>(cls, 3));
     };
-    // return triple(2) + cls.BASE
     return (::tpy::add_check<int32_t>(triple(2), Totals::BASE));
 }
 void __tpy_init();

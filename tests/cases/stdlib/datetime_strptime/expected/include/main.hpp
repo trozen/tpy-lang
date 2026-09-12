@@ -12,7 +12,9 @@ using ::tpystd::datetime::datetime;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(s: str, f: str) -> None:
 void show(std::string_view s, std::string_view f);
+// def main() -> None:
 void main();
 
 void __tpy_init();

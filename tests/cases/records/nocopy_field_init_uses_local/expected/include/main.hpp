@@ -12,7 +12,9 @@ struct Foo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(n: int32) -> int32:
 int32_t pick(int32_t n);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -60,13 +62,14 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Wrap::Wrap(int32_t v) : v(v) {}
 
 // def __init__(self, seed: int32) -> None:
+//     tmp = pick(seed)
+//     self._x = Wrap(tmp)
 inline Foo::Foo(int32_t seed) {
-    // tmp = pick(seed)
     int32_t tmp = pick(seed);
-    // self._x = Wrap(tmp)
     this->_x = Wrap(tmp);
 }
 void __tpy_init();

@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [10, 20, 30]
+//     for i, n in indexed(nums):
+//         print(i, n)
+//
+//     words: list[str] = ["hello", "world"]
+//     for i, w in indexed(words):
+//         print(i, w)
 void main() {
-    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // for i, n in indexed(nums):
     {
         auto __src_0 = indexed<int32_t>(std::move(nums));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,17 +21,13 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for i, n in indexed(nums):
         const auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
         int32_t n = std::get<1>(__tup_1);
-        // print(i, n)
         std::cout << i << " " << n << "\n";
         }
     }
-    // words: list[str] = ["hello", "world"]
     std::vector<std::string> words = {"hello", "world"};
-    // for i, w in indexed(words):
     {
         auto __src_2 = indexed<std::string>(std::move(words));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -34,22 +35,20 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-        // for i, w in indexed(words):
         const auto& __tup_2 = __for_tup_1;
         int32_t i = std::get<0>(__tup_2);
         std::string_view w = std::get<1>(__tup_2);
-        // print(i, w)
         std::cout << i << " " << w << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def find(p: Point) -> tuple[Point, bool]:
+//     return (p, True)
 std::tuple<Point*, bool> find(Point& p) {
-    // return (p, True)
     return std::tuple<Point*, bool>{&(p), true};
 }
 
 // def main() -> None:
+//     p = Point(int32(10), int32(20))
+//     pt, found = find(p)
+//     print(pt)
+//     print(found)
+//     # Mutation through reference
+//     p.x = int32(99)
+//     print(pt)
 void main() {
-    // p = Point(int32(10), int32(20))
     Point p = Point(10, 20);
-    // pt, found = find(p)
     auto __tup_1 = find(p);
     auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     bool found = std::get<1>(__tup_1);
-    // print(pt)
     std::cout << pt << "\n";
-    // print(found)
     std::cout << ::tpy::print_bool(found) << "\n";
-    // # Mutation through reference
-    // p.x = int32(99)
     p.x = 99;
-    // print(pt)
     std::cout << pt << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

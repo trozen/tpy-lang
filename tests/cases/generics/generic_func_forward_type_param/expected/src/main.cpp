@@ -5,22 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     b = Box()
+//     b.value = 42
+//     wrapper[Box](b)
+//
+//     nums = [1, 2, 3]
+//     result = wrap_list[int32](nums)
+//     print(result)
+//
+//     print(multi[int32, int32](10, 20))
+//
+//     print("done")
 void main() {
-    // b = Box()
     Box b = Box();
-    // b.value = 42
     b.value = 42;
-    // wrapper[Box](b)
     wrapper<Box>(std::move(b));
-    // nums = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // result = wrap_list[int32](nums)
     std::vector<int32_t>& result = wrap_list<int32_t>(nums);
-    // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
-    // print(multi[int32, int32](10, 20))
     std::cout << multi<int32_t, int32_t>(10, 20) << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 

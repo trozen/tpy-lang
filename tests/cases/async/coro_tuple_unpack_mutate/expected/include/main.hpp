@@ -17,7 +17,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_process;
 struct __coro_amain;
 
+// async def process(rows: list[tuple[int32, Item]]) -> int32:
 __coro_process process(std::vector<std::tuple<int32_t, Item>>& rows);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Item:
@@ -36,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
-// Async coroutine: process
+// async def process(rows: list[tuple[int32, Item]]) -> int32:
 struct __coro_process {
     int32_t __state;
     bool __cancel_pending;
@@ -67,7 +69,7 @@ struct __coro_process {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -94,6 +96,7 @@ struct __coro_amain {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

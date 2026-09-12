@@ -3,6 +3,407 @@
 
 namespace tpystd::ssl {
 
+std::vector<std::string>* _ca_probe_paths{};
+
+// def _resolve_system_ca_file() -> str:
+//     """The platform CA bundle: SSL_CERT_FILE if set, else the first existing
+//     well-known bundle, else "" (no system store; the vendored roots still
+//     apply). Loading is best-effort, matching CPython/OpenSSL: a missing or
+//     unparseable bundle (even an explicit SSL_CERT_FILE) is skipped at wrap
+//     time, never raises -- load_verify_locations() is the loud explicit
+//     spelling."""
+//     env = os.getenv("SSL_CERT_FILE")
+//     if env is not None and len(env) > 0:
+//         return env
+//     for p in _ca_probe_paths:
+//         if os.path.isfile(p):
+//             return p
+//     return ""
+std::string _resolve_system_ca_file() {
+    std::optional<std::string> env = ::tpystd::os::getenv("SSL_CERT_FILE");
+    if (((env.has_value()) && (::tpy::__len__((*env)) > 0))) {
+        return (*env);
+    }
+    auto& __obj_0 = (*_ca_probe_paths);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view p = *__beg_0;
+        if (::tpy::stdlib::os::path_isfile(p)) {
+            return std::string(p);
+        }
+    }
+    return "";
+}
+
+// def _errstr(rc: int32) -> str:
+//     buf = UninitHeapStorage[uint8](uint32(160))
+//     mbedtls.tls_strerror(rc, buf.ptr(), uint64(160))
+//     return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
+std::string _errstr(int32_t rc) {
+    ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(160);
+    ::tpy_tls_strerror(rc, buf.ptr(), 160);
+    return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(buf.ptr())));
+}
+
+// def _fail(s: Ptr[mbedtls.Session], msg: str) -> None:
+//     """Free a half-configured session, then raise -- the single home for the
+//     free+raise pairing so no config error branch can leak `s`."""
+//     mbedtls.tls_free(s)
+//     raise SSLError(msg)
+void _fail(::tpy_tls_session* s, std::string_view msg) {
+    ::tpy_tls_free(s);
+    throw SSLError(msg);
+}
+
+// def _raise_io_error(rc: int32) -> None:
+//     """Map a negative mbedTLS I/O return to the CPython ssl exception:
+//     WANT_READ/WANT_WRITE -> SSLWantReadError/SSLWantWriteError (non-blocking
+//     socket needs I/O), close_notify -> SSLZeroReturnError, else SSLError.
+//     The close_notify arm is defensive on the write path: mbedTLS surfaces
+//     PEER_CLOSE_NOTIFY from record reads, and whether CPython raises on a
+//     write after a received close_notify is unverified."""
+//     c = mbedtls.tls_classify(rc)
+//     if c == 1:
+//         raise SSLWantReadError(_errstr(rc))
+//     if c == 2:
+//         raise SSLWantWriteError(_errstr(rc))
+//     if c == 3:
+//         raise SSLZeroReturnError(_errstr(rc))
+//     raise SSLError(_errstr(rc))
+void _raise_io_error(int32_t rc) {
+    int32_t c = ::tpy_tls_classify(rc);
+    if ((c == 1)) {
+        throw SSLWantReadError(_errstr(rc));
+    }
+    if ((c == 2)) {
+        throw SSLWantWriteError(_errstr(rc));
+    }
+    if ((c == 3)) {
+        throw SSLZeroReturnError(_errstr(rc));
+    }
+    throw SSLError(_errstr(rc));
+}
+
+// def create_default_context() -> Own[SSLContext]:
+//     """A secure-by-default client context: verification + hostname check on,
+//     trusting the vendored Mozilla root bundle plus the platform's CA bundle
+//     (see load_default_certs). `requests.get("https://...")` and `urlopen`
+//     verify out of the box, and hosts signed by a system-installed corporate
+//     CA verify with no flags, like curl."""
+//     ctx = SSLContext()
+//     ctx.load_default_certs()
+//     return ctx
+SSLContext create_default_context() {
+    SSLContext ctx = SSLContext();
+    ctx.load_default_certs();
+    return ctx;
+}
+
+// def _bundled_ca_count() -> int32:
+//     """Number of roots in the compiled-in Mozilla bundle (-1 on parse error).
+//     Test hook: a real public-root handshake can't run offline, so this is how
+//     a test proves the default trust store is embedded and non-empty."""
+//     return mbedtls.tls_bundled_ca_count()
+int32_t _bundled_ca_count() {
+    return ::tpy_tls_bundled_ca_count();
+}
+
+
+// def read_into(self, size: int32) -> bytes:
+//     """Decrypt up to `size` bytes; b"" on a clean close_notify (EOF)."""
+//     if size <= int32(0):
+//         return b""
+//     buf = UninitHeapStorage[uint8](uint32.trunc(size))
+//     rc = mbedtls.tls_read(self._s, buf.ptr(), uint64(size))
+//     if mbedtls.tls_classify(rc) == 3:  # peer close_notify -> EOF
+//         return b""
+//     if rc < int32(0):
+//         _raise_io_error(rc)
+//     return unsafe_bytes_from_buf(buf.ptr(), uint64(rc))
+::tpy::Bytes _SslSession::read_into(int32_t size) const {
+    if ((size <= 0)) {
+        return ::tpy::Bytes{};
+    }
+    ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(size));
+    int32_t rc = ::tpy_tls_read(this->_s, buf.ptr(), ::tpy::int_cast_check<uint64_t>(size));
+    if ((::tpy_tls_classify(rc) == 3)) {
+        return ::tpy::Bytes{};
+    }
+    if ((rc < 0)) {
+        _raise_io_error(rc);
+    }
+    return ::tpy::bytes_from_buf(buf.ptr(), ::tpy::int_cast_check<uint64_t>(rc));
+}
+
+// def wrap_socket(self, sock: Own[socket], server_hostname: str = "",
+//                 do_handshake_on_connect: bool = True,
+//                 server_side: bool = False) -> Own[SSLSocket]:
+//     """Wrap `sock` in a TLS session. `server_side=False` (default) is the
+//     verifying HTTPS-client path; `server_side=True` is the server path,
+//     which requires a prior `load_cert_chain` and ignores the client-only
+//     verify/hostname configuration."""
+//     if server_side:
+//         # server_hostname is client-only (SNI + CN/SAN match); CPython
+//         # raises ValueError for this combination. (TPy has no ValueError
+//         # base, so SSLError -- same as the check_hostname guard below.)
+//         if len(server_hostname) > 0:
+//             raise SSLError("server_hostname can only be specified in "
+//                            "client mode")
+//     elif self.check_hostname and len(server_hostname) == 0:
+//         # CPython rejects this too: you cannot verify the hostname without
+//         # one. (CPython raises ValueError; TPy has no ValueError base.)
+//         raise SSLError("check_hostname requires server_hostname")
+//     s = mbedtls.tls_new()
+//     if s is None:
+//         raise SSLError("could not allocate TLS session")
+//     if server_side:
+//         self._config_server(s)
+//     else:
+//         self._config_client(s)
+//     if mbedtls.tls_setup(s) != 0:
+//         _fail(s, "TLS setup failed")
+//     mbedtls.tls_set_fd(s, sock.fileno())
+//     if not server_side and len(server_hostname) > 0:
+//         # set_hostname drives both SNI and the CN/SAN match -- a failure
+//         # here would silently leave verification with neither, so it must
+//         # raise.
+//         host = server_hostname
+//         if mbedtls.tls_set_hostname(s, unsafe_cast(unsafe_ptr(host)),
+//                                     uint64(len(host))) != 0:
+//             _fail(s, "could not set TLS hostname")
+//     wrapped = SSLSocket(Rc.new(_SslSession(s, sock)))
+//     if do_handshake_on_connect:
+//         wrapped.do_handshake_blocking()
+//     return wrapped
+SSLSocket SSLContext::wrap_socket(::tpystd::socket::socket&& sock, std::string_view server_hostname, bool do_handshake_on_connect, bool server_side) const {
+    if (server_side) {
+        if ((::tpy::__len__(server_hostname) > 0)) {
+            throw SSLError("server_hostname can only be specified in client mode");
+        }
+    } else if ((this->check_hostname && (::tpy::__len__(server_hostname) == 0))) {
+        throw SSLError("check_hostname requires server_hostname");
+    }
+    ::tpy_tls_session* s = ::tpy_tls_new();
+    if ((s == nullptr)) {
+        throw SSLError("could not allocate TLS session");
+    }
+    if (server_side) {
+        this->_config_server(s);
+    } else {
+        this->_config_client(s);
+    }
+    if ((::tpy_tls_setup(s) != 0)) {
+        _fail(s, "TLS setup failed");
+    }
+    ::tpy_tls_set_fd(s, sock.fileno());
+    if (((!(server_side)) && (::tpy::__len__(server_hostname) > 0))) {
+        std::string_view host = server_hostname;
+        if ((::tpy_tls_set_hostname(s, reinterpret_cast<const uint8_t*>(host.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(host))) != 0)) {
+            _fail(s, "could not set TLS hostname");
+        }
+    }
+    SSLSocket wrapped = SSLSocket(Rc<_SslSession>::new_<_SslSession>(_SslSession(s, std::move(sock))));
+    if (do_handshake_on_connect) {
+        wrapped.do_handshake_blocking();
+    }
+    return wrapped;
+}
+
+// def _config_client(self, s: Ptr[mbedtls.Session]) -> None:
+//     """Apply the verifying-client config (trust store + verify mode) to a
+//     fresh session. Frees `s` and raises on failure."""
+//     verify = int32(1) if self.verify_mode == CERT_REQUIRED else int32(0)
+//     ca = self._cafile  # "" -> no trust store loaded (len 0; shim skips it)
+//     rc = mbedtls.tls_config_client(
+//         s, unsafe_cast(unsafe_ptr(ca)), uint64(len(ca)), verify)
+//     if rc != 0:
+//         _fail(s, _errstr(rc))
+//     if self._use_bundled_ca:
+//         if mbedtls.tls_add_bundled_ca(s) != 0:
+//             _fail(s, "could not load bundled CA store")
+//     if len(self._system_cafile) > 0:
+//         # Best-effort, matching CPython/OpenSSL: an unreadable or
+//         # unparseable system bundle (even an explicit SSL_CERT_FILE) is
+//         # skipped -- the vendored roots and load_verify_locations still
+//         # apply. load_verify_locations() is the loud explicit tool.
+//         sp = self._system_cafile
+//         mbedtls.tls_add_ca_file(s, unsafe_cast(unsafe_ptr(sp)),
+//                                 uint64(len(sp)))
+void SSLContext::_config_client(::tpy_tls_session* s) const {
+    int32_t verify = (((this->verify_mode == CERT_REQUIRED)) ? (1) : (0));
+    std::string_view ca = this->_cafile;
+    int32_t rc = ::tpy_tls_config_client(s, reinterpret_cast<const uint8_t*>(ca.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(ca)), verify);
+    if ((rc != 0)) {
+        _fail(s, _errstr(rc));
+    }
+    if (this->_use_bundled_ca) {
+        if ((::tpy_tls_add_bundled_ca(s) != 0)) {
+            _fail(s, "could not load bundled CA store");
+        }
+    }
+    if ((::tpy::__len__(this->_system_cafile) > 0)) {
+        std::string_view sp = this->_system_cafile;
+        ::tpy_tls_add_ca_file(s, reinterpret_cast<const uint8_t*>(sp.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(sp)));
+    }
+}
+
+// def do_handshake(self) -> bool:
+//     """Advance the handshake one step. True when complete; False when it
+//     needs more socket I/O (non-blocking socket). Raises on failure."""
+//     rc = mbedtls.tls_handshake(self._session.get().raw())
+//     c = mbedtls.tls_classify(rc)
+//     if c == 0:
+//         self._handshaked = True
+//         return True
+//     if c == 1 or c == 2:  # WANT_READ / WANT_WRITE
+//         return False
+//     if c == 4:
+//         raise SSLCertVerificationError("certificate verify failed")
+//     # Keep the mbedTLS reason: a bare "handshake failed" is undebuggable
+//     # (protocol/cipher mismatch vs alert vs parse error all look alike).
+//     raise SSLError("handshake failed: " + _errstr(rc))
+bool SSLSocket::do_handshake() {
+    int32_t rc = ::tpy_tls_handshake(this->_session.get().raw());
+    int32_t c = ::tpy_tls_classify(rc);
+    if ((c == 0)) {
+        this->_handshaked = true;
+        return true;
+    }
+    if (((c == 1) || (c == 2))) {
+        return false;
+    }
+    if ((c == 4)) {
+        throw SSLCertVerificationError("certificate verify failed");
+    }
+    throw SSLError((::tpy::str_concat("handshake failed: ", _errstr(rc))));
+}
+
+// def sendall(self, data: bytes) -> None:
+//     """Encrypt + send every byte in `data`."""
+//     total: uint64 = uint64(len(data))
+//     sent: uint64 = 0
+//     data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
+//     while sent < total:
+//         rc = mbedtls.tls_write(self._session.get().raw(),
+//                                unsafe_ptr_add(data_ptr, int64.trunc(sent)),
+//                                total - sent)
+//         if rc < int32(0):
+//             _raise_io_error(rc)
+//         sent = sent + uint64(rc)
+void SSLSocket::sendall(::tpy::BytesView data) {
+    uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data));
+    uint64_t sent = 0;
+    const uint8_t* data_ptr = data.data();
+    while ((sent < total)) {
+        int32_t rc = ::tpy_tls_write(this->_session.get().raw(), (data_ptr + static_cast<int64_t>(sent)), (::tpy::sub_check<uint64_t>(total, sent)));
+        if ((rc < 0)) {
+            _raise_io_error(rc);
+        }
+        sent = (::tpy::add_check<uint64_t>(sent, ::tpy::int_cast_check<uint64_t>(rc)));
+    }
+}
+// # tpy: cpp_namespace("tpystd::ssl")
+// """TLS for sockets -- a CPython-compatible `ssl` surface backed by mbedTLS.
+//
+// The HTTPS *client* path: `create_default_context()` -> `SSLContext` ->
+// `wrap_socket(sock, server_hostname=...)` -> `SSLSocket` (recv/send/sendall/
+// do_handshake/close). Secure by default: certificate verification REQUIRED
+// and the hostname checked against the peer cert's CN/SAN (which also drives
+// SNI). `create_default_context()` trusts a vendored Mozilla root bundle PLUS
+// the platform's CA bundle when one exists (`SSL_CERT_FILE` overrides the
+// probed location; see `load_default_certs`), so system-installed corporate
+// CAs verify with no flags, like curl. Add per-context CAs with
+// `load_verify_locations(cafile=...)`.
+//
+// Architecture (see docs/SSL_DESIGN.md):
+//   * `_bindings.mbedtls` -- raw @native bindings to the cohesive
+//     `tpy_tls_session` C shim; the only place mbedTLS is touched.
+//   * this module -- backend-agnostic facade; classes hold a single opaque
+//     session handle and map mbedTLS return codes to the exception tree.
+//
+// The server path: `SSLContext()` -> `load_cert_chain(certfile, keyfile)` ->
+// `wrap_socket(sock, server_side=True)` -> `SSLSocket`. The context's
+// client-only verify/hostname config is ignored on this path (no mutual-TLS
+// client-cert verification yet -- see docs/SSL_DESIGN.md).
+//
+// Known gaps (see docs/SSL_DESIGN.md deferred surface): the system trust store
+// is read as a bundle FILE (env override + well-known paths) -- macOS
+// Keychain-only corporate CAs and `SSL_CERT_DIR` directory stores are not
+// read. `makefile()` returns a binary `BufferedReader` (the http.client read
+// path); text mode follows.
+//
+// Documented limitations (match CPython or a harmless teardown gap; not
+// tracked as bugs):
+//   * After `makefile()`, `recv()` and the returned reader both drive
+//     `tls_read` on the same shared session, so interleaving reads across
+//     the two handles splits the TLS byte-stream -- the same hazard as
+//     CPython's `socket.recv` + `makefile`. TPy's `Rc` share additionally
+//     keeps the reader (and the fd) alive past `close()`, so a stale reader
+//     holds the connection open longer than CPython would.
+//   * `SSLSocket` has no `__del__`, so dropping one without `close()` skips
+//     the best-effort `close_notify` -- no leak (the fd + session free via
+//     their field `__del__`s), just an incomplete TLS teardown.
+//
+// Deliberate divergences from CPython's `ssl` (so they are declared, not
+// silent -- see docs/LANGUAGE_FEATURES.md):
+//   * `SSLContext()` takes no protocol argument and is role-agnostic: the
+//     client/server role is chosen at `wrap_socket(server_side=)`, where
+//     CPython selects it via `PROTOCOL_TLS_CLIENT`/`PROTOCOL_TLS_SERVER`
+//     (or `create_default_context(purpose=)`). `load_cert_chain` takes no
+//     `password=` (tighter v1 signature).
+//   * `load_cert_chain` supplies the SERVER identity only: it is consulted
+//     solely on the `wrap_socket(server_side=True)` path. On the client path
+//     it is a no-op -- TPy has no client-certificate / mutual-TLS support yet
+//     (deferred; see docs/SSL_DESIGN.md), where CPython would present the
+//     loaded cert to an mTLS server.
+//   * `wrap_socket(server_hostname=..., server_side=True)` raises rather than
+//     silently ignoring the hostname -- `server_hostname` is client-only (SNI
+//     + CN/SAN match). CPython raises `ValueError` here; TPy raises `SSLError`
+//     (no `ValueError` base).
+//   * `SSLSocket.do_handshake()` returns a bool (True done / False needs I/O)
+//     rather than returning None and raising `SSLWantReadError`/`Write` on a
+//     non-blocking socket; the blocking `wrap_socket(do_handshake_on_connect=
+//     True)` path is unaffected and matches CPython. (recv/send DO raise the
+//     `SSLWant*` subclasses on a non-blocking socket, and the write path maps
+//     a `close_notify` return to `SSLZeroReturnError` defensively; `recv()`
+//     returns `b""` on a clean `close_notify`, which matches CPython's
+//     `SSLSocket.recv`.)
+//   * `SSLCertVerificationError` derives only from `SSLError`, not from
+//     `(SSLError, ValueError)` -- TPy enforces single inheritance, so the
+//     `ValueError` base cannot be added; code catching `ValueError` for a cert
+//     failure will not fire.
+//   * `close()` sends `close_notify` best-effort (return ignored) and defers
+//     the fd close to the last shared holder of the session, rather than
+//     eager-closing it: CPython's `SSLSocket.close()` does not send
+//     `close_notify` at all (that is `unwrap()`'s job) and closes the fd once
+//     `_io_refs` reaches zero. A still-open `makefile()` reader keeps the
+//     connection alive either way; `close()` here is idempotent.
+//   * `makefile()` takes no arguments and returns a binary `BufferedReader`,
+//     where CPython's `socket.makefile()` defaults to text mode and accepts
+//     `mode`/`buffering`/encoding arguments (text/write modes are deferred).
+//   * `version()` returns `"unknown"` before the handshake, where CPython
+//     returns `None`.
+//   * `wrap_socket` / `load_verify_locations` take a tighter v1 signature
+//     (`server_hostname` positional-with-default; `cafile` only, no `capath`/
+//     `cadata`).
+// """
+//
+// from tpy.mem import UninitHeapStorage
+// from tpy.unsafe import (
+//     unsafe_ptr, unsafe_ptr_add, unsafe_cast,
+//     unsafe_str_from_cstr, unsafe_bytes_from_buf,
+// )
+// from _bindings import mbedtls
+// from socket import socket
+// import os
+// from tplib import Rc
+// from io import BufferedReader
+//
+// # CPython ssl.CERT_* values.
+// CERT_NONE: Final[int32] = 0
+// CERT_REQUIRED: Final[int32] = 2
+//
 // # Well-known platform CA-bundle locations (the curl/Go probe conventions),
 // # tried in order by load_default_certs(); SSL_CERT_FILE overrides the probe.
 // # A module global (not Final) so tests can inject a fixture bundle -- the
@@ -10,325 +411,25 @@ namespace tpystd::ssl {
 // # CAs live in a database, not a PEM file; the shipped /etc/ssl/cert.pem and
 // # the Homebrew export cover the common cases, SSL_CERT_FILE the rest.
 // _ca_probe_paths: list[str] = [
-// "/etc/ssl/certs/ca-certificates.crt",                 # Debian/Ubuntu/Arch
-// "/etc/pki/tls/certs/ca-bundle.crt",                   # Fedora/RHEL
-// "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",  # RHEL 7+
-// "/etc/ssl/ca-bundle.pem",                             # openSUSE
-// "/etc/ssl/cert.pem",                                  # Alpine, macOS
-// "/usr/local/share/certs/ca-root-nss.crt",             # FreeBSD
-// "/opt/homebrew/etc/ca-certificates/cert.pem",         # Homebrew (arm64)
-// "/usr/local/etc/ca-certificates/cert.pem",            # Homebrew (x86_64)
+//     "/etc/ssl/certs/ca-certificates.crt",                 # Debian/Ubuntu/Arch
+//     "/etc/pki/tls/certs/ca-bundle.crt",                   # Fedora/RHEL
+//     "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",  # RHEL 7+
+//     "/etc/ssl/ca-bundle.pem",                             # openSUSE
+//     "/etc/ssl/cert.pem",                                  # Alpine, macOS
+//     "/usr/local/share/certs/ca-root-nss.crt",             # FreeBSD
+//     "/opt/homebrew/etc/ca-certificates/cert.pem",         # Homebrew (arm64)
+//     "/usr/local/etc/ca-certificates/cert.pem",            # Homebrew (x86_64)
 // ]
-std::vector<std::string>* _ca_probe_paths{};
-
-// def _resolve_system_ca_file() -> str:
-std::string _resolve_system_ca_file() {
-    // env = os.getenv("SSL_CERT_FILE")
-    std::optional<std::string> env = ::tpystd::os::getenv("SSL_CERT_FILE");
-    // if env is not None and len(env) > 0:
-    if (((env.has_value()) && (::tpy::__len__((*env)) > 0))) {
-        // return env
-        return (*env);
-    }
-    // for p in _ca_probe_paths:
-    auto& __obj_0 = (*_ca_probe_paths);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view p = *__beg_0;
-        // if os.path.isfile(p):
-        if (::tpy::stdlib::os::path_isfile(p)) {
-            // return p
-            return std::string(p);
-        }
-    }
-    // return ""
-    return "";
-}
-
-// def _errstr(rc: int32) -> str:
-std::string _errstr(int32_t rc) {
-    // buf = UninitHeapStorage[uint8](uint32(160))
-    ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(160);
-    // mbedtls.tls_strerror(rc, buf.ptr(), uint64(160))
-    ::tpy_tls_strerror(rc, buf.ptr(), 160);
-    // return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
-    return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(buf.ptr())));
-}
-
-// def _fail(s: Ptr[mbedtls.Session], msg: str) -> None:
-void _fail(::tpy_tls_session* s, std::string_view msg) {
-    // mbedtls.tls_free(s)
-    ::tpy_tls_free(s);
-    // raise SSLError(msg)
-    throw SSLError(msg);
-}
-
-// def _raise_io_error(rc: int32) -> None:
-void _raise_io_error(int32_t rc) {
-    // c = mbedtls.tls_classify(rc)
-    int32_t c = ::tpy_tls_classify(rc);
-    // if c == 1:
-    if ((c == 1)) {
-        // raise SSLWantReadError(_errstr(rc))
-        throw SSLWantReadError(_errstr(rc));
-    }
-    // if c == 2:
-    if ((c == 2)) {
-        // raise SSLWantWriteError(_errstr(rc))
-        throw SSLWantWriteError(_errstr(rc));
-    }
-    // if c == 3:
-    if ((c == 3)) {
-        // raise SSLZeroReturnError(_errstr(rc))
-        throw SSLZeroReturnError(_errstr(rc));
-    }
-    // raise SSLError(_errstr(rc))
-    throw SSLError(_errstr(rc));
-}
-
-// def create_default_context() -> Own[SSLContext]:
-SSLContext create_default_context() {
-    // ctx = SSLContext()
-    SSLContext ctx = SSLContext();
-    // ctx.load_default_certs()
-    ctx.load_default_certs();
-    // return ctx
-    return ctx;
-}
-
-// def _bundled_ca_count() -> int32:
-int32_t _bundled_ca_count() {
-    // return mbedtls.tls_bundled_ca_count()
-    return ::tpy_tls_bundled_ca_count();
-}
-
-
-// def read_into(self, size: int32) -> bytes:
-::tpy::Bytes _SslSession::read_into(int32_t size) const {
-    // if size <= int32(0):
-    if ((size <= 0)) {
-        // return b""
-        return ::tpy::Bytes{};
-    }
-    // buf = UninitHeapStorage[uint8](uint32.trunc(size))
-    ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(size));
-    // rc = mbedtls.tls_read(self._s, buf.ptr(), uint64(size))
-    int32_t rc = ::tpy_tls_read(this->_s, buf.ptr(), ::tpy::int_cast_check<uint64_t>(size));
-    // if mbedtls.tls_classify(rc) == 3:  # peer close_notify -> EOF
-    if ((::tpy_tls_classify(rc) == 3)) {
-        // return b""
-        return ::tpy::Bytes{};
-    }
-    // if rc < int32(0):
-    if ((rc < 0)) {
-        // _raise_io_error(rc)
-        _raise_io_error(rc);
-    }
-    // return unsafe_bytes_from_buf(buf.ptr(), uint64(rc))
-    return ::tpy::bytes_from_buf(buf.ptr(), ::tpy::int_cast_check<uint64_t>(rc));
-}
-
-// def wrap_socket(self, sock: Own[socket], server_hostname: str = "",
-// do_handshake_on_connect: bool = True,
-// server_side: bool = False) -> Own[SSLSocket]:
-SSLSocket SSLContext::wrap_socket(::tpystd::socket::socket&& sock, std::string_view server_hostname, bool do_handshake_on_connect, bool server_side) const {
-    // if server_side:
-    if (server_side) {
-        // # server_hostname is client-only (SNI + CN/SAN match); CPython
-        // # raises ValueError for this combination. (TPy has no ValueError
-        // # base, so SSLError -- same as the check_hostname guard below.)
-        // if len(server_hostname) > 0:
-        if ((::tpy::__len__(server_hostname) > 0)) {
-            // raise SSLError("server_hostname can only be specified in "
-            // "client mode")
-            throw SSLError("server_hostname can only be specified in client mode");
-        }
-    // elif self.check_hostname and len(server_hostname) == 0:
-    } else if ((this->check_hostname && (::tpy::__len__(server_hostname) == 0))) {
-        // # CPython rejects this too: you cannot verify the hostname without
-        // # one. (CPython raises ValueError; TPy has no ValueError base.)
-        // raise SSLError("check_hostname requires server_hostname")
-        throw SSLError("check_hostname requires server_hostname");
-    }
-    // s = mbedtls.tls_new()
-    ::tpy_tls_session* s = ::tpy_tls_new();
-    // if s is None:
-    if ((s == nullptr)) {
-        // raise SSLError("could not allocate TLS session")
-        throw SSLError("could not allocate TLS session");
-    }
-    // if server_side:
-    if (server_side) {
-        // self._config_server(s)
-        this->_config_server(s);
-    // else:
-    } else {
-        // self._config_client(s)
-        this->_config_client(s);
-    }
-    // if mbedtls.tls_setup(s) != 0:
-    if ((::tpy_tls_setup(s) != 0)) {
-        // _fail(s, "TLS setup failed")
-        _fail(s, "TLS setup failed");
-    }
-    // mbedtls.tls_set_fd(s, sock.fileno())
-    ::tpy_tls_set_fd(s, sock.fileno());
-    // if not server_side and len(server_hostname) > 0:
-    if (((!(server_side)) && (::tpy::__len__(server_hostname) > 0))) {
-        // # set_hostname drives both SNI and the CN/SAN match -- a failure
-        // # here would silently leave verification with neither, so it must
-        // # raise.
-        // host = server_hostname
-        std::string_view host = server_hostname;
-        // if mbedtls.tls_set_hostname(s, unsafe_cast(unsafe_ptr(host)),
-        // uint64(len(host))) != 0:
-        if ((::tpy_tls_set_hostname(s, reinterpret_cast<const uint8_t*>(host.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(host))) != 0)) {
-            // _fail(s, "could not set TLS hostname")
-            _fail(s, "could not set TLS hostname");
-        }
-    }
-    // wrapped = SSLSocket(Rc.new(_SslSession(s, sock)))
-    SSLSocket wrapped = SSLSocket(Rc<_SslSession>::new_<_SslSession>(_SslSession(s, std::move(sock))));
-    // if do_handshake_on_connect:
-    if (do_handshake_on_connect) {
-        // wrapped.do_handshake_blocking()
-        wrapped.do_handshake_blocking();
-    }
-    // return wrapped
-    return wrapped;
-}
-
-// def _config_client(self, s: Ptr[mbedtls.Session]) -> None:
-void SSLContext::_config_client(::tpy_tls_session* s) const {
-    // verify = int32(1) if self.verify_mode == CERT_REQUIRED else int32(0)
-    int32_t verify = (((this->verify_mode == CERT_REQUIRED)) ? (1) : (0));
-    // ca = self._cafile  # "" -> no trust store loaded (len 0; shim skips it)
-    std::string_view ca = this->_cafile;
-    // rc = mbedtls.tls_config_client(
-    // s, unsafe_cast(unsafe_ptr(ca)), uint64(len(ca)), verify)
-    int32_t rc = ::tpy_tls_config_client(s, reinterpret_cast<const uint8_t*>(ca.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(ca)), verify);
-    // if rc != 0:
-    if ((rc != 0)) {
-        // _fail(s, _errstr(rc))
-        _fail(s, _errstr(rc));
-    }
-    // if self._use_bundled_ca:
-    if (this->_use_bundled_ca) {
-        // if mbedtls.tls_add_bundled_ca(s) != 0:
-        if ((::tpy_tls_add_bundled_ca(s) != 0)) {
-            // _fail(s, "could not load bundled CA store")
-            _fail(s, "could not load bundled CA store");
-        }
-    }
-    // if len(self._system_cafile) > 0:
-    if ((::tpy::__len__(this->_system_cafile) > 0)) {
-        // # Best-effort, matching CPython/OpenSSL: an unreadable or
-        // # unparseable system bundle (even an explicit SSL_CERT_FILE) is
-        // # skipped -- the vendored roots and load_verify_locations still
-        // # apply. load_verify_locations() is the loud explicit tool.
-        // sp = self._system_cafile
-        std::string_view sp = this->_system_cafile;
-        // mbedtls.tls_add_ca_file(s, unsafe_cast(unsafe_ptr(sp)),
-        // uint64(len(sp)))
-        ::tpy_tls_add_ca_file(s, reinterpret_cast<const uint8_t*>(sp.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(sp)));
-    }
-    // # Best-effort, matching CPython/OpenSSL: an unreadable or
-    // # unparseable system bundle (even an explicit SSL_CERT_FILE) is
-    // # skipped -- the vendored roots and load_verify_locations still
-    // # apply. load_verify_locations() is the loud explicit tool.
-}
-
-// def do_handshake(self) -> bool:
-bool SSLSocket::do_handshake() {
-    // rc = mbedtls.tls_handshake(self._session.get().raw())
-    int32_t rc = ::tpy_tls_handshake(this->_session.get().raw());
-    // c = mbedtls.tls_classify(rc)
-    int32_t c = ::tpy_tls_classify(rc);
-    // if c == 0:
-    if ((c == 0)) {
-        // self._handshaked = True
-        this->_handshaked = true;
-        // return True
-        return true;
-    }
-    // if c == 1 or c == 2:  # WANT_READ / WANT_WRITE
-    if (((c == 1) || (c == 2))) {
-        // return False
-        return false;
-    }
-    // if c == 4:
-    if ((c == 4)) {
-        // raise SSLCertVerificationError("certificate verify failed")
-        throw SSLCertVerificationError("certificate verify failed");
-    }
-    // # Keep the mbedTLS reason: a bare "handshake failed" is undebuggable
-    // # (protocol/cipher mismatch vs alert vs parse error all look alike).
-    // raise SSLError("handshake failed: " + _errstr(rc))
-    throw SSLError((::tpy::str_concat("handshake failed: ", _errstr(rc))));
-}
-
-// def sendall(self, data: bytes) -> None:
-void SSLSocket::sendall(::tpy::BytesView data) {
-    // total: uint64 = uint64(len(data))
-    uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data));
-    // sent: uint64 = 0
-    uint64_t sent = 0;
-    // data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
-    const uint8_t* data_ptr = data.data();
-    // while sent < total:
-    while ((sent < total)) {
-        // rc = mbedtls.tls_write(self._session.get().raw(),
-        // unsafe_ptr_add(data_ptr, int64.trunc(sent)),
-        // total - sent)
-        int32_t rc = ::tpy_tls_write(this->_session.get().raw(), (data_ptr + static_cast<int64_t>(sent)), (::tpy::sub_check<uint64_t>(total, sent)));
-        // if rc < int32(0):
-        if ((rc < 0)) {
-            // _raise_io_error(rc)
-            _raise_io_error(rc);
-        }
-        // sent = sent + uint64(rc)
-        sent = (::tpy::add_check<uint64_t>(sent, ::tpy::int_cast_check<uint64_t>(rc)));
-    }
-}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: cpp_namespace("tpystd::ssl")
-    // from tpy.mem import UninitHeapStorage
-    // from tpy.unsafe import (
-    // unsafe_ptr, unsafe_ptr_add, unsafe_cast,
-    // unsafe_str_from_cstr, unsafe_bytes_from_buf,
-    // )
-    // from _bindings import mbedtls
     ::tpystd::_bindings::mbedtls::__tpy_init();
-    // from socket import socket
     ::tpystd::socket::__tpy_init();
-    // import os
     ::tpystd::os::__tpy_init();
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // from io import BufferedReader
     ::tpystd::io::__tpy_init();
-    // # CPython ssl.CERT_* values.
-    // # Well-known platform CA-bundle locations (the curl/Go probe conventions),
-    // # tried in order by load_default_certs(); SSL_CERT_FILE overrides the probe.
-    // # A module global (not Final) so tests can inject a fixture bundle -- the
-    // # offline seam for the system-trust path. macOS gap: Keychain-only corporate
-    // # CAs live in a database, not a PEM file; the shipped /etc/ssl/cert.pem and
-    // # the Homebrew export cover the common cases, SSL_CERT_FILE the rest.
-    // _ca_probe_paths: list[str] = [
-    // "/etc/ssl/certs/ca-certificates.crt",                 # Debian/Ubuntu/Arch
-    // "/etc/pki/tls/certs/ca-bundle.crt",                   # Fedora/RHEL
-    // "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",  # RHEL 7+
-    // "/etc/ssl/ca-bundle.pem",                             # openSUSE
-    // "/etc/ssl/cert.pem",                                  # Alpine, macOS
-    // "/usr/local/share/certs/ca-root-nss.crt",             # FreeBSD
-    // "/opt/homebrew/etc/ca-certificates/cert.pem",         # Homebrew (arm64)
-    // "/usr/local/etc/ca-certificates/cert.pem",            # Homebrew (x86_64)
-    // ]
     static std::vector<std::string> __global_slot_1 = {"/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", "/etc/ssl/ca-bundle.pem", "/etc/ssl/cert.pem", "/usr/local/share/certs/ca-root-nss.crt", "/opt/homebrew/etc/ca-certificates/cert.pem", "/usr/local/etc/ca-certificates/cert.pem"};
     _ca_probe_paths = &__global_slot_1;
 }

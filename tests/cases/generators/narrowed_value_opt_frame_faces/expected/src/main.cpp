@@ -3,27 +3,28 @@
 
 namespace tpyapp::main {
 
-// G: int32 | None = 5
 std::optional<int32_t> G;
 
 // def g(p: int32 | None) -> Iterator[int32]:
+//     q = 0
+//     if p is not None:
+//         q = p
+//     yield q
+//     if p is not None:
+//         yield p
+//     yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // q = 0
         q = 0;
-        // if p is not None:
         if ((p.has_value())) {
-            // q = p
             q = (*p);
         }
-        // yield q
         __state = S_RESUME_0;
         return q;
     }
     case S_RESUME_0: {
         if ((p.has_value())) {
-            // yield p
             __state = S_RESUME_1;
             return (*p);
         } else {
@@ -40,7 +41,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield -1
         __state = S_RESUME_2;
         return -1;
     }
@@ -56,6 +56,9 @@ __gen_g g(std::optional<int32_t> p) {
 }
 
 // def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
+//     for val in d.values():
+//         if val is not None:
+//             yield val
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -76,7 +79,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_loop::__next__() {
         }
         val = *((*__for_it_0))++;
         if ((val.has_value())) {
-            // yield val
             __state = S_RESUME_0;
             return (*val);
         } else {
@@ -100,11 +102,13 @@ __gen_g_loop g_loop(::tpy::ordered_map<std::string, std::optional<int32_t>>& d) 
 }
 
 // def g_whole(p: int32 | None) -> Iterator[int32 | None]:
+//     if p is not None:
+//         yield p
+//     yield None
 std::expected<std::optional<int32_t>, ::tpy::StopIteration> __gen_g_whole::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((p.has_value())) {
-            // yield p
             __state = S_RESUME_0;
             return p;
         } else {
@@ -121,7 +125,6 @@ std::expected<std::optional<int32_t>, ::tpy::StopIteration> __gen_g_whole::__nex
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield None
         __state = S_RESUME_1;
         return std::nullopt;
     }
@@ -137,23 +140,25 @@ __gen_g_whole g_whole(std::optional<int32_t> p) {
 }
 
 // def g_frame_whole(p: int32 | None) -> Iterator[int32]:
+//     q2: int32 | None = None
+//     if p is not None:
+//         q2 = p
+//     yield 0
+//     if q2 is not None:
+//         yield q2
+//     yield -2
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // q2: int32 | None = None
         q2 = std::nullopt;
-        // if p is not None:
         if ((p.has_value())) {
-            // q2 = p
             q2 = p;
         }
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
         if ((q2.has_value())) {
-            // yield q2
             __state = S_RESUME_1;
             return (*q2);
         } else {
@@ -170,7 +175,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield -2
         __state = S_RESUME_2;
         return -2;
     }
@@ -186,11 +190,16 @@ __gen_g_frame_whole g_frame_whole(std::optional<int32_t> p) {
 }
 
 // def g_global() -> Iterator[int32]:
+//     # A module global is read through its slot rather than the frame, and the
+//     # guard still reaches the first yield; a re-read after that yield is the
+//     # reject error_narrowed_global_stale_yield pins.
+//     if G is not None:
+//         yield G
+//     yield -3
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((G.has_value())) {
-            // yield G
             __state = S_RESUME_0;
             return (*G);
         } else {
@@ -207,7 +216,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield -3
         __state = S_RESUME_1;
         return -3;
     }
@@ -223,11 +231,13 @@ __gen_g_global g_global() {
 }
 
 // def g_view(s: str | None) -> Iterator[str]:
+//     if s is not None:
+//         yield s
+//     yield "end"
 std::expected<std::string, ::tpy::StopIteration> __gen_g_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((s.has_value())) {
-            // yield s
             __state = S_RESUME_0;
             return (*s);
         } else {
@@ -244,7 +254,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_g_view::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield "end"
         __state = S_RESUME_1;
         return "end";
     }
@@ -260,8 +269,23 @@ __gen_g_view g_view(std::optional<std::string_view> s) {
 }
 
 // def main() -> None:
+//     for x in g(4):
+//         print(x)
+//     d: dict[str, int32 | None] = {"a": 1, "b": None, "c": 2}
+//     for x in g_loop(d):
+//         print(x)
+//     for w in g_whole(6):
+//         if w is not None:
+//             print(w)
+//         else:
+//             print("none")
+//     for x in g_frame_whole(8):
+//         print(x)
+//     for x in g_global():
+//         print("global", x)
+//     for s in g_view("v"):
+//         print(s)
 void main() {
-    // for x in g(4):
     {
         auto __src_0 = g(4);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -269,13 +293,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // d: dict[str, int32 | None] = {"a": 1, "b": None, "c": 2}
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"a", 1}, {"b", std::nullopt}, {"c", 2}});
-    // for x in g_loop(d):
     {
         auto __src_2 = g_loop(d);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -283,11 +304,9 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_3);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for w in g_whole(6):
     {
         auto __src_4 = g_whole(6);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -295,18 +314,13 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             std::optional<int32_t> w = ::tpy::unwrap_ref(*__r_5);
-        // if w is not None:
         if ((w.has_value())) {
-            // print(w)
             std::cout << ::tpy::print_optional_val(w) << "\n";
-        // else:
         } else {
-            // print("none")
             std::cout << "none" << "\n";
         }
         }
     }
-    // for x in g_frame_whole(8):
     {
         auto __src_6 = g_frame_whole(8);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -314,11 +328,9 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_7);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // for x in g_global():
     {
         auto __src_8 = g_global();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -326,11 +338,9 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_9);
-        // print("global", x)
         std::cout << "global" << " " << x << "\n";
         }
     }
-    // for s in g_view("v"):
     {
         std::string __tmp_1 = "v";
         auto __src_10 = g_view(__tmp_1);
@@ -339,20 +349,20 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_11);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
+// G: int32 | None = 5
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // G: int32 | None = 5
     G = 5;
-    // main()
     main();
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     xs: list[Payload] = []
+//     # Both element inserts take the same Own[T] value slot, so both see the
+//     # borrow the call hands back.
+//     xs.append(h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
+//     xs.insert(0, h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
+//     print(len(xs), xs[0].v, xs[1].v)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // xs: list[Payload] = []
     std::vector<Payload> xs = std::vector<Payload>{};
-    // # Both element inserts take the same Own[T] value slot, so both see the
-    // # borrow the call hands back.
-    // xs.append(h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
     xs.push_back(h.borrow());
-    // xs.insert(0, h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
     ::tpy::list_insert(xs, 0, h.borrow());
-    // print(len(xs), xs[0].v, xs[1].v)
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).v << " " << ::tpy::__getitem__(xs, 1).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

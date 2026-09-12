@@ -13,34 +13,37 @@ using ::tpyapp::helper::swap;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  }
-int32_t apply(__F0&& f, int32_t x);
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<std::tuple<int32_t, int32_t>>;
-  }
-std::tuple<int32_t, int32_t> apply_swap(__F0&& f, int32_t a, int32_t b);
-void main();
-
 // def apply(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
-int32_t apply(__F0&& f, int32_t x) {
-    // return f(x)
-    return f(x);
-}
+int32_t apply(__F0&& f, int32_t x);
 // def apply_swap(f: Fn[[int32, int32], tuple[int32, int32]], a: int32, b: int32) -> tuple[int32, int32]:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<std::tuple<int32_t, int32_t>>;
   }
+std::tuple<int32_t, int32_t> apply_swap(__F0&& f, int32_t a, int32_t b);
+// def main() -> None:
+void main();
+
+// def apply(f: Fn[[int32], int32], x: int32) -> int32:
+//     return f(x)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+int32_t apply(__F0&& f, int32_t x) {
+    return f(x);
+}
+// def apply_swap(f: Fn[[int32, int32], tuple[int32, int32]], a: int32, b: int32) -> tuple[int32, int32]:
+//     return f(a, b)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<std::tuple<int32_t, int32_t>>;
+  }
 std::tuple<int32_t, int32_t> apply_swap(__F0&& f, int32_t a, int32_t b) {
-    // return f(a, b)
     return f(a, b);
 }
 

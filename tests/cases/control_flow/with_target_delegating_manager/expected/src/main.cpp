@@ -3,18 +3,19 @@
 
 namespace tpyapp::main {
 
-// SHARED: Sentinel = Sentinel(1)
 Sentinel* SHARED{};
 
 // def gen() -> Iterator[int32]:
+//     with Wrapper() as g:
+//         pass
+//     yield 1
+//     yield g.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // with Wrapper() as g:
         auto __ctx_1 = Wrapper();
         g.emplace(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -25,12 +26,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {
-        // yield g.n
         __state = S_RESUME_1;
         return (*g).n;
     }
@@ -50,8 +49,10 @@ __gen_gen gen() {
 }
 
 // def main() -> None:
+//     for v in gen():
+//         print(v)
+//     print(SHARED.n)
 void main() {
-    // for v in gen():
     {
         auto __src_0 = gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -59,23 +60,22 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print(SHARED.n)
     std::cout << SHARED->n << "\n";
 }
 
+// SHARED: Sentinel = Sentinel(1)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // SHARED: Sentinel = Sentinel(1)
     static Sentinel __global_slot_1 = Sentinel(1);
     SHARED = &__global_slot_1;
-    // main()
     main();
 }
 

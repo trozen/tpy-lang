@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass
@@ -71,8 +72,8 @@ inline Base::Base(int32_t a) : a(a) {
 }
 
 // def __post_init__(self) -> None:
+//     print("post_init")
 inline void Base::__post_init__() const {
-    // print("post_init")
     std::cout << "post_init" << "\n";
 }
 

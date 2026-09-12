@@ -5,118 +5,119 @@ namespace tpyapp::main {
 
 
 // def make_batch(n: int32) -> Own[list[int32]]:
+//     out: list[int32] = []
+//     for i in range(n):
+//         out.append(i)
+//     return out
 std::vector<int32_t> make_batch(int32_t n) {
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // out.append(i)
         out.push_back(i);
     }
-    // return out
     return out;
 }
 
 // def make_pairs() -> Own[dict[str, int32]]:
+//     return {"a": 1, "b": 2}
 ::tpy::ordered_map<std::string, int32_t> make_pairs() {
-    // return {"a": 1, "b": 2}
     return ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
 }
 
 // def make_uniques() -> Own[set[int32]]:
+//     return {int32(10), int32(20), int32(30)}
 ::tpy::ordered_set<int32_t> make_uniques() {
-    // return {int32(10), int32(20), int32(30)}
     return ::tpy::ordered_set<int32_t>({10, 20, 30});
 }
 
 // def main() -> None:
+//     print("--- list ---")
+//     for e in make_batch(3):
+//         print(e)
+//     print("--- method ---")
+//     m = Maker()
+//     for e in m.make(2):
+//         print(e)
+//     print("--- dict ---")
+//     klen = int32(0)
+//     for k in make_pairs():
+//         klen = klen + len(k)
+//     print(klen)
+//     print("--- set ---")
+//     ssum = int32(0)
+//     for v in make_uniques():
+//         ssum = ssum + v
+//     print(ssum)
+//     print("--- callable var ---")
+//     f: Callable[[int32], Own[list[int32]]] = make_batch
+//     for e in f(2):
+//         print(e)
 void main() {
-    // print("--- list ---")
     std::cout << "--- list ---" << "\n";
-    // for e in make_batch(3):
     auto __obj_0 = make_batch(3);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t e = *__beg_0;
-        // print(e)
         std::cout << e << "\n";
     }
-    // print("--- method ---")
     std::cout << "--- method ---" << "\n";
-    // m = Maker()
     Maker m = Maker();
-    // for e in m.make(2):
     auto __obj_1 = m.make(2);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t e = *__beg_1;
-        // print(e)
         std::cout << e << "\n";
     }
-    // print("--- dict ---")
     std::cout << "--- dict ---" << "\n";
-    // klen = int32(0)
     int32_t klen = 0;
-    // for k in make_pairs():
     auto __obj_2 = make_pairs();
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view k = *__beg_2;
-        // klen = klen + len(k)
         klen = (::tpy::add_check<int32_t>(klen, ::tpy::__len__(k)));
     }
-    // print(klen)
     std::cout << klen << "\n";
-    // print("--- set ---")
     std::cout << "--- set ---" << "\n";
-    // ssum = int32(0)
     int32_t ssum = 0;
-    // for v in make_uniques():
     auto __obj_3 = make_uniques();
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t v = *__beg_3;
-        // ssum = ssum + v
         ssum = (::tpy::add_check<int32_t>(ssum, v));
     }
-    // print(ssum)
     std::cout << ssum << "\n";
-    // print("--- callable var ---")
     std::cout << "--- callable var ---" << "\n";
-    // f: Callable[[int32], Own[list[int32]]] = make_batch
     std::function<std::vector<int32_t>(int32_t)> f = make_batch;
-    // for e in f(2):
     auto __obj_4 = f(2);
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t e = *__beg_4;
-        // print(e)
         std::cout << e << "\n";
     }
 }
 
+// main()
+//
+// print("--- top-level ---")
+// for e in make_batch(2):
+//     print(100 + e)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
-    // print("--- top-level ---")
     std::cout << "--- top-level ---" << "\n";
-    // for e in make_batch(2):
     auto __obj_0 = make_batch(2);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t e = *__beg_0;
-        // print(100 + e)
         std::cout << (::tpy::add_check<int32_t>(100, e)) << "\n";
     }
 }

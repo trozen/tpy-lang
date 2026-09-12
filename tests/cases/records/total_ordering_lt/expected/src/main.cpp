@@ -3,46 +3,44 @@
 
 namespace tpyapp::main {
 
-// a = Score(int32(3))
 Score* a{};
-// b = Score(int32(5))
 Score* b{};
-// c = Score(int32(3))
 Score* c{};
 
+// # @total_ordering with __lt__ as the anchor: synthesizes __le__,
+// # __gt__, __ge__ in terms of __lt__ and __eq__. Demonstrates that the
+// # macro re-export through `functools` (which itself imports from
+// # `_functools_macros`) is wired correctly.
+// from functools import total_ordering
+//
+// a = Score(int32(3))
+// b = Score(int32(5))
+// c = Score(int32(3))
+// print(a < b)
+// print(a <= b)
+// print(a > b)
+// print(a >= b)
+// print(a == c)
+// print(a <= c)
+// print(a >= c)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @total_ordering with __lt__ as the anchor: synthesizes __le__,
-    // # __gt__, __ge__ in terms of __lt__ and __eq__. Demonstrates that the
-    // # macro re-export through `functools` (which itself imports from
-    // # `_functools_macros`) is wired correctly.
-    // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Score(int32(3))
     static Score __global_slot_1 = Score(3);
     a = &__global_slot_1;
-    // b = Score(int32(5))
     static Score __global_slot_2 = Score(5);
     b = &__global_slot_2;
-    // c = Score(int32(3))
     static Score __global_slot_3 = Score(3);
     c = &__global_slot_3;
-    // print(a < b)
     std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n";
-    // print(a <= b)
     std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    // print(a > b)
     std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
-    // print(a >= b)
     std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
-    // print(a == c)
     std::cout << ::tpy::print_bool((((*a)) == ((*c)))) << "\n";
-    // print(a <= c)
     std::cout << ::tpy::print_bool((((*a)) <= ((*c)))) << "\n";
-    // print(a >= c)
     std::cout << ::tpy::print_bool((((*a)) >= ((*c)))) << "\n";
 }
 

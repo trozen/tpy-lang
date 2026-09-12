@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box[int32](int32(10))
+//     r1 = b.transform[int](42)
+//     print(r1)
+//     r2 = b.transform[str]("world")
+//     print(r2)
 void main() {
-    // b = Box[int32](int32(10))
     Box<int32_t> b = Box<int32_t>(10);
-    // r1 = b.transform[int](42)
     ::tpy::BigInt r1 = b.transform<::tpy::BigInt>(42);
-    // print(r1)
     std::cout << r1 << "\n";
-    // r2 = b.transform[str]("world")
     std::string r2 = b.transform<std::string>("world");
-    // print(r2)
     std::cout << r2 << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

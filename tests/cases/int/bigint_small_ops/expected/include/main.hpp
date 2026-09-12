@@ -23,15 +23,24 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_generated;
 struct __coro_async_ops;
 
+// def compare(a: int, b: int) -> bool:
 bool compare(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
+// def generic_compare[T: Comparable](a: T, b: T) -> bool:
 template<::tpystd::tpy::Comparable T>
 bool generic_compare(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def checked_floor(a: int, b: int) -> int:
 std::expected<::tpy::BigInt, InvalidOperand> checked_floor(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
+// def generated(a: int, b: int) -> Iterator[int]:
 __gen_generated generated(::tpy::BigInt a, ::tpy::BigInt b);
+// async def async_ops(a: int, b: int) -> int:
 __coro_async_ops async_ops(::tpy::BigInt a, ::tpy::BigInt b);
+// def wrappers(value: int | None, variant: int | str, pair: tuple[int, int]) -> None:
 void wrappers(std::optional<::tpy::BigInt> value, const ::tpy::Union<::tpy::BigInt, std::string>& variant, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair);
+// def operators(a: int, b: int) -> None:
 void operators(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
+// def exceptions(a: int, zero: int, negative: int) -> None:
 void exceptions(const ::tpy::BigInt& a, const ::tpy::BigInt& zero, const ::tpy::BigInt& negative);
+// def main() -> None:
 void main();
 
 // class Number:
@@ -104,7 +113,7 @@ inline std::ostream& operator<<(std::ostream& os, const InvalidOperand& obj) {
     return os;
 }
 
-// Async coroutine: async_ops
+// async def async_ops(a: int, b: int) -> int:
 struct __coro_async_ops {
     int32_t __state;
     bool __cancel_pending;
@@ -130,7 +139,7 @@ struct __coro_async_ops {
     }
 };
 
-// Generator: generated
+// def generated(a: int, b: int) -> Iterator[int]:
 struct __gen_generated : public ::tpy::next_iter_mixin<__gen_generated, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt a;
@@ -157,42 +166,45 @@ struct __gen_generated : public ::tpy::next_iter_mixin<__gen_generated, ::tpy::B
 
 
 // def __init__(self, a: int, b: int) -> None:
+//     # Constructor: store a floor-rounded result in a BigInt field.
+//     self.value = a // b  # tpyc: ok
 inline Number::Number(const ::tpy::BigInt& a, const ::tpy::BigInt& b) : value(((a) / (b))) {}
 
 // def check(self, other: int) -> bool:
+//     # Method: the field's value takes the same signed comparison path.
+//     return self.value < other  # tpyc: ok
 inline bool Number::check(const ::tpy::BigInt& other) const {
-    // # Method: the field's value takes the same signed comparison path.
-    // return self.value < other  # tpyc: ok
     return (this->value < other);
 }
 
 // def __init__(self) -> None:
+//     self.calls = 0
 inline Counter::Counter() : calls(0) {}
 
 // def get(self, value: int) -> int:
+//     self.calls += 1
+//     return value
 inline ::tpy::BigInt Counter::get(const ::tpy::BigInt& value) {
-    // self.calls += 1
     this->calls = ::tpy::add_check<int32_t>(this->calls, 1);
-    // return value
     return value;
 }
 
 // def __enter__(self) -> None:
+//     print("context enter")
 inline void Scope::__enter__() const {
-    // print("context enter")
     std::cout << "context enter" << "\n";
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("context exit")
 inline void Scope::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print("context exit")
     std::cout << "context exit" << "\n";
 }
 // def generic_compare[T: Comparable](a: T, b: T) -> bool:
+//     # The instantiated comparison must use the same operator as its concrete twin.
+//     return a < b  # tpyc: ok
 template<::tpystd::tpy::Comparable T>
 bool generic_compare(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // # The instantiated comparison must use the same operator as its concrete twin.
-    // return a < b  # tpyc: ok
     return (a < b);
 }
 

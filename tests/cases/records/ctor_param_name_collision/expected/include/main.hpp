@@ -15,7 +15,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_g;
 
+// def g(v: A | B) -> Iterator[bool]:
 __gen_g g(::tpy::Union<const A*, const B*> v);
+// def main() -> None:
 void main();
 
 // class A:
@@ -69,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
     return os;
 }
 
-// Generator: g
+// def g(v: A | B) -> Iterator[bool]:
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, bool> {
     int32_t __state;
     ::tpy::Union<const A*, const B*> v;
@@ -93,14 +95,23 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, bool> {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32) -> None:
+//     self.y = y
 inline B::B(int32_t y) : y(y) {}
 
 // # Known sema false positive: the field-consumption check does not
 // # credit copy() at a field store, though the MIL genuinely moves v.
 // def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
+//     # The line under test: same-named `v` must NOT take the leaked
+//     # pointer-variant wrap. copy() is only here to silence a second
+//     # false positive -- the bare store warns "copies A | B into field"
+//     # although the emit moves it; the render is identical either way
+//     # (BUGS.md#own-union-field-store-copy-warning).
+//     self.u = copy(v)  # tpyc: ok
+//     self.n = 0
 inline H::H(::tpy::Union<A, B>&& v) : u(std::move(v)), n(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

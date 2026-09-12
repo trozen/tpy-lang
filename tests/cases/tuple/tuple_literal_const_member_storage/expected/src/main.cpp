@@ -5,16 +5,17 @@ namespace tpyapp::main {
 
 
 // def param_member(c: P) -> None:
+//     xs: list[tuple[int32, P]] = [(1, c)]  # tpyc: warning(/copies P into owned storage/)
+//     print(xs[0][1].x)
 void param_member(const P& c) {
-    // xs: list[tuple[int32, P]] = [(1, c)]  # tpyc: warning(/copies P into owned storage/)
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{1, &(c)})};
-    // print(xs[0][1].x)
     std::cout << std::get<1>(::tpy::__getitem__(xs, 0)).x << "\n";
 }
 
 // def comp_member(cells: list[P]) -> None:
+//     xs: list[tuple[int32, P]] = [(1, c) for c in cells]  # tpyc: warning(/copies P into owned storage/)
+//     print(len(xs), xs[0][1].x)
 void comp_member(const std::vector<P>& cells) {
-    // xs: list[tuple[int32, P]] = [(1, c) for c in cells]  # tpyc: warning(/copies P into owned storage/)
     std::vector<std::tuple<int32_t, P>> xs = ({
         std::vector<std::tuple<int32_t, P>> __result;
         auto& __obj_0 = cells;
@@ -27,26 +28,25 @@ void comp_member(const std::vector<P>& cells) {
         }
         std::move(__result);
     });
-    // print(len(xs), xs[0][1].x)
     std::cout << ::tpy::__len__(xs) << " " << std::get<1>(::tpy::__getitem__(xs, 0)).x << "\n";
 }
 
 // def main() -> None:
+//     param_member(P(5))
+//     comp_member([P(7)])
 void main() {
-    // param_member(P(5))
     P __tmp_1 = P(5);
     param_member(__tmp_1);
-    // comp_member([P(7)])
     std::vector<P> __tmp_2 = {P(7)};
     comp_member(__tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

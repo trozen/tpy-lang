@@ -3,35 +3,33 @@
 
 namespace tpyapp::main {
 
-// # module-level statement
-// G: A | B = A(200)
 ::tpy::Union<A, B>* G{};
 
 // def bump(u: A | B) -> None:
+//     if isinstance(u, A):
+//         u.n = u.n + 1
+//     else:
+//         u.m = u.m + 1
 void bump(::tpy::Union<A*, B*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
-        // u.n = u.n + 1
         __u.n = (::tpy::add_check<int32_t>(__u.n, 1));
-    // else:
     } else {
         auto& __u = *std::get<B*>(u);
-        // u.m = u.m + 1
         __u.m = (::tpy::add_check<int32_t>(__u.m, 1));
     }
 }
 
 // def peek(u: readonly[A | B]) -> int32:
+//     if isinstance(u, A):
+//         return u.n
+//     return -1
 int32_t peek(::tpy::Union<const A*, const B*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<const A*>(u)) {
         auto& __u = *std::get<const A*>(u);
-        // return u.n
         return __u.n;
     }
     auto& __u = *std::get<const B*>(u);
-    // return -1
     return -1;
 }
 
@@ -39,68 +37,69 @@ int32_t peek(::tpy::Union<const A*, const B*> u) {
 // # shape the pass-through verdict used to render bare
 // # Nested captures cannot lower: BUGS.md#nested-def-narrowed-union-capture.
 // def free(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         bump(v)  # tpyc: ok
+//         return v.n
+//     return -1
 int32_t free(::tpy::Union<A*, B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__v)});
-        // return v.n
         return __v.n;
     }
     auto& __v = *std::get<B*>(v);
-    // return -1
     return -1;
 }
 
 // # comprehension element
 // def comprehension(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         xs = [bump_and_read(v) + i for i in range(2)]  # tpyc: ok
+//         return xs[0] + xs[1]
+//     return -1
 int32_t comprehension(::tpy::Union<A*, B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // xs = [bump_and_read(v) + i for i in range(2)]  # tpyc: ok
         std::array<int32_t, 2> xs = ::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_0) -> int32_t {
             int32_t i = int32_t(__i_0);
             return (::tpy::add_check<int32_t>(bump_and_read(::tpy::Union<A*, B*>{&(__v)}), i));
         });
-        // return xs[0] + xs[1]
         return (::tpy::add_check<int32_t>(::tpy::__getitem__(xs, 0), ::tpy::__getitem__(xs, 1)));
     }
     auto& __v = *std::get<B*>(v);
-    // return -1
     return -1;
 }
 
 // def bump_and_read(u: A | B) -> int32:
+//     bump(u)
+//     if isinstance(u, A):
+//         return u.n
+//     return 0
 int32_t bump_and_read(::tpy::Union<A*, B*> u) {
-    // bump(u)
     bump(u);
-    // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
-        // return u.n
         return __u.n;
     }
     auto& __u = *std::get<B*>(u);
-    // return 0
     return 0;
 }
 
 // # context-manager body
 // def with_body(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         with Guard():
+//             bump(v)  # tpyc: ok
+//             return v.n
+//     return -1
 int32_t with_body(::tpy::Union<A*, B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // with Guard():
         auto __ctx_1 = Guard();
         __ctx_1.__enter__();
         bool __fin_ran_1 = false;
         try {
-            // bump(v)  # tpyc: ok
             bump(::tpy::Union<A*, B*>{&(__v)});
-            // return v.n
             int32_t __tpy_ret_0 = __v.n;
             __fin_ran_1 = true;
             __ctx_1.__exit__({}, nullptr, {});
@@ -115,73 +114,72 @@ int32_t with_body(::tpy::Union<A*, B*> v) {
             throw;
         }
     }
-    // return -1
     return -1;
 }
 
 // # try body and finally leg
 // def try_finally(v: A | B) -> int32:
+//     k = -1
+//     if isinstance(v, A):
+//         try:
+//             bump(v)  # tpyc: ok
+//             k = v.n
+//         finally:
+//             bump(v)  # tpyc: ok
+//     return k
 int32_t try_finally(::tpy::Union<A*, B*> v) {
-    // k = -1
     int32_t k = -1;
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // try:
         {
             try {
-                // bump(v)  # tpyc: ok
                 bump(::tpy::Union<A*, B*>{&(__v)});
-                // k = v.n
                 k = __v.n;
             } catch (...) {
-                // bump(v)  # tpyc: ok
                 bump(::tpy::Union<A*, B*>{&(__v)});
                 throw;
             }
-            // bump(v)  # tpyc: ok
             bump(::tpy::Union<A*, B*>{&(__v)});
         }
     }
-    // return k
     return k;
 }
 
 // # @error_return body
 // @error_return(Err)
 // def error_body(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         bump(v)  # tpyc: ok
+//         return v.n
+//     raise Err
 std::expected<int32_t, Err> error_body(::tpy::Union<A*, B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__v)});
-        // return v.n
         return __v.n;
     }
     auto& __v = *std::get<B*>(v);
-    // raise Err
     return ::tpy::make_unexpected(Err{});
 }
 
 // # match arm, class pattern
 // def match_arm(v: A | B) -> int32:
+//     match v:
+//         case A():
+//             bump(v)  # tpyc: ok
+//             return v.n
+//         case _:
+//             return -1
 int32_t match_arm(::tpy::Union<A*, B*> v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
-    // case A():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__case_0)});
-        // return v.n
         return __case_0.n;
         break;
     }
-    // case _:
     default: {
-        // return -1
         return -1;
         break;
     }
@@ -191,23 +189,23 @@ int32_t match_arm(::tpy::Union<A*, B*> v) {
 
 // # match arm with an as-capture (the capture is member-typed)
 // def match_capture(v: A | B) -> int32:
+//     match v:
+//         case A() as got:
+//             bump(got)  # tpyc: ok
+//             return got.n
+//         case _:
+//             return -1
 int32_t match_capture(::tpy::Union<A*, B*> v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
-    // case A() as got:
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& got = __case_0;
-        // bump(got)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(got)});
-        // return got.n
         return got.n;
         break;
     }
-    // case _:
     default: {
-        // return -1
         return -1;
         break;
     }
@@ -216,12 +214,15 @@ int32_t match_capture(::tpy::Union<A*, B*> v) {
 }
 
 // def gen_body(v: A | B) -> Iterator[int32]:
+//     if isinstance(v, A):
+//         yield v.n
+//         bump(v)  # tpyc: ok
+//         yield v.n
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (std::holds_alternative<A*>(v)) {
             auto& __v = *std::get<A*>(v);
-            // yield v.n
             __state = S_RESUME_0;
             return __v.n;
         } else {
@@ -232,9 +233,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     }
     case S_RESUME_0: {
         auto& __v = *std::get<A*>(v);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__v)});
-        // yield v.n
         __state = S_RESUME_1;
         return __v.n;
     }
@@ -259,22 +258,25 @@ __gen_gen_body gen_body(::tpy::Union<A*, B*> v) {
 }
 
 // def gen_match(v: A | B) -> Iterator[int32]:
+//     match v:
+//         case A():
+//             yield v.n
+//             bump(v)  # tpyc: ok
+//             yield v.n
+//         case _:
+//             yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = v;
         switch (__match_subject_1.index()) {
-        // case A():
         case 0: {
             auto& __case_0 = *std::get<0>(__match_subject_1);
-            // yield v.n
             __state = S_RESUME_0;
             return __case_0.n;
             break;
         }
-        // case _:
         default: {
-            // yield -1
             __state = S_RESUME_2;
             return -1;
             break;
@@ -285,9 +287,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_match::__next__() {
     }
     case S_RESUME_0: {
         auto& __v = *std::get<A*>(v);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__v)});
-        // yield v.n
         __state = S_RESUME_1;
         return __v.n;
     }
@@ -316,20 +316,23 @@ __gen_gen_match gen_match(::tpy::Union<A*, B*> v) {
 }
 
 // async def async_body(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         bump(v)  # tpyc: ok
+//         await asyncio.sleep(0)
+//         bump(v)  # tpyc: ok
+//         return v.n
+//     return -1
 ::tpystd::tpy::Poll<int32_t> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         if (std::holds_alternative<A*>(v)) {
             auto& __v = *std::get<A*>(v);
-            // bump(v)  # tpyc: ok
             bump(::tpy::Union<A*, B*>{&(__v)});
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
         } else {
             auto& __v = *std::get<B*>(v);
-            // return -1
             __state = S_DONE;
             int32_t __tpy_async_ret = -1;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -341,9 +344,7 @@ __gen_gen_match gen_match(::tpy::Union<A*, B*> v) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         auto& __v = *std::get<A*>(v);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__v)});
-        // return v.n
         __state = S_DONE;
         int32_t __tpy_async_ret = __v.n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -360,23 +361,26 @@ __coro_async_body async_body(::tpy::Union<A*, B*> v) {
 }
 
 // async def async_match(v: A | B) -> int32:
+//     match v:
+//         case A():
+//             await asyncio.sleep(0)
+//             bump(v)  # tpyc: ok
+//             return v.n
+//         case _:
+//             return -1
 ::tpystd::tpy::Poll<int32_t> __coro_async_match::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = v;
         switch (__match_subject_1.index()) {
-        // case A():
         case 0: {
             auto& __case_0 = *std::get<0>(__match_subject_1);
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
             break;
         }
-        // case _:
         default: {
-            // return -1
             __state = S_DONE;
             int32_t __tpy_async_ret = -1;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -392,9 +396,7 @@ __coro_async_body async_body(::tpy::Union<A*, B*> v) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         auto& __v = *std::get<A*>(v);
-        // bump(v)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__v)});
-        // return v.n
         __state = S_DONE;
         int32_t __tpy_async_ret = __v.n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -412,25 +414,25 @@ __coro_async_match async_match(::tpy::Union<A*, B*> v) {
 
 // # inline narrowing (the ternary form)
 // def inline(v: A | B) -> int32:
+//     return bump_and_read(v) if isinstance(v, A) else -1  # tpyc: ok
 int32_t inline_(::tpy::Union<A*, B*> v) {
-    // return bump_and_read(v) if isinstance(v, A) else -1  # tpyc: ok
     return ((std::holds_alternative<A*>(v)) ? (bump_and_read(::tpy::Union<A*, B*>{&((*std::get<A*>(v)))})) : (-1));
 }
 
 // # walrus binding over a call taking the narrowed subject
 // def walrus(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         if (k := bump_and_read(v)) > 0:  # tpyc: ok
+//             return k
+//     return -1
 int32_t walrus(::tpy::Union<A*, B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // if (k := bump_and_read(v)) > 0:  # tpyc: ok
         int32_t k;
         if (((k = bump_and_read(::tpy::Union<A*, B*>{&(__v)})) > 0)) {
-            // return k
             return k;
         }
     }
-    // return -1
     return -1;
 }
 
@@ -438,79 +440,79 @@ int32_t walrus(::tpy::Union<A*, B*> v) {
 // # borrow, so nothing is mutated here). The plain `A | B` slots below render
 // # the same way, so the annotation changes nothing about the arg.
 // def readonly_slot(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         return peek(v)  # tpyc: ok
+//     return -1
 int32_t readonly_slot(::tpy::Union<const A*, const B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        // return peek(v)  # tpyc: ok
         return peek(::tpy::Union<const A*, const B*>{&(__v)});
     }
     auto& __v = *std::get<const B*>(v);
-    // return -1
     return -1;
 }
 
 // # loop variable over a list of the union, at a readonly[] slot
 // def loop_var(xs: list[A | B]) -> int32:
+//     k = 0
+//     for e in xs:
+//         if isinstance(e, A):
+//             k = k + peek(e)  # tpyc: ok
+//     return k
 int32_t loop_var(const std::vector<::tpy::Union<A, B>>& xs) {
-    // k = 0
     int32_t k = 0;
-    // for e in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& e = *__beg_0;
-        // if isinstance(e, A):
         if (std::holds_alternative<A>(e)) {
             auto& __e = std::get<A>(e);
-            // k = k + peek(e)  # tpyc: ok
             k = (::tpy::add_check<int32_t>(k, peek(::tpy::Union<const A*, const B*>{&(__e)})));
         }
     }
-    // return k
     return k;
 }
 
 // # constructor-parameter slot
 // # Own union slots reject before the union lift, so this slot is borrowed.
 // def ctor_slot(v: A | B) -> int32:
+//     if isinstance(v, A):
+//         return Sink(v).k  # tpyc: ok
+//     return -1
 int32_t ctor_slot(::tpy::Union<A*, B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // return Sink(v).k  # tpyc: ok
         return Sink(::tpy::Union<A*, B*>{&(__v)}).k;
     }
     auto& __v = *std::get<B*>(v);
-    // return -1
     return -1;
 }
 
 // # a union with a str member, narrowed to the RECORD member
 // def str_member(v: A | str) -> int32:
+//     if isinstance(v, A):
+//         return str_total(v)  # tpyc: ok
+//     return -2
 int32_t str_member(::tpy::Union<const A*, const std::string*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<const A*>(v)) {
         auto& __v = *std::get<const A*>(v);
-        // return str_total(v)  # tpyc: ok
         return str_total(::tpy::Union<const A*, const std::string*>{&(__v)});
     }
     auto& __v = *std::get<const std::string*>(v);
-    // return -2
     return -2;
 }
 
 // def str_total(u: A | str) -> int32:
+//     if isinstance(u, A):
+//         return u.n
+//     return -3
 int32_t str_total(::tpy::Union<const A*, const std::string*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<const A*>(u)) {
         auto& __u = *std::get<const A*>(u);
-        // return u.n
         return __u.n;
     }
     auto& __u = *std::get<const std::string*>(u);
-    // return -3
     return -3;
 }
 
@@ -518,69 +520,69 @@ int32_t str_total(::tpy::Union<const A*, const std::string*> u) {
 // # const-bound source below reaches `total`'s slot; `bump`'s mutating slot
 // # keeps the mutable ones, which is what the inverse sections pin.
 // def total(u: A | B) -> int32:
+//     if isinstance(u, A):
+//         return u.n
+//     return -1
 int32_t total(::tpy::Union<const A*, const B*> u) {
-    // if isinstance(u, A):
     if (std::holds_alternative<const A*>(u)) {
         auto& __u = *std::get<const A*>(u);
-        // return u.n
         return __u.n;
     }
     auto& __u = *std::get<const B*>(u);
-    // return -1
     return -1;
 }
 
 // # free function: a const-bound member-typed name at the deep-const slot
 // def const_member(a: A) -> int32:
+//     return total(a)  # tpyc: ok
 int32_t const_member(const A& a) {
-    // return total(a)  # tpyc: ok
     return total(::tpy::Union<const A*, const B*>{&(a)});
 }
 
 // # constructor CALL arg: the ctor loop threads the callee verdict the free
 // # loop threads
 // def ctor_call_arg(a: A) -> int32:
+//     return Tally(a).k  # tpyc: ok
 int32_t ctor_call_arg(const A& a) {
-    // return Tally(a).k  # tpyc: ok
     return Tally(::tpy::Union<const A*, const B*>{&(a)}).k;
 }
 
 // # Own[union] name forward: the source is the STORAGE variant, so the lift is
 // # the storage converter rather than the borrow one
 // def own_forward(u: Own[A | B]) -> int32:  # tpyc: warning(/never consumed/)
+//     return total(u)  # tpyc: ok
 int32_t own_forward(::tpy::Union<A, B>&& u) {
-    // return total(u)  # tpyc: ok
     return total(::tpy::to_const_ptr_variant(u));
 }
 
 // # loop variable over list[A | B]: a storage binding as well, un-narrowed
 // def loop_const(xs: list[A | B]) -> int32:
+//     k = 0
+//     for e in xs:
+//         k = k + total(e)  # tpyc: ok
+//     return k
 int32_t loop_const(const std::vector<::tpy::Union<A, B>>& xs) {
-    // k = 0
     int32_t k = 0;
-    // for e in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& e = *__beg_0;
-        // k = k + total(e)  # tpyc: ok
         k = (::tpy::add_check<int32_t>(k, total(::tpy::to_const_ptr_variant(e))));
     }
-    // return k
     return k;
 }
 
 // def gen_total(v: A | B) -> Iterator[int32]:
+//     yield total(v)  # tpyc: ok
+//     yield total(v)
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_total::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield total(v)  # tpyc: ok
         __state = S_RESUME_0;
         return total(v);
     }
     case S_RESUME_0: {
-        // yield total(v)
         __state = S_RESUME_1;
         return total(v);
     }
@@ -600,10 +602,11 @@ __gen_gen_total gen_total(::tpy::Union<const A*, const B*> v) {
 }
 
 // async def async_total(v: A | B) -> int32:
+//     await asyncio.sleep(0)
+//     return total(v)  # tpyc: ok
 ::tpystd::tpy::Poll<int32_t> __coro_async_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -613,7 +616,6 @@ __gen_gen_total gen_total(::tpy::Union<const A*, const B*> v) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return total(v)  # tpyc: ok
         __state = S_DONE;
         int32_t __tpy_async_ret = total(v);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -632,51 +634,51 @@ __coro_async_total async_total(::tpy::Union<const A*, const B*> v) {
 // # storage source at a METHOD slot: the element binding takes the storage
 // # converter there too, not just at a free call
 // def loop_method(xs: list[A | B], r: Reader) -> int32:
+//     k = 0
+//     for e in xs:
+//         k = k + r.read(e)  # tpyc: ok
+//     return k
 int32_t loop_method(const std::vector<::tpy::Union<A, B>>& xs, Reader& r) {
-    // k = 0
     int32_t k = 0;
-    // for e in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& e = *__beg_0;
-        // k = k + r.read(e)  # tpyc: ok
         k = (::tpy::add_check<int32_t>(k, r.read(::tpy::to_const_ptr_variant(e))));
     }
-    // return k
     return k;
 }
 
 // # closure body: the capture keeps the ENCLOSING parameter's const verdict, so
 // # the narrowing inside the lambda spells const pointees
 // def closure_narrow(u: A | B) -> int32:
+//     def inner() -> int32:
+//         if isinstance(u, A):  # tpyc: ok
+//             return u.n
+//         return -1
+//     return inner()
 int32_t closure_narrow(::tpy::Union<const A*, const B*> u) {
-    // def inner() -> int32:
     auto inner = [&u]() -> int32_t {
-        // if isinstance(u, A):  # tpyc: ok
         if (std::holds_alternative<const A*>(u)) {
             auto& __u = *std::get<const A*>(u);
-            // return u.n
             return __u.n;
         }
         auto& __u = *std::get<const B*>(u);
-        // return -1
         return -1;
     };
-    // return inner()
     return inner();
 }
 
 // # closure body, forwarding the capture on: already const, so no conversion
 // def closure_forward(u: A | B) -> int32:
+//     def inner() -> int32:
+//         return total(u)  # tpyc: ok
+//     return inner()
 int32_t closure_forward(::tpy::Union<const A*, const B*> u) {
-    // def inner() -> int32:
     auto inner = [&u]() -> int32_t {
-        // return total(u)  # tpyc: ok
         return total(u);
     };
-    // return inner()
     return inner();
 }
 
@@ -684,50 +686,50 @@ int32_t closure_forward(::tpy::Union<const A*, const B*> u) {
 // # and the mutating slot before it keeps the mutable pointees -- the caller
 // # observes the mutation through the boundary
 // def wrap_then_mutate(u: A | B) -> int32:
+//     bump(u)  # tpyc: ok
+//     return total(u)  # tpyc: ok
 int32_t wrap_then_mutate(::tpy::Union<A*, B*> u) {
-    // bump(u)  # tpyc: ok
     bump(u);
-    // return total(u)  # tpyc: ok
     return total(u.as_const());
 }
 
 // # inverse: both ends non-mutating, so the forward needs no conversion at all
 // def forward_union(u: A | B) -> int32:
+//     return total(u)  # tpyc: ok
 int32_t forward_union(::tpy::Union<const A*, const B*> u) {
-    // return total(u)  # tpyc: ok
     return total(u);
 }
 
 // # union RETURN slot: isinstance-narrowed and match-narrowed both take the
 // # address of the alias
 // def pick_isinstance(v: A | B) -> A | B:
+//     if isinstance(v, A):
+//         return v  # tpyc: ok
+//     return v
 ::tpy::Union<A*, B*> pick_isinstance(::tpy::Union<A*, B*> v) {
-    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        // return v  # tpyc: ok
         return &(__v);
     }
     auto& __v = *std::get<B*>(v);
-    // return v
     return &(__v);
 }
 
 // def pick_match(v: A | B) -> A | B:
+//     match v:
+//         case A():
+//             return v  # tpyc: ok
+//         case _:
+//             return v
 ::tpy::Union<A*, B*> pick_match(::tpy::Union<A*, B*> v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
-    // case A():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // return v  # tpyc: ok
         return &(__case_0);
         break;
     }
-    // case _:
     default: {
-        // return v
         return v;
         break;
     }
@@ -743,34 +745,34 @@ int32_t forward_union(::tpy::Union<const A*, const B*> u) {
 // # Inline narrowing is lost: BUGS.md#inline-narrowed-value-union-arg-rejects.
 // # str aliases are views, unlike owned members: BUGS.md#value-union-str-view-insert.
 // def value_union(v: int32 | float64) -> int32:
+//     if isinstance(v, int32):
+//         return vu_total(v)  # tpyc: ok
+//     return -1
 int32_t value_union(const ::tpy::Union<double, int32_t>& v) {
-    // if isinstance(v, int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
-        // return vu_total(v)  # tpyc: ok
         return vu_total(__v);
     }
     const auto& __v = std::get<double>(v);
-    // return -1
     return -1;
 }
 
 // # value union, match arm
 // def value_union_match(v: int32 | float64) -> int32:
+//     match v:
+//         case int32():
+//             return vu_total(v)  # tpyc: ok
+//         case _:
+//             return -1
 int32_t value_union_match(const ::tpy::Union<double, int32_t>& v) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
-    // case int32():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        // return vu_total(v)  # tpyc: ok
         return vu_total(__case_0);
         break;
     }
-    // case _:
     default: {
-        // return -1
         return -1;
         break;
     }
@@ -779,167 +781,171 @@ int32_t value_union_match(const ::tpy::Union<double, int32_t>& v) {
 }
 
 // def vu_total(u: int32 | float64) -> int32:
+//     if isinstance(u, int32):
+//         return u + 1
+//     return -2
 int32_t vu_total(const ::tpy::Union<double, int32_t>& u) {
-    // if isinstance(u, int32):
     if (std::holds_alternative<int32_t>(u)) {
         const auto& __u = std::get<int32_t>(u);
-        // return u + 1
         return (::tpy::add_check<int32_t>(__u, 1));
     }
     const auto& __u = std::get<double>(u);
-    // return -2
     return -2;
 }
 
 // def vu_peek(u: readonly[int32 | float64]) -> int32:
+//     if isinstance(u, int32):
+//         return u
+//     return -2
 int32_t vu_peek(const ::tpy::Union<double, int32_t>& u) {
-    // if isinstance(u, int32):
     if (std::holds_alternative<int32_t>(u)) {
         const auto& __u = std::get<int32_t>(u);
-        // return u
         return __u;
     }
     const auto& __u = std::get<double>(u);
-    // return -2
     return -2;
 }
 
 // # value union at a METHOD slot
 // def value_union_method(v: int32 | float64, box: VuBox) -> int32:
+//     if isinstance(v, int32):
+//         return box.go(v)  # tpyc: ok
+//     return -1
 int32_t value_union_method(const ::tpy::Union<double, int32_t>& v, VuBox& box) {
-    // if isinstance(v, int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
-        // return box.go(v)  # tpyc: ok
         return box.go(__v);
     }
     const auto& __v = std::get<double>(v);
-    // return -1
     return -1;
 }
 
 // # value union at a CTOR slot
 // def value_union_ctor(v: int32 | float64) -> int32:
+//     if isinstance(v, int32):
+//         return VuSink(v).k  # tpyc: ok
+//     return -1
 int32_t value_union_ctor(const ::tpy::Union<double, int32_t>& v) {
-    // if isinstance(v, int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
-        // return VuSink(v).k  # tpyc: ok
         return VuSink(__v).k;
     }
     const auto& __v = std::get<double>(v);
-    // return -1
     return -1;
 }
 
 // # value union at a comprehension element (a position with no flush slot, so
 // # the temp row could never have served it)
 // def value_union_comp(v: int32 | float64) -> int32:
+//     if isinstance(v, int32):
+//         xs = [vu_total(v) + i for i in range(2)]  # tpyc: ok
+//         return xs[0] + xs[1]
+//     return -1
 int32_t value_union_comp(const ::tpy::Union<double, int32_t>& v) {
-    // if isinstance(v, int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
-        // xs = [vu_total(v) + i for i in range(2)]  # tpyc: ok
         std::array<int32_t, 2> xs = ::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_0) -> int32_t {
             int32_t i = int32_t(__i_0);
             return (::tpy::add_check<int32_t>(vu_total(__v), i));
         });
-        // return xs[0] + xs[1]
         return (::tpy::add_check<int32_t>(::tpy::__getitem__(xs, 0), ::tpy::__getitem__(xs, 1)));
     }
     const auto& __v = std::get<double>(v);
-    // return -1
     return -1;
 }
 
 // # value union at a readonly[...] slot
 // def value_union_readonly(v: int32 | float64) -> int32:
+//     if isinstance(v, int32):
+//         return vu_peek(v)  # tpyc: ok
+//     return -1
 int32_t value_union_readonly(const ::tpy::Union<double, int32_t>& v) {
-    // if isinstance(v, int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
-        // return vu_peek(v)  # tpyc: ok
         return vu_peek(__v);
     }
     const auto& __v = std::get<double>(v);
-    // return -1
     return -1;
 }
 
 // def big_total(u: int | float64) -> int:
+//     if isinstance(u, int):
+//         return u + 1
+//     return -2
 ::tpy::BigInt big_total(const ::tpy::Union<double, ::tpy::BigInt>& u) {
-    // if isinstance(u, int):
     if (std::holds_alternative<::tpy::BigInt>(u)) {
         const auto& __u = std::get<::tpy::BigInt>(u);
-        // return u + 1
         return ((__u) + (::tpy::BigInt(1)));
     }
     const auto& __u = std::get<double>(u);
-    // return -2
     return ::tpy::BigInt(-2);
 }
 
 // # value union with a BigInt member, narrowed to the BigInt
 // def value_union_big(v: int | float64) -> int:
+//     if isinstance(v, int):
+//         return big_total(v)  # tpyc: ok
+//     return -1
 ::tpy::BigInt value_union_big(const ::tpy::Union<double, ::tpy::BigInt>& v) {
-    // if isinstance(v, int):
     if (std::holds_alternative<::tpy::BigInt>(v)) {
         const auto& __v = std::get<::tpy::BigInt>(v);
-        // return big_total(v)  # tpyc: ok
         return big_total(__v);
     }
     const auto& __v = std::get<double>(v);
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def pt_total(u: Pt | float64) -> int32:
+//     if isinstance(u, Pt):
+//         return u.x + 1
+//     return -2
 int32_t pt_total(const ::tpy::Union<Pt, double>& u) {
-    // if isinstance(u, Pt):
     if (std::holds_alternative<Pt>(u)) {
         const auto& __u = std::get<Pt>(u);
-        // return u.x + 1
         return (::tpy::add_check<int32_t>(__u.x, 1));
     }
     const auto& __u = std::get<double>(u);
-    // return -2
     return -2;
 }
 
 // # value union with a ValueType-RECORD member, narrowed to the record
 // def value_union_record(v: Pt | float64) -> int32:
+//     if isinstance(v, Pt):
+//         return pt_total(v)  # tpyc: ok
+//     return -1
 int32_t value_union_record(const ::tpy::Union<Pt, double>& v) {
-    // if isinstance(v, Pt):
     if (std::holds_alternative<Pt>(v)) {
         const auto& __v = std::get<Pt>(v);
-        // return pt_total(v)  # tpyc: ok
         return pt_total(__v);
     }
     const auto& __v = std::get<double>(v);
-    // return -1
     return -1;
 }
 
 // # inverse: a union-DECLARED name whose read type sema retyped to a member by
 // # assignment is still the variant in C++, so it passes bare (no lift)
 // def assign_narrowed() -> int32:
+//     x: A | B = A(50)
+//     bump(x)  # tpyc: ok
+//     return peek(x)
 int32_t assign_narrowed() {
-    // x: A | B = A(50)
     ::tpy::Union<A, B> __slot_1 = A(50);
     ::tpy::Union<A*, B*> x = ::tpy::to_ptr_variant(__slot_1);
-    // bump(x)  # tpyc: ok
     bump(x);
-    // return peek(x)
     return peek(x.as_const());
 }
 
 // async def async_main() -> None:
+//     t = A(140)
+//     print("async", await async_body(t), t.n)
+//     u = A(150)
+//     print("async-match", await async_match(u), u.n)
+//     w: A | B = A(240)
+//     print("async-const", await async_total(w))
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = A(140)
         t.emplace(A(140));
-        // print("async", await async_body(t), t.n)
         __sub_0.emplace(::tpy::Union<A*, B*>{&((*t))});
         __state = S_RESUME_0;
         continue;
@@ -949,11 +955,8 @@ int32_t assign_narrowed() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print("async", await async_body(t), t.n)
         std::cout << "async" << " " << __await_lift_0 << " " << (*t).n << "\n";
-        // u = A(150)
         u.emplace(A(150));
-        // print("async-match", await async_match(u), u.n)
         __sub_1.emplace(::tpy::Union<A*, B*>{&((*u))});
         __state = S_RESUME_1;
         continue;
@@ -963,11 +966,8 @@ int32_t assign_narrowed() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print("async-match", await async_match(u), u.n)
         std::cout << "async-match" << " " << __await_lift_1 << " " << (*u).n << "\n";
-        // w: A | B = A(240)
         w.emplace(A(240));
-        // print("async-const", await async_total(w))
         __sub_2.emplace(::tpy::to_const_ptr_variant((*w)));
         __state = S_RESUME_2;
         continue;
@@ -977,7 +977,6 @@ int32_t assign_narrowed() {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print("async-const", await async_total(w))
         std::cout << "async-const" << " " << __await_lift_2 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -994,62 +993,146 @@ __coro_async_main async_main() {
 }
 
 // def main() -> None:
+//     a = A(1)
+//     print("free", free(a), a.n)
+//
+//     b = A(10)
+//     r = Relay(b)
+//     print("ctor-body", b.n, r.hits)
+//
+//     # a method's union arg slot has no member lift row, so the method
+//     # section's caller passes an already-union name (which renders bare)
+//     mv: A | B = A(15)
+//     print("method", r.go(mv), peek(mv), r.hits)
+//
+//     c = A(20)
+//     print("comprehension", comprehension(c), c.n)
+//
+//     d = A(30)
+//     print("with", with_body(d), d.n)
+//
+//     e = A(40)
+//     print("try-finally", try_finally(e), e.n)
+//
+//     f = A(50)
+//     try:
+//         print("error-return", error_body(f), f.n)
+//     except Err:
+//         print("error-return raised")
+//
+//     g = A(60)
+//     print("match", match_arm(g), g.n)
+//
+//     h = A(70)
+//     print("match-capture", match_capture(h), h.n)
+//
+//     gt = 0
+//     gv = A(160)
+//     for y in gen_body(gv):
+//         gt = gt + y
+//     print("generator", gt, gv.n)
+//
+//     gt2 = 0
+//     gw = A(170)
+//     for y in gen_match(gw):
+//         gt2 = gt2 + y
+//     print("gen-match", gt2, gw.n)
+//
+//     i = A(80)
+//     print("inline", inline(i), i.n)
+//
+//     j = A(90)
+//     print("walrus", walrus(j), j.n)
+//
+//     k = A(100)
+//     print("readonly", readonly_slot(k), k.n)
+//
+//     xs: list[A | B] = [A(1), A(2)]
+//     print("loop-var", loop_var(xs))
+//
+//     p = A(110)
+//     print("ctor-slot", ctor_slot(p), p.n)
+//
+//     q = A(120)
+//     print("str-member", str_member(q))
+//
+//     cm = A(210)
+//     print("const-member", const_member(cm), Reader(1000).read(mv))
+//     print("ctor-call-arg", ctor_call_arg(cm), own_forward(A(220)))
+//     cxs: list[A | B] = [A(1), A(2)]
+//     print("loop-const", loop_const(cxs), loop_method(cxs, Reader(1000)))
+//     print("closure", closure_narrow(mv), closure_forward(mv))
+//     gt3 = 0
+//     for y in gen_total(cm):
+//         gt3 = gt3 + y
+//     print("gen-const", gt3)
+//     wm: A | B = A(230)
+//     print("as-const", wrap_then_mutate(wm), forward_union(wm), total(wm))
+//
+//     s = A(130)
+//     ret = pick_isinstance(s)
+//     # A post-return mutation must remain visible through the returned alias.
+//     # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
+//     s.n = s.n + 1  # tpyc: warning(/Mutation of 's' while borrowed/)
+//     if isinstance(ret, A):
+//         print("return-isinstance", ret.n, s.n)
+//     ret2 = pick_match(s)
+//     # The match return must preserve the same shared object.
+//     # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
+//     s.n = s.n + 1  # tpyc: warning(/Mutation of 's' while borrowed/)
+//     if isinstance(ret2, A):
+//         print("return-match", ret2.n, s.n)
+//
+//     # int32(...) is spelled out because CPython's int32 stub is an int
+//     # SUBCLASS: a bare literal would not satisfy isinstance there
+//     vv = int32(180)
+//     print("value-union", value_union(vv), vu_total(vv))
+//     print("value-union-match", value_union_match(vv), vu_total(vv))
+//     box = VuBox(1)
+//     print("value-union-method", value_union_method(vv, box), box.go(vv))
+//     print("value-union-ctor", value_union_ctor(vv), VuSink(vv).k)
+//     print("value-union-comp", value_union_comp(vv), vu_total(vv))
+//     print("value-union-readonly", value_union_readonly(vv), vu_peek(vv))
+//     # annotated because a bare literal types as int32: the twin must be the
+//     # union's exact BigInt member to take the variant-temp row
+//     bb: int = 190
+//     print("value-union-big", value_union_big(bb), big_total(bb))
+//     pp = Pt(3)
+//     print("value-union-record", value_union_record(pp), pt_total(pp))
+//
+//     print("assign-narrowed", assign_narrowed())
+//
+//     asyncio.run(async_main())
 void main() {
-    // a = A(1)
     A a = A(1);
-    // print("free", free(a), a.n)
     std::cout << "free" << " " << free(::tpy::Union<A*, B*>{&(a)}) << " " << a.n << "\n";
-    // b = A(10)
     A b = A(10);
-    // r = Relay(b)
     Relay r = Relay(::tpy::Union<A*, B*>{&(b)});
-    // print("ctor-body", b.n, r.hits)
     std::cout << "ctor-body" << " " << b.n << " " << r.hits << "\n";
-    // # a method's union arg slot has no member lift row, so the method
-    // # section's caller passes an already-union name (which renders bare)
-    // mv: A | B = A(15)
     ::tpy::Union<A, B> __slot_1 = A(15);
     ::tpy::Union<A*, B*> mv = ::tpy::to_ptr_variant(__slot_1);
-    // print("method", r.go(mv), peek(mv), r.hits)
     std::cout << "method" << " " << r.go(mv) << " " << peek(mv.as_const()) << " " << r.hits << "\n";
-    // c = A(20)
     A c = A(20);
-    // print("comprehension", comprehension(c), c.n)
     std::cout << "comprehension" << " " << comprehension(::tpy::Union<A*, B*>{&(c)}) << " " << c.n << "\n";
-    // d = A(30)
     A d = A(30);
-    // print("with", with_body(d), d.n)
     std::cout << "with" << " " << with_body(::tpy::Union<A*, B*>{&(d)}) << " " << d.n << "\n";
-    // e = A(40)
     A e = A(40);
-    // print("try-finally", try_finally(e), e.n)
     std::cout << "try-finally" << " " << try_finally(::tpy::Union<A*, B*>{&(e)}) << " " << e.n << "\n";
-    // f = A(50)
     A f = A(50);
-    // try:
     {
-        // print("error-return", error_body(f), f.n)
         std::cout << "error-return" << " " << ({ auto __er_2 = error_body(::tpy::Union<A*, B*>{&(f)}); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << " " << f.n << "\n";
         goto __after_try_1;
         // except Err:
         __except_1:;
-        // print("error-return raised")
         std::cout << "error-return raised" << "\n";
         __after_try_1:;
     }
-    // g = A(60)
     A g = A(60);
-    // print("match", match_arm(g), g.n)
     std::cout << "match" << " " << match_arm(::tpy::Union<A*, B*>{&(g)}) << " " << g.n << "\n";
-    // h = A(70)
     A h = A(70);
-    // print("match-capture", match_capture(h), h.n)
     std::cout << "match-capture" << " " << match_capture(::tpy::Union<A*, B*>{&(h)}) << " " << h.n << "\n";
-    // gt = 0
     int32_t gt = 0;
-    // gv = A(160)
     A gv = A(160);
-    // for y in gen_body(gv):
     {
         auto __src_0 = gen_body(::tpy::Union<A*, B*>{&(gv)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -1057,17 +1140,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_1);
-        // gt = gt + y
         gt = (::tpy::add_check<int32_t>(gt, y));
         }
     }
-    // print("generator", gt, gv.n)
     std::cout << "generator" << " " << gt << " " << gv.n << "\n";
-    // gt2 = 0
     int32_t gt2 = 0;
-    // gw = A(170)
     A gw = A(170);
-    // for y in gen_match(gw):
     {
         auto __src_2 = gen_match(::tpy::Union<A*, B*>{&(gw)});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -1075,52 +1153,30 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_3);
-        // gt2 = gt2 + y
         gt2 = (::tpy::add_check<int32_t>(gt2, y));
         }
     }
-    // print("gen-match", gt2, gw.n)
     std::cout << "gen-match" << " " << gt2 << " " << gw.n << "\n";
-    // i = A(80)
     A i = A(80);
-    // print("inline", inline(i), i.n)
     std::cout << "inline" << " " << inline_(::tpy::Union<A*, B*>{&(i)}) << " " << i.n << "\n";
-    // j = A(90)
     A j = A(90);
-    // print("walrus", walrus(j), j.n)
     std::cout << "walrus" << " " << walrus(::tpy::Union<A*, B*>{&(j)}) << " " << j.n << "\n";
-    // k = A(100)
     A k = A(100);
-    // print("readonly", readonly_slot(k), k.n)
     std::cout << "readonly" << " " << readonly_slot(::tpy::Union<const A*, const B*>{&(k)}) << " " << k.n << "\n";
-    // xs: list[A | B] = [A(1), A(2)]
     std::vector<::tpy::Union<A, B>> xs = {A(1), A(2)};
-    // print("loop-var", loop_var(xs))
     std::cout << "loop-var" << " " << loop_var(xs) << "\n";
-    // p = A(110)
     A p = A(110);
-    // print("ctor-slot", ctor_slot(p), p.n)
     std::cout << "ctor-slot" << " " << ctor_slot(::tpy::Union<A*, B*>{&(p)}) << " " << p.n << "\n";
-    // q = A(120)
     A q = A(120);
-    // print("str-member", str_member(q))
     std::cout << "str-member" << " " << str_member(::tpy::Union<const A*, const std::string*>{&(q)}) << "\n";
-    // cm = A(210)
     A cm = A(210);
-    // print("const-member", const_member(cm), Reader(1000).read(mv))
     std::cout << "const-member" << " " << const_member(cm) << " " << Reader(1000).read(mv.as_const()) << "\n";
-    // print("ctor-call-arg", ctor_call_arg(cm), own_forward(A(220)))
     std::cout << "ctor-call-arg" << " " << ctor_call_arg(cm) << " " << own_forward(A(220)) << "\n";
-    // cxs: list[A | B] = [A(1), A(2)]
     std::vector<::tpy::Union<A, B>> cxs = {A(1), A(2)};
-    // print("loop-const", loop_const(cxs), loop_method(cxs, Reader(1000)))
     Reader __tmp_1 = Reader(1000);
     std::cout << "loop-const" << " " << loop_const(cxs) << " " << loop_method(cxs, __tmp_1) << "\n";
-    // print("closure", closure_narrow(mv), closure_forward(mv))
     std::cout << "closure" << " " << closure_narrow(mv.as_const()) << " " << closure_forward(mv.as_const()) << "\n";
-    // gt3 = 0
     int32_t gt3 = 0;
-    // for y in gen_total(cm):
     {
         auto __src_4 = gen_total(::tpy::Union<const A*, const B*>{&(cm)});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -1128,117 +1184,85 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t y = ::tpy::unwrap_ref(*__r_5);
-        // gt3 = gt3 + y
         gt3 = (::tpy::add_check<int32_t>(gt3, y));
         }
     }
-    // print("gen-const", gt3)
     std::cout << "gen-const" << " " << gt3 << "\n";
-    // wm: A | B = A(230)
     ::tpy::Union<A, B> __slot_2 = A(230);
     ::tpy::Union<A*, B*> wm = ::tpy::to_ptr_variant(__slot_2);
-    // print("as-const", wrap_then_mutate(wm), forward_union(wm), total(wm))
     std::cout << "as-const" << " " << wrap_then_mutate(wm) << " " << forward_union(wm.as_const()) << " " << total(wm.as_const()) << "\n";
-    // s = A(130)
     A s = A(130);
-    // ret = pick_isinstance(s)
     ::tpy::Union<A*, B*> ret = pick_isinstance(::tpy::Union<A*, B*>{&(s)});
-    // # A post-return mutation must remain visible through the returned alias.
-    // # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
-    // s.n = s.n + 1  # tpyc: warning(/Mutation of 's' while borrowed/)
     s.n = (::tpy::add_check<int32_t>(s.n, 1));
-    // if isinstance(ret, A):
     if (std::holds_alternative<A*>(ret)) {
         auto& __ret = *std::get<A*>(ret);
-        // print("return-isinstance", ret.n, s.n)
         std::cout << "return-isinstance" << " " << __ret.n << " " << s.n << "\n";
     }
-    // ret2 = pick_match(s)
     ::tpy::Union<A*, B*> ret2 = pick_match(::tpy::Union<A*, B*>{&(s)});
-    // # The match return must preserve the same shared object.
-    // # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
-    // s.n = s.n + 1  # tpyc: warning(/Mutation of 's' while borrowed/)
     s.n = (::tpy::add_check<int32_t>(s.n, 1));
-    // if isinstance(ret2, A):
     if (std::holds_alternative<A*>(ret2)) {
         auto& __ret2 = *std::get<A*>(ret2);
-        // print("return-match", ret2.n, s.n)
         std::cout << "return-match" << " " << __ret2.n << " " << s.n << "\n";
     }
-    // # int32(...) is spelled out because CPython's int32 stub is an int
-    // # SUBCLASS: a bare literal would not satisfy isinstance there
-    // vv = int32(180)
     int32_t vv = 180;
-    // print("value-union", value_union(vv), vu_total(vv))
     ::tpy::Union<double, int32_t> __tmp_2 = vv;
     ::tpy::Union<double, int32_t> __tmp_3 = vv;
     std::cout << "value-union" << " " << value_union(__tmp_2) << " " << vu_total(__tmp_3) << "\n";
-    // print("value-union-match", value_union_match(vv), vu_total(vv))
     ::tpy::Union<double, int32_t> __tmp_4 = vv;
     ::tpy::Union<double, int32_t> __tmp_5 = vv;
     std::cout << "value-union-match" << " " << value_union_match(__tmp_4) << " " << vu_total(__tmp_5) << "\n";
-    // box = VuBox(1)
     VuBox box = VuBox(1);
-    // print("value-union-method", value_union_method(vv, box), box.go(vv))
     ::tpy::Union<double, int32_t> __tmp_6 = vv;
     ::tpy::Union<double, int32_t> __tmp_7 = vv;
     std::cout << "value-union-method" << " " << value_union_method(__tmp_6, box) << " " << box.go(__tmp_7) << "\n";
-    // print("value-union-ctor", value_union_ctor(vv), VuSink(vv).k)
     ::tpy::Union<double, int32_t> __tmp_8 = vv;
     ::tpy::Union<double, int32_t> __tmp_9 = vv;
     std::cout << "value-union-ctor" << " " << value_union_ctor(__tmp_8) << " " << VuSink(__tmp_9).k << "\n";
-    // print("value-union-comp", value_union_comp(vv), vu_total(vv))
     ::tpy::Union<double, int32_t> __tmp_10 = vv;
     ::tpy::Union<double, int32_t> __tmp_11 = vv;
     std::cout << "value-union-comp" << " " << value_union_comp(__tmp_10) << " " << vu_total(__tmp_11) << "\n";
-    // print("value-union-readonly", value_union_readonly(vv), vu_peek(vv))
     ::tpy::Union<double, int32_t> __tmp_12 = vv;
     ::tpy::Union<double, int32_t> __tmp_13 = vv;
     std::cout << "value-union-readonly" << " " << value_union_readonly(__tmp_12) << " " << vu_peek(__tmp_13) << "\n";
-    // # annotated because a bare literal types as int32: the twin must be the
-    // # union's exact BigInt member to take the variant-temp row
-    // bb: int = 190
     ::tpy::BigInt bb = ::tpy::BigInt(190);
-    // print("value-union-big", value_union_big(bb), big_total(bb))
     ::tpy::Union<double, ::tpy::BigInt> __tmp_14 = bb;
     ::tpy::Union<double, ::tpy::BigInt> __tmp_15 = bb;
     std::cout << "value-union-big" << " " << value_union_big(__tmp_14) << " " << big_total(__tmp_15) << "\n";
-    // pp = Pt(3)
     Pt pp = Pt(3);
-    // print("value-union-record", value_union_record(pp), pt_total(pp))
     ::tpy::Union<Pt, double> __tmp_16 = pp;
     ::tpy::Union<Pt, double> __tmp_17 = pp;
     std::cout << "value-union-record" << " " << value_union_record(__tmp_16) << " " << pt_total(__tmp_17) << "\n";
-    // print("assign-narrowed", assign_narrowed())
     std::cout << "assign-narrowed" << " " << assign_narrowed() << "\n";
-    // asyncio.run(async_main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_main()));
 }
 
+// # Narrowed union members pass through union argument and return slots.
+// # Mutation exposes reference copies; value members retain value semantics.
+// # The `total`-calling sections below cover the other half: a non-mutating
+// # union parameter borrows CONST pointees, so const-bound sources reach it
+// # and each source's binding picks its own conversion.
+// import asyncio
+//
+// main()
+//
+// # module-level statement
+// G: A | B = A(200)
+//
+// if isinstance(G, A):
+//     bump(G)  # tpyc: ok
+//     print("module", G.n)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Narrowed union members pass through union argument and return slots.
-    // # Mutation exposes reference copies; value members retain value semantics.
-    // # The `total`-calling sections below cover the other half: a non-mutating
-    // # union parameter borrows CONST pointees, so const-bound sources reach it
-    // # and each source's binding picks its own conversion.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
-    // # module-level statement
-    // G: A | B = A(200)
     static ::tpy::Union<A, B> __global_slot_1 = A(200);
     G = &__global_slot_1;
-    // if isinstance(G, A):
     if (std::holds_alternative<A>((*G))) {
         auto& __G = std::get<A>((*G));
-        // bump(G)  # tpyc: ok
         bump(::tpy::Union<A*, B*>{&(__G)});
-        // print("module", G.n)
         std::cout << "module" << " " << __G.n << "\n";
     }
 }

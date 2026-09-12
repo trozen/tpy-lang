@@ -2009,7 +2009,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # only leading trivia survives -- the sync global no-init
                 # arm's shape, for the same reason (the slot exists already).
                 _witness("res.decl_no_init")
-                return THIRNoOpStmt(trivia_loc=getattr(stmt, "loc", None))
+                return THIRNoOpStmt()
             # A view-resolved frame field fed a stale view->owned coerce
             # renders the source bare -- same peel as the sync decl.
             init = _peel_stale_view_owned_coerce(
@@ -2034,9 +2034,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # self-write is a Python no-op: nothing is emitted.
                     _witness("res.coro_handle_move")
                     return THIRCoroHandleMove(
-                        target=stmt.name, source=init.name, loc=stmt.loc,
-                        no_source_comment=getattr(stmt, "no_source_comment",
-                                                  False))
+                        target=stmt.name, source=init.name, loc=stmt.loc)
                 if (isinstance(init, TpyName)
                         and init.name == stmt.name):
                     _witness("res.coro_handle_move")
@@ -2056,9 +2054,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # brace-init prefix can never fire for a call render, so no
                 # cpp_type is needed (and rendering one would be wrong).
                 return THIRFrameSlotWrite(
-                    name=stmt.name, value=value, cpp_type=None, loc=stmt.loc,
-                    no_source_comment=getattr(stmt, "no_source_comment",
-                                              False))
+                    name=stmt.name, value=value, cpp_type=None, loc=stmt.loc)
             if stmt.name in erased_handle_locals:
                 return _lower_erased_handle_write(stmt, init, lc, declared)
             if stmt.name in frame_slots:

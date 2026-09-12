@@ -5,91 +5,95 @@ namespace tpyapp::main {
 
 
 // def take(p: Probe | None) -> int32:
+//     """Reference param, so a `Probe(...)` rvalue argument needs a hoisted temp."""
+//     return 1 if p is not None else 0
 int32_t take(const Probe* p) {
-    // return 1 if p is not None else 0
     return (((p != nullptr)) ? (1) : (0));
 }
 
 // def inline_chain(c: Counter, a: int32, b: int32) -> bool:
+//     # `b` is duplicable, so this renders as an inline && chain. When a < b is
+//     # false the third comparator must not be built.
+//     return a < b < take(Probe(c, 1))
 bool inline_chain(Counter& c, int32_t a, int32_t b) {
-    // # `b` is duplicable, so this renders as an inline && chain. When a < b is
-    // # false the third comparator must not be built.
-    // return a < b < take(Probe(c, 1))
     std::optional<Probe> __tmp_1;
     return ((a < b) && (__tmp_1.emplace(Probe(c, 1)), (b < take(&((*__tmp_1))))));
 }
 
 // def stmtexpr_chain(c: Counter, a: int32, xs: list[int32]) -> bool:
+//     # xs[0] is a non-duplicable intermediate, forcing the statement-expression
+//     # render. The last comparator is still skipped when the first pair fails.
+//     return a < xs[0] < take(Probe(c, 2))
 bool stmtexpr_chain(Counter& c, int32_t a, const std::vector<int32_t>& xs) {
-    // # xs[0] is a non-duplicable intermediate, forcing the statement-expression
-    // # render. The last comparator is still skipped when the first pair fails.
-    // return a < xs[0] < take(Probe(c, 2))
     std::optional<Probe> __tmp_2;
     return ({ auto&& _cmp1 = ::tpy::__getitem__(xs, 0); (a < _cmp1) && (_cmp1 < (__tmp_2.emplace(Probe(c, 2)), take(&((*__tmp_2))))); });
 }
 
 // def stmtexpr_chain_long(c: Counter, a: int32, xs: list[int32]) -> bool:
+//     # Two bound intermediates: the middle comparator is itself conditional.
+//     return a < xs[0] < xs[1] < take(Probe(c, 3))
 bool stmtexpr_chain_long(Counter& c, int32_t a, const std::vector<int32_t>& xs) {
-    // # Two bound intermediates: the middle comparator is itself conditional.
-    // return a < xs[0] < xs[1] < take(Probe(c, 3))
     std::optional<Probe> __tmp_3;
     return ({ auto&& _cmp1 = ::tpy::__getitem__(xs, 0); (a < _cmp1) && ({ auto&& _cmp2 = ::tpy::__getitem__(xs, 1); (_cmp1 < _cmp2) && (_cmp2 < (__tmp_3.emplace(Probe(c, 3)), take(&((*__tmp_3))))); }); });
 }
 
 // def first_pair_only(c: Counter, a: int32, b: int32) -> bool:
+//     """Inverse: when every earlier pair passes, the last comparator DOES run."""
+//     return a < b < take(Probe(c, 4))
 bool first_pair_only(Counter& c, int32_t a, int32_t b) {
-    // return a < b < take(Probe(c, 4))
     std::optional<Probe> __tmp_4;
     return ((a < b) && (__tmp_4.emplace(Probe(c, 4)), (b < take(&((*__tmp_4))))));
 }
 
 // def main() -> None:
+//     # Each check uses a fresh Counter so `n` is exactly the number of Probes
+//     # actually constructed by that expression.
+//     c = Counter()
+//     print("inline_skipped", inline_chain(c, 5, 1), c.n)        # False 0
+//     c = Counter()
+//     print("inline_taken", first_pair_only(c, 0, 5), c.n)       # True 1
+//
+//     c = Counter()
+//     print("stmtexpr_skipped", stmtexpr_chain(c, 5, [1]), c.n)  # False 0
+//     c = Counter()
+//     print("stmtexpr_taken", stmtexpr_chain(c, 0, [5]), c.n)    # True 1
+//
+//     c = Counter()
+//     print("long_skip_first", stmtexpr_chain_long(c, 5, [1, 9]), c.n)   # False 0
+//     c = Counter()
+//     print("long_skip_mid", stmtexpr_chain_long(c, 0, [5, 1]), c.n)     # False 0
+//     c = Counter()
+//     print("long_taken", stmtexpr_chain_long(c, 0, [1, 5]), c.n)        # True 1
 void main() {
     std::optional<Counter> __slot_2;
-    // # Each check uses a fresh Counter so `n` is exactly the number of Probes
-    // # actually constructed by that expression.
-    // c = Counter()
     Counter __slot_1 = Counter();
     Counter* c = &__slot_1;
-    // print("inline_skipped", inline_chain(c, 5, 1), c.n)        # False 0
     std::cout << "inline_skipped" << " " << ::tpy::print_bool(inline_chain((*c), 5, 1)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("inline_taken", first_pair_only(c, 0, 5), c.n)       # True 1
     std::cout << "inline_taken" << " " << ::tpy::print_bool(first_pair_only((*c), 0, 5)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("stmtexpr_skipped", stmtexpr_chain(c, 5, [1]), c.n)  # False 0
     std::vector<int32_t> __tmp_5 = {1};
     std::cout << "stmtexpr_skipped" << " " << ::tpy::print_bool(stmtexpr_chain((*c), 5, __tmp_5)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("stmtexpr_taken", stmtexpr_chain(c, 0, [5]), c.n)    # True 1
     std::vector<int32_t> __tmp_6 = {5};
     std::cout << "stmtexpr_taken" << " " << ::tpy::print_bool(stmtexpr_chain((*c), 0, __tmp_6)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("long_skip_first", stmtexpr_chain_long(c, 5, [1, 9]), c.n)   # False 0
     std::vector<int32_t> __tmp_7 = {1, 9};
     std::cout << "long_skip_first" << " " << ::tpy::print_bool(stmtexpr_chain_long((*c), 5, __tmp_7)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("long_skip_mid", stmtexpr_chain_long(c, 0, [5, 1]), c.n)     # False 0
     std::vector<int32_t> __tmp_8 = {5, 1};
     std::cout << "long_skip_mid" << " " << ::tpy::print_bool(stmtexpr_chain_long((*c), 0, __tmp_8)) << " " << c->n << "\n";
-    // c = Counter()
     c = &*(__slot_2 = Counter());
-    // print("long_taken", stmtexpr_chain_long(c, 0, [1, 5]), c.n)        # True 1
     std::vector<int32_t> __tmp_9 = {1, 5};
     std::cout << "long_taken" << " " << ::tpy::print_bool(stmtexpr_chain_long((*c), 0, __tmp_9)) << " " << c->n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

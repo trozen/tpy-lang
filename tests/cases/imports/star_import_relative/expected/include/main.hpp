@@ -13,6 +13,7 @@ using ::tpyapp::pkg::consumer::compute;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> int32:
 int32_t main();
 
 void __tpy_init();

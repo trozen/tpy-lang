@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Headers({"content_type": "application/json", "host": "example.com"})
+//     print(h.content_type.upper())
+//     print(h.host)
 void main() {
-    // h = Headers({"content_type": "application/json", "host": "example.com"})
     Headers h = Headers(::tpy::ordered_map<std::string, std::string>({{"content_type", "application/json"}, {"host", "example.com"}}));
-    // print(h.content_type.upper())
     std::cout << ::tpy::str_upper(h.__getattr__("content_type")) << "\n";
-    // print(h.host)
     std::cout << h.__getattr__("host") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

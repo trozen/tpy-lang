@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def greet(p: Optional[Pet]) -> str:
+//     if p is None:
+//         return "<none>"
+//     return p.name()
 std::string greet(Pet* p) {
-    // if p is None:
     if ((p == nullptr)) {
-        // return "<none>"
         return "<none>";
     }
-    // return p.name()
     return p->name();
 }
 
 // def main() -> None:
+//     print(greet(Cat("whiskers")))   # structural rvalue -> Adapter temp -> &Adapter
+//     felix = Cat("felix")
+//     print(greet(felix))             # structural lvalue -> RefAdapter temp
+//     print(greet(None))
 void main() {
-    // print(greet(Cat("whiskers")))   # structural rvalue -> Adapter temp -> &Adapter
     ::tpy::Adapter<Pet, Cat> __tmp_1{Cat("whiskers")};
     std::cout << greet(&(__tmp_1)) << "\n";
-    // felix = Cat("felix")
     Cat felix = Cat("felix");
-    // print(greet(felix))             # structural lvalue -> RefAdapter temp
     ::tpy::RefAdapter<Pet, Cat> __tmp_2{felix};
     std::cout << greet(&(__tmp_2)) << "\n";
-    // print(greet(None))
     std::cout << greet(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

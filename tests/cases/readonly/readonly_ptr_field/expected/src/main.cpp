@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def read_through(c: readonly[Container]) -> int32:
+//     return c.ptr.__deref__().value
 int32_t read_through(const Container& c) {
-    // return c.ptr.__deref__().value
     return ::tpy::deref_check(c.ptr).value;
 }
 
 // def main() -> None:
+//     d = Data(int32(42))
+//     c = Container()
+//     c.ptr = take_ptr(d)
+//     print(c.read_value())
+//     print(read_through(c))
 void main() {
-    // d = Data(int32(42))
     Data d = Data(42);
-    // c = Container()
     Container c = Container();
-    // c.ptr = take_ptr(d)
     c.ptr = &d;
-    // print(c.read_value())
     std::cout << c.read_value() << "\n";
-    // print(read_through(c))
     std::cout << read_through(c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

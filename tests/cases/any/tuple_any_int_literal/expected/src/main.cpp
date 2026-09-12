@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t: tuple[Any, Any] = (1, 2.5)
+//     print("ok")
 void main() {
-    // t: tuple[Any, Any] = (1, 2.5)
     std::tuple<::tpy::Any, ::tpy::Any> t = std::tuple<::tpy::Any, ::tpy::Any>{::tpy::make_any(::tpy::BigInt(1)), ::tpy::make_any(static_cast<double>(2.5))};
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

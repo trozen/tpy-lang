@@ -10,7 +10,9 @@ namespace tpyapp::b {
 
 inline constexpr std::string_view __name__ = "b";
 
+// def bee() -> int32:
 int32_t bee();
+// def use_aye() -> int32:
 int32_t use_aye();
 
 void __tpy_init();

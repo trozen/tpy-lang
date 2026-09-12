@@ -14,8 +14,10 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify[T: Dog](x: T) -> int32:
 template<typename T>
 int32_t classify(::tpy::param_val_or_ref_t<T> x);
+// def main():
 void main();
 
 // class Animal:
@@ -78,51 +80,52 @@ inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Animal::Animal(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Dog::Dog(int32_t n) {
-    // self.n = n
     this->n = n;
 }
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Cat::Cat(int32_t n) {
-    // self.n = n
     this->n = n;
 }
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Puppy::Puppy(int32_t n) {
-    // self.n = n
     this->n = n;
 }
 // def classify[T: Dog](x: T) -> int32:
+//     code = 0
+//     if isinstance(x, Animal):  # tpyc: ok
+//         code += 1
+//     if isinstance(x, Dog):  # tpyc: ok
+//         code += 2
+//     if isinstance(x, Puppy):  # tpyc: ok
+//         code += 4
+//     if isinstance(x, Cat):  # tpyc: ok
+//         code += 8
+//     return code
 template<typename T>
 int32_t classify(::tpy::param_val_or_ref_t<T> x) {
-    // code = 0
     int32_t code = 0;
-    // if isinstance(x, Animal):  # tpyc: ok
     if (::tpy::isinstance_static<Animal, decltype(x)>()) {
-        // code += 1
         code = ::tpy::add_check<int32_t>(code, 1);
     }
-    // if isinstance(x, Dog):  # tpyc: ok
     if (::tpy::isinstance_static<Dog, decltype(x)>()) {
-        // code += 2
         code = ::tpy::add_check<int32_t>(code, 2);
     }
-    // if isinstance(x, Puppy):  # tpyc: ok
     if (::tpy::isinstance_static<Puppy, decltype(x)>()) {
-        // code += 4
         code = ::tpy::add_check<int32_t>(code, 4);
     }
-    // if isinstance(x, Cat):  # tpyc: ok
     if (::tpy::isinstance_static<Cat, decltype(x)>()) {
-        // code += 8
         code = ::tpy::add_check<int32_t>(code, 8);
     }
-    // return code
     return code;
 }
 

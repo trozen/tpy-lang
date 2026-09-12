@@ -12,6 +12,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Circle:
@@ -59,26 +60,29 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 
 // def __init__(self, r: float64) -> None:
+//     self.r = r
 inline Circle::Circle(double r) : r(r) {}
 
 // def area(self) -> float64:
+//     return 3.14 * self.r * self.r
 inline double Circle::area() const {
-    // return 3.14 * self.r * self.r
     return ((((3.14) * (this->r))) * (this->r));
 }
 
 // def scaled(self, k: int32) -> float64:
+//     return self.area() * k
 inline double Circle::scaled(int32_t k) const {
-    // return self.area() * k
     return ((this->area()) * static_cast<double>(k));
 }
 
 // def __init__(self, w: float64, h: float64) -> None:
+//     self.w = w
+//     self.h = h
 inline Rect::Rect(double w, double h) : w(w), h(h) {}
 
 // def area(self) -> float64:
+//     return self.w * self.h
 inline double Rect::area() const {
-    // return self.w * self.h
     return ((this->w) * (this->h));
 }
 void __tpy_init();

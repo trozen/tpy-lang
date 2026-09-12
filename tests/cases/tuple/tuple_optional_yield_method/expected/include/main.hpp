@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class P:
@@ -40,6 +41,8 @@ struct Holder {
     explicit Holder(int32_t n);
 
     // def pairs(self, items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+    //     for it in items:
+    //         yield (it, None)
     auto pairs(std::vector<P>& items) const {
         return ::tpy::make_generator<std::tuple<P*, P*>>(
             [this, &items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {
@@ -63,9 +66,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Holder::Holder(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

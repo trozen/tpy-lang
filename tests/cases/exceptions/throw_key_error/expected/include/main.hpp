@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def force_miss(k: str) -> int:
 ::tpy::BigInt force_miss(std::string_view k);
+// def main() -> None:
 void main();
 
 void __tpy_init();

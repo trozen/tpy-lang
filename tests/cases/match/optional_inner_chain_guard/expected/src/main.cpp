@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def folded(x: Optional[str], flag: bool) -> str:
+//     match x:
+//         case None:
+//             return "none"
+//         case "a" if flag:  # the guard folds into this arm's condition
+//             return "a-flag"
+//         case "a":
+//             return "a"
+//         case _:
+//             return "other"
 std::string folded(std::optional<std::string_view> x, bool flag) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // return "none"
         return "none";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case "a" if flag:  # the guard folds into this arm's condition
         if (__match_inner_1 == "a" && flag) {
-            // return "a-flag"
             return "a-flag";
-        // case "a":
         } else if (__match_inner_1 == "a") {
-            // return "a"
             return "a";
-        // case _:
         } else {
-            // return "other"
             return "other";
         }
     }
@@ -32,26 +32,26 @@ std::string folded(std::optional<std::string_view> x, bool flag) {
 }
 
 // def folded_or(x: Optional[str], flag: bool) -> str:
+//     match x:
+//         case None:
+//             return "none"
+//         case "a" | "b" if flag:  # the or-group needs parens before the `&&`
+//             return "ab-flag"
+//         case "a" | "b":
+//             return "ab"
+//         case _:
+//             return "other"
 std::string folded_or(std::optional<std::string_view> x, bool flag) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // return "none"
         return "none";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case "a" | "b" if flag:  # the or-group needs parens before the `&&`
         if ((__match_inner_1 == "a" || __match_inner_1 == "b") && flag) {
-            // return "ab-flag"
             return "ab-flag";
-        // case "a" | "b":
         } else if (__match_inner_1 == "a" || __match_inner_1 == "b") {
-            // return "ab"
             return "ab";
-        // case _:
         } else {
-            // return "other"
             return "other";
         }
     }
@@ -59,26 +59,26 @@ std::string folded_or(std::optional<std::string_view> x, bool flag) {
 }
 
 // def folded_later(x: Optional[str], flag: bool) -> str:
+//     match x:
+//         case "a":
+//             return "a"
+//         case "b" if flag:  # arm position does not change the fold
+//             return "b-flag"
+//         case _:
+//             return "other"
 std::string folded_later(std::optional<std::string_view> x, bool flag) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case "a":
     if (__match_subject_1.has_value() && (*__match_subject_1) == "a") {
-        // return "a"
         return "a";
         goto __match_end_2;
     }
-    // case "b" if flag:  # arm position does not change the fold
     if (__match_subject_1.has_value() && (*__match_subject_1) == "b") {
         if (flag) {
-            // return "b-flag"
             return "b-flag";
             goto __match_end_2;
         }
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -87,34 +87,34 @@ std::string folded_later(std::optional<std::string_view> x, bool flag) {
 }
 
 // def wildcard_guard(x: Optional[str], flag: bool) -> str:
+//     # A labelless guarded arm has no condition to fold into: this routes to
+//     # the standalone-if + goto tier, not the chain.
+//     match x:
+//         case None:
+//             return "none"
+//         case "a":
+//             return "a"
+//         case _ if flag:
+//             return "wild-flag"
+//         case _:
+//             return "other"
 std::string wildcard_guard(std::optional<std::string_view> x, bool flag) {
-    // # A labelless guarded arm has no condition to fold into: this routes to
-    // # the standalone-if + goto tier, not the chain.
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // return "none"
         return "none";
         goto __match_end_2;
     }
-    // case "a":
     if (__match_subject_1.has_value() && (*__match_subject_1) == "a") {
-        // return "a"
         return "a";
         goto __match_end_2;
     }
-    // case _ if flag:
     {
         if (flag) {
-            // return "wild-flag"
             return "wild-flag";
             goto __match_end_2;
         }
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -123,35 +123,35 @@ std::string wildcard_guard(std::optional<std::string_view> x, bool flag) {
 }
 
 // def binding_guard(x: Optional[str], flag: bool) -> str:
+//     # A binding is written after the arm's `if`, so a folded guard could not
+//     # read it -- the goto tier takes this one too.
+//     match x:
+//         case None:
+//             return "none"
+//         case "a" as got if flag:
+//             return "got:" + got
+//         case "a":
+//             return "a"
+//         case _:
+//             return "other"
 std::string binding_guard(std::optional<std::string_view> x, bool flag) {
-    // # A binding is written after the arm's `if`, so a folded guard could not
-    // # read it -- the goto tier takes this one too.
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // return "none"
         return "none";
         goto __match_end_2;
     }
-    // case "a" as got if flag:
     if (__match_subject_1.has_value() && (*__match_subject_1) == "a") {
         auto& got = (*__match_subject_1);
         if (flag) {
-            // return "got:" + got
             return (::tpy::str_concat("got:", got));
             goto __match_end_2;
         }
     }
-    // case "a":
     if (__match_subject_1.has_value() && (*__match_subject_1) == "a") {
-        // return "a"
         return "a";
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -160,30 +160,32 @@ std::string binding_guard(std::optional<std::string_view> x, bool flag) {
 }
 
 // def gen(x: Optional[str], flag: bool) -> Iterator[str]:
+//     # The same fold inside a resumable, where the arm bodies are frame blocks.
+//     match x:
+//         case None:
+//             yield "none"
+//         case "a" if flag:
+//             yield "a-flag"
+//         case "a":
+//             yield "a"
+//         case _:
+//             yield "other"
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = x;
-        // case None:
         if (!__match_subject_1.has_value()) {
-            // yield "none"
             __state = S_RESUME_0;
             return "none";
         } else {
             auto& __match_inner_1 = (*__match_subject_1);
-            // case "a" if flag:
             if (__match_inner_1 == "a" && flag) {
-                // yield "a-flag"
                 __state = S_RESUME_1;
                 return "a-flag";
-            // case "a":
             } else if (__match_inner_1 == "a") {
-                // yield "a"
                 __state = S_RESUME_2;
                 return "a";
-            // case _:
             } else {
-                // yield "other"
                 __state = S_RESUME_3;
                 return "other";
             }
@@ -223,20 +225,23 @@ __gen_gen gen(std::optional<std::string_view> x, bool flag) {
 }
 
 // def main() -> None:
+//     print(folded("a", True), folded("a", False), folded(None, True),
+//           folded("z", True))
+//     print(folded_or("b", True), folded_or("b", False), folded_or(None, False))
+//     print(folded_later("b", True), folded_later("b", False),
+//           folded_later("a", True))
+//     print(wildcard_guard("z", True), wildcard_guard("z", False))
+//     print(binding_guard("a", True), binding_guard("a", False))
+//     for v in gen("a", True):
+//         print(v)
+//     for v in gen("a", False):
+//         print(v)
 void main() {
-    // print(folded("a", True), folded("a", False), folded(None, True),
-    // folded("z", True))
     std::cout << folded("a", true) << " " << folded("a", false) << " " << folded(std::nullopt, true) << " " << folded("z", true) << "\n";
-    // print(folded_or("b", True), folded_or("b", False), folded_or(None, False))
     std::cout << folded_or("b", true) << " " << folded_or("b", false) << " " << folded_or(std::nullopt, false) << "\n";
-    // print(folded_later("b", True), folded_later("b", False),
-    // folded_later("a", True))
     std::cout << folded_later("b", true) << " " << folded_later("b", false) << " " << folded_later("a", true) << "\n";
-    // print(wildcard_guard("z", True), wildcard_guard("z", False))
     std::cout << wildcard_guard("z", true) << " " << wildcard_guard("z", false) << "\n";
-    // print(binding_guard("a", True), binding_guard("a", False))
     std::cout << binding_guard("a", true) << " " << binding_guard("a", false) << "\n";
-    // for v in gen("a", True):
     {
         std::string __tmp_1 = "a";
         auto __src_0 = gen(__tmp_1, true);
@@ -245,11 +250,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // for v in gen("a", False):
     {
         std::string __tmp_2 = "a";
         auto __src_2 = gen(__tmp_2, false);
@@ -258,18 +261,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

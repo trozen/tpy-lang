@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     matrix: Array[Array[int32, 2], 2] = [[1, 2], [3, 4]]
+//     s: Span[int32] = matrix[1]
+//     print(s[0])
+//     print(s[1])
 void main() {
-    // matrix: Array[Array[int32, 2], 2] = [[1, 2], [3, 4]]
     std::array<std::array<int32_t, 2>, 2> matrix = {{{1, 2}, {3, 4}}};
-    // s: Span[int32] = matrix[1]
     std::span<int32_t> s = ::tpy::as_mut_span(::tpy::__getitem__(matrix, 1));
-    // print(s[0])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // print(s[1])
     std::cout << ::tpy::__getitem__(s, 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct AppError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class AppError(Exception):
@@ -35,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 
 
 // def __init__(self, code: int32) -> None:
+//     self.code = code
 inline AppError::AppError(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

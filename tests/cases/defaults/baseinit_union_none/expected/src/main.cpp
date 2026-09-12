@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Sub(3)
+//     print(s.tag)
+//     print(s.has_pet)
 void main() {
-    // s = Sub(3)
     Sub s = Sub(3);
-    // print(s.tag)
     std::cout << s.tag << "\n";
-    // print(s.has_pet)
     std::cout << ::tpy::print_bool(s.has_pet) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

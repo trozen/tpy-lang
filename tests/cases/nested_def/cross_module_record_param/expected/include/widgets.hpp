@@ -32,11 +32,12 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Widget::Widget(int32_t v) : value(v) {}
 
 // def get(self) -> int32:
+//     return self.value
 inline int32_t Widget::get() const {
-    // return self.value
     return this->value;
 }
 void __tpy_init();

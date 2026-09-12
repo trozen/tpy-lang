@@ -14,15 +14,25 @@ using ::tpystd::tplib::json::writer::JsonWriter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_basic() -> None:
 void test_basic();
+// def test_nested() -> None:
 void test_nested();
+// def test_escape() -> None:
 void test_escape();
+// def test_float() -> None:
 void test_float();
+// def test_empty() -> None:
 void test_empty();
+// def test_pretty_basic() -> None:
 void test_pretty_basic();
+// def test_pretty_nested() -> None:
 void test_pretty_nested();
+// def test_pretty_empty() -> None:
 void test_pretty_empty();
+// def test_pretty_4space() -> None:
 void test_pretty_4space();
+// def test_pretty_array() -> None:
 void test_pretty_array();
 
 void __tpy_init();

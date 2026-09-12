@@ -5,11 +5,16 @@ namespace tpyapp::main {
 
 
 // async def f() -> int:
+//     x = 1
+//     try:
+//         await asyncio.sleep(0)
+//         return x
+//     finally:
+//         x = 2
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // x = 1
         x = 1;
         __state = S_JOIN_0;
         continue;
@@ -21,7 +26,6 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // return x
             ::tpy::BigInt __tpy_async_ret_0 = ::tpy::BigInt(x);
             __fin_ran_1 = true;
             this->__finally_0();
@@ -37,7 +41,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         try {
-            // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;
@@ -56,7 +59,6 @@ namespace tpyapp::main {
 }
 
 void __coro_f::__finally_0() {
-    // x = 2
     x = 2;
 }
 
@@ -66,21 +68,22 @@ __coro_f f() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(f()))
 void main() {
-    // print(asyncio.run(f()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(f())) << "\n";
 }
 
+// # Async sibling of finally_return_eval_order: the Poll-ready value must be
+// # captured before the (non-suspending) finally body runs.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async sibling of finally_return_eval_order: the Poll-ready value must be
-    // # captured before the (non-suspending) finally body runs.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,17 +11,29 @@ struct Pack;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_vu(v: int32 | float64) -> int32:
 int32_t take_vu(const ::tpy::Union<double, int32_t>& v);
+// def eat(xs: list[int]) -> int:
 ::tpy::BigInt eat(std::vector<::tpy::BigInt>& xs);
+// def head(xs: list[int]) -> int:
 ::tpy::BigInt head(const std::vector<::tpy::BigInt>& xs);
+// def countdown(total: int32) -> int32:
 int32_t countdown(int32_t total);
+// def fresh_literal() -> int:
 ::tpy::BigInt fresh_literal();
+// def literal_reads_loop_var(start: int) -> int:
 ::tpy::BigInt literal_reads_loop_var(const ::tpy::BigInt& start);
+// def else_break_continue(start: int, stop_at: int) -> int:
 ::tpy::BigInt else_break_continue(const ::tpy::BigInt& start, const ::tpy::BigInt& stop_at);
+// def weigh(p: Pack) -> int32:
 int32_t weigh(const Pack& p);
+// def ctor_rvalue_cond(start: int32) -> int32:
 int32_t ctor_rvalue_cond(int32_t start);
+// def nested_loops() -> int:
 ::tpy::BigInt nested_loops();
+// def walrus_cond(stop: int32) -> int32:
 int32_t walrus_cond(int32_t stop);
+// def main():
 void main();
 
 // class Pack:
@@ -42,6 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pack& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Pack::Pack(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

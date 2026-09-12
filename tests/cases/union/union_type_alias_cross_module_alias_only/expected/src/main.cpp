@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def describe(s: Shape) -> str:
+//     return "shape"
 std::string describe(::tpy::Union<const ::tpyapp::shapes::Circle*, const ::tpyapp::shapes::Rect*> s) {
-    // return "shape"
     return "shape";
 }
 
 // def main() -> None:
+//     print("ok")
 void main() {
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// from shapes import Shape
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from shapes import Shape
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

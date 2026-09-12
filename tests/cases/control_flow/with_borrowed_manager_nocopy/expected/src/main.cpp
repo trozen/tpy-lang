@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // def run(g: Guard) -> None:
+//     with g:
+//         print("inside:", g.n)
+//     print("after:", g.n)
 void run(Guard& g) {
-    // with g:
     auto& __ctx_1 = g;
     __ctx_1.__enter__();
     try {
-        // print("inside:", g.n)
         std::cout << "inside:" << " " << g.n << "\n";
         goto __with_exit_1;
     } catch (...) {
@@ -19,24 +20,23 @@ void run(Guard& g) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    // print("after:", g.n)
     std::cout << "after:" << " " << g.n << "\n";
 }
 
 // def main() -> None:
+//     g = Guard()
+//     run(g)
 void main() {
-    // g = Guard()
     Guard g = Guard();
-    // run(g)
     run(g);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

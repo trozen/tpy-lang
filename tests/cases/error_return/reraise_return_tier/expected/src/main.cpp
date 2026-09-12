@@ -6,24 +6,28 @@ namespace tpyapp::main {
 
 // @error_return(NotFound)
 // def inner(key: str) -> int32:
+//     if key == "x":
+//         return 42
+//     raise NotFound(99)
 std::expected<int32_t, NotFound> inner(std::string_view key) {
-    // if key == "x":
     if ((key == "x")) {
-        // return 42
         return 42;
     }
-    // raise NotFound(99)
     return ::tpy::make_unexpected(NotFound(99));
 }
 
 // @error_return(NotFound)
 // def outer(key: str) -> int32:
+//     try:
+//         v = inner(key)
+//     except NotFound as e:
+//         print(e.code)
+//         raise
+//     return v
 std::expected<int32_t, NotFound> outer(std::string_view key) {
-    // try:
     int32_t v;
     {
         std::optional<NotFound> __err_opt_1;
-        // v = inner(key)
         {
             auto __try_tmp_2 = inner(key);
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
@@ -34,75 +38,77 @@ std::expected<int32_t, NotFound> outer(std::string_view key) {
         __except_1:;
         {
             auto& e = *__err_opt_1;
-            // print(e.code)
             std::cout << e.code << "\n";
-            // raise
             return ::tpy::make_unexpected(std::move(*__err_opt_1));
         }
         __after_try_1:;
     }
-    // return v
     return v;
 }
 
 // def main() -> None:
+//     # Happy path
+//     try:
+//         v = outer("x")
+//     except NotFound as e:
+//         print(e.code)
+//     else:
+//         print(v)
+//
+//     # Error path: inner raises, outer re-raises
+//     try:
+//         v2 = outer("y")
+//     except NotFound as e:
+//         print(e.code)
+//     else:
+//         print(v2)
 void main() {
-    // # Happy path
-    // try:
     int32_t v;
     {
         std::optional<NotFound> __err_opt_3;
-        // v = outer("x")
         {
             auto __try_tmp_4 = outer("x");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             v = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_3;
         // except NotFound:
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            // print(e.code)
             std::cout << e.code << "\n";
         }
         __after_try_3:;
     }
-    // # Error path: inner raises, outer re-raises
-    // try:
     int32_t v2;
     {
         std::optional<NotFound> __err_opt_5;
-        // v2 = outer("y")
         {
             auto __try_tmp_6 = outer("y");
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_5;
         // except NotFound:
         __except_5:;
         {
             auto& e = *__err_opt_5;
-            // print(e.code)
             std::cout << e.code << "\n";
         }
         __after_try_5:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

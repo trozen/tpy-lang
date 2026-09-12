@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w: Widget = Widget(42)
+//     r = WRef(w)
+//     # Must emit `r.__deref__().getId()`, not `r.__deref__().GetId()`.
+//     print(r.GetId())
 void main() {
-    // w: Widget = Widget(42)
     ::x::Widget w = ::x::Widget(42);
-    // r = WRef(w)
     WRef r = WRef(w);
-    // # Must emit `r.__deref__().getId()`, not `r.__deref__().GetId()`.
-    // print(r.GetId())
     std::cout << r.__deref__().getId() << "\n";
 }
 
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native
-    // main()
     main();
 }
 

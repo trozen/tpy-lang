@@ -8,7 +8,9 @@
 namespace tpyapp::pkg::state {
 
 inline constexpr std::string_view __name__ = "pkg.state";
+// LIMIT: Final[int32] = 16
 inline constexpr int32_t LIMIT = 16;
+// banner: Final[str] = "ok"
 inline constexpr std::string_view banner = "ok";
 
 void __tpy_init();

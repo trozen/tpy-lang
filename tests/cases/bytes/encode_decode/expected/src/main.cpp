@@ -6,31 +6,33 @@ namespace tpyapp::main {
 
 // # str.encode() and bytes.decode() round-trip
 // def main() -> None:
+//     s = "hello bytes"
+//     encoded = s.encode()
+//     print(encoded)
+//
+//     decoded = encoded.decode()
+//     print(decoded)
+//     print(s == decoded)
+//
+//     combined = b"prefix:" + s.encode()
+//     print(combined)
 void main() {
-    // s = "hello bytes"
     std::string_view s = "hello bytes";
-    // encoded = s.encode()
     ::tpy::Bytes encoded = ::tpy::bytes_from_str(s);
-    // print(encoded)
     std::cout << ::tpy::BytesPrinter(encoded) << "\n";
-    // decoded = encoded.decode()
     std::string decoded = ::tpy::bytes_decode(encoded);
-    // print(decoded)
     std::cout << decoded << "\n";
-    // print(s == decoded)
     std::cout << ::tpy::print_bool((s == decoded)) << "\n";
-    // combined = b"prefix:" + s.encode()
     ::tpy::Bytes combined = (::tpy::bytes_concat(::tpy::bytes_literal_owned("prefix:", 7), ::tpy::bytes_from_str(s)));
-    // print(combined)
     std::cout << ::tpy::BytesPrinter(combined) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

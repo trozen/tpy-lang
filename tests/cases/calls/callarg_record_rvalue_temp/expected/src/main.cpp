@@ -5,58 +5,58 @@ namespace tpyapp::main {
 
 
 // def take_rec(r: A) -> int32:
+//     return r.x
 int32_t take_rec(const A& r) {
-    // return r.x
     return r.x;
 }
 
 // def mutate_rec(r: A) -> None:
+//     r.x += 1
+//     print(r.x)
 void mutate_rec(A& r) {
-    // r.x += 1
     r.x = ::tpy::add_check<int32_t>(r.x, 1);
-    // print(r.x)
     std::cout << r.x << "\n";
 }
 
 // def use_ret() -> int32:
+//     return take_rec(A(7))
 int32_t use_ret() {
-    // return take_rec(A(7))
     A __tmp_1 = A(7);
     return take_rec(__tmp_1);
 }
 
 // def use_decl() -> int32:
+//     r = take_rec(A(8))
+//     return r
 int32_t use_decl() {
-    // r = take_rec(A(8))
     A __tmp_2 = A(8);
     int32_t r = take_rec(__tmp_2);
-    // return r
     return r;
 }
 
 // def use_stmt() -> None:
+//     mutate_rec(A(9))
 void use_stmt() {
-    // mutate_rec(A(9))
     A __tmp_3 = A(9);
     mutate_rec(__tmp_3);
 }
 
 // def main() -> None:
+//     print(use_ret())
+//     print(use_decl())
+//     use_stmt()
 void main() {
-    // print(use_ret())
     std::cout << use_ret() << "\n";
-    // print(use_decl())
     std::cout << use_decl() << "\n";
-    // use_stmt()
     use_stmt();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

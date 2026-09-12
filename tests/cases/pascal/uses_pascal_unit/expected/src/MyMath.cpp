@@ -4,21 +4,23 @@
 namespace tpyapp::MyMath {
 
 
+// function square(n: integer): integer;
+// begin
+//   square := n * n;
+// end;
 int32_t square(int32_t n) {
-    // function square(n: integer): integer;
     int32_t __pascal_result = 0;
-    // square := n * n;
     __pascal_result = (::tpy::mul_check<int32_t>(n, n));
-    // function square(n: integer): integer;
     return __pascal_result;
 }
 
+// function cube(n: integer): integer;
+// begin
+//   cube := n * n * n;
+// end;
 int32_t cube(int32_t n) {
-    // function cube(n: integer): integer;
     int32_t __pascal_result = 0;
-    // cube := n * n * n;
     __pascal_result = (::tpy::mul_check<int32_t>((::tpy::mul_check<int32_t>(n, n)), n));
-    // function cube(n: integer): integer;
     return __pascal_result;
 }
 

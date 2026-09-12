@@ -11,6 +11,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Rect:
@@ -33,6 +34,8 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 
 // def __init__(self, width: int32, height: int32):
+//     self.width = width
+//     self.height = height
 inline Rect::Rect(int32_t width, int32_t height) : width(width), height(height) {}
 void __tpy_init();
 } // namespace tpyapp::main

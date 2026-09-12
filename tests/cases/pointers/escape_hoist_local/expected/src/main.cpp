@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def loop_escape() -> None:
+//     saved: Point = Point(0, 0)
+//     for i in range(3):
+//         p: Point = Point(i, i)
+//         saved = p  # tpyc: warning(/will not keep the object it was given/)
+//     print(saved.x, saved.y)
 void loop_escape() {
     std::optional<Point> __slot_2;
-    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // p: Point = Point(i, i)
         Point* p = &*(__slot_2 = Point(i, i));
-        // saved = p  # tpyc: warning(/will not keep the object it was given/)
         saved = p;
     }
-    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// loop_escape()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // loop_escape()
     loop_escape();
 }
 

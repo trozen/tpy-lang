@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog("rex")
+//     c = Cat("whiskers")
+//     p = Pet("plain")
+//     print(d.describe())
+//     print(c.describe())
+//     print(p.describe())
+//     print(d.kind())
+//     print(c.kind())
+//     print(p.kind())
+//     print(d.assert_dog())
+//     print(d.mutate_then_describe("!"))
+//     print(p.mutate_then_describe("?"))
 void main() {
-    // d = Dog("rex")
     Dog d = Dog("rex");
-    // c = Cat("whiskers")
     Cat c = Cat("whiskers");
-    // p = Pet("plain")
     Pet p = Pet("plain");
-    // print(d.describe())
     std::cout << d.describe() << "\n";
-    // print(c.describe())
     std::cout << c.describe() << "\n";
-    // print(p.describe())
     std::cout << p.describe() << "\n";
-    // print(d.kind())
     std::cout << d.kind() << "\n";
-    // print(c.kind())
     std::cout << c.kind() << "\n";
-    // print(p.kind())
     std::cout << p.kind() << "\n";
-    // print(d.assert_dog())
     std::cout << d.assert_dog() << "\n";
-    // print(d.mutate_then_describe("!"))
     std::cout << d.mutate_then_describe("!") << "\n";
-    // print(p.mutate_then_describe("?"))
     std::cout << p.mutate_then_describe("?") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,32 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pets: list[Box[Pet]] = []
+//     pets.append(Box(Parrot(label="Polly")))
+//     pets.append(Box(Dog(label="Rex")))
+//     for p in pets:
+//         print(p.get().name())
 void main() {
-    // pets: list[Box[Pet]] = []
     std::vector<::tpystd::tplib::box::Box<Pet>> pets = std::vector<::tpystd::tplib::box::Box<Pet>>{};
-    // pets.append(Box(Parrot(label="Polly")))
     pets.push_back(::tpystd::tplib::box::Box<Parrot>(Parrot("Polly")));
-    // pets.append(Box(Dog(label="Rex")))
     pets.push_back(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
-    // for p in pets:
     auto __obj_0 = ::tpy::own_iter(std::move(pets));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // print(p.get().name())
         std::cout << p.get().name() << "\n";
     }
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

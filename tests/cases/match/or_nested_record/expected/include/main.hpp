@@ -11,7 +11,9 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(p: P) -> str:
 std::string classify(const P& p);
+// def main() -> None:
 void main();
 
 // @dataclass

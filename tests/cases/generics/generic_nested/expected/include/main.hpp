@@ -12,6 +12,7 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -21,12 +22,13 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get(self) -> T:
+    //     return self.value
     ::tpy::val_or_ref_t<T> get() {
-        // return self.value
         return this->value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -45,18 +47,19 @@ struct Container {
     Box<T> inner;
 
     // def __init__(self, value: T) -> None:
+    //     self.inner = Box[T](value)
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : inner(Box<T>(value)) {}
 
     // def get_inner(self) -> Box[T]:
+    //     return self.inner
     Box<T>& get_inner() {
-        // return self.inner
         return this->inner;
     }
 
     // def get_value(self) -> T:
+    //     return self.inner.get()
     ::tpy::val_or_ref_t<T> get_value() {
-        // return self.inner.get()
         return this->inner.get();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

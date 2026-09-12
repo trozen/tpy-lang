@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Config(int32(42))
+//     print(c.x)
 void main() {
-    // c = Config(int32(42))
     Config c = Config(42);
-    // print(c.x)
     std::cout << c.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

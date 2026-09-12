@@ -11,7 +11,9 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def free(x: int32) -> int32:  # tpyc: warning(/macro on free: no self \(is_method=False\)/)
 int32_t free(int32_t x);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -40,24 +42,25 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self):
+//     self.n = 0
 inline Counter::Counter() : n(0) {}
 
 // @probe
 // def bump(self) -> int32:  # tpyc: warning(/method macro on Counter.bump: field n is int32/)
+//     doubled = self.n + self.n
+//     self.n = self.n + 1
+//     return doubled
 inline int32_t Counter::bump() {
-    // doubled = self.n + self.n
     int32_t doubled = (::tpy::add_check<int32_t>(this->n, this->n));
-    // self.n = self.n + 1
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
-    // return doubled
     return doubled;
 }
 
 // @staticmethod
 // @probe
 // def seed() -> int32:  # tpyc: warning(/macro on seed: no self \(is_method=True\)/)
+//     return 3
 inline int32_t Counter::seed() {
-    // return 3
     return 3;
 }
 void __tpy_init();

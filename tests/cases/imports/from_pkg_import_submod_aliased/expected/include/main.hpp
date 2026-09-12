@@ -11,7 +11,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use(c: p.Counter) -> int32:
 int32_t use(const ::tpyapp::pkg::state::Counter& c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

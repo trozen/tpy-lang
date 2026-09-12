@@ -5,14 +5,17 @@ namespace tpyapp::main {
 
 
 // async def main() -> None:
+//     c = C()
+//     t = asyncio.create_task(c.snapshot())
+//     r = await t
+//     c.v = 99
+//     print(r.v)
+//     print(c.v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = C()
         c.emplace(C());
-        // t = asyncio.create_task(c.snapshot())
         t.emplace(::tpystd::asyncio::create_task<C>(::tpy::make_adapter<::tpystd::coro::Cancellable<C>>((*c).snapshot())));
-        // r = await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -22,11 +25,8 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r.emplace(std::move(__r0).value());
         __sub_0 = nullptr;
-        // c.v = 99
         (*c).v = ::tpy::BigInt(99);
-        // print(r.v)
         std::cout << (*r).v << "\n";
-        // print(c.v)
         std::cout << (*c).v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -43,10 +43,11 @@ __coro_main main() {
 }
 
 // async def snapshot(self) -> Own["C"]:
+//     await asyncio.sleep(0)
+//     return copy(self)
 ::tpystd::tpy::Poll<C> __coro_C_snapshot::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -56,7 +57,6 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<C>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return copy(self)
         __state = S_DONE;
         C __tpy_async_ret = C(__self);
         return ::tpystd::tpy::Poll<C>::ready(std::move(__tpy_async_ret));
@@ -67,18 +67,19 @@ __coro_main main() {
 }
 
 
+// # The documented escape hatch for spawning a borrowed result: declare
+// # `-> Own[C]` and return an explicit copy. The task result is then an
+// # independent object -- mutating the original after the spawn is NOT
+// # visible through it (copy semantics, acknowledged by the copy() spelling).
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The documented escape hatch for spawning a borrowed result: declare
-    // # `-> Own[C]` and return an explicit copy. The task result is then an
-    // # independent object -- mutating the original after the spawn is NOT
-    // # visible through it (copy semantics, acknowledged by the copy() spelling).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

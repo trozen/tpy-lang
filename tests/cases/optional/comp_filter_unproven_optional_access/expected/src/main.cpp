@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Optional[Foo]] = [Foo(1), None]
+//     xs = [item.x for item in items if item is not None]  # tpyc: warning(/Potential None access/)
+//     print(xs)
 void main() {
-    // items: list[Optional[Foo]] = [Foo(1), None]
     std::vector<std::optional<Foo>> items = {Foo(1), std::nullopt};
-    // xs = [item.x for item in items if item is not None]  # tpyc: warning(/Potential None access/)
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
@@ -23,16 +24,15 @@ void main() {
         }
         std::move(__result);
     });
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

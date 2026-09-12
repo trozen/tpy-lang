@@ -3,22 +3,21 @@
 
 namespace tpyapp::main {
 
-// c = IntContainer(42, 100)
 IntContainer* c{};
 
+// c = IntContainer(42, 100)
+// print(c.value)   # 42
+// print(c.get())   # 42
+// print(c.extra)   # 100
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // c = IntContainer(42, 100)
     static IntContainer __global_slot_1 = IntContainer(42, 100);
     c = &__global_slot_1;
-    // print(c.value)   # 42
     std::cout << c->value << "\n";
-    // print(c.get())   # 42
     std::cout << c->get() << "\n";
-    // print(c.extra)   # 100
     std::cout << c->extra << "\n";
 }
 

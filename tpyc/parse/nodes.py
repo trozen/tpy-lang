@@ -25,6 +25,7 @@ class SourceLocation:
     line: int  # 1-indexed line number
     column: int = 0  # 0-indexed column
     file: str | None = None  # Source file path (optional)
+    end_line: int | None = None  # 1-indexed last line of the node, when known
 
 
 class ParseError(Exception):
@@ -737,9 +738,6 @@ class TpyAwait(TpyExpr):
 class TpyStmt:
     """Base class for statements."""
     loc: SourceLocation | None = field(default=None, kw_only=True)
-    # Set on the non-first statements of a multi-statement desugar (e.g. a
-    # tuple-literal unpack) so codegen emits the shared source comment once.
-    no_source_comment: bool = field(default=False, kw_only=True)
 
     def exprs(self) -> list[TpyExpr]:
         """Return direct child expressions for generic tree walking."""

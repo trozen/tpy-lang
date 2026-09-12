@@ -5,45 +5,46 @@ namespace tpyapp::main {
 
 
 // def get_pair() -> tuple[int32, str]:
+//     return (int32(42), "answer")
 std::tuple<int32_t, std::string> get_pair() {
-    // return (int32(42), "answer")
     return std::tuple<int32_t, std::string>{42, "answer"};
 }
 
 // def get_triple() -> tuple[bool, int32, str]:
+//     return (True, int32(7), "lucky")
 std::tuple<bool, int32_t, std::string> get_triple() {
-    // return (True, int32(7), "lucky")
     return std::tuple<bool, int32_t, std::string>{true, 7, "lucky"};
 }
 
 // def main() -> None:
+//     pair = get_pair()
+//     print(pair)
+//     print(pair[0])
+//     print(pair[1])
+//
+//     triple = get_triple()
+//     print(triple)
+//     print(triple[0])
+//     print(triple[1])
+//     print(triple[2])
 void main() {
-    // pair = get_pair()
     std::tuple<int32_t, std::string> pair = get_pair();
-    // print(pair)
     std::cout << ::tpy::TuplePrinter(pair) << "\n";
-    // print(pair[0])
     std::cout << std::get<0>(pair) << "\n";
-    // print(pair[1])
     std::cout << std::get<1>(pair) << "\n";
-    // triple = get_triple()
     std::tuple<bool, int32_t, std::string> triple = get_triple();
-    // print(triple)
     std::cout << ::tpy::TuplePrinter(triple) << "\n";
-    // print(triple[0])
     std::cout << ::tpy::print_bool(std::get<0>(triple)) << "\n";
-    // print(triple[1])
     std::cout << std::get<1>(triple) << "\n";
-    // print(triple[2])
     std::cout << std::get<2>(triple) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

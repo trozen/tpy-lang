@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def consume(p: tuple[Own[A], Own[A]]) -> int32:
+//     a, b = p
+//     a.n += 10
+//     b.n += 20
+//     return a.n + b.n
 int32_t consume(std::tuple<A, A>&& p) {
-    // a, b = p
     auto&& __tup_1 = std::move(p);
     A a = std::move(std::get<0>(__tup_1));
     A b = std::move(std::get<1>(__tup_1));
-    // a.n += 10
     a.n = ::tpy::add_check<int32_t>(a.n, 10);
-    // b.n += 20
     b.n = ::tpy::add_check<int32_t>(b.n, 20);
-    // return a.n + b.n
     return (::tpy::add_check<int32_t>(a.n, b.n));
 }
 
 // def forward(p: tuple[Own[A], Own[A]]) -> int32:
+//     return consume(p)
 int32_t forward(std::tuple<A, A>&& p) {
-    // return consume(p)
     return consume(std::move(p));
 }
 
 // def relay(p: tuple[Own[A], Own[A]]) -> tuple[Own[A], Own[A]]:
+//     return p
 std::tuple<A, A> relay(std::tuple<A, A>&& p) {
-    // return p
     return p;
 }
 
 // def main() -> None:
+//     print(consume((A(1), A(2))))
+//     print(forward((A(1), A(2))))
+//     a, b = relay((A(3), A(4)))
+//     print(a.n + b.n)
 void main() {
-    // print(consume((A(1), A(2))))
     std::cout << consume(std::tuple<A, A>{A(1), A(2)}) << "\n";
-    // print(forward((A(1), A(2))))
     std::cout << forward(std::tuple<A, A>{A(1), A(2)}) << "\n";
-    // a, b = relay((A(3), A(4)))
     auto __tup_1 = relay(std::tuple<A, A>{A(3), A(4)});
     A a = std::move(std::get<0>(__tup_1));
     A b = std::move(std::get<1>(__tup_1));
-    // print(a.n + b.n)
     std::cout << (::tpy::add_check<int32_t>(a.n, b.n)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

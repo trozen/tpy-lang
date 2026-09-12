@@ -5,34 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     rc = Rc.new(Cell(int32(10)))
+//     w = rc.downgrade()
+//     print(rc.get().val)  # 10
+//
+//     rc2 = w.upgrade()
+//     assert rc2 is not None
+//     print(rc2.get().val)  # 10
+//
+//     rc2.get().val = int32(99)
+//     print(rc.get().val)  # 99 -- shared
 void main() {
-    // rc = Rc.new(Cell(int32(10)))
     ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(10));
-    // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
-    // print(rc.get().val)  # 10
     std::cout << rc.get().val << "\n";
-    // rc2 = w.upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Cell>> rc2 = w.upgrade();
-    // assert rc2 is not None
     if (!((rc2.has_value()))) ::tpy::raise_assertion_error();
-    // print(rc2.get().val)  # 10
     std::cout << (*rc2).get().val << "\n";
-    // rc2.get().val = int32(99)
     (*rc2).get().val = 99;
-    // print(rc.get().val)  # 99 -- shared
     std::cout << rc.get().val << "\n";
 }
 
+// from tplib.rc import Rc, Weak
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

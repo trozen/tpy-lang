@@ -1060,7 +1060,6 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             body=param_copies + body,
             layout=THIRFunctionLayout(),
             error_return_cpp=lc.error_return_cpp,
-            suppress_trailing_comments=lc.overload_terminated,
         )
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")

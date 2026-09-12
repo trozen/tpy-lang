@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def take(h: Holder) -> Own[Payload]:
+//     # `h.borrow()` hands back `Payload&`; filling the owning slot from it is
+//     # the copy the warning declares.
+//     return h.borrow()  # tpyc: warning(/copies Payload into owned storage/)
 Payload take(Holder& h) {
-    // # `h.borrow()` hands back `Payload&`; filling the owning slot from it is
-    // # the copy the warning declares.
-    // return h.borrow()  # tpyc: warning(/copies Payload into owned storage/)
     return h.borrow();
 }
 
 // def take_copy(h: Holder) -> Own[Payload]:
+//     # The explicit spelling: same copy, no warning.
+//     return copy(h.borrow())  # tpyc: ok
 Payload take_copy(Holder& h) {
-    // # The explicit spelling: same copy, no warning.
-    // return copy(h.borrow())  # tpyc: ok
     return Payload(h.borrow());
 }
 
 // def main() -> None:
+//     h = Holder()
+//     print(take(h).n, take_copy(h).n, h.p.n)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(take(h).n, take_copy(h).n, h.p.n)
     std::cout << take(h).n << " " << take_copy(h).n << " " << h.p.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

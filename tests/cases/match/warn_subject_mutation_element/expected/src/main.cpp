@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def poke(xs: list[Dog | Cat]) -> None:
+//     match xs[0]:
+//         case Dog(name=n):
+//             xs.append(Cat(9))  # tpyc: warning(/'xs\[0\]' is mutated in this arm while pattern bindings borrow/)
+//             print(n)
+//         case Cat(age=a):
+//             print("cat", a)
 void poke(std::vector<::tpy::Union<Cat, Dog>>& xs) {
-    // match xs[0]:
     auto& __match_subject_1 = ::tpy::__getitem__(xs, 0);
     switch (__match_subject_1.index()) {
-    // case Dog(name=n):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto& n = __case_0.name;
-        // xs.append(Cat(9))  # tpyc: warning(/'xs\[0\]' is mutated in this arm while pattern bindings borrow/)
         xs.push_back(Cat(9));
-        // print(n)
         std::cout << n << "\n";
         break;
     }
-    // case Cat(age=a):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        // print("cat", a)
         std::cout << "cat" << " " << a << "\n";
         break;
     }
@@ -31,18 +31,18 @@ void poke(std::vector<::tpy::Union<Cat, Dog>>& xs) {
 }
 
 // def main() -> None:
+//     poke([Cat(4)])
 void main() {
-    // poke([Cat(4)])
     std::vector<::tpy::Union<Cat, Dog>> __tmp_1 = {Cat(4)};
     poke(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

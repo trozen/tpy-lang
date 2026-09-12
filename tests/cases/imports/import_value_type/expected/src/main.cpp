@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def length_sq(v: Vec2) -> int:
+//     return v.x * v.x + v.y * v.y
 ::tpy::BigInt length_sq(::tpyapp::shapes::Vec2 v) {
-    // return v.x * v.x + v.y * v.y
     return ::tpy::BigInt((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(v.x, v.x)), (::tpy::mul_check<int32_t>(v.y, v.y)))));
 }
 
 // def main() -> None:
+//     a = Vec2(3, 4)
+//     b = a                      # copy (value type)
+//     print(a.x)
+//     print(b.y)
+//     print(length_sq(a))        # 25
 void main() {
-    // a = Vec2(3, 4)
     ::tpyapp::shapes::Vec2 a = ::tpyapp::shapes::Vec2(3, 4);
-    // b = a                      # copy (value type)
     ::tpyapp::shapes::Vec2 b = a;
-    // print(a.x)
     std::cout << a.x << "\n";
-    // print(b.y)
     std::cout << b.y << "\n";
-    // print(length_sq(a))        # 25
     std::cout << length_sq(a) << "\n";
 }
 
+// # Cross-module ValueType: an imported value-type record constructs and
+// # reads correctly across the module boundary.
+// from shapes import Vec2
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module ValueType: an imported value-type record constructs and
-    // # reads correctly across the module boundary.
-    // from shapes import Vec2
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

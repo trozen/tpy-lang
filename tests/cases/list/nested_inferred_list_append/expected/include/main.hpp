@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def rows(src: list[list[float]]) -> Own[list[list[float]]]:
 std::vector<std::vector<double>> rows(const std::vector<std::vector<double>>& src);
+// def main() -> None:
 void main();
 
 void __tpy_init();

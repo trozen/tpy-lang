@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # LHS hint pins T=Leaf; seed-subst chain defaults U=T, V=U through
+//     # the bound chain BEFORE arg analysis sees the value. Arg type
+//     # confirms V=Leaf (no contradiction). Result Holder[Leaf].
+//     h: Holder[Leaf] = make(Leaf("a"))  # tpyc: type(Holder[Leaf])
+//     print(h.get().kind())
 void main() {
-    // # LHS hint pins T=Leaf; seed-subst chain defaults U=T, V=U through
-    // # the bound chain BEFORE arg analysis sees the value. Arg type
-    // # confirms V=Leaf (no contradiction). Result Holder[Leaf].
-    // h: Holder[Leaf] = make(Leaf("a"))  # tpyc: type(Holder[Leaf])
     Holder<Leaf> h = make<Leaf, Leaf, Leaf>(Leaf("a"));
-    // print(h.get().kind())
     std::cout << h.get().kind() << "\n";
 }
 
+// from tpy.unsafe import unsafe_take, unsafe_release
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_take, unsafe_release
-    // main()
     main();
 }
 

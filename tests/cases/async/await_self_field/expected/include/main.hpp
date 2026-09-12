@@ -20,8 +20,11 @@ struct __coro_opener;
 struct __coro_main_coro;
 struct __coro_Gate_passed;
 
+// async def opener(g: Gate) -> None:
 __coro_opener opener(Gate& g);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Gate:
@@ -44,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
     return os;
 }
 
-// Async coroutine: Gate.passed
+// async def passed(self) -> bool:
 struct __coro_Gate_passed {
     int32_t __state;
     bool __cancel_pending;
@@ -72,7 +75,7 @@ inline __coro_Gate_passed Gate::passed() {
     return __coro_Gate_passed(*this);
 }
 
-// Async coroutine: opener
+// async def opener(g: Gate) -> None:
 struct __coro_opener {
     int32_t __state;
     bool __cancel_pending;
@@ -94,7 +97,7 @@ struct __coro_opener {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -121,11 +124,12 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
+//     self.evt = Event()
 inline Gate::Gate() : evt(::tpystd::asyncio::Event()) {}
 
 // def open(self) -> None:
+//     self.evt.set()
 inline void Gate::open() {
-    // self.evt.set()
     this->evt.set();
 }
 void __tpy_init();

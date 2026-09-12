@@ -12,6 +12,7 @@ struct Derived;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -48,9 +49,14 @@ inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
 
 
 // def __init__(self) -> None:
+//     self.tag = int32(1)
 inline Base::Base() : tag(1) {}
 
 // def __init__(self) -> None:
+//     super().__init__()
+//     self.a = int32(5)
+//     # The subject: `a` is laid out before `b`, so its value is in place.
+//     self.b = self.a + int32(1)  # tpyc: ok
 inline Derived::Derived() : Base(), a(5), b((::tpy::add_check<int32_t>(this->a, 1))) {}
 void __tpy_init();
 } // namespace tpyapp::main

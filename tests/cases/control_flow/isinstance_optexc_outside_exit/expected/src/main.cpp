@@ -5,70 +5,70 @@ namespace tpyapp::main {
 
 
 // def classify(e: Optional[BaseException]) -> str:
+//     if e is None:
+//         return "<none>"
+//     if isinstance(e, ValueError):  # tpyc: ok
+//         return "VE: " + str(e)
+//     if isinstance(e, (OSError, RuntimeError)):  # tpyc: ok
+//         return "OS/RE: " + str(e)
+//     if isinstance(e, CancelledError):  # tpyc: ok -- direct BaseException subclass
+//         return "CANCELLED"
+//     return "BASE: " + str(e)
 std::string classify(const ::tpy::BaseException* e) {
-    // if e is None:
     if ((e == nullptr)) {
-        // return "<none>"
         return "<none>";
     }
-    // if isinstance(e, ValueError):  # tpyc: ok
     if (const ::tpy::ValueError* __e_ptr = dynamic_cast<const ::tpy::ValueError*>(e); (__e_ptr != nullptr)) {
-        // return "VE: " + str(e)
         return (::tpy::str_concat("VE: ", std::string(::tpy::__str__((*__e_ptr)))));
     }
-    // if isinstance(e, (OSError, RuntimeError)):  # tpyc: ok
     if (((dynamic_cast<const ::tpy::OSError*>(e) != nullptr) || (dynamic_cast<const ::tpy::RuntimeError*>(e) != nullptr))) {
-        // return "OS/RE: " + str(e)
         return (::tpy::str_concat("OS/RE: ", std::string(::tpy::__str__((*e)))));
     }
-    // if isinstance(e, CancelledError):  # tpyc: ok -- direct BaseException subclass
     if (const ::tpy::CancelledError* __e_ptr = dynamic_cast<const ::tpy::CancelledError*>(e); (__e_ptr != nullptr)) {
-        // return "CANCELLED"
         return "CANCELLED";
     }
-    // return "BASE: " + str(e)
     return (::tpy::str_concat("BASE: ", std::string(::tpy::__str__((*e)))));
 }
 
 // def is_value_error(e: Optional[BaseException]) -> bool:
+//     # Optional-direct path: no preceding `is None` narrowing.
+//     return isinstance(e, ValueError)  # tpyc: ok
 bool is_value_error(const ::tpy::BaseException* e) {
-    // # Optional-direct path: no preceding `is None` narrowing.
-    // return isinstance(e, ValueError)  # tpyc: ok
     return (dynamic_cast<const ::tpy::ValueError*>(e) != nullptr);
 }
 
 // def main() -> None:
+//     print(classify(ValueError("v")))
+//     print(classify(RuntimeError("r")))
+//     print(classify(AssertionError("a")))
+//     print(classify(CancelledError("c")))
+//     print(classify(None))
+//     print(is_value_error(ValueError("v2")))
+//     print(is_value_error(RuntimeError("r2")))
+//     print(is_value_error(None))
 void main() {
-    // print(classify(ValueError("v")))
     ::tpy::ValueError __tmp_1 = ::tpy::ValueError("v");
     std::cout << classify(&(__tmp_1)) << "\n";
-    // print(classify(RuntimeError("r")))
     ::tpy::RuntimeError __tmp_2 = ::tpy::RuntimeError("r");
     std::cout << classify(&(__tmp_2)) << "\n";
-    // print(classify(AssertionError("a")))
     ::tpy::AssertionError __tmp_3 = ::tpy::AssertionError("a");
     std::cout << classify(&(__tmp_3)) << "\n";
-    // print(classify(CancelledError("c")))
     ::tpy::CancelledError __tmp_4 = ::tpy::CancelledError("c");
     std::cout << classify(&(__tmp_4)) << "\n";
-    // print(classify(None))
     std::cout << classify(nullptr) << "\n";
-    // print(is_value_error(ValueError("v2")))
     ::tpy::ValueError __tmp_5 = ::tpy::ValueError("v2");
     std::cout << ::tpy::print_bool(is_value_error(&(__tmp_5))) << "\n";
-    // print(is_value_error(RuntimeError("r2")))
     ::tpy::RuntimeError __tmp_6 = ::tpy::RuntimeError("r2");
     std::cout << ::tpy::print_bool(is_value_error(&(__tmp_6))) << "\n";
-    // print(is_value_error(None))
     std::cout << ::tpy::print_bool(is_value_error(nullptr)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = spawn[None, Beacon](Beacon(1))
+//     h.join()
+//     h2 = spawn(Beacon(2))   # tpyc: ok
+//     h2.join()
+//     print("joined both")
 void main() {
-    // h = spawn[None, Beacon](Beacon(1))
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h = ::tpystd::tpy::thread::spawn<std::monostate, Beacon>(Beacon(1));
-    // h.join()
     h.join();
-    // h2 = spawn(Beacon(2))   # tpyc: ok
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h2 = ::tpystd::tpy::thread::spawn<std::monostate, Beacon>(Beacon(2));
-    // h2.join()
     h2.join();
-    // print("joined both")
     std::cout << "joined both" << "\n";
 }
 
+// from tpy.thread import spawn
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // main()
     main();
 }
 

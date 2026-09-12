@@ -11,7 +11,9 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def fill(s: Sink) -> None:
 void fill(Sink& s);
+// def main() -> None:
 void main();
 
 // class Sink:
@@ -37,27 +39,28 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Sink::Sink() : n(0) {}
 
 // def take(self, xs: list[int32] | None) -> int32:
+//     if xs is not None:
+//         self.n += len(xs)
+//     return self.n
 inline int32_t Sink::take(const std::vector<int32_t>* xs) {
-    // if xs is not None:
     if ((xs != nullptr)) {
-        // self.n += len(xs)
         this->n = ::tpy::add_check<int32_t>(this->n, ::tpy::__len__((*xs)));
     }
-    // return self.n
     return this->n;
 }
 
 // def take_nested(self, xs: list[list[int32]] | None) -> int32:
+//     if xs is not None:
+//         self.n += len(xs)
+//     return self.n
 inline int32_t Sink::take_nested(const std::vector<std::vector<int32_t>>* xs) {
-    // if xs is not None:
     if ((xs != nullptr)) {
-        // self.n += len(xs)
         this->n = ::tpy::add_check<int32_t>(this->n, ::tpy::__len__((*xs)));
     }
-    // return self.n
     return this->n;
 }
 void __tpy_init();

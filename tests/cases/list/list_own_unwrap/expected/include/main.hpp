@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(a: Cat | Dog) -> None:
 void show(::tpy::Union<const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // # OwnType must be stripped from element types in list literals so that
@@ -52,9 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_Greeter_run;
 
+// def main() -> None:
 void main();
 
 // class Greeter:
@@ -31,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Greeter& obj) {
     return os;
 }
 
-// Async coroutine: Greeter.run
+// async def run(self) -> None:
 struct __coro_Greeter_run {
     int32_t __state;
     bool __cancel_pending;

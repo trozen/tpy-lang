@@ -11,7 +11,9 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump_all(cs: list[Counter]) -> None:  # tpyc: warning(/list parameter 'cs' is copied in.*not visible to the caller/)
 void bump_all(std::vector<Counter>& cs);
+// def total(cs: list[Counter]) -> int64:  # tpyc: ok
 int64_t total(const std::vector<Counter>& cs);
 
 // @export
@@ -36,11 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, v: int64):
+//     self.value = v
 inline Counter::Counter(int64_t v) : value(v) {}
 
 // def bump(self) -> None:
+//     self.value += 1
 inline void Counter::bump() {
-    // self.value += 1
     this->value = ::tpy::add_check<int64_t>(this->value, 1);
 }
 void __tpy_init();

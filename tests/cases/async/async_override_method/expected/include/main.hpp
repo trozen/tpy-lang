@@ -19,7 +19,9 @@ struct __coro_main_coro;
 struct __coro_Base_val;
 struct __coro_Derived_val;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Base:
@@ -48,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
     return os;
 }
 
-// Async coroutine: Base.val
+// async def val(self) -> int32:
 struct __coro_Base_val {
     int32_t __state;
     bool __cancel_pending;
@@ -76,7 +78,7 @@ inline __coro_Base_val Base::val() const {
     return __coro_Base_val(*this);
 }
 
-// Async coroutine: Derived.val
+// async def val(self) -> int32:
 struct __coro_Derived_val {
     int32_t __state;
     bool __cancel_pending;
@@ -104,7 +106,7 @@ inline __coro_Derived_val Derived::val() const {
     return __coro_Derived_val(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

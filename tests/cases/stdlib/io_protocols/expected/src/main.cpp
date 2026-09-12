@@ -5,56 +5,62 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     sink = io.StringIO()
+//     emit_text(sink, ["alpha", "beta", "gamma"])
+//     print("sink-text:", sink.getvalue())
+//
+//     src = io.StringIO("first\nsecond\n")
+//     print("src-text:", consume_text(src))
+//
+//     bsink = io.BytesIO()
+//     emit_bytes(bsink, [b"abc", b"def"])
+//     print("bsink-bytes:", bsink.getvalue())
+//
+//     bsrc = io.BytesIO(b"xyz123")
+//     print("bsrc-bytes:", consume_bytes(bsrc))
+//
+//     s2 = io.StringIO("seek-test")
+//     s2.read()  # advance to end
+//     print("rewind-from:", rewind_and_close(s2))
+//     print("after-rewind read:", s2.read())
+//
+//     s3 = io.StringIO("close-me")
+//     closer(s3)
+//     print("closed-after-protocol:", s3.closed)
 void main() {
-    // sink = io.StringIO()
     ::tpystd::io::StringIO sink = ::tpystd::io::StringIO();
-    // emit_text(sink, ["alpha", "beta", "gamma"])
     std::vector<std::string> __tmp_1 = {"alpha", "beta", "gamma"};
     emit_text(sink, __tmp_1);
-    // print("sink-text:", sink.getvalue())
     std::cout << "sink-text:" << " " << sink.getvalue() << "\n";
-    // src = io.StringIO("first\nsecond\n")
     ::tpystd::io::StringIO src = ::tpystd::io::StringIO("first\nsecond\n");
-    // print("src-text:", consume_text(src))
     std::cout << "src-text:" << " " << consume_text(src) << "\n";
-    // bsink = io.BytesIO()
     ::tpystd::io::BytesIO bsink = ::tpystd::io::BytesIO();
-    // emit_bytes(bsink, [b"abc", b"def"])
     std::vector<::tpy::Bytes> __tmp_2 = {::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)};
     emit_bytes(bsink, __tmp_2);
-    // print("bsink-bytes:", bsink.getvalue())
     std::cout << "bsink-bytes:" << " " << ::tpy::BytesPrinter(bsink.getvalue()) << "\n";
-    // bsrc = io.BytesIO(b"xyz123")
     ::tpystd::io::BytesIO bsrc = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz123", 6));
-    // print("bsrc-bytes:", consume_bytes(bsrc))
     std::cout << "bsrc-bytes:" << " " << ::tpy::BytesPrinter(consume_bytes(bsrc)) << "\n";
-    // s2 = io.StringIO("seek-test")
     ::tpystd::io::StringIO s2 = ::tpystd::io::StringIO("seek-test");
-    // s2.read()  # advance to end
     s2.read();
-    // print("rewind-from:", rewind_and_close(s2))
     std::cout << "rewind-from:" << " " << rewind_and_close(s2) << "\n";
-    // print("after-rewind read:", s2.read())
     std::cout << "after-rewind read:" << " " << s2.read() << "\n";
-    // s3 = io.StringIO("close-me")
     ::tpystd::io::StringIO s3 = ::tpystd::io::StringIO("close-me");
-    // closer(s3)
     closer(s3);
-    // print("closed-after-protocol:", s3.closed)
     std::cout << "closed-after-protocol:" << " " << ::tpy::print_bool(s3.closed()) << "\n";
 }
 
+// # Confirm StringIO/BytesIO conform to the io.Writable / io.Readable
+// # protocols, and that consumer functions parameterized by those protocols
+// # accept both in-memory buffers and the print-target shapes.
+// import io
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Confirm StringIO/BytesIO conform to the io.Writable / io.Readable
-    // # protocols, and that consumer functions parameterized by those protocols
-    // # accept both in-memory buffers and the print-target shapes.
-    // import io
     ::tpystd::io::__tpy_init();
-    // main()
     main();
 }
 

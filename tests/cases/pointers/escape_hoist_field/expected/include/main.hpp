@@ -12,6 +12,7 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def field_access_escape() -> None:
 void field_access_escape();
 
 // class Inner:
@@ -48,9 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, value: int32):
+//     self.value = value
 inline Inner::Inner(int32_t value) : value(value) {}
 
 // def __init__(self, inner: Inner):
+//     self.inner = inner  # tpyc: warning(/copies Inner into field/)
 inline Outer::Outer(const Inner& inner) : inner(inner) {}
 void __tpy_init();
 } // namespace tpyapp::main

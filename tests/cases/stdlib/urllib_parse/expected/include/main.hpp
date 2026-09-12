@@ -16,7 +16,9 @@ using ::tpystd::urllib::parse::urlunsplit;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(u: str) -> None:
 void show(std::string_view u);
+// def main() -> None:
 void main();
 
 void __tpy_init();

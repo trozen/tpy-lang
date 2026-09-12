@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     print(h.step())
+//     print(h.slot is None)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(h.step())
     std::cout << ::tpy::print_bool(h.step()) << "\n";
-    // print(h.slot is None)
     std::cout << ::tpy::print_bool((!h.slot.has_value())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

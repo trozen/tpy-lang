@@ -33,11 +33,17 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def break_plain() -> None:
 void break_plain();
+// def break_with_else() -> None:
 void break_with_else();
+// def continue_in_arm() -> None:
 void continue_in_arm();
+// def break_in_while() -> None:
 void break_in_while();
+// def break_in_str_switch() -> None:
 void break_in_str_switch();
+// def main() -> None:
 void main();
 
 void __tpy_init();

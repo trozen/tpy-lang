@@ -5,6 +5,16 @@ namespace tpyapp::main {
 
 
 // async def slow() -> int32:
+//     try:
+//         # 1s never elapses -- the outer cancel lands at ~1ms; the wide
+//         # margin keeps the cancel-before-completion race deterministic
+//         # even on a heavily loaded machine.
+//         await asyncio.sleep(1.0)
+//         print("slow finished")
+//         return int32(0)
+//     except asyncio.CancelledError:
+//         print("slow cancelled")
+//         raise
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -17,17 +27,13 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // print("slow finished")
             std::cout << "slow finished" << "\n";
-            // return int32(0)
             __state = S_DONE;
             int32_t __tpy_async_ret = 0;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::CancelledError&) {
             __sub_0.reset();
-            // print("slow cancelled")
             std::cout << "slow cancelled" << "\n";
-            // raise
             throw;
         } catch (...) {
             __sub_0.reset();
@@ -36,14 +42,11 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         try {
-            // await asyncio.sleep(1.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
-            // print("slow cancelled")
             std::cout << "slow cancelled" << "\n";
-            // raise
             throw;
         } catch (...) {
             throw;
@@ -61,16 +64,16 @@ __coro_slow slow() {
 }
 
 // async def gather_helper() -> Own[list[int32]]:
+//     tasks: list[asyncio.Task[int32]] = []
+//     tasks.append(asyncio.create_task(slow()))
+//     tasks.append(asyncio.create_task(slow()))
+//     return await asyncio.gather_list(tasks)
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_gather_helper::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // tasks.append(asyncio.create_task(slow()))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow())));
-        // tasks.append(asyncio.create_task(slow()))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow())));
-        // return await asyncio.gather_list(tasks)
         __sub_0.emplace((*tasks));
         __state = S_RESUME_0;
         continue;
@@ -95,12 +98,18 @@ __coro_gather_helper gather_helper() {
 }
 
 // async def main_coro() -> None:
+//     gtask = asyncio.create_task(gather_helper())
+//     await asyncio.sleep(0.001)
+//     gtask.cancel()
+//     try:
+//         results = await gtask
+//         print("got", len(results))
+//     except asyncio.CancelledError:
+//         print("gather cancelled")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // gtask = asyncio.create_task(gather_helper())
         gtask.emplace(::tpystd::asyncio::create_task<std::vector<int32_t>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::vector<int32_t>>>(gather_helper())));
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -110,7 +119,6 @@ __coro_gather_helper gather_helper() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // gtask.cancel()
         (*gtask).cancel();
         __state = S_JOIN_1;
         continue;
@@ -121,13 +129,11 @@ __coro_gather_helper gather_helper() {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             results.emplace(std::move(__r1).value());
             __sub_1 = nullptr;
-            // print("got", len(results))
             std::cout << "got" << " " << ::tpy::__len__((*results)) << "\n";
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            // print("gather cancelled")
             std::cout << "gather cancelled" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -141,7 +147,6 @@ __coro_gather_helper gather_helper() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        // results = await gtask
         __sub_1 = &((*gtask));
         __state = S_RESUME_1;
         continue;
@@ -158,26 +163,27 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.gather_list: outer cancel propagates the CancelledError up to
+// # the caller via gather's `_cancel_pending` -> cleanup-mode flip ->
+// # raise. With the M10 cancel-runnable-mark hook on `Task.cancel()`, the
+// # sub-task slots are marked runnable immediately when gather propagates
+// # cancel into them; both `slow()` calls observe their sleep's
+// # `__cancel_pending` on the next poll and exit via CancelledError
+// # rather than completing the sleep. `slow finished` never prints.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.gather_list: outer cancel propagates the CancelledError up to
-    // # the caller via gather's `_cancel_pending` -> cleanup-mode flip ->
-    // # raise. With the M10 cancel-runnable-mark hook on `Task.cancel()`, the
-    // # sub-task slots are marked runnable immediately when gather propagates
-    // # cancel into them; both `slow()` calls observe their sleep's
-    // # `__cancel_pending` on the next poll and exit via CancelledError
-    // # rather than completing the sleep. `slow finished` never prints.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

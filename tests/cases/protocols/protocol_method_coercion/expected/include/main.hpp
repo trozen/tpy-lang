@@ -18,8 +18,10 @@ struct SimpleCalc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
 void use_calc(T_c& c);
+// def main() -> None:
 void main();
 
 // class SimpleCalc:
@@ -46,30 +48,32 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
 
 
 // def __init__(self, b: int32) -> None:
+//     self.base = b
 inline SimpleCalc::SimpleCalc(int32_t b) : base(b) {}
 
 // def add(self, x: int32) -> int32:
+//     return self.base + x
 inline int32_t SimpleCalc::add(int32_t x) const {
-    // return self.base + x
     return (::tpy::add_check<int32_t>(this->base, x));
 }
 
 // def multiply(self, x: int32, y: int32) -> int32:
+//     return x * y
 inline int32_t SimpleCalc::multiply(int32_t x, int32_t y) const {
-    // return x * y
     return (::tpy::mul_check<int32_t>(x, y));
 }
 // def use_calc(c: Calculator) -> None:
+//     # Test: Literal coercion to int32 in protocol method calls
+//     result1 = c.add(10)
+//     print(result1)
+//
+//     result2 = c.multiply(6, 7)
+//     print(result2)
 template<Calculator T_c>
 void use_calc(T_c& c) {
-    // # Test: Literal coercion to int32 in protocol method calls
-    // result1 = c.add(10)
     int32_t result1 = c.add(10);
-    // print(result1)
     std::cout << result1 << "\n";
-    // result2 = c.multiply(6, 7)
     int32_t result2 = c.multiply(6, 7);
-    // print(result2)
     std::cout << result2 << "\n";
 }
 

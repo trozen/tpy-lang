@@ -5,56 +5,49 @@ namespace tpyapp::main {
 
 
 // def classify(a: Dog | Cat | Bird, allow: bool) -> str:
+//     match a:
+//         # The guard gates all three alternatives, not just the last one.
+//         case (Dog() | Cat()) | Bird() if allow:
+//             return "allowed"
+//         case _:
+//             return "blocked"
 std::string classify(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool allow) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 0: {
-        // case (Dog() | Cat()) | Bird() if allow:
         {
             if (allow) {
-                // return "allowed"
                 return "allowed";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // return "blocked"
             return "blocked";
             goto __match_end_2;
         }
         break;
     }
     case 1: {
-        // case (Dog() | Cat()) | Bird() if allow:
         {
             if (allow) {
-                // return "allowed"
                 return "allowed";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // return "blocked"
             return "blocked";
             goto __match_end_2;
         }
         break;
     }
     case 2: {
-        // case (Dog() | Cat()) | Bird() if allow:
         {
             if (allow) {
-                // return "allowed"
                 return "allowed";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // return "blocked"
             return "blocked";
             goto __match_end_2;
         }
@@ -63,30 +56,29 @@ std::string classify(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool a
     }
 __match_end_2:;
     ::std::unreachable();
-    // # The guard gates all three alternatives, not just the last one.
 }
 
 // def small(n: int, allow: bool) -> str:
+//     match n:
+//         case (1 | 2) | 3 if allow:
+//             return "small-allowed"
+//         case 1 | 2 | 3:
+//             return "small-blocked"
+//         case _:
+//             return "other"
 std::string small(const ::tpy::BigInt& n, bool allow) {
-    // match n:
     auto& __match_subject_1 = n;
-    // case (1 | 2) | 3 if allow:
     if ((__match_subject_1 == 1 || __match_subject_1 == 2 || __match_subject_1 == 3)) {
         if (allow) {
-            // return "small-allowed"
             return "small-allowed";
             goto __match_end_2;
         }
     }
-    // case 1 | 2 | 3:
     if ((__match_subject_1 == 1 || __match_subject_1 == 2 || __match_subject_1 == 3)) {
-        // return "small-blocked"
         return "small-blocked";
         goto __match_end_2;
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -95,48 +87,49 @@ std::string small(const ::tpy::BigInt& n, bool allow) {
 }
 
 // def main() -> None:
+//     d: Dog | Cat | Bird = Dog(1)
+//     c: Dog | Cat | Bird = Cat(2)
+//     b: Dog | Cat | Bird = Bird(3)
+//     print(classify(d, True))
+//     print(classify(d, False))
+//     print(classify(c, True))
+//     print(classify(c, False))
+//     print(classify(b, True))
+//     print(classify(b, False))
+//     print(small(1, True))
+//     print(small(2, False))
+//     print(small(3, True))
+//     print(small(9, True))
 void main() {
-    // d: Dog | Cat | Bird = Dog(1)
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog(::tpy::BigInt(1));
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat | Bird = Cat(2)
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(2));
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // b: Dog | Cat | Bird = Bird(3)
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird(::tpy::BigInt(3));
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    // print(classify(d, True))
     std::cout << classify(d.as_const(), true) << "\n";
-    // print(classify(d, False))
     std::cout << classify(d.as_const(), false) << "\n";
-    // print(classify(c, True))
     std::cout << classify(c.as_const(), true) << "\n";
-    // print(classify(c, False))
     std::cout << classify(c.as_const(), false) << "\n";
-    // print(classify(b, True))
     std::cout << classify(b.as_const(), true) << "\n";
-    // print(classify(b, False))
     std::cout << classify(b.as_const(), false) << "\n";
-    // print(small(1, True))
     std::cout << small(::tpy::BigInt(1), true) << "\n";
-    // print(small(2, False))
     std::cout << small(::tpy::BigInt(2), false) << "\n";
-    // print(small(3, True))
     std::cout << small(::tpy::BigInt(3), true) << "\n";
-    // print(small(9, True))
     std::cout << small(::tpy::BigInt(9), true) << "\n";
 }
 
+// # A guard on an arm whose pattern is a parenthesized or-pattern group: the
+// # guard belongs to the arm, so flattening the group must leave it applying to
+// # every alternative.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A guard on an arm whose pattern is a parenthesized or-pattern group: the
-    // # guard belongs to the arm, so flattening the group must leave it applying to
-    // # every alternative.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

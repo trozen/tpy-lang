@@ -12,22 +12,39 @@ struct Connection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_basic() -> None:
 void test_basic();
+// def test_no_as() -> None:
 void test_no_as();
+// def test_enter_returns_different_type() -> None:
 void test_enter_returns_different_type();
+// def test_multiple_ctx_managers() -> None:
 void test_multiple_ctx_managers();
+// def test_variable_visible_after() -> None:
 void test_variable_visible_after();
+// def early_return_helper() -> str:
 std::string early_return_helper();
+// def test_early_return() -> None:
 void test_early_return();
+// def nested_with_all_return(flag: bool) -> str:
 std::string nested_with_all_return(bool flag);
+// def test_nested_with_all_return() -> None:
 void test_nested_with_all_return();
+// def test_body_var_survives_scope() -> None:
 void test_body_var_survives_scope();
+// def test_body_record_var_survives_scope() -> None:
 void test_body_record_var_survives_scope();
+// def test_reuse_with_var_name() -> None:
 void test_reuse_with_var_name();
+// def test_exception_in_body() -> None:
 void test_exception_in_body();
+// def test_exception_multi() -> None:
 void test_exception_multi();
+// def test_with_in_try_finally() -> None:
 void test_with_in_try_finally();
+// def test_break_in_with() -> None:
 void test_break_in_with();
+// def test_continue_in_with() -> None:
 void test_continue_in_with();
 
 // class Logger:
@@ -78,44 +95,46 @@ inline std::ostream& operator<<(std::ostream& os, const Connection& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Logger::Logger(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> Self:
+//     print(f"enter {self.name}")
+//     return self
 inline Logger& Logger::__enter__() {
-    // print(f"enter {self.name}")
     std::cout << std::format("enter {}", this->name) << "\n";
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print(f"exit {self.name}")
 inline void Logger::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print(f"exit {self.name}")
     std::cout << std::format("exit {}", this->name) << "\n";
 }
 
 // def log(self, msg: str) -> None:
+//     print(f"[{self.name}] {msg}")
 inline void Logger::log(std::string_view msg) const {
-    // print(f"[{self.name}] {msg}")
     std::cout << std::format("[{}] {}", this->name, msg) << "\n";
 }
 
 // def __init__(self) -> None:
+//     self.active = True
 inline Connection::Connection() : active(true) {}
 
 // def __enter__(self) -> str:
+//     print("connecting")
+//     return "session-42"
 inline std::string Connection::__enter__() const {
-    // print("connecting")
     std::cout << "connecting" << "\n";
-    // return "session-42"
     return "session-42";
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     self.active = False
+//     print("disconnected")
 inline void Connection::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
-    // self.active = False
     this->active = false;
-    // print("disconnected")
     std::cout << "disconnected" << "\n";
 }
 void __tpy_init();

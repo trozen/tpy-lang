@@ -40,24 +40,40 @@ struct __gen_readonly_next;
 struct __gen_Collector_sizes;
 struct __gen_Album_each;
 
+// def scalars(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 __gen_scalars scalars(::tpy::varargs<const int32_t> xs);
+// def strings(*ss: str) -> Iterator[int32]:  # tpyc: ok
 __gen_strings strings(::tpy::varargs<const std::string> ss);
+// def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
 __gen_merge_shape<T> merge_shape(::tpy::varargs<const std::vector<T>> xs);
+// def bump(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 __gen_bump bump(::tpy::varargs<Point> ps);
+// def read_pack(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 __gen_read_pack read_pack(::tpy::varargs<const Point> ps);
+// def total_of(*xs: int32) -> int32:
 int32_t total_of(::tpy::varargs<const int32_t> xs);
+// def forward(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 __gen_forward forward(::tpy::varargs<const int32_t> xs);
+// def indexed(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 __gen_indexed indexed(::tpy::varargs<const int32_t> xs);
+// def in_finally(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_in_finally in_finally(::tpy::varargs<const std::vector<int32_t>> xs);
+// def in_with(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_in_with in_with(::tpy::varargs<const std::vector<int32_t>> xs);
+// def readonly_param(ps: readonly[list[Point]]) -> Iterator[int32]:  # tpyc: ok
 __gen_readonly_param readonly_param(const std::vector<Point>& ps);
+// def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
 __gen_bump_generic<T> bump_generic(::tpy::varargs<T> xs);
+// def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 __gen_points points(const std::vector<Point>& ps);
+// def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[int32]:  # tpyc: ok
 template <::tpystd::typing::Iterator<Point> T_it>
 __gen_readonly_next<T_it> readonly_next(T_it&& it);
+// def grow_both(p: list[list[int32]], q: list[list[int32]]) -> None:  # tpyc: ok
 void grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int32_t>>& q);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -148,6 +164,8 @@ struct Grower {
     explicit Grower(int32_t tag);
 
     // def each_pack(self, *xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
+    //     for s in xs:
+    //         yield s
     auto each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) const {
         return ::tpy::make_generator<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>>(
             [this, xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>> {
@@ -172,7 +190,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grower& obj) {
     return os;
 }
 
-// Generator: scalars
+// def scalars(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 struct __gen_scalars : public ::tpy::next_iter_mixin<__gen_scalars, int32_t> {
     int32_t __state;
     ::tpy::varargs<const int32_t> xs;
@@ -200,7 +218,7 @@ struct __gen_scalars : public ::tpy::next_iter_mixin<__gen_scalars, int32_t> {
     }
 };
 
-// Generator: strings
+// def strings(*ss: str) -> Iterator[int32]:  # tpyc: ok
 struct __gen_strings : public ::tpy::next_iter_mixin<__gen_strings, int32_t> {
     int32_t __state;
     ::tpy::varargs<const std::string> ss;
@@ -228,7 +246,7 @@ struct __gen_strings : public ::tpy::next_iter_mixin<__gen_strings, int32_t> {
     }
 };
 
-// Generator: merge_shape
+// def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
 struct __gen_merge_shape : public ::tpy::next_iter_mixin<__gen_merge_shape<T>, int32_t> {
     int32_t __state;
@@ -256,28 +274,31 @@ struct __gen_merge_shape : public ::tpy::next_iter_mixin<__gen_merge_shape<T>, i
     }
 };
 // def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[int32]:  # tpyc: ok
+//     total = 0
+//     for s in xs:
+//         total += len(s)
+//     i = 0
+//     while i < total:
+//         yield i
+//         i += 1
+//     yield -1
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_merge_shape<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
-        // for s in xs:
         auto& __obj_0 = xs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& s = *__beg_0;
-            // total += len(s)
             total = ::tpy::add_check<int32_t>(total, ::tpy::__len__(s));
         }
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -288,11 +309,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_merge_shape<T>::__next__() {
     }
     case S_JOIN_0: {
         if ((i < total)) {
-            // yield i
             __state = S_RESUME_0;
             return i;
         } else {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
@@ -309,7 +328,7 @@ __gen_merge_shape<T> merge_shape(::tpy::varargs<const std::vector<T>> xs) {
     return __gen_merge_shape<T>(xs);
 }
 
-// Generator: bump
+// def bump(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     int32_t __state;
     ::tpy::varargs<Point> ps;
@@ -336,7 +355,7 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     }
 };
 
-// Generator: read_pack
+// def read_pack(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 struct __gen_read_pack : public ::tpy::next_iter_mixin<__gen_read_pack, int32_t> {
     int32_t __state;
     ::tpy::varargs<const Point> ps;
@@ -363,7 +382,7 @@ struct __gen_read_pack : public ::tpy::next_iter_mixin<__gen_read_pack, int32_t>
     }
 };
 
-// Generator: forward
+// def forward(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 struct __gen_forward : public ::tpy::next_iter_mixin<__gen_forward, int32_t> {
     int32_t __state;
     ::tpy::varargs<const int32_t> xs;
@@ -386,7 +405,7 @@ struct __gen_forward : public ::tpy::next_iter_mixin<__gen_forward, int32_t> {
     }
 };
 
-// Generator: indexed
+// def indexed(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 struct __gen_indexed : public ::tpy::next_iter_mixin<__gen_indexed, int32_t> {
     int32_t __state;
     ::tpy::varargs<const int32_t> xs;
@@ -411,7 +430,7 @@ struct __gen_indexed : public ::tpy::next_iter_mixin<__gen_indexed, int32_t> {
     }
 };
 
-// Generator: in_finally
+// def in_finally(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_in_finally : public ::tpy::next_iter_mixin<__gen_in_finally, int32_t> {
     ::tpy::frame_state __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
@@ -455,7 +474,7 @@ struct __gen_in_finally : public ::tpy::next_iter_mixin<__gen_in_finally, int32_
     }
 };
 
-// Generator: in_with
+// def in_with(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with, int32_t> {
     ::tpy::frame_state __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
@@ -500,7 +519,7 @@ struct __gen_in_with : public ::tpy::next_iter_mixin<__gen_in_with, int32_t> {
     }
 };
 
-// Generator: readonly_param
+// def readonly_param(ps: readonly[list[Point]]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_readonly_param : public ::tpy::next_iter_mixin<__gen_readonly_param, int32_t> {
     int32_t __state;
     const std::vector<Point>& ps;
@@ -527,7 +546,7 @@ struct __gen_readonly_param : public ::tpy::next_iter_mixin<__gen_readonly_param
     }
 };
 
-// Generator: bump_generic
+// def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
 template <typename T>
 struct __gen_bump_generic : public ::tpy::next_iter_mixin<__gen_bump_generic<T>, int32_t> {
     int32_t __state;
@@ -555,6 +574,9 @@ struct __gen_bump_generic : public ::tpy::next_iter_mixin<__gen_bump_generic<T>,
     }
 };
 // def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
+//     for x in xs:
+//         yield x.bump()
+//     yield -1
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_generic<T>::__next__() {
     while (true) switch (__state) {
@@ -574,12 +596,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump_generic<T>::__next__() {
     }
     case S_JOIN_0: {
         if ((*__for_it_0) == (*__for_end_0)) {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
         x = &(*((*__for_it_0))++);
-        // yield x.bump()
         __state = S_RESUME_0;
         return x->bump();
     }
@@ -595,7 +615,7 @@ __gen_bump_generic<T> bump_generic(::tpy::varargs<T> xs) {
     return __gen_bump_generic<T>(xs);
 }
 
-// Generator: points
+// def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, ::tpy::val_or_ref<const Point>> {
     int32_t __state;
     const std::vector<Point>& ps;
@@ -625,7 +645,7 @@ struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, ::tpy::val_or_
     }
 };
 
-// Generator: readonly_next
+// def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[int32]:  # tpyc: ok
 template <::tpystd::typing::Iterator<Point> T_it>
 struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T_it>, int32_t> {
     int32_t __state;
@@ -655,6 +675,15 @@ struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T
     }
 };
 // def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[int32]:  # tpyc: ok
+//     for p in it:
+//         # `yield p.x` copies an int32, but the ephemeral-borrow escape check
+//         # roots on `p` and refuses it -- BUGS.md#ephemeral-value-read-escape.
+//         before = p.x
+//         yield before
+//         # Same borrow, after the caller's mutation of the source.
+//         after = p.x
+//         yield after
+//     yield -1
 template <::tpystd::typing::Iterator<Point> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_next<T_it>::__next__() {
     while (true) switch (__state) {
@@ -663,10 +692,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_next<T_it>::__next__
         continue;
     }
     case S_RESUME_0: {
-        // # Same borrow, after the caller's mutation of the source.
-        // after = p.x
         after = p->x;
-        // yield after
         __state = S_RESUME_1;
         return after;
     }
@@ -681,16 +707,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_next<T_it>::__next__
     case S_JOIN_0: {
         __for_r_0.emplace(it.__next__());
         if (!(*__for_r_0).has_value()) {
-            // yield -1
             __state = S_RESUME_2;
             return -1;
         }
         p = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        // # `yield p.x` copies an int32, but the ephemeral-borrow escape check
-        // # roots on `p` and refuses it -- BUGS.md#ephemeral-value-read-escape.
-        // before = p.x
         before = p->x;
-        // yield before
         __state = S_RESUME_0;
         return before;
     }
@@ -706,7 +727,7 @@ __gen_readonly_next<T_it> readonly_next(T_it&& it) {
     return __gen_readonly_next<T_it>(std::forward<T_it>(it));
 }
 
-// Generator: Collector.sizes
+// def sizes(self, *xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_sizes, int32_t> {
     int32_t __state;
     const Collector& __self;
@@ -738,7 +759,7 @@ inline __gen_Collector_sizes Collector::sizes(::tpy::varargs<const std::vector<i
     return __gen_Collector_sizes(*this, xs);
 }
 
-// Generator: Album.each
+// def each(self) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Album_each : public ::tpy::next_iter_mixin<__gen_Album_each, int32_t> {
     int32_t __state;
     const Album& __self;
@@ -771,42 +792,47 @@ inline __gen_Album_each Album::each() const {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def bump(self) -> int32:
+//     self.x += 1
+//     return self.x
 inline int32_t Point::bump() {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
-    // return self.x
     return this->x;
 }
 
 // def __enter__(self) -> "Trace":
+//     return self
 inline Trace& Trace::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc, tb) -> bool:
+//     print("with: exit")
+//     return False
 inline bool Trace::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc, std::monostate tb) const {
-    // print("with: exit")
     std::cout << "with: exit" << "\n";
-    // return False
     return false;
 }
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Collector::Collector(int32_t base) : base(base) {}
 
 // def __init__(self) -> None:
+//     self.items = [Point(1), Point(2)]
 inline Album::Album() : items(std::vector<Point>{Point(1), Point(2)}) {}
 
 // def __init__(self, tag: int32) -> None:
+//     self.tag = tag
 inline Grower::Grower(int32_t tag) : tag(tag) {}
 
 // def grow_both(self, p: list[list[int32]], q: list[list[int32]]) -> None:  # tpyc: ok
+//     for v in self.each_pack(p, q):
+//         v.append([self.tag])
 inline void Grower::grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int32_t>>& q) const {
-    // for v in self.each_pack(p, q):
     {
         std::array<std::vector<std::vector<int32_t>>*, 2> __tmp_1{&p, &q};
         auto __src_0 = this->each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>>(__tmp_1));
@@ -815,11 +841,13 @@ inline void Grower::grow_both(std::vector<std::vector<int32_t>>& p, std::vector<
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_1);
-        // v.append([self.tag])
         v.push_back({this->tag});
         }
     }
 }
+// def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
+//     for s in xs:
+//         yield s
 inline auto each_pack(::tpy::varargs<std::vector<std::vector<int32_t>>> xs) {
     return ::tpy::make_generator<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>>(
         [xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<std::vector<std::vector<int32_t>>>> {

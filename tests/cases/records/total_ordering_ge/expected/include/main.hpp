@@ -65,17 +65,18 @@ inline std::ostream& operator<<(std::ostream& os, const Weight& obj) {
 
 
 // def __init__(self, g: int32) -> None:
+//     self.grams = g
 inline Weight::Weight(int32_t g) : grams(g) {}
 
 // def __eq__(self, other: "Weight") -> bool:
+//     return self.grams == other.grams
 inline bool Weight::__eq__(const Weight& other) const {
-    // return self.grams == other.grams
     return (this->grams == other.grams);
 }
 
 // def __ge__(self, other: "Weight") -> bool:
+//     return self.grams >= other.grams
 inline bool Weight::__ge__(const Weight& other) const {
-    // return self.grams >= other.grams
     return (this->grams >= other.grams);
 }
 

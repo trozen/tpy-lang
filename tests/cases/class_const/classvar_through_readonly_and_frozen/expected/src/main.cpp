@@ -5,40 +5,42 @@ namespace tpyapp::main {
 
 
 // def bump(c: readonly[Counter]) -> None:
+//     c.instances += 1  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
 void bump(const Counter& c) {
-    // c.instances += 1  # tpyc: warning(/Assigning to ClassVar 'Counter.instances' via instance/)
     Counter::instances = ::tpy::add_check<int32_t>(Counter::instances, 1);
 }
 
 // def main() -> None:
+//     Counter.instances = 0
+//     a = Counter()
+//     bump(a)
+//     bump(a)
+//     print(Counter.instances)
+//
+//     FrozenCounter.instances = 0
+//     f = FrozenCounter("widget")
+//     f.instances = 5  # tpyc: warning(/Assigning to ClassVar 'FrozenCounter.instances' via instance/)
+//     print(FrozenCounter.instances)
 void main() {
-    // Counter.instances = 0
     Counter::instances = 0;
-    // a = Counter()
     Counter a = Counter();
-    // bump(a)
     bump(a);
-    // bump(a)
     bump(a);
-    // print(Counter.instances)
     std::cout << Counter::instances << "\n";
-    // FrozenCounter.instances = 0
     FrozenCounter::instances = 0;
-    // f = FrozenCounter("widget")
     FrozenCounter f = FrozenCounter("widget");
-    // f.instances = 5  # tpyc: warning(/Assigning to ClassVar 'FrozenCounter.instances' via instance/)
     FrozenCounter::instances = 5;
-    // print(FrozenCounter.instances)
     std::cout << FrozenCounter::instances << "\n";
 }
 
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

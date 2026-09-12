@@ -5,122 +5,122 @@ namespace tpyapp::main {
 
 
 // def test_str_concat() -> None:
+//     a: str = "hello"
+//     b: str = " world"
+//     c: String = a + b
+//     print(c)  # hello world
 void test_str_concat() {
-    // a: str = "hello"
     std::string_view a = "hello";
-    // b: str = " world"
     std::string_view b = " world";
-    // c: String = a + b
     ::tpy::String c = (::tpy::str_concat(a, b));
-    // print(c)  # hello world
     std::cout << c << "\n";
 }
 
 // def test_str_plus_eq() -> None:
+//     s: String = String("hello")
+//     s += " world"
+//     print(s)  # hello world
 void test_str_plus_eq() {
-    // s: String = String("hello")
     ::tpy::String s = ::tpy::String("hello");
-    // s += " world"
     s += " world";
-    // print(s)  # hello world
     std::cout << s << "\n";
 }
 
 // def test_str_multiconcat() -> None:
+//     s: String = String("a") + "b" + "c"
+//     print(s)  # abc
 void test_str_multiconcat() {
-    // s: String = String("a") + "b" + "c"
     ::tpy::String s = (::tpy::str_concat((::tpy::str_concat(::tpy::String("a"), "b")), "c"));
-    // print(s)  # abc
     std::cout << s << "\n";
 }
 
 // def test_literal_concat() -> None:
+//     s: String = "foo" + "bar"
+//     print(s)  # foobar
 void test_literal_concat() {
-    // s: String = "foo" + "bar"
     ::tpy::String s = (::tpy::str_concat("foo", "bar"));
-    // print(s)  # foobar
     std::cout << s << "\n";
 }
 
 // def test_cross_type_concat() -> None:
+//     a: str = str("hello")
+//     b: String = String(" world")
+//     # str + String
+//     print(a + b)  # hello world
+//     # String + str
+//     print(b + a)  #  worldhello
+//     # str += with str target
+//     a += " end"
+//     print(a)  # hello end
 void test_cross_type_concat() {
-    // a: str = str("hello")
     std::string a = std::string("hello");
-    // b: String = String(" world")
     ::tpy::String b = ::tpy::String(" world");
-    // # str + String
-    // print(a + b)  # hello world
     std::cout << (::tpy::str_concat(a, b)) << "\n";
-    // # String + str
-    // print(b + a)  #  worldhello
     std::cout << (::tpy::str_concat(b, a)) << "\n";
-    // # str += with str target
-    // a += " end"
     a += " end";
-    // print(a)  # hello end
     std::cout << a << "\n";
 }
 
 // def test_reassign_concat() -> None:
+//     # x = x + y should use in-place append
+//     s: String = String("hello")
+//     s = s + " world"
+//     print(s)  # hello world
+//     # str type
+//     a: str = str("a")
+//     a = a + "b"
+//     print(a)  # ab
+//     # with str() conversion
+//     n: int32 = 42
+//     a = a + str(n)
+//     print(a)  # ab42
 void test_reassign_concat() {
-    // # x = x + y should use in-place append
-    // s: String = String("hello")
     ::tpy::String s = ::tpy::String("hello");
-    // s = s + " world"
     s += " world";
-    // print(s)  # hello world
     std::cout << s << "\n";
-    // # str type
-    // a: str = str("a")
     std::string a = std::string("a");
-    // a = a + "b"
     a += "b";
-    // print(a)  # ab
     std::cout << a << "\n";
-    // # with str() conversion
-    // n: int32 = 42
     int32_t n = 42;
-    // a = a + str(n)
     a += ::tpy::fixed_to_str<int32_t>(n);
-    // print(a)  # ab42
     std::cout << a << "\n";
 }
 
 // def test_loop_concat() -> None:
+//     s: String = String("")
+//     i: int32 = 0
+//     while i < 5:
+//         s += str(i)
+//         i += 1
+//     print(s)  # 01234
 void test_loop_concat() {
-    // s: String = String("")
     ::tpy::String s = ::tpy::String("");
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 5:
     while ((i < 5)) {
-        // s += str(i)
         s += ::tpy::fixed_to_str<int32_t>(i);
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // print(s)  # 01234
     std::cout << s << "\n";
 }
 
+// test_str_concat()
+// test_str_plus_eq()
+// test_str_multiconcat()
+// test_literal_concat()
+// test_cross_type_concat()
+// test_reassign_concat()
+// test_loop_concat()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_str_concat()
     test_str_concat();
-    // test_str_plus_eq()
     test_str_plus_eq();
-    // test_str_multiconcat()
     test_str_multiconcat();
-    // test_literal_concat()
     test_literal_concat();
-    // test_cross_type_concat()
     test_cross_type_concat();
-    // test_reassign_concat()
     test_reassign_concat();
-    // test_loop_concat()
     test_loop_concat();
 }
 

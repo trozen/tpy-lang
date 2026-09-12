@@ -3,11 +3,16 @@
 
 namespace tpyapp::main {
 
-// n: integer;
 int32_t n{};
-// s: string;
 ::pascal_rt::runtime::strings::PStr<255>* s{};
 
+// n: integer;
+// s: string;
+//
+// n := $a0;
+// writeln(n);                  { 160 }
+// s := 'line1'#13#10'line2';   { two-line string }
+// writeln(s);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -16,16 +21,11 @@ void __tpy_init() {
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::strings::__tpy_init();
-    // s: string;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_1 = ::pascal_rt::runtime::strings::PStr<255>();
     s = &__global_slot_1;
-    // n := $a0;
     n = 160;
-    // writeln(n);                  { 160 }
     std::cout << n << "\n";
-    // s := 'line1'#13#10'line2';   { two-line string }
     s->assign("line1\r\nline2");
-    // writeln(s);
     std::cout << std::string(::tpy::__str__((*s))) << "\n";
 }
 

@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def greetings(name: str) -> Iterator[str]:
+//     yield "hello " + name
+//     yield "goodbye " + name
 std::expected<std::string, ::tpy::StopIteration> __gen_greetings::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield "hello " + name
         __state = S_RESUME_0;
         return (::tpy::str_concat("hello ", name));
     }
     case S_RESUME_0: {
-        // yield "goodbye " + name
         __state = S_RESUME_1;
         return (::tpy::str_concat("goodbye ", name));
     }
@@ -33,16 +33,17 @@ __gen_greetings greetings(std::string_view name) {
 }
 
 // def make_name() -> str:
+//     return "wor" + "ld"
 std::string make_name() {
-    // return "wor" + "ld"
     return (::tpy::str_concat("wor", "ld"));
 }
 
 // def main() -> None:
+//     # make_name() is a temporary, destroyed at end-of-statement; the generator
+//     # owns its copy of `name`, so iteration still reads "world".
+//     for msg in greetings(make_name()):  # tpyc: ok
+//         print(msg)
 void main() {
-    // # make_name() is a temporary, destroyed at end-of-statement; the generator
-    // # owns its copy of `name`, so iteration still reads "world".
-    // for msg in greetings(make_name()):  # tpyc: ok
     {
         std::string __tmp_1 = make_name();
         auto __src_0 = greetings(__tmp_1);
@@ -51,18 +52,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view msg = ::tpy::unwrap_ref(*__r_1);
-        // print(msg)
         std::cout << msg << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

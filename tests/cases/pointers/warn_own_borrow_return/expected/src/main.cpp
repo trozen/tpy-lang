@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def bad_return(b: Box) -> Own[Box]:
+//     return b  # tpyc: warning(/copies Box into owned storage/)
 Box bad_return(const Box& b) {
-    // return b  # tpyc: warning(/copies Box into owned storage/)
     return b;
 }
 
 // def good_return(b: Box) -> Own[Box]:
+//     return copy(b)  # tpyc: ok
 Box good_return(const Box& b) {
-    // return copy(b)  # tpyc: ok
     return Box(b);
 }
 
 // def main() -> None:
+//     b = Box(1)
+//     print(bad_return(b).value, good_return(b).value, b.value)
 void main() {
-    // b = Box(1)
     Box b = Box(1);
-    // print(bad_return(b).value, good_return(b).value, b.value)
     std::cout << bad_return(b).value << " " << good_return(b).value << " " << b.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

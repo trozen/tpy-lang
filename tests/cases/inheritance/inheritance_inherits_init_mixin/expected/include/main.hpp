@@ -14,6 +14,7 @@ struct WithMixinReversed;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base:
@@ -73,11 +74,12 @@ inline std::ostream& operator<<(std::ostream& os, const WithMixinReversed& obj) 
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Base::Base(int32_t x) : x(x) {}
 
 // def hello(self) -> str:
+//     return "hi"
 inline std::string Greeter::hello() const {
-    // return "hi"
     return "hi";
 }
 void __tpy_init();

@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def lookup(h: Headers, name: str) -> str:
+//     return getattr(h, name, "fallback")
 std::string lookup(const Headers& h, std::string_view name) {
-    // return getattr(h, name, "fallback")
     return ({ std::optional<std::string> __r; try { __r.emplace(h.__getattr__(name)); } catch (const ::tpy::AttributeError&) { __r.emplace("fallback"); } std::move(*__r); });
 }
 
 // def main() -> None:
+//     h = Headers()
+//     keys = ["host", "missing", "other"]
+//     for k in keys:
+//         print(k, "=>", lookup(h, k))
 void main() {
-    // h = Headers()
     Headers h = Headers();
-    // keys = ["host", "missing", "other"]
     std::array<std::string, 3> keys = {"host", "missing", "other"};
-    // for k in keys:
     auto& __obj_0 = keys;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // print(k, "=>", lookup(h, k))
         std::cout << k << " " << "=>" << " " << lookup(h, k) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

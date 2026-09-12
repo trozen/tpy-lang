@@ -3,35 +3,34 @@
 
 namespace tpyapp::main {
 
-// x = Bid(int32(10))
 Bid* x{};
-// y = Bid(int32(20))
 Bid* y{};
 
+// # @total_ordering with __le__ as the anchor: synthesizes __lt__,
+// # __gt__, __ge__ in terms of __le__ and __eq__.
+// from functools import total_ordering
+//
+// x = Bid(int32(10))
+// y = Bid(int32(20))
+// print(x < y)
+// print(x <= y)
+// print(x > y)
+// print(x >= y)
+// print(y > x)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @total_ordering with __le__ as the anchor: synthesizes __lt__,
-    // # __gt__, __ge__ in terms of __le__ and __eq__.
-    // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // x = Bid(int32(10))
     static Bid __global_slot_1 = Bid(10);
     x = &__global_slot_1;
-    // y = Bid(int32(20))
     static Bid __global_slot_2 = Bid(20);
     y = &__global_slot_2;
-    // print(x < y)
     std::cout << ::tpy::print_bool((((*x)) < ((*y)))) << "\n";
-    // print(x <= y)
     std::cout << ::tpy::print_bool((((*x)) <= ((*y)))) << "\n";
-    // print(x > y)
     std::cout << ::tpy::print_bool((((*x)) > ((*y)))) << "\n";
-    // print(x >= y)
     std::cout << ::tpy::print_bool((((*x)) >= ((*y)))) << "\n";
-    // print(y > x)
     std::cout << ::tpy::print_bool((((*y)) > ((*x)))) << "\n";
 }
 

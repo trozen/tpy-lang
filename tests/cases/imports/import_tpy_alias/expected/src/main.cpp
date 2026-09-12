@@ -3,25 +3,24 @@
 
 namespace tpyapp::main {
 
-// x = t.int32(42)
 int32_t x{};
-// y = t.int32(123)
 int32_t y{};
 
+// x = t.int32(42)
+// y = t.int32(123)
+//
+// print(x)
+// print(y)
+// print(x + y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x = t.int32(42)
     x = 42;
-    // y = t.int32(123)
     y = 123;
-    // print(x)
     std::cout << x << "\n";
-    // print(y)
     std::cout << y << "\n";
-    // print(x + y)
     std::cout << (::tpy::add_check<int32_t>(x, y)) << "\n";
 }
 

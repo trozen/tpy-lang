@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def make_list(n: int32) -> Own[list[int32]]:
+//     out: list[int32] = []
+//     for i in range(n):
+//         out.append(i * 10)
+//     return out
 std::vector<int32_t> make_list(int32_t n) {
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // out.append(i * 10)
         out.push_back((::tpy::mul_check<int32_t>(i, 10)));
     }
-    // return out
     return out;
 }
 
 // def main() -> None:
+//     g = Grid(7)
+//     print(len(g.cells), g.cells[0], len(g.tags), g.tags[3])
+//     g.fill_own(3)
+//     print(len(g.data), g.data[2])
+//     h = Holder()
+//     h.items.append(42)
+//     g.fill_borrow(h)
+//     print(len(g.mirror), g.mirror[0])
 void main() {
-    // g = Grid(7)
     Grid g = Grid(7);
-    // print(len(g.cells), g.cells[0], len(g.tags), g.tags[3])
     std::cout << ::tpy::__len__(g.cells) << " " << ::tpy::__getitem__(g.cells, 0) << " " << ::tpy::__len__(g.tags) << " " << ::tpy::__getitem__(g.tags, 3) << "\n";
-    // g.fill_own(3)
     g.fill_own(3);
-    // print(len(g.data), g.data[2])
     std::cout << ::tpy::__len__(g.data) << " " << ::tpy::__getitem__(g.data, 2) << "\n";
-    // h = Holder()
     Holder h = Holder();
-    // h.items.append(42)
     h.items.push_back(42);
-    // g.fill_borrow(h)
     g.fill_borrow(h);
-    // print(len(g.mirror), g.mirror[0])
     std::cout << ::tpy::__len__(g.mirror) << " " << ::tpy::__getitem__(g.mirror, 0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

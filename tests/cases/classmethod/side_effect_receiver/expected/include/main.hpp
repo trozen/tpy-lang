@@ -12,7 +12,9 @@ struct Widget;
 extern int32_t built;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def source() -> Own[Widget]:
 Widget source();
+// def main() -> None:
 void main();
 
 // class Widget:
@@ -37,12 +39,13 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Widget::Widget(int32_t n) : n(n) {}
 
 // @classmethod
 // def blank(cls) -> Own[Self]:
+//     return cls(0)
 inline Widget Widget::blank() {
-    // return cls(0)
     return Widget(0);
 }
 void __tpy_init();

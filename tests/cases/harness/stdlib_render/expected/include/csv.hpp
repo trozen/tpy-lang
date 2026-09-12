@@ -26,12 +26,43 @@ struct __gen_reader;
 template <::tpystd::tpy::Readable W>
 struct __gen_DictReader___iter__;
 
+// def _parse_rows[R: Readable](
+//     fp: Ptr[R],
+//     delimiter: str,
+//     quotechar: str,
+//     doublequote: bool,
+//     skipinitialspace: bool,
+// ) -> Iterator[Own[list[str]]]:
 template <typename R>
 __gen__parse_rows<R> _parse_rows(R* fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, bool skipinitialspace);
+// def reader(
+//     fp: Readable,
+//     *,
+//     delimiter: str = ",",
+//     quotechar: str = '"',
+//     doublequote: bool = True,
+//     skipinitialspace: bool = False,
+// ) -> Iterator[Own[list[str]]]:
 template <::tpystd::tpy::Readable T_fp>
 __gen_reader<T_fp> reader(T_fp&& fp, std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, bool skipinitialspace = false);
+// def _needs_quoting(field: str, delimiter: str, quotechar: str) -> bool:
 bool _needs_quoting(std::string_view field, std::string_view delimiter, std::string_view quotechar);
+// def _format_row(
+//     row: list[str],
+//     delimiter: str,
+//     quotechar: str,
+//     doublequote: bool,
+//     lineterminator: str,
+// ) -> str:
 std::string _format_row(const std::vector<std::string>& row, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator);
+// def writer[W: Writable](
+//     fp: W,
+//     *,
+//     delimiter: str = ",",
+//     quotechar: str = '"',
+//     doublequote: bool = True,
+//     lineterminator: str = "\r\n",
+// ) -> Own[_Writer[W]]:
 template<::tpystd::tpy::Writable W>
 _Writer<W> writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, std::string_view lineterminator = "\r\n");
 
@@ -50,33 +81,38 @@ struct _Writer {
     std::string _lineterminator;
 
     // def __init__(
-    // self,
-    // fp: W,
-    // delimiter: str,
-    // quotechar: str,
-    // doublequote: bool,
-    // lineterminator: str,
+    //     self,
+    //     fp: W,
+    //     delimiter: str,
+    //     quotechar: str,
+    //     doublequote: bool,
+    //     lineterminator: str,
     // ) -> None:
+    //     self._fp = fp
+    //     self._delimiter = delimiter
+    //     self._quotechar = quotechar
+    //     self._doublequote = doublequote
+    //     self._lineterminator = lineterminator
     _Writer() = default;
     explicit _Writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator) : _fp(&fp), _delimiter(delimiter), _quotechar(quotechar), _doublequote(doublequote), _lineterminator(lineterminator) {}
 
     // def writerow(self, row: list[str]) -> None:
+    //     self._fp.write(_format_row(
+    //         row, self._delimiter, self._quotechar,
+    //         self._doublequote, self._lineterminator))
     void writerow(const std::vector<std::string>& row) {
-        // self._fp.write(_format_row(
-        // row, self._delimiter, self._quotechar,
-        // self._doublequote, self._lineterminator))
         ::tpy::deref_check(this->_fp).write(_format_row(row, this->_delimiter, this->_quotechar, this->_doublequote, this->_lineterminator));
     }
 
     // def writerows(self, rows: list[list[str]]) -> None:
+    //     for row in rows:
+    //         self.writerow(row)
     void writerows(const std::vector<std::vector<std::string>>& rows) {
-        // for row in rows:
         auto& __obj_0 = rows;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& row = *__beg_0;
-            // self.writerow(row)
             this->writerow(row);
         }
     }
@@ -106,20 +142,28 @@ struct DictReader {
     std::vector<std::string> fieldnames;
 
     // def __init__(
-    // self,
-    // fp: W,
-    // fieldnames: Own[list[str]] | None = None,
-    // *,
-    // delimiter: str = ",",
-    // quotechar: str = '"',
-    // doublequote: bool = True,
-    // skipinitialspace: bool = False,
+    //     self,
+    //     fp: W,
+    //     fieldnames: Own[list[str]] | None = None,
+    //     *,
+    //     delimiter: str = ",",
+    //     quotechar: str = '"',
+    //     doublequote: bool = True,
+    //     skipinitialspace: bool = False,
     // ) -> None:
+    //     self._fp = fp
+    //     self._delimiter = delimiter
+    //     self._quotechar = quotechar
+    //     self._doublequote = doublequote
+    //     self._skipinitialspace = skipinitialspace
+    //     # Initialize unconditionally (empty means "derive from header") so the
+    //     # field is seen as set before the ctor body; override if given.
+    //     self.fieldnames = []
+    //     if fieldnames is not None:
+    //         self.fieldnames = fieldnames
     DictReader() = default;
     explicit DictReader(::tpy::param_val_or_ref_t<W> fp, std::optional<std::vector<std::string>> fieldnames = std::nullopt, std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, bool skipinitialspace = false) : _fp(&fp), _delimiter(delimiter), _quotechar(quotechar), _doublequote(doublequote), _skipinitialspace(skipinitialspace), fieldnames(std::vector<std::string>{}) {
-        // if fieldnames is not None:
         if ((fieldnames.has_value())) {
-            // self.fieldnames = fieldnames
             this->fieldnames = std::move((*fieldnames));
         }
     }
@@ -145,75 +189,78 @@ struct DictWriter {
     std::string _restval;
 
     // def __init__(
-    // self,
-    // fp: W,
-    // fieldnames: Own[list[str]],
-    // *,
-    // restval: str = "",
-    // delimiter: str = ",",
-    // quotechar: str = '"',
-    // doublequote: bool = True,
-    // lineterminator: str = "\r\n",
+    //     self,
+    //     fp: W,
+    //     fieldnames: Own[list[str]],
+    //     *,
+    //     restval: str = "",
+    //     delimiter: str = ",",
+    //     quotechar: str = '"',
+    //     doublequote: bool = True,
+    //     lineterminator: str = "\r\n",
     // ) -> None:
+    //     self._w = _Writer(fp, delimiter, quotechar, doublequote, lineterminator)
+    //     self.fieldnames = fieldnames
+    //     self._restval = restval
     DictWriter() = default;
     explicit DictWriter(::tpy::param_val_or_ref_t<W> fp, std::vector<std::string>&& fieldnames, std::string_view restval = "", std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, std::string_view lineterminator = "\r\n") : _w(_Writer<W>(fp, delimiter, quotechar, doublequote, lineterminator)), fieldnames(std::move(fieldnames)), _restval(restval) {}
 
     // def writeheader(self) -> None:
+    //     self._w.writerow(self.fieldnames)
     void writeheader() {
-        // self._w.writerow(self.fieldnames)
         this->_w.writerow(this->fieldnames);
     }
 
     // def writerow(self, row: dict[str, str]) -> None:
+    //     # CPython's DictWriter defaults: extrasaction='raise' (a key not in
+    //     # fieldnames is a ValueError) and restval='' (a missing field is
+    //     # written as restval). extrasaction='ignore' is not configurable yet.
+    //     #
+    //     # Index loop, not `for name in self.fieldnames`: the for-loop var binds
+    //     # the element as a string_view, which dict.__contains__/get reject (they
+    //     # take const str&); the subscript `self.fieldnames[i]` binds a str&.
+    //     ordered: list[str] = []
+    //     matched: int32 = 0
+    //     i: int32 = 0
+    //     m: int32 = len(self.fieldnames)
+    //     while i < m:
+    //         name = self.fieldnames[i]
+    //         if name in row:
+    //             matched += 1
+    //         ordered.append(row.get(name, self._restval))
+    //         i += 1
+    //     # row carries a key not in fieldnames (assuming unique fieldnames).
+    //     if matched < len(row):
+    //         raise ValueError("dict contains fields not in fieldnames")
+    //     self._w.writerow(ordered)
     void writerow(const ::tpy::ordered_map<std::string, std::string>& row) {
-        // # CPython's DictWriter defaults: extrasaction='raise' (a key not in
-        // # fieldnames is a ValueError) and restval='' (a missing field is
-        // # written as restval). extrasaction='ignore' is not configurable yet.
-        // #
-        // # Index loop, not `for name in self.fieldnames`: the for-loop var binds
-        // # the element as a string_view, which dict.__contains__/get reject (they
-        // # take const str&); the subscript `self.fieldnames[i]` binds a str&.
-        // ordered: list[str] = []
         std::vector<std::string> ordered = std::vector<std::string>{};
-        // matched: int32 = 0
         int32_t matched = 0;
-        // i: int32 = 0
         int32_t i = 0;
-        // m: int32 = len(self.fieldnames)
         int32_t m = ::tpy::__len__(this->fieldnames);
-        // while i < m:
         while ((i < m)) {
-            // name = self.fieldnames[i]
             std::string name = ::tpy::__getitem__(this->fieldnames, i);
-            // if name in row:
             if ((row.contains(name))) {
-                // matched += 1
                 matched = ::tpy::add_check<int32_t>(matched, 1);
             }
-            // ordered.append(row.get(name, self._restval))
             ordered.push_back(::tpy::dict_get_default(row, name, this->_restval));
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         }
-        // # row carries a key not in fieldnames (assuming unique fieldnames).
-        // if matched < len(row):
         if ((matched < ::tpy::__len__(row))) {
-            // raise ValueError("dict contains fields not in fieldnames")
             throw ::tpy::ValueError("dict contains fields not in fieldnames");
         }
-        // self._w.writerow(ordered)
         this->_w.writerow(ordered);
     }
 
     // def writerows(self, rows: list[dict[str, str]]) -> None:
+    //     for row in rows:
+    //         self.writerow(row)
     void writerows(const std::vector<::tpy::ordered_map<std::string, std::string>>& rows) {
-        // for row in rows:
         auto& __obj_0 = rows;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& row = *__beg_0;
-            // self.writerow(row)
             this->writerow(row);
         }
     }
@@ -226,7 +273,13 @@ inline std::ostream& operator<<(std::ostream& os, const DictWriter<W>& obj) {
     return os;
 }
 
-// Generator: _parse_rows
+// def _parse_rows[R: Readable](
+//     fp: Ptr[R],
+//     delimiter: str,
+//     quotechar: str,
+//     doublequote: bool,
+//     skipinitialspace: bool,
+// ) -> Iterator[Own[list[str]]]:
 template <typename R>
 struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, std::vector<std::string>> {
     int32_t __state;
@@ -264,12 +317,84 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
     }
 };
 // def _parse_rows[R: Readable](
-// fp: Ptr[R],
-// delimiter: str,
-// quotechar: str,
-// doublequote: bool,
-// skipinitialspace: bool,
+//     fp: Ptr[R],
+//     delimiter: str,
+//     quotechar: str,
+//     doublequote: bool,
+//     skipinitialspace: bool,
 // ) -> Iterator[Own[list[str]]]:
+//     # A `Ptr[R]` (concrete) param -- not a `Readable` protocol param -- so this
+//     # generator can be embedded in another resumable frame (DictReader.__iter__)
+//     # and a borrowed-Ptr holder can drive it without a copy.
+//     while True:
+//         line = fp.readline()
+//         if not line:
+//             return
+//         row: list[str] = []
+//         parts: list[str] = []
+//         i: int32 = 0
+//         n: int32 = len(line)
+//         in_quotes = False
+//         at_field_start = True
+//         ended = False
+//         blank = False
+//         while not ended:
+//             if i >= n:
+//                 if in_quotes:
+//                     # Quoted field continues on the next physical line. The
+//                     # embedded newline is already in `parts` -- readline keeps
+//                     # the trailing "\n" -- so just pull the continuation.
+//                     line = fp.readline()
+//                     if not line:
+//                         ended = True
+//                         continue
+//                     i = 0
+//                     n = len(line)
+//                     continue
+//                 ended = True
+//                 continue
+//             c = line[i:i + 1]
+//             if in_quotes:
+//                 if c == quotechar:
+//                     if doublequote and i + 1 < n and line[i + 1:i + 2] == quotechar:
+//                         parts.append(quotechar)
+//                         i += 2
+//                         continue
+//                     in_quotes = False
+//                     i += 1
+//                     continue
+//                 parts.append(c)
+//                 i += 1
+//                 continue
+//             if c == quotechar and at_field_start:
+//                 in_quotes = True
+//                 at_field_start = False
+//                 i += 1
+//                 continue
+//             if c == delimiter:
+//                 row.append("".join(parts))
+//                 parts = []
+//                 at_field_start = True
+//                 i += 1
+//                 continue
+//             if c == "\n" or c == "\r":
+//                 # Unquoted line terminator ends the record; the trailing
+//                 # "\r\n" or "\n" is consumed by stopping here. A line that is
+//                 # nothing but the terminator is a blank line -> empty row [],
+//                 # matching CPython (which yields [] not ['']).
+//                 if at_field_start and len(row) == 0 and len(parts) == 0:
+//                     blank = True
+//                 ended = True
+//                 continue
+//             if skipinitialspace and at_field_start and c == " ":
+//                 i += 1
+//                 continue
+//             at_field_start = False
+//             parts.append(c)
+//             i += 1
+//         if not blank:
+//             row.append("".join(parts))
+//         yield row
 template <typename R>
 std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<R>::__next__() {
     while (true) switch (__state) {
@@ -283,149 +408,81 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
     }
     case S_JOIN_0: {
         if (true) {
-            // line = fp.readline()
             line = ::tpy::deref_check(fp).readline();
-            // if not line:
             if ((!((!line.empty())))) {
-                // return
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
             }
-            // row: list[str] = []
             row.emplace(std::vector<std::string>{});
-            // parts: list[str] = []
             parts.emplace(std::vector<std::string>{});
-            // i: int32 = 0
             i = 0;
-            // n: int32 = len(line)
             n = ::tpy::__len__(line);
-            // in_quotes = False
             in_quotes = false;
-            // at_field_start = True
             at_field_start = true;
-            // ended = False
             ended = false;
-            // blank = False
             blank = false;
-            // while not ended:
             while ((!(ended))) {
-                // if i >= n:
                 if ((i >= n)) {
-                    // if in_quotes:
                     if (in_quotes) {
-                        // # Quoted field continues on the next physical line. The
-                        // # embedded newline is already in `parts` -- readline keeps
-                        // # the trailing "\n" -- so just pull the continuation.
-                        // line = fp.readline()
                         line = fp->readline();
-                        // if not line:
                         if ((!((!line.empty())))) {
-                            // ended = True
                             ended = true;
-                            // continue
                             continue;
                         }
-                        // i = 0
                         i = 0;
-                        // n = len(line)
                         n = ::tpy::__len__(line);
-                        // continue
                         continue;
                     }
-                    // ended = True
                     ended = true;
-                    // continue
                     continue;
                 }
-                // c = line[i:i + 1]
                 c = ::tpy::str_slice(line, ::tpy::BasicSlice{i, (::tpy::add_check<int32_t>(i, 1))});
-                // if in_quotes:
                 if (in_quotes) {
-                    // if c == quotechar:
                     if ((c == quotechar)) {
-                        // if doublequote and i + 1 < n and line[i + 1:i + 2] == quotechar:
                         if (((doublequote && ((::tpy::add_check<int32_t>(i, 1)) < n)) && (::tpy::str_slice(line, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), (::tpy::add_check<int32_t>(i, 2))}) == quotechar))) {
-                            // parts.append(quotechar)
                             (*parts).push_back(std::string(quotechar));
-                            // i += 2
                             i = ::tpy::add_check<int32_t>(i, 2);
-                            // continue
                             continue;
                         }
-                        // in_quotes = False
                         in_quotes = false;
-                        // i += 1
                         i = ::tpy::add_check<int32_t>(i, 1);
-                        // continue
                         continue;
                     }
-                    // parts.append(c)
                     (*parts).push_back(std::string(c));
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // continue
                     continue;
                 }
-                // if c == quotechar and at_field_start:
                 if (((c == quotechar) && at_field_start)) {
-                    // in_quotes = True
                     in_quotes = true;
-                    // at_field_start = False
                     at_field_start = false;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // continue
                     continue;
                 }
-                // if c == delimiter:
                 if ((c == delimiter)) {
-                    // row.append("".join(parts))
                     (*row).push_back(::tpy::str_join("", (*parts)));
-                    // parts = []
                     parts.emplace(std::vector<std::string>{});
-                    // at_field_start = True
                     at_field_start = true;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // continue
                     continue;
                 }
-                // if c == "\n" or c == "\r":
                 if (((c == "\n") || (c == "\r"))) {
-                    // # Unquoted line terminator ends the record; the trailing
-                    // # "\r\n" or "\n" is consumed by stopping here. A line that is
-                    // # nothing but the terminator is a blank line -> empty row [],
-                    // # matching CPython (which yields [] not ['']).
-                    // if at_field_start and len(row) == 0 and len(parts) == 0:
                     if (((at_field_start && (::tpy::__len__((*row)) == 0)) && (::tpy::__len__((*parts)) == 0))) {
-                        // blank = True
                         blank = true;
                     }
-                    // ended = True
                     ended = true;
-                    // continue
                     continue;
                 }
-                // if skipinitialspace and at_field_start and c == " ":
                 if (((skipinitialspace && at_field_start) && (c == " "))) {
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // continue
                     continue;
                 }
-                // at_field_start = False
                 at_field_start = false;
-                // parts.append(c)
                 (*parts).push_back(std::string(c));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
-            // if not blank:
             if ((!(blank))) {
-                // row.append("".join(parts))
                 (*row).push_back(::tpy::str_join("", (*parts)));
             }
-            // yield row
             __state = S_RESUME_0;
             return (*row);
         } else {
@@ -440,18 +497,25 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
 
 
 // def _parse_rows[R: Readable](
-// fp: Ptr[R],
-// delimiter: str,
-// quotechar: str,
-// doublequote: bool,
-// skipinitialspace: bool,
+//     fp: Ptr[R],
+//     delimiter: str,
+//     quotechar: str,
+//     doublequote: bool,
+//     skipinitialspace: bool,
 // ) -> Iterator[Own[list[str]]]:
 template <typename R>
 __gen__parse_rows<R> _parse_rows(R* fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, bool skipinitialspace) {
     return __gen__parse_rows<R>(fp, delimiter, quotechar, doublequote, skipinitialspace);
 }
 
-// Generator: reader
+// def reader(
+//     fp: Readable,
+//     *,
+//     delimiter: str = ",",
+//     quotechar: str = '"',
+//     doublequote: bool = True,
+//     skipinitialspace: bool = False,
+// ) -> Iterator[Own[list[str]]]:
 template <::tpystd::tpy::Readable T_fp>
 struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vector<std::string>> {
     int32_t __state;
@@ -489,13 +553,82 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
     }
 };
 // def reader(
-// fp: Readable,
-// *,
-// delimiter: str = ",",
-// quotechar: str = '"',
-// doublequote: bool = True,
-// skipinitialspace: bool = False,
+//     fp: Readable,
+//     *,
+//     delimiter: str = ",",
+//     quotechar: str = '"',
+//     doublequote: bool = True,
+//     skipinitialspace: bool = False,
 // ) -> Iterator[Own[list[str]]]:
+//     # This duplicates _parse_rows' state machine, unavoidably: reader takes a
+//     # `Readable` protocol param (not generic `[R]`) because a cross-module call
+//     # `csv.reader(io.StringIO(...))` must accept an rvalue temporary, which a
+//     # generic `R&` param rejects; _parse_rows takes `Ptr[R]` because DictReader
+//     # drives it from a borrowed-Ptr field inside a resumable frame. Neither
+//     # shape can feed the other (a protocol value can't form a Ptr; a Ptr-param
+//     # generator can't take a protocol). Tracked in TODO.md.
+//     while True:
+//         line = fp.readline()
+//         if not line:
+//             return
+//         row: list[str] = []
+//         parts: list[str] = []
+//         i: int32 = 0
+//         n: int32 = len(line)
+//         in_quotes = False
+//         at_field_start = True
+//         ended = False
+//         blank = False
+//         while not ended:
+//             if i >= n:
+//                 if in_quotes:
+//                     line = fp.readline()
+//                     if not line:
+//                         ended = True
+//                         continue
+//                     i = 0
+//                     n = len(line)
+//                     continue
+//                 ended = True
+//                 continue
+//             c = line[i:i + 1]
+//             if in_quotes:
+//                 if c == quotechar:
+//                     if doublequote and i + 1 < n and line[i + 1:i + 2] == quotechar:
+//                         parts.append(quotechar)
+//                         i += 2
+//                         continue
+//                     in_quotes = False
+//                     i += 1
+//                     continue
+//                 parts.append(c)
+//                 i += 1
+//                 continue
+//             if c == quotechar and at_field_start:
+//                 in_quotes = True
+//                 at_field_start = False
+//                 i += 1
+//                 continue
+//             if c == delimiter:
+//                 row.append("".join(parts))
+//                 parts = []
+//                 at_field_start = True
+//                 i += 1
+//                 continue
+//             if c == "\n" or c == "\r":
+//                 if at_field_start and len(row) == 0 and len(parts) == 0:
+//                     blank = True
+//                 ended = True
+//                 continue
+//             if skipinitialspace and at_field_start and c == " ":
+//                 i += 1
+//                 continue
+//             at_field_start = False
+//             parts.append(c)
+//             i += 1
+//         if not blank:
+//             row.append("".join(parts))
+//         yield row
 template <::tpystd::tpy::Readable T_fp>
 std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>::__next__() {
     while (true) switch (__state) {
@@ -509,142 +642,81 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
     }
     case S_JOIN_0: {
         if (true) {
-            // line = fp.readline()
             line = fp.readline();
-            // if not line:
             if ((!((!line.empty())))) {
-                // return
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
             }
-            // row: list[str] = []
             row.emplace(std::vector<std::string>{});
-            // parts: list[str] = []
             parts.emplace(std::vector<std::string>{});
-            // i: int32 = 0
             i = 0;
-            // n: int32 = len(line)
             n = ::tpy::__len__(line);
-            // in_quotes = False
             in_quotes = false;
-            // at_field_start = True
             at_field_start = true;
-            // ended = False
             ended = false;
-            // blank = False
             blank = false;
-            // while not ended:
             while ((!(ended))) {
-                // if i >= n:
                 if ((i >= n)) {
-                    // if in_quotes:
                     if (in_quotes) {
-                        // line = fp.readline()
                         line = fp.readline();
-                        // if not line:
                         if ((!((!line.empty())))) {
-                            // ended = True
                             ended = true;
-                            // continue
                             continue;
                         }
-                        // i = 0
                         i = 0;
-                        // n = len(line)
                         n = ::tpy::__len__(line);
-                        // continue
                         continue;
                     }
-                    // ended = True
                     ended = true;
-                    // continue
                     continue;
                 }
-                // c = line[i:i + 1]
                 c = ::tpy::str_slice(line, ::tpy::BasicSlice{i, (::tpy::add_check<int32_t>(i, 1))});
-                // if in_quotes:
                 if (in_quotes) {
-                    // if c == quotechar:
                     if ((c == quotechar)) {
-                        // if doublequote and i + 1 < n and line[i + 1:i + 2] == quotechar:
                         if (((doublequote && ((::tpy::add_check<int32_t>(i, 1)) < n)) && (::tpy::str_slice(line, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), (::tpy::add_check<int32_t>(i, 2))}) == quotechar))) {
-                            // parts.append(quotechar)
                             (*parts).push_back(std::string(quotechar));
-                            // i += 2
                             i = ::tpy::add_check<int32_t>(i, 2);
-                            // continue
                             continue;
                         }
-                        // in_quotes = False
                         in_quotes = false;
-                        // i += 1
                         i = ::tpy::add_check<int32_t>(i, 1);
-                        // continue
                         continue;
                     }
-                    // parts.append(c)
                     (*parts).push_back(std::string(c));
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // continue
                     continue;
                 }
-                // if c == quotechar and at_field_start:
                 if (((c == quotechar) && at_field_start)) {
-                    // in_quotes = True
                     in_quotes = true;
-                    // at_field_start = False
                     at_field_start = false;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // continue
                     continue;
                 }
-                // if c == delimiter:
                 if ((c == delimiter)) {
-                    // row.append("".join(parts))
                     (*row).push_back(::tpy::str_join("", (*parts)));
-                    // parts = []
                     parts.emplace(std::vector<std::string>{});
-                    // at_field_start = True
                     at_field_start = true;
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // continue
                     continue;
                 }
-                // if c == "\n" or c == "\r":
                 if (((c == "\n") || (c == "\r"))) {
-                    // if at_field_start and len(row) == 0 and len(parts) == 0:
                     if (((at_field_start && (::tpy::__len__((*row)) == 0)) && (::tpy::__len__((*parts)) == 0))) {
-                        // blank = True
                         blank = true;
                     }
-                    // ended = True
                     ended = true;
-                    // continue
                     continue;
                 }
-                // if skipinitialspace and at_field_start and c == " ":
                 if (((skipinitialspace && at_field_start) && (c == " "))) {
-                    // i += 1
                     i = ::tpy::add_check<int32_t>(i, 1);
-                    // continue
                     continue;
                 }
-                // at_field_start = False
                 at_field_start = false;
-                // parts.append(c)
                 (*parts).push_back(std::string(c));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
-            // if not blank:
             if ((!(blank))) {
-                // row.append("".join(parts))
                 (*row).push_back(::tpy::str_join("", (*parts)));
             }
-            // yield row
             __state = S_RESUME_0;
             return (*row);
         } else {
@@ -659,19 +731,19 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
 
 
 // def reader(
-// fp: Readable,
-// *,
-// delimiter: str = ",",
-// quotechar: str = '"',
-// doublequote: bool = True,
-// skipinitialspace: bool = False,
+//     fp: Readable,
+//     *,
+//     delimiter: str = ",",
+//     quotechar: str = '"',
+//     doublequote: bool = True,
+//     skipinitialspace: bool = False,
 // ) -> Iterator[Own[list[str]]]:
 template <::tpystd::tpy::Readable T_fp>
 __gen_reader<T_fp> reader(T_fp&& fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, bool skipinitialspace) {
     return __gen_reader<T_fp>(std::forward<T_fp>(fp), delimiter, quotechar, doublequote, skipinitialspace);
 }
 
-// Generator: DictReader.__iter__
+// def __iter__(self) -> Iterator[Own[dict[str, str]]]:
 template <::tpystd::tpy::Readable W>
 struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReader___iter__<W>, ::tpy::ordered_map<std::string, std::string>> {
     int32_t __state;
@@ -705,11 +777,38 @@ struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReade
 };
 
 // def __iter__(self) -> Iterator[Own[dict[str, str]]]:
+//     first = True
+//     for row in _parse_rows(
+//         self._fp, self._delimiter, self._quotechar,
+//         self._doublequote, self._skipinitialspace,
+//     ):
+//         if first and len(self.fieldnames) == 0:
+//             # The first row supplies the field names when none were given.
+//             # Index loop, not `for name in row` -- the for-loop var over a
+//             # list in this resumable frame trips a Pending crash (BUGS.md).
+//             h: int32 = 0
+//             hn: int32 = len(row)
+//             while h < hn:
+//                 self.fieldnames.append(row[h])
+//                 h += 1
+//             first = False
+//             continue
+//         first = False
+//         out: dict[str, str] = {}
+//         # Index loop (not `for name in self.fieldnames`): a for-loop var
+//         # over a list field in this resumable frame trips a Pending-type
+//         # crash (BUGS.md). A short row pads missing fields with "".
+//         i: int32 = 0
+//         m: int32 = len(self.fieldnames)
+//         while i < m:
+//             name = self.fieldnames[i]
+//             out[name] = row[i] if i < len(row) else ""
+//             i += 1
+//         yield out
 template <::tpystd::tpy::Readable W>
 std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration> __gen_DictReader___iter__<W>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // first = True
         first = true;
         __for_src_0.emplace(_parse_rows<W>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace));
         __state = S_JOIN_0;
@@ -727,46 +826,25 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
         }
         row.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
         if ((first && (::tpy::__len__(__self.fieldnames) == 0))) {
-            // # The first row supplies the field names when none were given.
-            // # Index loop, not `for name in row` -- the for-loop var over a
-            // # list in this resumable frame trips a Pending crash (BUGS.md).
-            // h: int32 = 0
             h = 0;
-            // hn: int32 = len(row)
             hn = ::tpy::__len__((*row));
-            // while h < hn:
             while ((h < hn)) {
-                // self.fieldnames.append(row[h])
                 __self.fieldnames.push_back(::tpy::__getitem__((*row), h));
-                // h += 1
                 h = ::tpy::add_check<int32_t>(h, 1);
             }
-            // first = False
             first = false;
             __state = S_JOIN_0;
             continue;
         } else {
-            // first = False
             first = false;
-            // out: dict[str, str] = {}
             out.emplace(::tpy::ordered_map<std::string, std::string>());
-            // # Index loop (not `for name in self.fieldnames`): a for-loop var
-            // # over a list field in this resumable frame trips a Pending-type
-            // # crash (BUGS.md). A short row pads missing fields with "".
-            // i: int32 = 0
             i = 0;
-            // m: int32 = len(self.fieldnames)
             m = ::tpy::__len__(__self.fieldnames);
-            // while i < m:
             while ((i < m)) {
-                // name = self.fieldnames[i]
                 std::string name = ::tpy::__getitem__(__self.fieldnames, i);
-                // out[name] = row[i] if i < len(row) else ""
                 ::tpy::__setitem__((*out), name, (((i < ::tpy::__len__((*row)))) ? (::tpy::__getitem__((*row), i)) : ("")));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
-            // yield out
             __state = S_RESUME_0;
             return (*out);
         }
@@ -783,16 +861,16 @@ inline __gen_DictReader___iter__<W> DictReader<W>::__iter__() {
 }
 
 // def writer[W: Writable](
-// fp: W,
-// *,
-// delimiter: str = ",",
-// quotechar: str = '"',
-// doublequote: bool = True,
-// lineterminator: str = "\r\n",
+//     fp: W,
+//     *,
+//     delimiter: str = ",",
+//     quotechar: str = '"',
+//     doublequote: bool = True,
+//     lineterminator: str = "\r\n",
 // ) -> Own[_Writer[W]]:
+//     return _Writer(fp, delimiter, quotechar, doublequote, lineterminator)
 template<::tpystd::tpy::Writable W>
 _Writer<W> writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator) {
-    // return _Writer(fp, delimiter, quotechar, doublequote, lineterminator)
     return _Writer<W>(fp, delimiter, quotechar, doublequote, lineterminator);
 }
 

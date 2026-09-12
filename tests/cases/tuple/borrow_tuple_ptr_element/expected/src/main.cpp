@@ -5,71 +5,71 @@ namespace tpyapp::main {
 
 
 // def bump(t: tuple[Node, int32]) -> None:
+//     t[0].x = t[0].x + t[1]
 void bump(const std::tuple<Node*, int32_t>& t) {
-    // t[0].x = t[0].x + t[1]
     std::get<0>(t)->x = (::tpy::add_check<int32_t>(std::get<0>(t)->x, std::get<1>(t)));
 }
 
 // def via_local(items: list[Node]) -> int32:
+//     p: Ptr[Node] = items[0]
+//     bump((p, 10))
+//     return items[0].x
 int32_t via_local(std::vector<Node>& items) {
-    // p: Ptr[Node] = items[0]
     Node* p = &::tpy::__getitem__(items, 0);
-    // bump((p, 10))
     bump(std::tuple<Node*, int32_t>{p, 10});
-    // return items[0].x
     return ::tpy::__getitem__(items, 0).x;
 }
 
 // def via_param(p: Ptr[Node]) -> None:
+//     bump((p, 100))
 void via_param(Node* p) {
-    // bump((p, 100))
     bump(std::tuple<Node*, int32_t>{p, 100});
 }
 
 // def via_subscript(ps: list[Ptr[Node]]) -> None:
+//     bump((ps[0], 1000))
 void via_subscript(const std::vector<Node*>& ps) {
-    // bump((ps[0], 1000))
     bump(std::tuple<Node*, int32_t>{::tpy::__getitem__(ps, 0), 1000});
 }
 
 // def via_plain() -> int32:
+//     n = Node(5)
+//     bump((n, 10000))
+//     return n.x
 int32_t via_plain() {
-    // n = Node(5)
     Node n = Node(5);
-    // bump((n, 10000))
     bump(std::tuple<Node*, int32_t>{&(n), 10000});
-    // return n.x
     return n.x;
 }
 
 // def main() -> None:
+//     items = [Node(1), Node(2)]
+//     print(via_local(items))
+//     via_param(items[0])
+//     print(items[0].x)
+//     ps: list[Ptr[Node]] = []
+//     ps.append(items[0])
+//     via_subscript(ps)
+//     print(items[0].x)
+//     print(via_plain())
 void main() {
-    // items = [Node(1), Node(2)]
     std::vector<Node> items = {Node(1), Node(2)};
-    // print(via_local(items))
     std::cout << via_local(items) << "\n";
-    // via_param(items[0])
     via_param(&::tpy::__getitem__(items, 0));
-    // print(items[0].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
-    // ps: list[Ptr[Node]] = []
     std::vector<Node*> ps = std::vector<Node*>{};
-    // ps.append(items[0])
     ps.push_back(&::tpy::__getitem__(items, 0));
-    // via_subscript(ps)
     via_subscript(ps);
-    // print(items[0].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
-    // print(via_plain())
     std::cout << via_plain() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

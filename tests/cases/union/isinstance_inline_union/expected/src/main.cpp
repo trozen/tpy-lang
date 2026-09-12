@@ -5,51 +5,51 @@ namespace tpyapp::main {
 
 
 // def classify(v: A | B | C) -> str:
+//     if isinstance(v, A | B):
+//         return "ab"
+//     return "c"
 std::string classify(::tpy::Union<const A*, const B*, const C*> v) {
-    // if isinstance(v, A | B):
     if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
-        // return "ab"
         return "ab";
     }
     auto& __v = *std::get<const C*>(v);
-    // return "c"
     return "c";
 }
 
 // def excluded(v: A | B | C) -> int32:
+//     if not isinstance(v, A | B):
+//         return v.z
+//     return -1
 int32_t excluded(::tpy::Union<const A*, const B*, const C*> v) {
-    // if not isinstance(v, A | B):
     if ((!((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))))) {
         auto& __v = *std::get<const C*>(v);
-        // return v.z
         return __v.z;
     }
-    // return -1
     return -1;
 }
 
 // def main() -> None:
+//     print(classify(A(1)))
+//     print(classify(C(3)))
+//     print(excluded(C(9)))
+//     print(excluded(A(1)))
 void main() {
-    // print(classify(A(1)))
     A __tmp_1 = A(1);
     std::cout << classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
-    // print(classify(C(3)))
     C __tmp_2 = C(3);
     std::cout << classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
-    // print(excluded(C(9)))
     C __tmp_3 = C(9);
     std::cout << excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
-    // print(excluded(A(1)))
     A __tmp_4 = A(1);
     std::cout << excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

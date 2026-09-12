@@ -6,63 +6,63 @@ namespace tpyapp::main {
 
 // # is / is not with bool literals: lowered to == / != at sema time.
 // def check_is(x: bool) -> None:
+//     if x is True:
+//         print("is True")
+//     if x is False:
+//         print("is False")
+//     if x is not True:
+//         print("is not True")
+//     if x is not False:
+//         print("is not False")
 void check_is(bool x) {
-    // if x is True:
     if ((x == true)) {
-        // print("is True")
         std::cout << "is True" << "\n";
     }
-    // if x is False:
     if ((x == false)) {
-        // print("is False")
         std::cout << "is False" << "\n";
     }
-    // if x is not True:
     if ((x != true)) {
-        // print("is not True")
         std::cout << "is not True" << "\n";
     }
-    // if x is not False:
     if ((x != false)) {
-        // print("is not False")
         std::cout << "is not False" << "\n";
     }
 }
 
 // def check_reversed(x: bool) -> None:
+//     if True is x:
+//         print("True is x")
+//     if False is not x:
+//         print("False is not x")
 void check_reversed(bool x) {
-    // if True is x:
     if ((true == x)) {
-        // print("True is x")
         std::cout << "True is x" << "\n";
     }
-    // if False is not x:
     if ((false != x)) {
-        // print("False is not x")
         std::cout << "False is not x" << "\n";
     }
 }
 
 // def main() -> None:
+//     check_is(True)
+//     print("---")
+//     check_is(False)
+//     print("---")
+//     check_reversed(True)
 void main() {
-    // check_is(True)
     check_is(true);
-    // print("---")
     std::cout << "---" << "\n";
-    // check_is(False)
     check_is(false);
-    // print("---")
     std::cout << "---" << "\n";
-    // check_reversed(True)
     check_reversed(true);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

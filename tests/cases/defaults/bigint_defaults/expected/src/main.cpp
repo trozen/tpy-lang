@@ -6,35 +6,36 @@ namespace tpyapp::main {
 
 // # Python int (BigInt) with default parameter values
 // def add(a: int, b: int = 0) -> int:
+//     return a + b
 ::tpy::BigInt add(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    // return a + b
     return ((a) + (b));
 }
 
 // def scale(value: int, factor: int = 1) -> int:
+//     return value * factor
 ::tpy::BigInt scale(const ::tpy::BigInt& value, const ::tpy::BigInt& factor) {
-    // return value * factor
     return ((value) * (factor));
 }
 
 // def main() -> None:
+//     print(add(5))
+//     print(add(5, 3))
+//
+//     print(scale(10))
+//     print(scale(10, 4))
 void main() {
-    // print(add(5))
     std::cout << add(::tpy::BigInt(5)) << "\n";
-    // print(add(5, 3))
     std::cout << add(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n";
-    // print(scale(10))
     std::cout << scale(::tpy::BigInt(10)) << "\n";
-    // print(scale(10, 4))
     std::cout << scale(::tpy::BigInt(10), ::tpy::BigInt(4)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

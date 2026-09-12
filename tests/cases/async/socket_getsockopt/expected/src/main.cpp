@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = socket(AF_INET, SOCK_STREAM)
+//     print(s.getsockopt_int(SOL_SOCKET, SO_REUSEADDR) != 0)
+//     s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, 1)
+//     print(s.getsockopt_int(SOL_SOCKET, SO_REUSEADDR) != 0)
 void main() {
-    // s = socket(AF_INET, SOCK_STREAM)
     ::tpystd::socket::socket s = ::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM);
-    // print(s.getsockopt_int(SOL_SOCKET, SO_REUSEADDR) != 0)
     std::cout << ::tpy::print_bool((s.getsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr) != 0)) << "\n";
-    // s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, 1)
     s.setsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr, 1);
-    // print(s.getsockopt_int(SOL_SOCKET, SO_REUSEADDR) != 0)
     std::cout << ::tpy::print_bool((s.getsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr) != 0)) << "\n";
 }
 
+// # Regression guard for getsockopt_int: setting SO_REUSEADDR then reading it
+// # back returns a nonzero value (the option is enabled). Print the boolean,
+// # not the raw int -- the kernel may report 1 or a nonzero flag word, and
+// # that varies by platform, so only the enabled/disabled fact is portable.
+// from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression guard for getsockopt_int: setting SO_REUSEADDR then reading it
-    // # back returns a nonzero value (the option is enabled). Print the boolean,
-    // # not the raw int -- the kernel may report 1 or a nonzero flag word, and
-    // # that varies by platform, so only the enabled/disabled fact is portable.
-    // from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

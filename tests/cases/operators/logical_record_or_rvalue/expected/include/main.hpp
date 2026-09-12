@@ -11,8 +11,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def or_truthy_skips_ctor(a: Box, log: list[int]) -> None:
 void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log);
+// def and_truthy_returns_ctor(a: Box, log: list[int]) -> int:
 ::tpy::BigInt and_truthy_returns_ctor(Box& a, std::vector<::tpy::BigInt>& log);
+// def main() -> None:
 void main();
 
 // # `and`/`or` over a record param (borrow form) and a same-type record rvalue
@@ -36,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, n: int, log: list[int]) -> None:
+//     log.append(1)  # observable: increments only when this Box is constructed
+//     self.n = n
 inline Box::Box(const ::tpy::BigInt& n, std::vector<::tpy::BigInt>& log) {
-    // log.append(1)  # observable: increments only when this Box is constructed
     log.push_back(1);
-    // self.n = n
     this->n = n;
 }
 void __tpy_init();

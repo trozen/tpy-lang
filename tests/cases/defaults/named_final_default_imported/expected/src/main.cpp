@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def use(flags: uint32 = CASELESS) -> int32:
+//     return int32(flags)
 int32_t use(uint32_t flags) {
-    // return int32(flags)
     return ::tpy::int_cast_check<int32_t>(flags);
 }
 
 // def main() -> None:
+//     print(use())
+//     print(use(NOFLAG))
 void main() {
-    // print(use())
     std::cout << use() << "\n";
-    // print(use(NOFLAG))
     std::cout << use(::tpyapp::consts::NOFLAG) << "\n";
 }
 
+// from consts import NOFLAG, CASELESS
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from consts import NOFLAG, CASELESS
     ::tpyapp::consts::__tpy_init();
-    // main()
     main();
 }
 

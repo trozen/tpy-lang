@@ -3,31 +3,29 @@
 
 namespace tpyapp::main {
 
-// # Tuple global with bare int literals (tests resolve_int_literals for globals)
-// t = (1, 2, 3, 4)
 std::tuple<int32_t, int32_t, int32_t, int32_t> t;
-// t2 = (10, (20, 30))
 std::tuple<int32_t, std::tuple<int32_t, int32_t>> t2;
 
 // def main() -> None:
+//     print(t)
+//     print(t2)
 void main() {
-    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
-    // print(t2)
     std::cout << ::tpy::TuplePrinter(t2) << "\n";
 }
 
+// # Tuple global with bare int literals (tests resolve_int_literals for globals)
+// t = (1, 2, 3, 4)
+// t2 = (10, (20, 30))
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Tuple global with bare int literals (tests resolve_int_literals for globals)
-    // t = (1, 2, 3, 4)
     t = std::tuple<int32_t, int32_t, int32_t, int32_t>{1, 2, 3, 4};
-    // t2 = (10, (20, 30))
     t2 = std::tuple<int32_t, std::tuple<int32_t, int32_t>>{10, std::tuple<int32_t, int32_t>{20, 30}};
-    // main()
     main();
 }
 

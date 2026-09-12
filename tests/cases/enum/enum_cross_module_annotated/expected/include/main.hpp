@@ -12,8 +12,11 @@ using ::tpyapp::colors::Color;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(c: Color) -> str:
 std::string describe(::tpyapp::colors::Color c);
+// def default_color() -> Color:
 ::tpyapp::colors::Color default_color();
+// def main() -> None:
 void main();
 
 void __tpy_init();

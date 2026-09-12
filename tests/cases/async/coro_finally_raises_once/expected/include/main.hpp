@@ -23,12 +23,19 @@ struct __coro_handler_exit;
 struct __coro_nested_exit;
 struct __coro_main;
 
+// def bump() -> int:
 ::tpy::BigInt bump();
+// async def normal_exit() -> None:
 __coro_normal_exit normal_exit();
+// async def return_exit() -> None:
 __coro_return_exit return_exit();
+// async def with_exit() -> None:
 __coro_with_exit with_exit();
+// async def handler_exit() -> None:
 __coro_handler_exit handler_exit();
+// async def nested_exit() -> None:
 __coro_nested_exit nested_exit();
+// async def main() -> None:
 __coro_main main();
 
 // class Err(Exception):
@@ -68,7 +75,7 @@ inline std::ostream& operator<<(std::ostream& os, const Thrower& obj) {
     return os;
 }
 
-// Async coroutine: normal_exit
+// async def normal_exit() -> None:
 struct __coro_normal_exit {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -108,7 +115,7 @@ struct __coro_normal_exit {
     }
 };
 
-// Async coroutine: return_exit
+// async def return_exit() -> None:
 struct __coro_return_exit {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -147,7 +154,7 @@ struct __coro_return_exit {
     }
 };
 
-// Async coroutine: with_exit
+// async def with_exit() -> None:
 struct __coro_with_exit {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -188,7 +195,7 @@ struct __coro_with_exit {
     }
 };
 
-// Async coroutine: handler_exit
+// async def handler_exit() -> None:
 struct __coro_handler_exit {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -228,7 +235,7 @@ struct __coro_handler_exit {
     }
 };
 
-// Async coroutine: nested_exit
+// async def nested_exit() -> None:
 struct __coro_nested_exit {
     ::tpy::frame_state __state;
     bool __cancel_pending;
@@ -271,7 +278,7 @@ struct __coro_nested_exit {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -314,17 +321,18 @@ struct __coro_main {
 
 
 // def __init__(self, code: int) -> None:
+//     self.code = code
 inline Err::Err(const ::tpy::BigInt& code) : code(code) {}
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt Thrower::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     raise Err(bump())
 inline void Thrower::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // raise Err(bump())
     throw Err(bump());
 }
 void __tpy_init();

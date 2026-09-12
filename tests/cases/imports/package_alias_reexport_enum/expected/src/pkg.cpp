@@ -4,12 +4,12 @@
 namespace tpyapp::pkg {
 
 
+// from .colors import Color as C
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from .colors import Color as C
     ::tpyapp::pkg::colors::__tpy_init();
 }
 

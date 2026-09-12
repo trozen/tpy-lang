@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def negate_checked(x: int32 | None) -> int32:
+//     assert x is not None
+//     return -x  # tpyc: ok
 int32_t negate_checked(std::optional<int32_t> x) {
-    // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
-    // return -x  # tpyc: ok
     return ::tpy::neg_check<int32_t>((*x));
 }
 
+// print(negate_checked(3))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(negate_checked(3))
     std::cout << negate_checked(3) << "\n";
 }
 

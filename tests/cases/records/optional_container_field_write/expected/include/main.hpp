@@ -15,8 +15,11 @@ struct Slot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_bound(s: Slot) -> int32:
 int32_t read_bound(Slot& s);
+// def local_source(s: Slot) -> None:
 void local_source(Slot& s);
+// def main() -> None:
 void main();
 
 // class Slot:
@@ -63,48 +66,51 @@ inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
 
 
 // def __init__(self) -> None:
+//     self.b = None
+//     self.xs = None
+//     self.boxes = None
 inline Slot::Slot() : b(std::nullopt), xs(std::nullopt), boxes(std::nullopt) {}
 
 // def take(self, v: Own[bytearray]) -> None:
+//     self.b = v  # tpyc: ok
 inline void Slot::take(::tpy::ByteArray&& v) {
-    // self.b = v  # tpyc: ok
     this->b = std::move(v);
 }
 
 // def take_list(self, v: Own[list[int32]]) -> None:
+//     self.xs = v  # tpyc: ok
 inline void Slot::take_list(std::vector<int32_t>&& v) {
-    // self.xs = v  # tpyc: ok
     this->xs = std::move(v);
 }
 
 // def take_boxes(self, v: Own[list[Box[int32]]]) -> None:
+//     self.boxes = v  # tpyc: ok -- a copy here would not compile
 inline void Slot::take_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& v) {
-    // self.boxes = v  # tpyc: ok -- a copy here would not compile
     this->boxes = std::move(v);
 }
 
 // def copy_in(self, v: bytearray) -> None:
+//     self.b = v  # tpyc: warning(/copies bytearray into field/)
 inline void Slot::copy_in(const ::tpy::ByteArray& v) {
-    // self.b = v  # tpyc: warning(/copies bytearray into field/)
     this->b = v;
 }
 
 // def size(self) -> int32:
+//     if self.b is None:
+//         return -1
+//     return len(self.b)
 inline int32_t Slot::size() const {
-    // if self.b is None:
     if ((!this->b.has_value())) {
-        // return -1
         return -1;
     }
-    // return len(self.b)
     return ::tpy::__len__((*this->b));
 }
 
 // def grow(self) -> None:
+//     if self.b is not None:
+//         self.b.append(90)
 inline void Slot::grow() {
-    // if self.b is not None:
     if ((this->b.has_value())) {
-        // self.b.append(90)
         (*this->b).push_back(90);
     }
 }

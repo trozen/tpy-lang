@@ -11,6 +11,7 @@ template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder[T]:
@@ -20,10 +21,13 @@ struct Holder {
     std::vector<T> items;
 
     // def __init__(self, items: list[T]) -> None:
+    //     self.items = items
     Holder() = default;
     explicit Holder(const std::vector<T>& items) : items(items) {}
 
     // def walk(self) -> Iterator[T]:
+    //     for x in self.items:
+    //         yield x
     auto walk() {
         return ::tpy::make_generator<T>(
             [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<T> {

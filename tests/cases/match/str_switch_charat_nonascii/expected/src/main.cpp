@@ -5,51 +5,53 @@ namespace tpyapp::main {
 
 
 // def classify(s: str) -> int32:
+//     match s:
+//         case "aa":
+//             return 1
+//         case "ba":
+//             return 2
+//         case "ca":
+//             return 3
+//         case "da":
+//             return 4
+//         case "\u00e9":
+//             return 5
+//         case _:
+//             return 0
 int32_t classify(std::string_view s) {
-    // match s:
     auto& __match_subject_1 = s;
     if (__match_subject_1.size() >= 1) {
         switch (static_cast<unsigned char>(__match_subject_1[0])) {
         case 'a': {
-            // case "aa":
             if (__match_subject_1 == "aa") {
-                // return 1
                 return 1;
                 goto __match_end_2;
             }
             break;
         }
         case 'b': {
-            // case "ba":
             if (__match_subject_1 == "ba") {
-                // return 2
                 return 2;
                 goto __match_end_2;
             }
             break;
         }
         case 'c': {
-            // case "ca":
             if (__match_subject_1 == "ca") {
-                // return 3
                 return 3;
                 goto __match_end_2;
             }
             break;
         }
         case 'd': {
-            // case "da":
             if (__match_subject_1 == "da") {
-                // return 4
                 return 4;
                 goto __match_end_2;
             }
             break;
         }
         case 195: {
-            // case "\u00e9":
             if (__match_subject_1 == "\xc3\xa9") {
-                // return 5
                 return 5;
                 goto __match_end_2;
             }
@@ -57,9 +59,7 @@ int32_t classify(std::string_view s) {
         }
         }
     }
-    // case _:
     {
-        // return 0
         return 0;
         goto __match_end_2;
     }
@@ -68,21 +68,21 @@ int32_t classify(std::string_view s) {
 }
 
 // def main() -> None:
+//     print(classify("aa"))
+//     print(classify("\u00e9"))
+//     print(classify("zz"))
 void main() {
-    // print(classify("aa"))
     std::cout << classify("aa") << "\n";
-    // print(classify("\u00e9"))
     std::cout << classify("\xc3\xa9") << "\n";
-    // print(classify("zz"))
     std::cout << classify("zz") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

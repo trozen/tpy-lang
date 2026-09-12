@@ -5,47 +5,48 @@ namespace tpyapp::main {
 
 
 // def risky(fail: bool) -> int32:
+//     if fail:
+//         raise OSError("boom")
+//     return 5
 int32_t risky(bool fail) {
-    // if fail:
     if (fail) {
-        // raise OSError("boom")
         ::tpy::OSError("boom").__raise__();
     }
-    // return 5
     return 5;
 }
 
 // def run(fail: bool) -> int32:
+//     try:
+//         x = risky(fail)
+//     except OSError:
+//         x = -1
+//     return x
 int32_t run(bool fail) {
-    // try:
     int32_t x;
     {
         try {
-            // x = risky(fail)
             x = risky(fail);
         } catch (const ::tpy::OSError&) {
-            // x = -1
             x = -1;
         }
     }
-    // return x
     return x;
 }
 
 // def main() -> None:
+//     print(run(False))
+//     print(run(True))
 void main() {
-    // print(run(False))
     std::cout << run(false) << "\n";
-    // print(run(True))
     std::cout << run(true) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

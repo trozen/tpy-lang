@@ -9,32 +9,36 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(x: int32, y: int32) -> int32:
 int32_t pick(int32_t x, int32_t y);
+// def pick[U](x: U, y: U) -> U:
 template<typename U>
 ::tpy::val_or_ref_t<U> pick(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y);
+// def use[T](a: T, b: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> use(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def main() -> None:
 void main();
 
 // @dispatch
 // def pick[U](x: U, y: U) -> U:
+//     return x
 template<typename U>
 ::tpy::val_or_ref_t<U> pick(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y) {
-    // return x
     return ::tpy::param_to_return<U>(x);
 }
 // def use[T](a: T, b: T) -> T:
+//     # Bare TPRef LHS. Both overloads might appear viable, but the generic
+//     # `pick[U](U, U) -> U` is the only one that can accept any T. Pre-fix:
+//     # probe falsely accepts the non-generic candidate `pick(int32, int32)`
+//     # via TPRef binding-and-accepting, biases arg analysis toward int32,
+//     # picks the non-generic overload (returns int32). For non-int32 T this
+//     # type-checks fails at the assignment.
+//     r: T = pick(a, b)
+//     return r
 template<typename T>
 ::tpy::val_or_ref_t<T> use(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // # Bare TPRef LHS. Both overloads might appear viable, but the generic
-    // # `pick[U](U, U) -> U` is the only one that can accept any T. Pre-fix:
-    // # probe falsely accepts the non-generic candidate `pick(int32, int32)`
-    // # via TPRef binding-and-accepting, biases arg analysis toward int32,
-    // # picks the non-generic overload (returns int32). For non-int32 T this
-    // # type-checks fails at the assignment.
-    // r: T = pick(a, b)
     ::tpy::val_or_ref_t<T> r = pick<T>(a, b);
-    // return r
     return r;
 }
 

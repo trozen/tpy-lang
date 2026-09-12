@@ -6,28 +6,29 @@ namespace tpyapp::main {
 
 // @export(binding="C")
 // def app_init() -> None:
+//     print("app_init called")
 extern "C" void app_init() {
-    // print("app_init called")
     std::cout << "app_init called" << "\n";
 }
 
 // @export("app_tick", binding="C")
 // def game_tick(time: int32) -> None:
+//     print(time)
 extern "C" void app_tick(int32_t time) {
-    // print(time)
     std::cout << time << "\n";
 }
 
+// # Test @export(binding="C") for C function exports
+// from tpy.extern import export
+//
+// app_init()
+// game_tick(int32(42))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test @export(binding="C") for C function exports
-    // from tpy.extern import export
-    // app_init()
     app_init();
-    // game_tick(int32(42))
     app_tick(42);
 }
 

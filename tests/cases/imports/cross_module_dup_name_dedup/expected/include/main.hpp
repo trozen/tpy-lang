@@ -13,7 +13,9 @@ using ::tpyapp::shp::Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_x(p: Point | P2) -> int:
 ::tpy::BigInt get_x(const ::tpyapp::shp::Point& p);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box[int32, 8]()
+//     print(describe(b))
 void main() {
-    // b = Box[int32, 8]()
     Box<int32_t, 8> b = Box<int32_t, 8>();
-    // print(describe(b))
     std::cout << "2 args: int32, 8" << "\n";
 }
 
+// # Regression: a MacroArg whose inferred type is a generic with an `N: int`
+// # param (Box[int32, 8]) must expose the int binding through TypeInfo.type_args
+// # as a plain int -- TypeInfo.from_tpy_type used to crash on it
+// # ("'int' object has no attribute 'is_value_type'").
+// from intargmac import describe
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: a MacroArg whose inferred type is a generic with an `N: int`
-    // # param (Box[int32, 8]) must expose the int binding through TypeInfo.type_args
-    // # as a plain int -- TypeInfo.from_tpy_type used to crash on it
-    // # ("'int' object has no attribute 'is_value_type'").
-    // from intargmac import describe
-    // main()
     main();
 }
 

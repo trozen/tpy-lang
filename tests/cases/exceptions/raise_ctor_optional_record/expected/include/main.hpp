@@ -12,6 +12,7 @@ struct MyErr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # raise X(rec) with a `Record | None` ctor param routes through the shared
@@ -54,9 +55,12 @@ inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self, n: Node | None) -> None:
+//     super().__init__("boom")
+//     self.node = n
 inline MyErr::MyErr(const Node* n) : ::tpy::Exception("boom"), node(::tpy::ptr_to_optional(n)) {}
 void __tpy_init();
 } // namespace tpyapp::main

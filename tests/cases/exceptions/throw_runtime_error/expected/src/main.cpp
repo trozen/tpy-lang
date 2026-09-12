@@ -8,31 +8,32 @@ namespace tpyapp::main {
 // # fits. Common Python idiom: `raise RuntimeError(...)` for "this shouldn't
 // # happen" runtime conditions.
 // def fail() -> None:
+//     raise RuntimeError("custom: state invariant broken")
 void fail() {
-    // raise RuntimeError("custom: state invariant broken")
     throw ::tpy::RuntimeError("custom: state invariant broken");
 }
 
 // def main() -> None:
+//     try:
+//         fail()
+//     except RuntimeError as e:
+//         print("caught RuntimeError:", str(e))
 void main() {
-    // try:
     {
         try {
-            // fail()
             fail();
         } catch (const ::tpy::RuntimeError& e) {
-            // print("caught RuntimeError:", str(e))
             std::cout << "caught RuntimeError:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

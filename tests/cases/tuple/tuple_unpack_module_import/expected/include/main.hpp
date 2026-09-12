@@ -13,6 +13,7 @@ inline auto& lo = ::tpyapp::config::lo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show() -> None:
 void show();
 
 void __tpy_init();

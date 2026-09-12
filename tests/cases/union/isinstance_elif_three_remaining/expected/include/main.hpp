@@ -13,7 +13,9 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(v: A | B | C) -> int:
 ::tpy::BigInt pick(::tpy::Union<const A*, const B*, const C*> v);
+// def main() -> None:
 void main();
 
 // # Inverse of the exhaustive-elif fix: a 3-member union where if/elif rule out
@@ -70,12 +72,15 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, x: int):
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, x: int):
+//     self.x = x
 inline B::B(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, x: int):
+//     self.x = x
 inline C::C(const ::tpy::BigInt& x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

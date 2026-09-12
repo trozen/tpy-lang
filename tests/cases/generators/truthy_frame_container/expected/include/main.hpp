@@ -65,15 +65,25 @@ struct __gen_plain_record_branch;
 struct __gen_any_branch;
 struct __gen_and_branch;
 
+// def str_branch(t: str) -> Iterator[int32]:
 __gen_str_branch str_branch(std::string_view t);
+// def bytes_branch(b: bytes) -> Iterator[int32]:
 __gen_bytes_branch bytes_branch(::tpy::BytesView b);
+// def record_len_branch(g: Bag) -> Iterator[int32]:
 __gen_record_len_branch record_len_branch(Bag& g);
+// def record_bool_branch(f: Flag) -> Iterator[int32]:
 __gen_record_bool_branch record_bool_branch(Flag& f);
+// def enum_branch(c: Color) -> Iterator[int32]:
 __gen_enum_branch enum_branch(Color c);
+// def int_enum_branch(lv: Level) -> Iterator[int32]:
 __gen_int_enum_branch int_enum_branch(Level lv);
+// def plain_record_branch(p: Plain) -> Iterator[int32]:
 __gen_plain_record_branch plain_record_branch(Plain& p);
+// def any_branch(v: Any) -> Iterator[int32]:
 __gen_any_branch any_branch(::tpy::Any v);
+// def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
 __gen_and_branch and_branch(std::vector<int32_t>& xs, std::string_view t);
+// def main() -> None:
 void main();
 
 // class Plain:
@@ -137,7 +147,7 @@ inline std::ostream& operator<<(std::ostream& os, const Flag& obj) {
     return os;
 }
 
-// Generator: str_branch
+// def str_branch(t: str) -> Iterator[int32]:
 struct __gen_str_branch : public ::tpy::next_iter_mixin<__gen_str_branch, int32_t> {
     int32_t __state;
     std::string t;
@@ -161,7 +171,7 @@ struct __gen_str_branch : public ::tpy::next_iter_mixin<__gen_str_branch, int32_
     }
 };
 
-// Generator: bytes_branch
+// def bytes_branch(b: bytes) -> Iterator[int32]:
 struct __gen_bytes_branch : public ::tpy::next_iter_mixin<__gen_bytes_branch, int32_t> {
     int32_t __state;
     ::tpy::Bytes b;
@@ -185,7 +195,7 @@ struct __gen_bytes_branch : public ::tpy::next_iter_mixin<__gen_bytes_branch, in
     }
 };
 
-// Generator: record_len_branch
+// def record_len_branch(g: Bag) -> Iterator[int32]:
 struct __gen_record_len_branch : public ::tpy::next_iter_mixin<__gen_record_len_branch, int32_t> {
     int32_t __state;
     Bag& g;
@@ -209,7 +219,7 @@ struct __gen_record_len_branch : public ::tpy::next_iter_mixin<__gen_record_len_
     }
 };
 
-// Generator: record_bool_branch
+// def record_bool_branch(f: Flag) -> Iterator[int32]:
 struct __gen_record_bool_branch : public ::tpy::next_iter_mixin<__gen_record_bool_branch, int32_t> {
     int32_t __state;
     Flag& f;
@@ -233,7 +243,7 @@ struct __gen_record_bool_branch : public ::tpy::next_iter_mixin<__gen_record_boo
     }
 };
 
-// Generator: enum_branch
+// def enum_branch(c: Color) -> Iterator[int32]:
 struct __gen_enum_branch : public ::tpy::next_iter_mixin<__gen_enum_branch, int32_t> {
     int32_t __state;
     Color c;
@@ -257,7 +267,7 @@ struct __gen_enum_branch : public ::tpy::next_iter_mixin<__gen_enum_branch, int3
     }
 };
 
-// Generator: int_enum_branch
+// def int_enum_branch(lv: Level) -> Iterator[int32]:
 struct __gen_int_enum_branch : public ::tpy::next_iter_mixin<__gen_int_enum_branch, int32_t> {
     int32_t __state;
     Level lv;
@@ -281,7 +291,7 @@ struct __gen_int_enum_branch : public ::tpy::next_iter_mixin<__gen_int_enum_bran
     }
 };
 
-// Generator: plain_record_branch
+// def plain_record_branch(p: Plain) -> Iterator[int32]:
 struct __gen_plain_record_branch : public ::tpy::next_iter_mixin<__gen_plain_record_branch, int32_t> {
     int32_t __state;
     Plain& p;
@@ -305,7 +315,7 @@ struct __gen_plain_record_branch : public ::tpy::next_iter_mixin<__gen_plain_rec
     }
 };
 
-// Generator: any_branch
+// def any_branch(v: Any) -> Iterator[int32]:
 struct __gen_any_branch : public ::tpy::next_iter_mixin<__gen_any_branch, int32_t> {
     int32_t __state;
     ::tpy::Any v;
@@ -329,7 +339,7 @@ struct __gen_any_branch : public ::tpy::next_iter_mixin<__gen_any_branch, int32_
     }
 };
 
-// Generator: and_branch
+// def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
 struct __gen_and_branch : public ::tpy::next_iter_mixin<__gen_and_branch, int32_t> {
     int32_t __state;
     std::vector<int32_t>& xs;
@@ -356,25 +366,33 @@ struct __gen_and_branch : public ::tpy::next_iter_mixin<__gen_and_branch, int32_
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Plain::Plain(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Bag::Bag(int32_t n) : n(n) {}
 
 // def __len__(self) -> int32:
+//     return self.n
 inline int32_t Bag::__len__() const {
-    // return self.n
     return this->n;
 }
 
 // def __init__(self, on: bool) -> None:
+//     self.on = on
 inline Flag::Flag(bool on) : on(on) {}
 
 // def __bool__(self) -> bool:
+//     return self.on
 inline bool Flag::__bool__() const {
-    // return self.on
     return this->on;
 }
+// def drain_list(xs: list[int32]) -> Iterator[int32]:
+//     # The peephole shape, and the reproducer BUGS.md carried: the loop
+//     # mutates the frame-resident list, so an empty one must stop it.
+//     while xs:
+//         yield xs.pop()
 inline auto drain_list(std::vector<int32_t>& xs) {
     return ::tpy::make_generator<int32_t>(
         [&xs]() mutable -> std::optional<int32_t> {
@@ -387,16 +405,19 @@ inline auto drain_list(std::vector<int32_t>& xs) {
     );
 }
 
+// def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
+//     # `order` keeps the drain deterministic across dict implementations;
+//     # the point under test is the `while d:` head.
+//     i = 0
+//     while d:
+//         yield d.pop(order[i])
+//         i += 1
 inline auto drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int32_t>& order) {
-    // # `order` keeps the drain deterministic across dict implementations;
-    // # the point under test is the `while d:` head.
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [&d, &order, i]() mutable -> std::optional<int32_t> {
             while ((::tpy::__len__(d) != 0)) {
                 auto __val = ::tpy::dict_pop(d, ::tpy::__getitem__(order, i));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }
@@ -405,6 +426,9 @@ inline auto drain_dict(::tpy::ordered_map<int32_t, int32_t>& d, std::vector<int3
     );
 }
 
+// def drain_set(s: set[int32]) -> Iterator[int32]:
+//     while s:
+//         yield s.pop()
 inline auto drain_set(::tpy::ordered_set<int32_t>& s) {
     return ::tpy::make_generator<int32_t>(
         [&s]() mutable -> std::optional<int32_t> {
@@ -417,19 +441,22 @@ inline auto drain_set(::tpy::ordered_set<int32_t>& s) {
     );
 }
 
+// def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
+//     # The same recursion, in the simple-generator while peephole. `rest` is
+//     # a local because a str param cannot be rebound; clearing the borrowed
+//     # list plus emptying `rest` ends the loop after one pass.
+//     rest = t
+//     while xs or rest:
+//         yield 1
+//         xs.clear()
+//         rest = ""
 inline auto peephole_or(std::vector<int32_t>& xs, std::string_view t) {
-    // # The same recursion, in the simple-generator while peephole. `rest` is
-    // # a local because a str param cannot be rebound; clearing the borrowed
-    // # list plus emptying `rest` ends the loop after one pass.
-    // rest = t
     std::string rest = std::string(t);
     return ::tpy::make_generator<int32_t>(
         [&xs, t = std::string(t), rest]() mutable -> std::optional<int32_t> {
             while (((::tpy::__len__(xs) != 0) || (!rest.empty()))) {
                 auto __val = 1;
-                // xs.clear()
                 xs.clear();
-                // rest = ""
                 rest = "";
                 return std::optional<int32_t>(__val);
             }

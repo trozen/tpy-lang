@@ -34,8 +34,11 @@ template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_copied(xs: list[int32]) -> int32:
 int32_t sum_copied(const std::vector<int32_t>& xs);
+// def consume() -> int32:
 int32_t consume();
+// def main() -> None:
 void main();
 
 // class Holder[T]:
@@ -45,18 +48,19 @@ struct Holder {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Holder() = default;
     explicit Holder(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def dup(self) -> T:
+    //     return copy(self.value)  # tpyc: ok
     ::tpy::val_or_cref_t<T> dup() const {
-        // return copy(self.value)  # tpyc: ok
         return T(this->value);
     }
 
     // def dup_via_module(self) -> T:
+    //     return t.copy(self.value)  # tpyc: ok
     ::tpy::val_or_cref_t<T> dup_via_module() const {
-        // return t.copy(self.value)  # tpyc: ok
         return T(this->value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";

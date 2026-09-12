@@ -5,64 +5,72 @@ namespace tpyapp::main {
 
 
 // def trigger_re() -> None:
+//     p = re.compile("(unbalanced")
 void trigger_re() {
-    // p = re.compile("(unbalanced")
     ::tpystd::re::Pattern p = ::tpystd::re::compile("(unbalanced");
 }
 
 // def main() -> None:
+//     try:
+//         trigger_re()
+//     except re.error:
+//         print("re.error caught")
+//
+//     # Binding form: 'as e' with a qualified name should bind.
+//     try:
+//         trigger_re()
+//     except re.error as e:
+//         print("bound")
+//
+//     try:
+//         raise MyError()
+//     except MyError:
+//         print("MyError caught")
+//
+//     try:
+//         raise ValueError()
+//     except builtins.ValueError:
+//         print("builtins.ValueError caught")
 void main() {
-    // try:
     {
         try {
-            // trigger_re()
             trigger_re();
         } catch (const ::tpystd::re::error&) {
-            // print("re.error caught")
             std::cout << "re.error caught" << "\n";
         }
     }
-    // # Binding form: 'as e' with a qualified name should bind.
-    // try:
     {
         try {
-            // trigger_re()
             trigger_re();
         } catch (const ::tpystd::re::error& e) {
-            // print("bound")
             std::cout << "bound" << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise MyError()
             throw MyError{};
         } catch (const MyError&) {
-            // print("MyError caught")
             std::cout << "MyError caught" << "\n";
         }
     }
-    // try:
     {
         try {
-            // raise ValueError()
             throw ::tpy::ValueError{};
         } catch (const ::tpy::ValueError&) {
-            // print("builtins.ValueError caught")
             std::cout << "builtins.ValueError caught" << "\n";
         }
     }
 }
 
+// import re
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import re
     ::tpystd::re::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     p = Pair(int32(10), int32(20))
+//     result = public_add(p.a, p.b)
+//     print(result)
+//     return int32(0)
 int32_t main() {
-    // p = Pair(int32(10), int32(20))
     ::tpyapp::helpers::Pair p = ::tpyapp::helpers::Pair(10, 20);
-    // result = public_add(p.a, p.b)
     int32_t result = ::tpyapp::helpers::public_add(p.a, p.b);
-    // print(result)
     std::cout << result << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from helpers import *
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from helpers import *
     ::tpyapp::helpers::__tpy_init();
-    // main()
     main();
 }
 

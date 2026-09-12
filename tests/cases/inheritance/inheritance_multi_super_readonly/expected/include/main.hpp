@@ -13,6 +13,7 @@ struct Both;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -68,29 +69,31 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = int32(0)
 inline Counter::Counter() : n(0) {}
 
 // @readonly
 // def get_n(self) -> int32:
+//     return self.n
 inline int32_t Counter::get_n() const {
-    // return self.n
     return this->n;
 }
 
 // @readonly
 // def greet(self) -> str:
+//     return "hi"
 inline std::string Greeter::greet() const {
-    // return "hi"
     return "hi";
 }
 
 // def __init__(self) -> None:
+//     super().__init__()
 inline Both::Both() : Counter() {}
 
 // @readonly
 // def describe(self) -> str:
+//     return super().greet() + ":" + str(super().get_n())
 inline std::string Both::describe() const {
-    // return super().greet() + ":" + str(super().get_n())
     return (::tpy::str_concat((::tpy::str_concat(this->Greeter::greet(), ":")), ::tpy::fixed_to_str<int32_t>(this->Counter::get_n())));
 }
 void __tpy_init();

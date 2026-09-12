@@ -14,6 +14,7 @@ extern std::optional<char> sy;
 extern std::optional<char> n;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def eq_both(a: char | None, b: char | None) -> bool:
 bool eq_both(std::optional<char> a, std::optional<char> b);
 
 void __tpy_init();

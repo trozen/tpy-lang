@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def take(s: str) -> Any:
+//     a: Any = s   # storage upgrade: StrView -> std::string
+//     return a
 ::tpy::Any take(std::string_view s) {
-    // a: Any = s   # storage upgrade: StrView -> std::string
     ::tpy::Any a = ::tpy::make_any(std::string(s));
-    // return a
     return a;
 }
 
 // def main() -> None:
+//     a = take("ephemeral")
+//     # The string literal "ephemeral" was a string_view at the call boundary;
+//     # `a` owns its own std::string copy regardless.
+//     print("stored")
 void main() {
-    // a = take("ephemeral")
     ::tpy::Any a = take("ephemeral");
-    // # The string literal "ephemeral" was a string_view at the call boundary;
-    // # `a` owns its own std::string copy regardless.
-    // print("stored")
     std::cout << "stored" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

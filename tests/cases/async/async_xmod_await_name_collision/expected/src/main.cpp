@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // async def step() -> int32:
+//     return await helper.other()
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await helper.other()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -33,10 +33,10 @@ __coro_step step() {
 }
 
 // async def other() -> int32:
+//     return await helper.step()
 ::tpystd::tpy::Poll<int32_t> __coro_other::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await helper.step()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -61,10 +61,10 @@ __coro_other other() {
 }
 
 // async def amain() -> None:
+//     print(await step(), await other())
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await step(), await other())
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -74,7 +74,6 @@ __coro_other other() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await step(), await other())
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -84,7 +83,6 @@ __coro_other other() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await step(), await other())
         std::cout << __await_lift_0 << " " << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -100,21 +98,22 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # Two local coros, each inline-awaiting a SAME-NAMED coro from another module.
+// # The struct each embeds is `helper::__coro_step` / `helper::__coro_other`, which
+// # the included header already defines -- so neither is an ordering edge here.
+// # Keying the edges on the bare name instead would read this as `step` awaiting
+// # the LOCAL `step`, a phantom cycle rejected as "recursive coroutine embedding".
+// import asyncio
+// import helper
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Two local coros, each inline-awaiting a SAME-NAMED coro from another module.
-    // # The struct each embeds is `helper::__coro_step` / `helper::__coro_other`, which
-    // # the included header already defines -- so neither is an ordering edge here.
-    // # Keying the edges on the bare name instead would read this as `step` awaiting
-    // # the LOCAL `step`, a phantom cycle rejected as "recursive coroutine embedding".
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // import helper
     ::tpyapp::helper::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

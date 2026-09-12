@@ -43,19 +43,29 @@ template <typename T>
 struct __coro_held;
 struct __coro_async_frame;
 
+// def echo[T](v: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v);
+// def has_item[T](xs: list[T], v: T) -> bool:
 template<typename T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+// def hold[T](x: T) -> Iterator[T]:
 template <typename T>
 __gen_hold<T> hold(::tpy::param_val_or_ref_t<T> x);
+// async def held[T](x: T) -> T:
 template <typename T>
 __coro_held<T> held(::tpy::param_val_or_ref_t<T> x);
+// def free_function() -> None:
 void free_function();
+// def method() -> None:
 void method();
+// def enum_instantiation() -> None:
 void enum_instantiation();
+// def generator_frame() -> None:
 void generator_frame();
+// async def async_frame() -> None:
 __coro_async_frame async_frame();
+// def main() -> None:
 void main();
 
 // class Cell[T]:
@@ -65,23 +75,24 @@ struct Cell {
     T v;
 
     // def __init__(self, v: T) -> None:
+    //     self.v = v  # tpyc: warning(/may copy T into field/)
     Cell() = default;
     explicit Cell(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // def get(self) -> T:
+    //     return self.v
     ::tpy::val_or_ref_t<T> get() {
-        // return self.v
         return this->v;
     }
 
     // def find(self, v: T) -> T | None:
+    //     if self.v == v:
+    //         return self.v
+    //     return None
     T* find(::tpy::param_val_or_ref_t<T> v) {
-        // if self.v == v:
         if (::tpy::eq(this->v, v)) {
-            // return self.v
             return &(this->v);
         }
-        // return None
         return nullptr;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -93,7 +104,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
     return os;
 }
 
-// Async coroutine: held
+// async def held[T](x: T) -> T:
 template <typename T>
 struct __coro_held {
     int32_t __state;
@@ -118,11 +129,12 @@ struct __coro_held {
     }
 };
 // async def held[T](x: T) -> T:
+//     await asyncio.sleep(0)
+//     return x
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_held<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -132,7 +144,6 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return x
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -149,7 +160,7 @@ __coro_held<T> held(::tpy::param_val_or_ref_t<T> x) {
     return __coro_held<T>(x);
 }
 
-// Async coroutine: async_frame
+// async def async_frame() -> None:
 struct __coro_async_frame {
     int32_t __state;
     bool __cancel_pending;
@@ -174,7 +185,7 @@ struct __coro_async_frame {
     }
 };
 
-// Generator: hold
+// def hold[T](x: T) -> Iterator[T]:
 template <typename T>
 struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, T> {
     int32_t __state;
@@ -199,23 +210,23 @@ struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, T> {
     }
 };
 // def hold[T](x: T) -> Iterator[T]:
+//     yield x
+//     total = 0
+//     while total < 1:
+//         total += 1
+//     yield x
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_hold<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield x
         __state = S_RESUME_0;
         return x;
     }
     case S_RESUME_0: {
-        // total = 0
         total = 0;
-        // while total < 1:
         while ((total < 1)) {
-            // total += 1
             total = ::tpy::add_check<int32_t>(total, 1);
         }
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -236,27 +247,27 @@ __gen_hold<T> hold(::tpy::param_val_or_ref_t<T> x) {
 }
 
 // def echo[T](v: T) -> T:
+//     return v
 template<typename T>
 ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v) {
-    // return v
     return ::tpy::param_to_return<T>(v);
 }
 // def has_item[T](xs: list[T], v: T) -> bool:
+//     for x in xs:
+//         if x == v:
+//             return True
+//     return False
 template<typename T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        // if x == v:
         if (::tpy::eq(x, v)) {
-            // return True
             return true;
         }
     }
-    // return False
     return false;
 }
 

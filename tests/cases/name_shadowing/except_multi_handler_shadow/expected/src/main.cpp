@@ -5,45 +5,47 @@ namespace tpyapp::main {
 
 
 // def pick(which: int32) -> int32:
+//     try:
+//         if which == 0:
+//             raise NotFound(7)
+//         raise Denied(20)
+//     except NotFound as Registry:
+//         return Registry.code
+//     except Denied as Registry:
+//         return Registry.code + 1
+//     return -1
 int32_t pick(int32_t which) {
-    // try:
     {
         try {
-            // if which == 0:
             if ((which == 0)) {
-                // raise NotFound(7)
                 throw NotFound(7);
             }
-            // raise Denied(20)
             throw Denied(20);
         } catch (const NotFound& Registry) {
-            // return Registry.code
             return Registry.code;
         } catch (const Denied& Registry) {
-            // return Registry.code + 1
             return (::tpy::add_check<int32_t>(Registry.code, 1));
         }
     }
-    // return -1
     return -1;
 }
 
 // def main() -> None:
+//     print(pick(0))
+//     print(pick(1))
+//     print(Registry.code)
 void main() {
-    // print(pick(0))
     std::cout << pick(0) << "\n";
-    // print(pick(1))
     std::cout << pick(1) << "\n";
-    // print(Registry.code)
     std::cout << Registry::code << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ template<::tpystd::tpy::Hashable T> struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag[T: Hashable]:
@@ -20,50 +21,51 @@ struct Bag {
     ::tpy::ordered_map<T, ::tpy::BigInt> _data;
 
     // def __init__(self) -> None:
+    //     self._data = {}
     Bag() : _data(::tpy::ordered_map<T, ::tpy::BigInt>()) {}
 
     // def add_all(self, items: Iterable[T]) -> None:
+    //     for x in items:
+    //         self._data[x] = self._data.get(x, 0) + 1  # tpyc: ok
     template<::tpystd::typing::Iterable<T> T_items>
     void add_all(T_items& items) {
-        // for x in items:
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& x = ::tpy::unwrap_ref(*__r_1);
-            // self._data[x] = self._data.get(x, 0) + 1  # tpyc: ok
             ::tpy::__setitem__(this->_data, x, ((::tpy::dict_get_default(this->_data, x, ::tpy::BigInt(0))) + (::tpy::BigInt(1))));
         }
     }
 
     // # readonly methods (no self mutation) -> self._data is readonly[dict]
     // def __getitem__(self, key: T) -> int:
+    //     return self._data.get(key, 0)  # tpyc: ok
     ::tpy::BigInt __getitem__(::tpy::readonly_form_t<T> key) const {
-        // return self._data.get(key, 0)  # tpyc: ok
         return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
     }
 
     // def __contains__(self, key: T) -> bool:
+    //     return key in self._data  # tpyc: ok
     bool __contains__(::tpy::readonly_form_t<T> key) const {
-        // return key in self._data  # tpyc: ok
         return std::ranges::contains(this->_data, key);
     }
 
     // def total(self) -> int:
+    //     s = 0
+    //     for k in self._data:
+    //         s = s + self._data[k]  # tpyc: ok  -- readonly key from iterating readonly self
+    //     return s
     ::tpy::BigInt total() const {
-        // s = 0
         ::tpy::BigInt s = ::tpy::BigInt(0);
-        // for k in self._data:
         auto& __obj_0 = this->_data;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& k = *__beg_0;
-            // s = s + self._data[k]  # tpyc: ok  -- readonly key from iterating readonly self
             s = ((::tpy::BigInt(s)) + (::tpy::__getitem__(this->_data, k)));
         }
-        // return s
         return s;
     }
 

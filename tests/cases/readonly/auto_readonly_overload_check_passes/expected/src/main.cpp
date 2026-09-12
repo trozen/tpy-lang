@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box()
+//     b.value = int32(42)
+//     print(b.get())  # 42
 void main() {
-    // b = Box()
     Box b = Box();
-    // b.value = int32(42)
     b.value = 42;
-    // print(b.get())  # 42
     std::cout << b.get() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,129 +5,142 @@ namespace tpyapp::main {
 
 
 // def make_obj(v: int) -> Own[Obj]:
+//     return Obj(v)
 Obj make_obj(const ::tpy::BigInt& v) {
-    // return Obj(v)
     return Obj(v);
 }
 
 // def main() -> None:
+//     # Value types: three-way
+//     a = b = c = 10
+//     print(a, b, c)
+//
+//     # Value types: expression
+//     x = y = 2 + 3
+//     print(x, y)
+//
+//     # Value types: reassignment
+//     a = b = 99
+//     print(a, b, c)
+//
+//     # Value types: independent after assignment
+//     p = q = r = 100
+//     r = 200
+//     print(p, q, r)
+//
+//     # Object type: aliasing (both usable, mutations visible)
+//     o1 = o2 = Obj(5)
+//     o1.val = 10
+//     print(o1.val, o2.val)
+//
+//     # Object from function call: evaluated once, aliased
+//     o3 = o4 = make_obj(42)
+//     o3.val = 0
+//     print(o3.val, o4.val)
+//
+//     # Multi-assign in __init__ (self.x = self.y = 0)
+//     p0 = Pair()
+//     print(p0.x, p0.y)
+//
+//     # Mixed: name + field target
+//     pair = Pair()
+//     v = pair.x = 77
+//     print(v, pair.x)
+//
+//     # Mixed: field + name (name not rightmost in source)
+//     pair2 = Pair()
+//     pair2.y = w = 88
+//     print(pair2.y, w)
+//
+//     # Two field targets (synthetic temp)
+//     pair3 = Pair()
+//     pair3.x = pair3.y = 55
+//     print(pair3.x, pair3.y)
+//
+//     # Property: setter called, getter not called, anchor gets raw value
+//     cl = Clamped()
+//     n = cl.val = 200
+//     print(n, cl.val)
+//
+//     # Property: reversed target order
+//     cl2 = Clamped()
+//     cl2.val = m = 200
+//     print(m, cl2.val)
+//
+//     # String values
+//     s1 = s2 = "hello"
+//     print(s1, s2)
+//
+//     # List aliasing
+//     xs = ys = [1, 2, 3]
+//     xs.append(4)
+//     print(xs)
+//     print(ys)
 void main() {
-    // # Value types: three-way
-    // a = b = c = 10
     int32_t a = 10;
     int32_t b = a;
     int32_t c = a;
-    // print(a, b, c)
     std::cout << a << " " << b << " " << c << "\n";
-    // # Value types: expression
-    // x = y = 2 + 3
     int32_t x = ::tpy::add_check<int32_t>(2, 3);
     int32_t y = x;
-    // print(x, y)
     std::cout << x << " " << y << "\n";
-    // # Value types: reassignment
-    // a = b = 99
     a = 99;
     b = a;
-    // print(a, b, c)
     std::cout << a << " " << b << " " << c << "\n";
-    // # Value types: independent after assignment
-    // p = q = r = 100
     int32_t p = 100;
     int32_t q = p;
     int32_t r = p;
-    // r = 200
     r = 200;
-    // print(p, q, r)
     std::cout << p << " " << q << " " << r << "\n";
-    // # Object type: aliasing (both usable, mutations visible)
-    // o1 = o2 = Obj(5)
     Obj o1 = Obj(::tpy::BigInt(5));
     Obj& o2 = o1;
-    // o1.val = 10
     o1.val = ::tpy::BigInt(10);
-    // print(o1.val, o2.val)
     std::cout << o1.val << " " << o2.val << "\n";
-    // # Object from function call: evaluated once, aliased
-    // o3 = o4 = make_obj(42)
     Obj o3 = make_obj(::tpy::BigInt(42));
     Obj& o4 = o3;
-    // o3.val = 0
     o3.val = ::tpy::BigInt(0);
-    // print(o3.val, o4.val)
     std::cout << o3.val << " " << o4.val << "\n";
-    // # Multi-assign in __init__ (self.x = self.y = 0)
-    // p0 = Pair()
     Pair p0 = Pair();
-    // print(p0.x, p0.y)
     std::cout << p0.x << " " << p0.y << "\n";
-    // # Mixed: name + field target
-    // pair = Pair()
     Pair pair = Pair();
-    // v = pair.x = 77
     int32_t v = 77;
     pair.x = ::tpy::BigInt(v);
-    // print(v, pair.x)
     std::cout << v << " " << pair.x << "\n";
-    // # Mixed: field + name (name not rightmost in source)
-    // pair2 = Pair()
     Pair pair2 = Pair();
-    // pair2.y = w = 88
     int32_t __ma_1 = 88;
     pair2.y = ::tpy::BigInt(__ma_1);
     int32_t w = __ma_1;
-    // print(pair2.y, w)
     std::cout << pair2.y << " " << w << "\n";
-    // # Two field targets (synthetic temp)
-    // pair3 = Pair()
     Pair pair3 = Pair();
-    // pair3.x = pair3.y = 55
     int32_t __ma_2 = 55;
     pair3.x = ::tpy::BigInt(__ma_2);
     pair3.y = ::tpy::BigInt(__ma_2);
-    // print(pair3.x, pair3.y)
     std::cout << pair3.x << " " << pair3.y << "\n";
-    // # Property: setter called, getter not called, anchor gets raw value
-    // cl = Clamped()
     Clamped cl = Clamped();
-    // n = cl.val = 200
     int32_t n = 200;
     cl.set_val(n);
-    // print(n, cl.val)
     std::cout << n << " " << cl.val() << "\n";
-    // # Property: reversed target order
-    // cl2 = Clamped()
     Clamped cl2 = Clamped();
-    // cl2.val = m = 200
     int32_t __ma_3 = 200;
     cl2.set_val(__ma_3);
     int32_t m = __ma_3;
-    // print(m, cl2.val)
     std::cout << m << " " << cl2.val() << "\n";
-    // # String values
-    // s1 = s2 = "hello"
     std::string_view s1 = "hello";
     std::string_view s2 = s1;
-    // print(s1, s2)
     std::cout << s1 << " " << s2 << "\n";
-    // # List aliasing
-    // xs = ys = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
     std::vector<int32_t>& ys = xs;
-    // xs.append(4)
     xs.push_back(4);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // print(ys)
     std::cout << ::tpy::ListPrinter(ys) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

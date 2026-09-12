@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(a: dict[str, set[int32]], b: dict[str, dict[str, int32]]) -> None:
 void show(const ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>& a, const ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>& b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

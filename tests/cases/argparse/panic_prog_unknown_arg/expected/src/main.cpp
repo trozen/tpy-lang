@@ -5,13 +5,18 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(
+//         prog="myapp",
+//         usage="myapp [--count N]",
+//     )
+//     parser.add_argument("--count", type=int, default=1)
+//     args = parser.parse_args(["--unknown"])
+//     print(args.count)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["--unknown"])
     std::vector<std::string> __tmp_1 = {"--unknown"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.count)
     std::cout << args.count << "\n";
-    // return 0
     return 0;
 }
 
@@ -50,14 +55,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(count);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

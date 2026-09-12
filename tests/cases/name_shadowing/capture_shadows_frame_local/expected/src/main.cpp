@@ -5,29 +5,33 @@ namespace tpyapp::main {
 
 
 // def run(n: int32) -> Iterator[int32]:
+//     total = 100
+//     yield total
+//
+//     match n:
+//         case 5 as total:
+//             yield total
+//         case _:
+//             yield -1
+//
+//     yield total + 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_run::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 100
         total = 100;
-        // yield total
         __state = S_RESUME_0;
         return total;
     }
     case S_RESUME_0: {
         auto& __match_subject_1 = n;
         switch (__match_subject_1) {
-        // case 5 as total:
         case 5: {
             total = __match_subject_1;
-            // yield total
             __state = S_RESUME_1;
             return total;
             break;
         }
-        // case _:
         default: {
-            // yield -1
             __state = S_RESUME_2;
             return -1;
             break;
@@ -49,7 +53,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_run::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_JOIN_0: {
-        // yield total + 1
         __state = S_RESUME_3;
         return (::tpy::add_check<int32_t>(total, 1));
     }
@@ -65,10 +68,12 @@ __gen_run run(int32_t n) {
 }
 
 // def main() -> None:
+//     out = 0
+//     for v in run(5):
+//         out += v
+//     print(out)
 void main() {
-    // out = 0
     int32_t out = 0;
-    // for v in run(5):
     {
         auto __src_0 = run(5);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -76,20 +81,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // out += v
         out = ::tpy::add_check<int32_t>(out, v);
         }
     }
-    // print(out)
     std::cout << out << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

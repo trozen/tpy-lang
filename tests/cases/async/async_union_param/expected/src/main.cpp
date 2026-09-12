@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // async def describe(a: Dog | Cat) -> str:
+//     await asyncio.sleep(0)
+//     if isinstance(a, Dog):
+//         return "dog"
+//     return "cat"
 ::tpystd::tpy::Poll<std::string> __coro_describe::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -18,16 +21,13 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // if isinstance(a, Dog):
         if (std::holds_alternative<const Dog*>(a)) {
             auto& __a = *std::get<const Dog*>(a);
-            // return "dog"
             __state = S_DONE;
             std::string __tpy_async_ret = "dog";
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
         auto& __a = *std::get<const Cat*>(a);
-        // return "cat"
         __state = S_DONE;
         std::string __tpy_async_ret = "cat";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -44,11 +44,12 @@ __coro_describe describe(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // async def main() -> None:
+//     print(await describe(Dog()))
+//     print(await describe(Cat()))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0.emplace(Dog());
-        // print(await describe(Dog()))
         __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
@@ -58,10 +59,8 @@ __coro_describe describe(::tpy::Union<const Cat*, const Dog*> a) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await describe(Dog()))
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1.emplace(Cat());
-        // print(await describe(Cat()))
         __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
@@ -71,7 +70,6 @@ __coro_describe describe(::tpy::Union<const Cat*, const Dog*> a) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await describe(Cat()))
         std::cout << __await_lift_1 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -87,19 +85,20 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # Regression: a non-value union (Dog | Cat) passed to an `async def` factory --
+// # the await/emplace path must union-wrap it (pointer-variant borrow form). The
+// # rvalue temps `Dog()` / `Cat()` are hoisted into the awaiter's frame
+// # (`__coro_arg_N`) so the sub-coro's `variant<Cat*, Dog*>` borrows a frame
+// # field that outlives the suspension.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: a non-value union (Dog | Cat) passed to an `async def` factory --
-    // # the await/emplace path must union-wrap it (pointer-variant borrow form). The
-    // # rvalue temps `Dog()` / `Cat()` are hoisted into the awaiter's frame
-    // # (`__coro_arg_N`) so the sub-coro's `variant<Cat*, Dog*>` borrows a frame
-    // # field that outlives the suspension.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

@@ -11,6 +11,7 @@ template<typename T, std::size_t N> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T, N: int]:
@@ -19,8 +20,8 @@ struct Container {
 
 
     // def get_size_as_bigint(self) -> int:
+    //     return N  # N coerces to BigInt
     ::tpy::BigInt get_size_as_bigint() const {
-        // return N  # N coerces to BigInt
         return ::tpy::BigInt(static_cast<int64_t>(N));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

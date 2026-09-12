@@ -5,46 +5,47 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat | Bird) -> str:
+//     match a:  # tpyc: warning(/non-exhaustive match.*missing: Bird.*case _:/)
+//         case Dog():
+//             return "dog"
+//         case Cat():
+//             return "cat"
+//     return "unknown"
 std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
-    // match a:  # tpyc: warning(/non-exhaustive match.*missing: Bird.*case _:/)
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
-    // case Dog():
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject_1);
-        // return "dog"
         return "dog";
         break;
     }
-    // case Cat():
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // return "cat"
         return "cat";
         break;
     }
     }
-    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
+//     d: Dog | Cat | Bird = Dog("Rex")
+//     print(describe(d))
 void main() {
-    // d: Dog | Cat | Bird = Dog("Rex")
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // print(describe(d))
     std::cout << describe(d.as_const()) << "\n";
 }
 
+// # warning: non-exhaustive match on union (missing member)
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # warning: non-exhaustive match on union (missing member)
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

@@ -5,16 +5,19 @@ namespace tpyapp::main {
 
 
 // def countdown(n: int32) -> Iterator[int32]:
+//     i = n
+//     while i > 0:
+//         yield i
+//         i -= 1
+//     yield -1
 std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = n
         i = n;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // i -= 1
         i = ::tpy::sub_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -25,11 +28,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
     }
     case S_JOIN_0: {
         if ((i > 0)) {
-            // yield i
             __state = S_RESUME_0;
             return i;
         } else {
-            // yield -1
             __state = S_RESUME_1;
             return -1;
         }
@@ -46,8 +47,9 @@ __gen_countdown countdown(int32_t n) {
 }
 
 // def main() -> None:
+//     for v in countdown(3):
+//         print(v)
 void main() {
-    // for v in countdown(3):
     {
         auto __src_0 = countdown(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -55,18 +57,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

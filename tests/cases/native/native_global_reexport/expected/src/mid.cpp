@@ -5,23 +5,23 @@ namespace tpyapp::mid {
 
 
 // def use_global() -> int32:
+//     return GLOBAL_VAL
 int32_t use_global() {
-    // return GLOBAL_VAL
     return ::tpy_test_global;
 }
 
 // def use_normal() -> int32:
+//     return NORMAL_VAL
 int32_t use_normal() {
-    // return NORMAL_VAL
     return ::tpyapp::leaf::NORMAL_VAL;
 }
 
+// from leaf import GLOBAL_VAL, NORMAL_VAL
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from leaf import GLOBAL_VAL, NORMAL_VAL
     ::tpyapp::leaf::__tpy_init();
 }
 

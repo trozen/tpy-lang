@@ -13,7 +13,9 @@ using ::tpystd::tplib::fix_str::FixStr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[FixStr[16]]:
 ::tpystd::tplib::fix_str::FixStr<16> make();
+// def main() -> None:
 void main();
 
 void __tpy_init();

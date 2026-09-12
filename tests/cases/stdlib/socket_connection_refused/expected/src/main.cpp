@@ -5,47 +5,51 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+//     # A bound timeout guards against a host that DROPs (rather than REJECTs)
+//     # loopback; the refused connect returns ECONNREFUSED well before it.
+//     s.settimeout(5.0)
+//     try:
+//         s.connect(("127.0.0.1", 1))
+//         print("NO ERROR")
+//     except ConnectionRefusedError:
+//         print("caught ConnectionRefusedError")
+//     except ConnectionError:
+//         print("caught generic ConnectionError")
+//     except OSError:
+//         print("caught generic OSError")
+//     s.close()
 void main() {
-    // s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ::tpystd::socket::socket s = ::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM);
-    // # A bound timeout guards against a host that DROPs (rather than REJECTs)
-    // # loopback; the refused connect returns ECONNREFUSED well before it.
-    // s.settimeout(5.0)
     s.settimeout(5.0);
-    // try:
     {
         try {
-            // s.connect(("127.0.0.1", 1))
             s.connect(std::tuple<std::string, int32_t>{"127.0.0.1", 1});
-            // print("NO ERROR")
             std::cout << "NO ERROR" << "\n";
         } catch (const ::tpy::ConnectionRefusedError&) {
-            // print("caught ConnectionRefusedError")
             std::cout << "caught ConnectionRefusedError" << "\n";
         } catch (const ::tpy::ConnectionError&) {
-            // print("caught generic ConnectionError")
             std::cout << "caught generic ConnectionError" << "\n";
         } catch (const ::tpy::OSError&) {
-            // print("caught generic OSError")
             std::cout << "caught generic OSError" << "\n";
         }
     }
-    // s.close()
     s.close();
 }
 
+// # A connect to a loopback port with no listener raises ConnectionRefusedError
+// # (PEP 3151), not the generic SocketError. Port 1 on 127.0.0.1 is privileged
+// # and never has a listener, so the connect is refused immediately (no network,
+// # deterministic). The except-clause order proves the concrete subclass fires.
+// import socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A connect to a loopback port with no listener raises ConnectionRefusedError
-    // # (PEP 3151), not the generic SocketError. Port 1 on 127.0.0.1 is privileged
-    // # and never has a listener, so the connect is refused immediately (no network,
-    // # deterministic). The except-clause order proves the concrete subclass fires.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

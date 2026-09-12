@@ -11,8 +11,11 @@ struct Resource;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_resource(x: int32) -> Own[Resource]:
 Resource make_resource(int32_t x);
+// def make_pair(x: int32) -> Own[tuple[str, Resource]]:
 std::tuple<std::string, Resource> make_pair(int32_t x);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -39,6 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Resource::Resource(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

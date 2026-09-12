@@ -3,59 +3,54 @@
 
 namespace tpyapp::main {
 
-// # Multi-element list repetition
-// repeated: list[int32] = [1, 2] * 3
 std::vector<int32_t>* repeated{};
-// # Multi-element with list
-// nums: list[int32] = [10, 20] * 2
 std::vector<int32_t>* nums{};
-// # Empty list repetition (always produces empty list)
-// empty: list[int32] = [] * 100
 std::vector<int32_t>* empty{};
-// # Negative repeat count (Python semantics: produces empty list)
-// neg: list[int32] = [1, 2, 3] * -5
 std::vector<int32_t>* neg{};
 
+// # Multi-element list repetition
+// repeated: list[int32] = [1, 2] * 3
+// print(len(repeated))
+// for i in range(len(repeated)):
+//     print(repeated[i])
+//
+// # Multi-element with list
+// nums: list[int32] = [10, 20] * 2
+// print(len(nums))
+// for i in range(len(nums)):
+//     print(nums[i])
+//
+// # Empty list repetition (always produces empty list)
+// empty: list[int32] = [] * 100
+// print(len(empty))
+//
+// # Negative repeat count (Python semantics: produces empty list)
+// neg: list[int32] = [1, 2, 3] * -5
+// print(len(neg))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Multi-element list repetition
-    // repeated: list[int32] = [1, 2] * 3
     static std::vector<int32_t> __global_slot_1 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(3, {1, 2}));
     repeated = &__global_slot_1;
-    // print(len(repeated))
     std::cout << ::tpy::__len__((*repeated)) << "\n";
-    // for i in range(len(repeated)):
     int32_t __stop_0 = ::tpy::__len__((*repeated));
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // print(repeated[i])
         std::cout << (*repeated)[static_cast<std::size_t>(i)] << "\n";
     }
-    // # Multi-element with list
-    // nums: list[int32] = [10, 20] * 2
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(2, {10, 20}));
     nums = &__global_slot_2;
-    // print(len(nums))
     std::cout << ::tpy::__len__((*nums)) << "\n";
-    // for i in range(len(nums)):
     int32_t __stop_1 = ::tpy::__len__((*nums));
     for (int32_t i = 0; i < __stop_1; ++i) {
-        // print(nums[i])
         std::cout << (*nums)[static_cast<std::size_t>(i)] << "\n";
     }
-    // # Empty list repetition (always produces empty list)
-    // empty: list[int32] = [] * 100
     static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>{};
     empty = &__global_slot_3;
-    // print(len(empty))
     std::cout << ::tpy::__len__((*empty)) << "\n";
-    // # Negative repeat count (Python semantics: produces empty list)
-    // neg: list[int32] = [1, 2, 3] * -5
     static std::vector<int32_t> __global_slot_4 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(-5, {1, 2, 3}));
     neg = &__global_slot_4;
-    // print(len(neg))
     std::cout << ::tpy::__len__((*neg)) << "\n";
 }
 

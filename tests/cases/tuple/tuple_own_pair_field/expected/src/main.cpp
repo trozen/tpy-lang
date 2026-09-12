@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Pair()
+//     print(p.points[0])
+//     print(p.points[1])
 void main() {
-    // p = Pair()
     Pair p = Pair();
-    // print(p.points[0])
     std::cout << std::get<0>(p.points) << "\n";
-    // print(p.points[1])
     std::cout << std::get<1>(p.points) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

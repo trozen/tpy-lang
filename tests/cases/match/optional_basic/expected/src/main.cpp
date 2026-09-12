@@ -5,82 +5,82 @@ namespace tpyapp::main {
 
 
 // def classify(x: Optional[int32]) -> str:
+//     match x:
+//         case None:
+//             return "nothing"
+//         case 0:
+//             return "zero"
+//         case _:
+//             return "something"
+//     return ""
 std::string classify(std::optional<int32_t> x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // return "nothing"
         return "nothing";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
         switch (__match_inner_1) {
-        // case 0:
         case 0: {
-            // return "zero"
             return "zero";
             break;
         }
-        // case _:
         default: {
-            // return "something"
             return "something";
             break;
         }
         }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def describe(s: Optional[str]) -> str:
+//     match s:
+//         case None:
+//             return "none"
+//         case "hello":
+//             return "greeting"
+//         case _:
+//             return "other: " + s
+//     return ""
 std::string describe(std::optional<std::string_view> s) {
-    // match s:
     auto& __match_subject_1 = s;
-    // case None:
     if (!__match_subject_1.has_value()) {
-        // return "none"
         return "none";
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case "hello":
         if (__match_inner_1 == "hello") {
-            // return "greeting"
             return "greeting";
-        // case _:
         } else {
-            // return "other: " + s
             return (::tpy::str_concat("other: ", (*s)));
         }
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     print(classify(None))
+//     print(classify(int32(0)))
+//     print(classify(int32(42)))
+//     print(describe(None))
+//     print(describe("hello"))
+//     print(describe("world"))
 void main() {
-    // print(classify(None))
     std::cout << classify(std::nullopt) << "\n";
-    // print(classify(int32(0)))
     std::cout << classify(0) << "\n";
-    // print(classify(int32(42)))
     std::cout << classify(42) << "\n";
-    // print(describe(None))
     std::cout << describe(std::nullopt) << "\n";
-    // print(describe("hello"))
     std::cout << describe("hello") << "\n";
-    // print(describe("world"))
     std::cout << describe("world") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

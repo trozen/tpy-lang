@@ -6,39 +6,42 @@ namespace tpyapp::main {
 
 
 
+// def describe(animal: Dog | Cat) -> str:
+//     if isinstance(animal, Dog):
+//         return "Dog: " + animal.name
+//     else:
+//         return "Cat with " + str(animal.lives) + " lives"
 // @overload
 // def describe(animal: Dog) -> str: ...  # tpyc: ok
 std::string describe(const Dog& animal) {
-    // return "Dog: " + animal.name
     return (::tpy::str_concat("Dog: ", animal.name));
 }
 
 // @overload
 // def describe(animal: Cat) -> str: ...  # tpyc: ok
 std::string describe(const Cat& animal) {
-    // return "Cat with " + str(animal.lives) + " lives"
     return (::tpy::str_concat((::tpy::str_concat("Cat with ", (animal.lives).to_string())), " lives"));
 }
 
 
 // def main() -> None:
+//     d = Dog("Rex")
+//     c = Cat(9)
+//     print(describe(d))
+//     print(describe(c))
 void main() {
-    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    // c = Cat(9)
     Cat c = Cat(::tpy::BigInt(9));
-    // print(describe(d))
     std::cout << describe(d) << "\n";
-    // print(describe(c))
     std::cout << describe(c) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

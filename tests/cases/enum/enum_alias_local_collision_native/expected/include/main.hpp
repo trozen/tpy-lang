@@ -33,7 +33,9 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def native_label(c: NativeColor) -> str:
 std::string native_label(::lib::Color c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def score(a: Cat | Dog) -> int:
 ::tpy::BigInt score(::tpy::Union<const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // # One arm rebinds a capture name that a sibling arm binds (same type) without
@@ -52,9 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Dog::Dog(const ::tpy::BigInt& lives) : lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::main

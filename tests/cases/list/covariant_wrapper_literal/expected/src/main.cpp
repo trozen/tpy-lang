@@ -5,30 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     boxes: list[Box[Pet]] = [Box(Dog()), Box(Cat())]   # covariant element upcast
+//     for b in boxes:
+//         print(b.get().name())
+//
+//     shared: list[Rc[Pet]] = [Rc.new(Dog()), Rc.new(Cat())]   # sibling: Rc covariance
+//     for r in shared:
+//         print(r.get().name())
+//
+//     comp: list[Box[Pet]] = [Box(Dog()) for _ in range(2)]   # comprehension form
+//     print(len(comp))
 void main() {
-    // boxes: list[Box[Pet]] = [Box(Dog()), Box(Cat())]   # covariant element upcast
     std::vector<::tpystd::tplib::box::Box<Pet>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Dog>(Dog()), ::tpystd::tplib::box::Box<Cat>(Cat()));
-    // for b in boxes:
     auto __obj_0 = ::tpy::own_iter(std::move(boxes));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& b = *__beg_0;
-        // print(b.get().name())
         std::cout << b.get().name() << "\n";
     }
-    // shared: list[Rc[Pet]] = [Rc.new(Dog()), Rc.new(Cat())]   # sibling: Rc covariance
     std::vector<::tpystd::tplib::rc::Rc<Pet>> shared = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Pet>>(Rc<Pet>::new_<Dog>(Dog()), Rc<Pet>::new_<Cat>(Cat()));
-    // for r in shared:
     auto __obj_1 = ::tpy::own_iter(std::move(shared));
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& r = *__beg_1;
-        // print(r.get().name())
         std::cout << r.get().name() << "\n";
     }
-    // comp: list[Box[Pet]] = [Box(Dog()) for _ in range(2)]   # comprehension form
     std::vector<::tpystd::tplib::box::Box<Pet>> comp = ({
         std::vector<::tpystd::tplib::box::Box<Pet>> __result;
         const int32_t __stop_2 = 2;
@@ -38,21 +41,21 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(comp))
     std::cout << ::tpy::__len__(comp) << "\n";
 }
 
+// from tplib.box import Box
+// from tplib.rc import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // from tplib.rc import Rc
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

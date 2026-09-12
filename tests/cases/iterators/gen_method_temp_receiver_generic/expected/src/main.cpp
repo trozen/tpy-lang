@@ -5,8 +5,9 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     for v in Holder([1, 2, 3]).walk():
+//         print(v)
 void main() {
-    // for v in Holder([1, 2, 3]).walk():
     {
         Holder<int32_t> __tmp_1 = Holder<int32_t>({1, 2, 3});
         auto __src_0 = __tmp_1.walk();
@@ -15,18 +16,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

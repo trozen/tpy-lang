@@ -13,10 +13,15 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def redundant_same(v: A | B) -> int:
 ::tpy::BigInt redundant_same(::tpy::Union<const A*, const B*> v);
+// def dead_other(v: A | B) -> int:
 ::tpy::BigInt dead_other(::tpy::Union<const A*, const B*> v);
+// def assign_then_check() -> int:
 ::tpy::BigInt assign_then_check();
+// def elif_exhaustive(v: A | B | C) -> str:
 std::string elif_exhaustive(::tpy::Union<const A*, const B*, const C*> v);
+// def main() -> None:
 void main();
 
 // # isinstance() on a variable already narrowed to a concrete type folds to
@@ -71,12 +76,15 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline A::A(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, y: int) -> None:
+//     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 
 // def __init__(self, z: int) -> None:
+//     self.z = z
 inline C::C(const ::tpy::BigInt& z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,228 +5,222 @@ namespace tpyapp::main {
 
 
 // def hoisted() -> None:
+//     try:
+//         y = 5
+//         s = "in-try"
+//         print("try", y, s)
+//     finally:
+//         t = "in-finally"
+//         print("finally", t)
+//     print("after", y, s, t)
 void hoisted() {
-    // try:
     std::string_view s;
     std::string_view t;
     int32_t y;
     {
         try {
-            // y = 5
             y = 5;
-            // s = "in-try"
             s = "in-try";
-            // print("try", y, s)
             std::cout << "try" << " " << y << " " << s << "\n";
         } catch (...) {
-            // t = "in-finally"
             t = "in-finally";
-            // print("finally", t)
             std::cout << "finally" << " " << t << "\n";
             throw;
         }
-        // t = "in-finally"
         t = "in-finally";
-        // print("finally", t)
         std::cout << "finally" << " " << t << "\n";
     }
-    // print("after", y, s, t)
     std::cout << "after" << " " << y << " " << s << " " << t << "\n";
 }
 
 // def ret_through(n: int) -> int:
+//     try:
+//         if n > 2:
+//             return n * 2
+//         print("no-return", n)
+//     finally:
+//         print("cleanup", n)
+//     return 0
 ::tpy::BigInt ret_through(const ::tpy::BigInt& n) {
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
-            // if n > 2:
             if ((n > 2)) {
-                // return n * 2
                 ::tpy::BigInt __tpy_ret_0 = ((n) * (::tpy::BigInt(2)));
                 __fin_ran_2 = true;
-                // print("cleanup", n)
                 std::cout << "cleanup" << " " << n << "\n";
                 return __tpy_ret_0;
             }
-            // print("no-return", n)
             std::cout << "no-return" << " " << n << "\n";
         } catch (...) {
             if (!__fin_ran_2) {
-                // print("cleanup", n)
                 std::cout << "cleanup" << " " << n << "\n";
             }
             throw;
         }
-        // print("cleanup", n)
         std::cout << "cleanup" << " " << n << "\n";
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def bare_ret(n: int) -> None:
+//     try:
+//         if n > 0:
+//             return
+//         print("fell", n)
+//     finally:
+//         print("bare-cleanup", n)
 void bare_ret(const ::tpy::BigInt& n) {
-    // try:
     {
         bool __fin_ran_3 = false;
         try {
-            // if n > 0:
             if ((n > 0)) {
-                // return
                 __fin_ran_3 = true;
-                // print("bare-cleanup", n)
                 std::cout << "bare-cleanup" << " " << n << "\n";
                 return;
             }
-            // print("fell", n)
             std::cout << "fell" << " " << n << "\n";
         } catch (...) {
             if (!__fin_ran_3) {
-                // print("bare-cleanup", n)
                 std::cout << "bare-cleanup" << " " << n << "\n";
             }
             throw;
         }
-        // print("bare-cleanup", n)
         std::cout << "bare-cleanup" << " " << n << "\n";
     }
 }
 
 // def override(n: int) -> int:
+//     try:
+//         if n > 0:
+//             return n * 10
+//         print("neg", n)
+//     finally:
+//         return -1
 ::tpy::BigInt override(const ::tpy::BigInt& n) {
-    // try:
     {
         bool __fin_ran_4 = false;
         try {
-            // if n > 0:
             if ((n > 0)) {
-                // return n * 10
                 [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = ((n) * (::tpy::BigInt(10)));
                 __fin_ran_4 = true;
-                // return -1
                 return ::tpy::BigInt(-1);
             }
-            // print("neg", n)
             std::cout << "neg" << " " << n << "\n";
         } catch (...) {
             if (!__fin_ran_4) {
-                // return -1
                 return ::tpy::BigInt(-1);
             }
             throw;
         }
-        // return -1
         return ::tpy::BigInt(-1);
     }
 }
 
 // def loop_exits(k: int) -> int:
+//     total = 0
+//     for i in range(k):
+//         try:
+//             if i == 1:
+//                 continue
+//             if i == 3:
+//                 break
+//             total = total + i
+//         finally:
+//             total = total + 100
+//     return total
 ::tpy::BigInt loop_exits(const ::tpy::BigInt& k) {
-    // total = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
-    // for i in range(k):
     ::tpy::BigInt __stop_0 = k;
     for (::tpy::BigInt i = 0; i < __stop_0; ++i) {
-        // try:
         {
             bool __fin_ran_5 = false;
             try {
-                // if i == 1:
                 if ((i == 1)) {
-                    // continue
                     __fin_ran_5 = true;
-                    // total = total + 100
                     total = ((total) + (::tpy::BigInt(100)));
                     continue;
                 }
-                // if i == 3:
                 if ((i == 3)) {
-                    // break
                     __fin_ran_5 = true;
-                    // total = total + 100
                     total = ((total) + (::tpy::BigInt(100)));
                     break;
                 }
-                // total = total + i
                 total = ((::tpy::BigInt(total)) + (i));
             } catch (...) {
                 if (!__fin_ran_5) {
-                    // total = total + 100
                     total = ((total) + (::tpy::BigInt(100)));
                 }
                 throw;
             }
-            // total = total + 100
             total = ((total) + (::tpy::BigInt(100)));
         }
     }
-    // return total
     return total;
 }
 
 // def nested() -> None:
+//     try:
+//         try:
+//             print("inner")
+//         finally:
+//             print("inner-finally")
+//         print("between")
+//     finally:
+//         print("outer-finally")
 void nested() {
-    // try:
     {
         try {
-            // try:
             {
                 try {
-                    // print("inner")
                     std::cout << "inner" << "\n";
                 } catch (...) {
-                    // print("inner-finally")
                     std::cout << "inner-finally" << "\n";
                     throw;
                 }
-                // print("inner-finally")
                 std::cout << "inner-finally" << "\n";
             }
-            // print("between")
             std::cout << "between" << "\n";
         } catch (...) {
-            // print("outer-finally")
             std::cout << "outer-finally" << "\n";
             throw;
         }
-        // print("outer-finally")
         std::cout << "outer-finally" << "\n";
     }
 }
 
 // def mixed(n: int) -> int:
+//     with CM(n) as x:
+//         try:
+//             if x > 3:
+//                 return x
+//             print("small", x)
+//         finally:
+//             print("try-cleanup", x)
+//     return -5
 ::tpy::BigInt mixed(const ::tpy::BigInt& n) {
-    // with CM(n) as x:
     auto __ctx_1 = CM(n);
     auto x = __ctx_1.__enter__();
     bool __fin_ran_8 = false;
     try {
-        // try:
         {
             bool __fin_ran_9 = false;
             try {
-                // if x > 3:
                 if ((x > 3)) {
-                    // return x
                     ::tpy::BigInt __tpy_ret_0 = x;
                     __fin_ran_9 = true;
-                    // print("try-cleanup", x)
                     std::cout << "try-cleanup" << " " << x << "\n";
                     __fin_ran_8 = true;
                     __ctx_1.__exit__({}, nullptr, {});
                     return __tpy_ret_0;
                 }
-                // print("small", x)
                 std::cout << "small" << " " << x << "\n";
             } catch (...) {
                 if (!__fin_ran_9) {
-                    // print("try-cleanup", x)
                     std::cout << "try-cleanup" << " " << x << "\n";
                 }
                 throw;
             }
-            // print("try-cleanup", x)
             std::cout << "try-cleanup" << " " << x << "\n";
         }
         goto __with_exit_1;
@@ -241,25 +235,24 @@ void nested() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // return -5
     return ::tpy::BigInt(-5);
 }
 
 // def term_body() -> int:
+//     try:
+//         return 4
+//     finally:
+//         print("term-cleanup")
 ::tpy::BigInt term_body() {
-    // try:
     {
         bool __fin_ran_10 = false;
         try {
-            // return 4
             ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(4);
             __fin_ran_10 = true;
-            // print("term-cleanup")
             std::cout << "term-cleanup" << "\n";
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_10) {
-                // print("term-cleanup")
                 std::cout << "term-cleanup" << "\n";
             }
             throw;
@@ -268,39 +261,39 @@ void nested() {
 }
 
 // def main() -> None:
+//     hoisted()
+//     print(ret_through(5))
+//     print(ret_through(1))
+//     bare_ret(1)
+//     bare_ret(-1)
+//     print(override(2))
+//     print(override(-2))
+//     print(loop_exits(6))
+//     nested()
+//     print(mixed(5))
+//     print(mixed(1))
+//     print(term_body())
 void main() {
-    // hoisted()
     hoisted();
-    // print(ret_through(5))
     std::cout << ret_through(::tpy::BigInt(5)) << "\n";
-    // print(ret_through(1))
     std::cout << ret_through(::tpy::BigInt(1)) << "\n";
-    // bare_ret(1)
     bare_ret(::tpy::BigInt(1));
-    // bare_ret(-1)
     bare_ret(::tpy::BigInt(-1));
-    // print(override(2))
     std::cout << override(::tpy::BigInt(2)) << "\n";
-    // print(override(-2))
     std::cout << override(::tpy::BigInt(-2)) << "\n";
-    // print(loop_exits(6))
     std::cout << loop_exits(::tpy::BigInt(6)) << "\n";
-    // nested()
     nested();
-    // print(mixed(5))
     std::cout << mixed(::tpy::BigInt(5)) << "\n";
-    // print(mixed(1))
     std::cout << mixed(::tpy::BigInt(1)) << "\n";
-    // print(term_body())
     std::cout << term_body() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

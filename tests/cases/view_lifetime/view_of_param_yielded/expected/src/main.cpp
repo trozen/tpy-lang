@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def tails(s: str) -> Iterator[StrView]:
+//     yield s[1:]
+//     yield s[2:]
 std::expected<std::string_view, ::tpy::StopIteration> __gen_tails::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s[1:]
         __state = S_RESUME_0;
         return ::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt});
     }
     case S_RESUME_0: {
-        // yield s[2:]
         __state = S_RESUME_1;
         return ::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt});
     }
@@ -33,8 +33,9 @@ __gen_tails tails(std::string_view s) {
 }
 
 // def main() -> None:
+//     for t in tails("hello"):
+//         print(t)
 void main() {
-    // for t in tails("hello"):
     {
         std::string __tmp_1 = "hello";
         auto __src_0 = tails(__tmp_1);
@@ -43,18 +44,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view t = ::tpy::unwrap_ref(*__r_1);
-        // print(t)
         std::cout << t << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

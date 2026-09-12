@@ -5,50 +5,51 @@ namespace tpyapp::main {
 
 
 // def pick(x: Leaf | None) -> int32:
+//     match x:
+//         case None:
+//             return 0
+//         # The or-alternatives compare the inner record's field.
+//         case Leaf(n=1) | Leaf(n=2):
+//             return 10
+//         case Leaf() as v:
+//             # `v` binds the subject; a copy here would not compile.
+//             return v.n
+//     return -1
 int32_t pick(const Leaf* x) {
-    // match x:
     auto& __match_subject_1 = x;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // return 0
         return 0;
     } else {
         auto& __match_inner_1 = (*__match_subject_1);
-        // case Leaf(n=1) | Leaf(n=2):
         if ((__match_inner_1.n == 1) || (__match_inner_1.n == 2)) {
-            // return 10
             return 10;
-        // case Leaf() as v:
         } else {
             auto& v = __match_inner_1;
-            // # `v` binds the subject; a copy here would not compile.
-            // return v.n
             return v.n;
         }
     }
     ::std::unreachable();
-    // return -1
     return -1;
 }
 
 // def main() -> None:
+//     print(pick(Leaf(2)))
+//     print(pick(Leaf(7)))
+//     print(pick(None))
 void main() {
-    // print(pick(Leaf(2)))
     Leaf __tmp_1 = Leaf(2);
     std::cout << pick(&(__tmp_1)) << "\n";
-    // print(pick(Leaf(7)))
     Leaf __tmp_2 = Leaf(7);
     std::cout << pick(&(__tmp_2)) << "\n";
-    // print(pick(None))
     std::cout << pick(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Weird("boom")
+//     print(w.strerror)
+//     w.errno = 3
+//     print(w.errno)
 void main() {
-    // w = Weird("boom")
     Weird w = Weird("boom");
-    // print(w.strerror)
     std::cout << w.strerror << "\n";
-    // w.errno = 3
     w.error_number = 3;
-    // print(w.errno)
     std::cout << w.error_number << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

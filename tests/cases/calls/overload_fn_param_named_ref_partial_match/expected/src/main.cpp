@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def square(x: int32) -> int32:
+//     return x * x
 int32_t square(int32_t x) {
-    // return x * x
     return (::tpy::mul_check<int32_t>(x, x));
 }
 
 // def add(a: int32, b: int32) -> int32:
+//     return a + b
 int32_t add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main() -> None:
+//     xs: list[int32] = [3, 4, 5]
+//     print(g(square, xs))   # picks the 1-param overload -> 9
+//     print(g(add, xs))      # picks the 2-param overload -> 6
 void main() {
-    // xs: list[int32] = [3, 4, 5]
     std::vector<int32_t> xs = {3, 4, 5};
-    // print(g(square, xs))   # picks the 1-param overload -> 9
     std::cout << g<int32_t>(square, xs) << "\n";
-    // print(g(add, xs))      # picks the 2-param overload -> 6
     std::cout << g<int32_t>(add, xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

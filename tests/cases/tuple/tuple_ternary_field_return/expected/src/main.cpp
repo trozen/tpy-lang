@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def pick(h: Holder, c: bool) -> tuple[int32, Box]:
+//     return h.a if c else h.b
 std::tuple<int32_t, Box*> pick(Holder& h, bool c) {
-    // return h.a if c else h.b
     return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(((c) ? (h.a) : (h.b)));
 }
 
 // def main() -> None:
+//     h = Holder()
+//     t = pick(h, True)
+//     t[1].val = 99
+//     print(h.a[1].val)
+//     u = pick(h, False)
+//     u[1].val = 88
+//     print(h.b[1].val)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // t = pick(h, True)
     auto t = pick(h, true);
-    // t[1].val = 99
     std::get<1>(t)->val = 99;
-    // print(h.a[1].val)
     std::cout << std::get<1>(h.a).val << "\n";
-    // u = pick(h, False)
     auto u = pick(h, false);
-    // u[1].val = 88
     std::get<1>(u)->val = 88;
-    // print(h.b[1].val)
     std::cout << std::get<1>(h.b).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

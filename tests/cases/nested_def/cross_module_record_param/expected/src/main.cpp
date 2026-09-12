@@ -5,32 +5,33 @@ namespace tpyapp::main {
 
 
 // def make_value() -> int32:
+//     def inner(w: Widget) -> int32:
+//         return w.get()
+//     obj = Widget(int32(42))
+//     return inner(obj)
 int32_t make_value() {
-    // def inner(w: Widget) -> int32:
     auto inner = [](::tpyapp::widgets::Widget& w) -> int32_t {
-        // return w.get()
         return w.get();
     };
-    // obj = Widget(int32(42))
     ::tpyapp::widgets::Widget obj = ::tpyapp::widgets::Widget(42);
-    // return inner(obj)
     return inner(obj);
 }
 
 // def main() -> None:
+//     print(make_value())
 void main() {
-    // print(make_value())
     std::cout << make_value() << "\n";
 }
 
+// from widgets import Widget
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from widgets import Widget
     ::tpyapp::widgets::__tpy_init();
-    // main()
     main();
 }
 

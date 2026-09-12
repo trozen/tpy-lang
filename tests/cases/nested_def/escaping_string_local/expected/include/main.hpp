@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_greeter(name: str) -> Callable[[], None]:
 std::function<void()> make_greeter(std::string_view name);
+// def main() -> None:
 void main();
 
 void __tpy_init();

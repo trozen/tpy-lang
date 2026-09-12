@@ -5,50 +5,55 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Arc.new(int32(10))
+//     b = Arc.new(int32(10))   # same content, different cell
+//     c = Arc.new(int32(20))
+//
+//     # Content equality (not identity): a and b are distinct cells, equal content.
+//     print(a == b)             # True
+//     print(a == c)             # False
+//     print(a != c)             # True
+//
+//     # Ordering.
+//     print(a < c)              # True
+//     print(c < a)              # False
+//     print(a <= b)             # True
+//     print(a >= b)             # True
+//     print(c > a)              # True
+//
+//     # Hash equality follows content equality.
+//     print(hash(a) == hash(b)) # True
+//
+//     # __str__ / __repr__.
+//     print(str(a))             # Arc(10)
+//     print(repr(c))            # Arc(20)
 void main() {
-    // a = Arc.new(int32(10))
     ::tpystd::tplib::arc::Arc<int32_t> a = Arc<int32_t>::new_<int32_t>(10);
-    // b = Arc.new(int32(10))   # same content, different cell
     ::tpystd::tplib::arc::Arc<int32_t> b = Arc<int32_t>::new_<int32_t>(10);
-    // c = Arc.new(int32(20))
     ::tpystd::tplib::arc::Arc<int32_t> c = Arc<int32_t>::new_<int32_t>(20);
-    // # Content equality (not identity): a and b are distinct cells, equal content.
-    // print(a == b)             # True
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
-    // print(a == c)             # False
     std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
-    // print(a != c)             # True
     std::cout << ::tpy::print_bool((a != c)) << "\n";
-    // # Ordering.
-    // print(a < c)              # True
     std::cout << ::tpy::print_bool(((a) < (c))) << "\n";
-    // print(c < a)              # False
     std::cout << ::tpy::print_bool(((c) < (a))) << "\n";
-    // print(a <= b)             # True
     std::cout << ::tpy::print_bool(((a) <= (b))) << "\n";
-    // print(a >= b)             # True
     std::cout << ::tpy::print_bool(((a) >= (b))) << "\n";
-    // print(c > a)              # True
     std::cout << ::tpy::print_bool(((c) > (a))) << "\n";
-    // # Hash equality follows content equality.
-    // print(hash(a) == hash(b)) # True
     std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";
-    // # __str__ / __repr__.
-    // print(str(a))             # Arc(10)
     std::cout << std::string(::tpy::__str__(a)) << "\n";
-    // print(repr(c))            # Arc(20)
     std::cout << ::tpy::repr_of(c) << "\n";
 }
 
+// from tplib.arc import Arc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // main()
     main();
 }
 

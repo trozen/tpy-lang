@@ -7,8 +7,8 @@ namespace tpystd::math {
 
 // @dispatch
 // def log(x: float, base: float) -> float:
+//     return log(x) / log(base)
 double log(double x, double base) {
-    // return log(x) / log(base)
     return (::tpy::truediv(::tpy::stdlib::math::checked_log(x), ::tpy::stdlib::math::checked_log(base)));
 }
 
@@ -38,25 +38,25 @@ double log(double x, double base) {
 
 
 // def hypot(*coords: float) -> float:
+//     if len(coords) == 0:
+//         return 0.0
+//     # Hypot-fold is overflow-safe: hypot(hypot(a, b), c) == sqrt(a^2 + b^2 + c^2).
+//     result = fabs(coords[0])
+//     for c in coords[1:]:
+//         result = _hypot2(result, c)
+//     return result
 double hypot(::tpy::varargs<const double> coords) {
-    // if len(coords) == 0:
     if ((::tpy::__len__(coords) == 0)) {
-        // return 0.0
         return 0.0;
     }
-    // # Hypot-fold is overflow-safe: hypot(hypot(a, b), c) == sqrt(a^2 + b^2 + c^2).
-    // result = fabs(coords[0])
     double result = ::std::fabs(::tpy::__getitem__(coords, 0));
-    // for c in coords[1:]:
     auto __obj_0 = ::tpy::list_slice(coords, ::tpy::BasicSlice{1, std::nullopt});
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         double c = *__beg_0;
-        // result = _hypot2(result, c)
         result = ::std::hypot(result, c);
     }
-    // return result
     return result;
 }
 
@@ -77,270 +77,276 @@ double hypot(::tpy::varargs<const double> coords) {
 
 
 // def radians(x: float) -> float:
+//     return x * (pi / 180.0)
 double radians(double x) {
-    // return x * (pi / 180.0)
     return ((x) * ((::tpy::truediv(pi, 180.0))));
 }
 
 // def degrees(x: float) -> float:
+//     return x * (180.0 / pi)
 double degrees(double x) {
-    // return x * (180.0 / pi)
     return ((x) * ((::tpy::truediv(180.0, pi))));
 }
 
 // def _gcd2(a: int, b: int) -> int:
+//     if a < 0:
+//         a = -a
+//     if b < 0:
+//         b = -b
+//     while b != 0:
+//         t: int = b
+//         b = a % b
+//         a = t
+//     return a
 ::tpy::BigInt _gcd2(const ::tpy::BigInt& __param_a, const ::tpy::BigInt& __param_b) {
     ::tpy::BigInt a = __param_a;
     ::tpy::BigInt b = __param_b;
-    // if a < 0:
     if ((a < 0)) {
-        // a = -a
         a = -(a);
     }
-    // if b < 0:
     if ((b < 0)) {
-        // b = -b
         b = -(b);
     }
-    // while b != 0:
     while ((b != 0)) {
-        // t: int = b
         ::tpy::BigInt t = b;
-        // b = a % b
         b = ((a) % (b));
-        // a = t
         a = t;
     }
-    // return a
     return a;
 }
 
 // def gcd(*ints: int) -> int:
+//     if len(ints) == 0:
+//         return 0
+//     result = ints[0]
+//     if result < 0:
+//         result = -result
+//     for x in ints[1:]:
+//         if result == 1:
+//             return 1
+//         result = _gcd2(result, x)
+//     return result
 ::tpy::BigInt gcd(::tpy::varargs<const ::tpy::BigInt> ints) {
-    // if len(ints) == 0:
     if ((::tpy::__len__(ints) == 0)) {
-        // return 0
         return ::tpy::BigInt(0);
     }
-    // result = ints[0]
     ::tpy::BigInt result = ::tpy::__getitem__(ints, 0);
-    // if result < 0:
     if ((result < 0)) {
-        // result = -result
         result = -(result);
     }
-    // for x in ints[1:]:
     auto __obj_0 = ::tpy::list_slice(ints, ::tpy::BasicSlice{1, std::nullopt});
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& x = *__beg_0;
-        // if result == 1:
         if ((result == 1)) {
-            // return 1
             return ::tpy::BigInt(1);
         }
-        // result = _gcd2(result, x)
         result = _gcd2(result, x);
     }
-    // return result
     return result;
 }
 
 // def lcm(*ints: int) -> int:
+//     if len(ints) == 0:
+//         return 1
+//     result = ints[0]
+//     if result < 0:
+//         result = -result
+//     for x in ints[1:]:
+//         if result == 0 or x == 0:
+//             return 0
+//         # (a // gcd(a, b)) * b keeps the intermediate bounded by max(|a|, |b|);
+//         # the naive a*b first would blow up for large BigInts.
+//         result = (result // _gcd2(result, x)) * x
+//         if result < 0:
+//             result = -result
+//     return result
 ::tpy::BigInt lcm(::tpy::varargs<const ::tpy::BigInt> ints) {
-    // if len(ints) == 0:
     if ((::tpy::__len__(ints) == 0)) {
-        // return 1
         return ::tpy::BigInt(1);
     }
-    // result = ints[0]
     ::tpy::BigInt result = ::tpy::__getitem__(ints, 0);
-    // if result < 0:
     if ((result < 0)) {
-        // result = -result
         result = -(result);
     }
-    // for x in ints[1:]:
     auto __obj_0 = ::tpy::list_slice(ints, ::tpy::BasicSlice{1, std::nullopt});
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& x = *__beg_0;
-        // if result == 0 or x == 0:
         if (((result == 0) || (x == 0))) {
-            // return 0
             return ::tpy::BigInt(0);
         }
-        // # (a // gcd(a, b)) * b keeps the intermediate bounded by max(|a|, |b|);
-        // # the naive a*b first would blow up for large BigInts.
-        // result = (result // _gcd2(result, x)) * x
         result = ((((result) / (_gcd2(result, x)))) * (x));
-        // if result < 0:
         if ((result < 0)) {
-            // result = -result
             result = -(result);
         }
     }
-    // return result
     return result;
 }
 
 // def factorial(n: int) -> int:
+//     if n < 0:
+//         raise ValueError("factorial() not defined for negative values")
+//     result: int = 1
+//     i: int = 2
+//     while i <= n:
+//         result = result * i
+//         i = i + 1
+//     return result
 ::tpy::BigInt factorial(const ::tpy::BigInt& n) {
-    // if n < 0:
     if ((n < 0)) {
-        // raise ValueError("factorial() not defined for negative values")
         throw ::tpy::ValueError("factorial() not defined for negative values");
     }
-    // result: int = 1
     ::tpy::BigInt result = ::tpy::BigInt(1);
-    // i: int = 2
     ::tpy::BigInt i = ::tpy::BigInt(2);
-    // while i <= n:
     while ((i <= n)) {
-        // result = result * i
         result = ((result) * (i));
-        // i = i + 1
         i = ((i) + (::tpy::BigInt(1)));
     }
-    // return result
     return result;
 }
 
 // def isqrt(n: int) -> int:
+//     if n < 0:
+//         raise ValueError("isqrt() argument must be nonnegative")
+//     if n == 0:
+//         return 0
+//     # Newton's method from a bit-length-derived initial guess: for an
+//     # n-bit input, sqrt(n) has ~n/2 bits, so 1 << ((bits + 1) // 2) is
+//     # already an upper bound within a factor of 2 of the answer (factor
+//     # is sqrt(2) for even bit_length, exactly 2 for odd). Convergence
+//     # drops from O(log n) iterations (when starting at n) to O(log log n).
+//     # The `int(1)` LHS forces BigInt arithmetic so the shift can exceed
+//     # int32 width without overflow-checking.
+//     x: int = int(1) << ((n.bit_length() + 1) // 2)
+//     y: int = (x + n // x) // 2
+//     while y < x:
+//         x = y
+//         y = (x + n // x) // 2
+//     return x
 ::tpy::BigInt isqrt(const ::tpy::BigInt& n) {
-    // if n < 0:
     if ((n < 0)) {
-        // raise ValueError("isqrt() argument must be nonnegative")
         throw ::tpy::ValueError("isqrt() argument must be nonnegative");
     }
-    // if n == 0:
     if ((n == 0)) {
-        // return 0
         return ::tpy::BigInt(0);
     }
-    // # Newton's method from a bit-length-derived initial guess: for an
-    // # n-bit input, sqrt(n) has ~n/2 bits, so 1 << ((bits + 1) // 2) is
-    // # already an upper bound within a factor of 2 of the answer (factor
-    // # is sqrt(2) for even bit_length, exactly 2 for odd). Convergence
-    // # drops from O(log n) iterations (when starting at n) to O(log log n).
-    // # The `int(1)` LHS forces BigInt arithmetic so the shift can exceed
-    // # int32 width without overflow-checking.
-    // x: int = int(1) << ((n.bit_length() + 1) // 2)
     ::tpy::BigInt x = ((::tpy::BigInt(1)) << (::tpy::BigInt((::tpy::div_floor<int32_t>((::tpy::add_check<int32_t>((n).bit_length(), 1)), 2)))));
-    // y: int = (x + n // x) // 2
     ::tpy::BigInt y = ((((x) + (((n) / (x))))) / (::tpy::BigInt(2)));
-    // while y < x:
     while ((y < x)) {
-        // x = y
         x = y;
-        // y = (x + n // x) // 2
         y = ((((x) + (((n) / (x))))) / (::tpy::BigInt(2)));
     }
-    // return x
     return x;
 }
 
 // @dispatch
 // def perm(n: int) -> int:
+//     return factorial(n)
 ::tpy::BigInt perm(const ::tpy::BigInt& n) {
-    // return factorial(n)
     return factorial(n);
 }
 
 // @dispatch
 // def perm(n: int, k: int) -> int:
+//     if n < 0 or k < 0:
+//         raise ValueError("perm() arguments must be non-negative")
+//     if k > n:
+//         return 0
+//     result: int = 1
+//     i: int = 0
+//     while i < k:
+//         result = result * (n - i)
+//         i = i + 1
+//     return result
 ::tpy::BigInt perm(const ::tpy::BigInt& n, const ::tpy::BigInt& k) {
-    // if n < 0 or k < 0:
     if (((n < 0) || (k < 0))) {
-        // raise ValueError("perm() arguments must be non-negative")
         throw ::tpy::ValueError("perm() arguments must be non-negative");
     }
-    // if k > n:
     if ((k > n)) {
-        // return 0
         return ::tpy::BigInt(0);
     }
-    // result: int = 1
     ::tpy::BigInt result = ::tpy::BigInt(1);
-    // i: int = 0
     ::tpy::BigInt i = ::tpy::BigInt(0);
-    // while i < k:
     while ((i < k)) {
-        // result = result * (n - i)
         result = ((result) * (((n) - (i))));
-        // i = i + 1
         i = ((i) + (::tpy::BigInt(1)));
     }
-    // return result
     return result;
 }
 
 // def comb(n: int, k: int) -> int:
+//     if n < 0 or k < 0:
+//         raise ValueError("comb() arguments must be non-negative")
+//     if k > n:
+//         return 0
+//     if k > n - k:
+//         k = n - k
+//     result: int = 1
+//     i: int = 0
+//     while i < k:
+//         result = result * (n - i) // (i + 1)
+//         i = i + 1
+//     return result
 ::tpy::BigInt comb(const ::tpy::BigInt& n, const ::tpy::BigInt& __param_k) {
     ::tpy::BigInt k = __param_k;
-    // if n < 0 or k < 0:
     if (((n < 0) || (k < 0))) {
-        // raise ValueError("comb() arguments must be non-negative")
         throw ::tpy::ValueError("comb() arguments must be non-negative");
     }
-    // if k > n:
     if ((k > n)) {
-        // return 0
         return ::tpy::BigInt(0);
     }
-    // if k > n - k:
     if ((k > ((n) - (k)))) {
-        // k = n - k
         k = ((n) - (k));
     }
-    // result: int = 1
     ::tpy::BigInt result = ::tpy::BigInt(1);
-    // i: int = 0
     ::tpy::BigInt i = ::tpy::BigInt(0);
-    // while i < k:
     while ((i < k)) {
-        // result = result * (n - i) // (i + 1)
         result = ((((result) * (((n) - (i))))) / (((i) + (::tpy::BigInt(1)))));
-        // i = i + 1
         i = ((i) + (::tpy::BigInt(1)));
     }
-    // return result
     return result;
 }
 
 // def isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
+//     if a == b:
+//         return True
+//     if isinf(a) or isinf(b):
+//         return False
+//     diff: float = fabs(a - b)
+//     max_ab: float = fabs(a)
+//     if fabs(b) > max_ab:
+//         max_ab = fabs(b)
+//     return diff <= abs_tol or diff <= rel_tol * max_ab
 bool isclose(double a, double b, double rel_tol, double abs_tol) {
-    // if a == b:
     if ((a == b)) {
-        // return True
         return true;
     }
-    // if isinf(a) or isinf(b):
     if ((::std::isinf(a) || ::std::isinf(b))) {
-        // return False
         return false;
     }
-    // diff: float = fabs(a - b)
     double diff = ::std::fabs(((a) - (b)));
-    // max_ab: float = fabs(a)
     double max_ab = ::std::fabs(a);
-    // if fabs(b) > max_ab:
     if ((::std::fabs(b) > max_ab)) {
-        // max_ab = fabs(b)
         max_ab = ::std::fabs(b);
     }
-    // return diff <= abs_tol or diff <= rel_tol * max_ab
     return ((diff <= abs_tol) || (diff <= ((rel_tol) * (max_ab))));
 }
 
+// from tpy.extern import native, cpp_template, type_param_default, DefaultInt
+//
+// pi: Final[float] = 3.141592653589793
+// tau: Final[float] = 6.283185307179586
+// e: Final[float] = 2.718281828459045
+// inf: Final[float] = 1e309
+// nan: Final[float] = float("nan")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 }
 
 } // namespace tpystd::math

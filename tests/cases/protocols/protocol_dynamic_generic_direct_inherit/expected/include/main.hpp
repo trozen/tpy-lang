@@ -32,7 +32,9 @@ struct IntBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(c: Container[int32]) -> None:
 void show(Container<int32_t>& c);
+// def main() -> None:
 void main();
 
 // class IntBox(Container[int32]):
@@ -70,8 +72,8 @@ namespace tpyapp::main {
 
 
 // def get(self) -> int32:
+//     return 42
 inline int32_t IntBox::get() {
-    // return 42
     return 42;
 }
 void __tpy_init();

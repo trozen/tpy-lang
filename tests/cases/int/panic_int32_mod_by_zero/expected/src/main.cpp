@@ -3,25 +3,24 @@
 
 namespace tpyapp::main {
 
-// x: int32 = 42
 int32_t x{};
-// y: int32 = 0
 int32_t y{};
-// z: int32 = x % y  # Should panic
 int32_t z{};
 
+// """Test int32 modulo by zero panic at runtime."""
+//
+// x: int32 = 42
+// y: int32 = 0
+// z: int32 = x % y  # Should panic
+// print(z)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 = 42
     x = 42;
-    // y: int32 = 0
     y = 0;
-    // z: int32 = x % y  # Should panic
     z = (::tpy::mod_check<int32_t>(x, y));
-    // print(z)
     std::cout << z << "\n";
 }
 

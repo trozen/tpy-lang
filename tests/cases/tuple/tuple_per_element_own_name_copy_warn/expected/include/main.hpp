@@ -11,8 +11,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sink(p: tuple[Own[Box], int32]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
 int32_t sink(std::tuple<Box, int32_t>&& p);
+// def f(ob: Own[Box]) -> int32:  # tpyc: warning(/Own\[Box\] param 'ob' is never consumed/)
 int32_t f(Box&& ob);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

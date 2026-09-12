@@ -12,8 +12,11 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def double_rvalue_reseat() -> int32:
 int32_t double_rvalue_reseat();
+// def lvalue_reseat(b: Box) -> int32:
 int32_t lvalue_reseat(Box& b);
+// def main() -> None:
 void main();
 
 // class Inner:
@@ -50,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     self.value = value
 inline Inner::Inner(int32_t value) : value(value) {}
 
 // def __init__(self, inner: Own[Inner]) -> None:
+//     self.inner = inner
 inline Box::Box(Inner&& inner) : inner(std::move(inner)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,48 +5,48 @@ namespace tpyapp::main {
 
 
 // def make_pair(v: int32) -> tuple[int32, Own[Box]]:
+//     return (v, Box(v))
 std::tuple<int32_t, Box> make_pair(int32_t v) {
-    // return (v, Box(v))
     return std::tuple<int32_t, Box>{v, Box(v)};
 }
 
 // def pick(h: Holder) -> tuple[int32, Box]:
+//     t = make_pair(9)
+//     t = h.pair          # tpyc: ok
+//     return t
 std::tuple<int32_t, Box*> pick(Holder& h) {
-    // t = make_pair(9)
     std::optional<std::tuple<int32_t, Box>> __slot_1;
     std::tuple<int32_t, Box*> t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(make_pair(9)));
-    // t = h.pair          # tpyc: ok
     t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
-    // return t
     return t;
 }
 
 // def use(h: Holder) -> int32:
+//     pr = pick(h)
+//     pr[1].val = 55      # mutate the returned alias -- visible on h.pair
+//     return pr[0]
 int32_t use(Holder& h) {
-    // pr = pick(h)
     auto pr = pick(h);
-    // pr[1].val = 55      # mutate the returned alias -- visible on h.pair
     std::get<1>(pr)->val = 55;
-    // return pr[0]
     return std::get<0>(pr);
 }
 
 // def main() -> None:
+//     h = Holder(Box(5))
+//     print(use(h))         # 77
+//     print(h.pair[1].val)  # 55 (returned tuple aliased h.pair, not a copy)
 void main() {
-    // h = Holder(Box(5))
     Holder h = Holder(Box(5));
-    // print(use(h))         # 77
     std::cout << use(h) << "\n";
-    // print(h.pair[1].val)  # 55 (returned tuple aliased h.pair, not a copy)
     std::cout << std::get<1>(h.pair).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

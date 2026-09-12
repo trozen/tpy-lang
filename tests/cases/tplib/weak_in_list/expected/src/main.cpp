@@ -5,71 +5,75 @@ namespace tpyapp::main {
 
 
 // def observed_values(observers: list[Weak[Node]]) -> Own[list[int32]]:
+//     result: list[int32] = []
+//     for w in observers:
+//         upgraded = w.upgrade()
+//         if upgraded is None:
+//             result.append(int32(-1))
+//         else:
+//             result.append(upgraded.get().value)
+//     return result
 std::vector<int32_t> observed_values(const std::vector<::tpystd::tplib::rc::Weak<Node>>& observers) {
-    // result: list[int32] = []
     std::vector<int32_t> result = std::vector<int32_t>{};
-    // for w in observers:
     auto& __obj_0 = observers;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& w = *__beg_0;
-        // upgraded = w.upgrade()
         std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = w.upgrade();
-        // if upgraded is None:
         if ((!upgraded.has_value())) {
-            // result.append(int32(-1))
             result.push_back(-1);
-        // else:
         } else {
-            // result.append(upgraded.get().value)
             result.push_back((*upgraded).get().value);
         }
     }
-    // return result
     return result;
 }
 
 // def main() -> None:
+//     a = Rc.new(Node(int32(10)))
+//     b = Rc.new(Node(int32(20)))
+//     c = Rc.new(Node(int32(30)))
+//
+//     observers: list[Weak[Node]] = [a.downgrade(), b.downgrade(), c.downgrade()]
+//
+//     # All three targets alive: every Weak upgrades.
+//     for v in observed_values(observers):
+//         print(v)
+//
+//     # Mutate via the original Rc, observe through the Weak.
+//     a.get().value = int32(99)
+//     upgraded = observers[0].upgrade()
+//     assert upgraded is not None
+//     print(upgraded.get().value)  # 99 -- shared
 void main() {
-    // a = Rc.new(Node(int32(10)))
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(10));
-    // b = Rc.new(Node(int32(20)))
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(20));
-    // c = Rc.new(Node(int32(30)))
     ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_<Node>(Node(30));
-    // observers: list[Weak[Node]] = [a.downgrade(), b.downgrade(), c.downgrade()]
     std::vector<::tpystd::tplib::rc::Weak<Node>> observers = ::tpy::make_vector<::tpystd::tplib::rc::Weak<Node>>(a.downgrade(), b.downgrade(), c.downgrade());
-    // # All three targets alive: every Weak upgrades.
-    // for v in observed_values(observers):
     auto __obj_0 = observed_values(observers);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // print(v)
         std::cout << v << "\n";
     }
-    // # Mutate via the original Rc, observe through the Weak.
-    // a.get().value = int32(99)
     a.get().value = 99;
-    // upgraded = observers[0].upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = ::tpy::__getitem__(observers, 0).upgrade();
-    // assert upgraded is not None
     if (!((upgraded.has_value()))) ::tpy::raise_assertion_error();
-    // print(upgraded.get().value)  # 99 -- shared
     std::cout << (*upgraded).get().value << "\n";
 }
 
+// from tplib.rc import Rc, Weak
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

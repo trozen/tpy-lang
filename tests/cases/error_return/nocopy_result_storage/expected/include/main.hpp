@@ -13,8 +13,11 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(n: int32) -> Own[Payload]:
 std::expected<Payload, E> make(int32_t n);
+// def chain(n: int32) -> Own[Payload]:
 std::expected<Payload, E> chain(int32_t n);
+// def main() -> None:
 void main();
 
 // class E(Exception, ReturnException):
@@ -80,16 +83,20 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
+//     self.p = Payload(0)
 inline Sink::Sink() : p(Payload(0)) {}
 
 // def fill(self, n: int32) -> None:
+//     try:
+//         self.p = make(n)
+//     except E:
+//         print("fill error")
 inline void Sink::fill(int32_t n) {
-    // try:
     {
-        // self.p = make(n)
         {
             auto __try_tmp_2 = make(n);
             if (!__try_tmp_2.has_value()) goto __except_1;
@@ -98,7 +105,6 @@ inline void Sink::fill(int32_t n) {
         goto __after_try_1;
         // except E:
         __except_1:;
-        // print("fill error")
         std::cout << "fill error" << "\n";
         __after_try_1:;
     }

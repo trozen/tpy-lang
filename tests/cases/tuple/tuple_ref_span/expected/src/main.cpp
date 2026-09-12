@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def get_first(s: Span[Point]) -> tuple[Point, int32]:
+//     return (s[0], int32(1))
 std::tuple<Point*, int32_t> get_first(std::span<Point> s) {
-    // return (s[0], int32(1))
     return std::tuple<Point*, int32_t>{&(::tpy::__getitem__(s, 0)), 1};
 }
 
 // def main() -> None:
+//     arr: Array[Point, 3] = [Point(int32(1), int32(2)),
+//                             Point(int32(3), int32(4)),
+//                             Point(int32(5), int32(6))]
+//     t = get_first(arr)
+//     print(t[0].x, t[0].y, t[1])
+//     # Mutation through returned reference
+//     t[0].x = int32(99)
+//     print(arr[0].x)
 void main() {
-    // arr: Array[Point, 3] = [Point(int32(1), int32(2)),
-    // Point(int32(3), int32(4)),
-    // Point(int32(5), int32(6))]
     std::array<Point, 3> arr = {Point(1, 2), Point(3, 4), Point(5, 6)};
-    // t = get_first(arr)
     auto t = get_first(::tpy::as_mut_span(arr));
-    // print(t[0].x, t[0].y, t[1])
     std::cout << std::get<0>(t)->x << " " << std::get<0>(t)->y << " " << std::get<1>(t) << "\n";
-    // # Mutation through returned reference
-    // t[0].x = int32(99)
     std::get<0>(t)->x = 99;
-    // print(arr[0].x)
     std::cout << ::tpy::__getitem__(arr, 0).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

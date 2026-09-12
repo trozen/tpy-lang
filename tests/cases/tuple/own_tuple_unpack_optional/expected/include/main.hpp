@@ -11,8 +11,11 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pair() -> tuple[Own[P | None], int32]:
 std::tuple<std::optional<P>, int32_t> pair();
+// def borrow(p: P | None) -> int32:
 int32_t borrow(const P* p);
+// def main() -> None:
 void main();
 
 // class P:
@@ -33,6 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

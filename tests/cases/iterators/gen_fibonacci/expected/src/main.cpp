@@ -5,8 +5,9 @@ namespace tpyapp::main {
 
 
 // def main():
+//     for x in fibonacci(8):
+//         print(x)
 void main() {
-    // for x in fibonacci(8):
     {
         auto __src_0 = fibonacci(8);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -14,18 +15,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

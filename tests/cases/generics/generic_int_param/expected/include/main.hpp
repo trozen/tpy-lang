@@ -11,6 +11,7 @@ template<typename T, std::size_t N> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T, N: int]:
@@ -20,6 +21,7 @@ struct Container {
     T value;
 
     // def __init__(self, v: T) -> None:
+    //     self.value = v
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> v) : value(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

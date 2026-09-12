@@ -14,8 +14,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_with_outer_return_in_finally;
 struct __gen_gen_nested_with_return_in_finally;
 
+// def gen_with_outer_return_in_finally() -> Iterator[int]:
 __gen_gen_with_outer_return_in_finally gen_with_outer_return_in_finally();
+// def gen_nested_with_return_in_finally() -> Iterator[int]:
 __gen_gen_nested_with_return_in_finally gen_nested_with_return_in_finally();
+// def main() -> None:
 void main();
 
 // class CM:
@@ -40,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
     return os;
 }
 
-// Generator: gen_with_outer_return_in_finally
+// def gen_with_outer_return_in_finally() -> Iterator[int]:
 struct __gen_gen_with_outer_return_in_finally : public ::tpy::next_iter_mixin<__gen_gen_with_outer_return_in_finally, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<CM> __with_ctx_0;
@@ -84,7 +87,7 @@ struct __gen_gen_with_outer_return_in_finally : public ::tpy::next_iter_mixin<__
     }
 };
 
-// Generator: gen_nested_with_return_in_finally
+// def gen_nested_with_return_in_finally() -> Iterator[int]:
 struct __gen_gen_nested_with_return_in_finally : public ::tpy::next_iter_mixin<__gen_gen_nested_with_return_in_finally, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<CM> __with_ctx_0;
@@ -134,21 +137,22 @@ struct __gen_gen_nested_with_return_in_finally : public ::tpy::next_iter_mixin<_
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline CM::CM(std::string_view name) : name(name) {}
 
 // def __enter__(self) -> "CM":
+//     print(f"enter {self.name}")
+//     return self
 inline CM& CM::__enter__() {
-    // print(f"enter {self.name}")
     std::cout << std::format("enter {}", this->name) << "\n";
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     print(f"exit {self.name}")
+//     return False
 inline bool CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // print(f"exit {self.name}")
     std::cout << std::format("exit {}", this->name) << "\n";
-    // return False
     return false;
 }
 void __tpy_init();

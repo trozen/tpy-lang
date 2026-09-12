@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_Counter_items;
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -33,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Generator: Counter.items
+// def items(self) -> Iterator[int]:
 struct __gen_Counter_items : public ::tpy::next_iter_mixin<__gen_Counter_items, ::tpy::BigInt> {
     int32_t __state;
     const Counter& __self;
@@ -64,6 +65,7 @@ inline __gen_Counter_items Counter::items() const {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Counter::Counter(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

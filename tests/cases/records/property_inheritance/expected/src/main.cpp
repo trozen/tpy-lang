@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(10, 20)
+//     print(c.x)
+//     print(c.y)
+//     print(c.sum())
 void main() {
-    // c = Child(10, 20)
     Child c = Child(10, 20);
-    // print(c.x)
     std::cout << c.x() << "\n";
-    // print(c.y)
     std::cout << c.y() << "\n";
-    // print(c.sum())
     std::cout << c.sum() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

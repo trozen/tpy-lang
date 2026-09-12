@@ -5,60 +5,60 @@ namespace tpyapp::main {
 
 
 // def greet(p: Optional[Pet]) -> str:
+//     if p is None:                 # tpyc: ok
+//         return "<none>"
+//     if isinstance(p, Dog):        # tpyc: ok
+//         return p.bark()
+//     return p.name()
 std::string greet(Pet* p) {
-    // if p is None:                 # tpyc: ok
     if ((p == nullptr)) {
-        // return "<none>"
         return "<none>";
     }
-    // if isinstance(p, Dog):        # tpyc: ok
     if (Dog* __p_ptr = dynamic_cast<Dog*>(p); (__p_ptr != nullptr)) {
-        // return p.bark()
         return (*__p_ptr).bark();
     }
-    // return p.name()
     return p->name();
 }
 
 // def describe(p: Optional[Pet]) -> str:
+//     # isinstance directly on Optional[Pet] without a prior `is None` narrow:
+//     # narrows to the subclass (Dog), None casts to nullptr -> False.
+//     if isinstance(p, Dog):        # tpyc: ok
+//         return p.bark()
+//     return "not-dog"
 std::string describe(Pet* p) {
-    // # isinstance directly on Optional[Pet] without a prior `is None` narrow:
-    // # narrows to the subclass (Dog), None casts to nullptr -> False.
-    // if isinstance(p, Dog):        # tpyc: ok
     if (Dog* __p_ptr = dynamic_cast<Dog*>(p); (__p_ptr != nullptr)) {
-        // return p.bark()
         return (*__p_ptr).bark();
     }
-    // return "not-dog"
     return "not-dog";
 }
 
 // def main() -> None:
+//     print(greet(Dog("rex")))
+//     print(greet(Fish()))
+//     print(greet(None))
+//     print(describe(Dog("fido")))
+//     print(describe(Fish()))
+//     print(describe(None))
 void main() {
-    // print(greet(Dog("rex")))
     Dog __tmp_1 = Dog("rex");
     std::cout << greet(&(__tmp_1)) << "\n";
-    // print(greet(Fish()))
     Fish __tmp_2 = Fish();
     std::cout << greet(&(__tmp_2)) << "\n";
-    // print(greet(None))
     std::cout << greet(nullptr) << "\n";
-    // print(describe(Dog("fido")))
     Dog __tmp_3 = Dog("fido");
     std::cout << describe(&(__tmp_3)) << "\n";
-    // print(describe(Fish()))
     Fish __tmp_4 = Fish();
     std::cout << describe(&(__tmp_4)) << "\n";
-    // print(describe(None))
     std::cout << describe(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

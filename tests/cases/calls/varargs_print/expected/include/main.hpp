@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show(*xs: int) -> None:
 void show(::tpy::varargs<const ::tpy::BigInt> xs);
+// def main() -> None:
 void main();
 
 void __tpy_init();

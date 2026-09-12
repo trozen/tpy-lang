@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c: Container[str, 42] = Container[str, 42]()
+//     size: int = c.get_size_as_bigint()
+//     print(size)
 void main() {
-    // c: Container[str, 42] = Container[str, 42]()
     Container<std::string, 42> c = Container<std::string, 42>();
-    // size: int = c.get_size_as_bigint()
     ::tpy::BigInt size = c.get_size_as_bigint();
-    // print(size)
     std::cout << size << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def spread(a: int64, b: int64 = 4, *rest: int64, tag: int64 = 9) -> int64:
 int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t tag = 9);
+// def main() -> None:
 void main();
 
 void __tpy_init();

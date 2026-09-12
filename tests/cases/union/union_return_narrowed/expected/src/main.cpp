@@ -5,72 +5,74 @@ namespace tpyapp::main {
 
 
 // def ensure_dog(pet: Dog | Cat) -> Dog | Cat:
+//     if isinstance(pet, Dog):
+//         return pet
+//     return pet
 ::tpy::Union<Cat*, Dog*> ensure_dog(::tpy::Union<Cat*, Dog*> pet) {
-    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        // return pet
         return &(__pet);
     }
     auto& __pet = *std::get<Cat*>(pet);
-    // return pet
     return &(__pet);
 }
 
 // def pick_first_dog(a: Dog | Cat, b: Dog | Cat) -> Dog | Cat:
+//     if isinstance(a, Dog):
+//         return a
+//     if isinstance(b, Dog):
+//         return b
+//     return a
 ::tpy::Union<Cat*, Dog*> pick_first_dog(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b) {
-    // if isinstance(a, Dog):
     if (std::holds_alternative<Dog*>(a)) {
         auto& __a = *std::get<Dog*>(a);
-        // return a
         return &(__a);
     }
     auto& __a = *std::get<Cat*>(a);
-    // if isinstance(b, Dog):
     if (std::holds_alternative<Dog*>(b)) {
         auto& __b = *std::get<Dog*>(b);
-        // return b
         return &(__b);
     }
     auto& __b = *std::get<Cat*>(b);
-    // return a
     return &(__a);
 }
 
 // def main() -> None:
+//     d = Dog("Rex")
+//     c = Cat("Whiskers")
+//     pet: Dog | Cat = d
+//
+//     result = ensure_dog(pet)
+//     if isinstance(result, Dog):
+//         print(result.name)
+//
+//     pet2: Dog | Cat = c
+//     result2 = pick_first_dog(pet2, pet)
+//     if isinstance(result2, Dog):
+//         print(result2.name)
 void main() {
-    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    // pet: Dog | Cat = d
     ::tpy::Union<Cat*, Dog*> pet{&(d)};
-    // result = ensure_dog(pet)
     ::tpy::Union<Cat*, Dog*> result = ensure_dog(pet);
-    // if isinstance(result, Dog):
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
-        // print(result.name)
         std::cout << __result.name << "\n";
     }
-    // pet2: Dog | Cat = c
     ::tpy::Union<Cat*, Dog*> pet2{&(c)};
-    // result2 = pick_first_dog(pet2, pet)
     ::tpy::Union<Cat*, Dog*> result2 = pick_first_dog(pet2, pet);
-    // if isinstance(result2, Dog):
     if (std::holds_alternative<Dog*>(result2)) {
         auto& __result2 = *std::get<Dog*>(result2);
-        // print(result2.name)
         std::cout << __result2.name << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -34,6 +34,7 @@ struct HttpConn;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -82,11 +83,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, p: int32) -> None:
+//     self._port = p
 inline HttpConn::HttpConn(int32_t p) : _port(p) {}
 
 // def port(self) -> int32:
+//     return self._port
 inline int32_t HttpConn::port() {
-    // return self._port
     return this->_port;
 }
 void __tpy_init();

@@ -6,204 +6,223 @@ namespace tpyapp::main {
 
 // # Test 'in' and 'not in' operators for different container types
 // def test_list_membership() -> None:
+//     """Test membership for list[int32]."""
+//     nums: list[int32] = [10, 20, 30, 40, 50]
+//
+//     # 'in' operator
+//     if 30 in nums:
+//         print("30 in list: yes")
+//     if 99 in nums:
+//         print("99 in list: yes")
+//     else:
+//         print("99 in list: no")
+//
+//     # 'not in' operator
+//     if 99 not in nums:
+//         print("99 not in list: yes")
+//     if 30 not in nums:
+//         print("30 not in list: yes")
+//     else:
+//         print("30 not in list: no")
 void test_list_membership() {
-    // nums: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
-    // # 'in' operator
-    // if 30 in nums:
     if (std::ranges::contains(nums, 30)) {
-        // print("30 in list: yes")
         std::cout << "30 in list: yes" << "\n";
     }
-    // if 99 in nums:
     if (std::ranges::contains(nums, 99)) {
-        // print("99 in list: yes")
         std::cout << "99 in list: yes" << "\n";
-    // else:
     } else {
-        // print("99 in list: no")
         std::cout << "99 in list: no" << "\n";
     }
-    // # 'not in' operator
-    // if 99 not in nums:
     if (!std::ranges::contains(nums, 99)) {
-        // print("99 not in list: yes")
         std::cout << "99 not in list: yes" << "\n";
     }
-    // if 30 not in nums:
     if (!std::ranges::contains(nums, 30)) {
-        // print("30 not in list: yes")
         std::cout << "30 not in list: yes" << "\n";
-    // else:
     } else {
-        // print("30 not in list: no")
         std::cout << "30 not in list: no" << "\n";
     }
 }
 
 // def test_array_membership() -> None:
+//     """Test membership for Array[int32, N]."""
+//     arr: Array[int32, 4] = [1, 2, 3, 4]
+//
+//     if 3 in arr:
+//         print("3 in array: yes")
+//     if 5 in arr:
+//         print("5 in array: yes")
+//     else:
+//         print("5 in array: no")
+//
+//     if 5 not in arr:
+//         print("5 not in array: yes")
 void test_array_membership() {
-    // arr: Array[int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
-    // if 3 in arr:
     if (std::ranges::contains(arr, 3)) {
-        // print("3 in array: yes")
         std::cout << "3 in array: yes" << "\n";
     }
-    // if 5 in arr:
     if (std::ranges::contains(arr, 5)) {
-        // print("5 in array: yes")
         std::cout << "5 in array: yes" << "\n";
-    // else:
     } else {
-        // print("5 in array: no")
         std::cout << "5 in array: no" << "\n";
     }
-    // if 5 not in arr:
     if (!std::ranges::contains(arr, 5)) {
-        // print("5 not in array: yes")
         std::cout << "5 not in array: yes" << "\n";
     }
 }
 
 // def check_span_contains(data: Span[int32], value: int32) -> bool:
+//     """Test membership for Span[int32]."""
+//     return value in data
 bool check_span_contains(std::span<int32_t> data, int32_t value) {
-    // return value in data
     return std::ranges::contains(data, value);
 }
 
 // def test_span_membership() -> None:
+//     """Test membership via Span parameter."""
+//     nums: Array[int32, 5] = [100, 200, 300, 400, 500]
+//
+//     if check_span_contains(nums, 300):
+//         print("300 in span: yes")
+//     if check_span_contains(nums, 999):
+//         print("999 in span: yes")
+//     else:
+//         print("999 in span: no")
 void test_span_membership() {
-    // nums: Array[int32, 5] = [100, 200, 300, 400, 500]
     std::array<int32_t, 5> nums = {100, 200, 300, 400, 500};
-    // if check_span_contains(nums, 300):
     if (check_span_contains(::tpy::as_mut_span(nums), 300)) {
-        // print("300 in span: yes")
         std::cout << "300 in span: yes" << "\n";
     }
-    // if check_span_contains(nums, 999):
     if (check_span_contains(::tpy::as_mut_span(nums), 999)) {
-        // print("999 in span: yes")
         std::cout << "999 in span: yes" << "\n";
-    // else:
     } else {
-        // print("999 in span: no")
         std::cout << "999 in span: no" << "\n";
     }
 }
 
 // def test_string_membership() -> None:
+//     """Test membership for str (character in string)."""
+//     text: str = "hello world"
+//
+//     # Single character 'in' string
+//     if "o" in text:
+//         print("'o' in string: yes")
+//     if "z" in text:
+//         print("'z' in string: yes")
+//     else:
+//         print("'z' in string: no")
+//
+//     # Substring 'in' string literal (RHS is literal)
+//     if "ell" in "hello world":
+//         print("'ell' in literal: yes")
+//     if "xyz" in "hello world":
+//         print("'xyz' in literal: yes")
+//     else:
+//         print("'xyz' in literal: no")
+//
+//     # 'not in' for string
+//     if "z" not in text:
+//         print("'z' not in string: yes")
+//     if "e" not in text:
+//         print("'e' not in string: yes")
+//     else:
+//         print("'e' not in string: no")
 void test_string_membership() {
-    // text: str = "hello world"
     std::string_view text = "hello world";
-    // # Single character 'in' string
-    // if "o" in text:
     if ((text.find("o") != std::string::npos)) {
-        // print("'o' in string: yes")
         std::cout << "'o' in string: yes" << "\n";
     }
-    // if "z" in text:
     if ((text.find("z") != std::string::npos)) {
-        // print("'z' in string: yes")
         std::cout << "'z' in string: yes" << "\n";
-    // else:
     } else {
-        // print("'z' in string: no")
         std::cout << "'z' in string: no" << "\n";
     }
-    // # Substring 'in' string literal (RHS is literal)
-    // if "ell" in "hello world":
     if ((std::string_view("hello world").find("ell") != std::string::npos)) {
-        // print("'ell' in literal: yes")
         std::cout << "'ell' in literal: yes" << "\n";
     }
-    // if "xyz" in "hello world":
     if ((std::string_view("hello world").find("xyz") != std::string::npos)) {
-        // print("'xyz' in literal: yes")
         std::cout << "'xyz' in literal: yes" << "\n";
-    // else:
     } else {
-        // print("'xyz' in literal: no")
         std::cout << "'xyz' in literal: no" << "\n";
     }
-    // # 'not in' for string
-    // if "z" not in text:
     if ((text.find("z") == std::string::npos)) {
-        // print("'z' not in string: yes")
         std::cout << "'z' not in string: yes" << "\n";
     }
-    // if "e" not in text:
     if ((text.find("e") == std::string::npos)) {
-        // print("'e' not in string: yes")
         std::cout << "'e' not in string: yes" << "\n";
-    // else:
     } else {
-        // print("'e' not in string: no")
         std::cout << "'e' not in string: no" << "\n";
     }
 }
 
 // def test_membership_in_conditions() -> None:
+//     """Test membership operators in complex conditions."""
+//     nums: list[int32] = [1, 2, 3, 4, 5]
+//
+//     # Combined with 'and'
+//     if 2 in nums and 4 in nums:
+//         print("both 2 and 4 in list")
+//
+//     # Combined with 'or'
+//     if 10 in nums or 3 in nums:
+//         print("10 or 3 in list")
+//
+//     # Negation combined
+//     if 1 in nums and 99 not in nums:
+//         print("1 in and 99 not in list")
 void test_membership_in_conditions() {
-    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // # Combined with 'and'
-    // if 2 in nums and 4 in nums:
     if ((std::ranges::contains(nums, 2) && std::ranges::contains(nums, 4))) {
-        // print("both 2 and 4 in list")
         std::cout << "both 2 and 4 in list" << "\n";
     }
-    // # Combined with 'or'
-    // if 10 in nums or 3 in nums:
     if ((std::ranges::contains(nums, 10) || std::ranges::contains(nums, 3))) {
-        // print("10 or 3 in list")
         std::cout << "10 or 3 in list" << "\n";
     }
-    // # Negation combined
-    // if 1 in nums and 99 not in nums:
     if ((std::ranges::contains(nums, 1) && !std::ranges::contains(nums, 99))) {
-        // print("1 in and 99 not in list")
         std::cout << "1 in and 99 not in list" << "\n";
     }
 }
 
 // def test_membership_with_variables() -> None:
+//     """Test membership with variable lookups."""
+//     nums: list[int32] = [5, 10, 15, 20]
+//     target: int32 = 10
+//     missing: int32 = 7
+//
+//     if target in nums:
+//         print("target found")
+//     if missing not in nums:
+//         print("missing not found")
 void test_membership_with_variables() {
-    // nums: list[int32] = [5, 10, 15, 20]
     std::vector<int32_t> nums = {5, 10, 15, 20};
-    // target: int32 = 10
     int32_t target = 10;
-    // missing: int32 = 7
     int32_t missing = 7;
-    // if target in nums:
     if (std::ranges::contains(nums, target)) {
-        // print("target found")
         std::cout << "target found" << "\n";
     }
-    // if missing not in nums:
     if (!std::ranges::contains(nums, missing)) {
-        // print("missing not found")
         std::cout << "missing not found" << "\n";
     }
 }
 
+// # Run all tests
+// test_list_membership()
+// test_array_membership()
+// test_span_membership()
+// test_string_membership()
+// test_membership_in_conditions()
+// test_membership_with_variables()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Run all tests
-    // test_list_membership()
     test_list_membership();
-    // test_array_membership()
     test_array_membership();
-    // test_span_membership()
     test_span_membership();
-    // test_string_membership()
     test_string_membership();
-    // test_membership_in_conditions()
     test_membership_in_conditions();
-    // test_membership_with_variables()
     test_membership_with_variables();
 }
 

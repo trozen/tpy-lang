@@ -13,6 +13,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Both direct parents define greet(); MRO-aware super() picks the MRO-first
@@ -61,20 +62,20 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def greet(self) -> str:
+//     return "Speaker.greet"
 inline std::string Speaker::greet() const {
-    // return "Speaker.greet"
     return "Speaker.greet";
 }
 
 // def greet(self) -> str:
+//     return "Greeter.greet"
 inline std::string Greeter::greet() const {
-    // return "Greeter.greet"
     return "Greeter.greet";
 }
 
 // def greet(self) -> str:
+//     return super().greet() + " / child"
 inline std::string Child::greet() const {
-    // return super().greet() + " / child"
     return (::tpy::str_concat(this->Speaker::greet(), " / child"));
 }
 void __tpy_init();

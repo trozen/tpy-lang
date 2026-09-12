@@ -5,26 +5,32 @@ namespace tpyapp::main {
 
 
 // def take_span_nested(s: Span[Array[int32, 2]]) -> int32:
+//     return s[0][0] + s[1][1]
 int32_t take_span_nested(std::span<std::array<int32_t, 2>> s) {
-    // return s[0][0] + s[1][1]
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(::tpy::__getitem__(s, 0), 0), ::tpy::__getitem__(::tpy::__getitem__(s, 1), 1)));
 }
 
 // def main() -> None:
+//     # Inline nested array constructor passed to Span parameter
+//     result: int32 = take_span_nested(Array[Array[int32, 2], 2]([[1, 2], [3, 4]]))
+//     print(result)  # 1 + 4 = 5
 void main() {
-    // # Inline nested array constructor passed to Span parameter
-    // result: int32 = take_span_nested(Array[Array[int32, 2], 2]([[1, 2], [3, 4]]))
     int32_t result = take_span_nested(::tpy::as_mut_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
-    // print(result)  # 1 + 4 = 5
     std::cout << result << "\n";
 }
 
+// """Tests nested array constructor with proper brace generation.
+//
+// Array[Array[T, N], M]() should generate correct triple-brace initialization
+// for std::array<std::array<T, N>, M>.
+// """
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

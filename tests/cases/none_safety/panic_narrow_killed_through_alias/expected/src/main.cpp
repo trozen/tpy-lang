@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main():
+//     h = Holder(Point(5))
+//     h2 = h
+//     if h.opt is not None:
+//         h2.clear()
+//         print(h.opt.x)  # tpyc: warning(/Potential None access/)
 void main() {
-    // h = Holder(Point(5))
     Holder h = Holder(Point(5));
-    // h2 = h
     Holder& h2 = h;
-    // if h.opt is not None:
     if ((h.opt.has_value())) {
-        // h2.clear()
         h2.clear();
-        // print(h.opt.x)  # tpyc: warning(/Potential None access/)
         std::cout << ::tpy::deref_optional_check(h.opt).x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

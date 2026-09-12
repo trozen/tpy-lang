@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def extract(a: Any) -> int:
+//     return a
 ::tpy::BigInt extract(::tpy::Any a) {
-    // return a
     return ::tpy::any_cast_or_panic<::tpy::BigInt>(a);
 }
 
 // def main() -> None:
+//     a: Any = 99
+//     print(extract(a))
 void main() {
-    // a: Any = 99
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(99));
-    // print(extract(a))
     std::cout << extract(a) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

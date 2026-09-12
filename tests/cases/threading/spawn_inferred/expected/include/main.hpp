@@ -14,6 +14,7 @@ struct Summer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -43,24 +44,25 @@ inline std::ostream& operator<<(std::ostream& os, const Summer& obj) {
 
 
 // def __init__(self, data: Own[list[int]]) -> None:
+//     self.data = data
 inline Summer::Summer(std::vector<::tpy::BigInt>&& data) : data(std::move(data)) {}
 
 // def run(self) -> int:
+//     self.data.append(100)
+//     total = 0
+//     for v in self.data:
+//         total += v
+//     return total
 inline ::tpy::BigInt Summer::run() {
-    // self.data.append(100)
     this->data.push_back(100);
-    // total = 0
     int32_t total = 0;
-    // for v in self.data:
     auto& __obj_0 = this->data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& v = *__beg_0;
-        // total += v
         total = ::tpy::add_check<int32_t>(total, (v).to_fixed_check<int32_t>());
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 void __tpy_init();

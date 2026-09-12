@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Rect(3, 4)
+//     print(r.w)
+//     print(r.h)
+//     print(r.area)  # 12 -- derived by __post_init__; stays 0 if the hook never runs
 void main() {
-    // r = Rect(3, 4)
     Rect r = Rect(3, 4);
-    // print(r.w)
     std::cout << r.w << "\n";
-    // print(r.h)
     std::cout << r.h << "\n";
-    // print(r.area)  # 12 -- derived by __post_init__; stays 0 if the hook never runs
     std::cout << r.area << "\n";
 }
 
+// # @dataclass __post_init__ runs after the synthesized __init__ sets the fields,
+// # so it can derive a field from the others.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass __post_init__ runs after the synthesized __init__ sets the fields,
-    // # so it can derive a field from the others.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

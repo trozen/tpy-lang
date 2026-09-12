@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // @readonly
 // def add_one(x: int32) -> int32:
+//     return Ops.plus_one(x)  # tpyc: ok
 int32_t add_one(int32_t x) {
-    // return Ops.plus_one(x)  # tpyc: ok
     return Ops::plus_one(x);
 }
 
+// print(add_one(3))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(add_one(3))
     std::cout << add_one(3) << "\n";
 }
 

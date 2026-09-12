@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def describe(p: Pet) -> str:
+//     if isinstance(p, Dog):       # tpyc: ok
+//         return p.bark()          # subclass-only method, narrowed
+//     return "pet " + p.name()     # virtual protocol dispatch
 std::string describe(Pet& p) {
-    // if isinstance(p, Dog):       # tpyc: ok
     if (Dog* __p_ptr = dynamic_cast<Dog*>(&p); (__p_ptr != nullptr)) {
-        // return p.bark()          # subclass-only method, narrowed
         return (*__p_ptr).bark();
     }
-    // return "pet " + p.name()     # virtual protocol dispatch
     return (::tpy::str_concat("pet ", p.name()));
 }
 
 // def main() -> None:
+//     print(describe(Dog("rex")))
+//     print(describe(Fish("nemo")))
 void main() {
-    // print(describe(Dog("rex")))
     Dog __tmp_1{Dog("rex")};
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Fish("nemo")))
     Fish __tmp_2{Fish("nemo")};
     std::cout << describe(__tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

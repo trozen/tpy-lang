@@ -5,10 +5,13 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     data = [Node(1), Node(2), Node(3)]
+//     for b in (n for n in data):
+//         b.val = b.val + 100
+//     for n in data:
+//         print(n.val)
 void main() {
-    // data = [Node(1), Node(2), Node(3)]
     std::array<Node, 3> data = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2)), Node(::tpy::BigInt(3))};
-    // for b in (n for n in data):
     {
         auto __src_0 = [&data]() {
         auto& __src = data;
@@ -27,27 +30,24 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& b = ::tpy::unwrap_ref(*__r_1);
-        // b.val = b.val + 100
         b.val = ((b.val) + (::tpy::BigInt(100)));
         }
     }
-    // for n in data:
     auto& __obj_2 = data;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& n = *__beg_2;
-        // print(n.val)
         std::cout << n.val << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

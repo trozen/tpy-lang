@@ -5,9 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Range to set
+//     squares: set[int32] = {x * x for x in range(5)}
+//     for v in squares:
+//         print(v)
+//
+//     # List to set (dedup)
+//     items: list[int32] = [1, 2, 2, 3, 3, 3]
+//     unique: set[int32] = {x for x in items}
+//     print(len(unique))
+//
+//     # String set from list
+//     names: list[str] = ["alice", "bob", "alice", "charlie"]
+//     name_set: set[str] = {n for n in names}
+//     print(len(name_set))
+//
+//     # 2-arg range
+//     r2: set[int32] = {x for x in range(3, 7)}
+//     for v in r2:
+//         print(v)
 void main() {
-    // # Range to set
-    // squares: set[int32] = {x * x for x in range(5)}
     ::tpy::ordered_set<int32_t> squares = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 5;
@@ -16,19 +33,14 @@ void main() {
         }
         std::move(__result);
     });
-    // for v in squares:
     auto& __obj_1 = squares;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t v = *__beg_1;
-        // print(v)
         std::cout << v << "\n";
     }
-    // # List to set (dedup)
-    // items: list[int32] = [1, 2, 2, 3, 3, 3]
     std::vector<int32_t> items = {1, 2, 2, 3, 3, 3};
-    // unique: set[int32] = {x for x in items}
     ::tpy::ordered_set<int32_t> unique = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_2 = items;
@@ -40,12 +52,8 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(unique))
     std::cout << ::tpy::__len__(unique) << "\n";
-    // # String set from list
-    // names: list[str] = ["alice", "bob", "alice", "charlie"]
     std::vector<std::string> names = {"alice", "bob", "alice", "charlie"};
-    // name_set: set[str] = {n for n in names}
     ::tpy::ordered_set<std::string> name_set = ({
         ::tpy::ordered_set<std::string> __result;
         auto& __obj_3 = names;
@@ -57,10 +65,7 @@ void main() {
         }
         std::move(__result);
     });
-    // print(len(name_set))
     std::cout << ::tpy::__len__(name_set) << "\n";
-    // # 2-arg range
-    // r2: set[int32] = {x for x in range(3, 7)}
     ::tpy::ordered_set<int32_t> r2 = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __start_4 = 3;
@@ -70,23 +75,21 @@ void main() {
         }
         std::move(__result);
     });
-    // for v in r2:
     auto& __obj_6 = r2;
     auto __beg_6 = __obj_6.begin();
     auto __end_6 = __obj_6.end();
     for (; __beg_6 != __end_6; ++__beg_6) {
         int32_t v = *__beg_6;
-        // print(v)
         std::cout << v << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

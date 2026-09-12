@@ -9,19 +9,33 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_or(a: list[int32], b: list[int32]) -> None:
 void test_or(std::vector<int32_t>& a, std::vector<int32_t>& b);
+// def test_and(a: list[int32], b: list[int32]) -> None:
 void test_and(std::vector<int32_t>& a, std::vector<int32_t>& b);
+// def test_ternary(a: list[int32], b: list[int32], cond: bool) -> None:
 void test_ternary(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond);
+// def test_literal_or() -> None:
 void test_literal_or();
+// def test_literal_ternary(cond: bool) -> None:
 void test_literal_ternary(bool cond);
+// def test_or_chain(a: list[int32], b: list[int32], c: list[int32]) -> None:
 void test_or_chain(std::vector<int32_t>& a, std::vector<int32_t>& b, std::vector<int32_t>& c);
+// def test_local_vars_or() -> None:
 void test_local_vars_or();
+// def test_int_literal_elements_or() -> None:
 void test_int_literal_elements_or();
+// def test_int_literal_elements_ternary(cond: bool) -> None:
 void test_int_literal_elements_ternary(bool cond);
+// def test_or_alias_first(a: list[int32], b: list[int32]) -> None:
 void test_or_alias_first(std::vector<int32_t>& a, std::vector<int32_t>& b);
+// def test_or_alias_second(a: list[int32], b: list[int32]) -> None:
 void test_or_alias_second(std::vector<int32_t>& a, std::vector<int32_t>& b);
+// def test_and_alias(a: list[int32], b: list[int32]) -> None:
 void test_and_alias(std::vector<int32_t>& a, std::vector<int32_t>& b);
+// def test_or_chain_alias(a: list[int32], b: list[int32], c: list[int32]) -> None:
 void test_or_chain_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, std::vector<int32_t>& c);
+// def test_ternary_alias(a: list[int32], b: list[int32], cond: bool) -> None:
 void test_ternary_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond);
 
 void __tpy_init();

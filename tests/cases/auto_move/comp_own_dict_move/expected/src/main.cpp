@@ -5,10 +5,14 @@ namespace tpyapp::main {
 
 
 // def value_moves_key_field() -> int:
+//     # @nocopy value forces the move (a copy is a hard error); the key reads a
+//     # field of the same element, so it is sequenced before the value move.
+//     d = {w.id: w for w in widgets(3)}  # tpyc: ok
+//     total = 0
+//     for k in d:
+//         total += d[k].tag
+//     return total
 ::tpy::BigInt value_moves_key_field() {
-    // # @nocopy value forces the move (a copy is a hard error); the key reads a
-    // # field of the same element, so it is sequenced before the value move.
-    // d = {w.id: w for w in widgets(3)}  # tpyc: ok
     ::tpy::ordered_map<::tpy::BigInt, Widget> d = ({
         ::tpy::ordered_map<::tpy::BigInt, Widget> __result;
         auto __obj_0 = widgets(::tpy::BigInt(3));
@@ -20,27 +24,24 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // total = 0
     int32_t total = 0;
-    // for k in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
-        // total += d[k].tag
         total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, k).tag).to_fixed_check<int32_t>());
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 
 // def value_only() -> int:
+//     # Key does not read the element: pure value move. The key is still sequenced
+//     # into a local (the sequencing fires whenever the value is a bare-var last
+//     # sink, independent of whether the key reads the loop var) -- harmless here.
+//     d = {7: w for w in widgets(1)}  # tpyc: ok
+//     return len(d)
 ::tpy::BigInt value_only() {
-    // # Key does not read the element: pure value move. The key is still sequenced
-    // # into a local (the sequencing fires whenever the value is a bare-var last
-    // # sink, independent of whether the key reads the loop var) -- harmless here.
-    // d = {7: w for w in widgets(1)}  # tpyc: ok
     ::tpy::ordered_map<int32_t, Widget> d = ({
         ::tpy::ordered_map<int32_t, Widget> __result;
         auto __obj_0 = widgets(::tpy::BigInt(1));
@@ -52,16 +53,19 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // return len(d)
     return ::tpy::BigInt(::tpy::__len__(d));
 }
 
 // def key_does_not_move(src_key: int) -> int:
+//     # The value reads the element after the key, so the bare-loop-var KEY must
+//     # NOT move -- it copies (a move would leave the value reading a moved-from
+//     # node). Correct output proves the key was not consumed early.
+//     d = {node: node.id for node in nodes(3)}  # tpyc: warning(/copies Node into owned storage/)
+//     total = 0
+//     for n in d:
+//         total += d[n]
+//     return total
 ::tpy::BigInt key_does_not_move(const ::tpy::BigInt& src_key) {
-    // # The value reads the element after the key, so the bare-loop-var KEY must
-    // # NOT move -- it copies (a move would leave the value reading a moved-from
-    // # node). Correct output proves the key was not consumed early.
-    // d = {node: node.id for node in nodes(3)}  # tpyc: warning(/copies Node into owned storage/)
     ::tpy::ordered_map<Node, ::tpy::BigInt> d = ({
         ::tpy::ordered_map<Node, ::tpy::BigInt> __result;
         auto __obj_0 = nodes(::tpy::BigInt(3));
@@ -73,26 +77,26 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // total = 0
     int32_t total = 0;
-    // for n in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& n = *__beg_1;
-        // total += d[n]
         total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, n)).to_fixed_check<int32_t>());
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 
 // def filtered_value_moves() -> int:
+//     # Filter + owned dict: the value is still the last sink (the filter ran
+//     # first), so @nocopy Widget moves -- the case only compiles if it does.
+//     d = {w.id: w for w in widgets(4) if w.id > 0}  # tpyc: ok
+//     total = 0
+//     for k in d:
+//         total += d[k].tag
+//     return total
 ::tpy::BigInt filtered_value_moves() {
-    // # Filter + owned dict: the value is still the last sink (the filter ran
-    // # first), so @nocopy Widget moves -- the case only compiles if it does.
-    // d = {w.id: w for w in widgets(4) if w.id > 0}  # tpyc: ok
     ::tpy::ordered_map<::tpy::BigInt, Widget> d = ({
         ::tpy::ordered_map<::tpy::BigInt, Widget> __result;
         auto __obj_0 = widgets(::tpy::BigInt(4));
@@ -106,26 +110,23 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // total = 0
     int32_t total = 0;
-    // for k in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
-        // total += d[k].tag
         total = ::tpy::add_check<int32_t>(total, (::tpy::__getitem__(d, k).tag).to_fixed_check<int32_t>());
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 
 // def same_var_key_and_value() -> int:
+//     # Both sinks are the bare loop var: the value (last sink) moves; the key,
+//     # sequenced into a local first, copies (warns) -- a hashable owned key.
+//     d = {node: node for node in nodes(3)}  # tpyc: warning(/copies Node into owned storage/)
+//     return len(d)
 ::tpy::BigInt same_var_key_and_value() {
-    // # Both sinks are the bare loop var: the value (last sink) moves; the key,
-    // # sequenced into a local first, copies (warns) -- a hashable owned key.
-    // d = {node: node for node in nodes(3)}  # tpyc: warning(/copies Node into owned storage/)
     ::tpy::ordered_map<Node, Node> d = ({
         ::tpy::ordered_map<Node, Node> __result;
         auto __obj_0 = nodes(::tpy::BigInt(3));
@@ -137,30 +138,29 @@ namespace tpyapp::main {
         }
         std::move(__result);
     });
-    // return len(d)
     return ::tpy::BigInt(::tpy::__len__(d));
 }
 
 // def main() -> None:
+//     print(value_moves_key_field())
+//     print(value_only())
+//     print(key_does_not_move(0))
+//     print(filtered_value_moves())
+//     print(same_var_key_and_value())
 void main() {
-    // print(value_moves_key_field())
     std::cout << value_moves_key_field() << "\n";
-    // print(value_only())
     std::cout << value_only() << "\n";
-    // print(key_does_not_move(0))
     std::cout << key_does_not_move(::tpy::BigInt(0)) << "\n";
-    // print(filtered_value_moves())
     std::cout << filtered_value_moves() << "\n";
-    // print(same_var_key_and_value())
     std::cout << same_var_key_and_value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

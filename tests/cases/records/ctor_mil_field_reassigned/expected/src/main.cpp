@@ -3,25 +3,25 @@
 
 namespace tpyapp::main {
 
-// SCALE: int32 = 4
 int32_t SCALE{};
 
 // def main() -> None:
+//     a = Acc(3)
+//     print(a.total, a.label)
 void main() {
-    // a = Acc(3)
     Acc a = Acc(3);
-    // print(a.total, a.label)
     std::cout << a.total << " " << a.label << "\n";
 }
 
+// SCALE: int32 = 4
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // SCALE: int32 = 4
     SCALE = 4;
-    // main()
     main();
 }
 

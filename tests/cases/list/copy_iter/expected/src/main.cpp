@@ -5,108 +5,108 @@ namespace tpyapp::main {
 
 
 // def test_extend_copy_iter_no_warn() -> None:
+//     a: list[Node] = []
+//     b: list[Node] = [Node(1), Node(2)]
+//     ci = copy_iter(b)  # tpyc: type(/CopyIter\[Node\]/)
+//     a.extend(ci)  # tpyc: ok
+//     print(len(a))
+//     print(len(b))
 void test_extend_copy_iter_no_warn() {
-    // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(1), Node(2)]
     std::vector<Node> b = {Node(1), Node(2)};
-    // ci = copy_iter(b)  # tpyc: type(/CopyIter\[Node\]/)
     auto ci = ::tpy::copy_iter<Node>(b);
-    // a.extend(ci)  # tpyc: ok
     ::tpy::list_extend(a, ci);
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_extend_copy_iter_value_type() -> None:
+//     a: list[int32] = []
+//     b: list[int32] = [1, 2, 3]
+//     a.extend(copy_iter(b))  # tpyc: ok
+//     print(len(a))
 void test_extend_copy_iter_value_type() {
-    // a: list[int32] = []
     std::vector<int32_t> a = std::vector<int32_t>{};
-    // b: list[int32] = [1, 2, 3]
     std::vector<int32_t> b = {1, 2, 3};
-    // a.extend(copy_iter(b))  # tpyc: ok
     ::tpy::list_extend(a, ::tpy::copy_iter<int32_t>(b));
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_iadd_copy_iter_no_warn() -> None:
+//     a: list[Node] = []
+//     b: list[Node] = [Node(3)]
+//     a += copy_iter(b)  # tpyc: ok
+//     print(len(a))
+//     print(len(b))
 void test_iadd_copy_iter_no_warn() {
-    // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(3)]
     std::vector<Node> b = {Node(3)};
-    // a += copy_iter(b)  # tpyc: ok
     ::tpy::list_extend(a, ::tpy::copy_iter<Node>(b));
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_list_ctor_copy_iter_no_warn() -> None:
+//     b: list[Node] = [Node(4)]
+//     a = list(copy_iter(b))  # tpyc: ok
+//     print(len(a))
+//     print(len(b))
 void test_list_ctor_copy_iter_no_warn() {
-    // b: list[Node] = [Node(4)]
     std::vector<Node> b = {Node(4)};
-    // a = list(copy_iter(b))  # tpyc: ok
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::copy_iter<Node>(b));
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_extend_no_copy_iter_warns() -> None:
+//     a: list[Node] = []
+//     b: list[Node] = [Node(5)]
+//     a.extend(b)  # tpyc: warning(/copies Node elements/)
+//     print(len(b))
 void test_extend_no_copy_iter_warns() {
-    // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(5)]
     std::vector<Node> b = {Node(5)};
-    // a.extend(b)  # tpyc: warning(/copies Node elements/)
     ::tpy::list_extend(a, b);
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_for_loop_copy_iter() -> None:
+//     b: list[Node] = [Node(10), Node(20)]
+//     total: int32 = 0
+//     for x in copy_iter(b):
+//         total += x.val
+//     print(total)
+//     print(len(b))
 void test_for_loop_copy_iter() {
-    // b: list[Node] = [Node(10), Node(20)]
     std::vector<Node> b = {Node(10), Node(20)};
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in copy_iter(b):
     auto __obj_0 = ::tpy::copy_iter<Node>(b);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
-        // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
-    // print(total)
     std::cout << total << "\n";
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
+// test_extend_copy_iter_no_warn()
+// test_extend_copy_iter_value_type()
+// test_iadd_copy_iter_no_warn()
+// test_list_ctor_copy_iter_no_warn()
+// test_extend_no_copy_iter_warns()
+// test_for_loop_copy_iter()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_extend_copy_iter_no_warn()
     test_extend_copy_iter_no_warn();
-    // test_extend_copy_iter_value_type()
     test_extend_copy_iter_value_type();
-    // test_iadd_copy_iter_no_warn()
     test_iadd_copy_iter_no_warn();
-    // test_list_ctor_copy_iter_no_warn()
     test_list_ctor_copy_iter_no_warn();
-    // test_extend_no_copy_iter_warns()
     test_extend_no_copy_iter_warns();
-    // test_for_loop_copy_iter()
     test_for_loop_copy_iter();
 }
 

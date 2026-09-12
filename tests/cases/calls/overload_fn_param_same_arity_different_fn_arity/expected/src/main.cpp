@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs: list[int32] = [1, 2, 3]
+//     print(g(lambda a: a + int32(1), xs))           # picks the 1-param overload
+//     print(g(lambda a, b: a + b, xs))               # picks the 2-param overload
 void main() {
-    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // print(g(lambda a: a + int32(1), xs))           # picks the 1-param overload
     std::cout << g<int32_t>([](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, 1)); }, xs) << "\n";
-    // print(g(lambda a, b: a + b, xs))               # picks the 2-param overload
     std::cout << g<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

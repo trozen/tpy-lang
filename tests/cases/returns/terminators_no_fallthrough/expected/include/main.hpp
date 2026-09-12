@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def spin(n: int32) -> int32:
 int32_t spin(int32_t n);
+// def nested_break_ok(n: int32) -> int32:
 int32_t nested_break_ok(int32_t n);
+// def find_or_die(xs: list[int32], v: int32) -> int32:
 int32_t find_or_die(const std::vector<int32_t>& xs, int32_t v);
+// def finally_returns(n: int32) -> int32:
 int32_t finally_returns(int32_t n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

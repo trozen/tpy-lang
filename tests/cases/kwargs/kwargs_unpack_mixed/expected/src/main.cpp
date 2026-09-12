@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def connect(host: str, **kwargs: Unpack[Options]) -> None:
+//     print(host)
+//     print(kwargs["port"])
+//     print(kwargs["debug"])
 void connect(std::string_view host, const Options& kwargs) {
-    // print(host)
     std::cout << host << "\n";
-    // print(kwargs["port"])
     std::cout << kwargs.port << "\n";
-    // print(kwargs["debug"])
     std::cout << ::tpy::print_bool(kwargs.debug) << "\n";
 }
 
 // def main() -> None:
+//     # host positional, kwargs explicit
+//     connect("localhost", port=int32(9090), debug=False)
+//     # host as keyword alongside kwargs
+//     connect(host="example.com", port=int32(443), debug=True)
 void main() {
-    // # host positional, kwargs explicit
-    // connect("localhost", port=int32(9090), debug=False)
     Options __tmp_1 = Options(9090, false);
     connect("localhost", __tmp_1);
-    // # host as keyword alongside kwargs
-    // connect(host="example.com", port=int32(443), debug=True)
     Options __tmp_2 = Options(443, true);
     connect("example.com", __tmp_2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

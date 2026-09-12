@@ -11,9 +11,13 @@ struct Payload;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first(rows: list[Payload]) -> Payload:
 Payload& first(std::vector<Payload>& rows);
+// def take(rows: list[Payload]) -> Own[Payload]:
 Payload take(std::vector<Payload>& rows);
+// def take_copy(rows: list[Payload]) -> Own[Payload]:
 Payload take_copy(std::vector<Payload>& rows);
+// def main() -> None:
 void main();
 
 // class Payload:
@@ -34,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Payload::Payload(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

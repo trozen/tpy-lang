@@ -6,75 +6,81 @@ namespace tpyapp::main {
 
 // @error_return(ParseError)
 // def parse_pair(a: str, b: str) -> int:
+//     x = parse_int(a)
+//     y = parse_int(b)
+//     return x + y
 std::expected<::tpy::BigInt, ::tpyapp::errors_impl::ParseError> parse_pair(std::string_view a, std::string_view b) {
-    // x = parse_int(a)
     ::tpy::BigInt x;
     {
         auto __try_tmp_1 = ::tpyapp::errors_impl::parse_int(a);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         x = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
-    // y = parse_int(b)
     ::tpy::BigInt y;
     {
         auto __try_tmp_2 = ::tpyapp::errors_impl::parse_int(b);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
         y = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
-    // return x + y
     return ((x) + (y));
 }
 
 // def main() -> None:
+//     try:
+//         v = parse_pair("10", "20")
+//     except ParseError:
+//         print("error")
+//     else:
+//         print(v)
+//
+//     try:
+//         v2 = parse_pair("10", "")
+//     except ParseError:
+//         print("caught error")
+//     else:
+//         print(v2)
 void main() {
-    // try:
     ::tpy::BigInt v;
     {
-        // v = parse_pair("10", "20")
         {
             auto __try_tmp_4 = parse_pair("10", "20");
             if (!__try_tmp_4.has_value()) goto __except_3;
             v = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
-        // print(v)
         std::cout << v << "\n";
         goto __after_try_3;
         // except ParseError:
         __except_3:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_3:;
     }
-    // try:
     ::tpy::BigInt v2;
     {
-        // v2 = parse_pair("10", "")
         {
             auto __try_tmp_6 = parse_pair("10", "");
             if (!__try_tmp_6.has_value()) goto __except_5;
             v2 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
-        // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_5;
         // except ParseError:
         __except_5:;
-        // print("caught error")
         std::cout << "caught error" << "\n";
         __after_try_5:;
     }
 }
 
+// from errors_impl import ParseError, parse_int
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from errors_impl import ParseError, parse_int
     ::tpyapp::errors_impl::__tpy_init();
-    // main()
     main();
 }
 

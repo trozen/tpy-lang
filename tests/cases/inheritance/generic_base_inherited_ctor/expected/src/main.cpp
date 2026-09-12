@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Sub(5)._v)
+//     print(Sub()._v)
+//     print(SubSub(9)._v)
+//     print(TypedI(42).val)
+//     print(TypedM[int32](7).val)
 void main() {
-    // print(Sub(5)._v)
     std::cout << Sub(5)._v << "\n";
-    // print(Sub()._v)
     std::cout << Sub()._v << "\n";
-    // print(SubSub(9)._v)
     std::cout << SubSub(9)._v << "\n";
-    // print(TypedI(42).val)
     std::cout << TypedI(42).val << "\n";
-    // print(TypedM[int32](7).val)
     std::cout << TypedM<int32_t>(7).val << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Box[int32]] = []
+//     items.append(Box(2))
+//     items.append(Box(3))
+//     items.append(Box(5))
+//     print(proc(lambda b: b.val, *items))
 void main() {
-    // items: list[Box[int32]] = []
     std::vector<Box<int32_t>> items = std::vector<Box<int32_t>>{};
-    // items.append(Box(2))
     items.push_back(Box<int32_t>(2));
-    // items.append(Box(3))
     items.push_back(Box<int32_t>(3));
-    // items.append(Box(5))
     items.push_back(Box<int32_t>(5));
-    // print(proc(lambda b: b.val, *items))
     std::cout << proc<int32_t>([](Box<int32_t>& b) -> int32_t { return b.val; }, ::tpy::varargs<Box<int32_t>>(::tpy::as_mut_span(items))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,149 +5,149 @@ namespace tpyapp::main {
 
 
 // def collect_for(xs: list[int32]) -> Own[list[int32]]:
+//     out = []
+//     for x in xs:
+//         out.append(x)
+//     return out
 std::vector<int32_t> collect_for(const std::vector<int32_t>& xs) {
-    // out = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // out.append(x)
         out.push_back(x);
     }
-    // return out
     return out;
 }
 
 // def widen_collect(xs: list[int32]) -> Own[list[int64]]:
+//     # In-loop int32 element must still widen to the declared int64 -- the
+//     # canonical-element use-site check allows coercion, not just exact match.
+//     out = []
+//     for x in xs:
+//         out.append(x)
+//     return out
 std::vector<int64_t> widen_collect(const std::vector<int32_t>& xs) {
-    // # In-loop int32 element must still widen to the declared int64 -- the
-    // # canonical-element use-site check allows coercion, not just exact match.
-    // out = []
     std::vector<int64_t> out = std::vector<int64_t>{};
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // out.append(x)
         out.push_back(x);
     }
-    // return out
     return out;
 }
 
 // def collect_while(n: int32) -> Own[list[int32]]:
+//     out = []
+//     i = 0
+//     while i < n:
+//         out.append(i)
+//         i += 1
+//     return out
 std::vector<int32_t> collect_while(int32_t n) {
-    // out = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // i = 0
     int32_t i = 0;
-    // while i < n:
     while ((i < n)) {
-        // out.append(i)
         out.push_back(i);
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // return out
     return out;
 }
 
 // def collect_cond(xs: list[int32]) -> Own[list[int32]]:
+//     out = []
+//     for x in xs:
+//         if x % 2 == 0:
+//             out.append(x)  # sole evidence is a conditional append in the loop
+//     return out
 std::vector<int32_t> collect_cond(const std::vector<int32_t>& xs) {
-    // out = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // if x % 2 == 0:
         if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
-            // out.append(x)  # sole evidence is a conditional append in the loop
             out.push_back(x);
         }
     }
-    // return out
     return out;
 }
 
 // def total(ys: list[int32]) -> int32:
+//     return len(ys)
 int32_t total(const std::vector<int32_t>& ys) {
-    // return len(ys)
     return ::tpy::__len__(ys);
 }
 
 // def collect_refs(src: list[Counter]) -> Own[list[Counter]]:
+//     # Reference-type element: appending into a fresh accumulator copies each
+//     # element (intended here); the returned list owns mutable copies.
+//     out = []
+//     for c in src:
+//         out.append(c)
+//     return out
 std::vector<Counter> collect_refs(const std::vector<Counter>& src) {
-    // # Reference-type element: appending into a fresh accumulator copies each
-    // # element (intended here); the returned list owns mutable copies.
-    // out = []
     std::vector<Counter> out = std::vector<Counter>{};
-    // for c in src:
     auto& __obj_0 = src;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& c = *__beg_0;
-        // out.append(c)
         out.push_back(c);
     }
-    // return out
     return out;
 }
 
 // def main() -> None:
+//     print(len(collect_for([1, 2, 3])))
+//     print(len(widen_collect([1, 2, 3])))
+//     print(len(collect_while(4)))
+//     print(len(collect_cond([1, 2, 3, 4])))
+//     print(len(generic_collect([5, 6])))
+//     # in-loop-only pinned list reaching a typed param rather than a return
+//     acc = []
+//     for v in [10, 20, 30]:
+//         acc.append(v)
+//     print(total(acc))
+//     # the reference-type element is materialized and mutable in the result
+//     got = collect_refs([Counter(1), Counter(2)])
+//     got[0].n = 99
+//     print(got[0].n)
 void main() {
-    // print(len(collect_for([1, 2, 3])))
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::cout << ::tpy::__len__(collect_for(__tmp_1)) << "\n";
-    // print(len(widen_collect([1, 2, 3])))
     std::vector<int32_t> __tmp_2 = {1, 2, 3};
     std::cout << ::tpy::__len__(widen_collect(__tmp_2)) << "\n";
-    // print(len(collect_while(4)))
     std::cout << ::tpy::__len__(collect_while(4)) << "\n";
-    // print(len(collect_cond([1, 2, 3, 4])))
     std::vector<int32_t> __tmp_3 = {1, 2, 3, 4};
     std::cout << ::tpy::__len__(collect_cond(__tmp_3)) << "\n";
-    // print(len(generic_collect([5, 6])))
     std::vector<int32_t> __tmp_4 = {5, 6};
     std::cout << ::tpy::__len__(generic_collect<int32_t>(__tmp_4)) << "\n";
-    // # in-loop-only pinned list reaching a typed param rather than a return
-    // acc = []
     std::vector<int32_t> acc = std::vector<int32_t>{};
-    // for v in [10, 20, 30]:
     auto __obj_0 = {10, 20, 30};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // acc.append(v)
         acc.push_back(v);
     }
-    // print(total(acc))
     std::cout << total(acc) << "\n";
-    // # the reference-type element is materialized and mutable in the result
-    // got = collect_refs([Counter(1), Counter(2)])
     std::vector<Counter> __tmp_5 = {Counter(1), Counter(2)};
     std::vector<Counter> got = collect_refs(__tmp_5);
-    // got[0].n = 99
     ::tpy::__getitem__(got, 0).n = 99;
-    // print(got[0].n)
     std::cout << ::tpy::__getitem__(got, 0).n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

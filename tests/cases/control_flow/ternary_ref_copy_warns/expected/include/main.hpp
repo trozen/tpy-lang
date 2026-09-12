@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mixed(flag: bool) -> int:
 ::tpy::BigInt mixed(bool flag);
+// def both_lvalue(flag: bool) -> int:
 ::tpy::BigInt both_lvalue(bool flag);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,42 +5,44 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums = (int32(10), int32(20))
+//     x = first_of_pair(nums)
+//     print(x)
+//
+//     pair = (int32(5), "five")
+//     swapped = swap(pair)
+//     print(swapped)
+//
+//     # Generic swap with record type (non-value) -- verify reference semantics
+//     pt = Point(int32(1), int32(2))
+//     pt_pair = (int32(42), pt)
+//     swapped2 = swap(pt_pair)
+//     print(swapped2[0].x)
+//     print(swapped2[1])
+//     pt.x = int32(99)
+//     print(swapped2[0].x)
 void main() {
-    // nums = (int32(10), int32(20))
     std::tuple<int32_t, int32_t> nums = std::tuple<int32_t, int32_t>{10, 20};
-    // x = first_of_pair(nums)
     int32_t x = first_of_pair<int32_t>(nums);
-    // print(x)
     std::cout << x << "\n";
-    // pair = (int32(5), "five")
     std::tuple<int32_t, std::string> pair = std::tuple<int32_t, std::string>{5, "five"};
-    // swapped = swap(pair)
     std::tuple<std::string, int32_t> swapped = swap<int32_t, std::string>(pair);
-    // print(swapped)
     std::cout << ::tpy::TuplePrinter(swapped) << "\n";
-    // # Generic swap with record type (non-value) -- verify reference semantics
-    // pt = Point(int32(1), int32(2))
     Point pt = Point(1, 2);
-    // pt_pair = (int32(42), pt)
     auto pt_pair = std::tuple<int32_t, Point*>{42, &(pt)};
-    // swapped2 = swap(pt_pair)
     auto swapped2 = swap<int32_t, Point>(pt_pair);
-    // print(swapped2[0].x)
     std::cout << std::get<0>(swapped2)->x << "\n";
-    // print(swapped2[1])
     std::cout << std::get<1>(swapped2) << "\n";
-    // pt.x = int32(99)
     pt.x = 99;
-    // print(swapped2[0].x)
     std::cout << std::get<0>(swapped2)->x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

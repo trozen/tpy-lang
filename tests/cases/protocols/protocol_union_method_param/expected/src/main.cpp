@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Processor()
+//     r = Ruler()
+//     p.process(r)
+//     print(p.count)
+//
+//     w = Walker()
+//     p.process(w)
+//     print(p.count)
 void main() {
-    // p = Processor()
     Processor p = Processor();
-    // r = Ruler()
     Ruler r = Ruler();
-    // p.process(r)
     p.process(r);
-    // print(p.count)
     std::cout << p.count << "\n";
-    // w = Walker()
     Walker w = Walker();
-    // p.process(w)
     p.process(w);
-    // print(p.count)
     std::cout << p.count << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

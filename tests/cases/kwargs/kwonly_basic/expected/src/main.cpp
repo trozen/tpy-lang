@@ -6,29 +6,29 @@ namespace tpyapp::main {
 
 // # keyword-only parameters with default values
 // def greet(name: str, *, greeting: str = "Hello", punctuation: str = "!") -> None:
+//     print(greeting, name, sep="", end="")
+//     print(punctuation)
 void greet(std::string_view name, std::string_view greeting, std::string_view punctuation) {
-    // print(greeting, name, sep="", end="")
     std::cout << greeting << name;
-    // print(punctuation)
     std::cout << punctuation << "\n";
 }
 
 // def main() -> None:
+//     greet("Alice")
+//     greet("Bob", greeting="Hi")
+//     greet("Charlie", greeting="Hey", punctuation=".")
 void main() {
-    // greet("Alice")
     greet("Alice", "Hello", "!");
-    // greet("Bob", greeting="Hi")
     greet("Bob", "Hi");
-    // greet("Charlie", greeting="Hey", punctuation=".")
     greet("Charlie", "Hey", ".");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

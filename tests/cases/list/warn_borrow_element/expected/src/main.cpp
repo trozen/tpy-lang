@@ -5,128 +5,136 @@ namespace tpyapp::main {
 
 
 // def test_element_borrow_append() -> None:
+//     """Element borrow + structural mutation = warn."""
+//     items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
+//     v = items[int32(0)]
+//     items.append(Point(int32(5), int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+//     print(len(items))
 void test_element_borrow_append() {
-    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    // items.append(Point(int32(5), int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_element_borrow_subscript_assign() -> None:
+//     """Element borrow + subscript assign = ok (in-place write, no reallocation, no dangling)."""
+//     items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
+//     v = items[int32(0)]
+//     items[int32(0)] = Point(int32(9), int32(9))  # tpyc: ok
+//     print(items[int32(0)].x)
 void test_element_borrow_subscript_assign() {
-    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    // items[int32(0)] = Point(int32(9), int32(9))  # tpyc: ok
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_alias_no_warn() -> None:
+//     """Whole-container alias + structural mutation = no warn (alias is safe)."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     alias = items
+//     items.append(Point(int32(3), int32(4)))  # tpyc: ok
+//     print(len(alias))
 void test_alias_no_warn() {
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // alias = items
     std::vector<Point>& alias = items;
-    // items.append(Point(int32(3), int32(4)))  # tpyc: ok
     items.push_back(Point(3, 4));
-    // print(len(alias))
     std::cout << ::tpy::__len__(alias) << "\n";
 }
 
 // def test_value_type_no_borrow() -> None:
+//     """Subscript of value type does not create an element borrow."""
+//     items: list[int32] = [int32(1), int32(2), int32(3)]
+//     v = items[int32(0)]
+//     items.append(int32(4))  # tpyc: ok
+//     print(v)
 void test_value_type_no_borrow() {
-    // items: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // v = items[int32(0)]
     int32_t v = ::tpy::__getitem__(items, 0);
-    // items.append(int32(4))  # tpyc: ok
     items.push_back(4);
-    // print(v)
     std::cout << v << "\n";
 }
 
 // def test_reassign_clears_borrows() -> None:
+//     """Reassigning storage clears borrows -- no false positive."""
+//     items: list[Point] = [Point(int32(1), int32(2))]
+//     v = items[int32(0)]
+//     items = [Point(int32(3), int32(4))]
+//     items.append(Point(int32(5), int32(6)))  # tpyc: ok
+//     print(len(items))
 void test_reassign_clears_borrows() {
     std::optional<std::vector<Point>> __slot_2;
-    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> __slot_1 = {Point(1, 2)};
     std::vector<Point>* items = &__slot_1;
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__((*items), 0);
-    // items = [Point(int32(3), int32(4))]
     items = &*(__slot_2 = {Point(3, 4)});
-    // items.append(Point(int32(5), int32(6)))  # tpyc: ok
     items->push_back(Point(5, 6));
-    // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
 }
 
 // def test_reassign_borrower_clears() -> None:
+//     """Reassigning the borrower clears its borrow."""
+//     items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
+//     v = items[int32(0)]
+//     v = Point(int32(9), int32(9))
+//     items.append(Point(int32(5), int32(6)))  # tpyc: ok
+//     print(v.x)
 void test_reassign_borrower_clears() {
     std::optional<Point> __slot_1;
-    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // v = items[int32(0)]
     Point* v = &(::tpy::__getitem__(items, 0));
-    // v = Point(int32(9), int32(9))
     v = &*(__slot_1 = Point(9, 9));
-    // items.append(Point(int32(5), int32(6)))  # tpyc: ok
     items.push_back(Point(5, 6));
-    // print(v.x)
     std::cout << v->x << "\n";
 }
 
 // def test_element_borrow_del() -> None:
+//     """Element borrow + del = warn (del removes an element, may shift references)."""
+//     items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
+//     v = items[int32(0)]
+//     del items[int32(0)]  # tpyc: warning(/'del' may invalidate references/)
+//     print(len(items))
 void test_element_borrow_del() {
-    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    // del items[int32(0)]  # tpyc: warning(/'del' may invalidate references/)
     ::tpy::__delitem__(items, 0);
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_field_borrow_write() -> None:
+//     """Field write on an object with alias borrow (not field borrow) = ok."""
+//     p = Point(int32(1), int32(2))
+//     ref = p
+//     p.x = int32(10)  # tpyc: ok (alias borrow, not field borrow)
+//     print(ref.x)
 void test_field_borrow_write() {
-    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // ref = p
     Point& ref = p;
-    // p.x = int32(10)  # tpyc: ok (alias borrow, not field borrow)
     p.x = 10;
-    // print(ref.x)
     std::cout << ref.x << "\n";
 }
 
+// test_element_borrow_append()
+// test_element_borrow_subscript_assign()
+// test_alias_no_warn()
+// test_value_type_no_borrow()
+// test_reassign_clears_borrows()
+// test_reassign_borrower_clears()
+// test_element_borrow_del()
+// test_field_borrow_write()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_element_borrow_append()
     test_element_borrow_append();
-    // test_element_borrow_subscript_assign()
     test_element_borrow_subscript_assign();
-    // test_alias_no_warn()
     test_alias_no_warn();
-    // test_value_type_no_borrow()
     test_value_type_no_borrow();
-    // test_reassign_clears_borrows()
     test_reassign_clears_borrows();
-    // test_reassign_borrower_clears()
     test_reassign_borrower_clears();
-    // test_element_borrow_del()
     test_element_borrow_del();
-    // test_field_borrow_write()
     test_field_borrow_write();
 }
 

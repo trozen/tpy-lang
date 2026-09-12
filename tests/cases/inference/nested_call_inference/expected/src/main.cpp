@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def sink(b: Own[Box[int32]]) -> None:
+//     print(b.val)
 void sink(Box<int32_t>&& b) {
-    // print(b.val)
     std::cout << b.val << "\n";
 }
 
 // def take_two(a: Own[Box[int32]], b: Own[Box[int32]]) -> None:
+//     print(a.val + b.val)
 void take_two(Box<int32_t>&& a, Box<int32_t>&& b) {
-    // print(a.val + b.val)
     std::cout << (::tpy::add_check<int32_t>(a.val, b.val)) << "\n";
 }
 
 // def main() -> None:
+//     # T=int32 inferred from sink's parameter type
+//     sink(wrap(int32(10)))
+//     take_two(wrap(int32(3)), wrap(int32(7)))
+//     # Bare literals: hint chain infers int32, coerces literal
+//     sink(wrap(20))
+//     take_two(wrap(5), wrap(9))
+//     print("done")
 void main() {
-    // # T=int32 inferred from sink's parameter type
-    // sink(wrap(int32(10)))
     sink(wrap<int32_t>(10));
-    // take_two(wrap(int32(3)), wrap(int32(7)))
     take_two(wrap<int32_t>(3), wrap<int32_t>(7));
-    // # Bare literals: hint chain infers int32, coerces literal
-    // sink(wrap(20))
     sink(wrap<int32_t>(20));
-    // take_two(wrap(5), wrap(9))
     take_two(wrap<int32_t>(5), wrap<int32_t>(9));
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

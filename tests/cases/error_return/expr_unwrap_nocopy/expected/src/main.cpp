@@ -6,56 +6,59 @@ namespace tpyapp::main {
 
 // @error_return(E)
 // def make_data(v: int) -> Own[Data]:
+//     if v < 0:
+//         raise E
+//     return Data(v)
 std::expected<Data, E> make_data(const ::tpy::BigInt& v) {
-    // if v < 0:
     if ((v < 0)) {
-        // raise E
         return ::tpy::make_unexpected(E{});
     }
-    // return Data(v)
     return Data(v);
 }
 
 // # Field access on unwrapped @nocopy result
 // @error_return(E)
 // def get_value(v: int) -> int:
+//     return make_data(v).value
 std::expected<::tpy::BigInt, E> get_value(const ::tpy::BigInt& v) {
-    // return make_data(v).value
     return ({ auto __er_1 = make_data(v); if (!__er_1.has_value()) return ::tpy::make_unexpected(__er_1.error()); ::tpy::unwrap_ref_move(*__er_1); }).value;
 }
 
 // def main() -> None:
+//     try:
+//         print(get_value(42))
+//     except E:
+//         print("error")
+//
+//     try:
+//         print(get_value(-1))
+//     except E:
+//         print("caught")
 void main() {
-    // try:
     {
-        // print(get_value(42))
         std::cout << ({ auto __er_3 = get_value(::tpy::BigInt(42)); if (!__er_3.has_value()) goto __except_2; ::tpy::unwrap_ref_move(*__er_3); }) << "\n";
         goto __after_try_2;
         // except E:
         __except_2:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_2:;
     }
-    // try:
     {
-        // print(get_value(-1))
         std::cout << ({ auto __er_5 = get_value(::tpy::BigInt(-1)); if (!__er_5.has_value()) goto __except_4; ::tpy::unwrap_ref_move(*__er_5); }) << "\n";
         goto __after_try_4;
         // except E:
         __except_4:;
-        // print("caught")
         std::cout << "caught" << "\n";
         __after_try_4:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

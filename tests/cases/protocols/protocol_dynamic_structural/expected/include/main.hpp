@@ -30,7 +30,9 @@ struct Parrot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(pet: Pet) -> None:
 void greet(Pet& pet);
+// def main() -> None:
 void main();
 
 // # Parrot satisfies Pet structurally but does NOT inherit it
@@ -69,8 +71,8 @@ namespace tpyapp::main {
 
 
 // def make_noise(self) -> str:
+//     return "Squawk"
 inline std::string Parrot::make_noise() const {
-    // return "Squawk"
     return "Squawk";
 }
 void __tpy_init();

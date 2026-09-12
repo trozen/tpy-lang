@@ -40,38 +40,42 @@ namespace tpyapp::main {
 
 // @export
 // def has_nul(x: int64) -> int64:  # tpyc: warning(/docstring will not be visible from Python/)
+//     "bad\0doc"
+//     return x
 int64_t has_nul(int64_t x) {
-    // return x
     return x;
 }
 
 // @export
 // def clean(x: int64) -> int64:  # tpyc: ok
+//     """Fine."""
+//     return x
 int64_t clean(int64_t x) {
-    // return x
     return x;
 }
 
 // @export
 // def boom() -> None:  # tpyc: ok
+//     raise BadDoc("x")
 void boom() {
-    // raise BadDoc("x")
     throw BadDoc("x");
 }
 
+// # tpy: ext_module
+// # A docstring carrying an embedded NUL cannot cross: every CPython doc slot is
+// # a NUL-terminated C string, so the glue drops it (__doc__ stays None) rather
+// # than hand the host a silently truncated text. The drop always warns -- at
+// # every site that carries one: module, function, class, method, property, enum
+// # and exception class.
+// "main\0doc"
+// from enum import IntEnum
+//
+// from tpy.extern import export
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy: ext_module
-    // # A docstring carrying an embedded NUL cannot cross: every CPython doc slot is
-    // # a NUL-terminated C string, so the glue drops it (__doc__ stays None) rather
-    // # than hand the host a silently truncated text. The drop always warns -- at
-    // # every site that carries one: module, function, class, method, property, enum
-    // # and exception class.
-    // from enum import IntEnum
-    // from tpy.extern import export
 }
 
 } // namespace tpyapp::main

@@ -9,22 +9,26 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename __F0>
-  requires requires(__F0& __fn, int32_t __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  }
-int32_t apply_fn(__F0&& f, int32_t v);
-int32_t push_to(std::vector<int32_t>& ys, int32_t v);
-int32_t sync_ref_capture(std::vector<int32_t>& xs);
-void main();
-
 // def apply_fn(f: Fn[[int32], int32], v: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
+int32_t apply_fn(__F0&& f, int32_t v);
+// def push_to(ys: list[int32], v: int32) -> int32:
+int32_t push_to(std::vector<int32_t>& ys, int32_t v);
+// def sync_ref_capture(xs: list[int32]) -> int32:
+int32_t sync_ref_capture(std::vector<int32_t>& xs);
+// def main() -> None:
+void main();
+
+// def apply_fn(f: Fn[[int32], int32], v: int32) -> int32:
+//     return f(v)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
 int32_t apply_fn(__F0&& f, int32_t v) {
-    // return f(v)
     return f(v);
 }
 

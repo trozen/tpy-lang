@@ -11,7 +11,9 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check(s: str | None) -> None:
 void check(std::optional<std::string_view> s);
+// def main() -> None:
 void main();
 
 // # Test subscript, slice, and len() on narrowed Optional[str] values,
@@ -37,13 +39,14 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, text: str | None) -> None:
+//     self.text = text
 inline Wrapper::Wrapper(std::optional<std::string_view> text) : text(text ? std::make_optional(std::string(*text)) : std::nullopt) {}
 
 // def first_char(self) -> None:
+//     if self.text is not None:
+//         print(self.text[0])
 inline void Wrapper::first_char() const {
-    // if self.text is not None:
     if ((this->text.has_value())) {
-        // print(self.text[0])
         std::cout << ::tpy::__getitem__((*this->text), 0) << "\n";
     }
 }

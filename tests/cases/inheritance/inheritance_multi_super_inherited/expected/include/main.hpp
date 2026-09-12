@@ -14,6 +14,7 @@ struct D;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class A:
@@ -71,20 +72,20 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
 
 
 // def foo(self) -> str:
+//     return "A.foo"
 inline std::string A::foo() const {
-    // return "A.foo"
     return "A.foo";
 }
 
 // def bar(self) -> str:
+//     return "C.bar"
 inline std::string C::bar() const {
-    // return "C.bar"
     return "C.bar";
 }
 
 // def describe(self) -> str:
+//     return super().foo() + " + " + super().bar()
 inline std::string D::describe() const {
-    // return super().foo() + " + " + super().bar()
     return (::tpy::str_concat((::tpy::str_concat(this->A::foo(), " + ")), this->C::bar()));
 }
 void __tpy_init();

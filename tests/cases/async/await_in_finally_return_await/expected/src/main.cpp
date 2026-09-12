@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,11 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def cleanup() -> None:
+//     print("cleanup")
 ::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("cleanup")
         std::cout << "cleanup" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -47,6 +47,10 @@ __coro_cleanup cleanup() {
 }
 
 // async def caller() -> int:
+//     try:
+//         return await value(42)
+//     finally:
+//         await cleanup()
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -93,13 +97,11 @@ __coro_cleanup cleanup() {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_JOIN_1: {
-        // return await value(42)
         __sub_0.emplace(::tpy::BigInt(42));
         __state = S_RESUME_0;
         continue;
     }
     case S_JOIN_2: {
-        // await cleanup()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -116,24 +118,25 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # Regression: `return await X` inside a try body whose finally has
+// # an await (M3.3.2). The AwaitKind.RETURN resume path must route
+// # through the pending-return slot + flag and let AsyncFinallyExit
+// # emit the deferred Poll::ready -- not emit Poll::ready directly
+// # (which would bypass the finally body).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: `return await X` inside a try body whose finally has
-    // # an await (M3.3.2). The AwaitKind.RETURN resume path must route
-    // # through the pending-return slot + flag and let AsyncFinallyExit
-    // # emit the deferred Poll::ready -- not emit Poll::ready directly
-    // # (which would bypass the finally body).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

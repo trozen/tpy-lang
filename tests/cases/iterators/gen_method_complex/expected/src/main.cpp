@@ -5,22 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Range(3, 6)
+//     print(r.total())
+//     for x in r:
+//         print(x)
+//     for p in r.pairs():
+//         print(p)
 void main() {
-    // r = Range(3, 6)
     Range r = Range(3, 6);
-    // print(r.total())
     std::cout << r.total() << "\n";
-    // for x in r:
     auto& __src_0 = r;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
     }
-    // for p in r.pairs():
     {
         auto __src_2 = r.pairs();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -28,35 +29,35 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t p = ::tpy::unwrap_ref(*__r_3);
-        // print(p)
         std::cout << p << "\n";
         }
     }
 }
 
 // def __iter__(self) -> Iterator[int32]:
+//     yield -1
+//     i = self.start
+//     while i < self.stop:
+//         yield i
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Range___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield -1
         __state = S_RESUME_0;
         return -1;
     }
     case S_RESUME_0: {
-        // i = self.start
         i = __self.start;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < __self.stop)) {
-            // yield i
             __state = S_RESUME_1;
             return i;
         } else {
@@ -71,28 +72,29 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Range___iter__::__next__() {
 
 
 // def pairs(self) -> Iterator[int32]:
+//     i = self.start
+//     while i < self.stop:
+//         yield i * 10
+//         yield i * 10 + 1
+//         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Range_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = self.start
         i = __self.start;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // yield i * 10 + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), 1));
     }
     case S_RESUME_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if ((i < __self.stop)) {
-            // yield i * 10
             __state = S_RESUME_0;
             return (::tpy::mul_check<int32_t>(i, 10));
         } else {
@@ -106,12 +108,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Range_pairs::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

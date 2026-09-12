@@ -5,52 +5,52 @@ namespace tpyapp::main {
 
 
 // def same(a: int32 | float64, b: int32 | float64) -> bool:
+//     return a == b  # a variant-vs-variant compare
 bool same(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
-    // return a == b  # a variant-vs-variant compare
     return (a == b);
 }
 
 // def widened() -> bool:
+//     x: int32 | float64 = 1  # std::variant<double, int32_t>
+//     x = 2.5
+//     y = x
+//     return same(y, 2.5)
 bool widened() {
-    // x: int32 | float64 = 1  # std::variant<double, int32_t>
     ::tpy::Union<double, int32_t> x = 1;
-    // x = 2.5
     x = 2.5;
-    // y = x
     ::tpy::Union<double, int32_t> y = x;
-    // return same(y, 2.5)
     ::tpy::Union<double, int32_t> __tmp_1 = 2.5;
     return same(y, __tmp_1);
 }
 
 // def started_none() -> bool:
+//     x: int32 | float64 | None = None  # the monostate member
+//     was_none = x is None
+//     x = 3
+//     return was_none and x is not None
 bool started_none() {
-    // x: int32 | float64 | None = None  # the monostate member
     ::tpy::Union<std::monostate, double, int32_t> x = std::monostate{};
-    // was_none = x is None
     bool was_none = (std::holds_alternative<std::monostate>(x));
-    // x = 3
     x = 3;
-    // return was_none and x is not None
     return (was_none && (!std::holds_alternative<std::monostate>(x)));
 }
 
 // def main() -> None:
+//     print(same(1, 1), same(1, 2))
+//     print(widened())
+//     print(started_none())
 void main() {
-    // print(same(1, 1), same(1, 2))
     std::cout << ::tpy::print_bool(same(1, 1)) << " " << ::tpy::print_bool(same(1, 2)) << "\n";
-    // print(widened())
     std::cout << ::tpy::print_bool(widened()) << "\n";
-    // print(started_none())
     std::cout << ::tpy::print_bool(started_none()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

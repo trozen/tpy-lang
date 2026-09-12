@@ -3,45 +3,45 @@
 
 namespace tpyapp::main {
 
-// G = Obj(7)
 Obj* G{};
 
 // def take_field(h: Holder) -> Own[Obj]:
+//     # The receiver dies at end-of-statement; what it hands back does not.
+//     return Wrapper(take_ptr(h.o)).get()  # tpyc: warning(/copies Obj into owned storage/)
 Obj take_field(Holder& h) {
-    // # The receiver dies at end-of-statement; what it hands back does not.
-    // return Wrapper(take_ptr(h.o)).get()  # tpyc: warning(/copies Obj into owned storage/)
     return Wrapper(&h.o).get();
 }
 
 // def take_global() -> Own[Obj]:
+//     return Wrapper(take_ptr(G)).get()  # tpyc: warning(/copies Obj into owned storage/)
 Obj take_global() {
-    // return Wrapper(take_ptr(G)).get()  # tpyc: warning(/copies Obj into owned storage/)
     return Wrapper(&(*G)).get();
 }
 
 // def take_field_copy(h: Holder) -> Own[Obj]:
+//     return copy(Wrapper(take_ptr(h.o)).get())  # tpyc: ok
 Obj take_field_copy(Holder& h) {
-    // return copy(Wrapper(take_ptr(h.o)).get())  # tpyc: ok
     return Obj(Wrapper(&h.o).get());
 }
 
 // def main() -> None:
+//     h = Holder()
+//     print(take_field(h).n, take_global().n, take_field_copy(h).n)
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // print(take_field(h).n, take_global().n, take_field_copy(h).n)
     std::cout << take_field(h).n << " " << take_global().n << " " << take_field_copy(h).n << "\n";
 }
 
+// G = Obj(7)
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // G = Obj(7)
     static Obj __global_slot_1 = Obj(7);
     G = &__global_slot_1;
-    // main()
     main();
 }
 

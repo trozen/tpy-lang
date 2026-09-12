@@ -17,9 +17,13 @@ struct Registry;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def observe(r: readonly[Rc[Counter]]) -> int32:
 int32_t observe(const ::tpystd::tplib::rc::Rc<Counter>& r);
+// def via_readonly_weak(w: readonly[Weak[Counter]]) -> int32:
 int32_t via_readonly_weak(const ::tpystd::tplib::rc::Weak<Counter>& w);
+// def downgrade_readonly(r: readonly[Rc[Counter]]) -> int32:
 int32_t downgrade_readonly(const ::tpystd::tplib::rc::Rc<Counter>& r);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -64,15 +68,17 @@ inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def __init__(self, c: Own[Rc[Counter]]) -> None:
+//     self._shared = c
 inline Registry::Registry(::tpystd::tplib::rc::Rc<Counter>&& c) : _shared(std::move(c)) {}
 
 // @readonly
 // def handle(self) -> Own[Rc[readonly[Counter]]]:
+//     return self._shared.clone()
 inline ::tpystd::tplib::rc::Rc<Counter> Registry::handle() const {
-    // return self._shared.clone()
     return this->_shared.clone();
 }
 void __tpy_init();

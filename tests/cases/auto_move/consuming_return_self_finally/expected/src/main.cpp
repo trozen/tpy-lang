@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = Ticket(7).stamped()
+//     # The finally's mutation is visible in what the call handed back.
+//     print(t.id)
+//     print(Ticket(1).logged().id)
+//     print(Badge(4).bumped().n)
 void main() {
-    // t = Ticket(7).stamped()
     Ticket t = Ticket(7).stamped();
-    // # The finally's mutation is visible in what the call handed back.
-    // print(t.id)
     std::cout << t.id << "\n";
-    // print(Ticket(1).logged().id)
     std::cout << Ticket(1).logged().id << "\n";
-    // print(Badge(4).bumped().n)
     std::cout << Badge(4).bumped().n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

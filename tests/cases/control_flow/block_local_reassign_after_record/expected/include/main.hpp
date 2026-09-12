@@ -11,11 +11,17 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def escaped_alias() -> int:
 ::tpy::BigInt escaped_alias();
+// def mutate_through_alias() -> int:
 ::tpy::BigInt mutate_through_alias();
+// def in_match_arm(tag: int) -> int:
 ::tpy::BigInt in_match_arm(const ::tpy::BigInt& tag);
+// def in_try_body() -> int:
 ::tpy::BigInt in_try_body();
+// def loop_var_rebind(points: list[Point]) -> int:
 ::tpy::BigInt loop_var_rebind(const std::vector<Point>& points);
+// def main() -> None:
 void main();
 
 // # The reference-type half of the block-local reassign fix: a record local first
@@ -41,6 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

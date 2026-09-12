@@ -13,14 +13,23 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_val(obj: A) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_val(const A& obj);
+// def get_val(obj: B) -> float: ...  # tpyc: ok
 double get_val(const B& obj);
+// def get_big(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_big(const C& obj);
+// def get_big(obj: B) -> float: ...  # tpyc: ok
 double get_big(const B& obj);
+// def get_wide(obj: A) -> int64: ...  # tpyc: ok
 int64_t get_wide(const A& obj);
+// def get_wide(obj: B) -> float: ...  # tpyc: ok
 double get_wide(const B& obj);
+// def get_cast(obj: A) -> float: ...  # tpyc: ok
 double get_cast(const A& obj);
+// def get_cast(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_cast(const C& obj);
+// def main() -> None:
 void main();
 
 // class A:
@@ -73,12 +82,15 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: float) -> None:
+//     self.y = y
 inline B::B(double y) : y(y) {}
 
 // def __init__(self, z: int64) -> None:
+//     self.z = z
 inline C::C(int64_t z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

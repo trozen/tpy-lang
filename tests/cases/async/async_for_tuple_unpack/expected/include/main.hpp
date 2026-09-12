@@ -18,7 +18,9 @@ struct __coro_sum_squares;
 struct __coro_main;
 struct __coro_PairIter___anext__;
 
+// async def sum_squares(p: Pairs) -> int:
 __coro_sum_squares sum_squares(Pairs& p);
+// async def main() -> None:
 __coro_main main();
 
 // class PairIter:
@@ -60,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pairs& obj) {
     return os;
 }
 
-// Async coroutine: PairIter.__anext__
+// async def __anext__(self) -> tuple[int, int]:
 struct __coro_PairIter___anext__ {
     int32_t __state;
     bool __cancel_pending;
@@ -86,7 +88,7 @@ inline __coro_PairIter___anext__ PairIter::__anext__() {
     return __coro_PairIter___anext__(*this);
 }
 
-// Async coroutine: sum_squares
+// async def sum_squares(p: Pairs) -> int:
 struct __coro_sum_squares {
     int32_t __state;
     bool __cancel_pending;
@@ -118,7 +120,7 @@ struct __coro_sum_squares {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -145,14 +147,17 @@ struct __coro_main {
 
 
 // def __init__(self, limit: int) -> None:
+//     self.n = 0
+//     self.limit = limit
 inline PairIter::PairIter(const ::tpy::BigInt& limit) : n(::tpy::BigInt(0)), limit(limit) {}
 
 // def __init__(self, limit: int) -> None:
+//     self.limit = limit
 inline Pairs::Pairs(const ::tpy::BigInt& limit) : limit(limit) {}
 
 // def __aiter__(self) -> Own[PairIter]:
+//     return PairIter(self.limit)
 inline PairIter Pairs::__aiter__() const {
-    // return PairIter(self.limit)
     return PairIter(this->limit);
 }
 void __tpy_init();

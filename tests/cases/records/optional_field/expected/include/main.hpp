@@ -18,6 +18,7 @@ extern Line* line2;
 extern Line* line3;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find_point(points: list[Point], target: int32) -> Point | None:
 Point* find_point(std::vector<Point>& points, int32_t target);
 
 // class Point:
@@ -67,26 +68,30 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, s: Point):
+//     self.start = copy(s)
+//     self.end = None
 inline Line::Line(const Point& s) : start(s), end(std::nullopt) {}
 
 // def set_end(self, e: Point) -> None:
+//     self.end = copy(e)
 inline void Line::set_end(const Point& e) {
-    // self.end = copy(e)
     this->end = Point(e);
 }
 
 // def has_end(self) -> bool:
+//     return self.end is not None
 inline bool Line::has_end() const {
-    // return self.end is not None
     return (this->end.has_value());
 }
 
 // def get_end(self) -> Point | None:
+//     return self.end
 inline Point* Line::get_end() {
-    // return self.end
     return ::tpy::optional_to_ptr(this->end);
 }
 void __tpy_init();

@@ -13,6 +13,7 @@ struct Picker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Row:
@@ -66,30 +67,31 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Row::Row(int32_t v) : v(v) {}
 
 // def take(self, rows: list[Row]) -> Own[Row]:
+//     # Receiver is a temporary, but `Picker.pick` is not analyzed yet.
+//     return Picker().pick(rows)  # tpyc: warning(/copies Row into owned storage/)
 inline Row Holder::take(std::vector<Row>& rows) const {
-    // # Receiver is a temporary, but `Picker.pick` is not analyzed yet.
-    // return Picker().pick(rows)  # tpyc: warning(/copies Row into owned storage/)
     return Picker().pick(rows);
 }
 
 // def take_copy(self, rows: list[Row]) -> Own[Row]:
+//     return copy(Picker().pick(rows))  # tpyc: ok
 inline Row Holder::take_copy(std::vector<Row>& rows) const {
-    // return copy(Picker().pick(rows))  # tpyc: ok
     return Row(Picker().pick(rows));
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Picker::Picker() {
-    // pass
 }
 
 // def pick(self, rows: list[Row]) -> Row:
+//     # Borrows from ARGUMENT 0, not from self.
+//     return rows[0]
 inline const Row& Picker::pick(const std::vector<Row>& rows) const {
-    // # Borrows from ARGUMENT 0, not from self.
-    // return rows[0]
     return ::tpy::__getitem__(rows, 0);
 }
 void __tpy_init();

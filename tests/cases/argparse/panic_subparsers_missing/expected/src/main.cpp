@@ -5,13 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(prog="prog")
+//     sub = parser.add_subparsers(dest="cmd", required=True)
+//     show = sub.add_parser("show")
+//     set_p = sub.add_parser("set")
+//     args = parser.parse_args([])
+//     print(args.cmd)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args([])
     std::vector<std::string> __tmp_1 = std::vector<std::string>{};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.cmd)
     std::cout << args.cmd << "\n";
-    // return 0
     return 0;
 }
 
@@ -84,16 +88,17 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(__tpy_argparse_cmd);
 }
 
+// # Runtime panic: required=True subcommand is missing from argv.
+// # Parser writes the error to stderr and exits with code 2.
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // # Runtime panic: required=True subcommand is missing from argv.
-    // # Parser writes the error to stderr and exits with code 2.
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

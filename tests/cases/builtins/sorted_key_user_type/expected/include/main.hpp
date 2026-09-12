@@ -12,6 +12,7 @@ struct Item;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Score:
@@ -57,15 +58,18 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Score::Score(int32_t val) : val(val) {}
 
 // def __lt__(self, other: Score) -> bool:
+//     return self.val < other.val
 inline bool Score::__lt__(const Score& other) const {
-    // return self.val < other.val
     return (this->val < other.val);
 }
 
 // def __init__(self, name: str, score: Own[Score]) -> None:
+//     self.name = name
+//     self.score = score
 inline Item::Item(std::string_view name, Score&& score) : name(name), score(std::move(score)) {}
 void __tpy_init();
 } // namespace tpyapp::main

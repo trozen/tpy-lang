@@ -48,6 +48,7 @@ struct Registry;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @model
@@ -189,12 +190,9 @@ inline std::string Msg::to_json(int32_t indent) const {
 }
 
 inline void Msg::save_json(std::string_view __path, int32_t indent) const {
-    // # Regression: @model field names must not leak into other methods' scopes.
     auto __ctx_1 = ::tpy::builtin_open_mode(__path, "w");
     auto& __f = __ctx_1.__enter__();
     try {
-        // # Regression: @model field names must not leak into other methods' scopes.
-        // # A @model with field `color: str` must not shadow a `color: Color` parameter
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -206,18 +204,13 @@ inline void Msg::save_json(std::string_view __path, int32_t indent) const {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # A @model with field `color: str` must not shadow a `color: Color` parameter
-    // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
 }
 
 inline Msg Msg::load_json(std::string_view __path) {
-    // # Regression: @model field names must not leak into other methods' scopes.
     std::string __data;
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        // # Regression: @model field names must not leak into other methods' scopes.
-        // # A @model with field `color: str` must not shadow a `color: Color` parameter
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -229,20 +222,14 @@ inline Msg Msg::load_json(std::string_view __path) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // # Regression: @model field names must not leak into other methods' scopes.
-    // # A @model with field `color: str` must not shadow a `color: Color` parameter
-    // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
     return Msg::from_json(__data);
 }
 
 inline std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> Msg::try_load_json(std::string_view __path) {
-    // # Regression: @model field names must not leak into other methods' scopes.
     std::string __data;
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        // # Regression: @model field names must not leak into other methods' scopes.
-        // # A @model with field `color: str` must not shadow a `color: Color` parameter
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -254,9 +241,6 @@ inline std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> Msg::try_loa
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // # Regression: @model field names must not leak into other methods' scopes.
-    // # A @model with field `color: str` must not shadow a `color: Color` parameter
-    // # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
     return Msg::try_from_json(__data);
 }
 
@@ -271,18 +255,19 @@ inline std::string Item::__repr__() const {
 }
 
 // def __init__(self):
+//     self.items = dict[int32, Item]()
 inline Registry::Registry() : items(::tpy::ordered_map<int32_t, Item>()) {}
 
 // def update(self, key: int32, color: Color) -> None:
+//     if key in self.items:
+//         del self.items[key]
+//     item = Item(color)
+//     self.items[key] = copy(item)
 inline void Registry::update(int32_t key, Color color) {
-    // if key in self.items:
     if ((this->items.contains(key))) {
-        // del self.items[key]
         ::tpy::__delitem__(this->items, key);
     }
-    // item = Item(color)
     Item item = Item(color);
-    // self.items[key] = copy(item)
     ::tpy::__setitem__(this->items, key, Item(item));
 }
 void __tpy_init();

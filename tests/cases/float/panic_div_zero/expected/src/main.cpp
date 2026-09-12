@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // # Float true division by zero panics (matches Python's ZeroDivisionError)
 // def main() -> None:
+//     x: float = 10.0
+//     y: float = 0.0
+//     z: float = x / y
+//     print(z)
 void main() {
-    // x: float = 10.0
     double x = 10.0;
-    // y: float = 0.0
     double y = 0.0;
-    // z: float = x / y
     double z = (::tpy::truediv(x, y));
-    // print(z)
     std::cout << ::tpy::print_float(z) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

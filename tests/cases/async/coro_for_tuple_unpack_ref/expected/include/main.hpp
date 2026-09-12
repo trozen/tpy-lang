@@ -17,7 +17,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_total;
 struct __coro_driver;
 
+// async def total(pairs: list[tuple[Item, Item]]) -> int32:
 __coro_total total(std::vector<std::tuple<Item, Item>>& pairs);
+// async def driver() -> None:
 __coro_driver driver();
 
 // class Item:
@@ -36,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
-// Async coroutine: total
+// async def total(pairs: list[tuple[Item, Item]]) -> int32:
 struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
@@ -63,7 +65,7 @@ struct __coro_total {
     }
 };
 
-// Async coroutine: driver
+// async def driver() -> None:
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -90,6 +92,7 @@ struct __coro_driver {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,11 +5,15 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(prog="prog")
+//     sub = parser.add_subparsers(dest="cmd")
+//     show = sub.add_parser("show")
+//     set_p = sub.add_parser("set")
+//     args = parser.parse_args(["unknown"])
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["unknown"])
     std::vector<std::string> __tmp_1 = {"unknown"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // return 0
     return 0;
 }
 
@@ -77,16 +81,17 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(__tpy_argparse_cmd);
 }
 
+// # Runtime panic: positional token doesn't match any registered
+// # sub-parser name. Parser emits "invalid choice" + exits with 2.
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // # Runtime panic: positional token doesn't match any registered
-    // # sub-parser name. Parser emits "invalid choice" + exits with 2.
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

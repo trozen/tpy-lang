@@ -14,6 +14,7 @@ template<typename T> struct WithHeapStorage;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class WithArray[T, N: int]:
@@ -23,6 +24,7 @@ struct WithArray {
     std::array<T, N> data;
 
     // def __init__(self):
+    //     self.data = Array()  # tpyc: ok -- infer Array[T, N]
     WithArray() : data(std::array<T, N>()) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithArray";
 };
@@ -40,6 +42,7 @@ struct WithList {
     std::vector<T> items;
 
     // def __init__(self):
+    //     self.items = list()  # tpyc: ok -- infer list[T]
     WithList() : items(std::vector<T>()) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithList";
 };
@@ -57,6 +60,7 @@ struct WithDict {
     ::tpy::ordered_map<K, V> data;
 
     // def __init__(self):
+    //     self.data = dict()  # tpyc: ok -- infer dict[K, V]
     WithDict() : data(::tpy::ordered_map<K, V>()) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithDict";
 };
@@ -75,8 +79,9 @@ struct WithHeapStorage {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T]):
+    //     self._storage = UninitHeapStorage(1)  # tpyc: ok -- infer UninitHeapStorage[T]
+    //     self._storage.init0(val)
     explicit WithHeapStorage(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-        // self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }
     // non-copyable (field '_storage')
@@ -94,15 +99,15 @@ struct WithHeapStorage {
     }
 
     // def __del__(self):
+    //     self._storage.drop0()
     ~WithHeapStorage() {
         if (!this->__tpy_owned_) return;
-        // self._storage.drop0()
         this->_storage.drop0();
     }
 
     // def get(self) -> T:
+    //     return self._storage.load0()
     ::tpy::val_or_cref_t<T> get() const {
-        // return self._storage.load0()
         return this->_storage.load0();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithHeapStorage";

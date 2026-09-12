@@ -14,9 +14,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_walk;
 
+// def value_of(n: Node | None) -> int32:
 int32_t value_of(const Node* n);
+// def pick(c: bool) -> int32:
 int32_t pick(bool c);
+// def walk(nodes: list[Node], flag: bool) -> Iterator[int32]:
 __gen_walk walk(std::vector<Node>& nodes, bool flag);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -51,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: walk
+// def walk(nodes: list[Node], flag: bool) -> Iterator[int32]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     int32_t __state;
     std::vector<Node>& nodes;
@@ -80,9 +84,11 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.opt = Node(v)
 inline Holder::Holder(int32_t v) : opt(Node(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

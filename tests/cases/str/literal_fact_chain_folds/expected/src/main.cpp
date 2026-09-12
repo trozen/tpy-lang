@@ -5,30 +5,29 @@ namespace tpyapp::main {
 
 
 // def f(mode: Literal["r", "rb"]) -> None:
+//     if mode == "rb":
+//         # Both legs are already decided by the branch fact.
+//         b = mode == "rb" or mode == "r"
+//         print(b)
 void f(std::string_view mode) {
-    // if mode == "rb":
     if ((mode == "rb")) {
-        // # Both legs are already decided by the branch fact.
-        // b = mode == "rb" or mode == "r"
         bool b = true;
-        // print(b)
         std::cout << ::tpy::print_bool(b) << "\n";
     }
-    // # Both legs are already decided by the branch fact.
 }
 
 // def main() -> None:
+//     f("rb")
 void main() {
-    // f("rb")
     f("rb");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

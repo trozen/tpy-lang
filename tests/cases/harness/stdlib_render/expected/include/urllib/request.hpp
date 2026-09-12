@@ -32,10 +32,18 @@ using ::tpystd::http::client::_Connection;
 struct URLError;
 
 inline constexpr std::string_view __name__ = "urllib.request";
+// HTTP_PORT: Final[int32] = 80
 inline constexpr int32_t HTTP_PORT = 80;
+// HTTPS_PORT: Final[int32] = 443
 inline constexpr int32_t HTTPS_PORT = 443;
 
+// def urlopen(url: str, data: bytes | None = None,
+//             timeout: float | None = None,
+//             context: ssl.SSLContext | None = None) -> Own[HTTPResponse]:
 ::tpystd::http::client::HTTPResponse urlopen(std::string_view url, std::optional<::tpy::BytesView> data = std::nullopt, std::optional<double> timeout = std::nullopt, const ::tpystd::ssl::SSLContext* context = nullptr);
+// def _urlopen(url: str, data: bytes | None, timeout: float | None,
+//              context: ssl.SSLContext | None,
+//              injected: Own[Box[_Connection]] | None) -> Own[HTTPResponse]:
 ::tpystd::http::client::HTTPResponse _urlopen(std::string_view url, std::optional<::tpy::BytesView> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context, std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> injected);
 
 // # Subclasses OSError like CPython's URLError, so `except OSError` catches it.
@@ -58,6 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const URLError& obj) {
 
 
 // def __init__(self, reason: String = "") -> None:
+//     super().__init__(reason)
 inline URLError::URLError(const ::tpy::String& reason) : ::tpy::OSError(reason) {}
 void __tpy_init();
 } // namespace tpystd::urllib::request

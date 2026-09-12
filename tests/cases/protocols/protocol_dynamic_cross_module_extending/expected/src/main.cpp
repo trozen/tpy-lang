@@ -5,50 +5,51 @@ namespace tpyapp::main {
 
 
 // def greet_pet(pet: Pet) -> None:
+//     print(pet.speak())
 void greet_pet(::tpyapp::pet::Pet& pet) {
-    // print(pet.speak())
     std::cout << pet.speak() << "\n";
 }
 
 // def greet_named(pet: NamedPet) -> None:
+//     print(pet.name())
 void greet_named(NamedPet& pet) {
-    // print(pet.name())
     std::cout << pet.name() << "\n";
 }
 
 // def main() -> None:
+//     dog = Dog()
+//     greet_pet(dog)           # Dog -> Base_NamedPet -> Base_Pet (transitive cross-module upcast)
+//     greet_named(dog)         # Dog -> Base_NamedPet (direct)
+//     np: NamedPet = Dog()
+//     greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent, cross-module)
+//     greet_named(Parrot())    # Structural -> Adapter_NamedPet
+//     parrot_np: NamedPet = Parrot()
+//     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, cross-module upcast)
 void main() {
-    // dog = Dog()
     Dog dog = Dog();
-    // greet_pet(dog)           # Dog -> Base_NamedPet -> Base_Pet (transitive cross-module upcast)
     greet_pet(dog);
-    // greet_named(dog)         # Dog -> Base_NamedPet (direct)
     greet_named(dog);
-    // np: NamedPet = Dog()
     Dog __slot_1{Dog()};
     NamedPet* np = &__slot_1;
-    // greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent, cross-module)
     greet_pet((*np));
-    // greet_named(Parrot())    # Structural -> Adapter_NamedPet
     ::tpy::Adapter<NamedPet, Parrot> __tmp_1{Parrot()};
     greet_named(__tmp_1);
-    // parrot_np: NamedPet = Parrot()
     ::tpy::Adapter<NamedPet, Parrot> __slot_2{Parrot()};
     NamedPet* parrot_np = &__slot_2;
-    // greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, cross-module upcast)
     greet_pet((*parrot_np));
 }
 
+// # Cross-module @dynamic extending @dynamic: child protocol imports and extends parent from another module.
+// # Tests that NamedPet base class inherits from the qualified ::tpyapp::pet::Pet.
+// from pet import Pet
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cross-module @dynamic extending @dynamic: child protocol imports and extends parent from another module.
-    // # Tests that NamedPet base class inherits from the qualified ::tpyapp::pet::Pet.
-    // from pet import Pet
     ::tpyapp::pet::__tpy_init();
-    // main()
     main();
 }
 

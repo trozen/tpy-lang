@@ -12,9 +12,13 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_field_narrowing() -> None:
 void test_field_narrowing();
+// def test_nested_field() -> None:
 void test_nested_field();
+// def test_alias() -> None:
 void test_alias();
+// def test_method_call() -> None:
 void test_method_call();
 
 // class Node:
@@ -53,15 +57,17 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Node::Node(int32_t v) : val(v) {}
 
 // def doubled(self) -> int32:
+//     return self.val * 2
 inline int32_t Node::doubled() const {
-    // return self.val * 2
     return (::tpy::mul_check<int32_t>(this->val, 2));
 }
 
 // def __init__(self) -> None:
+//     self._node = None
 inline Wrapper::Wrapper() : _node(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

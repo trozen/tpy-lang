@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Out-of-bounds bytes index panics at runtime
 // def main() -> None:
+//     data = b"abc"
+//     print(data[10])
 void main() {
-    // data = b"abc"
     ::tpy::BytesView data = ::tpy::bytes_literal("abc", 3);
-    // print(data[10])
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 10)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

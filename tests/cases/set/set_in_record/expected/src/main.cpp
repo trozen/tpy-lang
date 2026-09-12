@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     item = TaggedItem("apple", {"fruit", "red"})
+//     print(len(item.tags))
+//     print("fruit" in item.tags)
+//     item.tags.add("sweet")
+//     print(len(item.tags))
+//     print("sweet" in item.tags)
 void main() {
-    // item = TaggedItem("apple", {"fruit", "red"})
     TaggedItem item = TaggedItem("apple", ::tpy::ordered_set<std::string>({"fruit", "red"}));
-    // print(len(item.tags))
     std::cout << ::tpy::__len__(item.tags) << "\n";
-    // print("fruit" in item.tags)
     std::cout << ::tpy::print_bool((item.tags.contains("fruit"))) << "\n";
-    // item.tags.add("sweet")
     item.tags.insert("sweet");
-    // print(len(item.tags))
     std::cout << ::tpy::__len__(item.tags) << "\n";
-    // print("sweet" in item.tags)
     std::cout << ::tpy::print_bool((item.tags.contains("sweet"))) << "\n";
 }
 
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

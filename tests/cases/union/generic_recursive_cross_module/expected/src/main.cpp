@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t: Tree[int] = [1, [2, 3], 4]
+//     print(leaf_count(t))
+//     leaf: Tree[int] = 7
+//     print(leaf_count(leaf))
 void main() {
-    // t: Tree[int] = [1, [2, 3], 4]
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};
-    // print(leaf_count(t))
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(t) << "\n";
-    // leaf: Tree[int] = 7
     ::tpyapp::treelib::Tree<::tpy::BigInt> leaf = 7;
-    // print(leaf_count(leaf))
     std::cout << ::tpyapp::treelib::leaf_count<::tpy::BigInt>(leaf) << "\n";
 }
 
+// # A generic recursive alias (and a traversal over it) defined in treelib,
+// # used from main: the wrapper template is emitted in the defining module's
+// # header and instantiated cross-module. Construct a value here and dispatch
+// # through the imported function.
+// from treelib import Tree, leaf_count
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A generic recursive alias (and a traversal over it) defined in treelib,
-    // # used from main: the wrapper template is emitted in the defining module's
-    // # header and instantiated cross-module. Construct a value here and dispatch
-    // # through the imported function.
-    // from treelib import Tree, leaf_count
     ::tpyapp::treelib::__tpy_init();
-    // main()
     main();
 }
 

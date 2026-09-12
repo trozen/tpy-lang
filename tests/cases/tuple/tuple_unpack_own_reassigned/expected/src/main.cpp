@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def make_pair() -> tuple[Own[Counter], Own[Counter]]:
+//     return (Counter(1), Counter(2))
 std::tuple<Counter, Counter> make_pair() {
-    // return (Counter(1), Counter(2))
     return std::tuple<Counter, Counter>{Counter(1), Counter(2)};
 }
 
 // def make_one() -> Own[Counter]:
+//     return Counter(9)
 Counter make_one() {
-    // return Counter(9)
     return Counter(9);
 }
 
 // def main() -> None:
+//     a, b = make_pair()
+//     a = make_one()
+//     print(a.n)
+//     print(b.n)
 void main() {
-    // a, b = make_pair()
     auto __tup_1 = make_pair();
     Counter a = std::move(std::get<0>(__tup_1));
     Counter b = std::move(std::get<1>(__tup_1));
-    // a = make_one()
     a = make_one();
-    // print(a.n)
     std::cout << a.n << "\n";
-    // print(b.n)
     std::cout << b.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

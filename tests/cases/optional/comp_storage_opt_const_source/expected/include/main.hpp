@@ -11,10 +11,15 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def peek(p: P | None) -> int32:
 int32_t peek(const P* p);
+// def from_readonly(items: readonly[list[P | None]]) -> None:
 void from_readonly(const std::vector<std::optional<P>>& items);
+// def from_inferred(items: list[P | None]) -> None:
 void from_inferred(const std::vector<std::optional<P>>& items);
+// def from_local() -> None:
 void from_local();
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -41,6 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

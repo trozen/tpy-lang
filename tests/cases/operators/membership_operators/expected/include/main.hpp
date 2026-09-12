@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_list_membership() -> None:
 void test_list_membership();
+// def test_array_membership() -> None:
 void test_array_membership();
+// def check_span_contains(data: Span[int32], value: int32) -> bool:
 bool check_span_contains(std::span<int32_t> data, int32_t value);
+// def test_span_membership() -> None:
 void test_span_membership();
+// def test_string_membership() -> None:
 void test_string_membership();
+// def test_membership_in_conditions() -> None:
 void test_membership_in_conditions();
+// def test_membership_with_variables() -> None:
 void test_membership_with_variables();
 
 void __tpy_init();

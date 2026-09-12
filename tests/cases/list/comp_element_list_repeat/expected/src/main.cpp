@@ -5,10 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n = 3
+//     rows: list[list[float]] = [([0.0] * n) for _ in range(2)]  # tpyc: ok
+//     rows[0][0] = 1.0
+//     print(len(rows), len(rows[0]), rows[0][0], rows[1][0])
+//     # The dict-VALUE twin of the same element slot.
+//     table: dict[int32, list[int32]] = {i: ([0] * 2) for i in range(2)}  # tpyc: ok
+//     table[0][1] = 5
+//     print(len(table), len(table[0]), table[0][1], table[1][1])
 void main() {
-    // n = 3
     int32_t n = 3;
-    // rows: list[list[float]] = [([0.0] * n) for _ in range(2)]  # tpyc: ok
     std::vector<std::vector<double>> rows = ({
         std::vector<std::vector<double>> __result;
         const int32_t __stop_0 = 2;
@@ -18,12 +24,8 @@ void main() {
         }
         std::move(__result);
     });
-    // rows[0][0] = 1.0
     ::tpy::__setitem__(::tpy::__getitem__(rows, 0), 0, 1.0);
-    // print(len(rows), len(rows[0]), rows[0][0], rows[1][0])
     std::cout << ::tpy::__len__(rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 1), 0)) << "\n";
-    // # The dict-VALUE twin of the same element slot.
-    // table: dict[int32, list[int32]] = {i: ([0] * 2) for i in range(2)}  # tpyc: ok
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> table = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
         const int32_t __stop_1 = 2;
@@ -32,18 +34,16 @@ void main() {
         }
         std::move(__result);
     });
-    // table[0][1] = 5
     ::tpy::__setitem__(::tpy::__getitem__(table, 0), 1, 5);
-    // print(len(table), len(table[0]), table[0][1], table[1][1])
     std::cout << ::tpy::__len__(table) << " " << ::tpy::__len__(::tpy::__getitem__(table, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 0), 1) << " " << ::tpy::__getitem__(::tpy::__getitem__(table, 1), 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

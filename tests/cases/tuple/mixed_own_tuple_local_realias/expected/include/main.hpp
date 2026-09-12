@@ -12,8 +12,11 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
 std::tuple<Box, Box*> make_mixed(Box& b);
+// def realias(h: Holder, b: Box) -> None:
 void realias(Holder& h, Box& b);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -50,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Box::Box(int32_t val) : val(val) {}
 
 // def __init__(self, b: Box) -> None:
+//     self.pair = (copy(b), copy(b))
 inline Holder::Holder(const Box& b) : pair(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(b), Box(b)})) {}
 void __tpy_init();
 } // namespace tpyapp::main

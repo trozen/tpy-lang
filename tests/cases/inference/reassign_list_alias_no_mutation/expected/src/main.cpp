@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 // # List alias without mutation stays Array
 // def main() -> None:
+//     a = [1, 2, 3]  # tpyc: type(/Array/)
+//     b = a           # tpyc: type(/Array/)
+//     print(len(b))
 void main() {
-    // a = [1, 2, 3]  # tpyc: type(/Array/)
     std::array<int32_t, 3> a = {1, 2, 3};
-    // b = a           # tpyc: type(/Array/)
     std::array<int32_t, 3> b = std::move(a);
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

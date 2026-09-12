@@ -11,8 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(a: Point, b: Point, c: bool) -> Own[Point]:
 Point pick(Point& a, Point& b, bool c);
+// def pick_copy(a: Point, b: Point, c: bool) -> Own[Point]:
 Point pick_copy(Point& a, Point& b, bool c);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -36,13 +39,14 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def updated(self) -> 'Point':
+//     self.x += 1
+//     return self
 inline Point& Point::updated() {
-    // self.x += 1
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
-    // return self
     return (*this);
 }
 void __tpy_init();

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def clamp_positive(x: int32 | None) -> int32:
+//     assert x is not None and x > 0, "need positive"
+//     return x + 1
 int32_t clamp_positive(std::optional<int32_t> x) {
-    // assert x is not None and x > 0, "need positive"
     if (!(((x.has_value()) && ((*x) > 0)))) ::tpy::raise_assertion_error("need positive");
-    // return x + 1
     return (::tpy::add_check<int32_t>((*x), 1));
 }
 
+// print(clamp_positive(5))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(clamp_positive(5))
     std::cout << clamp_positive(5) << "\n";
 }
 

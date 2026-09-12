@@ -5,73 +5,78 @@ namespace tpyapp::main {
 
 
 // def fresh() -> Own[Array[int32, 3]]:
+//     return [7, 8, 9]                          # the Own[Array] storage return slot
 std::array<int32_t, 3> fresh() {
-    // return [7, 8, 9]                          # the Own[Array] storage return slot
     return {7, 8, 9};
 }
 
 // def first_or_none(g: Grid, want: bool) -> Array[int32, 3] | None:
+//     if want:
+//         return g.cells                        # the Optional[Array] borrow return
+//     return None
 std::array<int32_t, 3>* first_or_none(Grid& g, bool want) {
-    // if want:
     if (want) {
-        // return g.cells                        # the Optional[Array] borrow return
         return &(g.cells);
     }
-    // return None
     return nullptr;
 }
 
 // def main() -> None:
+//     a = Grid()
+//     b = Grid()
+//     print(a.same_cells(b))
+//     b.cells[0] = 99
+//     print(a.same_cells(b))
+//     print(a.spare_total())
+//
+//     made = fresh()
+//     print(made[0], made[2])
+//
+//     got = first_or_none(a, True)              # an Optional[Array] local slot
+//     if got is not None:
+//         got[1] = 42                           # mutation through the borrow ...
+//     print(a.cells[1])                         # ... is visible on the source
+//     print(first_or_none(a, False) is None)
+//
+//     xs: Array[int32, 3] = [5, 6, 7]
+//     al = ArrayList[int32, 8](xs)              # an Array NAME at a protocol slot
+//     print(al[0], len(al))
+//
+//     ba = bytearray(b"abc")                    # ... and the bytearray leg
+//     bl = ArrayList[uint8, 8](ba)
+//     print(bl[0], len(bl))
 void main() {
-    // a = Grid()
     Grid a = Grid();
-    // b = Grid()
     Grid b = Grid();
-    // print(a.same_cells(b))
     std::cout << ::tpy::print_bool(a.same_cells(b)) << "\n";
-    // b.cells[0] = 99
     ::tpy::__setitem__(b.cells, 0, 99);
-    // print(a.same_cells(b))
     std::cout << ::tpy::print_bool(a.same_cells(b)) << "\n";
-    // print(a.spare_total())
     std::cout << a.spare_total() << "\n";
-    // made = fresh()
     std::array<int32_t, 3> made = fresh();
-    // print(made[0], made[2])
     std::cout << ::tpy::__getitem__(made, 0) << " " << ::tpy::__getitem__(made, 2) << "\n";
-    // got = first_or_none(a, True)              # an Optional[Array] local slot
     std::array<int32_t, 3>* got = first_or_none(a, true);
-    // if got is not None:
     if ((got != nullptr)) {
-        // got[1] = 42                           # mutation through the borrow ...
         ::tpy::__setitem__((*got), 1, 42);
     }
-    // print(a.cells[1])                         # ... is visible on the source
     std::cout << ::tpy::__getitem__(a.cells, 1) << "\n";
-    // print(first_or_none(a, False) is None)
     std::cout << ::tpy::print_bool((first_or_none(a, false) == nullptr)) << "\n";
-    // xs: Array[int32, 3] = [5, 6, 7]
     std::array<int32_t, 3> xs = {5, 6, 7};
-    // al = ArrayList[int32, 8](xs)              # an Array NAME at a protocol slot
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(xs));
-    // print(al[0], len(al))
     std::cout << al[0] << " " << ::tpy::__len__(al) << "\n";
-    // ba = bytearray(b"abc")                    # ... and the bytearray leg
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    // bl = ArrayList[uint8, 8](ba)
     ::tpystd::tplib::array_list::ArrayList<uint8_t, 8> bl = ::tpystd::tplib::array_list::ArrayList<uint8_t, 8>(&(ba));
-    // print(bl[0], len(bl))
     std::cout << static_cast<int>(bl[0]) << " " << ::tpy::__len__(bl) << "\n";
 }
 
+// from tplib import ArrayList
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

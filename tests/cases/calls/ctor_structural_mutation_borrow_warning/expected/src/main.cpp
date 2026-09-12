@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def first(xs: list[Box]) -> Box:
+//     return xs[0]
 Box& first(std::vector<Box>& xs) {
-    // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
 // def main() -> None:
+//     items = [Box(int32(1)), Box(int32(2))]
+//     head = first(items)  # element borrow into items
+//     print(head.v)
+//     _ = Sink(items)  # tpyc: warning(/borrowed container/)
 void main() {
-    // items = [Box(int32(1)), Box(int32(2))]
     std::vector<Box> items = {Box(1), Box(2)};
-    // head = first(items)  # element borrow into items
     Box& head = first(items);
-    // print(head.v)
     std::cout << head.v << "\n";
-    // _ = Sink(items)  # tpyc: warning(/borrowed container/)
     Sink _ = Sink(items);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

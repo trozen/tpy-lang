@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ret_i32() -> int32:
 int32_t ret_i32();
+// def main() -> None:
 void main();
 
 void __tpy_init();

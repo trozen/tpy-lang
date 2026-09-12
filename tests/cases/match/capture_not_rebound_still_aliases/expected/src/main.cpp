@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[Holder]:
+//     return Holder(Inner(1))
 Holder make() {
-    // return Holder(Inner(1))
     return Holder(Inner(::tpy::BigInt(1)));
 }
 
 // def main() -> None:
+//     h = make()
+//     match h:
+//         case Holder(inner=q):
+//             q.n = 42       # mutate through the (non-rebound) aliasing capture
+//     print(h.inner.n)       # 42 -- proves the capture aliased, was not copied
 void main() {
-    // h = make()
     Holder h = make();
-    // match h:
     Inner* q;
     auto& __match_subject_1 = h;
-    // case Holder(inner=q):
     {
         q = &(__match_subject_1.inner);
-        // q.n = 42       # mutate through the (non-rebound) aliasing capture
         q->n = ::tpy::BigInt(42);
     }
-    // print(h.inner.n)       # 42 -- proves the capture aliased, was not copied
     std::cout << h.inner.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

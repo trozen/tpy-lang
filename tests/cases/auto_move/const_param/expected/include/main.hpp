@@ -11,14 +11,23 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_point(p: Point) -> int32:
 int32_t read_point(const Point& p);
+// def mutate_point(p: Point) -> None:
 void mutate_point(Point& p);
+// def get_ptr(p: Point) -> Ptr[Point]:
 Point* get_ptr(Point& p);
+// def get_elem_ptr(items: list[Point], i: int32) -> Ptr[Point]:
 Point* get_elem_ptr(std::vector<Point>& items, int32_t i);
+// def to_optional(p: Point) -> Optional[Point]:
 Point* to_optional(Point& p);
+// def sum_list(items: list[int32]) -> int32:
 int32_t sum_list(const std::vector<int32_t>& items);
+// def append_item(items: list[int32], v: int32) -> None:
 void append_item(std::vector<int32_t>& items, int32_t v);
+// def append_wrapper(items: list[int32], v: int32) -> None:
 void append_wrapper(std::vector<int32_t>& items, int32_t v);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -41,6 +50,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

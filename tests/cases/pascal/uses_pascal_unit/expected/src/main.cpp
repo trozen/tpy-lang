@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
+// writeln(square(5));
+// writeln(cube(3));
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::MyMath::__tpy_init();
-    // writeln(square(5));
     std::cout << ::tpyapp::MyMath::square(5) << "\n";
-    // writeln(cube(3));
     std::cout << ::tpyapp::MyMath::cube(3) << "\n";
 }
 

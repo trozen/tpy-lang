@@ -5,72 +5,72 @@ namespace tpyapp::main {
 
 
 // def test_borrow_via_property() -> None:
+//     c = Container()
+//     v = c.items
+//     c._items = [4, 5, 6]  # tpyc: warning(/Mutation of 'c' while borrowed/)
+//     print(v)
 void test_borrow_via_property() {
-    // c = Container()
     Container c = Container();
-    // v = c.items
     std::vector<int32_t>& v = c.items();
-    // c._items = [4, 5, 6]  # tpyc: warning(/Mutation of 'c' while borrowed/)
     c._items = {4, 5, 6};
-    // print(v)
     std::cout << ::tpy::ListPrinter(v) << "\n";
 }
 
 // def test_iter_via_property() -> None:
+//     c = Container()
+//     for x in c.items:
+//         c._items = [7, 8, 9]  # tpyc: warning(/Mutation of 'c' while borrowed/)
+//         print(x)
+//         break
 void test_iter_via_property() {
-    // c = Container()
     Container c = Container();
-    // for x in c.items:
     auto& __obj_0 = c.items();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // c._items = [7, 8, 9]  # tpyc: warning(/Mutation of 'c' while borrowed/)
         c._items = {7, 8, 9};
-        // print(x)
         std::cout << x << "\n";
-        // break
         break;
     }
 }
 
 // def test_setter_invalidates_borrow() -> None:
+//     c = Container()
+//     v = c.items
+//     c.items = [10, 11, 12]  # tpyc: warning(/Mutation of 'c' while borrowed/)
+//     print(v)
 void test_setter_invalidates_borrow() {
-    // c = Container()
     Container c = Container();
-    // v = c.items
     std::vector<int32_t>& v = c.items();
-    // c.items = [10, 11, 12]  # tpyc: warning(/Mutation of 'c' while borrowed/)
     c.set_items({10, 11, 12});
-    // print(v)
     std::cout << ::tpy::ListPrinter(v) << "\n";
 }
 
 // def test_value_type_no_warn() -> None:
+//     c = Container()
+//     v = c.items[0]  # tpyc: ok
+//     c._items = [99]  # tpyc: ok
+//     print(v)
 void test_value_type_no_warn() {
-    // c = Container()
     Container c = Container();
-    // v = c.items[0]  # tpyc: ok
     int32_t v = ::tpy::__getitem__(c.items(), 0);
-    // c._items = [99]  # tpyc: ok
     c._items = {99};
-    // print(v)
     std::cout << v << "\n";
 }
 
+// test_borrow_via_property()
+// test_iter_via_property()
+// test_setter_invalidates_borrow()
+// test_value_type_no_warn()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_borrow_via_property()
     test_borrow_via_property();
-    // test_iter_via_property()
     test_iter_via_property();
-    // test_setter_invalidates_borrow()
     test_setter_invalidates_borrow();
-    // test_value_type_no_warn()
     test_value_type_no_warn();
 }
 

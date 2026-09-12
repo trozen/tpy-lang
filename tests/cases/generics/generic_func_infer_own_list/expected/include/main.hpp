@@ -11,12 +11,16 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first_val[T](items: Own[list[T]]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items);
+// def consume_list[T](items: Own[list[T]]) -> None:
 template<typename T>
 void consume_list(std::vector<T>&& items);
+// def consume_both[T](a: Own[T], b: Own[T]) -> None:
 template<typename T>
 void consume_both(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b);
+// def main():
 void main();
 
 // class Point:
@@ -35,20 +39,20 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 // def first_val[T](items: Own[list[T]]) -> T:
+//     return items[0]
 template<typename T>
 ::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items) {
-    // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 // def consume_list[T](items: Own[list[T]]) -> None:
+//     pass
 template<typename T>
 void consume_list(std::vector<T>&& items) {
-    // pass
 }
 // def consume_both[T](a: Own[T], b: Own[T]) -> None:
+//     pass
 template<typename T>
 void consume_both(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b) {
-    // pass
 }
 
 void __tpy_init();

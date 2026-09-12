@@ -5,8 +5,8 @@ namespace tpyapp::helpers {
 
 
 // def mutate() -> None:
+//     return
 void mutate() {
-    // return
     return;
 }
 

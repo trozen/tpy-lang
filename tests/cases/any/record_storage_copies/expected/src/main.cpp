@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(1)
+//     a: Any = copy(c)
+//     c.n = 99
+//     if isinstance(a, Counter):
+//         print("a.n =", a.n)   # 1 in TPy, 99 in CPython
+//     print("c.n =", c.n)        # 99 in both
 void main() {
-    // c = Counter(1)
     Counter c = Counter(::tpy::BigInt(1));
-    // a: Any = copy(c)
     ::tpy::Any a = ::tpy::make_any(c);
-    // c.n = 99
     c.n = ::tpy::BigInt(99);
-    // if isinstance(a, Counter):
     if ((a.value.has_value() && a.value.type() == typeid(Counter))) {
         const Counter& __a = std::any_cast<const Counter&>(a.value);
-        // print("a.n =", a.n)   # 1 in TPy, 99 in CPython
         std::cout << "a.n =" << " " << __a.n << "\n";
     }
-    // print("c.n =", c.n)        # 99 in both
     std::cout << "c.n =" << " " << c.n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

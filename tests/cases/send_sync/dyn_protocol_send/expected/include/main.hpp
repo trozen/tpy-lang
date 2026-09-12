@@ -30,9 +30,13 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(p: Send[Pet]) -> None:
 void greet(Pet& p);
+// def greet_bare(p: Pet) -> None:
 void greet_bare(Pet& p);
+// def consume(p: Send[Own[Pet]]) -> None:  # tpyc: warning(/never consumed/)
 void consume(std::unique_ptr<Pet> p);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -75,11 +79,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Dog::Dog(int32_t n) : n(n) {}
 
 // def speak(self) -> int32:
+//     return self.n
 inline int32_t Dog::speak() const {
-    // return self.n
     return this->n;
 }
 void __tpy_init();

@@ -12,8 +12,11 @@ struct Banana;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first(items: list[int32]) -> int32:
 int32_t first(const std::vector<int32_t>& items);
+// def take(f: Apple | Banana) -> None:
 void take(::tpy::Union<const Apple*, const Banana*> f);
+// def main() -> None:
 void main();
 
 // class Apple:
@@ -44,13 +47,13 @@ inline std::ostream& operator<<(std::ostream& os, const Banana& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline Apple::Apple() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     pass
 inline Banana::Banana() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

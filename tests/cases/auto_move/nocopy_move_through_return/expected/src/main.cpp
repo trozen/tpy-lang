@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def transfer() -> Own[Handle]:
+//     h = Handle(10)
+//     alias = h
+//     return alias
 Handle transfer() {
-    // h = Handle(10)
     Handle h = Handle(10);
-    // alias = h
     Handle alias = std::move(h);
-    // return alias
     return alias;
 }
 
 // def main():
+//     r = transfer()
+//     print(r.fd)
 void main() {
-    // r = transfer()
     Handle r = transfer();
-    // print(r.fd)
     std::cout << r.fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

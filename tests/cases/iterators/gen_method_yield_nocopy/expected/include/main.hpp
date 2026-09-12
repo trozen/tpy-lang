@@ -12,6 +12,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -50,6 +51,8 @@ struct Box {
     Box& operator=(Box&&) = default;
 
     // def each(self) -> Iterator[Handle]:  # tpyc: ok
+    //     for h in self.items:
+    //         yield h
     auto each() {
         return ::tpy::make_generator<::tpy::val_or_ref<Handle>>(
             [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<::tpy::val_or_ref<Handle>> {
@@ -73,9 +76,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, fd: int32) -> None:
+//     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 
 // def __init__(self) -> None:
+//     self.items = [Handle(1), Handle(2)]
 inline Box::Box() : items(::tpy::make_vector<Handle>(Handle(1), Handle(2))) {}
 void __tpy_init();
 } // namespace tpyapp::main

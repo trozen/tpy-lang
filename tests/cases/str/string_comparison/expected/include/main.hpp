@@ -9,13 +9,21 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_equality() -> None:
 void test_equality();
+// def test_ordering() -> None:
 void test_ordering();
+// def test_empty_strings() -> None:
 void test_empty_strings();
+// def strings_equal(s1: str, s2: str) -> bool:
 bool strings_equal(std::string_view s1, std::string_view s2);
+// def test_comparison_in_function() -> None:
 void test_comparison_in_function();
+// def test_comparison_with_literals() -> None:
 void test_comparison_with_literals();
+// def find_string(items: list[str], target: str) -> int32:
 int32_t find_string(const std::vector<std::string>& items, std::string_view target);
+// def test_comparison_in_loop() -> None:
 void test_comparison_in_loop();
 
 void __tpy_init();

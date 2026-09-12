@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def f(h: Holder, h2: Holder) -> int:
+//     t: tuple[int, Box] = h.pair  # tpyc: ok
+//     t = h2.pair
+//     return t[1].val
 ::tpy::BigInt f(const Holder& h, const Holder& h2) {
-    // t: tuple[int, Box] = h.pair  # tpyc: ok
     std::tuple<::tpy::BigInt, const Box*> t = ::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, const Box*>>(h.pair);
-    // t = h2.pair
     t = ::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, const Box*>>(h2.pair);
-    // return t[1].val
     return std::get<1>(t)->val;
 }
 
 // def main() -> None:
+//     print(f(Holder(Box(5)), Holder(Box(7))))
 void main() {
-    // print(f(Holder(Box(5)), Holder(Box(7))))
     Holder __tmp_1 = Holder(Box(::tpy::BigInt(5)));
     Holder __tmp_2 = Holder(Box(::tpy::BigInt(7)));
     std::cout << f(__tmp_1, __tmp_2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

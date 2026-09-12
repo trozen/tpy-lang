@@ -5,150 +5,167 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Float true-division.
+//     try:
+//         a: float = 10.0
+//         b: float = 0.0
+//         print(a / b)
+//     except ZeroDivisionError:
+//         print("caught: float /")
+//
+//     # Float floor division.
+//     try:
+//         c: float = 10.0
+//         d: float = 0.0
+//         print(c // d)
+//     except ZeroDivisionError:
+//         print("caught: float //")
+//
+//     # Float modulo.
+//     try:
+//         e: float = 10.0
+//         f: float = 0.0
+//         print(e % f)
+//     except ZeroDivisionError:
+//         print("caught: float %")
+//
+//     # Fixed-int floor division.
+//     try:
+//         g: int32 = int32(10)
+//         h: int32 = int32(0)
+//         print(g // h)
+//     except ZeroDivisionError:
+//         print("caught: int //")
+//
+//     # Fixed-int modulo.
+//     try:
+//         i: int32 = int32(10)
+//         j: int32 = int32(0)
+//         print(i % j)
+//     except ZeroDivisionError:
+//         print("caught: int %")
+//
+//     # BigInt floor division.
+//     try:
+//         k: int = 10
+//         m: int = 0
+//         print(k // m)
+//     except ZeroDivisionError:
+//         print("caught: bigint //")
+//
+//     # BigInt modulo.
+//     try:
+//         n: int = 10
+//         o: int = 0
+//         print(n % o)
+//     except ZeroDivisionError:
+//         print("caught: bigint %")
+//
+//     # divmod on fixed-int.
+//     try:
+//         p: int32 = int32(10)
+//         q: int32 = int32(0)
+//         print(divmod(p, q))
+//     except ZeroDivisionError:
+//         print("caught: int divmod")
+//
+//     # divmod on float.
+//     try:
+//         r: float = 10.0
+//         s: float = 0.0
+//         print(divmod(r, s))
+//     except ZeroDivisionError:
+//         print("caught: float divmod")
 void main() {
-    // # Float true-division.
-    // try:
     {
         try {
-            // a: float = 10.0
             double a = 10.0;
-            // b: float = 0.0
             double b = 0.0;
-            // print(a / b)
             std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: float /")
             std::cout << "caught: float /" << "\n";
         }
     }
-    // # Float floor division.
-    // try:
     {
         try {
-            // c: float = 10.0
             double c = 10.0;
-            // d: float = 0.0
             double d = 0.0;
-            // print(c // d)
             std::cout << ::tpy::print_float((::tpy::floordiv(c, d))) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: float //")
             std::cout << "caught: float //" << "\n";
         }
     }
-    // # Float modulo.
-    // try:
     {
         try {
-            // e: float = 10.0
             double e = 10.0;
-            // f: float = 0.0
             double f = 0.0;
-            // print(e % f)
             std::cout << ::tpy::print_float((::tpy::fmod(e, f))) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: float %")
             std::cout << "caught: float %" << "\n";
         }
     }
-    // # Fixed-int floor division.
-    // try:
     {
         try {
-            // g: int32 = int32(10)
             int32_t g = 10;
-            // h: int32 = int32(0)
             int32_t h = 0;
-            // print(g // h)
             std::cout << (::tpy::div_check<int32_t>(g, h)) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: int //")
             std::cout << "caught: int //" << "\n";
         }
     }
-    // # Fixed-int modulo.
-    // try:
     {
         try {
-            // i: int32 = int32(10)
             int32_t i = 10;
-            // j: int32 = int32(0)
             int32_t j = 0;
-            // print(i % j)
             std::cout << (::tpy::mod_check<int32_t>(i, j)) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: int %")
             std::cout << "caught: int %" << "\n";
         }
     }
-    // # BigInt floor division.
-    // try:
     {
         try {
-            // k: int = 10
             ::tpy::BigInt k = ::tpy::BigInt(10);
-            // m: int = 0
             ::tpy::BigInt m = ::tpy::BigInt(0);
-            // print(k // m)
             std::cout << ((k) / (m)) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: bigint //")
             std::cout << "caught: bigint //" << "\n";
         }
     }
-    // # BigInt modulo.
-    // try:
     {
         try {
-            // n: int = 10
             ::tpy::BigInt n = ::tpy::BigInt(10);
-            // o: int = 0
             ::tpy::BigInt o = ::tpy::BigInt(0);
-            // print(n % o)
             std::cout << ((n) % (o)) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: bigint %")
             std::cout << "caught: bigint %" << "\n";
         }
     }
-    // # divmod on fixed-int.
-    // try:
     {
         try {
-            // p: int32 = int32(10)
             int32_t p = 10;
-            // q: int32 = int32(0)
             int32_t q = 0;
-            // print(divmod(p, q))
             std::cout << ::tpy::TuplePrinter(::tpy::divmod_fixed<int32_t>(p, q)) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: int divmod")
             std::cout << "caught: int divmod" << "\n";
         }
     }
-    // # divmod on float.
-    // try:
     {
         try {
-            // r: float = 10.0
             double r = 10.0;
-            // s: float = 0.0
             double s = 0.0;
-            // print(divmod(r, s))
             std::cout << ::tpy::TuplePrinter(::tpy::divmod_float(r, s)) << "\n";
         } catch (const ::tpy::ZeroDivisionError&) {
-            // print("caught: float divmod")
             std::cout << "caught: float divmod" << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

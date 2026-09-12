@@ -5,36 +5,39 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     arr: Array[int32, 3] = [10, 20, 30]
+//     s: Span[int32] = arr
+//
+//     # Sized | None
+//     nums: list[int32] = [1, 2, 3, 4, 5]
+//     print(count_if_sized(nums))
+//     print(count_if_sized())
+//
+//     # Spannable[T] | None (generic protocol)
+//     print(sum_span(s))
+//     print(sum_span())
+//
+//     # not isinstance
+//     print(check_not(nums))
+//     print(check_not())
 void main() {
-    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // s: Span[int32] = arr
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
-    // # Sized | None
-    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // print(count_if_sized(nums))
     std::cout << count_if_sized(&(nums)) << "\n";
-    // print(count_if_sized())
     std::cout << count_if_sized() << "\n";
-    // # Spannable[T] | None (generic protocol)
-    // print(sum_span(s))
     std::cout << sum_span(&(s)) << "\n";
-    // print(sum_span())
     std::cout << sum_span() << "\n";
-    // # not isinstance
-    // print(check_not(nums))
     std::cout << check_not(&(nums)) << "\n";
-    // print(check_not())
     std::cout << check_not() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

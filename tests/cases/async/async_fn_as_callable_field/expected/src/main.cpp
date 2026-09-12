@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def handle(c: Own[Conn]) -> None:
+//     await asyncio.sleep(0.0)
+//     print("handled " + str(c.id))
 ::tpystd::tpy::Poll<::std::monostate> __coro_handle::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print("handled " + str(c.id))
         std::cout << (::tpy::str_concat("handled ", ::tpy::fixed_to_str<int32_t>(c.id))) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -35,12 +35,12 @@ __coro_handle handle(Conn c) {
 }
 
 // async def main_coro() -> None:
+//     d = Dispatcher(handle)
+//     await d.run(3)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // d = Dispatcher(handle)
         d.emplace(Dispatcher([](Conn&& __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(handle(std::move(__a0))); }));
-        // await d.run(3)
         __sub_0.emplace((*d), 3);
         __state = S_RESUME_0;
         continue;
@@ -65,24 +65,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 // async def run(self, count: int32) -> None:
+//     tasks: list[asyncio.Task[None]] = []
+//     i: int32 = 0
+//     while i < count:
+//         tasks.append(asyncio.create_task(self._cb(Conn(i))))
+//         i += 1
+//     for t in tasks:
+//         await t
 ::tpystd::tpy::Poll<::std::monostate> __coro_Dispatcher_run::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[None]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>{});
-        // i: int32 = 0
         i = 0;
-        // while i < count:
         while ((i < count)) {
-            // tasks.append(asyncio.create_task(self._cb(Conn(i))))
             (*tasks).push_back(::tpystd::asyncio::create_task<std::monostate>(__self._cb(Conn(i))));
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         }
         __for_it_0.emplace(((*tasks)).begin());
@@ -104,7 +106,6 @@ void main() {
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
         t = &(*((*__for_it_0))++);
-        // await t
         __sub_0 = t;
         __state = S_RESUME_0;
         continue;
@@ -115,20 +116,22 @@ void main() {
 }
 
 
+// # The start_server shape: an `async def` handler passed directly, stored as a
+// # Callable field, and invoked per item from a method via create_task. The
+// # handler takes Own[@nocopy] -- the value moves through the synthesized factory
+// # wrapper, so a silent copy would be a compile error (forces the move path).
+// import asyncio
+//
+// from tpy.coro import Cancellable
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The start_server shape: an `async def` handler passed directly, stored as a
-    // # Callable field, and invoked per item from a method via create_task. The
-    // # handler takes Own[@nocopy] -- the value moves through the synthesized factory
-    // # wrapper, so a silent copy would be a compile error (forces the move path).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Cancellable
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

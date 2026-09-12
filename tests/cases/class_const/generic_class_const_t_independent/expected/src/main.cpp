@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = C[int32]()
+//     print(c.MAX)
+//     print(c.SCALE)
+//     d = C[float]()
+//     print(d.MAX)
 void main() {
-    // c = C[int32]()
     C<int32_t> c = C<int32_t>();
-    // print(c.MAX)
     std::cout << C<int32_t>::MAX << "\n";
-    // print(c.SCALE)
     std::cout << ::tpy::print_float(C<int32_t>::SCALE) << "\n";
-    // d = C[float]()
     C<double> d = C<double>();
-    // print(d.MAX)
     std::cout << C<double>::MAX << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

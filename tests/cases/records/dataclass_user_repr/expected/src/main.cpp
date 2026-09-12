@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(1, 2)
+//     print(p)
+//     print(repr(p))
 void main() {
-    // p = Point(1, 2)
     Point p = Point(1, 2);
-    // print(p)
     std::cout << p << "\n";
-    // print(repr(p))
     std::cout << ::tpy::repr_of(p) << "\n";
 }
 
+// # @dataclass with user-defined __repr__ suppresses auto-generation
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @dataclass with user-defined __repr__ suppresses auto-generation
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

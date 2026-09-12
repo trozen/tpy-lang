@@ -18,8 +18,10 @@ template <typename T>
 struct __coro_identity;
 struct __coro_main;
 
+// async def identity[T](x: T) -> T:
 template <typename T>
 __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> x);
+// async def main() -> None:
 __coro_main main();
 
 // class Node:
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
-// Async coroutine: identity
+// async def identity[T](x: T) -> T:
 template <typename T>
 struct __coro_identity {
     int32_t __state;
@@ -63,11 +65,12 @@ struct __coro_identity {
     }
 };
 // async def identity[T](x: T) -> T:
+//     await asyncio.sleep(0)
+//     return x
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_identity<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -77,7 +80,6 @@ template <typename T>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return x
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
@@ -94,7 +96,7 @@ __coro_identity<T> identity(::tpy::param_val_or_ref_t<T> x) {
     return __coro_identity<T>(x);
 }
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
@@ -125,6 +127,7 @@ struct __coro_main {
 
 
 // def __init__(self, v: int) -> None:
+//     self.v = v
 inline Node::Node(const ::tpy::BigInt& v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

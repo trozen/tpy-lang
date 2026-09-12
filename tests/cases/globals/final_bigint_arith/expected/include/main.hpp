@@ -8,12 +8,18 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
+// A: Final[int] = 100
 extern const ::tpy::BigInt A;
+// B: Final[int] = 7
 extern const ::tpy::BigInt B;
+// SUM: Final[int] = A + B
 extern const ::tpy::BigInt SUM;
+// PROD: Final[int] = A * B
 extern const ::tpy::BigInt PROD;
+// NESTED: Final[int] = (A + B) * 10 - 1
 extern const ::tpy::BigInt NESTED;
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

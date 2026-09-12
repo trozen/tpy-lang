@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def take(c: Own[Counter]) -> None:
+//     print(c.value)
 void take(Counter&& c) {
-    // print(c.value)
     std::cout << c.value << "\n";
 }
 
 // def main() -> None:
+//     c = Counter(10)
+//     c.value += 5
+//     take(c)
 void main() {
-    // c = Counter(10)
     Counter c = Counter(10);
-    // c.value += 5
     c.value = ::tpy::add_check<int32_t>(c.value, 5);
-    // take(c)
     take(std::move(c));
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

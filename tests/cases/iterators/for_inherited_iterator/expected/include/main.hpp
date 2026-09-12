@@ -68,33 +68,37 @@ inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {
 
 
 // def __init__(self, limit: int32) -> None:
+//     self.current = 0
+//     self.limit = limit
 inline Counter::Counter(int32_t limit) : current(0), limit(limit) {}
 
 // def __iter__(self) -> Counter:
+//     return self
 inline Counter& Counter::__iter__() {
-    // return self
     return (*this);
 }
 
 // def __next__(self) -> int32:
+//     if self.current < self.limit:
+//         result = self.current
+//         self.current += 1
+//         return result
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // result = self.current
         int32_t result = this->current;
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return result
         return result;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def __init__(self, limit: int32) -> None:
+//     super().__init__(limit * 2)
 inline DoubleCounter::DoubleCounter(int32_t limit) : Counter((::tpy::mul_check<int32_t>(limit, 2))) {}
 
 // def __init__(self, limit: int32) -> None:
+//     super().__init__(limit)
 inline GrandChild::GrandChild(int32_t limit) : DoubleCounter(limit) {}
 void __tpy_init();
 } // namespace tpyapp::main

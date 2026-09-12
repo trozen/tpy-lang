@@ -5,42 +5,45 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = Arc.new(State(42))  # tpyc: is_send(yes) is_sync(yes)
+//     print(a.get().x)          # 42
+//     print(a.get().doubled())  # 84
+//
+//     b = a.clone()
+//     a.get().x = 7             # mutate through a
+//     print(b.get().x)          # 7 -- shared across clones
+//     print(b.get().doubled())  # 14
+//
+//     # Weak carries the same conditional Send/Sync as Arc.
+//     w = a.downgrade()        # tpyc: is_send(yes) is_sync(yes)
+//     u = w.upgrade()
+//     if u is not None:
+//         print(u.get().x)     # 7 -- still live (a and b hold strong refs)
 void main() {
-    // a = Arc.new(State(42))  # tpyc: is_send(yes) is_sync(yes)
     ::tpystd::tplib::arc::Arc<State> a = Arc<State>::new_<State>(State(42));
-    // print(a.get().x)          # 42
     std::cout << a.get().x << "\n";
-    // print(a.get().doubled())  # 84
     std::cout << a.get().doubled() << "\n";
-    // b = a.clone()
     ::tpystd::tplib::arc::Arc<State> b = a.clone();
-    // a.get().x = 7             # mutate through a
     a.get().x = 7;
-    // print(b.get().x)          # 7 -- shared across clones
     std::cout << b.get().x << "\n";
-    // print(b.get().doubled())  # 14
     std::cout << b.get().doubled() << "\n";
-    // # Weak carries the same conditional Send/Sync as Arc.
-    // w = a.downgrade()        # tpyc: is_send(yes) is_sync(yes)
     ::tpystd::tplib::arc::Weak<State> w = a.downgrade();
-    // u = w.upgrade()
     std::optional<::tpystd::tplib::arc::Arc<State>> u = w.upgrade();
-    // if u is not None:
     if ((u.has_value())) {
-        // print(u.get().x)     # 7 -- still live (a and b hold strong refs)
         std::cout << (*u).get().x << "\n";
     }
 }
 
+// from tplib.arc import Arc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.arc import Arc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::arc::__tpy_init();
-    // main()
     main();
 }
 

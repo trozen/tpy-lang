@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def nested(flag: bool, a: int32 | None, b: int32 | None) -> int32:
+//     while flag:
+//         if a is not None:
+//             if b is None:
+//                 break
+//             return a + b  # tpyc: ok
+//         break
+//     return 0
 int32_t nested(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
-    // while flag:
     while (flag) {
-        // if a is not None:
         if ((a.has_value())) {
-            // if b is None:
             if ((!b.has_value())) {
-                // break
                 break;
             }
-            // return a + b  # tpyc: ok
             return (::tpy::add_check<int32_t>((*a), (*b)));
         }
-        // break
         break;
     }
-    // return 0
     return 0;
 }
 
+// print(nested(True, 1, 2))
+// print(nested(True, 1, None))
+// print(nested(True, None, 2))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(nested(True, 1, 2))
     std::cout << nested(true, 1, 2) << "\n";
-    // print(nested(True, 1, None))
     std::cout << nested(true, 1, std::nullopt) << "\n";
-    // print(nested(True, None, 2))
     std::cout << nested(true, std::nullopt, 2) << "\n";
 }
 

@@ -11,6 +11,7 @@ struct Handler;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Handler:
@@ -30,13 +31,13 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     def add_offset(x: int32) -> int32:
+//         return x + n
+//     self.callback = add_offset
 inline Handler::Handler(int32_t n) {
-    // def add_offset(x: int32) -> int32:
     auto add_offset = [n](int32_t x) -> int32_t {
-        // return x + n
         return (::tpy::add_check<int32_t>(x, n));
     };
-    // self.callback = add_offset
     this->callback = add_offset;
 }
 void __tpy_init();

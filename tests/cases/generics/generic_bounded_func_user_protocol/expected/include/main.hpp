@@ -17,8 +17,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_item[T: Printable](item: T) -> None:
 template<Printable T>
 void print_item(::tpy::param_val_or_ref_t<T> item);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -44,19 +46,21 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def to_string(self) -> str:
+//     return "Point"
 inline std::string Point::to_string() const {
-    // return "Point"
     return "Point";
 }
 // def print_item[T: Printable](item: T) -> None:
+//     # Note: Can't call item.to_string() inside generic yet
+//     # This tests that the bound is validated during inference
+//     print("got printable")
 template<Printable T>
 void print_item(::tpy::param_val_or_ref_t<T> item) {
-    // # Note: Can't call item.to_string() inside generic yet
-    // # This tests that the bound is validated during inference
-    // print("got printable")
     std::cout << "got printable" << "\n";
 }
 

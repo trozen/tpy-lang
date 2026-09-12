@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     w = Worker()
+//     asyncio.run(w.go())  # the member coroutine factory at the driver slot
+//     print(w.n)
 void main() {
-    // w = Worker()
     Worker w = Worker();
-    // asyncio.run(w.go())  # the member coroutine factory at the driver slot
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(w.go()));
-    // print(w.n)
     std::cout << w.n << "\n";
 }
 
 // async def go(self) -> None:
+//     self.n += 1
+//     print(self.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_Worker_go::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // self.n += 1
         __self.n = ::tpy::add_check<int32_t>(__self.n, 1);
-        // print(self.n)
         std::cout << __self.n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -32,14 +32,15 @@ void main() {
 }
 
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ template<typename T, std::size_t N> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T, N: int]:
@@ -20,6 +21,7 @@ struct Box {
     std::vector<T> items;
 
     // def __init__(self) -> None:
+    //     self.items = []
     Box() : items(std::vector<T>{}) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };

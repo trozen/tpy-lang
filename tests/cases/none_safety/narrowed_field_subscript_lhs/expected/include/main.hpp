@@ -11,6 +11,7 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Regression: subscript-LHS receiver (`self.f[i] = v`) on a value-Optional
@@ -25,9 +26,9 @@ struct Buffer {
     std::optional<::tpy::ordered_map<std::string, ::tpy::BigInt>> by_key;
 
     // def __init__(
-    // self,
-    // items: list[int] | None,
-    // by_key: dict[str, int] | None,
+    //     self,
+    //     items: list[int] | None,
+    //     by_key: dict[str, int] | None,
     // ) -> None:
     Buffer() = default;
     explicit Buffer(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, ::tpy::BigInt>* by_key);
@@ -47,10 +48,12 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(
-// self,
-// items: list[int] | None,
-// by_key: dict[str, int] | None,
+//     self,
+//     items: list[int] | None,
+//     by_key: dict[str, int] | None,
 // ) -> None:
+//     self.items = items
+//     self.by_key = by_key
 inline Buffer::Buffer(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, ::tpy::BigInt>* by_key) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)) {}
 void __tpy_init();
 } // namespace tpyapp::main

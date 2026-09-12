@@ -3,35 +3,34 @@
 
 namespace tpyapp::main {
 
-// _N = 1 << 20  # 1 MiB, well past any socketpair buffer
 int32_t _N{};
-// _PAYLOAD = _make_payload()
 ::tpy::Bytes _PAYLOAD;
 
 // def _make_payload() -> bytes:
+//     out = b""
+//     band = 0
+//     while band < 256:
+//         out += bytes([band]) * 4096  # 256 * 4096 == _N
+//         band += 1
+//     return out
 ::tpy::Bytes _make_payload() {
-    // out = b""
     ::tpy::Bytes out = ::tpy::Bytes{};
-    // band = 0
     int32_t band = 0;
-    // while band < 256:
     while ((band < 256)) {
-        // out += bytes([band]) * 4096  # 256 * 4096 == _N
         out = ::tpy::bytes_concat(out, (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(std::array<int32_t, 1>{band}), 4096)));
-        // band += 1
         band = ::tpy::add_check<int32_t>(band, 1);
     }
-    // return out
     return out;
 }
 
 // async def sender(sock: socket) -> None:
+//     loop = asyncio.get_running_loop()
+//     await loop.sock_sendall(sock, _PAYLOAD)
+//     sock.shutdown(1)  # SHUT_WR -> receiver sees EOF
 ::tpystd::tpy::Poll<::std::monostate> __coro_sender::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // await loop.sock_sendall(sock, _PAYLOAD)
         __sub_0.emplace(std::move((*loop).sock_sendall(sock, _PAYLOAD)));
         __state = S_RESUME_0;
         continue;
@@ -41,7 +40,6 @@ int32_t _N{};
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // sock.shutdown(1)  # SHUT_WR -> receiver sees EOF
         sock.shutdown(1);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -58,14 +56,25 @@ __coro_sender sender(::tpystd::socket::socket& sock) {
 }
 
 // async def receiver(sock: socket) -> None:
+//     loop = asyncio.get_running_loop()
+//     pos = 0
+//     mismatches = 0
+//     while True:
+//         chunk = await loop.sock_recv(sock, 4096)
+//         n = len(chunk)
+//         if n == 0:
+//             break
+//         for i in range(n):
+//             if chunk[i] != _PAYLOAD[pos + i]:
+//                 mismatches += 1
+//         pos += n
+//     print(pos)
+//     print(mismatches)
 ::tpystd::tpy::Poll<::std::monostate> __coro_receiver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
-        // pos = 0
         pos = 0;
-        // mismatches = 0
         mismatches = 0;
         __state = S_JOIN_0;
         continue;
@@ -75,22 +84,17 @@ __coro_sender sender(::tpystd::socket::socket& sock) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         chunk = std::move(__r0).value();
         __sub_0.reset();
-        // n = len(chunk)
         n = ::tpy::__len__(chunk);
         if ((n == 0)) {
             __state = S_JOIN_1;
             continue;
         } else {
-            // for i in range(n):
             int32_t __stop_0 = n;
             for (int32_t i = 0; i < __stop_0; ++i) {
-                // if chunk[i] != _PAYLOAD[pos + i]:
                 if ((::tpy::bytes_getitem(chunk, i) != ::tpy::bytes_getitem(_PAYLOAD, (::tpy::add_check<int32_t>(pos, i))))) {
-                    // mismatches += 1
                     mismatches = ::tpy::add_check<int32_t>(mismatches, 1);
                 }
             }
-            // pos += n
             pos = ::tpy::add_check<int32_t>(pos, n);
             __state = S_JOIN_0;
             continue;
@@ -98,7 +102,6 @@ __coro_sender sender(::tpystd::socket::socket& sock) {
     }
     case S_JOIN_0: {
         if (true) {
-            // chunk = await loop.sock_recv(sock, 4096)
             __sub_0.emplace(std::move((*loop).sock_recv(sock, 4096)));
             __state = S_RESUME_0;
             continue;
@@ -108,9 +111,7 @@ __coro_sender sender(::tpystd::socket::socket& sock) {
         }
     }
     case S_JOIN_1: {
-        // print(pos)
         std::cout << pos << "\n";
-        // print(mismatches)
         std::cout << mismatches << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -127,20 +128,21 @@ __coro_receiver receiver(::tpystd::socket::socket& sock) {
 }
 
 // async def main_coro() -> None:
+//     a, b = socketpair()
+//     a.setblocking(False)
+//     b.setblocking(False)
+//     rx = asyncio.create_task(receiver(b))
+//     await sender(a)
+//     await rx
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = socketpair()
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
-        // a.setblocking(False)
         (*a).setblocking(false);
-        // b.setblocking(False)
         (*b).setblocking(false);
-        // rx = asyncio.create_task(receiver(b))
         rx.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(receiver((*b)))));
-        // await sender(a)
         __sub_0.emplace((*a));
         __state = S_RESUME_0;
         continue;
@@ -150,7 +152,6 @@ __coro_receiver receiver(::tpystd::socket::socket& sock) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // await rx
         __sub_1 = &((*rx));
         __state = S_RESUME_1;
         continue;
@@ -175,34 +176,37 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Regression guard for sock_sendall's offset advance across parks: the
+// # sender streams a payload far larger than the socket buffer, so sendall
+// # makes many partial sends with a growing offset. The payload is built in
+// # 4096-byte bands of distinct values, so it is NON-periodic over its full
+// # length -- the receiver checks each byte against its absolute position, so
+// # a sender that re-sent the head each park instead of advancing the offset
+// # would land low-band bytes where high-band bytes are expected and mismatch
+// # (a periodic payload would let page-aligned parks hide that). The payload
+// # is read-only here, so no aliasing/mutation semantics are at stake.
+// import asyncio
+// from socket import socketpair, socket
+//
+// _N = 1 << 20  # 1 MiB, well past any socketpair buffer
+//
+// _PAYLOAD = _make_payload()
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression guard for sock_sendall's offset advance across parks: the
-    // # sender streams a payload far larger than the socket buffer, so sendall
-    // # makes many partial sends with a growing offset. The payload is built in
-    // # 4096-byte bands of distinct values, so it is NON-periodic over its full
-    // # length -- the receiver checks each byte against its absolute position, so
-    // # a sender that re-sent the head each park instead of advancing the offset
-    // # would land low-band bytes where high-band bytes are expected and mismatch
-    // # (a periodic payload would let page-aligned parks hide that). The payload
-    // # is read-only here, so no aliasing/mutation semantics are at stake.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from socket import socketpair, socket
     ::tpystd::socket::__tpy_init();
-    // _N = 1 << 20  # 1 MiB, well past any socketpair buffer
     _N = ::tpy::lshift_check<int32_t>(1, 20);
-    // _PAYLOAD = _make_payload()
     _PAYLOAD = _make_payload();
-    // main()
     main();
 }
 

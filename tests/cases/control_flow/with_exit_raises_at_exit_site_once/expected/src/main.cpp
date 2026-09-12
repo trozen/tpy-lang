@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def ret_out() -> int:
+//     with Thrower():
+//         return 7
 ::tpy::BigInt ret_out() {
-    // with Thrower():
     auto __ctx_1 = Thrower();
     __ctx_1.__enter__();
     bool __fin_ran_1 = false;
     try {
-        // return 7
         ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(7);
         __fin_ran_1 = true;
         __ctx_1.__exit__({}, nullptr, {});
@@ -28,22 +28,22 @@ namespace tpyapp::main {
 }
 
 // def brk_out() -> None:
+//     for i in range(3):
+//         with Thrower():
+//             if i == 1:
+//                 break
+//             print(f"iter {i}")
 void brk_out() {
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // with Thrower():
         auto __ctx_2 = Thrower();
         __ctx_2.__enter__();
         bool __fin_ran_2 = false;
         try {
-            // if i == 1:
             if ((i == 1)) {
-                // break
                 __fin_ran_2 = true;
                 __ctx_2.__exit__({}, nullptr, {});
                 break;
             }
-            // print(f"iter {i}")
             std::cout << std::format("iter {}", i) << "\n";
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
@@ -61,22 +61,22 @@ void brk_out() {
 }
 
 // def cont_out() -> None:
+//     for i in range(3):
+//         with Thrower():
+//             if i == 1:
+//                 continue
+//             print(f"iter {i}")
 void cont_out() {
-    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // with Thrower():
         auto __ctx_3 = Thrower();
         __ctx_3.__enter__();
         bool __fin_ran_3 = false;
         try {
-            // if i == 1:
             if ((i == 1)) {
-                // continue
                 __fin_ran_3 = true;
                 __ctx_3.__exit__({}, nullptr, {});
                 continue;
             }
-            // print(f"iter {i}")
             std::cout << std::format("iter {}", i) << "\n";
             goto __with_exit_3;
         } catch (::tpy::BaseException& __exc_3) {
@@ -94,17 +94,18 @@ void cont_out() {
 }
 
 // def ret_out_suppressing() -> int:
+//     # A suppressing manager must not be handed its own successful exit as an
+//     # exception to suppress: the return still happens. The trailing return is
+//     # unreachable but required -- a suppressing __exit__ means the with body
+//     # is not proven to terminate (the bool could be True).
+//     with Suppressor():
+//         return 9
+//     return 0
 ::tpy::BigInt ret_out_suppressing() {
-    // # A suppressing manager must not be handed its own successful exit as an
-    // # exception to suppress: the return still happens. The trailing return is
-    // # unreachable but required -- a suppressing __exit__ means the with body
-    // # is not proven to terminate (the bool could be True).
-    // with Suppressor():
     auto __ctx_4 = Suppressor();
     __ctx_4.__enter__();
     bool __fin_ran_4 = false;
     try {
-        // return 9
         ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(9);
         __fin_ran_4 = true;
         __ctx_4.__exit__({}, nullptr, {});
@@ -117,60 +118,65 @@ void cont_out() {
         __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def main() -> None:
+//     print("-- ret_out --")
+//     try:
+//         ret_out()
+//     except RuntimeError as e:
+//         print(f"caught: {str(e)}")
+//
+//     print("-- brk_out --")
+//     try:
+//         brk_out()
+//     except RuntimeError as e:
+//         print(f"caught: {str(e)}")
+//
+//     print("-- cont_out --")
+//     try:
+//         cont_out()
+//     except RuntimeError as e:
+//         print(f"caught: {str(e)}")
+//
+//     print("-- ret_out_suppressing --")
+//     print(ret_out_suppressing())
 void main() {
-    // print("-- ret_out --")
     std::cout << "-- ret_out --" << "\n";
-    // try:
     {
         try {
-            // ret_out()
             ret_out();
         } catch (const ::tpy::RuntimeError& e) {
-            // print(f"caught: {str(e)}")
             std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
-    // print("-- brk_out --")
     std::cout << "-- brk_out --" << "\n";
-    // try:
     {
         try {
-            // brk_out()
             brk_out();
         } catch (const ::tpy::RuntimeError& e) {
-            // print(f"caught: {str(e)}")
             std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
-    // print("-- cont_out --")
     std::cout << "-- cont_out --" << "\n";
-    // try:
     {
         try {
-            // cont_out()
             cont_out();
         } catch (const ::tpy::RuntimeError& e) {
-            // print(f"caught: {str(e)}")
             std::cout << std::format("caught: {}", std::string(::tpy::__str__(e))) << "\n";
         }
     }
-    // print("-- ret_out_suppressing --")
     std::cout << "-- ret_out_suppressing --" << "\n";
-    // print(ret_out_suppressing())
     std::cout << ret_out_suppressing() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

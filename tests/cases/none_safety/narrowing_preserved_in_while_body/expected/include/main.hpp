@@ -9,10 +9,17 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def simple_while(x: int32 | None, n: int32) -> int32:
 int32_t simple_while(std::optional<int32_t> x, int32_t n);
+// def multiple_optionals(a: int32 | None, b: int32 | None, n: int32) -> int32:
 int32_t multiple_optionals(std::optional<int32_t> a, std::optional<int32_t> b, int32_t n);
+// def outer_if_inner_while_narrowing(
+//     x: int32 | None, items: list[int32 | None]
+// ) -> int32:
 int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, const std::vector<std::optional<int32_t>>& items);
+// def for_loop_variant(x: int32 | None, items: list[int32]) -> int32:
 int32_t for_loop_variant(std::optional<int32_t> x, const std::vector<int32_t>& items);
+// def main() -> None:
 void main();
 
 void __tpy_init();

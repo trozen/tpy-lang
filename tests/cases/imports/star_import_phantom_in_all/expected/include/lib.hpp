@@ -9,6 +9,7 @@ namespace tpyapp::lib {
 
 inline constexpr std::string_view __name__ = "lib";
 
+// def real_fn() -> None:
 void real_fn();
 
 void __tpy_init();

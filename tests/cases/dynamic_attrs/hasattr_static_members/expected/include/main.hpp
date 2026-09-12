@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # D16 v1.5 phase 7: hasattr resolves to compile-time True for declared
@@ -46,24 +47,25 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, width: int) -> None:
+//     self.width = width
 inline Box::Box(const ::tpy::BigInt& width) : width(width) {}
 
 // @property
 // def doubled(self) -> int:
+//     return self.width * 2
 inline ::tpy::BigInt Box::doubled() const {
-    // return self.width * 2
     return ((this->width) * (::tpy::BigInt(2)));
 }
 
 // def label(self) -> str:
+//     return "Box"
 inline std::string Box::label() const {
-    // return "Box"
     return "Box";
 }
 
 // def __getattr__(self, name: str) -> str:
+//     raise AttributeError(name)
 inline std::string Box::__getattr__(std::string_view name) const {
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 void __tpy_init();

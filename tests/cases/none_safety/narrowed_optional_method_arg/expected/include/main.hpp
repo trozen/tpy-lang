@@ -12,9 +12,13 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_method_arg(x: str | None, p: Printer) -> None:
 void test_method_arg(std::optional<std::string_view> x, Printer& p);
+// def test_method_arg_int(x: int | None, p: Printer) -> None:
 void test_method_arg_int(std::optional<::tpy::BigInt> x, Printer& p);
+// def test_self_call(p: Printer) -> None:
 void test_self_call(Printer& p);
+// def main() -> None:
 void main();
 
 // # Narrowed Optional passed as argument to method on another object.
@@ -56,27 +60,28 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 
 // def show(self, s: str) -> None:
+//     print(s)
 inline void Printer::show(std::string_view s) const {
-    // print(s)
     std::cout << s << "\n";
 }
 
 // def show_int(self, n: int) -> None:
+//     print(n)
 inline void Printer::show_int(const ::tpy::BigInt& n) const {
-    // print(n)
     std::cout << n << "\n";
 }
 
 // def process(self, x: str | None) -> None:
+//     if x is not None:
+//         self.show(x)
 inline void Printer::process(std::optional<std::string_view> x) const {
-    // if x is not None:
     if ((x.has_value())) {
-        // self.show(x)
         this->show((*x));
     }
 }
 
 // def __init__(self, label: str | None = None) -> None:
+//     self.label = label
 inline Node::Node(std::optional<std::string_view> label) : label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

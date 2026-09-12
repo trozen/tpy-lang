@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Holder:
@@ -31,6 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, value: int32 | None):
+//     self.value = value
 inline Holder::Holder(std::optional<int32_t> value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

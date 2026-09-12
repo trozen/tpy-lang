@@ -6,48 +6,48 @@ namespace tpyapp::main {
 
 // # Form 1: readonly[T | None]
 // def f1(p: readonly[Point | None]) -> int32:
+//     if p is not None:
+//         return p.x
+//     return int32(0)
 int32_t f1(const Point* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.x
         return p->x;
     }
-    // return int32(0)
     return 0;
 }
 
 // # Form 2: readonly[T] | None
 // def f2(p: readonly[Point] | None) -> int32:
+//     if p is not None:
+//         return p.x
+//     return int32(0)
 int32_t f2(const Point* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.x
         return p->x;
     }
-    // return int32(0)
     return 0;
 }
 
 // def main() -> None:
+//     p = Point(int32(42))
+//     print(f1(p))
+//     print(f2(p))
+//     print(f1(None))
+//     print(f2(None))
 void main() {
-    // p = Point(int32(42))
     Point p = Point(42);
-    // print(f1(p))
     std::cout << f1(&(p)) << "\n";
-    // print(f2(p))
     std::cout << f2(&(p)) << "\n";
-    // print(f1(None))
     std::cout << f1(nullptr) << "\n";
-    // print(f2(None))
     std::cout << f2(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

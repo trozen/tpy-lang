@@ -12,11 +12,17 @@ struct Point;
 extern Point* g;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def addr_global() -> Ptr[Point]:
 Point* addr_global();
+// def via_local() -> Ptr[Point]:
 Point* via_local();
+// def via_alias() -> Ptr[Point]:
 Point* via_alias();
+// def via_both_branches(cond: bool) -> Ptr[Point]:
 Point* via_both_branches(bool cond);
+// def via_ternary(cond: bool) -> Ptr[Point]:
 Point* via_ternary(bool cond);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -39,6 +45,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

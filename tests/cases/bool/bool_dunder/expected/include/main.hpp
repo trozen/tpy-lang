@@ -11,6 +11,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # Test bool() dispatch to __bool__() dunder method on user-defined classes
@@ -35,11 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self, count: int) -> None:
+//     self.count = count
 inline Container::Container(const ::tpy::BigInt& count) : count(count) {}
 
 // def __bool__(self) -> bool:
+//     return self.count != 0
 inline bool Container::__bool__() const {
-    // return self.count != 0
     return (this->count != 0);
 }
 void __tpy_init();

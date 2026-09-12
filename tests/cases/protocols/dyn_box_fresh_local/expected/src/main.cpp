@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = HttpConn(80)          # tpyc: ok
+//     c._port = 8080            # field mutation -- does not rebind c
+//     b: Box[Conn] = Box(c)     # tpyc: ok
+//     print(b.get().port())
 void main() {
-    // c = HttpConn(80)          # tpyc: ok
     HttpConn c = HttpConn(80);
-    // c._port = 8080            # field mutation -- does not rebind c
     c._port = 8080;
-    // b: Box[Conn] = Box(c)     # tpyc: ok
     ::tpystd::tplib::box::Box<Conn> b = ::tpystd::tplib::box::Box<HttpConn>(std::move(c));
-    // print(b.get().port())
     std::cout << b.get().port() << "\n";
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -20,12 +20,16 @@ struct __coro_sub;
 struct __coro_caller;
 struct __coro_main_coro;
 
+// async def sub() -> int32:
 __coro_sub sub();
+// async def caller() -> int32:
 __coro_caller caller();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: sub
+// async def sub() -> int32:
 struct __coro_sub {
     int32_t __state;
     bool __cancel_pending;
@@ -46,7 +50,7 @@ struct __coro_sub {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> int32:
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +74,7 @@ struct __coro_caller {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

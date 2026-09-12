@@ -12,6 +12,7 @@ template<typename T> struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Base[T]:
@@ -21,13 +22,14 @@ struct Base {
     T val;
 
     // def __init__(self, val: T):
+    //     self.val = val
     Base() = default;
     explicit Base(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def transform[U](self, other: U) -> U:
+    //     return other
     template<typename U>
     ::tpy::val_or_cref_t<U> transform(::tpy::readonly_form_t<U> other) const {
-        // return other
         return ::tpy::param_to_return<U>(other);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
@@ -44,6 +46,7 @@ template<typename T>
 struct Child : Base<T> {
 
     // def __init__(self, val: T):
+    //     super().__init__(val)
     Child() = default;
     explicit Child(::tpy::readonly_form_t<T> val) : Base<T>(val) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";

@@ -12,7 +12,9 @@ struct Owner;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(flag: bool) -> int32:
 int32_t run(bool flag);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -62,9 +64,11 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32):
+//     self.item = Item(n)
 inline Owner::Owner(int32_t n) : item(Item(n)) {}
 
 inline Owner::Owner(Owner&& other) noexcept : item(std::move(other.item)) {
@@ -79,21 +83,21 @@ inline Owner& Owner::operator=(Owner&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("owner dropped")
 inline Owner::~Owner() {
     if (!this->__tpy_owned_) return;
-    // print("owner dropped")
     std::cout << "owner dropped" << "\n";
 }
 
 // def __enter__(self) -> Item:
+//     return self.item
 inline Item& Owner::__enter__() {
-    // return self.item
     return this->item;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Owner::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

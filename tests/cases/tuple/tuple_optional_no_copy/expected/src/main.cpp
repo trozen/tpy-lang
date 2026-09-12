@@ -5,60 +5,63 @@ namespace tpyapp::main {
 
 
 // def both(a: T, b: T) -> tuple[T | None, T | None]:
+//     return (a, b)
 std::tuple<T*, T*> both(T& a, T& b) {
-    // return (a, b)
     return std::tuple<T*, T*>{&(a), &(b)};
 }
 
 // def bump_first(p: tuple[T | None, T | None]) -> None:
+//     a, _ = p
+//     if a is not None:
+//         a.x = a.x + 100
 void bump_first(const std::tuple<T*, T*>& p) {
-    // a, _ = p
     auto& __tup_1 = p;
     T* a = std::get<0>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // a.x = a.x + 100
         a->x = (::tpy::add_check<int32_t>(a->x, 100));
     }
 }
 
 // def main() -> None:
+//     t1 = T(1)
+//     t2 = T(2)
+//
+//     # Return-side: mutation through destructured pointer reaches t1.
+//     a, b = both(t1, t2)
+//     if a is not None:
+//         a.x = 10
+//     print(t1.x)  # 10
+//
+//     # Param-side: bump_first mutates t1 through the pointer-form tuple param.
+//     bump_first((t1, t2))
+//     print(t1.x)  # 110
+//
+//     # Pass-through: returned tuple flows directly into another function;
+//     # the mutation reaches the original through both boundaries.
+//     bump_first(both(t1, t2))
+//     print(t1.x)  # 210
 void main() {
-    // t1 = T(1)
     T t1 = T(1);
-    // t2 = T(2)
     T t2 = T(2);
-    // # Return-side: mutation through destructured pointer reaches t1.
-    // a, b = both(t1, t2)
     auto __tup_1 = both(t1, t2);
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
-    // if a is not None:
     if ((a != nullptr)) {
-        // a.x = 10
         a->x = 10;
     }
-    // print(t1.x)  # 10
     std::cout << t1.x << "\n";
-    // # Param-side: bump_first mutates t1 through the pointer-form tuple param.
-    // bump_first((t1, t2))
     bump_first(std::tuple<T*, T*>{&(t1), &(t2)});
-    // print(t1.x)  # 110
     std::cout << t1.x << "\n";
-    // # Pass-through: returned tuple flows directly into another function;
-    // # the mutation reaches the original through both boundaries.
-    // bump_first(both(t1, t2))
     bump_first(both(t1, t2));
-    // print(t1.x)  # 210
     std::cout << t1.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -35,12 +36,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32):
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // @classmethod
 // def sum_of(cls, a: Self, b: Self) -> Own[Self]:
+//     return cls(a.x + b.x)
 inline Point Point::sum_of(const Point& a, const Point& b) {
-    // return cls(a.x + b.x)
     return Point((::tpy::add_check<int32_t>(a.x, b.x)));
 }
 void __tpy_init();

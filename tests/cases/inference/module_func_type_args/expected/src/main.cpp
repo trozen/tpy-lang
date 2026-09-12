@@ -5,32 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     arr: Array[int32, 2] = [int32(1), int32(2)]
+//     p: Ptr[int32] = tpy.unsafe.unsafe_ptr(arr)
+//
+//     # Dotted module path: tpy.unsafe.func[T](args)
+//     q1: Ptr[uint32] = tpy.unsafe.unsafe_cast[uint32](p)
+//     print(tpy.unsafe.unsafe_load(q1, uint32(0)))
+//
+//     # Aliased module: m.func[T](args)
+//     q2: Ptr[uint32] = m.unsafe_cast[uint32](p)
+//     print(m.unsafe_load(q2, uint32(0)))
+//
+//     print("done")
 void main() {
-    // arr: Array[int32, 2] = [int32(1), int32(2)]
     std::array<int32_t, 2> arr = {1, 2};
-    // p: Ptr[int32] = tpy.unsafe.unsafe_ptr(arr)
     int32_t* p = arr.data();
-    // # Dotted module path: tpy.unsafe.func[T](args)
-    // q1: Ptr[uint32] = tpy.unsafe.unsafe_cast[uint32](p)
     uint32_t* q1 = reinterpret_cast<uint32_t*>(p);
-    // print(tpy.unsafe.unsafe_load(q1, uint32(0)))
     std::cout << q1[0] << "\n";
-    // # Aliased module: m.func[T](args)
-    // q2: Ptr[uint32] = m.unsafe_cast[uint32](p)
     uint32_t* q2 = reinterpret_cast<uint32_t*>(p);
-    // print(m.unsafe_load(q2, uint32(0)))
     std::cout << q2[0] << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// import tpy.unsafe
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import tpy.unsafe
-    // main()
     main();
 }
 

@@ -5,34 +5,35 @@ namespace tpyapp::main {
 
 
 // def make_box() -> Own[Box[Mutating]]:
+//     return Box(Impl())
 ::tpystd::tplib::box::Box<Mutating> make_box() {
-    // return Box(Impl())
     return ::tpystd::tplib::box::Box<Mutating>(::tpy::make_adapter<Mutating>(Impl()));
 }
 
 // def main() -> None:
+//     s = S()
+//     s.mutate_via_alias()
+//     s.mutate_via_alias_chained()
+//     print(s.inner.counter)
+//     print("done")
 void main() {
-    // s = S()
     S s = S();
-    // s.mutate_via_alias()
     s.mutate_via_alias();
-    // s.mutate_via_alias_chained()
     s.mutate_via_alias_chained();
-    // print(s.inner.counter)
     std::cout << s.inner.counter << "\n";
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

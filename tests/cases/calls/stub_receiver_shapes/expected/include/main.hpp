@@ -13,6 +13,7 @@ struct TaggedList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Buf:
@@ -80,40 +81,44 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedList& obj) {
 
 
 // def __init__(self, data: Own[bytearray]) -> None:
+//     self.data = data
+//     self.nums = [1]
 inline Buf::Buf(::tpy::ByteArray&& data) : data(std::move(data)), nums(std::vector<int32_t>{1}) {}
 
 // @property
 // def view(self) -> bytearray:
+//     return self.data
 inline ::tpy::ByteArray& Buf::view() {
-    // return self.data
     return this->data;
 }
 
 // @property
 // def view(self) -> bytearray:
+//     return self.data
 inline const ::tpy::ByteArray& Buf::view() const {
-    // return self.data
     return this->data;
 }
 
 // @property
 // def rows(self) -> list[int32]:
+//     return self.nums
 inline std::vector<int32_t>& Buf::rows() {
-    // return self.nums
     return this->nums;
 }
 
 // @property
 // def rows(self) -> list[int32]:
+//     return self.nums
 inline const std::vector<int32_t>& Buf::rows() const {
-    // return self.nums
     return this->nums;
 }
 
 // def __init__(self) -> None:
+//     self.tag = 7
 inline Tagged::Tagged() : tag(7) {}
 
 // def __init__(self) -> None:
+//     self.tag = 8
 inline TaggedList::TaggedList() : tag(8) {}
 void __tpy_init();
 } // namespace tpyapp::main

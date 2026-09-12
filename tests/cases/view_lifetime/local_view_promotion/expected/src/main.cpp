@@ -11,45 +11,45 @@ namespace tpyapp::main {
 // # would print garbage and diverge from CPython's owned-string value. Bytes
 // # slice-of-temporary is the sibling.
 // def make() -> str:
+//     return "   padded long string that dodges the small-string buffer   "
 std::string make() {
-    // return "   padded long string that dodges the small-string buffer   "
     return "   padded long string that dodges the small-string buffer   ";
 }
 
 // def make_bytes() -> bytes:
+//     return b"   padded long bytes that dodge the small buffer here   "
 ::tpy::Bytes make_bytes() {
-    // return b"   padded long bytes that dodge the small buffer here   "
     return ::tpy::bytes_literal_owned("   padded long bytes that dodge the small buffer here   ", 56);
 }
 
 // def main() -> None:
+//     s = make().strip()          # tpyc: type(str)
+//     print(s)
+//     print(len(s))
+//     s2 = make()[3:9]            # tpyc: type(str)
+//     print(s2)
+//     b = make_bytes()[3:9]       # tpyc: type(bytes)
+//     print(len(b))
+//     b2 = make_bytes().strip()   # tpyc: type(bytes)
+//     print(len(b2))
 void main() {
-    // s = make().strip()          # tpyc: type(str)
     std::string s = std::string(::tpy::str_strip(make()));
-    // print(s)
     std::cout << s << "\n";
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // s2 = make()[3:9]            # tpyc: type(str)
     std::string s2 = std::string(::tpy::str_slice(make(), ::tpy::BasicSlice{3, 9}));
-    // print(s2)
     std::cout << s2 << "\n";
-    // b = make_bytes()[3:9]       # tpyc: type(bytes)
     ::tpy::Bytes b = ::tpy::Bytes(::tpy::bytes_slice(make_bytes(), ::tpy::BasicSlice{3, 9}));
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    // b2 = make_bytes().strip()   # tpyc: type(bytes)
     ::tpy::Bytes b2 = ::tpy::Bytes(::tpy::bytes_strip_view(make_bytes()));
-    // print(len(b2))
     std::cout << ::tpy::__len__(b2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct Headers;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # D16 v1.5 phase 8: 3-arg getattr on a homogeneous dyn-readable class.
@@ -31,13 +32,13 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
 
 
 // def __getattr__(self, name: str) -> str:
+//     if name == "host":
+//         return "example.com"
+//     raise AttributeError(name)
 inline std::string Headers::__getattr__(std::string_view name) const {
-    // if name == "host":
     if ((name == "host")) {
-        // return "example.com"
         return "example.com";
     }
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 void __tpy_init();

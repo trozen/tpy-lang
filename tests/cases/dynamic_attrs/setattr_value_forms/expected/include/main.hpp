@@ -12,6 +12,7 @@ struct Strict;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -57,33 +58,35 @@ inline std::ostream& operator<<(std::ostream& os, const Strict& obj) {
 
 
 // def __init__(self) -> None:
+//     d: dict[str, Any] = {}
+//     self._data = d
 inline Bag::Bag() {
-    // d: dict[str, Any] = {}
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
-    // self._data = d
     this->_data = std::move(d);
 }
 
 // def __setattr__(self, name: str, value: Any) -> None:
+//     self._data[name] = value
 inline void Bag::__setattr__(std::string_view name, ::tpy::Any value) {
-    // self._data[name] = value
     ::tpy::__setitem__(this->_data, name, value);
 }
 
 // def __getattr__(self, name: str) -> Any:
+//     return self._data[name]
 inline ::tpy::Any Bag::__getattr__(std::string_view name) const {
-    // return self._data[name]
     return ::tpy::__getitem__(this->_data, name);
 }
 
 // def __init__(self) -> None:
+//     self._n = ""
+//     self._v = ""
 inline Strict::Strict() : _n(""), _v("") {}
 
 // def __setattr__(self, name: str, value: str) -> None:
+//     self._n = name
+//     self._v = value
 inline void Strict::__setattr__(std::string_view name, std::string_view value) {
-    // self._n = name
     this->_n = name;
-    // self._v = value
     this->_v = value;
 }
 void __tpy_init();

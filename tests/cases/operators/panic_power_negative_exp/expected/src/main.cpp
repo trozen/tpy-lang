@@ -3,25 +3,21 @@
 
 namespace tpyapp::main {
 
-// # Test that negative exponent panics at runtime
-// x = 2
 int32_t x{};
-// y = -1
 int32_t y{};
-// z = x ** y  # Should panic
 int32_t z{};
 
+// # Test that negative exponent panics at runtime
+// x = 2
+// y = -1
+// z = x ** y  # Should panic
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test that negative exponent panics at runtime
-    // x = 2
     x = 2;
-    // y = -1
     y = -1;
-    // z = x ** y  # Should panic
     z = (::tpy::pow_check<int32_t>(x, y));
 }
 

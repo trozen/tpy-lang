@@ -5,47 +5,48 @@ namespace tpyapp::main {
 
 
 // def check_all(xs: list[bool]) -> bool:
+//     return all(xs)
 bool check_all(const std::vector<bool>& xs) {
-    // return all(xs)
     return ::tpy::builtin_all(xs);
 }
 
 // def check_any(xs: list[bool]) -> bool:
+//     return any(xs)
 bool check_any(const std::vector<bool>& xs) {
-    // return any(xs)
     return ::tpy::builtin_any(xs);
 }
 
 // def total(xs: list[int32]) -> int32:
+//     return sum(xs)
 int32_t total(const std::vector<int32_t>& xs) {
-    // return sum(xs)
     return ::tpy::builtin_sum<int32_t>(xs);
 }
 
 // def main() -> None:
+//     bs: list[bool] = [True, True, False]
+//     print(all(bs))
+//     print(any(bs))
+//
+//     ns: list[int32] = [1, 2, 3]
+//     print(total(ns))
+//     print(check_all(bs))
+//     print(check_any(bs))
 void main() {
-    // bs: list[bool] = [True, True, False]
     std::vector<bool> bs = {true, true, false};
-    // print(all(bs))
     std::cout << ::tpy::print_bool(::tpy::builtin_all(bs)) << "\n";
-    // print(any(bs))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(bs)) << "\n";
-    // ns: list[int32] = [1, 2, 3]
     std::vector<int32_t> ns = {1, 2, 3};
-    // print(total(ns))
     std::cout << total(ns) << "\n";
-    // print(check_all(bs))
     std::cout << ::tpy::print_bool(check_all(bs)) << "\n";
-    // print(check_any(bs))
     std::cout << ::tpy::print_bool(check_any(bs)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

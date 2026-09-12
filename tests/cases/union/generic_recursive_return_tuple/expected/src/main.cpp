@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def make_pair() -> tuple[Own[Tree[int32]], int32]:
+//     return ([1, 2], 0)
 std::tuple<Tree<int32_t>, int32_t> make_pair() {
-    // return ([1, 2], 0)
     return std::tuple<Tree<int32_t>, int32_t>{std::vector<Tree<int32_t>>{1, 2}, 0};
 }
 
 // def main() -> None:
+//     t, n = make_pair()
+//     print(n)
 void main() {
-    // t, n = make_pair()
     auto __tup_1 = make_pair();
     Tree<int32_t> t = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // print(n)
     std::cout << n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

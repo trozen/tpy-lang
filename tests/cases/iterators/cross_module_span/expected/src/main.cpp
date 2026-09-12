@@ -5,38 +5,39 @@ namespace tpyapp::main {
 
 
 // def total(xs: Span[readonly[int32]]) -> int32:
+//     acc: int32 = 0
+//     for x in xs:
+//         acc += x
+//     return acc
 int32_t total(std::span<const int32_t> xs) {
-    // acc: int32 = 0
     int32_t acc = 0;
-    // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // acc += x
         acc = ::tpy::add_check<int32_t>(acc, x);
     }
-    // return acc
     return acc;
 }
 
 // def main() -> None:
+//     p = make_pool([10, 20, 30])
+//     print(total(p))
 void main() {
-    // p = make_pool([10, 20, 30])
     ::tpyapp::pool::Pool<int32_t> p = ::tpyapp::pool::make_pool<int32_t>({10, 20, 30});
-    // print(total(p))
     std::cout << total(p.__span__()) << "\n";
 }
 
+// from pool import make_pool
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pool import make_pool
     ::tpyapp::pool::__tpy_init();
-    // main()
     main();
 }
 

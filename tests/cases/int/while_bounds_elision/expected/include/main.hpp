@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_while_basic() -> None:
 void test_while_basic();
+// def test_while_increment_before_access() -> None:
 void test_while_increment_before_access();
+// def test_while_no_literal_init() -> None:
 void test_while_no_literal_init();
+// def test_while_negative_init() -> None:
 void test_while_negative_init();
+// def test_while_list() -> None:
 void test_while_list();
+// def test_while_bigint_index() -> None:
 void test_while_bigint_index();
+// def test_while_post_loop_not_safe() -> None:
 void test_while_post_loop_not_safe();
 
 void __tpy_init();

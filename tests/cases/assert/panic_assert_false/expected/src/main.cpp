@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // def fail_now() -> None:
+//     assert False, "boom"
 void fail_now() {
-    // assert False, "boom"
     ::tpy::raise_assertion_error("boom");
 }
 
+// fail_now()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // fail_now()
     fail_now();
 }
 

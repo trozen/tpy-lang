@@ -16,6 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_main_coro;
 struct __coro_Reporter_describe;
 
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
 
 // class Reporter:
@@ -36,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reporter& obj) {
     return os;
 }
 
-// Async coroutine: Reporter.describe
+// async def describe(self) -> int:
 struct __coro_Reporter_describe {
     int32_t __state;
     bool __cancel_pending;
@@ -62,7 +63,7 @@ inline __coro_Reporter_describe Reporter::describe() const {
     return __coro_Reporter_describe(*this);
 }
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -89,6 +90,7 @@ struct __coro_main_coro {
 
 
 // def __init__(self, v: int) -> None:
+//     self.value = v
 inline Reporter::Reporter(const ::tpy::BigInt& v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def get_val() -> int32:
+//     return int32(7)
 ::tpystd::tpy::Poll<int32_t> __coro_get_val::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return int32(7)
         __state = S_DONE;
         int32_t __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,11 @@ __coro_get_val get_val() {
 }
 
 // async def main_coro() -> None:
+//     print(await get_val())  # await in argument position
+//     print(await get_val() + int32(1))  # await mixed with binop
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await get_val())  # await in argument position
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -39,9 +40,7 @@ __coro_get_val get_val() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await get_val())  # await in argument position
         std::cout << __await_lift_0 << "\n";
-        // print(await get_val() + int32(1))  # await mixed with binop
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -51,7 +50,6 @@ __coro_get_val get_val() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await get_val() + int32(1))  # await mixed with binop
         std::cout << (::tpy::add_check<int32_t>(__await_lift_1, 1)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -68,19 +66,20 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
+//     named = Counter(0, 3)
+//     await consume(named)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // named = Counter(0, 3)
         named.emplace(Counter(0, 3));
-        // await consume(named)
         __sub_0.emplace((*named));
         __state = S_RESUME_0;
         continue;
@@ -35,24 +35,25 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Async sibling of gen_proto_param_aliased_local: a static-protocol coroutine
+// # param aliased into a local (`xs = it`) then iterated across an await. The
+// # alias forwards to the captured param (no frame field of its own), reusing the
+// # deduced template arg T_it. The iterable + iterator are @nocopy, so a silent
+// # copy on the alias path -- not just a spelling regression -- is a compile error.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async sibling of gen_proto_param_aliased_local: a static-protocol coroutine
-    // # param aliased into a local (`xs = it`) then iterated across an await. The
-    // # alias forwards to the captured param (no frame field of its own), reusing the
-    // # deduced template arg T_it. The iterable + iterator are @nocopy, so a silent
-    // # copy on the alias path -- not just a spelling regression -- is a compile error.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

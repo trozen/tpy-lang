@@ -16,8 +16,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_step;
 struct __coro_f;
 
+// async def step(n: int32) -> int32:
 __coro_step step(int32_t n);
+// async def f(n: int32) -> int32:
 __coro_f f(int32_t n);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -36,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Async coroutine: step
+// async def step(n: int32) -> int32:
 struct __coro_step {
     int32_t __state;
     bool __cancel_pending;
@@ -58,7 +61,7 @@ struct __coro_step {
     }
 };
 
-// Async coroutine: f
+// async def f(n: int32) -> int32:
 struct __coro_f {
     int32_t __state;
     bool __cancel_pending;
@@ -91,6 +94,7 @@ struct __coro_f {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Box::Box(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,7 +9,9 @@ namespace tpyapp::MyMath {
 
 inline constexpr std::string_view __name__ = "MyMath";
 
+// function square(n: integer): integer;
 int32_t square(int32_t n);
+// function cube(n: integer): integer;
 int32_t cube(int32_t n);
 
 void __tpy_init();

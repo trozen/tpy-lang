@@ -11,10 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_guarded;
 
+// def guarded(xs: list[int]) -> Iterator[int]:
 __gen_guarded guarded(std::vector<::tpy::BigInt>& xs);
+// def main():
 void main();
 
-// Generator: guarded
+// def guarded(xs: list[int]) -> Iterator[int]:
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, ::tpy::BigInt> {
     int32_t __state;
     std::vector<::tpy::BigInt>& xs;

@@ -5,11 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # asdict: dict values recursed into nested dicts
+//     d = DictOfDC({"origin": Point(int32(0), int32(0)), "end": Point(int32(1), int32(2))})
+//     print(asdict(d))
+//
+//     # asdict: tuple with DC element
+//     t = TupleOfDC((Point(int32(1), int32(2)), int32(42)))
+//     print(asdict(t))
+//
+//     # asdict: tuple with all DC elements
+//     t2 = TupleAllDC((Point(int32(1), int32(2)), Point(int32(3), int32(4))))
+//     print(asdict(t2))
+//
+//     # astuple: dict values recursed into tuples
+//     d2 = DictOfDC({"origin": Point(int32(0), int32(0))})
+//     print(astuple(d2))
+//
+//     # astuple: tuple with DC element
+//     t3 = TupleOfDC((Point(int32(1), int32(2)), int32(42)))
+//     print(astuple(t3))
 void main() {
-    // # asdict: dict values recursed into nested dicts
-    // d = DictOfDC({"origin": Point(int32(0), int32(0)), "end": Point(int32(1), int32(2))})
     DictOfDC d = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}, {"end", Point(1, 2)}}));
-    // print(asdict(d))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"items", ({
         ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __result;
         auto __obj_0 = ::tpy::dict_items(d.items);
@@ -23,20 +39,11 @@ void main() {
         }
         std::move(__result);
     })}})) << "\n";
-    // # asdict: tuple with DC element
-    // t = TupleOfDC((Point(int32(1), int32(2)), int32(42)))
     TupleOfDC t = TupleOfDC(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1, 2), 42}));
-    // print(asdict(t))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(t.pair).x}, {"y", std::get<0>(t.pair).y}}), std::get<1>(t.pair)})}})) << "\n";
-    // # asdict: tuple with all DC elements
-    // t2 = TupleAllDC((Point(int32(1), int32(2)), Point(int32(3), int32(4))))
     TupleAllDC t2 = TupleAllDC(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)}));
-    // print(asdict(t2))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", ::tpy::tuple_to_storage<std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>(std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(t2.pair).x}, {"y", std::get<0>(t2.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(t2.pair).x}, {"y", std::get<1>(t2.pair).y}})})}})) << "\n";
-    // # astuple: dict values recursed into tuples
-    // d2 = DictOfDC({"origin": Point(int32(0), int32(0))})
     DictOfDC d2 = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}}));
-    // print(astuple(d2))
     std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>(({
         ::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>> __result;
         auto __obj_1 = ::tpy::dict_items(d2.items);
@@ -50,21 +57,19 @@ void main() {
         }
         std::move(__result);
     }))) << "\n";
-    // # astuple: tuple with DC element
-    // t3 = TupleOfDC((Point(int32(1), int32(2)), int32(42)))
     TupleOfDC t3 = TupleOfDC(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1, 2), 42}));
-    // print(astuple(t3))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>(std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(t3.pair).x, std::get<0>(t3.pair).y}, std::get<1>(t3.pair)})) << "\n";
 }
 
+// # Test asdict()/astuple() recursion into dict values and tuple elements
+// from dataclasses import dataclass, asdict, astuple
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test asdict()/astuple() recursion into dict values and tuple elements
-    // from dataclasses import dataclass, asdict, astuple
-    // main()
     main();
 }
 

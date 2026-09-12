@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def describe(s: Circle | Rect) -> None:
+//     match s:
+//         case Circle():
+//             print(s.radius)
+//         case Rect():
+//             print(s.width * s.height)
 void describe(::tpy::Union<const Circle*, const Rect*> s) {
-    // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.index()) {
-    // case Circle():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // print(s.radius)
         std::cout << ::tpy::print_float(__case_0.radius) << "\n";
         break;
     }
-    // case Rect():
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // print(s.width * s.height)
         std::cout << ::tpy::print_float(((__case_1.width) * (__case_1.height))) << "\n";
         break;
     }
@@ -27,25 +27,25 @@ void describe(::tpy::Union<const Circle*, const Rect*> s) {
 }
 
 // def main() -> None:
+//     c: Circle | Rect = Circle(5.0)
+//     r: Circle | Rect = Rect(3.0, 4.0)
+//     describe(c)
+//     describe(r)
 void main() {
-    // c: Circle | Rect = Circle(5.0)
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    // r: Circle | Rect = Rect(3.0, 4.0)
     ::tpy::Union<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
     ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    // describe(c)
     describe(c.as_const());
-    // describe(r)
     describe(r.as_const());
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,36 +9,39 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<typename T, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
-      { __fn(__a0) } -> std::convertible_to<int32_t>;
-  }
-int32_t g(__F0&& f, const std::vector<T>& xs);
-template<typename T, typename __F0>
-  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
-      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
-  }
-int32_t g(__F0&& f, const std::vector<T>& xs);
-void main();
-
-// @dispatch
 // def g[T](f: Fn[[T], int32], xs: list[T]) -> int32:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
   }
-int32_t g(__F0&& f, const std::vector<T>& xs) {
-    // return f(xs[0])
-    return f(::tpy::__getitem__(xs, 0));
-}
-// @dispatch
+int32_t g(__F0&& f, const std::vector<T>& xs);
 // def g[T](f: Fn[[T, T], int32], xs: list[T]) -> int32:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
   }
+int32_t g(__F0&& f, const std::vector<T>& xs);
+// def main() -> None:
+void main();
+
+// @dispatch
+// def g[T](f: Fn[[T], int32], xs: list[T]) -> int32:  # tpyc: ok
+//     return f(xs[0])
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
 int32_t g(__F0&& f, const std::vector<T>& xs) {
-    // return f(xs[0], xs[0])
+    return f(::tpy::__getitem__(xs, 0));
+}
+// @dispatch
+// def g[T](f: Fn[[T, T], int32], xs: list[T]) -> int32:  # tpyc: ok
+//     return f(xs[0], xs[0])
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
+  }
+int32_t g(__F0&& f, const std::vector<T>& xs) {
     return f(::tpy::__getitem__(xs, 0), ::tpy::__getitem__(xs, 0));
 }
 

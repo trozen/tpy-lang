@@ -5,27 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f: Callable[[int32], int32] = lambda x: x + 1
+//     print(f(10))  # 11
+//
+//     g: Callable[[int32, int32], int32] = lambda a, b: a * b
+//     print(g(3, 4))  # 12
+//
+//     h: Callable[[], str] = lambda: "hello"
+//     print(h())  # hello
 void main() {
-    // f: Callable[[int32], int32] = lambda x: x + 1
     std::function<int32_t(int32_t)> f = [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); };
-    // print(f(10))  # 11
     std::cout << f(10) << "\n";
-    // g: Callable[[int32, int32], int32] = lambda a, b: a * b
     std::function<int32_t(int32_t, int32_t)> g = [](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); };
-    // print(g(3, 4))  # 12
     std::cout << g(3, 4) << "\n";
-    // h: Callable[[], str] = lambda: "hello"
     std::function<std::string()> h = []() -> std::string { return "hello"; };
-    // print(h())  # hello
     std::cout << h() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

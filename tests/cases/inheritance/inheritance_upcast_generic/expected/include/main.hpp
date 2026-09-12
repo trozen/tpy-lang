@@ -12,7 +12,9 @@ struct IntContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_container(c: Container[int32]) -> None:
 void read_container(const Container<int32_t>& c);
+// def main() -> None:
 void main();
 
 // class Container[T]:
@@ -22,6 +24,7 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
+    //     self.value = value
     Container() = default;
     explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -49,6 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntContainer& obj) {
 
 
 // def __init__(self, value: int32) -> None:
+//     super().__init__(value)
 inline IntContainer::IntContainer(int32_t value) : Container<int32_t>(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

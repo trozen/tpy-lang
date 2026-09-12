@@ -11,8 +11,11 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_tuple() -> tuple[int32, str]:
 std::tuple<int32_t, std::string> get_tuple();
+// def get_pair() -> Own[Pair]:
 Pair get_pair();
+// def main() -> None:
 void main();
 
 // class Pair:
@@ -35,6 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 
 
 // def __init__(self, first: str, second: str) -> None:
+//     self.first = first
+//     self.second = second
 inline Pair::Pair(std::string_view first, std::string_view second) : first(first), second(second) {}
 void __tpy_init();
 } // namespace tpyapp::main

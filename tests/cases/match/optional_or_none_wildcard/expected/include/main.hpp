@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def all_arm(v: int32 | None) -> None:
 void all_arm(std::optional<int32_t> v);
+// def none_or_five(v: int32 | None) -> None:
 void none_or_five(std::optional<int32_t> v);
+// def main() -> None:
 void main();
 
 void __tpy_init();

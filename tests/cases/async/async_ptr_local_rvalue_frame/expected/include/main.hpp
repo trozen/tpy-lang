@@ -16,7 +16,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_read_after_await;
 
+// async def read_after_await() -> None:
 __coro_read_after_await read_after_await();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -35,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// Async coroutine: read_after_await
+// async def read_after_await() -> None:
 struct __coro_read_after_await {
     int32_t __state;
     bool __cancel_pending;
@@ -65,6 +67,7 @@ struct __coro_read_after_await {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

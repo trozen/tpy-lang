@@ -5,29 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     addr = Address(city="Berlin", zip_code=int32(10115))
+//     p = Person(name="Alice", addr=addr)
+//
+//     # Chained read: struct field then TypedDict subscript
+//     print(p.addr["city"])
+//     print(p.addr["zip_code"])
+//
+//     # Chained write
+//     p.addr["zip_code"] = int32(10117)
+//     print(p.addr["zip_code"])
 void main() {
-    // addr = Address(city="Berlin", zip_code=int32(10115))
     Address addr = Address("Berlin", 10115);
-    // p = Person(name="Alice", addr=addr)
     Person p = Person("Alice", addr);
-    // # Chained read: struct field then TypedDict subscript
-    // print(p.addr["city"])
     std::cout << p.addr.city << "\n";
-    // print(p.addr["zip_code"])
     std::cout << p.addr.zip_code << "\n";
-    // # Chained write
-    // p.addr["zip_code"] = int32(10117)
     p.addr.zip_code = 10117;
-    // print(p.addr["zip_code"])
     std::cout << p.addr.zip_code << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,9 +12,13 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_all(*items: Box) -> int32:
 int32_t sum_all(::tpy::varargs<const Box> items);
+// def via_field(p: Pair) -> int32:
 int32_t via_field(const Pair& p);
+// def via_subscript(items: list[Box]) -> int32:
 int32_t via_subscript(const std::vector<Box>& items);
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -64,9 +68,12 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.a = Box(x)
+//     self.b = Box(y)
 inline Pair::Pair(int32_t x, int32_t y) : a(Box(x)), b(Box(y)) {}
 void __tpy_init();
 } // namespace tpyapp::main

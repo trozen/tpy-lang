@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def cleanup() -> None:
+//     print("cleanup-ran")
 ::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("cleanup-ran")
         std::cout << "cleanup-ran" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -26,6 +26,11 @@ __coro_cleanup cleanup() {
 }
 
 // async def coro() -> int:
+//     try:
+//         await asyncio.sleep(60.0)
+//         return 99
+//     finally:
+//         await cleanup()
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -38,7 +43,6 @@ __coro_cleanup cleanup() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // return 99
             this->__finally_ret_0 = 99;
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -74,7 +78,6 @@ __coro_cleanup cleanup() {
     }
     case S_JOIN_1: {
         try {
-            // await asyncio.sleep(60.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));
             __state = S_RESUME_0;
             continue;
@@ -85,7 +88,6 @@ __coro_cleanup cleanup() {
         }
     }
     case S_JOIN_2: {
-        // await cleanup()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -102,12 +104,17 @@ __coro_coro coro() {
 }
 
 // async def main_coro() -> None:
+//     task = asyncio.create_task(coro())
+//     await asyncio.sleep(0.001)
+//     task.cancel()
+//     try:
+//         await task
+//     except asyncio.CancelledError:
+//         print("got-cancelled")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // task = asyncio.create_task(coro())
         task.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(coro())));
-        // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
@@ -117,7 +124,6 @@ __coro_coro coro() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // task.cancel()
         (*task).cancel();
         __state = S_JOIN_1;
         continue;
@@ -132,7 +138,6 @@ __coro_coro coro() {
             continue;
         } catch (const ::tpy::CancelledError&) {
             __sub_1 = nullptr;
-            // print("got-cancelled")
             std::cout << "got-cancelled" << "\n";
             __state = S_JOIN_0;
             continue;
@@ -146,7 +151,6 @@ __coro_coro coro() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        // await task
         __sub_1 = &((*task));
         __state = S_RESUME_1;
         continue;
@@ -163,25 +167,26 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Cancellation propagating through a CFG-based finally body. The
+// # task is cancelled while suspended in the try body; the cancel
+// # delivers `CancelledError` to the resume case's catch-all, which
+// # saves it to `__finally_exc_<n>` and transitions to the finally
+// # entry. The finally body runs to completion before AsyncFinallyExit
+// # rethrows the saved CancelledError; the awaiting parent catches it.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Cancellation propagating through a CFG-based finally body. The
-    // # task is cancelled while suspended in the try body; the cancel
-    // # delivers `CancelledError` to the resume case's catch-all, which
-    // # saves it to `__finally_exc_<n>` and transitions to the finally
-    // # entry. The finally body runs to completion before AsyncFinallyExit
-    // # rethrows the saved CancelledError; the awaiting parent catches it.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

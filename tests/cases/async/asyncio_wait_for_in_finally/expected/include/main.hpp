@@ -16,12 +16,16 @@ struct __coro_quick;
 struct __coro_go;
 struct __coro_main_coro;
 
+// async def quick() -> int:
 __coro_quick quick();
+// async def go() -> None:
 __coro_go go();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: quick
+// async def quick() -> int:
 struct __coro_quick {
     int32_t __state;
     bool __cancel_pending;
@@ -44,7 +48,7 @@ struct __coro_quick {
     }
 };
 
-// Async coroutine: go
+// async def go() -> None:
 struct __coro_go {
     int32_t __state;
     bool __cancel_pending;
@@ -74,7 +78,7 @@ struct __coro_go {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

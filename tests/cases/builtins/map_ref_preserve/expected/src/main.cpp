@@ -5,27 +5,38 @@ namespace tpyapp::main {
 
 
 // def identity(p: Point) -> Point:
+//     return p
 Point& identity(Point& p) {
-    // return p
     return p;
 }
 
 // def scale(p: Point, factor: int32) -> Point:
+//     p.x = p.x * factor
+//     p.y = p.y * factor
+//     return p
 Point& scale(Point& p, int32_t factor) {
-    // p.x = p.x * factor
     p.x = (::tpy::mul_check<int32_t>(p.x, factor));
-    // p.y = p.y * factor
     p.y = (::tpy::mul_check<int32_t>(p.y, factor));
-    // return p
     return p;
 }
 
 // def main() -> None:
+//     pts: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
+//
+//     # identity returns by reference -- modifications go through
+//     for p in map(identity, pts):
+//         p.x = p.x * 10
+//     print(pts[0].x)  # 10 (modified through reference)
+//     print(pts[1].x)  # 30
+//     print(pts[2].x)  # 50
+//
+//     # scale mutates and returns by reference
+//     for p in map(lambda p: scale(p, 2), pts):
+//         pass  # scale already mutated via reference param
+//     print(pts[0].x)  # 20 (10 * 2)
+//     print(pts[1].x)  # 60 (30 * 2)
 void main() {
-    // pts: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4), Point(5, 6)};
-    // # identity returns by reference -- modifications go through
-    // for p in map(identity, pts):
     {
         auto __src_0 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -33,18 +44,12 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& p = ::tpy::unwrap_ref(*__r_1);
-        // p.x = p.x * 10
         p.x = (::tpy::mul_check<int32_t>(p.x, 10));
         }
     }
-    // print(pts[0].x)  # 10 (modified through reference)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // print(pts[1].x)  # 30
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
-    // print(pts[2].x)  # 50
     std::cout << ::tpy::__getitem__(pts, 2).x << "\n";
-    // # scale mutates and returns by reference
-    // for p in map(lambda p: scale(p, 2), pts):
     {
         auto __src_2 = ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>([](Point& p) -> Point& { return scale(p, 2); }, pts);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -52,21 +57,18 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& p = ::tpy::unwrap_ref(*__r_3);
-        // pass  # scale already mutated via reference param
         }
     }
-    // print(pts[0].x)  # 20 (10 * 2)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // print(pts[1].x)  # 60 (30 * 2)
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,45 +5,49 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p1 = Point()
+//     print(p1.x)
+//     print(p1.y)
+//
+//     p2 = Point(int32(3))
+//     print(p2.x)
+//     print(p2.y)
+//
+//     p3 = Point(int32(3), int32(4))
+//     print(p3.x)
+//     print(p3.y)
+//
+//     n1 = Named("test")
+//     print(n1.name)
+//     print(n1.value)
+//
+//     n2 = Named("test", int32(99))
+//     print(n2.name)
+//     print(n2.value)
 void main() {
-    // p1 = Point()
     Point p1 = Point();
-    // print(p1.x)
     std::cout << p1.x << "\n";
-    // print(p1.y)
     std::cout << p1.y << "\n";
-    // p2 = Point(int32(3))
     Point p2 = Point(3);
-    // print(p2.x)
     std::cout << p2.x << "\n";
-    // print(p2.y)
     std::cout << p2.y << "\n";
-    // p3 = Point(int32(3), int32(4))
     Point p3 = Point(3, 4);
-    // print(p3.x)
     std::cout << p3.x << "\n";
-    // print(p3.y)
     std::cout << p3.y << "\n";
-    // n1 = Named("test")
     Named n1 = Named("test");
-    // print(n1.name)
     std::cout << n1.name << "\n";
-    // print(n1.value)
     std::cout << n1.value << "\n";
-    // n2 = Named("test", int32(99))
     Named n2 = Named("test", 99);
-    // print(n2.name)
     std::cout << n2.name << "\n";
-    // print(n2.value)
     std::cout << n2.value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

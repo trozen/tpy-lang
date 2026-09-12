@@ -12,6 +12,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class CounterIter:
@@ -68,38 +69,44 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.current = start
+//     self.limit = limit
 inline CounterIter::CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
 // def __next__(self) -> int32:
+//     if self.current < self.limit:
+//         result = self.current
+//         self.current += 1
+//         return result
+//     raise StopIteration
 inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
-    // if self.current < self.limit:
     if ((this->current < this->limit)) {
-        // result = self.current
         int32_t result = this->current;
-        // self.current += 1
         this->current = ::tpy::add_check<int32_t>(this->current, 1);
-        // return result
         return result;
     }
-    // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
 // def __init__(self, start: int32, limit: int32) -> None:
+//     self.start = start
+//     self.limit = limit
 inline Counter::Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:
+//     return CounterIter(self.start, self.limit)
 inline CounterIter Counter::__iter__() const {
-    // return CounterIter(self.start, self.limit)
     return CounterIter(this->start, this->limit);
 }
 
 // @classmethod
 // def total_through_cls(cls, n: int32) -> int32:
+//     total = 0
+//     for v in cls(0, n):
+//         total += v
+//     return total
 inline int32_t Counter::total_through_cls(int32_t n) {
-    // total = 0
     int32_t total = 0;
-    // for v in cls(0, n):
     {
         auto __src_0 = Counter(0, n);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -107,20 +114,20 @@ inline int32_t Counter::total_through_cls(int32_t n) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
         }
     }
-    // return total
     return total;
 }
 
 // @staticmethod
 // def total_through_name(n: int32) -> int32:
+//     total = 0
+//     for v in Counter(0, n):
+//         total += v
+//     return total
 inline int32_t Counter::total_through_name(int32_t n) {
-    // total = 0
     int32_t total = 0;
-    // for v in Counter(0, n):
     {
         auto __src_0 = Counter(0, n);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -128,11 +135,9 @@ inline int32_t Counter::total_through_name(int32_t n) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
         }
     }
-    // return total
     return total;
 }
 void __tpy_init();

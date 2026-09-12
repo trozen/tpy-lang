@@ -12,7 +12,9 @@ using ::tpystd::http::HTTPStatus;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def classify(code: int) -> str:
 std::string classify(const ::tpy::BigInt& code);
+// def main() -> None:
 void main();
 
 void __tpy_init();

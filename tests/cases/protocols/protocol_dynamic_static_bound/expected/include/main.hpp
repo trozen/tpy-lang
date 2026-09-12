@@ -30,8 +30,10 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def speak[T: Pet](animal: T) -> None:
 template<__Pet_Concept__ T>
 void speak(::tpy::param_val_or_ref_t<T> animal);
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -69,14 +71,14 @@ namespace tpyapp::main {
 
 
 // def make_noise(self) -> str:
+//     return "Woof"
 inline std::string Dog::make_noise() {
-    // return "Woof"
     return "Woof";
 }
 // def speak[T: Pet](animal: T) -> None:
+//     print(animal.make_noise())
 template<__Pet_Concept__ T>
 void speak(::tpy::param_val_or_ref_t<T> animal) {
-    // print(animal.make_noise())
     std::cout << animal.make_noise() << "\n";
 }
 

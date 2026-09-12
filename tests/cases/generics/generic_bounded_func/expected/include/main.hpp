@@ -9,14 +9,16 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity[T: Sized](item: T) -> T:
 template<::tpystd::typing::Sized T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> item);
+// def main() -> None:
 void main();
 
 // def identity[T: Sized](item: T) -> T:
+//     return item
 template<::tpystd::typing::Sized T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> item) {
-    // return item
     return ::tpy::param_to_return<T>(item);
 }
 

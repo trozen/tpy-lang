@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nums: list[int32] = [10, 20, 30]
+//     describe(nums)
+//     check_not(nums)
 void main() {
-    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // describe(nums)
     describe(nums);
-    // check_not(nums)
     check_not(nums);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

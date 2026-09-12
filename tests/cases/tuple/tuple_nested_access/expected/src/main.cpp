@@ -5,28 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     n = (int32(10), ("inner", True))
+//     inner = n[1]
+//     print(inner[0])
+//     print(inner[1])
+//
+//     # Return value access
+//     print(n[0])
+//     print(n[1])
 void main() {
-    // n = (int32(10), ("inner", True))
     std::tuple<int32_t, std::tuple<std::string, bool>> n = std::tuple<int32_t, std::tuple<std::string, bool>>{10, std::tuple<std::string, bool>{"inner", true}};
-    // inner = n[1]
     std::tuple<std::string, bool> inner = std::get<1>(n);
-    // print(inner[0])
     std::cout << std::get<0>(inner) << "\n";
-    // print(inner[1])
     std::cout << ::tpy::print_bool(std::get<1>(inner)) << "\n";
-    // # Return value access
-    // print(n[0])
     std::cout << std::get<0>(n) << "\n";
-    // print(n[1])
     std::cout << ::tpy::TuplePrinter(std::get<1>(n)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -19,8 +19,11 @@ struct __coro_take_two_step;
 struct __coro_amain;
 struct __coro_Holder_borrow;
 
+// async def take_one_step(h: Holder) -> Own[Payload]:
 __coro_take_one_step take_one_step(Holder& h);
+// async def take_two_step(h: Holder) -> Own[Payload]:
 __coro_take_two_step take_two_step(Holder& h);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Payload:
@@ -57,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: Holder.borrow
+// async def borrow(self) -> Payload:
 struct __coro_Holder_borrow {
     int32_t __state;
     bool __cancel_pending;
@@ -83,7 +86,7 @@ inline __coro_Holder_borrow Holder::borrow() {
     return __coro_Holder_borrow(*this);
 }
 
-// Async coroutine: take_one_step
+// async def take_one_step(h: Holder) -> Own[Payload]:
 struct __coro_take_one_step {
     int32_t __state;
     bool __cancel_pending;
@@ -108,7 +111,7 @@ struct __coro_take_one_step {
     }
 };
 
-// Async coroutine: take_two_step
+// async def take_two_step(h: Holder) -> Own[Payload]:
 struct __coro_take_two_step {
     int32_t __state;
     bool __cancel_pending;
@@ -133,7 +136,7 @@ struct __coro_take_two_step {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -163,9 +166,11 @@ struct __coro_amain {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self, v: int32) -> None:
+//     self.p = Payload(v)
 inline Holder::Holder(int32_t v) : p(Payload(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

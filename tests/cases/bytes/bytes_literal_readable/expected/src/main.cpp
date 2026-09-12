@@ -7,52 +7,57 @@ namespace tpyapp::main {
 // # Bytes literals render readably in generated C++ (printable ASCII raw,
 // # control/high bytes as \xNN, greedy-\x break) in borrow and storage positions.
 // def take(x: bytes) -> int:
+//     return len(x)
 ::tpy::BigInt take(::tpy::BytesView x) {
-    // return len(x)
     return ::tpy::BigInt(::tpy::__len__(x));
 }
 
 // def make_greeting() -> bytes:
+//     return b"hello"
 ::tpy::Bytes make_greeting() {
-    // return b"hello"
     return ::tpy::bytes_literal_owned("hello", 5);
 }
 
 // def main() -> None:
+//     print(take(b"hello"))
+//     print(take(b""))
+//
+//     g = make_greeting()
+//     print(len(g), g[0])
+//
+//     quoted = b'a"b\\c'
+//     print(len(quoted), quoted[1])
+//
+//     binary = b"\x00\x80\xff"
+//     print(len(binary), binary[0], binary[1], binary[2])
+//
+//     greedy = b"\x1fab"
+//     print(len(greedy), greedy[0], greedy[1], greedy[2])
+//
+//     # b"" lands in an owned (vector) element -- exercises the empty-owned slot
+//     lst: list[bytes] = [b"world", b"\x00\x80\xff", b""]
+//     print(len(lst), len(lst[0]), len(lst[1]), len(lst[2]))
 void main() {
-    // print(take(b"hello"))
     std::cout << take(::tpy::bytes_literal("hello", 5)) << "\n";
-    // print(take(b""))
     std::cout << take(::tpy::BytesView{}) << "\n";
-    // g = make_greeting()
     ::tpy::Bytes g = make_greeting();
-    // print(len(g), g[0])
     std::cout << ::tpy::__len__(g) << " " << static_cast<int>(::tpy::bytes_getitem(g, 0)) << "\n";
-    // quoted = b'a"b\\c'
     ::tpy::BytesView quoted = ::tpy::bytes_literal("a\"b\\c", 5);
-    // print(len(quoted), quoted[1])
     std::cout << ::tpy::__len__(quoted) << " " << static_cast<int>(::tpy::bytes_getitem(quoted, 1)) << "\n";
-    // binary = b"\x00\x80\xff"
     ::tpy::BytesView binary = ::tpy::bytes_literal("\000\x80\xff", 3);
-    // print(len(binary), binary[0], binary[1], binary[2])
     std::cout << ::tpy::__len__(binary) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 2)) << "\n";
-    // greedy = b"\x1fab"
     ::tpy::BytesView greedy = ::tpy::bytes_literal("\x1f" "ab", 3);
-    // print(len(greedy), greedy[0], greedy[1], greedy[2])
     std::cout << ::tpy::__len__(greedy) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 2)) << "\n";
-    // # b"" lands in an owned (vector) element -- exercises the empty-owned slot
-    // lst: list[bytes] = [b"world", b"\x00\x80\xff", b""]
     std::vector<::tpy::Bytes> lst = {::tpy::bytes_literal_owned("world", 5), ::tpy::bytes_literal_owned("\000\x80\xff", 3), ::tpy::Bytes{}};
-    // print(len(lst), len(lst[0]), len(lst[1]), len(lst[2]))
     std::cout << ::tpy::__len__(lst) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 1)) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

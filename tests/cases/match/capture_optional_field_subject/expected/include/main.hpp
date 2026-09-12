@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // # A bare capture of a storage-form Optional FIELD subject aliases the field's
@@ -50,9 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline Box::Box(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self, opt: Box | None):
+//     self.opt = opt
 inline Holder::Holder(const Box* opt) : opt(::tpy::ptr_to_optional(opt)) {}
 void __tpy_init();
 } // namespace tpyapp::main

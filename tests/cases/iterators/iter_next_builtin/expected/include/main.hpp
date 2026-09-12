@@ -11,8 +11,10 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume_two(it: Iterator[int32]) -> None:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 void consume_two(T_it& it);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -42,56 +44,59 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, limit: int32) -> None:
+//     self.value = 0
+//     self.limit = limit
 inline Counter::Counter(int32_t limit) : value(0), limit(limit) {}
 
 // def __iter__(self) -> Counter:
+//     return self
 inline Counter& Counter::__iter__() {
-    // return self
     return (*this);
 }
 
 // @error_return(StopIteration)
 // def __next__(self) -> int32:
+//     if self.value >= self.limit:
+//         raise StopIteration
+//     v = self.value
+//     self.value += 1
+//     return v
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
-    // if self.value >= self.limit:
     if ((this->value >= this->limit)) {
-        // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
-    // v = self.value
     int32_t v = this->value;
-    // self.value += 1
     this->value = ::tpy::add_check<int32_t>(this->value, 1);
-    // return v
     return v;
 }
 // def consume_two(it: Iterator[int32]) -> None:
+//     try:
+//         a = next(it)
+//         b = next(it)
+//         print(a)
+//         print(b)
+//     except StopIteration:
+//         print("stopped early")
 template<::tpystd::typing::Iterator<int32_t> T_it>
 void consume_two(T_it& it) {
-    // try:
     int32_t a;
     int32_t b;
     {
-        // a = next(it)
         {
             auto __try_tmp_2 = ::tpy::next(it);
             if (!__try_tmp_2.has_value()) goto __except_1;
             a = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
-        // b = next(it)
         {
             auto __try_tmp_3 = ::tpy::next(it);
             if (!__try_tmp_3.has_value()) goto __except_1;
             b = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
-        // print(a)
         std::cout << a << "\n";
-        // print(b)
         std::cout << b << "\n";
         goto __after_try_1;
         // except StopIteration:
         __except_1:;
-        // print("stopped early")
         std::cout << "stopped early" << "\n";
         __after_try_1:;
     }

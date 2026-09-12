@@ -5,31 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b: Buffer[int32, 3] = Buffer[int32, 3]()
+//
+//     # Set values
+//     b.set(int32(0), int32(10))
+//     b.set(int32(1), int32(20))
+//     b.set(int32(2), int32(30))
+//
+//     # Get values
+//     print(b.get(int32(0)))
+//     print(b.get(int32(1)))
+//     print(b.get(int32(2)))
 void main() {
-    // b: Buffer[int32, 3] = Buffer[int32, 3]()
     Buffer<int32_t, 3> b = Buffer<int32_t, 3>();
-    // # Set values
-    // b.set(int32(0), int32(10))
     b.set(0, 10);
-    // b.set(int32(1), int32(20))
     b.set(1, 20);
-    // b.set(int32(2), int32(30))
     b.set(2, 30);
-    // # Get values
-    // print(b.get(int32(0)))
     std::cout << b.get(0) << "\n";
-    // print(b.get(int32(1)))
     std::cout << b.get(1) << "\n";
-    // print(b.get(int32(2)))
     std::cout << b.get(2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

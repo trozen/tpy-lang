@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def make_point() -> Own[Point]:
+//     p = Point()
+//     p.x = 10
+//     p.y = 20
+//     return copy(p)
 Point make_point() {
-    // p = Point()
     Point p = Point();
-    // p.x = 10
     p.x = 10;
-    // p.y = 20
     p.y = 20;
-    // return copy(p)
     return Point(p);
 }
 
 // def use_point(p: Point) -> None:
+//     print(p.x)
 void use_point(const Point& p) {
-    // print(p.x)
     std::cout << p.x << "\n";
 }
 
 // def main():
+//     use_point(make_point())  # tpyc: ok
 void main() {
-    // use_point(make_point())  # tpyc: ok
     Point __tmp_1 = make_point();
     use_point(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

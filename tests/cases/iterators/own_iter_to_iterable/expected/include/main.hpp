@@ -14,10 +14,13 @@ inline constexpr std::string_view __name__ = "__main__";
 template <typename T>
 struct __gen_each_twice;
 
+// def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
 __gen_each_twice<T> each_twice(std::vector<T>& xs);
+// def total(xs: Iterable[Own[int32]]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -45,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
-// Generator: each_twice
+// def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
 struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> {
     int32_t __state;
@@ -73,6 +76,9 @@ struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> 
     }
 };
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+//     for x in xs:
+//         yield copy(x)  # tpyc: ok
+//         yield copy(x)  # tpyc: ok
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
     while (true) switch (__state) {
@@ -83,7 +89,6 @@ std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // yield copy(x)  # tpyc: ok
         __state = S_RESUME_1;
         return T((*x));
     }
@@ -97,7 +102,6 @@ std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = &(*((*__for_it_0))++);
-        // yield copy(x)  # tpyc: ok
         __state = S_RESUME_0;
         return T((*x));
     }
@@ -115,13 +119,18 @@ __gen_each_twice<T> each_twice(std::vector<T>& xs) {
 
 
 // def __init__(self, key: int32, tag: int32) -> None:
+//     self.key = key
+//     self.tag = tag
 inline Item::Item(int32_t key, int32_t tag) : key(key), tag(tag) {}
 
 // def __lt__(self, other: 'Item') -> bool:
+//     return self.key < other.key
 inline bool Item::__lt__(const Item& other) const {
-    // return self.key < other.key
     return (this->key < other.key);
 }
+// def each[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
+//     for x in xs:
+//         yield copy(x)
 template<::tpystd::tpy::Comparable T>
 inline auto each(std::vector<T>& xs) {
     return ::tpy::make_generator<T>(
@@ -140,21 +149,21 @@ inline auto each(std::vector<T>& xs) {
 // # A user sink typed Iterable[Own[T]] fed an Iterator[Own[T]] -- the same
 // # conformance path as list(), beyond the builtin.
 // def total(xs: Iterable[Own[int32]]) -> int32:
+//     s: int32 = 0
+//     for x in xs:
+//         s += x
+//     return s
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs) {
-    // s: int32 = 0
     int32_t s = 0;
-    // for x in xs:
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // s += x
         s = ::tpy::add_check<int32_t>(s, x);
     }
-    // return s
     return s;
 }
 

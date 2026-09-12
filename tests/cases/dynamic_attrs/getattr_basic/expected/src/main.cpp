@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     cfg = Config({"host": "localhost", "port": int32(8080)})
+//     host = cast(str, cfg.host)
+//     port = cast(int32, cfg.port)
+//     print(host)
+//     print(port)
 void main() {
-    // cfg = Config({"host": "localhost", "port": int32(8080)})
     Config cfg = Config(::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(8080)}}));
-    // host = cast(str, cfg.host)
     std::string host = ::tpy::any_cast_or_panic<std::string>(cfg.__getattr__("host"));
-    // port = cast(int32, cfg.port)
     int32_t port = ::tpy::any_cast_or_panic<int32_t>(cfg.__getattr__("port"));
-    // print(host)
     std::cout << host << "\n";
-    // print(port)
     std::cout << port << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

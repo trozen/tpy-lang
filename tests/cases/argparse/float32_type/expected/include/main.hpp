@@ -12,8 +12,11 @@ struct __tpy_builder_argparse_args_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
+// args = parser.parse_args(["2.5", "--gain", "1.25"])
 void __tpy_builder_argparse_help_1();
+// args = parser.parse_args(["2.5", "--gain", "1.25"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
 
 // args = parser.parse_args(["2.5", "--gain", "1.25"])

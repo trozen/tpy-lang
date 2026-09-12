@@ -32,10 +32,15 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def owned_return(c: Color) -> str:
 std::string owned_return(Color c);
+// def owned_local(c: Color) -> str:
 std::string owned_local(Color c);
+// def view_positions(c: Color) -> None:
 void view_positions(Color c);
+// def owned_slot(c: Color) -> None:
 void owned_slot(Color c);
+// def main() -> None:
 void main();
 
 void __tpy_init();

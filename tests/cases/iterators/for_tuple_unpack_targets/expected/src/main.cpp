@@ -5,83 +5,80 @@ namespace tpyapp::main {
 
 
 // def sum_items(d: dict[int32, int32]) -> int32:
+//     s = 0
+//     for k, v in d.items():
+//         s = s + k + v
+//     return s
 int32_t sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
-    // s = 0
     int32_t s = 0;
-    // for k, v in d.items():
     auto __obj_0 = ::tpy::dict_items(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        // for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         int32_t k = std::get<0>(__tup_1);
         int32_t v = std::get<1>(__tup_1);
-        // s = s + k + v
         s = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(s, k)), v));
     }
-    // return s
     return s;
 }
 
 // def sum_pairs(ps: list[tuple[int32, int32]]) -> int32:
+//     s = 0
+//     for a, b in ps:
+//         s = s + a * b
+//     return s
 int32_t sum_pairs(const std::vector<std::tuple<int32_t, int32_t>>& ps) {
-    // s = 0
     int32_t s = 0;
-    // for a, b in ps:
     auto& __obj_0 = ps;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_1 = *__beg_0;
-        // for a, b in ps:
         const auto& __tup_1 = __for_tup_1;
         int32_t a = std::get<0>(__tup_1);
         int32_t b = std::get<1>(__tup_1);
-        // s = s + a * b
         s = (::tpy::add_check<int32_t>(s, (::tpy::mul_check<int32_t>(a, b))));
     }
-    // return s
     return s;
 }
 
 // def discard_snd(ps: list[tuple[int32, int32]]) -> int32:
+//     s = 0
+//     for a, _ in ps:  # the second target is discarded
+//         s = s + a
+//     return s
 int32_t discard_snd(const std::vector<std::tuple<int32_t, int32_t>>& ps) {
-    // s = 0
     int32_t s = 0;
-    // for a, _ in ps:  # the second target is discarded
     auto& __obj_0 = ps;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        // for a, _ in ps:  # the second target is discarded
         const auto& __tup_1 = __for_tup_2;
         int32_t a = std::get<0>(__tup_1);
-        // s = s + a
         s = (::tpy::add_check<int32_t>(s, a));
     }
-    // return s
     return s;
 }
 
 // def main() -> None:
+//     d = {1: 10, 2: 20}
+//     ps = [(1, 2), (3, 4)]
+//     print(sum_items(d), sum_pairs(ps), discard_snd(ps))
 void main() {
-    // d = {1: 10, 2: 20}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
-    // ps = [(1, 2), (3, 4)]
     std::vector<std::tuple<int32_t, int32_t>> ps = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // print(sum_items(d), sum_pairs(ps), discard_snd(ps))
     std::cout << sum_items(d) << " " << sum_pairs(ps) << " " << discard_snd(ps) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

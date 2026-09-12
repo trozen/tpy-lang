@@ -9,35 +9,38 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(items: Sized) -> None:
 template<::tpystd::typing::Sized T_items>
 void describe(const T_items& items);
+// def check_not(items: Sized) -> None:
 template<::tpystd::typing::Sized T_items>
 void check_not(const T_items& items);
+// def main() -> None:
 void main();
 
 // def describe(items: Sized) -> None:
+//     if isinstance(items, Sized):
+//         print("sized:", len(items))
+//     else:
+//         print("not sized")
 template<::tpystd::typing::Sized T_items>
 void describe(const T_items& items) {
-    // if isinstance(items, Sized):
     if constexpr (::tpystd::typing::Sized<T_items>) {
-        // print("sized:", len(items))
         std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n";
-    // else:
     } else {
-        // print("not sized")
         std::cout << "not sized" << "\n";
     }
 }
 // def check_not(items: Sized) -> None:
+//     if not isinstance(items, Sized):
+//         print("not sized")
+//     else:
+//         print("sized:", len(items))
 template<::tpystd::typing::Sized T_items>
 void check_not(const T_items& items) {
-    // if not isinstance(items, Sized):
     if constexpr ((!(::tpystd::typing::Sized<T_items>))) {
-        // print("not sized")
         std::cout << "not sized" << "\n";
-    // else:
     } else {
-        // print("sized:", len(items))
         std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n";
     }
 }

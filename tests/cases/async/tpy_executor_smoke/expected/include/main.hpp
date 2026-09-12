@@ -29,13 +29,21 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_returns_value;
 struct __coro_void_coro;
 
+// async def returns_value(x: int) -> int:
 __coro_returns_value returns_value(::tpy::BigInt x);
+// async def void_coro() -> None:
 __coro_void_coro void_coro();
+// def test_spawn_and_run() -> None:
 void test_spawn_and_run();
+// def test_multiple_spawns() -> None:
 void test_multiple_spawns();
+// def test_timer_fires_immediately() -> None:
 void test_timer_fires_immediately();
+// def test_drain_with_no_tasks() -> None:
 void test_drain_with_no_tasks();
+// def test_drain_cancels_live_task() -> None:
 void test_drain_cancels_live_task();
+// def main() -> None:
 void main();
 
 // class CancellableForever:
@@ -59,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const CancellableForever& obj)
     return os;
 }
 
-// Async coroutine: returns_value
+// async def returns_value(x: int) -> int:
 struct __coro_returns_value {
     int32_t __state;
     bool __cancel_pending;
@@ -81,7 +89,7 @@ struct __coro_returns_value {
     }
 };
 
-// Async coroutine: void_coro
+// async def void_coro() -> None:
 struct __coro_void_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -104,22 +112,23 @@ struct __coro_void_coro {
 
 
 // def __init__(self) -> None:
+//     self.__cancel_pending = False
 inline CancellableForever::CancellableForever() : __cancel_pending(false) {}
 
 // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+//     if self.__cancel_pending:
+//         raise CancelledError()
+//     return poll_pending[None]()
 inline ::tpystd::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpystd::coro::Waker waker) const {
-    // if self.__cancel_pending:
     if (this->__cancel_pending) {
-        // raise CancelledError()
         throw ::tpy::CancelledError{};
     }
-    // return poll_pending[None]()
     return ::tpystd::coro::poll_pending<std::monostate>();
 }
 
 // def cancel(self) -> None:
+//     self.__cancel_pending = True
 inline void CancellableForever::cancel() {
-    // self.__cancel_pending = True
     this->__cancel_pending = true;
 }
 void __tpy_init();

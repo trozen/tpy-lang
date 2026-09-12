@@ -5,14 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     m = Mutex.new([1, 2, 3])
+//     with m.lock() as ml:
+//         ml.append(4)                # mutate through the guard's deref chain
+//     with m.lock() as ml2:
+//         print(sorted(ml2.get()))    # [1, 2, 3, 4] -- the append survived
+//
+//     counter = Mutex.new(int32(5))
+//     with counter.lock() as c:
+//         c.set(c.get() + 1)          # value-type payload: explicit get/set
+//     with counter.lock() as c2:
+//         print(c2.get())             # 6
+//
+//     rw = RwLock.new([10, 20])
+//     with rw.write() as w:
+//         w.append(30)                # write guard: mutable
+//     with rw.read() as r:
+//         print(len(r.get()))         # 3 -- read guard sees the write
 void main() {
-    // m = Mutex.new([1, 2, 3])
     ::tpystd::tpy::sync::Mutex<std::vector<int32_t>> m = ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>::new_({1, 2, 3});
-    // with m.lock() as ml:
     auto __ctx_1 = m.lock();
     auto& ml = __ctx_1.__enter__();
     try {
-        // ml.append(4)                # mutate through the guard's deref chain
         ml.__deref__().push_back(4);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -24,11 +38,9 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // with m.lock() as ml2:
     auto __ctx_2 = m.lock();
     auto& ml2 = __ctx_2.__enter__();
     try {
-        // print(sorted(ml2.get()))    # [1, 2, 3, 4] -- the append survived
         std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(ml2.get())) << "\n";
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -40,13 +52,10 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // counter = Mutex.new(int32(5))
     ::tpystd::tpy::sync::Mutex<int32_t> counter = ::tpystd::tpy::sync::Mutex<int32_t>::new_(5);
-    // with counter.lock() as c:
     auto __ctx_3 = counter.lock();
     auto& c = __ctx_3.__enter__();
     try {
-        // c.set(c.get() + 1)          # value-type payload: explicit get/set
         c.set((::tpy::add_check<int32_t>(c.get(), 1)));
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -58,11 +67,9 @@ void main() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
-    // with counter.lock() as c2:
     auto __ctx_4 = counter.lock();
     auto& c2 = __ctx_4.__enter__();
     try {
-        // print(c2.get())             # 6
         std::cout << c2.get() << "\n";
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -74,13 +81,10 @@ void main() {
     }
     __with_exit_4:
     __ctx_4.__exit__({}, nullptr, {});
-    // rw = RwLock.new([10, 20])
     ::tpystd::tpy::sync::RwLock<std::vector<int32_t>> rw = ::tpystd::tpy::sync::RwLock<std::vector<int32_t>>::new_({10, 20});
-    // with rw.write() as w:
     auto __ctx_5 = rw.write();
     auto& w = __ctx_5.__enter__();
     try {
-        // w.append(30)                # write guard: mutable
         w.__deref__().push_back(30);
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
@@ -92,11 +96,9 @@ void main() {
     }
     __with_exit_5:
     __ctx_5.__exit__({}, nullptr, {});
-    // with rw.read() as r:
     auto __ctx_6 = rw.read();
     auto& r = __ctx_6.__enter__();
     try {
-        // print(len(r.get()))         # 3 -- read guard sees the write
         std::cout << ::tpy::__len__(r.get()) << "\n";
         goto __with_exit_6;
     } catch (::tpy::BaseException& __exc_6) {
@@ -110,14 +112,15 @@ void main() {
     __ctx_6.__exit__({}, nullptr, {});
 }
 
+// from tpy.sync import Mutex, RwLock
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.sync import Mutex, RwLock
     ::tpystd::tpy::sync::__tpy_init();
-    // main()
     main();
 }
 

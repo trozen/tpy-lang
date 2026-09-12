@@ -11,7 +11,9 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def grow(src: Tree[int32]) -> None:
 void grow(Tree<int32_t>& src);
+// def main() -> None:
 void main();
 
 template<typename T>

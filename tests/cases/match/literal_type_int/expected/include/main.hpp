@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def priority_label(level: Literal[1, 2, 3]) -> str:
 std::string priority_label(int32_t level);
+// def main() -> None:
 void main();
 
 void __tpy_init();

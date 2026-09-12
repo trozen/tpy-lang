@@ -5,6 +5,10 @@ namespace tpyapp::main {
 
 
 // def g_items(d: dict[str, int32 | None]) -> Iterator[int32]:
+//     for k, v in d.items():
+//         # `v` is a value-optional unpack target narrowed before the yield.
+//         if v is not None and len(k) > 0:
+//             yield v
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -24,12 +28,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_items::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = *((*__for_it_0))++;
-        // for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         k = std::get<0>(__tup_1);
         v = std::get<1>(__tup_1);
         if (((v.has_value()) && (::tpy::__len__(k) > 0))) {
-            // yield v
             __state = S_RESUME_0;
             return (*v);
         } else {
@@ -53,18 +55,18 @@ __gen_g_items g_items(::tpy::ordered_map<std::string, std::optional<int32_t>>& d
 }
 
 // def main() -> None:
+//     print(sum(g_items({"a": 1, "b": None, "c": 2})))
 void main() {
-    // print(sum(g_items({"a": 1, "b": None, "c": 2})))
     ::tpy::ordered_map<std::string, std::optional<int32_t>> __tmp_1 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"a", 1}, {"b", std::nullopt}, {"c", 2}});
     std::cout << ::tpy::builtin_sum<int32_t>(g_items(__tmp_1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,22 +12,43 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def passthrough(
+//     n: Ptr[Node] | None,            # tpyc: warning(/`Ptr\[Node\] \| None` is redundant/)
+// ) -> Ptr[Node] | None:              # tpyc: warning(/`Ptr\[Node\] \| None` is redundant/)
 Node* passthrough(Node* n);
+// def passthrough_ro(
+//     n: Ptr[readonly[Node]] | None,  # tpyc: warning(/`Ptr\[readonly\[Node\]\] \| None` is redundant/)
+// ) -> Ptr[readonly[Node]] | None:    # tpyc: warning(/`Ptr\[readonly\[Node\]\] \| None` is redundant/)
 const Node* passthrough_ro(const Node* n);
+// def first(items: list[Node]) -> Node | None:
 Node* first(std::vector<Node>& items);
+// def find(items: list[Node], target: int) -> Node | None:
 Node* find(std::vector<Node>& items, const ::tpy::BigInt& target);
+// def consume(n: Node | None) -> int:
 ::tpy::BigInt consume(const Node* n);
+// def consume_ro(n: readonly[Node] | None) -> int:
 ::tpy::BigInt consume_ro(const Node* n);
+// def first_pair(items: list[Node]) -> tuple[Node | None, int]:
 std::tuple<Node*, ::tpy::BigInt> first_pair(std::vector<Node>& items);
+// def take_ptr_node(p: Ptr[Node]) -> int:
 ::tpy::BigInt take_ptr_node(Node* p);
+// def test_collapse_passthrough() -> None:
 void test_collapse_passthrough();
+// def test_optional_return_into_ptr_local() -> None:
 void test_optional_return_into_ptr_local();
+// def test_ptr_value_into_optional_return() -> None:
 void test_ptr_value_into_optional_return();
+// def test_readonly_variant() -> None:
 void test_readonly_variant();
+// def test_ptr_into_optional_call_arg() -> None:
 void test_ptr_into_optional_call_arg();
+// def test_ptr_into_optional_tuple_slot() -> None:
 void test_ptr_into_optional_tuple_slot();
+// def test_mutable_to_readonly_widening() -> None:
 void test_mutable_to_readonly_widening();
+// def test_storage_form_optional_lifts_to_ptr() -> None:
 void test_storage_form_optional_lifts_to_ptr();
+// def main() -> None:
 void main();
 
 // class Node:
@@ -65,9 +86,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int) -> None:
+//     self.val = v
 inline Node::Node(const ::tpy::BigInt& v) : val(v) {}
 
 // def __init__(self, v: Node) -> None:
+//     self.opt = v
 inline Holder::Holder(const Node& v) : opt(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

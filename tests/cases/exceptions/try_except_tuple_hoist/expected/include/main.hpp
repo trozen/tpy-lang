@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_pair(fail: bool) -> tuple[str, str]:
 std::tuple<std::string, std::string> maybe_pair(bool fail);
+// def run(fail: bool) -> str:
 std::string run(bool fail);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -15,12 +15,16 @@ struct __coro_boom;
 struct __coro_cleanup;
 struct __coro_caller;
 
+// async def boom() -> int:
 __coro_boom boom();
+// async def cleanup() -> None:
 __coro_cleanup cleanup();
+// async def caller() -> int:
 __coro_caller caller();
+// def main() -> None:
 void main();
 
-// Async coroutine: boom
+// async def boom() -> int:
 struct __coro_boom {
     int32_t __state;
     bool __cancel_pending;
@@ -41,7 +45,7 @@ struct __coro_boom {
     }
 };
 
-// Async coroutine: cleanup
+// async def cleanup() -> None:
 struct __coro_cleanup {
     int32_t __state;
     bool __cancel_pending;
@@ -62,7 +66,7 @@ struct __coro_cleanup {
     }
 };
 
-// Async coroutine: caller
+// async def caller() -> int:
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;

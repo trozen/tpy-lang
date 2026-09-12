@@ -11,13 +11,21 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def via_alias() -> Own[Box]:
 Box via_alias();
+// def via_closure() -> Own[Box]:
 Box via_closure();
+// def via_closure_rebind() -> Own[Box]:
 Box via_closure_rebind();
+// def opt_via_closure(flag: bool) -> Own[Box] | None:
 std::optional<Box> opt_via_closure(bool flag);
+// def closure_dels_other() -> Own[Box]:
 Box closure_dels_other();
+// def untouched() -> Own[Box]:
 Box untouched();
+// def del_other_local() -> Own[Box]:
 Box del_other_local();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -37,6 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline Box::Box() : n(10) {}
 void __tpy_init();
 } // namespace tpyapp::main

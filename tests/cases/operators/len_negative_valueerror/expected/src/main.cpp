@@ -5,82 +5,88 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # negative -> ValueError via len(), both return-type branches
+//     try:
+//         print(len(NegBig()))
+//     except ValueError as e:
+//         print("len big:", e)
+//     try:
+//         print(len(NegI32()))
+//     except ValueError as e:
+//         print("len i32:", e)
+//
+//     # negative -> ValueError via truthiness (same slot in CPython), both branches
+//     try:
+//         if NegBig():
+//             print("neg truthy")
+//     except ValueError as e:
+//         print("truthy big:", e)
+//     try:
+//         if NegI32():
+//             print("neg truthy")
+//     except ValueError as e:
+//         print("truthy i32:", e)
+//
+//     # inverse -- zero and positive keep working
+//     print(len(Empty()))
+//     if Empty():
+//         print("empty truthy")
+//     else:
+//         print("empty falsy")
+//     print(len(Full()))
+//     if Full():
+//         print("full truthy")
 void main() {
-    // # negative -> ValueError via len(), both return-type branches
-    // try:
     {
         try {
-            // print(len(NegBig()))
             std::cout << ::tpy::__len__(NegBig()) << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("len big:", e)
             std::cout << "len big:" << " " << e << "\n";
         }
     }
-    // try:
     {
         try {
-            // print(len(NegI32()))
             std::cout << ::tpy::__len__(NegI32()) << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("len i32:", e)
             std::cout << "len i32:" << " " << e << "\n";
         }
     }
-    // # negative -> ValueError via truthiness (same slot in CPython), both branches
-    // try:
     {
         try {
-            // if NegBig():
             if ((::tpy::__len__(NegBig()) != 0)) {
-                // print("neg truthy")
                 std::cout << "neg truthy" << "\n";
             }
         } catch (const ::tpy::ValueError& e) {
-            // print("truthy big:", e)
             std::cout << "truthy big:" << " " << e << "\n";
         }
     }
-    // try:
     {
         try {
-            // if NegI32():
             if ((::tpy::__len__(NegI32()) != 0)) {
-                // print("neg truthy")
                 std::cout << "neg truthy" << "\n";
             }
         } catch (const ::tpy::ValueError& e) {
-            // print("truthy i32:", e)
             std::cout << "truthy i32:" << " " << e << "\n";
         }
     }
-    // # inverse -- zero and positive keep working
-    // print(len(Empty()))
     std::cout << ::tpy::__len__(Empty()) << "\n";
-    // if Empty():
     if ((::tpy::__len__(Empty()) != 0)) {
-        // print("empty truthy")
         std::cout << "empty truthy" << "\n";
-    // else:
     } else {
-        // print("empty falsy")
         std::cout << "empty falsy" << "\n";
     }
-    // print(len(Full()))
     std::cout << ::tpy::__len__(Full()) << "\n";
-    // if Full():
     if ((::tpy::__len__(Full()) != 0)) {
-        // print("full truthy")
         std::cout << "full truthy" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

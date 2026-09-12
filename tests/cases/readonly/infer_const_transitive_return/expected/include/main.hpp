@@ -13,6 +13,7 @@ struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -76,36 +77,39 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self._items = [Point(1), Point(2)]
 inline Container::Container() : _items(std::vector<Point>{Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))}) {}
 
 // def first_mutable(self) -> Point:    # non-const: mutable ref into self's data
+//     return self._items[0]
 inline Point& Container::first_mutable() {
-    // return self._items[0]
     return ::tpy::__getitem__(this->_items, 0);
 }
 
 // @readonly
 // def first_readonly(self) -> Point:   # const: explicitly read-only
+//     return self._items[0]
 inline const Point& Container::first_readonly() const {
-    // return self._items[0]
     return ::tpy::__getitem__(this->_items, 0);
 }
 
 // def first_x(self) -> int:            # auto-const: value return, no self borrow
+//     return self._items[0].x
 inline ::tpy::BigInt Container::first_x() const {
-    // return self._items[0].x
     return ::tpy::__getitem__(this->_items, 0).x;
 }
 
 // def __init__(self) -> None:
+//     self._c = Container()
 inline Wrapper::Wrapper() : _c(Container()) {}
 
 // def get_mutable(self) -> Point:      # non-const: transitive through non-readonly callee
+//     return self._c.first_mutable()
 inline Point& Wrapper::get_mutable() {
-    // return self._c.first_mutable()
     return this->_c.first_mutable();
 }
 void __tpy_init();

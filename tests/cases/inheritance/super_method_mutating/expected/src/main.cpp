@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child()
+//     c.call_super_bump()
+//     c.call_super_bump()
+//     print(c.call_super_get())
+//
+//     m = Multi()
+//     m.call_super_bump()
+//     m.call_super_bump_other()
+//     print(m.x)
+//     print(m.y)
 void main() {
-    // c = Child()
     Child c = Child();
-    // c.call_super_bump()
     c.call_super_bump();
-    // c.call_super_bump()
     c.call_super_bump();
-    // print(c.call_super_get())
     std::cout << c.call_super_get() << "\n";
-    // m = Multi()
     Multi m = Multi();
-    // m.call_super_bump()
     m.call_super_bump();
-    // m.call_super_bump_other()
     m.call_super_bump_other();
-    // print(m.x)
     std::cout << m.x << "\n";
-    // print(m.y)
     std::cout << m.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

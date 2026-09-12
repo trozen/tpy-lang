@@ -11,6 +11,7 @@ template<typename T, std::size_t N> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Container[T, N: int]:
@@ -19,20 +20,20 @@ struct Container {
 
 
     // def get_double(self) -> int32:
+    //     return int32(N * 2)
     int32_t get_double() const {
-        // return int32(N * 2)
         return (::tpy::mul_check<int32_t>(N, 2));
     }
 
     // def get_plus_one(self) -> int32:
+    //     return int32(N + 1)
     int32_t get_plus_one() const {
-        // return int32(N + 1)
         return (::tpy::add_check<int32_t>(N, 1));
     }
 
     // def get_minus_five(self) -> int32:
+    //     return int32(N - 5)
     int32_t get_minus_five() const {
-        // return int32(N - 5)
         return (::tpy::sub_check<int32_t>(N, 5));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

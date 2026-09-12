@@ -8,20 +8,19 @@ namespace tpyapp::a {
 
 // def __init__(self) -> None: pass
 A::A() {
-    // def __init__(self) -> None: pass
 }
 
 // def go(self) -> int32:
+//     return H().work()
 int32_t A::go() const {
-    // return H().work()
     return ::tpyapp::b::Helper().work();
 }
+// from b import Helper as H
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from b import Helper as H
     ::tpyapp::b::__tpy_init();
 }
 

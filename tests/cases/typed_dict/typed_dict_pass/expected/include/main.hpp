@@ -11,8 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(p: Point) -> str:
 std::string describe(const Point& p);
+// def translate(p: Point, dx: int32, dy: int32) -> Own[Point]:
 Point translate(const Point& p, int32_t dx, int32_t dy);
+// def main() -> None:
 void main();
 
 // class Point(TypedDict):

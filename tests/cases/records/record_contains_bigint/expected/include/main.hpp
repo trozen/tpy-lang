@@ -11,6 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Bag:
@@ -33,11 +34,12 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self):
+//     self.xs = [1, 2]
 inline Bag::Bag() : xs(std::vector<int32_t>{1, 2}) {}
 
 // def __contains__(self, item: int32) -> bool:
+//     return item in self.xs
 inline bool Bag::__contains__(int32_t item) const {
-    // return item in self.xs
     return std::ranges::contains(this->xs, item);
 }
 void __tpy_init();

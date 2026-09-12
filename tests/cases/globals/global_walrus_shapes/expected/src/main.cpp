@@ -3,70 +3,67 @@
 
 namespace tpyapp::main {
 
-// ratio = 0.0
 double ratio{};
-// flag = False
 bool flag{};
-// title = "start"
 std::string title;
-// slot: int32 | None = None
 std::optional<int32_t> slot;
 
 // def lookup(n: int32) -> int32 | None:
+//     return n if n > 0 else None
 std::optional<int32_t> lookup(int32_t n) {
-    // return n if n > 0 else None
     return (((n > 0)) ? (std::optional<int32_t>(n)) : (std::optional<int32_t>(std::nullopt)));
 }
 
 // def narrow(n: int32) -> int32:
+//     global slot
+//     if (slot := lookup(n)) is not None:  # tpyc: ok
+//         return slot
+//     return -1
 int32_t narrow(int32_t n) {
-    // global slot
-    // if (slot := lookup(n)) is not None:  # tpyc: ok
     if (((slot = lookup(n)).has_value())) {
-        // return slot
         return (*slot);
     }
-    // return -1
     return -1;
 }
 
 // def other_types() -> None:
+//     global ratio, flag
+//     r = (ratio := 1.5)
+//     f = (flag := True)
+//     print("bound:", r, f)
 void other_types() {
-    // global ratio, flag
-    // r = (ratio := 1.5)
     double r = (ratio = 1.5);
-    // f = (flag := True)
     bool f = (flag = true);
-    // print("bound:", r, f)
     std::cout << "bound:" << " " << ::tpy::print_float(r) << " " << ::tpy::print_bool(f) << "\n";
 }
 
 // def main() -> None:
+//     print("narrow:", narrow(4), narrow(-1), slot)
+//     print("method:", Widget().retitle("renamed"), title)
+//     other_types()
+//     print("globals:", ratio, flag)
 void main() {
-    // print("narrow:", narrow(4), narrow(-1), slot)
     std::cout << "narrow:" << " " << narrow(4) << " " << narrow(-1) << " " << ::tpy::print_optional_val(slot) << "\n";
-    // print("method:", Widget().retitle("renamed"), title)
     std::cout << "method:" << " " << Widget().retitle("renamed") << " " << title << "\n";
-    // other_types()
     other_types();
-    // print("globals:", ratio, flag)
     std::cout << "globals:" << " " << ::tpy::print_float(ratio) << " " << ::tpy::print_bool(flag) << "\n";
 }
 
+// ratio = 0.0
+// flag = False
+// title = "start"
+// slot: int32 | None = None
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // ratio = 0.0
     ratio = 0.0;
-    // flag = False
     flag = false;
-    // title = "start"
     title = "start";
-    // slot: int32 | None = None
     slot = std::nullopt;
-    // main()
     main();
 }
 

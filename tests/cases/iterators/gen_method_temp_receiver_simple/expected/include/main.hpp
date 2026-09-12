@@ -11,6 +11,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -23,6 +24,8 @@ struct Counter {
     explicit Counter(const ::tpy::BigInt& n);
 
     // def each(self) -> Iterator[int]:
+    //     for i in range(self.n):
+    //         yield i * 10
     auto each() const {
         return ::tpy::make_generator<::tpy::BigInt>(
             [this, __i = ::tpy::BigInt(0), __stop = static_cast<::tpy::BigInt>((*this).n)]() mutable -> std::optional<::tpy::BigInt> {
@@ -45,6 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Counter::Counter(const ::tpy::BigInt& n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

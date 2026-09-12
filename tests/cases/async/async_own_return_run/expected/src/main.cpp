@@ -3,14 +3,14 @@
 
 namespace tpyapp::main {
 
-// direct = asyncio.run(make(3))
 Box2* direct{};
 
 // async def make(v: int) -> Own[Box2]:
+//     await asyncio.sleep(0)
+//     return Box2(v)
 ::tpystd::tpy::Poll<Box2> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +20,6 @@ Box2* direct{};
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box2>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return Box2(v)
         __state = S_DONE;
         Box2 __tpy_async_ret = Box2(v);
         return ::tpystd::tpy::Poll<Box2>::ready(std::move(__tpy_async_ret));
@@ -37,12 +36,15 @@ __coro_make make(::tpy::BigInt v) {
 }
 
 // async def main() -> None:
+//     t = asyncio.create_task(make(1))
+//     a = await t
+//     print(a.v)
+//     b = await asyncio.wait_for(make(2), 5.0)
+//     print(b.v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = asyncio.create_task(make(1))
         t.emplace(::tpystd::asyncio::create_task<Box2>(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(make(::tpy::BigInt(1)))));
-        // a = await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
@@ -52,9 +54,7 @@ __coro_make make(::tpy::BigInt v) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a.emplace(std::move(__r0).value());
         __sub_0 = nullptr;
-        // print(a.v)
         std::cout << (*a).v << "\n";
-        // b = await asyncio.wait_for(make(2), 5.0)
         __sub_1.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(make(::tpy::BigInt(2))), 5.0);
         __state = S_RESUME_1;
         continue;
@@ -64,7 +64,6 @@ __coro_make make(::tpy::BigInt v) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b.emplace(std::move(__r1).value());
         __sub_1.reset();
-        // print(b.v)
         std::cout << (*b).v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -80,22 +79,23 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # `async def -> Own[C]` results flow through every owned consumer:
+// # asyncio.run, create_task + await, and wait_for (the Own is normalized
+// # out of the Cancellable type arg, so Own[Cancellable[T]] slots match).
+// import asyncio
+//
+// direct = asyncio.run(make(3))
+// print(direct.v)
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `async def -> Own[C]` results flow through every owned consumer:
-    // # asyncio.run, create_task + await, and wait_for (the Own is normalized
-    // # out of the Cancellable type arg, so Own[Cancellable[T]] slots match).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // direct = asyncio.run(make(3))
     static Box2 __global_slot_1 = ::tpystd::asyncio::run<Box2>(::tpy::make_adapter<::tpystd::coro::Cancellable<Box2>>(make(::tpy::BigInt(3))));
     direct = &__global_slot_1;
-    // print(direct.v)
     std::cout << direct->v << "\n";
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

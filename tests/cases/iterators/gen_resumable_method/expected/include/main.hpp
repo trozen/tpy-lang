@@ -14,6 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_Source_windowed;
 struct __gen_Source_doubled;
 
+// def main() -> None:
 void main();
 
 // class Source:
@@ -36,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     return os;
 }
 
-// Generator: Source.windowed
+// def windowed(self, xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Source_windowed : public ::tpy::next_iter_mixin<__gen_Source_windowed, int32_t> {
     ::tpy::frame_state __state;
     const Source& __self;
@@ -84,7 +85,7 @@ inline __gen_Source_windowed Source::windowed(std::vector<int32_t>& xs) const {
     return __gen_Source_windowed(*this, xs);
 }
 
-// Generator: Source.doubled
+// def doubled(self) -> Iterator[int32]:  # tpyc: ok
 struct __gen_Source_doubled : public ::tpy::next_iter_mixin<__gen_Source_doubled, int32_t> {
     int32_t __state;
     const Source& __self;
@@ -113,6 +114,7 @@ inline __gen_Source_doubled Source::doubled() const {
 
 
 // def __init__(self, base: int32) -> None:
+//     self.base = base
 inline Source::Source(int32_t base) : base(base) {}
 void __tpy_init();
 } // namespace tpyapp::main

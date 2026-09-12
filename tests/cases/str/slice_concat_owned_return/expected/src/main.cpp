@@ -7,50 +7,50 @@ namespace tpyapp::main {
 // # A `String` local returned at an owned `str` slot: the passthrough coerce must
 // # carry the wrapped local's STORAGE form, not the value default.
 // def cut_join(s: str) -> str:
+//     t = s[1:3] + s
+//     return t
 std::string cut_join(std::string_view s) {
-    // t = s[1:3] + s
     ::tpy::String t = (::tpy::str_concat(::tpy::str_slice(s, ::tpy::BasicSlice{1, 3}), s));
-    // return t
     return t;
 }
 
 // def fmt_slice(s: str) -> str:
+//     return f"mid={s[1:3]} c={s[0] == 'h'}"
 std::string fmt_slice(std::string_view s) {
-    // return f"mid={s[1:3]} c={s[0] == 'h'}"
     return std::format("mid={} c={}", ::tpy::str_slice(s, ::tpy::BasicSlice{1, 3}), ::tpy::bool_to_str((::tpy::__getitem__(s, 0) == 'h')));
 }
 
 // def iter_slice(s: str) -> None:
+//     v = s[1:]
+//     for c in v:
+//         print(c)
 void iter_slice(std::string_view s) {
-    // v = s[1:]
     std::string_view v = ::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt});
-    // for c in v:
     auto& __obj_0 = v;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        // print(c)
         std::cout << c << "\n";
     }
 }
 
 // def main() -> None:
+//     s = "hello"
+//     print(cut_join(s), fmt_slice(s))
+//     iter_slice(s)
 void main() {
-    // s = "hello"
     std::string_view s = "hello";
-    // print(cut_join(s), fmt_slice(s))
     std::cout << cut_join(s) << " " << fmt_slice(s) << "\n";
-    // iter_slice(s)
     iter_slice(s);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

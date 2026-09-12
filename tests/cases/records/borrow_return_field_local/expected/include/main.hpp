@@ -11,6 +11,7 @@ struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class H:
@@ -38,17 +39,19 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 
 // def __init__(self) -> None:
+//     self.buf = bytearray(b"ab")
+//     self.xs = [1, 2]
 inline H::H() : buf(::tpy::ByteArray(::tpy::bytes_literal("ab", 2))), xs(std::vector<int32_t>{1, 2}) {}
 
 // def view(self) -> bytearray:
+//     return self.buf  # tpyc: ok
 inline ::tpy::ByteArray& H::view() {
-    // return self.buf  # tpyc: ok
     return this->buf;
 }
 
 // def nums(self) -> list[int32]:
+//     return self.xs  # tpyc: ok
 inline std::vector<int32_t>& H::nums() {
-    // return self.xs  # tpyc: ok
     return this->xs;
 }
 void __tpy_init();

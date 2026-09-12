@@ -7,42 +7,43 @@ namespace tpyapp::main {
 // # raise AttributeError(...) is a throw-tier exception. Catchable via
 // # try/except. CPython parity: AttributeError is a CPython builtin.
 // def looker(name: str) -> str:
+//     if name == "host":
+//         return "example.com"
+//     raise AttributeError(name)
 std::string looker(std::string_view name) {
-    // if name == "host":
     if ((name == "host")) {
-        // return "example.com"
         return "example.com";
     }
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 
 // def main() -> None:
+//     try:
+//         v = looker("host")
+//         print(v)
+//         v = looker("missing")
+//         print("never")
+//     except AttributeError as e:
+//         print("caught:", str(e))
 void main() {
-    // try:
     {
         try {
-            // v = looker("host")
             std::string v = looker("host");
-            // print(v)
             std::cout << v << "\n";
-            // v = looker("missing")
             v = looker("missing");
-            // print("never")
             std::cout << "never" << "\n";
         } catch (const ::tpy::AttributeError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

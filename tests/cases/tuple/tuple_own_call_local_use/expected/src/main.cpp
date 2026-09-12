@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def make_pair(v: int32) -> Own[tuple[int32, Box]]:
+//     return (v, Box(v))
 std::tuple<int32_t, Box> make_pair(int32_t v) {
-    // return (v, Box(v))
     return std::tuple<int32_t, Box>{v, Box(v)};
 }
 
 // def use() -> int32:
+//     t = make_pair(5)
+//     return t[0] + t[1].val
 int32_t use() {
-    // t = make_pair(5)
     auto t = make_pair(5);
-    // return t[0] + t[1].val
     return (::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t).val));
 }
 
 // def main() -> None:
+//     print(use())
 void main() {
-    // print(use())
     std::cout << use() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

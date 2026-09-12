@@ -5,105 +5,105 @@ namespace tpyapp::main {
 
 
 // def gen(n: int32) -> Own[list[int32]]:
+//     out: list[int32] = []
+//     for i in range(n):
+//         out.append(i)
+//     return out
 std::vector<int32_t> gen(int32_t n) {
-    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // out.append(i)
         out.push_back(i);
     }
-    // return out
     return out;
 }
 
 // def longest(n: int32) -> Own[list[int32]]:
+//     best: list[int32] = []
+//     for i in range(n):
+//         cur = gen(i)
+//         if len(cur) > len(best):
+//             best = copy(cur)
+//     # `best` is a `T*` rebind-slot local here; the return is the deref+move.
+//     return best
 std::vector<int32_t> longest(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_2;
-    // best: list[int32] = []
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{};
     std::vector<int32_t>* best = &__slot_1;
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // cur = gen(i)
         std::vector<int32_t> cur = gen(i);
-        // if len(cur) > len(best):
         if ((::tpy::__len__(cur) > ::tpy::__len__((*best)))) {
-            // best = copy(cur)
             best = &*(__slot_2 = std::vector<int32_t>(cur));
         }
     }
-    // # `best` is a `T*` rebind-slot local here; the return is the deref+move.
-    // return best
     return std::move((*best));
 }
 
 // def tally(n: int32) -> Own[dict[str, int32]]:
+//     acc: dict[str, int32] = {}
+//     for i in range(n):
+//         fresh: dict[str, int32] = {}
+//         fresh["n"] = i
+//         acc = copy(fresh)
+//     return acc
 ::tpy::ordered_map<std::string, int32_t> tally(int32_t n) {
     std::optional<::tpy::ordered_map<std::string, int32_t>> __slot_2;
-    // acc: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> __slot_1 = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::ordered_map<std::string, int32_t>* acc = &__slot_1;
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // fresh: dict[str, int32] = {}
         ::tpy::ordered_map<std::string, int32_t> fresh = ::tpy::ordered_map<std::string, int32_t>();
-        // fresh["n"] = i
         ::tpy::__setitem__(fresh, "n", i);
-        // acc = copy(fresh)
         acc = &*(__slot_2 = ::tpy::ordered_map<std::string, int32_t>(fresh));
     }
-    // return acc
     return std::move((*acc));
 }
 
 // def uniq(n: int32) -> Own[set[int32]]:
+//     s = {0}
+//     for i in range(n):
+//         fresh = {i}
+//         s = copy(fresh)
+//     return s
 ::tpy::ordered_set<int32_t> uniq(int32_t n) {
     std::optional<::tpy::ordered_set<int32_t>> __slot_2;
-    // s = {0}
     ::tpy::ordered_set<int32_t> __slot_1 = ::tpy::ordered_set<int32_t>({0});
     ::tpy::ordered_set<int32_t>* s = &__slot_1;
-    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // fresh = {i}
         ::tpy::ordered_set<int32_t> fresh = ::tpy::ordered_set<int32_t>({i});
-        // s = copy(fresh)
         s = &*(__slot_2 = ::tpy::ordered_set<int32_t>(fresh));
     }
-    // return s
     return std::move((*s));
 }
 
 // def main():
+//     got = longest(4)
+//     # The returned container is the caller's own storage: mutating it must
+//     # not be visible through anything the callee still held.
+//     got.append(99)
+//     print(len(got), got[-1])
+//     d = tally(3)
+//     print(d["n"])
+//     u = uniq(3)
+//     print(len(u))
 void main() {
-    // got = longest(4)
     std::vector<int32_t> got = longest(4);
-    // # The returned container is the caller's own storage: mutating it must
-    // # not be visible through anything the callee still held.
-    // got.append(99)
     got.push_back(99);
-    // print(len(got), got[-1])
     std::cout << ::tpy::__len__(got) << " " << ::tpy::__getitem__(got, -1) << "\n";
-    // d = tally(3)
     ::tpy::ordered_map<std::string, int32_t> d = tally(3);
-    // print(d["n"])
     std::cout << ::tpy::__getitem__(d, "n") << "\n";
-    // u = uniq(3)
     ::tpy::ordered_set<int32_t> u = uniq(3);
-    // print(len(u))
     std::cout << ::tpy::__len__(u) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -7,31 +7,32 @@ namespace tpyapp::main {
 // # Appending into a list whose element is a pending DICT or SET literal exercises
 // # those kernel branches on the assignability path (lists cover the third).
 // def main() -> None:
+//     ds = [{1: 2}]
+//     ds.append({3: 4})  # tpyc: ok
+//     ds[0][1] = 9       # mutate a stored dict -> real container, not a copy
+//     print(ds)
+//
+//     ss = [{1, 2}]
+//     ss.append({3, 4})  # tpyc: ok
+//     ss[0].add(9)
+//     print(ss)
 void main() {
-    // ds = [{1: 2}]
     std::vector<::tpy::ordered_map<int32_t, int32_t>> ds = {::tpy::ordered_map<int32_t, int32_t>({{1, 2}})};
-    // ds.append({3: 4})  # tpyc: ok
     ds.push_back(::tpy::ordered_map<int32_t, int32_t>({{3, 4}}));
-    // ds[0][1] = 9       # mutate a stored dict -> real container, not a copy
     ::tpy::__setitem__(::tpy::__getitem__(ds, 0), 1, 9);
-    // print(ds)
     std::cout << ::tpy::ListPrinter(ds) << "\n";
-    // ss = [{1, 2}]
     std::vector<::tpy::ordered_set<int32_t>> ss = {::tpy::ordered_set<int32_t>({1, 2})};
-    // ss.append({3, 4})  # tpyc: ok
     ss.push_back(::tpy::ordered_set<int32_t>({3, 4}));
-    // ss[0].add(9)
     ::tpy::__getitem__(ss, 0).insert(9);
-    // print(ss)
     std::cout << ::tpy::ListPrinter(ss) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

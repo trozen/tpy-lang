@@ -3,44 +3,45 @@
 
 namespace tpyapp::main {
 
-// ch: char;
 char ch{};
 
+// ch: char;
+//
+// ClrScr;
+// TextColor(Red);
+// TextBackground(Yellow);
+// GotoXY(3, 5);
+// write('hello');
+// TextColor(LightGreen);
+// TextBackground(Black);
+// ClrEol;
+// writeln(' world');
+// Delay(0);
+// Sound(440);
+// NoSound;
+// write('press a key: ');
+// ch := ReadKey;
+// writeln(ch);
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::crt::__tpy_init();
-    // ClrScr;
     ::tpyapp::crt::clrscr();
-    // TextColor(Red);
     ::tpyapp::crt::textcolor(::tpyapp::crt::red);
-    // TextBackground(Yellow);
     ::tpyapp::crt::textbackground(::tpyapp::crt::yellow);
-    // GotoXY(3, 5);
     ::tpyapp::crt::gotoxy(3, 5);
-    // write('hello');
     std::cout << "hello";
-    // TextColor(LightGreen);
     ::tpyapp::crt::textcolor(::tpyapp::crt::lightgreen);
-    // TextBackground(Black);
     ::tpyapp::crt::textbackground(::tpyapp::crt::black);
-    // ClrEol;
     ::tpyapp::crt::clreol();
-    // writeln(' world');
     std::cout << " world" << "\n";
-    // Delay(0);
     ::tpyapp::crt::delay(0);
-    // Sound(440);
     ::tpyapp::crt::sound(440);
-    // NoSound;
     ::tpyapp::crt::nosound();
-    // write('press a key: ');
     std::cout << "press a key: ";
-    // ch := ReadKey;
     ch = ::tpyapp::crt::readkey();
-    // writeln(ch);
     std::cout << ch << "\n";
 }
 

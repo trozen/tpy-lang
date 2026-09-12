@@ -17,9 +17,13 @@ extern IntTree g_int;
 extern JsonValue g_dict;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def depth(t: Tree) -> int32:
 int32_t depth(const Tree& t);
+// def int_depth(t: IntTree) -> int:
 ::tpy::BigInt int_depth(const IntTree& t);
+// def json_keys(v: JsonValue) -> int:
 ::tpy::BigInt json_keys(const JsonValue& v);
+// def main() -> None:
 void main();
 
 // @dataclass

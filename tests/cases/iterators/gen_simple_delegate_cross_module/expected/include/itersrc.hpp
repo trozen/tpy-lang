@@ -11,9 +11,10 @@ inline constexpr std::string_view __name__ = "itersrc";
 
 struct __gen_walk;
 
+// def walk() -> Iterator[int32]:
 __gen_walk walk();
 
-// Generator: walk
+// def walk() -> Iterator[int32]:
 struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     int32_t __state;
 

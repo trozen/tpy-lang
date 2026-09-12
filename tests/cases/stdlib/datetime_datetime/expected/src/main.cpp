@@ -5,205 +5,216 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     dt = datetime(2026, 7, 3, 14, 30, 5)
+//     print(dt.isoformat())           # 2026-07-03T14:30:05
+//     print(dt.isoformat(" "))        # 2026-07-03 14:30:05
+//     print(str(dt))                  # 2026-07-03 14:30:05
+//     print(repr(dt))                 # datetime.datetime(2026, 7, 3, 14, 30, 5)
+//     print(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond)
+//     print(datetime(2026, 7, 3))     # 2026-07-03 00:00:00
+//     print(repr(datetime(2026, 7, 3)))            # datetime.datetime(2026, 7, 3, 0, 0)
+//     print(repr(datetime(2026, 7, 3, 0, 0, 9)))   # keeps seconds
+//     print(repr(datetime(2026, 7, 3, 0, 0, 0, 9)))  # us keeps zero seconds
+//     print(datetime(2026, 1, 2, 3, 4, 5, 678901).isoformat())
+//     print(dt.weekday(), dt.isoweekday(), dt.toordinal())  # 4 5 739800
+//
+//     print(datetime.combine(date(2021, 3, 5), time(9, 8, 7)))
+//     print(datetime.combine(date(2020, 2, 29), time(23, 59, 59, 999999)))
+//
+//     print(datetime.utcfromtimestamp(0))             # 1970-01-01 00:00:00
+//     print(datetime.utcfromtimestamp(1751551805.5))  # fractional seconds
+//     print(datetime.utcfromtimestamp(-1.25))         # pre-epoch, negative frac
+//     print(datetime.utcfromtimestamp(86399))         # integer-valued float
+//     print(datetime.utcfromtimestamp(253402300799.5))  # 9999-12-31 23:59:59.500000 (max day)
+//
+//     print(dt + timedelta(hours=10))                 # crosses midnight
+//     print(dt + timedelta(days=-1, microseconds=1))
+//     print(dt - timedelta(days=2, hours=15))
+//     print(dt - datetime(2026, 7, 1))                # -> timedelta
+//     print(datetime(2026, 7, 1) - dt)                # negative timedelta
+//     print(dt - datetime(2026, 7, 3, 14, 30, 4, 999999))  # 1 us
+//     print((datetime(2026, 12, 31, 23, 59, 59, 999999) + timedelta(microseconds=1)).isoformat())
+//
+//     print(dt > datetime(2026, 7, 1))    # True
+//     print(dt <= dt, dt == dt, dt != dt) # True True False
+//     print(dt >= dt, datetime(2026, 7, 1) >= dt)  # True False
+//     print(datetime(2026, 7, 3, 14, 30, 5, 1) > dt)  # True (us tiebreak)
+//     print(dt < datetime(2026, 7, 3, 14, 30, 6))    # True
+//     seen = {datetime(2026, 7, 3): "a"}  # frozen -> hashable dict key
+//     print(seen[datetime(2026, 7, 3)])   # a
+//
+//     try:
+//         bad = datetime(2026, 2, 30)     # invalid date part
+//         print("no error")
+//     except ValueError:
+//         print("caught day")
+//     try:
+//         bad2 = datetime(2026, 7, 3, 24)  # invalid time part
+//         print("no error")
+//     except ValueError:
+//         print("caught hour")
+//     try:
+//         bad3 = datetime(9999, 12, 31, 23, 59, 59) + timedelta(seconds=1)
+//         print("no error")
+//     except OverflowError:
+//         print("caught OverflowError")
+//     try:
+//         bad4 = datetime(1, 1, 1) - timedelta(microseconds=1)  # below year 1
+//         print("no error")
+//     except OverflowError:
+//         print("caught underflow")
+//     try:
+//         bad5 = datetime.utcfromtimestamp(300000000000)  # beyond year 9999
+//         print("no error")
+//     except ValueError:
+//         # CPython raises ValueError (year out of range), not OverflowError
+//         print("caught timestamp range")
+//     try:
+//         bad6 = datetime.utcfromtimestamp(-62135596801)  # before year 1
+//         print("no error")
+//     except ValueError:
+//         print("caught pre-year-1")
+//     try:
+//         bad7 = datetime.utcfromtimestamp(1e20)  # beyond 64-bit time_t
+//         print("no error")
+//     except OverflowError:
+//         print("caught utc time_t overflow")
+//     try:
+//         bad8 = datetime.fromtimestamp(1e20)  # local path, same bound
+//         print("no error")
+//     except OverflowError:
+//         print("caught local time_t overflow")
+//     try:
+//         # ~745 days below the year-1 boundary: no real-world tz offset can
+//         # shift it into range, so both toolchains raise on every host
+//         # (macOS localtime behavior for year <1 unverified from Linux --
+//         # if the cpy phase diverges there, this is the line to revisit).
+//         bad9 = datetime.fromtimestamp(-62200000000.0)
+//         print("no error")
+//     except ValueError:
+//         print("caught local pre-year-1")
 void main() {
-    // dt = datetime(2026, 7, 3, 14, 30, 5)
     ::tpystd::datetime::datetime dt = ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(5));
-    // print(dt.isoformat())           # 2026-07-03T14:30:05
     std::cout << dt.isoformat() << "\n";
-    // print(dt.isoformat(" "))        # 2026-07-03 14:30:05
     std::cout << dt.isoformat(" ") << "\n";
-    // print(str(dt))                  # 2026-07-03 14:30:05
     std::cout << std::string(::tpy::__str__(dt)) << "\n";
-    // print(repr(dt))                 # datetime.datetime(2026, 7, 3, 14, 30, 5)
     std::cout << ::tpy::repr_of(dt) << "\n";
-    // print(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond)
     std::cout << dt.year() << " " << dt.month() << " " << dt.day() << " " << dt.hour() << " " << dt.minute() << " " << dt.second() << " " << dt.microsecond() << "\n";
-    // print(datetime(2026, 7, 3))     # 2026-07-03 00:00:00
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3)) << "\n";
-    // print(repr(datetime(2026, 7, 3)))            # datetime.datetime(2026, 7, 3, 0, 0)
     std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3))) << "\n";
-    // print(repr(datetime(2026, 7, 3, 0, 0, 9)))   # keeps seconds
     std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(9))) << "\n";
-    // print(repr(datetime(2026, 7, 3, 0, 0, 0, 9)))  # us keeps zero seconds
     std::cout << ::tpy::repr_of(::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(9))) << "\n";
-    // print(datetime(2026, 1, 2, 3, 4, 5, 678901).isoformat())
     std::cout << ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3), ::tpy::BigInt(4), ::tpy::BigInt(5), ::tpy::BigInt(678901)).isoformat() << "\n";
-    // print(dt.weekday(), dt.isoweekday(), dt.toordinal())  # 4 5 739800
     std::cout << dt.weekday() << " " << dt.isoweekday() << " " << dt.toordinal() << "\n";
-    // print(datetime.combine(date(2021, 3, 5), time(9, 8, 7)))
     std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5)), ::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(8), ::tpy::BigInt(7))) << "\n";
-    // print(datetime.combine(date(2020, 2, 29), time(23, 59, 59, 999999)))
     std::cout << datetime::combine(::tpystd::datetime::date(::tpy::BigInt(2020), ::tpy::BigInt(2), ::tpy::BigInt(29)), ::tpystd::datetime::time(::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999))) << "\n";
-    // print(datetime.utcfromtimestamp(0))             # 1970-01-01 00:00:00
     std::cout << datetime::utcfromtimestamp(static_cast<double>(0)) << "\n";
-    // print(datetime.utcfromtimestamp(1751551805.5))  # fractional seconds
     std::cout << datetime::utcfromtimestamp(1751551805.5) << "\n";
-    // print(datetime.utcfromtimestamp(-1.25))         # pre-epoch, negative frac
     std::cout << datetime::utcfromtimestamp(-(1.25)) << "\n";
-    // print(datetime.utcfromtimestamp(86399))         # integer-valued float
     std::cout << datetime::utcfromtimestamp(static_cast<double>(86399)) << "\n";
-    // print(datetime.utcfromtimestamp(253402300799.5))  # 9999-12-31 23:59:59.500000 (max day)
     std::cout << datetime::utcfromtimestamp(253402300799.5) << "\n";
-    // print(dt + timedelta(hours=10))                 # crosses midnight
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(10)))) << "\n";
-    // print(dt + timedelta(days=-1, microseconds=1))
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(-1), ::tpy::BigInt(0), ::tpy::BigInt(1)))) << "\n";
-    // print(dt - timedelta(days=2, hours=15))
     std::cout << ((dt) - (::tpystd::datetime::timedelta(::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(15)))) << "\n";
-    // print(dt - datetime(2026, 7, 1))                # -> timedelta
     std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1)))) << "\n";
-    // print(datetime(2026, 7, 1) - dt)                # negative timedelta
     std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1))) - (dt)) << "\n";
-    // print(dt - datetime(2026, 7, 3, 14, 30, 4, 999999))  # 1 us
     std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(4), ::tpy::BigInt(999999)))) << "\n";
-    // print((datetime(2026, 12, 31, 23, 59, 59, 999999) + timedelta(microseconds=1)).isoformat())
     std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(12), ::tpy::BigInt(31), ::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999))) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))).isoformat() << "\n";
-    // print(dt > datetime(2026, 7, 1))    # True
     std::cout << ::tpy::print_bool(((dt) > (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1))))) << "\n";
-    // print(dt <= dt, dt == dt, dt != dt) # True True False
     std::cout << ::tpy::print_bool(((dt) <= (dt))) << " " << ::tpy::print_bool(((dt) == (dt))) << " " << ::tpy::print_bool((dt != dt)) << "\n";
-    // print(dt >= dt, datetime(2026, 7, 1) >= dt)  # True False
     std::cout << ::tpy::print_bool(((dt) >= (dt))) << " " << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1))) >= (dt))) << "\n";
-    // print(datetime(2026, 7, 3, 14, 30, 5, 1) > dt)  # True (us tiebreak)
     std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(5), ::tpy::BigInt(1))) > (dt))) << "\n";
-    // print(dt < datetime(2026, 7, 3, 14, 30, 6))    # True
     std::cout << ::tpy::print_bool(((dt) < (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(6))))) << "\n";
-    // seen = {datetime(2026, 7, 3): "a"}  # frozen -> hashable dict key
     ::tpy::ordered_map<::tpystd::datetime::datetime, std::string> seen = ::tpy::ordered_map<::tpystd::datetime::datetime, std::string>({{::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3)), "a"}});
-    // print(seen[datetime(2026, 7, 3)])   # a
     std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3))) << "\n";
-    // try:
     {
         try {
-            // bad = datetime(2026, 2, 30)     # invalid date part
             ::tpystd::datetime::datetime bad = ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(2), ::tpy::BigInt(30));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught day")
             std::cout << "caught day" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad2 = datetime(2026, 7, 3, 24)  # invalid time part
             ::tpystd::datetime::datetime bad2 = ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(24));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught hour")
             std::cout << "caught hour" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad3 = datetime(9999, 12, 31, 23, 59, 59) + timedelta(seconds=1)
             ::tpystd::datetime::datetime bad3 = ((::tpystd::datetime::datetime(::tpy::BigInt(9999), ::tpy::BigInt(12), ::tpy::BigInt(31), ::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59))) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(1))));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::OverflowError&) {
-            // print("caught OverflowError")
             std::cout << "caught OverflowError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad4 = datetime(1, 1, 1) - timedelta(microseconds=1)  # below year 1
             ::tpystd::datetime::datetime bad4 = ((::tpystd::datetime::datetime(::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(1))) - (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::OverflowError&) {
-            // print("caught underflow")
             std::cout << "caught underflow" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad5 = datetime.utcfromtimestamp(300000000000)  # beyond year 9999
             ::tpystd::datetime::datetime bad5 = datetime::utcfromtimestamp(static_cast<double>(static_cast<int64_t>(300000000000)));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // # CPython raises ValueError (year out of range), not OverflowError
-            // print("caught timestamp range")
             std::cout << "caught timestamp range" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad6 = datetime.utcfromtimestamp(-62135596801)  # before year 1
             ::tpystd::datetime::datetime bad6 = datetime::utcfromtimestamp(static_cast<double>(static_cast<int64_t>(-62135596801)));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught pre-year-1")
             std::cout << "caught pre-year-1" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad7 = datetime.utcfromtimestamp(1e20)  # beyond 64-bit time_t
             ::tpystd::datetime::datetime bad7 = datetime::utcfromtimestamp(1e+20);
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::OverflowError&) {
-            // print("caught utc time_t overflow")
             std::cout << "caught utc time_t overflow" << "\n";
         }
     }
-    // try:
     {
         try {
-            // bad8 = datetime.fromtimestamp(1e20)  # local path, same bound
             ::tpystd::datetime::datetime bad8 = datetime::fromtimestamp(1e+20);
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::OverflowError&) {
-            // print("caught local time_t overflow")
             std::cout << "caught local time_t overflow" << "\n";
         }
     }
-    // try:
     {
         try {
-            // # ~745 days below the year-1 boundary: no real-world tz offset can
-            // # shift it into range, so both toolchains raise on every host
-            // # (macOS localtime behavior for year <1 unverified from Linux --
-            // # if the cpy phase diverges there, this is the line to revisit).
-            // bad9 = datetime.fromtimestamp(-62200000000.0)
             ::tpystd::datetime::datetime bad9 = datetime::fromtimestamp(-(62200000000.0));
-            // print("no error")
             std::cout << "no error" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("caught local pre-year-1")
             std::cout << "caught local pre-year-1" << "\n";
         }
     }
-    // # ~745 days below the year-1 boundary: no real-world tz offset can
-    // # shift it into range, so both toolchains raise on every host
-    // # (macOS localtime behavior for year <1 unverified from Linux --
-    // # if the cpy phase diverges there, this is the line to revisit).
 }
 
+// # datetime.datetime v2 (naive): construction/validation, combine,
+// # utcfromtimestamp (fixed timestamps -> deterministic), arithmetic with
+// # timedelta and datetime, comparisons, weekday/toordinal, isoformat/str/repr
+// # trimming, hashability. Byte-compared against real CPython datetime.
+// # (dt.date()/dt.time() accessors are covered by stdlib/datetime_accessors.)
+// from datetime import date, time, datetime, timedelta
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # datetime.datetime v2 (naive): construction/validation, combine,
-    // # utcfromtimestamp (fixed timestamps -> deterministic), arithmetic with
-    // # timedelta and datetime, comparisons, weekday/toordinal, isoformat/str/repr
-    // # trimming, hashability. Byte-compared against real CPython datetime.
-    // # (dt.date()/dt.time() accessors are covered by stdlib/datetime_accessors.)
-    // from datetime import date, time, datetime, timedelta
     ::tpystd::datetime::__tpy_init();
-    // main()
     main();
 }
 

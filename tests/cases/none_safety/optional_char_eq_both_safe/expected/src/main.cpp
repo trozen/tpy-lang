@@ -3,47 +3,43 @@
 
 namespace tpyapp::main {
 
-// x: char = "x"
 char x{};
-// y: char = "y"
 char y{};
-// sx: char | None = x
 std::optional<char> sx;
-// sy: char | None = y
 std::optional<char> sy;
-// n: char | None = None
 std::optional<char> n;
 
 // def eq_both(a: char | None, b: char | None) -> bool:
+//     return a == b  # tpyc: ok
 bool eq_both(std::optional<char> a, std::optional<char> b) {
-    // return a == b  # tpyc: ok
     return (a == b);
 }
 
+// x: char = "x"
+// y: char = "y"
+// sx: char | None = x
+// sy: char | None = y
+// n: char | None = None
+//
+// print(eq_both(sx, sx))
+// print(eq_both(sx, sy))
+// print(eq_both(n, sx))
+// print(eq_both(sx, n))
+// print(eq_both(n, n))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: char = "x"
     x = 'x';
-    // y: char = "y"
     y = 'y';
-    // sx: char | None = x
     sx = x;
-    // sy: char | None = y
     sy = y;
-    // n: char | None = None
     n = std::nullopt;
-    // print(eq_both(sx, sx))
     std::cout << ::tpy::print_bool(eq_both(sx, sx)) << "\n";
-    // print(eq_both(sx, sy))
     std::cout << ::tpy::print_bool(eq_both(sx, sy)) << "\n";
-    // print(eq_both(n, sx))
     std::cout << ::tpy::print_bool(eq_both(n, sx)) << "\n";
-    // print(eq_both(sx, n))
     std::cout << ::tpy::print_bool(eq_both(sx, n)) << "\n";
-    // print(eq_both(n, n))
     std::cout << ::tpy::print_bool(eq_both(n, n)) << "\n";
 }
 

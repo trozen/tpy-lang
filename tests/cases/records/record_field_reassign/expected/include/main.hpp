@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def mk(n: int) -> Own[Inner]:
 Inner mk(const ::tpy::BigInt& n);
+// def main():
 void main();
 
 // class Inner:
@@ -58,26 +60,28 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int):
+//     self.x = x
 inline Inner::Inner(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, first: Own[Inner]):
+//     self.v = first
 inline Holder::Holder(Inner&& first) : v(std::move(first)) {}
 
 // def set_ctor(self, n: int):
+//     self.v = Inner(n)
 inline void Holder::set_ctor(const ::tpy::BigInt& n) {
-    // self.v = Inner(n)
     this->v = Inner(n);
 }
 
 // def set_call(self, n: int):
+//     self.v = mk(n)
 inline void Holder::set_call(const ::tpy::BigInt& n) {
-    // self.v = mk(n)
     this->v = mk(n);
 }
 
 // def bump(self):
+//     self.v.x += 1
 inline void Holder::bump() {
-    // self.v.x += 1
     this->v.x = (this->v.x) + (::tpy::BigInt(1));
 }
 void __tpy_init();

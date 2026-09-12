@@ -5,17 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser()
+//     parser.add_argument("-v", "--verbose", action="store_true")
+//     parser.add_argument("--no-cache", action="store_false")
+//     parser.add_argument("-c", action="count", default=0)
+//     args = parser.parse_args(["--verbose", "-c", "-c", "-c"])
+//     print(args.verbose)
+//     print(args.no_cache)
+//     print(args.c)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["--verbose", "-c", "-c", "-c"])
     std::vector<std::string> __tmp_1 = {"--verbose", "-c", "-c", "-c"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.verbose)
     std::cout << ::tpy::print_bool(args.verbose) << "\n";
-    // print(args.no_cache)
     std::cout << ::tpy::print_bool(args.no_cache) << "\n";
-    // print(args.c)
     std::cout << args.c << "\n";
-    // return 0
     return 0;
 }
 
@@ -58,14 +62,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(verbose, no_cache, ::tpy::BigInt(c));
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

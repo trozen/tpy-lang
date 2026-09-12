@@ -5,12 +5,16 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     points = [P(1), P(2), P(3)]
+//     # Mutate through the relayed yielded tuple -- mutation must flow back
+//     # through both generator boundaries to `points`.
+//     for a, b in relay(first_only(points)):
+//         if a is not None:
+//             a.x = a.x * 10
+//     for p in points:
+//         print(p.x)
 void main() {
-    // points = [P(1), P(2), P(3)]
     std::vector<P> points = {P(1), P(2), P(3)};
-    // # Mutate through the relayed yielded tuple -- mutation must flow back
-    // # through both generator boundaries to `points`.
-    // for a, b in relay(first_only(points)):
     {
         auto __tmp_1 = first_only(points);
         auto __src_0 = relay(__tmp_1);
@@ -19,36 +23,29 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // # Mutate through the relayed yielded tuple -- mutation must flow back
-        // # through both generator boundaries to `points`.
-        // for a, b in relay(first_only(points)):
         auto& __tup_1 = __for_tup_0;
         P* a = std::get<0>(__tup_1);
         P* b = std::get<1>(__tup_1);
-        // if a is not None:
         if ((a != nullptr)) {
-            // a.x = a.x * 10
             a->x = (::tpy::mul_check<int32_t>(a->x, 10));
         }
         }
     }
-    // for p in points:
     auto& __obj_2 = points;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& p = *__beg_2;
-        // print(p.x)
         std::cout << p.x << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

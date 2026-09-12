@@ -11,7 +11,9 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_items(c: readonly[Container]) -> None:
 void read_items(const Container& c);
+// def main() -> None:
 void main();
 
 // class Container:
@@ -39,19 +41,20 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 
 // def __init__(self) -> None:
+//     self._items = [int32(10), int32(20), int32(30)]
 inline Container::Container() : _items(std::vector<int32_t>{10, 20, 30}) {}
 
 // @readonly
 // def items(self) -> list[int32]:
+//     return self._items
 inline const std::vector<int32_t>& Container::items() const {
-    // return self._items
     return this->_items;
 }
 
 // @readonly
 // def count(self) -> int32:
+//     return int32(len(self._items))
 inline int32_t Container::count() const {
-    // return int32(len(self._items))
     return ::tpy::__len__(this->_items);
 }
 void __tpy_init();

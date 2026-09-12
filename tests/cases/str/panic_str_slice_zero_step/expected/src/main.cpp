@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Panic: slice step cannot be zero.
 // def main() -> None:
+//     s: str = "hello"
+//     print(s[::0])
 void main() {
-    // s: str = "hello"
     std::string_view s = "hello";
-    // print(s[::0])
     std::cout << ::tpy::str_stepped_slice(s, ::tpy::Slice{std::nullopt, std::nullopt, 0}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

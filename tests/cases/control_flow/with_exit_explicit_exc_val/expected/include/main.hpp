@@ -11,6 +11,7 @@ struct Tracker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Tracker:
@@ -21,10 +22,10 @@ struct Tracker {
     ::tpy::BigInt __enter__() const;
 
     // def __exit__(
-    // self,
-    // exc_type: None,
-    // exc_val: Optional[BaseException],
-    // exc_tb: None,
+    //     self,
+    //     exc_type: None,
+    //     exc_val: Optional[BaseException],
+    //     exc_tb: None,
     // ) -> None:
     void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tracker";
@@ -37,27 +38,27 @@ inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
 
 
 // def __enter__(self) -> int:
+//     print("enter")
+//     return 7
 inline ::tpy::BigInt Tracker::__enter__() const {
-    // print("enter")
     std::cout << "enter" << "\n";
-    // return 7
     return ::tpy::BigInt(7);
 }
 
 // def __exit__(
-// self,
-// exc_type: None,
-// exc_val: Optional[BaseException],
-// exc_tb: None,
+//     self,
+//     exc_type: None,
+//     exc_val: Optional[BaseException],
+//     exc_tb: None,
 // ) -> None:
+//     if exc_val is None:
+//         print("clean exit")
+//     else:
+//         print(f"exception exit: {str(exc_val)}")
 inline void Tracker::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is None:
     if ((exc_val == nullptr)) {
-        // print("clean exit")
         std::cout << "clean exit" << "\n";
-    // else:
     } else {
-        // print(f"exception exit: {str(exc_val)}")
         std::cout << std::format("exception exit: {}", std::string(::tpy::__str__((*exc_val)))) << "\n";
     }
 }

@@ -11,7 +11,9 @@ struct Data;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_via_ptr(p: Ptr[readonly[Data]]) -> int32:
 int32_t read_via_ptr(const Data* p);
+// def main() -> None:
 void main();
 
 // class Data:
@@ -32,6 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Data& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.value = v
 inline Data::Data(int32_t v) : value(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

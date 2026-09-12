@@ -11,14 +11,23 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* get_ptr(Point* p);
+// def test_if_not_none(p: Ptr[Point]) -> int32:
 int32_t test_if_not_none(Point* p);
+// def test_is_none_early_return(p: Ptr[Point]) -> int32:
 int32_t test_is_none_early_return(Point* p);
+// def test_assert(p: Ptr[Point]) -> int32:
 int32_t test_assert(Point* p);
+// def test_while(p: Ptr[Point]) -> None:
 void test_while(Point* p);
+// def test_while_reassign(p: Ptr[Point]) -> None:
 void test_while_reassign(Point* p);
+// def test_readonly_ptr(p: Ptr[readonly[Point]]) -> int32:
 int32_t test_readonly_ptr(const Point* p);
+// def test_merge_no_guarantee(p: Ptr[Point]) -> int32:
 int32_t test_merge_no_guarantee(Point* p);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -44,11 +53,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def sum(self) -> int32:
+//     return self.x + self.y
 inline int32_t Point::sum() const {
-    // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
 void __tpy_init();

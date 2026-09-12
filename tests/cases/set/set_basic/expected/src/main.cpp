@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: set[int32] = {1, 2, 3}
+//     print(s)
+//     print(len(s))
+//     s.add(4)
+//     print(s)
+//     s.add(2)  # duplicate, no effect
+//     print(s)
+//     print(len(s))
 void main() {
-    // s: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // s.add(4)
     s.insert(4);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // s.add(2)  # duplicate, no effect
     s.insert(2);
-    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

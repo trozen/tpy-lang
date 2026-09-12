@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     # Just verify the alias works - don't print actual time (varies between runs)
+//     t: float = get_time()
+//     if t > 0.0:
+//         print("time alias works")
 void main() {
-    // # Just verify the alias works - don't print actual time (varies between runs)
-    // t: float = get_time()
     double t = ::tpy::time_time();
-    // if t > 0.0:
     if ((t > 0.0)) {
-        // print("time alias works")
         std::cout << "time alias works" << "\n";
     }
 }
 
+// from time import time as get_time
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from time import time as get_time
-    // main()
     main();
 }
 

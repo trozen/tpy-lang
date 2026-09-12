@@ -7,57 +7,57 @@ namespace tpyapp::main {
 // # A for-loop / comprehension over a narrowed `str | None` / `bytes | None`
 // # (proven non-None) iterates the contained value.
 // def sum_bytes(b: bytes | None) -> int:
+//     if b is None:
+//         return -1
+//     acc = 0
+//     for x in b:
+//         acc += int(x)
+//     return acc
 ::tpy::BigInt sum_bytes(std::optional<::tpy::BytesView> b) {
-    // if b is None:
     if ((!b.has_value())) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // acc = 0
     int32_t acc = 0;
-    // for x in b:
     auto& __obj_0 = (*b);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         uint8_t x = *__beg_0;
-        // acc += int(x)
         acc = ::tpy::add_check<int32_t>(acc, (::tpy::BigInt(static_cast<uint64_t>(x))).to_fixed_check<int32_t>());
     }
-    // return acc
     return ::tpy::BigInt(acc);
 }
 
 // def sum_chars(s: str | None) -> int:
+//     if s is None:
+//         return -1
+//     acc = 0
+//     for c in s:
+//         acc += ord(c)
+//     return acc
 ::tpy::BigInt sum_chars(std::optional<std::string_view> s) {
-    // if s is None:
     if ((!s.has_value())) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // acc = 0
     int32_t acc = 0;
-    // for c in s:
     auto& __obj_0 = (*s);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        // acc += ord(c)
         acc = ::tpy::add_check<int32_t>(acc, static_cast<int32_t>(static_cast<unsigned char>(c)));
     }
-    // return acc
     return ::tpy::BigInt(acc);
 }
 
 // def comp_bytes(b: bytes | None) -> int:
+//     if b is None:
+//         return -1
+//     return sum([int(x) for x in b])      # list comprehension over the narrowed iterable
 ::tpy::BigInt comp_bytes(std::optional<::tpy::BytesView> b) {
-    // if b is None:
     if ((!b.has_value())) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // return sum([int(x) for x in b])      # list comprehension over the narrowed iterable
     return ::tpy::builtin_sum_bigint(({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_0 = (*b);
@@ -72,13 +72,13 @@ namespace tpyapp::main {
 }
 
 // def distinct_chars(s: str | None) -> int:
+//     if s is None:
+//         return -1
+//     return len({c for c in s})           # set comprehension
 ::tpy::BigInt distinct_chars(std::optional<std::string_view> s) {
-    // if s is None:
     if ((!s.has_value())) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // return len({c for c in s})           # set comprehension
     return ::tpy::BigInt(::tpy::__len__(({
         ::tpy::ordered_set<char> __result;
         auto& __obj_0 = (*s);
@@ -93,13 +93,13 @@ namespace tpyapp::main {
 }
 
 // def byte_map(b: bytes | None) -> int:
+//     if b is None:
+//         return -1
+//     return len({x: int(x) for x in b})   # dict comprehension
 ::tpy::BigInt byte_map(std::optional<::tpy::BytesView> b) {
-    // if b is None:
     if ((!b.has_value())) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // return len({x: int(x) for x in b})   # dict comprehension
     return ::tpy::BigInt(::tpy::__len__(({
         ::tpy::ordered_map<uint8_t, ::tpy::BigInt> __result;
         auto& __obj_0 = (*b);
@@ -114,54 +114,54 @@ namespace tpyapp::main {
 }
 
 // def sum_list(xs: list[int] | None) -> int:
+//     # Inverse: a narrowed pointer-repr Optional must keep iterating correctly
+//     # (the value-Optional deref must NOT over-trigger here).
+//     if xs is None:
+//         return -1
+//     acc = 0
+//     for v in xs:
+//         acc += v
+//     return acc
 ::tpy::BigInt sum_list(const std::vector<::tpy::BigInt>* xs) {
-    // # Inverse: a narrowed pointer-repr Optional must keep iterating correctly
-    // # (the value-Optional deref must NOT over-trigger here).
-    // if xs is None:
     if ((xs == nullptr)) {
-        // return -1
         return ::tpy::BigInt(-1);
     }
-    // acc = 0
     int32_t acc = 0;
-    // for v in xs:
     auto& __src_0 = (*xs);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // acc += v
         acc = ::tpy::add_check<int32_t>(acc, (v).to_fixed_check<int32_t>());
     }
-    // return acc
     return ::tpy::BigInt(acc);
 }
 
 // def main() -> None:
+//     print(sum_bytes(b"ab" + b"c"), sum_bytes(None))
+//     print(sum_chars("hello"), sum_chars(None))
+//     print(comp_bytes(b"ab" + b"c"), comp_bytes(None))
+//     print(distinct_chars("hello"), distinct_chars(None))
+//     print(byte_map(b"ab" + b"c"), byte_map(None))
+//     data: list[int] = [10, 20, 30]
+//     print(sum_list(data), sum_list(None))
 void main() {
-    // print(sum_bytes(b"ab" + b"c"), sum_bytes(None))
     std::cout << sum_bytes((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << sum_bytes(std::nullopt) << "\n";
-    // print(sum_chars("hello"), sum_chars(None))
     std::cout << sum_chars("hello") << " " << sum_chars(std::nullopt) << "\n";
-    // print(comp_bytes(b"ab" + b"c"), comp_bytes(None))
     std::cout << comp_bytes((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << comp_bytes(std::nullopt) << "\n";
-    // print(distinct_chars("hello"), distinct_chars(None))
     std::cout << distinct_chars("hello") << " " << distinct_chars(std::nullopt) << "\n";
-    // print(byte_map(b"ab" + b"c"), byte_map(None))
     std::cout << byte_map((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)))) << " " << byte_map(std::nullopt) << "\n";
-    // data: list[int] = [10, 20, 30]
     std::vector<::tpy::BigInt> data = {10, 20, 30};
-    // print(sum_list(data), sum_list(None))
     std::cout << sum_list(&(data)) << " " << sum_list(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

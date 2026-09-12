@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def branch_count(t: Tree[None]) -> int32:
+//     match t:
+//         case None:  # tpyc: ok
+//             return 0
+//         case list() as branches:  # tpyc: ok
+//             total = 1
+//             for child in branches:
+//                 total += branch_count(child)
+//             return total
 int32_t branch_count(const Tree<std::monostate>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case None:  # tpyc: ok
     case 0: {
-        // return 0
         return 0;
         break;
     }
-    // case list() as branches:  # tpyc: ok
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // total = 1
         int32_t total = 1;
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& child = *__beg_0;
-            // total += branch_count(child)
             total = ::tpy::add_check<int32_t>(total, branch_count(child));
         }
-        // return total
         return total;
         break;
     }
@@ -38,61 +38,61 @@ int32_t branch_count(const Tree<std::monostate>& t) {
 }
 
 // def main() -> None:
+//     forest: Tree[None] = [[], []]
+//     print(branch_count(forest))
+//     match forest:
+//         case list() as branches:  # tpyc: ok
+//             for child in branches:
+//                 match child:  # a list element is a wrapper subject too
+//                     case None:  # tpyc: ok
+//                         print("hole")
+//                     case list():  # tpyc: ok
+//                         print("branch")
+//             branches.clear()  # mutates `forest` itself, not a copy
+//         case None:
+//             print("no branch")
+//     print(branch_count(forest))
 void main() {
-    // forest: Tree[None] = [[], []]
     Tree<std::monostate> forest = std::vector<Tree<std::monostate>>{std::vector<Tree<std::monostate>>{}, std::vector<Tree<std::monostate>>{}};
-    // print(branch_count(forest))
     std::cout << branch_count(forest) << "\n";
-    // match forest:
     auto& __match_subject_1 = forest;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:  # tpyc: ok
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& child = *__beg_0;
-            // match child:  # a list element is a wrapper subject too
             auto& __match_subject_2 = child;
             switch (__match_subject_2.value.index()) {
-            // case None:  # tpyc: ok
             case 0: {
-                // print("hole")
                 std::cout << "hole" << "\n";
                 break;
             }
-            // case list():  # tpyc: ok
             case 1: {
-                // print("branch")
                 std::cout << "branch" << "\n";
                 break;
             }
             }
         }
-        // branches.clear()  # mutates `forest` itself, not a copy
         branches.clear();
         break;
     }
-    // case None:
     case 0: {
-        // print("no branch")
         std::cout << "no branch" << "\n";
         break;
     }
     }
-    // print(branch_count(forest))
     std::cout << branch_count(forest) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

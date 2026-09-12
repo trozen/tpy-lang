@@ -47,18 +47,18 @@ namespace tpyapp::colors {
 
 
 // def color_value(c: Color) -> int32:
+//     return c.value
 int32_t color_value(Color c) {
-    // return c.value
     return static_cast<int32_t>(c);
 }
 
+// # Defines an enum type for cross-module import
+// from enum import Enum
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Defines an enum type for cross-module import
-    // from enum import Enum
 }
 
 } // namespace tpyapp::colors

@@ -9,23 +9,23 @@ namespace tpyapp::main {
 // # value type converges (list[int]). Mutating it through the dict + tuple must be
 // # observed.
 // def main() -> None:
+//     d = {1: (0, [1, 2]), 2: (0, [3, 4, 5])}  # tpyc: ok
+//     print(d)
+//     d[2][1].append(9)  # inner list is a real vector reached through the tuple
+//     print(d)
 void main() {
-    // d = {1: (0, [1, 2]), 2: (0, [3, 4, 5])}  # tpyc: ok
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::vector<int32_t>>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::vector<int32_t>>>({{1, ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{0, {1, 2}})}, {2, ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{0, {3, 4, 5}})}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // d[2][1].append(9)  # inner list is a real vector reached through the tuple
     std::get<1>(::tpy::__getitem__(d, 2)).push_back(9);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

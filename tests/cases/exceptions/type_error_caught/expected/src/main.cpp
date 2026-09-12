@@ -8,35 +8,38 @@ namespace tpyapp::main {
 // # matching CPython's `ord() expected a character, but string of length N found`.
 // # (`char(s)` raises the same way but is TPy-only and lives in panic_char_from_str.)
 // def main() -> None:
+//     try:
+//         print(ord("ab"))
+//     except TypeError as e:
+//         print("caught:", str(e))
+//
+//     try:
+//         print(ord(""))
+//     except TypeError as e:
+//         print("caught:", str(e))
 void main() {
-    // try:
     {
         try {
-            // print(ord("ab"))
             std::cout << ::tpy::ord_str("ab") << "\n";
         } catch (const ::tpy::TypeError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // print(ord(""))
             std::cout << ::tpy::ord_str("") << "\n";
         } catch (const ::tpy::TypeError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

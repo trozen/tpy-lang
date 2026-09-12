@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def field_direct(h: Holder) -> None:
+//     match h.pet:
+//         case Dog(legs=lg):
+//             h.pet = Cat(99)  # destroys the Dog in place; lg is a copy
+//             print(lg)
+//         case Cat(age=a):
+//             print("cat", a)
 void field_direct(Holder& h) {
-    // match h.pet:
     auto& __match_subject_1 = h.pet;
     switch (__match_subject_1.index()) {
-    // case Dog(legs=lg):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto lg = __case_0.legs;
-        // h.pet = Cat(99)  # destroys the Dog in place; lg is a copy
         h.pet = Cat(99);
-        // print(lg)
         std::cout << lg << "\n";
         break;
     }
-    // case Cat(age=a):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        // print("cat", a)
         std::cout << "cat" << " " << a << "\n";
         break;
     }
@@ -31,25 +31,25 @@ void field_direct(Holder& h) {
 }
 
 // def field_method(h: Holder) -> None:
+//     match h.pet:
+//         case Dog(legs=lg):
+//             h.replace()  # method-call mutation of the subject
+//             print(lg)
+//         case Cat(age=a):
+//             print("cat", a)
 void field_method(Holder& h) {
-    // match h.pet:
     auto& __match_subject_1 = h.pet;
     switch (__match_subject_1.index()) {
-    // case Dog(legs=lg):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto lg = __case_0.legs;
-        // h.replace()  # method-call mutation of the subject
         h.replace();
-        // print(lg)
         std::cout << lg << "\n";
         break;
     }
-    // case Cat(age=a):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        // print("cat", a)
         std::cout << "cat" << " " << a << "\n";
         break;
     }
@@ -57,25 +57,25 @@ void field_method(Holder& h) {
 }
 
 // def element_realloc(xs: list[Dog | Cat]) -> None:
+//     match xs[0]:
+//         case Dog(legs=lg):
+//             xs.append(Cat(1))  # realloc moves the element; lg is a copy
+//             print(lg)
+//         case Cat(age=a):
+//             print("cat", a)
 void element_realloc(std::vector<::tpy::Union<Cat, Dog>>& xs) {
-    // match xs[0]:
     auto& __match_subject_1 = ::tpy::__getitem__(xs, 0);
     switch (__match_subject_1.index()) {
-    // case Dog(legs=lg):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
         auto lg = __case_0.legs;
-        // xs.append(Cat(1))  # realloc moves the element; lg is a copy
         xs.push_back(Cat(1));
-        // print(lg)
         std::cout << lg << "\n";
         break;
     }
-    // case Cat(age=a):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
         auto a = __case_1.age;
-        // print("cat", a)
         std::cout << "cat" << " " << a << "\n";
         break;
     }
@@ -83,24 +83,24 @@ void element_realloc(std::vector<::tpy::Union<Cat, Dog>>& xs) {
 }
 
 // def main() -> None:
+//     field_direct(Holder())
+//     field_method(Holder())
+//     element_realloc([Dog(4)])
 void main() {
-    // field_direct(Holder())
     Holder __tmp_1 = Holder();
     field_direct(__tmp_1);
-    // field_method(Holder())
     Holder __tmp_2 = Holder();
     field_method(__tmp_2);
-    // element_realloc([Dog(4)])
     std::vector<::tpy::Union<Cat, Dog>> __tmp_3 = {Dog(4)};
     element_realloc(__tmp_3);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

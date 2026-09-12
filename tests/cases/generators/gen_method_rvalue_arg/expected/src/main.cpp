@@ -5,45 +5,48 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     lim = Lim()
+//     print(sum(lim.first([5, 6, 7], 2)))
+//     print(sum(lim.ro_pair([1, 2])))
+//     print(sum(lim.rec_val(Rec(41))))
+//     print(sum(lim.dvals({"a": 1, "b": 2})))
+//     g = lim.first([10, 20, 30], 3)
+//     total = 0
+//     for x in g:
+//         total += x
+//     print(total)
+//     # The frame borrows the caller's list, no copy: a mutation between
+//     # pulls is visible to the generator.
+//     data: list[int32] = [5, 6]
+//     got: list[int32] = []
+//     for v in lim.echo(data):
+//         got.append(v)
+//         data[0] = 50
+//     print(got[0], got[1])
 void main() {
-    // lim = Lim()
     Lim lim = Lim();
-    // print(sum(lim.first([5, 6, 7], 2)))
     std::vector<int32_t> __tmp_1 = {5, 6, 7};
     std::cout << ::tpy::builtin_sum<int32_t>(lim.first(__tmp_1, 2)) << "\n";
-    // print(sum(lim.ro_pair([1, 2])))
     std::vector<int32_t> __tmp_2 = {1, 2};
     std::cout << ::tpy::builtin_sum<int32_t>(lim.ro_pair(__tmp_2)) << "\n";
-    // print(sum(lim.rec_val(Rec(41))))
     Rec __tmp_3 = Rec(41);
     std::cout << ::tpy::builtin_sum<int32_t>(lim.rec_val(__tmp_3)) << "\n";
-    // print(sum(lim.dvals({"a": 1, "b": 2})))
     ::tpy::ordered_map<std::string, int32_t> __tmp_4 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     std::cout << ::tpy::builtin_sum<int32_t>(lim.dvals(__tmp_4)) << "\n";
-    // g = lim.first([10, 20, 30], 3)
     std::vector<int32_t> __tmp_5 = {10, 20, 30};
     auto g = lim.first(__tmp_5, 3);
-    // total = 0
     int32_t total = 0;
-    // for x in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // print(total)
     std::cout << total << "\n";
-    // # The frame borrows the caller's list, no copy: a mutation between
-    // # pulls is visible to the generator.
-    // data: list[int32] = [5, 6]
     std::vector<int32_t> data = {5, 6};
-    // got: list[int32] = []
     std::vector<int32_t> got = std::vector<int32_t>{};
-    // for v in lim.echo(data):
     {
         auto __src_2 = lim.echo(data);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -51,21 +54,23 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // got.append(v)
         got.push_back(v);
-        // data[0] = 50
         ::tpy::__setitem__(data, 0, 50);
         }
     }
-    // print(got[0], got[1])
     std::cout << ::tpy::__getitem__(got, 0) << " " << ::tpy::__getitem__(got, 1) << "\n";
 }
 
 // def first(self, items: list[int32], cap: int32) -> Iterator[int32]:
+//     n = 0
+//     for x in items:
+//         if n >= cap:
+//             break
+//         yield x
+//         n += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = 0
         n = 0;
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
@@ -73,7 +78,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_JOIN_0;
         continue;
@@ -88,7 +92,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
             __state = S_JOIN_1;
             continue;
         } else {
-            // yield x
             __state = S_RESUME_0;
             return x;
         }
@@ -104,10 +107,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
 
 
 // def ro_pair(self, xs: readonly[list[int32]]) -> Iterator[int32]:
+//     yield 0
+//     for x in xs:
+//         yield x
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -127,7 +132,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x = *((*__for_it_0))++;
-        // yield x
         __state = S_RESUME_1;
         return x;
     }
@@ -138,15 +142,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__() {
 
 
 // def rec_val(self, r: readonly[Rec]) -> Iterator[int32]:
+//     yield r.v
+//     yield r.v + 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_rec_val::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield r.v
         __state = S_RESUME_0;
         return r.v;
     }
     case S_RESUME_0: {
-        // yield r.v + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(r.v, 1));
     }
@@ -161,10 +165,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_rec_val::__next__() {
 
 
 // def dvals(self, d: readonly[dict[str, int32]]) -> Iterator[int32]:
+//     yield len(d)
+//     for k in d:
+//         yield d[k]
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield len(d)
         __state = S_RESUME_0;
         return ::tpy::__len__(d);
     }
@@ -184,7 +190,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         k = *((*__for_it_0))++;
-        // yield d[k]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(d, k);
     }
@@ -195,15 +200,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() {
 
 
 // def echo(self, xs: list[int32]) -> Iterator[int32]:
+//     yield xs[0]
+//     yield xs[0]
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_echo::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield xs[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(xs, 0);
     }
     case S_RESUME_0: {
-        // yield xs[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(xs, 0);
     }
@@ -217,12 +222,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_echo::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

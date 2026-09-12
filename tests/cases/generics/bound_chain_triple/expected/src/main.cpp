@@ -5,22 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Hint-free: T not pinned by LHS. arg pins V=Leaf; fixpoint iter 1
+//     # defaults U=V=Leaf, iter 2 defaults T=U=Leaf. Final Holder[Leaf].
+//     h = make(Leaf("a"))  # tpyc: type(Holder[Leaf])
+//     print(h.get().kind())
 void main() {
-    // # Hint-free: T not pinned by LHS. arg pins V=Leaf; fixpoint iter 1
-    // # defaults U=V=Leaf, iter 2 defaults T=U=Leaf. Final Holder[Leaf].
-    // h = make(Leaf("a"))  # tpyc: type(Holder[Leaf])
     Holder<Leaf> h = make<Leaf, Leaf, Leaf>(Leaf("a"));
-    // print(h.get().kind())
     std::cout << h.get().kind() << "\n";
 }
 
+// from tpy.unsafe import unsafe_take, unsafe_release
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_take, unsafe_release
-    // main()
     main();
 }
 

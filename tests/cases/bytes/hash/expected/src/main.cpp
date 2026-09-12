@@ -5,65 +5,65 @@ namespace tpyapp::main {
 
 
 // def test_hash_basic() -> None:
+//     h1 = hash(b"hello")
+//     h2 = hash(b"hello")
+//     h3 = hash(b"world")
+//     print(h1 == h2)
+//     print(h1 != h3)
 void test_hash_basic() {
-    // h1 = hash(b"hello")
     uint64_t h1 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
-    // h2 = hash(b"hello")
     uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
-    // h3 = hash(b"world")
     uint64_t h3 = ::tpy::__hash__(::tpy::bytes_literal_owned("world", 5));
-    // print(h1 == h2)
     std::cout << ::tpy::print_bool((h1 == h2)) << "\n";
-    // print(h1 != h3)
     std::cout << ::tpy::print_bool((h1 != h3)) << "\n";
 }
 
 // def test_dict_key() -> None:
+//     d: dict[bytes, str] = {b"alice": "A", b"bob": "B"}
+//     print(d[b"alice"])
+//     print(d[b"bob"])
+//     print(len(d))
 void test_dict_key() {
-    // d: dict[bytes, str] = {b"alice": "A", b"bob": "B"}
     ::tpy::ordered_map<::tpy::Bytes, std::string> d = ::tpy::ordered_map<::tpy::Bytes, std::string>({{::tpy::bytes_literal_owned("alice", 5), "A"}, {::tpy::bytes_literal_owned("bob", 3), "B"}});
-    // print(d[b"alice"])
     std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("alice", 5)) << "\n";
-    // print(d[b"bob"])
     std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("bob", 3)) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def test_set_element() -> None:
+//     s: set[bytes] = {b"x", b"y", b"x"}
+//     print(len(s))
 void test_set_element() {
-    // s: set[bytes] = {b"x", b"y", b"x"}
     ::tpy::ordered_set<::tpy::Bytes> s = ::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("x", 1), ::tpy::bytes_literal_owned("y", 1), ::tpy::bytes_literal_owned("x", 1)});
-    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
 // def test_bytes_view_hash() -> None:
+//     items: list[bytes] = [b"hello", b"world"]
+//     v = items[int32(0)]  # tpyc: type(BytesView)
+//     h1 = hash(v)
+//     h2 = hash(b"hello")
+//     print(h1 == h2)
 void test_bytes_view_hash() {
-    // items: list[bytes] = [b"hello", b"world"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)};
-    // v = items[int32(0)]  # tpyc: type(BytesView)
     ::tpy::BytesView v = ::tpy::__getitem__(items, 0);
-    // h1 = hash(v)
     uint64_t h1 = ::tpy::__hash__(v);
-    // h2 = hash(b"hello")
     uint64_t h2 = ::tpy::__hash__(::tpy::bytes_literal_owned("hello", 5));
-    // print(h1 == h2)
     std::cout << ::tpy::print_bool((h1 == h2)) << "\n";
 }
 
+// test_hash_basic()
+// test_dict_key()
+// test_set_element()
+// test_bytes_view_hash()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_hash_basic()
     test_hash_basic();
-    // test_dict_key()
     test_dict_key();
-    // test_set_element()
     test_set_element();
-    // test_bytes_view_hash()
     test_bytes_view_hash();
 }
 

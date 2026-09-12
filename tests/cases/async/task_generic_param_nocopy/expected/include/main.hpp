@@ -17,14 +17,19 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_co;
 struct __coro_main_coro;
 
+// async def co(x: int32) -> int32:
 __coro_co co(int32_t x);
+// def task_arity_concrete(t: Task[int32]) -> int32:
 int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t);
+// def task_arity_generic[T](t: Task[T]) -> int32:
 template<typename T>
 int32_t task_arity_generic(const ::tpystd::asyncio::_executor::Task<T>& t);
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
-// Async coroutine: co
+// async def co(x: int32) -> int32:
 struct __coro_co {
     int32_t __state;
     bool __cancel_pending;
@@ -46,7 +51,7 @@ struct __coro_co {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
@@ -73,11 +78,11 @@ struct __coro_main_coro {
 };
 
 // def task_arity_generic[T](t: Task[T]) -> int32:
+//     # Same as above, generic form. Pre-fix this emitted `Task<T> t`
+//     # by-value and the call site failed to compile.
+//     return 1
 template<typename T>
 int32_t task_arity_generic(const ::tpystd::asyncio::_executor::Task<T>& t) {
-    // # Same as above, generic form. Pre-fix this emitted `Task<T> t`
-    // # by-value and the call site failed to compile.
-    // return 1
     return 1;
 }
 

@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = H({1: 2, 5: 6})
+//     a, b = h.t
+//     print(a, b)
+//     n = N({3: 4, 7: 8})
+//     print(n.inner())
 void main() {
-    // h = H({1: 2, 5: 6})
     H h = H(::tpy::ordered_map<int32_t, int32_t>({{1, 2}, {5, 6}}));
-    // a, b = h.t
     auto __tup_1 = h.t;
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
-    // print(a, b)
     std::cout << a << " " << b << "\n";
-    // n = N({3: 4, 7: 8})
     N n = N(::tpy::ordered_map<int32_t, int32_t>({{3, 4}, {7, 8}}));
-    // print(n.inner())
     std::cout << n.inner() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

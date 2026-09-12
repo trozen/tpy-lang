@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder(Node(5))
+//     print(h.found, h.present)
+//     e = Holder(None)
+//     print(e.found, e.present)
 void main() {
-    // h = Holder(Node(5))
     Node __tmp_1 = Node(::tpy::BigInt(5));
     Holder h = Holder(&(__tmp_1));
-    // print(h.found, h.present)
     std::cout << h.found << " " << ::tpy::print_bool(h.present) << "\n";
-    // e = Holder(None)
     Holder e = Holder(nullptr);
-    // print(e.found, e.present)
     std::cout << e.found << " " << ::tpy::print_bool(e.present) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

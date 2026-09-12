@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main():
+//     e = KeyEcho()
+//     k = Node(1)
+//     r = e[k]
+//     k.v = 5
+//     print(r.v)
+//     r.v = 9
+//     print(k.v)
 void main() {
-    // e = KeyEcho()
     KeyEcho e = KeyEcho();
-    // k = Node(1)
     Node k = Node(1);
-    // r = e[k]
     Node& r = e[k];
-    // k.v = 5
     k.v = 5;
-    // print(r.v)
     std::cout << r.v << "\n";
-    // r.v = 9
     r.v = 9;
-    // print(k.v)
     std::cout << k.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

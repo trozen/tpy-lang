@@ -12,6 +12,7 @@ struct BErr;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # raise X(Bag(...)) where the ctor mutates its ref param and the arg is a
@@ -57,19 +58,21 @@ inline std::ostream& operator<<(std::ostream& os, const BErr& obj) {
 
 
 // def __init__(self, items: list[int]) -> None:
+//     self.items = items
 inline Bag::Bag(const std::vector<::tpy::BigInt>& items) : items(items) {}
 
 // def push(self, v: int) -> None:
+//     self.items.append(v)
 inline void Bag::push(const ::tpy::BigInt& v) {
-    // self.items.append(v)
     this->items.push_back(v);
 }
 
 // def __init__(self, b: Bag) -> None:
+//     super().__init__("b")
+//     b.push(99)
+//     self.total = len(b.items)
 inline BErr::BErr(Bag& b) : ::tpy::Exception("b") {
-    // b.push(99)
     b.push(99);
-    // self.total = len(b.items)
     this->total = ::tpy::BigInt(::tpy::__len__(b.items));
 }
 void __tpy_init();

@@ -8,20 +8,19 @@ namespace tpyapp::a {
 
 // def __init__(self) -> None: pass
 Counter::Counter() {
-    // def __init__(self) -> None: pass
 }
 
 // def hello(self) -> str:
+//     return "hi from a.Counter"
 std::string Counter::hello() const {
-    // return "hi from a.Counter"
     return "hi from a.Counter";
 }
+// from b import Greeter
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from b import Greeter
     ::tpyapp::b::__tpy_init();
 }
 

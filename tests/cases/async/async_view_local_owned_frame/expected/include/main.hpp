@@ -14,11 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_read_addr;
 
+// def pair(n: int32) -> tuple[str, str]:
 std::tuple<std::string, std::string> pair(int32_t n);
+// async def read_addr() -> None:
 __coro_read_addr read_addr();
+// def main() -> None:
 void main();
 
-// Async coroutine: read_addr
+// async def read_addr() -> None:
 struct __coro_read_addr {
     int32_t __state;
     bool __cancel_pending;

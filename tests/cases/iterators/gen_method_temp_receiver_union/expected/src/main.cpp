@@ -5,8 +5,11 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     for s in Box(Dog()).describe():
+//         print(s)
+//     for s in Box(Cat()).describe():
+//         print(s)
 void main() {
-    // for s in Box(Dog()).describe():
     {
         Dog __tmp_1 = Dog();
         Box __tmp_2 = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
@@ -16,11 +19,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in Box(Cat()).describe():
     {
         Cat __tmp_3 = Cat();
         Box __tmp_4 = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
@@ -30,33 +31,33 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
 // def describe(self) -> Iterator[str]:
+//     yield "start"
+//     match self.payload:
+//         case Dog():
+//             yield "dog"
+//         case Cat():
+//             yield "cat"
 std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield "start"
         __state = S_RESUME_0;
         return "start";
     }
     case S_RESUME_0: {
         auto& __match_subject_1 = __self.payload;
         switch (__match_subject_1.index()) {
-        // case Dog():
         case 1: {
-            // yield "dog"
             __state = S_RESUME_1;
             return "dog";
             break;
         }
-        // case Cat():
         case 0: {
-            // yield "cat"
             __state = S_RESUME_2;
             return "cat";
             break;
@@ -83,12 +84,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

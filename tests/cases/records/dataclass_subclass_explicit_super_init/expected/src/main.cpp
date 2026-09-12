@@ -5,27 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child(42, 7)
+//     print(c.extra)
 void main() {
-    // c = Child(42, 7)
     Child c = Child(42, 7);
-    // print(c.extra)
     std::cout << c.extra << "\n";
 }
 
+// # Happy-path escape hatch from the macro-aware super-init error: when a
+// # @dataclass child inherits from a non-dataclass parent whose default
+// # ctor is implicitly deleted, the user can write an explicit __init__
+// # that calls super().__init__(...). The user-written __init__ is NOT
+// # macro-generated, so the rule fires with the normal (non-macro) path
+// # and accepts the explicit super() call.
+// from dataclasses import dataclass
+//
+// from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Happy-path escape hatch from the macro-aware super-init error: when a
-    // # @dataclass child inherits from a non-dataclass parent whose default
-    // # ctor is implicitly deleted, the user can write an explicit __init__
-    // # that calls super().__init__(...). The user-written __init__ is NOT
-    // # macro-generated, so the rule fires with the normal (non-macro) path
-    // # and accepts the explicit super() call.
-    // from dataclasses import dataclass
-    // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
-    // main()
     main();
 }
 

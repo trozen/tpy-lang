@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def use(c: pcre2.Code) -> int32:
+//     return c.n
 int32_t use(const ::tpyapp::_bindings::pcre2::Code& c) {
-    // return c.n
     return c.n;
 }
 
 // def main() -> None:
+//     print(pcre2.compile_pattern("hello"))
+//     print(use(pcre2.Code(int32(7))))
 void main() {
-    // print(pcre2.compile_pattern("hello"))
     std::cout << ::tpyapp::_bindings::pcre2::compile_pattern("hello") << "\n";
-    // print(use(pcre2.Code(int32(7))))
     ::tpyapp::_bindings::pcre2::Code __tmp_1 = ::tpyapp::_bindings::pcre2::Code(7);
     std::cout << use(__tmp_1) << "\n";
 }
 
+// # `from pkg import submod` binds submod as a usable namespace:
+// # - call qualifying:    submod.fn(...)
+// # - record qualifying:  submod.RecordName(...)
+// # - annotation typing:  field: submod.RecordName
+// # Pre-fix: each of these required an explicit `from pkg.submod import X`
+// # (or `pkg.submod.X` annotations, which sema rejected outright).
+// from _bindings import pcre2
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `from pkg import submod` binds submod as a usable namespace:
-    // # - call qualifying:    submod.fn(...)
-    // # - record qualifying:  submod.RecordName(...)
-    // # - annotation typing:  field: submod.RecordName
-    // # Pre-fix: each of these required an explicit `from pkg.submod import X`
-    // # (or `pkg.submod.X` annotations, which sema rejected outright).
-    // from _bindings import pcre2
     ::tpyapp::_bindings::__tpy_init();
     ::tpyapp::_bindings::pcre2::__tpy_init();
-    // main()
     main();
 }
 

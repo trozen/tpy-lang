@@ -13,12 +13,15 @@ template <typename T>
 struct __gen_pair;
 struct __gen_gen;
 
+// def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def gen() -> Iterator[int32]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
-// Generator: pair
+// def pair[T](a: T, b: T) -> Iterator[T]:
 template <typename T>
 struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
     int32_t __state;
@@ -43,16 +46,16 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
     }
 };
 // def pair[T](a: T, b: T) -> Iterator[T]:
+//     yield a
+//     yield b
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_pair<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield a
         __state = S_RESUME_0;
         return a;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return b;
     }
@@ -72,7 +75,7 @@ __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> 
     return __gen_pair<T>(a, b);
 }
 
-// Generator: gen
+// def gen() -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     int32_t x;

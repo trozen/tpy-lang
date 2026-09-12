@@ -15,7 +15,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_bump_all;
 struct __gen_Holder_nodes_gen;
 
+// def bump_all(h: Holder) -> Iterator[int32]:
 __gen_bump_all bump_all(Holder& h);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -53,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Generator: Holder.nodes_gen
+// def nodes_gen(self) -> Iterator[Node]:
 struct __gen_Holder_nodes_gen : public ::tpy::next_iter_mixin<__gen_Holder_nodes_gen, ::tpy::val_or_ref<Node>> {
     int32_t __state;
     Holder& __self;
@@ -80,7 +82,7 @@ inline __gen_Holder_nodes_gen Holder::nodes_gen() {
     return __gen_Holder_nodes_gen(*this);
 }
 
-// Generator: bump_all
+// def bump_all(h: Holder) -> Iterator[int32]:
 struct __gen_bump_all : public ::tpy::next_iter_mixin<__gen_bump_all, int32_t> {
     int32_t __state;
     Holder& h;
@@ -110,9 +112,12 @@ struct __gen_bump_all : public ::tpy::next_iter_mixin<__gen_bump_all, int32_t> {
 
 
 // def __init__(self, val: int32) -> None:
+//     self.val = val
 inline Node::Node(int32_t val) : val(val) {}
 
 // def __init__(self) -> None:
+//     self.a = Node(1)
+//     self.b = Node(2)
 inline Holder::Holder() : a(Node(1)), b(Node(2)) {}
 void __tpy_init();
 } // namespace tpyapp::main

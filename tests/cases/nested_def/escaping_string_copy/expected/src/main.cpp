@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def make_greeter(name: str) -> Callable[[], None]:
+//     owned_name = String(name)
+//     def greet() -> None:  # tpyc: warning(/copies local 'owned_name'.*used after closure/)
+//         print("Hello, " + owned_name)
+//     print(owned_name)
+//     return greet
 std::function<void()> make_greeter(std::string_view name) {
-    // owned_name = String(name)
     ::tpy::String owned_name = ::tpy::String(name);
-    // def greet() -> None:  # tpyc: warning(/copies local 'owned_name'.*used after closure/)
     auto greet = [owned_name]() {
-        // print("Hello, " + owned_name)
         std::cout << (::tpy::str_concat("Hello, ", owned_name)) << "\n";
     };
-    // print(owned_name)
     std::cout << owned_name << "\n";
-    // return greet
     return greet;
 }
 
 // def main() -> None:
+//     greeter = make_greeter("world")
+//     greeter()
 void main() {
-    // greeter = make_greeter("world")
     std::function<void()> greeter = make_greeter("world");
-    // greeter()
     greeter();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

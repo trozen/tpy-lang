@@ -5,76 +5,76 @@ namespace tpyapp::main {
 
 
 // def make_parrot() -> Own[Pet]:
+//     return Parrot("Polly")
 std::unique_ptr<Pet> make_parrot() {
-    // return Parrot("Polly")
     return ::tpy::make_adapter<Pet>(Parrot("Polly"));
 }
 
 // def make_dog() -> Own[Pet]:
+//     return Dog("Rex")
 std::unique_ptr<Pet> make_dog() {
-    // return Dog("Rex")
     return ::tpy::make_adapter<Pet>(Dog("Rex"));
 }
 
 // def make_tabby() -> Own[NamedPet]:
+//     return Tabby("Whiskers")
 std::unique_ptr<NamedPet> make_tabby() {
-    // return Tabby("Whiskers")
     return ::tpy::make_adapter<NamedPet>(Tabby("Whiskers"));
 }
 
 // def widen_to_pet(np: Own[NamedPet]) -> Own[Pet]:
+//     # Forward an Own[ChildProtocol] into an Own[ParentProtocol] return slot.
+//     # _dyn_protocol_forward_ok takes the _protocol_inherits_from branch here
+//     # (qualified_name differs but NamedPet inherits Pet); both ends stay
+//     # unique_ptr-shaped and the upcast happens via the converting move ctor.
+//     return np
 std::unique_ptr<Pet> widen_to_pet(std::unique_ptr<NamedPet> np) {
-    // # Forward an Own[ChildProtocol] into an Own[ParentProtocol] return slot.
-    // # _dyn_protocol_forward_ok takes the _protocol_inherits_from branch here
-    // # (qualified_name differs but NamedPet inherits Pet); both ends stay
-    // # unique_ptr-shaped and the upcast happens via the converting move ctor.
-    // return np
     return np;
 }
 
 // def speak_and_forward(p: Own[Pet]) -> Own[Pet]:
+//     # Body-side method access on an Own[P] param: emits p->name(), not p.name().
+//     print(p.name())
+//     return p
 std::unique_ptr<Pet> speak_and_forward(std::unique_ptr<Pet> p) {
-    // # Body-side method access on an Own[P] param: emits p->name(), not p.name().
-    // print(p.name())
     std::cout << p->name() << "\n";
-    // return p
     return p;
 }
 
 // def pick(use_parrot: bool) -> Own[Pet]:
+//     # Ternary of Own[P]-returning calls: sema strips OwnType from the ternary
+//     # itself, so _resolve_own_source_type returns None. The forward path must
+//     # still kick in via the "arg_type is_dyn_protocol" fallback, otherwise
+//     # codegen would emit ill-formed `std::make_unique<Adapter<Pet, Pet>>(...)`.
+//     return make_parrot() if use_parrot else make_dog()
 std::unique_ptr<Pet> pick(bool use_parrot) {
-    // # Ternary of Own[P]-returning calls: sema strips OwnType from the ternary
-    // # itself, so _resolve_own_source_type returns None. The forward path must
-    // # still kick in via the "arg_type is_dyn_protocol" fallback, otherwise
-    // # codegen would emit ill-formed `std::make_unique<Adapter<Pet, Pet>>(...)`.
-    // return make_parrot() if use_parrot else make_dog()
     return ((use_parrot) ? (make_parrot()) : (make_dog()));
 }
 
 // def main() -> None:
+//     speak_and_forward(make_parrot())
+//     speak_and_forward(make_dog())
+//     # Chained call on an Own[P]-returning function -- pins the
+//     # resolved_function_info.return_type branch of _receiver_is_own_dyn.
+//     print(make_parrot().name())
+//     print(pick(True).name())
+//     print(pick(False).name())
+//     print(widen_to_pet(make_tabby()).name())
 void main() {
-    // speak_and_forward(make_parrot())
     speak_and_forward(make_parrot());
-    // speak_and_forward(make_dog())
     speak_and_forward(make_dog());
-    // # Chained call on an Own[P]-returning function -- pins the
-    // # resolved_function_info.return_type branch of _receiver_is_own_dyn.
-    // print(make_parrot().name())
     std::cout << make_parrot()->name() << "\n";
-    // print(pick(True).name())
     std::cout << pick(true)->name() << "\n";
-    // print(pick(False).name())
     std::cout << pick(false)->name() << "\n";
-    // print(widen_to_pet(make_tabby()).name())
     std::cout << widen_to_pet(make_tabby())->name() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

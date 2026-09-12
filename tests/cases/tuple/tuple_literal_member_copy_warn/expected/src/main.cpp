@@ -5,73 +5,73 @@ namespace tpyapp::main {
 
 
 // def list_literal(items: list[tuple[int32, P]]) -> None:
+//     # annotated list[...] -> std::vector (storage form); a bare single-element
+//     # literal would infer a fixed Array and hit a separate borrow-form codegen
+//     # gap (see BUGS.md).
+//     xs: list[tuple[int32, P]] = [items[0]]  # tpyc: warning(/copies P into owned storage/)
+//     print(len(xs))
 void list_literal(const std::vector<std::tuple<int32_t, P>>& items) {
-    // # annotated list[...] -> std::vector (storage form); a bare single-element
-    // # literal would infer a fixed Array and hit a separate borrow-form codegen
-    // # gap (see BUGS.md).
-    // xs: list[tuple[int32, P]] = [items[0]]  # tpyc: warning(/copies P into owned storage/)
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::__getitem__(items, 0)};
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def dict_value(items: list[tuple[int32, P]]) -> None:
+//     d: dict[int32, tuple[int32, P]] = {0: items[0]}  # tpyc: warning(/copies P into owned storage/)
+//     print(len(d))
 void dict_value(const std::vector<std::tuple<int32_t, P>>& items) {
-    // d: dict[int32, tuple[int32, P]] = {0: items[0]}  # tpyc: warning(/copies P into owned storage/)
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, P>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, P>>({{0, ::tpy::__getitem__(items, 0)}});
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def via_append(items: list[tuple[int32, P]]) -> None:
+//     out: list[tuple[int32, P]] = []
+//     out.append(items[0])  # tpyc: warning(/copies P into owned storage/)
+//     print(len(out))
 void via_append(const std::vector<std::tuple<int32_t, P>>& items) {
-    // out: list[tuple[int32, P]] = []
     std::vector<std::tuple<int32_t, P>> out = std::vector<std::tuple<int32_t, P>>{};
-    // out.append(items[0])  # tpyc: warning(/copies P into owned storage/)
     out.push_back(::tpy::__getitem__(items, 0));
-    // print(len(out))
     std::cout << ::tpy::__len__(out) << "\n";
 }
 
 // def exempt_fresh(n: int32) -> None:
+//     xs: list[tuple[int32, P]] = [(1, P(9))]  # tpyc: ok
+//     print(len(xs))
 void exempt_fresh(int32_t n) {
-    // xs: list[tuple[int32, P]] = [(1, P(9))]  # tpyc: ok
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(9)})};
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def exempt_copy(p: P) -> None:
+//     xs: list[tuple[int32, P]] = [(1, copy(p))]  # tpyc: ok
+//     print(len(xs))
 void exempt_copy(const P& p) {
-    // xs: list[tuple[int32, P]] = [(1, copy(p))]  # tpyc: ok
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(p)})};
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def main() -> None:
+//     src: list[tuple[int32, P]] = [(1, P(5))]
+//     list_literal(src)
+//     dict_value(src)
+//     via_append(src)
+//     exempt_fresh(0)
+//     exempt_copy(P(8))
 void main() {
-    // src: list[tuple[int32, P]] = [(1, P(5))]
     std::vector<std::tuple<int32_t, P>> src = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(5)})};
-    // list_literal(src)
     list_literal(src);
-    // dict_value(src)
     dict_value(src);
-    // via_append(src)
     via_append(src);
-    // exempt_fresh(0)
     exempt_fresh(0);
-    // exempt_copy(P(8))
     P __tmp_1 = P(8);
     exempt_copy(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

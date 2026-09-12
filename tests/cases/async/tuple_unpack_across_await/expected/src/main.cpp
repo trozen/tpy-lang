@@ -5,20 +5,21 @@ namespace tpyapp::main {
 
 
 // def make_pair() -> tuple[int, int]:
+//     return (1, 2)
 std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair() {
-    // return (1, 2)
     return std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)};
 }
 
 // async def f() -> int:
+//     a, b = make_pair()
+//     await asyncio.sleep(0)
+//     return a + b
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = make_pair()
         auto __tup_1 = make_pair();
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -28,7 +29,6 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return a + b
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((a) + (b));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -45,22 +45,23 @@ __coro_f f() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(f()))
 void main() {
-    // print(asyncio.run(f()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(f())) << "\n";
 }
 
+// # Value-type tuple-unpack targets must survive an await: the unpacked locals
+// # are frame fields, so a fresh shadowing C++ local would read a stale 0 after
+// # the suspension. Regression guard for tuple-unpack-across-await.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Value-type tuple-unpack targets must survive an await: the unpacked locals
-    // # are frame fields, so a fresh shadowing C++ local would read a stale 0 after
-    // # the suspension. Regression guard for tuple-unpack-across-await.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

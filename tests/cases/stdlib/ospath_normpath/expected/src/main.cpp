@@ -5,47 +5,48 @@ namespace tpyapp::main {
 
 
 // def main():
+//     cases = [
+//         "",
+//         ".",
+//         "..",
+//         "a//b/../c/",
+//         "a/./b",
+//         "/../../a",
+//         "//x/y",       # two leading slashes are preserved (POSIX)
+//         "///x/y",      # three-plus collapse to one
+//         "/a/b/../../c",
+//         "a/b/../../../d",
+//         "foo/bar/..",
+//         "/",
+//         "./a/./b/./",
+//         "../../x",
+//         "a/..",
+//     ]
+//     for c in cases:
+//         print(os.path.normpath(c))
 void main() {
-    // cases = [
-    // "",
-    // ".",
-    // "..",
-    // "a//b/../c/",
-    // "a/./b",
-    // "/../../a",
-    // "//x/y",       # two leading slashes are preserved (POSIX)
-    // "///x/y",      # three-plus collapse to one
-    // "/a/b/../../c",
-    // "a/b/../../../d",
-    // "foo/bar/..",
-    // "/",
-    // "./a/./b/./",
-    // "../../x",
-    // "a/..",
-    // ]
     std::array<std::string, 15> cases = {"", ".", "..", "a//b/../c/", "a/./b", "/../../a", "//x/y", "///x/y", "/a/b/../../c", "a/b/../../../d", "foo/bar/..", "/", "./a/./b/./", "../../x", "a/.."};
-    // for c in cases:
     auto& __obj_0 = cases;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view c = *__beg_0;
-        // print(os.path.normpath(c))
         std::cout << ::tpystd::os::path::normpath(c) << "\n";
     }
 }
 
+// # os.path.normpath -- POSIX dot/dotdot collapsing and leading-slash rules.
+// # Byte-compared against CPython posixpath.normpath in the cpy phase.
+// import os.path
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.path.normpath -- POSIX dot/dotdot collapsing and leading-slash rules.
-    // # Byte-compared against CPython posixpath.normpath in the cpy phase.
-    // import os.path
     ::tpystd::os::__tpy_init();
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

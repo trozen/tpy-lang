@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     func()
+//     return int32(0)
 int32_t main() {
-    // func()
     ::tpyapp::outer::inner::mod::func();
-    // return int32(0)
     return 0;
 }
 
+// from outer.inner.mod import func
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from outer.inner.mod import func
     ::tpyapp::outer::__tpy_init();
     ::tpyapp::outer::inner::__tpy_init();
     ::tpyapp::outer::inner::mod::__tpy_init();
-    // main()
     main();
 }
 

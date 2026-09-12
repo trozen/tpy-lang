@@ -5,20 +5,21 @@ namespace myapp {
 
 
 // def main() -> None:
+//     print(add(int32(10), int32(32)))
 void main() {
-    // print(add(int32(10), int32(32)))
     std::cout << ::mypkg::utils::add(10, 32) << "\n";
 }
 
+// from mypkg.utils import add
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from mypkg.utils import add
     ::mypkg::__tpy_init();
     ::mypkg::utils::__tpy_init();
-    // main()
     main();
 }
 

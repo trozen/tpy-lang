@@ -12,8 +12,11 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def get_value(o: Outer) -> int:
 ::tpy::BigInt get_value(const Outer& o);
+// def get_value_truthy(o: Outer) -> int:
 ::tpy::BigInt get_value_truthy(const Outer& o);
+// def main() -> None:
 void main();
 
 // class Inner:
@@ -50,9 +53,11 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self, value: Optional[int]) -> None:
+//     self.value = value
 inline Inner::Inner(std::optional<::tpy::BigInt> value) : value(value) {}
 
 // def __init__(self, inner: Inner) -> None:
+//     self.inner = inner
 inline Outer::Outer(const Inner& inner) : inner(inner) {}
 void __tpy_init();
 } // namespace tpyapp::main

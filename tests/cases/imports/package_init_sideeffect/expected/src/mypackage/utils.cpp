@@ -5,8 +5,8 @@ namespace tpyapp::mypackage::utils {
 
 
 // def helper() -> None:
+//     print("helper called")
 void helper() {
-    // print("helper called")
     std::cout << "helper called" << "\n";
 }
 

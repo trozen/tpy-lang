@@ -5,29 +5,31 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Explicit type parameter
+//     a: int64 = round[int64](7.7)
+//     print(a)
+//
+//     b: int32 = round[int32](2.5)
+//     print(b)
+//
+//     # round[T] with default_int inference
+//     c: int64 = round(99.9)
+//     print(c)
 void main() {
-    // # Explicit type parameter
-    // a: int64 = round[int64](7.7)
     int64_t a = ::tpy::round_to<int64_t>(7.7);
-    // print(a)
     std::cout << a << "\n";
-    // b: int32 = round[int32](2.5)
     int32_t b = ::tpy::round_to<int32_t>(2.5);
-    // print(b)
     std::cout << b << "\n";
-    // # round[T] with default_int inference
-    // c: int64 = round(99.9)
     int64_t c = ::tpy::round_to<int64_t>(99.9);
-    // print(c)
     std::cout << c << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

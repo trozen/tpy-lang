@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def consume(h: Own[Handles]) -> None:
+//     pass
 void consume(Handles&& h) {
-    // pass
 }
 
 // def main():
+//     h = Handles()
+//     consume(h)  # tpyc: ok
+//     print("ok")
 void main() {
-    // h = Handles()
     Handles h = Handles();
-    // consume(h)  # tpyc: ok
     consume(std::move(h));
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

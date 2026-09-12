@@ -5,54 +5,56 @@ namespace tpyapp::main {
 
 
 // def describe(t: Tag) -> str:
+//     return "tag" + str(t.n)
 std::string describe(const Tag& t) {
-    // return "tag" + str(t.n)
     return (::tpy::str_concat("tag", (t.n).to_string()));
 }
 
 // def fail_nested() -> None:
+//     raise ValueError(describe(Tag(7)))  # the temp sits under `describe`, one level below the ctor
 void fail_nested() {
-    // raise ValueError(describe(Tag(7)))  # the temp sits under `describe`, one level below the ctor
     Tag __tmp_1 = Tag(::tpy::BigInt(7));
     throw ::tpy::ValueError(describe(__tmp_1));
 }
 
 // def fail_direct() -> None:
+//     raise TagError(Tag(3))  # the ctor's own argument binds directly: no temp, the ordinary form
 void fail_direct() {
-    // raise TagError(Tag(3))  # the ctor's own argument binds directly: no temp, the ordinary form
     throw TagError(Tag(::tpy::BigInt(3)));
 }
 
 // def main() -> None:
+//     try:
+//         fail_nested()
+//     except ValueError as e:
+//         print("nested:", e)
+//     try:
+//         fail_direct()
+//     except TagError as e:
+//         print("direct:", e.n)
 void main() {
-    // try:
     {
         try {
-            // fail_nested()
             fail_nested();
         } catch (const ::tpy::ValueError& e) {
-            // print("nested:", e)
             std::cout << "nested:" << " " << e << "\n";
         }
     }
-    // try:
     {
         try {
-            // fail_direct()
             fail_direct();
         } catch (const TagError& e) {
-            // print("direct:", e.n)
             std::cout << "direct:" << " " << e.n << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

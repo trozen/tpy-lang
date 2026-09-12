@@ -12,9 +12,13 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_owned(p: tuple[Own[A], Own[A]]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
 int32_t read_owned(std::tuple<A, A>&& p);
+// def read_borrow(p: tuple[A, A]) -> int32:  # tpyc: ok
 int32_t read_borrow(const std::tuple<const A*, const A*>& p);
+// def read_nocopy(p: tuple[Own[B], Own[B]]) -> int32:  # tpyc: ok
 int32_t read_nocopy(std::tuple<B, B>&& p);
+// def main() -> None:
 void main();
 
 // class A:
@@ -57,9 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline A::A(int32_t n) : n(n) {}
 
 // def __init__(self, m: int32) -> None:
+//     self.m = m
 inline B::B(int32_t m) : m(m) {}
 void __tpy_init();
 } // namespace tpyapp::main

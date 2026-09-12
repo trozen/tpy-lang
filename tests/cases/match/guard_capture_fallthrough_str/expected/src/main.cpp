@@ -8,27 +8,27 @@ namespace tpyapp::main {
 // # guarded capture arm (first-match wins); the capture arm runs only when no
 // # earlier arm matched.
 // def classify(s: str) -> None:
+//     match s:
+//         case "a":
+//             print("one")
+//         case x if len(x) >= 2:
+//             print("long", x)
+//         case _:
+//             print("short other")
 void classify(std::string_view s) {
-    // match s:
     auto& __match_subject_1 = s;
-    // case "a":
     if (__match_subject_1 == "a") {
-        // print("one")
         std::cout << "one" << "\n";
         goto __match_end_2;
     }
-    // case x if len(x) >= 2:
     {
         auto& x = __match_subject_1;
         if ((::tpy::__len__(x) >= 2)) {
-            // print("long", x)
             std::cout << "long" << " " << x << "\n";
             goto __match_end_2;
         }
     }
-    // case _:
     {
-        // print("short other")
         std::cout << "short other" << "\n";
         goto __match_end_2;
     }
@@ -36,21 +36,21 @@ void classify(std::string_view s) {
 }
 
 // def main() -> None:
+//     classify("a")
+//     classify("bb")
+//     classify("z")
 void main() {
-    // classify("a")
     classify("a");
-    // classify("bb")
     classify("bb");
-    // classify("z")
     classify("z");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

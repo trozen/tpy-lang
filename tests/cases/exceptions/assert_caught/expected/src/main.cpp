@@ -7,47 +7,49 @@ namespace tpyapp::main {
 // # `assert` failure throws AssertionError -- catchable in user code.
 // # Exercises the assert codegen path (not just `raise AssertionError`).
 // def positive(n: int) -> int:
+//     assert n > 0, "must be positive"
+//     return n
 ::tpy::BigInt positive(const ::tpy::BigInt& n) {
-    // assert n > 0, "must be positive"
     if (!((n > 0))) ::tpy::raise_assertion_error("must be positive");
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     print(positive(5))
+//     try:
+//         print(positive(-3))
+//     except AssertionError as e:
+//         print("caught:", str(e))
+//     try:
+//         x = 0
+//         assert x, "x is falsy"
+//     except AssertionError as e:
+//         print("caught:", str(e))
 void main() {
-    // print(positive(5))
     std::cout << positive(::tpy::BigInt(5)) << "\n";
-    // try:
     {
         try {
-            // print(positive(-3))
             std::cout << positive(::tpy::BigInt(-3)) << "\n";
         } catch (const ::tpy::AssertionError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
-    // try:
     {
         try {
-            // x = 0
             int32_t x = 0;
-            // assert x, "x is falsy"
             if (!(x)) ::tpy::raise_assertion_error("x is falsy");
         } catch (const ::tpy::AssertionError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

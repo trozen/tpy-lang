@@ -5,33 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Strict()
+//     del s.a
+//     print("deleted a")
+//     try:
+//         del s._private
+//         print("never")
+//     except AttributeError as e:
+//         print("caught:", str(e))
 void main() {
-    // s = Strict()
     Strict s = Strict();
-    // del s.a
     s.__delattr__("a");
-    // print("deleted a")
     std::cout << "deleted a" << "\n";
-    // try:
     {
         try {
-            // del s._private
             s.__delattr__("_private");
-            // print("never")
             std::cout << "never" << "\n";
         } catch (const ::tpy::AttributeError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

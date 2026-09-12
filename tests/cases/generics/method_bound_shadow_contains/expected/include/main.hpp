@@ -11,6 +11,7 @@ template<typename T> struct MyBag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class MyBag[T]:
@@ -20,30 +21,31 @@ struct MyBag {
     std::vector<T> items;
 
     // def __init__(self) -> None:
+    //     self.items = []
     MyBag() : items(std::vector<T>{}) {}
 
     // def add(self, value: T) -> None:
+    //     self.items.append(value)
     void add(::tpy::param_val_or_ref_t<T> value) {
-        // self.items.append(value)
         this->items.push_back(::tpy::param_to_storage<T>(value));
     }
 
     // def __contains__[T: Equatable](self, value: T) -> bool:
+    //     for it in self.items:
+    //         if it == value:
+    //             return True
+    //     return False
     bool __contains__(::tpy::readonly_form_t<T> value) const
       requires ::tpystd::tpy::Equatable<T> {
-        // for it in self.items:
         auto& __obj_0 = this->items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& it = *__beg_0;
-            // if it == value:
             if (::tpy::eq(it, value)) {
-                // return True
                 return true;
             }
         }
-        // return False
         return false;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyBag";

@@ -17,6 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_Counter_bump_twice;
 struct __gen_Counter_steps;
 
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -38,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// Async coroutine: Counter.bump_twice
+// async def bump_twice(self) -> int32:
 struct __coro_Counter_bump_twice {
     int32_t __state;
     bool __cancel_pending;
@@ -68,7 +69,7 @@ inline __coro_Counter_bump_twice Counter::bump_twice() {
     return __coro_Counter_bump_twice(*this);
 }
 
-// Generator: Counter.steps
+// def steps(self) -> Iterator[int32]:
 struct __gen_Counter_steps : public ::tpy::next_iter_mixin<__gen_Counter_steps, int32_t> {
     int32_t __state;
     const Counter& __self;
@@ -99,6 +100,7 @@ inline __gen_Counter_steps Counter::steps() const {
 
 
 // def __init__(self) -> None:
+//     self.n = 10
 inline Counter::Counter() : n(10) {}
 void __tpy_init();
 } // namespace tpyapp::main

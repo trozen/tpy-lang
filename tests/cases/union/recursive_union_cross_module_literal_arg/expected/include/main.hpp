@@ -12,6 +12,7 @@ using ::tpyapp::shapes::int_leaves;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

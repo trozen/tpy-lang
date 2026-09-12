@@ -5,118 +5,124 @@ namespace tpyapp::main {
 
 
 // def boom(n: int) -> int:
+//     if n < 0:
+//         raise ValueError("negative")
+//     if n == 0:
+//         raise AppError(7)
+//     if n > 99:
+//         raise RuntimeError
+//     return n * 2
 ::tpy::BigInt boom(const ::tpy::BigInt& n) {
-    // if n < 0:
     if ((n < 0)) {
-        // raise ValueError("negative")
         throw ::tpy::ValueError("negative");
     }
-    // if n == 0:
     if ((n == 0)) {
-        // raise AppError(7)
         throw AppError(::tpy::BigInt(7));
     }
-    // if n > 99:
     if ((n > 99)) {
-        // raise RuntimeError
         throw ::tpy::RuntimeError{};
     }
-    // return n * 2
     return ((n) * (::tpy::BigInt(2)));
 }
 
 // def catch_multi(n: int) -> int:
+//     try:
+//         v = boom(n)
+//         print("ok", v)
+//         return v
+//     except ValueError:
+//         print("value")
+//         return -1
+//     except AppError as e:
+//         print("app", e.code)
+//         return -2
+//     except RuntimeError:
+//         return -3
 ::tpy::BigInt catch_multi(const ::tpy::BigInt& n) {
-    // try:
     ::tpy::BigInt v;
     {
         try {
-            // v = boom(n)
             v = boom(n);
-            // print("ok", v)
             std::cout << "ok" << " " << v << "\n";
-            // return v
             return v;
         } catch (const ::tpy::ValueError&) {
-            // print("value")
             std::cout << "value" << "\n";
-            // return -1
             return ::tpy::BigInt(-1);
         } catch (const AppError& e) {
-            // print("app", e.code)
             std::cout << "app" << " " << e.code << "\n";
-            // return -2
             return ::tpy::BigInt(-2);
         } catch (const ::tpy::RuntimeError&) {
-            // return -3
             return ::tpy::BigInt(-3);
         }
     }
 }
 
 // def catch_bare(n: int) -> int:
+//     try:
+//         return boom(n)
+//     except:
+//         return -9
 ::tpy::BigInt catch_bare(const ::tpy::BigInt& n) {
-    // try:
     {
         try {
-            // return boom(n)
             return boom(n);
         } catch (...) {
-            // return -9
             return ::tpy::BigInt(-9);
         }
     }
 }
 
 // def with_else(n: int) -> int:
+//     r = 0
+//     try:
+//         r = boom(n)
+//     except ValueError:
+//         print("ve")
+//         r = -1
+//     else:
+//         print("else", r)
+//     return r
 ::tpy::BigInt with_else(const ::tpy::BigInt& n) {
-    // r = 0
     ::tpy::BigInt r = ::tpy::BigInt(0);
-    // try:
     {
         try {
-            // r = boom(n)
             r = boom(n);
         } catch (const ::tpy::ValueError&) {
-            // print("ve")
             std::cout << "ve" << "\n";
-            // r = -1
             r = -1;
             goto __after_else_1;
         }
         // else:
-        // print("else", r)
         std::cout << "else" << " " << r << "\n";
         __after_else_1:;
     }
-    // return r
     return ::tpy::BigInt(r);
 }
 
 // def with_finally(n: int) -> int:
+//     try:
+//         return boom(n)
+//     except ValueError:
+//         return -1
+//     finally:
+//         print("fin", n)
 ::tpy::BigInt with_finally(const ::tpy::BigInt& n) {
-    // try:
     {
         bool __fin_ran_1 = false;
         try {
             try {
-                // return boom(n)
                 ::tpy::BigInt __tpy_ret_0 = boom(n);
                 __fin_ran_1 = true;
-                // print("fin", n)
                 std::cout << "fin" << " " << n << "\n";
                 return __tpy_ret_0;
             } catch (const ::tpy::ValueError&) {
-                // return -1
                 ::tpy::BigInt __tpy_ret_1 = ::tpy::BigInt(-1);
                 __fin_ran_1 = true;
-                // print("fin", n)
                 std::cout << "fin" << " " << n << "\n";
                 return __tpy_ret_1;
             }
         } catch (...) {
             if (!__fin_ran_1) {
-                // print("fin", n)
                 std::cout << "fin" << " " << n << "\n";
             }
             throw;
@@ -125,104 +131,106 @@ namespace tpyapp::main {
 }
 
 // def reraise(n: int) -> int:
+//     try:
+//         return boom(n)
+//     except ValueError:
+//         if n == -5:
+//             raise
+//         return -1
 ::tpy::BigInt reraise(const ::tpy::BigInt& n) {
-    // try:
     {
         try {
-            // return boom(n)
             return boom(n);
         } catch (const ::tpy::ValueError&) {
-            // if n == -5:
             if ((n == -5)) {
-                // raise
                 throw;
             }
-            // return -1
             return ::tpy::BigInt(-1);
         }
     }
 }
 
 // def raising_finally(n: int) -> int:
+//     try:
+//         if n > 0:
+//             return n
+//         print("neg", n)
+//     finally:
+//         raise AppError(n + 100)
 ::tpy::BigInt raising_finally(const ::tpy::BigInt& n) {
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
-            // if n > 0:
             if ((n > 0)) {
-                // return n
                 [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = n;
                 __fin_ran_2 = true;
-                // raise AppError(n + 100)
                 throw AppError(((n) + (::tpy::BigInt(100))));
             }
-            // print("neg", n)
             std::cout << "neg" << " " << n << "\n";
         } catch (...) {
             if (!__fin_ran_2) {
-                // raise AppError(n + 100)
                 throw AppError(((n) + (::tpy::BigInt(100))));
             }
             throw;
         }
-        // raise AppError(n + 100)
         throw AppError(((n) + (::tpy::BigInt(100))));
     }
 }
 
 // def main() -> None:
+//     print(catch_multi(4))
+//     print(catch_multi(-1))
+//     print(catch_multi(0))
+//     print(catch_multi(100))
+//     print(catch_bare(-2))
+//     print(with_else(5))
+//     print(with_else(-1))
+//     print(with_finally(6))
+//     print(with_finally(-3))
+//     print(reraise(2))
+//     print(reraise(-1))
+//     try:
+//         print(reraise(-5))
+//     except ValueError:
+//         print("outer caught")
+//     try:
+//         print(raising_finally(1))
+//     except AppError as e:
+//         print("fin-raise", e.code)
 void main() {
-    // print(catch_multi(4))
     std::cout << catch_multi(::tpy::BigInt(4)) << "\n";
-    // print(catch_multi(-1))
     std::cout << catch_multi(::tpy::BigInt(-1)) << "\n";
-    // print(catch_multi(0))
     std::cout << catch_multi(::tpy::BigInt(0)) << "\n";
-    // print(catch_multi(100))
     std::cout << catch_multi(::tpy::BigInt(100)) << "\n";
-    // print(catch_bare(-2))
     std::cout << catch_bare(::tpy::BigInt(-2)) << "\n";
-    // print(with_else(5))
     std::cout << with_else(::tpy::BigInt(5)) << "\n";
-    // print(with_else(-1))
     std::cout << with_else(::tpy::BigInt(-1)) << "\n";
-    // print(with_finally(6))
     std::cout << with_finally(::tpy::BigInt(6)) << "\n";
-    // print(with_finally(-3))
     std::cout << with_finally(::tpy::BigInt(-3)) << "\n";
-    // print(reraise(2))
     std::cout << reraise(::tpy::BigInt(2)) << "\n";
-    // print(reraise(-1))
     std::cout << reraise(::tpy::BigInt(-1)) << "\n";
-    // try:
     {
         try {
-            // print(reraise(-5))
             std::cout << reraise(::tpy::BigInt(-5)) << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("outer caught")
             std::cout << "outer caught" << "\n";
         }
     }
-    // try:
     {
         try {
-            // print(raising_finally(1))
             std::cout << raising_finally(::tpy::BigInt(1)) << "\n";
         } catch (const AppError& e) {
-            // print("fin-raise", e.code)
             std::cout << "fin-raise" << " " << e.code << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

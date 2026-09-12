@@ -14,13 +14,21 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def boom() -> None:
 void boom();
+// def multi() -> None:
 void multi();
+// def suppress() -> None:
 void suppress();
+// def ref_target() -> None:
 void ref_target();
+// def deref_manager(h: Holder, h2: Holder) -> None:
 void deref_manager(Holder& h, Holder& h2);
+// def loop_exits(cm: Gate) -> None:
 void loop_exits(Gate& cm);
+// def ret_through(cm: Gate) -> int:
 ::tpy::BigInt ret_through(Gate& cm);
+// def main() -> None:
 void main();
 
 // # with-statement shapes over scalar-arg/no-arg managers: multi-manager LIFO
@@ -104,59 +112,62 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Gate::Gate(const ::tpy::BigInt& n) : n(n) {}
 
 // def __enter__(self) -> int:
+//     print("enter", self.n)
+//     return self.n
 inline ::tpy::BigInt Gate::__enter__() const {
-    // print("enter", self.n)
     std::cout << "enter" << " " << this->n << "\n";
-    // return self.n
     return this->n;
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
+//     print("exit", self.n)
 inline void Gate::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) const {
-    // print("exit", self.n)
     std::cout << "exit" << " " << this->n << "\n";
 }
 
 // def __enter__(self) -> int:
+//     return 0
 inline ::tpy::BigInt Sup::__enter__() const {
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+//     if exc_val is not None:
+//         print("suppressed:", str(exc_val))
+//         return True
+//     return False
 inline bool Sup::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // if exc_val is not None:
     if ((exc_val != nullptr)) {
-        // print("suppressed:", str(exc_val))
         std::cout << "suppressed:" << " " << std::string(::tpy::__str__((*exc_val))) << "\n";
-        // return True
         return true;
     }
-    // return False
     return false;
 }
 
 // def __init__(self) -> None:
+//     self.depth = 0
 inline Guard::Guard() : depth(::tpy::BigInt(0)) {}
 
 // def __enter__(self) -> "Guard":
+//     self.depth += 1
+//     return self
 inline Guard& Guard::__enter__() {
-    // self.depth += 1
     this->depth = (this->depth) + (::tpy::BigInt(1));
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
+//     print("guard exit at", self.depth)
 inline void Guard::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) const {
-    // print("guard exit at", self.depth)
     std::cout << "guard exit at" << " " << this->depth << "\n";
 }
 
 // def __init__(self) -> None:
+//     self.g = Guard()
 inline Holder::Holder() : g(Guard()) {}
 void __tpy_init();
 } // namespace tpyapp::main

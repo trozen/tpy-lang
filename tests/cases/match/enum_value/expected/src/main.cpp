@@ -47,25 +47,25 @@ namespace tpyapp::main {
 
 
 // def describe(c: Color) -> str:
+//     match c:
+//         case Color.Red:
+//             return "red"
+//         case Color.Green:
+//             return "green"
+//         case _:
+//             return "other"
 std::string describe(Color c) {
-    // match c:
     auto& __match_subject_1 = c;
     switch (__match_subject_1) {
-    // case Color.Red:
     case Color::Red: {
-        // return "red"
         return "red";
         break;
     }
-    // case Color.Green:
     case Color::Green: {
-        // return "green"
         return "green";
         break;
     }
-    // case _:
     default: {
-        // return "other"
         return "other";
         break;
     }
@@ -74,23 +74,24 @@ std::string describe(Color c) {
 }
 
 // def main() -> None:
+//     print(describe(Color.Red))
+//     print(describe(Color.Green))
+//     print(describe(Color.Blue))
 void main() {
-    // print(describe(Color.Red))
     std::cout << describe(Color::Red) << "\n";
-    // print(describe(Color.Green))
     std::cout << describe(Color::Green) << "\n";
-    // print(describe(Color.Blue))
     std::cout << describe(Color::Blue) << "\n";
 }
 
+// # match/case on enum subject with value patterns (Color.RED)
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case on enum subject with value patterns (Color.RED)
-    // from enum import Enum
-    // main()
     main();
 }
 

@@ -5,10 +5,15 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(0)
+//     for v in c.items():
+//         print(v)
+//     print("--")
+//     c2 = Counter(7)
+//     for v in c2.items():
+//         print(v)
 void main() {
-    // c = Counter(0)
     Counter c = Counter(::tpy::BigInt(0));
-    // for v in c.items():
     {
         auto __src_0 = c.items();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,15 +21,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("--")
     std::cout << "--" << "\n";
-    // c2 = Counter(7)
     Counter c2 = Counter(::tpy::BigInt(7));
-    // for v in c2.items():
     {
         auto __src_2 = c2.items();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -32,25 +33,26 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
 // def items(self) -> Iterator[int]:
+//     match self.n:  # tpyc: ok
+//         case 0:
+//             yield 10
+//             yield 20
+//         case _:
+//             yield 30
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Counter_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = __self.n;
-        // case 0:
         if (__match_subject_1 == 0) {
-            // yield 10
             __state = S_RESUME_0;
             return ::tpy::BigInt(10);
-        // case _:
         } else {
-            // yield 30
             __state = S_RESUME_2;
             return ::tpy::BigInt(30);
         }
@@ -58,7 +60,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Counter_items::__next__
         continue;
     }
     case S_RESUME_0: {
-        // yield 20
         __state = S_RESUME_1;
         return ::tpy::BigInt(20);
     }
@@ -80,12 +81,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Counter_items::__next__
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

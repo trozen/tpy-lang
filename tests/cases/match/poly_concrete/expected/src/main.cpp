@@ -5,47 +5,47 @@ namespace tpyapp::main {
 
 
 // def classify(a: Animal) -> str:
+//     match a:  # tpyc: ok
+//         case Dog():
+//             return "dog"
+//         case Snake():
+//             return "snake legs=" + str(a.legs)
+//         case Animal():
+//             return "animal legs=" + str(a.legs)
 std::string classify(const Animal& a) {
-    // match a:  # tpyc: ok
     auto& __match_subject_1 = a;
-    // case Dog():
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
-        // return "dog"
         return "dog";
-    // case Snake():
     } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&__match_subject_1)) {
         const Snake& __case_1 = *__mpoly_1;
-        // return "snake legs=" + str(a.legs)
         return (::tpy::str_concat("snake legs=", (__case_1.legs).to_string()));
-    // case Animal():
     } else if (const Animal* __mpoly_2 = dynamic_cast<const Animal*>(&__match_subject_1)) {
         const Animal& __case_2 = *__mpoly_2;
-        // return "animal legs=" + str(a.legs)
         return (::tpy::str_concat("animal legs=", (__case_2.legs).to_string()));
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(classify(Dog()))
+//     print(classify(Snake()))
+//     print(classify(Animal(6)))
 void main() {
-    // print(classify(Dog()))
     Dog __tmp_1 = Dog();
     std::cout << classify(__tmp_1) << "\n";
-    // print(classify(Snake()))
     Snake __tmp_2 = Snake();
     std::cout << classify(__tmp_2) << "\n";
-    // print(classify(Animal(6)))
     Animal __tmp_3 = Animal(::tpy::BigInt(6));
     std::cout << classify(__tmp_3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

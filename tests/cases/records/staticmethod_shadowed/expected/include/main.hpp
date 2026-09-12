@@ -12,6 +12,7 @@ struct Helper;
 extern Helper* h;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_helper(Helper: Helper) -> int32:
 int32_t use_helper(Helper& Helper);
 
 // class Helper:
@@ -39,18 +40,19 @@ inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.value = v
 inline Helper::Helper(int32_t v) : value(v) {}
 
 // @staticmethod
 // def add(a: int32, b: int32) -> int32:
+//     return a + b
 inline int32_t Helper::add(int32_t a, int32_t b) {
-    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def get(self) -> int32:
+//     return self.value
 inline int32_t Helper::get() const {
-    // return self.value
     return this->value;
 }
 void __tpy_init();

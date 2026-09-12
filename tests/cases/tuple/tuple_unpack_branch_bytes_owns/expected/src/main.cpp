@@ -10,46 +10,46 @@ namespace tpyapp::main {
 // # so they must own (tpy::bytes / std::vector), not alias it -- a view would
 // # dangle. A shared `t` name would hoist the source and make a view safe.
 // def make(tag: bytes) -> tuple[bytes, bytes]:
+//     return (tag + b"-alpha-long-enough-to-heap", tag + b"-beta-long-enough-to-heap")
 std::tuple<::tpy::Bytes, ::tpy::Bytes> make(::tpy::BytesView tag) {
-    // return (tag + b"-alpha-long-enough-to-heap", tag + b"-beta-long-enough-to-heap")
     return std::tuple<::tpy::Bytes, ::tpy::Bytes>{(::tpy::bytes_concat(tag, ::tpy::bytes_literal_owned("-alpha-long-enough-to-heap", 26))), (::tpy::bytes_concat(tag, ::tpy::bytes_literal_owned("-beta-long-enough-to-heap", 25)))};
 }
 
 // def main() -> None:
+//     flag = len("ab") > 1
+//     if flag:
+//         t1 = make(b"X")
+//         a, b = t1
+//     else:
+//         t2 = make(b"Y")
+//         a, b = t2
+//     print(len(a))
+//     print(len(b))
 void main() {
-    // flag = len("ab") > 1
     bool flag = (::tpy::__len__("ab") > 1);
-    // if flag:
     ::tpy::Bytes a;
     ::tpy::Bytes b;
     if (flag) {
-        // t1 = make(b"X")
         std::tuple<::tpy::Bytes, ::tpy::Bytes> t1 = make(::tpy::bytes_literal("X", 1));
-        // a, b = t1
         const auto& __tup_1 = t1;
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
-    // else:
     } else {
-        // t2 = make(b"Y")
         std::tuple<::tpy::Bytes, ::tpy::Bytes> t2 = make(::tpy::bytes_literal("Y", 1));
-        // a, b = t2
         const auto& __tup_2 = t2;
         a = std::get<0>(__tup_2);
         b = std::get<1>(__tup_2);
     }
-    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

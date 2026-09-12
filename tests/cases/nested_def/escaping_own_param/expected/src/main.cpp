@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def make_getter(cfg: Own[Config]) -> Callable[[], int32]:
+//     def get_value() -> int32:  # tpyc: ok
+//         return cfg.value
+//     return get_value
 std::function<int32_t()> make_getter(Config&& cfg) {
-    // def get_value() -> int32:  # tpyc: ok
     auto get_value = [cfg = std::move(cfg)]() -> int32_t {
-        // return cfg.value
         return cfg.value;
     };
-    // return get_value
     return get_value;
 }
 
 // def apply(f: Callable[[int32], int32], v: int32) -> int32:
+//     return f(v)
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
-    // return f(v)
     return f(v);
 }
 
@@ -26,29 +26,29 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 // # so this keeps its `[p]` entry. The peel is what error_lambda_nocopy_snapshot
 // # pins from the other side.
 // def own_value(p: Own[Pt]) -> int32:  # tpyc: ok
+//     return apply(lambda i: i + p.x, 1)
 int32_t own_value(Pt p) {
-    // return apply(lambda i: i + p.x, 1)
     return apply([p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);
 }
 
 // def main() -> None:
+//     c = Config(42)
+//     getter = make_getter(c)
+//     print(getter())
+//     print("own_value", own_value(Pt(10)))
 void main() {
-    // c = Config(42)
     Config c = Config(42);
-    // getter = make_getter(c)
     std::function<int32_t()> getter = make_getter(std::move(c));
-    // print(getter())
     std::cout << getter() << "\n";
-    // print("own_value", own_value(Pt(10)))
     std::cout << "own_value" << " " << own_value(Pt(10)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

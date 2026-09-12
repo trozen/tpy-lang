@@ -5,20 +5,23 @@ namespace tpyapp::main {
 
 
 // def combine(p: Point, q: Own[Point]) -> Point:
+//     p.x = p.x + q.x
+//     return p
 Point& combine(Point& p, Point&& q) {
-    // p.x = p.x + q.x
     p.x = (::tpy::add_check<int32_t>(p.x, q.x));
-    // return p
     return p;
 }
 
 // def main() -> None:
+//     pts = [Point(1, 2), Point(3, 4)]
+//     extras = [Point(10, 0), Point(20, 0)]
+//     for p in map(combine, pts, extras):
+//         pass
+//     print(pts[0].x)  # 11 (1 + 10, modified through reference)
+//     print(pts[1].x)  # 23 (3 + 20)
 void main() {
-    // pts = [Point(1, 2), Point(3, 4)]
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
-    // extras = [Point(10, 0), Point(20, 0)]
     std::array<Point, 2> extras = {Point(10, 0), Point(20, 0)};
-    // for p in map(combine, pts, extras):
     {
         auto __src_0 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(combine, pts, extras);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -26,21 +29,18 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& p = ::tpy::unwrap_ref(*__r_1);
-        // pass
         }
     }
-    // print(pts[0].x)  # 11 (1 + 10, modified through reference)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // print(pts[1].x)  # 23 (3 + 20)
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

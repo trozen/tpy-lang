@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def pick(a: Point, b: Point, c: bool) -> Own[Point]:
+//     return a.updated() if c else b.updated()  # tpyc: warning(/copies Point into owned storage/)
 Point pick(Point& a, Point& b, bool c) {
-    // return a.updated() if c else b.updated()  # tpyc: warning(/copies Point into owned storage/)
     return Point(((c) ? (a.updated()) : (b.updated())));
 }
 
 // def pick_copy(a: Point, b: Point, c: bool) -> Own[Point]:
+//     return copy(a.updated() if c else b.updated())  # tpyc: ok
 Point pick_copy(Point& a, Point& b, bool c) {
-    // return copy(a.updated() if c else b.updated())  # tpyc: ok
     return Point(((c) ? (a.updated()) : (b.updated())));
 }
 
 // def main() -> None:
+//     a = Point(1)
+//     b = Point(2)
+//     print(pick(a, b, True).x, a.x)
+//     print(pick_copy(a, b, False).x, b.x)
 void main() {
-    // a = Point(1)
     Point a = Point(1);
-    // b = Point(2)
     Point b = Point(2);
-    // print(pick(a, b, True).x, a.x)
     std::cout << pick(a, b, true).x << " " << a.x << "\n";
-    // print(pick_copy(a, b, False).x, b.x)
     std::cout << pick_copy(a, b, false).x << " " << b.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

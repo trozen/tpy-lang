@@ -5,123 +5,123 @@ namespace tpyapp::main {
 
 
 // def get_ptr(p: Ptr[Point]) -> Ptr[Point]:
+//     return p
 Point* get_ptr(Point* p) {
-    // return p
     return p;
 }
 
 // # if p is not None: p non-null in then-branch (field + method)
 // def test_if_not_none(p: Ptr[Point]) -> int32:
+//     if p is not None:
+//         return p.sum()  # tpyc: non_null(p)
+//     return int32(0)
 int32_t test_if_not_none(Point* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.sum()  # tpyc: non_null(p)
         return p->sum();
     }
-    // return int32(0)
     return 0;
 }
 
 // # if p is None: return -- p non-null after early return
 // def test_is_none_early_return(p: Ptr[Point]) -> int32:
+//     if p is None:
+//         return int32(-1)
+//     return p.x  # tpyc: non_null(p)
 int32_t test_is_none_early_return(Point* p) {
-    // if p is None:
     if ((p == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return p.x  # tpyc: non_null(p)
     return p->x;
 }
 
 // # assert p is not None -- p non-null after assert
 // def test_assert(p: Ptr[Point]) -> int32:
+//     assert p is not None
+//     return p.x  # tpyc: non_null(p)
 int32_t test_assert(Point* p) {
-    // assert p is not None
     if (!((p != nullptr))) ::tpy::raise_assertion_error();
-    // return p.x  # tpyc: non_null(p)
     return p->x;
 }
 
 // # while p is not None -- p non-null inside loop body
 // def test_while(p: Ptr[Point]) -> None:
+//     while p is not None:
+//         print(p.x)  # tpyc: non_null(p)
+//         break
 void test_while(Point* p) {
-    // while p is not None:
     while ((p != nullptr)) {
-        // print(p.x)  # tpyc: non_null(p)
         std::cout << p->x << "\n";
-        // break
         break;
     }
 }
 
 // # while with reassignment from unknown inside body -- loses provenance after loop
 // def test_while_reassign(p: Ptr[Point]) -> None:
+//     while p is not None:
+//         print(p.x)  # tpyc: non_null(p)
+//         p = get_ptr(p)
+//         break
 void test_while_reassign(Point* p) {
-    // while p is not None:
     while ((p != nullptr)) {
-        // print(p.x)  # tpyc: non_null(p)
         std::cout << p->x << "\n";
-        // p = get_ptr(p)
         p = get_ptr(p);
-        // break
         break;
     }
 }
 
 // # Ptr[readonly[...]]: same narrowing applies
 // def test_readonly_ptr(p: Ptr[readonly[Point]]) -> int32:
+//     if p is not None:
+//         return p.x  # tpyc: non_null(p)
+//     return int32(0)
 int32_t test_readonly_ptr(const Point* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // return p.x  # tpyc: non_null(p)
         return p->x;
     }
-    // return int32(0)
     return 0;
 }
 
 // # After branch merge without early return: non-null not guaranteed
 // def test_merge_no_guarantee(p: Ptr[Point]) -> int32:
+//     if p is not None:
+//         pass
+//     return p.x  # tpyc: nullable(p)
 int32_t test_merge_no_guarantee(Point* p) {
-    // if p is not None:
     if ((p != nullptr)) {
-        // pass
     }
-    // return p.x  # tpyc: nullable(p)
     return ::tpy::deref_check(p).x;
 }
 
 // def main() -> None:
+//     pt = Point(int32(10), int32(20))
+//     p: Ptr[Point] = pt
+//     cp: Ptr[readonly[Point]] = pt
+//     print(test_if_not_none(p))
+//     print(test_is_none_early_return(p))
+//     print(test_assert(p))
+//     test_while(p)
+//     test_while_reassign(p)
+//     print(test_readonly_ptr(cp))
+//     print(test_merge_no_guarantee(p))
 void main() {
-    // pt = Point(int32(10), int32(20))
     Point pt = Point(10, 20);
-    // p: Ptr[Point] = pt
     Point* p = &pt;
-    // cp: Ptr[readonly[Point]] = pt
     const Point* cp = &pt;
-    // print(test_if_not_none(p))
     std::cout << test_if_not_none(p) << "\n";
-    // print(test_is_none_early_return(p))
     std::cout << test_is_none_early_return(p) << "\n";
-    // print(test_assert(p))
     std::cout << test_assert(p) << "\n";
-    // test_while(p)
     test_while(p);
-    // test_while_reassign(p)
     test_while_reassign(p);
-    // print(test_readonly_ptr(cp))
     std::cout << test_readonly_ptr(cp) << "\n";
-    // print(test_merge_no_guarantee(p))
     std::cout << test_merge_no_guarantee(p) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

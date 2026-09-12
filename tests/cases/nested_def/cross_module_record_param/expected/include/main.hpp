@@ -12,7 +12,9 @@ using ::tpyapp::widgets::Widget;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_value() -> int32:
 int32_t make_value();
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -11,14 +11,23 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(t: Own[tuple[P | None, P | None]]) -> int32:
 int32_t take(std::tuple<std::optional<P>, std::optional<P>> t);
+// def take_subscript(t: Own[tuple[P | None, P | None]]) -> int32:
 int32_t take_subscript(std::tuple<std::optional<P>, std::optional<P>> t);
+// def test_all_last_use() -> None:
 void test_all_last_use();
+// def test_mixed_last_use_and_explicit_copy() -> None:
 void test_mixed_last_use_and_explicit_copy();
+// def test_fresh_constructor_literals() -> None:
 void test_fresh_constructor_literals();
+// def test_none_only() -> None:
 void test_none_only();
+// def test_storage_form_source() -> None:
 void test_storage_form_source();
+// def test_subscript_access_in_body() -> None:
 void test_subscript_access_in_body();
+// def main() -> None:
 void main();
 
 // class P:
@@ -39,6 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

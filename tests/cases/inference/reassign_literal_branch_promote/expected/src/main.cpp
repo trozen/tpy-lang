@@ -7,81 +7,81 @@ namespace tpyapp::main {
 // # Literal-seeded variable (int32 default) promoted to BigInt via
 // # reassignment inside an if-branch should keep BigInt after the branch.
 // def get_big() -> int:
+//     return 42
 ::tpy::BigInt get_big() {
-    // return 42
     return ::tpy::BigInt(42);
 }
 
 // def test_augassign() -> None:
+//     x = 0
+//     if True:
+//         x = get_big()
+//     x += 1
+//     print(x)
 void test_augassign() {
-    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    // if True:
     if (true) {
-        // x = get_big()
         x = get_big();
     }
-    // x += 1
     x = (x) + (::tpy::BigInt(1));
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_binop() -> None:
+//     x = 0
+//     if True:
+//         x = get_big()
+//     y: int = x + 10
+//     print(y)
 void test_binop() {
-    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    // if True:
     if (true) {
-        // x = get_big()
         x = get_big();
     }
-    // y: int = x + 10
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(10)));
-    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_elif_chain() -> None:
+//     x = 0
+//     c = '>'
+//     if c == '>':
+//         pass
+//     elif c == '[':
+//         if True:
+//             x = get_big()
+//     elif c == ']':
+//         if True:
+//             x = get_big()
+//     x += 1
+//     print(x)
 void test_elif_chain() {
-    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    // c = '>'
     std::string_view c = ">";
-    // if c == '>':
     if ((c == ">")) {
-        // pass
-    // elif c == '[':
     } else if ((c == "[")) {
-        // if True:
         if (true) {
-            // x = get_big()
             x = get_big();
         }
-    // elif c == ']':
     } else if ((c == "]")) {
-        // if True:
         if (true) {
-            // x = get_big()
             x = get_big();
         }
     }
-    // x += 1
     x = (x) + (::tpy::BigInt(1));
-    // print(x)
     std::cout << x << "\n";
 }
 
+// test_augassign()
+// test_binop()
+// test_elif_chain()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_augassign()
     test_augassign();
-    // test_binop()
     test_binop();
-    // test_elif_chain()
     test_elif_chain();
 }
 

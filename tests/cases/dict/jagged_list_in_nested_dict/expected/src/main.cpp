@@ -9,23 +9,23 @@ namespace tpyapp::main {
 // # list through the concrete dict[K, V] wrapper (a non-empty dict literal is a
 // # concrete dict whose value is still pending). Mutating it must be observed.
 // def main() -> None:
+//     d = {1: {10: [1, 2]}, 2: {20: [3, 4, 5]}}  # tpyc: ok
+//     print(d)
+//     d[2][20].append(9)  # inner list is a real vector reached through the dicts
+//     print(d)
 void main() {
-    // d = {1: {10: [1, 2]}, 2: {20: [3, 4, 5]}}  # tpyc: ok
     ::tpy::ordered_map<int32_t, ::tpy::ordered_map<int32_t, std::vector<int32_t>>> d = ::tpy::ordered_map<int32_t, ::tpy::ordered_map<int32_t, std::vector<int32_t>>>({{1, ::tpy::ordered_map<int32_t, std::vector<int32_t>>({{10, {1, 2}}})}, {2, ::tpy::ordered_map<int32_t, std::vector<int32_t>>({{20, {3, 4, 5}}})}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // d[2][20].append(9)  # inner list is a real vector reached through the dicts
     ::tpy::__getitem__(::tpy::__getitem__(d, 2), 20).push_back(9);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -7,63 +7,67 @@ namespace tpyapp::main {
 // # Context 1: function argument position. The outer call's per-arg hint
 // # propagation gives the inner Rc.new(...) call an Rc[Box[Box[Pet]]] hint.
 // def take(r: Own[Rc[Box[Box[Pet]]]]) -> str:
+//     return r.get().get().get().name()
 std::string take(::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>&& r) {
-    // return r.get().get().get().name()
     return r.get().get().get().name();
 }
 
 // # Context 2: return-statement context. The return-type hint reaches the
 // # inner Rc.new(...) call as if it were a LHS annotation.
 // def make() -> Own[Rc[Box[Box[Pet]]]]:
+//     return Rc.new(Box(Box(Dog("Returned"))))
 ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>> make() {
-    // return Rc.new(Box(Box(Dog("Returned"))))
     return Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Returned")))));
 }
 
 // # Context 4: list-literal element under an annotated container type.
 // def collect() -> Own[list[Rc[Box[Pet]]]]:
+//     return [Rc.new(Box(Dog("Listed1"))), Rc.new(Box(Dog("Listed2")))]
 std::vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>> collect() {
-    // return [Rc.new(Box(Dog("Listed1"))), Rc.new(Box(Dog("Listed2")))]
     return ::tpy::make_vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>>(Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Listed1")))), Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Listed2")))));
 }
 
 // def main() -> None:
+//     # 1. function arg
+//     print(take(Rc.new(Box(Box(Dog("Arg"))))))
+//
+//     # 2. return
+//     r2 = make()
+//     print(r2.get().get().get().name())
+//
+//     # 3. field via ctor arg
+//     h = Holder(Rc.new(Box(Box(Dog("Field")))))
+//     print(h.r.get().get().get().name())
+//
+//     # 4. list literal
+//     xs = collect()
+//     for x in xs:
+//         print(x.get().get().name())
 void main() {
-    // # 1. function arg
-    // print(take(Rc.new(Box(Box(Dog("Arg"))))))
     std::cout << take(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Arg")))))) << "\n";
-    // # 2. return
-    // r2 = make()
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>> r2 = make();
-    // print(r2.get().get().get().name())
     std::cout << r2.get().get().get().name() << "\n";
-    // # 3. field via ctor arg
-    // h = Holder(Rc.new(Box(Box(Dog("Field")))))
     Holder h = Holder(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Field"))))));
-    // print(h.r.get().get().get().name())
     std::cout << h.r.get().get().get().name() << "\n";
-    // # 4. list literal
-    // xs = collect()
     std::vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>> xs = collect();
-    // for x in xs:
     auto __obj_0 = ::tpy::own_iter(std::move(xs));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& x = *__beg_0;
-        // print(x.get().get().name())
         std::cout << x.get().get().name() << "\n";
     }
 }
 
+// from tplib import Box, Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box, Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

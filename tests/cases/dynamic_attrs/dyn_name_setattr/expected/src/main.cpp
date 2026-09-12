@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def set_it(h: Headers, name: str, value: str) -> None:
+//     setattr(h, name, value)
 void set_it(Headers& h, std::string_view name, std::string_view value) {
-    // setattr(h, name, value)
     h.__setattr__(name, value);
 }
 
 // def main() -> None:
+//     h = Headers()
+//     keys = ["host", "port"]
+//     for k in keys:
+//         set_it(h, k, "v-" + k)
+//     print(h._last_name, h._last_value)
 void main() {
-    // h = Headers()
     Headers h = Headers();
-    // keys = ["host", "port"]
     std::array<std::string, 2> keys = {"host", "port"};
-    // for k in keys:
     auto& __obj_0 = keys;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // set_it(h, k, "v-" + k)
         set_it(h, k, (::tpy::str_concat("v-", k)));
     }
-    // print(h._last_name, h._last_value)
     std::cout << h._last_name << " " << h._last_value << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

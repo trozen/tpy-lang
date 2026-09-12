@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def close(h: Own[Handle]) -> int32:
+//     return h.fd
 int32_t close(Handle&& h) {
-    // return h.fd
     return h.fd;
 }
 
 // def main():
+//     h = Handle()
+//     h.fd = 42
+//     alias = h
+//     print(alias.fd)
+//     h = Handle()       # reassign h -- alias detached, points to old slot
+//     h.fd = 99
+//     print(close(h))    # tpyc: ok (auto-move, alias doesn't constrain)
+//     print(alias.fd)
 void main() {
     std::optional<Handle> __slot_2;
-    // h = Handle()
     Handle __slot_1 = Handle();
     Handle* h = &__slot_1;
-    // h.fd = 42
     h->fd = 42;
-    // alias = h
     Handle& alias = (*h);
-    // print(alias.fd)
     std::cout << alias.fd << "\n";
-    // h = Handle()       # reassign h -- alias detached, points to old slot
     h = &*(__slot_2 = Handle());
-    // h.fd = 99
     h->fd = 99;
-    // print(close(h))    # tpyc: ok (auto-move, alias doesn't constrain)
     std::cout << close(std::move((*h))) << "\n";
-    // print(alias.fd)
     std::cout << alias.fd << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

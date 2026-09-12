@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Sink()
+//     a = make_adder(s)
+//     a.push(10)
+//     a.push(5)
+//     # 15 confirms the borrow wrote through to the caller's Sink (no copy).
+//     print(s.total)
 void main() {
-    // s = Sink()
     Sink s = Sink();
-    // a = make_adder(s)
     Adder<Sink> a = make_adder<Sink>(s);
-    // a.push(10)
     a.push(10);
-    // a.push(5)
     a.push(5);
-    // # 15 confirms the borrow wrote through to the caller's Sink (no copy).
-    // print(s.total)
     std::cout << s.total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -16,6 +16,7 @@ struct D;
 extern int32_t G;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class A:
@@ -74,7 +75,7 @@ struct H {
     std::tuple<int32_t, int32_t> tl;
 
     // def __init__(self, pu: A | B, ft: tuple[A, int32],
-    // vt: tuple[int32, int32]) -> None:
+    //              vt: tuple[int32, int32]) -> None:
     explicit H(::tpy::Union<const A*, const B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
@@ -118,19 +119,22 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline A::A(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32) -> None:
+//     self.y = y
 inline B::B(int32_t y) : y(y) {}
 
 // def __init__(self) -> None:
+//     self.p = None
 inline P::P() : p(nullptr) {}
 
 // def __init__(self) -> None:
+//     self.n = G  # bare global name: demoted to the ctor body
+//     self.strict = True
 inline D::D() {
-    // self.n = G  # bare global name: demoted to the ctor body
     this->n = G;
-    // self.strict = True
     this->strict = true;
 }
 void __tpy_init();

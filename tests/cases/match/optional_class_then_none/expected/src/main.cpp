@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def describe(p: Point | None) -> int32:
+//     match p:
+//         case Point():
+//             p.x = p.x + 1
+//             return p.x
+//         case None:
+//             return -1
 int32_t describe(Point* p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Point():
     if (__match_subject_1 != nullptr) {
-        // p.x = p.x + 1
         p->x = (::tpy::add_check<int32_t>(p->x, 1));
-        // return p.x
         return p->x;
-    // case None:
     } else if (__match_subject_1 == nullptr) {
-        // return -1
         return -1;
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     p = Point(3)
+//     print(describe(p))
+//     print(p.x)
+//     print(describe(None))
 void main() {
-    // p = Point(3)
     Point p = Point(3);
-    // print(describe(p))
     std::cout << describe(&(p)) << "\n";
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(describe(None))
     std::cout << describe(nullptr) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

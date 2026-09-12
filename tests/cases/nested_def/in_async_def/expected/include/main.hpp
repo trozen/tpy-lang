@@ -14,10 +14,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_outer;
 
+// async def outer() -> int:
 __coro_outer outer();
+// def main() -> None:
 void main();
 
-// Async coroutine: outer
+// async def outer() -> int:
 struct __coro_outer {
     int32_t __state;
     bool __cancel_pending;

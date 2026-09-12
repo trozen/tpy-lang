@@ -34,8 +34,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check_point(p: Optional[Point]) -> str:
 std::string check_point(const Point* p);
+// def check_color(c: Optional[Color]) -> str:
 std::string check_color(std::optional<Color> c);
+// def main() -> None:
 void main();
 
 // @dataclass

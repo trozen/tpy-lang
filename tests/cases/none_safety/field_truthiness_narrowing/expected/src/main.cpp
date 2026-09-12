@@ -5,64 +5,64 @@ namespace tpyapp::main {
 
 
 // def get_name(cfg: Config) -> str:
+//     if cfg.name:
+//         return cfg.name  # tpyc: ok
+//     return "default"
 std::string get_name(const Config& cfg) {
-    // if cfg.name:
     if (::tpy::is_truthy(cfg.name)) {
-        // return cfg.name  # tpyc: ok
         return (*cfg.name);
     }
-    // return "default"
     return "default";
 }
 
 // def get_port(cfg: Config) -> int:
+//     if cfg.port:
+//         return cfg.port  # tpyc: ok
+//     return 0
 ::tpy::BigInt get_port(const Config& cfg) {
-    // if cfg.port:
     if (::tpy::is_truthy(cfg.port)) {
-        // return cfg.port  # tpyc: ok
         return (*cfg.port);
     }
-    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def test_negated(cfg: Config) -> str:
+//     if not cfg.name:
+//         return "missing"
+//     return cfg.name  # tpyc: ok
 std::string test_negated(const Config& cfg) {
-    // if not cfg.name:
     if ((!(::tpy::is_truthy(cfg.name)))) {
-        // return "missing"
         return "missing";
     }
-    // return cfg.name  # tpyc: ok
     return (*cfg.name);
 }
 
 // def main() -> None:
+//     c1 = Config("hello", 8080)
+//     c2 = Config(None, None)
+//     print(get_name(c1))
+//     print(get_name(c2))
+//     print(get_port(c1))
+//     print(get_port(c2))
+//     print(test_negated(c1))
+//     print(test_negated(c2))
 void main() {
-    // c1 = Config("hello", 8080)
     Config c1 = Config("hello", 8080);
-    // c2 = Config(None, None)
     Config c2 = Config(std::nullopt, std::nullopt);
-    // print(get_name(c1))
     std::cout << get_name(c1) << "\n";
-    // print(get_name(c2))
     std::cout << get_name(c2) << "\n";
-    // print(get_port(c1))
     std::cout << get_port(c1) << "\n";
-    // print(get_port(c2))
     std::cout << get_port(c2) << "\n";
-    // print(test_negated(c1))
     std::cout << test_negated(c1) << "\n";
-    // print(test_negated(c2))
     std::cout << test_negated(c2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

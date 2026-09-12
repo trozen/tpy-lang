@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t: DictTree[str, int32] = {"a": 1, "b": {"c": 2, "d": 3}}
+//     print(leaf_count(t))
+//     leaf: DictTree[str, int32] = 5
+//     print(leaf_count(leaf))
 void main() {
-    // t: DictTree[str, int32] = {"a": 1, "b": {"c": 2, "d": 3}}
     DictTree<std::string, int32_t> t = ::tpy::ordered_map<std::string, DictTree<std::string, int32_t>>({{"a", 1}, {"b", ::tpy::ordered_map<std::string, DictTree<std::string, int32_t>>({{"c", 2}, {"d", 3}})}});
-    // print(leaf_count(t))
     std::cout << leaf_count<std::string, int32_t>(t) << "\n";
-    // leaf: DictTree[str, int32] = 5
     DictTree<std::string, int32_t> leaf = 5;
-    // print(leaf_count(leaf))
     std::cout << leaf_count<std::string, int32_t>(leaf) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

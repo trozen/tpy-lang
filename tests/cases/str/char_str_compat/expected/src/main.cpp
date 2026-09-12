@@ -5,49 +5,57 @@ namespace tpyapp::main {
 
 
 // def main():
+//     c: char = "A"
+//
+//     # str + char
+//     print("hello" + c)
+//
+//     # char + str
+//     print(c + "hello")
+//
+//     # char + char
+//     print(c + c)
+//
+//     # char * int / int * char
+//     print(c * 3)
+//     print(3 * c)
+//
+//     # len(char) -- always 1
+//     print(len(c))
+//
+//     # ord(str) -- single char string
+//     s = "B"
+//     print(ord(s))
+//
+//     # ord(char) still works
+//     print(ord(c))
+//
+//     # char(str) constructor
+//     s2 = "Z"
+//     z = char(s2)
+//     print(z)
 void main() {
-    // c: char = "A"
     char c = 'A';
-    // # str + char
-    // print("hello" + c)
     std::cout << (::tpy::str_concat("hello", ::tpy::char_to_str(c))) << "\n";
-    // # char + str
-    // print(c + "hello")
     std::cout << (::tpy::str_concat(::tpy::char_to_str(c), "hello")) << "\n";
-    // # char + char
-    // print(c + c)
     std::cout << (::tpy::str_concat(::tpy::char_to_str(c), ::tpy::char_to_str(c))) << "\n";
-    // # char * int / int * char
-    // print(c * 3)
     std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n";
-    // print(3 * c)
     std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n";
-    // # len(char) -- always 1
-    // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
-    // # ord(str) -- single char string
-    // s = "B"
     std::string_view s = "B";
-    // print(ord(s))
     std::cout << ::tpy::ord_str(s) << "\n";
-    // # ord(char) still works
-    // print(ord(c))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
-    // # char(str) constructor
-    // s2 = "Z"
     std::string_view s2 = "Z";
-    // z = char(s2)
     char z = ::tpy::char_from_str(s2);
-    // print(z)
     std::cout << z << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

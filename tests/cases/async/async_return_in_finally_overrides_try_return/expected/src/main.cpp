@@ -5,10 +5,10 @@ namespace tpyapp::main {
 
 
 // async def cleanup() -> None:
+//     await asyncio.sleep(0)
 ::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -33,6 +33,11 @@ __coro_cleanup cleanup() {
 }
 
 // async def caller() -> str:
+//     try:
+//         return "from_try"
+//     finally:
+//         await cleanup()
+//         return "from_finally"
 ::tpystd::tpy::Poll<std::string> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -44,7 +49,6 @@ __coro_cleanup cleanup() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return "from_finally"
         this->__finally_ret_0 = "from_finally";
         this->__finally_pending_0 = true;
         __state = S_JOIN_1;
@@ -52,7 +56,6 @@ __coro_cleanup cleanup() {
     }
     case S_JOIN_0: {
         try {
-            // return "from_try"
             this->__finally_ret_0 = "from_try";
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -78,7 +81,6 @@ __coro_cleanup cleanup() {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_JOIN_2: {
-        // await cleanup()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -95,21 +97,22 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(caller())) << "\n";
 }
 
+// # Try-body returns one value, finally-body returns another -- finally
+// # wins (Python). Expected: caller returns "from_finally".
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Try-body returns one value, finally-body returns another -- finally
-    // # wins (Python). Expected: caller returns "from_finally".
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

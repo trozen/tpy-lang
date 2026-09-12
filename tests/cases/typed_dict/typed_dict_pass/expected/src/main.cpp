@@ -5,35 +5,36 @@ namespace tpyapp::main {
 
 
 // def describe(p: Point) -> str:
+//     return "(" + str(p["x"]) + ", " + str(p["y"]) + ")"
 std::string describe(const Point& p) {
-    // return "(" + str(p["x"]) + ", " + str(p["y"]) + ")"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(p.x))), ", ")), ::tpy::fixed_to_str<int32_t>(p.y))), ")"));
 }
 
 // def translate(p: Point, dx: int32, dy: int32) -> Own[Point]:
+//     return Point(x=p["x"] + dx, y=p["y"] + dy)
 Point translate(const Point& p, int32_t dx, int32_t dy) {
-    // return Point(x=p["x"] + dx, y=p["y"] + dy)
     return Point((::tpy::add_check<int32_t>(p.x, dx)), (::tpy::add_check<int32_t>(p.y, dy)));
 }
 
 // def main() -> None:
+//     p = Point(x=int32(1), y=int32(2))
+//     print(describe(p))
+//
+//     p2 = translate(p, int32(10), int32(20))
+//     print(describe(p2))
 void main() {
-    // p = Point(x=int32(1), y=int32(2))
     Point p = Point(1, 2);
-    // print(describe(p))
     std::cout << describe(p) << "\n";
-    // p2 = translate(p, int32(10), int32(20))
     Point p2 = translate(p, 10, 20);
-    // print(describe(p2))
     std::cout << describe(p2) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

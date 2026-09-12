@@ -11,6 +11,7 @@ template<typename T> struct Bag;
 
 inline constexpr std::string_view __name__ = "bag";
 
+// def make_bag[T](items: Own[list[T]]) -> Own[Bag[T]]:
 template<typename T>
 Bag<T> make_bag(std::vector<T>&& items);
 
@@ -22,6 +23,7 @@ struct Bag {
     std::vector<T> _items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
+    //     self._items = items
     Bag() = default;
     explicit Bag(std::vector<T>&& items) : _items(std::move(items)) {}
     // non-copyable (@nocopy)
@@ -31,6 +33,8 @@ struct Bag {
     Bag& operator=(Bag&&) = default;
 
     // def __iter__(self) -> Iterator[T]:
+    //     for x in self._items:
+    //         yield x
     auto __iter__() {
         return ::tpy::make_generator<T>(
             [this, __beg = decltype(((*this)._items).begin())(), __end = decltype(((*this)._items).begin())(), __init = false]() mutable -> std::optional<T> {
@@ -54,9 +58,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
 }
 
 // def make_bag[T](items: Own[list[T]]) -> Own[Bag[T]]:
+//     return Bag[T](items)
 template<typename T>
 Bag<T> make_bag(std::vector<T>&& items) {
-    // return Bag[T](items)
     return Bag<T>(std::move(items));
 }
 

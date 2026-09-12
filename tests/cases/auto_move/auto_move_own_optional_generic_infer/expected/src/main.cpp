@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main():
+//     b = Box()
+//     b.value = int32(42)
+//     # T inferred as Box from the bare Box arg coerced to Own[Box] | None
+//     print(take_optional(b, int32(99)))
+//     # None arg: T must be explicit since it can't be inferred from None
+//     print(take_optional[Box](None, int32(77)))
 void main() {
-    // b = Box()
     Box b = Box();
-    // b.value = int32(42)
     b.value = 42;
-    // # T inferred as Box from the bare Box arg coerced to Own[Box] | None
-    // print(take_optional(b, int32(99)))
     std::cout << take_optional<Box>(std::move(b), 99) << "\n";
-    // # None arg: T must be explicit since it can't be inferred from None
-    // print(take_optional[Box](None, int32(77)))
     std::cout << take_optional<Box>(std::nullopt, 77) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

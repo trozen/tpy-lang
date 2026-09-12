@@ -29,6 +29,7 @@ struct Bin;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bin:
@@ -55,32 +56,36 @@ inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
 
 
 // def __init__(self) -> None:
+//     self.total = 0
 inline Bin::Bin() : total(0) {}
 
 // def append(self, v: int32) -> None:
+//     self.total += v
 inline void Bin::append(int32_t v) {
-    // self.total += v
     this->total = ::tpy::add_check<int32_t>(this->total, v);
 }
 
 // @readonly
 // def size(self) -> int32:
+//     return self.total
 inline int32_t Bin::size() const {
-    // return self.total
     return this->total;
 }
+// def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
+//     # the bare-`T` slot, MUTATED through its bound's method
+//     obj.append(1)
+//     i: int32 = 0
+//     while i < count:
+//         yield i
+//         i += 1
 template<Appendable T>
 inline auto bump_each(::tpy::borrow_frame_param_t<T> obj, int32_t count) {
-    // # the bare-`T` slot, MUTATED through its bound's method
-    // obj.append(1)
     obj.append(1);
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [&obj, count, i]() mutable -> std::optional<int32_t> {
             while ((i < count)) {
                 auto __val = i;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }
@@ -89,18 +94,21 @@ inline auto bump_each(::tpy::borrow_frame_param_t<T> obj, int32_t count) {
     );
 }
 
+// def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
+//     # the `readonly[T]` slot: `const T&` at every instantiation -- still a
+//     # reference (the capture rule), but const, so only a @readonly method is
+//     # callable through it and `obj.append(1)` here would not compile
+//     i: int32 = 0
+//     while i < count:
+//         yield obj.size() + i
+//         i += 1
 template<Readable T>
 inline auto size_each(const T& obj, int32_t count) {
-    // # the `readonly[T]` slot: `const T&` at every instantiation -- still a
-    // # reference (the capture rule), but const, so only a @readonly method is
-    // # callable through it and `obj.append(1)` here would not compile
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [&obj, count, i]() mutable -> std::optional<int32_t> {
             while ((i < count)) {
                 auto __val = (::tpy::add_check<int32_t>(obj.size(), i));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }
@@ -109,20 +117,23 @@ inline auto size_each(const T& obj, int32_t count) {
     );
 }
 
+// def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
+//     # the same slot at a VALUE instantiation: `const T&` is a reference at str
+//     # too, never the view -- which is what makes the peephole's `[&obj]`
+//     # capture bind the caller's object rather than a parameter that dies with
+//     # the factory. Fed a NAMED local, because an rvalue here is not hoisted
+//     # into a caller temp (BUGS.md#readonly-tparam-slot-skips-arg-temp).
+//     i: int32 = 0
+//     while i < count:
+//         yield len(obj) + i
+//         i += 1
 template<Sized T>
 inline auto len_each(const T& obj, int32_t count) {
-    // # the same slot at a VALUE instantiation: `const T&` is a reference at str
-    // # too, never the view -- which is what makes the peephole's `[&obj]`
-    // # capture bind the caller's object rather than a parameter that dies with
-    // # the factory. Fed a NAMED local, because an rvalue here is not hoisted
-    // # into a caller temp (BUGS.md#readonly-tparam-slot-skips-arg-temp).
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [&obj, count, i]() mutable -> std::optional<int32_t> {
             while ((i < count)) {
                 auto __val = (::tpy::add_check<int32_t>(::tpy::__len__(obj), i));
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }
@@ -131,15 +142,18 @@ inline auto len_each(const T& obj, int32_t count) {
     );
 }
 
+// def repeat[T](value: T, count: int32) -> Iterator[T]:
+//     i: int32 = 0
+//     while i < count:
+//         yield value
+//         i += 1
 template<typename T>
 inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<T>(
         [&value, count, i]() mutable -> std::optional<T> {
             while ((i < count)) {
                 auto __val = value;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<T>(__val);
             }
@@ -148,9 +162,13 @@ inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
     );
 }
 
+// def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:
+//     i: int32 = 0
+//     for item in iterable:
+//         yield (i, item)
+//         i += 1
 template<typename T, ::tpystd::typing::Iterable<T> T_iterable>
 inline auto enumerate(T_iterable& iterable) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
         [&iterable, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(iterable))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
@@ -160,7 +178,6 @@ inline auto enumerate(T_iterable& iterable) {
             {
                 auto&& item = ::tpy::unwrap_ref(*__r);
                 auto __val = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(item)};
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(__val);
             }

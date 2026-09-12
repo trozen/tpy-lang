@@ -5,17 +5,22 @@ namespace tpyapp::main {
 
 
 // def probe(flag: bool) -> int32:
+//     r = Reg(1)
+//     if flag:
+//         with r as view:
+//             pass
+//     else:
+//         with r as view:
+//             pass
+//     r.n = 42
+//     return view.n
 int32_t probe(bool flag) {
-    // r = Reg(1)
     Reg r = Reg(1);
-    // if flag:
     const Reg* view;
     if (flag) {
-        // with r as view:
         auto& __ctx_1 = r;
         view = &(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -26,13 +31,10 @@ int32_t probe(bool flag) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-    // else:
     } else {
-        // with r as view:
         auto& __ctx_2 = r;
         view = &(__ctx_2.__enter__());
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -44,26 +46,24 @@ int32_t probe(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // r.n = 42
     r.n = 42;
-    // return view.n
     return view->n;
 }
 
 // def main() -> None:
+//     print(probe(True))
+//     print(probe(False))
 void main() {
-    // print(probe(True))
     std::cout << probe(true) << "\n";
-    // print(probe(False))
     std::cout << probe(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

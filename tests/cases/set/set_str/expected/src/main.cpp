@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s: set[int32] = {1, 2, 3}
+//     x: str = str(s)
+//     print(x)
+//     print(f"set: {s}")
+//
+//     empty: set[int32] = set()
+//     print(str(empty))
+//     print(f"empty: {empty}")
 void main() {
-    // s: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    // x: str = str(s)
     std::string x = ::tpy::set_to_str(s);
-    // print(x)
     std::cout << x << "\n";
-    // print(f"set: {s}")
     std::cout << std::format("set: {}", ::tpy::set_to_str(s)) << "\n";
-    // empty: set[int32] = set()
     ::tpy::ordered_set<int32_t> empty = ::tpy::ordered_set<int32_t>();
-    // print(str(empty))
     std::cout << ::tpy::set_to_str(empty) << "\n";
-    // print(f"empty: {empty}")
     std::cout << std::format("empty: {}", ::tpy::set_to_str(empty)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

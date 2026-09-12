@@ -15,16 +15,27 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sync_first_section() -> None:
 void sync_first_section();
+// def rebind_in_loop_section() -> None:
 void rebind_in_loop_section();
+// def branch_arms_section(c: bool) -> None:
 void branch_arms_section(bool c);
+// def dead_alias_section() -> None:
 void dead_alias_section();
+// def none_rebind_section() -> None:
 void none_rebind_section();
+// def container_insert_section() -> None:
 void container_insert_section();
+// def rebound_ptr_section() -> None:
 void rebound_ptr_section();
+// def hatch_copy_section() -> None:
 void hatch_copy_section();
+// def hatch_rc_section() -> None:
 void hatch_rc_section();
+// def hatch_fresh_name_section() -> None:
 void hatch_fresh_name_section();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -48,11 +59,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def bump(self) -> None:
+//     self.x += 100
 inline void Point::bump() {
-    // self.x += 100
     this->x = ::tpy::add_check<int32_t>(this->x, 100);
 }
 void __tpy_init();

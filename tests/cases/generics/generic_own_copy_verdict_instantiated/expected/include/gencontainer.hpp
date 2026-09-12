@@ -10,17 +10,18 @@ namespace tpyapp::gencontainer {
 
 inline constexpr std::string_view __name__ = "gencontainer";
 
+// def cross_slot[T](v: T) -> int32:
 template<typename T>
 int32_t cross_slot(::tpy::param_val_or_ref_t<T> v);
 
 // def cross_slot[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<typename T>
 int32_t cross_slot(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 

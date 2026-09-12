@@ -16,7 +16,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_steps;
 
+// def steps() -> Iterator[int32]:
 __gen_steps steps();
+// def main() -> None:
 void main();
 
 // class Item:
@@ -83,7 +85,7 @@ inline std::ostream& operator<<(std::ostream& os, const Delegator& obj) {
     return os;
 }
 
-// Generator: steps
+// def steps() -> Iterator[int32]:
 struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<::tpy::with_enter_t<Owner>> owned;
@@ -111,20 +113,22 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 
 // def __init__(self, n: int32):
+//     self.item = Item(n)
 inline Owner::Owner(int32_t n) : item(Item(n)) {}
 
 // def __enter__(self) -> Item:
+//     return self.item
 inline Item& Owner::__enter__() {
-    // return self.item
     return this->item;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Owner::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 
 inline Delegator::Delegator(Delegator&& other) noexcept {
@@ -139,21 +143,21 @@ inline Delegator& Delegator::operator=(Delegator&& other) noexcept {
 }
 
 // def __del__(self) -> None:
+//     print("delegator dropped")
 inline Delegator::~Delegator() {
     if (!this->__tpy_owned_) return;
-    // print("delegator dropped")
     std::cout << "delegator dropped" << "\n";
 }
 
 // def __enter__(self) -> Item:
+//     return SHARED
 inline const Item& Delegator::__enter__() const {
-    // return SHARED
     return (*SHARED);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Delegator::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

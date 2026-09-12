@@ -12,7 +12,9 @@ struct Point;
 extern std::vector<Point>* points;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def use_without_check(p: Point | None) -> int32:
 int32_t use_without_check(Point* p);
+// def find(pts: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& pts, int32_t target);
 
 // class Point:
@@ -38,11 +40,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def mag(self) -> int32:
+//     return self.x + self.y
 inline int32_t Point::mag() const {
-    // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x, this->y));
 }
 void __tpy_init();

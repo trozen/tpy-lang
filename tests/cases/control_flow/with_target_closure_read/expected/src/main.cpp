@@ -5,18 +5,30 @@ namespace tpyapp::main {
 
 
 // def outer(flag: bool) -> int32:
+//     if flag:
+//         with Reg(11) as v:
+//             pass
+//     else:
+//         with Reg(22) as v:
+//             pass
+//
+//     # The only use of `v` -- through a capture, after both managers' blocks.
+//     # It mutates, so a copy at the boundary would read back the un-incremented
+//     # value instead of dangling quietly.
+//     def inner() -> int32:
+//         v.n += 1
+//         return v.n
+//
+//     return inner()
 int32_t outer(bool flag) {
     std::optional<Reg> __slot_2;
     std::optional<Reg> __slot_3;
-    // if flag:
     Reg* v;
     if (flag) {
-        // with Reg(11) as v:
         __slot_2.emplace(Reg(11));
         auto& __ctx_1 = (*__slot_2);
         v = &(__ctx_1.__enter__());
         try {
-            // pass
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -27,14 +39,11 @@ int32_t outer(bool flag) {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-    // else:
     } else {
-        // with Reg(22) as v:
         __slot_3.emplace(Reg(22));
         auto& __ctx_2 = (*__slot_3);
         v = &(__ctx_2.__enter__());
         try {
-            // pass
             goto __with_exit_2;
         } catch (::tpy::BaseException& __exc_2) {
             __ctx_2.__exit__({}, &__exc_2, {});
@@ -46,34 +55,27 @@ int32_t outer(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
-    // # The only use of `v` -- through a capture, after both managers' blocks.
-    // # It mutates, so a copy at the boundary would read back the un-incremented
-    // # value instead of dangling quietly.
-    // def inner() -> int32:
     auto inner = [&v]() -> int32_t {
-        // v.n += 1
         v->n = ::tpy::add_check<int32_t>(v->n, 1);
-        // return v.n
         return v->n;
     };
-    // return inner()
     return inner();
 }
 
 // def main() -> None:
+//     print(outer(True))
+//     print(outer(False))
 void main() {
-    // print(outer(True))
     std::cout << outer(true) << "\n";
-    // print(outer(False))
     std::cout << outer(false) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

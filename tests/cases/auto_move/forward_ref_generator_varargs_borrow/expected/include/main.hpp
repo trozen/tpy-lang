@@ -16,12 +16,19 @@ struct __gen_gen;
 struct __gen_kwgen;
 struct __gen_Collector_sizes;
 
+// def main():
 void main();
+// def gen(*xs: list[int32]) -> Iterator[int32]:
 __gen_gen gen(::tpy::varargs<const std::vector<int32_t>> xs);
+// def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
 __gen_kwgen kwgen(::tpy::varargs<const std::vector<int32_t>> xs, std::vector<int32_t>& extra);
+// def first(*xs: list[int32]) -> list[int32]:
 std::vector<int32_t>& first(::tpy::varargs<std::vector<int32_t>> xs);
+// def forward(*xs: list[int32]) -> list[int32]:
 std::vector<int32_t>& forward(::tpy::varargs<std::vector<int32_t>> xs);
+// def forward2(*zs: list[int32]) -> list[int32]:
 std::vector<int32_t>& forward2(::tpy::varargs<std::vector<int32_t>> zs);
+// def drop(xs: Own[list[int32]]) -> int32:
 int32_t drop(std::vector<int32_t>&& xs);
 
 // class Caller:
@@ -53,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Collector& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen(*xs: list[int32]) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
@@ -81,7 +88,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     }
 };
 
-// Generator: kwgen
+// def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
 struct __gen_kwgen : public ::tpy::next_iter_mixin<__gen_kwgen, int32_t> {
     int32_t __state;
     ::tpy::varargs<const std::vector<int32_t>> xs;
@@ -110,7 +117,7 @@ struct __gen_kwgen : public ::tpy::next_iter_mixin<__gen_kwgen, int32_t> {
     }
 };
 
-// Generator: Collector.sizes
+// def sizes(self, *xs: list[int32]) -> Iterator[int32]:
 struct __gen_Collector_sizes : public ::tpy::next_iter_mixin<__gen_Collector_sizes, int32_t> {
     int32_t __state;
     const Collector& __self;

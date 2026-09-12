@@ -9,23 +9,23 @@ namespace tpyapp::main {
 // # to list[int] (vector) across siblings, not just when the list is a bare
 // # element. Mutating the inner list through the tuple must be observed.
 // def main() -> None:
+//     xs = [(1, [2, 3]), (4, [5, 6, 7])]  # tpyc: ok
+//     print(xs)
+//     xs[1][1].append(9)  # inner list is a real vector reached through the tuple
+//     print(xs)
 void main() {
-    // xs = [(1, [2, 3]), (4, [5, 6, 7])]  # tpyc: ok
     std::array<std::tuple<int32_t, std::vector<int32_t>>, 2> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{1, {2, 3}}), ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{4, {5, 6, 7}})};
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    // xs[1][1].append(9)  # inner list is a real vector reached through the tuple
     std::get<1>(::tpy::__getitem__(xs, 1)).push_back(9);
-    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

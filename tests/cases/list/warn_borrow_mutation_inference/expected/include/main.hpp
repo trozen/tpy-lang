@@ -11,34 +11,63 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_points(items: list[Point]) -> int32:
 int32_t sum_points(const std::vector<Point>& items);
+// def first_x(items: list[Point]) -> int32:
 int32_t first_x(const std::vector<Point>& items);
+// def add_point(items: list[Point], p: Point) -> None:
 void add_point(std::vector<Point>& items, const Point& p);
+// def replace_first(items: list[Point], p: Point) -> None:
 void replace_first(std::vector<Point>& items, const Point& p);
+// def remove_first(items: list[Point]) -> None:
 void remove_first(std::vector<Point>& items);
+// def read_point(p: Point) -> int32:
 int32_t read_point(const Point& p);
+// def mutate_point(p: Point, val: int32) -> None:
 void mutate_point(Point& p, int32_t val);
+// def test_non_mutating_no_warn() -> None:
 void test_non_mutating_no_warn();
+// def test_non_mutating_subscript_read() -> None:
 void test_non_mutating_subscript_read();
+// def test_mutating_append_warns() -> None:
 void test_mutating_append_warns();
+// def test_mutating_subscript_write_no_warn() -> None:
 void test_mutating_subscript_write_no_warn();
+// def test_mutating_del_warns() -> None:
 void test_mutating_del_warns();
+// def test_second_param_not_mutated() -> None:
 void test_second_param_not_mutated();
+// def test_no_borrow_no_warn() -> None:
 void test_no_borrow_no_warn();
+// def test_loop_var_non_mutating_callee() -> None:
 void test_loop_var_non_mutating_callee();
+// def test_loop_var_mutating_callee() -> None:
 void test_loop_var_mutating_callee();
+// def add_point_wrapper(items: list[Point], p: Point) -> None:
 void add_point_wrapper(std::vector<Point>& items, const Point& p);
+// def read_wrapper(items: list[Point]) -> int32:
 int32_t read_wrapper(const std::vector<Point>& items);
+// def test_transitive_mutation_warns() -> None:
 void test_transitive_mutation_warns();
+// def test_transitive_read_no_warn() -> None:
 void test_transitive_read_no_warn();
+// def test_forward_mutation_warns() -> None:
 void test_forward_mutation_warns();
+// def forward_mutator(items: list[Point]) -> None:
 void forward_mutator(std::vector<Point>& items);
+// def test_forward_read_no_warn() -> None:
 void test_forward_read_no_warn();
+// def forward_reader(items: list[Point]) -> int32:
 int32_t forward_reader(const std::vector<Point>& items);
+// def cycle_a(items: list[Point], p: Point) -> None:
 void cycle_a(std::vector<Point>& items, const Point& p);
+// def cycle_b(items: list[Point], p: Point) -> None:
 void cycle_b(std::vector<Point>& items, const Point& p);
+// def test_cycle_mutation_warns() -> None:
 void test_cycle_mutation_warns();
+// def deep_wrapper(items: list[Point], p: Point) -> None:
 void deep_wrapper(std::vector<Point>& items, const Point& p);
+// def test_multi_hop_mutation_warns() -> None:
 void test_multi_hop_mutation_warns();
 
 // class Point:
@@ -61,6 +90,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

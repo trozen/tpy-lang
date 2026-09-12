@@ -37,23 +37,24 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(self) -> None:
+//     self._items = []
 inline Buffer::Buffer() : _items(std::vector<std::string>{}) {}
 
 // def add(self, s: str) -> None:
+//     self._items.append(str(s))
 inline void Buffer::add(std::string_view s) {
-    // self._items.append(str(s))
     this->_items.push_back(std::string(s));
 }
 
 // def size(self) -> int32:
+//     return int32(len(self._items))
 inline int32_t Buffer::size() const {
-    // return int32(len(self._items))
     return ::tpy::__len__(this->_items);
 }
 
 // def dump(self) -> str:
+//     return "".join(self._items)
 inline std::string Buffer::dump() const {
-    // return "".join(self._items)
     return ::tpy::str_join("", this->_items);
 }
 void __tpy_init();

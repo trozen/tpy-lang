@@ -13,11 +13,17 @@ struct Holder;
 extern Rec* G;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def from_global() -> int:
 ::tpy::BigInt from_global();
+// def from_field(h: Holder) -> int:
 ::tpy::BigInt from_field(Holder& h);
+// def from_container_field(h: Holder) -> int:
 ::tpy::BigInt from_container_field(Holder& h);
+// def from_optional_elem(xs: list[Rec | None]) -> int:
 ::tpy::BigInt from_optional_elem(std::vector<std::optional<Rec>>& xs);
+// def readonly_recv(x: Rec) -> int:
 ::tpy::BigInt readonly_recv(const Rec& x);
+// def main() -> None:
 void main();
 
 // # Walrus borrow-alias source shapes: a pointer-slot GLOBAL, a record FIELD, a
@@ -62,15 +68,18 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Rec::Rec(const ::tpy::BigInt& n) : n(n) {}
 
 // def get(self) -> int:
+//     return self.n
 inline ::tpy::BigInt Rec::get() const {
-    // return self.n
     return this->n;
 }
 
 // def __init__(self) -> None:
+//     self.inner = Rec(1)
+//     self.kid = [1]
 inline Holder::Holder() : inner(Rec(::tpy::BigInt(1))), kid(std::vector<::tpy::BigInt>{1}) {}
 void __tpy_init();
 } // namespace tpyapp::main

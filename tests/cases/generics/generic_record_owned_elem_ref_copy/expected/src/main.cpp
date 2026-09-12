@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[R] = [R(1)]
+//     held = grab(items)
+//     items[0].n = 99
+//     print(held.v.n)
+//     print(items[0].n)
 void main() {
-    // items: list[R] = [R(1)]
     std::vector<R> items = {R(::tpy::BigInt(1))};
-    // held = grab(items)
     Owned<R> held = grab<R>(items);
-    // items[0].n = 99
     ::tpy::__getitem__(items, 0).n = ::tpy::BigInt(99);
-    // print(held.v.n)
     std::cout << held.v.n << "\n";
-    // print(items[0].n)
     std::cout << ::tpy::__getitem__(items, 0).n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

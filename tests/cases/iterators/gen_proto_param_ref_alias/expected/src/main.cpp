@@ -5,10 +5,17 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     pts = [Point(1), Point(2)]
+//     for v in bump(pts):
+//         print(v)
+//     print("mutations reached the caller:", pts[0].x, pts[1].x)
+//
+//     ns = [10, 20]
+//     for v in doubled(ns):
+//         print(v)
+//     print("value elements untouched:", ns[0], ns[1])
 void main() {
-    // pts = [Point(1), Point(2)]
     std::array<Point, 2> pts = {Point(1), Point(2)};
-    // for v in bump(pts):
     {
         auto __src_0 = bump(pts);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -16,15 +23,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("mutations reached the caller:", pts[0].x, pts[1].x)
     std::cout << "mutations reached the caller:" << " " << ::tpy::__getitem__(pts, 0).x << " " << ::tpy::__getitem__(pts, 1).x << "\n";
-    // ns = [10, 20]
     std::array<int32_t, 2> ns = {10, 20};
-    // for v in doubled(ns):
     {
         auto __src_2 = doubled(ns);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -32,20 +35,18 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print(v)
         std::cout << v << "\n";
         }
     }
-    // print("value elements untouched:", ns[0], ns[1])
     std::cout << "value elements untouched:" << " " << ::tpy::__getitem__(ns, 0) << " " << ::tpy::__getitem__(ns, 1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,22 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     secure = _ssl_context_for(True)
+//     print(secure.verify_mode == ssl.CERT_REQUIRED, secure.check_hostname)
+//
+//     insecure = _ssl_context_for(False)
+//     print(insecure.verify_mode == ssl.CERT_NONE, insecure.check_hostname)
+//
+//     with open(CA_PATH, "w") as f:
+//         f.write(CERT_PEM)
+//     # String(): a bare str view arg doesn't auto-coerce into the bool|str
+//     # variant param yet (it does once it's a union-typed local, as in curl.py).
+//     custom = _ssl_context_for(String(CA_PATH))
+//     # A custom CA file adds trust but keeps verification on.
+//     print(custom.verify_mode == ssl.CERT_REQUIRED, custom.check_hostname)
 void main() {
-    // secure = _ssl_context_for(True)
     ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpystd::ssl::SSLContext secure = ::tpystd::tplib::requests::_ssl_context_for(__tmp_1);
-    // print(secure.verify_mode == ssl.CERT_REQUIRED, secure.check_hostname)
     std::cout << ::tpy::print_bool((secure.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(secure.check_hostname) << "\n";
-    // insecure = _ssl_context_for(False)
     ::tpy::Union<bool, std::string> __tmp_2 = false;
     ::tpystd::ssl::SSLContext insecure = ::tpystd::tplib::requests::_ssl_context_for(__tmp_2);
-    // print(insecure.verify_mode == ssl.CERT_NONE, insecure.check_hostname)
     std::cout << ::tpy::print_bool((insecure.verify_mode == ::tpystd::ssl::CERT_NONE)) << " " << ::tpy::print_bool(insecure.check_hostname) << "\n";
-    // with open(CA_PATH, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(CA_PATH, "w");
     auto& f = __ctx_1.__enter__();
     try {
-        // f.write(CERT_PEM)
         f.write(CERT_PEM);
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -32,26 +39,37 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // # String(): a bare str view arg doesn't auto-coerce into the bool|str
-    // # variant param yet (it does once it's a union-typed local, as in curl.py).
-    // custom = _ssl_context_for(String(CA_PATH))
     ::tpystd::ssl::SSLContext custom = ::tpystd::tplib::requests::_ssl_context_for(::tpy::String(CA_PATH));
-    // # A custom CA file adds trust but keeps verification on.
-    // print(custom.verify_mode == ssl.CERT_REQUIRED, custom.check_hostname)
     std::cout << ::tpy::print_bool((custom.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(custom.check_hostname) << "\n";
 }
 
+// import ssl
+// from tplib.requests import _ssl_context_for
+//
+// CERT_PEM: Final[str] = """-----BEGIN CERTIFICATE-----
+// MIIBlTCCATugAwIBAgIUe2CartEUhHtqoCYrRV89NXxqz8EwCgYIKoZIzj0EAwIw
+// FDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MDYyOTE1MDY1NloYDzIxMjYwNjA1
+// MTUwNjU2WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO
+// PQMBBwNCAATi4r8fZOEM8tz66TgRALGG7z33xtTCAHavwkRqu8crpAaMoNVIsMxE
+// tP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbqo2kwZzAdBgNVHQ4EFgQUcHp1/TdGBPiN
+// WGIQoSCKEgty4yUwHwYDVR0jBBgwFoAUcHp1/TdGBPiNWGIQoSCKEgty4yUwDwYD
+// VR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID
+// SAAwRQIgE8EzoNEb464cVe4PlS6BpNoBLmBWGkwUQ9mTi5JqX5UCIQCRCx3f+YQW
+// Ddslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==
+// -----END CERTIFICATE-----
+// """
+//
+// CA_PATH: Final[str] = "tpy_test_verify_ca.pem"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import ssl
     ::tpystd::ssl::__tpy_init();
-    // from tplib.requests import _ssl_context_for
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

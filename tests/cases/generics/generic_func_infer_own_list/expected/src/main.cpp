@@ -5,50 +5,53 @@ namespace tpyapp::main {
 
 
 // def main():
+//     # Infer T=int32 through Own[list[T]] -- value element type
+//     nums: list[int32] = [10, 20, 30]
+//     print(first_val(nums))
+//
+//     # Infer T=Point through Own[list[T]] -- non-value element type
+//     pts: list[Point] = []
+//     p1 = Point()
+//     p1.x = 1
+//     p1.y = 2
+//     pts.append(p1)
+//     consume_list(pts)
+//
+//     # Infer T=Point through two Own[T] params
+//     p2 = Point()
+//     p2.x = 5
+//     p2.y = 6
+//     p3 = Point()
+//     p3.x = 7
+//     p3.y = 8
+//     consume_both(p2, p3)
+//
+//     print("done")
 void main() {
-    // # Infer T=int32 through Own[list[T]] -- value element type
-    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // print(first_val(nums))
     std::cout << first_val<int32_t>(std::move(nums)) << "\n";
-    // # Infer T=Point through Own[list[T]] -- non-value element type
-    // pts: list[Point] = []
     std::vector<Point> pts = std::vector<Point>{};
-    // p1 = Point()
     Point p1 = Point();
-    // p1.x = 1
     p1.x = 1;
-    // p1.y = 2
     p1.y = 2;
-    // pts.append(p1)
     pts.push_back(std::move(p1));
-    // consume_list(pts)
     consume_list<Point>(std::move(pts));
-    // # Infer T=Point through two Own[T] params
-    // p2 = Point()
     Point p2 = Point();
-    // p2.x = 5
     p2.x = 5;
-    // p2.y = 6
     p2.y = 6;
-    // p3 = Point()
     Point p3 = Point();
-    // p3.x = 7
     p3.x = 7;
-    // p3.y = 8
     p3.y = 8;
-    // consume_both(p2, p3)
     consume_both<Point>(std::move(p2), std::move(p3));
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

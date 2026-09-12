@@ -5,110 +5,111 @@ namespace tpyapp::main {
 
 
 // def test_basic() -> None:
+//     p = Point(1, 2)
+//     print(p.x)
+//     print(p.y)
 void test_basic() {
-    // p = Point(1, 2)
     Point p = Point(1, 2);
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(p.y)
     std::cout << p.y << "\n";
 }
 
 // def test_setter() -> None:
+//     p = Point(0, 0)
+//     p.set_x(10)
+//     p.set_y(20)
+//     print(p.x)
+//     print(p.y)
 void test_setter() {
-    // p = Point(0, 0)
     Point p = Point(0, 0);
-    // p.set_x(10)
     p.set_x(10);
-    // p.set_y(20)
     p.set_y(20);
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(p.y)
     std::cout << p.y << "\n";
 }
 
 // def test_eq() -> None:
+//     a = Point(1, 2)
+//     b = Point(1, 2)
+//     c = Point(3, 4)
+//     print(a == b)
+//     print(a == c)
 void test_eq() {
-    // a = Point(1, 2)
     Point a = Point(1, 2);
-    // b = Point(1, 2)
     Point b = Point(1, 2);
-    // c = Point(3, 4)
     Point c = Point(3, 4);
-    // print(a == b)
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
-    // print(a == c)
     std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
 }
 
 // def test_describe() -> None:
+//     p = Point(5, 10)
+//     print(p.describe())
+//     q = Person("Alice", 30)
+//     print(q.describe())
 void test_describe() {
-    // p = Point(5, 10)
     Point p = Point(5, 10);
-    // print(p.describe())
     std::cout << p.describe() << "\n";
-    // q = Person("Alice", 30)
     Person q = Person("Alice", 30);
-    // print(q.describe())
     std::cout << q.describe() << "\n";
 }
 
 // def test_reset() -> None:
+//     p = Point(5, 10)
+//     p.reset()
+//     print(p.x)
+//     print(p.y)
 void test_reset() {
-    // p = Point(5, 10)
     Point p = Point(5, 10);
-    // p.reset()
     p.reset();
-    // print(p.x)
     std::cout << p.x << "\n";
-    // print(p.y)
     std::cout << p.y << "\n";
 }
 
 // def test_static() -> None:
+//     print(Point.field_count())
+//     print(Person.field_count())
+//     p = Point(1, 2)
+//     print(p.field_count())
 void test_static() {
-    // print(Point.field_count())
     std::cout << Point::field_count() << "\n";
-    // print(Person.field_count())
     std::cout << Person::field_count() << "\n";
-    // p = Point(1, 2)
     Point p = Point(1, 2);
-    // print(p.field_count())
     std::cout << p.field_count() << "\n";
 }
 
 // def test_quote_expr() -> None:
+//     p = Point(5, 10)
+//     print(p.default_first())
+//     q = Person("Alice", 30)
+//     print(q.default_first())
 void test_quote_expr() {
-    // p = Point(5, 10)
     Point p = Point(5, 10);
-    // print(p.default_first())
     std::cout << p.default_first() << "\n";
-    // q = Person("Alice", 30)
     Person q = Person("Alice", 30);
-    // print(q.default_first())
     std::cout << q.default_first() << "\n";
 }
 
+// from builder import builder
+//
+// test_basic()
+// test_setter()
+// test_eq()
+// test_describe()
+// test_reset()
+// test_static()
+// test_quote_expr()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from builder import builder
-    // test_basic()
     test_basic();
-    // test_setter()
     test_setter();
-    // test_eq()
     test_eq();
-    // test_describe()
     test_describe();
-    // test_reset()
     test_reset();
-    // test_static()
     test_static();
-    // test_quote_expr()
     test_quote_expr();
 }
 

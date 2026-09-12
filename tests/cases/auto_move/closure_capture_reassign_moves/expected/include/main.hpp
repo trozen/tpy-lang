@@ -12,6 +12,7 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Point:
@@ -49,14 +50,16 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self):
+//     self.items = [1, 2, 3]
 inline Point::Point() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __init__(self):
+//     self.stored = []
 inline Sink::Sink() : stored(std::vector<Point>{}) {}
 
 // def consume(self, p: Own[Point]):
+//     self.stored.append(p)
 inline void Sink::consume(Point&& p) {
-    // self.stored.append(p)
     this->stored.push_back(std::move(p));
 }
 void __tpy_init();

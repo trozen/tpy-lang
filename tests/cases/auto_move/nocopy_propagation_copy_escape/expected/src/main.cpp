@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def consume(c: Own[Container]) -> int32:
+//     return c.handle.fd
 int32_t consume(Container&& c) {
-    // return c.handle.fd
     return c.handle.fd;
 }
 
 // def main():
+//     c = Container(Handle(42))
+//     c2 = copy(c)
+//     print(consume(c))
+//     print(consume(c2))
 void main() {
-    // c = Container(Handle(42))
     Container c = Container(Handle(42));
-    // c2 = copy(c)
     Container c2 = Container(c);
-    // print(consume(c))
     std::cout << consume(std::move(c)) << "\n";
-    // print(consume(c2))
     std::cout << consume(std::move(c2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

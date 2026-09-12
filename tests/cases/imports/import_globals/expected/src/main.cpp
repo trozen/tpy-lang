@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     print(MAX_VALUE)
+//     print(get_max())
+//     return int32(0)
 int32_t main() {
-    // print(MAX_VALUE)
     std::cout << ::tpyapp::config::MAX_VALUE << "\n";
-    // print(get_max())
     std::cout << ::tpyapp::config::get_max() << "\n";
-    // return int32(0)
     return 0;
 }
 
+// from config import MAX_VALUE, get_max
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from config import MAX_VALUE, get_max
     ::tpyapp::config::__tpy_init();
-    // main()
     main();
 }
 

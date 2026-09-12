@@ -5,8 +5,8 @@ namespace tpyapp::util {
 
 
 // def boost(n: int32) -> int32:
+//     return n + 10
 int32_t boost(int32_t n) {
-    // return n + 10
     return (::tpy::add_check<int32_t>(n, 10));
 }
 

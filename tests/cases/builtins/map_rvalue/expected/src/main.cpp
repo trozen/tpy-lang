@@ -5,21 +5,26 @@ namespace tpyapp::main {
 
 
 // def make_nums() -> Own[list[int32]]:
+//     return [10, 20, 30]
 std::vector<int32_t> make_nums() {
-    // return [10, 20, 30]
     return {10, 20, 30};
 }
 
 // def double(x: int32) -> int32:
+//     return x * 2
 int32_t double_(int32_t x) {
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main() -> None:
+//     # rvalue: map over a temporary returned by function
+//     for x in map(double, make_nums()):
+//         print(x)
+//
+//     # rvalue: map with lambda
+//     result = list(map(lambda x: x + 1, make_nums()))
+//     print(result)
 void main() {
-    // # rvalue: map over a temporary returned by function
-    // for x in map(double, make_nums()):
     {
         auto __src_0 = ::tpy::builtin_map<int32_t, int32_t>(double_, make_nums());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -27,23 +32,19 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
-    // # rvalue: map with lambda
-    // result = list(map(lambda x: x + 1, make_nums()))
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, make_nums()));
-    // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

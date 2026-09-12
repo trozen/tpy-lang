@@ -11,6 +11,7 @@ template<typename T> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Wrapper[T]:
@@ -20,12 +21,13 @@ struct Wrapper {
     ::tpy::UninitHeapStorage<T>* _storage;
 
     // def __init__(self, storage: Ptr[UninitHeapStorage[T]]) -> None:
+    //     self._storage = storage
     Wrapper() = default;
     explicit Wrapper(::tpy::UninitHeapStorage<T>* storage) : _storage(storage) {}
 
     // def load_at(self, index: uint32) -> T:
+    //     return self._storage.load(index)
     ::tpy::val_or_cref_t<T> load_at(uint32_t index) const {
-        // return self._storage.load(index)
         return ::tpy::deref_check(this->_storage).load(index);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";

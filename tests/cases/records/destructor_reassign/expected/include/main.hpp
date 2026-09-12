@@ -13,9 +13,13 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_straight():
 void test_straight();
+// def test_loop():
 void test_loop();
+// def test_conditional(flag: int32):
 void test_conditional(int32_t flag);
+// def test_inherit():
 void test_inherit();
 
 // class Resource:
@@ -86,6 +90,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, name: str):
+//     self.name = name
 inline Resource::Resource(std::string_view name) : name(name) {}
 
 inline Resource::Resource(Resource&& other) noexcept : name(std::move(other.name)) {
@@ -100,13 +105,14 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("drop", self.name)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    // print("drop", self.name)
     std::cout << "drop" << " " << this->name << "\n";
 }
 
 // def __init__(self, tag: str):
+//     self.tag = tag
 inline Base::Base(std::string_view tag) : tag(tag) {}
 
 inline Base::Base(Base&& other) noexcept : tag(std::move(other.tag)) {
@@ -121,13 +127,14 @@ inline Base& Base::operator=(Base&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("~Base", self.tag)
 inline Base::~Base() {
     if (!this->__tpy_owned_) return;
-    // print("~Base", self.tag)
     std::cout << "~Base" << " " << this->tag << "\n";
 }
 
 // def __init__(self, tag: str):
+//     super().__init__(tag)
 inline Child::Child(std::string_view tag) : Base(tag) {}
 
 inline Child::Child(Child&& other) noexcept : Base(std::move(other)) {
@@ -142,9 +149,9 @@ inline Child& Child::operator=(Child&& other) noexcept {
 }
 
 // def __del__(self):
+//     print("~Child", self.tag)
 inline Child::~Child() {
     if (!this->__tpy_owned_) return;
-    // print("~Child", self.tag)
     std::cout << "~Child" << " " << this->tag << "\n";
 }
 void __tpy_init();

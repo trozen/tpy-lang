@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def relay(h: Holder) -> tuple[Box, int32]:
+//     return h.get_pair()
 std::tuple<Box*, int32_t> relay(Holder& h) {
-    // return h.get_pair()
     return h.get_pair();
 }
 
 // def main() -> None:
+//     h = Holder(Box(5), 42)
+//     t = relay(h)
+//     t[0].val = 99
+//     print(h.box.val)
+//     print(t[1])
 void main() {
-    // h = Holder(Box(5), 42)
     Holder h = Holder(Box(5), 42);
-    // t = relay(h)
     auto t = relay(h);
-    // t[0].val = 99
     std::get<0>(t)->val = 99;
-    // print(h.box.val)
     std::cout << h.box.val << "\n";
-    // print(t[1])
     std::cout << std::get<1>(t) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

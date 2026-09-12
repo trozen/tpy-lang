@@ -3,33 +3,31 @@
 
 namespace tpyapp::main {
 
-// # The subject: both elements are fresh, so the literal is spelled in storage
-// # form already; the declared tuple type is what puts the slot in pointer repr.
-// g: tuple[int32, Cell] = (1, Cell(2))  # tpyc: ok
 std::tuple<int32_t, Cell> g;
 
 // def main() -> None:
+//     # Mutating through the global slot and reading back proves the element is
+//     # aliased, not copied, at the lift.
+//     g[1].v = 9  # tpyc: ok
+//     print(g[0])
+//     print(g[1].v)
 void main() {
-    // # Mutating through the global slot and reading back proves the element is
-    // # aliased, not copied, at the lift.
-    // g[1].v = 9  # tpyc: ok
     std::get<1>(g).v = 9;
-    // print(g[0])
     std::cout << std::get<0>(g) << "\n";
-    // print(g[1].v)
     std::cout << std::get<1>(g).v << "\n";
 }
 
+// # The subject: both elements are fresh, so the literal is spelled in storage
+// # form already; the declared tuple type is what puts the slot in pointer repr.
+// g: tuple[int32, Cell] = (1, Cell(2))  # tpyc: ok
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The subject: both elements are fresh, so the literal is spelled in storage
-    // # form already; the declared tuple type is what puts the slot in pointer repr.
-    // g: tuple[int32, Cell] = (1, Cell(2))  # tpyc: ok
     g = ::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>(std::tuple<int32_t, Cell>{1, Cell(2)});
-    // main()
     main();
 }
 

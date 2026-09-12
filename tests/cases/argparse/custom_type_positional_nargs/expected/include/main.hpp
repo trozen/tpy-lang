@@ -13,8 +13,11 @@ struct __tpy_builder_argparse_args_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
+// args = parser.parse_args(["src/main.py", "src/util.py", "tests/main.py"])
 void __tpy_builder_argparse_help_1();
+// args = parser.parse_args(["src/main.py", "src/util.py", "tests/main.py"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
 
 // class Tag:
@@ -57,18 +60,19 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 
 // def __init__(self, raw: str) -> None:
+//     self.raw = raw
 inline Tag::Tag(std::string_view raw) : raw(raw) {}
 
 // @staticmethod
 // def from_arg(s: str) -> Own[Tag]:
+//     return Tag(s)
 inline Tag Tag::from_arg(std::string_view s) {
-    // return Tag(s)
     return Tag(s);
 }
 
 // def __repr__(self) -> str:
+//     return f"Tag({self.raw})"
 inline std::string Tag::__repr__() const {
-    // return f"Tag({self.raw})"
     return std::format("Tag({})", this->raw);
 }
 

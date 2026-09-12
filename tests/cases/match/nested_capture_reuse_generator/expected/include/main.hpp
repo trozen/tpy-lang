@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_counts;
 
+// def counts(a: Cat, b: Cat) -> Iterator[int]:
 __gen_counts counts(Cat& a, Cat& b);
+// def main() -> None:
 void main();
 
 // class Cat:
@@ -32,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Generator: counts
+// def counts(a: Cat, b: Cat) -> Iterator[int]:
 struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, ::tpy::BigInt> {
     int32_t __state;
     Cat& a;
@@ -60,6 +62,7 @@ struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, ::tpy::BigInt>
 
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::main

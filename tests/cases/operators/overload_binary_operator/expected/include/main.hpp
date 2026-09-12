@@ -12,6 +12,7 @@ struct Day;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Delta(ValueType):
@@ -56,14 +57,12 @@ struct Day {
     // @overload
     // def __sub__(self, other: Day) -> Delta: ...
     Delta __sub__(Day other) const {
-        // return Delta(self.ordinal - other.ordinal)
         return Delta(((this->ordinal) - (other.ordinal)));
     }
 
     // @overload
     // def __sub__(self, other: Delta) -> Day: ...
     Day __sub__(Delta other) const {
-        // return Day(self.ordinal - other.n)
         return Day(((this->ordinal) - (other.n)));
     }
 
@@ -97,20 +96,22 @@ namespace tpyapp::main {
 
 
 // def __init__(self, n: int) -> None:
+//     self.n = n
 inline Delta::Delta(const ::tpy::BigInt& n) : n(n) {}
 
 // def __add__(self, other: Delta) -> Delta:   # monomorphic operator on the same class
+//     return Delta(self.n + other.n)
 inline Delta Delta::__add__(Delta other) const {
-    // return Delta(self.n + other.n)
     return Delta(((this->n) + (other.n)));
 }
 
 // def __init__(self, ordinal: int) -> None:
+//     self.ordinal = ordinal
 inline Day::Day(const ::tpy::BigInt& ordinal) : ordinal(ordinal) {}
 
 // def __add__(self, other: Delta) -> Day:   # monomorphic operator coexists with the overloaded one
+//     return Day(self.ordinal + other.n)
 inline Day Day::__add__(Delta other) const {
-    // return Day(self.ordinal + other.n)
     return Day(((this->ordinal) + (other.n)));
 }
 void __tpy_init();

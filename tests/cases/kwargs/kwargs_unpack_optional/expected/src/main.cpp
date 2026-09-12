@@ -5,41 +5,41 @@ namespace tpyapp::main {
 
 
 // def start(**kwargs: Unpack[Config]) -> None:
+//     print(kwargs["host"])
+//     print(kwargs["port"])
 void start(const Config& kwargs) {
-    // print(kwargs["host"])
     std::cout << ::tpy::typed_dict_field_check(kwargs.host) << "\n";
-    // print(kwargs["port"])
     std::cout << ::tpy::typed_dict_field_check(kwargs.port) << "\n";
 }
 
 // def start_safe(**kwargs: Unpack[Config]) -> None:
+//     print("started")
 void start_safe(const Config& kwargs) {
-    // print("started")
     std::cout << "started" << "\n";
 }
 
 // def main() -> None:
+//     # All fields provided
+//     start(host="localhost", port=int32(8080))
+//     # Partial -- only host (port access would panic)
+//     start_safe(host="example.com")
+//     # Zero kwargs
+//     start_safe()
 void main() {
-    // # All fields provided
-    // start(host="localhost", port=int32(8080))
     Config __tmp_1 = Config("localhost", 8080);
     start(__tmp_1);
-    // # Partial -- only host (port access would panic)
-    // start_safe(host="example.com")
     Config __tmp_2 = Config("example.com", std::nullopt);
     start_safe(__tmp_2);
-    // # Zero kwargs
-    // start_safe()
     Config __tmp_3 = Config(std::nullopt, std::nullopt);
     start_safe(__tmp_3);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

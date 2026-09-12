@@ -9,28 +9,32 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def total(xs: readonly[list[int32]]) -> None:
 void total(const std::vector<int32_t>& xs);
-template<typename __F0>
-  requires requires(__F0& __fn, const std::vector<int32_t>& __a0) {
-      __fn(__a0);
-  }
-void use_fn(__F0&& f);
-void use_callable(const std::function<void(const std::vector<int32_t>&)>& f);
-void main();
-
 // def use_fn(f: Fn[[readonly[list[int32]]], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, const std::vector<int32_t>& __a0) {
       __fn(__a0);
   }
+void use_fn(__F0&& f);
+// def use_callable(f: Callable[[readonly[list[int32]]], None]) -> None:
+void use_callable(const std::function<void(const std::vector<int32_t>&)>& f);
+// def main() -> None:
+void main();
+
+// def use_fn(f: Fn[[readonly[list[int32]]], None]) -> None:
+//     xs: list[int32] = [1, 2]
+//     p = xs[0]
+//     print(p)
+//     f(xs)  # tpyc: ok
+template<typename __F0>
+  requires requires(__F0& __fn, const std::vector<int32_t>& __a0) {
+      __fn(__a0);
+  }
 void use_fn(__F0&& f) {
-    // xs: list[int32] = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // p = xs[0]
     int32_t p = ::tpy::__getitem__(xs, 0);
-    // print(p)
     std::cout << p << "\n";
-    // f(xs)  # tpyc: ok
     f(xs);
 }
 

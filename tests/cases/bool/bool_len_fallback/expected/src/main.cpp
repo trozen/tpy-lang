@@ -5,41 +5,44 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s1 = Stack(int32(3))
+//     s2 = Stack(int32(0))
+//
+//     # bool() with __len__ fallback
+//     print(bool(s1))  # True
+//     print(bool(s2))  # False
+//
+//     # if with __len__ fallback
+//     if s1:
+//         print("s1 truthy")
+//     if s2:
+//         print("s2 truthy")
+//
+//     # not with __len__ fallback
+//     if not s2:
+//         print("s2 falsy")
 void main() {
-    // s1 = Stack(int32(3))
     Stack s1 = Stack(3);
-    // s2 = Stack(int32(0))
     Stack s2 = Stack(0);
-    // # bool() with __len__ fallback
-    // print(bool(s1))  # True
     std::cout << ::tpy::print_bool((::tpy::__len__(s1) != 0)) << "\n";
-    // print(bool(s2))  # False
     std::cout << ::tpy::print_bool((::tpy::__len__(s2) != 0)) << "\n";
-    // # if with __len__ fallback
-    // if s1:
     if ((::tpy::__len__(s1) != 0)) {
-        // print("s1 truthy")
         std::cout << "s1 truthy" << "\n";
     }
-    // if s2:
     if ((::tpy::__len__(s2) != 0)) {
-        // print("s2 truthy")
         std::cout << "s2 truthy" << "\n";
     }
-    // # not with __len__ fallback
-    // if not s2:
     if ((!((::tpy::__len__(s2) != 0)))) {
-        // print("s2 falsy")
         std::cout << "s2 falsy" << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

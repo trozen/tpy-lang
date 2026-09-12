@@ -12,7 +12,9 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def copy_alias(h: Holder, other: Holder) -> None:
 void copy_alias(Holder& h, const Holder& other);
+// def main() -> None:
 void main();
 
 // class Elem:
@@ -48,9 +50,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Elem::Elem(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.pair = (None, None)
 inline Holder::Holder() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Elem>, std::optional<Elem>>>(std::tuple<std::optional<Elem>, std::optional<Elem>>{std::nullopt, std::nullopt})) {}
 void __tpy_init();
 } // namespace tpyapp::main

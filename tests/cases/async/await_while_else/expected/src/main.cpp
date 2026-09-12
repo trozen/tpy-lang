@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def below(i: int, limit: int) -> bool:
+//     return i < limit
 ::tpystd::tpy::Poll<bool> __coro_below::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return i < limit
         __state = S_DONE;
         bool __tpy_async_ret = (i < limit);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,15 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
 }
 
 // async def normal_exit() -> None:
+//     i = 0
+//     while await below(i, 3):
+//         print("iter", i)
+//         i += 1
+//     else:
+//         print("else ran")
 ::tpystd::tpy::Poll<::std::monostate> __coro_normal_exit::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -40,14 +45,11 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         if (__await_lift_0) {
-            // print("iter", i)
             std::cout << "iter" << " " << i << "\n";
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;
             continue;
         } else {
-            // print("else ran")
             std::cout << "else ran" << "\n";
             __state = S_JOIN_1;
             continue;
@@ -55,7 +57,6 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
     }
     case S_JOIN_0: {
         if (true) {
-            // while await below(i, 3):
             __sub_0.emplace(::tpy::BigInt(i), ::tpy::BigInt(3));
             __state = S_RESUME_0;
             continue;
@@ -80,10 +81,17 @@ __coro_normal_exit normal_exit() {
 }
 
 // async def break_exit() -> None:
+//     i = 0
+//     while await below(i, 10):
+//         if i == 2:
+//             break
+//         print("b-iter", i)
+//         i += 1
+//     else:
+//         print("else should NOT run")
 ::tpystd::tpy::Poll<::std::monostate> __coro_break_exit::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -98,15 +106,12 @@ __coro_normal_exit normal_exit() {
                 __state = S_JOIN_1;
                 continue;
             } else {
-                // print("b-iter", i)
                 std::cout << "b-iter" << " " << i << "\n";
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 __state = S_JOIN_0;
                 continue;
             }
         } else {
-            // print("else should NOT run")
             std::cout << "else should NOT run" << "\n";
             __state = S_JOIN_1;
             continue;
@@ -114,7 +119,6 @@ __coro_normal_exit normal_exit() {
     }
     case S_JOIN_0: {
         if (true) {
-            // while await below(i, 10):
             __sub_0.emplace(::tpy::BigInt(i), ::tpy::BigInt(10));
             __state = S_RESUME_0;
             continue;
@@ -139,10 +143,11 @@ __coro_break_exit break_exit() {
 }
 
 // async def main() -> None:
+//     await normal_exit()
+//     await break_exit()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await normal_exit()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -152,7 +157,6 @@ __coro_break_exit break_exit() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // await break_exit()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -176,16 +180,17 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # `while await cond(): ... else: ...` with an awaited condition: the else
+// # clause runs on normal (condition-false) exit and is skipped on break.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `while await cond(): ... else: ...` with an awaited condition: the else
-    // # clause runs on normal (condition-false) exit and is skipped on break.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

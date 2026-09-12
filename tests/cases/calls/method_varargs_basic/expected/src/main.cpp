@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Calculator(int32(100))
+//     print(c.sum_with_base())
+//     print(c.sum_with_base(int32(1)))
+//     print(c.sum_with_base(int32(1), int32(2), int32(3)))
+//     nums = [int32(10), int32(20), int32(30)]
+//     print(c.sum_with_base(*nums))
 void main() {
-    // c = Calculator(int32(100))
     Calculator c = Calculator(100);
-    // print(c.sum_with_base())
     std::cout << c.sum_with_base(::tpy::varargs<const int32_t>()) << "\n";
-    // print(c.sum_with_base(int32(1)))
     std::array<const int32_t, 1> __tmp_1{1};
     std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(__tmp_1)) << "\n";
-    // print(c.sum_with_base(int32(1), int32(2), int32(3)))
     std::array<const int32_t, 3> __tmp_2{1, 2, 3};
     std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(__tmp_2)) << "\n";
-    // nums = [int32(10), int32(20), int32(30)]
     std::array<int32_t, 3> nums = {10, 20, 30};
-    // print(c.sum_with_base(*nums))
     std::cout << c.sum_with_base(::tpy::varargs<const int32_t>(::tpy::as_span(nums))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

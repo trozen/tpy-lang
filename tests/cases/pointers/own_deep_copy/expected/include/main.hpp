@@ -12,7 +12,9 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_items(c: Container) -> Own[list[Point]]:
 std::vector<Point> take_items(const Container& c);
+// def main() -> None:
 void main();
 
 // class Point:

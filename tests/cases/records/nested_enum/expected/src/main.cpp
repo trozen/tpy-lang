@@ -47,30 +47,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     m = Message(Message.Kind.TEXT, 42)
+//     print(m.kind)
+//     print(m.data)
+//
+//     k: Message.Kind = Message.Kind.IMAGE
+//     print(k)
+//     print(k.name)
+//     print(k.value)
 void main() {
-    // m = Message(Message.Kind.TEXT, 42)
     Message m = Message(Message::Kind::TEXT, 42);
-    // print(m.kind)
     std::cout << m.kind << "\n";
-    // print(m.data)
     std::cout << m.data << "\n";
-    // k: Message.Kind = Message.Kind.IMAGE
     Message::Kind k = Message::Kind::IMAGE;
-    // print(k)
     std::cout << k << "\n";
-    // print(k.name)
     std::cout << ::tpy::EnumUtil<Message::Kind>::name(k) << "\n";
-    // print(k.value)
     std::cout << static_cast<int32_t>(k) << "\n";
 }
 
+// from enum import Enum, auto
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum, auto
-    // main()
     main();
 }
 

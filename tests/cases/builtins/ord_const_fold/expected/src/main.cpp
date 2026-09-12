@@ -5,34 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Constant-folded cases
+//     print(ord("A"))
+//     print(ord("0"))
+//     print(ord("\n"))
+//     print(ord(" "))
+//
+//     # Runtime call (variable, not a literal)
+//     s = "B"
+//     print(ord(s))
+//
+//     # Verify values match expected ASCII codes
+//     a: int32 = ord("z")
+//     print(a)
 void main() {
-    // # Constant-folded cases
-    // print(ord("A"))
     std::cout << 65 << "\n";
-    // print(ord("0"))
     std::cout << 48 << "\n";
-    // print(ord("\n"))
     std::cout << 10 << "\n";
-    // print(ord(" "))
     std::cout << 32 << "\n";
-    // # Runtime call (variable, not a literal)
-    // s = "B"
     std::string_view s = "B";
-    // print(ord(s))
     std::cout << ::tpy::ord_str(s) << "\n";
-    // # Verify values match expected ASCII codes
-    // a: int32 = ord("z")
     int32_t a = 122;
-    // print(a)
     std::cout << a << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

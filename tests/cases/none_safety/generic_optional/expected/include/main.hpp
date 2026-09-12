@@ -11,7 +11,9 @@ template<typename T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_val(x: Optional[int32]) -> Optional[int32]:
 std::optional<int32_t> maybe_val(std::optional<int32_t> x);
+// def main():
 void main();
 
 // class Container[T]:
@@ -21,18 +23,19 @@ struct Container {
     std::optional<T> _val;
 
     // def __init__(self, val: T | None):
+    //     self._val = val
     Container() = default;
     explicit Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
 
     // def get(self) -> T | None:
+    //     return self._val
     T* get() {
-        // return self._val
         return ::tpy::optional_to_ptr(this->_val);
     }
 
     // def set(self, val: T | None) -> None:
+    //     self._val = val
     void set(::tpy::opt_cparam_t<T> val) {
-        // self._val = val
         this->_val = ::tpy::to_opt_storage<std::optional<T>>(val);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";

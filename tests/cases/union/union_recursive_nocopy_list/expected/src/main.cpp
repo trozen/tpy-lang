@@ -5,31 +5,34 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     items: list[Item] = [Heavy(1), Light(2), Heavy(3)]
+//     print(len(items))
+//
+//     single: list[Item] = [Light(42)]
+//     print(len(single))
+//
+//     empty: list[Item] = []
+//     print(len(empty))
 void main() {
-    // items: list[Item] = [Heavy(1), Light(2), Heavy(3)]
     std::vector<Item> items = ::tpy::make_vector<Item>(Heavy(1), Light(2), Heavy(3));
-    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    // single: list[Item] = [Light(42)]
     std::vector<Item> single = ::tpy::make_vector<Item>(Light(42));
-    // print(len(single))
     std::cout << ::tpy::__len__(single) << "\n";
-    // empty: list[Item] = []
     std::vector<Item> empty = std::vector<Item>{};
-    // print(len(empty))
     std::cout << ::tpy::__len__(empty) << "\n";
 }
 
+// # List literal with non-copyable union elements.
+// # @nocopy makes Heavy move-only, so brace-init (std::initializer_list)
+// # won't work -- codegen must use make_vector (reserve + emplace_back).
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # List literal with non-copyable union elements.
-    // # @nocopy makes Heavy move-only, so brace-init (std::initializer_list)
-    // # won't work -- codegen must use make_vector (reserve + emplace_back).
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

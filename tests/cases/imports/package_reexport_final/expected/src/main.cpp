@@ -5,37 +5,38 @@ namespace tpyapp::main {
 
 
 // def banner(prefix: str = VERSION) -> str:
+//     return prefix
 std::string banner(std::string_view prefix) {
-    // return prefix
     return std::string(prefix);
 }
 
 // def cap(n: int32 = LIMIT) -> int32:
+//     return n
 int32_t cap(int32_t n) {
-    // return n
     return n;
 }
 
 // def main() -> None:
+//     print(banner())
+//     print(banner("custom"))
+//     print(cap())
+//     print(cap(int32(3)))
 void main() {
-    // print(banner())
     std::cout << banner() << "\n";
-    // print(banner("custom"))
     std::cout << banner("custom") << "\n";
-    // print(cap())
     std::cout << cap() << "\n";
-    // print(cap(int32(3)))
     std::cout << cap(3) << "\n";
 }
 
+// from pkg import VERSION, LIMIT
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from pkg import VERSION, LIMIT
     ::tpyapp::pkg::__tpy_init();
-    // main()
     main();
 }
 

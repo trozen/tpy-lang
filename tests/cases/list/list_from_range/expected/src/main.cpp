@@ -3,25 +3,23 @@
 
 namespace tpyapp::main {
 
-// nums = list(range(5))
 std::vector<int32_t>* nums{};
-// nums2 = list(range(2, 7))
 std::vector<int32_t>* nums2{};
 
+// nums = list(range(5))
+// print(nums)
+// nums2 = list(range(2, 7))
+// print(nums2)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // nums = list(range(5))
     static std::vector<int32_t> __global_slot_1 = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5));
     nums = &__global_slot_1;
-    // print(nums)
     std::cout << ::tpy::ListPrinter((*nums)) << "\n";
-    // nums2 = list(range(2, 7))
     static std::vector<int32_t> __global_slot_2 = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(2, 7));
     nums2 = &__global_slot_2;
-    // print(nums2)
     std::cout << ::tpy::ListPrinter((*nums2)) << "\n";
 }
 

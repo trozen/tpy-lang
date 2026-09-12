@@ -10,14 +10,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def basic_write_read() -> None:
 void basic_write_read();
+// def initial_value_and_overwrite() -> None:
 void initial_value_and_overwrite();
+// def seek_then_read() -> None:
 void seek_then_read();
+// def readline_iteration() -> None:
 void readline_iteration();
+// def for_iter() -> None:
 void for_iter();
+// def context_manager() -> None:
 void context_manager();
+// def closed_raises() -> None:
 void closed_raises();
+// def truncate_basic() -> None:
 void truncate_basic();
+// def main() -> None:
 void main();
 
 void __tpy_init();

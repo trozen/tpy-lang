@@ -5,85 +5,85 @@ namespace tpyapp::main {
 
 
 // def make(n: int) -> Own[list[int]]:
+//     out: list[int] = []
+//     for i in range(n):
+//         out.append(i)
+//     return out
 std::vector<::tpy::BigInt> make(const ::tpy::BigInt& n) {
-    // out: list[int] = []
     std::vector<::tpy::BigInt> out = std::vector<::tpy::BigInt>{};
-    // for i in range(n):
     ::tpy::BigInt __stop_0 = n;
     for (::tpy::BigInt i = 0; i < __stop_0; ++i) {
-        // out.append(i)
         out.push_back(i);
     }
-    // return out
     return out;
 }
 
 // def other(n: int) -> Own[list[int]]:
+//     out: list[int] = [n]
+//     return out
 std::vector<::tpy::BigInt> other(const ::tpy::BigInt& n) {
-    // out: list[int] = [n]
     std::vector<::tpy::BigInt> out = {n};
-    // return out
     return out;
 }
 
 // def counts() -> Own[dict[int, int]]:
+//     d: dict[int, int] = {1: 1}
+//     return d
 ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> counts() {
-    // d: dict[int, int] = {1: 1}
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>({{::tpy::BigInt(1), ::tpy::BigInt(1)}});
-    // return d
     return d;
 }
 
 // def push(b: bytearray, v: int) -> None:
+//     b.append(v)
 void push(::tpy::ByteArray& b, const ::tpy::BigInt& v) {
-    // b.append(v)
     b.push_back((v).to_fixed_check<uint8_t>());
 }
 
 // def main():
+//     # First bind fills `__slot_1`, the reseat fills the optional `__slot_2`;
+//     # the append after it proves the reseated local is the live container.
+//     r = make(3)  # tpyc: ok
+//     print(len(r))
+//     r = other(7)  # tpyc: ok
+//     r.append(9)
+//     print(len(r), r)
+//     d = counts()  # tpyc: ok
+//     d = counts()
+//     d[2] = 2
+//     print(len(d))
+//     ba = bytearray(b"ab")
+//     ba = bytearray(b"cd")  # tpyc: ok
+//     push(ba, 99)  # the param aliases the reseated buffer
+//     print(len(ba), bytes(ba))
 void main() {
     std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::optional<::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>> __slot_4;
     std::optional<::tpy::ByteArray> __slot_6;
-    // # First bind fills `__slot_1`, the reseat fills the optional `__slot_2`;
-    // # the append after it proves the reseated local is the live container.
-    // r = make(3)  # tpyc: ok
     std::vector<::tpy::BigInt> __slot_1 = make(::tpy::BigInt(3));
     std::vector<::tpy::BigInt>* r = &__slot_1;
-    // print(len(r))
     std::cout << ::tpy::__len__((*r)) << "\n";
-    // r = other(7)  # tpyc: ok
     r = &*(__slot_2 = other(::tpy::BigInt(7)));
-    // r.append(9)
     r->push_back(9);
-    // print(len(r), r)
     std::cout << ::tpy::__len__((*r)) << " " << ::tpy::ListPrinter((*r)) << "\n";
-    // d = counts()  # tpyc: ok
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __slot_3 = counts();
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>* d = &__slot_3;
-    // d = counts()
     d = &*(__slot_4 = counts());
-    // d[2] = 2
     ::tpy::__setitem__((*d), 2, ::tpy::BigInt(2));
-    // print(len(d))
     std::cout << ::tpy::__len__((*d)) << "\n";
-    // ba = bytearray(b"ab")
     ::tpy::ByteArray __slot_5 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::ByteArray* ba = &__slot_5;
-    // ba = bytearray(b"cd")  # tpyc: ok
     ba = &*(__slot_6 = ::tpy::ByteArray(::tpy::bytes_literal("cd", 2)));
-    // push(ba, 99)  # the param aliases the reseated buffer
     push((*ba), ::tpy::BigInt(99));
-    // print(len(ba), bytes(ba))
     std::cout << ::tpy::__len__((*ba)) << " " << ::tpy::BytesPrinter(::tpy::Bytes((*ba))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

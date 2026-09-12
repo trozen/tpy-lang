@@ -13,12 +13,16 @@ struct __gen_sums;
 struct __gen_firsts;
 struct __gen_multi;
 
+// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 __gen_sums sums(std::vector<std::tuple<int32_t, int32_t>>& pairs);
+// def firsts(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 __gen_firsts firsts(std::vector<std::tuple<int32_t, int32_t>>& pairs);
+// def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
 __gen_multi multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std::tuple<int32_t, int32_t>>& p2);
+// def main():
 void main();
 
-// Generator: sums
+// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& pairs;
@@ -47,7 +51,7 @@ struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     }
 };
 
-// Generator: firsts
+// def firsts(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_firsts : public ::tpy::next_iter_mixin<__gen_firsts, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& pairs;
@@ -74,7 +78,7 @@ struct __gen_firsts : public ::tpy::next_iter_mixin<__gen_firsts, int32_t> {
     }
 };
 
-// Generator: multi
+// def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
 struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& p1;

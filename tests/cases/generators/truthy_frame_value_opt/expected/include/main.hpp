@@ -17,12 +17,19 @@ struct __gen_not_form;
 struct __gen_while_suspends;
 struct __gen_frame_local;
 
+// def branch_suspends(v: int32 | None) -> Iterator[int32]:
 __gen_branch_suspends branch_suspends(std::optional<int32_t> v);
+// def branch_no_suspend(v: int32 | None) -> Iterator[int32]:
 __gen_branch_no_suspend branch_no_suspend(std::optional<int32_t> v);
+// def not_form(v: int32 | None) -> Iterator[int32]:
 __gen_not_form not_form(std::optional<int32_t> v);
+// def while_suspends(v: int32 | None) -> Iterator[int32]:
 __gen_while_suspends while_suspends(std::optional<int32_t> v);
+// def frame_local(b: Box) -> Iterator[int32]:
 __gen_frame_local frame_local(Box& b);
+// def drive(label: str, v: int32 | None) -> None:
 void drive(std::string_view label, std::optional<int32_t> v);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -41,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// Generator: branch_suspends
+// def branch_suspends(v: int32 | None) -> Iterator[int32]:
 struct __gen_branch_suspends : public ::tpy::next_iter_mixin<__gen_branch_suspends, int32_t> {
     int32_t __state;
     std::optional<int32_t> v;
@@ -65,7 +72,7 @@ struct __gen_branch_suspends : public ::tpy::next_iter_mixin<__gen_branch_suspen
     }
 };
 
-// Generator: branch_no_suspend
+// def branch_no_suspend(v: int32 | None) -> Iterator[int32]:
 struct __gen_branch_no_suspend : public ::tpy::next_iter_mixin<__gen_branch_no_suspend, int32_t> {
     int32_t __state;
     std::optional<int32_t> v;
@@ -88,7 +95,7 @@ struct __gen_branch_no_suspend : public ::tpy::next_iter_mixin<__gen_branch_no_s
     }
 };
 
-// Generator: not_form
+// def not_form(v: int32 | None) -> Iterator[int32]:
 struct __gen_not_form : public ::tpy::next_iter_mixin<__gen_not_form, int32_t> {
     int32_t __state;
     std::optional<int32_t> v;
@@ -112,7 +119,7 @@ struct __gen_not_form : public ::tpy::next_iter_mixin<__gen_not_form, int32_t> {
     }
 };
 
-// Generator: while_suspends
+// def while_suspends(v: int32 | None) -> Iterator[int32]:
 struct __gen_while_suspends : public ::tpy::next_iter_mixin<__gen_while_suspends, int32_t> {
     int32_t __state;
     std::optional<int32_t> v;
@@ -136,7 +143,7 @@ struct __gen_while_suspends : public ::tpy::next_iter_mixin<__gen_while_suspends
     }
 };
 
-// Generator: frame_local
+// def frame_local(b: Box) -> Iterator[int32]:
 struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int32_t> {
     int32_t __state;
     Box& b;
@@ -163,13 +170,19 @@ struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int3
 
 
 // def __init__(self, v: int32 | None) -> None:
+//     self.f = v
 inline Box::Box(std::optional<int32_t> v) : f(v) {}
+// def peephole_while(v: int32 | None) -> Iterator[int32]:
+//     # The while IS the last statement -> simple-generator lambda peephole,
+//     # a separate condition renderer from the CFG one above.
+//     while v:  # tpyc: warning(/Truthiness check on optional value/)
+//         yield 1
+//         v = None
 inline auto peephole_while(std::optional<int32_t> v) {
     return ::tpy::make_generator<int32_t>(
         [v]() mutable -> std::optional<int32_t> {
             while (::tpy::is_truthy(v)) {
                 auto __val = 1;
-                // v = None
                 v = std::nullopt;
                 return std::optional<int32_t>(__val);
             }

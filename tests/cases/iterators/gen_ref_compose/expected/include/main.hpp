@@ -11,8 +11,11 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity(p: Point) -> Point:
 Point& identity(Point& p);
+// def double(v: int32) -> int32:
 int32_t double_(int32_t v);
+// def main() -> None:
 void main();
 
 // class Point:
@@ -38,13 +41,18 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __str__(self) -> str:
+//     return f"({self.x}, {self.y})"
 inline std::string Point::__str__() const {
-    // return f"({self.x}, {self.y})"
     return std::format("({}, {})", this->x, this->y);
 }
+// def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
+//     for x in it:
+//         yield fn(x)
 template<typename T, typename U, ::tpystd::typing::Iterable<T> T_it, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
@@ -64,9 +72,13 @@ inline auto my_map(__F0&& fn, T_it& it) {
     );
 }
 
+// def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
+//     i: int32 = 0
+//     for x in it:
+//         yield (i, x)
+//         i += 1
 template<typename T, ::tpystd::typing::Iterable<T> T_it>
 inline auto my_enumerate(T_it& it) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
         [&it, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(it))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
@@ -76,7 +88,6 @@ inline auto my_enumerate(T_it& it) {
             {
                 auto&& x = ::tpy::unwrap_ref(*__r);
                 auto __val = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(__val);
             }

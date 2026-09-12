@@ -5,14 +5,32 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//
+//     q: Source | None = None
+//     try:
+//         q = h.view()
+//     except E:
+//         print("error")
+//     if q is not None:
+//         q.items.append(4)
+//     print(len(h.src.items))
+//
+//     v = Source()
+//     try:
+//         v = h.view()
+//     except E:
+//         print("error")
+//     v.items.append(5)
+//     print(len(h.src.items))
+//
+//     h.grab()
+//     print(len(h.dest.items))
+//     print(len(h.src.items))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // q: Source | None = None
     Source* q = nullptr;
-    // try:
     {
-        // q = h.view()
         {
             auto __try_tmp_4 = h.view();
             if (!__try_tmp_4.has_value()) goto __except_3;
@@ -21,23 +39,16 @@ void main() {
         goto __after_try_3;
         // except E:
         __except_3:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_3:;
     }
-    // if q is not None:
     if ((q != nullptr)) {
-        // q.items.append(4)
         q->items.push_back(4);
     }
-    // print(len(h.src.items))
     std::cout << ::tpy::__len__(h.src.items) << "\n";
-    // v = Source()
     Source __slot_2 = Source();
     Source* v = &__slot_2;
-    // try:
     {
-        // v = h.view()
         {
             auto __try_tmp_6 = h.view();
             if (!__try_tmp_6.has_value()) goto __except_5;
@@ -46,28 +57,22 @@ void main() {
         goto __after_try_5;
         // except E:
         __except_5:;
-        // print("error")
         std::cout << "error" << "\n";
         __after_try_5:;
     }
-    // v.items.append(5)
     v->items.push_back(5);
-    // print(len(h.src.items))
     std::cout << ::tpy::__len__(h.src.items) << "\n";
-    // h.grab()
     h.grab();
-    // print(len(h.dest.items))
     std::cout << ::tpy::__len__(h.dest.items) << "\n";
-    // print(len(h.src.items))
     std::cout << ::tpy::__len__(h.src.items) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

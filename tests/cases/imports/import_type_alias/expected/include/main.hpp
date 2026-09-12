@@ -11,6 +11,7 @@ extern int32_t x;
 extern char ch;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(n: I, c: C) -> None:
 void greet(int32_t n, char c);
 
 void __tpy_init();

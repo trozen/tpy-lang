@@ -11,8 +11,11 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def free_fn() -> int32:
 int32_t free_fn();
+// def skipped() -> None:
 void skipped();
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -35,16 +38,19 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self) -> None:
+//     # comment before a constructor docstring
+//     """Constructor docstring."""
+//     self.n = 0
 inline Counter::Counter() : n(0) {
-    // # comment before a constructor docstring
 }
 
 // def bump(self) -> int32:
+//     # comment before a method docstring
+//     """Method docstring."""
+//     self.n += 1
+//     return self.n
 inline int32_t Counter::bump() {
-    // # comment before a method docstring
-    // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
-    // return self.n
     return this->n;
 }
 void __tpy_init();

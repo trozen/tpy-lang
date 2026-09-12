@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def add_one(n: int) -> int:
+//     return n + 1
 ::tpy::BigInt add_one(const ::tpy::BigInt& n) {
-    // return n + 1
     return ((n) + (::tpy::BigInt(1)));
 }
 
 // def main() -> None:
+//     a: Any = 5
+//     print(add_one(a))
 void main() {
-    // a: Any = 5
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(5));
-    // print(add_one(a))
     std::cout << add_one(::tpy::any_cast_or_panic<::tpy::BigInt>(a)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

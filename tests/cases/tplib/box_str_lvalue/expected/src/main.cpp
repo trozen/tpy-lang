@@ -5,33 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = "world"
+//     b = Box(s)
+//     print(b.get())
+//
+//     t: str = "hello"
+//     b2 = Box(t)
+//     print(b2.get())
 void main() {
-    // s = "world"
     std::string_view s = "world";
-    // b = Box(s)
     std::string_view __tmp_1{s};
     ::tpystd::tplib::box::Box<std::string_view> b = ::tpystd::tplib::box::Box<std::string_view>(std::move(__tmp_1));
-    // print(b.get())
     std::cout << b.get() << "\n";
-    // t: str = "hello"
     std::string_view t = "hello";
-    // b2 = Box(t)
     std::string_view __tmp_2{t};
     ::tpystd::tplib::box::Box<std::string_view> b2 = ::tpystd::tplib::box::Box<std::string_view>(std::move(__tmp_2));
-    // print(b2.get())
     std::cout << b2.get() << "\n";
 }
 
+// # Regression: Box(s) on a str lvalue used to crash codegen with
+// # `Internal error: PendingStrType should be resolved before codegen`.
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: Box(s) on a str lvalue used to crash codegen with
-    // # `Internal error: PendingStrType should be resolved before codegen`.
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

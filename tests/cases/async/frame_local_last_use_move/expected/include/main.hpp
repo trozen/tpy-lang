@@ -15,10 +15,12 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_collect;
 struct __coro_amain;
 
+// async def collect(n: int) -> int:
 __coro_collect collect(::tpy::BigInt n);
+// async def amain() -> None:
 __coro_amain amain();
 
-// Async coroutine: collect
+// async def collect(n: int) -> int:
 struct __coro_collect {
     int32_t __state;
     bool __cancel_pending;
@@ -46,7 +48,7 @@ struct __coro_collect {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;

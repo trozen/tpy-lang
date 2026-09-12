@@ -12,7 +12,9 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_point(p: Point) -> None:
 void print_point(const Point& p);
+// def test() -> None:
 void test();
 
 // class Point:
@@ -40,20 +42,21 @@ struct Box {
     T _value;
 
     // def __init__(self, value: T) -> None:
+    //     self._value = copy(value)
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> value) : _value(value) {}
 
     // @auto_readonly
     // def __deref__(self) -> T:
+    //     return self._value
     ::tpy::val_or_ref_t<T> __deref__() {
-        // return self._value
         return this->_value;
     }
 
     // @auto_readonly
     // def __deref__(self) -> T:
+    //     return self._value
     ::tpy::val_or_cref_t<T> __deref__() const {
-        // return self._value
         return this->_value;
     }
 
@@ -75,6 +78,8 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

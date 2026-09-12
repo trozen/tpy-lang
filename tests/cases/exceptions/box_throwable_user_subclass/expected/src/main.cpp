@@ -5,25 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     try:
+//         raise ParseError("unexpected token", 42)
+//     except BaseException as e:
+//         stored: Box[Throwable] = Box(e.clone())
+//         try:
+//             raise stored
+//         except ParseError as pe:
+//             print("caught as ParseError:", pe.message, pe.line)
+//         except BaseException:
+//             print("caught as BaseException -- slicing!")
 void main() {
-    // try:
     {
         try {
-            // raise ParseError("unexpected token", 42)
             throw ParseError("unexpected token", 42);
         } catch (const ::tpy::BaseException& e) {
-            // stored: Box[Throwable] = Box(e.clone())
             ::tpystd::tplib::box::Box<::tpy::Throwable> stored = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
-            // try:
             {
                 try {
-                    // raise stored
                     stored.__deref__().__raise__();
                 } catch (const ParseError& pe) {
-                    // print("caught as ParseError:", pe.message, pe.line)
                     std::cout << "caught as ParseError:" << " " << pe.message << " " << pe.line << "\n";
                 } catch (const ::tpy::BaseException&) {
-                    // print("caught as BaseException -- slicing!")
                     std::cout << "caught as BaseException -- slicing!" << "\n";
                 }
             }
@@ -31,22 +34,23 @@ void main() {
     }
 }
 
+// # Phase 20 invariant: dynamic-type preservation also works for a
+// # user-defined exception subclass. Native-class coverage is in
+// # box_throwable_preserves_dynamic_type; this case verifies the same
+// # behavior reaches user-extension classes via the same mechanism.
+// #
+// # Pre-Stage-4: BaseException is still @native; user subclass inherits the
+// # C++ ctor + macro-emitted clone()/__raise__() through the existing
+// # inheritance chain.
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Phase 20 invariant: dynamic-type preservation also works for a
-    // # user-defined exception subclass. Native-class coverage is in
-    // # box_throwable_preserves_dynamic_type; this case verifies the same
-    // # behavior reaches user-extension classes via the same mechanism.
-    // #
-    // # Pre-Stage-4: BaseException is still @native; user subclass inherits the
-    // # C++ ctor + macro-emitted clone()/__raise__() through the existing
-    // # inheritance chain.
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

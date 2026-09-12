@@ -12,6 +12,7 @@ struct Bumper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // class Node:
@@ -52,18 +53,19 @@ inline std::ostream& operator<<(std::ostream& os, const Bumper& obj) {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self):
+//     pass
 inline Bumper::Bumper() {
-    // pass
 }
 
 // def __call__(self, x: Node) -> int32:
+//     x.v += 1
+//     return x.v
 inline int32_t Bumper::__call__(Node& x) const {
-    // x.v += 1
     x.v = ::tpy::add_check<int32_t>(x.v, 1);
-    // return x.v
     return x.v;
 }
 void __tpy_init();

@@ -5,14 +5,14 @@ namespace tpyapp::helper {
 
 
 // def triple(x: int32) -> int32:
+//     return x * 3
 int32_t triple(int32_t x) {
-    // return x * 3
     return (::tpy::mul_check<int32_t>(x, 3));
 }
 
 // def shout(s: str) -> str:
+//     return s.upper()
 std::string shout(std::string_view s) {
-    // return s.upper()
     return ::tpy::str_upper(s);
 }
 

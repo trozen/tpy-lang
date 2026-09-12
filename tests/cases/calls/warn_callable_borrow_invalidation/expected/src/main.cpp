@@ -5,73 +5,73 @@ namespace tpyapp::main {
 
 
 // def mutate(xs: list[P]) -> None:
+//     xs.append(P(99))
 void mutate(std::vector<P>& xs) {
-    // xs.append(P(99))
     xs.push_back(P(99));
 }
 
 // def use_callable(f: Callable[[list[P]], None]) -> None:
+//     xs: list[P] = [P(1), P(2)]
+//     p = xs[0]
+//     print(p.v)
+//     f(xs)  # tpyc: warning(/Passing borrowed container/)
+//     print(len(xs))
 void use_callable(const std::function<void(std::vector<P>&)>& f) {
-    // xs: list[P] = [P(1), P(2)]
     std::vector<P> xs = {P(1), P(2)};
-    // p = xs[0]
     P& p = ::tpy::__getitem__(xs, 0);
-    // print(p.v)
     std::cout << p.v << "\n";
-    // f(xs)  # tpyc: warning(/Passing borrowed container/)
     f(xs);
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def use_local() -> None:
+//     f: Callable[[list[P]], None] = mutate
+//     xs: list[P] = [P(1), P(2)]
+//     p = xs[0]
+//     print(p.v)
+//     f(xs)  # tpyc: warning(/Passing borrowed container/)
+//     print(len(xs))
 void use_local() {
-    // f: Callable[[list[P]], None] = mutate
     std::function<void(std::vector<P>&)> f = mutate;
-    // xs: list[P] = [P(1), P(2)]
     std::vector<P> xs = {P(1), P(2)};
-    // p = xs[0]
     P& p = ::tpy::__getitem__(xs, 0);
-    // print(p.v)
     std::cout << p.v << "\n";
-    // f(xs)  # tpyc: warning(/Passing borrowed container/)
     f(xs);
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def use_direct() -> None:
+//     xs: list[P] = [P(1), P(2)]
+//     p = xs[0]
+//     print(p.v)
+//     mutate(xs)  # tpyc: warning(/Passing borrowed container/)
+//     print(len(xs))
 void use_direct() {
-    // xs: list[P] = [P(1), P(2)]
     std::vector<P> xs = {P(1), P(2)};
-    // p = xs[0]
     P& p = ::tpy::__getitem__(xs, 0);
-    // print(p.v)
     std::cout << p.v << "\n";
-    // mutate(xs)  # tpyc: warning(/Passing borrowed container/)
     mutate(xs);
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 // def main() -> None:
+//     use_fn(mutate)
+//     use_callable(mutate)
+//     use_local()
+//     use_direct()
 void main() {
-    // use_fn(mutate)
     use_fn(mutate);
-    // use_callable(mutate)
     use_callable(mutate);
-    // use_local()
     use_local();
-    // use_direct()
     use_direct();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

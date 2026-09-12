@@ -15,12 +15,16 @@ struct __coro_add;
 struct __coro_compute;
 struct __coro_main;
 
+// async def add(x: int32, y: int32) -> int32:
 __coro_add add(int32_t x, int32_t y);
+// async def compute() -> int32:
 __coro_compute compute();
+// async def main() -> None:
 __coro_main main();
+// def entry() -> None:
 void entry();
 
-// Async coroutine: add
+// async def add(x: int32, y: int32) -> int32:
 struct __coro_add {
     int32_t __state;
     bool __cancel_pending;
@@ -43,7 +47,7 @@ struct __coro_add {
     }
 };
 
-// Async coroutine: compute
+// async def compute() -> int32:
 struct __coro_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -70,7 +74,7 @@ struct __coro_compute {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;

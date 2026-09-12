@@ -3,31 +3,29 @@
 
 namespace tpyapp::main {
 
-// arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
 std::array<int32_t, 3>* arr{};
-// base: Ptr[int32] = unsafe_ptr(arr)
 int32_t* base{};
-// delta: int32 = int32(1)
 int32_t delta{};
-// p1: Ptr[int32] = unsafe_ptr_add(base, delta)  # tpyc: ok
 int32_t* p1{};
 
+// from tpy.unsafe import unsafe_ptr, unsafe_ptr_add, unsafe_load
+//
+// arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
+// base: Ptr[int32] = unsafe_ptr(arr)
+// delta: int32 = int32(1)
+//
+// p1: Ptr[int32] = unsafe_ptr_add(base, delta)  # tpyc: ok
+// print(unsafe_load(p1, 0))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_ptr, unsafe_ptr_add, unsafe_load
-    // arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
     static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
     arr = &__global_slot_1;
-    // base: Ptr[int32] = unsafe_ptr(arr)
     base = (*arr).data();
-    // delta: int32 = int32(1)
     delta = 1;
-    // p1: Ptr[int32] = unsafe_ptr_add(base, delta)  # tpyc: ok
     p1 = (base + static_cast<int64_t>(delta));
-    // print(unsafe_load(p1, 0))
     std::cout << p1[0] << "\n";
 }
 

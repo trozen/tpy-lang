@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_bump;
 
+// def bump(d: dict[int32, C]) -> Iterator[int32]:
 __gen_bump bump(::tpy::ordered_map<int32_t, C>& d);
+// def main():
 void main();
 
 // class C:
@@ -32,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     return os;
 }
 
-// Generator: bump
+// def bump(d: dict[int32, C]) -> Iterator[int32]:
 struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
     int32_t __state;
     ::tpy::ordered_map<int32_t, C>& d;
@@ -63,14 +65,18 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
 
 
 // def __init__(self, v: int32):
+//     self.v = v
 inline C::C(int32_t v) : v(v) {}
+// def pairs(d: dict[int32, C]) -> Iterator[int32]:
+//     for kv in d.items():
+//         kv[1].v = kv[1].v + 10
+//         yield kv[0]
 inline auto pairs(::tpy::ordered_map<int32_t, C>& d) {
     return ::tpy::make_generator<int32_t>(
         [&d, __src = std::optional<std::decay_t<decltype(::tpy::dict_items(d))>>(), __beg = decltype((::tpy::dict_items(d)).begin())(), __end = decltype((::tpy::dict_items(d)).begin())(), __init = false]() mutable -> std::optional<int32_t> {
             if (!__init) { __src.emplace(::tpy::dict_items(d)); __beg = (*__src).begin(); __end = (*__src).end(); __init = true; }
             if (__beg != __end) {
                 std::tuple<int32_t, C&> kv = *__beg++;
-                // kv[1].v = kv[1].v + 10
                 std::get<1>(kv).v = (::tpy::add_check<int32_t>(std::get<1>(kv).v, 10));
                 auto __val = std::get<0>(kv);
                 return std::optional<int32_t>(__val);

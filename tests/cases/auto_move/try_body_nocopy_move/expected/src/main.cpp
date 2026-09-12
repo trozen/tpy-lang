@@ -5,36 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     boxes: list[Box[int32]] = []
+//     try:
+//         a = Box(7)
+//         boxes.append(a)
+//     except Exception:
+//         print("e")
+//     print(len(boxes))
 void main() {
-    // boxes: list[Box[int32]] = []
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = std::vector<::tpystd::tplib::box::Box<int32_t>>{};
-    // try:
     {
         try {
-            // a = Box(7)
             ::tpystd::tplib::box::Box<int32_t> a = ::tpystd::tplib::box::Box<int32_t>(7);
-            // boxes.append(a)
             boxes.push_back(std::move(a));
         } catch (const ::tpy::Exception&) {
-            // print("e")
             std::cout << "e" << "\n";
         }
     }
-    // print(len(boxes))
     std::cout << ::tpy::__len__(boxes) << "\n";
 }
 
+// # A @nocopy local at its genuine last use inside a `try` body is moved -- not
+// # read on any exception path, so the try body acts like an ordinary block.
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @nocopy local at its genuine last use inside a `try` body is moved -- not
-    // # read on any exception path, so the try body acts like an ordinary block.
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

@@ -22,22 +22,39 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_copies;
 struct __coro_copy_in_task;
 
+// def bump(c: Own[Cell]) -> Own[Cell]:
 Cell bump(Cell&& c);
+// def sec_free(c: readonly[Cell]) -> None:
 void sec_free(const Cell& c);
+// def sec_ctor(c: readonly[Cell]) -> None:
 void sec_ctor(const Cell& c);
+// def sec_generic(c: readonly[Cell]) -> None:
 void sec_generic(const Cell& c);
+// def gen_copies(c: readonly[Cell]) -> Iterator[int32]:
 __gen_gen_copies gen_copies(const Cell& c);
+// def sec_generator(c: readonly[Cell]) -> None:
 void sec_generator(const Cell& c);
+// async def copy_in_task(c: readonly[Cell]) -> int32:
 __coro_copy_in_task copy_in_task(const Cell& c);
+// def sec_async(c: readonly[Cell]) -> None:
 void sec_async(const Cell& c);
+// def sec_comprehension(cs: readonly[list[Cell]]) -> None:
 void sec_comprehension(const std::vector<Cell>& cs);
+// def sec_closure(c: readonly[Cell]) -> None:
 void sec_closure(const Cell& c);
+// def sec_with(c: readonly[Cell]) -> None:
 void sec_with(const Cell& c);
+// def sec_try_finally(c: readonly[Cell]) -> None:
 void sec_try_finally(const Cell& c);
+// def ret_copy(c: readonly[Cell]) -> int32:
 std::expected<int32_t, Missing> ret_copy(const Cell& c);
+// def sec_error_return(c: readonly[Cell]) -> None:
 void sec_error_return(const Cell& c);
+// def sec_match(c: readonly[Cell], k: int32) -> None:
 void sec_match(const Cell& c, int32_t k);
+// def peek(h: readonly[Holder]) -> readonly[Cell]:
 const Cell& peek(const Holder& h);
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -97,20 +114,21 @@ struct GHolder {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
+    //     self.val = v
     GHolder() = default;
     explicit GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
+    //     return self.val
     ::tpy::val_or_ref_t<T> get() {
-        // return self.val
         return this->val;
     }
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
+    //     return self.val
     ::tpy::val_or_cref_t<T> get() const {
-        // return self.val
         return this->val;
     }
 
@@ -118,8 +136,8 @@ struct GHolder {
     // # return into an Own[T] constructor slot.
     // @readonly
     // def cloned(self) -> Own[GHolder[T]]:
+    //     return GHolder(copy(self.get()))  # tpyc: ok
     GHolder<T> cloned() const {
-        // return GHolder(copy(self.get()))  # tpyc: ok
         return GHolder<T>(T(this->get()));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GHolder";
@@ -164,7 +182,7 @@ inline std::ostream& operator<<(std::ostream& os, const Missing& obj) {
     return os;
 }
 
-// Async coroutine: copy_in_task
+// async def copy_in_task(c: readonly[Cell]) -> int32:
 struct __coro_copy_in_task {
     int32_t __state;
     bool __cancel_pending;
@@ -187,7 +205,7 @@ struct __coro_copy_in_task {
     }
 };
 
-// Generator: gen_copies
+// def gen_copies(c: readonly[Cell]) -> Iterator[int32]:
 struct __gen_gen_copies : public ::tpy::next_iter_mixin<__gen_gen_copies, int32_t> {
     int32_t __state;
     const Cell& c;
@@ -213,53 +231,55 @@ struct __gen_gen_copies : public ::tpy::next_iter_mixin<__gen_gen_copies, int32_
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, c: Own[Cell]) -> None:
+//     self.cell = c
 inline Holder::Holder(Cell&& c) : cell(std::move(c)) {}
 
 // @auto_readonly
 // def get(self) -> auto_readonly[Cell]:
+//     return self.cell
 inline Cell& Holder::get() {
-    // return self.cell
     return this->cell;
 }
 
 // @auto_readonly
 // def get(self) -> auto_readonly[Cell]:
+//     return self.cell
 inline const Cell& Holder::get() const {
-    // return self.cell
     return this->cell;
 }
 
 // # method: a readonly field read reaches the Own[Cell] slot via copy().
 // @readonly
 // def sec_method(self) -> None:
+//     d = bump(copy(self.cell))  # tpyc: ok
+//     print("method:", self.cell.n, d.n)
 inline void Holder::sec_method() const {
-    // d = bump(copy(self.cell))  # tpyc: ok
     Cell d = bump(Cell(this->cell));
-    // print("method:", self.cell.n, d.n)
     std::cout << "method:" << " " << this->cell.n << " " << d.n << "\n";
 }
 
 // # method: the source is an auto_readonly BORROW RETURN, not a field read.
 // @readonly
 // def sec_borrow_ret(self) -> None:
+//     d = bump(copy(self.get()))  # tpyc: ok
+//     print("borrow-ret:", self.get().n, d.n)
 inline void Holder::sec_borrow_ret() const {
-    // d = bump(copy(self.get()))  # tpyc: ok
     Cell d = bump(Cell(this->get()));
-    // print("borrow-ret:", self.get().n, d.n)
     std::cout << "borrow-ret:" << " " << this->get().n << " " << d.n << "\n";
 }
 
 // def __enter__(self) -> None:
+//     pass
 inline void Guard::__enter__() const {
-    // pass
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

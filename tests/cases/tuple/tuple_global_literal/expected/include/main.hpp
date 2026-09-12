@@ -11,6 +11,7 @@ extern std::tuple<int32_t, int32_t, int32_t, int32_t> t;
 extern std::tuple<int32_t, std::tuple<int32_t, int32_t>> t2;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 void __tpy_init();

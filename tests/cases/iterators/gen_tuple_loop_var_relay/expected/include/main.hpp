@@ -16,8 +16,11 @@ struct __gen_gen;
 struct __gen_relay_twice;
 struct __gen_Hub_relay;
 
+// def gen() -> Iterator[tuple[int32, Box]]:
 __gen_gen gen();
+// def relay_twice() -> Iterator[tuple[int32, Box]]:
 __gen_relay_twice relay_twice();
+// def main() -> None:
 void main();
 
 // class Box:
@@ -49,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Hub& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[tuple[int32, Box]]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, Box*>> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<std::tuple<int32_t, Box>>> items;
@@ -75,7 +78,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, 
     }
 };
 
-// Generator: relay_twice
+// def relay_twice() -> Iterator[tuple[int32, Box]]:
 struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std::tuple<int32_t, Box*>> {
     int32_t __state;
     std::tuple<int32_t, Box*> p;
@@ -101,7 +104,7 @@ struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std:
     }
 };
 
-// Generator: Hub.relay
+// def relay(self) -> Iterator[tuple[int32, Box]]:
 struct __gen_Hub_relay : public ::tpy::next_iter_mixin<__gen_Hub_relay, std::tuple<int32_t, Box*>> {
     int32_t __state;
     const Hub& __self;
@@ -134,7 +137,11 @@ inline __gen_Hub_relay Hub::relay() const {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
+// def relay() -> Iterator[tuple[int32, Box]]:
+//     for p in gen():
+//         yield p
 inline auto relay() {
     return ::tpy::make_generator<std::tuple<int32_t, Box*>>(
         [__src = std::optional<std::decay_t<decltype(gen())>>()]() mutable -> std::optional<std::tuple<int32_t, Box*>> {

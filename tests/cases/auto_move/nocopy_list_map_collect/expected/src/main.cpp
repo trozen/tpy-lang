@@ -5,53 +5,55 @@ namespace tpyapp::main {
 
 
 // def make_resource(x: int32) -> Own[Resource]:
+//     return Resource(x)
 Resource make_resource(int32_t x) {
-    // return Resource(x)
     return Resource(x);
 }
 
 // def make_pair(x: int32) -> Own[tuple[str, Resource]]:
+//     return (str(x), Resource(x))
 std::tuple<std::string, Resource> make_pair(int32_t x) {
-    // return (str(x), Resource(x))
     return std::tuple<std::string, Resource>{::tpy::fixed_to_str<int32_t>(x), Resource(x)};
 }
 
 // def main() -> None:
+//     vals: list[int32] = [int32(1), int32(2), int32(3)]
+//
+//     # list collect path
+//     result = list(map(make_resource, vals))  # tpyc: ok
+//     for r in result:
+//         print(r.val)
+//
+//     # dict collect path
+//     d = dict(map(make_pair, vals))  # tpyc: ok
+//     for k in d:
+//         print(k, d[k].val)
 void main() {
-    // vals: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> vals = {1, 2, 3};
-    // # list collect path
-    // result = list(map(make_resource, vals))  # tpyc: ok
     std::vector<Resource> result = ::tpy::construct<std::vector<Resource>>(::tpy::builtin_map<int32_t, Resource>(make_resource, vals));
-    // for r in result:
     auto& __obj_0 = result;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& r = *__beg_0;
-        // print(r.val)
         std::cout << r.val << "\n";
     }
-    // # dict collect path
-    // d = dict(map(make_pair, vals))  # tpyc: ok
     ::tpy::ordered_map<std::string, Resource> d = ::tpy::dict_construct<std::string, Resource>(::tpy::builtin_map<int32_t, std::tuple<std::string, Resource>>(make_pair, vals));
-    // for k in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // print(k, d[k].val)
         std::cout << k << " " << ::tpy::__getitem__(d, k).val << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

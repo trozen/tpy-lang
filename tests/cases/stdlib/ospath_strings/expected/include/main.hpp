@@ -27,7 +27,9 @@ inline auto& sep = ::tpystd::os::path::sep;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show2(pair: tuple[str, str]) -> None:
 void show2(const std::tuple<std::string, std::string>& pair);
+// def main():
 void main();
 
 void __tpy_init();

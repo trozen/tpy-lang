@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // async def main() -> None:
+//     xs = [5, 1]
+//     print((await combine(xs)).n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // xs = [5, 1]
         xs.emplace(std::array<int32_t, 2>{5, 1});
-        // print((await combine(xs)).n)
         __sub_0.emplace((*xs));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +20,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // print((await combine(xs)).n)
         std::cout << (*__await_lift_0).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -36,16 +35,17 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # Async function with a protocol-typed param (templated frame) holding
+// # multiple nested defs, one taking a reference-type param.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async function with a protocol-typed param (templated frame) holding
-    // # multiple nested defs, one taking a reference-type param.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

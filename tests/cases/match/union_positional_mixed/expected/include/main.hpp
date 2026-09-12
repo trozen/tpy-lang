@@ -12,7 +12,9 @@ struct Label;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(s: Point | Label) -> None:
 void describe(::tpy::Union<const Label*, const Point*> s);
+// def main() -> None:
 void main();
 
 // @dataclass

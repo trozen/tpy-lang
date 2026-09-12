@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def connect(**kwargs: Unpack[Options]) -> None:
+//     print(kwargs["host"])
+//     print(kwargs["port"])
 void connect(const Options& kwargs) {
-    // print(kwargs["host"])
     std::cout << kwargs.host << "\n";
-    // print(kwargs["port"])
     std::cout << kwargs.port << "\n";
 }
 
 // def wrapper(**kwargs: Unpack[Options]) -> None:
+//     print("forwarding...")
+//     connect(**kwargs)
 void wrapper(const Options& kwargs) {
-    // print("forwarding...")
     std::cout << "forwarding..." << "\n";
-    // connect(**kwargs)
     connect(kwargs);
 }
 
 // def main() -> None:
+//     wrapper(host="example.com", port=int32(443))
 void main() {
-    // wrapper(host="example.com", port=int32(443))
     Options __tmp_1 = Options("example.com", 443);
     wrapper(__tmp_1);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -6,24 +6,30 @@ namespace tpyapp::main {
 
 // # filter(None, iterable) filters falsy elements via truthiness
 // def main() -> None:
+//     # Filter falsy ints (0 is falsy)
+//     print(list(filter(None, [0, 1, 2, 0, 3])))
+//
+//     # Filter falsy strings (empty string is falsy)
+//     print(list(filter(None, ["", "hello", "", "world"])))
+//
+//     # Filter falsy bools
+//     print(list(filter(None, [True, False, True, False])))
+//
+//     # All truthy
+//     print(list(filter(None, [1, 2, 3])))
+//
+//     # All falsy
+//     print(list(filter(None, [0, 0, 0])))
+//
+//     # Lazy iteration
+//     for x in filter(None, [0, 1, 0, 2]):
+//         print(x)
 void main() {
-    // # Filter falsy ints (0 is falsy)
-    // print(list(filter(None, [0, 1, 2, 0, 3])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 5>{0, 1, 2, 0, 3}))) << "\n";
-    // # Filter falsy strings (empty string is falsy)
-    // print(list(filter(None, ["", "hello", "", "world"])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<std::string>>(::tpy::builtin_filter_truthy<std::string>(std::array<std::string, 4>{"", "hello", "", "world"}))) << "\n";
-    // # Filter falsy bools
-    // print(list(filter(None, [True, False, True, False])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<bool>>(::tpy::builtin_filter_truthy<bool>(std::array<bool, 4>{true, false, true, false}))) << "\n";
-    // # All truthy
-    // print(list(filter(None, [1, 2, 3])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 3>{1, 2, 3}))) << "\n";
-    // # All falsy
-    // print(list(filter(None, [0, 0, 0])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 3>{0, 0, 0}))) << "\n";
-    // # Lazy iteration
-    // for x in filter(None, [0, 1, 0, 2]):
     {
         auto __src_0 = ::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 4>{0, 1, 0, 2});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -31,18 +37,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

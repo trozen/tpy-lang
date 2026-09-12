@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def show(u: WithScalar | WithStr | Other) -> None:
+//     match u:
+//         case WithScalar(n=x):
+//             if x is not None:
+//                 print(x)
+//         case WithStr(s=t):
+//             if t is not None:
+//                 print("s=" + t)
+//         case Other(v=v):
+//             print(v)
 void show(::tpy::Union<const Other*, const WithScalar*, const WithStr*> u) {
-    // match u:
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
-    // case WithScalar(n=x):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& x = __case_0.n;
-        // if x is not None:
         if ((x.has_value())) {
-            // print(x)
             std::cout << ::tpy::print_optional_val(x) << "\n";
         }
         break;
     }
-    // case WithStr(s=t):
     case 2: {
         auto& __case_1 = *std::get<2>(__match_subject_1);
         auto& t = __case_1.s;
-        // if t is not None:
         if ((t.has_value())) {
-            // print("s=" + t)
             std::cout << (::tpy::str_concat("s=", (*t))) << "\n";
         }
         break;
     }
-    // case Other(v=v):
     case 0: {
         auto& __case_2 = *std::get<0>(__match_subject_1);
         auto v = __case_2.v;
-        // print(v)
         std::cout << v << "\n";
         break;
     }
@@ -43,24 +43,24 @@ void show(::tpy::Union<const Other*, const WithScalar*, const WithStr*> u) {
 }
 
 // def main() -> None:
+//     show(WithScalar(4))
+//     show(WithStr("hi"))
+//     show(Other(9))
 void main() {
-    // show(WithScalar(4))
     WithScalar __tmp_1 = WithScalar(4);
     show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_1});
-    // show(WithStr("hi"))
     WithStr __tmp_2 = WithStr("hi");
     show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_2});
-    // show(Other(9))
     Other __tmp_3 = Other(9);
     show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_3});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

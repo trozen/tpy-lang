@@ -12,7 +12,9 @@ template<::tpy::ValueType T> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def swap(p: Pair[int32]) -> Pair[int32]:
 Pair<int32_t> swap(Pair<int32_t> p);
+// def main() -> None:
 void main();
 
 // class Vec2(ValueType):
@@ -48,6 +50,8 @@ struct Pair {
     T second;
 
     // def __init__(self, first: T, second: T) -> None:
+    //     self.first = first
+    //     self.second = second
     Pair() = default;
     explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second) : first(first), second(second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -67,6 +71,8 @@ namespace tpyapp::main {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

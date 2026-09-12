@@ -5,16 +5,22 @@ namespace tpyapp::main {
 
 
 // async def capture_mutate() -> Own[Box]:
+//     b = Box()
+//
+//     def bump() -> None:
+//         nonlocal b
+//         b.n += 1
+//
+//     bump()
+//     await asyncio.sleep(0)
+//     bump()
+//     return b
 ::tpystd::tpy::Poll<Box> __coro_capture_mutate::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = Box()
         b.emplace(Box());
-        // def bump() -> None:
         // def bump: frame member
-        // bump()
         bump();
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -24,9 +30,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // bump()
         bump();
-        // return b
         __state = S_DONE;
         Box __tpy_async_ret = std::move((*b));
         return ::tpystd::tpy::Poll<Box>::ready(std::move(__tpy_async_ret));
@@ -37,8 +41,6 @@ namespace tpyapp::main {
 }
 
 void __coro_capture_mutate::bump() {
-    // nonlocal b
-    // b.n += 1
     (*b).n = ::tpy::add_check<int32_t>((*b).n, 1);
 }
 
@@ -48,16 +50,20 @@ __coro_capture_mutate capture_mutate() {
 }
 
 // async def across_await() -> int32:
+//     base = 100
+//
+//     def scaled(x: int32) -> int32:
+//         return x + base
+//
+//     first = scaled(1)
+//     await asyncio.sleep(0)
+//     return first + scaled(2)
 ::tpystd::tpy::Poll<int32_t> __coro_across_await::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // base = 100
         base = 100;
-        // def scaled(x: int32) -> int32:
         // def scaled: frame member
-        // first = scaled(1)
         first = scaled(1);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -67,7 +73,6 @@ __coro_capture_mutate capture_mutate() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return first + scaled(2)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(first, scaled(2)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -78,7 +83,6 @@ __coro_capture_mutate capture_mutate() {
 }
 
 int32_t __coro_across_await::scaled(int32_t x) {
-    // return x + base
     return (::tpy::add_check<int32_t>(x, base));
 }
 
@@ -88,18 +92,19 @@ __coro_across_await across_await() {
 }
 
 // def apply(f: Callable[[int32], int32], v: int32) -> int32:
+//     return f(v)
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
-    // return f(v)
     return f(v);
 }
 
 // async def lambda_capture(n: int32) -> int32:
+//     first = apply(lambda x: x + n, 1)  # tpyc: ok
+//     await asyncio.sleep(0)
+//     return first + apply(lambda x: x + n, 2)
 ::tpystd::tpy::Poll<int32_t> __coro_lambda_capture::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // first = apply(lambda x: x + n, 1)  # tpyc: ok
         first = apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -109,7 +114,6 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return first + apply(lambda x: x + n, 2)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(first, apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 2)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -126,10 +130,12 @@ __coro_lambda_capture lambda_capture(int32_t n) {
 }
 
 // async def main() -> None:
+//     print((await capture_mutate()).n)
+//     print(await across_await())
+//     print(await lambda_capture(10))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print((await capture_mutate()).n)
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -139,9 +145,7 @@ __coro_lambda_capture lambda_capture(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // print((await capture_mutate()).n)
         std::cout << (*__await_lift_0).n << "\n";
-        // print(await across_await())
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -151,9 +155,7 @@ __coro_lambda_capture lambda_capture(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await across_await())
         std::cout << __await_lift_1 << "\n";
-        // print(await lambda_capture(10))
         __sub_2.emplace(10);
         __state = S_RESUME_2;
         continue;
@@ -163,7 +165,6 @@ __coro_lambda_capture lambda_capture(int32_t n) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await lambda_capture(10))
         std::cout << __await_lift_2 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -179,16 +180,17 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # Nested defs in an async def are frame members: they capture frame-field
+// # locals (mutation visible after the call) and stay callable across awaits.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Nested defs in an async def are frame members: they capture frame-field
-    // # locals (mutation visible after the call) and stay callable across awaits.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

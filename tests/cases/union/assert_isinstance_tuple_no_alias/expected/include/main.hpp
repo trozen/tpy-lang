@@ -13,7 +13,9 @@ struct Gamma;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def probe(v: Alpha | Beta | Gamma) -> int32:
 int32_t probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*> v);
+// def main() -> None:
 void main();
 
 // class Alpha:
@@ -66,12 +68,15 @@ inline std::ostream& operator<<(std::ostream& os, const Gamma& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Alpha::Alpha(int32_t x) : x(x) {}
 
 // def __init__(self, y: int32) -> None:
+//     self.y = y
 inline Beta::Beta(int32_t y) : y(y) {}
 
 // def __init__(self, z: int32) -> None:
+//     self.z = z
 inline Gamma::Gamma(int32_t z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

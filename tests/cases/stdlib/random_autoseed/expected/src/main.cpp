@@ -5,51 +5,54 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Module-level seed() with no arg: re-seed from entropy.
+//     random.seed()
+//     r1: float = random.random()
+//     random.seed()
+//     r2: float = random.random()
+//     # Two independent entropy seeds will essentially never collide on
+//     # the first random() value (probability ~2^-53).
+//     print("auto_seed_distinct:", r1 != r2)
+//     print("in_unit:", 0.0 <= r1 < 1.0 and 0.0 <= r2 < 1.0)
+//
+//     # Random(None) constructor auto-seeds. Each instance independent.
+//     a: Random = Random(None)
+//     b: Random = Random(None)
+//     print("instance_distinct:", a.random() != b.random())
+//
+//     # Default constructor (no arg) also auto-seeds.
+//     c: Random = Random()
+//     v: float = c.random()
+//     print("default_in_unit:", 0.0 <= v < 1.0)
 void main() {
-    // # Module-level seed() with no arg: re-seed from entropy.
-    // random.seed()
     ::tpystd::random::seed();
-    // r1: float = random.random()
     double r1 = ::tpystd::random::random();
-    // random.seed()
     ::tpystd::random::seed();
-    // r2: float = random.random()
     double r2 = ::tpystd::random::random();
-    // # Two independent entropy seeds will essentially never collide on
-    // # the first random() value (probability ~2^-53).
-    // print("auto_seed_distinct:", r1 != r2)
     std::cout << "auto_seed_distinct:" << " " << ::tpy::print_bool((r1 != r2)) << "\n";
-    // print("in_unit:", 0.0 <= r1 < 1.0 and 0.0 <= r2 < 1.0)
     std::cout << "in_unit:" << " " << ::tpy::print_bool((((0.0 <= r1) && (r1 < 1.0)) && ((0.0 <= r2) && (r2 < 1.0)))) << "\n";
-    // # Random(None) constructor auto-seeds. Each instance independent.
-    // a: Random = Random(None)
     ::tpystd::random::Random a = ::tpystd::random::Random(std::nullopt);
-    // b: Random = Random(None)
     ::tpystd::random::Random b = ::tpystd::random::Random(std::nullopt);
-    // print("instance_distinct:", a.random() != b.random())
     std::cout << "instance_distinct:" << " " << ::tpy::print_bool((a.random() != b.random())) << "\n";
-    // # Default constructor (no arg) also auto-seeds.
-    // c: Random = Random()
     ::tpystd::random::Random c = ::tpystd::random::Random();
-    // v: float = c.random()
     double v = c.random();
-    // print("default_in_unit:", 0.0 <= v < 1.0)
     std::cout << "default_in_unit:" << " " << ::tpy::print_bool(((0.0 <= v) && (v < 1.0))) << "\n";
 }
 
+// # random.seed() / Random(None) auto-seed from OS entropy. Entropy is
+// # non-deterministic so this test only verifies sanity:
+// # - calls succeed without panicking
+// # - successive calls produce different streams (with overwhelming probability)
+// # - generated values stay in their advertised ranges
+// import random
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # random.seed() / Random(None) auto-seed from OS entropy. Entropy is
-    // # non-deterministic so this test only verifies sanity:
-    // # - calls succeed without panicking
-    // # - successive calls produce different streams (with overwhelming probability)
-    // # - generated values stay in their advertised ranges
-    // import random
     ::tpystd::random::__tpy_init();
-    // main()
     main();
 }
 

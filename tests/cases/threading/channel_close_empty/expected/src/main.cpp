@@ -5,36 +5,38 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     tx, rx = channel[int32](4)
+//     tx.close()
+//     try:
+//         rx.recv()
+//         print("no raise")
+//     except ChannelClosed:
+//         print("closed empty")
 void main() {
-    // tx, rx = channel[int32](4)
     auto __tup_1 = ::tpystd::tplib::channel::channel<int32_t>(4);
     ::tpystd::tplib::channel::Sender<int32_t> tx = std::move(std::get<0>(__tup_1));
     ::tpystd::tplib::channel::Receiver<int32_t> rx = std::move(std::get<1>(__tup_1));
-    // tx.close()
     tx.close();
-    // try:
     {
         try {
-            // rx.recv()
             rx.recv();
-            // print("no raise")
             std::cout << "no raise" << "\n";
         } catch (const ::tpystd::tplib::channel::ChannelClosed&) {
-            // print("closed empty")
             std::cout << "closed empty" << "\n";
         }
     }
 }
 
+// from tplib.channel import channel, ChannelClosed
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.channel import channel, ChannelClosed
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::channel::__tpy_init();
-    // main()
     main();
 }
 

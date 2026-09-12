@@ -17,11 +17,17 @@ struct __gen_capture;
 struct __gen_guarded;
 struct __gen_kill;
 
+// def voices(a: Dog | Cat) -> Iterator[str]:
 __gen_voices voices(::tpy::Union<Cat*, Dog*> a);
+// def capture(a: Dog | Cat) -> Iterator[str]:
 __gen_capture capture(::tpy::Union<Cat*, Dog*> a);
+// def guarded(a: int | str, allow: bool) -> Iterator[str]:
 __gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow);
+// def remake() -> int | str:
 ::tpy::Union<::tpy::BigInt, std::string> remake();
+// def kill(a: int | str) -> Iterator[str]:
 __gen_kill kill(::tpy::Union<::tpy::BigInt, std::string> a);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -52,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// Generator: voices
+// def voices(a: Dog | Cat) -> Iterator[str]:
 struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
     int32_t __state;
     ::tpy::Union<Cat*, Dog*> a;
@@ -77,7 +83,7 @@ struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
     }
 };
 
-// Generator: capture
+// def capture(a: Dog | Cat) -> Iterator[str]:
 struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string> {
     int32_t __state;
     ::tpy::Union<Cat*, Dog*> a;
@@ -103,7 +109,7 @@ struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string>
     }
 };
 
-// Generator: guarded
+// def guarded(a: int | str, allow: bool) -> Iterator[str]:
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string> {
     int32_t __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;
@@ -129,7 +135,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string>
     }
 };
 
-// Generator: kill
+// def kill(a: int | str) -> Iterator[str]:
 struct __gen_kill : public ::tpy::next_iter_mixin<__gen_kill, std::string> {
     int32_t __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;
@@ -159,14 +165,14 @@ struct __gen_kill : public ::tpy::next_iter_mixin<__gen_kill, std::string> {
 
 
 // def sound(self) -> str:
+//     return "woof"
 inline std::string Dog::sound() const {
-    // return "woof"
     return "woof";
 }
 
 // def sound(self) -> str:
+//     return "meow"
 inline std::string Cat::sound() const {
-    // return "meow"
     return "meow";
 }
 void __tpy_init();

@@ -11,10 +11,15 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def trusted(p: Point) -> Point:
 Point& trusted(Point& p);
+// def pick_view(s: StrView) -> StrView:
 std::string_view pick_view(std::string_view s);
+// def ternary_record(seed: Point, flag: bool) -> Point:
 Point& ternary_record(Point& seed, bool flag);
+// def ternary_strview(p: str, flag: bool) -> StrView:
 std::string_view ternary_strview(std::string_view p, bool flag);
+// def main():
 void main();
 
 // class Point:
@@ -35,6 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

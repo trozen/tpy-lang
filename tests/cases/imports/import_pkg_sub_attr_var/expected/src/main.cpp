@@ -5,26 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(pkg.state.LIMIT)
+//     print(pkg.state.banner)
 void main() {
-    // print(pkg.state.LIMIT)
     std::cout << ::tpyapp::pkg::state::LIMIT << "\n";
-    // print(pkg.state.banner)
     std::cout << ::tpyapp::pkg::state::banner << "\n";
 }
 
+// # `import pkg.sub` followed by attribute access on a variable in the
+// # submodule (`pkg.sub.X`). Pre-fix: sema rejected with
+// # "Undefined variable: 'pkg'" even though the import succeeded.
+// # Function-call form (`pkg.sub.fn()`) already worked.
+// import pkg.state
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `import pkg.sub` followed by attribute access on a variable in the
-    // # submodule (`pkg.sub.X`). Pre-fix: sema rejected with
-    // # "Undefined variable: 'pkg'" even though the import succeeded.
-    // # Function-call form (`pkg.sub.fn()`) already worked.
-    // import pkg.state
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::state::__tpy_init();
-    // main()
     main();
 }
 

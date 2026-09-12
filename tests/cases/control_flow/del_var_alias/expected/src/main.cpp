@@ -5,68 +5,73 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[Obj]:
+//     return Obj(42)
 Obj make() {
-    // return Obj(42)
     return Obj(::tpy::BigInt(42));
 }
 
 // def main() -> None:
+//     # del alias from constructor
+//     a = b = Obj(5)
+//     del a
+//     print(b.val)
+//
+//     # del alias from function return
+//     c = d = make()
+//     del c
+//     print(d.val)
+//
+//     # del alias, then reassign
+//     e = f = Obj(99)
+//     del e
+//     e = Obj(0)
+//     print(e.val, f.val)
+//
+//     # regular alias (not multi-assign)
+//     g = Obj(7)
+//     h = g
+//     del h
+//     print(g.val)
+//
+//     # del source that has alias: alias preserved
+//     i = j = Obj(50)
+//     del j
+//     print(i.val)
+//
+//     # standalone owner: move-sink should be emitted
+//     standalone = Obj(100)
+//     print(standalone.val)
+//     del standalone
 void main() {
     std::optional<Obj> __slot_2;
-    // # del alias from constructor
-    // a = b = Obj(5)
     Obj a = Obj(::tpy::BigInt(5));
     Obj b = std::move(a);
-    // del a
-    // print(b.val)
     std::cout << b.val << "\n";
-    // # del alias from function return
-    // c = d = make()
     Obj c = make();
     Obj d = std::move(c);
-    // del c
-    // print(d.val)
     std::cout << d.val << "\n";
-    // # del alias, then reassign
-    // e = f = Obj(99)
     Obj __slot_1 = Obj(::tpy::BigInt(99));
     Obj* e = &__slot_1;
     Obj& f = (*e);
-    // del e
-    // e = Obj(0)
     e = &*(__slot_2 = Obj(::tpy::BigInt(0)));
-    // print(e.val, f.val)
     std::cout << e->val << " " << f.val << "\n";
-    // # regular alias (not multi-assign)
-    // g = Obj(7)
     Obj g = Obj(::tpy::BigInt(7));
-    // h = g
     Obj& h = g;
-    // del h
-    // print(g.val)
     std::cout << g.val << "\n";
-    // # del source that has alias: alias preserved
-    // i = j = Obj(50)
     Obj i = Obj(::tpy::BigInt(50));
     Obj& j = i;
-    // del j
-    // print(i.val)
     std::cout << i.val << "\n";
-    // # standalone owner: move-sink should be emitted
-    // standalone = Obj(100)
     Obj standalone = Obj(::tpy::BigInt(100));
-    // print(standalone.val)
     std::cout << standalone.val << "\n";
-    // del standalone
     { auto __del_sink = std::move(standalone); }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,29 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder()
+//     ks: set[Key] = set()
+//     ks.add(h.borrow())  # tpyc: warning(/copies Key into owned storage/)
+//     print(len(ks))
 void main() {
-    // h = Holder()
     Holder h = Holder();
-    // ks: set[Key] = set()
     ::tpy::ordered_set<Key> ks = ::tpy::ordered_set<Key>();
-    // ks.add(h.borrow())  # tpyc: warning(/copies Key into owned storage/)
     ks.insert(h.borrow());
-    // print(len(ks))
     std::cout << ::tpy::__len__(ks) << "\n";
 }
 
+// # `set.add` is an Own-coerced slot like `list.append`, so a borrow-returning
+// # call arriving there copies with the same warning. A frozen dataclass is the
+// # hashable payload; the copy diverges from CPython (which stores the very
+// # object), so the stored element is deliberately not observed after mutating
+// # the source.
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `set.add` is an Own-coerced slot like `list.append`, so a borrow-returning
-    // # call arriving there copies with the same warning. A frozen dataclass is the
-    // # hashable payload; the copy diverges from CPython (which stores the very
-    // # object), so the stored element is deliberately not observed after mutating
-    // # the source.
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

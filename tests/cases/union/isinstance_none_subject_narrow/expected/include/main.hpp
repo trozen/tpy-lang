@@ -12,9 +12,13 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def scalar_tuple(v: int | str | None) -> str:
 std::string scalar_tuple(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v);
+// def scalar_inline(v: int | str | None) -> str:
 std::string scalar_inline(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v);
+// def ref_tuple(v: A | B | None) -> str:
 std::string ref_tuple(::tpy::Union<std::monostate, const A*, const B*> v);
+// def main() -> None:
 void main();
 
 // # isinstance narrowing on a union subject that CONTAINS None: the else branch
@@ -48,13 +52,13 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 
 // def __init__(self) -> None:
+//     pass
 inline A::A() {
-    // pass
 }
 
 // def __init__(self) -> None:
+//     pass
 inline B::B() {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

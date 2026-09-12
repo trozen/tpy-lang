@@ -5,65 +5,65 @@ namespace tpyapp::main {
 
 
 // def test_bool_list() -> None:
+//     bools: list[bool] = [True, False, True]
+//     print(bools)
 void test_bool_list() {
-    // bools: list[bool] = [True, False, True]
     std::vector<bool> bools = {true, false, true};
-    // print(bools)
     std::cout << ::tpy::ListPrinter(bools) << "\n";
 }
 
 // def test_float_list() -> None:
+//     floats: list[float] = [1.0, 2.5, 0.0, -3.0]
+//     print(floats)
 void test_float_list() {
-    // floats: list[float] = [1.0, 2.5, 0.0, -3.0]
     std::vector<double> floats = {1.0, 2.5, 0.0, -(3.0)};
-    // print(floats)
     std::cout << ::tpy::ListPrinter(floats) << "\n";
 }
 
 // def test_str_list() -> None:
+//     strs: list[str] = ["hello", "world"]
+//     print(strs)
 void test_str_list() {
-    // strs: list[str] = ["hello", "world"]
     std::vector<std::string> strs = {"hello", "world"};
-    // print(strs)
     std::cout << ::tpy::ListPrinter(strs) << "\n";
 }
 
 // def test_bool_array() -> None:
+//     arr: Array[bool, 3] = [True, False, True]
+//     print(arr)
 void test_bool_array() {
-    // arr: Array[bool, 3] = [True, False, True]
     std::array<bool, 3> arr = {true, false, true};
-    // print(arr)
     std::cout << ::tpy::ListPrinter(arr) << "\n";
 }
 
 // def test_nested_bool() -> None:
+//     nested: list[list[bool]] = [[True, False], [False, True]]
+//     print(nested)
 void test_nested_bool() {
-    // nested: list[list[bool]] = [[True, False], [False, True]]
     std::vector<std::vector<bool>> nested = {{true, false}, {false, true}};
-    // print(nested)
     std::cout << ::tpy::ListPrinter(nested) << "\n";
 }
 
 // def main() -> None:
+//     test_bool_list()
+//     test_float_list()
+//     test_str_list()
+//     test_bool_array()
+//     test_nested_bool()
 void main() {
-    // test_bool_list()
     test_bool_list();
-    // test_float_list()
     test_float_list();
-    // test_str_list()
     test_str_list();
-    // test_bool_array()
     test_bool_array();
-    // test_nested_bool()
     test_nested_bool();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,29 +3,32 @@
 
 namespace tpyapp::main {
 
-// calls = 0
 int32_t calls{};
 
 // def make() -> Own[Rec]:
+//     global calls
+//     calls += 1
+//     return Rec(1)
 Rec make() {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return Rec(1)
     return Rec(::tpy::BigInt(1));
 }
 
 // def gen_while(n: int) -> Iterator[int]:
+//     i = 0
+//     while make():
+//         yield i
+//         i += 1
+//         if i >= n:
+//             break
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_while::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         if ((i >= n)) {
             __state = S_JOIN_1;
@@ -37,7 +40,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_while::__next__() {
     }
     case S_JOIN_0: {
         if ((static_cast<void>(make()), true)) {
-            // yield i
             __state = S_RESUME_0;
             return ::tpy::BigInt(i);
         } else {
@@ -61,10 +63,16 @@ __gen_gen_while gen_while(::tpy::BigInt n) {
 }
 
 // def gen_branch(n: int) -> Iterator[int]:
+//     i = 0
+//     while i < n:
+//         # The suspend inside the branch forces the resumable CFG, not the
+//         # simple-generator peephole.
+//         if make():
+//             yield i
+//         i += 1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -76,7 +84,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_branch::__next__() 
     case S_JOIN_0: {
         if ((::tpy::BigInt(i) < n)) {
             if ((static_cast<void>(make()), true)) {
-                // yield i
                 __state = S_RESUME_0;
                 return ::tpy::BigInt(i);
             } else {
@@ -89,7 +96,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_branch::__next__() 
         }
     }
     case S_JOIN_1: {
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -106,8 +112,14 @@ __gen_gen_branch gen_branch(::tpy::BigInt n) {
 }
 
 // def main() -> None:
+//     for v in gen_while(2):
+//         print("while", v)
+//     print("after while:", calls)
+//
+//     for v in gen_branch(2):
+//         print("branch", v)
+//     print("after branch:", calls)
 void main() {
-    // for v in gen_while(2):
     {
         auto __src_0 = gen_while(::tpy::BigInt(2));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -115,13 +127,10 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print("while", v)
         std::cout << "while" << " " << v << "\n";
         }
     }
-    // print("after while:", calls)
     std::cout << "after while:" << " " << calls << "\n";
-    // for v in gen_branch(2):
     {
         auto __src_2 = gen_branch(::tpy::BigInt(2));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -129,22 +138,21 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
-        // print("branch", v)
         std::cout << "branch" << " " << v << "\n";
         }
     }
-    // print("after branch:", calls)
     std::cout << "after branch:" << " " << calls << "\n";
 }
 
+// calls = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // calls = 0
     calls = 0;
-    // main()
     main();
 }
 

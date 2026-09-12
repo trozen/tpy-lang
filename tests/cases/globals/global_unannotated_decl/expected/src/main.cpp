@@ -3,51 +3,49 @@
 
 namespace tpyapp::main {
 
-// # `global` of a bare (unannotated) module global must be accepted and mutate
-// # the shared global, from a free function, a method, and a staticmethod alike.
-// count = 0
 int32_t count{};
 
 // def bump():
+//     global count
+//     count += 1
 void bump() {
-    // global count
-    // count += 1
     count = ::tpy::add_check<int32_t>(count, 1);
 }
 
 // def reset():
+//     global count
+//     count = 0  # plain assign to a bare global, not just augmented
 void reset() {
-    // global count
-    // count = 0  # plain assign to a bare global, not just augmented
     count = 0;
 }
 
 // def main():
+//     bump()
+//     P()
+//     P.boost()
+//     print(count)
+//     reset()
+//     print(count)
 void main() {
-    // bump()
     bump();
-    // P()
     P();
-    // P.boost()
     P::boost();
-    // print(count)
     std::cout << count << "\n";
-    // reset()
     reset();
-    // print(count)
     std::cout << count << "\n";
 }
 
+// # `global` of a bare (unannotated) module global must be accepted and mutate
+// # the shared global, from a free function, a method, and a staticmethod alike.
+// count = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `global` of a bare (unannotated) module global must be accepted and mutate
-    // # the shared global, from a free function, a method, and a staticmethod alike.
-    // count = 0
     count = 0;
-    // main()
     main();
 }
 

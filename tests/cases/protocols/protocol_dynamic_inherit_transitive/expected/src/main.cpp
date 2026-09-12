@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def report(e: BaseExc) -> str:  # tpyc: ok
+//     # Virtual dispatch through transitively-inherited Throwable vtable slot.
+//     return e.what()
 std::string report(BaseExc& e) {
-    // # Virtual dispatch through transitively-inherited Throwable vtable slot.
-    // return e.what()
     return e.what();
 }
 
 // def main() -> None:
+//     v = ValErr("v-msg")
+//     o = OsErr("o-msg")
+//     b = BaseExc("b-msg")
+//     print(report(v))
+//     print(report(o))
+//     print(report(b))
 void main() {
-    // v = ValErr("v-msg")
     ValErr v = ValErr("v-msg");
-    // o = OsErr("o-msg")
     OsErr o = OsErr("o-msg");
-    // b = BaseExc("b-msg")
     BaseExc b = BaseExc("b-msg");
-    // print(report(v))
     std::cout << report(v) << "\n";
-    // print(report(o))
     std::cout << report(o) << "\n";
-    // print(report(b))
     std::cout << report(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

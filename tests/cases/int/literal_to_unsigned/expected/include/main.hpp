@@ -11,11 +11,17 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_u8(x: uint8) -> uint8:
 uint8_t take_u8(uint8_t x);
+// def take_u16(x: uint16) -> uint16:
 uint16_t take_u16(uint16_t x);
+// def take_u32(x: uint32) -> uint32:
 uint32_t take_u32(uint32_t x);
+// def take_u64(x: uint64) -> uint64:
 uint64_t take_u64(uint64_t x);
+// def take_pair(a: uint64, b: uint32) -> uint64:
 uint64_t take_pair(uint64_t a, uint32_t b);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -38,13 +44,14 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = uint64(0)
 inline Counter::Counter() : n(0) {}
 
 // def bump(self, by: uint32) -> uint64:
+//     self.n = self.n + uint64(by)
+//     return self.n
 inline uint64_t Counter::bump(uint32_t by) {
-    // self.n = self.n + uint64(by)
     this->n = (::tpy::add_check<uint64_t>(this->n, ::tpy::int_cast_check<uint64_t>(by)));
-    // return self.n
     return this->n;
 }
 void __tpy_init();

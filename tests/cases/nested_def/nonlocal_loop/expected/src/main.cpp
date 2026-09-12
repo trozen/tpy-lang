@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     total: int32 = 0
+//     def add(x: int32) -> None:
+//         nonlocal total
+//         total += x
+//     items = [1, 2, 3, 4, 5]
+//     for item in items:
+//         add(item)
+//     print(total)
 void main() {
-    // total: int32 = 0
     int32_t total = 0;
-    // def add(x: int32) -> None:
     auto add = [&total](int32_t x) {
-        // nonlocal total
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     };
-    // items = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> items = {1, 2, 3, 4, 5};
-    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t item = *__beg_0;
-        // add(item)
         add(item);
     }
-    // print(total)
     std::cout << total << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

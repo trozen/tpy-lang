@@ -6,31 +6,32 @@ namespace tpyapp::main {
 
 // # Explicit `raise KeyError(...)` works the same as runtime-thrown KeyError.
 // def force_miss(k: str) -> int:
+//     raise KeyError("custom: " + k)
 ::tpy::BigInt force_miss(std::string_view k) {
-    // raise KeyError("custom: " + k)
     throw ::tpy::KeyError((::tpy::str_concat("custom: ", k)));
 }
 
 // def main() -> None:
+//     try:
+//         print(force_miss("missing"))
+//     except KeyError as e:
+//         print("caught:", str(e))
 void main() {
-    // try:
     {
         try {
-            // print(force_miss("missing"))
             std::cout << force_miss("missing") << "\n";
         } catch (const ::tpy::KeyError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

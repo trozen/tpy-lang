@@ -12,7 +12,9 @@ using ::tpyapp::treelib::leaf_count;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def maybe_count(t: Tree[int] | None) -> int:
 ::tpy::BigInt maybe_count(const ::tpyapp::treelib::Tree<::tpy::BigInt>* t);
+// def main() -> None:
 void main();
 
 void __tpy_init();

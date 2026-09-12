@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = spawn[int, One](One())
+//     print("spawned")
 void main() {
-    // h = spawn[int, One](One())
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> h = ::tpystd::tpy::thread::spawn<::tpy::BigInt, One>(One());
-    // print("spawned")
     std::cout << "spawned" << "\n";
-    // # h dropped here, unconsumed -> panic
 }
 
+// # Dropping a JoinHandle without join() or detach() is a runtime panic: the
+// # spawned thread's result/exception would otherwise silently vanish (Rust's /
+// # raw std::thread's join-or-detach contract).
+// from tpy.thread import spawn
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Dropping a JoinHandle without join() or detach() is a runtime panic: the
-    // # spawned thread's result/exception would otherwise silently vanish (Rust's /
-    // # raw std::thread's join-or-detach contract).
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // main()
     main();
 }
 

@@ -4,12 +4,12 @@
 namespace tpyapp::pkg::bmod {
 
 
+// print("init: bmod")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print("init: bmod")
     std::cout << "init: bmod" << "\n";
 }
 

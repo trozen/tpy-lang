@@ -5,52 +5,58 @@ namespace tpyapp::main {
 
 
 // def takes_bool(b: bool) -> int32:
+//     return 1 if b else 0
 int32_t takes_bool(bool b) {
-    // return 1 if b else 0
     return ((b) ? (1) : (0));
 }
 
 // def returns_bool() -> bool:
+//     return poly("true")          # return slot -> bool
 bool returns_bool() {
-    // return poly("true")          # return slot -> bool
     return true;
 }
 
 // def main() -> None:
+//     b: bool = poly("true")       # assignment RHS, declared bool slot
+//     print(1 if b else 0)
+//
+//     n: int32 = poly("100")       # int slot
+//     print(n + 1)                 # arithmetic proves it's an int, not "100"
+//
+//     print(takes_bool(poly("true")))   # declared-typed call arg sees bool slot
+//
+//     s = poly("hello")            # no expected type -> plain string
+//     print(s)
+//
+//     print(1 if returns_bool() else 0)
+//
+//     opt: int32 | None = poly("8")     # Optional slot: macro unwraps to int
+//     print((opt if opt is not None else 0) + 1)
 void main() {
-    // b: bool = poly("true")       # assignment RHS, declared bool slot
     bool b = true;
-    // print(1 if b else 0)
     std::cout << ((b) ? (1) : (0)) << "\n";
-    // n: int32 = poly("100")       # int slot
     int32_t n = 100;
-    // print(n + 1)                 # arithmetic proves it's an int, not "100"
     std::cout << (::tpy::add_check<int32_t>(n, 1)) << "\n";
-    // print(takes_bool(poly("true")))   # declared-typed call arg sees bool slot
     std::cout << takes_bool(true) << "\n";
-    // s = poly("hello")            # no expected type -> plain string
     std::string s = "hello";
-    // print(s)
     std::cout << s << "\n";
-    // print(1 if returns_bool() else 0)
     std::cout << ((returns_bool()) ? (1) : (0)) << "\n";
-    // opt: int32 | None = poly("8")     # Optional slot: macro unwraps to int
     std::optional<int32_t> opt = 8;
-    // print((opt if opt is not None else 0) + 1)
     std::cout << (::tpy::add_check<int32_t>((((opt.has_value())) ? ((*opt)) : (0)), 1)) << "\n";
 }
 
+// # A call macro reads ctx.expected_type to choose the literal kind for the
+// # target slot. The SAME poly("...") call yields a bool in a bool slot, an int
+// # in an int slot, and a plain string where sema has no expected type -- only
+// # possible if expected_type is populated from the slot.
+// from polymac import poly
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A call macro reads ctx.expected_type to choose the literal kind for the
-    // # target slot. The SAME poly("...") call yields a bool in a bool slot, an int
-    // # in an int slot, and a plain string where sema has no expected type -- only
-    // # possible if expected_type is populated from the slot.
-    // from polymac import poly
-    // main()
     main();
 }
 

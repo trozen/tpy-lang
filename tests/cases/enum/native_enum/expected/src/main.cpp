@@ -43,19 +43,19 @@ namespace tpyapp::main {
 
 
 // def label(e: E) -> str:
+//     match e:
+//         case E.A:
+//             return "first"
+//         case E.B:
+//             return "second"
 std::string label(::ns::E e) {
-    // match e:
     auto& __match_subject_1 = e;
     switch (__match_subject_1) {
-    // case E.A:
     case ::ns::E::A: {
-        // return "first"
         return "first";
         break;
     }
-    // case E.B:
     case ::ns::E::B: {
-        // return "second"
         return "second";
         break;
     }
@@ -64,35 +64,36 @@ std::string label(::ns::E e) {
 }
 
 // def main() -> None:
+//     e = E.A
+//     print(e)
+//     print(E.B)
+//     print(label(e))
+//     print(label(E.B))
+//     print(e.name)
+//     print(e.value)
 void main() {
-    // e = E.A
     ::ns::E e = ::ns::E::A;
-    // print(e)
     std::cout << ::tpy::__repr__(e) << "\n";
-    // print(E.B)
     std::cout << ::tpy::__repr__(::ns::E::B) << "\n";
-    // print(label(e))
     std::cout << label(e) << "\n";
-    // print(label(E.B))
     std::cout << label(::ns::E::B) << "\n";
-    // print(e.name)
     std::cout << ::tpy::EnumUtil<::ns::E>::name(e) << "\n";
-    // print(e.value)
     std::cout << static_cast<int32_t>(e) << "\n";
 }
 
+// # @native binding to an existing C++ enum class; tests print, match, .name, .value.
+// # Uses auto() so the C++ side is the source of truth for member values
+// # (declared C++-side as A=10, B=20 to prove TPy doesn't depend on a value mirror).
+// # tpy: include("native_types.hpp")
+// from enum import Enum, auto
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @native binding to an existing C++ enum class; tests print, match, .name, .value.
-    // # Uses auto() so the C++ side is the source of truth for member values
-    // # (declared C++-side as A=10, B=20 to prove TPy doesn't depend on a value mirror).
-    // # tpy: include("native_types.hpp")
-    // from enum import Enum, auto
-    // from tpy.extern import native
-    // main()
     main();
 }
 

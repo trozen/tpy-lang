@@ -11,12 +11,19 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ternary(c: list[str], d: list[str], cond: bool) -> str:
 std::string ternary(std::vector<std::string>& c, std::vector<std::string>& d, bool cond);
+// def or_chain(c: list[str], d: list[str]) -> str:
 std::string or_chain(std::vector<std::string>& c, const std::vector<std::string>& d);
+// def and_chain(c: list[str], d: list[str]) -> str:
 std::string and_chain(std::vector<std::string>& c, std::vector<std::string>& d);
+// def nested(c: list[str], d: list[str], e: list[str], cond: bool) -> str:
 std::string nested(const std::vector<std::string>& c, std::vector<std::string>& d, const std::vector<std::string>& e, bool cond);
+// def field_arm(r: Rec, t: Rec, cond: bool) -> str:
 std::string field_arm(Rec& r, const Rec& t, bool cond);
+// def bytes_ternary(c: list[bytes], d: list[bytes], cond: bool) -> int:
 ::tpy::BigInt bytes_ternary(std::vector<::tpy::Bytes>& c, const std::vector<::tpy::Bytes>& d, bool cond);
+// def main() -> None:
 void main();
 
 // # A str/bytes local from a COMPOUND view source (ternary / and-or / nested) over
@@ -42,6 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 
 // def __init__(self, s: str) -> None:
+//     self.s = s
 inline Rec::Rec(std::string_view s) : s(s) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     s = Square(int32(4))
+//     print(s.area())
+//     print(s.describe())
 void main() {
-    // s = Square(int32(4))
     Square s = Square(4);
-    // print(s.area())
     std::cout << s.area() << "\n";
-    // print(s.describe())
     std::cout << s.describe() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

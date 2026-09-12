@@ -37,16 +37,27 @@ struct __coro_async_position;
 template <typename T>
 struct __gen_LocalBox_two;
 
+// def free_import() -> Iterator[int32]:
 __gen_free_import free_import();
+// def module_call() -> Iterator[int32]:
 __gen_module_call module_call();
+// def imported_method(s: Src) -> Iterator[int32]:
 __gen_imported_method imported_method(::tpyapp::gensrc::Src& s);
+// def generic_callee() -> Iterator[int32]:
 __gen_generic_callee generic_callee();
+// def generic_owner_imported(b: Box[int32]) -> Iterator[int32]:
 __gen_generic_owner_imported generic_owner_imported(::tpyapp::gensrc::Box<int32_t>& b);
+// def generic_owner_local(b: LocalBox[int32]) -> Iterator[int32]:
 __gen_generic_owner_local generic_owner_local(LocalBox<int32_t>& b);
+// def mutate_receiver(b: Bag) -> Iterator[int32]:
 __gen_mutate_receiver mutate_receiver(::tpyapp::gensrc::Bag& b);
+// def lazy_interleave() -> Iterator[int32]:
 __gen_lazy_interleave lazy_interleave();
+// def abandoned() -> Iterator[int32]:
 __gen_abandoned abandoned();
+// async def async_position() -> int32:
 __coro_async_position async_position();
+// def main() -> None:
 void main();
 
 // class LocalBox[T]:
@@ -56,6 +67,7 @@ struct LocalBox {
     std::vector<T> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
+    //     self.items = items
     LocalBox() = default;
     explicit LocalBox(std::vector<T>&& items) : items(std::move(items)) {}
 
@@ -69,7 +81,7 @@ inline std::ostream& operator<<(std::ostream& os, const LocalBox<T>& obj) {
     return os;
 }
 
-// Async coroutine: async_position
+// async def async_position() -> int32:
 struct __coro_async_position {
     int32_t __state;
     bool __cancel_pending;
@@ -97,7 +109,7 @@ struct __coro_async_position {
     }
 };
 
-// Generator: free_import
+// def free_import() -> Iterator[int32]:
 struct __gen_free_import : public ::tpy::next_iter_mixin<__gen_free_import, int32_t> {
     int32_t __state;
     int32_t x;
@@ -123,7 +135,7 @@ struct __gen_free_import : public ::tpy::next_iter_mixin<__gen_free_import, int3
     }
 };
 
-// Generator: module_call
+// def module_call() -> Iterator[int32]:
 struct __gen_module_call : public ::tpy::next_iter_mixin<__gen_module_call, int32_t> {
     int32_t __state;
     int32_t x;
@@ -149,7 +161,7 @@ struct __gen_module_call : public ::tpy::next_iter_mixin<__gen_module_call, int3
     }
 };
 
-// Generator: imported_method
+// def imported_method(s: Src) -> Iterator[int32]:
 struct __gen_imported_method : public ::tpy::next_iter_mixin<__gen_imported_method, int32_t> {
     int32_t __state;
     ::tpyapp::gensrc::Src& s;
@@ -176,7 +188,7 @@ struct __gen_imported_method : public ::tpy::next_iter_mixin<__gen_imported_meth
     }
 };
 
-// Generator: generic_callee
+// def generic_callee() -> Iterator[int32]:
 struct __gen_generic_callee : public ::tpy::next_iter_mixin<__gen_generic_callee, int32_t> {
     int32_t __state;
     int32_t x;
@@ -202,7 +214,7 @@ struct __gen_generic_callee : public ::tpy::next_iter_mixin<__gen_generic_callee
     }
 };
 
-// Generator: generic_owner_imported
+// def generic_owner_imported(b: Box[int32]) -> Iterator[int32]:
 struct __gen_generic_owner_imported : public ::tpy::next_iter_mixin<__gen_generic_owner_imported, int32_t> {
     int32_t __state;
     ::tpyapp::gensrc::Box<int32_t>& b;
@@ -229,7 +241,7 @@ struct __gen_generic_owner_imported : public ::tpy::next_iter_mixin<__gen_generi
     }
 };
 
-// Generator: mutate_receiver
+// def mutate_receiver(b: Bag) -> Iterator[int32]:
 struct __gen_mutate_receiver : public ::tpy::next_iter_mixin<__gen_mutate_receiver, int32_t> {
     int32_t __state;
     ::tpyapp::gensrc::Bag& b;
@@ -256,7 +268,7 @@ struct __gen_mutate_receiver : public ::tpy::next_iter_mixin<__gen_mutate_receiv
     }
 };
 
-// Generator: lazy_interleave
+// def lazy_interleave() -> Iterator[int32]:
 struct __gen_lazy_interleave : public ::tpy::next_iter_mixin<__gen_lazy_interleave, int32_t> {
     int32_t __state;
     int32_t x;
@@ -282,7 +294,7 @@ struct __gen_lazy_interleave : public ::tpy::next_iter_mixin<__gen_lazy_interlea
     }
 };
 
-// Generator: abandoned
+// def abandoned() -> Iterator[int32]:
 struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t> {
     int32_t __state;
     int32_t x;
@@ -308,7 +320,7 @@ struct __gen_abandoned : public ::tpy::next_iter_mixin<__gen_abandoned, int32_t>
     }
 };
 
-// Generator: LocalBox.two
+// def two(self) -> Iterator[T]:
 template <typename T>
 struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>, T> {
     int32_t __state;
@@ -333,16 +345,16 @@ struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>,
 };
 
 // def two(self) -> Iterator[T]:
+//     yield self.items[0]
+//     yield self.items[1]
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_LocalBox_two<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.items[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(__self.items, 0);
     }
     case S_RESUME_0: {
-        // yield self.items[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(__self.items, 1);
     }
@@ -361,7 +373,7 @@ inline __gen_LocalBox_two<T> LocalBox<T>::two() {
     return __gen_LocalBox_two<T>(*this);
 }
 
-// Generator: generic_owner_local
+// def generic_owner_local(b: LocalBox[int32]) -> Iterator[int32]:
 struct __gen_generic_owner_local : public ::tpy::next_iter_mixin<__gen_generic_owner_local, int32_t> {
     int32_t __state;
     LocalBox<int32_t>& b;

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def describe(e: Expr) -> str:
+//     match e:
+//         case Lit(value=v):
+//             return "lit=" + str(v)
+//         case _:
+//             return "binop"
 std::string describe(::tpy::Union<const BinOp*, const Lit*> e) {
-    // match e:
     auto& __match_subject_1 = e;
     switch (__match_subject_1.index()) {
-    // case Lit(value=v):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value;
-        // return "lit=" + str(v)
         return (::tpy::str_concat("lit=", (v).to_string()));
         break;
     }
-    // case _:
     default: {
-        // return "binop"
         return "binop";
         break;
     }
@@ -28,20 +28,20 @@ std::string describe(::tpy::Union<const BinOp*, const Lit*> e) {
 }
 
 // def main() -> None:
+//     a: Expr = Lit(7)
+//     print(describe(a))
 void main() {
-    // a: Expr = Lit(7)
     Expr __slot_1 = Lit(::tpy::BigInt(7));
     ::tpy::Union<BinOp*, Lit*> a = ::tpy::to_ptr_variant(__slot_1);
-    // print(describe(a))
     std::cout << describe(a.as_const()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,42 +5,43 @@ namespace tpyapp::main {
 
 
 // def test_store_and_load() -> None:
+//     x: int32 = int32(5)
+//     p: Ptr[int32] = take_ptr(x)
+//     unsafe_store(p, uint32(0), int32(99))
+//     val: int32 = unsafe_load(p, uint32(0))
+//     print(val)
+//     print(x)
 void test_store_and_load() {
-    // x: int32 = int32(5)
     int32_t x = 5;
-    // p: Ptr[int32] = take_ptr(x)
     int32_t* p = &x;
-    // unsafe_store(p, uint32(0), int32(99))
     p[0] = 99;
-    // val: int32 = unsafe_load(p, uint32(0))
     int32_t val = p[0];
-    // print(val)
     std::cout << val << "\n";
-    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_constptr_load() -> None:
+//     x: int32 = int32(42)
+//     cp: Ptr[readonly[int32]] = take_ptr(x)
+//     val: int32 = unsafe_load(cp, uint32(0))
+//     print(val)
 void test_constptr_load() {
-    // x: int32 = int32(42)
     int32_t x = 42;
-    // cp: Ptr[readonly[int32]] = take_ptr(x)
     const int32_t* cp = &x;
-    // val: int32 = unsafe_load(cp, uint32(0))
     int32_t val = cp[0];
-    // print(val)
     std::cout << val << "\n";
 }
 
+// from tpy.unsafe import unsafe_load, unsafe_store
+//
+// test_store_and_load()
+// test_constptr_load()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_load, unsafe_store
-    // test_store_and_load()
     test_store_and_load();
-    // test_constptr_load()
     test_constptr_load();
 }
 

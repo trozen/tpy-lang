@@ -5,40 +5,41 @@ namespace tpyapp::main {
 
 
 // def main():
+//     print(io.SEEK_SET, io.SEEK_CUR, io.SEEK_END)   # 0 1 2
+//     s = io.StringIO("hello world")
+//     s.seek(6, io.SEEK_SET)
+//     print(s.read())                                 # world
+//     s.seek(0, io.SEEK_END)
+//     print(s.tell())                                 # 11
+//     s.seek(0, io.SEEK_SET)
+//     print(s.read(5))                                # hello
+//     s.seek(0, io.SEEK_CUR)                          # text streams allow 0-offset CUR
+//     print(s.read())                                 # " world"
 void main() {
-    // print(io.SEEK_SET, io.SEEK_CUR, io.SEEK_END)   # 0 1 2
     std::cout << ::tpy::stdlib::os::kc_seek_set32 << " " << ::tpy::stdlib::os::kc_seek_cur32 << " " << ::tpy::stdlib::os::kc_seek_end32 << "\n";
-    // s = io.StringIO("hello world")
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("hello world");
-    // s.seek(6, io.SEEK_SET)
     s.seek(6, ::tpy::stdlib::os::kc_seek_set32);
-    // print(s.read())                                 # world
     std::cout << s.read() << "\n";
-    // s.seek(0, io.SEEK_END)
     s.seek(0, ::tpy::stdlib::os::kc_seek_end32);
-    // print(s.tell())                                 # 11
     std::cout << s.tell() << "\n";
-    // s.seek(0, io.SEEK_SET)
     s.seek(0, ::tpy::stdlib::os::kc_seek_set32);
-    // print(s.read(5))                                # hello
     std::cout << s.read(5) << "\n";
-    // s.seek(0, io.SEEK_CUR)                          # text streams allow 0-offset CUR
     s.seek(0, ::tpy::stdlib::os::kc_seek_cur32);
-    // print(s.read())                                 # " world"
     std::cout << s.read() << "\n";
 }
 
+// # io.SEEK_SET/CUR/END constants + use with StringIO.seek. Text streams only
+// # allow zero-offset CUR/END seeks (CPython rule), so the constants are exercised
+// # via absolute SEEK_SET offsets and seek(0, SEEK_END). Byte-compared to CPython.
+// import io
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # io.SEEK_SET/CUR/END constants + use with StringIO.seek. Text streams only
-    // # allow zero-offset CUR/END seeks (CPython rule), so the constants are exercised
-    // # via absolute SEEK_SET offsets and seek(0, SEEK_END). Byte-compared to CPython.
-    // import io
     ::tpystd::io::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,11 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = {1: 2, 5: 6}
+//     # A dict source yields its keys, like the for-loop and comprehension forms.
+//     print(sum(k for k in d))  # tpyc: ok
+//     # A moved container-literal source destructured by the unpack head.
+//     print(sum(a for a, b in [(1, 2), (3, 4)]))  # tpyc: ok
+//     print(sum(b for a, b in [(1, 2), (3, 4)]))  # tpyc: ok
+//     items = [(P(1), 2), (P(3), 4)]
+//     # An F1-record unpack target BORROWS off the tuple rather than copying it:
+//     # the genexpr mutates through `p`, and the source elements show it after.
+//     print(sum(p.bump() for p, n in items))  # tpyc: ok
+//     print([p.x for p, n in items])  # tpyc: ok
+//     xs: list[int32 | None] = [1, None, 3]
+//     # A value-repr Optional[scalar] loop var binds the typed optional copy and
+//     # the filter reads it whole.
+//     print(sum(1 for x in xs if x is not None))  # tpyc: ok
+//     print(sum(1 for x in xs if x is None))  # tpyc: ok
 void main() {
-    // d = {1: 2, 5: 6}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 2}, {5, 6}});
-    // # A dict source yields its keys, like the for-loop and comprehension forms.
-    // print(sum(k for k in d))  # tpyc: ok
     std::cout << ::tpy::builtin_sum<int32_t>([&d]() {
         auto& __src = d;
         return ::tpy::make_generator<int32_t>(
@@ -22,8 +35,6 @@ void main() {
             }
         );
     }()) << "\n";
-    // # A moved container-literal source destructured by the unpack head.
-    // print(sum(a for a, b in [(1, 2), (3, 4)]))  # tpyc: ok
     std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
         [__src = std::array<std::tuple<int32_t, int32_t>, 2>({std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}), __started = false, __beg = std::array<std::tuple<int32_t, int32_t>, 2>::iterator(), __end = std::array<std::tuple<int32_t, int32_t>, 2>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
@@ -36,7 +47,6 @@ void main() {
             return std::nullopt;
         }
     )) << "\n";
-    // print(sum(b for a, b in [(1, 2), (3, 4)]))  # tpyc: ok
     std::cout << ::tpy::builtin_sum<int32_t>(::tpy::make_generator<int32_t>(
         [__src = std::array<std::tuple<int32_t, int32_t>, 2>({std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}), __started = false, __beg = std::array<std::tuple<int32_t, int32_t>, 2>::iterator(), __end = std::array<std::tuple<int32_t, int32_t>, 2>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
@@ -49,11 +59,7 @@ void main() {
             return std::nullopt;
         }
     )) << "\n";
-    // items = [(P(1), 2), (P(3), 4)]
     std::array<std::tuple<P, int32_t>, 2> items = {::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(1), 2}), ::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(3), 4})};
-    // # An F1-record unpack target BORROWS off the tuple rather than copying it:
-    // # the genexpr mutates through `p`, and the source elements show it after.
-    // print(sum(p.bump() for p, n in items))  # tpyc: ok
     std::cout << ::tpy::builtin_sum<int32_t>([&items]() {
         auto& __src = items;
         return ::tpy::make_generator<int32_t>(
@@ -68,7 +74,6 @@ void main() {
             }
         );
     }()) << "\n";
-    // print([p.x for p, n in items])  # tpyc: ok
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;
@@ -83,11 +88,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // xs: list[int32 | None] = [1, None, 3]
     std::vector<std::optional<int32_t>> xs = {1, std::nullopt, 3};
-    // # A value-repr Optional[scalar] loop var binds the typed optional copy and
-    // # the filter reads it whole.
-    // print(sum(1 for x in xs if x is not None))  # tpyc: ok
     std::cout << ::tpy::builtin_sum<int32_t>([&xs]() {
         auto& __src = xs;
         return ::tpy::make_generator<int32_t>(
@@ -102,7 +103,6 @@ void main() {
             }
         );
     }()) << "\n";
-    // print(sum(1 for x in xs if x is None))  # tpyc: ok
     std::cout << ::tpy::builtin_sum<int32_t>([&xs]() {
         auto& __src = xs;
         return ::tpy::make_generator<int32_t>(
@@ -119,12 +119,12 @@ void main() {
     }()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

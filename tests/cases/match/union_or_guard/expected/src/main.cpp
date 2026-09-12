@@ -5,47 +5,44 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat | Bird, verbose: bool) -> str:
+//     match a:
+//         case Dog() | Cat() if verbose:
+//             return "verbose pet"
+//         case Dog() | Cat():
+//             return "pet"
+//         case Bird():
+//             return "bird"
+//     return ""
 std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool verbose) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // case Bird():
-        // return "bird"
         return "bird";
         goto __match_end_2;
         break;
     }
     case 1: {
-        // case Dog() | Cat() if verbose:
         {
             if (verbose) {
-                // return "verbose pet"
                 return "verbose pet";
                 goto __match_end_2;
             }
         }
-        // case Dog() | Cat():
         {
-            // return "pet"
             return "pet";
             goto __match_end_2;
         }
         break;
     }
     case 2: {
-        // case Dog() | Cat() if verbose:
         {
             if (verbose) {
-                // return "verbose pet"
                 return "verbose pet";
                 goto __match_end_2;
             }
         }
-        // case Dog() | Cat():
         {
-            // return "pet"
             return "pet";
             goto __match_end_2;
         }
@@ -54,39 +51,39 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool v
     }
 __match_end_2:;
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def find(a: Dog | Cat | Bird) -> str:
+//     match a:
+//         case Dog(name=n) | Cat(name=n) if n == "Rex":
+//             return "found Rex"
+//         case Dog(name=n) | Cat(name=n):
+//             return "other pet: " + n
+//         case Bird(name=n):
+//             return "bird: " + n
+//     return ""
 std::string find(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
-    // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        // case Bird(name=n):
         auto& n = __case_0.name;
-        // return "bird: " + n
         return (::tpy::str_concat("bird: ", n));
         goto __match_end_2;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case Dog(name=n) | Cat(name=n) if n == "Rex":
         {
             auto& n = __case_1.name;
             if ((n == "Rex")) {
-                // return "found Rex"
                 return "found Rex";
                 goto __match_end_2;
             }
         }
-        // case Dog(name=n) | Cat(name=n):
         {
             auto& n = __case_1.name;
-            // return "other pet: " + n
             return (::tpy::str_concat("other pet: ", n));
             goto __match_end_2;
         }
@@ -94,19 +91,15 @@ std::string find(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     }
     case 2: {
         auto& __case_2 = *std::get<2>(__match_subject_1);
-        // case Dog(name=n) | Cat(name=n) if n == "Rex":
         {
             auto& n = __case_2.name;
             if ((n == "Rex")) {
-                // return "found Rex"
                 return "found Rex";
                 goto __match_end_2;
             }
         }
-        // case Dog(name=n) | Cat(name=n):
         {
             auto& n = __case_2.name;
-            // return "other pet: " + n
             return (::tpy::str_concat("other pet: ", n));
             goto __match_end_2;
         }
@@ -115,45 +108,45 @@ std::string find(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     }
 __match_end_2:;
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     d: Dog | Cat | Bird = Dog("Rex")
+//     c: Dog | Cat | Bird = Cat("Luna")
+//     b: Dog | Cat | Bird = Bird("Tweety")
+//     print(describe(d, True))
+//     print(describe(d, False))
+//     print(describe(c, True))
+//     print(describe(b, False))
+//     print(find(d))
+//     print(find(c))
+//     print(find(b))
 void main() {
-    // d: Dog | Cat | Bird = Dog("Rex")
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Dog | Cat | Bird = Cat("Luna")
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat("Luna");
     ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    // b: Dog | Cat | Bird = Bird("Tweety")
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
     ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    // print(describe(d, True))
     std::cout << describe(d.as_const(), true) << "\n";
-    // print(describe(d, False))
     std::cout << describe(d.as_const(), false) << "\n";
-    // print(describe(c, True))
     std::cout << describe(c.as_const(), true) << "\n";
-    // print(describe(b, False))
     std::cout << describe(b.as_const(), false) << "\n";
-    // print(find(d))
     std::cout << find(d.as_const()) << "\n";
-    // print(find(c))
     std::cout << find(c.as_const()) << "\n";
-    // print(find(b))
     std::cout << find(b.as_const()) << "\n";
 }
 
+// # match/case or-patterns combined with guards on union subjects
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case or-patterns combined with guards on union subjects
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box:
@@ -48,9 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.val = v
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, b: Box) -> None:
+//     self.pair = copy((77, b))
 inline Holder::Holder(const Box& b) : pair(std::tuple<int32_t, Box>{77, b}) {}
 void __tpy_init();
 } // namespace tpyapp::main

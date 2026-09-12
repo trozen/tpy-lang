@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p1: Pair[int32] = (int32(1), int32(2))  # tpyc: type(/tuple\[int32, int32\]/)
+//     p2: lib.Pair[int32] = (int32(3), int32(4))  # tpyc: type(/tuple\[int32, int32\]/)
+//     print(p1)
+//     print(p2)
 void main() {
-    // p1: Pair[int32] = (int32(1), int32(2))  # tpyc: type(/tuple\[int32, int32\]/)
     std::tuple<int32_t, int32_t> p1 = std::tuple<int32_t, int32_t>{1, 2};
-    // p2: lib.Pair[int32] = (int32(3), int32(4))  # tpyc: type(/tuple\[int32, int32\]/)
     std::tuple<int32_t, int32_t> p2 = std::tuple<int32_t, int32_t>{3, 4};
-    // print(p1)
     std::cout << ::tpy::TuplePrinter(p1) << "\n";
-    // print(p2)
     std::cout << ::tpy::TuplePrinter(p2) << "\n";
 }
 
+// import lib
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import lib
     ::tpyapp::lib::__tpy_init();
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class P:
@@ -31,7 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
+// def gen_for(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+//     for it in items:
+//         yield (it, None)
 inline auto gen_for(std::vector<P>& items) {
     return ::tpy::make_generator<std::tuple<P*, P*>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {
@@ -46,6 +51,9 @@ inline auto gen_for(std::vector<P>& items) {
     );
 }
 
+// def gen_range(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+//     for i in range(len(items)):
+//         yield (items[i], None)
 inline auto gen_range(std::vector<P>& items) {
     return ::tpy::make_generator<std::tuple<P*, P*>>(
         [&items, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(items))]() mutable -> std::optional<std::tuple<P*, P*>> {
@@ -59,14 +67,17 @@ inline auto gen_range(std::vector<P>& items) {
     );
 }
 
+// def gen_while(items: list[P], n: int32) -> Iterator[tuple[P | None, P | None]]:
+//     i = int32(0)
+//     while i < n:
+//         yield (items[i], None)
+//         i = i + 1
 inline auto gen_while(std::vector<P>& items, int32_t n) {
-    // i = int32(0)
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<P*, P*>>(
         [&items, n, i]() mutable -> std::optional<std::tuple<P*, P*>> {
             while ((i < n)) {
                 auto __val = std::tuple<P*, P*>{&(::tpy::__getitem__(items, i)), nullptr};
-                // i = i + 1
                 i = (::tpy::add_check<int32_t>(i, 1));
                 return std::optional<std::tuple<P*, P*>>(__val);
             }

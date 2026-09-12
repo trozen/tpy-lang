@@ -3,36 +3,35 @@
 
 namespace tpyapp::main {
 
-// g: Expr = [1, [2, 3], 4]
 Expr g;
 
 // def leaf_count(e: readonly[Expr]) -> int:
+//     match e:
+//         case list() as branches:
+//             total = 0
+//             for child in branches:
+//                 total += leaf_count(child)
+//             return total
+//         case _:
+//             return 1
 ::tpy::BigInt leaf_count(const Expr& e) {
-    // match e:
     auto& __match_subject_1 = e;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& branches = __case_0;
-        // total = 0
         int32_t total = 0;
-        // for child in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& child = *__beg_0;
-            // total += leaf_count(child)
             total = ::tpy::add_check<int32_t>(total, (leaf_count(child)).to_fixed_check<int32_t>());
         }
-        // return total
         return ::tpy::BigInt(total);
         break;
     }
-    // case _:
     default: {
-        // return 1
         return ::tpy::BigInt(1);
         break;
     }
@@ -41,43 +40,44 @@ Expr g;
 }
 
 // def get_global() -> Expr:
+//     return g
 Expr& get_global() {
-    // return g
     return g;
 }
 
 // def first_view(e: Expr) -> readonly[Expr]:
+//     return e
 const Expr& first_view(Expr& e) {
-    // return e
     return e;
 }
 
 // def build() -> Own[Expr]:
+//     return [5, 6]
 Expr build() {
-    // return [5, 6]
     return std::vector<Expr>{5, 6};
 }
 
 // def main() -> None:
+//     print(leaf_count(get_global()))
+//     seed: Expr = [7, [8, 9]]
+//     print(leaf_count(first_view(seed)))
+//     print(leaf_count(build()))
 void main() {
-    // print(leaf_count(get_global()))
     std::cout << leaf_count(get_global()) << "\n";
-    // seed: Expr = [7, [8, 9]]
     Expr seed = std::vector<Expr>{7, std::vector<Expr>{8, 9}};
-    // print(leaf_count(first_view(seed)))
     std::cout << leaf_count(first_view(seed)) << "\n";
-    // print(leaf_count(build()))
     std::cout << leaf_count(build()) << "\n";
 }
 
+// g: Expr = [1, [2, 3], 4]
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g: Expr = [1, [2, 3], 4]
     g = std::vector<Expr>{1, std::vector<Expr>{2, 3}, 4};
-    // main()
     main();
 }
 

@@ -47,86 +47,87 @@ namespace tpyapp::main {
 
 
 // def sum_foreign(cs: list[ForeignColor]) -> int:
+//     total = 0
+//     for c in cs:
+//         total += c.value
+//     return total
 ::tpy::BigInt sum_foreign(const std::vector<::tpyapp::colors::Color>& cs) {
-    // total = 0
     int32_t total = 0;
-    // for c in cs:
     auto& __obj_0 = cs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpyapp::colors::Color c = *__beg_0;
-        // total += c.value
         total = ::tpy::add_check<int32_t>(total, static_cast<int32_t>(c));
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 
 // def sum_local(cs: list[Color]) -> int:
+//     total = 0
+//     for c in cs:
+//         total += c.value
+//     return total
 ::tpy::BigInt sum_local(const std::vector<Color>& cs) {
-    // total = 0
     int32_t total = 0;
-    // for c in cs:
     auto& __obj_0 = cs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        // total += c.value
         total = ::tpy::add_check<int32_t>(total, static_cast<int32_t>(c));
     }
-    // return total
     return ::tpy::BigInt(total);
 }
 
 // def main() -> None:
+//     fcount = 0
+//     for c in ForeignColor:
+//         fcount += 1
+//     lcount = 0
+//     for c in Color:
+//         lcount += 1
+//     print("foreign count", fcount)
+//     print("local count", lcount)
+//     print("foreign sum", sum_foreign([ForeignColor.RED, ForeignColor.GREEN]))
+//     print("local sum", sum_local([Color.BLUE, Color.CYAN, Color.MAGENTA]))
 void main() {
-    // fcount = 0
     int32_t fcount = 0;
-    // for c in ForeignColor:
     auto& __obj_0 = ::tpy::EnumUtil<::tpyapp::colors::Color>::members;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpyapp::colors::Color c = *__beg_0;
-        // fcount += 1
         fcount = ::tpy::add_check<int32_t>(fcount, 1);
     }
-    // lcount = 0
     int32_t lcount = 0;
-    // for c in Color:
     auto& __obj_1 = ::tpy::EnumUtil<Color>::members;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         Color c = *__beg_1;
-        // lcount += 1
         lcount = ::tpy::add_check<int32_t>(lcount, 1);
     }
-    // print("foreign count", fcount)
     std::cout << "foreign count" << " " << fcount << "\n";
-    // print("local count", lcount)
     std::cout << "local count" << " " << lcount << "\n";
-    // print("foreign sum", sum_foreign([ForeignColor.RED, ForeignColor.GREEN]))
     std::vector<::tpyapp::colors::Color> __tmp_1 = {::tpyapp::colors::Color::RED, ::tpyapp::colors::Color::GREEN};
     std::cout << "foreign sum" << " " << sum_foreign(__tmp_1) << "\n";
-    // print("local sum", sum_local([Color.BLUE, Color.CYAN, Color.MAGENTA]))
     std::vector<Color> __tmp_2 = {Color::BLUE, Color::CYAN, Color::MAGENTA};
     std::cout << "local sum" << " " << sum_local(__tmp_2) << "\n";
 }
 
+// # Regression: an aliased-imported enum and its LOCAL same-named twin stay
+// # distinct under for-each iteration and inside list[...] annotations.
+// from enum import IntEnum
+// from colors import Color as ForeignColor
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: an aliased-imported enum and its LOCAL same-named twin stay
-    // # distinct under for-each iteration and inside list[...] annotations.
-    // from enum import IntEnum
-    // from colors import Color as ForeignColor
     ::tpyapp::colors::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,42 +5,44 @@ namespace tpyapp::main {
 
 
 // def risky(x: int32) -> int32:
+//     if x < 0:
+//         raise ValueError("negative")
+//     return x * 2
 int32_t risky(int32_t x) {
-    // if x < 0:
     if ((x < 0)) {
-        // raise ValueError("negative")
         throw ::tpy::ValueError("negative");
     }
-    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main() -> None:
+//     try:
+//         result = risky(5)
+//     except ValueError:
+//         print("caught")
+//     else:
+//         print(result)
 void main() {
-    // try:
     int32_t result;
     {
         try {
-            // result = risky(5)
             result = risky(5);
         } catch (const ::tpy::ValueError&) {
-            // print("caught")
             std::cout << "caught" << "\n";
             goto __after_else_1;
         }
         // else:
-        // print(result)
         std::cout << result << "\n";
         __after_else_1:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

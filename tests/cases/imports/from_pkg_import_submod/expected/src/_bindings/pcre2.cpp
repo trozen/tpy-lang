@@ -5,8 +5,8 @@ namespace tpyapp::_bindings::pcre2 {
 
 
 // def compile_pattern(s: str) -> int32:
+//     return int32(len(s))
 int32_t compile_pattern(std::string_view s) {
-    // return int32(len(s))
     return ::tpy::__len__(s);
 }
 

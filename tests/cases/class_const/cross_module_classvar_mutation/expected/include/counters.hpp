@@ -11,6 +11,7 @@ struct Counters;
 
 inline constexpr std::string_view __name__ = "counters";
 
+// def bump_from_other_module() -> None:
 void bump_from_other_module();
 
 // class Counters:

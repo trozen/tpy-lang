@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Pile()
+//     x = Box(3)
+//     y = Box(4)
+//     print(p.via_param(x, y))
 void main() {
-    // p = Pile()
     Pile p = Pile();
-    // x = Box(3)
     Box x = Box(3);
-    // y = Box(4)
     Box y = Box(4);
-    // print(p.via_param(x, y))
     std::cout << p.via_param(x, y) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

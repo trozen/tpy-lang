@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Library::Worker& obj) {
     return os;
 }
 
-// Async coroutine: Library.Worker.compute
+// async def compute(self, delta: int) -> int:  # tpyc: ok
 struct __coro_2_7_Library_6_Worker_7_compute {
     int32_t __state;
     bool __cancel_pending;
@@ -74,6 +74,7 @@ inline __coro_2_7_Library_6_Worker_7_compute Library::Worker::compute(::tpy::Big
 
 
 // def __init__(self, value: int) -> None:
+//     self.value = value
 inline Library::Worker::Worker(const ::tpy::BigInt& value) : value(value) {}
 void __tpy_init();
 } // namespace nested_case::helpers

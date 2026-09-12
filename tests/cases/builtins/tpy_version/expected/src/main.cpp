@@ -5,59 +5,63 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # String version is non-empty and starts with a digit.
+//     assert len(__version__) > 0
+//     assert __version__[0] >= "0" and __version__[0] <= "9"
+//
+//     # Tuple has the CPython-style shape; components are non-negative
+//     # and the releaselevel is one of the documented values.
+//     major, minor, micro, level, serial = version_info
+//     assert major >= 0
+//     assert minor >= 0
+//     assert micro >= 0
+//     assert (level == "alpha" or level == "beta" or level == "candidate"
+//             or level == "final" or level == "dev")
+//     assert serial >= 0
+//
+//     # Exercise is_compiled as a bool. Exact value differs across runtimes
+//     # by design; both branches must be type-correct so the mode selector
+//     # works for downstream dual-target code.
+//     if is_compiled:
+//         pass
+//     else:
+//         pass
+//
+//     print("ok")
 void main() {
-    // # String version is non-empty and starts with a digit.
-    // assert len(__version__) > 0
     if (!((::tpy::__len__(::tpystd::tpy::version::__version__) > 0))) ::tpy::raise_assertion_error();
-    // assert __version__[0] >= "0" and __version__[0] <= "9"
     if (!(((::tpy::__getitem__(::tpystd::tpy::version::__version__, 0) >= '0') && (::tpy::__getitem__(::tpystd::tpy::version::__version__, 0) <= '9')))) ::tpy::raise_assertion_error();
-    // # Tuple has the CPython-style shape; components are non-negative
-    // # and the releaselevel is one of the documented values.
-    // major, minor, micro, level, serial = version_info
     const auto& __tup_1 = ::tpystd::tpy::version::version_info;
     int32_t major = std::get<0>(__tup_1);
     int32_t minor = std::get<1>(__tup_1);
     int32_t micro = std::get<2>(__tup_1);
     std::string_view level = std::get<3>(__tup_1);
     int32_t serial = std::get<4>(__tup_1);
-    // assert major >= 0
     if (!((major >= 0))) ::tpy::raise_assertion_error();
-    // assert minor >= 0
     if (!((minor >= 0))) ::tpy::raise_assertion_error();
-    // assert micro >= 0
     if (!((micro >= 0))) ::tpy::raise_assertion_error();
-    // assert (level == "alpha" or level == "beta" or level == "candidate"
-    // or level == "final" or level == "dev")
     if (!((((((level == "alpha") || (level == "beta")) || (level == "candidate")) || (level == "final")) || (level == "dev")))) ::tpy::raise_assertion_error();
-    // assert serial >= 0
     if (!((serial >= 0))) ::tpy::raise_assertion_error();
-    // # Exercise is_compiled as a bool. Exact value differs across runtimes
-    // # by design; both branches must be type-correct so the mode selector
-    // # works for downstream dual-target code.
-    // if is_compiled:
     if (::tpystd::tpy::version::is_compiled) {
-        // pass
-    // else:
     } else {
-        // pass
     }
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// # tpy.version exposes tpyc's version + is_compiled flag (True when compiled,
+// # False under the CPython stub). Values come from tpyc.__version__ via
+// # compile-time macros in lib/tpy/tpy/_version.py. No version-dependent
+// # state is printed so the output is stable across version bumps and
+// # identical across the two runtimes.
+// from tpy.version import __version__, version_info, is_compiled
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpy.version exposes tpyc's version + is_compiled flag (True when compiled,
-    // # False under the CPython stub). Values come from tpyc.__version__ via
-    // # compile-time macros in lib/tpy/tpy/_version.py. No version-dependent
-    // # state is printed so the output is stable across version bumps and
-    // # identical across the two runtimes.
-    // from tpy.version import __version__, version_info, is_compiled
     ::tpystd::tpy::version::__tpy_init();
-    // main()
     main();
 }
 

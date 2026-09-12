@@ -36,6 +36,7 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dog(Cloneable):
@@ -81,15 +82,15 @@ namespace tpyapp::main {
 
 // @readonly
 // def replicate(self) -> Own[Cloneable]:
+//     return Dog()
 inline std::unique_ptr<Cloneable> Dog::replicate() const {
-    // return Dog()
     return std::make_unique<Dog>(Dog());
 }
 
 // @readonly
 // def name(self) -> str:
+//     return "dog"
 inline std::string Dog::name() const {
-    // return "dog"
     return "dog";
 }
 void __tpy_init();

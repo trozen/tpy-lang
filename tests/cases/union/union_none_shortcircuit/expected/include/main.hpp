@@ -11,9 +11,13 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_and_flag(v: int32 | Dog | None, flag: bool) -> str:
 std::string test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*> v, bool flag);
+// def test_and_isinstance(v: int32 | Dog | None) -> str:
 std::string test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*> v);
+// def test_or(v: int32 | Dog | None, w: int32 | Dog | None) -> str:
 std::string test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*> v, ::tpy::Union<std::monostate, const Dog*, const int32_t*> w);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -34,6 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

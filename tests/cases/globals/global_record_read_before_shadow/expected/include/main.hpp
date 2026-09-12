@@ -12,8 +12,11 @@ struct Gate;
 extern Gate* gate;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read() -> int32:
 int32_t read();
+// def read_then_shadow() -> int32:
 int32_t read_then_shadow();
+// def main() -> None:
 void main();
 
 // class Gate:
@@ -34,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Gate::Gate(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

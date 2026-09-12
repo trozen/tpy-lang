@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def make_pair() -> tuple[int, int]:
+//     return (10, 20)
 std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair() {
-    // return (10, 20)
     return std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(10), ::tpy::BigInt(20)};
 }
 
 // def g() -> Iterator[int]:
+//     a, b = make_pair()
+//     yield a
+//     yield b
+//     yield a + b
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // a, b = make_pair()
         auto __tup_1 = make_pair();
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
-        // yield a
         __state = S_RESUME_0;
         return a;
     }
     case S_RESUME_0: {
-        // yield b
         __state = S_RESUME_1;
         return b;
     }
     case S_RESUME_1: {
-        // yield a + b
         __state = S_RESUME_2;
         return ((a) + (b));
     }
@@ -48,8 +48,9 @@ __gen_g g() {
 }
 
 // def main() -> None:
+//     for v in g():
+//         print(v)
 void main() {
-    // for v in g():
     {
         auto __src_0 = g();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -57,18 +58,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
         std::cout << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -12,6 +12,7 @@ using ::tpyapp::mod_d::d_value;
 
 inline constexpr std::string_view __name__ = "mod_b";
 
+// def b_value() -> int32:
 int32_t b_value();
 
 void __tpy_init();

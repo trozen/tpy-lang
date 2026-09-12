@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def accept(x: int32 | str | None) -> None:
+//     pass
 void accept(const ::tpy::Union<std::monostate, int32_t, std::string>& x) {
-    // pass
 }
 
 // def test() -> None:
+//     a: int32 | str | None = int32(42)
+//     b: int32 | str | None = "hello"
+//     accept(a)
+//     accept(b)
+//     print("ok")
 void test() {
-    // a: int32 | str | None = int32(42)
     ::tpy::Union<std::monostate, int32_t, std::string> a = 42;
-    // b: int32 | str | None = "hello"
     ::tpy::Union<std::monostate, int32_t, std::string> b = "hello";
-    // accept(a)
     accept(a);
-    // accept(b)
     accept(b);
-    // print("ok")
     std::cout << "ok" << "\n";
 }
 
+// test()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test()
     test();
 }
 

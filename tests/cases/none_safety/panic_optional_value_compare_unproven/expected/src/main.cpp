@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def cmp_score(x: int32 | None) -> int32:
+//     if x > 0:
+//         return 1
+//     return 0
 int32_t cmp_score(std::optional<int32_t> x) {
-    // if x > 0:
     if ((::tpy::deref_optional_check(x) > 0)) {
-        // return 1
         return 1;
     }
-    // return 0
     return 0;
 }
 
+// print(cmp_score(1))
+// print(cmp_score(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(cmp_score(1))
     std::cout << cmp_score(1) << "\n";
-    // print(cmp_score(None))
     std::cout << cmp_score(std::nullopt) << "\n";
 }
 

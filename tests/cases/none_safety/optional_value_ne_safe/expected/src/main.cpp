@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def ne_check(x: int32 | None, y: int32) -> bool:
+//     return x != y  # tpyc: ok
 bool ne_check(std::optional<int32_t> x, int32_t y) {
-    // return x != y  # tpyc: ok
     return (x != y);
 }
 
+// print(ne_check(5, 5))
+// print(ne_check(3, 5))
+// print(ne_check(None, 5))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(ne_check(5, 5))
     std::cout << ::tpy::print_bool(ne_check(5, 5)) << "\n";
-    // print(ne_check(3, 5))
     std::cout << ::tpy::print_bool(ne_check(3, 5)) << "\n";
-    // print(ne_check(None, 5))
     std::cout << ::tpy::print_bool(ne_check(std::nullopt, 5)) << "\n";
 }
 

@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // async def val(tag: str, n: int) -> int:
+//     print("eval", tag)
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_val::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("eval", tag)
         std::cout << "eval" << " " << tag << "\n";
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -28,11 +28,17 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
 }
 
 // async def main() -> None:
+//     # 1 < 5 < 3: (1<5) True so c IS evaluated; (5<3) False -> overall False.
+//     # Each of a/b/c awaited once.
+//     r = await val("a", 1) < await val("b", 5) < await val("c", 3)
+//     print("r", r)
+//     # 9 < 5 < ...: (9<5) False -> short-circuit, third operand NOT awaited.
+//     r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
+//     print("r2", r2)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = "a";
-        // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         __sub_0.emplace(__coro_arg_0, ::tpy::BigInt(1));
         __state = S_RESUME_0;
         continue;
@@ -43,7 +49,6 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         __sc_1 = std::move(__r0).value();
         __sub_0.reset();
         __coro_arg_1 = "b";
-        // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         __sub_1.emplace(__coro_arg_1, ::tpy::BigInt(5));
         __state = S_RESUME_1;
         continue;
@@ -53,13 +58,9 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_2 = std::move(__r1).value();
         __sub_1.reset();
-        // # 1 < 5 < 3: (1<5) True so c IS evaluated; (5<3) False -> overall False.
-        // # Each of a/b/c awaited once.
-        // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         __sc_0 = (__sc_1 < __sc_2);
         if (__sc_0) {
             __coro_arg_2 = "c";
-            // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
             __sub_2.emplace(__coro_arg_2, ::tpy::BigInt(3));
             __state = S_RESUME_2;
             continue;
@@ -73,9 +74,6 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_3 = std::move(__r2).value();
         __sub_2.reset();
-        // # 1 < 5 < 3: (1<5) True so c IS evaluated; (5<3) False -> overall False.
-        // # Each of a/b/c awaited once.
-        // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         __sc_0 = (__sc_2 < __sc_3);
         __state = S_JOIN_0;
         continue;
@@ -86,7 +84,6 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         __sc_5 = std::move(__r3).value();
         __sub_3.reset();
         __coro_arg_4 = "b2";
-        // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         __sub_4.emplace(__coro_arg_4, ::tpy::BigInt(5));
         __state = S_RESUME_4;
         continue;
@@ -96,12 +93,9 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_6 = std::move(__r4).value();
         __sub_4.reset();
-        // # 9 < 5 < ...: (9<5) False -> short-circuit, third operand NOT awaited.
-        // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         __sc_4 = (__sc_5 < __sc_6);
         if (__sc_4) {
             __coro_arg_5 = "c2-skipped";
-            // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
             __sub_5.emplace(__coro_arg_5, ::tpy::BigInt(3));
             __state = S_RESUME_5;
             continue;
@@ -115,30 +109,20 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_7 = std::move(__r5).value();
         __sub_5.reset();
-        // # 9 < 5 < ...: (9<5) False -> short-circuit, third operand NOT awaited.
-        // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         __sc_4 = (__sc_6 < __sc_7);
         __state = S_JOIN_1;
         continue;
     }
     case S_JOIN_0: {
-        // # 1 < 5 < 3: (1<5) True so c IS evaluated; (5<3) False -> overall False.
-        // # Each of a/b/c awaited once.
-        // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         r = __sc_0;
-        // print("r", r)
         std::cout << "r" << " " << ::tpy::print_bool(r) << "\n";
         __coro_arg_3 = "a2";
-        // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         __sub_3.emplace(__coro_arg_3, ::tpy::BigInt(9));
         __state = S_RESUME_3;
         continue;
     }
     case S_JOIN_1: {
-        // # 9 < 5 < ...: (9<5) False -> short-circuit, third operand NOT awaited.
-        // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         r2 = __sc_4;
-        // print("r2", r2)
         std::cout << "r2" << " " << ::tpy::print_bool(r2) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -154,17 +138,18 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # Chained comparison with awaited operands: each operand is evaluated
+// # exactly once, and the chain short-circuits on the first false comparison
+// # (the operand after a false comparison is not awaited).
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Chained comparison with awaited operands: each operand is evaluated
-    // # exactly once, and the chain short-circuits on the first false comparison
-    // # (the operand after a false comparison is not awaited).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

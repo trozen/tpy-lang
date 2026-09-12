@@ -13,8 +13,11 @@ struct Holder;
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[Rec]:
 Rec make();
+// def yes() -> bool:
 bool yes();
+// def main() -> None:
 void main();
 
 // class Rec:
@@ -54,15 +57,17 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, v: int):
+//     self.v = v
 inline Rec::Rec(const ::tpy::BigInt& v) : v(v) {}
 
 // def __init__(self):
+//     self.r = Rec(0)
 inline Holder::Holder() : r(Rec(::tpy::BigInt(0))) {}
 
 // @property
 // def made(self) -> Own[Rec]:
+//     return make()
 inline Rec Holder::made() const {
-    // return make()
     return make();
 }
 void __tpy_init();

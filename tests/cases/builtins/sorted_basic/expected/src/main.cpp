@@ -6,46 +6,52 @@ namespace tpyapp::main {
 
 // # sorted() builtin on integer and string lists
 // def main() -> None:
+//     a = [3, 1, 4, 1, 5, 9, 2, 6]
+//     print(sorted(a))
+//
+//     b = [5, 4, 3, 2, 1]
+//     print(sorted(b))
+//
+//     c = [1, 2, 3]
+//     print(sorted(c))
+//
+//     # empty
+//     empty: list[int] = []
+//     print(sorted(empty))
+//
+//     # duplicates
+//     d = [1, 1, 1]
+//     print(sorted(d))
+//
+//     # strings
+//     words = ["banana", "apple", "cherry", "date"]
+//     print(sorted(words))
+//
+//     names = ["Charlie", "alice", "Bob"]
+//     print(sorted(names))
 void main() {
-    // a = [3, 1, 4, 1, 5, 9, 2, 6]
     std::array<int32_t, 8> a = {3, 1, 4, 1, 5, 9, 2, 6};
-    // print(sorted(a))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(a)) << "\n";
-    // b = [5, 4, 3, 2, 1]
     std::array<int32_t, 5> b = {5, 4, 3, 2, 1};
-    // print(sorted(b))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(b)) << "\n";
-    // c = [1, 2, 3]
     std::array<int32_t, 3> c = {1, 2, 3};
-    // print(sorted(c))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(c)) << "\n";
-    // # empty
-    // empty: list[int] = []
     std::vector<::tpy::BigInt> empty = std::vector<::tpy::BigInt>{};
-    // print(sorted(empty))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<::tpy::BigInt>(empty)) << "\n";
-    // # duplicates
-    // d = [1, 1, 1]
     std::array<int32_t, 3> d = {1, 1, 1};
-    // print(sorted(d))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(d)) << "\n";
-    // # strings
-    // words = ["banana", "apple", "cherry", "date"]
     std::array<std::string, 4> words = {"banana", "apple", "cherry", "date"};
-    // print(sorted(words))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(words)) << "\n";
-    // names = ["Charlie", "alice", "Bob"]
     std::array<std::string, 3> names = {"Charlie", "alice", "Bob"};
-    // print(sorted(names))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(names)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

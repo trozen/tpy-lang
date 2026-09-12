@@ -20,10 +20,15 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pooled_reuse() -> None:
 void pooled_reuse();
+// def pool_key_shapes() -> None:
 void pool_key_shapes();
+// def failed_request_drops_entry() -> None:
 void failed_request_drops_entry();
+// def exit_closes_pool() -> None:
 void exit_closes_pool();
+// def main() -> None:
 void main();
 
 void __tpy_init();

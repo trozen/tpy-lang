@@ -5,150 +5,150 @@ namespace tpyapp::main {
 
 
 // def joins(a: str, *parts: str) -> str:
+//     out = a
+//     for p in parts:
+//         out = out + p
+//     return out
 std::string joins(std::string_view a, ::tpy::varargs<const std::string> parts) {
-    // out = a
     std::string out = std::string(a);
-    // for p in parts:
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view p = *__beg_0;
-        // out = out + p
         out += p;
     }
-    // return out
     return out;
 }
 
 // def total_len(a: bytes, *parts: bytes) -> int32:
+//     n = len(a)
+//     for p in parts:
+//         n += len(p)
+//     return n
 int32_t total_len(::tpy::BytesView a, ::tpy::varargs<const ::tpy::Bytes> parts) {
-    // n = len(a)
     int32_t n = ::tpy::__len__(a);
-    // for p in parts:
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BytesView p = *__beg_0;
-        // n += len(p)
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(p));
     }
-    // return n
     return n;
 }
 
 // def addall(*nums: int32) -> int32:
+//     t = 0
+//     for n in nums:
+//         t += n
+//     return t
 int32_t addall(::tpy::varargs<const int32_t> nums) {
-    // t = 0
     int32_t t = 0;
-    // for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
-        // t += n
         t = ::tpy::add_check<int32_t>(t, n);
     }
-    // return t
     return t;
 }
 
 // def reassign_view_param(p: str) -> str:
+//     p = joins(p, "!")     # reassign a str-view param to an owned str
+//     return p
 std::string reassign_view_param(std::string_view __param_p) {
     std::string p = std::string(__param_p);
-    // p = joins(p, "!")     # reassign a str-view param to an owned str
     std::array<const std::string, 1> __tmp_1{"!"};
     p = joins(p, ::tpy::varargs<const std::string>(__tmp_1));
-    // return p
     return std::string(p);
 }
 
 // def from_str_view(sv: StrView) -> str:
+//     return joins("x", sv)              # view arg into *parts: str
 std::string from_str_view(std::string_view sv) {
-    // return joins("x", sv)              # view arg into *parts: str
     std::array<const std::string, 1> __tmp_2{std::string(sv)};
     return joins("x", ::tpy::varargs<const std::string>(__tmp_2));
 }
 
 // def from_bytes_view(bv: BytesView) -> int32:
+//     return total_len(b"x", bv)         # view arg into *parts: bytes
 int32_t from_bytes_view(::tpy::BytesView bv) {
-    // return total_len(b"x", bv)         # view arg into *parts: bytes
     std::array<const ::tpy::Bytes, 1> __tmp_3{::tpy::Bytes(bv)};
     return total_len(::tpy::bytes_literal("x", 1), ::tpy::varargs<const ::tpy::Bytes>(__tmp_3));
 }
 
 // def loop_var_into_join(names: list[str]) -> None:
+//     # a str loop var (view) flowing into a varargs param
+//     out: list[str] = []
+//     for d in names:
+//         out.append(joins("/", d))
+//     for s in out:
+//         print(s)
 void loop_var_into_join(const std::vector<std::string>& names) {
-    // # a str loop var (view) flowing into a varargs param
-    // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // for d in names:
     auto& __obj_0 = names;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view d = *__beg_0;
-        // out.append(joins("/", d))
         std::array<const std::string, 1> __tmp_4{std::string(d)};
         out.push_back(joins("/", ::tpy::varargs<const std::string>(__tmp_4)));
     }
-    // for s in out:
     auto& __obj_1 = out;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view s = *__beg_1;
-        // print(s)
         std::cout << s << "\n";
     }
 }
 
 // def method_view_vararg(sv: StrView) -> str:
+//     # the method-call varargs dispatch path (distinct from free functions)
+//     s = Sink()
+//     return s.joins("m", sv)
 std::string method_view_vararg(std::string_view sv) {
-    // # the method-call varargs dispatch path (distinct from free functions)
-    // s = Sink()
     Sink s = Sink();
-    // return s.joins("m", sv)
     std::array<const std::string, 1> __tmp_5{std::string(sv)};
     return s.joins("m", ::tpy::varargs<const std::string>(__tmp_5));
 }
 
 // def main() -> None:
+//     print(from_str_view("hi"))         # xhi
+//     print(reassign_view_param("p"))    # p!
+//     print(method_view_vararg("v"))     # mv
+//     print(from_bytes_view(b"hello"))   # 6
+//     owned = "a" + "b"
+//     print(joins("p", owned, "q"))      # owned + literal args (no view)
+//     print(addall(1, 2, 3))             # value-type varargs unaffected
+//     ns: list[str] = []
+//     ns.append("a")
+//     ns.append("b")
+//     loop_var_into_join(ns)
 void main() {
-    // print(from_str_view("hi"))         # xhi
     std::cout << from_str_view("hi") << "\n";
-    // print(reassign_view_param("p"))    # p!
     std::cout << reassign_view_param("p") << "\n";
-    // print(method_view_vararg("v"))     # mv
     std::cout << method_view_vararg("v") << "\n";
-    // print(from_bytes_view(b"hello"))   # 6
     std::cout << from_bytes_view(::tpy::bytes_literal("hello", 5)) << "\n";
-    // owned = "a" + "b"
     ::tpy::String owned = (::tpy::str_concat("a", "b"));
-    // print(joins("p", owned, "q"))      # owned + literal args (no view)
     std::array<const std::string, 2> __tmp_6{owned, "q"};
     std::cout << joins("p", ::tpy::varargs<const std::string>(__tmp_6)) << "\n";
-    // print(addall(1, 2, 3))             # value-type varargs unaffected
     std::array<const int32_t, 3> __tmp_7{1, 2, 3};
     std::cout << addall(::tpy::varargs<const int32_t>(__tmp_7)) << "\n";
-    // ns: list[str] = []
     std::vector<std::string> ns = std::vector<std::string>{};
-    // ns.append("a")
     ns.push_back("a");
-    // ns.append("b")
     ns.push_back("b");
-    // loop_var_into_join(ns)
     loop_var_into_join(ns);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

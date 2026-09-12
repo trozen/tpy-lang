@@ -5,10 +5,12 @@ namespace tpyapp::main {
 
 
 // async def slow(start: Event) -> int32:
+//     await start
+//     print("slow done")
+//     return int32(100)
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await start
         __sub_0 = &(start);
         __state = S_RESUME_0;
         continue;
@@ -18,9 +20,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0 = nullptr;
-        // print("slow done")
         std::cout << "slow done" << "\n";
-        // return int32(100)
         __state = S_DONE;
         int32_t __tpy_async_ret = 100;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -37,15 +37,15 @@ __coro_slow slow(::tpystd::asyncio::Event& start) {
 }
 
 // async def fast(start: Event) -> int32:
+//     start.set()
+//     print("fast done")
+//     return int32(200)
 ::tpystd::tpy::Poll<int32_t> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // start.set()
         start.set();
-        // print("fast done")
         std::cout << "fast done" << "\n";
-        // return int32(200)
         __state = S_DONE;
         int32_t __tpy_async_ret = 200;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -62,18 +62,20 @@ __coro_fast fast(::tpystd::asyncio::Event& start) {
 }
 
 // async def main_coro() -> None:
+//     start = Event()
+//     tasks: list[asyncio.Task[int32]] = []
+//     tasks.append(asyncio.create_task(slow(start)))
+//     tasks.append(asyncio.create_task(fast(start)))
+//     results = await asyncio.gather_list(tasks)
+//     print("result[0]:", results[0])
+//     print("result[1]:", results[1])
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // start = Event()
         start.emplace(::tpystd::asyncio::Event());
-        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // tasks.append(asyncio.create_task(slow(start)))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow((*start)))));
-        // tasks.append(asyncio.create_task(fast(start)))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fast((*start)))));
-        // results = await asyncio.gather_list(tasks)
         __sub_0.emplace((*tasks));
         __state = S_RESUME_0;
         continue;
@@ -83,9 +85,7 @@ __coro_fast fast(::tpystd::asyncio::Event& start) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // print("result[0]:", results[0])
         std::cout << "result[0]:" << " " << ::tpy::__getitem__((*results), 0) << "\n";
-        // print("result[1]:", results[1])
         std::cout << "result[1]:" << " " << ::tpy::__getitem__((*results), 1) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -102,27 +102,28 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # asyncio.gather_list: result order matches INPUT order regardless of
+// # completion order. Uses an Event to enforce a deterministic completion
+// # sequence rather than relying on sleep durations: `slow` (input index 0)
+// # parks on the event; `fast` (input index 1) sets the event before
+// # returning, so `fast` finishes first and `slow` second. The result list
+// # is [slow's 100, fast's 200] (input order) even though completion order
+// # was the reverse. Print interleaving confirms `fast done` lands before
+// # `slow done`.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # asyncio.gather_list: result order matches INPUT order regardless of
-    // # completion order. Uses an Event to enforce a deterministic completion
-    // # sequence rather than relying on sleep durations: `slow` (input index 0)
-    // # parks on the event; `fast` (input index 1) sets the event before
-    // # returning, so `fast` finishes first and `slow` second. The result list
-    // # is [slow's 100, fast's 200] (input order) even though completion order
-    // # was the reverse. Print interleaving confirms `fast done` lands before
-    // # `slow done`.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

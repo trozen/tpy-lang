@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     t = Track(3, 4)
+//     p = t.position
+//     print(p.x, p.y)
+//     print(t.position == Coord(3, 4))
+//     g = t.goal
+//     print(g is None)
 void main() {
-    // t = Track(3, 4)
     Track t = Track(::tpy::BigInt(3), ::tpy::BigInt(4));
-    // p = t.position
     Coord p = t.position();
-    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
-    // print(t.position == Coord(3, 4))
     std::cout << ::tpy::print_bool(((t.position()) == (Coord(::tpy::BigInt(3), ::tpy::BigInt(4))))) << "\n";
-    // g = t.goal
     std::optional<Coord> g = t.goal();
-    // print(g is None)
     std::cout << ::tpy::print_bool((!g.has_value())) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

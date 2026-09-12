@@ -3,14 +3,14 @@
 
 namespace tpyapp::main {
 
-// emitted: int32 = 0
 int32_t emitted{};
 
 // def main() -> None:
+//     s = Source()
+//     for x in s.values():
+//         print("x =", x, "emitted =", emitted)
 void main() {
-    // s = Source()
     Source s = Source();
-    // for x in s.values():
     {
         auto __src_0 = s.values();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -18,34 +18,33 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print("x =", x, "emitted =", emitted)
         std::cout << "x =" << " " << x << " " << "emitted =" << " " << emitted << "\n";
         }
     }
 }
 
 // def values(self) -> Iterator[int32]:
+//     global emitted
+//     emitted += 1
+//     yield 0
+//     emitted += 1
+//     yield 1
+//     emitted += 1
+//     yield 2
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_values::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // global emitted
-        // emitted += 1
         emitted = ::tpy::add_check<int32_t>(emitted, 1);
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {
-        // emitted += 1
         emitted = ::tpy::add_check<int32_t>(emitted, 1);
-        // yield 1
         __state = S_RESUME_1;
         return 1;
     }
     case S_RESUME_1: {
-        // emitted += 1
         emitted = ::tpy::add_check<int32_t>(emitted, 1);
-        // yield 2
         __state = S_RESUME_2;
         return 2;
     }
@@ -59,14 +58,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_values::__next__() {
 }
 
 
+// emitted: int32 = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // emitted: int32 = 0
     emitted = 0;
-    // main()
     main();
 }
 

@@ -5,23 +5,27 @@ namespace tpyapp::main {
 
 
 // def loop(a: int | str) -> Iterator[str]:
+//     count = 0
+//     while isinstance(a, int):
+//         yield "tick"
+//         yield str(a + 1)
+//         count += 1
+//         if count >= 3:
+//             break
 std::expected<std::string, ::tpy::StopIteration> __gen_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // count = 0
         count = 0;
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {
         const auto& __a = std::get<::tpy::BigInt>(a);
-        // yield str(a + 1)
         __state = S_RESUME_1;
         return (((__a) + (::tpy::BigInt(1)))).to_string();
     }
     case S_RESUME_1: {
         const auto& __a = std::get<::tpy::BigInt>(a);
-        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
         if ((count >= 3)) {
             __state = S_JOIN_1;
@@ -34,7 +38,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_loop::__next__() {
     case S_JOIN_0: {
         if (std::holds_alternative<::tpy::BigInt>(a)) {
             const auto& __a = std::get<::tpy::BigInt>(a);
-            // yield "tick"
             __state = S_RESUME_0;
             return "tick";
         } else {
@@ -58,19 +61,19 @@ __gen_loop loop(::tpy::Union<::tpy::BigInt, std::string> a) {
 }
 
 // def checked(a: int | str) -> Iterator[str]:
+//     assert isinstance(a, int)
+//     yield "checked"
+//     yield str(a + 100)
 std::expected<std::string, ::tpy::StopIteration> __gen_checked::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // assert isinstance(a, int)
         if (!(std::holds_alternative<::tpy::BigInt>(a))) ::tpy::raise_assertion_error();
         const auto& __a = std::get<::tpy::BigInt>(a);
-        // yield "checked"
         __state = S_RESUME_0;
         return "checked";
     }
     case S_RESUME_0: {
         const auto& __a = std::get<::tpy::BigInt>(a);
-        // yield str(a + 100)
         __state = S_RESUME_1;
         return (((__a) + (::tpy::BigInt(100)))).to_string();
     }
@@ -91,8 +94,11 @@ __gen_checked checked(::tpy::Union<::tpy::BigInt, std::string> a) {
 }
 
 // def main() -> None:
+//     for s in loop(5):
+//         print(s)
+//     for s in checked(7):
+//         print(s)
 void main() {
-    // for s in loop(5):
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = 5;
         auto __src_0 = loop(__tmp_1);
@@ -101,11 +107,9 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // for s in checked(7):
     {
         ::tpy::Union<::tpy::BigInt, std::string> __tmp_2 = 7;
         auto __src_2 = checked(__tmp_2);
@@ -114,18 +118,17 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

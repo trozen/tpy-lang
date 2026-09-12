@@ -14,11 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_raise_from_finally;
 struct __coro_amain;
 
+// async def raise_from_finally() -> None:
 __coro_raise_from_finally raise_from_finally();
+// async def amain() -> None:
 __coro_amain amain();
+// def main() -> None:
 void main();
 
-// Async coroutine: raise_from_finally
+// async def raise_from_finally() -> None:
 struct __coro_raise_from_finally {
     int32_t __state;
     bool __cancel_pending;
@@ -39,7 +42,7 @@ struct __coro_raise_from_finally {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;

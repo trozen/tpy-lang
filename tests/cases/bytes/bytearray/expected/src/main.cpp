@@ -6,51 +6,57 @@ namespace tpyapp::main {
 
 // # bytearray: mutable bytes operations
 // def main() -> None:
+//     ba = bytearray(b"\x01\x02\x03")
+//     print(ba)
+//     print(len(ba))
+//
+//     ba.append(4)
+//     print(ba)
+//
+//     ba[0] = 10
+//     print(ba)
+//
+//     popped = ba.pop()
+//     print(popped)
+//     print(ba)
+//
+//     ba.insert(1, 20)
+//     print(ba)
+//
+//     ba.clear()
+//     print(ba)
+//     print(len(ba))
+//
+//     grown = bytearray()
+//     grown += b"xy"  # tpyc: ok -- a LOCAL bytearray target admits the concat
+//     print(bytes(grown).decode())
 void main() {
-    // ba = bytearray(b"\x01\x02\x03")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("\x01\x02\x03", 3));
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // print(len(ba))
     std::cout << ::tpy::__len__(ba) << "\n";
-    // ba.append(4)
     ba.push_back(4);
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // ba[0] = 10
     ::tpy::bytearray_setitem(ba, 0, 10);
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // popped = ba.pop()
     uint8_t popped = ::tpy::bytearray_pop(ba);
-    // print(popped)
     std::cout << static_cast<int>(popped) << "\n";
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // ba.insert(1, 20)
     ::tpy::bytearray_insert(ba, 1, 20);
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // ba.clear()
     ba.clear();
-    // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // print(len(ba))
     std::cout << ::tpy::__len__(ba) << "\n";
-    // grown = bytearray()
     ::tpy::ByteArray grown = ::tpy::ByteArray();
-    // grown += b"xy"  # tpyc: ok -- a LOCAL bytearray target admits the concat
     grown = ::tpy::bytearray_concat(grown, ::tpy::bytes_literal_owned("xy", 2));
-    // print(bytes(grown).decode())
     std::cout << ::tpy::bytes_decode(::tpy::Bytes(grown)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

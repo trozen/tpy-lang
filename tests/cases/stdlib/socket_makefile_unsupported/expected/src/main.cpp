@@ -5,77 +5,82 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     try:
+//         b.makefile()          # default mode "r" is text -> unsupported
+//         print("bare no-raise")
+//     except ValueError:
+//         print("bare ValueError")
+//     try:
+//         b.makefile("r")       # explicit text
+//         print("text no-raise")
+//     except ValueError:
+//         print("text ValueError")
+//     try:
+//         b.makefile("wb")      # write
+//         print("write no-raise")
+//     except ValueError:
+//         print("write ValueError")
+//     try:
+//         b.makefile("rb", 0)   # unbuffered (CPython returns raw SocketIO)
+//         print("unbuffered no-raise")
+//     except ValueError:
+//         print("unbuffered ValueError")
+//     a.close()
+//     b.close()
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // try:
     {
         try {
-            // b.makefile()          # default mode "r" is text -> unsupported
             b.makefile();
-            // print("bare no-raise")
             std::cout << "bare no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("bare ValueError")
             std::cout << "bare ValueError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // b.makefile("r")       # explicit text
             b.makefile("r");
-            // print("text no-raise")
             std::cout << "text no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("text ValueError")
             std::cout << "text ValueError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // b.makefile("wb")      # write
             b.makefile("wb");
-            // print("write no-raise")
             std::cout << "write no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("write ValueError")
             std::cout << "write ValueError" << "\n";
         }
     }
-    // try:
     {
         try {
-            // b.makefile("rb", 0)   # unbuffered (CPython returns raw SocketIO)
             b.makefile("rb", 0);
-            // print("unbuffered no-raise")
             std::cout << "unbuffered no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
-            // print("unbuffered ValueError")
             std::cout << "unbuffered ValueError" << "\n";
         }
     }
-    // a.close()
     a.close();
-    // b.close()
     b.close();
 }
 
+// # makefile v1 implements binary read mode only; text (incl. the bare
+// # makefile() default), write, and unbuffered (buffering=0) modes raise
+// # ValueError. no_cpython -- CPython returns text/writer/raw objects for these
+// # instead of raising; this pins the documented v1 limitation.
+// import socket
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # makefile v1 implements binary read mode only; text (incl. the bare
-    // # makefile() default), write, and unbuffered (buffering=0) modes raise
-    // # ValueError. no_cpython -- CPython returns text/writer/raw objects for these
-    // # instead of raising; this pins the documented v1 limitation.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // main()
     main();
 }
 

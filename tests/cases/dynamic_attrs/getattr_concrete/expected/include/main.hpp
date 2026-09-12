@@ -11,6 +11,7 @@ struct Headers;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # D16 Phase 1: __getattr__ -> str (concrete type) needs no narrowing at use sites.
@@ -35,11 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Headers& obj) {
 
 
 // def __init__(self, store: dict[str, str]) -> None:
+//     self._store = store
 inline Headers::Headers(const ::tpy::ordered_map<std::string, std::string>& store) : _store(store) {}
 
 // def __getattr__(self, name: str) -> str:
+//     return self._store[name]
 inline std::string Headers::__getattr__(std::string_view name) const {
-    // return self._store[name]
     return ::tpy::__getitem__(this->_store, name);
 }
 void __tpy_init();

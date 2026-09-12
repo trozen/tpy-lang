@@ -35,8 +35,11 @@ struct Square;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_area(b: Box[Shape]) -> None:
 void print_area(::tpystd::tplib::box::Box<Shape>& b);
+// def make_shape() -> Own[Box[Shape]]:
 ::tpystd::tplib::box::Box<Shape> make_shape();
+// def main() -> None:
 void main();
 
 // class Circle(Shape):
@@ -98,20 +101,22 @@ namespace tpyapp::main {
 
 
 // def __init__(self, r: float) -> None:
+//     self._r = r
 inline Circle::Circle(double r) : _r(r) {}
 
 // def area(self) -> float:
+//     return 3.14 * self._r * self._r
 inline double Circle::area() {
-    // return 3.14 * self._r * self._r
     return ((((3.14) * (this->_r))) * (this->_r));
 }
 
 // def __init__(self, s: float) -> None:
+//     self._s = s
 inline Square::Square(double s) : _s(s) {}
 
 // def area(self) -> float:
+//     return self._s * self._s
 inline double Square::area() {
-    // return self._s * self._s
     return ((this->_s) * (this->_s));
 }
 void __tpy_init();

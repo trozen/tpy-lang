@@ -5,23 +5,33 @@ namespace tpyapp::main {
 
 
 // def main() -> int32:
+//     parser = ArgumentParser(prog="prog")
+//     sub = parser.add_subparsers(dest="cmd", required=True)
+//
+//     show = sub.add_parser("show")
+//     show.add_argument("--key")
+//
+//     set_p = sub.add_parser("set")
+//     set_p.add_argument("--key")
+//     set_p.add_argument("--value")
+//
+//     args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
+//     print(args.cmd)
+//     if args.key is not None:
+//         print("key=" + args.key)
+//     if args.value is not None:
+//         print("value=" + args.value)
+//     return 0
 int32_t main() {
-    // args = parser.parse_args(["set", "--key", "color", "--value", "blue"])
     std::vector<std::string> __tmp_1 = {"set", "--key", "color", "--value", "blue"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
-    // print(args.cmd)
     std::cout << args.cmd << "\n";
-    // if args.key is not None:
     if ((args.key.has_value())) {
-        // print("key=" + args.key)
         std::cout << (::tpy::str_concat("key=", (*args.key))) << "\n";
     }
-    // if args.value is not None:
     if ((args.value.has_value())) {
-        // print("value=" + args.value)
         std::cout << (::tpy::str_concat("value=", (*args.value))) << "\n";
     }
-    // return 0
     return 0;
 }
 
@@ -131,14 +141,15 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     return __tpy_builder_argparse_args_1(__tpy_argparse_cmd, __tpy_argparse_flat_key, __tpy_argparse_flat_value);
 }
 
+// from argparse import ArgumentParser
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    // from argparse import ArgumentParser
-    // main()
     main();
 }
 

@@ -9,14 +9,23 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def same_rank(a: int32, b: uint32) -> bool:
 bool same_rank(int32_t a, uint32_t b);
+// def diff_rank_signed_smaller(a: int32, b: uint64) -> bool:
 bool diff_rank_signed_smaller(int32_t a, uint64_t b);
+// def diff_rank_unsigned_smaller(a: int64, b: uint32) -> bool:
 bool diff_rank_unsigned_smaller(int64_t a, uint32_t b);
+// def equality_too(a: int32, b: uint32) -> bool:
 bool equality_too(int32_t a, uint32_t b);
+// def same_sign_signed(a: int32, b: int32) -> bool:
 bool same_sign_signed(int32_t a, int32_t b);
+// def same_sign_unsigned(a: uint32, b: uint32) -> bool:
 bool same_sign_unsigned(uint32_t a, uint32_t b);
+// def take_u64(x: uint64) -> uint64:
 uint64_t take_u64(uint64_t x);
+// def literal_seed(limit: uint64) -> uint64:
 uint64_t literal_seed(uint64_t limit);
+// def main() -> None:
 void main();
 
 void __tpy_init();

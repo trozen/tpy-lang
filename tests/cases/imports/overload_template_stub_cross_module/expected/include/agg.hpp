@@ -9,34 +9,31 @@ namespace tpyapp::agg {
 
 inline constexpr std::string_view __name__ = "agg";
 
+// def total(xs: Iterable[Own[int32]]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs);
+// def total(xs: int32) -> int32: ...
 int32_t total(int32_t xs);
 
 // @overload
 // def total(xs: Iterable[Own[int32]]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs) {
-    // s = 0
     int32_t s = 0;
-    // for x in xs:
     auto& __src_0 = xs;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // s += x
         s = ::tpy::add_check<int32_t>(s, x);
     }
-    // return s
     return s;
 }
 
 // @overload
 // def total(xs: int32) -> int32: ...
 inline int32_t total(int32_t xs) {
-    // return xs
     return xs;
 }
 

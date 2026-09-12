@@ -12,7 +12,9 @@ struct __tpy_builder_counter_1;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> int32:
 int32_t main();
+// res = c.build()
 __tpy_builder_counter_1 __tpy_builder_build_counter_1();
 
 // class Holder:
@@ -49,10 +51,13 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1&
 
 
 // def make(self) -> int32:
+//     c = Counter()
+//     c.add(7)
+//     c.add(35)
+//     res = c.build()
+//     return res.total()
 inline int32_t Holder::make() const {
-    // res = c.build()
     __tpy_builder_counter_1 res = __tpy_builder_build_counter_1();
-    // return res.total()
     return res.total();
 }
 

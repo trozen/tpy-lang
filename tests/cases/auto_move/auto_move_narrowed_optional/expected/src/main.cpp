@@ -5,36 +5,36 @@ namespace tpyapp::main {
 
 
 // def consume(h: Own[Handle]) -> int32:
+//     return h.value
 int32_t consume(Handle&& h) {
-    // return h.value
     return h.value;
 }
 
 // def test_consume() -> int32:
+//     h: Handle | None = Handle()
+//     h.value = int32(42)
+//     assert h is not None
+//     return consume(h)  # tpyc: ok
 int32_t test_consume() {
-    // h: Handle | None = Handle()
     Handle __slot_1 = Handle();
     Handle* h = &__slot_1;
-    // h.value = int32(42)
     h->value = 42;
-    // assert h is not None
     if (!((h != nullptr))) ::tpy::raise_assertion_error();
-    // return consume(h)  # tpyc: ok
     return consume(std::move((*h)));
 }
 
 // def main():
+//     print(test_consume())
 void main() {
-    // print(test_consume())
     std::cout << test_consume() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

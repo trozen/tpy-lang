@@ -5,69 +5,74 @@ namespace tpyapp::main {
 
 
 // def wrap_bigint() -> tuple[float, int]:
+//     # Return-type context flows back: T inferred as BigInt.
+//     return math.frexp(2.0)
 std::tuple<double, ::tpy::BigInt> wrap_bigint() {
-    // # Return-type context flows back: T inferred as BigInt.
-    // return math.frexp(2.0)
     return ::tpy::stdlib::math::frexp<::tpy::BigInt>(2.0);
 }
 
 // def main() -> None:
+//     # (a) Default T -- DefaultInt (int32 by default)
+//     m1, e1 = math.frexp(12.0)
+//     print(m1, e1)
+//
+//     # (b) Explicit subscript: int64 and BigInt (Python int)
+//     m2, e2 = math.frexp[int64](12.0)
+//     print(m2, e2)
+//     m3, e3 = math.frexp[int](12.0)
+//     print(m3, e3)
+//
+//     # (c) Inference via annotated tuple target -- T becomes BigInt
+//     result: tuple[float, int] = math.frexp(1.5)
+//     print(result[0], result[1])
+//
+//     # (c) Inference via return-type context in a nested call
+//     a, b = wrap_bigint()
+//     print(a, b)
+//
+//     # Round-trip through ldexp using the int32 default
+//     mm, ee = math.frexp(7.25)
+//     print(math.ldexp(mm, ee))
 void main() {
-    // # (a) Default T -- DefaultInt (int32 by default)
-    // m1, e1 = math.frexp(12.0)
     auto __tup_1 = ::tpy::stdlib::math::frexp<int32_t>(12.0);
     double m1 = std::get<0>(__tup_1);
     int32_t e1 = std::get<1>(__tup_1);
-    // print(m1, e1)
     std::cout << ::tpy::print_float(m1) << " " << e1 << "\n";
-    // # (b) Explicit subscript: int64 and BigInt (Python int)
-    // m2, e2 = math.frexp[int64](12.0)
     auto __tup_2 = ::tpy::stdlib::math::frexp<int64_t>(12.0);
     double m2 = std::get<0>(__tup_2);
     int64_t e2 = std::get<1>(__tup_2);
-    // print(m2, e2)
     std::cout << ::tpy::print_float(m2) << " " << e2 << "\n";
-    // m3, e3 = math.frexp[int](12.0)
     auto __tup_3 = ::tpy::stdlib::math::frexp<::tpy::BigInt>(12.0);
     double m3 = std::get<0>(__tup_3);
     const ::tpy::BigInt& e3 = std::get<1>(__tup_3);
-    // print(m3, e3)
     std::cout << ::tpy::print_float(m3) << " " << e3 << "\n";
-    // # (c) Inference via annotated tuple target -- T becomes BigInt
-    // result: tuple[float, int] = math.frexp(1.5)
     std::tuple<double, ::tpy::BigInt> result = ::tpy::stdlib::math::frexp<::tpy::BigInt>(1.5);
-    // print(result[0], result[1])
     std::cout << ::tpy::print_float(std::get<0>(result)) << " " << std::get<1>(result) << "\n";
-    // # (c) Inference via return-type context in a nested call
-    // a, b = wrap_bigint()
     auto __tup_4 = wrap_bigint();
     double a = std::get<0>(__tup_4);
     const ::tpy::BigInt& b = std::get<1>(__tup_4);
-    // print(a, b)
     std::cout << ::tpy::print_float(a) << " " << b << "\n";
-    // # Round-trip through ldexp using the int32 default
-    // mm, ee = math.frexp(7.25)
     auto __tup_5 = ::tpy::stdlib::math::frexp<int32_t>(7.25);
     double mm = std::get<0>(__tup_5);
     int32_t ee = std::get<1>(__tup_5);
-    // print(math.ldexp(mm, ee))
     std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(mm, ee)) << "\n";
 }
 
+// # math.frexp is generic over the exponent type. Covers three ways to pick T:
+// #   (a) default T -- DefaultInt (int32 under default config)
+// #   (b) explicit subscript `frexp[T](x)` -- TPy-only syntax
+// #   (c) bi-directional inference from annotated target / return-type context
+// # TPy-only because (b) uses subscript syntax CPython's math.frexp doesn't
+// # support; (c) forms compile under CPython but wouldn't test inference there.
+// import math
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # math.frexp is generic over the exponent type. Covers three ways to pick T:
-    // #   (a) default T -- DefaultInt (int32 under default config)
-    // #   (b) explicit subscript `frexp[T](x)` -- TPy-only syntax
-    // #   (c) bi-directional inference from annotated target / return-type context
-    // # TPy-only because (b) uses subscript syntax CPython's math.frexp doesn't
-    // # support; (c) forms compile under CPython but wouldn't test inference there.
-    // import math
     ::tpystd::math::__tpy_init();
-    // main()
     main();
 }
 

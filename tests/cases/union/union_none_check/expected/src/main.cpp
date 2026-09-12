@@ -5,79 +5,79 @@ namespace tpyapp::main {
 
 
 // def describe(v: int32 | Dog | None) -> str:
+//     if v is None:
+//         return "nothing"
+//     if isinstance(v, int32):
+//         return "int"
+//     else:
+//         return "dog"
 std::string describe(::tpy::Union<std::monostate, const Dog*, const int32_t*> v) {
-    // if v is None:
     if ((std::holds_alternative<std::monostate>(v))) {
-        // return "nothing"
         return "nothing";
     }
-    // if isinstance(v, int32):
     if (std::holds_alternative<const int32_t*>(v)) {
         auto& __v = *std::get<const int32_t*>(v);
-        // return "int"
         return "int";
-    // else:
     } else {
         auto& __v = *std::get<const Dog*>(v);
-        // return "dog"
         return "dog";
     }
 }
 
 // def process(v: int32 | Dog | None) -> None:
+//     if v is not None:
+//         if isinstance(v, int32):
+//             print("got int")
+//         else:
+//             print("got dog")
+//     else:
+//         print("got none")
 void process(::tpy::Union<std::monostate, const Dog*, const int32_t*> v) {
-    // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
-        // if isinstance(v, int32):
         if (std::holds_alternative<const int32_t*>(v)) {
             auto& __v = *std::get<const int32_t*>(v);
-            // print("got int")
             std::cout << "got int" << "\n";
-        // else:
         } else {
             auto& __v = *std::get<const Dog*>(v);
-            // print("got dog")
             std::cout << "got dog" << "\n";
         }
-    // else:
     } else {
-        // print("got none")
         std::cout << "got none" << "\n";
     }
 }
 
 // def main() -> None:
+//     a: int32 | Dog | None = int32(42)
+//     b: int32 | Dog | None = Dog("Rex")
+//     c: int32 | Dog | None = None
+//     print(describe(a))
+//     print(describe(b))
+//     print(describe(c))
+//     process(int32(1))
+//     process(Dog("Buddy"))
+//     process(None)
 void main() {
-    // a: int32 | Dog | None = int32(42)
     ::tpy::Union<std::monostate, Dog, int32_t> __slot_1 = 42;
     ::tpy::Union<std::monostate, Dog*, int32_t*> a = ::tpy::to_ptr_variant(__slot_1);
-    // b: int32 | Dog | None = Dog("Rex")
     ::tpy::Union<std::monostate, Dog, int32_t> __slot_2 = Dog("Rex");
     ::tpy::Union<std::monostate, Dog*, int32_t*> b = ::tpy::to_ptr_variant(__slot_2);
-    // c: int32 | Dog | None = None
     ::tpy::Union<std::monostate, Dog*, int32_t*> c = std::monostate{};
-    // print(describe(a))
     std::cout << describe(a.as_const()) << "\n";
-    // print(describe(b))
     std::cout << describe(b.as_const()) << "\n";
-    // print(describe(c))
     std::cout << describe(c.as_const()) << "\n";
-    // process(int32(1))
     int32_t __tmp_1 = 1;
     process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_1});
-    // process(Dog("Buddy"))
     Dog __tmp_2 = Dog("Buddy");
     process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_2});
-    // process(None)
     process(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}});
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

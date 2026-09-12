@@ -5,6 +5,12 @@ namespace tpyapp::main {
 
 
 // def gen(n: int32) -> Iterator[int32]:
+//     with Resource(7) as v:
+//         i: int32 = 0
+//         while i < n:
+//             yield i
+//             i += 1
+//         yield v.val
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
@@ -16,7 +22,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {
         try {
-            // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;
             continue;
@@ -48,11 +53,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_JOIN_0: {
         try {
             if ((i < n)) {
-                // yield i
                 __state = S_RESUME_0;
                 return i;
             } else {
-                // yield v.val
                 __state = S_RESUME_1;
                 return (*v).val;
             }
@@ -70,7 +73,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_2: {
         try {
-            // i: int32 = 0
             i = 0;
             __state = S_JOIN_0;
             continue;
@@ -98,8 +100,9 @@ __gen_gen gen(int32_t n) {
 }
 
 // def main() -> None:
+//     for x in gen(3):
+//         print(x)
 void main() {
-    // for x in gen(3):
     {
         auto __src_0 = gen(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -107,18 +110,17 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // print(x)
         std::cout << x << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

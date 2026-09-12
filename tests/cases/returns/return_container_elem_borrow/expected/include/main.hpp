@@ -11,7 +11,9 @@ struct Flat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def pick(rows: list[list[int32]], k: int32) -> list[int32]:
 std::vector<int32_t>& pick(std::vector<std::vector<int32_t>>& rows, int32_t k);
+// def main() -> None:
 void main();
 
 // class Flat:
@@ -35,11 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Flat& obj) {
 
 
 // def __init__(self, data: Own[list[list[int32]]]) -> None:
+//     self.data = data
 inline Flat::Flat(std::vector<std::vector<int32_t>>&& data) : data(std::move(data)) {}
 
 // def get_data(self, k: int32) -> list[int32]:
+//     return self.data[k % len(self.data)]  # tpyc: ok
 inline std::vector<int32_t>& Flat::get_data(int32_t k) {
-    // return self.data[k % len(self.data)]  # tpyc: ok
     return ::tpy::__getitem__(this->data, (::tpy::mod_check<int32_t>(k, ::tpy::__len__(this->data))));
 }
 void __tpy_init();

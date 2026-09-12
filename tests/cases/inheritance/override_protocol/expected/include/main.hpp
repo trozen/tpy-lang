@@ -17,6 +17,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box(Measurable):
@@ -41,12 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.volume = v
 inline Box::Box(int32_t v) : volume(v) {}
 
 // @override
 // def measure(self) -> int32:  # tpyc: ok
+//     return self.volume
 inline int32_t Box::measure() const {
-    // return self.volume
     return this->volume;
 }
 void __tpy_init();

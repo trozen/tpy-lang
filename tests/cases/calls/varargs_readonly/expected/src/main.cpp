@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def sum_boxes(*items: readonly[Box]) -> int32:
+//     total: int32 = 0
+//     for b in items:
+//         total += b.val
+//     return total
 int32_t sum_boxes(::tpy::varargs<const Box> items) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for b in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& b = *__beg_0;
-        // total += b.val
         total = ::tpy::add_check<int32_t>(total, b.val);
     }
-    // return total
     return total;
 }
 
 // def sum_ints(*nums: readonly[int32]) -> int32:
+//     total: int32 = 0
+//     for x in nums:
+//         total += x
+//     return total
 int32_t sum_ints(::tpy::varargs<const int32_t> nums) {
-    // total: int32 = 0
     int32_t total = 0;
-    // for x in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    // return total
     return total;
 }
 
 // def main() -> None:
+//     a = Box(10)
+//     b = Box(20)
+//     print(sum_boxes(a, b))
+//     print(sum_ints(1, 2, 3))
 void main() {
-    // a = Box(10)
     Box a = Box(10);
-    // b = Box(20)
     Box b = Box(20);
-    // print(sum_boxes(a, b))
     std::array<const Box*, 2> __tmp_1{&a, &b};
     std::cout << sum_boxes(::tpy::varargs<const Box>(__tmp_1)) << "\n";
-    // print(sum_ints(1, 2, 3))
     std::array<const int32_t, 3> __tmp_2{1, 2, 3};
     std::cout << sum_ints(::tpy::varargs<const int32_t>(__tmp_2)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

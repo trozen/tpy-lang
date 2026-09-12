@@ -3,36 +3,35 @@
 
 namespace tpyapp::main {
 
-// a = Rank(int32(7))
 Rank* a{};
-// b = Rank(int32(3))
 Rank* b{};
 
+// # @total_ordering with __gt__ as the anchor: synthesizes __lt__,
+// # __le__, __ge__. Covers the half of the derivation table that
+// # `total_ordering_lt` doesn't reach.
+// from functools import total_ordering
+//
+// a = Rank(int32(7))
+// b = Rank(int32(3))
+// print(a > b)
+// print(a >= b)
+// print(a < b)
+// print(a <= b)
+// print(a == Rank(int32(7)))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @total_ordering with __gt__ as the anchor: synthesizes __lt__,
-    // # __le__, __ge__. Covers the half of the derivation table that
-    // # `total_ordering_lt` doesn't reach.
-    // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Rank(int32(7))
     static Rank __global_slot_1 = Rank(7);
     a = &__global_slot_1;
-    // b = Rank(int32(3))
     static Rank __global_slot_2 = Rank(3);
     b = &__global_slot_2;
-    // print(a > b)
     std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
-    // print(a >= b)
     std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
-    // print(a < b)
     std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n";
-    // print(a <= b)
     std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    // print(a == Rank(int32(7)))
     std::cout << ::tpy::print_bool((((*a)) == (Rank(7)))) << "\n";
 }
 

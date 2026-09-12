@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Util.larger(3, 7))
+//     print(Util.larger_float(1.5, 0.5))
 void main() {
-    // print(Util.larger(3, 7))
     std::cout << Util::larger(3, 7) << "\n";
-    // print(Util.larger_float(1.5, 0.5))
     std::cout << ::tpy::print_float(Util::larger_float(1.5, 0.5)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

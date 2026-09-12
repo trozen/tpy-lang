@@ -5,38 +5,36 @@ namespace tpyapp::main {
 
 
 // def f(v: A | B | None, flag: bool) -> None:
+//     match v:
+//         case A() if flag:
+//             print("is A flagged")
+//         case None:
+//             print("is none")
+//         case _:
+//             print("other")
 void f(::tpy::Union<std::monostate, const A*, const B*> v, bool flag) {
-    // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
     case 0: {
-        // case None:
-        // print("is none")
         std::cout << "is none" << "\n";
         goto __match_end_2;
         break;
     }
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        // case A() if flag:
         {
             if (flag) {
-                // print("is A flagged")
                 std::cout << "is A flagged" << "\n";
                 goto __match_end_2;
             }
         }
-        // case _:
         {
-            // print("other")
             std::cout << "other" << "\n";
             goto __match_end_2;
         }
         break;
     }
     default: {
-        // case _:
-        // print("other")
         std::cout << "other" << "\n";
         goto __match_end_2;
         break;
@@ -46,26 +44,26 @@ __match_end_2:;
 }
 
 // def main() -> None:
+//     f(A(), True)
+//     f(A(), False)
+//     f(None, True)
+//     f(B(), True)
 void main() {
-    // f(A(), True)
     A __tmp_1 = A();
     f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}, true);
-    // f(A(), False)
     A __tmp_2 = A();
     f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}, false);
-    // f(None, True)
     f(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}, true);
-    // f(B(), True)
     B __tmp_3 = B();
     f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_3}, true);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main():
+//     data: list[int32] = [1, 2, 3]
+//     print(count(data))
 void main() {
-    // data: list[int32] = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
-    // print(count(data))
     std::cout << count(data) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

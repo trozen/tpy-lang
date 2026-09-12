@@ -9,12 +9,19 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def print_list(nums: list[int32]) -> None:
 void print_list(const std::vector<int32_t>& nums);
+// def test_pop_at_index() -> None:
 void test_pop_at_index();
+// def test_index() -> None:
 void test_index();
+// def test_count() -> None:
 void test_count();
+// def test_reverse() -> None:
 void test_reverse();
+// def test_copy() -> None:
 void test_copy();
+// def test_setitem() -> None:
 void test_setitem();
 
 void __tpy_init();

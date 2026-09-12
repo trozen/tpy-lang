@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d: dict[str, int32] = {}
+//     print(d)
+//     print(len(d))
+//     d["x"] = 1
+//     print(d)
+//     print(len(d))
 void main() {
-    // d: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // d["x"] = 1
     ::tpy::__setitem__(d, "x", 1);
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,37 +9,39 @@ namespace tpyapp::main {
 // # CPython "set of K, with insertion order" idiom; list[None] is rare
 // # but well-defined (e.g. fixed-shape placeholders).
 // def main() -> None:
+//     xs: list[None] = []
+//     xs.append(None)
+//     xs.append(None)
+//     print("list len:", len(xs))
+//
+//     d: dict[str, None] = {}
+//     d["a"] = None
+//     d["b"] = None
+//     print("dict size:", len(d))
+//     print("has a:", "a" in d)
+//
+//     t: tuple[None, int] = (None, 42)
+//     print("tuple snd:", t[1])
 void main() {
-    // xs: list[None] = []
     std::vector<std::monostate> xs = std::vector<std::monostate>{};
-    // xs.append(None)
     xs.push_back(std::monostate{});
-    // xs.append(None)
     xs.push_back(std::monostate{});
-    // print("list len:", len(xs))
     std::cout << "list len:" << " " << ::tpy::__len__(xs) << "\n";
-    // d: dict[str, None] = {}
     ::tpy::ordered_map<std::string, std::monostate> d = ::tpy::ordered_map<std::string, std::monostate>();
-    // d["a"] = None
     ::tpy::__setitem__(d, "a", std::monostate{});
-    // d["b"] = None
     ::tpy::__setitem__(d, "b", std::monostate{});
-    // print("dict size:", len(d))
     std::cout << "dict size:" << " " << ::tpy::__len__(d) << "\n";
-    // print("has a:", "a" in d)
     std::cout << "has a:" << " " << ::tpy::print_bool((d.contains("a"))) << "\n";
-    // t: tuple[None, int] = (None, 42)
     std::tuple<std::monostate, ::tpy::BigInt> t = std::tuple<std::monostate, ::tpy::BigInt>{std::monostate{}, ::tpy::BigInt(42)};
-    // print("tuple snd:", t[1])
     std::cout << "tuple snd:" << " " << std::get<1>(t) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

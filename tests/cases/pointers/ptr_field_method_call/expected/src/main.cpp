@@ -5,32 +5,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     storage = UninitHeapStorage[int32](uint32(4))
+//     storage.init(uint32(0), 42)
+//     storage.init(uint32(1), 99)
+//
+//     w = Wrapper[int32](storage)
+//     print(w.load_at(uint32(0)))
+//     print(w.load_at(uint32(1)))
+//
+//     storage.drop(uint32(0))
+//     storage.drop(uint32(1))
 void main() {
-    // storage = UninitHeapStorage[int32](uint32(4))
     ::tpy::UninitHeapStorage<int32_t> storage = ::tpy::UninitHeapStorage<int32_t>(4);
-    // storage.init(uint32(0), 42)
     storage.init(0, 42);
-    // storage.init(uint32(1), 99)
     storage.init(1, 99);
-    // w = Wrapper[int32](storage)
     Wrapper<int32_t> w = Wrapper<int32_t>(&storage);
-    // print(w.load_at(uint32(0)))
     std::cout << w.load_at(0) << "\n";
-    // print(w.load_at(uint32(1)))
     std::cout << w.load_at(1) << "\n";
-    // storage.drop(uint32(0))
     storage.drop(0);
-    // storage.drop(uint32(1))
     storage.drop(1);
 }
 
+// from tpy.mem import UninitHeapStorage
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitHeapStorage
-    // main()
     main();
 }
 

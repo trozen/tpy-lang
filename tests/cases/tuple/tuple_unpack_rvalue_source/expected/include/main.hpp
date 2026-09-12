@@ -11,9 +11,13 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make(n: int32) -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> make(int32_t n);
+// def from_call(n: int32) -> int32:
 int32_t from_call(int32_t n);
+// def from_field(h: Holder) -> int32:
 int32_t from_field(const Holder& h);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -33,6 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self):
+//     self.pair = (3, 4)
 inline Holder::Holder() : pair(std::tuple<int32_t, int32_t>{3, 4}) {}
 void __tpy_init();
 } // namespace tpyapp::main

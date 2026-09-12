@@ -5,59 +5,59 @@ namespace tpyapp::main {
 
 
 // def stepped(lo: int, step: int) -> Own[list[int32]]:
+//     xs = list(range(0, 12))
+//     xs[lo::step] = [90, 91, 92]  # tpyc: ok
+//     return xs
 std::vector<int32_t> stepped(const ::tpy::BigInt& lo, const ::tpy::BigInt& step) {
-    // xs = list(range(0, 12))
     std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 12));
-    // xs[lo::step] = [90, 91, 92]  # tpyc: ok
     ::tpy::list_set_stepped_slice(xs, ::tpy::Slice{lo.to_fixed_check<int32_t>(), std::nullopt, step.to_fixed_check<int32_t>()}, std::vector<int32_t>{90, 91, 92});
-    // return xs
     return xs;
 }
 
 // def basic(lo: int, hi: int) -> Own[list[int32]]:
+//     xs = list(range(0, 12))
+//     # A non-stepped bound pair narrows the same way, and step 1 may resize.
+//     xs[lo:hi] = [70, 71, 72, 73]  # tpyc: ok
+//     return xs
 std::vector<int32_t> basic(const ::tpy::BigInt& lo, const ::tpy::BigInt& hi) {
-    // xs = list(range(0, 12))
     std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 12));
-    // # A non-stepped bound pair narrows the same way, and step 1 may resize.
-    // xs[lo:hi] = [70, 71, 72, 73]  # tpyc: ok
     ::tpy::list_set_slice(xs, ::tpy::BasicSlice{lo.to_fixed_check<int32_t>(), hi.to_fixed_check<int32_t>()}, std::vector<int32_t>{70, 71, 72, 73});
-    // return xs
     return xs;
 }
 
 // def upper_only(hi: int) -> Own[list[int32]]:
+//     xs = list(range(0, 6))
+//     xs[:hi] = [50]  # tpyc: ok
+//     return xs
 std::vector<int32_t> upper_only(const ::tpy::BigInt& hi) {
-    // xs = list(range(0, 6))
     std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 6));
-    // xs[:hi] = [50]  # tpyc: ok
     ::tpy::list_set_slice(xs, ::tpy::BasicSlice{std::nullopt, hi.to_fixed_check<int32_t>()}, std::vector<int32_t>{50});
-    // return xs
     return xs;
 }
 
 // def main() -> None:
+//     print(stepped(2, 4))
+//     print(basic(3, 6))
+//     print(upper_only(4))
+//     h = Holder()
+//     h.blank(1, 5)
+//     # The field mutation is observed through the receiver, not a copy.
+//     print(h.xs)
 void main() {
-    // print(stepped(2, 4))
     std::cout << ::tpy::ListPrinter(stepped(::tpy::BigInt(2), ::tpy::BigInt(4))) << "\n";
-    // print(basic(3, 6))
     std::cout << ::tpy::ListPrinter(basic(::tpy::BigInt(3), ::tpy::BigInt(6))) << "\n";
-    // print(upper_only(4))
     std::cout << ::tpy::ListPrinter(upper_only(::tpy::BigInt(4))) << "\n";
-    // h = Holder()
     Holder h = Holder();
-    // h.blank(1, 5)
     h.blank(1, 5);
-    // # The field mutation is observed through the receiver, not a copy.
-    // print(h.xs)
     std::cout << ::tpy::ListPrinter(h.xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

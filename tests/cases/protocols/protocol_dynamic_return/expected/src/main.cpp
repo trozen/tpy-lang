@@ -3,50 +3,52 @@
 
 namespace tpyapp::main {
 
-// global_pet: Pet = Cat()
 Pet* global_pet{};
 
 // def echo(pet: Pet) -> Pet:
+//     return pet
 Pet& echo(Pet& pet) {
-    // return pet
     return pet;
 }
 
 // def get_global() -> Pet:
+//     return global_pet
 Pet& get_global() {
-    // return global_pet
     return (*global_pet);
 }
 
 // def main() -> None:
+//     # Return parameter
+//     dog = Dog()
+//     result: Pet = echo(dog)
+//     print(result.name())
+//
+//     # Return global
+//     g: Pet = get_global()
+//     print(g.name())
+//
+//     # Chain: return value used in another call
+//     print(echo(dog).name())
 void main() {
-    // # Return parameter
-    // dog = Dog()
     Dog dog = Dog();
-    // result: Pet = echo(dog)
     Pet* result = &echo(dog);
-    // print(result.name())
     std::cout << result->name() << "\n";
-    // # Return global
-    // g: Pet = get_global()
     Pet* g = &get_global();
-    // print(g.name())
     std::cout << g->name() << "\n";
-    // # Chain: return value used in another call
-    // print(echo(dog).name())
     std::cout << echo(dog).name() << "\n";
 }
 
+// global_pet: Pet = Cat()
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     static std::optional<Cat> __global_slot_1;
-    // global_pet: Pet = Cat()
     __global_slot_1.emplace(Cat());
     global_pet = &*__global_slot_1;
-    // main()
     main();
 }
 

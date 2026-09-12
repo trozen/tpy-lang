@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Child()
+//     c.color = "blue"
+//     print(cast(str, c.color))
 void main() {
-    // c = Child()
     Child c = Child();
-    // c.color = "blue"
     c.__setattr__("color", ::tpy::make_any(std::string("blue")));
-    // print(cast(str, c.color))
     std::cout << ::tpy::any_cast_or_panic<std::string>(c.__getattr__("color")) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

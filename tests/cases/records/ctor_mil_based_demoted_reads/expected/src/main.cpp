@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     i = Inherited()
+//     print(i.tag, i.a, i.b)
+//     d = Defaulted()
+//     print(d.d, d.a, d.b)
 void main() {
-    // i = Inherited()
     Inherited i = Inherited();
-    // print(i.tag, i.a, i.b)
     std::cout << i.tag << " " << i.a << " " << i.b << "\n";
-    // d = Defaulted()
     Defaulted d = Defaulted();
-    // print(d.d, d.a, d.b)
     std::cout << d.d << " " << d.a << " " << d.b << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -3,44 +3,42 @@
 
 namespace tpyapp::main {
 
-// # Inference from list[int]
-// nums = [10, 20, 30]
 std::vector<int32_t>* nums{};
-// # Inference from list[str]
-// words = ["hello", "world"]
 std::vector<std::string>* words{};
-// # Inference from list[int32]
-// vals: list[int32] = [int32(1), int32(2), int32(3)]
 std::vector<int32_t>* vals{};
 
+// """Test basic generic functions with type inference."""
+//
+// # Inference from list[int]
+// nums = [10, 20, 30]
+// print(first(nums))
+// print(last(nums))
+//
+// # Inference from list[str]
+// words = ["hello", "world"]
+// print(first(words))
+// print(last(words))
+//
+// # Inference from list[int32]
+// vals: list[int32] = [int32(1), int32(2), int32(3)]
+// print(first(vals))
+// print(last(vals))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Inference from list[int]
-    // nums = [10, 20, 30]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    // print(first(nums))
     std::cout << first<int32_t>((*nums)) << "\n";
-    // print(last(nums))
     std::cout << last<int32_t>((*nums)) << "\n";
-    // # Inference from list[str]
-    // words = ["hello", "world"]
     static std::vector<std::string> __global_slot_2 = {"hello", "world"};
     words = &__global_slot_2;
-    // print(first(words))
     std::cout << first<std::string>((*words)) << "\n";
-    // print(last(words))
     std::cout << last<std::string>((*words)) << "\n";
-    // # Inference from list[int32]
-    // vals: list[int32] = [int32(1), int32(2), int32(3)]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     vals = &__global_slot_3;
-    // print(first(vals))
     std::cout << first<int32_t>((*vals)) << "\n";
-    // print(last(vals))
     std::cout << last<int32_t>((*vals)) << "\n";
 }
 

@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     show(True)
+//     show(False)
+//     show(42)
+//     show("hello")
 void main() {
-    // show(True)
     show<bool>(true);
-    // show(False)
     show<bool>(false);
-    // show(42)
     show<int32_t>(42);
-    // show("hello")
     show<std::string>("hello");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

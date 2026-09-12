@@ -13,6 +13,7 @@ struct Leaf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # BaseN.method(self, ...) resolves through BaseN's MRO so inherited methods
@@ -60,16 +61,16 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 
 
 // def identify(self) -> str:
+//     return "root"
 inline std::string Root::identify() const {
-    // return "root"
     return "root";
 }
 
 // def delegate(self) -> str:
+//     # Middle does not literally define 'identify'; resolution walks
+//     # Middle's MRO up to Root.
+//     return Middle.identify(self)
 inline std::string Leaf::delegate() const {
-    // # Middle does not literally define 'identify'; resolution walks
-    // # Middle's MRO up to Root.
-    // return Middle.identify(self)
     return this->Middle::identify();
 }
 void __tpy_init();

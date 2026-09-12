@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(b: Own[bytes]) -> int32:
 int32_t take(::tpy::Bytes b);
+// def f(v: bytes) -> None:
 void f(::tpy::BytesView v);
+// def main() -> None:
 void main();
 
 void __tpy_init();

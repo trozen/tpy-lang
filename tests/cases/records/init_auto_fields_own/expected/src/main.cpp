@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder(Res(7))
+//     print(h.value())
 void main() {
-    // h = Holder(Res(7))
     Holder h = Holder(Res(::tpy::BigInt(7)));
-    // print(h.value())
     std::cout << h.value() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

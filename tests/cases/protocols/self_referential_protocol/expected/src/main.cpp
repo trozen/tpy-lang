@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     combine(Meters(30), Meters(12))
+//     chain(Num(8))
+//     bounce(Ping())
 void main() {
-    // combine(Meters(30), Meters(12))
     auto __tmp_1 = Meters(::tpy::BigInt(30));
     auto __tmp_2 = Meters(::tpy::BigInt(12));
     combine(__tmp_1, __tmp_2);
-    // chain(Num(8))
     auto __tmp_3 = Num(::tpy::BigInt(8));
     chain(__tmp_3);
-    // bounce(Ping())
     auto __tmp_4 = Ping();
     bounce(__tmp_4);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

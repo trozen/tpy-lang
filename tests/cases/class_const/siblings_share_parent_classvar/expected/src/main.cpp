@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     ChildA.counter = 7
+//     print(Parent.counter)
+//     print(ChildB.counter)
+//     ChildB.counter += 3
+//     print(ChildA.counter)
+//     print(Parent.counter)
 void main() {
-    // ChildA.counter = 7
     Parent::counter = 7;
-    // print(Parent.counter)
     std::cout << Parent::counter << "\n";
-    // print(ChildB.counter)
     std::cout << Parent::counter << "\n";
-    // ChildB.counter += 3
     Parent::counter = ::tpy::add_check<int32_t>(Parent::counter, 3);
-    // print(ChildA.counter)
     std::cout << Parent::counter << "\n";
-    // print(Parent.counter)
     std::cout << Parent::counter << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def swap(p: Pair[int32]) -> Pair[int32]:
 std::tuple<int32_t, int32_t> swap(const std::tuple<int32_t, int32_t>& p);
+// def main() -> None:
 void main();
 
 void __tpy_init();

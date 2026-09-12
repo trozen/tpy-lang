@@ -13,9 +13,13 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def field_direct(h: Holder) -> None:
 void field_direct(Holder& h);
+// def field_method(h: Holder) -> None:
 void field_method(Holder& h);
+// def element_realloc(xs: list[Dog | Cat]) -> None:
 void element_realloc(std::vector<::tpy::Union<Cat, Dog>>& xs);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -70,17 +74,20 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, legs: int32) -> None:
+//     self.legs = legs
 inline Dog::Dog(int32_t legs) : legs(legs) {}
 
 // def __init__(self, age: int32) -> None:
+//     self.age = age
 inline Cat::Cat(int32_t age) : age(age) {}
 
 // def __init__(self) -> None:
+//     self.pet = Dog(4)
 inline Holder::Holder() : pet(Dog(4)) {}
 
 // def replace(self) -> None:
+//     self.pet = Cat(99)
 inline void Holder::replace() {
-    // self.pet = Cat(99)
     this->pet = Cat(99);
 }
 void __tpy_init();

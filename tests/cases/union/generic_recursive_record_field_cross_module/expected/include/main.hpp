@@ -14,6 +14,7 @@ struct Forest;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Forest:
@@ -36,11 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Forest& obj) {
 
 
 // def __init__(self) -> None:
+//     self.canopy = [1, [2, 3], 4, [5, [6, 7]]]
 inline Forest::Forest() : canopy(std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{5, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{6, 7}}}) {}
 
 // def size(self) -> int:
+//     return leaf_count(self.canopy)
 inline ::tpy::BigInt Forest::size() const {
-    // return leaf_count(self.canopy)
     return ::tpy::BigInt(::tpyapp::treelib::leaf_count<::tpy::BigInt>(this->canopy));
 }
 void __tpy_init();

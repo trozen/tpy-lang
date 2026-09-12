@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def unwrap_or(x: Optional[int], fallback: int) -> int:
 ::tpy::BigInt unwrap_or(std::optional<::tpy::BigInt> x, const ::tpy::BigInt& fallback);
+// def first_positive(nums: list[int]) -> Optional[int]:
 std::optional<::tpy::BigInt> first_positive(const std::vector<::tpy::BigInt>& nums);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -11,6 +11,7 @@ struct InfiniteCounter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class InfiniteCounter:
@@ -37,22 +38,23 @@ inline std::ostream& operator<<(std::ostream& os, const InfiniteCounter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.current = 0
 inline InfiniteCounter::InfiniteCounter() : current(0) {}
 
 // def __iter__(self) -> InfiniteCounter:
+//     return self
 inline InfiniteCounter& InfiniteCounter::__iter__() {
-    // return self
     return (*this);
 }
 
 // # tpyc: warning(/no 'raise StopIteration'/)
 // def __next__(self) -> int32:
+//     val = self.current
+//     self.current += 1
+//     return val
 inline std::expected<int32_t, ::tpy::StopIteration> InfiniteCounter::__next__() {
-    // val = self.current
     int32_t val = this->current;
-    // self.current += 1
     this->current = ::tpy::add_check<int32_t>(this->current, 1);
-    // return val
     return val;
 }
 void __tpy_init();

@@ -5,44 +5,45 @@ namespace tpyapp::main {
 
 
 // def make(v: int32) -> Own[Box[int32]]:
+//     return Box(v)
 ::tpystd::tplib::box::Box<int32_t> make(int32_t v) {
-    // return Box(v)
     int32_t __tmp_1 = v;
     return ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
 }
 
 // def pair() -> tuple[Own[Box[int32]], Own[Box[int32]]]:
+//     a, b = (make(7), make(9))
+//     return (a, b)
 std::tuple<::tpystd::tplib::box::Box<int32_t>, ::tpystd::tplib::box::Box<int32_t>> pair() {
-    // a, b = (make(7), make(9))
     ::tpystd::tplib::box::Box<int32_t> __unpack_0_0 = make(7);
     ::tpystd::tplib::box::Box<int32_t> __unpack_0_1 = make(9);
     ::tpystd::tplib::box::Box<int32_t> a = std::move(__unpack_0_0);
     ::tpystd::tplib::box::Box<int32_t> b = std::move(__unpack_0_1);
-    // return (a, b)
     return std::tuple<::tpystd::tplib::box::Box<int32_t>, ::tpystd::tplib::box::Box<int32_t>>{std::move(a), std::move(b)};
 }
 
 // def main() -> None:
+//     x, y = pair()
+//     print(x.get())
+//     print(y.get())
 void main() {
-    // x, y = pair()
     auto __tup_1 = pair();
     ::tpystd::tplib::box::Box<int32_t> x = std::move(std::get<0>(__tup_1));
     ::tpystd::tplib::box::Box<int32_t> y = std::move(std::get<1>(__tup_1));
-    // print(x.get())
     std::cout << x.get() << "\n";
-    // print(y.get())
     std::cout << y.get() << "\n";
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

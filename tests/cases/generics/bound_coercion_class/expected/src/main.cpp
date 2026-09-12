@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog(7)
+//     pa = as_animal[Dog](take_ptr(d))
+//     a = Animal(3)
+//     pa2 = as_animal[Animal](take_ptr(a))
+//     cdp: Ptr[readonly[Dog]] = take_ptr(d)
+//     pa_ro = as_animal_ro[Dog](cdp)
+//     print(pa.base_code(), pa2.base_code(), pa_ro.code)
 void main() {
-    // d = Dog(7)
     Dog d = Dog(7);
-    // pa = as_animal[Dog](take_ptr(d))
     Animal* pa = as_animal<Dog>(&d);
-    // a = Animal(3)
     Animal a = Animal(3);
-    // pa2 = as_animal[Animal](take_ptr(a))
     Animal* pa2 = as_animal<Animal>(&a);
-    // cdp: Ptr[readonly[Dog]] = take_ptr(d)
     const Dog* cdp = &d;
-    // pa_ro = as_animal_ro[Dog](cdp)
     const Animal* pa_ro = as_animal_ro<Dog>(cdp);
-    // print(pa.base_code(), pa2.base_code(), pa_ro.code)
     std::cout << ::tpy::deref_check(pa).base_code() << " " << ::tpy::deref_check(pa2).base_code() << " " << ::tpy::deref_check(pa_ro).code << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

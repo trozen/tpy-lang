@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Calculator(10)
+//     print(c.scale(5))
+//     print(c.scale(5, 3))
 void main() {
-    // c = Calculator(10)
     Calculator c = Calculator(::tpy::BigInt(10));
-    // print(c.scale(5))
     std::cout << c.scale(5) << "\n";
-    // print(c.scale(5, 3))
     std::cout << c.scale(5, 3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

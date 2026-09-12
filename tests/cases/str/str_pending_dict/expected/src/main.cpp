@@ -5,44 +5,44 @@ namespace tpyapp::main {
 
 
 // def in_dict_value() -> Own[dict[str, str]]:
+//     label: str = "no"
+//     return {"key": label}
 ::tpy::ordered_map<std::string, std::string> in_dict_value() {
-    // label: str = "no"
     std::string_view label = "no";
-    // return {"key": label}
     return ::tpy::ordered_map<std::string, std::string>({{"key", std::string(label)}});
 }
 
 // def in_dict_key() -> Own[dict[str, int]]:
+//     k: str = "mykey"
+//     return {k: 42}
 ::tpy::ordered_map<std::string, ::tpy::BigInt> in_dict_key() {
-    // k: str = "mykey"
     std::string_view k = "mykey";
-    // return {k: 42}
     return ::tpy::ordered_map<std::string, ::tpy::BigInt>({{std::string(k), ::tpy::BigInt(42)}});
 }
 
 // def in_dict_var() -> Own[dict[str, str]]:
+//     label: str = "no"
+//     d = {"key": label}
+//     return d
 ::tpy::ordered_map<std::string, std::string> in_dict_var() {
-    // label: str = "no"
     std::string_view label = "no";
-    // d = {"key": label}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"key", std::string(label)}});
-    // return d
     return d;
 }
 
 // def in_dict_literal() -> Own[dict[str, str]]:
+//     label: str = "no"
+//     return {label: label}
 ::tpy::ordered_map<std::string, std::string> in_dict_literal() {
-    // label: str = "no"
     std::string_view label = "no";
-    // return {label: label}
     return ::tpy::ordered_map<std::string, std::string>({{std::string(label), std::string(label)}});
 }
 
 // def in_dict_comp() -> Own[dict[str, str]]:
+//     label: str = "no"
+//     return {label: label for _ in range(3)}
 ::tpy::ordered_map<std::string, std::string> in_dict_comp() {
-    // label: str = "no"
     std::string_view label = "no";
-    // return {label: label for _ in range(3)}
     return ({
         ::tpy::ordered_map<std::string, std::string> __result;
         const int32_t __stop_0 = 3;
@@ -53,20 +53,20 @@ namespace tpyapp::main {
     });
 }
 
+// print(in_dict_value())
+// print(in_dict_key())
+// print(in_dict_var())
+// print(in_dict_literal())
+// print(in_dict_comp())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(in_dict_value())
     std::cout << ::tpy::DictPrinter(in_dict_value()) << "\n";
-    // print(in_dict_key())
     std::cout << ::tpy::DictPrinter(in_dict_key()) << "\n";
-    // print(in_dict_var())
     std::cout << ::tpy::DictPrinter(in_dict_var()) << "\n";
-    // print(in_dict_literal())
     std::cout << ::tpy::DictPrinter(in_dict_literal()) << "\n";
-    // print(in_dict_comp())
     std::cout << ::tpy::DictPrinter(in_dict_comp()) << "\n";
 }
 

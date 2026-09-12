@@ -19,8 +19,11 @@ struct __coro_main_coro;
 template <typename T>
 struct __coro_Runner_with_timeout;
 
+// async def inner() -> int:
 __coro_inner inner();
+// async def main_coro() -> None:
 __coro_main_coro main_coro();
+// def main() -> None:
 void main();
 
 // class Runner:
@@ -37,7 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
     return os;
 }
 
-// Async coroutine: Runner.with_timeout
+// async def with_timeout[T](self, coro: Own[Cancellable[T]],
+//                           timeout: float) -> Own[T]:
 template <typename T>
 struct __coro_Runner_with_timeout {
     int32_t __state;
@@ -65,12 +69,12 @@ struct __coro_Runner_with_timeout {
 };
 
 // async def with_timeout[T](self, coro: Own[Cancellable[T]],
-// timeout: float) -> Own[T]:
+//                           timeout: float) -> Own[T]:
+//     return await asyncio.wait_for(coro, timeout)
 template <typename T>
 ::tpystd::tpy::Poll<T> __coro_Runner_with_timeout<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // return await asyncio.wait_for(coro, timeout)
         __sub_0.emplace(std::move(coro), timeout);
         __state = S_RESUME_0;
         continue;
@@ -94,7 +98,7 @@ inline __coro_Runner_with_timeout<T> Runner::with_timeout(std::unique_ptr<::tpys
     return __coro_Runner_with_timeout<T>(*this, std::move(coro), timeout);
 }
 
-// Async coroutine: inner
+// async def inner() -> int:
 struct __coro_inner {
     int32_t __state;
     bool __cancel_pending;
@@ -117,7 +121,7 @@ struct __coro_inner {
     }
 };
 
-// Async coroutine: main_coro
+// async def main_coro() -> None:
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;

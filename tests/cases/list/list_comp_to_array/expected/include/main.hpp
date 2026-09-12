@@ -9,17 +9,29 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def range_basic() -> None:
 void range_basic();
+// def range_transform() -> None:
 void range_transform();
+// def range_empty() -> None:
 void range_empty();
+// def range_two_arg() -> None:
 void range_two_arg();
+// def array_source() -> None:
 void array_source();
+// def array_filter_fallback() -> None:
 void array_filter_fallback();
+// def range_three_arg() -> None:
 void range_three_arg();
+// def range_negative_step() -> None:
 void range_negative_step();
+// def range_empty_negative() -> None:
 void range_empty_negative();
+// def fallback_mutation() -> None:
 void fallback_mutation();
+// def explicit_array_annotation() -> None:
 void explicit_array_annotation();
+// def explicit_list_annotation() -> None:
 void explicit_list_annotation();
 
 void __tpy_init();

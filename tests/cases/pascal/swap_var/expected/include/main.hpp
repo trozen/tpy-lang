@@ -11,6 +11,7 @@ extern int32_t x;
 extern int32_t y;
 inline constexpr std::string_view __name__ = "__main__";
 
+// procedure swap(var a, b: integer);
 void swap(int32_t* a, int32_t* b);
 
 void __tpy_init();

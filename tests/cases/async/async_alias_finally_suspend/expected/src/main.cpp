@@ -5,12 +5,17 @@ namespace tpyapp::main {
 
 
 // async def make() -> Own[list[int32]]:
+//     xs = [1, 2, 3]
+//     ys = xs
+//     try:
+//         return xs
+//     finally:
+//         await asyncio.sleep(0)
+//         print(len(ys))
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // xs = [1, 2, 3]
         xs.emplace(std::vector<int32_t>{1, 2, 3});
-        // ys = xs
         ys = &((*xs));
         __state = S_JOIN_1;
         continue;
@@ -20,7 +25,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<int32_t>>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print(len(ys))
         std::cout << ::tpy::__len__((*ys)) << "\n";
         __state = S_JOIN_0;
         continue;
@@ -41,7 +45,6 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            // return xs
             this->__finally_ret_0 = (*xs);
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
@@ -53,7 +56,6 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_2: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -70,10 +72,11 @@ __coro_make make() {
 }
 
 // async def driver() -> int32:
+//     r = await make()
+//     return len(r)
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // r = await make()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -83,7 +86,6 @@ __coro_make make() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         r.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // return len(r)
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__((*r));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -100,25 +102,26 @@ __coro_driver driver() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(driver()))
 void main() {
-    // print(asyncio.run(driver()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(driver())) << "\n";
 }
 
+// # A movable local returned under a SUSPENDING finally that reads it through
+// # an alias: this pins that the pending-slot store does NOT move (a move
+// # would gut the object the finally's alias read still sees). The store is
+// # the pre-existing conservative COPY -- itself a tracked divergence for a
+// # MUTATING finally (BUGS.md: suspending-finally eager capture); the proper
+// # deferral fix must not regress this read-only shape.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A movable local returned under a SUSPENDING finally that reads it through
-    // # an alias: this pins that the pending-slot store does NOT move (a move
-    // # would gut the object the finally's alias read still sees). The store is
-    // # the pre-existing conservative COPY -- itself a tracked divergence for a
-    // # MUTATING finally (BUGS.md: suspending-finally eager capture); the proper
-    // # deferral fix must not regress this read-only shape.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

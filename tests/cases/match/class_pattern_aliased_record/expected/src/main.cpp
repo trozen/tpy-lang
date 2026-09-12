@@ -5,55 +5,56 @@ namespace tpyapp::main {
 
 
 // def foreign_x(p: Foreign) -> int:
+//     match p:
+//         case Foreign(x=v):
+//             return v
+//     return -1
 ::tpy::BigInt foreign_x(const ::tpyapp::shapes::Point& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Foreign(x=v):
     {
         auto& v = __match_subject_1.x;
-        // return v
         return v;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def local_y(p: Point) -> int:
+//     match p:
+//         case Point(y=v):
+//             return v
+//     return -1
 ::tpy::BigInt local_y(const Point& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Point(y=v):
     {
         auto& v = __match_subject_1.y;
-        // return v
         return v;
     }
     ::std::unreachable();
-    // return -1
     return ::tpy::BigInt(-1);
 }
 
 // def main() -> None:
+//     print(foreign_x(Foreign(7)))
+//     print(local_y(Point(9)))
 void main() {
-    // print(foreign_x(Foreign(7)))
     ::tpyapp::shapes::Point __tmp_1 = ::tpyapp::shapes::Point(::tpy::BigInt(7));
     std::cout << foreign_x(__tmp_1) << "\n";
-    // print(local_y(Point(9)))
     Point __tmp_2 = Point(::tpy::BigInt(9));
     std::cout << local_y(__tmp_2) << "\n";
 }
 
+// # Under a same-named-record collision (aliased Foreign + local Point), each
+// # correct class pattern must still match its own record -- neither confused.
+// from shapes import Point as Foreign
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Under a same-named-record collision (aliased Foreign + local Point), each
-    // # correct class pattern must still match its own record -- neither confused.
-    // from shapes import Point as Foreign
     ::tpyapp::shapes::__tpy_init();
-    // main()
     main();
 }
 

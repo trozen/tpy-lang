@@ -5,10 +5,11 @@ namespace tpyapp::main {
 
 
 // async def yield_once() -> int32:
+//     await asyncio.sleep(60.0)
+//     return int32(99)
 ::tpystd::tpy::Poll<int32_t> __coro_yield_once::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(60.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));
         __state = S_RESUME_0;
         continue;
@@ -18,7 +19,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return int32(99)
         __state = S_DONE;
         int32_t __tpy_async_ret = 99;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -35,33 +35,35 @@ __coro_yield_once yield_once() {
 }
 
 // def main() -> None:
+//     t: Task[int32] = task_from_coro(yield_once())
+//     if poll_once(t).is_pending():
+//         print("first-poll-pending")
+//     t.cancel()
+//     if task_poll_cancelled(t):
+//         print("got-cancelled")
 void main() {
-    // t: Task[int32] = task_from_coro(yield_once())
     ::tpystd::asyncio::_executor::Task<int32_t> t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(yield_once()));
-    // if poll_once(t).is_pending():
     if (::tpystd::coro::poll_once<int32_t>(t).is_pending()) {
-        // print("first-poll-pending")
         std::cout << "first-poll-pending" << "\n";
     }
-    // t.cancel()
     t.cancel();
-    // if task_poll_cancelled(t):
     if (::tpystd::coro::task_poll_cancelled<int32_t>(t)) {
-        // print("got-cancelled")
         std::cout << "got-cancelled" << "\n";
     }
 }
 
+// import asyncio
+//
+// from tpy.coro import task_poll_cancelled, poll_once
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import task_poll_cancelled, poll_once
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

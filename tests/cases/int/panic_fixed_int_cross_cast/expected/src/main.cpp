@@ -3,21 +3,19 @@
 
 namespace tpyapp::main {
 
-// x: int32 = int32(300)
 int32_t x{};
-// y: uint8 = uint8(x)
 uint8_t y{};
 
+// x: int32 = int32(300)
+// y: uint8 = uint8(x)
+// print(y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // x: int32 = int32(300)
     x = 300;
-    // y: uint8 = uint8(x)
     y = ::tpy::int_cast_check<uint8_t>(x);
-    // print(y)
     std::cout << static_cast<int>(y) << "\n";
 }
 

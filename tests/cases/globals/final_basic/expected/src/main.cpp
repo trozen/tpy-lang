@@ -5,42 +5,50 @@ namespace tpyapp::main {
 
 
 // def twice(x: int32) -> int32:
+//     return x + x
 int32_t twice(int32_t x) {
-    // return x + x
     return (::tpy::add_check<int32_t>(x, x));
 }
 
 // def main() -> None:
+//     print(MAX_SIZE)
+//     print(NEG_VAL)
+//     print(PI)
+//     print(DEBUG)
+//     print(DISABLED)
+//     print(NAME)
+//     print(LETTER)
+//     # Use Final in expressions and as function argument
+//     print(twice(MAX_SIZE))
+//     y: int32 = MAX_SIZE + NEG_VAL
+//     print(y)
 void main() {
-    // print(MAX_SIZE)
     std::cout << MAX_SIZE << "\n";
-    // print(NEG_VAL)
     std::cout << NEG_VAL << "\n";
-    // print(PI)
     std::cout << ::tpy::print_float(PI) << "\n";
-    // print(DEBUG)
     std::cout << ::tpy::print_bool(DEBUG) << "\n";
-    // print(DISABLED)
     std::cout << ::tpy::print_bool(DISABLED) << "\n";
-    // print(NAME)
     std::cout << NAME << "\n";
-    // print(LETTER)
     std::cout << LETTER << "\n";
-    // # Use Final in expressions and as function argument
-    // print(twice(MAX_SIZE))
     std::cout << twice(MAX_SIZE) << "\n";
-    // y: int32 = MAX_SIZE + NEG_VAL
     int32_t y = (::tpy::add_check<int32_t>(MAX_SIZE, NEG_VAL));
-    // print(y)
     std::cout << y << "\n";
 }
 
+// MAX_SIZE: Final[int32] = 100
+// NEG_VAL: Final[int32] = -42
+// PI: Final[float] = 3.14159
+// DEBUG: Final[bool] = True
+// DISABLED: Final[bool] = False
+// NAME: Final[str] = "hello"
+// LETTER: Final[char] = "A"
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
+// writeln('Hello, World!');
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // writeln('Hello, World!');
     std::cout << "Hello, World!" << "\n";
 }
 

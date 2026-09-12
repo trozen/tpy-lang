@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def count(t: Tree[int32]) -> int32:
+//     match t:
+//         case list() as branches:
+//             n = 0
+//             for c in branches:
+//                 n += count(c)
+//             return n
+//         case _:
+//             return 1
 int32_t count(const Tree<int32_t>& t) {
-    // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case list() as branches:
     case 1: {
         auto& branches = std::get<1>(__match_subject_1.value);
-        // n = 0
         int32_t n = 0;
-        // for c in branches:
         auto& __obj_0 = branches;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& c = *__beg_0;
-            // n += count(c)
             n = ::tpy::add_check<int32_t>(n, count(c));
         }
-        // return n
         return n;
         break;
     }
-    // case _:
     default: {
-        // return 1
         return 1;
         break;
     }
@@ -38,36 +38,36 @@ int32_t count(const Tree<int32_t>& t) {
 }
 
 // def main() -> None:
+//     h = Holder([1, 2])
+//     match h.get():
+//         case list() as got:
+//             got.append(3)
+//         case _:
+//             pass
+//     # The match subject binds by reference, so the append reaches h's tree: 3.
+//     print(count(h.get()))
 void main() {
-    // h = Holder([1, 2])
     Holder h = Holder(std::vector<Tree<int32_t>>{1, 2});
-    // match h.get():
     auto& __match_subject_1 = h.get();
     switch (__match_subject_1.value.index()) {
-    // case list() as got:
     case 1: {
         auto& got = std::get<1>(__match_subject_1.value);
-        // got.append(3)
         got.push_back(3);
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
-    // # The match subject binds by reference, so the append reaches h's tree: 3.
-    // print(count(h.get()))
     std::cout << count(h.get()) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

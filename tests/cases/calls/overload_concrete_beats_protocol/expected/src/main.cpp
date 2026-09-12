@@ -6,25 +6,25 @@ namespace tpyapp::main {
 
 // @dispatch
 // def describe(x: Dog) -> str:  # tpyc: ok
+//     return "dog: " + x.name()
 std::string describe(Dog& x) {
-    // return "dog: " + x.name()
     return (::tpy::str_concat("dog: ", x.name()));
 }
 
 // def main() -> None:
+//     d = Dog()
+//     print(describe(d))
 void main() {
-    // d = Dog()
     Dog d = Dog();
-    // print(describe(d))
     std::cout << describe(d) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -17,10 +17,13 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first[T](items: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(std::vector<T>& items);
+// def process[T: Mutable](items: list[T]) -> None:
 template<Mutable T>
 void process(std::vector<T>& items);
+// def test() -> None:
 void test();
 
 // class Point:
@@ -44,25 +47,26 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
 
 // def mutate(self) -> None:
+//     self.x += 10
 inline void Point::mutate() {
-    // self.x += 10
     this->x = (this->x) + (::tpy::BigInt(10));
 }
 // def first[T](items: list[T]) -> T:
+//     return items[0]
 template<typename T>
 ::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
-    // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 // def process[T: Mutable](items: list[T]) -> None:
+//     item = first(items)  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
+//     item.mutate()        # mutation through the reference
 template<Mutable T>
 void process(std::vector<T>& items) {
-    // item = first(items)  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
     ::tpy::val_or_ref_t<T> item = first<T>(items);
-    // item.mutate()        # mutation through the reference
     item.mutate();
 }
 

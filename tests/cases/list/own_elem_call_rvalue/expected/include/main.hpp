@@ -12,8 +12,11 @@ struct Maker;
 extern std::vector<Maker>* MAKERS;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_row(n: float) -> Own[list[float]]:
 std::vector<double> make_row(double n);
+// def build() -> Own[list[list[float]]]:
 std::vector<std::vector<double>> build();
+// def main() -> None:
 void main();
 
 // class Maker:
@@ -37,11 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
 
 
 // def __init__(self, k: float) -> None:
+//     self.k = k
 inline Maker::Maker(double k) : k(k) {}
 
 // def create_vector(self) -> Own[list[float]]:
+//     return [self.k, self.k * 2.0]
 inline std::vector<double> Maker::create_vector() const {
-    // return [self.k, self.k * 2.0]
     return {this->k, ((this->k) * (2.0))};
 }
 void __tpy_init();

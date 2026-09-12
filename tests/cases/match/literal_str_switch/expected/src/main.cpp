@@ -6,60 +6,62 @@ namespace tpyapp::main {
 
 // # string match with >= 5 cases triggers switch-based dispatch
 // def classify(s: str) -> str:
+//     match s:
+//         case "red":
+//             return "color"
+//         case "green":
+//             return "color"
+//         case "blue":
+//             return "color"
+//         case "cat":
+//             return "animal"
+//         case "dog":
+//             return "animal"
+//         case "bird":
+//             return "animal"
+//         case _:
+//             return "unknown"
 std::string classify(std::string_view s) {
-    // match s:
     auto& __match_subject_1 = s;
     if (__match_subject_1.size() >= 2) {
         switch (static_cast<unsigned char>(__match_subject_1[1])) {
         case 'a': {
-            // case "cat":
             if (__match_subject_1 == "cat") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'e': {
-            // case "red":
             if (__match_subject_1 == "red") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
             break;
         }
         case 'i': {
-            // case "bird":
             if (__match_subject_1 == "bird") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'l': {
-            // case "blue":
             if (__match_subject_1 == "blue") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
             break;
         }
         case 'o': {
-            // case "dog":
             if (__match_subject_1 == "dog") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'r': {
-            // case "green":
             if (__match_subject_1 == "green") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
@@ -67,9 +69,7 @@ std::string classify(std::string_view s) {
         }
         }
     }
-    // case _:
     {
-        // return "unknown"
         return "unknown";
         goto __match_end_2;
     }
@@ -78,13 +78,27 @@ std::string classify(std::string_view s) {
 }
 
 // def with_guard(cmd: str, verbose: bool) -> str:
+//     match cmd:
+//         case "help" if verbose:
+//             return "verbose help"
+//         case "help":
+//             return "help"
+//         case "quit":
+//             return "quit"
+//         case "save":
+//             return "save"
+//         case "load":
+//             return "load"
+//         case "undo":
+//             return "undo"
+//         case "redo":
+//             return "redo"
+//         case s:
+//             return "unknown: " + s
 std::string with_guard(std::string_view cmd, bool verbose) {
-    // match cmd:
     auto& __match_subject_1 = cmd;
-    // case "help" if verbose:
     if (__match_subject_1 == "help") {
         if (verbose) {
-            // return "verbose help"
             return "verbose help";
             goto __match_end_2;
         }
@@ -92,54 +106,42 @@ std::string with_guard(std::string_view cmd, bool verbose) {
     if (__match_subject_1.size() >= 1) {
         switch (static_cast<unsigned char>(__match_subject_1[0])) {
         case 'h': {
-            // case "help":
             if (__match_subject_1 == "help") {
-                // return "help"
                 return "help";
                 goto __match_end_2;
             }
             break;
         }
         case 'l': {
-            // case "load":
             if (__match_subject_1 == "load") {
-                // return "load"
                 return "load";
                 goto __match_end_2;
             }
             break;
         }
         case 'q': {
-            // case "quit":
             if (__match_subject_1 == "quit") {
-                // return "quit"
                 return "quit";
                 goto __match_end_2;
             }
             break;
         }
         case 'r': {
-            // case "redo":
             if (__match_subject_1 == "redo") {
-                // return "redo"
                 return "redo";
                 goto __match_end_2;
             }
             break;
         }
         case 's': {
-            // case "save":
             if (__match_subject_1 == "save") {
-                // return "save"
                 return "save";
                 goto __match_end_2;
             }
             break;
         }
         case 'u': {
-            // case "undo":
             if (__match_subject_1 == "undo") {
-                // return "undo"
                 return "undo";
                 goto __match_end_2;
             }
@@ -147,10 +149,8 @@ std::string with_guard(std::string_view cmd, bool verbose) {
         }
         }
     }
-    // case s:
     {
         auto& s = __match_subject_1;
-        // return "unknown: " + s
         return (::tpy::str_concat("unknown: ", s));
         goto __match_end_2;
     }
@@ -159,78 +159,70 @@ std::string with_guard(std::string_view cmd, bool verbose) {
 }
 
 // def with_or(s: str) -> str:
+//     match s:
+//         case "red" | "green" | "blue":
+//             return "color"
+//         case "cat" | "dog" | "bird":
+//             return "animal"
+//         case "one" | "two":
+//             return "number"
+//         case _:
+//             return "other"
 std::string with_or(std::string_view s) {
-    // match s:
     auto& __match_subject_1 = s;
     if (__match_subject_1.size() >= 2) {
         switch (static_cast<unsigned char>(__match_subject_1[1])) {
         case 'a': {
-            // case "cat" | "dog" | "bird":
             if (__match_subject_1 == "cat") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'e': {
-            // case "red" | "green" | "blue":
             if (__match_subject_1 == "red") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
             break;
         }
         case 'i': {
-            // case "cat" | "dog" | "bird":
             if (__match_subject_1 == "bird") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'l': {
-            // case "red" | "green" | "blue":
             if (__match_subject_1 == "blue") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
             break;
         }
         case 'n': {
-            // case "one" | "two":
             if (__match_subject_1 == "one") {
-                // return "number"
                 return "number";
                 goto __match_end_2;
             }
             break;
         }
         case 'o': {
-            // case "cat" | "dog" | "bird":
             if (__match_subject_1 == "dog") {
-                // return "animal"
                 return "animal";
                 goto __match_end_2;
             }
             break;
         }
         case 'r': {
-            // case "red" | "green" | "blue":
             if (__match_subject_1 == "green") {
-                // return "color"
                 return "color";
                 goto __match_end_2;
             }
             break;
         }
         case 'w': {
-            // case "one" | "two":
             if (__match_subject_1 == "two") {
-                // return "number"
                 return "number";
                 goto __match_end_2;
             }
@@ -238,9 +230,7 @@ std::string with_or(std::string_view s) {
         }
         }
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -249,59 +239,59 @@ std::string with_or(std::string_view s) {
 }
 
 // def by_length(s: str) -> str:
+//     match s:
+//         case "a":
+//             return "one"
+//         case "bb":
+//             return "two"
+//         case "ccc":
+//             return "three"
+//         case "dddd":
+//             return "four"
+//         case "eeeee":
+//             return "five"
+//         case _:
+//             return "other"
 std::string by_length(std::string_view s) {
-    // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.size()) {
     case 1: {
-        // case "a":
         if (__match_subject_1 == "a") {
-            // return "one"
             return "one";
             goto __match_end_2;
         }
         break;
     }
     case 2: {
-        // case "bb":
         if (__match_subject_1 == "bb") {
-            // return "two"
             return "two";
             goto __match_end_2;
         }
         break;
     }
     case 3: {
-        // case "ccc":
         if (__match_subject_1 == "ccc") {
-            // return "three"
             return "three";
             goto __match_end_2;
         }
         break;
     }
     case 4: {
-        // case "dddd":
         if (__match_subject_1 == "dddd") {
-            // return "four"
             return "four";
             goto __match_end_2;
         }
         break;
     }
     case 5: {
-        // case "eeeee":
         if (__match_subject_1 == "eeeee") {
-            // return "five"
             return "five";
             goto __match_end_2;
         }
         break;
     }
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
@@ -310,51 +300,51 @@ std::string by_length(std::string_view s) {
 }
 
 // def main() -> None:
+//     print(classify("red"))
+//     print(classify("green"))
+//     print(classify("dog"))
+//     print(classify("xyz"))
+//     print(classify(""))
+//     print(with_guard("help", True))
+//     print(with_guard("help", False))
+//     print(with_guard("quit", False))
+//     print(with_guard("xyz", False))
+//     print(with_or("blue"))
+//     print(with_or("one"))
+//     print(with_or("bird"))
+//     print(with_or("two"))
+//     print(with_or("xyz"))
+//     print(by_length("a"))
+//     print(by_length("bb"))
+//     print(by_length("eeeee"))
+//     print(by_length("zzz"))
 void main() {
-    // print(classify("red"))
     std::cout << classify("red") << "\n";
-    // print(classify("green"))
     std::cout << classify("green") << "\n";
-    // print(classify("dog"))
     std::cout << classify("dog") << "\n";
-    // print(classify("xyz"))
     std::cout << classify("xyz") << "\n";
-    // print(classify(""))
     std::cout << classify("") << "\n";
-    // print(with_guard("help", True))
     std::cout << with_guard("help", true) << "\n";
-    // print(with_guard("help", False))
     std::cout << with_guard("help", false) << "\n";
-    // print(with_guard("quit", False))
     std::cout << with_guard("quit", false) << "\n";
-    // print(with_guard("xyz", False))
     std::cout << with_guard("xyz", false) << "\n";
-    // print(with_or("blue"))
     std::cout << with_or("blue") << "\n";
-    // print(with_or("one"))
     std::cout << with_or("one") << "\n";
-    // print(with_or("bird"))
     std::cout << with_or("bird") << "\n";
-    // print(with_or("two"))
     std::cout << with_or("two") << "\n";
-    // print(with_or("xyz"))
     std::cout << with_or("xyz") << "\n";
-    // print(by_length("a"))
     std::cout << by_length("a") << "\n";
-    // print(by_length("bb"))
     std::cout << by_length("bb") << "\n";
-    // print(by_length("eeeee"))
     std::cout << by_length("eeeee") << "\n";
-    // print(by_length("zzz"))
     std::cout << by_length("zzz") << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

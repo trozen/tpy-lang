@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     xs = IntList()
+//     xs.add(7)
+//     xs.add(8)
+//     print(length_of(xs))   # 2
+//     print(total(xs))       # 15
 void main() {
-    // xs = IntList()
     IntList xs = IntList();
-    // xs.add(7)
     xs.add(7);
-    // xs.add(8)
     xs.add(8);
-    // print(length_of(xs))   # 2
     std::cout << length_of(xs) << "\n";
-    // print(total(xs))       # 15
     std::cout << total(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

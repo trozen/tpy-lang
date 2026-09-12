@@ -5,57 +5,57 @@ namespace tpyapp::main {
 
 
 // def describe(s: Circle | Rect | Triangle) -> None:
+//     i: int32 = 0
+//     while i < 2:
+//         if isinstance(s, Circle):
+//             print(s.radius)
+//         elif isinstance(s, Rect):
+//             print(s.width)
+//         else:
+//             print(s.base)
+//         i += 1
 void describe(::tpy::Union<const Circle*, const Rect*, const Triangle*> s) {
-    // i: int32 = 0
     int32_t i = 0;
-    // while i < 2:
     while ((i < 2)) {
-        // if isinstance(s, Circle):
         if (std::holds_alternative<const Circle*>(s)) {
             auto& __s = *std::get<const Circle*>(s);
-            // print(s.radius)
             std::cout << ::tpy::print_float(__s.radius) << "\n";
-        // elif isinstance(s, Rect):
         } else if (std::holds_alternative<const Rect*>(s)) {
             auto& __s = *std::get<const Rect*>(s);
-            // print(s.width)
             std::cout << ::tpy::print_float(__s.width) << "\n";
-        // else:
         } else {
             auto& __s = *std::get<const Triangle*>(s);
-            // print(s.base)
             std::cout << ::tpy::print_float(__s.base) << "\n";
         }
-        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
 // def main() -> None:
+//     c: Circle | Rect | Triangle = Circle(1.0)
+//     describe(c)
+//     r: Circle | Rect | Triangle = Rect(2.0, 3.0)
+//     describe(r)
+//     t: Circle | Rect | Triangle = Triangle(4.0)
+//     describe(t)
 void main() {
-    // c: Circle | Rect | Triangle = Circle(1.0)
     ::tpy::Union<Circle, Rect, Triangle> __slot_1 = Circle(1.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> c = ::tpy::to_ptr_variant(__slot_1);
-    // describe(c)
     describe(c.as_const());
-    // r: Circle | Rect | Triangle = Rect(2.0, 3.0)
     ::tpy::Union<Circle, Rect, Triangle> __slot_2 = Rect(2.0, 3.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> r = ::tpy::to_ptr_variant(__slot_2);
-    // describe(r)
     describe(r.as_const());
-    // t: Circle | Rect | Triangle = Triangle(4.0)
     ::tpy::Union<Circle, Rect, Triangle> __slot_3 = Triangle(4.0);
     ::tpy::Union<Circle*, Rect*, Triangle*> t = ::tpy::to_ptr_variant(__slot_3);
-    // describe(t)
     describe(t.as_const());
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,23 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r1 = Rc.new(int32(7))  # tpyc: type(Rc[int32])
+//     r2 = r1.clone()
+//     print(r1.get(), r2.get())  # 7 7
 void main() {
-    // r1 = Rc.new(int32(7))  # tpyc: type(Rc[int32])
     ::tpystd::tplib::rc::Rc<int32_t> r1 = Rc<int32_t>::new_<int32_t>(7);
-    // r2 = r1.clone()
     ::tpystd::tplib::rc::Rc<int32_t> r2 = r1.clone();
-    // print(r1.get(), r2.get())  # 7 7
     std::cout << r1.get() << " " << r2.get() << "\n";
 }
 
+// from tplib import Rc
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

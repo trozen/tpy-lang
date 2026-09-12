@@ -41,68 +41,72 @@ std::optional<::tpyapp::main::Color> EnumUtil<::tpyapp::main::Color>::try_parse(
 
 namespace tpyapp::main {
 
-// calls = 0
 int32_t calls{};
 
 // def make() -> Color:
+//     global calls
+//     calls += 1
+//     return Color.RED
 Color make() {
-    // global calls
-    // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
-    // return Color.RED
     return Color::RED;
 }
 
 // def main() -> None:
+//     if make():
+//         print("if:", calls)
+//
+//     if not make():
+//         print("unreachable")
+//     print("not:", calls)
+//
+//     while make():
+//         break
+//     print("while:", calls)
+//
+//     # A member read and a name fold their value the same way, and still evaluate.
+//     if Color.GREEN:
+//         print("member operand ok")
+//     c = Color.RED
+//     if c:
+//         print("name operand ok")
+//     print("total:", calls)
 void main() {
-    // if make():
     if ((static_cast<void>(make()), true)) {
-        // print("if:", calls)
         std::cout << "if:" << " " << calls << "\n";
     }
-    // if not make():
     if ((!((static_cast<void>(make()), true)))) {
-        // print("unreachable")
         std::cout << "unreachable" << "\n";
     }
-    // print("not:", calls)
     std::cout << "not:" << " " << calls << "\n";
-    // while make():
     while ((static_cast<void>(make()), true)) {
-        // break
         break;
     }
-    // print("while:", calls)
     std::cout << "while:" << " " << calls << "\n";
-    // # A member read and a name fold their value the same way, and still evaluate.
-    // if Color.GREEN:
     if ((static_cast<void>(Color::GREEN), true)) {
-        // print("member operand ok")
         std::cout << "member operand ok" << "\n";
     }
-    // c = Color.RED
     Color c = Color::RED;
-    // if c:
     if ((static_cast<void>(c), true)) {
-        // print("name operand ok")
         std::cout << "name operand ok" << "\n";
     }
-    // print("total:", calls)
     std::cout << "total:" << " " << calls << "\n";
 }
 
+// # Every plain (non-Int) enum member is truthy, but the operand still has to be
+// # evaluated -- folding `if make():` to `true` would drop the call. A member read
+// # folds its value the same way and still evaluates.
+// from enum import Enum
+//
+// calls = 0
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Every plain (non-Int) enum member is truthy, but the operand still has to be
-    // # evaluated -- folding `if make():` to `true` would drop the call. A member read
-    // # folds its value the same way and still evaluates.
-    // from enum import Enum
-    // calls = 0
     calls = 0;
-    // main()
     main();
 }
 

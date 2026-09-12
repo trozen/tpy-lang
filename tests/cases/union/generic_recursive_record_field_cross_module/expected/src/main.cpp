@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     f = Forest()
+//     print(f.size())
 void main() {
-    // f = Forest()
     Forest f = Forest();
-    // print(f.size())
     std::cout << f.size() << "\n";
 }
 
+// # A record in `main` embeds a cross-module generic recursive alias by value
+// # (`canopy: treelib.Tree[int]`) and reads it via a method. Guards the emit
+// # ordering: the imported wrapper template (treelib's `.hpp`) must be complete
+// # before this module's record embeds `Tree<BigInt>` by value. The field is
+// # built from a fresh literal in __init__ (no cross-boundary move), so this is a
+// # read-only / fresh-construction test, not a value-vs-reference one.
+// from treelib import Tree, leaf_count
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A record in `main` embeds a cross-module generic recursive alias by value
-    // # (`canopy: treelib.Tree[int]`) and reads it via a method. Guards the emit
-    // # ordering: the imported wrapper template (treelib's `.hpp`) must be complete
-    // # before this module's record embeds `Tree<BigInt>` by value. The field is
-    // # built from a fresh literal in __init__ (no cross-boundary move), so this is a
-    // # read-only / fresh-construction test, not a value-vs-reference one.
-    // from treelib import Tree, leaf_count
     ::tpyapp::treelib::__tpy_init();
-    // main()
     main();
 }
 

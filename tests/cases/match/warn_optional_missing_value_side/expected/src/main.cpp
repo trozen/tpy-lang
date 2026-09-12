@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def f(p: Point | None) -> int32:
+//     match p:  # tpyc: warning(/non-exhaustive match.*missing: Point/)
+//         case None:
+//             return -1
+//     return 0
 int32_t f(const Point* p) {
-    // match p:  # tpyc: warning(/non-exhaustive match.*missing: Point/)
     auto& __match_subject_1 = p;
-    // case None:
     if (__match_subject_1 == nullptr) {
-        // return -1
         return -1;
     }
-    // return 0
     return 0;
 }
 
 // def main() -> None:
+//     print(f(None))
+//     print(f(Point(3)))
 void main() {
-    // print(f(None))
     std::cout << f(nullptr) << "\n";
-    // print(f(Point(3)))
     Point __tmp_1 = Point(3);
     std::cout << f(&(__tmp_1)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

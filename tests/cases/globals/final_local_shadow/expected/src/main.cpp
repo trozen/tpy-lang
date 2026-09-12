@@ -5,19 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     X: int32 = 99
+//     print(X)
 void main() {
-    // X: int32 = 99
     int32_t X = 99;
-    // print(X)
     std::cout << X << "\n";
 }
 
+// X: Final[int32] = 42
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

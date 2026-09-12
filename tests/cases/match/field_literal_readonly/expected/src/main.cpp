@@ -5,45 +5,46 @@ namespace tpyapp::main {
 
 
 // def describe(r: R) -> str:
+//     match r:
+//         case R(s="hi"):  # tpyc: ok
+//             return "hi"
+//         # The `as` spelling routes the same field type through the same check.
+//         case R(s="bye" as v):  # tpyc: ok
+//             return "bye:" + v
+//         case _:
+//             return "other"
 std::string describe(const R& r) {
-    // match r:
     auto& __match_subject_1 = r;
-    // case R(s="hi"):  # tpyc: ok
     if (__match_subject_1.s == "hi") {
-        // return "hi"
         return "hi";
-    // case R(s="bye" as v):  # tpyc: ok
     } else if (__match_subject_1.s == "bye") {
         auto& v = __match_subject_1.s;
-        // return "bye:" + v
         return (::tpy::str_concat("bye:", v));
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     print(describe(R("hi")))
+//     print(describe(R("bye")))
+//     print(describe(R("yo")))
 void main() {
-    // print(describe(R("hi")))
     R __tmp_1 = R("hi");
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(R("bye")))
     R __tmp_2 = R("bye");
     std::cout << describe(__tmp_2) << "\n";
-    // print(describe(R("yo")))
     R __tmp_3 = R("yo");
     std::cout << describe(__tmp_3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,84 +5,85 @@ namespace tpyapp::main {
 
 
 // def guarded(p: Point) -> str:
+//     match p:
+//         case Point(x=0, y=0):
+//             return "origin"
+//         case Point(x=x) if x > 0:
+//             return "positive x"
+//         case _:
+//             return "other"
+//     return ""
 std::string guarded(const Point& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Point(x=0, y=0):
     if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {
-        // return "origin"
         return "origin";
         goto __match_end_2;
     }
-    // case Point(x=x) if x > 0:
     {
         auto x = __match_subject_1.x;
         if ((x > 0)) {
-            // return "positive x"
             return "positive x";
             goto __match_end_2;
         }
     }
-    // case _:
     {
-        // return "other"
         return "other";
         goto __match_end_2;
     }
     __match_end_2:;
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def or_pattern(p: Point) -> str:
+//     match p:
+//         case Point(x=0, y=0) | Point(x=1, y=1):
+//             return "special"
+//         case _:
+//             return "other"
+//     return ""
 std::string or_pattern(const Point& p) {
-    // match p:
     auto& __match_subject_1 = p;
-    // case Point(x=0, y=0) | Point(x=1, y=1):
     if ((__match_subject_1.x == 0 && __match_subject_1.y == 0) || (__match_subject_1.x == 1 && __match_subject_1.y == 1)) {
-        // return "special"
         return "special";
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
-    // return ""
     return "";
 }
 
 // def main() -> None:
+//     print(guarded(Point(int32(0), int32(0))))
+//     print(guarded(Point(int32(5), int32(3))))
+//     print(guarded(Point(int32(-1), int32(0))))
+//     print(or_pattern(Point(int32(0), int32(0))))
+//     print(or_pattern(Point(int32(1), int32(1))))
+//     print(or_pattern(Point(int32(2), int32(3))))
 void main() {
-    // print(guarded(Point(int32(0), int32(0))))
     Point __tmp_1 = Point(0, 0);
     std::cout << guarded(__tmp_1) << "\n";
-    // print(guarded(Point(int32(5), int32(3))))
     Point __tmp_2 = Point(5, 3);
     std::cout << guarded(__tmp_2) << "\n";
-    // print(guarded(Point(int32(-1), int32(0))))
     Point __tmp_3 = Point(-1, 0);
     std::cout << guarded(__tmp_3) << "\n";
-    // print(or_pattern(Point(int32(0), int32(0))))
     Point __tmp_4 = Point(0, 0);
     std::cout << or_pattern(__tmp_4) << "\n";
-    // print(or_pattern(Point(int32(1), int32(1))))
     Point __tmp_5 = Point(1, 1);
     std::cout << or_pattern(__tmp_5) << "\n";
-    // print(or_pattern(Point(int32(2), int32(3))))
     Point __tmp_6 = Point(2, 3);
     std::cout << or_pattern(__tmp_6) << "\n";
 }
 
+// # match/case on concrete record with guards and or-patterns
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # match/case on concrete record with guards and or-patterns
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

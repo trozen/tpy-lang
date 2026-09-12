@@ -11,7 +11,9 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(c: Counter) -> None:
 void run(Counter& c);
+// def main() -> None:
 void main();
 
 // # Regression: `with` on a reference-type lvalue manager must borrow it (not
@@ -39,17 +41,18 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Counter::Counter() : n(::tpy::BigInt(0)) {}
 
 // def __enter__(self) -> None:
+//     self.n += 1
 inline void Counter::__enter__() {
-    // self.n += 1
     this->n = (this->n) + (::tpy::BigInt(1));
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
+//     self.n += 100
 inline void Counter::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) {
-    // self.n += 100
     this->n = (this->n) + (::tpy::BigInt(100));
 }
 void __tpy_init();

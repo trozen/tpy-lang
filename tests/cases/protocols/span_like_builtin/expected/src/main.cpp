@@ -5,71 +5,72 @@ namespace tpyapp::main {
 
 
 // def test_list() -> None:
+//     data: list[int32] = [10, 20, 30]
+//     print(sum_span(data))
 void test_list() {
-    // data: list[int32] = [10, 20, 30]
     std::vector<int32_t> data = {10, 20, 30};
-    // print(sum_span(data))
     std::cout << sum_span(data) << "\n";
 }
 
 // def test_array() -> None:
+//     data: Array[int32, 3] = [1, 2, 3]
+//     print(sum_span(data))
 void test_array() {
-    // data: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> data = {1, 2, 3};
-    // print(sum_span(data))
     std::cout << sum_span(data) << "\n";
 }
 
 // def test_span() -> None:
+//     data: list[int32] = [7, 8, 9]
+//     s: Span[int32] = data
+//     print(sum_span(s))
 void test_span() {
-    // data: list[int32] = [7, 8, 9]
     std::vector<int32_t> data = {7, 8, 9};
-    // s: Span[int32] = data
     std::span<int32_t> s = ::tpy::as_mut_span(data);
-    // print(sum_span(s))
     std::cout << sum_span(s) << "\n";
 }
 
 // def test_ro_span() -> None:
+//     data: list[int32] = [4, 5, 6]
+//     s: Span[readonly[int32]] = data
+//     print(sum_span(s))
 void test_ro_span() {
-    // data: list[int32] = [4, 5, 6]
     std::vector<int32_t> data = {4, 5, 6};
-    // s: Span[readonly[int32]] = data
     std::span<const int32_t> s = ::tpy::as_span(data);
-    // print(sum_span(s))
     std::cout << sum_span(s) << "\n";
 }
 
 // def test_arraylist() -> None:
+//     al = ArrayList[int32, 4]()
+//     al.append(int32(100))
+//     al.append(int32(200))
+//     print(sum_span(al))
 void test_arraylist() {
-    // al = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
-    // al.append(int32(100))
     al.append(100);
-    // al.append(int32(200))
     al.append(200);
-    // print(sum_span(al))
     std::cout << sum_span(al) << "\n";
 }
 
+// from tplib import ArrayList
+//
+// test_list()
+// test_array()
+// test_span()
+// test_ro_span()
+// test_arraylist()
+// print("done")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
-    // test_list()
     test_list();
-    // test_array()
     test_array();
-    // test_span()
     test_span();
-    // test_ro_span()
     test_ro_span();
-    // test_arraylist()
     test_arraylist();
-    // print("done")
     std::cout << "done" << "\n";
 }
 

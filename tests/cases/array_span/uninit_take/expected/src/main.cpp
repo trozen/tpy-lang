@@ -3,60 +3,56 @@
 
 namespace tpyapp::main {
 
-// # Indexed take on heap storage
-// h = UninitHeapStorage[int32](3)
 ::tpy::UninitHeapStorage<int32_t>* h{};
-// # take0 shortcut on array storage
-// a = UninitArrayStorage[int32, 1]()
 ::tpy::UninitArrayStorage<int32_t, 1>* a{};
-// # take with record type
-// pts = UninitHeapStorage[Point](2)
 ::tpy::UninitHeapStorage<Point>* pts{};
-// pt: Point = pts.take0()
 Point* pt{};
 
+// from tpy.mem import UninitArrayStorage, UninitHeapStorage
+//
+// # Indexed take on heap storage
+// h = UninitHeapStorage[int32](3)
+// h.init(0, 10)
+// h.init(1, 20)
+// h.init(2, 30)
+// print(h.take(0))
+// print(h.take(1))
+// print(h.take(2))
+//
+// # take0 shortcut on array storage
+// a = UninitArrayStorage[int32, 1]()
+// a.init0(42)
+// print(a.take0())
+//
+// # take with record type
+// pts = UninitHeapStorage[Point](2)
+// pts.init0(Point(5, 6))
+// pt: Point = pts.take0()
+// print(pt.x)
+// print(pt.y)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitArrayStorage, UninitHeapStorage
-    // # Indexed take on heap storage
-    // h = UninitHeapStorage[int32](3)
     static ::tpy::UninitHeapStorage<int32_t> __global_slot_1 = ::tpy::UninitHeapStorage<int32_t>(3);
     h = &__global_slot_1;
-    // h.init(0, 10)
     h->init(0, 10);
-    // h.init(1, 20)
     h->init(1, 20);
-    // h.init(2, 30)
     h->init(2, 30);
-    // print(h.take(0))
     std::cout << h->take(0) << "\n";
-    // print(h.take(1))
     std::cout << h->take(1) << "\n";
-    // print(h.take(2))
     std::cout << h->take(2) << "\n";
-    // # take0 shortcut on array storage
-    // a = UninitArrayStorage[int32, 1]()
     static ::tpy::UninitArrayStorage<int32_t, 1> __global_slot_2 = ::tpy::UninitArrayStorage<int32_t, 1>();
     a = &__global_slot_2;
-    // a.init0(42)
     a->init0(42);
-    // print(a.take0())
     std::cout << a->take0() << "\n";
-    // # take with record type
-    // pts = UninitHeapStorage[Point](2)
     static ::tpy::UninitHeapStorage<Point> __global_slot_3 = ::tpy::UninitHeapStorage<Point>(2);
     pts = &__global_slot_3;
-    // pts.init0(Point(5, 6))
     pts->init0(Point(5, 6));
-    // pt: Point = pts.take0()
     static Point __global_slot_4 = pts->take0();
     pt = &__global_slot_4;
-    // print(pt.x)
     std::cout << pt->x << "\n";
-    // print(pt.y)
     std::cout << pt->y << "\n";
 }
 

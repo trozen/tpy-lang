@@ -33,66 +33,103 @@ template <typename T>
 struct __coro_async_slot;
 struct __coro_async_driver;
 
+// def free_slot[T](v: T) -> int32:
 template<typename T>
 int32_t free_slot(::tpy::param_val_or_ref_t<T> v);
+// def free_slot_twin(v: Cell) -> int32:
 int32_t free_slot_twin(const Cell& v);
+// def ret_own[T](v: T) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> ret_own(::tpy::param_val_or_ref_t<T> v);
+// def ret_own_twin(v: Cell) -> Own[Cell]:
 Cell ret_own_twin(const Cell& v);
+// def two_instantiations[T](v: T) -> int32:
 template<typename T>
 int32_t two_instantiations(::tpy::param_val_or_ref_t<T> v);
+// def gen_slot[T](v: T) -> Iterator[int32]:
 template <typename T>
 __gen_gen_slot<T> gen_slot(::tpy::param_val_or_ref_t<T> v);
+// async def async_slot[T](v: T) -> int32:
 template <typename T>
 __coro_async_slot<T> async_slot(::tpy::param_val_or_ref_t<T> v);
+// async def async_driver(c: Cell) -> int32:
 __coro_async_driver async_driver(Cell& c);
+// def closure_slot[T](v: T) -> int32:
 template<typename T>
 int32_t closure_slot(::tpy::param_val_or_ref_t<T> v);
+// def with_slot[T](v: T) -> int32:
 template<typename T>
 int32_t with_slot(::tpy::param_val_or_ref_t<T> v);
+// def try_slot[T](v: T) -> int32:
 template<typename T>
 int32_t try_slot(::tpy::param_val_or_ref_t<T> v);
+// def match_slot[T](v: T, tag: int32) -> int32:
 template<typename T>
 int32_t match_slot(::tpy::param_val_or_ref_t<T> v, int32_t tag);
+// def er_slot[T](v: T) -> int32:
 template<typename T>
 std::expected<int32_t, Missing> er_slot(::tpy::param_val_or_ref_t<T> v);
+// def inner_fwd[T](v: T) -> int32:
 template<typename T>
 int32_t inner_fwd(::tpy::param_val_or_ref_t<T> v);
+// def outer_fwd[U](v: U) -> int32:
 template<typename U>
 int32_t outer_fwd(::tpy::param_val_or_ref_t<U> v);
+// def value_bound[T: ValueType](v: T) -> int32:
 template<::tpy::ValueType T>
 int32_t value_bound(::tpy::param_val_or_ref_t<T> v);
+// def value_bound_readonly[T: ValueType](v: readonly[T]) -> int32:
 template<::tpy::ValueType T>
 int32_t value_bound_readonly(::tpy::readonly_form_t<T> v);
+// def boxed_bound[T: ValueType](v: GBox[T]) -> int32:
 template<::tpy::ValueType T>
 int32_t boxed_bound(const GBox<T>& v);
+// def boxed_bound_twin(v: GBox[int32]) -> int32:
 int32_t boxed_bound_twin(const GBox<int32_t>& v);
+// def elems_ctor[T](pairs: list[tuple[str, T]]) -> int32:
 template<typename T>
 int32_t elems_ctor(const std::vector<std::tuple<std::string, T>>& pairs);
+// def elems_ctor_twin(pairs: list[tuple[str, Cell]]) -> int32:
 int32_t elems_ctor_twin(const std::vector<std::tuple<std::string, Cell>>& pairs);
+// def elems_list[T](xs: list[T]) -> int32:
 template<typename T>
 int32_t elems_list(const std::vector<T>& xs);
+// def elems_iadd[T](xs: list[T], ys: list[T]) -> int32:
 template<typename T>
 int32_t elems_iadd(std::vector<T>& xs, const std::vector<T>& ys);
+// def elems_update[T](a: dict[str, T], b: dict[str, T]) -> int32:
 template<typename T>
 int32_t elems_update(::tpy::ordered_map<std::string, T>& a, ::tpy::ordered_map<std::string, T>& b);
+// def comp_slot_twin(v: Cell) -> int32:
 int32_t comp_slot_twin(const Cell& v);
+// def subscript_slot[T](xs: list[T], v: T) -> int32:
 template<typename T>
 int32_t subscript_slot(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+// def subscript_slot_twin(xs: list[Cell], v: Cell) -> int32:
 int32_t subscript_slot_twin(std::vector<Cell>& xs, const Cell& v);
+// def value_only[T](v: T) -> int32:
 template<typename T>
 int32_t value_only(::tpy::param_val_or_ref_t<T> v);
+// def never_used[T](v: T) -> int32:
 template<typename T>
 int32_t never_used(::tpy::param_val_or_ref_t<T> v);
+// def bounded_copyable[T: Copyable](v: T) -> int32:
 template<::tpy::Copyable T>
 int32_t bounded_copyable(::tpy::param_val_or_ref_t<T> v);
+// def hatched[T](v: T) -> int32:
 template<typename T>
 int32_t hatched(::tpy::param_val_or_ref_t<T> v);
+// def free_positions() -> None:
 void free_positions();
+// def record_positions() -> None:
 void record_positions();
+// def body_positions() -> None:
 void body_positions();
+// def other_positions() -> None:
 void other_positions();
+// def element_positions() -> None:
 void element_positions();
+// def main() -> None:
 void main();
 
 // class Cell:
@@ -151,12 +188,13 @@ struct Holder {
     T item;
 
     // def __init__(self, v: T) -> None:
+    //     self.item = v  # tpyc: warning(/may copy T into field/)
     Holder() = default;
     explicit Holder(::tpy::readonly_form_t<T> v) : item(v) {}
 
     // def store(self, v: T) -> None:
+    //     self.item = v  # tpyc: warning(/may copy T into field/)
     void store(::tpy::param_val_or_ref_t<T> v) {
-        // self.item = v  # tpyc: warning(/may copy T into field/)
         this->item = ::tpy::param_to_storage<T>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -212,6 +250,7 @@ struct GenBase {
     T item;
 
     // def __init__(self, v: T) -> None:
+    //     self.item = v  # tpyc: warning(/may copy T into field/)
     GenBase() = default;
     explicit GenBase(::tpy::readonly_form_t<T> v) : item(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenBase";
@@ -231,11 +270,12 @@ struct OptHolder {
     std::optional<T> item;
 
     // def __init__(self) -> None:
+    //     self.item = None
     OptHolder() : item(std::nullopt) {}
 
     // def store(self, v: T | None) -> None:
+    //     self.item = v  # tpyc: warning(/may copy T \| None into field/)
     void store(::tpy::opt_cparam_t<T> v) {
-        // self.item = v  # tpyc: warning(/may copy T \| None into field/)
         this->item = ::tpy::to_opt_storage<std::optional<T>>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.OptHolder";
@@ -257,6 +297,7 @@ struct GBox {
     T item;
 
     // def __init__(self, v: T) -> None:
+    //     self.item = v  # tpyc: warning(/may copy T into field/)
     GBox() = default;
     explicit GBox(::tpy::readonly_form_t<T> v) : item(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox";
@@ -280,17 +321,18 @@ struct Shadowed {
     T item;
 
     // def __init__(self, v: T) -> None:
+    //     self.item = v  # tpyc: warning(/may copy T into field/)
     Shadowed() = default;
     explicit Shadowed(::tpy::readonly_form_t<T> v) : item(v) {}
 
     // def keep[T: ValueType](self, v: T) -> int32:
+    //     xs: list[T] = []
+    //     xs.append(v)  # tpyc: ok
+    //     return len(xs)
     int32_t keep(::tpy::readonly_form_t<T> v) const
       requires ::tpy::ValueType<T> {
-        // xs: list[T] = []
         std::vector<T> xs = std::vector<T>{};
-        // xs.append(v)  # tpyc: ok
         xs.push_back(::tpy::param_to_storage<T>(v));
-        // return len(xs)
         return ::tpy::__len__(xs);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shadowed";
@@ -307,6 +349,7 @@ template<typename T>
 struct GenMid : GenBase<T> {
 
     // def __init__(self, v: T) -> None:
+    //     super().__init__(v)  # tpyc: ok
     GenMid() = default;
     explicit GenMid(::tpy::readonly_form_t<T> v) : GenBase<T>(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenMid";
@@ -332,7 +375,7 @@ inline std::ostream& operator<<(std::ostream& os, const GenLeaf& obj) {
     return os;
 }
 
-// Async coroutine: async_slot
+// async def async_slot[T](v: T) -> int32:
 template <typename T>
 struct __coro_async_slot {
     int32_t __state;
@@ -356,16 +399,16 @@ struct __coro_async_slot {
     }
 };
 // async def async_slot[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_async_slot<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // xs: list[T] = []
         xs.emplace(std::vector<T>{});
-        // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
         (*xs).push_back(::tpy::param_to_storage<T>(v));
-        // return len(xs)
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__((*xs));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -382,7 +425,7 @@ __coro_async_slot<T> async_slot(::tpy::param_val_or_ref_t<T> v) {
     return __coro_async_slot<T>(v);
 }
 
-// Async coroutine: async_driver
+// async def async_driver(c: Cell) -> int32:
 struct __coro_async_driver {
     int32_t __state;
     bool __cancel_pending;
@@ -410,7 +453,7 @@ struct __coro_async_driver {
     }
 };
 
-// Generator: gen_slot
+// def gen_slot[T](v: T) -> Iterator[int32]:
 template <typename T>
 struct __gen_gen_slot : public ::tpy::next_iter_mixin<__gen_gen_slot<T>, int32_t> {
     int32_t __state;
@@ -434,15 +477,15 @@ struct __gen_gen_slot : public ::tpy::next_iter_mixin<__gen_gen_slot<T>, int32_t
     }
 };
 // def gen_slot[T](v: T) -> Iterator[int32]:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     yield len(xs)
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slot<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // xs: list[T] = []
         xs.emplace(std::vector<T>{});
-        // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
         (*xs).push_back(::tpy::param_to_storage<T>(v));
-        // yield len(xs)
         __state = S_RESUME_0;
         return ::tpy::__len__((*xs));
     }
@@ -464,92 +507,99 @@ __gen_gen_slot<T> gen_slot(::tpy::param_val_or_ref_t<T> v) {
 
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, t: int32) -> None:
+//     self.t = t
 inline Tag::Tag(int32_t t) : t(t) {}
 
 // def __init__(self, v: Cell) -> None:
+//     self.item = v  # tpyc: warning(/copies Cell into field/)
 inline HolderTwin::HolderTwin(const Cell& v) : item(v) {}
 
 // def store(self, v: Cell) -> None:
+//     self.item = v  # tpyc: warning(/copies Cell into field/)
 inline void HolderTwin::store(const Cell& v) {
-    // self.item = v  # tpyc: warning(/copies Cell into field/)
     this->item = v;
 }
 
 // def __enter__(self) -> int32:
+//     return 1
 inline int32_t Guard::__enter__() const {
-    // return 1
     return 1;
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 
 // def __init__(self, v: Cell) -> None:
+//     super().__init__(v)  # tpyc: ok
 inline GenLeaf::GenLeaf(const Cell& v) : GenMid<Cell>(v) {}
 // # free function, container-element slot. `diag.txt` is the subject of every
 // # section: nothing for the value instantiation, `copies X into <sink>` for the
 // # reference one, on the BODY line rather than at the call that decided it.
 // def free_slot[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<typename T>
 int32_t free_slot(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # free function, `Own[T]` return slot
 // def ret_own[T](v: T) -> Own[T]:
+//     return v  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 ::tpy::own_return_t<T> ret_own(::tpy::param_val_or_ref_t<T> v) {
-    // return v  # tpyc: warning(/may copy T into owned storage/)
     return v;
 }
 // # two distinct reference instantiations of ONE body: still ONE line, because
 // # the contract is the declaration's and not any call's
 // def two_instantiations[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<typename T>
 int32_t two_instantiations(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # closure body
 // def closure_slot[T](v: T) -> int32:
+//     xs: list[T] = []
+//
+//     def inner() -> None:
+//         xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//
+//     inner()
+//     return len(xs)
 template<typename T>
 int32_t closure_slot(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // def inner() -> None:
     auto inner = [&v, &xs]() {
-        // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
         xs.push_back(::tpy::param_to_storage<T>(v));
     };
-    // inner()
     inner();
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # context-manager body
 // def with_slot[T](v: T) -> int32:
+//     xs: list[T] = []
+//     with Guard() as g:
+//         xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs) + g
 template<typename T>
 int32_t with_slot(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // with Guard() as g:
     auto __ctx_1 = Guard();
     auto g = __ctx_1.__enter__();
     try {
-        // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
         xs.push_back(::tpy::param_to_storage<T>(v));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -561,95 +611,94 @@ int32_t with_slot(::tpy::param_val_or_ref_t<T> v) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // return len(xs) + g
     return (::tpy::add_check<int32_t>(::tpy::__len__(xs), g));
 }
 // # try / finally body
 // def try_slot[T](v: T) -> int32:
+//     xs: list[T] = []
+//     try:
+//         xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     finally:
+//         xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<typename T>
 int32_t try_slot(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // try:
     {
         try {
-            // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
             xs.push_back(::tpy::param_to_storage<T>(v));
         } catch (...) {
-            // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
             xs.push_back(::tpy::param_to_storage<T>(v));
             throw;
         }
-        // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
         xs.push_back(::tpy::param_to_storage<T>(v));
     }
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # match arm
 // def match_slot[T](v: T, tag: int32) -> int32:
+//     xs: list[T] = []
+//     match tag:
+//         case 1:
+//             xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//         case _:
+//             pass
+//     return len(xs)
 template<typename T>
 int32_t match_slot(::tpy::param_val_or_ref_t<T> v, int32_t tag) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // match tag:
     auto& __match_subject_1 = tag;
     switch (__match_subject_1) {
-    // case 1:
     case 1: {
-        // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
         xs.push_back(::tpy::param_to_storage<T>(v));
         break;
     }
-    // case _:
     default: {
-        // pass
         break;
     }
     }
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # @error_return body
 // @error_return(Missing)
 // def er_slot[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<typename T>
 std::expected<int32_t, Missing> er_slot(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # transitive forward: only `outer` knows U, only `inner` carries the obligation
 // def inner_fwd[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<typename T>
 int32_t inner_fwd(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // def outer_fwd[U](v: U) -> int32:
+//     return inner_fwd(v)  # tpyc: ok
 template<typename U>
 int32_t outer_fwd(::tpy::param_val_or_ref_t<U> v) {
-    // return inner_fwd(v)  # tpyc: ok
     return inner_fwd<U>(v);
 }
 // # SILENCER 1: `T: ValueType` -- a reference-type copy cannot happen there, so
 // # there is nothing to declare. (A `T | None` field under the same bound would
 // # say the same thing, but its member write is a lowering reject.)
 // def value_bound[T: ValueType](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: ok
+//     return len(xs)
 template<::tpy::ValueType T>
 int32_t value_bound(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: ok
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # ... and it reaches through the shapes whose value-ness DELEGATES to the
@@ -659,116 +708,116 @@ int32_t value_bound(::tpy::param_val_or_ref_t<T> v) {
 // # `assign.field_write_shape` and a `tuple[.., T]` one at
 // # `ctor.mil_field.tuple.name`, so the case pins the shape that does.)
 // def value_bound_readonly[T: ValueType](v: readonly[T]) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: ok
+//     return len(xs)
 template<::tpy::ValueType T>
 int32_t value_bound_readonly(::tpy::readonly_form_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: ok
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // def boxed_bound[T: ValueType](v: GBox[T]) -> int32:
+//     xs: list[GBox[T]] = []
+//     xs.append(v)  # tpyc: warning(/may copy GBox\[T\] into owned storage/)
+//     return len(xs)
 template<::tpy::ValueType T>
 int32_t boxed_bound(const GBox<T>& v) {
-    // xs: list[GBox[T]] = []
     std::vector<GBox<T>> xs = std::vector<GBox<T>>{};
-    // xs.append(v)  # tpyc: warning(/may copy GBox\[T\] into owned storage/)
     xs.push_back(v);
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # container-conversion ELEMENTS, tuple-nested: `tuple[str, T]` is a value type
 // # whose T is not, so the copy question has to be asked recursively -- the
 // # whole-shape `is_value_type()` would call this silent.
 // def elems_ctor[T](pairs: list[tuple[str, T]]) -> int32:
+//     d = dict(pairs)  # tpyc: warning(/may copy tuple\[str, T\] elements/)
+//     return len(d)
 template<typename T>
 int32_t elems_ctor(const std::vector<std::tuple<std::string, T>>& pairs) {
-    // d = dict(pairs)  # tpyc: warning(/may copy tuple\[str, T\] elements/)
     ::tpy::ordered_map<std::string, T> d = ::tpy::dict_construct<std::string, T>(pairs);
-    // return len(d)
     return ::tpy::__len__(d);
 }
 // # the same element sink at the other three spellings
 // def elems_list[T](xs: list[T]) -> int32:
+//     ys = list(xs)  # tpyc: warning(/may copy T elements/)
+//     return len(ys)
 template<typename T>
 int32_t elems_list(const std::vector<T>& xs) {
-    // ys = list(xs)  # tpyc: warning(/may copy T elements/)
     std::vector<T> ys = ::tpy::construct<std::vector<T>>(xs);
-    // return len(ys)
     return ::tpy::__len__(ys);
 }
 // def elems_iadd[T](xs: list[T], ys: list[T]) -> int32:
+//     xs += ys  # tpyc: warning(/may copy T elements/)
+//     return len(xs)
 template<typename T>
 int32_t elems_iadd(std::vector<T>& xs, const std::vector<T>& ys) {
-    // xs += ys  # tpyc: warning(/may copy T elements/)
     ::tpy::list_extend(xs, ys);
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // def elems_update[T](a: dict[str, T], b: dict[str, T]) -> int32:
+//     a.update(b)  # tpyc: warning(/may copy T elements/)
+//     return len(a)
 template<typename T>
 int32_t elems_update(::tpy::ordered_map<std::string, T>& a, ::tpy::ordered_map<std::string, T>& b) {
-    // a.update(b)  # tpyc: warning(/may copy T elements/)
     ::tpy::dict_update(a, b);
-    // return len(a)
     return ::tpy::__len__(a);
 }
 // # subscript assign: the container dest, distinct from the field one
 // def subscript_slot[T](xs: list[T], v: T) -> int32:
+//     xs[0] = v  # tpyc: warning(/may copy T into container/)
+//     return len(xs)
 template<typename T>
 int32_t subscript_slot(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
-    // xs[0] = v  # tpyc: warning(/may copy T into container/)
     ::tpy::__setitem__(xs, 0, v);
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # instantiated ONLY at a value type: the contract is the body's, so the line
 // # stands -- this is the accepted divergence from the monomorphic twin, which
 // # would report nothing at all here
 // def value_only[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<typename T>
 int32_t value_only(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # never instantiated: the point of a DECLARATION-time contract -- a library
 // # generic warns its author with no call site anywhere
 // def never_used[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<typename T>
 int32_t never_used(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # `T: Copyable` does NOT silence: copyable is TPy's default, so the bound only
 // # rules out a non-copyable payload -- it does not say a copy was intended
 // def bounded_copyable[T: Copyable](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return len(xs)
 template<::tpy::Copyable T>
 int32_t bounded_copyable(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     xs.push_back(::tpy::param_to_storage<T>(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 // # SILENCER 2: `copy()` at the slot is the author saying the copy is intended
 // def hatched[T](v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(copy(v))  # tpyc: ok
+//     return len(xs)
 template<typename T>
 int32_t hatched(::tpy::param_val_or_ref_t<T> v) {
-    // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
-    // xs.append(copy(v))  # tpyc: ok
     xs.push_back(T(v));
-    // return len(xs)
     return ::tpy::__len__(xs);
 }
 

@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
+//     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -26,10 +26,15 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def caller() -> int:
+//     total = 0
+//     for i in range(3):
+//         total = total + await value(i)
+//     else:
+//         print("else-ran")
+//     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total = 0
         total = 0;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
@@ -41,22 +46,18 @@ __coro_value value(::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // total = total + await value(i)
         total = ((::tpy::BigInt(total)) + (__await_lift_0));
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            // print("else-ran")
             std::cout << "else-ran" << "\n";
-            // return total
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = std::move(total);
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
         i = ((*__for_i_0))++;
-        // total = total + await value(i)
         __sub_0.emplace(::tpy::BigInt(i));
         __state = S_RESUME_0;
         continue;
@@ -73,23 +74,24 @@ __coro_caller caller() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(caller()))
 void main() {
-    // print(asyncio.run(caller()))
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
+// # `for ... else:` with `await` in the loop body (not the else
+// # clause -- that's still rejected). Positive coverage for the
+// # orelse path of `_build_for` when the orelse is a no-await leaf.
+// # The else clause runs after the loop exits normally (no `break`).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # `for ... else:` with `await` in the loop body (not the else
-    // # clause -- that's still rejected). Positive coverage for the
-    // # orelse path of `_build_for` when the orelse is a no-await leaf.
-    // # The else clause runs after the loop exits normally (no `break`).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

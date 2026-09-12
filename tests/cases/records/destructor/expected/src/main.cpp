@@ -3,26 +3,26 @@
 
 namespace tpyapp::main {
 
-// g = Resource("global")
 Resource* g{};
 
 // def main():
+//     r = Resource("local")
+//     print("alive")
 void main() {
-    // r = Resource("local")
     Resource r = Resource("local");
-    // print("alive")
     std::cout << "alive" << "\n";
 }
 
+// g = Resource("global")
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // g = Resource("global")
     static Resource __global_slot_1 = Resource("global");
     g = &__global_slot_1;
-    // main()
     main();
 }
 

@@ -12,7 +12,9 @@ struct Row;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drain(s: Sink, r: Row) -> None:
 void drain(Sink& s, const Row& r);
+// def main() -> None:
 void main();
 
 // class Sink:
@@ -51,18 +53,20 @@ inline std::ostream& operator<<(std::ostream& os, const Row& obj) {
 
 
 // def __init__(self) -> None:
+//     self.kept = []
 inline Sink::Sink() : kept(std::vector<std::string>{}) {}
 
 // def check(self, v: Own[str]) -> bool:
+//     self.kept.append(v)  # Own[str] param at an Own[str] element slot
+//     return len(self.kept) < 2
 inline bool Sink::check(std::string v) {
-    // self.kept.append(v)  # Own[str] param at an Own[str] element slot
     std::string __tmp_1{v};
     this->kept.push_back(std::move(__tmp_1));
-    // return len(self.kept) < 2
     return (::tpy::__len__(this->kept) < 2);
 }
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Row::Row(std::string_view label) : label(label) {}
 void __tpy_init();
 } // namespace tpyapp::main

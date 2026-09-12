@@ -13,8 +13,11 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def value_move() -> None:
 void value_move();
+// def not_last_use() -> None:
 void not_last_use();
+// def main() -> None:
 void main();
 
 void __tpy_init();

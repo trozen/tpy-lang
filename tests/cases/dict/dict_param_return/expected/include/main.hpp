@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_dict() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> make_dict();
+// def sum_values(d: dict[str, int32]) -> int32:
 int32_t sum_values(const ::tpy::ordered_map<std::string, int32_t>& d);
+// def main() -> None:
 void main();
 
 void __tpy_init();

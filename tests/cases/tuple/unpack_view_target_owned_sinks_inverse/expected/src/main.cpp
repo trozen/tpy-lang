@@ -5,60 +5,60 @@ namespace tpyapp::main {
 
 
 // def literals() -> int:
+//     xs = ["ab", "c"]
+//     print(xs[0], xs[1])
+//     return len(xs)
 ::tpy::BigInt literals() {
-    // xs = ["ab", "c"]
     std::array<std::string, 2> xs = {"ab", "c"};
-    // print(xs[0], xs[1])
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
-    // return len(xs)
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
 // def owned_source(s: String) -> int:
+//     xs = [s]
+//     print(xs[0])
+//     return len(xs)
 ::tpy::BigInt owned_source(const ::tpy::String& s) {
-    // xs = [s]
     std::array<::tpy::String, 1> xs = {s};
-    // print(xs[0])
     std::cout << ::tpy::__getitem__(xs, 0) << "\n";
-    // return len(xs)
     return ::tpy::BigInt(::tpy::__len__(xs));
 }
 
 // def view_reads(src: tuple[str, str]) -> int:
+//     x, y = src
+//     n = 0
+//     if x == "ab":
+//         n = n + len(x)
+//     print(y)
+//     return n
 ::tpy::BigInt view_reads(const std::tuple<std::string, std::string>& src) {
-    // x, y = src
     const auto& __tup_1 = src;
     std::string_view x = std::get<0>(__tup_1);
     std::string_view y = std::get<1>(__tup_1);
-    // n = 0
     int32_t n = 0;
-    // if x == "ab":
     if ((x == "ab")) {
-        // n = n + len(x)
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(x)));
     }
-    // print(y)
     std::cout << y << "\n";
-    // return n
     return ::tpy::BigInt(n);
 }
 
 // def main() -> None:
+//     print(literals())
+//     print(owned_source(String("kept")))
+//     print(view_reads(("ab", "c")))
 void main() {
-    // print(literals())
     std::cout << literals() << "\n";
-    // print(owned_source(String("kept")))
     std::cout << owned_source(::tpy::String("kept")) << "\n";
-    // print(view_reads(("ab", "c")))
     std::cout << view_reads(std::tuple<std::string, std::string>{"ab", "c"}) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

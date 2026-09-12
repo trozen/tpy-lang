@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x = fwd(Item(7))    # tpyc: ok
+//     print(x.v)
 void main() {
-    // x = fwd(Item(7))    # tpyc: ok
     Item x = fwd<Item>(Item(::tpy::BigInt(7)));
-    // print(x.v)
     std::cout << x.v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

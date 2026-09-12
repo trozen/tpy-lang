@@ -9,26 +9,33 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity[T](x: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
+// def first[T](a: T, b: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// def test_literal_infers_str() -> None:
 void test_literal_infers_str();
+// def test_explicit_str() -> None:
 void test_explicit_str();
+// def test_explicit_strview() -> None:
 void test_explicit_strview();
+// def make_str() -> str:
 std::string make_str();
+// def test_non_literal_str() -> None:
 void test_non_literal_str();
 
 // def identity[T](x: T) -> T:
+//     return x
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    // return x
     return ::tpy::param_to_return<T>(x);
 }
 // def first[T](a: T, b: T) -> T:
+//     return a
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    // return a
     return ::tpy::param_to_return<T>(a);
 }
 

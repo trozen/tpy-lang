@@ -5,56 +5,56 @@ namespace tpyapp::main {
 
 
 // def borrow(p: P | None) -> int32:
+//     if p is None:
+//         return int32(-1)
+//     return p.x
 int32_t borrow(const P* p) {
-    // if p is None:
     if ((p == nullptr)) {
-        // return int32(-1)
         return -1;
     }
-    // return p.x
     return p->x;
 }
 
 // def main() -> None:
+//     pairs: list[P | None] = [P(int32(1)), None, P(int32(3))]
+//     # Direct access via narrowing
+//     for it in pairs:
+//         if it is not None:
+//             print(it.x)
+//         else:
+//             print(-1)
+//     # Pass loop var to a `P | None` borrow param -- consumer lifts via
+//     # optional_to_ptr at the call site.
+//     for it in pairs:
+//         print(borrow(it))
 void main() {
-    // pairs: list[P | None] = [P(int32(1)), None, P(int32(3))]
     std::vector<std::optional<P>> pairs = {P(1), std::nullopt, P(3)};
-    // # Direct access via narrowing
-    // for it in pairs:
     auto& __obj_0 = pairs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& it = *__beg_0;
-        // if it is not None:
         if ((it.has_value())) {
-            // print(it.x)
             std::cout << (*it).x << "\n";
-        // else:
         } else {
-            // print(-1)
             std::cout << -1 << "\n";
         }
     }
-    // # Pass loop var to a `P | None` borrow param -- consumer lifts via
-    // # optional_to_ptr at the call site.
-    // for it in pairs:
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& it = *__beg_1;
-        // print(borrow(it))
         std::cout << borrow(::tpy::optional_to_ptr(it)) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

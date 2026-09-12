@@ -5,74 +5,85 @@ namespace tpyapp::main {
 
 
 // def read_point(p: Ptr[readonly[Point]]) -> int32:
+//     """Read from a const pointer - should work."""
+//     return p.x + p.y
 int32_t read_point(const Point* p) {
-    // return p.x + p.y
     return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
 }
 
 // def modify_via_ptr(p: Ptr[Point], new_x: int32) -> None:
+//     """Modify via mutable pointer."""
+//     p.x = new_x
 void modify_via_ptr(Point* p, int32_t new_x) {
-    // p.x = new_x
     ::tpy::deref_check(p).x = new_x;
 }
 
 // def test_ptr_to_const_ptr() -> None:
+//     """Test Ptr to Ptr[readonly[...]] conversion."""
+//     pt: Point = Point(10, 20)
+//
+//     # Get mutable pointer
+//     mp: Ptr[Point] = pt
+//
+//     # Read via mutable pointer
+//     print(mp.x)
+//     print(mp.y)
+//
+//     # Modify through mutable pointer
+//     modify_via_ptr(mp, 100)
+//     print(pt.x)
+//
+//     # Convert mutable pointer to const pointer (should be allowed)
+//     cp: Ptr[readonly[Point]] = mp
+//
+//     # Read through const pointer
+//     total: int32 = read_point(cp)
+//     print(total)
 void test_ptr_to_const_ptr() {
-    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // # Get mutable pointer
-    // mp: Ptr[Point] = pt
     Point* mp = &pt;
-    // # Read via mutable pointer
-    // print(mp.x)
     std::cout << mp->x << "\n";
-    // print(mp.y)
     std::cout << mp->y << "\n";
-    // # Modify through mutable pointer
-    // modify_via_ptr(mp, 100)
     modify_via_ptr(mp, 100);
-    // print(pt.x)
     std::cout << pt.x << "\n";
-    // # Convert mutable pointer to const pointer (should be allowed)
-    // cp: Ptr[readonly[Point]] = mp
     const Point* cp = mp;
-    // # Read through const pointer
-    // total: int32 = read_point(cp)
     int32_t total = read_point(cp);
-    // print(total)
     std::cout << total << "\n";
 }
 
 // def test_const_ptr_preserves_value() -> None:
+//     """Test that const pointer sees updates to underlying value."""
+//     pt: Point = Point(1, 2)
+//     mp: Ptr[Point] = pt
+//     cp: Ptr[readonly[Point]] = mp
+//
+//     print(cp.x)
+//
+//     # Modify original via mutable pointer
+//     mp.x = 999
+//     print(cp.x)
 void test_const_ptr_preserves_value() {
-    // pt: Point = Point(1, 2)
     Point pt = Point(1, 2);
-    // mp: Ptr[Point] = pt
     Point* mp = &pt;
-    // cp: Ptr[readonly[Point]] = mp
     const Point* cp = mp;
-    // print(cp.x)
     std::cout << cp->x << "\n";
-    // # Modify original via mutable pointer
-    // mp.x = 999
     mp->x = 999;
-    // print(cp.x)
     std::cout << cp->x << "\n";
 }
 
+// # Run tests
+// print("=== ptr to const ===")
+// test_ptr_to_const_ptr()
+// print("=== preserves value ===")
+// test_const_ptr_preserves_value()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Run tests
-    // print("=== ptr to const ===")
     std::cout << "=== ptr to const ===" << "\n";
-    // test_ptr_to_const_ptr()
     test_ptr_to_const_ptr();
-    // print("=== preserves value ===")
     std::cout << "=== preserves value ===" << "\n";
-    // test_const_ptr_preserves_value()
     test_const_ptr_preserves_value();
 }
 

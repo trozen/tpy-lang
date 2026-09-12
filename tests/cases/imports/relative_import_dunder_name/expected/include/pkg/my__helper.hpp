@@ -9,6 +9,7 @@ namespace tpyapp::pkg::my__helper {
 
 inline constexpr std::string_view __name__ = "pkg.my__helper";
 
+// def get_value() -> int32:
 int32_t get_value();
 
 void __tpy_init();

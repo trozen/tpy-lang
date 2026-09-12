@@ -12,7 +12,9 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def first(xs: list[Box]) -> Box:
 Box& first(std::vector<Box>& xs);
+// def main() -> None:
 void main();
 
 // class Box:
@@ -47,11 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Box::Box(int32_t v) : v(v) {}
 
 // def __init__(self, xs: list[Box]) -> None:
+//     xs.append(Box(int32(99)))  # structural mutation -- may invalidate `first(...)`'s result
 inline Sink::Sink(std::vector<Box>& xs) {
-    // xs.append(Box(int32(99)))  # structural mutation -- may invalidate `first(...)`'s result
     xs.push_back(Box(99));
 }
 void __tpy_init();

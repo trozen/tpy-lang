@@ -47,51 +47,52 @@ namespace tpyapp::main {
 
 
 // def next_color(c: Color) -> Color:
+//     if c.value == 0:
+//         return Color.Green
+//     if c.value == 1:
+//         return Color.Blue
+//     return Color.Red
 Color next_color(Color c) {
-    // if c.value == 0:
     if ((static_cast<int32_t>(c) == 0)) {
-        // return Color.Green
         return Color::Green;
     }
-    // if c.value == 1:
     if ((static_cast<int32_t>(c) == 1)) {
-        // return Color.Blue
         return Color::Blue;
     }
-    // return Color.Red
     return Color::Red;
 }
 
 // def print_color(c: Color) -> None:
+//     print(c)
 void print_color(Color c) {
-    // print(c)
     std::cout << c << "\n";
 }
 
 // def main() -> None:
+//     c: Color = Color.Red
+//     print_color(c)
+//     c = next_color(c)
+//     print_color(c)
+//     c = next_color(c)
+//     print_color(c)
 void main() {
-    // c: Color = Color.Red
     Color c = Color::Red;
-    // print_color(c)
     print_color(c);
-    // c = next_color(c)
     c = next_color(c);
-    // print_color(c)
     print_color(c);
-    // c = next_color(c)
     c = next_color(c);
-    // print_color(c)
     print_color(c);
 }
 
+// # Enum as function parameter and return type
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Enum as function parameter and return type
-    // from enum import Enum
-    // main()
     main();
 }
 

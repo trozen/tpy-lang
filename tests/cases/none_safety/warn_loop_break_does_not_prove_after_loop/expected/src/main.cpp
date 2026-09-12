@@ -5,27 +5,27 @@ namespace tpyapp::main {
 
 
 // def after_break(x: int32 | None, flag: bool) -> int32:
+//     while flag:
+//         if x is None:
+//             break
+//         flag = False
+//     return x + 1  # tpyc: warning(/Potential None access/)
 int32_t after_break(std::optional<int32_t> x, bool flag) {
-    // while flag:
     while (flag) {
-        // if x is None:
         if ((!x.has_value())) {
-            // break
             break;
         }
-        // flag = False
         flag = false;
     }
-    // return x + 1  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1));
 }
 
+// print(after_break(2, False))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(after_break(2, False))
     std::cout << after_break(2, false) << "\n";
 }
 

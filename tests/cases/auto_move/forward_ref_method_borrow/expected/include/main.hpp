@@ -12,7 +12,9 @@ struct Picker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def drop(xs: Own[list[P]]) -> int32:
 int32_t drop(std::vector<P>&& xs);
+// def main():
 void main();
 
 // class P:
@@ -49,24 +51,25 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 
 
 // def __init__(self):
+//     self.vals = [5]
 inline P::P() : vals(std::vector<int32_t>{5}) {}
 
 // def run(self) -> int32:
+//     xs = [P()]
+//     n = self.first(xs)
+//     r = drop(xs)  # tpyc: warning(/copies/)
+//     return r + n.vals[0]
 inline int32_t Picker::run() const {
-    // xs = [P()]
     std::vector<P> xs = {P()};
-    // n = self.first(xs)
     const P& n = this->first(xs);
-    // r = drop(xs)  # tpyc: warning(/copies/)
     std::vector<P> __tmp_1 = xs;
     int32_t r = drop(std::move(__tmp_1));
-    // return r + n.vals[0]
     return (::tpy::add_check<int32_t>(r, ::tpy::__getitem__(n.vals, 0)));
 }
 
 // def first(self, xs: list[P]) -> P:
+//     return xs[0]
 inline const P& Picker::first(const std::vector<P>& xs) const {
-    // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 void __tpy_init();

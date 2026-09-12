@@ -15,6 +15,7 @@ struct Sub;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Holder[K, V]:
@@ -26,6 +27,8 @@ struct Holder {
     V _v;
 
     // def __init__(self, k: K, v: V):
+    //     self._k = k
+    //     self._v = v
     Holder() = default;
     explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : _k(k), _v(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";

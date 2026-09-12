@@ -5,31 +5,31 @@ namespace tpyapp::main {
 
 
 // def stash(items: list[Point], p: Point) -> None:
+//     items.append(copy(p))  # the copy-construct rvalue binding the Own[T] slot
 void stash(std::vector<Point>& items, const Point& p) {
-    // items.append(copy(p))  # the copy-construct rvalue binding the Own[T] slot
     items.push_back(Point(p));
 }
 
 // def main() -> None:
+//     p = Point()
+//     items: list[Point] = []
+//     stash(items, p)
+//     p.x = 9
+//     print(len(items), items[0].x, p.x)
 void main() {
-    // p = Point()
     Point p = Point();
-    // items: list[Point] = []
     std::vector<Point> items = std::vector<Point>{};
-    // stash(items, p)
     stash(items, p);
-    // p.x = 9
     p.x = 9;
-    // print(len(items), items[0].x, p.x)
     std::cout << ::tpy::__len__(items) << " " << ::tpy::__getitem__(items, 0).x << " " << p.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

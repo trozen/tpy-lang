@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = MyRange(1, 6)
+//     s = Summer(r)
+//     print(s.total())
 void main() {
-    // r = MyRange(1, 6)
     MyRange r = MyRange(1, 6);
-    // s = Summer(r)
     Summer<MyRange> s = Summer<MyRange>(r);
-    // print(s.total())
     std::cout << s.total() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

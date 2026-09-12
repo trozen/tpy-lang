@@ -13,7 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_steps;
 
+// def steps() -> Iterator[int32]:
 __gen_steps steps();
+// def main() -> None:
 void main();
 
 // class Source:
@@ -38,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
     return os;
 }
 
-// Generator: steps
+// def steps() -> Iterator[int32]:
 struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<Source> c;
@@ -64,17 +66,18 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 
 
 // def __init__(self, start: int32):
+//     self.n = start
 inline Source::Source(int32_t start) : n(start) {}
 
 // def __enter__(self) -> int32:
+//     return self.n
 inline int32_t Source::__enter__() const {
-    // return self.n
     return this->n;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void Source::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

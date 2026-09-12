@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_span(s: Span[readonly[int32]]) -> None:
 void read_span(std::span<const int32_t> s);
+// def from_readonly_ptr(p: Ptr[readonly[int32]], n: int32) -> None:
 void from_readonly_ptr(const int32_t* p, int32_t n);
+// def from_mutable_ptr(p: Ptr[int32], n: int32) -> None:
 void from_mutable_ptr(int32_t* p, int32_t n);
+// def main() -> None:
 void main();
 
 void __tpy_init();

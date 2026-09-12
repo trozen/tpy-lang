@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def literal_list() -> None:
 void literal_list();
+// def literal_dict() -> None:
 void literal_dict();
+// def literal_set() -> None:
 void literal_set();
+// def annotated_list() -> None:
 void annotated_list();
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -13,10 +13,15 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def ptr_to_field() -> None:
 void ptr_to_field();
+// def ptr_to_field_no_conflict() -> None:
 void ptr_to_field_no_conflict();
+// def external_field_path() -> None:
 void external_field_path();
+// def reassign_clears_borrow() -> None:
 void reassign_clears_borrow();
+// def main() -> None:
 void main();
 
 // class Point:
@@ -85,67 +90,76 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int32, y: int32) -> None:
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
+//     self.items = [Point(1, 2), Point(3, 4)]
 inline Container::Container() : items(std::vector<Point>{Point(1, 2), Point(3, 4)}) {}
 
 // def iter_then_mutate(self) -> None:
+//     """Iterating over self.items while mutating: should warn."""
+//     for p in self.items:
+//         self.items.append(Point(p.x, p.y))  # tpyc: warning(/while iterating/)
+//         break
 inline void Container::iter_then_mutate() {
-    // for p in self.items:
     auto& __obj_0 = this->items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // self.items.append(Point(p.x, p.y))  # tpyc: warning(/while iterating/)
         this->items.push_back(Point(p.x, p.y));
-        // break
         break;
     }
 }
 
 // def ptr_then_mutate(self) -> None:
+//     """Ptr into self.items element + structural mutation: should warn."""
+//     ptr = take_ptr(self.items[0])
+//     self.items.append(Point(5, 6))  # tpyc: warning(/'append'.*invalidate/)
+//     print(len(self.items))
 inline void Container::ptr_then_mutate() {
-    // ptr = take_ptr(self.items[0])
     Point* ptr = &::tpy::__getitem__(this->items, 0);
-    // self.items.append(Point(5, 6))  # tpyc: warning(/'append'.*invalidate/)
     this->items.push_back(Point(5, 6));
-    // print(len(self.items))
     std::cout << ::tpy::__len__(this->items) << "\n";
 }
 
 // def safe_subscript_assign(self) -> None:
+//     """Ptr into self.items + in-place subscript assign: no reallocation, safe."""
+//     ptr = take_ptr(self.items[0])
+//     self.items[0] = Point(9, 9)  # tpyc: ok
+//     print(len(self.items))
 inline void Container::safe_subscript_assign() {
-    // ptr = take_ptr(self.items[0])
     Point* ptr = &::tpy::__getitem__(this->items, 0);
-    // self.items[0] = Point(9, 9)  # tpyc: ok
     ::tpy::__setitem__(this->items, 0, Point(9, 9));
-    // print(len(self.items))
     std::cout << ::tpy::__len__(this->items) << "\n";
 }
 
 // def aug_assign_field_container(self) -> None:
+//     """Aug-assign on self.items while borrowed: should warn."""
+//     ptr = take_ptr(self.items[0])
+//     self.items += [Point(5, 6)]  # tpyc: warning(/while borrowed/)
+//     print(len(self.items))
 inline void Container::aug_assign_field_container() {
-    // ptr = take_ptr(self.items[0])
     Point* ptr = &::tpy::__getitem__(this->items, 0);
-    // self.items += [Point(5, 6)]  # tpyc: warning(/while borrowed/)
     ::tpy::list_extend(this->items, std::vector<Point>{Point(5, 6)});
-    // print(len(self.items))
     std::cout << ::tpy::__len__(this->items) << "\n";
 }
 
 // def field_reassign_while_borrowed(self) -> None:
+//     """Reassigning self.items while borrowed: should warn."""
+//     ptr = take_ptr(self.items[0])
+//     self.items = [Point(9, 9)]  # tpyc: warning(/while borrowed/)
+//     print(len(self.items))
 inline void Container::field_reassign_while_borrowed() {
-    // ptr = take_ptr(self.items[0])
     Point* ptr = &::tpy::__getitem__(this->items, 0);
-    // self.items = [Point(9, 9)]  # tpyc: warning(/while borrowed/)
     this->items = {Point(9, 9)};
-    // print(len(self.items))
     std::cout << ::tpy::__len__(this->items) << "\n";
 }
 
 // def __init__(self, p: Point) -> None:
+//     self.point = p
 inline Holder::Holder(const Point& p) : point(p) {}
 void __tpy_init();
 } // namespace tpyapp::main

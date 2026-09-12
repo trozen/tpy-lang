@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // def in_set() -> Own[set[str]]:
+//     label: str = "x"
+//     return {label}
 ::tpy::ordered_set<std::string> in_set() {
-    // label: str = "x"
     std::string_view label = "x";
-    // return {label}
     return ::tpy::ordered_set<std::string>({std::string(label)});
 }
 
 // def in_set_comp() -> Own[set[str]]:
+//     label: str = "x"
+//     return {label for _ in range(3)}
 ::tpy::ordered_set<std::string> in_set_comp() {
-    // label: str = "x"
     std::string_view label = "x";
-    // return {label for _ in range(3)}
     return ({
         ::tpy::ordered_set<std::string> __result;
         const int32_t __stop_0 = 3;
@@ -27,14 +27,14 @@ namespace tpyapp::main {
     });
 }
 
+// print(in_set())
+// print(in_set_comp())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(in_set())
     std::cout << ::tpy::SetPrinter(in_set()) << "\n";
-    // print(in_set_comp())
     std::cout << ::tpy::SetPrinter(in_set_comp()) << "\n";
 }
 

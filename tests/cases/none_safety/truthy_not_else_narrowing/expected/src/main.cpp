@@ -5,28 +5,28 @@ namespace tpyapp::main {
 
 
 // def use_else(x: int32 | None) -> int32:
+//     if not x:  # tpyc: warning(/Truthiness check on optional value/)
+//         return 0
+//     else:
+//         return x + 1  # tpyc: ok
 int32_t use_else(std::optional<int32_t> x) {
-    // if not x:  # tpyc: warning(/Truthiness check on optional value/)
     if ((!(::tpy::is_truthy(x)))) {
-        // return 0
         return 0;
-    // else:
     } else {
-        // return x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>((*x), 1));
     }
 }
 
+// print(use_else(2))
+// print(use_else(0))
+// print(use_else(None))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // print(use_else(2))
     std::cout << use_else(2) << "\n";
-    // print(use_else(0))
     std::cout << use_else(0) << "\n";
-    // print(use_else(None))
     std::cout << use_else(std::nullopt) << "\n";
 }
 

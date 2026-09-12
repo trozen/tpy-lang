@@ -21,16 +21,26 @@ struct __gen_nested_exit;
 struct __gen_break_exit;
 struct __gen_continue_exit;
 
+// def bump() -> int:
 ::tpy::BigInt bump();
+// def normal_exit() -> Iterator[int]:
 __gen_normal_exit normal_exit();
+// def handler_exit() -> Iterator[int]:
 __gen_handler_exit handler_exit();
+// def return_exit() -> Iterator[int]:
 __gen_return_exit return_exit();
+// def with_exit() -> Iterator[int]:
 __gen_with_exit with_exit();
+// def nested_exit() -> Iterator[int]:
 __gen_nested_exit nested_exit();
+// def break_exit() -> Iterator[int]:
 __gen_break_exit break_exit();
+// def continue_exit() -> Iterator[int]:
 __gen_continue_exit continue_exit();
+// def run(tag: str, g: Iterator[int]) -> None:
 template<::tpystd::typing::Iterator<::tpy::BigInt> T_g>
 void run(std::string_view tag, T_g& g);
+// def main() -> None:
 void main();
 
 // class Err(Exception):
@@ -70,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const Thrower& obj) {
     return os;
 }
 
-// Generator: normal_exit
+// def normal_exit() -> Iterator[int]:
 struct __gen_normal_exit : public ::tpy::next_iter_mixin<__gen_normal_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
 
@@ -108,7 +118,7 @@ struct __gen_normal_exit : public ::tpy::next_iter_mixin<__gen_normal_exit, ::tp
     }
 };
 
-// Generator: handler_exit
+// def handler_exit() -> Iterator[int]:
 struct __gen_handler_exit : public ::tpy::next_iter_mixin<__gen_handler_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
 
@@ -146,7 +156,7 @@ struct __gen_handler_exit : public ::tpy::next_iter_mixin<__gen_handler_exit, ::
     }
 };
 
-// Generator: return_exit
+// def return_exit() -> Iterator[int]:
 struct __gen_return_exit : public ::tpy::next_iter_mixin<__gen_return_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
 
@@ -183,7 +193,7 @@ struct __gen_return_exit : public ::tpy::next_iter_mixin<__gen_return_exit, ::tp
     }
 };
 
-// Generator: with_exit
+// def with_exit() -> Iterator[int]:
 struct __gen_with_exit : public ::tpy::next_iter_mixin<__gen_with_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<Thrower> __with_ctx_0;
@@ -222,7 +232,7 @@ struct __gen_with_exit : public ::tpy::next_iter_mixin<__gen_with_exit, ::tpy::B
     }
 };
 
-// Generator: nested_exit
+// def nested_exit() -> Iterator[int]:
 struct __gen_nested_exit : public ::tpy::next_iter_mixin<__gen_nested_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
 
@@ -263,7 +273,7 @@ struct __gen_nested_exit : public ::tpy::next_iter_mixin<__gen_nested_exit, ::tp
     }
 };
 
-// Generator: break_exit
+// def break_exit() -> Iterator[int]:
 struct __gen_break_exit : public ::tpy::next_iter_mixin<__gen_break_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     int32_t i;
@@ -306,7 +316,7 @@ struct __gen_break_exit : public ::tpy::next_iter_mixin<__gen_break_exit, ::tpy:
     }
 };
 
-// Generator: continue_exit
+// def continue_exit() -> Iterator[int]:
 struct __gen_continue_exit : public ::tpy::next_iter_mixin<__gen_continue_exit, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     int32_t i;
@@ -349,42 +359,44 @@ struct __gen_continue_exit : public ::tpy::next_iter_mixin<__gen_continue_exit, 
 
 
 // def __init__(self, code: int) -> None:
+//     self.code = code
 inline Err::Err(const ::tpy::BigInt& code) : code(code) {}
 
 // def __enter__(self) -> int:
+//     return 1
 inline ::tpy::BigInt Thrower::__enter__() const {
-    // return 1
     return ::tpy::BigInt(1);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     raise Err(bump())
 inline void Thrower::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // raise Err(bump())
     throw Err(bump());
 }
 // def run(tag: str, g: Iterator[int]) -> None:
+//     global _code
+//     _code = 0
+//     print(f"-- {tag} --")
+//     try:
+//         for v in g:
+//             print(v)
+//     except Err as e:
+//         print(f"caught code={e.code}")
 template<::tpystd::typing::Iterator<::tpy::BigInt> T_g>
 void run(std::string_view tag, T_g& g) {
-    // global _code
-    // _code = 0
     _code = 0;
-    // print(f"-- {tag} --")
     std::cout << std::format("-- {} --", tag) << "\n";
-    // try:
     {
         try {
-            // for v in g:
             auto& __src_0 = g;
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
-                // print(v)
                 std::cout << v << "\n";
             }
         } catch (const Err& e) {
-            // print(f"caught code={e.code}")
             std::cout << std::format("caught code={}", (e.code).to_string()) << "\n";
         }
     }

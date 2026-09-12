@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Discard the result -- the call-site type-arg resolution path is
+//     # what this case exercises; binding the result to a typed local is
+//     # covered by `cases/generics/none_annotation_positions`.
+//     identity[None](None)
+//     print("ran")
 void main() {
-    // # Discard the result -- the call-site type-arg resolution path is
-    // # what this case exercises; binding the result to a typed local is
-    // # covered by `cases/generics/none_annotation_positions`.
-    // identity[None](None)
     identity<std::monostate>(std::monostate{});
-    // print("ran")
     std::cout << "ran" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

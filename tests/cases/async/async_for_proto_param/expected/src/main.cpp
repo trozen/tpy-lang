@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(0, 3)
+//     asyncio.run(consume(c))
 void main() {
-    // c = Counter(0, 3)
     Counter c = Counter(0, 3);
-    // asyncio.run(consume(c))
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consume(c)));
 }
 
+// # Async coroutine that for-loops over a static-protocol param across an await.
+// # The coro captures the param as the deduced template arg T_it and types the
+// # for-loop iterator frame field against it (the C++ concept rendering is
+// # un-instantiable). The @nocopy iterable forces the value-vs-reference
+// # distinction: the coro must BORROW the param (a silent copy is a compile
+// # error). Driven via asyncio.run (Adapter-wrapped).
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async coroutine that for-loops over a static-protocol param across an await.
-    // # The coro captures the param as the deduced template arg T_it and types the
-    // # for-loop iterator frame field against it (the C++ concept rendering is
-    // # un-instantiable). The @nocopy iterable forces the value-vs-reference
-    // # distinction: the coro must BORROW the param (a silent copy is a compile
-    // # error). Driven via asyncio.run (Adapter-wrapped).
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

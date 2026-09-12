@@ -6,18 +6,16 @@ namespace tpyapp::main {
 
 // # Test that # tpy: directives after code produce a warning
 // def main() -> None:
+//     pass
 void main() {
-    // pass
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # tpyc: warning(/before any code/)
-    // # tpy: include("late.h")
-    // main()
     main();
 }
 

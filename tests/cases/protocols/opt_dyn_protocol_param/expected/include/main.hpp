@@ -31,8 +31,11 @@ struct Fish;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def greet(p: Optional[Pet]) -> str:
 std::string greet(Pet* p);
+// def describe(p: Optional[Pet]) -> str:
 std::string describe(Pet* p);
+// def main() -> None:
 void main();
 
 // class Dog(Pet):
@@ -92,23 +95,24 @@ namespace tpyapp::main {
 
 
 // def __init__(self, tag: str) -> None:
+//     self.tag = tag
 inline Dog::Dog(std::string_view tag) : tag(tag) {}
 
 // def name(self) -> str:
+//     return self.tag
 inline std::string Dog::name() {
-    // return self.tag
     return this->tag;
 }
 
 // def bark(self) -> str:
+//     return "woof " + self.tag
 inline std::string Dog::bark() const {
-    // return "woof " + self.tag
     return (::tpy::str_concat("woof ", this->tag));
 }
 
 // def name(self) -> str:
+//     return "fish"
 inline std::string Fish::name() {
-    // return "fish"
     return "fish";
 }
 void __tpy_init();

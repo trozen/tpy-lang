@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = spawn(Summer([1, 2, 3]))    # tpyc: ok
+//     b = spawn(Summer([10, 20]))
+//     print("a:", a.join())   # 1+2+3+100
+//     print("b:", b.join())   # 10+20+100
 void main() {
-    // a = spawn(Summer([1, 2, 3]))    # tpyc: ok
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> a = ::tpystd::tpy::thread::spawn<::tpy::BigInt, Summer>(Summer({1, 2, 3}));
-    // b = spawn(Summer([10, 20]))
     ::tpystd::tpy::thread::JoinHandle<::tpy::BigInt> b = ::tpystd::tpy::thread::spawn<::tpy::BigInt, Summer>(Summer({10, 20}));
-    // print("a:", a.join())   # 1+2+3+100
     std::cout << "a:" << " " << a.join() << "\n";
-    // print("b:", b.join())   # 10+20+100
     std::cout << "b:" << " " << b.join() << "\n";
 }
 
+// from tpy.thread import spawn
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.thread import spawn
     ::tpystd::tpy::thread::__tpy_init();
-    // main()
     main();
 }
 

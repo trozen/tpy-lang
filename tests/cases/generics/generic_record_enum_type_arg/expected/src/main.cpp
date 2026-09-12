@@ -43,26 +43,27 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b = Box[Color](Color.RED)  # tpyc: ok -- the explicit type argument
+//     print(b.value == Color.RED, b.value == Color.BLUE)
+//     inferred = Box(Color.BLUE)  # tpyc: ok -- T inferred from the enum member
+//     print(inferred.value == Color.RED, inferred.value == Color.BLUE)
 void main() {
-    // b = Box[Color](Color.RED)  # tpyc: ok -- the explicit type argument
     Box<Color> b = Box<Color>(Color::RED);
-    // print(b.value == Color.RED, b.value == Color.BLUE)
     std::cout << ::tpy::print_bool((b.value == Color::RED)) << " " << ::tpy::print_bool((b.value == Color::BLUE)) << "\n";
-    // inferred = Box(Color.BLUE)  # tpyc: ok -- T inferred from the enum member
     Box<Color> inferred = Box<Color>(Color::BLUE);
-    // print(inferred.value == Color.RED, inferred.value == Color.BLUE)
     std::cout << ::tpy::print_bool((inferred.value == Color::RED)) << " " << ::tpy::print_bool((inferred.value == Color::BLUE)) << "\n";
 }
 
+// # An enum as a generic record's type argument, spelled BOTH ways -- explicit
+// # and inferred from the member -- and read back through the same accessor.
+// from enum import Enum
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An enum as a generic record's type argument, spelled BOTH ways -- explicit
-    // # and inferred from the member -- and read back through the same accessor.
-    // from enum import Enum
-    // main()
     main();
 }
 

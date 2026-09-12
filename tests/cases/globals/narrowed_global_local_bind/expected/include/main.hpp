@@ -10,10 +10,15 @@ namespace tpyapp::main {
 extern std::optional<int32_t> GO;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def clear() -> None:
 void clear();
+// def enable() -> None:
 void enable();
+// def local_bind() -> int32:
 int32_t local_bind();
+// def shadowed() -> int32:
 int32_t shadowed();
+// def main() -> None:
 void main();
 
 void __tpy_init();

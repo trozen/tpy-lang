@@ -12,7 +12,9 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(s: Shape) -> str:
 std::string describe(::tpy::Union<const Circle*, const Rect*> s);
+// def main() -> None:
 void main();
 
 // class Circle:
@@ -49,9 +51,11 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 
 // def __init__(self, radius: int32) -> None:
+//     self.radius = radius
 inline Circle::Circle(int32_t radius) : radius(radius) {}
 
 // def __init__(self, width: int32) -> None:
+//     self.width = width
 inline Rect::Rect(int32_t width) : width(width) {}
 using Shape = ::tpy::Union<Circle, Rect>;
 

@@ -9,10 +9,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def join_or(a: Optional[str], b: str) -> int:
 ::tpy::BigInt join_or(std::optional<std::string_view> a, std::string_view b);
+// def bytes_or(a: Optional[bytes], b: bytes) -> int:
 ::tpy::BigInt bytes_or(std::optional<::tpy::BytesView> a, ::tpy::BytesView b);
+// def passthrough_str(s: str) -> int:
 ::tpy::BigInt passthrough_str(std::string_view s);
+// def passthrough_bytes(b: bytes) -> int:
 ::tpy::BigInt passthrough_bytes(::tpy::BytesView b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

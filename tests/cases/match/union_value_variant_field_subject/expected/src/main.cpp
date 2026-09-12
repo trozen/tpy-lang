@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(W(A("hi")).get_label())
+//     print(W(B("hello")).get_label())
 void main() {
-    // print(W(A("hi")).get_label())
     A __tmp_1 = A("hi");
     std::cout << W(::tpy::Union<const A*, const B*>{&__tmp_1}).get_label() << "\n";
-    // print(W(B("hello")).get_label())
     B __tmp_2 = B("hello");
     std::cout << W(::tpy::Union<const A*, const B*>{&__tmp_2}).get_label() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

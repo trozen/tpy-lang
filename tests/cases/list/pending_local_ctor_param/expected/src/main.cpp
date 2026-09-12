@@ -5,63 +5,69 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     other = [9]
+//     h = Holder(other)
+//     h.xs.append(5)
+//     print(h.xs)
+//
+//     src = [1]
+//     w = Wrap(src)
+//     w.xs.append(2)
+//     print(w.xs)
+//
+//     wide = [3]
+//     w2 = Wrap[int64](wide)
+//     print(w2.xs)
+//
+//     dd = {"a": 1}
+//     dh = DictHolder(dd)  # tpyc: warning(/copies dict\[str, int32\] into owned storage/)
+//     print(dd["a"], dh.d["a"])
+//
+//     zs = [3, 4]
+//     try:
+//         raise DataError(zs)
+//     except DataError as e:
+//         print(e.n)
+//
+//     ss = {1, 2}
+//     sh = SetHolder(ss)  # tpyc: warning(/copies set\[int32\] into owned storage/)
+//     print(len(ss), len(sh.s))
 void main() {
-    // other = [9]
     std::vector<int32_t> other = {9};
-    // h = Holder(other)
     Holder h = Holder(std::move(other));
-    // h.xs.append(5)
     h.xs.push_back(5);
-    // print(h.xs)
     std::cout << ::tpy::ListPrinter(h.xs) << "\n";
-    // src = [1]
     std::vector<int32_t> src = {1};
-    // w = Wrap(src)
     Wrap<int32_t> w = Wrap<int32_t>(std::move(src));
-    // w.xs.append(2)
     w.xs.push_back(2);
-    // print(w.xs)
     std::cout << ::tpy::ListPrinter(w.xs) << "\n";
-    // wide = [3]
     std::vector<int64_t> wide = {3};
-    // w2 = Wrap[int64](wide)
     Wrap<int64_t> w2 = Wrap<int64_t>(std::move(wide));
-    // print(w2.xs)
     std::cout << ::tpy::ListPrinter(w2.xs) << "\n";
-    // dd = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> dd = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // dh = DictHolder(dd)  # tpyc: warning(/copies dict\[str, int32\] into owned storage/)
     ::tpy::ordered_map<std::string, int32_t> __tmp_1 = dd;
     DictHolder dh = DictHolder(std::move(__tmp_1));
-    // print(dd["a"], dh.d["a"])
     std::cout << ::tpy::__getitem__(dd, "a") << " " << ::tpy::__getitem__(dh.d, "a") << "\n";
-    // zs = [3, 4]
     std::vector<int32_t> zs = {3, 4};
-    // try:
     {
         try {
-            // raise DataError(zs)
             throw DataError(zs);
         } catch (const DataError& e) {
-            // print(e.n)
             std::cout << e.n << "\n";
         }
     }
-    // ss = {1, 2}
     ::tpy::ordered_set<int32_t> ss = ::tpy::ordered_set<int32_t>({1, 2});
-    // sh = SetHolder(ss)  # tpyc: warning(/copies set\[int32\] into owned storage/)
     ::tpy::ordered_set<int32_t> __tmp_2 = ss;
     SetHolder sh = SetHolder(std::move(__tmp_2));
-    // print(len(ss), len(sh.s))
     std::cout << ::tpy::__len__(ss) << " " << ::tpy::__len__(sh.s) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

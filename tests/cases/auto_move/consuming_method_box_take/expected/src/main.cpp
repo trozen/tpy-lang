@@ -5,28 +5,30 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     b: Box[int32] = Box(int32(42))
+//     val: int32 = b.take()
+//     print(val)
+//
+//     # Temporary receiver
+//     print(Box(int32(99)).take())
 void main() {
-    // b: Box[int32] = Box(int32(42))
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(42);
-    // val: int32 = b.take()
     int32_t val = std::move(b).take();
-    // print(val)
     std::cout << val << "\n";
-    // # Temporary receiver
-    // print(Box(int32(99)).take())
     std::cout << ::tpystd::tplib::box::Box<int32_t>(99).take() << "\n";
 }
 
+// # Test Box[T].take() -- consuming method that moves out the value and destroys the box.
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Test Box[T].take() -- consuming method that moves out the value and destroys the box.
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

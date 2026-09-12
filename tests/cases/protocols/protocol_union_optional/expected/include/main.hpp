@@ -11,12 +11,15 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def process(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt process(const T_items* items = nullptr);
+// def with_else(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt with_else(const T_items* items = nullptr);
+// def main() -> None:
 void main();
 
 // class Holder:
@@ -25,19 +28,20 @@ struct Holder {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Sized | Sequence[int] | None = None) -> None:
+    //     self.count = 0
+    //     if items is not None:
+    //         if isinstance(items, Sized):
+    //             self.count = len(items)
+    //         else:
+    //             self.count = -1
     Holder();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
     explicit Holder(const T_items* items = nullptr) : count(::tpy::BigInt(0)) {
-        // if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            // if isinstance(items, Sized):
             if constexpr (::tpystd::typing::Sized<T_items>) {
-                // self.count = len(items)
                 this->count = ::tpy::BigInt(::tpy::__len__((*items)));
-            // else:
             } else {
-                // self.count = -1
                 this->count = ::tpy::BigInt(-1);
             }
         }
@@ -53,45 +57,45 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 inline Holder::Holder() : Holder(static_cast<std::nullptr_t*>(nullptr)) {}
 // def process(items: Sized | Sequence[int] | None = None) -> int:
+//     if items is not None:
+//         if isinstance(items, Sequence):
+//             return items[0]
+//         elif isinstance(items, Sized):
+//             return len(items)
+//     return -1
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt process(const T_items* items) {
-    // if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // if isinstance(items, Sequence):
         if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
-            // return items[0]
             return ::tpy::__getitem__((*items), 0);
-        // elif isinstance(items, Sized):
         } else if constexpr (::tpystd::typing::Sized<T_items>) {
-            // return len(items)
             return ::tpy::BigInt(::tpy::__len__((*items)));
         }
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 // def with_else(items: Sized | Sequence[int] | None = None) -> int:
+//     if items is not None:
+//         if isinstance(items, Sequence):
+//             return items[0]
+//         elif isinstance(items, Sized):
+//             return len(items)
+//     else:
+//         return -99
+//     return -1
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt with_else(const T_items* items) {
-    // if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // if isinstance(items, Sequence):
         if constexpr (::tpystd::typing::Sequence<T_items, ::tpy::BigInt>) {
-            // return items[0]
             return ::tpy::__getitem__((*items), 0);
-        // elif isinstance(items, Sized):
         } else if constexpr (::tpystd::typing::Sized<T_items>) {
-            // return len(items)
             return ::tpy::BigInt(::tpy::__len__((*items)));
         }
-    // else:
     } else {
-        // return -99
         return ::tpy::BigInt(-99);
     }
-    // return -1
     return ::tpy::BigInt(-1);
 }
 

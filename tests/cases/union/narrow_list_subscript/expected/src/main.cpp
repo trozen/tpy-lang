@@ -5,42 +5,43 @@ namespace tpyapp::main {
 
 
 // def get_list() -> Own[list[int] | int]:
+//     xs: list[int] = [10, 20]
+//     return xs
 ::tpy::Union<::tpy::BigInt, std::vector<::tpy::BigInt>> get_list() {
-    // xs: list[int] = [10, 20]
     std::vector<::tpy::BigInt> xs = {10, 20};
-    // return xs
     return xs;
 }
 
 // def main() -> None:
+//     w = get_list()
+//     if isinstance(w, list):
+//         try:
+//             print(w[99])  # tpyc: ok
+//         except IndexError:
+//             print("IndexError caught")
+//         print(w[-1])      # -1 -> last element (20), proves negative-index normalization
 void main() {
-    // w = get_list()
     ::tpy::Union<::tpy::BigInt, std::vector<::tpy::BigInt>> __slot_1 = get_list();
     ::tpy::Union<::tpy::BigInt*, std::vector<::tpy::BigInt>*> w = ::tpy::to_ptr_variant(__slot_1);
-    // if isinstance(w, list):
     if (std::holds_alternative<std::vector<::tpy::BigInt>*>(w)) {
         auto& __w = *std::get<std::vector<::tpy::BigInt>*>(w);
-        // try:
         {
             try {
-                // print(w[99])  # tpyc: ok
                 std::cout << ::tpy::__getitem__(__w, 99) << "\n";
             } catch (const ::tpy::IndexError&) {
-                // print("IndexError caught")
                 std::cout << "IndexError caught" << "\n";
             }
         }
-        // print(w[-1])      # -1 -> last element (20), proves negative-index normalization
         std::cout << ::tpy::__getitem__(__w, -1) << "\n";
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

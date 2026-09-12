@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // async def f() -> Own[Box]:
+//     b = Box()
+//     try:
+//         return b
+//     finally:
+//         b.n += 1
 ::tpystd::tpy::Poll<Box> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // b = Box()
         b.emplace(Box());
-        // try:
         {
             bool __fin_ran_1 = false;
             try {
-                // return b
                 auto* __tpy_retp_0 = &((*b));
                 __fin_ran_1 = true;
-                // b.n += 1
                 (*b).n = ::tpy::add_check<int32_t>((*b).n, 1);
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
             } catch (...) {
                 if (!__fin_ran_1) {
-                    // b.n += 1
                     (*b).n = ::tpy::add_check<int32_t>((*b).n, 1);
                 }
                 throw;
@@ -44,36 +44,35 @@ __coro_f f() {
 }
 
 // async def f_opt(flag: bool) -> Own[Box] | None:
+//     b: Box | None = None
+//     if flag:
+//         b = Box()
+//     try:
+//         return b
+//     finally:
+//         if b is not None:
+//             b.n += 1
 ::tpystd::tpy::Poll<std::optional<Box>> __coro_f_opt::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // b: Box | None = None
         b = nullptr;
-        // if flag:
         if (flag) {
-            // b = Box()
             b = &*(__ptr_slot_f0 = Box());
         }
-        // try:
         {
             bool __fin_ran_2 = false;
             try {
-                // return b
                 auto* __tpy_retp_0 = b;
                 __fin_ran_2 = true;
-                // if b is not None:
                 if ((b != nullptr)) {
-                    // b.n += 1
                     b->n = ::tpy::add_check<int32_t>(b->n, 1);
                 }
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<std::optional<Box>>::ready(::tpy::ptr_to_optional_move(__tpy_retp_0));
             } catch (...) {
                 if (!__fin_ran_2) {
-                    // if b is not None:
                     if ((b != nullptr)) {
-                        // b.n += 1
                         b->n = ::tpy::add_check<int32_t>(b->n, 1);
                     }
                 }
@@ -94,28 +93,28 @@ __coro_f_opt f_opt(bool flag) {
 }
 
 // async def f_alias() -> Own[Box]:
+//     b = Box()
+//     a = b
+//     try:
+//         return b
+//     finally:
+//         a.n += 1
 ::tpystd::tpy::Poll<Box> __coro_f_alias::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // b = Box()
         b.emplace(Box());
-        // a = b
         a = &((*b));
-        // try:
         {
             bool __fin_ran_3 = false;
             try {
-                // return b
                 auto* __tpy_retp_0 = &((*b));
                 __fin_ran_3 = true;
-                // a.n += 1
                 a->n = ::tpy::add_check<int32_t>(a->n, 1);
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<Box>::ready(std::move(*__tpy_retp_0));
             } catch (...) {
                 if (!__fin_ran_3) {
-                    // a.n += 1
                     a->n = ::tpy::add_check<int32_t>(a->n, 1);
                 }
                 throw;
@@ -135,10 +134,16 @@ __coro_f_alias f_alias() {
 }
 
 // async def main() -> None:
+//     r = await f()
+//     print(r.n)
+//     o = await f_opt(True)
+//     if o is not None:
+//         print(o.n)
+//     print(await f_opt(False) is None)
+//     print((await f_alias()).n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // r = await f()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -148,9 +153,7 @@ __coro_f_alias f_alias() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r.emplace(std::move(__r0).value());
         __sub_0.reset();
-        // print(r.n)
         std::cout << (*r).n << "\n";
-        // o = await f_opt(True)
         __sub_1.emplace(true);
         __state = S_RESUME_1;
         continue;
@@ -160,12 +163,9 @@ __coro_f_alias f_alias() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         o = std::move(__r1).value();
         __sub_1.reset();
-        // if o is not None:
         if ((o.has_value())) {
-            // print(o.n)
             std::cout << (*o).n << "\n";
         }
-        // print(await f_opt(False) is None)
         __sub_2.emplace(false);
         __state = S_RESUME_2;
         continue;
@@ -175,9 +175,7 @@ __coro_f_alias f_alias() {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r2).value();
         __sub_2.reset();
-        // print(await f_opt(False) is None)
         std::cout << ::tpy::print_bool((!__await_lift_0.has_value())) << "\n";
-        // print((await f_alias()).n)
         __sub_3.emplace();
         __state = S_RESUME_3;
         continue;
@@ -187,7 +185,6 @@ __coro_f_alias f_alias() {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1.emplace(std::move(__r3).value());
         __sub_3.reset();
-        // print((await f_alias()).n)
         std::cout << (*__await_lift_1).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -203,16 +200,17 @@ __coro_main main() {
     return __coro_main();
 }
 
+// # Async sibling: a (non-suspending) finally mutating a returned reference-type
+// # local is visible in the returned object, matching CPython aliasing.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Async sibling: a (non-suspending) finally mutating a returned reference-type
-    // # local is visible in the returned object, matching CPython aliasing.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

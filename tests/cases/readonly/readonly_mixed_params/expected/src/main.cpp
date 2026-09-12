@@ -5,33 +5,33 @@ namespace tpyapp::main {
 
 
 // def copy_into(src: readonly[Point], dest: Point) -> None:
+//     dest.x = src.x
+//     dest.y = src.y
 void copy_into(const Point& src, Point& dest) {
-    // dest.x = src.x
     dest.x = src.x;
-    // dest.y = src.y
     dest.y = src.y;
 }
 
 // def main() -> None:
+//     a = Point(int32(10), int32(20))
+//     b = Point(int32(0), int32(0))
+//     copy_into(a, b)
+//     print(b.x)
+//     print(b.y)
 void main() {
-    // a = Point(int32(10), int32(20))
     Point a = Point(10, 20);
-    // b = Point(int32(0), int32(0))
     Point b = Point(0, 0);
-    // copy_into(a, b)
     copy_into(a, b);
-    // print(b.x)
     std::cout << b.x << "\n";
-    // print(b.y)
     std::cout << b.y << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

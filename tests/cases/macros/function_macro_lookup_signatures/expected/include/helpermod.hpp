@@ -32,6 +32,7 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 inline constexpr std::string_view __name__ = "helpermod";
 
+// def paint(c: Color) -> bool:
 bool paint(Color c);
 
 void __tpy_init();

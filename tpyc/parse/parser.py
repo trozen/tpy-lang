@@ -645,7 +645,8 @@ class Parser:
         """Create a SourceLocation from an AST node."""
         if hasattr(node, 'lineno'):
             col = getattr(node, 'col_offset', 0)
-            return SourceLocation(line=node.lineno, column=col)
+            return SourceLocation(line=node.lineno, column=col,
+                                  end_line=getattr(node, 'end_lineno', None))
         return None
 
     @staticmethod
@@ -3594,10 +3595,7 @@ class Parser:
                 binds.append(TpyVarDecl(target, None, TpyName(temp, loc=loc), loc=loc))
             result = evals + binds
         # Every statement keeps the unpack's loc so sema records each target's
-        # declared type and diagnostics point at the source line; only the
-        # first emits the shared source comment, the rest are suppressed.
-        for stmt in result[1:]:
-            stmt.no_source_comment = True
+        # declared type and diagnostics point at the source line.
         return result
 
     def _parse_body(self, nodes: list[ast.stmt]) -> list[TpyStmt]:

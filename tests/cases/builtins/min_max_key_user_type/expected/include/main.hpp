@@ -12,6 +12,7 @@ struct Task;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Priority:
@@ -57,15 +58,18 @@ inline std::ostream& operator<<(std::ostream& os, const Task& obj) {
 
 
 // def __init__(self, level: int32) -> None:
+//     self.level = level
 inline Priority::Priority(int32_t level) : level(level) {}
 
 // def __lt__(self, other: Priority) -> bool:
+//     return self.level < other.level
 inline bool Priority::__lt__(const Priority& other) const {
-    // return self.level < other.level
     return (this->level < other.level);
 }
 
 // def __init__(self, name: str, prio: Own[Priority]) -> None:
+//     self.name = name
+//     self.prio = prio
 inline Task::Task(std::string_view name, Priority&& prio) : name(name), prio(std::move(prio)) {}
 void __tpy_init();
 } // namespace tpyapp::main

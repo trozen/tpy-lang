@@ -5,66 +5,67 @@ namespace tpyapp::main {
 
 
 // def free_eat(other: Box) -> int:
+//     return int(other.v)
 ::tpy::BigInt free_eat(const Box& other) {
-    // return int(other.v)
     return ::tpy::BigInt(static_cast<int64_t>(other.v));
 }
 
 // def mk(tag: str, n: int) -> Fixed:
+//     print("eval " + tag)
+//     return Fixed(n)
 Fixed mk(std::string_view tag, const ::tpy::BigInt& n) {
-    // print("eval " + tag)
     std::cout << (::tpy::str_concat("eval ", tag)) << "\n";
-    // return Fixed(n)
     return Fixed((n).to_fixed_check<int32_t>());
 }
 
 // def main() -> None:
+//     b = Box()
+//     # METHOD-call argument whose inner ctor takes a value-union param: the
+//     # inner mk() side effect must fire once.
+//     print(b.eat(Box(mk("method", 3))))
+//     # FREE-function argument: the path that was already single.
+//     print(free_eat(Box(mk("free", 4))))
+//     # Direct union arg to a method (Box param is the union): once.
+//     print(b.eat(Box(mk("direct", 5))))
+//     # Zone arm through the same method-arg shape: once.
+//     print(b.eat(Box(Zone(9))))
+//     # cpp_template-backed method (list.append): the other regenerating
+//     # branch. The Box(mk(...)) element's inner mk() must fire once.
+//     xs: list[Box] = []
+//     xs.append(Box(mk("append", 8)))
+//     print(len(xs), int(xs[0].v))
 void main() {
-    // b = Box()
     Box b = Box();
-    // # METHOD-call argument whose inner ctor takes a value-union param: the
-    // # inner mk() side effect must fire once.
-    // print(b.eat(Box(mk("method", 3))))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = mk("method", ::tpy::BigInt(3));
     std::cout << b.eat(Box(__tmp_1)) << "\n";
-    // # FREE-function argument: the path that was already single.
-    // print(free_eat(Box(mk("free", 4))))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = mk("free", ::tpy::BigInt(4));
     Box __tmp_3 = Box(__tmp_2);
     std::cout << free_eat(__tmp_3) << "\n";
-    // # Direct union arg to a method (Box param is the union): once.
-    // print(b.eat(Box(mk("direct", 5))))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = mk("direct", ::tpy::BigInt(5));
     std::cout << b.eat(Box(__tmp_4)) << "\n";
-    // # Zone arm through the same method-arg shape: once.
-    // print(b.eat(Box(Zone(9))))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_5 = Zone(9);
     std::cout << b.eat(Box(__tmp_5)) << "\n";
-    // # cpp_template-backed method (list.append): the other regenerating
-    // # branch. The Box(mk(...)) element's inner mk() must fire once.
-    // xs: list[Box] = []
     std::vector<Box> xs = std::vector<Box>{};
-    // xs.append(Box(mk("append", 8)))
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_6 = mk("append", ::tpy::BigInt(8));
     xs.push_back(Box(__tmp_6));
-    // print(len(xs), int(xs[0].v))
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::BigInt(static_cast<int64_t>(::tpy::__getitem__(xs, 0).v)) << "\n";
 }
 
+// # A call with a value-union param, nested as a METHOD-call argument, must
+// # evaluate that inner call exactly ONCE (regression: the method-arg codegen
+// # path emitted the union-temp hoist twice, so the arg's side effects ran
+// # twice -- an evaluate-once divergence from CPython). Each "eval <tag>" must
+// # print once. Covers the user-method-arg form (the bug), the free-function
+// # form (was always single -- the inverse), a direct union method arg, and a
+// # cpp_template-backed method (list.append -- the other regenerating branch).
+// from dataclasses import dataclass
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A call with a value-union param, nested as a METHOD-call argument, must
-    // # evaluate that inner call exactly ONCE (regression: the method-arg codegen
-    // # path emitted the union-temp hoist twice, so the arg's side effects ran
-    // # twice -- an evaluate-once divergence from CPython). Each "eval <tag>" must
-    // # print once. Covers the user-method-arg form (the bug), the free-function
-    // # form (was always single -- the inverse), a direct union method arg, and a
-    // # cpp_template-backed method (list.append -- the other regenerating branch).
-    // from dataclasses import dataclass
-    // main()
     main();
 }
 

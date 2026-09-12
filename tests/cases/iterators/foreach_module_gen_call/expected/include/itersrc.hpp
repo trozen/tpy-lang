@@ -9,14 +9,17 @@ namespace tpyapp::itersrc {
 
 inline constexpr std::string_view __name__ = "itersrc";
 
+// def counts(n: int32) -> Iterator[int32]:
+//     i = 0
+//     while i < n:
+//         yield i
+//         i = i + 1
 inline auto counts(int32_t n) {
-    // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {
             while ((i < n)) {
                 auto __val = i;
-                // i = i + 1
                 i = (::tpy::add_check<int32_t>(i, 1));
                 return std::optional<int32_t>(__val);
             }

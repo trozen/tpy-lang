@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def show(xs: list[int32]) -> str:
+//     return f"{list(map(lambda v: v + 1, xs))}"
 std::string show(const std::vector<int32_t>& xs) {
-    // return f"{list(map(lambda v: v + 1, xs))}"
     return std::format("{}", ::tpy::list_to_str(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>([](int32_t v) -> int32_t { return (::tpy::add_check<int32_t>(v, 1)); }, xs))));
 }
 
 // def main() -> None:
+//     print(show([1, 2]))
 void main() {
-    // print(show([1, 2]))
     std::vector<int32_t> __tmp_1 = {1, 2};
     std::cout << show(__tmp_1) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

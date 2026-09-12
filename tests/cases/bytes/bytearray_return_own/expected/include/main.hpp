@@ -9,8 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make() -> Own[bytearray]:
 ::tpy::ByteArray make();
+// def first_param(b: bytearray) -> bytearray:
 ::tpy::ByteArray& first_param(::tpy::ByteArray& b);
+// def main() -> None:
 void main();
 
 void __tpy_init();

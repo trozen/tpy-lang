@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def counter() -> Iterator[list[int]]:
+//     buf: list[int] = []
+//     buf.append(1)
+//     yield buf                 # tpyc: ok
+//     # consumer appended below; the generator sees it
+//     print("resume sees:", buf)
+//     buf.append(99)
+//     yield buf                 # tpyc: ok
 std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopIteration> __gen_counter::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // buf: list[int] = []
         buf.emplace(std::vector<::tpy::BigInt>{});
-        // buf.append(1)
         (*buf).push_back(1);
-        // yield buf                 # tpyc: ok
         __state = S_RESUME_0;
         return (*buf);
     }
     case S_RESUME_0: {
-        // # consumer appended below; the generator sees it
-        // print("resume sees:", buf)
         std::cout << "resume sees:" << " " << ::tpy::ListPrinter((*buf)) << "\n";
-        // buf.append(99)
         (*buf).push_back(99);
-        // yield buf                 # tpyc: ok
         __state = S_RESUME_1;
         return (*buf);
     }
@@ -42,10 +42,13 @@ __gen_counter counter() {
 }
 
 // def mutate_observe() -> None:
+//     seen = 0
+//     for v in counter():
+//         seen += 1
+//         if seen == 1:
+//             v.append(2)       # mutation aliases the frame slot
 void mutate_observe() {
-    // seen = 0
     int32_t seen = 0;
-    // for v in counter():
     {
         auto __src_0 = counter();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -53,11 +56,8 @@ void mutate_observe() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& v = ::tpy::unwrap_ref(*__r_1);
-        // seen += 1
         seen = ::tpy::add_check<int32_t>(seen, 1);
-        // if seen == 1:
         if ((seen == 1)) {
-            // v.append(2)       # mutation aliases the frame slot
             v.push_back(2);
         }
         }
@@ -65,27 +65,27 @@ void mutate_observe() {
 }
 
 // def walk() -> Iterator[tuple[str, list[str], list[str]]]:
+//     dirs: list[str] = []
+//     dirs.append("a")
+//     dirs.append("skip")
+//     dirs.append("b")
+//     files: list[str] = []
+//     files.append("f1")
+//     yield ("root", dirs, files)   # tpyc: ok
+//     print("after prune, dirs =", dirs)
 std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // dirs: list[str] = []
         dirs.emplace(std::vector<std::string>{});
-        // dirs.append("a")
         (*dirs).push_back("a");
-        // dirs.append("skip")
         (*dirs).push_back("skip");
-        // dirs.append("b")
         (*dirs).push_back("b");
-        // files: list[str] = []
         files.emplace(std::vector<std::string>{});
-        // files.append("f1")
         (*files).push_back("f1");
-        // yield ("root", dirs, files)   # tpyc: ok
         __state = S_RESUME_0;
         return std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>{"root", &((*dirs)), &((*files))};
     }
     case S_RESUME_0: {
-        // print("after prune, dirs =", dirs)
         std::cout << "after prune, dirs =" << " " << ::tpy::ListPrinter((*dirs)) << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -102,8 +102,13 @@ __gen_walk walk() {
 }
 
 // def walk_prune() -> None:
+//     for name, dirs, files in walk():
+//         kept: list[str] = []
+//         for d in dirs:
+//             if d != "skip":
+//                 kept.append(d)
+//         dirs[:] = kept            # in-place prune, os.walk-style
 void walk_prune() {
-    // for name, dirs, files in walk():
     {
         auto __src_0 = walk();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -111,40 +116,34 @@ void walk_prune() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for name, dirs, files in walk():
         auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
         auto&& dirs = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         auto&& files = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-        // kept: list[str] = []
         std::vector<std::string> kept = std::vector<std::string>{};
-        // for d in dirs:
         auto& __obj_2 = dirs;
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             std::string_view d = *__beg_2;
-            // if d != "skip":
             if ((d != "skip")) {
-                // kept.append(d)
                 kept.push_back(std::string(d));
             }
         }
-        // dirs[:] = kept            # in-place prune, os.walk-style
         ::tpy::list_set_slice(dirs, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(kept));
         }
     }
 }
 
 // def no_later_read() -> Iterator[list[int]]:
+//     buf: list[int] = []
+//     buf.append(7)
+//     yield buf                     # tpyc: ok
 std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopIteration> __gen_no_later_read::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // buf: list[int] = []
         buf.emplace(std::vector<::tpy::BigInt>{});
-        // buf.append(7)
         (*buf).push_back(7);
-        // yield buf                     # tpyc: ok
         __state = S_RESUME_0;
         return (*buf);
     }
@@ -164,8 +163,9 @@ __gen_no_later_read no_later_read() {
 }
 
 // def read_once() -> None:
+//     for v in no_later_read():
+//         print("once:", v)
 void read_once() {
-    // for v in no_later_read():
     {
         auto __src_0 = no_later_read();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -173,28 +173,27 @@ void read_once() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& v = ::tpy::unwrap_ref(*__r_1);
-        // print("once:", v)
         std::cout << "once:" << " " << ::tpy::ListPrinter(v) << "\n";
         }
     }
 }
 
 // def main() -> None:
+//     mutate_observe()
+//     walk_prune()
+//     read_once()
 void main() {
-    // mutate_observe()
     mutate_observe();
-    // walk_prune()
     walk_prune();
-    // read_once()
     read_once();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

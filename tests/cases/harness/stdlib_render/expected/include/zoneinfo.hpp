@@ -20,6 +20,7 @@ using ::tpystd::datetime::ZoneInfoNotFoundError;
 
 inline constexpr std::string_view __name__ = "zoneinfo";
 
+// def available_timezones() -> Own[set[str]]:
 ::tpy::ordered_set<std::string> available_timezones();
 
 void __tpy_init();

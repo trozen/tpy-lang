@@ -12,6 +12,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # hasattr / 3-arg getattr work via inherited __getattr__: child class has no
@@ -50,20 +51,22 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, declared: str) -> None:
+//     self.declared = declared
 inline Bag::Bag(std::string_view declared) : declared(declared) {}
 
 // def __getattr__(self, name: str) -> str:
+//     if name == "host":
+//         return "example.com"
+//     raise AttributeError(name)
 inline std::string Bag::__getattr__(std::string_view name) const {
-    // if name == "host":
     if ((name == "host")) {
-        // return "example.com"
         return "example.com";
     }
-    // raise AttributeError(name)
     throw ::tpy::AttributeError(name);
 }
 
 // def __init__(self) -> None:
+//     super().__init__("d")
 inline Child::Child() : Bag("d") {}
 void __tpy_init();
 } // namespace tpyapp::main

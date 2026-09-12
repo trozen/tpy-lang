@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def bump_scalars(s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
+//     s[0] += 10
+//     yield s[0]
+//     s[1] += 10
+//     yield s[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_scalars::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s[0] += 10
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), 10));
-        // yield s[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
     case S_RESUME_0: {
-        // s[1] += 10
         ::tpy::__setitem__(s, 1, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 1), 10));
-        // yield s[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 1);
     }
@@ -37,17 +37,17 @@ __gen_bump_scalars bump_scalars(std::span<int32_t> s) {
 }
 
 // def bump_records(s: Span[P]) -> Iterator[int32]:  # tpyc: ok
+//     yield s[0].n
+//     s[0].n += 10
+//     yield s[0].n
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_records::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s[0].n
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0).n;
     }
     case S_RESUME_0: {
-        // s[0].n += 10
         ::tpy::__getitem__(s, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0).n, 10);
-        // yield s[0].n
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 0).n;
     }
@@ -67,15 +67,15 @@ __gen_bump_records bump_records(std::span<P> s) {
 }
 
 // def read_ro_elems(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
+//     yield s[0]
+//     yield s[0]
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_elems::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
     case S_RESUME_0: {
-        // yield s[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 0);
     }
@@ -95,15 +95,15 @@ __gen_read_ro_elems read_ro_elems(std::span<const int32_t> s) {
 }
 
 // def read_ro_span(s: readonly[Span[int32]]) -> Iterator[int32]:  # tpyc: ok
+//     yield s[1]
+//     yield s[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_span::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s[1]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 1);
     }
     case S_RESUME_0: {
-        // yield s[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 1);
     }
@@ -123,15 +123,15 @@ __gen_read_ro_span read_ro_span(std::span<int32_t> s) {
 }
 
 // def read_pair(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
+//     yield s[0]
+//     yield s[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield s[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
     case S_RESUME_0: {
-        // yield s[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 1);
     }
@@ -151,28 +151,28 @@ __gen_read_pair read_pair(std::span<const int32_t> s) {
 }
 
 // def make_str(n: int32) -> str:
+//     # An OWNED str whose buffer dies at the end of the calling statement.
+//     return "abcdefghij" * n
 std::string make_str(int32_t n) {
-    // # An OWNED str whose buffer dies at the end of the calling statement.
-    // return "abcdefghij" * n
     return (::tpy::str_repeat("abcdefghij", n));
 }
 
 // def make_bytes(n: int32) -> bytes:
+//     return b"0123456789" * n
 ::tpy::Bytes make_bytes(int32_t n) {
-    // return b"0123456789" * n
     return (::tpy::bytes_repeat(::tpy::bytes_literal_owned("0123456789", 10), n));
 }
 
 // def head_tail(t: StrView) -> Iterator[str]:  # tpyc: ok
+//     yield t[0:4]
+//     yield t[len(t) - 4:len(t)]
 std::expected<std::string, ::tpy::StopIteration> __gen_head_tail::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield t[0:4]
         __state = S_RESUME_0;
         return std::string(::tpy::str_slice(t, ::tpy::BasicSlice{0, 4}));
     }
     case S_RESUME_0: {
-        // yield t[len(t) - 4:len(t)]
         __state = S_RESUME_1;
         return std::string(::tpy::str_slice(t, ::tpy::BasicSlice{(::tpy::sub_check<int32_t>(::tpy::__len__(t), 4)), ::tpy::__len__(t)}));
     }
@@ -192,15 +192,15 @@ __gen_head_tail head_tail(std::string_view t) {
 }
 
 // def byte_ends(b: BytesView) -> Iterator[int32]:  # tpyc: ok
+//     yield b[0]
+//     yield b[len(b) - 1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_byte_ends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield b[0]
         __state = S_RESUME_0;
         return static_cast<int32_t>(::tpy::bytes_getitem(b, 0));
     }
     case S_RESUME_0: {
-        // yield b[len(b) - 1]
         __state = S_RESUME_1;
         return static_cast<int32_t>(::tpy::bytes_getitem(b, (::tpy::sub_check<int32_t>(::tpy::__len__(b), 1))));
     }
@@ -220,10 +220,11 @@ __gen_byte_ends byte_ends(::tpy::BytesView b) {
 }
 
 // async def async_head(t: StrView) -> str:  # tpyc: ok
+//     await asyncio.sleep(0.0)
+//     return t[0:4] + "/" + t[len(t) - 4:len(t)]
 ::tpystd::tpy::Poll<std::string> __coro_async_head::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -233,7 +234,6 @@ __gen_byte_ends byte_ends(::tpy::BytesView b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return t[0:4] + "/" + t[len(t) - 4:len(t)]
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat(::tpy::str_slice(t, ::tpy::BasicSlice{0, 4}), "/")), ::tpy::str_slice(t, ::tpy::BasicSlice{(::tpy::sub_check<int32_t>(::tpy::__len__(t), 4)), ::tpy::__len__(t)})));
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -250,11 +250,11 @@ __coro_async_head async_head(std::string_view t) {
 }
 
 // async def run_head() -> str:
+//     return await async_head(make_str(2))  # tpyc: ok
 ::tpystd::tpy::Poll<std::string> __coro_run_head::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = make_str(2);
-        // return await async_head(make_str(2))  # tpyc: ok
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
@@ -279,15 +279,15 @@ __coro_run_head run_head() {
 }
 
 // def view_lens(t: StrView, b: BytesView) -> Iterator[int32]:  # tpyc: ok
+//     yield len(t)
+//     yield len(b)
 std::expected<int32_t, ::tpy::StopIteration> __gen_view_lens::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield len(t)
         __state = S_RESUME_0;
         return ::tpy::__len__(t);
     }
     case S_RESUME_0: {
-        // yield len(b)
         __state = S_RESUME_1;
         return ::tpy::__len__(b);
     }
@@ -307,12 +307,14 @@ __gen_view_lens view_lens(std::string_view t, ::tpy::BytesView b) {
 }
 
 // async def bump_async(s: Span[int32]) -> int32:  # tpyc: ok
+//     s[0] += 1
+//     await asyncio.sleep(0.0)
+//     s[1] += 1
+//     return s[0] + s[1]
 ::tpystd::tpy::Poll<int32_t> __coro_bump_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s[0] += 1
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), 1));
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -322,9 +324,7 @@ __gen_view_lens view_lens(std::string_view t, ::tpy::BytesView b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // s[1] += 1
         ::tpy::__setitem__(s, 1, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 1), 1));
-        // return s[0] + s[1]
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), ::tpy::__getitem__(s, 1)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -341,11 +341,11 @@ __coro_bump_async bump_async(std::span<int32_t> s) {
 }
 
 // async def run_bump() -> int32:
+//     return await bump_async([7, 8])  # tpyc: ok
 ::tpystd::tpy::Poll<int32_t> __coro_run_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0.emplace(std::array<int32_t, 2>{7, 8});
-        // return await bump_async([7, 8])  # tpyc: ok
         __sub_0.emplace(::tpy::as_mut_span((*__coro_arg_0)));
         __state = S_RESUME_0;
         continue;
@@ -370,15 +370,15 @@ __coro_run_bump run_bump() {
 }
 
 // def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
+//     yield xs[0]
+//     yield xs[len(xs) - 1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_ends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield xs[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(xs, 0);
     }
     case S_RESUME_0: {
-        // yield xs[len(xs) - 1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(xs, (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1)));
     }
@@ -398,10 +398,12 @@ __gen_ends ends(std::vector<int32_t>& xs) {
 }
 
 // def outer_for() -> Iterator[str]:
+//     yield "start"
+//     for v in head_tail(make_str(2)):  # tpyc: ok
+//         yield v
 std::expected<std::string, ::tpy::StopIteration> __gen_outer_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield "start"
         __state = S_RESUME_0;
         return "start";
     }
@@ -422,7 +424,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_outer_for::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield v
         __state = S_RESUME_1;
         return v;
     }
@@ -438,10 +439,12 @@ __gen_outer_for outer_for() {
 }
 
 // def outer_span() -> Iterator[int32]:
+//     yield 0
+//     for v in read_pair([5, 6]):  # tpyc: ok
+//         yield v
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -462,7 +465,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield v
         __state = S_RESUME_1;
         return v;
     }
@@ -478,10 +480,12 @@ __gen_outer_span outer_span() {
 }
 
 // def outer_comp(src: list[int32]) -> Iterator[int32]:
+//     yield 0
+//     for v in ends([x * 3 for x in src]):  # tpyc: ok
+//         yield v
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 0
         __state = S_RESUME_0;
         return 0;
     }
@@ -513,7 +517,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield v
         __state = S_RESUME_1;
         return v;
     }
@@ -529,10 +532,12 @@ __gen_outer_comp outer_comp(std::vector<int32_t>& src) {
 }
 
 // def outer_comp_method(src: list[int32]) -> Iterator[int32]:
+//     yield 1
+//     for v in Summer(100).pair([x * 2 for x in src]):  # tpyc: ok
+//         yield v
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield 1
         __state = S_RESUME_0;
         return 1;
     }
@@ -565,7 +570,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__()
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield v
         __state = S_RESUME_1;
         return v;
     }
@@ -581,10 +585,12 @@ __gen_outer_comp_method outer_comp_method(std::vector<int32_t>& src) {
 }
 
 // def outer_fstring(n: int32) -> Iterator[str]:
+//     yield "n"
+//     for v in head_tail(f"val-{n}-tail-pad"):  # tpyc: ok
+//         yield v
 std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield "n"
         __state = S_RESUME_0;
         return "n";
     }
@@ -605,7 +611,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__next__()
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield v
         __state = S_RESUME_1;
         return v;
     }
@@ -621,10 +626,13 @@ __gen_outer_fstring outer_fstring(int32_t n) {
 }
 
 // async def outer_bind() -> str:
+//     await asyncio.sleep(0.0)
+//     c = async_head(make_str(2))  # tpyc: ok
+//     await asyncio.sleep(0.0)
+//     return await c
 ::tpystd::tpy::Poll<std::string> __coro_outer_bind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -635,9 +643,7 @@ __gen_outer_fstring outer_fstring(int32_t n) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __coro_arg_0 = make_str(2);
-        // c = async_head(make_str(2))  # tpyc: ok
         c.emplace(async_head(__coro_arg_0));
-        // await asyncio.sleep(0.0)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_1;
         continue;
@@ -647,7 +653,6 @@ __gen_outer_fstring outer_fstring(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // return await c
         __state = S_RESUME_2;
         continue;
     }
@@ -671,13 +676,14 @@ __coro_outer_bind outer_bind() {
 }
 
 // async def outer_task() -> str:
+//     t = asyncio.create_task(async_head(make_str(2)))  # tpyc: ok
+//     await asyncio.sleep(0.0)
+//     return await t
 ::tpystd::tpy::Poll<std::string> __coro_outer_task::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = make_str(2);
-        // t = asyncio.create_task(async_head(make_str(2)))  # tpyc: ok
         t.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(async_head(__coro_arg_0))));
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -687,7 +693,6 @@ __coro_outer_bind outer_bind() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return await t
         __sub_1 = &((*t));
         __state = S_RESUME_1;
         continue;
@@ -712,6 +717,9 @@ __coro_outer_task outer_task() {
 }
 
 // def outer_loop_for(n: int32) -> Iterator[int32]:
+//     for i in range(n):
+//         for v in read_pair([i, i + 10]):  # tpyc: ok
+//             yield v
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -742,7 +750,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next__() {
             continue;
         }
         v = ::tpy::unwrap_ref(*(*__for_r_1));
-        // yield v
         __state = S_RESUME_0;
         return v;
     }
@@ -758,10 +765,15 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
 }
 
 // async def outer_loop_bind(n: int32) -> str:
+//     out = ""
+//     for i in range(n):
+//         c = async_head(f"val{i}-tailpad{i}")  # tpyc: ok
+//         await asyncio.sleep(0.0)
+//         out += await c + ";"
+//     return out
 ::tpystd::tpy::Poll<std::string> __coro_outer_loop_bind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // out = ""
         out = "";
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
@@ -773,7 +785,6 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // out += await c + ";"
         __state = S_RESUME_1;
         continue;
     }
@@ -782,23 +793,19 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         __await_lift_0 = std::move(__r1).value();
         c.reset();
-        // out += await c + ";"
         out += (::tpy::str_concat(__await_lift_0, ";"));
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            // return out
             __state = S_DONE;
             std::string __tpy_async_ret = out;
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
         i = ((*__for_i_0))++;
         __coro_arg_0 = std::format("val{}-tailpad{}", i, i);
-        // c = async_head(f"val{i}-tailpad{i}")  # tpyc: ok
         c.emplace(async_head(__coro_arg_0));
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -815,10 +822,15 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
 }
 
 // async def outer_async_recv(src: list[int32]) -> int32:
+//     await asyncio.sleep(0.0)
+//     n = 0
+//     for v in Summer(100).pair(src):  # tpyc: ok
+//         await asyncio.sleep(0.0)
+//         n += v
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_outer_async_recv::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -828,7 +840,6 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // n = 0
         n = 0;
         __coro_arg_0.emplace(Summer(100));
         __for_src_0.emplace((*__coro_arg_0).pair(src));
@@ -840,7 +851,6 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        // n += v
         n = ::tpy::add_check<int32_t>(n, v);
         __state = S_JOIN_0;
         continue;
@@ -848,13 +858,11 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
     case S_JOIN_0: {
         __for_r_0.emplace((*__for_src_0).__next__());
         if (!(*__for_r_0).has_value()) {
-            // return n
             __state = S_DONE;
             int32_t __tpy_async_ret = n;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // await asyncio.sleep(0.0)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_1;
         continue;
@@ -871,14 +879,15 @@ __coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src) {
 }
 
 // async def outer_task_recv() -> int32:
+//     t = asyncio.create_task(Adder(5).add([7, 8]))  # tpyc: ok
+//     await asyncio.sleep(0.0)
+//     return await t
 ::tpystd::tpy::Poll<int32_t> __coro_outer_task_recv::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0.emplace(Adder(5));
         __coro_arg_1.emplace(std::array<int32_t, 2>{7, 8});
-        // t = asyncio.create_task(Adder(5).add([7, 8]))  # tpyc: ok
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*__coro_arg_0).add(::tpy::as_mut_span((*__coro_arg_1))))));
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -888,7 +897,6 @@ __coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return await t
         __sub_1 = &((*t));
         __state = S_RESUME_1;
         continue;
@@ -913,10 +921,201 @@ __coro_outer_task_recv outer_task_recv() {
 }
 
 // def main() -> None:
+//     xs = [1, 2]
+//     for v in bump_scalars(xs):
+//         print("gen:", v)
+//     print("gen: after", xs[0], xs[1])
+//
+//     ps = [P(1)]
+//     for v in bump_records(ps):
+//         print("gen-record:", v)
+//     print("gen-record: after", ps[0].n)
+//
+//     ms = [3, 4]
+//     for v in Scaler(2).scale(ms):
+//         print("method:", v)
+//     print("method: after", ms[0], ms[1])
+//
+//     ro = [5, 6]
+//     pulls = 0
+//     for v in read_ro_elems(ro):
+//         print("ro-elem:", v)
+//         pulls += 1
+//         if pulls == 1:
+//             # Mutating the source between pulls: the second read must see 50.
+//             ro[0] = 50
+//
+//     pulls = 0
+//     for v in read_ro_span(ro):
+//         print("ro-span:", v)
+//         pulls += 1
+//         if pulls == 1:
+//             ro[1] = 60
+//
+//     for v in view_lens("abc", b"de"):
+//         print("views:", v)
+//
+//     aa = [7, 8]
+//     print("async:", asyncio.run(bump_async(aa)))
+//     print("async: after", aa[0], aa[1])
+//
+//     ab = [7, 8]
+//     print("async-method:", asyncio.run(Adder(5).add(ab)))
+//     print("async-method: after", ab[0], ab[1])
+//
+//     # -- rvalue argument: the view's backing storage is hoisted ---------------
+//     # A container literal at a view param is a fresh object the caller never
+//     # names, so the frame would alias a statement temporary. Each section below
+//     # reads across a suspension a slot it wrote (or a second slot) before it --
+//     # only live storage answers.
+//
+//     # free generator
+//     for v in bump_scalars([1, 2]):  # tpyc: ok
+//         print("lit-gen:", v)
+//
+//     # free generator / record element
+//     for v in bump_records([P(1)]):  # tpyc: ok
+//         print("lit-record:", v)
+//
+//     # generator method
+//     for v in Scaler(2).scale([3, 4]):  # tpyc: ok
+//         print("lit-method:", v)
+//
+//     # readonly-element view
+//     for v in read_pair([5, 6]):  # tpyc: ok
+//         print("lit-ro:", v)
+//
+//     # async def, awaited from a sync statement
+//     print("lit-async:", asyncio.run(bump_async([7, 8])))  # tpyc: ok
+//
+//     # async method
+//     print("lit-async-method:", asyncio.run(Adder(5).add([7, 8])))  # tpyc: ok
+//
+//     # inline await inside a coroutine (the frame-slot hoist)
+//     print("lit-await:", asyncio.run(run_bump()))
+//
+//     # str / bytes LITERALS hoist too (`std::string __tmp = "abcd";`): the rule
+//     # is about the frame receiving a name, not about which C++ shapes alias.
+//     for v in view_lens("abcd", b"def"):  # tpyc: ok
+//         print("lit-views:", v)
+//
+//     # -- rvalue str / bytes sources ------------------------------------------
+//     # The str-family sources whose OWNED buffer dies at the end of the
+//     # statement. Each section pulls TWICE and prints the second read's content,
+//     # so a view over a destroyed buffer is a wrong answer, not just a wrong
+//     # length (`len` alone reads only the view's size word).
+//
+//     # free generator, rvalue call
+//     for v in head_tail(make_str(2)):  # tpyc: ok
+//         print("rv-call:", v)
+//
+//     # free generator, binop
+//     for v in head_tail("ab" * 3):  # tpyc: ok
+//         print("rv-binop:", v)
+//
+//     # free generator, method call
+//     src = "abcdefghij"
+//     for v in head_tail(src.upper()):  # tpyc: ok
+//         print("rv-method:", v)
+//
+//     # free generator, f-string
+//     n = 7
+//     for v in head_tail(f"val-{n}-tail-pad"):  # tpyc: ok
+//         print("rv-fstring:", v)
+//
+//     # free generator, bytes rvalue call
+//     for v in byte_ends(make_bytes(2)):  # tpyc: ok
+//         print("rv-bytes:", v)
+//
+//     # free generator, bytes literal
+//     for v in byte_ends(b"0123456789abcdef"):  # tpyc: ok
+//         print("lit-bytes:", v)
+//
+//     # generator METHOD
+//     for v in Tagger("t").tag(make_str(2)):  # tpyc: ok
+//         print("rv-method-recv:", v)
+//
+//     # a str LOCAL is not a temporary: no hoist, and the view still reads it
+//     named = make_str(2)
+//     for v in head_tail(named):  # tpyc: ok
+//         print("name-str:", v)
+//
+//     # async def, awaited from a sync statement
+//     print("rv-async:", asyncio.run(async_head(make_str(2))))  # tpyc: ok
+//
+//     # inline await inside a coroutine (the awaiter's own frame slot)
+//     print("rv-await:", asyncio.run(run_head()))
+//
+//     # nested call argument
+//     print("rv-nested:", count_view(head_tail(make_str(2))))  # tpyc: ok
+//
+//     # -- the hoist position is the ENCLOSING statement's flush point ---------
+//     # Not only the bare `for`-head above: a nested argument list, a
+//     # comprehension's iterable and a `while` head each still have one, so the
+//     # decl lands there and the frame's view stays over live storage.
+//
+//     # nested call argument
+//     print("lit-nested:", total(read_pair([5, 6])))  # tpyc: ok
+//
+//     # comprehension iterable
+//     comp = [v for v in read_pair([5, 6])]  # tpyc: ok
+//     print("lit-comp:", comp[0], comp[1])
+//
+//     # while condition (the restructured `while (true)` head)
+//     spins = 0
+//     while total(read_pair([5, 6])) > spins:  # tpyc: ok
+//         spins += 1
+//     print("lit-while:", spins)
+//
+//     # -- a comprehension argument at a container (`T&`) slot -----------------
+//     # A comprehension renders its own slot-typed temp at a plain argument
+//     # position, so the frame rule takes THAT temp instead of nesting a second
+//     # one around it -- one `std::vector<int32_t> __tmp_N` per call.
+//
+//     nums = [1, 2, 3]
+//
+//     # free generator
+//     for v in ends([x * 5 for x in nums]):  # tpyc: ok
+//         print("comp-free:", v)
+//
+//     # generator METHOD (the seam the two hoist rows met at)
+//     for v in Summer(10).pair([x * 2 for x in nums]):  # tpyc: ok
+//         print("comp-method:", v)
+//
+//     # -- the hoist inside a resumable body -----------------------------------
+//     for v in outer_for():
+//         print("res-for:", v)
+//
+//     for v in outer_span():
+//         print("res-span:", v)
+//
+//     for v in outer_comp(nums):
+//         print("res-comp-free:", v)
+//
+//     for v in outer_comp_method(nums):
+//         print("res-comp-method:", v)
+//
+//     for v in outer_fstring(7):
+//         print("res-fstring:", v)
+//
+//     for v in Outer("o").run():
+//         print("res-method:", v)
+//
+//     print("res-bind:", asyncio.run(outer_bind()))
+//     print("res-task:", asyncio.run(outer_task()))
+//
+//     for v in outer_loop_for(3):
+//         print("res-loop-for:", v)
+//
+//     print("res-loop-bind:", asyncio.run(outer_loop_bind(3)))
+//
+//     for v in Outer("o").run_recv(nums):
+//         print("res-recv-method:", v)
+//
+//     print("res-recv-async:", asyncio.run(outer_async_recv(nums)))
+//     print("res-recv-task:", asyncio.run(outer_task_recv()))
 void main() {
-    // xs = [1, 2]
     std::array<int32_t, 2> xs = {1, 2};
-    // for v in bump_scalars(xs):
     {
         auto __src_0 = bump_scalars(::tpy::as_mut_span(xs));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -924,15 +1123,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print("gen:", v)
         std::cout << "gen:" << " " << v << "\n";
         }
     }
-    // print("gen: after", xs[0], xs[1])
     std::cout << "gen: after" << " " << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n";
-    // ps = [P(1)]
     std::array<P, 1> ps = {P(1)};
-    // for v in bump_records(ps):
     {
         auto __src_2 = bump_records(::tpy::as_mut_span(ps));
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -940,15 +1135,11 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_3);
-        // print("gen-record:", v)
         std::cout << "gen-record:" << " " << v << "\n";
         }
     }
-    // print("gen-record: after", ps[0].n)
     std::cout << "gen-record: after" << " " << ::tpy::__getitem__(ps, 0).n << "\n";
-    // ms = [3, 4]
     std::array<int32_t, 2> ms = {3, 4};
-    // for v in Scaler(2).scale(ms):
     {
         Scaler __tmp_1 = Scaler(2);
         auto __src_4 = __tmp_1.scale(::tpy::as_mut_span(ms));
@@ -957,17 +1148,12 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_5);
-        // print("method:", v)
         std::cout << "method:" << " " << v << "\n";
         }
     }
-    // print("method: after", ms[0], ms[1])
     std::cout << "method: after" << " " << ::tpy::__getitem__(ms, 0) << " " << ::tpy::__getitem__(ms, 1) << "\n";
-    // ro = [5, 6]
     std::array<int32_t, 2> ro = {5, 6};
-    // pulls = 0
     int32_t pulls = 0;
-    // for v in read_ro_elems(ro):
     {
         auto __src_6 = read_ro_elems(::tpy::as_span(ro));
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -975,22 +1161,14 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
-        // print("ro-elem:", v)
         std::cout << "ro-elem:" << " " << v << "\n";
-        // pulls += 1
         pulls = ::tpy::add_check<int32_t>(pulls, 1);
-        // if pulls == 1:
         if ((pulls == 1)) {
-            // # Mutating the source between pulls: the second read must see 50.
-            // ro[0] = 50
             ::tpy::__setitem__(ro, 0, 50);
         }
-        // # Mutating the source between pulls: the second read must see 50.
         }
     }
-    // pulls = 0
     pulls = 0;
-    // for v in read_ro_span(ro):
     {
         auto __src_8 = read_ro_span(::tpy::as_mut_span(ro));
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
@@ -998,18 +1176,13 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_9);
-        // print("ro-span:", v)
         std::cout << "ro-span:" << " " << v << "\n";
-        // pulls += 1
         pulls = ::tpy::add_check<int32_t>(pulls, 1);
-        // if pulls == 1:
         if ((pulls == 1)) {
-            // ro[1] = 60
             ::tpy::__setitem__(ro, 1, 60);
         }
         }
     }
-    // for v in view_lens("abc", b"de"):
     {
         std::string __tmp_2 = "abc";
         ::tpy::Bytes __tmp_3 = ::tpy::bytes_literal_owned("de", 2);
@@ -1019,24 +1192,15 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_11);
-        // print("views:", v)
         std::cout << "views:" << " " << v << "\n";
         }
     }
-    // aa = [7, 8]
     std::array<int32_t, 2> aa = {7, 8};
-    // print("async:", asyncio.run(bump_async(aa)))
     std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bump_async(::tpy::as_mut_span(aa)))) << "\n";
-    // print("async: after", aa[0], aa[1])
     std::cout << "async: after" << " " << ::tpy::__getitem__(aa, 0) << " " << ::tpy::__getitem__(aa, 1) << "\n";
-    // ab = [7, 8]
     std::array<int32_t, 2> ab = {7, 8};
-    // print("async-method:", asyncio.run(Adder(5).add(ab)))
     std::cout << "async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(ab)))) << "\n";
-    // print("async-method: after", ab[0], ab[1])
     std::cout << "async-method: after" << " " << ::tpy::__getitem__(ab, 0) << " " << ::tpy::__getitem__(ab, 1) << "\n";
-    // # free generator
-    // for v in bump_scalars([1, 2]):  # tpyc: ok
     {
         std::array<int32_t, 2> __tmp_4 = std::array<int32_t, 2>{1, 2};
         auto __src_12 = bump_scalars(::tpy::as_mut_span(__tmp_4));
@@ -1045,12 +1209,9 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_13);
-        // print("lit-gen:", v)
         std::cout << "lit-gen:" << " " << v << "\n";
         }
     }
-    // # free generator / record element
-    // for v in bump_records([P(1)]):  # tpyc: ok
     {
         std::array<P, 1> __tmp_5 = std::array<P, 1>{P(1)};
         auto __src_14 = bump_records(::tpy::as_mut_span(__tmp_5));
@@ -1059,12 +1220,9 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_15);
-        // print("lit-record:", v)
         std::cout << "lit-record:" << " " << v << "\n";
         }
     }
-    // # generator method
-    // for v in Scaler(2).scale([3, 4]):  # tpyc: ok
     {
         Scaler __tmp_6 = Scaler(2);
         std::array<int32_t, 2> __tmp_7 = std::array<int32_t, 2>{3, 4};
@@ -1074,12 +1232,9 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_17);
-        // print("lit-method:", v)
         std::cout << "lit-method:" << " " << v << "\n";
         }
     }
-    // # readonly-element view
-    // for v in read_pair([5, 6]):  # tpyc: ok
     {
         std::array<int32_t, 2> __tmp_8 = std::array<int32_t, 2>{5, 6};
         auto __src_18 = read_pair(::tpy::as_span(__tmp_8));
@@ -1088,24 +1243,14 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_19);
-        // print("lit-ro:", v)
         std::cout << "lit-ro:" << " " << v << "\n";
         }
     }
-    // # async def, awaited from a sync statement
-    // print("lit-async:", asyncio.run(bump_async([7, 8])))  # tpyc: ok
     std::array<int32_t, 2> __tmp_9 = std::array<int32_t, 2>{7, 8};
     std::cout << "lit-async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bump_async(::tpy::as_mut_span(__tmp_9)))) << "\n";
-    // # async method
-    // print("lit-async-method:", asyncio.run(Adder(5).add([7, 8])))  # tpyc: ok
     std::array<int32_t, 2> __tmp_10 = std::array<int32_t, 2>{7, 8};
     std::cout << "lit-async-method:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(Adder(5).add(::tpy::as_mut_span(__tmp_10)))) << "\n";
-    // # inline await inside a coroutine (the frame-slot hoist)
-    // print("lit-await:", asyncio.run(run_bump()))
     std::cout << "lit-await:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(run_bump())) << "\n";
-    // # str / bytes LITERALS hoist too (`std::string __tmp = "abcd";`): the rule
-    // # is about the frame receiving a name, not about which C++ shapes alias.
-    // for v in view_lens("abcd", b"def"):  # tpyc: ok
     {
         std::string __tmp_11 = "abcd";
         ::tpy::Bytes __tmp_12 = ::tpy::bytes_literal_owned("def", 3);
@@ -1115,12 +1260,9 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_21);
-        // print("lit-views:", v)
         std::cout << "lit-views:" << " " << v << "\n";
         }
     }
-    // # free generator, rvalue call
-    // for v in head_tail(make_str(2)):  # tpyc: ok
     {
         std::string __tmp_13 = make_str(2);
         auto __src_22 = head_tail(__tmp_13);
@@ -1129,12 +1271,9 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_23);
-        // print("rv-call:", v)
         std::cout << "rv-call:" << " " << v << "\n";
         }
     }
-    // # free generator, binop
-    // for v in head_tail("ab" * 3):  # tpyc: ok
     {
         std::string __tmp_14 = (::tpy::str_repeat("ab", 3));
         auto __src_24 = head_tail(__tmp_14);
@@ -1143,14 +1282,10 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_25);
-        // print("rv-binop:", v)
         std::cout << "rv-binop:" << " " << v << "\n";
         }
     }
-    // # free generator, method call
-    // src = "abcdefghij"
     std::string_view src = "abcdefghij";
-    // for v in head_tail(src.upper()):  # tpyc: ok
     {
         std::string __tmp_15 = ::tpy::str_upper(src);
         auto __src_26 = head_tail(__tmp_15);
@@ -1159,14 +1294,10 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_27);
-        // print("rv-method:", v)
         std::cout << "rv-method:" << " " << v << "\n";
         }
     }
-    // # free generator, f-string
-    // n = 7
     int32_t n = 7;
-    // for v in head_tail(f"val-{n}-tail-pad"):  # tpyc: ok
     {
         std::string __tmp_16 = std::format("val-{}-tail-pad", n);
         auto __src_28 = head_tail(__tmp_16);
@@ -1175,12 +1306,9 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_29);
-        // print("rv-fstring:", v)
         std::cout << "rv-fstring:" << " " << v << "\n";
         }
     }
-    // # free generator, bytes rvalue call
-    // for v in byte_ends(make_bytes(2)):  # tpyc: ok
     {
         ::tpy::Bytes __tmp_17 = make_bytes(2);
         auto __src_30 = byte_ends(__tmp_17);
@@ -1189,12 +1317,9 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_31);
-        // print("rv-bytes:", v)
         std::cout << "rv-bytes:" << " " << v << "\n";
         }
     }
-    // # free generator, bytes literal
-    // for v in byte_ends(b"0123456789abcdef"):  # tpyc: ok
     {
         ::tpy::Bytes __tmp_18 = ::tpy::bytes_literal_owned("0123456789abcdef", 16);
         auto __src_32 = byte_ends(__tmp_18);
@@ -1203,12 +1328,9 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_33);
-        // print("lit-bytes:", v)
         std::cout << "lit-bytes:" << " " << v << "\n";
         }
     }
-    // # generator METHOD
-    // for v in Tagger("t").tag(make_str(2)):  # tpyc: ok
     {
         Tagger __tmp_19 = Tagger("t");
         std::string __tmp_20 = make_str(2);
@@ -1218,14 +1340,10 @@ void main() {
             auto __r_35 = __itr_34.__next__();
             if (!__r_35.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_35);
-        // print("rv-method-recv:", v)
         std::cout << "rv-method-recv:" << " " << v << "\n";
         }
     }
-    // # a str LOCAL is not a temporary: no hoist, and the view still reads it
-    // named = make_str(2)
     std::string named = make_str(2);
-    // for v in head_tail(named):  # tpyc: ok
     {
         auto __src_36 = head_tail(named);
         auto&& __itr_36 = ::tpy::__iter__(__src_36);
@@ -1233,29 +1351,18 @@ void main() {
             auto __r_37 = __itr_36.__next__();
             if (!__r_37.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_37);
-        // print("name-str:", v)
         std::cout << "name-str:" << " " << v << "\n";
         }
     }
-    // # async def, awaited from a sync statement
-    // print("rv-async:", asyncio.run(async_head(make_str(2))))  # tpyc: ok
     std::string __tmp_21 = make_str(2);
     std::cout << "rv-async:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(async_head(__tmp_21))) << "\n";
-    // # inline await inside a coroutine (the awaiter's own frame slot)
-    // print("rv-await:", asyncio.run(run_head()))
     std::cout << "rv-await:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(run_head())) << "\n";
-    // # nested call argument
-    // print("rv-nested:", count_view(head_tail(make_str(2))))  # tpyc: ok
     std::string __tmp_22 = make_str(2);
     auto __tmp_23 = head_tail(__tmp_22);
     std::cout << "rv-nested:" << " " << count_view(__tmp_23) << "\n";
-    // # nested call argument
-    // print("lit-nested:", total(read_pair([5, 6])))  # tpyc: ok
     std::array<int32_t, 2> __tmp_24 = std::array<int32_t, 2>{5, 6};
     auto __tmp_25 = read_pair(::tpy::as_span(__tmp_24));
     std::cout << "lit-nested:" << " " << total(__tmp_25) << "\n";
-    // # comprehension iterable
-    // comp = [v for v in read_pair([5, 6])]  # tpyc: ok
     std::array<int32_t, 2> __tmp_26 = std::array<int32_t, 2>{5, 6};
     std::vector<int32_t> comp = ({
         std::vector<int32_t> __result;
@@ -1268,29 +1375,16 @@ void main() {
         }
         std::move(__result);
     });
-    // print("lit-comp:", comp[0], comp[1])
     std::cout << "lit-comp:" << " " << ::tpy::__getitem__(comp, 0) << " " << ::tpy::__getitem__(comp, 1) << "\n";
-    // # while condition (the restructured `while (true)` head)
-    // spins = 0
     int32_t spins = 0;
-    // while total(read_pair([5, 6])) > spins:  # tpyc: ok
     while (true) {
         std::array<int32_t, 2> __tmp_27 = std::array<int32_t, 2>{5, 6};
         auto __tmp_28 = read_pair(::tpy::as_span(__tmp_27));
         if (!((total(__tmp_28) > spins))) break;
-        // spins += 1
         spins = ::tpy::add_check<int32_t>(spins, 1);
     }
-    // print("lit-while:", spins)
     std::cout << "lit-while:" << " " << spins << "\n";
-    // # -- a comprehension argument at a container (`T&`) slot -----------------
-    // # A comprehension renders its own slot-typed temp at a plain argument
-    // # position, so the frame rule takes THAT temp instead of nesting a second
-    // # one around it -- one `std::vector<int32_t> __tmp_N` per call.
-    // nums = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // # free generator
-    // for v in ends([x * 5 for x in nums]):  # tpyc: ok
     {
         std::vector<int32_t> __tmp_29 = ({
         std::vector<int32_t> __result;
@@ -1310,12 +1404,9 @@ void main() {
             auto __r_41 = __itr_40.__next__();
             if (!__r_41.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_41);
-        // print("comp-free:", v)
         std::cout << "comp-free:" << " " << v << "\n";
         }
     }
-    // # generator METHOD (the seam the two hoist rows met at)
-    // for v in Summer(10).pair([x * 2 for x in nums]):  # tpyc: ok
     {
         Summer __tmp_30 = Summer(10);
         std::vector<int32_t> __tmp_31 = ({
@@ -1336,12 +1427,9 @@ void main() {
             auto __r_44 = __itr_43.__next__();
             if (!__r_44.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_44);
-        // print("comp-method:", v)
         std::cout << "comp-method:" << " " << v << "\n";
         }
     }
-    // # -- the hoist inside a resumable body -----------------------------------
-    // for v in outer_for():
     {
         auto __src_45 = outer_for();
         auto&& __itr_45 = ::tpy::__iter__(__src_45);
@@ -1349,11 +1437,9 @@ void main() {
             auto __r_46 = __itr_45.__next__();
             if (!__r_46.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_46);
-        // print("res-for:", v)
         std::cout << "res-for:" << " " << v << "\n";
         }
     }
-    // for v in outer_span():
     {
         auto __src_47 = outer_span();
         auto&& __itr_47 = ::tpy::__iter__(__src_47);
@@ -1361,11 +1447,9 @@ void main() {
             auto __r_48 = __itr_47.__next__();
             if (!__r_48.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_48);
-        // print("res-span:", v)
         std::cout << "res-span:" << " " << v << "\n";
         }
     }
-    // for v in outer_comp(nums):
     {
         auto __src_49 = outer_comp(nums);
         auto&& __itr_49 = ::tpy::__iter__(__src_49);
@@ -1373,11 +1457,9 @@ void main() {
             auto __r_50 = __itr_49.__next__();
             if (!__r_50.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_50);
-        // print("res-comp-free:", v)
         std::cout << "res-comp-free:" << " " << v << "\n";
         }
     }
-    // for v in outer_comp_method(nums):
     {
         auto __src_51 = outer_comp_method(nums);
         auto&& __itr_51 = ::tpy::__iter__(__src_51);
@@ -1385,11 +1467,9 @@ void main() {
             auto __r_52 = __itr_51.__next__();
             if (!__r_52.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_52);
-        // print("res-comp-method:", v)
         std::cout << "res-comp-method:" << " " << v << "\n";
         }
     }
-    // for v in outer_fstring(7):
     {
         auto __src_53 = outer_fstring(7);
         auto&& __itr_53 = ::tpy::__iter__(__src_53);
@@ -1397,11 +1477,9 @@ void main() {
             auto __r_54 = __itr_53.__next__();
             if (!__r_54.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_54);
-        // print("res-fstring:", v)
         std::cout << "res-fstring:" << " " << v << "\n";
         }
     }
-    // for v in Outer("o").run():
     {
         Outer __tmp_32 = Outer("o");
         auto __src_55 = __tmp_32.run();
@@ -1410,15 +1488,11 @@ void main() {
             auto __r_56 = __itr_55.__next__();
             if (!__r_56.has_value()) break;
             std::string_view v = ::tpy::unwrap_ref(*__r_56);
-        // print("res-method:", v)
         std::cout << "res-method:" << " " << v << "\n";
         }
     }
-    // print("res-bind:", asyncio.run(outer_bind()))
     std::cout << "res-bind:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(outer_bind())) << "\n";
-    // print("res-task:", asyncio.run(outer_task()))
     std::cout << "res-task:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(outer_task())) << "\n";
-    // for v in outer_loop_for(3):
     {
         auto __src_57 = outer_loop_for(3);
         auto&& __itr_57 = ::tpy::__iter__(__src_57);
@@ -1426,13 +1500,10 @@ void main() {
             auto __r_58 = __itr_57.__next__();
             if (!__r_58.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_58);
-        // print("res-loop-for:", v)
         std::cout << "res-loop-for:" << " " << v << "\n";
         }
     }
-    // print("res-loop-bind:", asyncio.run(outer_loop_bind(3)))
     std::cout << "res-loop-bind:" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(outer_loop_bind(3))) << "\n";
-    // for v in Outer("o").run_recv(nums):
     {
         Outer __tmp_33 = Outer("o");
         auto __src_59 = __tmp_33.run_recv(nums);
@@ -1441,30 +1512,27 @@ void main() {
             auto __r_60 = __itr_59.__next__();
             if (!__r_60.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_60);
-        // print("res-recv-method:", v)
         std::cout << "res-recv-method:" << " " << v << "\n";
         }
     }
-    // print("res-recv-async:", asyncio.run(outer_async_recv(nums)))
     std::cout << "res-recv-async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(outer_async_recv(nums))) << "\n";
-    // print("res-recv-task:", asyncio.run(outer_task_recv()))
     std::cout << "res-recv-task:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(outer_task_recv())) << "\n";
 }
 
 // def scale(self, s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
+//     s[0] *= self.factor
+//     yield s[0]
+//     s[1] *= self.factor
+//     yield s[1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_Scaler_scale::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s[0] *= self.factor
         ::tpy::__setitem__(s, 0, ::tpy::mul_check<int32_t>(::tpy::__getitem__(s, 0), __self.factor));
-        // yield s[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
     case S_RESUME_0: {
-        // s[1] *= self.factor
         ::tpy::__setitem__(s, 1, ::tpy::mul_check<int32_t>(::tpy::__getitem__(s, 1), __self.factor));
-        // yield s[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 1);
     }
@@ -1479,15 +1547,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Scaler_scale::__next__() {
 
 
 // def tag(self, t: StrView) -> Iterator[str]:  # tpyc: ok
+//     yield self.name + ":" + t[0:3]
+//     yield self.name + ":" + t[len(t) - 3:len(t)]
 std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.name + ":" + t[0:3]
         __state = S_RESUME_0;
         return (::tpy::str_concat((::tpy::str_concat(__self.name, ":")), ::tpy::str_slice(t, ::tpy::BasicSlice{0, 3})));
     }
     case S_RESUME_0: {
-        // yield self.name + ":" + t[len(t) - 3:len(t)]
         __state = S_RESUME_1;
         return (::tpy::str_concat((::tpy::str_concat(__self.name, ":")), ::tpy::str_slice(t, ::tpy::BasicSlice{(::tpy::sub_check<int32_t>(::tpy::__len__(t), 3)), ::tpy::__len__(t)})));
     }
@@ -1502,12 +1570,14 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
 
 
 // async def add(self, s: Span[int32]) -> int32:  # tpyc: ok
+//     s[0] += self.step
+//     await asyncio.sleep(0.0)
+//     s[1] += self.step
+//     return s[0] + s[1]
 ::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s[0] += self.step
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), __self.step));
-        // await asyncio.sleep(0.0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
@@ -1517,9 +1587,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // s[1] += self.step
         ::tpy::__setitem__(s, 1, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 1), __self.step));
-        // return s[0] + s[1]
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), ::tpy::__getitem__(s, 1)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -1531,15 +1599,15 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
 
 
 // def pair(self, xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
+//     yield self.base + xs[0]
+//     yield self.base + xs[len(xs) - 1]
 std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.base + xs[0]
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(__self.base, ::tpy::__getitem__(xs, 0)));
     }
     case S_RESUME_0: {
-        // yield self.base + xs[len(xs) - 1]
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(__self.base, ::tpy::__getitem__(xs, (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1)))));
     }
@@ -1554,10 +1622,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_pair::__next__() {
 
 
 // def run(self) -> Iterator[str]:
+//     yield self.prefix
+//     for v in head_tail(make_str(2)):  # tpyc: ok
+//         yield self.prefix + v
 std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield self.prefix
         __state = S_RESUME_0;
         return __self.prefix;
     }
@@ -1578,7 +1648,6 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield self.prefix + v
         __state = S_RESUME_1;
         return (::tpy::str_concat(__self.prefix, v));
     }
@@ -1589,10 +1658,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next__() {
 
 
 // def run_recv(self, xs: list[int32]) -> Iterator[int32]:
+//     yield len(self.prefix)
+//     for v in Summer(100).pair(xs):  # tpyc: ok
+//         yield v + len(self.prefix)
 std::expected<int32_t, ::tpy::StopIteration> __gen_Outer_run_recv::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // yield len(self.prefix)
         __state = S_RESUME_0;
         return ::tpy::__len__(__self.prefix);
     }
@@ -1613,7 +1684,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Outer_run_recv::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = ::tpy::unwrap_ref(*(*__for_r_0));
-        // yield v + len(self.prefix)
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(v, ::tpy::__len__(__self.prefix)));
     }
@@ -1623,14 +1693,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Outer_run_recv::__next__() {
 }
 
 
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

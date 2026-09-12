@@ -6,61 +6,61 @@ namespace tpyapp::main {
 
 // # Test comparison between int (BigInt) and float variables
 // def test_eq() -> None:
+//     a: int = 5
+//     b: float = 5.0
+//     print(a == b)
+//     print(a != b)
 void test_eq() {
-    // a: int = 5
     ::tpy::BigInt a = ::tpy::BigInt(5);
-    // b: float = 5.0
     double b = 5.0;
-    // print(a == b)
     std::cout << ::tpy::print_bool((static_cast<double>(a) == b)) << "\n";
-    // print(a != b)
     std::cout << ::tpy::print_bool((static_cast<double>(a) != b)) << "\n";
 }
 
 // def test_ordering() -> None:
+//     x: int = 3
+//     y: float = 3.5
+//     print(x < y)
+//     print(x > y)
+//     print(x <= y)
+//     print(x >= y)
 void test_ordering() {
-    // x: int = 3
     ::tpy::BigInt x = ::tpy::BigInt(3);
-    // y: float = 3.5
     double y = 3.5;
-    // print(x < y)
     std::cout << ::tpy::print_bool((static_cast<double>(x) < y)) << "\n";
-    // print(x > y)
     std::cout << ::tpy::print_bool((static_cast<double>(x) > y)) << "\n";
-    // print(x <= y)
     std::cout << ::tpy::print_bool((static_cast<double>(x) <= y)) << "\n";
-    // print(x >= y)
     std::cout << ::tpy::print_bool((static_cast<double>(x) >= y)) << "\n";
 }
 
 // def test_float_gt_int() -> None:
+//     f: float = 10.0
+//     i: int = 7
+//     print(f > i)
+//     print(f < i)
 void test_float_gt_int() {
-    // f: float = 10.0
     double f = 10.0;
-    // i: int = 7
     ::tpy::BigInt i = ::tpy::BigInt(7);
-    // print(f > i)
     std::cout << ::tpy::print_bool((f > static_cast<double>(i))) << "\n";
-    // print(f < i)
     std::cout << ::tpy::print_bool((f < static_cast<double>(i))) << "\n";
 }
 
 // def main() -> None:
+//     test_eq()
+//     test_ordering()
+//     test_float_gt_int()
 void main() {
-    // test_eq()
     test_eq();
-    // test_ordering()
     test_ordering();
-    // test_float_gt_int()
     test_float_gt_int();
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,45 +5,45 @@ namespace tpyapp::main {
 
 
 // def cut(text: str, sl: basic_slice) -> str:
+//     return text[sl]
 std::string cut(std::string_view text, ::tpy::BasicSlice sl) {
-    // return text[sl]
     return std::string(::tpy::str_slice(text, sl));
 }
 
 // def pick(text: str, st: slice) -> str:
+//     return text[st]
 std::string pick(std::string_view text, ::tpy::Slice st) {
-    // return text[st]
     return ::tpy::str_stepped_slice(text, st);
 }
 
 // def run(text: str) -> None:
+//     a = cut(text, basic_slice(1, 3))
+//     b = cut(text, basic_slice(2, None))
+//     print(a, b)
+//     c = pick(text, slice(0, 7, 2))
+//     d = pick(text, slice(None, None, -1))
+//     print(c, d)
 void run(std::string_view text) {
-    // a = cut(text, basic_slice(1, 3))
     std::string a = cut(text, ::tpy::BasicSlice{1, 3});
-    // b = cut(text, basic_slice(2, None))
     std::string b = cut(text, ::tpy::BasicSlice{2, std::nullopt});
-    // print(a, b)
     std::cout << a << " " << b << "\n";
-    // c = pick(text, slice(0, 7, 2))
     std::string c = pick(text, ::tpy::Slice{0, 7, 2});
-    // d = pick(text, slice(None, None, -1))
     std::string d = pick(text, ::tpy::Slice{std::nullopt, std::nullopt, -1});
-    // print(c, d)
     std::cout << c << " " << d << "\n";
 }
 
 // def main() -> None:
+//     run("greetings")
 void main() {
-    // run("greetings")
     run("greetings");
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

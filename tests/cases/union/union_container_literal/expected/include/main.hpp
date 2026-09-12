@@ -12,12 +12,19 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def process_dict(d: dict[str, int32 | str]) -> None:
 void process_dict(const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>& d);
+// def process_list(items: list[int32 | str]) -> None:
 void process_list(const std::vector<::tpy::Union<int32_t, std::string>>& items);
+// def consume_dict(d: Own[dict[str, int32 | str]]) -> None:
 void consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>&& d);
+// def consume_list(items: Own[list[int32 | str]]) -> None:
 void consume_list(std::vector<::tpy::Union<int32_t, std::string>>&& items);
+// def make_dict() -> Own[dict[str, int32 | str]]:
 ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> make_dict();
+// def make_list() -> Own[list[int32 | str]]:
 std::vector<::tpy::Union<int32_t, std::string>> make_list();
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -54,9 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, name: str) -> None:
+//     self.name = name
 inline Cat::Cat(std::string_view name) : name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

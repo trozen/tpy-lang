@@ -5,35 +5,35 @@ namespace tpyapp::main {
 
 
 // def make() -> Own["Container"]:
+//     return Container(int32(42))
 Container make() {
-    // return Container(int32(42))
     return Container(42);
 }
 
 // def show(c: "Container") -> None:
+//     print(c.value)
 void show(const Container& c) {
-    // print(c.value)
     std::cout << c.value << "\n";
 }
 
 // def main() -> None:
+//     c = make()
+//     show(c)
+//     c2 = c.clone()
+//     show(c2)
 void main() {
-    // c = make()
     Container c = make();
-    // show(c)
     show(c);
-    // c2 = c.clone()
     Container c2 = c.clone();
-    // show(c2)
     show(c2);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

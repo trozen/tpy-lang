@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     p = Point(int32(3), int32(4))
+//     print(p.z)
 void main() {
-    // p = Point(int32(3), int32(4))
     Point p = Point(3, 4);
-    // print(p.z)
     std::cout << p.z << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -14,10 +14,15 @@ struct Map;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def head_floor(subsectors: list[Ptr[SubSector]]) -> int32:
 int32_t head_floor(const std::vector<SubSector*>& subsectors);
+// def via_local(ss: Ptr[SubSector]) -> int32:
 int32_t via_local(SubSector* ss);
+// def total(subsectors: list[Ptr[SubSector]]) -> int32:
 int32_t total(const std::vector<SubSector*>& subsectors);
+// def raise_floors(subsectors: list[Ptr[SubSector]]) -> None:
 void raise_floors(std::vector<SubSector*>& subsectors);
+// def main() -> None:
 void main();
 
 // class Sector:
@@ -89,23 +94,28 @@ inline std::ostream& operator<<(std::ostream& os, const Map& obj) {
 
 
 // def __init__(self, floor_h: int32) -> None:
+//     self.floor_h = floor_h
 inline Sector::Sector(int32_t floor_h) : floor_h(floor_h) {}
 
 // def __init__(self, sector_front: Ptr[Sector]) -> None:
+//     self.sector_front = sector_front
 inline Seg::Seg(Sector* sector_front) : sector_front(sector_front) {}
 
 // def __init__(self, segs: Own[list[Ptr[Seg]]]) -> None:
+//     self.segs = segs
 inline SubSector::SubSector(std::vector<Seg*>&& segs) : segs(std::move(segs)) {}
 
 // def __init__(self) -> None:
+//     self.sectors = [Sector(42), Sector(7)]
+//     self.segs = [Seg(self.sectors[0]), Seg(self.sectors[1])]
+//     segs: list[Ptr[Seg]] = []
+//     segs.append(self.segs[0])
+//     segs.append(self.segs[1])
+//     self.subsectors = [SubSector(segs)]
 inline Map::Map() : sectors(std::vector<Sector>{Sector(42), Sector(7)}), segs(std::vector<Seg>{Seg(&::tpy::__getitem__(this->sectors, 0)), Seg(&::tpy::__getitem__(this->sectors, 1))}) {
-    // segs: list[Ptr[Seg]] = []
     std::vector<Seg*> segs = std::vector<Seg*>{};
-    // segs.append(self.segs[0])
     segs.push_back(&::tpy::__getitem__(this->segs, 0));
-    // segs.append(self.segs[1])
     segs.push_back(&::tpy::__getitem__(this->segs, 1));
-    // self.subsectors = [SubSector(segs)]
     this->subsectors = {SubSector(std::move(segs))};
 }
 void __tpy_init();

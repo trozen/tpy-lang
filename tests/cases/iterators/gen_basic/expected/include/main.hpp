@@ -9,16 +9,20 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
+// def count(n: int32) -> Iterator[int32]:
+//     i: int32 = 0
+//     while i < n:
+//         yield i
+//         i += 1
 inline auto count(int32_t n) {
-    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {
             while ((i < n)) {
                 auto __val = i;
-                // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
                 return std::optional<int32_t>(__val);
             }

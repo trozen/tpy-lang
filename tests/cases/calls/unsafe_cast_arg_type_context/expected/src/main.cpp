@@ -3,47 +3,47 @@
 
 namespace tpyapp::main {
 
-// carg: list[int32] = [int32(1)]
 std::vector<int32_t>* carg{};
-// parg_list = list[Ptr[None]]()
 std::vector<void*>* parg_list{};
-// carg_ptr: Ptr[None] = unsafe_cast(unsafe_ptr(carg))
 void* carg_ptr{};
-// sink = Sink()
 Sink* sink{};
 
 // def take_ptr(p: Ptr[None]) -> int32:
+//     return int32(10)
 int32_t take_ptr(void* p) {
-    // return int32(10)
     return 10;
 }
 
+// from tpy.unsafe import unsafe_cast, unsafe_ptr
+//
+// carg: list[int32] = [int32(1)]
+//
+// parg_list = list[Ptr[None]]()
+//
+// carg_ptr: Ptr[None] = unsafe_cast(unsafe_ptr(carg))
+// parg_list.append(carg_ptr)
+// parg_list.append(unsafe_cast(unsafe_ptr(carg)))  # tpyc: ok
+//
+// print(take_ptr(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
+// sink = Sink()
+// print(sink.put(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
+// print(len(parg_list))
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.unsafe import unsafe_cast, unsafe_ptr
-    // carg: list[int32] = [int32(1)]
     static std::vector<int32_t> __global_slot_1 = {1};
     carg = &__global_slot_1;
-    // parg_list = list[Ptr[None]]()
     static std::vector<void*> __global_slot_2 = std::vector<void*>();
     parg_list = &__global_slot_2;
-    // carg_ptr: Ptr[None] = unsafe_cast(unsafe_ptr(carg))
     carg_ptr = reinterpret_cast<void*>((*carg).data());
-    // parg_list.append(carg_ptr)
     parg_list->push_back(carg_ptr);
-    // parg_list.append(unsafe_cast(unsafe_ptr(carg)))  # tpyc: ok
     parg_list->push_back(reinterpret_cast<void*>((*carg).data()));
-    // print(take_ptr(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
     std::cout << take_ptr(reinterpret_cast<void*>((*carg).data())) << "\n";
-    // sink = Sink()
     static Sink __global_slot_3 = Sink();
     sink = &__global_slot_3;
-    // print(sink.put(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
     std::cout << sink->put(reinterpret_cast<void*>((*carg).data())) << "\n";
-    // print(len(parg_list))
     std::cout << ::tpy::__len__((*parg_list)) << "\n";
 }
 

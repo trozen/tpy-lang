@@ -5,12 +5,14 @@ namespace tpyapp::main {
 
 
 // async def main() -> None:
+//     res = Res()
+//     r = await res.me()
+//     r.n = 8
+//     print(res.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // res = Res()
         res.emplace(Res());
-        // r = await res.me()
         __sub_0.emplace((*res));
         __state = S_RESUME_0;
         continue;
@@ -20,9 +22,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
         __sub_0.reset();
-        // r.n = 8
         r->n = ::tpy::BigInt(8);
-        // print(res.n)
         std::cout << (*res).n << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -39,10 +39,11 @@ __coro_main main() {
 }
 
 // async def me(self) -> "Res":
+//     await asyncio.sleep(0)
+//     return self
 ::tpystd::tpy::Poll<Res*> __coro_Res_me::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -52,7 +53,6 @@ __coro_main main() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Res*>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return self
         __state = S_DONE;
         Res* __tpy_async_ret = &(__self);
         return ::tpystd::tpy::Poll<Res*>::ready(std::move(__tpy_async_ret));
@@ -63,17 +63,18 @@ __coro_main main() {
 }
 
 
+// # A @nocopy receiver returned via `async def -> C: return self`: the
+// # borrow ABI must not materialize any copy, so this compiles only if the
+// # await binding and the Poll payload alias throughout.
+// import asyncio
+//
+// asyncio.run(main())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @nocopy receiver returned via `async def -> C: return self`: the
-    // # borrow ABI must not materialize any copy, so this compiles only if the
-    // # await binding and the Poll payload alias throughout.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(main())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main()));
 }
 

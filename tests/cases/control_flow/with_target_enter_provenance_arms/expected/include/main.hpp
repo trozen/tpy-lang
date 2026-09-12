@@ -13,8 +13,11 @@ struct ViaTwoReturns;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def read_nested(flag: bool) -> int32:
 int32_t read_nested(bool flag);
+// def read_two_returns(flag: bool) -> int32:
 int32_t read_two_returns(bool flag);
+// def main() -> None:
 void main();
 
 // class Item:
@@ -77,48 +80,52 @@ inline std::ostream& operator<<(std::ostream& os, const ViaTwoReturns& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
 
 // def __init__(self):
+//     self.inner = Item(3)
 inline ViaNestedDef::ViaNestedDef() : inner(Item(3)) {}
 
 // def __enter__(self) -> Item:
+//     def tag() -> int32:
+//         return 7
+//
+//     picked = self.inner
+//     return picked
 inline Item& ViaNestedDef::__enter__() {
-    // def tag() -> int32:
     auto tag = []() -> int32_t {
-        // return 7
         return 7;
     };
-    // picked = self.inner
     Item& picked = this->inner;
-    // return picked
     return picked;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void ViaNestedDef::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 
 // def __init__(self):
+//     self.inner = Item(4)
 inline ViaTwoReturns::ViaTwoReturns() : inner(Item(4)) {}
 
 // def __enter__(self) -> Item:
+//     if self.inner.n > 0:
+//         hop = self.inner  # one arm hops through a local ...
+//         return hop
+//     return self.inner  # ... the other is direct; both must be checked
 inline Item& ViaTwoReturns::__enter__() {
-    // if self.inner.n > 0:
     if ((this->inner.n > 0)) {
-        // hop = self.inner  # one arm hops through a local ...
         Item& hop = this->inner;
-        // return hop
         return hop;
     }
-    // return self.inner  # ... the other is direct; both must be checked
     return this->inner;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void ViaTwoReturns::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

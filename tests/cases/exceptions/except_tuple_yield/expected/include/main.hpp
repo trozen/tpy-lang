@@ -14,8 +14,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
+// def boom(which: int) -> None:
 void boom(const ::tpy::BigInt& which);
+// def gen() -> Iterator[int]:
 __gen_gen gen();
+// def main() -> None:
 void main();
 
 // class AErr(Exception):
@@ -50,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const BErr& obj) {
     return os;
 }
 
-// Generator: gen
+// def gen() -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
     int32_t i;

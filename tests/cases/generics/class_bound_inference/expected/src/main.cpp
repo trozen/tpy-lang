@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = Dog(11)
+//     pa = as_animal(take_ptr(d))
+//     print(pa.base_code())
 void main() {
-    // d = Dog(11)
     Dog d = Dog(11);
-    // pa = as_animal(take_ptr(d))
     Animal* pa = as_animal<Dog>(&d);
-    // print(pa.base_code())
     std::cout << ::tpy::deref_check(pa).base_code() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def main():
+//     xs = [P()]
+//     n = first(xs)
+//     print(drop(xs))  # tpyc: warning(/copies/)
+//     print(n.vals[0])
 void main() {
-    // xs = [P()]
     std::vector<P> xs = {P()};
-    // n = first(xs)
     P& n = first(xs);
-    // print(drop(xs))  # tpyc: warning(/copies/)
     std::vector<P> __tmp_1 = xs;
     std::cout << drop(std::move(__tmp_1)) << "\n";
-    // print(n.vals[0])
     std::cout << ::tpy::__getitem__(n.vals, 0) << "\n";
 }
 
 // def first(xs: list[P]) -> P:
+//     return xs[0]
 P& first(std::vector<P>& xs) {
-    // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
 // def drop(xs: Own[list[P]]) -> int32:
+//     store: list[list[P]] = []
+//     store.append(xs)
+//     return len(store)
 int32_t drop(std::vector<P>&& xs) {
-    // store: list[list[P]] = []
     std::vector<std::vector<P>> store = std::vector<std::vector<P>>{};
-    // store.append(xs)
     store.push_back(std::move(xs));
-    // return len(store)
     return ::tpy::__len__(store);
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def drop(xs: Own[list[P]]) -> int32:
+//     store: list[list[P]] = []
+//     store.append(xs)
+//     return len(store)
 int32_t drop(std::vector<P>&& xs) {
-    // store: list[list[P]] = []
     std::vector<std::vector<P>> store = std::vector<std::vector<P>>{};
-    // store.append(xs)
     store.push_back(std::move(xs));
-    // return len(store)
     return ::tpy::__len__(store);
 }
 
 // def main():
+//     p = Picker()
+//     print(p.run())
 void main() {
-    // p = Picker()
     Picker p = Picker();
-    // print(p.run())
     std::cout << p.run() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

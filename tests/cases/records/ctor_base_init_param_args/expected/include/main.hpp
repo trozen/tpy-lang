@@ -14,6 +14,7 @@ struct WithOwn;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Payload:
@@ -80,15 +81,20 @@ inline std::ostream& operator<<(std::ostream& os, const WithOwn& obj) {
 
 
 // def __init__(self, v: int32) -> None:
+//     self.v = v
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self, p: Payload, opt: Payload | None) -> None:
+//     self.p = p  # tpyc: warning(/copies Payload into field/)
+//     self.opt = opt  # tpyc: warning(/copies Payload \| None into field/)
 inline Base::Base(const Payload& p, const Payload* opt) : p(p), opt(::tpy::ptr_to_optional(opt)) {}
 
 // def __init__(self, p: Payload, o: Payload | None) -> None:
+//     super().__init__(p, o)  # the Optional parameter argument
 inline WithOptional::WithOptional(const Payload& p, const Payload* o) : Base(p, o) {}
 
 // def __init__(self, q: Own[Payload]) -> None:  # tpyc: warning(/never consumed/)
+//     super().__init__(q, None)  # the Own parameter argument
 inline WithOwn::WithOwn(Payload&& q) : Base(q, nullptr) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -6,73 +6,74 @@ namespace tpyapp::main {
 
 // # value payload: the clone is trivially independent.
 // def sec_value() -> None:
+//     b = Box[int32](1)
+//     c = b.clone()  # tpyc: ok
+//     b.set(99)
+//     print("value:", b.get(), c.get())
 void sec_value() {
-    // b = Box[int32](1)
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(1);
-    // c = b.clone()  # tpyc: ok
     ::tpystd::tplib::box::Box<int32_t> c = b.clone();
-    // b.set(99)
     b.set(99);
-    // print("value:", b.get(), c.get())
     std::cout << "value:" << " " << b.get() << " " << c.get() << "\n";
 }
 
 // # reference payload: the motivating shape -- the clone deep-copies the Cell.
 // def sec_reference() -> None:
+//     b = Box[Cell](Cell(1))
+//     c = b.clone()  # tpyc: ok
+//     b.get().n = 99
+//     print("reference:", b.get().n, c.get().n)
 void sec_reference() {
-    // b = Box[Cell](Cell(1))
     ::tpystd::tplib::box::Box<Cell> b = ::tpystd::tplib::box::Box<Cell>(Cell(1));
-    // c = b.clone()  # tpyc: ok
     ::tpystd::tplib::box::Box<Cell> c = b.clone();
-    // b.get().n = 99
     b.get().n = 99;
-    // print("reference:", b.get().n, c.get().n)
     std::cout << "reference:" << " " << b.get().n << " " << c.get().n << "\n";
 }
 
 // def bump(p: Ptr[Cell]) -> None:
+//     p.n = 99
 void bump(Cell* p) {
-    // p.n = 99
     ::tpy::deref_check(p).n = 99;
 }
 
 // # a payload holding a Ptr field: the record is duplicated, the pointee is not.
 // def sec_ptr_field() -> None:
+//     target = Cell(1)
+//     b = Box[PtrHolder](PtrHolder(take_ptr(target)))
+//     c = b.clone()  # tpyc: ok
+//     live = b.get()
+//     bump(live.p)
+//     cloned = c.get()
+//     print("ptr-field:", live.p.n, cloned.p.n)
 void sec_ptr_field() {
-    // target = Cell(1)
     Cell target = Cell(1);
-    // b = Box[PtrHolder](PtrHolder(take_ptr(target)))
     ::tpystd::tplib::box::Box<PtrHolder> b = ::tpystd::tplib::box::Box<PtrHolder>(PtrHolder(&target));
-    // c = b.clone()  # tpyc: ok
     ::tpystd::tplib::box::Box<PtrHolder> c = b.clone();
-    // live = b.get()
     PtrHolder& live = b.get();
-    // bump(live.p)
     bump(live.p);
-    // cloned = c.get()
     PtrHolder& cloned = c.get();
-    // print("ptr-field:", live.p.n, cloned.p.n)
     std::cout << "ptr-field:" << " " << ::tpy::deref_check(live.p).n << " " << ::tpy::deref_check(cloned.p).n << "\n";
 }
 
 // def main() -> None:
+//     sec_value()
+//     sec_reference()
+//     sec_ptr_field()
 void main() {
-    // sec_value()
     sec_value();
-    // sec_reference()
     sec_reference();
-    // sec_ptr_field()
     sec_ptr_field();
 }
 
+// from tplib import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

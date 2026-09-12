@@ -5,14 +5,15 @@ namespace tpyapp::main {
 
 
 // async def amain() -> None:
+//     h = Holder(1)
+//     xs: list[Payload] = []
+//     xs.append(await h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
+//     print(xs[0].v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // h = Holder(1)
         h.emplace(Holder(1));
-        // xs: list[Payload] = []
         xs.emplace(std::vector<Payload>{});
-        // xs.append(await h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
@@ -22,9 +23,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // xs.append(await h.borrow())  # tpyc: warning(/copies Payload into owned storage/)
         (*xs).push_back((*__await_lift_0));
-        // print(xs[0].v)
         std::cout << ::tpy::__getitem__((*xs), 0).v << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -41,11 +40,11 @@ __coro_amain amain() {
 }
 
 // async def borrow(self) -> Payload:
+//     return self.p
 ::tpystd::tpy::Poll<Payload*> __coro_Holder_borrow::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return self.p
         __state = S_DONE;
         Payload* __tpy_async_ret = &(__self.p);
         return ::tpystd::tpy::Poll<Payload*>::ready(std::move(__tpy_async_ret));
@@ -56,20 +55,21 @@ __coro_amain amain() {
 }
 
 
+// # The insert-slot half of warn_return_await_borrow_own: an awaited borrow at
+// # an element slot copies with a warning rather than an error. The copy diverges
+// # from CPython (which aliases), so the inserted element is deliberately not
+// # observed after mutating the source -- the warning is the subject. The
+// # explicit `copy(await ...)` the warning names is pinned by
+// # async/return_own_await_borrow_copy.
+// import asyncio
+//
+// asyncio.run(amain())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # The insert-slot half of warn_return_await_borrow_own: an awaited borrow at
-    // # an element slot copies with a warning rather than an error. The copy diverges
-    // # from CPython (which aliases), so the inserted element is deliberately not
-    // # observed after mutating the source -- the warning is the subject. The
-    // # explicit `copy(await ...)` the warning names is pinned by
-    // # async/return_own_await_borrow_copy.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(amain())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 

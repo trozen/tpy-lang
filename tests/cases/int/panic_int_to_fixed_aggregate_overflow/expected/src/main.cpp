@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def too_big() -> int:
+//     return 10_000_000_000  # > int32 max
 ::tpy::BigInt too_big() {
-    // return 10_000_000_000  # > int32 max
     return ::tpy::BigInt(static_cast<int64_t>(10000000000LL));
 }
 
 // def main() -> None:
+//     xs: list[int32] = [too_big()]
+//     print(len(xs))
 void main() {
-    // xs: list[int32] = [too_big()]
     std::vector<int32_t> xs = {(too_big()).to_fixed_check<int32_t>()};
-    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

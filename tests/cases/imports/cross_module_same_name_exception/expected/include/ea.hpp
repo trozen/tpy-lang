@@ -33,6 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
 
 
 // def __init__(self, code: int):
+//     self.code = code
 inline Err::Err(const ::tpy::BigInt& code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::ea

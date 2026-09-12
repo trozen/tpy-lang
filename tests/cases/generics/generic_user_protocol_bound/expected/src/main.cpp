@@ -5,29 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Test with IntBox
+//     box = IntBox(42)
+//     print(extract(box))
+//
+//     update(box, 100)
+//     print(extract(box))
+//
+//     # Test with StrBox
+//     sbox = StrBox("hello")
+//     print(extract_str(sbox))
 void main() {
-    // # Test with IntBox
-    // box = IntBox(42)
     IntBox box = IntBox(42);
-    // print(extract(box))
     std::cout << extract<IntBox>(box) << "\n";
-    // update(box, 100)
     update<IntBox>(box, 100);
-    // print(extract(box))
     std::cout << extract<IntBox>(box) << "\n";
-    // # Test with StrBox
-    // sbox = StrBox("hello")
     StrBox sbox = StrBox("hello");
-    // print(extract_str(sbox))
     std::cout << extract_str<StrBox>(sbox) << "\n";
 }
 
+// """Test generic user-defined protocol as type parameter bound.
+//
+// This tests that protocol type parameters (e.g., T in Container[T]) are
+// properly substituted when the protocol is used as a bound.
+// """
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

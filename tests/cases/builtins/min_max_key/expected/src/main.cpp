@@ -5,51 +5,55 @@ namespace tpyapp::main {
 
 
 // def negate(x: int32) -> int32:
+//     return -x
 int32_t negate(int32_t x) {
-    // return -x
     return ::tpy::neg_check<int32_t>(x);
 }
 
 // def main() -> None:
+//     a: int32 = 3
+//     b: int32 = -5
+//
+//     # min/max by absolute value
+//     print(min(a, b, key=lambda x: x if x >= 0 else -x))
+//     print(max(a, b, key=lambda x: x if x >= 0 else -x))
+//
+//     # min/max with negate key (reverses ordering)
+//     print(min(a, b, key=negate))
+//     print(max(a, b, key=negate))
+//
+//     # 3-arg min/max with key
+//     c: int32 = -1
+//     print(min(a, b, c, key=lambda x: x if x >= 0 else -x))
+//     print(max(a, b, c, key=lambda x: x if x >= 0 else -x))
+//
+//     # strings by length
+//     s1 = "hello"
+//     s2 = "hi"
+//     print(min(s1, s2, key=lambda s: len(s)))
+//     print(max(s1, s2, key=lambda s: len(s)))
 void main() {
-    // a: int32 = 3
     int32_t a = 3;
-    // b: int32 = -5
     int32_t b = -5;
-    // # min/max by absolute value
-    // print(min(a, b, key=lambda x: x if x >= 0 else -x))
     std::cout << ::tpy::min_key(a, b, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";
-    // print(max(a, b, key=lambda x: x if x >= 0 else -x))
     std::cout << ::tpy::max_key(a, b, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";
-    // # min/max with negate key (reverses ordering)
-    // print(min(a, b, key=negate))
     std::cout << ::tpy::min_key(a, b, negate) << "\n";
-    // print(max(a, b, key=negate))
     std::cout << ::tpy::max_key(a, b, negate) << "\n";
-    // # 3-arg min/max with key
-    // c: int32 = -1
     int32_t c = -1;
-    // print(min(a, b, c, key=lambda x: x if x >= 0 else -x))
     std::cout << ::tpy::min3_key(a, b, c, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";
-    // print(max(a, b, c, key=lambda x: x if x >= 0 else -x))
     std::cout << ::tpy::max3_key(a, b, c, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";
-    // # strings by length
-    // s1 = "hello"
     std::string_view s1 = "hello";
-    // s2 = "hi"
     std::string_view s2 = "hi";
-    // print(min(s1, s2, key=lambda s: len(s)))
     std::cout << ::tpy::min_key(s1, s2, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }) << "\n";
-    // print(max(s1, s2, key=lambda s: len(s)))
     std::cout << ::tpy::max_key(s1, s2, [](std::string_view s) -> int32_t { return ::tpy::__len__(s); }) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

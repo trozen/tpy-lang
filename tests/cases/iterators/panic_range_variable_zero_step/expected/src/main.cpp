@@ -3,24 +3,22 @@
 
 namespace tpyapp::main {
 
-// # Variable zero-step should panic, same as literal zero-step
-// step: int32 = 0
 int32_t step{};
 
+// # Variable zero-step should panic, same as literal zero-step
+// step: int32 = 0
+// for i in range(1, 5, step):
+//     print(i)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Variable zero-step should panic, same as literal zero-step
-    // step: int32 = 0
     step = 0;
-    // for i in range(1, 5, step):
     int32_t __step_0 = step;
     ::tpy::range_check_step_nonzero(__step_0);
     ::tpy::range_check_overflow<int32_t>(1, 5, __step_0);
     for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i += __step_0) {
-        // print(i)
         std::cout << i << "\n";
     }
 }

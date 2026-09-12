@@ -5,8 +5,9 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     for k, v in zip_pairs([1, 2], ["a", "b"]):
+//         print(k, v)
 void main() {
-    // for k, v in zip_pairs([1, 2], ["a", "b"]):
     {
         std::vector<int32_t> __tmp_1 = {1, 2};
         std::vector<std::string> __tmp_2 = {"a", "b"};
@@ -16,22 +17,20 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-        // for k, v in zip_pairs([1, 2], ["a", "b"]):
         const auto& __tup_1 = __for_tup_0;
         int32_t k = std::get<0>(__tup_1);
         std::string_view v = std::get<1>(__tup_1);
-        // print(k, v)
         std::cout << k << " " << v << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

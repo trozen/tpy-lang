@@ -33,7 +33,9 @@ struct Tally;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def bump(c: Counter) -> None:
 void bump(Counter& c);
+// def main() -> None:
 void main();
 
 // # Direct inheritor
@@ -103,32 +105,34 @@ namespace tpyapp::main {
 
 
 // def __init__(self) -> None:
+//     self.count = 0
 inline MyCounter::MyCounter() : count(0) {}
 
 // def increment(self) -> None:
+//     self.count = self.count + int32(1)
 inline void MyCounter::increment() {
-    // self.count = self.count + int32(1)
     this->count = (::tpy::add_check<int32_t>(this->count, 1));
 }
 
 // def value(self) -> int32:
+//     return self.count
 inline int32_t MyCounter::value() {
-    // return self.count
     return this->count;
 }
 
 // def __init__(self) -> None:
+//     self.count = 0
 inline Tally::Tally() : count(0) {}
 
 // def increment(self) -> None:
+//     self.count = self.count + int32(1)
 inline void Tally::increment() {
-    // self.count = self.count + int32(1)
     this->count = (::tpy::add_check<int32_t>(this->count, 1));
 }
 
 // def value(self) -> int32:
+//     return self.count
 inline int32_t Tally::value() const {
-    // return self.count
     return this->count;
 }
 void __tpy_init();

@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     def double(x: int32) -> int32:
+//         return x * 2
+//     print(double(21))
+//     print(double(0))
 void main() {
-    // def double(x: int32) -> int32:
     auto double_ = [](int32_t x) -> int32_t {
-        // return x * 2
         return (::tpy::mul_check<int32_t>(x, 2));
     };
-    // print(double(21))
     std::cout << double_(21) << "\n";
-    // print(double(0))
     std::cout << double_(0) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,56 +5,61 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # int64 constructors and large values
+//     a: int64 = int64(9223372036854775807)  # Max int64
+//     print(a)
+//
+//     b: int64 = int64(-9223372036854775808)  # Min int64
+//     print(b)
+//
+//     # int64 arithmetic
+//     x: int64 = int64(1000000000)
+//     y: int64 = int64(2000000000)
+//     print(x + y)
+//     print(x * int64(3))
+//
+//     # uint64 constructors
+//     c: uint64 = uint64(0)
+//     d: uint64 = uint64(18446744073709551615)  # Max uint64
+//     print(c)
+//     print(d)
+//
+//     # uint64 arithmetic
+//     u: uint64 = uint64(10000000000)
+//     v: uint64 = uint64(5000000000)
+//     print(u + v)
+//     print(u - v)
+//
+//     # Conversion to BigInt
+//     big: int = int(a)
+//     print(big)
 void main() {
-    // # int64 constructors and large values
-    // a: int64 = int64(9223372036854775807)  # Max int64
     int64_t a = static_cast<int64_t>(9223372036854775807);
-    // print(a)
     std::cout << a << "\n";
-    // b: int64 = int64(-9223372036854775808)  # Min int64
     int64_t b = static_cast<int64_t>((-9223372036854775807LL - 1));
-    // print(b)
     std::cout << b << "\n";
-    // # int64 arithmetic
-    // x: int64 = int64(1000000000)
     int64_t x = 1000000000;
-    // y: int64 = int64(2000000000)
     int64_t y = 2000000000;
-    // print(x + y)
     std::cout << (::tpy::add_check<int64_t>(x, y)) << "\n";
-    // print(x * int64(3))
     std::cout << (::tpy::mul_check<int64_t>(x, 3)) << "\n";
-    // # uint64 constructors
-    // c: uint64 = uint64(0)
     uint64_t c = 0;
-    // d: uint64 = uint64(18446744073709551615)  # Max uint64
     uint64_t d = static_cast<uint64_t>(18446744073709551615ull);
-    // print(c)
     std::cout << c << "\n";
-    // print(d)
     std::cout << d << "\n";
-    // # uint64 arithmetic
-    // u: uint64 = uint64(10000000000)
     uint64_t u = static_cast<uint64_t>(10000000000);
-    // v: uint64 = uint64(5000000000)
     uint64_t v = static_cast<uint64_t>(5000000000);
-    // print(u + v)
     std::cout << (::tpy::add_check<uint64_t>(u, v)) << "\n";
-    // print(u - v)
     std::cout << (::tpy::sub_check<uint64_t>(u, v)) << "\n";
-    // # Conversion to BigInt
-    // big: int = int(a)
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(a));
-    // print(big)
     std::cout << big << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

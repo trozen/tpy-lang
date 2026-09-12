@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // async def value(n: int32) -> int32:
+//     return n
 ::tpystd::tpy::Poll<int32_t> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return n
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -26,11 +26,11 @@ __coro_value value(int32_t n) {
 }
 
 // async def fail() -> int32:
+//     raise ValueError("oops")
 ::tpystd::tpy::Poll<int32_t> __coro_fail::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // raise ValueError("oops")
         throw ::tpy::ValueError("oops");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -45,6 +45,12 @@ __coro_fail fail() {
 }
 
 // async def go() -> int32:
+//     try:
+//         x = await fail()
+//         return x
+//     except ValueError:
+//         y = await value(int32(123))
+//         return y
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -57,13 +63,11 @@ __coro_fail fail() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             x = std::move(__r0).value();
             __sub_0.reset();
-            // return x
             __state = S_DONE;
             int32_t __tpy_async_ret = x;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            // y = await value(int32(123))
             __sub_1.emplace(123);
             __state = S_RESUME_1;
             continue;
@@ -77,13 +81,11 @@ __coro_fail fail() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         y = std::move(__r1).value();
         __sub_1.reset();
-        // return y
         __state = S_DONE;
         int32_t __tpy_async_ret = y;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_0: {
-        // x = await fail()
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -100,20 +102,21 @@ __coro_go go() {
 }
 
 // def main() -> None:
+//     print(asyncio.run(go()))
 void main() {
-    // print(asyncio.run(go()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(go())) << "\n";
 }
 
+// # Await inside an except handler body.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Await inside an except handler body.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

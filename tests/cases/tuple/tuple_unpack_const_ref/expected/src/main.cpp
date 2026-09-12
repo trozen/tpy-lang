@@ -5,134 +5,141 @@ namespace tpyapp::main {
 
 
 // def get_pair() -> tuple[int, int]:
+//     return (42, 100)
 std::tuple<::tpy::BigInt, ::tpy::BigInt> get_pair() {
-    // return (42, 100)
     return std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(42), ::tpy::BigInt(100)};
 }
 
 // def get_string_pair() -> tuple[String, String]:
+//     return ("hello", "world")
 std::tuple<::tpy::String, ::tpy::String> get_string_pair() {
-    // return ("hello", "world")
     return std::tuple<::tpy::String, ::tpy::String>{"hello", "world"};
 }
 
 // def test_rvalue_const_ref() -> None:
+//     """Rvalue source: BigInt elements should bind as const ref."""
+//     a, b = get_pair()
+//     print(a)
+//     print(b)
 void test_rvalue_const_ref() {
-    // a, b = get_pair()
     auto __tup_1 = get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def test_augassign_no_const_ref() -> None:
+//     """Augassigned BigInt should use copy, not const ref."""
+//     a, b = get_pair()
+//     b += 1
+//     print(a)
+//     print(b)
 void test_augassign_no_const_ref() {
-    // a, b = get_pair()
     auto __tup_1 = get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
-    // b += 1
     b = (b) + (::tpy::BigInt(1));
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def test_reassign_no_const_ref() -> None:
+//     """Reassigned BigInt should use copy, not const ref."""
+//     a, b = get_pair()
+//     b = 200
+//     print(a)
+//     print(b)
 void test_reassign_no_const_ref() {
-    // a, b = get_pair()
     auto __tup_1 = get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
-    // b = 200
     b = ::tpy::BigInt(200);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def test_lvalue_const_ref() -> None:
+//     """Lvalue source (named var, not reassigned): safe const ref."""
+//     t: tuple[int, int] = (10, 20)
+//     a, b = t
+//     print(a)
+//     print(b)
 void test_lvalue_const_ref() {
-    // t: tuple[int, int] = (10, 20)
     std::tuple<::tpy::BigInt, ::tpy::BigInt> t = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(10), ::tpy::BigInt(20)};
-    // a, b = t
     const auto& __tup_1 = t;
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     const ::tpy::BigInt& b = std::get<1>(__tup_1);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def test_lvalue_reassigned_source() -> None:
+//     """Lvalue source reassigned later: fall back to copy."""
+//     t: tuple[int, int] = (10, 20)
+//     a, b = t
+//     t = (30, 40)
+//     print(a)
+//     print(b)
 void test_lvalue_reassigned_source() {
-    // t: tuple[int, int] = (10, 20)
     std::tuple<::tpy::BigInt, ::tpy::BigInt> t = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(10), ::tpy::BigInt(20)};
-    // a, b = t
     const auto& __tup_1 = t;
     ::tpy::BigInt a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
-    // t = (30, 40)
     t = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(30), ::tpy::BigInt(40)};
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def test_string_const_ref() -> None:
+//     """String elements should bind as const ref when read-only."""
+//     a, b = get_string_pair()
+//     print(a)
+//     print(b)
 void test_string_const_ref() {
-    // a, b = get_string_pair()
     auto __tup_1 = get_string_pair();
     const ::tpy::String& a = std::get<0>(__tup_1);
     const ::tpy::String& b = std::get<1>(__tup_1);
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
 // def test_augassign_in_branch() -> None:
+//     """Aug-assign in a branch conservatively blocks const ref."""
+//     a, b = get_pair()
+//     if a > 0:
+//         b += 1
+//     print(a)
+//     print(b)
 void test_augassign_in_branch() {
-    // a, b = get_pair()
     auto __tup_1 = get_pair();
     const ::tpy::BigInt& a = std::get<0>(__tup_1);
     ::tpy::BigInt b = std::get<1>(__tup_1);
-    // if a > 0:
     if ((a > 0)) {
-        // b += 1
         b = (b) + (::tpy::BigInt(1));
     }
-    // print(a)
     std::cout << a << "\n";
-    // print(b)
     std::cout << b << "\n";
 }
 
+// test_rvalue_const_ref()
+// test_augassign_no_const_ref()
+// test_reassign_no_const_ref()
+// test_lvalue_const_ref()
+// test_lvalue_reassigned_source()
+// test_string_const_ref()
+// test_augassign_in_branch()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // test_rvalue_const_ref()
     test_rvalue_const_ref();
-    // test_augassign_no_const_ref()
     test_augassign_no_const_ref();
-    // test_reassign_no_const_ref()
     test_reassign_no_const_ref();
-    // test_lvalue_const_ref()
     test_lvalue_const_ref();
-    // test_lvalue_reassigned_source()
     test_lvalue_reassigned_source();
-    // test_string_const_ref()
     test_string_const_ref();
-    // test_augassign_in_branch()
     test_augassign_in_branch();
 }
 

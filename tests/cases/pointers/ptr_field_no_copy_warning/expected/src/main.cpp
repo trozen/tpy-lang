@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a = A(42)
+//     h = Holder(a)
+//     print(h._a.v)
 void main() {
-    // a = A(42)
     A a = A(42);
-    // h = Holder(a)
     Holder h = Holder(a);
-    // print(h._a.v)
     std::cout << ::tpy::deref_check(h._a).v << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

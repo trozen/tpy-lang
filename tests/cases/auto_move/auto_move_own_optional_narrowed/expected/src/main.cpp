@@ -5,34 +5,34 @@ namespace tpyapp::main {
 
 
 // def use_optional(p: Own[Point] | None) -> int32:
+//     if p is not None:
+//         return p.x
+//     return int32(0)
 int32_t use_optional(std::optional<Point> p) {
-    // if p is not None:
     if ((p.has_value())) {
-        // return p.x
         return (*p).x;
     }
-    // return int32(0)
     return 0;
 }
 
 // def main():
+//     pt = Point()
+//     pt.x = int32(42)
+//     pt.y = int32(7)
+//     print(use_optional(pt))
 void main() {
-    // pt = Point()
     Point pt = Point();
-    // pt.x = int32(42)
     pt.x = 42;
-    // pt.y = int32(7)
     pt.y = 7;
-    // print(use_optional(pt))
     std::cout << use_optional(std::move(pt)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

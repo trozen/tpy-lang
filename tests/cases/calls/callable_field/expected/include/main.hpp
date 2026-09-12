@@ -11,6 +11,7 @@ struct Handler;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Handler:
@@ -36,17 +37,18 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 
 
 // def __init__(self, cb: Callable[[int32], None]) -> None:
+//     self.on_event = cb
 inline Handler::Handler(std::function<void(int32_t)> cb) : on_event(cb) {}
 
 // def trigger(self, value: int32) -> None:
+//     self.on_event(value)
 inline void Handler::trigger(int32_t value) const {
-    // self.on_event(value)
     (*this).on_event(value);
 }
 
 // def __str__(self) -> str:
+//     return "Handler(...)"
 inline std::string Handler::__str__() const {
-    // return "Handler(...)"
     return "Handler(...)";
 }
 void __tpy_init();

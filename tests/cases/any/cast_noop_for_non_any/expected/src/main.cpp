@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     x: int = 42
+//     n = cast(int, x)
+//     print(n)
 void main() {
-    // x: int = 42
     ::tpy::BigInt x = ::tpy::BigInt(42);
-    // n = cast(int, x)
     ::tpy::BigInt n = x;
-    // print(n)
     std::cout << n << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

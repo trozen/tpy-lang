@@ -11,10 +11,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def load_from_stringio() -> None:
 void load_from_stringio();
+// def dump_to_stringio() -> None:
 void dump_to_stringio();
+// def file_roundtrip() -> None:
 void file_roundtrip();
+// def load_malformed() -> None:
 void load_malformed();
+// def main() -> None:
 void main();
 
 void __tpy_init();

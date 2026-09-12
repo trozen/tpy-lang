@@ -12,8 +12,11 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_mut(p: Ptr[Node]) -> None:
 void take_mut(Node* p);
+// def helper(n: Node) -> None:
 void helper(Node& n);
+// def main() -> None:
 void main();
 
 // class Node:
@@ -49,13 +52,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
+//     self.x = 0
 inline Node::Node() : x(::tpy::BigInt(0)) {}
 
 // def __init__(self, node: Node) -> None:
+//     helper(node)
+//     self.started = True
 inline Holder::Holder(Node& node) {
-    // helper(node)
     helper(node);
-    // self.started = True
     this->started = true;
 }
 void __tpy_init();

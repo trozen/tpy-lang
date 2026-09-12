@@ -35,6 +35,7 @@ template<typename A, typename B> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -65,6 +66,8 @@ struct Pair {
     B b;
 
     // def __init__(self, a: Own[A], b: Own[B]) -> None:
+    //     self.a = a
+    //     self.b = b
     Pair() = default;
     explicit Pair(::tpy::own_param_t<A> a, ::tpy::own_param_t<B> b) : a(std::move(a)), b(std::move(b)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -97,11 +100,12 @@ namespace tpyapp::main {
 
 
 // def __init__(self, label: str) -> None:
+//     self.label = label
 inline Dog::Dog(std::string_view label) : label(label) {}
 
 // def name(self) -> str:
+//     return self.label
 inline std::string Dog::name() const {
-    // return self.label
     return this->label;
 }
 void __tpy_init();

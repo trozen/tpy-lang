@@ -5,17 +5,18 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     boxes: list[Box[int32]] = []
+//     with Guard():
+//         a = Box(7)
+//         boxes.append(a)
+//     print(len(boxes))
 void main() {
-    // boxes: list[Box[int32]] = []
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = std::vector<::tpystd::tplib::box::Box<int32_t>>{};
-    // with Guard():
     std::optional<::tpystd::tplib::box::Box<int32_t>> a;
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
-        // a = Box(7)
         a = ::tpystd::tplib::box::Box<int32_t>(7);
-        // boxes.append(a)
         boxes.push_back(std::move((*a)));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -28,21 +29,21 @@ void main() {
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
     __with_after_1:;
-    // print(len(boxes))
     std::cout << ::tpy::__len__(boxes) << "\n";
 }
 
+// # A @nocopy local at its genuine last use inside a `with` body is moved, not
+// # copied -- the with body now participates in last-use analysis.
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A @nocopy local at its genuine last use inside a `with` body is moved, not
-    // # copied -- the with body now participates in last-use analysis.
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

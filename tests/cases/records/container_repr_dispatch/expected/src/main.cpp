@@ -5,104 +5,108 @@ namespace tpyapp::main {
 
 
 // def matches_default_repr(s: str, cls: str) -> bool:
+//     # CPython adds the module prefix (e.g. `<__main__.StrOnly object at 0x...>`)
+//     # while TPy emits the bare class name. Accept either to keep the test
+//     # runnable under both interpreters.
+//     p1 = "<" + cls + " object at 0x"
+//     p2 = "<__main__." + cls + " object at 0x"
+//     return (s.startswith(p1) or s.startswith(p2)) and s.endswith(">")
 bool matches_default_repr(std::string_view s, std::string_view cls) {
-    // # CPython adds the module prefix (e.g. `<__main__.StrOnly object at 0x...>`)
-    // # while TPy emits the bare class name. Accept either to keep the test
-    // # runnable under both interpreters.
-    // p1 = "<" + cls + " object at 0x"
     ::tpy::String p1 = (::tpy::str_concat((::tpy::str_concat("<", cls)), " object at 0x"));
-    // p2 = "<__main__." + cls + " object at 0x"
     ::tpy::String p2 = (::tpy::str_concat((::tpy::str_concat("<__main__.", cls)), " object at 0x"));
-    // return (s.startswith(p1) or s.startswith(p2)) and s.endswith(">")
     return ((::tpy::str_startswith(s, p1) || ::tpy::str_startswith(s, p2)) && ::tpy::str_endswith(s, ">"));
 }
 
 // def main() -> None:
+//     b = Both(1)
+//     s = StrOnly(2)
+//     r = ReprOnly(3)
+//
+//     # Direct print: __str__ first, fallback to __repr__.
+//     print(b)
+//     print(s)
+//     print(r)
+//
+//     # repr() builtin: __repr__ first, then default. Never __str__.
+//     print(repr(b))
+//     print(matches_default_repr(repr(s), "StrOnly"))
+//     print(repr(r))
+//
+//     # Container print: each element through __repr__ then default.
+//     print([b])
+//     bs: list[StrOnly] = [s]
+//     bs_str = str(bs)
+//     print((bs_str.startswith("[<StrOnly object at 0x")
+//            or bs_str.startswith("[<__main__.StrOnly object at 0x"))
+//           and bs_str.endswith(">]"))
+//     print([r])
+//
+//     # Tuple and dict containers dispatch through __repr__.
+//     print((b, r))
+//     d: dict[str, ReprOnly] = {"a": r}
+//     print(d)
+//
+//     # Optional[Record] (lowers to a nullable pointer): None prints as
+//     # "None"; non-null dispatches through the underlying record's repr.
+//     opt_some: ReprOnly | None = ReprOnly(7)
+//     opt_none: ReprOnly | None = None
+//     print(repr(opt_some))
+//     print(repr(opt_none))
+//
+//     # Record with neither __str__ nor __repr__: repr() returns the
+//     # default form directly (verifies the __tpy_class_name__ template
+//     # match, not just the container path).
+//     n = Neither(8)
+//     print(matches_default_repr(repr(n), "Neither"))
+//
+//     # Inherited __repr__ from a non-native ancestor: ChildOfRepr should
+//     # NOT get a default-repr template binding (parent has __repr__).
+//     c = ChildOfRepr(9)
+//     print(repr(c))
+//
+//     # f-string `!r` exercises a different codegen path than repr() but
+//     # routes through the same tpy::repr_of dispatch. Restricted to records
+//     # with __repr__ since sema's Representable check rejects !r on records
+//     # without __repr__ (separate known limitation in TODO.md).
+//     print(f"{b!r}")
+//     print(f"{r!r}")
 void main() {
-    // b = Both(1)
     Both b = Both(1);
-    // s = StrOnly(2)
     StrOnly s = StrOnly(2);
-    // r = ReprOnly(3)
     ReprOnly r = ReprOnly(3);
-    // # Direct print: __str__ first, fallback to __repr__.
-    // print(b)
     std::cout << b << "\n";
-    // print(s)
     std::cout << s << "\n";
-    // print(r)
     std::cout << r << "\n";
-    // # repr() builtin: __repr__ first, then default. Never __str__.
-    // print(repr(b))
     std::cout << ::tpy::repr_of(b) << "\n";
-    // print(matches_default_repr(repr(s), "StrOnly"))
     std::cout << ::tpy::print_bool(matches_default_repr(::tpy::repr_of(s), "StrOnly")) << "\n";
-    // print(repr(r))
     std::cout << ::tpy::repr_of(r) << "\n";
-    // # Container print: each element through __repr__ then default.
-    // print([b])
     std::cout << ::tpy::ListPrinter(std::array<Both, 1>{b}) << "\n";
-    // bs: list[StrOnly] = [s]
     std::vector<StrOnly> bs = ::tpy::make_vector<StrOnly>(std::move(s));
-    // bs_str = str(bs)
     std::string bs_str = ::tpy::list_to_str(bs);
-    // print((bs_str.startswith("[<StrOnly object at 0x")
-    // or bs_str.startswith("[<__main__.StrOnly object at 0x"))
-    // and bs_str.endswith(">]"))
     std::cout << ::tpy::print_bool(((::tpy::str_startswith(bs_str, "[<StrOnly object at 0x") || ::tpy::str_startswith(bs_str, "[<__main__.StrOnly object at 0x")) && ::tpy::str_endswith(bs_str, ">]"))) << "\n";
-    // print([r])
     std::cout << ::tpy::ListPrinter(std::array<ReprOnly, 1>{r}) << "\n";
-    // # Tuple and dict containers dispatch through __repr__.
-    // print((b, r))
     std::cout << ::tpy::TuplePrinter(std::tuple<Both*, ReprOnly*>{&(b), &(r)}) << "\n";
-    // d: dict[str, ReprOnly] = {"a": r}
     ::tpy::ordered_map<std::string, ReprOnly> d = ::tpy::ordered_map<std::string, ReprOnly>({{"a", r}});
-    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    // # Optional[Record] (lowers to a nullable pointer): None prints as
-    // # "None"; non-null dispatches through the underlying record's repr.
-    // opt_some: ReprOnly | None = ReprOnly(7)
     ReprOnly __slot_1 = ReprOnly(7);
     ReprOnly* opt_some = &__slot_1;
-    // opt_none: ReprOnly | None = None
     ReprOnly* opt_none = nullptr;
-    // print(repr(opt_some))
     std::cout << ::tpy::repr_of((*opt_some)) << "\n";
-    // print(repr(opt_none))
     std::cout << ::tpy::repr_of(opt_none) << "\n";
-    // # Record with neither __str__ nor __repr__: repr() returns the
-    // # default form directly (verifies the __tpy_class_name__ template
-    // # match, not just the container path).
-    // n = Neither(8)
     Neither n = Neither(8);
-    // print(matches_default_repr(repr(n), "Neither"))
     std::cout << ::tpy::print_bool(matches_default_repr(::tpy::repr_of(n), "Neither")) << "\n";
-    // # Inherited __repr__ from a non-native ancestor: ChildOfRepr should
-    // # NOT get a default-repr template binding (parent has __repr__).
-    // c = ChildOfRepr(9)
     ChildOfRepr c = ChildOfRepr(9);
-    // print(repr(c))
     std::cout << ::tpy::repr_of(c) << "\n";
-    // # f-string `!r` exercises a different codegen path than repr() but
-    // # routes through the same tpy::repr_of dispatch. Restricted to records
-    // # with __repr__ since sema's Representable check rejects !r on records
-    // # without __repr__ (separate known limitation in TODO.md).
-    // print(f"{b!r}")
     std::cout << std::format("{}", ::tpy::repr_of(b)) << "\n";
-    // print(f"{r!r}")
     std::cout << std::format("{}", ::tpy::repr_of(r)) << "\n";
-    // # set[Record] would also dispatch per element through repr_of, but
-    // # TPy requires user records to define __hash__ before they can be
-    // # set elements; covering it here would distract from the dispatch
-    // # behaviour under test.
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

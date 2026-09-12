@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     d = D()
+//     print(d.describe())
 void main() {
-    // d = D()
     D d = D();
-    // print(d.describe())
     std::cout << d.describe() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

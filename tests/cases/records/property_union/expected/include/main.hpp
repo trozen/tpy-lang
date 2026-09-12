@@ -13,7 +13,9 @@ struct Canvas;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(c: Canvas) -> None:
 void describe(const Canvas& c);
+// def main() -> None:
 void main();
 
 // class Circle:
@@ -73,25 +75,28 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
 
 
 // def __init__(self, r: int32) -> None:
+//     self.radius = r
 inline Circle::Circle(int32_t r) : radius(r) {}
 
 // def __init__(self, s: int32) -> None:
+//     self.side = s
 inline Square::Square(int32_t s) : side(s) {}
 
 // def __init__(self, s: Circle | Square) -> None:
+//     self._shape = s
 inline Canvas::Canvas(::tpy::Union<const Circle*, const Square*> s) : _shape(::tpy::to_value_variant<::tpy::Union<Circle, Square>>(s)) {}
 
 // @property
 // def shape(self) -> Circle | Square:
+//     return self._shape
 inline ::tpy::Union<Circle, Square>& Canvas::shape() {
-    // return self._shape
     return this->_shape;
 }
 
 // @property
 // def shape(self) -> Circle | Square:
+//     return self._shape
 inline const ::tpy::Union<Circle, Square>& Canvas::shape() const {
-    // return self._shape
     return this->_shape;
 }
 void __tpy_init();

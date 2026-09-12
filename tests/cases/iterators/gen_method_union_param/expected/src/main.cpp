@@ -5,13 +5,18 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     z = Zoo()
+//     pet: Dog | Cat = Dog()
+//     for s in z.voices(pet):
+//         print(s)
+//     other: Dog | Cat = Cat()
+//     for s in z.names(other):
+//         print(s)
+//     print(z.seen)
 void main() {
-    // z = Zoo()
     Zoo z = Zoo();
-    // pet: Dog | Cat = Dog()
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
-    // for s in z.voices(pet):
     {
         auto __src_0 = z.voices(pet);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -19,14 +24,11 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_1);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // other: Dog | Cat = Cat()
     ::tpy::Union<Cat, Dog> __slot_2 = Cat();
     ::tpy::Union<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_2);
-    // for s in z.names(other):
     {
         auto __src_2 = z.names(other.as_const());
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
@@ -34,39 +36,38 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             std::string_view s = ::tpy::unwrap_ref(*__r_3);
-        // print(s)
         std::cout << s << "\n";
         }
     }
-    // print(z.seen)
     std::cout << z.seen << "\n";
 }
 
 // def voices(self, a: Dog | Cat) -> Iterator[str]:
+//     self.seen += 1
+//     yield "start"
+//     match a:
+//         case Dog():
+//             yield a.speak()
+//         case Cat():
+//             yield a.speak()
 std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // self.seen += 1
         __self.seen = (__self.seen) + (::tpy::BigInt(1));
-        // yield "start"
         __state = S_RESUME_0;
         return "start";
     }
     case S_RESUME_0: {
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case Dog():
         case 1: {
             auto& __case_0 = *std::get<1>(__match_subject_1);
-            // yield a.speak()
             __state = S_RESUME_1;
             return __case_0.speak();
             break;
         }
-        // case Cat():
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
-            // yield a.speak()
             __state = S_RESUME_2;
             return __case_1.speak();
             break;
@@ -96,30 +97,31 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
 
 
 // def names(self, a: readonly[Dog | Cat]) -> Iterator[str]:
+//     self.seen += 1
+//     yield "ro"
+//     match a:
+//         case Dog():
+//             yield "dog"
+//         case Cat():
+//             yield "cat"
 std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_names::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // self.seen += 1
         __self.seen = (__self.seen) + (::tpy::BigInt(1));
-        // yield "ro"
         __state = S_RESUME_0;
         return "ro";
     }
     case S_RESUME_0: {
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
-        // case Dog():
         case 1: {
             auto& __case_0 = *std::get<1>(__match_subject_1);
-            // yield "dog"
             __state = S_RESUME_1;
             return "dog";
             break;
         }
-        // case Cat():
         case 0: {
             auto& __case_1 = *std::get<0>(__match_subject_1);
-            // yield "cat"
             __state = S_RESUME_2;
             return "cat";
             break;
@@ -148,12 +150,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_names::__next__() {
 }
 
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

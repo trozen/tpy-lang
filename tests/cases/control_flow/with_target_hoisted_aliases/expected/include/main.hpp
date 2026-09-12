@@ -11,7 +11,9 @@ struct Logger;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def run(flag: bool) -> int32:
 int32_t run(bool flag);
+// def main() -> None:
 void main();
 
 // class Logger:
@@ -38,17 +40,18 @@ inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
 
 
 // def __init__(self, tag: int32):
+//     self.tag = tag
 inline Logger::Logger(int32_t tag) : tag(tag) {}
 
 // def __enter__(self) -> "Logger":
+//     return self
 inline Logger& Logger::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     print("exit sees tag:", self.tag)
 inline void Logger::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // print("exit sees tag:", self.tag)
     std::cout << "exit sees tag:" << " " << this->tag << "\n";
 }
 void __tpy_init();

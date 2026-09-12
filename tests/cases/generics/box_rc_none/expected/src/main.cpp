@@ -5,34 +5,36 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     r = Rc.new(None)
+//     print("rc constructed")
+//
+//     b = Box(None)
+//     print("box constructed")
 void main() {
-    // r = Rc.new(None)
     ::tpystd::tplib::rc::Rc<std::monostate> r = Rc<std::monostate>::new_<std::monostate>(std::monostate{});
-    // print("rc constructed")
     std::cout << "rc constructed" << "\n";
-    // b = Box(None)
     ::tpystd::tplib::box::Box<std::monostate> b = ::tpystd::tplib::box::Box<std::monostate>(std::monostate{});
-    // print("box constructed")
     std::cout << "box constructed" << "\n";
 }
 
+// # Box[None] / Rc[None] -- value-bearing TPy wrappers instantiated with
+// # the unit type. Regression guard for the architectural None lowering:
+// # T=None at type-arg position must produce a well-formed `Own[T]` param
+// # in the wrapper's constructor. Conjectured-broken before the fix
+// # (BUGS.md noted Future[None] and "any other generic with an Own[T]
+// # method instantiated with T=None likely hits the same wall").
+// from tplib.rc import Rc
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Box[None] / Rc[None] -- value-bearing TPy wrappers instantiated with
-    // # the unit type. Regression guard for the architectural None lowering:
-    // # T=None at type-arg position must produce a well-formed `Own[T]` param
-    // # in the wrapper's constructor. Conjectured-broken before the fix
-    // # (BUGS.md noted Future[None] and "any other generic with an Own[T]
-    // # method instantiated with T=None likely hits the same wall").
-    // from tplib.rc import Rc
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // from tplib.box import Box
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

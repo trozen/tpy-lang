@@ -5,56 +5,58 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     a, b = socket.socketpair()
+//     b.sendall(b"HTTP/1.1 302 Found\r\n"
+//               b"Location: ftp://files.test/data\r\n"
+//               b"Content-Length: 0\r\n\r\n")
+//     s = requests.Session()
+//     conn = HTTPConnection("api.test", 80)
+//     conn.sock = a
+//     s._connection = Box(conn)
+//     try:
+//         s.get("http://api.test/start")
+//         print("NO RAISE")
+//     except ConnectionError:
+//         print("caught ConnectionError for ftp redirect")
+//     b.close()
 void main() {
-    // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
-    // b.sendall(b"HTTP/1.1 302 Found\r\n"
-    // b"Location: ftp://files.test/data\r\n"
-    // b"Content-Length: 0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 302 Found\r\nLocation: ftp://files.test/data\r\nContent-Length: 0\r\n\r\n", 74));
-    // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
-    // conn.sock = a
     conn.sock = std::move(a);
-    // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
-    // try:
     {
         try {
-            // s.get("http://api.test/start")
             s.get("http://api.test/start");
-            // print("NO RAISE")
             std::cout << "NO RAISE" << "\n";
         } catch (const ::tpystd::tplib::requests::ConnectionError&) {
-            // print("caught ConnectionError for ftp redirect")
             std::cout << "caught ConnectionError for ftp redirect" << "\n";
         }
     }
-    // b.close()
     b.close();
 }
 
+// # A redirect to an unsupported scheme (here ftp://) raises ConnectionError --
+// # only http/https are followed. Guards the redirect scheme-rejection branch.
+// import socket
+// from http.client import HTTPConnection
+// from tplib import Box
+// import tplib.requests as requests
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A redirect to an unsupported scheme (here ftp://) raises ConnectionError --
-    // # only http/https are followed. Guards the redirect scheme-rejection branch.
-    // import socket
     ::tpystd::socket::__tpy_init();
-    // from http.client import HTTPConnection
     ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    // from tplib import Box
     ::tpystd::tplib::__tpy_init();
-    // import tplib.requests as requests
     ::tpystd::tplib::requests::__tpy_init();
-    // main()
     main();
 }
 

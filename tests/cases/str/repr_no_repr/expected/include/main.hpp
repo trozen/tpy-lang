@@ -12,6 +12,7 @@ struct Bar;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # repr() on records without __repr__ uses default "<ClassName object at 0xADDR>"
@@ -52,14 +53,16 @@ inline std::ostream& operator<<(std::ostream& os, const Bar& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Foo::Foo(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Bar::Bar(const ::tpy::BigInt& x) : x(x) {}
 
 // def __repr__(self) -> str:
+//     return f"Bar({self.x})"
 inline std::string Bar::__repr__() const {
-    // return f"Bar({self.x})"
     return std::format("Bar({})", (this->x).to_string());
 }
 void __tpy_init();

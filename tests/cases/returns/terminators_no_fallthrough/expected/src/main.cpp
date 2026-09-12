@@ -5,86 +5,86 @@ namespace tpyapp::main {
 
 
 // def spin(n: int32) -> int32:
+//     while True:
+//         n = n + 1
+//         if n > 3:
+//             return n
 int32_t spin(int32_t n) {
-    // while True:
     while (true) {
-        // n = n + 1
         n = (::tpy::add_check<int32_t>(n, 1));
-        // if n > 3:
         if ((n > 3)) {
-            // return n
             return n;
         }
     }
 }
 
 // def nested_break_ok(n: int32) -> int32:
+//     while True:
+//         for i in range(3):
+//             if i == n:
+//                 break
+//         return n
 int32_t nested_break_ok(int32_t n) {
-    // while True:
     while (true) {
-        // for i in range(3):
         for (int32_t i = 0; i < 3; ++i) {
-            // if i == n:
             if ((i == n)) {
-                // break
                 break;
             }
         }
-        // return n
         return n;
     }
 }
 
 // def find_or_die(xs: list[int32], v: int32) -> int32:
+//     for i in range(len(xs)):
+//         if xs[i] == v:
+//             return i
+//     assert False, "not found"
 int32_t find_or_die(const std::vector<int32_t>& xs, int32_t v) {
-    // for i in range(len(xs)):
     int32_t __stop_0 = ::tpy::__len__(xs);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // if xs[i] == v:
         if ((xs[static_cast<std::size_t>(i)] == v)) {
-            // return i
             return i;
         }
     }
-    // assert False, "not found"
     ::tpy::raise_assertion_error("not found");
 }
 
 // def finally_returns(n: int32) -> int32:
+//     try:
+//         n = n + 1
+//     finally:
+//         return n
 int32_t finally_returns(int32_t n) {
-    // try:
     {
         try {
-            // n = n + 1
             n = (::tpy::add_check<int32_t>(n, 1));
         } catch (...) {
-            // return n
             return n;
         }
-        // return n
         return n;
     }
 }
 
 // def main() -> None:
+//     print(spin(0))
+//     print(nested_break_ok(2))
+//     print(find_or_die([5, 6, 7], 6))
+//     print(finally_returns(9))
 void main() {
-    // print(spin(0))
     std::cout << spin(0) << "\n";
-    // print(nested_break_ok(2))
     std::cout << nested_break_ok(2) << "\n";
-    // print(find_or_die([5, 6, 7], 6))
     std::vector<int32_t> __tmp_1 = {5, 6, 7};
     std::cout << find_or_die(__tmp_1, 6) << "\n";
-    // print(finally_returns(9))
     std::cout << finally_returns(9) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

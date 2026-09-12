@@ -9,7 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def has_values(values: Span[readonly[int32]] | None) -> bool:
 bool has_values(std::optional<std::span<const int32_t>> values);
+// def main() -> None:
 void main();
 
 void __tpy_init();

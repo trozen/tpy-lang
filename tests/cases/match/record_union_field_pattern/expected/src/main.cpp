@@ -6,22 +6,22 @@ namespace tpyapp::main {
 
 // # Type pattern with as-binding on union field
 // def describe(w: Wrapper) -> str:
+//     match w:
+//         case Wrapper(pet=Cat() as c):
+//             return "cat: " + c.name
+//         case Wrapper(pet=Dog() as d):
+//             return "dog: " + d.name
+//         case _:
+//             return "unknown"
 std::string describe(const Wrapper& w) {
-    // match w:
     auto& __match_subject_1 = w;
-    // case Wrapper(pet=Cat() as c):
     if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
         auto& c = std::get<Cat>(__match_subject_1.pet);
-        // return "cat: " + c.name
         return (::tpy::str_concat("cat: ", c.name));
-    // case Wrapper(pet=Dog() as d):
     } else if (std::holds_alternative<Dog>(__match_subject_1.pet)) {
         auto& d = std::get<Dog>(__match_subject_1.pet);
-        // return "dog: " + d.name
         return (::tpy::str_concat("dog: ", d.name));
-    // case _:
     } else {
-        // return "unknown"
         return "unknown";
     }
     ::std::unreachable();
@@ -29,24 +29,24 @@ std::string describe(const Wrapper& w) {
 
 // # Nested record pattern with field extraction on union field
 // def get_name(w: Wrapper) -> str:
+//     match w:
+//         case Wrapper(pet=Cat(name=n)):
+//             return "cat " + n
+//         case Wrapper(pet=Dog(name=n)):
+//             return "dog " + n
+//         case _:
+//             return "unknown"
 std::string get_name(const Wrapper& w) {
-    // match w:
     auto& __match_subject_1 = w;
-    // case Wrapper(pet=Cat(name=n)):
     if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Cat>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
-        // return "cat " + n
         return (::tpy::str_concat("cat ", n));
-    // case Wrapper(pet=Dog(name=n)):
     } else if (std::holds_alternative<Dog>(__match_subject_1.pet)) {
         auto& __field_match_subject_1_pet = std::get<Dog>(__match_subject_1.pet);
         auto& n = __field_match_subject_1_pet.name;
-        // return "dog " + n
         return (::tpy::str_concat("dog ", n));
-    // case _:
     } else {
-        // return "unknown"
         return "unknown";
     }
     ::std::unreachable();
@@ -54,86 +54,87 @@ std::string get_name(const Wrapper& w) {
 
 // # Type pattern without binding (condition only)
 // def is_cat(w: Wrapper) -> str:
+//     match w:
+//         case Wrapper(pet=Cat()):
+//             return "yes"
+//         case _:
+//             return "no"
 std::string is_cat(const Wrapper& w) {
-    // match w:
     auto& __match_subject_1 = w;
-    // case Wrapper(pet=Cat()):
     if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
-        // return "yes"
         return "yes";
-    // case _:
     } else {
-        // return "no"
         return "no";
     }
     ::std::unreachable();
 }
 
 // def show_tagged(t: Tagged) -> str:
+//     match t:
+//         case Tagged(tag="s", value=str() as v):
+//             return "string: " + v
+//         case Tagged(tag="n", value=int32() as n):
+//             return "number: " + str(n)
+//         case _:
+//             return "other"
 std::string show_tagged(const Tagged& t) {
-    // match t:
     auto& __match_subject_1 = t;
-    // case Tagged(tag="s", value=str() as v):
     if (__match_subject_1.tag == "s" && std::holds_alternative<std::string>(__match_subject_1.value)) {
         auto& v = std::get<std::string>(__match_subject_1.value);
-        // return "string: " + v
         return (::tpy::str_concat("string: ", v));
-    // case Tagged(tag="n", value=int32() as n):
     } else if (__match_subject_1.tag == "n" && std::holds_alternative<int32_t>(__match_subject_1.value)) {
         auto n = std::get<int32_t>(__match_subject_1.value);
-        // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
-    // case _:
     } else {
-        // return "other"
         return "other";
     }
     ::std::unreachable();
 }
 
 // def main() -> None:
+//     w1 = Wrapper(Cat("Whiskers"))
+//     w2 = Wrapper(Dog("Rex"))
+//     print(describe(w1))
+//     print(describe(w2))
+//     print(get_name(w1))
+//     print(get_name(w2))
+//     print(is_cat(w1))
+//     print(is_cat(w2))
+//
+//     t1 = Tagged("s", "hello")
+//     t2 = Tagged("n", int32(42))
+//     t3 = Tagged("x", "other")
+//     print(show_tagged(t1))
+//     print(show_tagged(t2))
+//     print(show_tagged(t3))
 void main() {
-    // w1 = Wrapper(Cat("Whiskers"))
     Cat __tmp_1 = Cat("Whiskers");
     Wrapper w1 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
-    // w2 = Wrapper(Dog("Rex"))
     Dog __tmp_2 = Dog("Rex");
     Wrapper w2 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
-    // print(describe(w1))
     std::cout << describe(w1) << "\n";
-    // print(describe(w2))
     std::cout << describe(w2) << "\n";
-    // print(get_name(w1))
     std::cout << get_name(w1) << "\n";
-    // print(get_name(w2))
     std::cout << get_name(w2) << "\n";
-    // print(is_cat(w1))
     std::cout << is_cat(w1) << "\n";
-    // print(is_cat(w2))
     std::cout << is_cat(w2) << "\n";
-    // t1 = Tagged("s", "hello")
     ::tpy::Union<int32_t, std::string> __tmp_3 = "hello";
     Tagged t1 = Tagged("s", __tmp_3);
-    // t2 = Tagged("n", int32(42))
     ::tpy::Union<int32_t, std::string> __tmp_4 = 42;
     Tagged t2 = Tagged("n", __tmp_4);
-    // t3 = Tagged("x", "other")
     ::tpy::Union<int32_t, std::string> __tmp_5 = "other";
     Tagged t3 = Tagged("x", __tmp_5);
-    // print(show_tagged(t1))
     std::cout << show_tagged(t1) << "\n";
-    // print(show_tagged(t2))
     std::cout << show_tagged(t2) << "\n";
-    // print(show_tagged(t3))
     std::cout << show_tagged(t3) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

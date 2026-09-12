@@ -11,6 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Point:
@@ -49,28 +50,30 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 
 // def __init__(self, x: int32, y: int32):
+//     self.x = x
+//     self.y = y
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // @classmethod
 // def origin(cls) -> Own[Self]:  # tpyc: ok
+//     cls.created += 1
+//     return cls(cls.ORIGIN, cls.ORIGIN)
 inline Point Point::origin() {
-    // cls.created += 1
     Point::created = ::tpy::add_check<int32_t>(Point::created, 1);
-    // return cls(cls.ORIGIN, cls.ORIGIN)
     return Point(Point::ORIGIN, Point::ORIGIN);
 }
 
 // @classmethod
 // def diagonal(cls, n: int32) -> Own[Self]:
+//     return cls.scaled(n, 1)
 inline Point Point::diagonal(int32_t n) {
-    // return cls.scaled(n, 1)
     return Point::scaled(n, 1);
 }
 
 // @staticmethod
 // def scaled(n: int32, k: int32) -> Own["Point"]:
+//     return Point(n * k, n * k)
 inline Point Point::scaled(int32_t n, int32_t k) {
-    // return Point(n * k, n * k)
     return Point((::tpy::mul_check<int32_t>(n, k)), (::tpy::mul_check<int32_t>(n, k)));
 }
 void __tpy_init();

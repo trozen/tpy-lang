@@ -11,7 +11,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def consume(p: Own[Point]) -> int32:
 int32_t consume(Point&& p);
+// def test(a: Point, cond: bool) -> int32:
 int32_t test(Point& a, bool cond);
 
 // class Point:

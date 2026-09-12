@@ -11,6 +11,7 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Outer:

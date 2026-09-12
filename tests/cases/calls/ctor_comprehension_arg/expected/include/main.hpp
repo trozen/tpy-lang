@@ -22,24 +22,43 @@ struct Site;
 extern Flat* top;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take_own(data: Own[list[bytes]]) -> Own[list[bytes]]:
 std::vector<::tpy::Bytes> take_own(std::vector<::tpy::Bytes>&& data);
+// def use_flat(f: Flat) -> int32:
 int32_t use_flat(const Flat& f);
+// def ctor_borrow(d: dict[bytes, bytes]) -> None:
 void ctor_borrow(const ::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes>& d);
+// def ctor_mutated_slot() -> None:
 void ctor_mutated_slot();
+// def ctor_set_dict() -> None:
 void ctor_set_dict();
+// def ctor_nested_call() -> None:
 void ctor_nested_call();
+// def make(k: int32) -> Own[Flat]:
 Flat make(int32_t k);
+// def ctor_element_and_condition() -> None:
 void ctor_element_and_condition();
+// def own_slots() -> None:
 void own_slots();
+// def own_stub_elem() -> None:
 void own_stub_elem();
+// def own_marker_and_pending() -> None:
 void own_marker_and_pending();
+// def rebind_slot_reseat(k: int32) -> None:
 void rebind_slot_reseat(int32_t k);
+// def closure() -> None:
 void closure();
+// def blocks(k: int32) -> None:
 void blocks(int32_t k);
+// def hoisted_reseat(k: int32) -> None:
 void hoisted_reseat(int32_t k);
+// def label(k: int32) -> str:
 std::string label(int32_t k);
+// def str_append_temp(k: int32) -> None:
 void str_append_temp(int32_t k);
+// def error_return_body(k: int32) -> int32:
 std::expected<int32_t, MyErr> error_return_body(int32_t k);
+// def main() -> None:
 void main();
 
 // class Flat:
@@ -165,43 +184,47 @@ inline std::ostream& operator<<(std::ostream& os, const Site& obj) {
 
 
 // def __init__(self, data: list[bytes]) -> None:
+//     self.n = len(data)
 inline Flat::Flat(const std::vector<::tpy::Bytes>& data) : n(::tpy::__len__(data)) {}
 
 // def __init__(self, data: list[bytes]) -> None:
+//     data.append(b"z")
+//     self.n = len(data)
 inline Grow::Grow(std::vector<::tpy::Bytes>& data) {
-    // data.append(b"z")
     data.push_back(::tpy::bytes_literal_owned("z", 1));
-    // self.n = len(data)
     this->n = ::tpy::__len__(data);
 }
 
 // def __init__(self, data: Own[list[bytes]]) -> None:
+//     self.data = data
 inline Keep::Keep(std::vector<::tpy::Bytes>&& data) : data(std::move(data)) {}
 
 // def reset(self, data: Own[list[bytes]]) -> None:
+//     self.data = data
 inline void Keep::reset(std::vector<::tpy::Bytes>&& data) {
-    // self.data = data
     this->data = std::move(data);
 }
 
 // def __init__(self, d: dict[str, int32], s: set[int32]) -> None:
+//     self.n = len(d) + len(s)
 inline Tally::Tally(const ::tpy::ordered_map<std::string, int32_t>& d, const ::tpy::ordered_set<int32_t>& s) : n((::tpy::add_check<int32_t>(::tpy::__len__(d), ::tpy::__len__(s)))) {}
 
 // def __enter__(self) -> int32:
+//     return 2
 inline int32_t CM::__enter__() const {
-    // return 2
     return 2;
 }
 
 // def __exit__(self, et, ev, tb) -> None:
+//     pass
 inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
-    // pass
 }
 
 // # Constructor body (a local decl, not the field initializer itself).
 // def __init__(self, k: int32) -> None:
+//     f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
+//     self.n = f.n
 inline Site::Site(int32_t k) {
-    // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = k;
@@ -212,14 +235,14 @@ inline Site::Site(int32_t k) {
         std::move(__result);
     });
     Flat f = Flat(__tmp_1);
-    // self.n = f.n
     this->n = f.n;
 }
 
 // # Method body.
 // def bump(self, k: int32) -> None:
+//     f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
+//     self.n += f.n
 inline void Site::bump(int32_t k) {
-    // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_2 = ({
         std::vector<::tpy::Bytes> __result;
         const int32_t __stop_0 = k;
@@ -230,7 +253,6 @@ inline void Site::bump(int32_t k) {
         std::move(__result);
     });
     Flat f = Flat(__tmp_2);
-    // self.n += f.n
     this->n = ::tpy::add_check<int32_t>(this->n, f.n);
 }
 void __tpy_init();

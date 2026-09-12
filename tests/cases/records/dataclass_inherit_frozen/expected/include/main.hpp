@@ -12,6 +12,7 @@ struct Vec3;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @dataclass(frozen=True)

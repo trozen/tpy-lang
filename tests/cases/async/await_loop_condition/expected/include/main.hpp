@@ -14,10 +14,12 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_below;
 struct __coro_main;
 
+// async def below(i: int, limit: int) -> bool:
 __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit);
+// async def main() -> None:
 __coro_main main();
 
-// Async coroutine: below
+// async def below(i: int, limit: int) -> bool:
 struct __coro_below {
     int32_t __state;
     bool __cancel_pending;
@@ -40,7 +42,7 @@ struct __coro_below {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;

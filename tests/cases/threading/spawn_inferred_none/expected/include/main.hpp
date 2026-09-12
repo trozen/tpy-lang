@@ -14,6 +14,7 @@ struct Beacon;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // @nocopy
@@ -43,11 +44,12 @@ inline std::ostream& operator<<(std::ostream& os, const Beacon& obj) {
 
 
 // def __init__(self, n: int32):
+//     self.n = n
 inline Beacon::Beacon(int32_t n) : n(n) {}
 
 // def run(self) -> None:
+//     pass
 inline void Beacon::run() const {
-    // pass
 }
 void __tpy_init();
 } // namespace tpyapp::main

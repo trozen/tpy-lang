@@ -5,36 +5,37 @@ namespace tpyapp::main {
 
 
 // def main():
+//     print("[" + os.path.commonprefix(["/usr/lib", "/usr/local"]) + "]")
+//     print("[" + path.commonprefix(["abc", "abd", "abe"]) + "]")
+//     print("[" + os.path.commonprefix(["abc", "abc"]) + "]")
+//     print("[" + os.path.commonprefix(["x"]) + "]")
+//     print("[" + os.path.commonprefix([]) + "]")
+//     print("[" + os.path.commonprefix(["", "abc"]) + "]")
+//     # Documented quirk: char-level, so this is "/usr/l", not "/usr".
+//     print("[" + os.path.commonprefix(["/usr/lib", "/usr/libexec"]) + "]")
 void main() {
-    // print("[" + os.path.commonprefix(["/usr/lib", "/usr/local"]) + "]")
     std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"/usr/lib", "/usr/local"}))), "]")) << "\n";
-    // print("[" + path.commonprefix(["abc", "abd", "abe"]) + "]")
     std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"abc", "abd", "abe"}))), "]")) << "\n";
-    // print("[" + os.path.commonprefix(["abc", "abc"]) + "]")
     std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"abc", "abc"}))), "]")) << "\n";
-    // print("[" + os.path.commonprefix(["x"]) + "]")
     std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"x"}))), "]")) << "\n";
-    // print("[" + os.path.commonprefix([]) + "]")
     std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix(std::vector<std::string>{}))), "]")) << "\n";
-    // print("[" + os.path.commonprefix(["", "abc"]) + "]")
     std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"", "abc"}))), "]")) << "\n";
-    // # Documented quirk: char-level, so this is "/usr/l", not "/usr".
-    // print("[" + os.path.commonprefix(["/usr/lib", "/usr/libexec"]) + "]")
     std::cout << (::tpy::str_concat((::tpy::str_concat("[", ::tpystd::os::path::commonprefix({"/usr/lib", "/usr/libexec"}))), "]")) << "\n";
 }
 
+// # os.path.commonprefix -- character-level (not path-aware) common prefix.
+// # Also exercises the `import os` -> os.path attribute form. Byte-compared
+// # against CPython posixpath.commonprefix in the cpy phase.
+// import os
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # os.path.commonprefix -- character-level (not path-aware) common prefix.
-    // # Also exercises the `import os` -> os.path attribute form. Byte-compared
-    // # against CPython posixpath.commonprefix in the cpy phase.
-    // import os
     ::tpystd::os::__tpy_init();
     ::tpystd::os::path::__tpy_init();
-    // main()
     main();
 }
 

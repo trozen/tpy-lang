@@ -27,22 +27,40 @@ struct __gen_gen_eq;
 struct __coro_in_async;
 struct __coro_amain;
 
+// def mixed_list_eq(xs: list[Mixed], ys: list[Mixed]) -> bool:  # free function
 bool mixed_list_eq(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def pet_list_eq(xs: list[Pet], ys: list[Pet]) -> bool:  # free function
 bool pet_list_eq(const std::vector<::tpy::Union<Cat, Dog>>& xs, const std::vector<::tpy::Union<Cat, Dog>>& ys);
+// def tag_list_ne(xs: list[Labelled], ys: list[Labelled]) -> bool:  # free function
 bool tag_list_ne(const std::vector<::tpy::Union<Mark, Tag>>& xs, const std::vector<::tpy::Union<Mark, Tag>>& ys);
+// def gen_eq(xs: list[Mixed], ys: list[Mixed]) -> Iterator[bool]:  # generator
 __gen_gen_eq gen_eq(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def in_closure(xs: list[Mixed], ys: list[Mixed]) -> bool:  # closure
 bool in_closure(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// async def in_async(xs: list[Mixed], ys: list[Mixed]) -> bool:  # async
 __coro_in_async in_async(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def in_with(xs: list[Mixed], ys: list[Mixed]) -> bool:  # with body
 bool in_with(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def in_try(xs: list[Mixed], ys: list[Mixed]) -> bool:  # try/finally
 bool in_try(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def in_error_return(xs: list[Mixed], ys: list[Mixed]) -> bool:  # @error_return
 std::expected<bool, Boom> in_error_return(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def in_match(xs: list[Mixed], ys: list[Mixed]) -> bool:  # match arm
 bool in_match(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def in_comprehension(xs: list[Mixed], ys: list[Mixed]) -> int32:  # comprehension
 int32_t in_comprehension(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def nullable_eq(xs: list[Dog | Cat | None],
+//                 ys: list[Dog | Cat | None]) -> bool:  # nullable alternatives
 bool nullable_eq(const std::vector<::tpy::Union<std::monostate, Cat, Dog>>& xs, const std::vector<::tpy::Union<std::monostate, Cat, Dog>>& ys);
+// def crate_pet_n(c: Crate) -> int32:
 int32_t crate_pet_n(const Crate& c);
+// def bump_first(xs: list[Pet]) -> None:
 void bump_first(std::vector<::tpy::Union<Cat, Dog>>& xs);
+// def first_n(xs: list[Pet]) -> int32:
 int32_t first_n(const std::vector<::tpy::Union<Cat, Dog>>& xs);
+// async def amain(xs: list[Mixed], ys: list[Mixed]) -> None:
 __coro_amain amain(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// def main() -> None:
 void main();
 
 // class Boom(Exception, ReturnException):
@@ -223,7 +241,7 @@ inline std::ostream& operator<<(std::ostream& os, const Crate& obj) {
     return os;
 }
 
-// Async coroutine: in_async
+// async def in_async(xs: list[Mixed], ys: list[Mixed]) -> bool:  # async
 struct __coro_in_async {
     int32_t __state;
     bool __cancel_pending;
@@ -246,7 +264,7 @@ struct __coro_in_async {
     }
 };
 
-// Async coroutine: amain
+// async def amain(xs: list[Mixed], ys: list[Mixed]) -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -272,7 +290,7 @@ struct __coro_amain {
     }
 };
 
-// Generator: gen_eq
+// def gen_eq(xs: list[Mixed], ys: list[Mixed]) -> Iterator[bool]:  # generator
 struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
     int32_t __state;
     std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
@@ -297,102 +315,108 @@ struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
 
 
 // def __enter__(self) -> "Guard":
+//     return self
 inline Guard& Guard::__enter__() {
-    // return self
     return (*this);
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
-    // pass
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Dog::Dog(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Dog") -> bool:
+//     # Folds to True under TPy (`other` is typed Dog) and is a real check
+//     # under CPython, which routes the cross-alternative pair here where TPy
+//     # answers False without calling the dunder.
+//     if not isinstance(other, Dog):
+//         return False
+//     return self.n == other.n
 inline bool Dog::__eq__(const Dog& other) const {
-    // # Folds to True under TPy (`other` is typed Dog) and is a real check
-    // # under CPython, which routes the cross-alternative pair here where TPy
-    // # answers False without calling the dunder.
-    // if not isinstance(other, Dog):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Cat::Cat(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Cat") -> bool:
+//     if not isinstance(other, Cat):
+//         return False
+//     return self.n == other.n
 inline bool Cat::__eq__(const Cat& other) const {
-    // if not isinstance(other, Cat):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Tag::Tag(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Tag") -> bool:
+//     if not isinstance(other, Tag):
+//         return False
+//     return self.n == other.n
 inline bool Tag::__eq__(const Tag& other) const {
-    // if not isinstance(other, Tag):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __ne__(self, other: "Tag") -> bool:
+//     if not isinstance(other, Tag):
+//         return True
+//     return self.n == other.n
 inline bool Tag::__ne__(const Tag& other) const {
-    // if not isinstance(other, Tag):
     if ((!(true))) {
-        // return True
         return true;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __init__(self, n: int32) -> None:
+//     self.n = n
 inline Mark::Mark(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Mark") -> bool:
+//     if not isinstance(other, Mark):
+//         return False
+//     return self.n == other.n
 inline bool Mark::__eq__(const Mark& other) const {
-    // if not isinstance(other, Mark):
     if ((!(true))) {
-        // return False
         return false;
     }
-    // return self.n == other.n
     return (this->n == other.n);
 }
 
 // def __init__(self, xs: list[Mixed], ys: list[Mixed]) -> None:
+//     self.flag = xs == ys  # constructor  # tpyc: ok
 inline Kennel::Kennel(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys) : flag((xs == ys)) {}
 
 // def dict_eq(self, a: dict[str, Mixed], b: dict[str, Mixed]) -> bool:  # method
+//     return a == b  # tpyc: ok
 inline bool Kennel::dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, double, int32_t>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, double, int32_t>>& b) const {
-    // return a == b  # tpyc: ok
     return (a == b);
 }
 
 // def pet_dict_eq(self, a: dict[str, Pet], b: dict[str, Pet]) -> bool:  # method
+//     return a == b  # tpyc: ok
 inline bool Kennel::pet_dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>>& b) const {
-    // return a == b  # tpyc: ok
     return (a == b);
 }
 
 // def __init__(self, pet: Pet) -> None:
+//     self.pet = pet  # tpyc: warning(/copies Pet into field/)
 inline Crate::Crate(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 using Labelled = ::tpy::Union<Mark, Tag>;
 using Mixed = ::tpy::Union<Dog, double, int32_t>;

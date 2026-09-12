@@ -4,12 +4,12 @@
 namespace tpystd::tplib::array_list {
 
 
+// from tpy.mem import UninitArrayStorage
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.mem import UninitArrayStorage
 }
 
 } // namespace tpystd::tplib::array_list

@@ -11,6 +11,7 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Box[T]:
@@ -20,13 +21,14 @@ struct Box {
     T v;
 
     // def __init__(self, v: T):
+    //     self.v = v  # tpyc: warning(/may copy T into field/)
     Box() = default;
     explicit Box(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // @classmethod
     // def of(cls, v: T) -> Own[Self]:
+    //     return cls(v)
     static Box<T> of(::tpy::param_val_or_ref_t<T> v) {
-        // return cls(v)
         return Box<T>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

@@ -8,22 +8,22 @@ namespace tpyapp::main {
 // # and still evaluates it (side effects included) when the finally's own
 // # return overrides the pending value.
 // def f() -> int:
+//     x = 1
+//     try:
+//         return x
+//     finally:
+//         x = 2
 ::tpy::BigInt f() {
-    // x = 1
     int32_t x = 1;
-    // try:
     {
         bool __fin_ran_1 = false;
         try {
-            // return x
             ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(x);
             __fin_ran_1 = true;
-            // x = 2
             x = 2;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_1) {
-                // x = 2
                 x = 2;
             }
             throw;
@@ -32,27 +32,27 @@ namespace tpyapp::main {
 }
 
 // def bump() -> int:
+//     print("bump")
+//     return 10
 ::tpy::BigInt bump() {
-    // print("bump")
     std::cout << "bump" << "\n";
-    // return 10
     return ::tpy::BigInt(10);
 }
 
 // def g() -> int:
+//     try:
+//         return bump()
+//     finally:
+//         return 99
 ::tpy::BigInt g() {
-    // try:
     {
         bool __fin_ran_2 = false;
         try {
-            // return bump()
             [[maybe_unused]] ::tpy::BigInt __tpy_ret_0 = bump();
             __fin_ran_2 = true;
-            // return 99
             return ::tpy::BigInt(99);
         } catch (...) {
             if (!__fin_ran_2) {
-                // return 99
                 return ::tpy::BigInt(99);
             }
             throw;
@@ -61,19 +61,19 @@ namespace tpyapp::main {
 }
 
 // def main() -> None:
+//     print(f())
+//     print(g())
 void main() {
-    // print(f())
     std::cout << f() << "\n";
-    // print(g())
     std::cout << g() << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -11,6 +11,7 @@ struct MyError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // # User Exception subclass with `str` (string_view) message param
@@ -38,6 +39,8 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
 
 
 // def __init__(self, message: str = "") -> None:
+//     super().__init__(message)
+//     self.msg = message
 inline MyError::MyError(std::string_view message) : ::tpy::Exception(message), msg(message) {}
 void __tpy_init();
 } // namespace tpyapp::main

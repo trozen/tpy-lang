@@ -11,6 +11,7 @@ struct W;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class W:
@@ -36,18 +37,19 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 1
 inline W::W() : n(1) {}
 
 // def __str__(self) -> str:
+//     return "W(" + str(self.n) + ")"
 inline std::string W::__str__() const {
-    // return "W(" + str(self.n) + ")"
     return (::tpy::str_concat((::tpy::str_concat("W(", ::tpy::fixed_to_str<int32_t>(this->n))), ")"));
 }
 
 // def show(self) -> None:
+//     # The whole receiver is the print argument.
+//     print(self)
 inline void W::show() const {
-    // # The whole receiver is the print argument.
-    // print(self)
     std::cout << (*this) << "\n";
 }
 void __tpy_init();

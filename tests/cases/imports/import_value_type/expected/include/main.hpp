@@ -12,7 +12,9 @@ using ::tpyapp::shapes::Vec2;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def length_sq(v: Vec2) -> int:
 ::tpy::BigInt length_sq(::tpyapp::shapes::Vec2 v);
+// def main() -> None:
 void main();
 
 void __tpy_init();

@@ -5,43 +5,47 @@ namespace tpyapp::main {
 
 
 // def make_observer_with_dead_target() -> Own[Observer]:
+//     # Local rc dies at function return; obs.target outlives it as a Weak.
+//     rc = Rc.new(Counter(int32(99)))
+//     return Observer(rc.downgrade())
 Observer make_observer_with_dead_target() {
-    // # Local rc dies at function return; obs.target outlives it as a Weak.
-    // rc = Rc.new(Counter(int32(99)))
     ::tpystd::tplib::rc::Rc<Counter> rc = Rc<Counter>::new_<Counter>(Counter(99));
-    // return Observer(rc.downgrade())
     return Observer(rc.downgrade());
 }
 
 // def main() -> None:
+//     c = Rc.new(Counter(int32(10)))
+//     obs = Observer(c.downgrade())
+//
+//     print(obs.read())  # 10
+//
+//     c.get().value = int32(42)
+//     print(obs.read())  # 42
+//
+//     # Dead-payload path: target's Rc is gone, upgrade() returns None,
+//     # Observer.read() returns the sentinel -1.
+//     dead_obs = make_observer_with_dead_target()
+//     print(dead_obs.read())  # -1
 void main() {
-    // c = Rc.new(Counter(int32(10)))
     ::tpystd::tplib::rc::Rc<Counter> c = Rc<Counter>::new_<Counter>(Counter(10));
-    // obs = Observer(c.downgrade())
     Observer obs = Observer(c.downgrade());
-    // print(obs.read())  # 10
     std::cout << obs.read() << "\n";
-    // c.get().value = int32(42)
     c.get().value = 42;
-    // print(obs.read())  # 42
     std::cout << obs.read() << "\n";
-    // # Dead-payload path: target's Rc is gone, upgrade() returns None,
-    // # Observer.read() returns the sentinel -1.
-    // dead_obs = make_observer_with_dead_target()
     Observer dead_obs = make_observer_with_dead_target();
-    // print(dead_obs.read())  # -1
     std::cout << dead_obs.read() << "\n";
 }
 
+// from tplib.rc import Rc, Weak
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
-    // main()
     main();
 }
 

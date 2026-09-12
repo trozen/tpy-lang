@@ -12,12 +12,19 @@ struct Person;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def test_basic() -> None:
 void test_basic();
+// def test_setter() -> None:
 void test_setter();
+// def test_eq() -> None:
 void test_eq();
+// def test_describe() -> None:
 void test_describe();
+// def test_reset() -> None:
 void test_reset();
+// def test_static() -> None:
 void test_static();
+// def test_quote_expr() -> None:
 void test_quote_expr();
 
 // @builder
@@ -108,30 +115,25 @@ inline bool Point::__eq__(const Point& other) const {
 }
 
 // # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
 inline void Point::set_x(int32_t value) {
-    // # Test quote/add_method_from_source macro APIs.
-    // from tpy import int32
     this->x = value;
 }
 
 // # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
 inline void Point::set_y(int32_t value) {
-    // # Test quote/add_method_from_source macro APIs.
-    // from tpy import int32
     this->y = value;
 }
 
 // # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
 inline std::string Point::describe() const {
-    // # Test quote/add_method_from_source macro APIs.
-    // from tpy import int32
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("x=", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), "y=")), ::tpy::fixed_to_str<int32_t>(this->y)));
 }
 
 inline void Point::reset() {
-    // # Test quote/add_method_from_source macro APIs.
     this->x = 0;
-    // # Test quote/add_method_from_source macro APIs.
     this->y = 0;
 }
 
@@ -140,9 +142,8 @@ inline int32_t Point::default_first() const {
 }
 
 // # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
 inline int32_t Point::field_count() {
-    // # Test quote/add_method_from_source macro APIs.
-    // from tpy import int32
     return 2;
 }
 
@@ -153,30 +154,25 @@ inline bool Person::__eq__(const Person& other) const {
 }
 
 // # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
 inline void Person::set_name(std::string_view value) {
-    // # Test quote/add_method_from_source macro APIs.
-    // from tpy import int32
     this->name = value;
 }
 
 // # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
 inline void Person::set_age(int32_t value) {
-    // # Test quote/add_method_from_source macro APIs.
-    // from tpy import int32
     this->age = value;
 }
 
 // # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
 inline std::string Person::describe() const {
-    // # Test quote/add_method_from_source macro APIs.
-    // from tpy import int32
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("name=", std::string(this->name))), ", ")), "age=")), ::tpy::fixed_to_str<int32_t>(this->age)));
 }
 
 inline void Person::reset() {
-    // # Test quote/add_method_from_source macro APIs.
     this->name = std::string();
-    // # Test quote/add_method_from_source macro APIs.
     this->age = 0;
 }
 
@@ -185,9 +181,8 @@ inline std::string Person::default_first() const {
 }
 
 // # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
 inline int32_t Person::field_count() {
-    // # Test quote/add_method_from_source macro APIs.
-    // from tpy import int32
     return 2;
 }
 void __tpy_init();

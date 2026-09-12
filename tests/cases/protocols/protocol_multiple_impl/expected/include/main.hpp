@@ -61,23 +61,25 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, width: int32, height: int32) -> None:
+//     self.width = width
+//     self.height = height
 inline Box::Box(int32_t width, int32_t height) : width(width), height(height) {}
 
 // def __str__(self) -> str:
+//     return "Box"
 inline std::string Box::__str__() const {
-    // return "Box"
     return "Box";
 }
 
 // def describe(self) -> str:
+//     return "A rectangular box"
 inline std::string Box::describe() const {
-    // return "A rectangular box"
     return "A rectangular box";
 }
 
 // def size(self) -> int32:
+//     return self.width * self.height
 inline int32_t Box::size() const {
-    // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width, this->height));
 }
 void __tpy_init();

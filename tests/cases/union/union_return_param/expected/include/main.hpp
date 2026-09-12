@@ -12,8 +12,11 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def identity(pet: Dog | Cat) -> Dog | Cat:
 ::tpy::Union<Cat*, Dog*> identity(::tpy::Union<Cat*, Dog*> pet);
+// def get_name(pet: Dog | Cat) -> str:
 std::string get_name(::tpy::Union<const Cat*, const Dog*> pet);
+// def main() -> None:
 void main();
 
 // class Dog:
@@ -54,9 +57,13 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 
 // def __init__(self, name: str, age: int32) -> None:
+//     self.name = name
+//     self.age = age
 inline Dog::Dog(std::string_view name, int32_t age) : name(name), age(age) {}
 
 // def __init__(self, name: str, lives: int32) -> None:
+//     self.name = name
+//     self.lives = lives
 inline Cat::Cat(std::string_view name, int32_t lives) : name(name), lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::main

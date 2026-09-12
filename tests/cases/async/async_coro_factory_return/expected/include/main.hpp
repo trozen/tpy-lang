@@ -15,12 +15,16 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_add_one;
 struct __coro_spawn_via;
 
+// async def add_one(n: int) -> int:
 __coro_add_one add_one(::tpy::BigInt n);
+// def make(n: int) -> Own[Cancellable[int]]:
 std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> make(const ::tpy::BigInt& n);
+// async def spawn_via(factory: Callable[[int], Own[Cancellable[int]]], n: int) -> int:
 __coro_spawn_via spawn_via(std::function<std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>>(const ::tpy::BigInt&)> factory, ::tpy::BigInt n);
+// def main() -> None:
 void main();
 
-// Async coroutine: add_one
+// async def add_one(n: int) -> int:
 struct __coro_add_one {
     int32_t __state;
     bool __cancel_pending;
@@ -42,7 +46,7 @@ struct __coro_add_one {
     }
 };
 
-// Async coroutine: spawn_via
+// async def spawn_via(factory: Callable[[int], Own[Cancellable[int]]], n: int) -> int:
 struct __coro_spawn_via {
     int32_t __state;
     bool __cancel_pending;

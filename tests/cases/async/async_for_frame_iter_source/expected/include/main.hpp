@@ -19,7 +19,9 @@ struct __coro_bump;
 struct __coro_amain;
 struct __gen_Bag___iter__;
 
+// async def bump(bag: Bag) -> int32:
 __coro_bump bump(Bag& bag);
+// async def amain() -> None:
 __coro_amain amain();
 
 // class Point:
@@ -56,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     return os;
 }
 
-// Generator: Bag.__iter__
+// def __iter__(self) -> Iterator[Point]:
 struct __gen_Bag___iter__ : public ::tpy::next_iter_mixin<__gen_Bag___iter__, ::tpy::val_or_ref<Point>> {
     int32_t __state;
     Bag& __self;
@@ -87,7 +89,7 @@ inline __gen_Bag___iter__ Bag::__iter__() {
     return __gen_Bag___iter__(*this);
 }
 
-// Async coroutine: bump
+// async def bump(bag: Bag) -> int32:
 struct __coro_bump {
     int32_t __state;
     bool __cancel_pending;
@@ -116,7 +118,7 @@ struct __coro_bump {
     }
 };
 
-// Async coroutine: amain
+// async def amain() -> None:
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
@@ -143,9 +145,11 @@ struct __coro_amain {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, items: Own[list[Point]]) -> None:
+//     self.items = items
 inline Bag::Bag(std::vector<Point>&& items) : items(std::move(items)) {}
 void __tpy_init();
 } // namespace tpyapp::main

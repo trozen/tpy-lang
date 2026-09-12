@@ -5,25 +5,26 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     h = Holder(Poll[int32].ready(42))
+//     p = h.take()
+//     print("ready:", p.is_ready())
+//     print("value:", p.value())
 void main() {
-    // h = Holder(Poll[int32].ready(42))
     Holder h = Holder(::tpystd::tpy::Poll<int32_t>::ready(42));
-    // p = h.take()
     ::tpystd::tpy::Poll<int32_t> p = std::move(h).take();
-    // print("ready:", p.is_ready())
     std::cout << "ready:" << " " << ::tpy::print_bool(p.is_ready()) << "\n";
-    // print("value:", p.value())
     std::cout << "value:" << " " << std::move(p).value() << "\n";
 }
 
+// from tpy.coro import Poll
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import Poll
     ::tpystd::coro::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,12 +5,13 @@ namespace tpyapp::main {
 
 
 // async def bump(b: Box) -> None:
+//     t = (1, b)
+//     await asyncio.sleep(0)
+//     t[1].val = 99
 ::tpystd::tpy::Poll<::std::monostate> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = (1, b)
         t = std::tuple<int32_t, Box*>{1, &(b)};
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +21,6 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // t[1].val = 99
         std::get<1>(t)->val = 99;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -37,12 +37,13 @@ __coro_bump bump(Box& b) {
 }
 
 // async def driver() -> None:
+//     b = Box(5)
+//     await bump(b)
+//     print(b.val)
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // b = Box(5)
         b.emplace(Box(5));
-        // await bump(b)
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
@@ -52,7 +53,6 @@ __coro_bump bump(Box& b) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // print(b.val)
         std::cout << (*b).val << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -68,18 +68,19 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
+// # A borrow-form tuple LOCAL in an async body held across an await: the coro
+// # frame stores it in pointer form (std::tuple<..., Box*>), so mutating through
+// # it after the suspension reaches the caller's object (CPython aliasing) --
+// # a storage-form frame field would have mutated a private copy.
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # A borrow-form tuple LOCAL in an async body held across an await: the coro
-    // # frame stores it in pointer form (std::tuple<..., Box*>), so mutating through
-    // # it after the suspension reaches the caller's object (CPython aliasing) --
-    // # a storage-form frame field would have mutated a private copy.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

@@ -12,8 +12,11 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def find_first(items: list[Point]) -> Point:
 Point& find_first(std::vector<Point>& items);
+// def bump(p: Point) -> None:
 void bump(Point& p);
+// def test() -> None:
 void test();
 
 // # Test: ref-returning call passed directly as mutable ref arg -- no copy, mutation propagates
@@ -53,14 +56,16 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, x: int) -> None:
+//     self.x = x
 inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self) -> None:
+//     self.inner = Point(5)
 inline Holder::Holder() : inner(Point(::tpy::BigInt(5))) {}
 
 // def get(self) -> Point:
+//     return self.inner
 inline Point& Holder::get() {
-    // return self.inner
     return this->inner;
 }
 void __tpy_init();

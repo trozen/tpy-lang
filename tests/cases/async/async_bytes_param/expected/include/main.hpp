@@ -16,11 +16,14 @@ struct __coro_consume;
 struct __coro_head;
 struct __coro_main;
 
+// async def consume(data: bytes) -> int:
 __coro_consume consume(::tpy::BytesView data);
+// async def head(data: bytes) -> int:
 __coro_head head(::tpy::BytesView data);
+// async def main() -> None:
 __coro_main main();
 
-// Async coroutine: consume
+// async def consume(data: bytes) -> int:
 struct __coro_consume {
     int32_t __state;
     bool __cancel_pending;
@@ -44,7 +47,7 @@ struct __coro_consume {
     }
 };
 
-// Async coroutine: head
+// async def head(data: bytes) -> int:
 struct __coro_head {
     int32_t __state;
     bool __cancel_pending;
@@ -68,7 +71,7 @@ struct __coro_head {
     }
 };
 
-// Async coroutine: main
+// async def main() -> None:
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;

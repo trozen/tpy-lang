@@ -32,7 +32,9 @@ inline std::ostream& operator<<(std::ostream& __os, Signal __e) {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def check(s: Signal) -> None:
 void check(Signal s);
+// def main() -> None:
 void main();
 
 void __tpy_init();

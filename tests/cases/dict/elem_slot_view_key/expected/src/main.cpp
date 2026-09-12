@@ -5,128 +5,130 @@ namespace tpyapp::main {
 
 
 // def read_param(d: dict[str, list[int32]], k: str) -> int32:
+//     return d[k][0]  # tpyc: ok -- `k` is a std::string_view param
 int32_t read_param(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::string_view k) {
-    // return d[k][0]  # tpyc: ok -- `k` is a std::string_view param
     return ::tpy::__getitem__(::tpy::__getitem__(d, k), 0);
 }
 
 // def get_param(d: dict[str, list[int32]], k: str) -> bool:
+//     return d.get(k) is not None  # tpyc: ok -- the same view key at .get
 bool get_param(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::string_view k) {
-    // return d.get(k) is not None  # tpyc: ok -- the same view key at .get
     return (::tpy::dict_get(d, k) != nullptr);
 }
 
 // def has_param(d: dict[str, list[int32]], k: str) -> bool:
+//     return k in d  # tpyc: ok -- and at the membership read
 bool has_param(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::string_view k) {
-    // return k in d  # tpyc: ok -- and at the membership read
     return (d.contains(k));
 }
 
 // def drop_param(d: dict[str, list[int32]], k: str) -> None:
+//     del d[k]  # tpyc: ok -- the erase compares the key, it does not build one
 void drop_param(::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::string_view k) {
-    // del d[k]  # tpyc: ok -- the erase compares the key, it does not build one
     ::tpy::__delitem__(d, k);
 }
 
 // def push_literal(d: dict[str, list[int32]]) -> None:
+//     # A literal stays a bare `const char[N]`, which is a lookup form too; the
+//     # append lands in the dict's own list, not in a copy.
+//     d["a"].append(9)  # tpyc: ok
 void push_literal(::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
-    // # A literal stays a bare `const char[N]`, which is a lookup form too; the
-    // # append lands in the dict's own list, not in a copy.
-    // d["a"].append(9)  # tpyc: ok
     ::tpy::__getitem__(d, "a").push_back(9);
 }
 
 // def pop_literal(d: dict[str, list[int32]]) -> int32:
+//     return d.pop("b")[0]  # tpyc: ok -- the free-template callee takes it bare
 int32_t pop_literal(::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
-    // return d.pop("b")[0]  # tpyc: ok -- the free-template callee takes it bare
     return ::tpy::__getitem__(::tpy::dict_pop(d, "b"), 0);
 }
 
 // def empty_key(d: dict[str, int32], k: str) -> int32:
+//     # An empty key goes through the hash table, so it also pins that a view
+//     # and the stored owned key land in ONE hash domain.
+//     if k in d:
+//         return d[k]
+//     return -1
 int32_t empty_key(const ::tpy::ordered_map<std::string, int32_t>& d, std::string_view k) {
-    // # An empty key goes through the hash table, so it also pins that a view
-    // # and the stored owned key land in ONE hash domain.
-    // if k in d:
     if ((d.contains(k))) {
-        // return d[k]
         return ::tpy::__getitem__(d, k);
     }
-    // return -1
     return -1;
 }
 
 // def read_bytes_param(d: dict[bytes, int32], k: bytes) -> int32:
+//     return d[k]  # tpyc: ok -- a std::span key probes the table directly
 int32_t read_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k) {
-    // return d[k]  # tpyc: ok -- a std::span key probes the table directly
     return ::tpy::__getitem__(d, k);
 }
 
 // def get_bytes_param(d: dict[bytes, int32], k: bytes) -> bool:
+//     return d.get(k) is not None  # tpyc: ok
 bool get_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k) {
-    // return d.get(k) is not None  # tpyc: ok
     return (::tpy::dict_get(d, k) != nullptr);
 }
 
 // def drop_bytes_param(d: dict[bytes, int32], k: bytes) -> None:
+//     del d[k]  # tpyc: ok
 void drop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k) {
-    // del d[k]  # tpyc: ok
     ::tpy::__delitem__(d, k);
 }
 
 // def pop_bytes_param(d: dict[bytes, int32], k: bytes) -> int32:
+//     return d.pop(k)  # tpyc: ok
 int32_t pop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k) {
-    // return d.pop(k)  # tpyc: ok
     return ::tpy::dict_pop(d, k);
 }
 
 // def main() -> None:
+//     d: dict[str, list[int32]] = {}
+//     d["a"] = [1]
+//     d["b"] = [2]
+//     d["c"] = [3]
+//     print(read_param(d, "a"), get_param(d, "zz"), has_param(d, "c"))
+//     push_literal(d)
+//     print(d["a"])
+//     drop_param(d, "c")
+//     print(pop_literal(d), len(d), d)
+//
+//     e: dict[str, int32] = {}
+//     e[""] = 1
+//     e["a"] = 2
+//     print(empty_key(e, ""), empty_key(e, "zz"))
+//
+//     b: dict[bytes, int32] = {}
+//     b[b"aa"] = 1
+//     b[b"bb"] = 2
+//     print(read_bytes_param(b, b"aa"), get_bytes_param(b, b"zz"))
+//     drop_bytes_param(b, b"aa")
+//     print(pop_bytes_param(b, b"bb"), len(b))
 void main() {
-    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // d["a"] = [1]
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1});
-    // d["b"] = [2]
     ::tpy::__setitem__(d, "b", std::vector<int32_t>{2});
-    // d["c"] = [3]
     ::tpy::__setitem__(d, "c", std::vector<int32_t>{3});
-    // print(read_param(d, "a"), get_param(d, "zz"), has_param(d, "c"))
     std::cout << read_param(d, "a") << " " << ::tpy::print_bool(get_param(d, "zz")) << " " << ::tpy::print_bool(has_param(d, "c")) << "\n";
-    // push_literal(d)
     push_literal(d);
-    // print(d["a"])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "a")) << "\n";
-    // drop_param(d, "c")
     drop_param(d, "c");
-    // print(pop_literal(d), len(d), d)
     std::cout << pop_literal(d) << " " << ::tpy::__len__(d) << " " << ::tpy::DictPrinter(d) << "\n";
-    // e: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> e = ::tpy::ordered_map<std::string, int32_t>();
-    // e[""] = 1
     ::tpy::__setitem__(e, "", 1);
-    // e["a"] = 2
     ::tpy::__setitem__(e, "a", 2);
-    // print(empty_key(e, ""), empty_key(e, "zz"))
     std::cout << empty_key(e, "") << " " << empty_key(e, "zz") << "\n";
-    // b: dict[bytes, int32] = {}
     ::tpy::ordered_map<::tpy::Bytes, int32_t> b = ::tpy::ordered_map<::tpy::Bytes, int32_t>();
-    // b[b"aa"] = 1
     ::tpy::__setitem__(b, ::tpy::bytes_literal_owned("aa", 2), 1);
-    // b[b"bb"] = 2
     ::tpy::__setitem__(b, ::tpy::bytes_literal_owned("bb", 2), 2);
-    // print(read_bytes_param(b, b"aa"), get_bytes_param(b, b"zz"))
     std::cout << read_bytes_param(b, ::tpy::bytes_literal("aa", 2)) << " " << ::tpy::print_bool(get_bytes_param(b, ::tpy::bytes_literal("zz", 2))) << "\n";
-    // drop_bytes_param(b, b"aa")
     drop_bytes_param(b, ::tpy::bytes_literal("aa", 2));
-    // print(pop_bytes_param(b, b"bb"), len(b))
     std::cout << pop_bytes_param(b, ::tpy::bytes_literal("bb", 2)) << " " << ::tpy::__len__(b) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

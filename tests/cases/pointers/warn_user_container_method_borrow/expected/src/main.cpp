@@ -5,37 +5,37 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     nl = NumberList("test")
+//     nl.add(1)
+//     nl.add(2)
+//     for x in nl:
+//         nl.add(3)  # tpyc: warning(/Mutation of 'nl' while iterating/)
+//         nl.set_label("updated")  # tpyc: ok
+//         print(x)
+//         break
 void main() {
-    // nl = NumberList("test")
     NumberList nl = NumberList("test");
-    // nl.add(1)
     nl.add(1);
-    // nl.add(2)
     nl.add(2);
-    // for x in nl:
     auto& __src_0 = nl;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = ::tpy::unwrap_ref(*__r_1);
-        // nl.add(3)  # tpyc: warning(/Mutation of 'nl' while iterating/)
         nl.add(3);
-        // nl.set_label("updated")  # tpyc: ok
         nl.set_label("updated");
-        // print(x)
         std::cout << x << "\n";
-        // break
         break;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

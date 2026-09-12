@@ -12,9 +12,13 @@ struct Probe;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(p: Probe | None) -> int32:
 int32_t take(const Probe* p);
+// def comp_in_ternary(c: Counter, cond: bool, xs: list[int32]) -> int32:
 int32_t comp_in_ternary(Counter& c, bool cond, const std::vector<int32_t>& xs);
+// def comp_in_and(c: Counter, cond: bool, xs: list[int32]) -> bool:
 bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs);
+// def main() -> None:
 void main();
 
 // class Counter:
@@ -50,15 +54,16 @@ inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
 
 
 // def __init__(self) -> None:
+//     self.n = 0
 inline Counter::Counter() : n(0) {}
 
 // def __init__(self, c: Counter, tag: int32) -> None:
+//     # Counted mutation through a shared reference: proves whether this
+//     # element was constructed at all.
+//     c.n += 1
+//     self.tag = tag
 inline Probe::Probe(Counter& c, int32_t tag) {
-    // # Counted mutation through a shared reference: proves whether this
-    // # element was constructed at all.
-    // c.n += 1
     c.n = ::tpy::add_check<int32_t>(c.n, 1);
-    // self.tag = tag
     this->tag = tag;
 }
 void __tpy_init();

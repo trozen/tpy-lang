@@ -5,114 +5,119 @@ namespace tpyapp::main {
 
 
 // def make_list() -> Own[list[int32]]:
+//     return [1, 2]
 std::vector<int32_t> make_list() {
-    // return [1, 2]
     return {1, 2};
 }
 
 // def make_inner() -> Own[dict[str, int32]]:
+//     d: dict[str, int32] = {}
+//     d["n"] = 5
+//     return d
 ::tpy::ordered_map<std::string, int32_t> make_inner() {
-    // d: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    // d["n"] = 5
     ::tpy::__setitem__(d, "n", 5);
-    // return d
     return d;
 }
 
 // def make_pair() -> Own[Array[int32, 2]]:
+//     return [8, 9]
 std::array<int32_t, 2> make_pair() {
-    // return [8, 9]
     return {8, 9};
 }
 
 // def make_blob() -> Own[bytearray]:
+//     return bytearray(b"abc")
 ::tpy::ByteArray make_blob() {
-    // return bytearray(b"abc")
     return ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
 }
 
 // def make_tags() -> Own[set[int32]]:
+//     return {4, 5}
 ::tpy::ordered_set<int32_t> make_tags() {
-    // return {4, 5}
     return ::tpy::ordered_set<int32_t>({4, 5});
 }
 
 // def make_boxes() -> Own[list[Box[int32]]]:
+//     return [Box(1), Box(2)]
 std::vector<::tpystd::tplib::box::Box<int32_t>> make_boxes() {
-    // return [Box(1), Box(2)]
     return ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1), ::tpystd::tplib::box::Box<int32_t>(2));
 }
 
 // def main() -> None:
+//     s = Source(10)
+//     d: dict[str, list[int32]] = {}
+//     d["free"] = make_list()      # tpyc: ok -- the free-call rvalue
+//     d["meth"] = s.rows()         # tpyc: ok -- the method-call rvalue
+//     # The stored value is the container the call built, not a stale copy:
+//     # mutating it through the map is visible on the next read.
+//     d["free"].append(3)
+//     print(len(d), len(d["free"]), d["free"][2], d["meth"][0])
+//
+//     nested: dict[str, dict[str, int32]] = {}
+//     nested["in"] = make_inner()  # tpyc: ok -- a dict-valued slot
+//     nested["in"]["m"] = 6
+//     print(len(nested["in"]), nested["in"]["n"], nested["in"]["m"])
+//
+//     pairs: dict[str, Array[int32, 2]] = {}
+//     pairs["p"] = make_pair()     # tpyc: ok -- an Array-valued slot
+//     pairs["p"][0] = 42
+//     print(pairs["p"][0], pairs["p"][1])
+//
+//     blobs: dict[str, bytearray] = {}
+//     blobs["b"] = make_blob()     # tpyc: ok -- a bytearray-valued slot
+//     owned = bytearray(b"de")
+//     blobs["n"] = owned           # tpyc: ok -- the NAME source, moved at last use
+//     tags: dict[str, set[int32]] = {}
+//     tags["t"] = make_tags()      # tpyc: ok -- a set-valued slot
+//     boxes: dict[str, list[Box[int32]]] = {}
+//     boxes["b"] = make_boxes()    # tpyc: ok -- a copy here would not compile
+//     print(len(blobs), len(tags), len(boxes["b"]))
+//
+//     rows: list[list[int32]] = [[0]]
+//     rows[0] = make_list()        # tpyc: ok -- a list receiver, same arm
+//     rows[0].append(7)
+//     print(len(rows[0]), rows[0][2])
 void main() {
-    // s = Source(10)
     Source s = Source(10);
-    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
-    // d["free"] = make_list()      # tpyc: ok -- the free-call rvalue
     ::tpy::__setitem__(d, "free", make_list());
-    // d["meth"] = s.rows()         # tpyc: ok -- the method-call rvalue
     ::tpy::__setitem__(d, "meth", s.rows());
-    // # The stored value is the container the call built, not a stale copy:
-    // # mutating it through the map is visible on the next read.
-    // d["free"].append(3)
     ::tpy::__getitem__(d, "free").push_back(3);
-    // print(len(d), len(d["free"]), d["free"][2], d["meth"][0])
     std::cout << ::tpy::__len__(d) << " " << ::tpy::__len__(::tpy::__getitem__(d, "free")) << " " << ::tpy::__getitem__(::tpy::__getitem__(d, "free"), 2) << " " << ::tpy::__getitem__(::tpy::__getitem__(d, "meth"), 0) << "\n";
-    // nested: dict[str, dict[str, int32]] = {}
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> nested = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>();
-    // nested["in"] = make_inner()  # tpyc: ok -- a dict-valued slot
     ::tpy::__setitem__(nested, "in", make_inner());
-    // nested["in"]["m"] = 6
     ::tpy::__setitem__(::tpy::__getitem__(nested, "in"), "m", 6);
-    // print(len(nested["in"]), nested["in"]["n"], nested["in"]["m"])
     std::cout << ::tpy::__len__(::tpy::__getitem__(nested, "in")) << " " << ::tpy::__getitem__(::tpy::__getitem__(nested, "in"), "n") << " " << ::tpy::__getitem__(::tpy::__getitem__(nested, "in"), "m") << "\n";
-    // pairs: dict[str, Array[int32, 2]] = {}
     ::tpy::ordered_map<std::string, std::array<int32_t, 2>> pairs = ::tpy::ordered_map<std::string, std::array<int32_t, 2>>();
-    // pairs["p"] = make_pair()     # tpyc: ok -- an Array-valued slot
     ::tpy::__setitem__(pairs, "p", make_pair());
-    // pairs["p"][0] = 42
     ::tpy::__setitem__(::tpy::__getitem__(pairs, "p"), 0, 42);
-    // print(pairs["p"][0], pairs["p"][1])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(pairs, "p"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(pairs, "p"), 1) << "\n";
-    // blobs: dict[str, bytearray] = {}
     ::tpy::ordered_map<std::string, ::tpy::ByteArray> blobs = ::tpy::ordered_map<std::string, ::tpy::ByteArray>();
-    // blobs["b"] = make_blob()     # tpyc: ok -- a bytearray-valued slot
     ::tpy::__setitem__(blobs, "b", make_blob());
-    // owned = bytearray(b"de")
     ::tpy::ByteArray owned = ::tpy::ByteArray(::tpy::bytes_literal("de", 2));
-    // blobs["n"] = owned           # tpyc: ok -- the NAME source, moved at last use
     ::tpy::__setitem__(blobs, "n", std::move(owned));
-    // tags: dict[str, set[int32]] = {}
     ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> tags = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>();
-    // tags["t"] = make_tags()      # tpyc: ok -- a set-valued slot
     ::tpy::__setitem__(tags, "t", make_tags());
-    // boxes: dict[str, list[Box[int32]]] = {}
     ::tpy::ordered_map<std::string, std::vector<::tpystd::tplib::box::Box<int32_t>>> boxes = ::tpy::ordered_map<std::string, std::vector<::tpystd::tplib::box::Box<int32_t>>>();
-    // boxes["b"] = make_boxes()    # tpyc: ok -- a copy here would not compile
     ::tpy::__setitem__(boxes, "b", make_boxes());
-    // print(len(blobs), len(tags), len(boxes["b"]))
     std::cout << ::tpy::__len__(blobs) << " " << ::tpy::__len__(tags) << " " << ::tpy::__len__(::tpy::__getitem__(boxes, "b")) << "\n";
-    // rows: list[list[int32]] = [[0]]
     std::vector<std::vector<int32_t>> rows = {{0}};
-    // rows[0] = make_list()        # tpyc: ok -- a list receiver, same arm
     ::tpy::__setitem__(rows, 0, make_list());
-    // rows[0].append(7)
     ::tpy::__getitem__(rows, 0).push_back(7);
-    // print(len(rows[0]), rows[0][2])
     std::cout << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::__getitem__(::tpy::__getitem__(rows, 0), 2) << "\n";
 }
 
+// from tplib.box import Box
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib.box import Box
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::box::__tpy_init();
-    // main()
     main();
 }
 

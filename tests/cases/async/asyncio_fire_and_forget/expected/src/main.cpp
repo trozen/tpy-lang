@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // async def background(done: Future[int32]) -> None:
+//     print("background ran")
+//     done.set_result(int32(0))  # sentinel; only the wake matters
 ::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // print("background ran")
         std::cout << "background ran" << "\n";
-        // done.set_result(int32(0))  # sentinel; only the wake matters
         done.set_result(0);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -28,17 +28,18 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
 }
 
 // async def main_coro() -> None:
+//     done: Future[int32] = Future[int32]()
+//     t: Task[None] = asyncio.create_task(background(done))
+//     # Drop the handle without awaiting; the executor still drives the task.
+//     del t
+//     _ = await done
+//     print("main done")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // done: Future[int32] = Future[int32]()
         done.emplace(::tpystd::asyncio::Future<int32_t>());
-        // t: Task[None] = asyncio.create_task(background(done))
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(background((*done)))));
-        // # Drop the handle without awaiting; the executor still drives the task.
-        // del t
         { auto __del_sink = std::move(t); }
-        // _ = await done
         __sub_0 = &((*done));
         __state = S_RESUME_0;
         continue;
@@ -48,7 +49,6 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         _ = std::move(__r0).value();
         __sub_0 = nullptr;
-        // print("main done")
         std::cout << "main done" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -65,29 +65,30 @@ __coro_main_coro main_coro() {
 }
 
 // def main() -> None:
+//     asyncio.run(main_coro())
 void main() {
-    // asyncio.run(main_coro())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
+// # Fire-and-forget: a task spawned via create_task and never awaited
+// # still runs to completion as long as the main coroutine yields long
+// # enough for the executor to drive it. The user's Task handle is
+// # dropped (`del t`) before the task completes; the executor's
+// # spawned-list wrapper keeps the TaskState alive until the frame is
+// # Ready.
+// #
+// # Synchronization uses a Future (set by background, awaited by main)
+// # rather than a timer race -- avoids depending on OS scheduling for
+// # `background_sleep < main_sleep` ordering.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Fire-and-forget: a task spawned via create_task and never awaited
-    // # still runs to completion as long as the main coroutine yields long
-    // # enough for the executor to drive it. The user's Task handle is
-    // # dropped (`del t`) before the task completes; the executor's
-    // # spawned-list wrapper keeps the TaskState alive until the frame is
-    // # Ready.
-    // #
-    // # Synchronization uses a Future (set by background, awaited by main)
-    // # rather than a timer race -- avoids depending on OS scheduling for
-    // # `background_sleep < main_sleep` ordering.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

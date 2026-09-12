@@ -8,38 +8,39 @@ namespace tpyapp::main {
 // # catch it the same way as runtime-thrown ValueError. Subclassing works
 // # (basic catch shape only).
 // def parse_positive(s: str) -> int:
+//     if not s:
+//         raise ValueError("custom: empty input")
+//     return int(s)
 ::tpy::BigInt parse_positive(std::string_view s) {
-    // if not s:
     if ((!((!s.empty())))) {
-        // raise ValueError("custom: empty input")
         throw ::tpy::ValueError("custom: empty input");
     }
-    // return int(s)
     return ::tpy::BigInt::from_str(s);
 }
 
 // def main() -> None:
+//     print(parse_positive("42"))
+//     try:
+//         print(parse_positive(""))
+//     except ValueError as e:
+//         print("caught:", str(e))
 void main() {
-    // print(parse_positive("42"))
     std::cout << parse_positive("42") << "\n";
-    // try:
     {
         try {
-            // print(parse_positive(""))
             std::cout << parse_positive("") << "\n";
         } catch (const ::tpy::ValueError& e) {
-            // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";
         }
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

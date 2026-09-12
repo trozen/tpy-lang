@@ -15,9 +15,13 @@ extern std::string title;
 extern std::optional<int32_t> slot;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def lookup(n: int32) -> int32 | None:
 std::optional<int32_t> lookup(int32_t n);
+// def narrow(n: int32) -> int32:
 int32_t narrow(int32_t n);
+// def other_types() -> None:
 void other_types();
+// def main() -> None:
 void main();
 
 // class Widget:
@@ -36,10 +40,10 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 
 // def retitle(self, t: str) -> int:
+//     # A method writes the global through the same route a free function does.
+//     global title
+//     return len(title := t)
 inline ::tpy::BigInt Widget::retitle(std::string_view t) const {
-    // # A method writes the global through the same route a free function does.
-    // global title
-    // return len(title := t)
     return ::tpy::BigInt(::tpy::__len__((title = t)));
 }
 void __tpy_init();

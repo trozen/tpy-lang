@@ -3,35 +3,32 @@
 
 namespace tpyapp::main {
 
-// arr: Array[int32, 4] = [int32(10), int32(20), int32(30), int32(40)]
 std::array<int32_t, 4>* arr{};
-// p: Ptr[int32] = tpy.unsafe.unsafe_ptr(arr)
 int32_t* p{};
-// val: int32 = tpy.unsafe.unsafe_load(p, uint32(0))
 int32_t val{};
-// val2: int32 = tpy.unsafe.unsafe_load(p, uint32(1))
 int32_t val2{};
 
+// import tpy.unsafe
+//
+// arr: Array[int32, 4] = [int32(10), int32(20), int32(30), int32(40)]
+// p: Ptr[int32] = tpy.unsafe.unsafe_ptr(arr)
+// val: int32 = tpy.unsafe.unsafe_load(p, uint32(0))
+// print(val)
+// tpy.unsafe.unsafe_store(p, uint32(1), int32(99))
+// val2: int32 = tpy.unsafe.unsafe_load(p, uint32(1))
+// print(val2)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // import tpy.unsafe
-    // arr: Array[int32, 4] = [int32(10), int32(20), int32(30), int32(40)]
     static std::array<int32_t, 4> __global_slot_1 = {10, 20, 30, 40};
     arr = &__global_slot_1;
-    // p: Ptr[int32] = tpy.unsafe.unsafe_ptr(arr)
     p = (*arr).data();
-    // val: int32 = tpy.unsafe.unsafe_load(p, uint32(0))
     val = p[0];
-    // print(val)
     std::cout << val << "\n";
-    // tpy.unsafe.unsafe_store(p, uint32(1), int32(99))
     p[1] = 99;
-    // val2: int32 = tpy.unsafe.unsafe_load(p, uint32(1))
     val2 = p[1];
-    // print(val2)
     std::cout << val2 << "\n";
 }
 

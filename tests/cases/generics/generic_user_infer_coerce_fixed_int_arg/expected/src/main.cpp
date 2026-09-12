@@ -3,17 +3,16 @@
 
 namespace tpyapp::main {
 
-// value: int32 = int32(7)
 int32_t value{};
 
+// value: int32 = int32(7)
+// print(echo_with_delta(value, int32(5)))  # tpyc: ok
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // value: int32 = int32(7)
     value = 7;
-    // print(echo_with_delta(value, int32(5)))  # tpyc: ok
     std::cout << echo_with_delta<int32_t>(value, static_cast<int64_t>(5)) << "\n";
 }
 

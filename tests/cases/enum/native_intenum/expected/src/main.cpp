@@ -43,19 +43,19 @@ namespace tpyapp::main {
 
 
 // def desc(d: Direction) -> str:
+//     match d:
+//         case Direction.UP:
+//             return "rising"
+//         case Direction.DOWN:
+//             return "falling"
 std::string desc(::ns::dir_t d) {
-    // match d:
     auto& __match_subject_1 = d;
     switch (__match_subject_1) {
-    // case Direction.UP:
     case ::ns::dir_t::UP: {
-        // return "rising"
         return "rising";
         break;
     }
-    // case Direction.DOWN:
     case ::ns::dir_t::DOWN: {
-        // return "falling"
         return "falling";
         break;
     }
@@ -64,29 +64,31 @@ std::string desc(::ns::dir_t d) {
 }
 
 // def main() -> None:
+//     d = Direction.UP
+//     print(d)
+//     print(desc(d))
+//     print(desc(Direction.DOWN))
+//     print(d.value)
 void main() {
-    // d = Direction.UP
     ::ns::dir_t d = ::ns::dir_t::UP;
-    // print(d)
     std::cout << ::tpy::__repr__(d) << "\n";
-    // print(desc(d))
     std::cout << desc(d) << "\n";
-    // print(desc(Direction.DOWN))
     std::cout << desc(::ns::dir_t::DOWN) << "\n";
-    // print(d.value)
     std::cout << static_cast<int>(static_cast<int8_t>(d)) << "\n";
 }
 
+// # @native IntEnum with explicit underlying type (int8) matching the C++ side.
+// # tpy: include("native_types.hpp")
+// from enum import Enum, auto
+//
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @native IntEnum with explicit underlying type (int8) matching the C++ side.
-    // # tpy: include("native_types.hpp")
-    // from enum import Enum, auto
-    // from tpy.extern import native
-    // main()
     main();
 }
 

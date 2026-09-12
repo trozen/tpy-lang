@@ -49,9 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Switch& obj) {
 
 
 // def __init__(self, lit: bool) -> None:
+//     self.lit = lit
 inline Lamp::Lamp(bool lit) : lit(lit) {}
 
 // def __init__(self, on: bool) -> None:
+//     self.on = on
 inline Switch::Switch(bool on) : on(on) {}
 void __tpy_init();
 } // namespace tpyapp::lampmod

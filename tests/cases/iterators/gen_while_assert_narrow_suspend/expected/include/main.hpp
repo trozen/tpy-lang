@@ -12,11 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_loop;
 struct __gen_checked;
 
+// def loop(a: int | str) -> Iterator[str]:
 __gen_loop loop(::tpy::Union<::tpy::BigInt, std::string> a);
+// def checked(a: int | str) -> Iterator[str]:
 __gen_checked checked(::tpy::Union<::tpy::BigInt, std::string> a);
+// def main() -> None:
 void main();
 
-// Generator: loop
+// def loop(a: int | str) -> Iterator[str]:
 struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
     int32_t __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;
@@ -42,7 +45,7 @@ struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
     }
 };
 
-// Generator: checked
+// def checked(a: int | str) -> Iterator[str]:
 struct __gen_checked : public ::tpy::next_iter_mixin<__gen_checked, std::string> {
     int32_t __state;
     ::tpy::Union<::tpy::BigInt, std::string> a;

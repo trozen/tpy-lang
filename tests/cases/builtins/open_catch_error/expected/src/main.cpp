@@ -6,56 +6,62 @@ namespace tpyapp::main {
 
 // # Test that open() raises FileNotFoundError (catchable) for missing files
 // def main() -> None:
+//     # Catch FileNotFoundError
+//     try:
+//         f = open("/nonexistent/path/file.txt")
+//         f.close()
+//     except FileNotFoundError:
+//         print("caught FileNotFoundError")
+//
+//     # Catch via base class OSError
+//     try:
+//         f2 = open("/nonexistent/path/file2.txt")
+//         f2.close()
+//     except OSError:
+//         print("caught OSError")
+//
+//     # Binary mode also throws
+//     try:
+//         f3 = open("/nonexistent/path/file3.bin", "rb")
+//         f3.close()
+//     except FileNotFoundError:
+//         print("caught binary FileNotFoundError")
+//
+//     print("done")
 void main() {
-    // # Catch FileNotFoundError
-    // try:
     {
         try {
-            // f = open("/nonexistent/path/file.txt")
             ::tpy::TextFile f = ::tpy::builtin_open("/nonexistent/path/file.txt");
-            // f.close()
             f.close();
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("caught FileNotFoundError")
             std::cout << "caught FileNotFoundError" << "\n";
         }
     }
-    // # Catch via base class OSError
-    // try:
     {
         try {
-            // f2 = open("/nonexistent/path/file2.txt")
             ::tpy::TextFile f2 = ::tpy::builtin_open("/nonexistent/path/file2.txt");
-            // f2.close()
             f2.close();
         } catch (const ::tpy::OSError&) {
-            // print("caught OSError")
             std::cout << "caught OSError" << "\n";
         }
     }
-    // # Binary mode also throws
-    // try:
     {
         try {
-            // f3 = open("/nonexistent/path/file3.bin", "rb")
             ::tpy::BinaryFile f3 = ::tpy::builtin_open_binary("/nonexistent/path/file3.bin", "rb");
-            // f3.close()
             f3.close();
         } catch (const ::tpy::FileNotFoundError&) {
-            // print("caught binary FileNotFoundError")
             std::cout << "caught binary FileNotFoundError" << "\n";
         }
     }
-    // print("done")
     std::cout << "done" << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

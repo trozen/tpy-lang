@@ -5,24 +5,25 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     v = Value(21)
+//     double_it(v)
+//
+//     # Direct call to verify it works
+//     v2 = v.duplicate()
+//     print(v2.x)
 void main() {
-    // v = Value(21)
     Value v = Value(21);
-    // double_it(v)
     double_it(v);
-    // # Direct call to verify it works
-    // v2 = v.duplicate()
     Value v2 = v.duplicate();
-    // print(v2.x)
     std::cout << v2.x << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

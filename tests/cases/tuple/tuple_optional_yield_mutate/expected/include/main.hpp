@@ -11,6 +11,7 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class P:
@@ -31,7 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self, x: int32) -> None:
+//     self.x = x
 inline P::P(int32_t x) : x(x) {}
+// def pairs(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
+//     for it in items:
+//         yield (it, None)
 inline auto pairs(std::vector<P>& items) {
     return ::tpy::make_generator<std::tuple<P*, P*>>(
         [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<P*, P*>> {

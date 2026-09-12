@@ -5,39 +5,39 @@ namespace tpyapp::main {
 
 
 // def main():
+//     s: set[int32] = {1, 2}
+//     k: int = 2
+//     print(k in s)
+//     big: int = 1099511627776  # 2**40
+//     print(big in s)
+//     print(big not in s)
+//     neg: int = -1099511627776  # -(2**40)
+//     print(neg in s)
+//     su: set[uint32] = {7}
+//     seven: int = 7
+//     print(seven in su)
+//     print(neg in su)
 void main() {
-    // s: set[int32] = {1, 2}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // k: int = 2
     ::tpy::BigInt k = ::tpy::BigInt(2);
-    // print(k in s)
     std::cout << ::tpy::print_bool((s.contains(k))) << "\n";
-    // big: int = 1099511627776  # 2**40
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
-    // print(big in s)
     std::cout << ::tpy::print_bool((s.contains(big))) << "\n";
-    // print(big not in s)
     std::cout << ::tpy::print_bool((!(s.contains(big)))) << "\n";
-    // neg: int = -1099511627776  # -(2**40)
     ::tpy::BigInt neg = ::tpy::BigInt(static_cast<int64_t>(-1099511627776LL));
-    // print(neg in s)
     std::cout << ::tpy::print_bool((s.contains(neg))) << "\n";
-    // su: set[uint32] = {7}
     ::tpy::ordered_set<uint32_t> su = ::tpy::ordered_set<uint32_t>({7});
-    // seven: int = 7
     ::tpy::BigInt seven = ::tpy::BigInt(7);
-    // print(seven in su)
     std::cout << ::tpy::print_bool((su.contains(seven))) << "\n";
-    // print(neg in su)
     std::cout << ::tpy::print_bool((su.contains(neg))) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -6,52 +6,54 @@ namespace tpyapp::main {
 
 // @error_return(Failed)
 // def run(ok: bool) -> int32:
+//     if ok:
+//         return 1
+//     raise Failed(None)
 std::expected<int32_t, Failed> run(bool ok) {
-    // if ok:
     if (ok) {
-        // return 1
         return 1;
     }
-    // raise Failed(None)
     return ::tpy::make_unexpected(Failed(std::nullopt));
 }
 
 // def main() -> None:
+//     try:
+//         print(run(True))
+//     except Failed:
+//         print("failed")
+//     try:
+//         print(run(False))
+//     except Failed as e:
+//         print("code none" if e.code is None else "code set")
 void main() {
-    // try:
     {
-        // print(run(True))
         std::cout << ({ auto __er_2 = run(true); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
         goto __after_try_1;
         // except Failed:
         __except_1:;
-        // print("failed")
         std::cout << "failed" << "\n";
         __after_try_1:;
     }
-    // try:
     {
         std::optional<Failed> __err_opt_3;
-        // print(run(False))
         std::cout << ({ auto __er_4 = run(false); if (!__er_4.has_value()) { __err_opt_3 = std::move(__er_4.error()); goto __except_3; } ::tpy::unwrap_ref_move(*__er_4); }) << "\n";
         goto __after_try_3;
         // except Failed:
         __except_3:;
         {
             auto& e = *__err_opt_3;
-            // print("code none" if e.code is None else "code set")
             std::cout << (((!e.code.has_value())) ? ("code none") : ("code set")) << "\n";
         }
         __after_try_3:;
     }
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

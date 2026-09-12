@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def dyn_on_optional(p: Pet | None) -> int32:
+//     return p.sound()  # tpyc: warning(/Potential None access/)
 int32_t dyn_on_optional(Pet* p) {
-    // return p.sound()  # tpyc: warning(/Potential None access/)
     return ::tpy::deref_check(p).sound();
 }
 
 // def main() -> None:
+//     d = Dog()
+//     print(dyn_on_optional(d))
+//     p: Pet | None = None
+//     print(dyn_on_optional(p))
 void main() {
-    // d = Dog()
     Dog d = Dog();
-    // print(dyn_on_optional(d))
     std::cout << dyn_on_optional(&(d)) << "\n";
-    // p: Pet | None = None
     Pet* p = nullptr;
-    // print(dyn_on_optional(p))
     std::cout << dyn_on_optional(p) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

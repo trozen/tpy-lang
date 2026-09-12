@@ -13,9 +13,13 @@ extern std::optional<char> none_char;
 extern std::optional<char> some_a;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def eq_left(o: char | None, c: char) -> bool:
 bool eq_left(std::optional<char> o, char c);
+// def eq_right(c: char, o: char | None) -> bool:
 bool eq_right(char c, std::optional<char> o);
+// def ne_left(o: char | None, c: char) -> bool:
 bool ne_left(std::optional<char> o, char c);
+// def ne_right(c: char, o: char | None) -> bool:
 bool ne_right(char c, std::optional<char> o);
 
 void __tpy_init();

@@ -5,27 +5,28 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     c = Counter(0, 3)
+//     asyncio.run(driver(c))
 void main() {
-    // c = Counter(0, 3)
     Counter c = Counter(0, 3);
-    // asyncio.run(driver(c))
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver(c)));
 }
 
+// # Awaiting a coroutine that takes a static-protocol parameter, with the
+// # iterable forwarded through another coroutine (driver -> await consume).
+// # The sub-future field in the awaiting coro is typed as the callee factory's
+// # exact forwarding-deduced type, so a named (lvalue) iterable BORROWS rather
+// # than copies. The @nocopy iterable forces that: a silent copy anywhere along
+// # the await chain would be a compile error.
+// import asyncio
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Awaiting a coroutine that takes a static-protocol parameter, with the
-    // # iterable forwarded through another coroutine (driver -> await consume).
-    // # The sub-future field in the awaiting coro is typed as the callee factory's
-    // # exact forwarding-deduced type, so a named (lvalue) iterable BORROWS rather
-    // # than copies. The @nocopy iterable forces that: a silent copy anywhere along
-    // # the await chain would be a compile error.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // main()
     main();
 }
 

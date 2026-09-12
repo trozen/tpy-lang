@@ -51,33 +51,35 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     print(Tag.Alpha.value)
+//     print(Tag.Beta.value)
+//     print(Tag.Gamma.value)
+//
+//     # Tag(100) reads the C++ value via from_value's switch; result is Alpha.
+//     print(Tag(100))
+//     print(Tag(200))
 void main() {
-    // print(Tag.Alpha.value)
     std::cout << static_cast<int32_t>(::ns::Tag::Alpha) << "\n";
-    // print(Tag.Beta.value)
     std::cout << static_cast<int32_t>(::ns::Tag::Beta) << "\n";
-    // print(Tag.Gamma.value)
     std::cout << static_cast<int32_t>(::ns::Tag::Gamma) << "\n";
-    // # Tag(100) reads the C++ value via from_value's switch; result is Alpha.
-    // print(Tag(100))
     std::cout << ::tpy::__repr__(::tpy::EnumUtil<::ns::Tag>::from_value(100)) << "\n";
-    // print(Tag(200))
     std::cout << ::tpy::__repr__(::tpy::EnumUtil<::ns::Tag>::from_value(200)) << "\n";
 }
 
+// # @native enum where the user spells explicit integer values. These are
+// # verified against the C++ side via per-member static_assert at compile time.
+// # If TPy and C++ disagree, the C++ build fails with a clear message rather
+// # than silently miscompiling.
+// # tpy: include("native_types.hpp")
+// from enum import Enum
+// from tpy.extern import native
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # @native enum where the user spells explicit integer values. These are
-    // # verified against the C++ side via per-member static_assert at compile time.
-    // # If TPy and C++ disagree, the C++ build fails with a clear message rather
-    // # than silently miscompiling.
-    // # tpy: include("native_types.hpp")
-    // from enum import Enum
-    // from tpy.extern import native
-    // main()
     main();
 }
 

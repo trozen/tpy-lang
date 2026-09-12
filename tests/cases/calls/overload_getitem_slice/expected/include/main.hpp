@@ -11,6 +11,7 @@ struct MyList;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class MyList:
@@ -24,22 +25,16 @@ struct MyList {
     // @overload
     // def __getitem__(self, index: int32) -> int32: ...  # tpyc: ok
     int32_t __getitem__(int32_t index) const {
-        // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
     }
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::Slice index) const {
-        // s_start = index.start
         std::optional<int32_t> s_start = index.start;
-        // s_stop = index.stop
         std::optional<int32_t> s_stop = index.stop;
-        // start: int32 = s_start if s_start is not None else int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        // stop: int32 = s_stop if s_stop is not None else int32(len(self._data))
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        // return self._data[start:stop]
         return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
     }
 
@@ -60,6 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
 
 
 // def __init__(self) -> None:
+//     self._data = [int32(10), int32(20), int32(30), int32(40), int32(50)]
 inline MyList::MyList() : _data(std::vector<int32_t>{10, 20, 30, 40, 50}) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,7 +12,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def describe(a: Cat | Dog) -> str:
 std::string describe(::tpy::Union<const Cat*, const Dog*> a);
+// def main() -> None:
 void main();
 
 // # A capture NAME bound at different types per arm keeps its per-arm binding
@@ -52,9 +54,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 
 // def __init__(self, lives: int) -> None:
+//     self.lives = lives
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 
 // def __init__(self, nick: str) -> None:
+//     self.nick = nick
 inline Dog::Dog(std::string_view nick) : nick(nick) {}
 void __tpy_init();
 } // namespace tpyapp::main

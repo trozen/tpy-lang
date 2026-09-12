@@ -9,42 +9,44 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def sum_fast(it: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_it>
 int32_t sum_fast(T_it& it);
+// def main() -> None:
 void main();
 
 // def sum_fast(it: Iterable[int32]) -> int32:
+//     total: int32 = 0
+//     if isinstance(it, NativeIterable):
+//         # Narrowed to NativeIterable[int32] -- emitted as begin/end range-for.
+//         for x in it:
+//             total += x
+//     else:
+//         # Still Iterable[int32] -- emitted as universal __iter__/__next__.
+//         for x in it:
+//             total += x
+//     return total
 template<::tpystd::typing::Iterable<int32_t> T_it>
 int32_t sum_fast(T_it& it) {
-    // total: int32 = 0
     int32_t total = 0;
-    // if isinstance(it, NativeIterable):
     if constexpr (::tpy::NativeIterable<T_it, int32_t>) {
-        // # Narrowed to NativeIterable[int32] -- emitted as begin/end range-for.
-        // for x in it:
         auto& __obj_0 = it;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
-    // else:
     } else {
-        // # Still Iterable[int32] -- emitted as universal __iter__/__next__.
-        // for x in it:
         auto& __src_1 = it;
         auto&& __itr_1 = ::tpy::__iter__(__src_1);
         for (;;) {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             int32_t x = ::tpy::unwrap_ref(*__r_2);
-            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
     }
-    // return total
     return total;
 }
 

@@ -12,6 +12,7 @@ template<typename T> struct TaggedValue;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main():
 void main();
 
 // @nocopy
@@ -43,6 +44,7 @@ struct TaggedValue {
     int32_t data;
 
     // def __init__(self, data: int32):
+    //     self.data = data
     TaggedValue() = default;
     explicit TaggedValue(int32_t data) : data(data) {}
     // copyable via __copy__
@@ -55,8 +57,8 @@ struct TaggedValue {
     TaggedValue& operator=(TaggedValue&&) = default;
 
     // def __copy__(self) -> Own[TaggedValue[T]]:
+    //     return TaggedValue[T](self.data)
     TaggedValue<T> __copy__() const {
-        // return TaggedValue[T](self.data)
         return TaggedValue<T>(this->data);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.TaggedValue";
@@ -70,6 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedValue<T>& obj) {
 
 
 // def __init__(self, fd: int32):
+//     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 void __tpy_init();
 } // namespace tpyapp::main

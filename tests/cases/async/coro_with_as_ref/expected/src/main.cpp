@@ -5,12 +5,15 @@ namespace tpyapp::main {
 
 
 // async def total() -> int32:
+//     s: int32 = 0
+//     await asyncio.sleep(0)
+//     with CM(42) as it:
+//         s += it.n
+//     return s
 ::tpystd::tpy::Poll<int32_t> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s: int32 = 0
         s = 0;
-        // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -20,12 +23,10 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // with CM(42) as it:
         __with_ctx_0.emplace(CM(42));
         auto& __ctx_1 = (*__with_ctx_0);
         it.emplace(__ctx_1.__enter__());
         try {
-            // s += it.n
             s = ::tpy::add_check<int32_t>(s, (*it).n);
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
@@ -37,7 +38,6 @@ namespace tpyapp::main {
         }
         __with_exit_1:
         __ctx_1.__exit__({}, nullptr, {});
-        // return s
         __state = S_DONE;
         int32_t __tpy_async_ret = s;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -54,10 +54,10 @@ __coro_total total() {
 }
 
 // async def driver() -> None:
+//     print(await total())
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // print(await total())
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
@@ -67,7 +67,6 @@ __coro_total total() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
-        // print(await total())
         std::cout << __await_lift_0 << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -83,19 +82,20 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
+// # Regression: with-statement `as`-binding in an async coro body where
+// # `__enter__` returns a reference-type value. Codegen emits
+// # `auto& it = __ctx_N.__enter__();` -- a C++-scoped reference. Sema
+// # adds `it` to `func.generator_locals` -> `generator_optional_fields`.
+// # Before the fix, body-emit's `(*it)` peel mis-fired on `it.n`.
+// import asyncio
+//
+// asyncio.run(driver())
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # Regression: with-statement `as`-binding in an async coro body where
-    // # `__enter__` returns a reference-type value. Codegen emits
-    // # `auto& it = __ctx_N.__enter__();` -- a C++-scoped reference. Sema
-    // # adds `it` to `func.generator_locals` -> `generator_optional_fields`.
-    // # Before the fix, body-emit's `(*it)` peel mis-fired on `it.n`.
-    // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // asyncio.run(driver())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 

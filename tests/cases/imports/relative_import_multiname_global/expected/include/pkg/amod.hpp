@@ -10,6 +10,7 @@ namespace tpyapp::pkg::amod {
 extern ::tpy::Bytes _A;
 inline constexpr std::string_view __name__ = "pkg.amod";
 
+// def a_first() -> int32:
 int32_t a_first();
 
 void __tpy_init();

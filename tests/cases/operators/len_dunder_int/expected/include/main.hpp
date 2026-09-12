@@ -11,6 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def main() -> None:
 void main();
 
 // class Bag:
@@ -42,17 +43,18 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self) -> None:
+//     self._items = [10, 20, 30]
 inline Bag::Bag() : _items(std::vector<int32_t>{10, 20, 30}) {}
 
 // def add(self, x: int32) -> None:
+//     self._items.append(x)
 inline void Bag::add(int32_t x) {
-    // self._items.append(x)
     this->_items.push_back(x);
 }
 
 // def __len__(self) -> int:
+//     return len(self._items)
 inline ::tpy::BigInt Bag::__len__() const {
-    // return len(self._items)
     return ::tpy::BigInt(::tpy::__len__(this->_items));
 }
 void __tpy_init();

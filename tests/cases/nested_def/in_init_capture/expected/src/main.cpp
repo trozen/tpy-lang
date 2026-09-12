@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     g = Grid(4)
+//     print(g.cells)
 void main() {
-    // g = Grid(4)
     Grid g = Grid(4);
-    // print(g.cells)
     std::cout << g.cells << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 

@@ -5,47 +5,48 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[FixStr[16]]:
+//     s = FixStr[16]()
+//     a: char = "a"
+//     b: char = "b"
+//     s.append(a)
+//     s.append(b)
+//     return s
 ::tpystd::tplib::fix_str::FixStr<16> make() {
-    // s = FixStr[16]()
     ::tpystd::tplib::fix_str::FixStr<16> s = ::tpystd::tplib::fix_str::FixStr<16>();
-    // a: char = "a"
     char a = 'a';
-    // b: char = "b"
     char b = 'b';
-    // s.append(a)
     s.append(a);
-    // s.append(b)
     s.append(b);
-    // return s
     return s;
 }
 
 // def main() -> None:
+//     src = make()
+//     moved = src                  # last-use rebind -> forced move (relocate_from)
+//     print(len(moved))            # 2
+//     print(moved[0], moved[1])    # a b
+//     c: char = "c"
+//     moved.append(c)              # mutate the relocated handle
+//     print(len(moved), moved[2])  # 3 c
 void main() {
-    // src = make()
     ::tpystd::tplib::fix_str::FixStr<16> src = make();
-    // moved = src                  # last-use rebind -> forced move (relocate_from)
     ::tpystd::tplib::fix_str::FixStr<16> moved = std::move(src);
-    // print(len(moved))            # 2
     std::cout << ::tpy::__len__(moved) << "\n";
-    // print(moved[0], moved[1])    # a b
     std::cout << moved[0] << " " << moved[1] << "\n";
-    // c: char = "c"
     char c = 'c';
-    // moved.append(c)              # mutate the relocated handle
     moved.append(c);
-    // print(len(moved), moved[2])  # 3 c
     std::cout << ::tpy::__len__(moved) << " " << moved[2] << "\n";
 }
 
+// from tplib import FixStr
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // from tplib import FixStr
     ::tpystd::tplib::__tpy_init();
-    // main()
     main();
 }
 

@@ -5,39 +5,44 @@ namespace tpyapp::main {
 
 
 // def main() -> None:
+//     # Basic shifts
+//     print(int8(1) << int8(0))    # 1
+//     print(int8(1) << int8(6))    # 64
+//     print(int8(-1) << int8(0))   # -1
+//
+//     # uint8 shifts
+//     print(uint8(1) << uint8(7))  # 128
+//     print(uint8(3) << uint8(4))  # 48
+//
+//     # int16 shifts
+//     print(int16(1) << int16(14))  # 16384
+//
+//     # uint16 shifts
+//     print(uint16(1) << uint16(15))  # 32768
+//
+//     # int32 shifts
+//     print(int32(1) << int32(30))  # 1073741824
+//
+//     # int64 shifts
+//     print(int64(1) << int64(62))  # 4611686018427387904
 void main() {
-    // # Basic shifts
-    // print(int8(1) << int8(0))    # 1
     std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(1, 0))) << "\n";
-    // print(int8(1) << int8(6))    # 64
     std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(1, 6))) << "\n";
-    // print(int8(-1) << int8(0))   # -1
     std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(-1, 0))) << "\n";
-    // # uint8 shifts
-    // print(uint8(1) << uint8(7))  # 128
     std::cout << static_cast<int>((::tpy::lshift_check<uint8_t>(1, 7))) << "\n";
-    // print(uint8(3) << uint8(4))  # 48
     std::cout << static_cast<int>((::tpy::lshift_check<uint8_t>(3, 4))) << "\n";
-    // # int16 shifts
-    // print(int16(1) << int16(14))  # 16384
     std::cout << (::tpy::lshift_check<int16_t>(1, 14)) << "\n";
-    // # uint16 shifts
-    // print(uint16(1) << uint16(15))  # 32768
     std::cout << (::tpy::lshift_check<uint16_t>(1, 15)) << "\n";
-    // # int32 shifts
-    // print(int32(1) << int32(30))  # 1073741824
     std::cout << (::tpy::lshift_check<int32_t>(1, 30)) << "\n";
-    // # int64 shifts
-    // print(int64(1) << int64(62))  # 4611686018427387904
     std::cout << (::tpy::lshift_check<int64_t>(1, 62)) << "\n";
 }
 
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // main()
     main();
 }
 
